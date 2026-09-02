@@ -37,6 +37,7 @@ import type {
   SearchPathStatusResponse,
   TrackedDocumentResponse,
 } from '../types/api'
+import { translateListLabel, translateStageNote } from '../utils/retrievalProtocolText'
 import { useAuthStore } from '../stores/authStore'
 import { useSearchAdminStore } from '../stores/searchAdminStore'
 
@@ -284,7 +285,7 @@ function StagePanel({ stage }: { stage: RetrievalStageResponse }) {
           <Box sx={{ mb: 1.5 }}>
             {stage.notes.map((note) => (
               <Typography key={note} variant="body2" color="text.secondary">
-                {note}
+                {translateStageNote(note)}
               </Typography>
             ))}
           </Box>
@@ -314,7 +315,7 @@ function StagePanel({ stage }: { stage: RetrievalStageResponse }) {
                     <TableCell>{verdict.libraryName ?? '—'}</TableCell>
                     <TableCell>{OUTCOME_LABELS[verdict.outcome]}</TableCell>
                     <TableCell>{REASON_LABELS[verdict.reason]}</TableCell>
-                    <TableCell>{verdict.listLabel ?? 'fusioniert'}</TableCell>
+                    <TableCell>{translateListLabel(verdict.listLabel)}</TableCell>
                     <TableCell align="right">{verdict.rank ?? '—'}</TableCell>
                     <TableCell align="right">
                       {verdict.value == null ? '—' : verdict.value.toFixed(4)}
