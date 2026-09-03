@@ -271,6 +271,12 @@ tasks.named<Test>("test") {
     filter {
         excludeTestsMatching("io.opaa.integration.*")
     }
+    // Gradle does not forward -D command-line system properties into a forked Test JVM on its own
+    // (see the eval task's identical comment above) — RetrievalNoteTemplateExport's regeneration
+    // path (#1207) needs this one explicitly.
+    System.getProperty("opaa.retrievalNoteTemplates.regenerate")?.let {
+        systemProperty("opaa.retrievalNoteTemplates.regenerate", it)
+    }
 }
 
 tasks.register<Test>("openAiIntegrationTest") {
