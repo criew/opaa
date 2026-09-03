@@ -702,10 +702,9 @@ public class LibraryDocumentService {
     Path fileManagedByThisService = uploadedFileIfManagedByThisService(document, libraryId);
     UUID chunkFilterDocumentId = document.getId();
 
-    // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage): a document with attachment rows pointing at it
-    // via parent_document_id (#1180) cannot be deleted first without failing fk_documents_parent -
-    // this path decides to take its attachments with it, mirroring StaleDocumentCleanupService's
-    // own
+    // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage): a document with attachment rows pointing at
+    // it via parent_document_id cannot be deleted first without failing fk_documents_parent - this
+    // path takes its attachments with it, mirroring StaleDocumentCleanupService's own
     // children-before-parent order. None of them are ever an UPLOAD-managed file of this service's
     // own (only the connector paths that create attachments set parentDocumentId), so there is no
     // extra file to clean up for a child the way there can be for the parent below.

@@ -16,9 +16,9 @@ import org.mockito.InOrder;
 
 /**
  * Unit-level coverage of {@link StaleDocumentCleanupService}'s children-before-parents delete order
- * (ADR-0022, Entscheidung 4, #1182 review of #1188) - {@code StaleDocumentCleanupIntegrationTest}
- * already covers the class's pre-existing (library, sourceType)-scoped behaviour end-to-end against
- * a real schema; this class isolates the one new invariant that needs its own proof.
+ * (ADR-0022, Entscheidung 4) - {@code StaleDocumentCleanupIntegrationTest} already covers the
+ * class's pre-existing (library, sourceType)-scoped behaviour end-to-end against a real schema;
+ * this class isolates the one new invariant that needs its own proof.
  */
 class StaleDocumentCleanupServiceTest {
 
@@ -45,11 +45,11 @@ class StaleDocumentCleanupServiceTest {
           false);
 
   /**
-   * {@code findByLibraryIdAndSourceType} carries no {@code ORDER BY} (the #1182 review finding of
-   * #1188) - both the vanished parent and its vanished attachment child are in the same batch here,
-   * and only sorting them children-first before deleting each in turn (not the repository's own
-   * unordered result order, deliberately stubbed parent-before-child here) avoids failing {@code
-   * fk_documents_parent} by removing the parent first.
+   * {@code findByLibraryIdAndSourceType} carries no {@code ORDER BY} - both the vanished parent and
+   * its vanished attachment child are in the same batch here, and only sorting them children-first
+   * before deleting each in turn (not the repository's own unordered result order, deliberately
+   * stubbed parent-before-child here) avoids failing {@code fk_documents_parent} by removing the
+   * parent first.
    */
   @Test
   void deletesAVanishedAttachmentBeforeItsOwnVanishedParent() {

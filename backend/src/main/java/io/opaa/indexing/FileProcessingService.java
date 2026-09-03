@@ -443,27 +443,47 @@ public class FileProcessingService {
         metrics.recordSkipped();
         return FileProcessingResult.SKIPPED;
       }
-      // Updated in place under the same id, not deleted-and-recreated (#1182, review of #1188): an
-      // attachment's parent_document_id (ADR-0022, Entscheidung 4) points at this row, and deleting
-      // it here would fail fk_documents_parent while its attachments still exist. Only the chunks
-      // are
-      // exchanged; the row's own id, and therefore every attachment's parent link, survives
-      // unchanged.
+      // Updated in place under the same id, not deleted-and-recreated (ADR-0022, Entscheidung 4):
+      // an attachment's parent_document_id points at this row, and deleting it here would fail
+      // fk_documents_parent while its attachments still exist. Only the chunks are exchanged; the
+      // row's own id, and therefore every attachment's parent link, survives unchanged.
+      //
+      // Unlike processFile/processUrlFile above, this row is never removed before the quota check
+      // below - LibraryStorageQuotaService#wouldExceedQuota's own contract ("call after removing
+      // the row being replaced") does not hold here by construction. The check therefore measures
+      // the size delta explicitly instead: checking the full new size against a usedBytes that
+      // still includes the old size would double-count the entry being replaced (a library near
+      // quota could reject a same-size or shrinking update that nets out fine), and deleting the
+      // chunks first would leave a chunkless INDEXED row with a stale checksum behind on a
+      // QUOTA_EXCEEDED rejection - unlike every other rejection path, nothing here would ever clean
+      // that row back up.
+      long previousSize = existingDoc.getFileSize() == null ? 0L : existingDoc.getFileSize();
+      long delta = contentBytes.length - previousSize;
+      if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), delta)) {
+        log.warn(
+            "Skipping RSS entry {}: library {} storage quota would be exceeded",
+            entryUrl,
+            targetLibrary.getId());
+        metrics.recordSkipped();
+        return FileProcessingResult.QUOTA_EXCEEDED;
+      }
       vectorChunkStore.deleteByDocumentId(existingDoc.getId());
       existingDoc.setFileName(fileName);
       existingDoc.setContentType("text/html");
       existingDoc.setFileSize((long) contentBytes.length);
       doc = existingDoc;
-    }
-
-    // See processFile's own comment on why this runs after the existing-document handling above.
-    if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), contentBytes.length)) {
-      log.warn(
-          "Skipping RSS entry {}: library {} storage quota would be exceeded",
-          entryUrl,
-          targetLibrary.getId());
-      metrics.recordSkipped();
-      return FileProcessingResult.QUOTA_EXCEEDED;
+    } else {
+      // See processFile's own comment on why this runs after the existing-document deletion there -
+      // there is no existing row to remove on this branch, so the check simply runs before creating
+      // the new one.
+      if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), contentBytes.length)) {
+        log.warn(
+            "Skipping RSS entry {}: library {} storage quota would be exceeded",
+            entryUrl,
+            targetLibrary.getId());
+        metrics.recordSkipped();
+        return FileProcessingResult.QUOTA_EXCEEDED;
+      }
     }
 
     if (doc == null) {

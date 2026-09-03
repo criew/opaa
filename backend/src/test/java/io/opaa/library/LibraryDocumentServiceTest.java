@@ -788,11 +788,10 @@ class LibraryDocumentServiceTest {
 
   @Test
   void deletingADocumentWithAttachmentsDeletesTheAttachmentRowsFirst() throws IOException {
-    // ADR-0022, Entscheidung 3 (#1182 review of #1188): a document with attachment rows still
-    // pointing at it via parent_document_id cannot be deleted first - fk_documents_parent (#1180)
-    // would reject it. This path decides to take its attachments with it, deleting them before the
-    // parent's own row exactly like StaleDocumentCleanupService's own children-before-parents
-    // order.
+    // ADR-0022, Entscheidung 3: a document with attachment rows still pointing at it via
+    // parent_document_id cannot be deleted first - fk_documents_parent would reject it. This path
+    // takes its attachments with it, deleting them before the parent's own row, exactly like
+    // StaleDocumentCleanupService's own children-before-parents order.
     grantEditor();
     UUID documentId = UUID.randomUUID();
     Document doc = new Document("eintrag.html", "https://feed.example/entry", "text/html", 7L);

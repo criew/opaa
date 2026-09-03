@@ -365,6 +365,11 @@ Anlage im Index bleibt damit ihrem Feed-Eintrag zuordenbar. Noch nicht durchgere
 Belegangabe einer Chat-Antwort (`SourceReference`); das ist als eigenständiger Folgeschritt in
 **Issue #639** erfasst.
 
+**Löschung nimmt ihre Anlagen mit.** Löscht eine Nutzerin einen Eintrag mit Anlagen einzeln über die
+Dokumentliste, entfernt derselbe Aufruf auch seine Anlagen — beide verschwinden gemeinsam aus der Liste,
+nicht nur der Eintrag. Das ist eine bewusste Entscheidung (ADR-0022, Entscheidung 3): Eine Anlage ohne
+ihren Eintrag hätte keinen erkennbaren Zusammenhang mehr zu ihrem Ursprung.
+
 **Änderungserkennung — gestuft, je nach Sicherheit der Angabe:**
 
 - Der **Feed selbst** wird mit einer bedingten Anfrage abgerufen (ETag/`If-Modified-Since`); meldet die
