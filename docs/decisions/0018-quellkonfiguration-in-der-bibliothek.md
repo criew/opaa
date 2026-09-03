@@ -59,6 +59,15 @@ eines Bestands bleibt, was sie in [`spaces-and-assets.md`](../features/spaces-an
 war: ein Rechteproblem, gelöst über Freigabe und Bereitstellung derselben Bibliothek — nicht über
 mehrere Zuflüsse in einen Topf.
 
+> **Nachtrag (2026-09-03, #1131):** Mit dem Confluence-Konnektor
+> ([ADR-0023](0023-confluence-konnektor.md), Entscheidung 1) erhält die Quellkonfiguration erstmals
+> einen **Listenwert** — die Auswahl mehrerer Spaces, gehalten in der Kindtabelle
+> `knowledge_library_confluence_spaces`. Die Bibliothek bleibt die eine Quelle (Adresse, Zugangsdaten,
+> Edition, Zeitplan als Einzelwerte an `knowledge_libraries`); die Kindtabelle ist der Wert eines
+> Konfigurationsattributs, keine Quellen-Tabelle im Sinne der unten verworfenen Alternative, und der
+> Geltungsbereich der Abwesenheitsprüfung bleibt „je Bibliothek und Quellentyp" (ADR-0017,
+> Entscheidung 5).
+
 ### 2. Der Anstoß eines Laufs verweist nur noch auf die Bibliothek
 
 Der Indizierungsanstoß reduziert sich auf „indiziere diese Bibliothek": Typ und Konfiguration werden
