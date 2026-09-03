@@ -228,7 +228,14 @@ Konfiguration sind gebaut (#1133), ebenso der Anlagepfad im Wizard (#1135): Adre
 testen — und erst dann, hinter dem ausdrücklichen Hinweis auf die Freigabefolge der gemeinsamen
 Bibliothek, die Spaces aus der Auflistung der Instanz auswählen. Nach der Anlage sind Typ und Edition
 unveränderlich sichtbar; Adresse, Zugangsdaten und Space-Auswahl bleiben über die Quellkonfiguration
-bearbeitbar. Die Läufe folgen in den weiteren Tickets des Epics. Weitere Quellklassen kommen bedarfsgetrieben hinzu, jede
+bearbeitbar. Die Läufe folgen in den weiteren Tickets des Epics. Abgenommen wird der Konnektor auf
+zwei Ebenen: Das gemeinsame Testdoppel beider Editionen läuft mit jedem PR; zusätzlich startet
+`./gradlew confluenceIntegrationTest` (#1171) ein echtes Confluence Data Center im Container —
+Einrichtungsassistent, 3-Stunden-Testlizenz, Administrator, zwei Token mit unterschiedlichen
+Space-Rechten und ein definierter Testinhalt vollautomatisch — und prüft Editionserkennung,
+Space-Auflistung, Seiten- und Anhangsabruf und das sichtbare Überspringen nicht lesbarer Inhalte
+dagegen; in CI nächtlich und je PR per Label `confluence-suite`, nie im regulären Build. Cloud lässt
+sich nicht containerisieren und bleibt Sache des Testdoppels. Weitere Quellklassen kommen bedarfsgetrieben hinzu, jede
 als neuer Bibliothekstyp (Template); die Anbindung an Dokumentenmanagement und elektronische Akte
 gehört in den Ausblick der Produktvision.
 
