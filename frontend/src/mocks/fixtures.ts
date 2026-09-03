@@ -137,6 +137,20 @@ export const mockQueryResponses: QueryResponse[] = [
         cited: false,
         citationValid: true,
       },
+      {
+        // #1164: an uncited mail source (VITE_ENABLE_MOCKS=true), so the mocked frontend shows
+        // the Fundstellen mail summary line without needing a matching citation marker above.
+        fileName: 'anfrage-bauantrag.eml',
+        relevanceScore: 0.2,
+        matchCount: 1,
+        indexedAt: '2025-01-16T09:15:00Z',
+        cited: false,
+        citationValid: true,
+        mailFrom: 'mueller@stadt.de',
+        mailTo: 'poststelle@stadt.de',
+        mailSubject: 'Bebauungsplan Nord',
+        mailDate: '2026-03-14T09:15:00Z',
+      },
     ],
     metadata: {
       model: 'gpt-4o',

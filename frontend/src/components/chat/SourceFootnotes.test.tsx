@@ -104,6 +104,33 @@ describe('SourceFootnotes', () => {
     ).toBeInTheDocument()
   })
 
+  // #1164: a source whose retrieved chunk carried mail_* metadata shows a summary line at the
+  // Fundstelle; a non-mail source (indexWithDocs' plain fixtures) shows none.
+  describe('mail Kopfdaten summary', () => {
+    it('shows sender, date and Betreff for a source with mail metadata', () => {
+      const citations = buildCitationIndex('Satz【source: doc-1#0 | anfrage.eml】', [
+        source('anfrage.eml', true, {
+          documentId: 'doc-1',
+          mailFrom: 'mueller@stadt.de',
+          mailDate: '2026-03-14T09:15:00Z',
+          mailSubject: 'Bebauungsplan Nord',
+        }),
+      ])
+
+      renderFootnotes(citations)
+
+      expect(screen.getByTestId('source-mail-summary')).toHaveTextContent(
+        'Mail von mueller@stadt.de, 14.03.2026 — Bebauungsplan Nord',
+      )
+    })
+
+    it('shows no summary line for a source without mail metadata', () => {
+      renderFootnotes(indexWithDocs(1))
+
+      expect(screen.queryByTestId('source-mail-summary')).not.toBeInTheDocument()
+    })
+  })
+
   describe('"Im Dokument öffnen"', () => {
     it('calls openDocument with the documentId and file name for a local (UPLOAD/FILESYSTEM) original', async () => {
       const citations = buildCitationIndex('Satz【source: doc-1#0 | dienstanweisung.pdf】', [

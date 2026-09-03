@@ -79,7 +79,11 @@ final class ChatResponseMapper {
         .sourceUrl(source.getSourceUrl())
         .sourceEntryUrl(source.getSourceEntryUrl())
         .citationValid(source.getCitationValid())
-        .chunkLocations(toChunkLocations(source.getChunkLocations()));
+        .chunkLocations(toChunkLocations(source.getChunkLocations()))
+        .mailFrom(source.getMailFrom())
+        .mailTo(source.getMailTo())
+        .mailSubject(source.getMailSubject())
+        .mailDate(source.getMailDate());
   }
 
   private static List<ChunkLocation> toChunkLocations(List<ChatSourceLocation> locations) {

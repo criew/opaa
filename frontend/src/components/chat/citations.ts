@@ -180,3 +180,24 @@ export function buildCitationIndex(
 export function citationRowId(messageId: string, docIndex: number): string {
   return `fundstelle-${messageId}-${docIndex}`
 }
+
+/**
+ * #1164: "Mail von mueller@stadt.de, 14.03.2026 — Bebauungsplan Nord" - the Fundstellen-Anzeige's
+ * mail summary line, shared between {@code SourceFootnotes} and {@code SourceEvidenceDrawer}.
+ * `undefined` for a non-mail source (every mail field absent) so callers can omit the line
+ * entirely rather than rendering an empty "Mail von …".
+ */
+export function formatMailSummary(source: SourceReference | undefined): string | undefined {
+  if (!source?.mailFrom && !source?.mailDate && !source?.mailSubject) {
+    return undefined
+  }
+  const datePart = source.mailDate
+    ? new Date(source.mailDate).toLocaleDateString('de-DE', { dateStyle: 'medium' })
+    : undefined
+  const senderAndDate = [source.mailFrom, datePart].filter(Boolean).join(', ')
+  const segments = [
+    senderAndDate.length > 0 ? `von ${senderAndDate}` : undefined,
+    source.mailSubject,
+  ].filter((segment): segment is string => Boolean(segment))
+  return segments.length > 0 ? `Mail ${segments.join(' — ')}` : undefined
+}

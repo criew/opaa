@@ -6,7 +6,7 @@ import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import type { CitationIndex } from './citations'
-import { citationRowId } from './citations'
+import { citationRowId, formatMailSummary } from './citations'
 import type { SourceReference } from '../../types/api'
 import { fontFamily } from '../../theme/tokens'
 
@@ -102,6 +102,7 @@ function renderDocRow(
   onOpenLocalOriginal: (source: SourceReference, fileName: string) => void,
 ) {
   const indexedAtLabel = formatIndexedAt(doc.source?.indexedAt)
+  const mailSummary = formatMailSummary(doc.source)
   return (
     <Box
       key={doc.fileName}
@@ -143,6 +144,17 @@ function renderDocRow(
       <Typography component="span" sx={{ fontSize: 12, fontWeight: 500 }}>
         {doc.fileName}
       </Typography>
+      {/* #1164: the mail Kopfdaten summary ("Mail von …, TT.MM.JJJJ — Betreff"), only for a source
+          whose retrieved chunk carried mail_* metadata. */}
+      {mailSummary && (
+        <Typography
+          component="span"
+          data-testid="source-mail-summary"
+          sx={{ fontSize: 12, color: 'text.secondary' }}
+        >
+          {mailSummary}
+        </Typography>
+      )}
       {/* #667: the Fundort per cited passage (mockup 1a: "Abschn. 4.2 ‚Fristsetzung'", "S. 2–4"),
           resolved from the marker's chunk index - only where the pipeline could derive one. */}
       {doc.locations.length > 0 && (
