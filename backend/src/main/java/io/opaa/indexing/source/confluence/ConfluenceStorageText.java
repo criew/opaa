@@ -42,7 +42,7 @@ final class ConfluenceStorageText {
           "ac:layout-section",
           "ac:rich-text-body");
   private static final Set<String> DROPPED_TAGS =
-      Set.of("ac:parameter", "ac:plain-text-link-body", "ri:url", "ri:page", "ri:attachment");
+      Set.of("ac:parameter", "ri:url", "ri:page", "ri:attachment");
 
   private ConfluenceStorageText() {}
 

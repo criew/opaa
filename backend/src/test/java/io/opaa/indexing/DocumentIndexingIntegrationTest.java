@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -965,7 +966,12 @@ class DocumentIndexingIntegrationTest {
     KnowledgeLibrary libraryInOrganizationA =
         createLibraryAndGrantEditor(organizationA, userInOrganizationA, "401-org-a");
 
-    IndexingJob job = indexingJobService.startJob(libraryInOrganizationA.getId(), organizationA);
+    IndexingJob job =
+        indexingJobService.startJob(
+            libraryInOrganizationA.getId(),
+            organizationA,
+            JobTriggerSource.MANUAL,
+            IndexingRunMode.FULL);
 
     assertThat(
             documentIndexingService
@@ -1027,7 +1033,11 @@ class DocumentIndexingIntegrationTest {
     // deterministic, and it is uk_indexing_jobs_library_running (migration 028) plus
     // IndexingJobService#isJobRunning that this test actually needs held RUNNING, not a real
     // completed indexing pass.
-    indexingJobService.startJob(libraryInOrganizationA.getId(), organizationA);
+    indexingJobService.startJob(
+        libraryInOrganizationA.getId(),
+        organizationA,
+        JobTriggerSource.MANUAL,
+        IndexingRunMode.FULL);
 
     IndexingJob jobInOrganizationB =
         documentIndexingService.triggerIndexing(

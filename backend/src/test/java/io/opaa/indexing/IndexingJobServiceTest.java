@@ -10,6 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.ConflictException;
 import java.time.Duration;
 import java.time.Instant;
@@ -38,7 +39,9 @@ class IndexingJobServiceTest {
     var job = new IndexingJob(JobStatus.RUNNING);
     when(indexingJobRepository.saveAndFlush(any(IndexingJob.class))).thenReturn(job);
 
-    IndexingJob result = service.startJob(UUID.randomUUID(), UUID.randomUUID());
+    IndexingJob result =
+        service.startJob(
+            UUID.randomUUID(), UUID.randomUUID(), JobTriggerSource.MANUAL, IndexingRunMode.FULL);
 
     assertThat(result.getStatus()).isEqualTo(JobStatus.RUNNING);
     assertThat(result.getStartedAt()).isNotNull();
@@ -51,7 +54,9 @@ class IndexingJobServiceTest {
     when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
         .thenAnswer(inv -> inv.getArgument(0));
 
-    IndexingJob result = service.startJob(libraryId, UUID.randomUUID());
+    IndexingJob result =
+        service.startJob(
+            libraryId, UUID.randomUUID(), JobTriggerSource.MANUAL, IndexingRunMode.FULL);
 
     assertThat(result.getLibraryId()).isEqualTo(libraryId);
   }
@@ -63,7 +68,9 @@ class IndexingJobServiceTest {
     when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
         .thenAnswer(inv -> inv.getArgument(0));
 
-    IndexingJob result = service.startJob(UUID.randomUUID(), organizationId);
+    IndexingJob result =
+        service.startJob(
+            UUID.randomUUID(), organizationId, JobTriggerSource.MANUAL, IndexingRunMode.FULL);
 
     assertThat(result.getOrganizationId()).isEqualTo(organizationId);
   }
@@ -78,7 +85,10 @@ class IndexingJobServiceTest {
     when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
         .thenThrow(new DataIntegrityViolationException("duplicate key"));
 
-    assertThatThrownBy(() -> service.startJob(libraryId, UUID.randomUUID()))
+    assertThatThrownBy(
+            () ->
+                service.startJob(
+                    libraryId, UUID.randomUUID(), JobTriggerSource.MANUAL, IndexingRunMode.FULL))
         .isInstanceOf(ConflictException.class)
         .hasMessageContaining("Für diese Bibliothek läuft bereits ein Indizierungslauf");
   }

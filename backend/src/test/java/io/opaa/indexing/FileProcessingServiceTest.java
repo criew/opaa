@@ -964,6 +964,10 @@ class FileProcessingServiceTest {
     verify(documentRepository)
         .markIndexedFromSource(
             existing.getId(), 2, Instant.parse("2026-09-01T08:00:00Z"), "sha256-of-page", "8");
+    // #1179 review: the new title and place become visible even though no chunk changed
+    verify(documentRepository)
+        .refreshConnectorTitleAndContext(
+            existing.getId(), "Abschnitt 1.1 (umbenannt)", "ENG", null);
     verify(documentRepository, never()).save(any(Document.class));
     verify(documentRepository, never()).delete(any(Document.class));
   }

@@ -457,6 +457,114 @@ class ConfluenceIndexingExecutorTest {
     assertThat(server.requests()).isEmpty();
   }
 
+  @ParameterizedTest
+  @MethodSource("editions")
+  void attachmentsOfAPageThisRunCouldNotProcessStayInTheReconciliationSet(ConfluenceEdition edition)
+      throws Exception {
+    // #1179 review, CRITICAL: a page that cannot be fetched (404) or stored (quota) is no finding
+    // about its attachments - their known documents must not look vanished to the cleanup.
+    start(edition, null, "ENG");
+    String abschnitt = pagePath(edition, "ENG", "102");
+    Document knownAttachment =
+        new Document(
+            "notizen.txt",
+            server.baseUrl() + "/download/attachments/102/notizen.txt",
+            "text/plain",
+            19L,
+            DocumentSourceType.CONFLUENCE);
+    knownAttachment.setStatus(DocumentStatus.INDEXED);
+    when(documentRepository.findByLibraryIdAndSourceEntryUrl(library.getId(), abschnitt))
+        .thenReturn(List.of(knownAttachment));
+    server.hideFromFetch("102");
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
+    verify(cleanupService).cleanupVanished(any(), any(), current.capture(), any(), any(), any());
+    assertThat(current.getValue()).contains(abschnitt, knownAttachment.getFilePath());
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void anExhaustedQuotaKeepsThePagesKnownAttachmentsAsWell(ConfluenceEdition edition)
+      throws Exception {
+    start(edition, null, "ENG");
+    String abschnitt = pagePath(edition, "ENG", "102");
+    Document knownAttachment =
+        new Document(
+            "notizen.txt",
+            server.baseUrl() + "/download/attachments/102/notizen.txt",
+            "text/plain",
+            19L,
+            DocumentSourceType.CONFLUENCE);
+    when(documentRepository.findByLibraryIdAndSourceEntryUrl(library.getId(), abschnitt))
+        .thenReturn(List.of(knownAttachment));
+    when(fileProcessingService.processConfluencePage(
+            any(), eq("Abschnitt 1.1"), any(), any(), any(), any()))
+        .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
+    verify(cleanupService).cleanupVanished(any(), any(), current.capture(), any(), any(), any());
+    assertThat(current.getValue()).contains(knownAttachment.getFilePath());
+    verify(fileProcessingService, never())
+        .processUrlFile(
+            any(), eq("notizen.txt"), any(), any(), anyLong(), any(), any(), any(), any());
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aFailedReconciliationLeavesTheFullSyncOpenAndSaysSo(ConfluenceEdition edition)
+      throws Exception {
+    start(edition, null, "HR");
+    when(cleanupService.cleanupVanished(any(), any(), any(), any(), any(), any()))
+        .thenThrow(new IllegalStateException("Datenbank nicht erreichbar"));
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(IndexingEventCategory.ERROR, "Abgleich des Bestands fehlgeschlagen", null)));
+    ArgumentCaptor<ConfluenceSyncState> state = ArgumentCaptor.forClass(ConfluenceSyncState.class);
+    verify(syncStateRepository, timeout(5000).atLeast(1)).save(state.capture());
+    assertThat(state.getValue().isFullSyncInterrupted()).isTrue();
+    assertThat(state.getValue().getIncrementalAnchor()).isNull();
+    verify(indexingJobService).completeJob(jobId, 1, 0, 0, 1);
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void throttlingIsReportedEvenWhenTheRunFailsAfterwards(ConfluenceEdition edition)
+      throws Exception {
+    start(edition, null, "ENG");
+    library =
+        KnowledgeLibrary.ownedByUser(
+            library.getOrganizationId(),
+            "Wiki",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false,
+            DocumentSourceType.CONFLUENCE,
+            null,
+            server.baseUrl(),
+            null,
+            edition == ConfluenceEdition.CLOUD ? EMAIL + ":falsch" : "falsch",
+            false);
+    library.configureConfluence(edition, List.of(new ConfluenceSpaceSelection("ENG", null)));
+    server.throttleNext(1, "1");
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService).failJob(eq(jobId), any());
+    verify(eventRepository)
+        .save(argThat(event(IndexingEventCategory.RATE_LIMITED, "1-mal gedrosselt", null)));
+  }
+
   private static ArgumentMatcher<IndexingRunEvent> event(
       IndexingEventCategory category, String messagePart, String reference) {
     return event ->

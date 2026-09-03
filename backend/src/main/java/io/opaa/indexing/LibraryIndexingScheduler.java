@@ -23,10 +23,10 @@ import org.springframework.stereotype.Component;
  * <p>No leader election, no distributed lock: multiple backend instances ticking the same due
  * library at the same minute would race to insert a {@code RUNNING} row; {@code
  * uk_indexing_jobs_library_running} already makes that race safe - the loser's {@link
- * IndexingJobService#startJob(java.util.UUID, java.util.UUID, JobTriggerSource)} call fails with
- * the same 409 a second concurrent manual trigger gets: no new run, one {@link
- * IndexingEventCategory#SCHEDULE_SKIPPED} event on the run that is already going. Assumes exactly
- * one backend process overall; see ADR-0021.
+ * IndexingJobService#startJob(java.util.UUID, java.util.UUID, JobTriggerSource,
+ * io.opaa.api.types.IndexingRunMode)} call fails with the same 409 a second concurrent manual
+ * trigger gets: no new run, one {@link IndexingEventCategory#SCHEDULE_SKIPPED} event on the run
+ * that is already going. Assumes exactly one backend process overall; see ADR-0021.
  *
  * <p>Never disables a schedule on failure: a run that fails leaves the schedule as-is; it tries
  * again at the next due time. {@code KnowledgeLibraryService#toLibraryResponse} is what makes

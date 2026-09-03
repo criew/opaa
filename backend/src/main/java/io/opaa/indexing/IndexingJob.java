@@ -93,10 +93,10 @@ public class IndexingJob {
 
   /**
    * Who started this run - {@link JobTriggerSource#MANUAL} unless {@link
-   * io.opaa.indexing.IndexingJobService#startJob(java.util.UUID, java.util.UUID, JobTriggerSource)}
-   * was called with {@link JobTriggerSource#SCHEDULED}. {@code KnowledgeLibraryService} uses this
-   * to compute {@code LibraryResponse.lastScheduledRunsFailed} without conflating a manual retry
-   * with the scheduled runs it retried after.
+   * io.opaa.indexing.IndexingJobService#startJob(java.util.UUID, java.util.UUID, JobTriggerSource,
+   * io.opaa.api.types.IndexingRunMode)} was called with {@link JobTriggerSource#SCHEDULED}. {@code
+   * KnowledgeLibraryService} uses this to compute {@code LibraryResponse.lastScheduledRunsFailed}
+   * without conflating a manual retry with the scheduled runs it retried after.
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "triggered_by", nullable = false, length = 20)

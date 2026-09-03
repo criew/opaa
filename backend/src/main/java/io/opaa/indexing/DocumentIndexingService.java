@@ -63,9 +63,9 @@ public class DocumentIndexingService {
    *
    * <p>The {@link IndexingJobService#isJobRunning(UUID, UUID)} check above is an optimization, not
    * the only guard - two concurrent triggers can both pass it before either has inserted its row.
-   * {@link IndexingJobService#startJob(UUID, UUID)} closes that TOCTOU gap at the database level,
-   * so the second of two racing triggers still gets 409, just from the database constraint instead
-   * of this in-memory check.
+   * {@link IndexingJobService#startJob(UUID, UUID, JobTriggerSource, IndexingRunMode)} closes that
+   * TOCTOU gap at the database level, so the second of two racing triggers still gets 409, just
+   * from the database constraint instead of this in-memory check.
    *
    * <p>A full {@code indexingTaskExecutor} queue must not leave the just-inserted row {@code
    * RUNNING} forever. {@code executor.execute} is an {@code @Async} void method; when the pool's
@@ -117,8 +117,8 @@ public class DocumentIndexingService {
    * the library was already selected because its own stored schedule says it is due. Otherwise
    * mirrors {@link #triggerIndexing}'s shape ({@code isJobRunning} pre-check, {@code
    * TaskRejectedException} handling), except a conflict here simply propagates as the same 409
-   * {@link IndexingJobService#startJob(UUID, UUID, JobTriggerSource)} already throws for the TOCTOU
-   * case.
+   * {@link IndexingJobService#startJob(UUID, UUID, JobTriggerSource, IndexingRunMode)} already
+   * throws for the TOCTOU case.
    */
   public IndexingJob triggerScheduledIndexing(KnowledgeLibrary library) {
     IndexingSourceType sourceType = toIndexingSourceType(library.getSourceType());
@@ -188,12 +188,6 @@ public class DocumentIndexingService {
   }
 
   /**
-   * Maps a library's {@link DocumentSourceType} onto the narrower {@link IndexingSourceType} the
-   * registry is keyed on (ADR-0017/ADR-0018): every lauf-basierte type maps 1:1, {@code UPLOAD} has
-   * no run at all and is rejected with a German 409 - not a 400, since the library itself is a
-   * perfectly valid target, it simply has nothing to run.
-   */
-  /**
    * The executor's declaration decides (ADR-0023, Entscheidung 4): a requested mode must be one it
    * supports; without a request, a one-mode executor runs its only mode, an executor with several
    * runs FULL - the mode that can never leave a stale bestand behind. (The scheduler's own
@@ -220,6 +214,12 @@ public class DocumentIndexingService {
     return IndexingRunMode.FULL;
   }
 
+  /**
+   * Maps a library's {@link DocumentSourceType} onto the narrower {@link IndexingSourceType} the
+   * registry is keyed on (ADR-0017/ADR-0018): every lauf-basierte type maps 1:1, {@code UPLOAD} has
+   * no run at all and is rejected with a German 409 - not a 400, since the library itself is a
+   * perfectly valid target, it simply has nothing to run.
+   */
   private IndexingSourceType toIndexingSourceType(DocumentSourceType sourceType) {
     return switch (sourceType) {
       case FILESYSTEM -> IndexingSourceType.FILESYSTEM;

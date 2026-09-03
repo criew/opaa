@@ -139,32 +139,37 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       progress.fail(e.getMessage());
       return;
     }
+    ConfluenceClient client = null;
+    String failure = null;
     try {
-      ConfluenceClient client = clientFactory.create(connection);
+      client = clientFactory.create(connection);
       // ADR-0023, Entscheidung 2: before the first listing, never after - see the class Javadoc.
       client.verifyCredentials();
-      var run = new Run(jobId, client, targetLibrary, progress, events);
-      fullSync(run, startedAt);
-      reportThrottling(run);
-      events.finalizeRun();
-      progress.complete();
+      fullSync(new Run(jobId, client, targetLibrary, progress, events), startedAt);
     } catch (ConfluenceAccessException e) {
       log.warn("Confluence run for library {} failed: {}", targetLibrary.getId(), e.getMessage());
-      events.finalizeRun();
-      progress.fail(e.getMessage());
+      failure = e.getMessage();
     } catch (InterruptedException e) {
-      events.finalizeRun();
-      progress.fail("Lauf unterbrochen");
+      failure = "Lauf unterbrochen";
       Thread.currentThread().interrupt();
     } catch (DataIntegrityViolationException e) {
       // fk_confluence_sync_state_library: the library was deleted while this run was writing.
       log.error("Confluence run failed - target library no longer exists", e);
-      events.finalizeRun();
-      progress.fail("Die Bibliothek wurde während des Laufs gelöscht.");
+      failure = "Die Bibliothek wurde während des Laufs gelöscht.";
     } catch (Exception e) {
       log.error("Confluence run for library {} failed unexpectedly", targetLibrary.getId(), e);
-      events.finalizeRun();
-      progress.fail(e.getMessage());
+      failure = e.getMessage();
+    }
+    // Throttling is reported whether the run succeeded or not - a run that the instance slowed
+    // down forty times before it failed is exactly what an operator wants to see in the protocol.
+    if (client != null) {
+      reportThrottling(client, events);
+    }
+    events.finalizeRun();
+    if (failure == null) {
+      progress.complete();
+    } else {
+      progress.fail(failure);
     }
   }
 
@@ -250,7 +255,14 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
           this,
           IndexingRunMode.FULL);
     } catch (Exception e) {
+      // Without the reconciliation the full sync is not complete: the state stays open, so the
+      // next run reconciles again instead of anchoring an incremental run on a stale bestand.
       log.warn("Failed to clean up vanished CONFLUENCE documents for library {}", libraryId, e);
+      run.events.record(
+          IndexingEventCategory.ERROR,
+          "Abgleich des Bestands fehlgeschlagen; der nächste Lauf holt ihn nach",
+          null);
+      return;
     }
     state.completeFullSync(startedAt);
     syncStateRepository.save(state);
@@ -296,11 +308,13 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     } catch (ConfluenceAccessException e) {
       run.events.record(IndexingEventCategory.UNREACHABLE, e.getMessage(), pagePath);
       run.progress.recordFailed();
+      keepKnownAttachments(run, pagePath);
       return;
     }
     if (fetched.isEmpty()) {
       run.events.record(IndexingEventCategory.REJECTED, UNREADABLE_PAGE_MESSAGE, pagePath);
       run.progress.recordSkipped();
+      keepKnownAttachments(run, pagePath);
       return;
     }
     ConfluencePage page = fetched.get();
@@ -339,6 +353,20 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     }
     if (pageStored) {
       indexAttachments(run, page.id(), pagePath, pageContext.descend(page.title()));
+    } else {
+      keepKnownAttachments(run, pagePath);
+    }
+  }
+
+  /**
+   * A page this run could not (or did not) process is no finding about its attachments - their
+   * documents stay in the reconciliation set, or the cleanup would remove them for the wrong reason
+   * (ADR-0023, Entscheidung 4: deletion needs a positive finding).
+   */
+  private void keepKnownAttachments(Run run, String pagePath) {
+    for (Document attachment :
+        documentRepository.findByLibraryIdAndSourceEntryUrl(run.library.getId(), pagePath)) {
+      run.currentPaths.add(attachment.getFilePath());
     }
   }
 
@@ -504,13 +532,13 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     }
   }
 
-  private static void reportThrottling(Run run) {
-    ConfluenceRequestMeter meter = run.client.meter();
+  private static void reportThrottling(ConfluenceClient client, IndexingRunEventRecorder events) {
+    ConfluenceRequestMeter meter = client.meter();
     if (meter.throttles() == 0) {
       return;
     }
     Duration waited = meter.throttledTime();
-    run.events.record(
+    events.record(
         IndexingEventCategory.RATE_LIMITED,
         "Confluence hat den Lauf "
             + meter.throttles()

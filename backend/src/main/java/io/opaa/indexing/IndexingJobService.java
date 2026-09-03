@@ -40,34 +40,11 @@ public class IndexingJobService {
   }
 
   /**
-   * Starts a new {@link JobStatus#RUNNING} run for {@code libraryId}, recording {@code
-   * organizationId} on the job itself - the caller has already resolved and authorized {@code
-   * libraryId} within that organization, so this simply carries the fact forward onto the row.
-   *
-   * <p>{@code DocumentIndexingService#triggerIndexing}'s own {@link #isJobRunning(UUID, UUID)}
-   * check and this insert are two separate statements with no lock between them (TOCTOU). The
-   * database closes that gap: {@code uk_indexing_jobs_library_running} is a partial unique index on
-   * {@code (library_id) WHERE status = 'RUNNING'}, so at most one RUNNING row per library can ever
-   * exist. {@link IndexingJobRepository#saveAndFlush} - not plain {@code save} - forces the insert
-   * (and therefore the constraint check) to happen synchronously here rather than being deferred to
-   * a later flush the caller could not catch.
+   * Starts a run for {@code libraryId} in an explicit {@link IndexingRunMode} (ADR-0023,
+   * Entscheidung 4) - there is no default mode, the caller resolves it from the executor's own
+   * declaration. Only one running job is allowed per library ({@code
+   * uk_indexing_jobs_library_running}): a concurrent second start fails with a 409 here.
    */
-  @Transactional
-  public IndexingJob startJob(UUID libraryId, UUID organizationId) {
-    return doStartJob(libraryId, organizationId, JobTriggerSource.MANUAL, IndexingRunMode.FULL);
-  }
-
-  /**
-   * Same as {@link #startJob(UUID, UUID)}, additionally recording {@code triggeredBy} - {@link
-   * io.opaa.indexing.LibraryIndexingScheduler} is the only caller that passes {@link
-   * JobTriggerSource#SCHEDULED}.
-   */
-  @Transactional
-  public IndexingJob startJob(UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy) {
-    return doStartJob(libraryId, organizationId, triggeredBy, IndexingRunMode.FULL);
-  }
-
-  /** Starts a run in an explicit {@link IndexingRunMode} (ADR-0023, Entscheidung 4). */
   @Transactional
   public IndexingJob startJob(
       UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy, IndexingRunMode runMode) {

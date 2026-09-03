@@ -30,7 +30,7 @@ class ConfluenceStorageTextTest {
   }
 
   @Test
-  void dropsMacroParametersAndResourceIdentifiersButKeepsMacroBodies() {
+  void dropsMacroParametersAndResourceIdentifiersButKeepsMacroBodiesAndLinkTexts() {
     String text =
         ConfluenceStorageText.toPlainText(
             "<ac:structured-macro ac:name=\"info\"><ac:parameter ac:name=\"title\">Hinweis"
@@ -40,7 +40,7 @@ class ConfluenceStorageTextTest {
                 + "<ac:plain-text-link-body><![CDATA[weiter]]></ac:plain-text-link-body></ac:link>"
                 + " Siehe auch <ac:image><ri:attachment ri:filename=\"plan.pdf\"/></ac:image></p>");
 
-    assertThat(text).isEqualTo("Die Frist beginnt mit dem Eingang.\nSiehe auch");
+    assertThat(text).isEqualTo("Die Frist beginnt mit dem Eingang.\nweiter Siehe auch");
   }
 
   @Test

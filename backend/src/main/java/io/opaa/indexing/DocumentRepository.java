@@ -42,6 +42,21 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    */
   List<Document> findByLibraryIdAndSourceEntryUrl(UUID libraryId, String sourceEntryUrl);
 
+  /**
+   * Moves a connector document's title and source context without touching its chunks - a
+   * Confluence page renamed or moved without a body change (ADR-0023, #1136 review).
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.fileName = :fileName, d.sourceContainerKey = :containerKey,"
+          + " d.sourceHierarchyPath = :hierarchyPath where d.id = :id")
+  int refreshConnectorTitleAndContext(
+      @Param("id") UUID id,
+      @Param("fileName") String fileName,
+      @Param("containerKey") String containerKey,
+      @Param("hierarchyPath") String hierarchyPath);
+
   List<Document> findByLibraryId(UUID libraryId);
 
   /**

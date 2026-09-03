@@ -677,19 +677,6 @@ public class FileProcessingService {
   }
 
   /**
-   * The connector counterpart to {@link #markConnectorFailed}, backing the successful transition to
-   * {@code INDEXED} in {@link #processFile}/{@link #processUrlFile}/{@link #processRssEntry}. Uses
-   * {@link DocumentRepository#markIndexedFromSource} - a conditional {@code UPDATE} - instead of a
-   * plain save, because the row can be deleted concurrently between this method's caller
-   * creating/re-reading it and {@link #storeChunks} finishing; a plain save would not notice
-   * ({@link Document} assigns its own id and carries no {@code @Version}) and would silently
-   * re-insert it as a zombie row.
-   *
-   * @return {@link FileProcessingResult#SKIPPED} if the row was gone (its chunks, just written by
-   *     {@link #storeChunks}, are removed again here), otherwise {@link
-   *     FileProcessingResult#PROCESSED}
-   */
-  /**
    * Processes one Confluence page's already-extracted text (ADR-0023, #1136) the way {@link
    * #processRssEntry} processes an RSS entry's: identity by the title-free page URL in {@code
    * file_path}, SHA-256 checksum as the content-based change layer behind the executor's own
@@ -717,14 +704,21 @@ public class FileProcessingService {
       Document existingDoc = existing.get();
       if (checksum.equals(existingDoc.getChecksum())
           && existingDoc.getStatus() == DocumentStatus.INDEXED) {
-        // Same content under a new version (a title-only or label-only edit): only the version
-        // marker moves, so the next run's pre-fetch check skips it again.
+        // Same content under a new version (a title-only edit, a move, a renamed ancestor): the
+        // chunks stay, but title, context and the version marker move - the next run's pre-fetch
+        // check skips the page again, and the document list, the citation and the run protocol
+        // show the current title and place.
         documentRepository.markIndexedFromSource(
             existingDoc.getId(),
             existingDoc.getChunkCount(),
             existingDoc.getIndexedAt(),
             checksum,
             version);
+        documentRepository.refreshConnectorTitleAndContext(
+            existingDoc.getId(),
+            fileName,
+            context == null ? null : context.containerKey(),
+            context == null ? null : context.hierarchyPath());
         log.info("Skipping unchanged Confluence page (same checksum): {}", pageUrl);
         metrics.recordSkipped();
         return FileProcessingResult.SKIPPED;
@@ -783,6 +777,19 @@ public class FileProcessingService {
     return FileProcessingResult.PROCESSED;
   }
 
+  /**
+   * The connector counterpart to {@link #markConnectorFailed}, backing the successful transition to
+   * {@code INDEXED} in {@link #processFile}/{@link #processUrlFile}/{@link #processRssEntry}. Uses
+   * {@link DocumentRepository#markIndexedFromSource} - a conditional {@code UPDATE} - instead of a
+   * plain save, because the row can be deleted concurrently between this method's caller
+   * creating/re-reading it and {@link #storeChunks} finishing; a plain save would not notice
+   * ({@link Document} assigns its own id and carries no {@code @Version}) and would silently
+   * re-insert it as a zombie row.
+   *
+   * @return {@link FileProcessingResult#SKIPPED} if the row was gone (its chunks, just written by
+   *     {@link #storeChunks}, are removed again here), otherwise {@link
+   *     FileProcessingResult#PROCESSED}
+   */
   private FileProcessingResult markConnectorIndexed(
       UUID documentId, int chunkCount, String checksum, String lastModifiedRemote) {
     int updated =
