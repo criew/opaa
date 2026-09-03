@@ -170,25 +170,32 @@ final class DataCenterConfluenceClient extends AbstractConfluenceClient {
   }
 
   @Override
-  public List<String> searchPageIdsModifiedSince(Set<String> spaceKeys, Instant since)
+  public List<ConfluencePageSummary> searchPagesModifiedSince(Set<String> spaceKeys, Instant since)
       throws ConfluenceAccessException, InterruptedException {
     String resource = "die Änderungssuche";
-    List<String> ids = new ArrayList<>();
+    List<ConfluencePageSummary> pages = new ArrayList<>();
+    // version and space, never the body - the version is the pre-fetch change marker
     String first =
         base()
             + REST
             + "/content/search?cql="
             + encode(changedPagesCql(spaceKeys, since))
-            + "&limit="
+            + "&expand=version,space&limit="
             + pageSize()
             + "&start=0";
     for (JsonNode node : listAll(first, resource, reader(resource))) {
       String id = text(node, "id");
       if (id != null) {
-        ids.add(id);
+        pages.add(
+            new ConfluencePageSummary(
+                id,
+                text(node.path("space"), "key"),
+                text(node, "title"),
+                intOr(node.path("version").path("number"), -1),
+                null));
       }
     }
-    return ids;
+    return pages;
   }
 
   @Override

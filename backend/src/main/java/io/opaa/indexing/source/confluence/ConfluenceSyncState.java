@@ -118,10 +118,11 @@ public class ConfluenceSyncState {
 
   /**
    * Ends the full sync: every selected space was listed completely, the bestand is reconciled, and
-   * {@code anchor} (the run's start) is where the next incremental run picks up.
+   * {@code anchor} (the run's start) is where the next incremental run picks up; {@code
+   * completedAt} (the caller's clock) is what the full-sync interval is measured from.
    */
-  public void completeFullSync(Instant anchor) {
-    fullSyncCompletedAt = Instant.now();
+  public void completeFullSync(Instant anchor, Instant completedAt) {
+    fullSyncCompletedAt = completedAt;
     incrementalAnchor = anchor;
     completedSpaceKeys = null;
     fullSyncJobId = null;

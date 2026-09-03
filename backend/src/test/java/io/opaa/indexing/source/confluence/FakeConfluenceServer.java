@@ -10,9 +10,8 @@ import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -45,16 +44,15 @@ import tools.jackson.databind.json.JsonMapper;
 public final class FakeConfluenceServer implements AutoCloseable {
 
   private static final JsonMapper JSON = JsonMapper.builder().build();
-  private static final DateTimeFormatter CQL_TIMESTAMP =
-      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneOffset.UTC);
-  private static final Pattern CQL_SINCE = Pattern.compile("lastmodified >= \"([^\"]+)\"");
+  private static final Pattern CQL_SINCE =
+      Pattern.compile("lastmodified >= now\\(\"([+-])(\\d+)m\"\\)");
   private static final Pattern CQL_SPACES = Pattern.compile("space in \\(([^)]*)\\)");
 
   public record Space(String id, String key, String name) {}
 
   public static final class Page {
     final String id;
-    final String spaceKey;
+    String spaceKey;
     String title;
     int version;
     final String parentId;
@@ -149,6 +147,14 @@ public final class FakeConfluenceServer implements AutoCloseable {
   public void updatePage(String id, String newBody, Instant modified) {
     Page page = pages.get(id);
     page.body = newBody;
+    page.version++;
+    page.lastModified = modified;
+  }
+
+  /** Moves a page into another space - on Cloud that changes its identity URL (#1199 review). */
+  public void movePage(String id, String newSpaceKey, Instant modified) {
+    Page page = pages.get(id);
+    page.spaceKey = newSpaceKey;
     page.version++;
     page.lastModified = modified;
   }
@@ -390,10 +396,19 @@ public final class FakeConfluenceServer implements AutoCloseable {
     if (path.equals("/wiki/rest/api/search")) {
       List<Map<String, Object>> all = new ArrayList<>();
       for (Page p : searchPages(q, readable)) {
-        all.add(
-            Map.of(
-                "content",
-                Map.of("id", p.id, "type", "page", "status", p.status, "title", p.title)));
+        Map<String, Object> content = new LinkedHashMap<>();
+        content.put("id", p.id);
+        content.put("type", "page");
+        content.put("status", p.status);
+        content.put("title", p.title);
+        String expand = String.join(",", q.getOrDefault("expand", List.of()));
+        if (expand.contains("content.version")) {
+          content.put("version", Map.of("number", p.version));
+        }
+        if (expand.contains("content.space")) {
+          content.put("space", Map.of("key", p.spaceKey));
+        }
+        all.add(Map.of("content", content));
       }
       // v1 search: cursor link relative to the /wiki context
       sendCursorPage(ex, all, cursor, limit, "/rest/api/search", q);
@@ -537,7 +552,19 @@ public final class FakeConfluenceServer implements AutoCloseable {
     if (path.equals("/rest/api/content/search")) {
       List<Map<String, Object>> all = new ArrayList<>();
       for (Page p : searchPages(q, readable)) {
-        all.add(Map.of("id", p.id, "type", "page", "status", p.status, "title", p.title));
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("id", p.id);
+        node.put("type", "page");
+        node.put("status", p.status);
+        node.put("title", p.title);
+        String expand = String.join(",", q.getOrDefault("expand", List.of()));
+        if (expand.contains("version")) {
+          node.put("version", Map.of("number", p.version));
+        }
+        if (expand.contains("space")) {
+          node.put("space", Map.of("key", p.spaceKey));
+        }
+        all.add(node);
       }
       sendOffsetPage(ex, all, start, limit, path, q);
       return;
@@ -680,7 +707,14 @@ public final class FakeConfluenceServer implements AutoCloseable {
       return List.of();
     }
     Matcher since = CQL_SINCE.matcher(cql);
-    Instant from = since.find() ? Instant.from(CQL_TIMESTAMP.parse(since.group(1))) : Instant.MIN;
+    // the relative window is evaluated against this server's own clock, like a real instance
+    Instant from =
+        since.find()
+            ? Instant.now()
+                .plus(
+                    Duration.ofMinutes(
+                        Long.parseLong(since.group(2)) * (since.group(1).equals("-") ? -1 : 1)))
+            : Instant.MIN;
     Matcher spaces = CQL_SPACES.matcher(cql);
     Set<String> keys =
         spaces.find()

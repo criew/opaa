@@ -4,8 +4,6 @@ import io.opaa.sourceaccess.BoundedDownloader;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -19,9 +17,6 @@ import tools.jackson.databind.JsonNode;
  * download. Edition-specific paths and response shapes stay in the subclasses.
  */
 abstract class AbstractConfluenceClient implements ConfluenceClient {
-
-  private static final DateTimeFormatter CQL_TIMESTAMP =
-      DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneOffset.UTC);
 
   protected final ConfluenceHttp http;
 
@@ -83,10 +78,11 @@ abstract class AbstractConfluenceClient implements ConfluenceClient {
   }
 
   /**
-   * {@code type=page AND space in (...) AND lastmodified >= "yyyy-MM-dd HH:mm"} - identifiers only;
-   * no {@code expand} is ever appended to a search (guarded by the contract test). Timestamps are
-   * UTC at minute granularity; callers overlap {@code since} backwards to absorb the instance's
-   * time zone and clock skew.
+   * {@code type=page AND space in (...) AND lastmodified >= now("-Nm")} - the window as minutes
+   * before the instance's own {@code now}, so the instance evaluates it in its clock and time zone
+   * (an absolute timestamp would be read in the instance's zone, not UTC - #1199 review). {@code N}
+   * is rounded up, so the window never starts after {@code since}; callers add their own overlap.
+   * No {@code expand} of bodies is ever appended to a search (guarded by the contract test).
    */
   protected static String changedPagesCql(Set<String> spaceKeys, Instant since) {
     if (spaceKeys == null || spaceKeys.isEmpty()) {
@@ -101,10 +97,21 @@ abstract class AbstractConfluenceClient implements ConfluenceClient {
       first = false;
       cql.append('"').append(key.replace("\"", "")).append('"');
     }
-    cql.append(") AND lastmodified >= \"")
-        .append(CQL_TIMESTAMP.format(since))
-        .append("\" ORDER BY lastmodified ASC");
+    cql.append(") AND lastmodified >= ")
+        .append(relativeWindow(since))
+        .append(" ORDER BY lastmodified ASC");
     return cql.toString();
+  }
+
+  /** {@code now("-Nm")} for a past {@code since}, {@code now("+Nm")} for a future one. */
+  static String relativeWindow(Instant since) {
+    long seconds = java.time.Duration.between(since, Instant.now()).getSeconds();
+    if (seconds >= 0) {
+      long minutes = seconds / 60 + 1;
+      return "now(\"-" + minutes + "m\")";
+    }
+    long minutes = Math.max(0, (-seconds) / 60);
+    return "now(\"+" + minutes + "m\")";
   }
 
   /** Query-parameter encoding. */

@@ -81,9 +81,9 @@ public class DocumentIndexingService {
 
   /**
    * Starts a manual run in {@code requestedRunMode}, or - when {@code null} - in the executor's own
-   * default (ADR-0023, Entscheidung 4): the single mode a one-mode executor declares; FULL for an
-   * executor with several modes. A requested mode the executor does not declare is a validation
-   * error naming the modes it does.
+   * default (ADR-0023, Entscheidung 4): the executor's own default for this library (the single
+   * mode of a one-mode executor, the state-driven choice of the Confluence executor). A requested
+   * mode the executor does not declare is a validation error naming the modes it does.
    */
   public IndexingJob triggerIndexing(
       UUID libraryId, CurrentUser caller, IndexingRunMode requestedRunMode) {

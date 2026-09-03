@@ -1902,7 +1902,10 @@ paths:
           description: >
             The Betriebsart to run in (ADR-0023, Entscheidung 4). Optional: without it the
             executor's own default applies - the only mode a one-mode source type knows
-            (FILESYSTEM/HTTP_DIRECTORY: FULL, RSS_FEED: INCREMENTAL), FULL for CONFLUENCE. A
+            (FILESYSTEM/HTTP_DIRECTORY: FULL, RSS_FEED: INCREMENTAL); for CONFLUENCE the mode
+            its sync state calls for: FULL until a full run completed, after a change of the
+            space selection and once the configured full-sync interval passed, INCREMENTAL in
+            between (#1139). A
             mode the source type does not support is rejected with 400, naming the supported ones.
           schema:
             $ref: "#/components/schemas/IndexingRunMode"

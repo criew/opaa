@@ -248,14 +248,21 @@ Laufprotokoll und in der API; der manuelle Anstoß nimmt sie als Parameter `runM
 **Der inkrementelle Abgleich (#1139)** ist die Regelbetriebsart zwischen zwei Vollabgleichen: Er
 fragt per CQL nur die Kennungen der seit dem Anker geänderten Seiten der ausgewählten Spaces ab
 (mit Überlappung nach hinten, `OPAA_INDEXING_CONFLUENCE_INCREMENTAL_OVERLAP`, Standard 10 Minuten),
-holt jede einzeln, nimmt Neues, Geändertes und Verschobenes auf und **löscht nie wegen
-Abwesenheit** — nur eine Seite, die die Instanz selbst als im Papierkorb ausweist, verschwindet samt
-Anhängen. Der Anker rückt nach einem fehlerfreien Lauf auf dessen Startzeit vor; ein Abbruch lässt
-ihn stehen, sodass kein Änderungsfenster verloren geht. Ohne ausdrückliche Betriebsart entscheidet der
+holt nur die Seiten mit geänderter Version einzeln (die Version kommt mit der Suche), nimmt Neues,
+Geändertes und Verschobenes auf und **löscht nie wegen Abwesenheit**. Löschungen und der Papierkorb
+erreichen den Index erst mit dem nächsten Vollabgleich — die Änderungssuche listet nur aktuelle
+Seiten; nur eine Seite, die zwischen Suche und Abruf in den Papierkorb wandert, entfernt der
+inkrementelle Lauf als positiven Befund. Ebenso erscheinen **neue oder geänderte Anhänge einer
+sonst unveränderten Seite** erst mit dem nächsten Vollabgleich: Ein Anhang bewegt die Änderungszeit
+der Seite nicht. Das Zeitfenster wird der Instanz relativ zu ihrer eigenen Uhr übergeben
+(`lastmodified >= now("-Nm")`), damit ihre Zeitzone keine Rolle spielt. Der Anker rückt nach einem
+fehlerfreien Lauf auf dessen Startzeit vor; ein Abbruch lässt ihn stehen, sodass kein
+Änderungsfenster verloren geht. Ohne ausdrückliche Betriebsart entscheidet der
 Zustand der Bibliothek: Der erste Lauf, jeder Lauf nach einer Änderung der Space-Auswahl, nach einem
 unterbrochenen Vollabgleich und jeder Lauf, sobald der letzte Vollabgleich älter als
-`OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL` (Standard: eine Woche) ist, läuft voll — der Vollabgleich
-bleibt nötig, weil nur er Löschungen nachvollzieht, und ist deshalb verlängerbar, nicht abschaltbar.
+`OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL` (Standard: eine Woche, instanzweit; je Bibliothek
+einstellbar ist #1200) ist, läuft voll — der Vollabgleich bleibt nötig, weil nur er Löschungen
+nachvollzieht, und ist deshalb verlängerbar, nicht abschaltbar.
 Der manuelle Anstoß bietet für Confluence beide Betriebsarten an („Jetzt indizieren“ folgt dem Zustand,
 „Vollabgleich starten“ erzwingt ihn). **Die Aufbereitung (#1137)** übernimmt
 `ConfluenceDocumentPipeline`: Makro-Regelwerk (statischer Inhalt bleibt, zur Laufzeit erzeugter

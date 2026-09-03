@@ -48,8 +48,9 @@ import org.springframework.scheduling.annotation.Async;
  * FileProcessingService#processConfluencePage}, its attachments are downloaded and indexed as
  * documents of their own (ADR-0022), and once <em>every</em> selected space was listed completely,
  * whatever this library indexed from Confluence before and did not meet again is removed ({@link
- * StaleDocumentCleanupService}). The incremental run is #1139's; until then this executor declares
- * {@link IndexingRunMode#FULL} alone.
+ * StaleDocumentCleanupService}). The incremental run (#1139) asks CQL for what changed since the
+ * anchor and never reconciles; which of the two a run without a requested mode takes is decided
+ * from the library's sync state in {@link #defaultRunMode}.
  *
  * <p><b>What may delete, and what may not</b> (ADR-0023, Entscheidung 4): the credentials are
  * verified before the first listing - Data Center serves an unknown token anonymously with an empty
@@ -69,6 +70,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private static final Logger log = LoggerFactory.getLogger(ConfluenceIndexingExecutor.class);
 
   static final String TRASHED_MESSAGE = "In Confluence im Papierkorb, entfernt";
+  static final String MOVED_MESSAGE =
+      "In Confluence in einen anderen Space verschoben, alter Stand entfernt";
 
   /**
    * Suffixes of the skip notes (#1138); the notes themselves name space and title - what a reader
@@ -302,7 +305,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
           null);
       return;
     }
-    state.completeFullSync(startedAt);
+    state.completeFullSync(startedAt, clock.instant());
     syncStateRepository.save(state);
   }
 
@@ -331,12 +334,12 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       selectedKeys.add(space.getSpaceKey());
     }
     Instant since = state.getIncrementalAnchor().minus(properties.incrementalOverlap());
-    List<String> changed = run.client.searchPageIdsModifiedSince(selectedKeys, since);
+    List<ConfluencePageSummary> changed = run.client.searchPagesModifiedSince(selectedKeys, since);
     run.total = changed.size();
     run.progress.setTotal(run.total);
     run.progress.report();
-    for (String pageId : changed) {
-      processChangedPage(run, pageId, selectedKeys);
+    for (ConfluencePageSummary summary : changed) {
+      processChangedPage(run, summary, selectedKeys);
       run.progress.report();
     }
     if (run.progress.failedCount() == 0) {
@@ -350,21 +353,56 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     }
   }
 
-  /** One page the change search named - fetched individually, judged like in the full run. */
-  private void processChangedPage(Run run, String pageId, Set<String> selectedKeys)
+  /**
+   * One page the change search named. The version comes with the search, so an unchanged page
+   * (re-read through the overlap) costs no body fetch (ADR-0017, Entscheidung 2); its attachments
+   * are still listed because they do not bump the page's version. A page that moved between two
+   * selected spaces changes its identity URL on Cloud - the document under the old URL is removed
+   * as a positive finding (the instance says where the page is now), never as absence.
+   */
+  private void processChangedPage(Run run, ConfluencePageSummary summary, Set<String> selectedKeys)
       throws InterruptedException {
+    String spaceKey = summary.spaceKey();
+    if (spaceKey == null || !selectedKeys.contains(spaceKey)) {
+      // moved out of the selection: the old document stays until the next full run judges it
+      run.events.record(
+          IndexingEventCategory.REJECTED,
+          pageLabel(summary, spaceKey == null ? "?" : spaceKey)
+              + "liegt in einem nicht ausgewählten Space; der bisherige Stand bleibt bis zum"
+              + " nächsten Vollabgleich",
+          summary.id());
+      run.progress.recordSkipped();
+      return;
+    }
+    String pagePath = run.client.pageUrl(spaceKey, summary.id());
+    Optional<Document> existing =
+        documentRepository.findByLibraryIdAndFilePath(run.library.getId(), pagePath);
+    if (existing.isEmpty()) {
+      removeMovedFrom(run, summary, selectedKeys, pagePath);
+    }
+    String version = String.valueOf(summary.version());
+    if (isUnchanged(existing, version)) {
+      run.progress.recordSkipped();
+      SourceDocumentContext context =
+          new SourceDocumentContext(spaceKey, existing.get().getSourceHierarchyPath());
+      indexAttachments(run, summary.id(), pagePath, context.descend(summary.title()));
+      return;
+    }
     Optional<ConfluencePage> fetched;
     try {
-      fetched = run.client.fetchPage(pageId);
+      fetched = run.client.fetchPage(summary.id());
     } catch (ConfluenceAccessException.Forbidden e) {
       run.events.record(
           IndexingEventCategory.REJECTED,
-          "Geänderte Seite " + pageId + " " + UNREADABLE_PAGE_SUFFIX,
-          pageId);
+          pageLabel(summary, spaceKey) + UNREADABLE_PAGE_SUFFIX,
+          pagePath);
       run.progress.recordSkipped();
       return;
     } catch (ConfluenceAccessException e) {
-      run.events.record(IndexingEventCategory.UNREACHABLE, e.getMessage(), pageId);
+      run.events.record(
+          IndexingEventCategory.UNREACHABLE,
+          pageLabel(summary, spaceKey) + e.getMessage(),
+          pagePath);
       run.progress.recordFailed();
       return;
     }
@@ -372,49 +410,57 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       // a 404 is "gone" as much as "not readable" - no deletion finding either way
       run.events.record(
           IndexingEventCategory.REJECTED,
-          "Geänderte Seite " + pageId + " " + UNREADABLE_PAGE_SUFFIX,
-          pageId);
-      run.progress.recordSkipped();
-      return;
-    }
-    ConfluencePage page = fetched.get();
-    String pagePath = run.client.pageUrl(page.spaceKey(), page.id());
-    Optional<Document> existing =
-        documentRepository.findByLibraryIdAndFilePath(run.library.getId(), pagePath);
-    if (page.status() == ConfluencePageStatus.TRASHED) {
-      // the positive finding a deletion needs - the instance says so itself
-      removeTrashed(run, existing, pagePath);
-      run.progress.recordSkipped();
-      return;
-    }
-    if (!selectedKeys.contains(page.spaceKey())) {
-      // moved out of the selection: the old document stays until the next full run judges it
-      run.events.record(
-          IndexingEventCategory.REJECTED,
-          pageLabel(
-                  new ConfluencePageSummary(
-                      page.id(), page.spaceKey(), page.title(), page.version(), null),
-                  page.spaceKey())
-              + "liegt in einem nicht ausgewählten Space; der bisherige Stand bleibt bis zum"
-              + " nächsten Vollabgleich",
+          pageLabel(summary, spaceKey) + UNREADABLE_PAGE_SUFFIX,
           pagePath);
       run.progress.recordSkipped();
       return;
     }
-    String version = String.valueOf(page.version());
+    ConfluencePage page = fetched.get();
+    if (page.status() == ConfluencePageStatus.TRASHED) {
+      // the positive finding a deletion needs - the instance says so itself (a race with the
+      // search: CQL lists current pages only, so this is a safeguard, not the deletion path)
+      removeTrashed(run, existing, pagePath);
+      run.progress.recordSkipped();
+      return;
+    }
     SourceDocumentContext pageContext =
         new SourceDocumentContext(
             page.spaceKey(),
             page.ancestorTitles().isEmpty()
                 ? null
                 : String.join(SourceDocumentContext.HIERARCHY_SEPARATOR, page.ancestorTitles()));
-    if (isUnchanged(existing, version)) {
-      // re-read through the overlap, or an attachment-only change: attachments are still listed
-      run.progress.recordSkipped();
-      indexAttachments(run, page.id(), pagePath, pageContext.descend(page.title()));
-      return;
+    storePage(run, page, pagePath, String.valueOf(page.version()), pageContext);
+  }
+
+  /**
+   * A page under a new identity URL may be the old document of another selected space (Cloud puts
+   * the space key into the URL): the instance itself says the page lives elsewhere now, so the old
+   * document and its attachments go - a positive finding, not absence (ADR-0023, Entscheidung 4).
+   */
+  private void removeMovedFrom(
+      Run run, ConfluencePageSummary summary, Set<String> selectedKeys, String newPath) {
+    for (String otherKey : selectedKeys) {
+      if (otherKey.equals(summary.spaceKey())) {
+        continue;
+      }
+      String oldPath = run.client.pageUrl(otherKey, summary.id());
+      if (oldPath.equals(newPath)) {
+        continue;
+      }
+      Optional<Document> old =
+          documentRepository.findByLibraryIdAndFilePath(run.library.getId(), oldPath);
+      if (old.isPresent()) {
+        for (Document attachment :
+            documentRepository.findByLibraryIdAndSourceEntryUrl(run.library.getId(), oldPath)) {
+          vectorChunkStore.deleteByDocumentId(attachment.getId());
+          documentRepository.delete(attachment);
+          run.events.record(IndexingEventCategory.REMOVED, MOVED_MESSAGE, attachment.getFilePath());
+        }
+        vectorChunkStore.deleteByDocumentId(old.get().getId());
+        documentRepository.delete(old.get());
+        run.events.record(IndexingEventCategory.REMOVED, MOVED_MESSAGE, oldPath);
+      }
     }
-    storePage(run, page, pagePath, version, pageContext);
   }
 
   /** Unfinished spaces of an interrupted full sync first, then the already completed ones. */

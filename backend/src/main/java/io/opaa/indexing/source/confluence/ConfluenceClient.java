@@ -93,11 +93,14 @@ public interface ConfluenceClient {
       throws ConfluenceAccessException, InterruptedException;
 
   /**
-   * Identifiers of the pages in {@code spaceKeys} modified at or after {@code since}, via CQL,
-   * fully paginated - identifiers only. Callers overlap {@code since} backwards to absorb clock
-   * skew and CQL's minute granularity (ADR-0023, Entscheidung 4).
+   * The pages in {@code spaceKeys} modified at or after {@code since}, via CQL, fully paginated -
+   * identifiers, titles, space keys and versions, never bodies: the version is what lets a caller
+   * skip an unchanged page before any body fetch (ADR-0017, Entscheidung 2). The window is sent as
+   * a relative {@code now("-Nm")} so the instance evaluates it in its own clock and time zone;
+   * callers overlap {@code since} backwards to absorb the remaining skew and CQL's minute
+   * granularity (ADR-0023, Entscheidung 4).
    */
-  List<String> searchPageIdsModifiedSince(Set<String> spaceKeys, Instant since)
+  List<ConfluencePageSummary> searchPagesModifiedSince(Set<String> spaceKeys, Instant since)
       throws ConfluenceAccessException, InterruptedException;
 
   /** The title-free page URL for this edition - identity and citation link of a page document. */

@@ -622,7 +622,7 @@ class ConfluenceIndexingExecutorTest {
   private ConfluenceSyncState completedFullSync(Instant anchor) {
     ConfluenceSyncState state = new ConfluenceSyncState(library.getId());
     state.beginFullSync(UUID.randomUUID());
-    state.completeFullSync(anchor);
+    state.completeFullSync(anchor, anchor);
     when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(state));
     return state;
   }
@@ -688,19 +688,109 @@ class ConfluenceIndexingExecutorTest {
 
     executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
 
-    assertThat(server.requests())
-        .as("the CQL window starts before the anchor")
-        .anyMatch(r -> r.contains("search") && r.contains(cqlStamp(anchor.minus(OVERLAP))));
+    // the window is relative to the instance's own clock and reaches back to anchor - overlap
+    long expectedMinutes =
+        Duration.between(anchor.minus(OVERLAP), Instant.now()).getSeconds() / 60 + 1;
+    assertThat(searchWindowMinutes()).isBetween(expectedMinutes - 1, expectedMinutes + 1);
+    // the version came with the search: known and unchanged, so the body is never fetched
+    assertThat(server.requests()).noneMatch(r -> r.matches(".*/(content|pages)/100(\\?.*)?$"));
     verify(fileProcessingService, never())
         .processConfluencePage(any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 0, 0, 1, 0);
   }
 
-  /** The adapters format CQL timestamps as "yyyy-MM-dd HH:mm" in UTC; the space is URL-encoded. */
-  private static String cqlStamp(Instant instant) {
-    return java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
-        .withZone(java.time.ZoneOffset.UTC)
-        .format(instant);
+  /** The minutes {@code N} of the {@code lastmodified >= now("-Nm")} clause the run sent. */
+  private long searchWindowMinutes() {
+    String search =
+        server.requests().stream().filter(r -> r.contains("search")).findFirst().orElseThrow();
+    String decoded = java.net.URLDecoder.decode(search, java.nio.charset.StandardCharsets.UTF_8);
+    java.util.regex.Matcher m =
+        java.util.regex.Pattern.compile("now\\(\"-(\\d+)m\"\\)").matcher(decoded);
+    assertThat(m.find()).as("relative window in %s", decoded).isTrue();
+    return Long.parseLong(m.group(1));
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aSmallerOverlapReachesLessFarBack(ConfluenceEdition edition) throws Exception {
+    start(edition, null, "ENG");
+    Instant anchor = NOW.minus(Duration.ofHours(1));
+    completedFullSync(anchor);
+    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
+    long withDefaultOverlap = searchWindowMinutes();
+
+    server.requests().clear();
+    // the first run advanced the anchor - start the comparison run from the same anchor
+    completedFullSync(anchor);
+    ConfluenceProperties smallOverlap =
+        new ConfluenceProperties(
+            2,
+            null,
+            null,
+            3,
+            Duration.ofSeconds(2),
+            0,
+            0,
+            null,
+            0,
+            FULL_SYNC_INTERVAL,
+            Duration.ofMinutes(1));
+    executor =
+        new ConfluenceIndexingExecutor(
+            new ConfluenceClientFactory(
+                smallOverlap, TargetAddressValidator.disabled(), sleeps::add),
+            smallOverlap,
+            fileProcessingService,
+            indexingJobService,
+            documentRepository,
+            eventRepository,
+            storageQuotaService,
+            cleanupService,
+            syncStateRepository,
+            vectorChunkStore,
+            Clock.fixed(NOW, ZoneOffset.UTC));
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
+
+    assertThat(withDefaultOverlap - searchWindowMinutes()).isBetween(8L, 10L);
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aPageMovedBetweenSelectedSpacesLeavesNoStaleCopyBehind(ConfluenceEdition edition)
+      throws Exception {
+    start(edition, null, "ENG", "HR");
+    completedFullSync(NOW.minus(Duration.ofHours(2)));
+    String oldPath = pagePath(edition, "HR", "200");
+    Document oldDocument =
+        new Document("Onboarding", oldPath, "text/html", 10L, DocumentSourceType.CONFLUENCE);
+    oldDocument.setStatus(DocumentStatus.INDEXED);
+    oldDocument.setLastModifiedRemote("1");
+    when(documentRepository.findByLibraryIdAndFilePath(library.getId(), oldPath))
+        .thenReturn(Optional.of(oldDocument));
+    server.movePage("200", "ENG", NOW.minus(Duration.ofMinutes(30)));
+
+    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
+
+    String newPath = pagePath(edition, "ENG", "200");
+    verify(fileProcessingService)
+        .processConfluencePage(any(), eq("Onboarding"), eq(newPath), eq("2"), any(), eq(library));
+    if (edition == ConfluenceEdition.CLOUD) {
+      // the identity URL carries the space key: the old document is a positive finding to remove
+      verify(documentRepository).delete(oldDocument);
+      verify(vectorChunkStore).deleteByDocumentId(oldDocument.getId());
+      verify(eventRepository)
+          .save(
+              argThat(
+                  event(
+                      IndexingEventCategory.REMOVED,
+                      ConfluenceIndexingExecutor.MOVED_MESSAGE,
+                      oldPath)));
+    } else {
+      // Data Center's URL has no space key: the same document, updated in place
+      assertThat(newPath).isEqualTo(oldPath);
+      verify(documentRepository, never()).delete(any(Document.class));
+    }
+    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
   }
 
   @ParameterizedTest
@@ -749,6 +839,14 @@ class ConfluenceIndexingExecutorTest {
 
     state.beginFullSync(UUID.randomUUID());
     assertThat(executor.defaultRunMode(library)).as("interrupted").isEqualTo(IndexingRunMode.FULL);
+
+    ConfluenceSyncState old = new ConfluenceSyncState(library.getId());
+    old.beginFullSync(UUID.randomUUID());
+    old.completeFullSync(NOW.minus(Duration.ofDays(8)), NOW.minus(Duration.ofDays(8)));
+    when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(old));
+    assertThat(executor.defaultRunMode(library))
+        .as("older than the weekly interval")
+        .isEqualTo(IndexingRunMode.FULL);
   }
 
   private static ArgumentMatcher<IndexingRunEvent> event(

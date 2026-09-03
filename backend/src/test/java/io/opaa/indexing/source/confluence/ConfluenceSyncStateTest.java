@@ -23,7 +23,7 @@ class ConfluenceSyncStateTest {
     assertThat(state.completedSpaceKeys()).containsExactly("ENG", "HR");
 
     Instant anchor = Instant.parse("2026-09-03T10:00:00Z");
-    state.completeFullSync(anchor);
+    state.completeFullSync(anchor, anchor);
     assertThat(state.isFullSyncInterrupted()).isFalse();
     assertThat(state.getIncrementalAnchor()).isEqualTo(anchor);
     assertThat(state.getFullSyncCompletedAt()).isNotNull();
@@ -41,17 +41,21 @@ class ConfluenceSyncStateTest {
     state.beginFullSync(UUID.randomUUID());
     assertThat(state.isFullSyncDue(weekly, now)).as("in progress / interrupted").isTrue();
 
-    state.completeFullSync(now.minus(java.time.Duration.ofDays(1)));
-    assertThat(state.isFullSyncDue(weekly, now.plusSeconds(60))).as("completed just now").isFalse();
-    assertThat(state.isFullSyncDue(java.time.Duration.ofSeconds(1), now.plusSeconds(60)))
-        .as("interval passed")
+    Instant completedAt = now.minus(java.time.Duration.ofDays(1));
+    state.completeFullSync(completedAt, completedAt);
+    assertThat(state.isFullSyncDue(weekly, now)).as("one day after completion").isFalse();
+    assertThat(state.isFullSyncDue(weekly, completedAt.plus(weekly)))
+        .as("exactly at the interval it is due again")
         .isTrue();
+    assertThat(state.isFullSyncDue(weekly, completedAt.plus(weekly).minusSeconds(1)))
+        .as("a second before the interval it is not")
+        .isFalse();
 
     state.advanceIncrementalAnchor(now);
     assertThat(state.getIncrementalAnchor()).isEqualTo(now);
     assertThat(state.getFullSyncCompletedAt())
         .as("the anchor does not restart the interval")
-        .isBeforeOrEqualTo(Instant.now());
+        .isEqualTo(completedAt);
   }
 
   @Test
@@ -64,7 +68,7 @@ class ConfluenceSyncStateTest {
     assertThat(state.completedSpaceKeys()).as("resumed").containsExactly("ENG");
 
     state.markSpaceCompleted("HR");
-    state.completeFullSync(Instant.now());
+    state.completeFullSync(Instant.now(), Instant.now());
     state.beginFullSync(UUID.randomUUID());
     assertThat(state.completedSpaceKeys()).as("clean after a completed sync").isEmpty();
   }

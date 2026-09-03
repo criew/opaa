@@ -330,25 +330,37 @@ class ConfluenceClientContractTest {
 
   @ParameterizedTest
   @MethodSource("deployments")
-  void changeSearchReturnsIdentifiersOnlyAndNeverExpandsBodies(Deployment deployment)
+  void changeSearchReturnsSummariesWithVersionsAndNeverExpandsBodies(Deployment deployment)
       throws Exception {
     ConfluenceClient client = client(deployment, smallPages(), TargetAddressValidator.disabled());
     server.updatePage("101", "<p>neu</p>", RECENT);
     server.updatePage("200", "<p>neu</p>", RECENT);
     server.updatePage("100", "<p>neu</p>", RECENT);
 
-    List<String> ids =
-        client.searchPageIdsModifiedSince(Set.of("ENG", "HR"), RECENT.minusSeconds(60));
+    List<ConfluencePageSummary> pages =
+        client.searchPagesModifiedSince(Set.of("ENG", "HR"), RECENT.minusSeconds(60));
 
-    assertThat(ids).containsExactlyInAnyOrder("100", "101", "200");
+    assertThat(pages)
+        .extracting(ConfluencePageSummary::id)
+        .containsExactlyInAnyOrder("100", "101", "200");
+    // the version is the pre-fetch change marker, the space key builds the page's identity URL
+    assertThat(pages)
+        .filteredOn(p -> p.id().equals("101"))
+        .singleElement()
+        .satisfies(
+            p -> {
+              assertThat(p.version()).isEqualTo(2);
+              assertThat(p.spaceKey()).isEqualTo("ENG");
+              assertThat(p.title()).isEqualTo("Kapitel 1");
+            });
     List<String> searches = server.requests().stream().filter(r -> r.contains("search")).toList();
     assertThat(searches)
         .as("three hits at page size two need two search pages")
         .hasSizeGreaterThanOrEqualTo(2);
-    assertThat(searches).noneMatch(r -> r.toLowerCase().contains("expand"));
-    assertThat(searches).allMatch(r -> r.contains("lastmodified"));
-    assertThat(client.searchPageIdsModifiedSince(Set.of("ENG"), RECENT.plusSeconds(3600)))
-        .isEmpty();
+    assertThat(searches).noneMatch(r -> r.contains("body"));
+    // the window is relative to the instance's own clock, never an absolute UTC timestamp
+    assertThat(searches).allMatch(r -> r.contains("lastmodified") && r.contains("now"));
+    assertThat(client.searchPagesModifiedSince(Set.of("ENG"), RECENT.plusSeconds(3600))).isEmpty();
   }
 
   @ParameterizedTest

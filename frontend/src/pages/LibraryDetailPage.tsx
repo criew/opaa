@@ -1759,10 +1759,11 @@ function LibraryIndexingSection({
           </Stack>
           {configKind === 'confluence' && !isRunning && (
             <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
-              „Jetzt indizieren“ nimmt nur Änderungen seit dem letzten Lauf auf und löscht nichts;
-              der Vollabgleich prüft alle ausgewählten Spaces vollständig und entfernt, was in
-              Confluence nicht mehr vorhanden ist. Er läuft ohnehin nach jeder Auswahländerung und
-              spätestens im vom Betrieb eingestellten Abstand.
+              „Jetzt indizieren“ nimmt in der Regel nur Änderungen seit dem letzten Lauf auf. Nach
+              einer Änderung der Space-Auswahl und im vom Betrieb eingestellten Abstand läuft es
+              automatisch als Vollabgleich — dieser prüft alle ausgewählten Spaces vollständig und
+              entfernt, was in Confluence nicht mehr vorhanden ist. „Vollabgleich starten“ erzwingt
+              ihn sofort.
             </Typography>
           )}
 

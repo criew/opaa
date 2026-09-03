@@ -26,16 +26,20 @@ class ConfluenceHttpTest {
   }
 
   @Test
-  void cqlAsksForIdentifiersOfChangedPagesInUtcMinutes() {
-    String cql =
-        AbstractConfluenceClient.changedPagesCql(
-            Set.of("HR", "ENG"), Instant.parse("2026-09-01T12:34:56Z"));
+  void cqlAsksForChangedPagesInAWindowRelativeToTheInstanceClock() {
+    // #1199 review: an absolute UTC timestamp would be read in the instance's own time zone; the
+    // relative form lets the instance evaluate the window itself. N is rounded up so the window
+    // never starts after the requested instant.
+    Instant since = Instant.now().minus(Duration.ofMinutes(90)).minusSeconds(30);
+    String cql = AbstractConfluenceClient.changedPagesCql(Set.of("HR", "ENG"), since);
 
     assertThat(cql)
-        .isEqualTo(
-            "type=page AND space in (\"ENG\",\"HR\") AND lastmodified >= \"2026-09-01 12:34\""
-                + " ORDER BY lastmodified ASC");
-    assertThat(cql).doesNotContain("expand").doesNotContain("body");
+        .startsWith("type=page AND space in (\"ENG\",\"HR\") AND lastmodified >= now(\"-")
+        .endsWith("m\") ORDER BY lastmodified ASC");
+    long minutes = Long.parseLong(cql.replaceAll(".*now\\(\"-(\\d+)m\"\\).*", "$1"));
+    assertThat(minutes).isBetween(91L, 92L);
+    assertThat(AbstractConfluenceClient.relativeWindow(Instant.now().plus(Duration.ofHours(2))))
+        .startsWith("now(\"+");
   }
 
   @Test

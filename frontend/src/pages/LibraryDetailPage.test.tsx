@@ -596,7 +596,9 @@ describe('LibraryDetailPage', () => {
     expect(mockTrigger).toHaveBeenCalledWith(ownerLibrary.id, 'CONFLUENCE', 'FULL')
     await user.click(screen.getByRole('button', { name: 'Jetzt indizieren' }))
     expect(mockTrigger).toHaveBeenLastCalledWith(ownerLibrary.id, 'CONFLUENCE')
-    expect(screen.getByText(/nimmt nur Änderungen seit dem letzten Lauf auf/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/in der Regel nur Änderungen seit dem letzten Lauf/),
+    ).toBeInTheDocument()
     unmount()
 
     setLibraryState(

@@ -193,6 +193,12 @@ class ConfluenceDataCenterAccessTest {
         .isEqualTo(ConfluencePageStatus.TRASHED);
   }
 
+  private static List<String> changedIds(ConfluenceClient client, Instant since) throws Exception {
+    return client.searchPagesModifiedSince(Set.of("ENG", "HR"), since).stream()
+        .map(ConfluencePageSummary::id)
+        .toList();
+  }
+
   @Test
   void changeSearchListsIdentifiersOfRecentlyModifiedPagesOnly() throws Exception {
     ConfluenceClient admin = client(confluence.adminToken());
@@ -201,20 +207,29 @@ class ConfluenceDataCenterAccessTest {
     // CQL reads the search index, which Data Center updates asynchronously after a write - the
     // fixture's youngest pages can lag behind by a few seconds, so the search is repeated until the
     // index has caught up (the first CI runs saw "Onboarding" missing once).
-    List<String> ids = admin.searchPageIdsModifiedSince(Set.of("ENG", "HR"), longAgo);
+    List<String> ids = changedIds(admin, longAgo);
     long deadline = System.currentTimeMillis() + Duration.ofSeconds(60).toMillis();
     while (!ids.containsAll(List.of(confluence.pageId("Handbuch"), confluence.pageId("Onboarding")))
         && System.currentTimeMillis() < deadline) {
       Thread.sleep(3000);
-      ids = admin.searchPageIdsModifiedSince(Set.of("ENG", "HR"), longAgo);
+      ids = changedIds(admin, longAgo);
     }
 
     assertThat(ids)
         .contains(confluence.pageId("Handbuch"), confluence.pageId("Onboarding"))
         .doesNotContain(confluence.trashedPageId(), confluence.pageId("Streng geheim"));
-    // a full day ahead: CQL evaluates lastmodified in the instance's time zone, not UTC
+    // the search carries the version the run compares before fetching (#1199 review)
+    assertThat(admin.searchPagesModifiedSince(Set.of("ENG", "HR"), longAgo))
+        .filteredOn(p -> p.id().equals(confluence.pageId("Handbuch")))
+        .singleElement()
+        .satisfies(
+            p -> {
+              assertThat(p.version()).isGreaterThanOrEqualTo(1);
+              assertThat(p.spaceKey()).isEqualTo("ENG");
+            });
+    // a full day ahead - the window is relative to the instance's clock, so its zone is moot
     assertThat(
-            admin.searchPageIdsModifiedSince(Set.of("ENG"), Instant.now().plus(Duration.ofDays(1))))
+            admin.searchPagesModifiedSince(Set.of("ENG"), Instant.now().plus(Duration.ofDays(1))))
         .isEmpty();
   }
 }

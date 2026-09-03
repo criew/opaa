@@ -343,6 +343,14 @@ fälliger Vollabgleich, der auf einen laufenden inkrementellen Lauf trifft, wird
 mit dem nächsten Tick nachgeholt, nicht verworfen — ohne diese Vormerkung wäre der Vollabgleich
 faktisch abschaltbar, durch Timing statt durch Konfiguration.
 
+> **Nachtrag (2026-09-03, #1139):** Umgesetzt ist der Rhythmus des Vollabgleichs zunächst als
+> **instanzweite** Einstellung (`opaa.indexing.confluence.full-sync-interval`, Standard sieben
+> Tage), nicht je Bibliothek — die Vormerkung ist dabei kein eigenes Feld, sondern folgt aus dem
+> Zustand: Solange kein Vollabgleich abgeschlossen ist oder der letzte älter als der Abstand ist,
+> wählt jeder Lauf ohne ausdrückliche Betriebsart den Vollabgleich. Der je Bibliothek einstellbare
+> Rhythmus, den dieser Absatz vorsieht, ist als #1200 ausgegliedert; die instanzweite Einstellung
+> bleibt dann seine Vorgabe.
+
 **Anker und Wiederaufnahme.** Der Laufzustand einer Confluence-Bibliothek lebt in einer eigenen
 Zustandstabelle je Bibliothek (Vorbild `rss_feed_state`, dort bereits je `(library_id, feed_url)`
 geschlüsselt; für Confluence genügt `library_id`, weil eine Bibliothek genau eine Instanz trägt —

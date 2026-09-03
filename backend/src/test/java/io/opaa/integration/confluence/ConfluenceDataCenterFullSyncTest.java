@@ -248,8 +248,26 @@ class ConfluenceDataCenterFullSyncTest {
     org.mockito.Mockito.clearInvocations(fileProcessingService, cleanupService);
 
     confluence.updatePage("Onboarding", 2, "<p>Erste Schritte, aktualisiert am Tag zwei.</p>");
-    // the search index catches up asynchronously (see ConfluenceDataCenterAccessTest)
-    Thread.sleep(5000);
+    // the search index catches up asynchronously (see ConfluenceDataCenterAccessTest): wait until
+    // the change search actually lists the new version
+    io.opaa.indexing.source.confluence.ConfluenceClient probe =
+        factory.create(
+            new io.opaa.indexing.source.confluence.ConfluenceConnection(
+                java.net.URI.create(confluence.baseUrl()),
+                ConfluenceEdition.DATA_CENTER,
+                new io.opaa.indexing.source.confluence.ConfluenceCredentials
+                    .DataCenterPersonalAccessToken(confluence.adminToken()),
+                null,
+                -1,
+                false));
+    long deadline = System.currentTimeMillis() + 60_000;
+    while (System.currentTimeMillis() < deadline
+        && probe
+            .searchPagesModifiedSince(Set.of("HR"), java.time.Instant.now().minusSeconds(600))
+            .stream()
+            .noneMatch(p -> p.id().equals(confluence.pageId("Onboarding")) && p.version() >= 2)) {
+      Thread.sleep(3000);
+    }
 
     UUID jobId = UUID.randomUUID();
     executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);

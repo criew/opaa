@@ -32,6 +32,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     OPAA_INDEXING_CRAWL_MAX_ENTRIES}). Abandoning is a visible failure, never a silent cut, so a
  *     full sync that hits it cannot pass an incomplete listing off as complete. Default 500 (50 000
  *     entries at the default page size).
+ * @param fullSyncInterval how long after a completed full sync the next run is a full one again
+ *     (ADR-0023, Entscheidung 4): only the full run reaches deletions Confluence never reports, so
+ *     the interval is lengthened, never switched off; weekly by default
+ * @param incrementalOverlap how far before the last anchor an incremental run searches, absorbing
+ *     clock skew between OPAA and the instance and CQL's minute granularity; a re-found unchanged
+ *     page costs a listing entry, no body fetch; ten minutes by default (zero falls back to it)
  */
 @ConfigurationProperties(prefix = "opaa.indexing.confluence")
 public record ConfluenceProperties(
@@ -97,7 +103,9 @@ public record ConfluenceProperties(
     // The incremental run searches from the last anchor minus this overlap: clock skew between
     // OPAA and the instance, CQL's minute granularity and edits during the previous run are
     // absorbed by re-reading a little; an unchanged page costs one listing entry, no body fetch.
-    if (incrementalOverlap == null || incrementalOverlap.isNegative()) {
+    if (incrementalOverlap == null
+        || incrementalOverlap.isZero()
+        || incrementalOverlap.isNegative()) {
       incrementalOverlap = Duration.ofMinutes(10);
     }
   }
