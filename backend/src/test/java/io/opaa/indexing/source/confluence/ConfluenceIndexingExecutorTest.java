@@ -567,6 +567,59 @@ class ConfluenceIndexingExecutorTest {
         .save(argThat(event(IndexingEventCategory.RATE_LIMITED, "1-mal gedrosselt", null)));
   }
 
+  @org.junit.jupiter.api.Test
+  void bothEditionsHandTheSamePageBodyToTheSamePipeline() throws Exception {
+    // #1137: the preparation works on the storage body, which both adapters deliver alike - the
+    // pipeline behind processConfluencePage therefore sees the same input for Cloud and Data Center
+    java.util.Map<ConfluenceEdition, String> bodies =
+        new java.util.EnumMap<>(ConfluenceEdition.class);
+    for (ConfluenceEdition edition : editions().toList()) {
+      start(edition, null, "ENG");
+      executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+      ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+      verify(fileProcessingService)
+          .processConfluencePage(
+              body.capture(), eq("Abschnitt 1.1"), any(), any(), any(), eq(library));
+      bodies.put(edition, body.getValue());
+      server.close();
+      server = null;
+      org.mockito.Mockito.clearInvocations(fileProcessingService);
+    }
+    assertThat(bodies.get(ConfluenceEdition.CLOUD))
+        .isEqualTo(bodies.get(ConfluenceEdition.DATA_CENTER))
+        .contains("<h1>Zuständigkeiten</h1>");
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void anAttachmentOfAnUnsupportedTypeIsSkippedVisibly(ConfluenceEdition edition) throws Exception {
+    start(edition, null, "ENG");
+    server.addAttachment(
+        "901",
+        "102",
+        "werkzeug.exe",
+        "application/octet-stream",
+        new byte[] {0x4d, 0x5a, 0, 0, 1, 2});
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.UNSUPPORTED_FORMAT,
+                    "Anhangsformat wird nicht unterstützt",
+                    null)));
+    verify(fileProcessingService, never())
+        .processUrlFile(
+            any(), eq("werkzeug.exe"), any(), any(), anyLong(), any(), any(), any(), any());
+    // the unsupported attachment is still part of the bestand the reconciliation compares against
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
+    verify(cleanupService).cleanupVanished(any(), any(), current.capture(), any(), any(), any());
+    assertThat(current.getValue()).anyMatch(path -> path.endsWith("/werkzeug.exe"));
+  }
+
   private static ArgumentMatcher<IndexingRunEvent> event(
       IndexingEventCategory category, String messagePart, String reference) {
     return event ->

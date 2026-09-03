@@ -357,8 +357,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
             page.ancestorTitles().isEmpty()
                 ? null
                 : String.join(SourceDocumentContext.HIERARCHY_SEPARATOR, page.ancestorTitles()));
-    String text = ConfluenceStorageText.toPlainText(page.storageBody());
-    if (text.isBlank()) {
+    String storageBody = page.storageBody() == null ? "" : page.storageBody();
+    if (storageBody.isBlank()) {
       run.events.record(
           IndexingEventCategory.UNSUPPORTED_FORMAT, "Kein Inhalt extrahierbar", pagePath);
       run.progress.recordSkipped();
@@ -367,9 +367,11 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     }
     boolean pageStored;
     try {
+      // The body goes over as it is; ConfluenceDocumentPipeline (#1137) owns the macro rules and
+      // the structure-preserving cut.
       FileProcessingResult result =
           fileProcessingService.processConfluencePage(
-              text, page.title(), pagePath, version, pageContext, run.library);
+              storageBody, page.title(), pagePath, version, pageContext, run.library);
       pageStored = recordPageResult(run, result, pagePath);
     } catch (Exception e) {
       log.error("Failed to process Confluence page {}", pagePath, e);

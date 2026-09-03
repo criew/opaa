@@ -5,6 +5,7 @@ import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.PipelineReindexService;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
+import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
 import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
 import io.opaa.indexing.pipeline.mail.MailDocumentPipeline;
 import io.opaa.indexing.pipeline.mail.MailProperties;
@@ -107,6 +108,15 @@ public class IndexingConfiguration {
   @Bean
   HtmlDocumentPipeline htmlDocumentPipeline() {
     return new HtmlDocumentPipeline();
+  }
+
+  /**
+   * Confluence page pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 6; #1137) -
+   * claims no format, {@link FileProcessingService#processConfluencePage} looks it up by id.
+   */
+  @Bean
+  ConfluenceDocumentPipeline confluenceDocumentPipeline() {
+    return new ConfluenceDocumentPipeline();
   }
 
   /**

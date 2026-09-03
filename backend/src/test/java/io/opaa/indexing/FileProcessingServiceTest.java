@@ -928,12 +928,14 @@ class FileProcessingServiceTest {
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
     verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
+    // ingestion-pipelines.md, Querschnittsregel (b) / #1137: the page's place in the space is the
+    // chunk-context prefix, so a chunk embeds with the outline it sits in
     assertThat(
             chunkCaptor
                 .getValue()
                 .getFirst()
                 .getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
-        .isEqualTo("[Abschnitt 1.1]\n\nerster Abschnitt");
+        .isEqualTo("[Handbuch / Kapitel 1 / Abschnitt 1.1]\n\nerster Abschnitt");
   }
 
   @Test

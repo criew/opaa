@@ -245,7 +245,11 @@ Spaces kommen zuerst an die Reihe. Drosselt Confluence den Lauf (429, `Retry-Aft
 meldet die Summe der Wartezeit als eigenes Ereignis (`RATE_LIMITED`), statt zu scheitern. Jeder
 Lauf trägt seine **Betriebsart** (`FULL`, `INCREMENTAL`; ADR-0023, Entscheidung 4) im
 Laufprotokoll und in der API; der manuelle Anstoß nimmt sie als Parameter `runMode` entgegen — für
-Confluence gibt es bis #1139 nur den Vollabgleich. Abgenommen wird der Konnektor auf
+Confluence gibt es bis #1139 nur den Vollabgleich. **Die Aufbereitung (#1137)** übernimmt
+`ConfluenceDocumentPipeline`: Makro-Regelwerk (statischer Inhalt bleibt, zur Laufzeit erzeugter
+entfällt), Überschriften, Tabellen, Listen, Code und Hinweiskästen als lesbarer Text, der
+Gliederungspfad der Seite am Dokument und im Chunk-Kontext — Einzelheiten in
+[ingestion-pipelines.md](./ingestion-pipelines.md), Teil 3, Punkt 6. Abgenommen wird der Konnektor auf
 zwei Ebenen: Das gemeinsame Testdoppel beider Editionen läuft mit jedem PR; zusätzlich startet
 `./gradlew confluenceIntegrationTest` (#1171) ein echtes Confluence Data Center im Container —
 Einrichtungsassistent, 3-Stunden-Testlizenz, Administrator, zwei Token mit unterschiedlichen

@@ -7,6 +7,7 @@ import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.observability.IndexingMetrics;
@@ -677,17 +678,21 @@ public class FileProcessingService {
   }
 
   /**
-   * Processes one Confluence page's already-extracted text (ADR-0023, #1136) the way {@link
-   * #processRssEntry} processes an RSS entry's: identity by the title-free page URL in {@code
-   * file_path}, SHA-256 checksum as the content-based change layer behind the executor's own
-   * version check, the version number in {@code last_modified_remote}, the space key and ancestor
-   * titles in the two context columns, the title as {@code file_name} and chunk context. The text
-   * goes to the fallback pipeline directly - there is no file to detect a format from.
+   * Processes one Confluence page's storage-format body (ADR-0023, #1136/#1137) the way {@link
+   * #processRssEntry} processes an RSS entry's text: identity by the title-free page URL in {@code
+   * file_path}, SHA-256 checksum over the body as the content-based change layer behind the
+   * executor's own version check, the version number in {@code last_modified_remote}, the space key
+   * and ancestor titles in the two context columns and as passthrough metadata on every chunk, the
+   * page's own place (hierarchy path plus title) as the chunk-context prefix
+   * (ingestion-pipelines.md, Querschnittsregel (b)). The body goes to {@code
+   * ConfluenceDocumentPipeline} directly - there is no file to route by format; where that pipeline
+   * is not registered (a reduced test registry) the fallback pipeline takes the body as text.
    *
+   * @param storageBody the page body in Confluence storage format (XHTML with macro elements)
    * @param version the page's Confluence version number, the executor's pre-fetch change marker
    */
   public FileProcessingResult processConfluencePage(
-      String text,
+      String storageBody,
       String title,
       String pageUrl,
       String version,
@@ -695,8 +700,8 @@ public class FileProcessingService {
       KnowledgeLibrary targetLibrary) {
     boolean hasTitle = title != null && !title.isBlank();
     String fileName = hasTitle ? title : pageUrl;
-    String contextTitle = hasTitle ? title : null;
-    byte[] contentBytes = text.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    String contextTitle = confluenceContextTitle(title, context);
+    byte[] contentBytes = storageBody.getBytes(java.nio.charset.StandardCharsets.UTF_8);
     String checksum = checksumService.computeSha256(contentBytes);
     Optional<Document> existing =
         documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), pageUrl);
@@ -746,9 +751,12 @@ public class FileProcessingService {
     doc.applySourceContext(context);
     doc = documentRepository.save(doc);
     try {
-      DocumentPipeline pipeline = pipelineRegistry.fallbackPipeline();
+      DocumentPipeline pipeline =
+          pipelineRegistry
+              .pipelineById(ConfluenceDocumentPipeline.ID)
+              .orElseGet(pipelineRegistry::fallbackPipeline);
       DocumentPipelineResult parsed =
-          pipeline.run(DocumentPipelineSource.ofExtractedText(text, fileName));
+          pipeline.run(DocumentPipelineSource.ofExtractedText(storageBody, fileName));
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
           log.warn("No usable text in Confluence page {}", pageUrl);
@@ -762,6 +770,22 @@ public class FileProcessingService {
             log.debug("Confluence page {} produced {} chunks", pageUrl, parsed.chunks().size());
       }
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
+      // The space and the hierarchy path are not in the body; declared as passthrough keys by the
+      // Confluence pipeline, so storeChunks keeps them on every chunk (#1137).
+      if (context != null) {
+        for (org.springframework.ai.document.Document chunk : chunks) {
+          if (context.containerKey() != null) {
+            chunk
+                .getMetadata()
+                .put(ConfluenceDocumentPipeline.SPACE_METADATA_KEY, context.containerKey());
+          }
+          if (contextTitle != null) {
+            chunk
+                .getMetadata()
+                .put(ConfluenceDocumentPipeline.HIERARCHY_METADATA_KEY, contextTitle);
+          }
+        }
+      }
       storeChunks(doc, chunks, contextTitle, pipeline, Optional.empty());
       FileProcessingResult result =
           markConnectorIndexed(doc.getId(), chunks.size(), checksum, version);
@@ -790,6 +814,22 @@ public class FileProcessingService {
    *     {@link #storeChunks}, are removed again here), otherwise {@link
    *     FileProcessingResult#PROCESSED}
    */
+  /**
+   * The chunk-context prefix of a Confluence page: its place in the space - ancestor titles root
+   * first, then the page title - so a chunk embeds and full-text-indexes with the outline it sits
+   * in, not just its own heading (ingestion-pipelines.md, Querschnittsregel (b); #1137). {@code
+   * null} without a title.
+   */
+  static String confluenceContextTitle(String title, SourceDocumentContext context) {
+    if (title == null || title.isBlank()) {
+      return null;
+    }
+    if (context == null || context.hierarchyPath() == null || context.hierarchyPath().isBlank()) {
+      return title;
+    }
+    return context.hierarchyPath() + SourceDocumentContext.HIERARCHY_SEPARATOR + title;
+  }
+
   private FileProcessingResult markConnectorIndexed(
       UUID documentId, int chunkCount, String checksum, String lastModifiedRemote) {
     int updated =
