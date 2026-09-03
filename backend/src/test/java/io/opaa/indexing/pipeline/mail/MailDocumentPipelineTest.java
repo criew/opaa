@@ -155,7 +155,7 @@ class MailDocumentPipelineTest {
     MailDocumentPipeline pipeline = pipeline(defaultProperties);
     assertThat(pipeline.handledFormats()).containsExactlyInAnyOrder(".eml", ".msg");
     assertThat(pipeline.id()).isEqualTo("email");
-    assertThat(pipeline.version()).isEqualTo((short) 2);
+    assertThat(pipeline.version()).isEqualTo((short) 3);
   }
 
   @Test
@@ -170,6 +170,28 @@ class MailDocumentPipelineTest {
             ChunkMailMetadata.MAIL_TO_METADATA_KEY,
             ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY,
             ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
+  }
+
+  /**
+   * #1164: a Zeitraum filter compares {@code mail_date} lexicographically as text, so the rendered
+   * value must stay sortable across differing sub-second precision - {@link Instant#toString()}
+   * alone does not guarantee that (it omits the fractional part entirely when it is zero, which
+   * mis-orders against a value that does carry one). Without truncating to whole seconds first,
+   * this assertion fails: {@code "2024-01-03T09:15:00.500Z".compareTo("2024-01-03T09:15:00Z")} is
+   * negative (".5" sorts before "Z"), even though the first instant is 500ms <em>after</em> the
+   * second.
+   */
+  @Test
+  void rendersMailDateTruncatedToWholeSecondsSoItStaysLexicographicallySortable() {
+    Instant earlier = Instant.parse("2024-01-03T09:15:00Z");
+    Instant laterWithMillis = Instant.parse("2024-01-03T09:15:00.500Z");
+
+    String renderedEarlier = MailDocumentPipeline.renderMailDate(earlier);
+    String renderedLater = MailDocumentPipeline.renderMailDate(laterWithMillis);
+
+    assertThat(renderedEarlier).isEqualTo("2024-01-03T09:15:00Z");
+    assertThat(renderedLater).isEqualTo("2024-01-03T09:15:00Z");
+    assertThat(renderedEarlier.compareTo(renderedLater)).isEqualTo(0);
   }
 
   // --- EML: headers as metadata AND as context lines in the chunk text (#1130 Befund 1) --------
