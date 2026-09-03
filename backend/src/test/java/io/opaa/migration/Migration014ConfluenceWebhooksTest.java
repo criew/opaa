@@ -15,17 +15,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Delta tests for {@code changes/012-confluence-webhooks.yaml} (#1140): the per-library webhook
+ * Delta tests for {@code changes/014-confluence-webhooks.yaml} (#1140): the per-library webhook
  * secret column on {@code knowledge_libraries} and the widened {@code
- * chk_indexing_jobs_triggered_by}. The baseline fixture is brought through 010 and 011 first,
+ * chk_indexing_jobs_triggered_by}. The baseline fixture is brought through 010 and 013 first,
  * because 012 builds on the CONFLUENCE source type and the run mode they introduced.
  */
-class Migration012ConfluenceWebhooksTest extends AbstractMigrationTest {
+class Migration014ConfluenceWebhooksTest extends AbstractMigrationTest {
 
   private static final String CHANGELOG_010 =
       "db/changelog/changes/010-confluence-source-type.yaml";
-  private static final String CHANGELOG_011 = "db/changelog/changes/011-confluence-full-sync.yaml";
-  private static final String CHANGELOG_PATH = "db/changelog/changes/012-confluence-webhooks.yaml";
+  private static final String CHANGELOG_011 = "db/changelog/changes/013-confluence-full-sync.yaml";
+  private static final String CHANGELOG_PATH = "db/changelog/changes/014-confluence-webhooks.yaml";
   private static final String ORGANIZATION = "00000000-0000-0000-0000-000000000001";
 
   private Connection connection;

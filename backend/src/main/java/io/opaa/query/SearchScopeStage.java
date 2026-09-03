@@ -45,11 +45,7 @@ class SearchScopeStage implements RetrievalStage {
       return new StageOutcome(
           state.haltRun(),
           StageExplanation.executed(
-              name(),
-              0,
-              0,
-              List.of(),
-              List.of("empty search scope: nothing readable in scope, retrieval halted")));
+              name(), 0, 0, List.of(), List.of(RetrievalNote.SEARCH_SCOPE_EMPTY.format())));
     }
     return new StageOutcome(
         state.withLibraryFilter(libraryFilter(searchScope)),
@@ -59,10 +55,9 @@ class SearchScopeStage implements RetrievalStage {
             0,
             List.of(),
             List.of(
-                "search scope: "
-                    + searchScope.size()
-                    + (searchScope.size() == 1 ? " library" : " libraries"),
-                "permission filter applied inside every search of this run, never afterwards")));
+                RetrievalNote.SEARCH_SCOPE.format(
+                    searchScope.size(), searchScope.size() == 1 ? "library" : "libraries"),
+                RetrievalNote.SEARCH_SCOPE_PERMISSION_FILTER.format())));
   }
 
   /**

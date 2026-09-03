@@ -25,9 +25,13 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param model the model identifier sent with every request; blank means the role is unbound.
  * @param apiKey optional bearer token. Write-only in every sense that matters: it is never logged
  *     and never part of {@link RerankRoleStatus}, not even truncated.
- * @param timeout per-request budget for one rerank call. Default 10s: long enough for a CPU
- *     reranker over the candidate window, short enough that an unresponsive endpoint degrades the
- *     query instead of hanging it.
+ * @param timeout per-request budget for one rerank call. Default {@value #DEFAULT_TIMEOUT_SECONDS}
+ *     seconds: #1050 measured roughly three minutes per query for the default candidate window (50)
+ *     on a 20-core CPU with {@code BAAI/bge-reranker-v2-m3} - the CPU case this project ships a
+ *     rerank role for at all. A shorter default degrades every such query to {@link
+ *     RerankRoleState#UNREACHABLE} on a schedule, not on a fault (#1154). An installation with a
+ *     faster (typically GPU-backed) endpoint may lower {@code OPAA_RERANK_TIMEOUT}; this default
+ *     trades a slower failure detection for not mistaking normal CPU latency for an outage.
  */
 @ConfigurationProperties(prefix = "opaa.rerank")
 public record RerankProperties(
@@ -35,14 +39,17 @@ public record RerankProperties(
     String baseUrl,
     String model,
     String apiKey,
-    @DefaultValue("10s") Duration timeout) {
+    @DefaultValue(DEFAULT_TIMEOUT_SECONDS + "s") Duration timeout) {
+
+  /** See {@link #timeout}. */
+  static final int DEFAULT_TIMEOUT_SECONDS = 240;
 
   public RerankProperties {
     baseUrl = baseUrl == null ? "" : baseUrl.strip();
     model = model == null ? "" : model.strip();
     apiKey = apiKey == null ? "" : apiKey.strip();
     if (timeout == null || timeout.isZero() || timeout.isNegative()) {
-      timeout = Duration.ofSeconds(10);
+      timeout = Duration.ofSeconds(DEFAULT_TIMEOUT_SECONDS);
     }
   }
 

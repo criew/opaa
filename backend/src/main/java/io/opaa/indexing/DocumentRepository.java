@@ -57,6 +57,14 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       @Param("containerKey") String containerKey,
       @Param("hierarchyPath") String hierarchyPath);
 
+  /**
+   * Every attachment of {@code parentDocumentId} (ADR-0022, Entscheidung 4) - the FK-backed
+   * generalization of {@link #existsBySourceEntryUrlAndLibraryId}'s RSS-only path lookup. No writer
+   * sets {@link Document#getParentDocumentId()} yet (#1180 is schema-only); this backs the lookup
+   * side that #1182 onwards builds on.
+   */
+  List<Document> findByParentDocumentId(UUID parentDocumentId);
+
   List<Document> findByLibraryId(UUID libraryId);
 
   /**

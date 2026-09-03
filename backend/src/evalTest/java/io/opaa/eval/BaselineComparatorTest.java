@@ -167,7 +167,11 @@ class BaselineComparatorTest {
             // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
             null,
             List.of(),
-            List.of());
+            List.of(),
+            MarginAggregate.of(List.of()),
+            Map.of(),
+            Map.of(),
+            Map.of());
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -230,7 +234,11 @@ class BaselineComparatorTest {
             // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
             null,
             List.of(),
-            List.of());
+            List.of(),
+            MarginAggregate.of(List.of()),
+            Map.of(),
+            Map.of(),
+            Map.of());
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -290,7 +298,11 @@ class BaselineComparatorTest {
             // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
             null,
             List.of(),
-            List.of());
+            List.of(),
+            MarginAggregate.of(List.of()),
+            Map.of(),
+            Map.of(),
+            Map.of());
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -347,7 +359,11 @@ class BaselineComparatorTest {
             // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
             null,
             List.of(),
-            List.of());
+            List.of(),
+            MarginAggregate.of(List.of()),
+            Map.of(),
+            Map.of(),
+            Map.of());
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -428,6 +444,7 @@ class BaselineComparatorTest {
             cfg.goldenDatasetFile(),
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
+            cfg.ingestionPipelineFingerprint(),
             cfg.runStartedAt(),
             cfg.runDurationSeconds(),
             true);
@@ -466,6 +483,7 @@ class BaselineComparatorTest {
             cfg.goldenDatasetFile(),
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
+            cfg.ingestionPipelineFingerprint(),
             cfg.runStartedAt(),
             cfg.runDurationSeconds(),
             cfg.externalOllamaEndpoint());
@@ -477,6 +495,51 @@ class BaselineComparatorTest {
     assertThat(result.fixedPointMismatches())
         .extracting(BaselineComparator.FixedPointMismatch::field)
         .containsExactly("searchTopK");
+  }
+
+  /**
+   * Issue #1144: a pipeline change (routing, or a version bump on a pipeline the corpus uses) moves
+   * the produced chunks without moving corpusManifestSha256, which describes the input files rather
+   * than what processed them. Without this fixed point, the run below would be compared as if it
+   * measured the same chunks the baseline was drawn from.
+   */
+  @Test
+  void detectsIngestionPipelineFingerprintDrift() {
+    Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
+    RunConfiguration cfg = runConfiguration("m1", "d1", "corpus-a", "golden-a");
+    RunConfiguration withDifferentPipelineFingerprint =
+        new RunConfiguration(
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            cfg.embeddingModelDigest(),
+            cfg.ollamaImage(),
+            cfg.embeddingDimensions(),
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            cfg.chunkOverlap(),
+            cfg.documentTopK(),
+            cfg.chunkTopK(),
+            cfg.searchTopK(),
+            cfg.productionSimilarityThreshold(),
+            cfg.similarityThresholdNote(),
+            cfg.pgvectorIndexType(),
+            cfg.corpusManifestSha256(),
+            cfg.corpusDocumentCount(),
+            cfg.goldenDatasetFile(),
+            cfg.goldenDatasetSha256(),
+            cfg.goldenCaseCount(),
+            "markdown:2",
+            cfg.runStartedAt(),
+            cfg.runDurationSeconds(),
+            cfg.externalOllamaEndpoint());
+    EvaluationReport report = reportWith(withDifferentPipelineFingerprint);
+
+    var result = BaselineComparator.compare(baseline, report);
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("ingestionPipelineFingerprint");
   }
 
   @Test
@@ -631,7 +694,11 @@ class BaselineComparatorTest {
             // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
             null,
             List.of(),
-            List.of());
+            List.of(),
+            MarginAggregate.of(List.of()),
+            Map.of(),
+            Map.of(),
+            Map.of());
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -675,7 +742,11 @@ class BaselineComparatorTest {
             // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
             null,
             List.of(),
-            List.of());
+            List.of(),
+            MarginAggregate.of(List.of()),
+            Map.of(),
+            Map.of(),
+            Map.of());
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -746,7 +817,8 @@ class BaselineComparatorTest {
         1458,
         "eval/golden/x.json",
         goldenSha,
-        121);
+        121,
+        "markdown:1");
   }
 
   private static RunConfiguration runConfiguration(
@@ -771,6 +843,7 @@ class BaselineComparatorTest {
         "eval/golden/x.json",
         goldenSha,
         121,
+        "markdown:1",
         "2026-08-03T00:00:00Z",
         1004.0,
         false);
@@ -811,7 +884,11 @@ class BaselineComparatorTest {
         noApplicableAnswerSpans(),
         null,
         List.of(),
-        List.of());
+        List.of(),
+        MarginAggregate.of(List.of()),
+        Map.of(),
+        Map.of(),
+        Map.of());
   }
 
   // --- issue #721 code review, Nit 6: fixed-point drift for the new #721 fixed points -----------
@@ -841,6 +918,7 @@ class BaselineComparatorTest {
             cfg.goldenDatasetFile(),
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
+            cfg.ingestionPipelineFingerprint(),
             cfg.runStartedAt(),
             cfg.runDurationSeconds(),
             cfg.externalOllamaEndpoint());
@@ -879,6 +957,7 @@ class BaselineComparatorTest {
             cfg.goldenDatasetFile(),
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
+            cfg.ingestionPipelineFingerprint(),
             cfg.runStartedAt(),
             cfg.runDurationSeconds(),
             cfg.externalOllamaEndpoint());
@@ -917,6 +996,7 @@ class BaselineComparatorTest {
             cfg.goldenDatasetFile(),
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
+            cfg.ingestionPipelineFingerprint(),
             cfg.runStartedAt(),
             cfg.runDurationSeconds(),
             cfg.externalOllamaEndpoint());

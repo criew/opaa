@@ -834,6 +834,11 @@ class VerwaltungRetrievalEvaluationHarnessTest {
     var byCategory = MetricsAggregate.groupBy(results, GoldenCase::category);
     var byDifficulty = MetricsAggregate.groupBy(results, GoldenCase::difficulty);
     var byLanguage = MetricsAggregate.groupBy(results, GoldenCase::language);
+    // Issue #1151: report-only margin summary, not part of MetricsAggregate/Baseline.
+    MarginAggregate overallMargins = MarginAggregate.of(results);
+    var marginsByCategory = MarginAggregate.groupBy(results, GoldenCase::category);
+    var marginsByDifficulty = MarginAggregate.groupBy(results, GoldenCase::difficulty);
+    var marginsByLanguage = MarginAggregate.groupBy(results, GoldenCase::language);
 
     Comparator<RetrievalMetrics.QueryResult> worstFirst =
         Comparator.comparingDouble(RetrievalMetrics.QueryResult::ndcgAt10)
@@ -863,6 +868,10 @@ class VerwaltungRetrievalEvaluationHarnessTest {
                 + "docs/features/retrieval-benchmark.md, Abschnitt 4, \"Ehrliche Einschränkung: "
                 + "Benchmark-Overfitting\".");
 
+    // Issue #1144: the pipeline registry FileProcessingService actually routed through while
+    // indexing this corpus, not a second, potentially drifting re-derivation.
+    String ingestionPipelineFingerprint = IngestionPipelineFingerprint.of(pipelineRegistry);
+
     RunConfiguration runConfiguration =
         new RunConfiguration(
             "ollama",
@@ -886,6 +895,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             "eval/golden/" + DOMAIN.goldenDatasetFileName(),
             GoldenDataset.sha256(goldenFile),
             goldenCases.size(),
+            ingestionPipelineFingerprint,
             runStart.toString(),
             Duration.between(runStart, Instant.now()).toMillis() / 1000.0,
             EvalOllamaEndpoint.isExternal());
@@ -907,7 +917,11 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             // golden dataset carries no expected_state fields.
             ExpectedStateAudit.fromRawVectorResults(results),
             worstQueries,
-            allQueryResults);
+            allQueryResults,
+            overallMargins,
+            marginsByCategory,
+            marginsByDifficulty,
+            marginsByLanguage);
 
     // Domain-specific report file name: RetrievalEvaluationHarnessTest (comic-characters) writes
     // to the plain "retrieval-metrics.json" for backward compatibility with existing tooling and
@@ -942,7 +956,8 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             "eval/golden/" + DOMAIN.goldenDatasetFileName(),
             GoldenDataset.sha256(goldenFile),
             // Issue #1049: whether the lexical path could contribute at all in this run.
-            fullTextBackfillProgressService.progressForLibrary(evalLibraryId).isComplete()),
+            fullTextBackfillProgressService.progressForLibrary(evalLibraryId).isComplete(),
+            ingestionPipelineFingerprint),
         queryService,
         queryProperties,
         pipelineProperties,
@@ -973,7 +988,8 @@ class VerwaltungRetrievalEvaluationHarnessTest {
               manifest.fileNames().size(),
               "eval/golden/" + DOMAIN.goldenDatasetFileName(),
               GoldenDataset.sha256(goldenFile),
-              fullTextBackfillProgressService.progressForLibrary(evalLibraryId).isComplete()),
+              fullTextBackfillProgressService.progressForLibrary(evalLibraryId).isComplete(),
+              ingestionPipelineFingerprint),
           queryService,
           queryProperties,
           indexingProperties,
@@ -995,6 +1011,8 @@ class VerwaltungRetrievalEvaluationHarnessTest {
         r.reciprocalRank(),
         r.recallAt10(),
         r.allExpectedDocumentsHitAt10(),
+        r.hitRateMarginAt5(),
+        r.rankingMarginAt10(),
         r.goldenCase().expectedDocuments(),
         r.rankedFileNames());
   }

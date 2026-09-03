@@ -135,12 +135,27 @@ class MailDocumentPipelineTest {
     }
   }
 
+  /**
+   * A stand-in for a sub-pipeline that reports a {@link
+   * io.opaa.indexing.pipeline.DiscoveredAttachment} of its own (#1181 review, finding 1) - stands
+   * in for a real pipeline that will report one once ADR-0022 part 3/4 land.
+   */
+  private record FakeDiscoveringPipeline(
+      String id, short version, java.util.Set<String> handledFormats, DocumentPipelineResult result)
+      implements DocumentPipeline {
+
+    @Override
+    public DocumentPipelineResult run(DocumentPipelineSource source) {
+      return result;
+    }
+  }
+
   @Test
   void claimsExactlyEmlAndMsg() {
     MailDocumentPipeline pipeline = pipeline(defaultProperties);
     assertThat(pipeline.handledFormats()).containsExactlyInAnyOrder(".eml", ".msg");
     assertThat(pipeline.id()).isEqualTo("email");
-    assertThat(pipeline.version()).isEqualTo((short) 2);
+    assertThat(pipeline.version()).isEqualTo((short) 3);
   }
 
   @Test
@@ -155,6 +170,28 @@ class MailDocumentPipelineTest {
             ChunkMailMetadata.MAIL_TO_METADATA_KEY,
             ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY,
             ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
+  }
+
+  /**
+   * #1164: a Zeitraum filter compares {@code mail_date} lexicographically as text, so the rendered
+   * value must stay sortable across differing sub-second precision - {@link Instant#toString()}
+   * alone does not guarantee that (it omits the fractional part entirely when it is zero, which
+   * mis-orders against a value that does carry one). Without truncating to whole seconds first,
+   * this assertion fails: {@code "2024-01-03T09:15:00.500Z".compareTo("2024-01-03T09:15:00Z")} is
+   * negative (".5" sorts before "Z"), even though the first instant is 500ms <em>after</em> the
+   * second.
+   */
+  @Test
+  void rendersMailDateTruncatedToWholeSecondsSoItStaysLexicographicallySortable() {
+    Instant earlier = Instant.parse("2024-01-03T09:15:00Z");
+    Instant laterWithMillis = Instant.parse("2024-01-03T09:15:00.500Z");
+
+    String renderedEarlier = MailDocumentPipeline.renderMailDate(earlier);
+    String renderedLater = MailDocumentPipeline.renderMailDate(laterWithMillis);
+
+    assertThat(renderedEarlier).isEqualTo("2024-01-03T09:15:00Z");
+    assertThat(renderedLater).isEqualTo("2024-01-03T09:15:00Z");
+    assertThat(renderedEarlier.compareTo(renderedLater)).isEqualTo(0);
   }
 
   // --- EML: headers as metadata AND as context lines in the chunk text (#1130 Befund 1) --------
@@ -716,6 +753,49 @@ class MailDocumentPipelineTest {
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(1);
     assertThat(result.chunks().getFirst().getText()).contains("Der Anhang ist kaputt.");
+  }
+
+  @Test
+  void aNestedPipelinesDiscoveredAttachmentTempFileIsCleanedUpEvenThoughNotYetForwarded()
+      throws Exception {
+    // #1181 review, finding 1: processAttachment is itself a second, recursive caller of
+    // DocumentPipeline#run (besides FileProcessingService) - it must go through
+    // DocumentPipelineRunner too, or a nested pipeline's own discoveredAttachments (ADR-0022, part
+    // 2) leak a temp file just because this class does not yet forward them itself (part 4,
+    // #1183).
+    Path nestedAttachmentTempFile = tempDir.resolve("nested-attachment.tmp");
+    Files.writeString(nestedAttachmentTempFile, "nested bytes");
+    var nestedAttachment =
+        new io.opaa.indexing.pipeline.DiscoveredAttachment(
+            "eingebettet.pdf", nestedAttachmentTempFile, "application/pdf");
+    var discoveringPipeline =
+        new FakeDiscoveringPipeline(
+            "fake-discovering",
+            (short) 1,
+            java.util.Set.of(".pdf"),
+            DocumentPipelineResult.chunked(
+                List.of(new Document("Anhangtext")), List.of(nestedAttachment)));
+
+    byte[] pdfBytes = readTestResource("test-document.pdf");
+    Message message =
+        newMessageBuilder("Mit Anlage", "a@example.org", "b@example.org")
+            .setBody(
+                MultipartBuilder.create("mixed")
+                    .addTextPart("Anbei die Anlage.", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        BodyPartBuilder.create()
+                            .setBody(pdfBytes, "application/pdf")
+                            .setContentDisposition("attachment", "anlage.pdf"))
+                    .build())
+            .build();
+    Path file = writeEml(DefaultMessageWriter.asBytes(message));
+
+    DocumentPipelineResult result =
+        pipeline(defaultProperties, defaultChunkingService(), discoveringPipeline)
+            .run(DocumentPipelineSource.ofFile(file, "mit-anlage.eml"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(Files.exists(nestedAttachmentTempFile)).isFalse();
   }
 
   /**

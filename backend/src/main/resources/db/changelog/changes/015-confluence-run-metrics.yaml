@@ -1,9 +1,9 @@
 databaseChangeLog:
   # #1141: operational figures of an indexing run and its "incomplete, continued by the next run"
   # outcome. Each changeset is one schema change with its own delta test
-  # (io.opaa.migration.Migration013ConfluenceRunMetricsTest).
+  # (io.opaa.migration.Migration015ConfluenceRunMetricsTest).
   - changeSet:
-      id: 013-indexing-jobs-run-metrics
+      id: 015-indexing-jobs-run-metrics
       author: opaa
       comment: >-
         #1141: what a run cost - requests sent to the source, how often and how long the source
@@ -31,7 +31,7 @@ databaseChangeLog:
               ALTER TABLE public.indexing_jobs DROP COLUMN requests_sent;
 
   - changeSet:
-      id: 013-indexing-jobs-incomplete
+      id: 015-indexing-jobs-incomplete
       author: opaa
       comment: >-
         #1141: a COMPLETED run that stopped in an orderly way before covering everything (the

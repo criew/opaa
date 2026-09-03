@@ -12,19 +12,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Delta tests for {@code changes/013-confluence-run-metrics.yaml} (#1141): the nullable metric
- * columns and the {@code incomplete} flag on {@code indexing_jobs}. Builds on 010-012 because the
+ * Delta tests for {@code changes/015-confluence-run-metrics.yaml} (#1141): the nullable metric
+ * columns and the {@code incomplete} flag on {@code indexing_jobs}. Builds on 010, 013 and 014 because the
  * fixture rows use the CONFLUENCE type, the run mode and the WEBHOOK trigger they introduced.
  */
-class Migration013ConfluenceRunMetricsTest extends AbstractMigrationTest {
+class Migration015ConfluenceRunMetricsTest extends AbstractMigrationTest {
 
   private static final String[] PREDECESSORS = {
     "db/changelog/changes/010-confluence-source-type.yaml",
-    "db/changelog/changes/011-confluence-full-sync.yaml",
-    "db/changelog/changes/012-confluence-webhooks.yaml"
+    "db/changelog/changes/013-confluence-full-sync.yaml",
+    "db/changelog/changes/014-confluence-webhooks.yaml"
   };
   private static final String CHANGELOG_PATH =
-      "db/changelog/changes/013-confluence-run-metrics.yaml";
+      "db/changelog/changes/015-confluence-run-metrics.yaml";
   private static final String ORGANIZATION = "00000000-0000-0000-0000-000000000001";
 
   private Connection connection;

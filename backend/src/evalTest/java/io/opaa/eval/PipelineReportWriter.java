@@ -77,8 +77,10 @@ public final class PipelineReportWriter {
             cfg.pgvectorIndexType()));
     sb.append(
         format(
-            "  Korpus: %d Dokumente, Manifest %s\n",
-            cfg.corpusDocumentCount(), shortHash(cfg.corpusManifestSha256())));
+            "  Korpus: %d Dokumente, Manifest %s, Ingestion-Pipelines %s\n",
+            cfg.corpusDocumentCount(),
+            shortHash(cfg.corpusManifestSha256()),
+            cfg.ingestionPipelineFingerprint()));
     sb.append(
         format(
             "  Golden Dataset: %s, %d Fälle, Hash %s\n",
@@ -115,6 +117,15 @@ public final class PipelineReportWriter {
     appendGroup(sb, "Je Schwierigkeit", report.byDifficulty());
     appendGroup(sb, "Je Sprache", report.byLanguage());
     sb.append(ExpectedStateAudit.renderSummary(report.expectedStateAudit()));
+
+    // Issue #1151: Grenzstabilität — wie knapp gelöste Fälle von sicher gelösten Fällen
+    // unterschieden werden können, ohne dass sich eine der obigen Kennzahlen bewegt.
+    sb.append("Rangreserve (Grenzstabilität, issue #1151):\n");
+    appendMarginLine(sb, "Gesamt", report.overallMargins());
+    appendMarginGroup(sb, "Je Kategorie", report.marginsByCategory());
+    appendMarginGroup(sb, "Je Schwierigkeit", report.marginsByDifficulty());
+    appendMarginGroup(sb, "Je Sprache", report.marginsByLanguage());
+    sb.append('\n');
 
     sb.append("Schlechteste 10 Anfragen (nach nDCG@8):\n");
     for (var q : report.worstQueries()) {
@@ -165,6 +176,33 @@ public final class PipelineReportWriter {
             a.recallAt8Ceiling(),
             a.distinctExpectedDocumentSets(),
             a.allExpectedDocumentsHitAt8()));
+  }
+
+  private static void appendMarginGroup(
+      StringBuilder sb, String title, Map<String, MarginAggregate> groups) {
+    sb.append(title).append(":\n");
+    groups.forEach((key, aggregate) -> appendMarginLine(sb, "  " + key, aggregate));
+  }
+
+  private static void appendMarginLine(StringBuilder sb, String label, MarginAggregate m) {
+    sb.append(
+        format(
+            "  %-24s Hit@5: n=%d meanMargin=%.2f knapp-gelöst(<= %d)=%d knapp-verfehlt(>= -%d)=%d"
+                + "  |  Ranking-Fenster: n=%d meanMargin=%.2f knapp-gelöst(<= %d)=%d "
+                + "knapp-verfehlt(>= -%d)=%d\n",
+            label,
+            m.hitRateHits(),
+            m.meanHitRateMargin(),
+            MarginAggregate.MARGINAL_THRESHOLD,
+            m.marginalHitRateCount(),
+            MarginAggregate.MARGINAL_THRESHOLD,
+            m.hitRateNarrowMissCount(),
+            m.rankingHits(),
+            m.meanRankingMargin(),
+            MarginAggregate.MARGINAL_THRESHOLD,
+            m.marginalRankingCount(),
+            MarginAggregate.MARGINAL_THRESHOLD,
+            m.rankingNarrowMissCount()));
   }
 
   private static String shortHash(String hash) {

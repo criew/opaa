@@ -6,12 +6,17 @@ package io.opaa.indexing.pipeline.mail;
  * message's own body chunks (never onto an attachment's recursively produced chunks), and copied
  * onto the persisted chunk by {@code FileProcessingService#storeChunks}.
  *
- * <p><b>These fields have no reader today - a deliberate vorhaltung, not an oversight</b> (#1130
- * Befund 1). {@link MailDocumentPipeline} also renders the same Kopfdaten as German-labeled context
- * lines into the first body chunk's own text (see {@code MailDocumentPipeline#headerContextText}),
- * which is what reaches embedding and full-text search today. These structured fields stay in
- * addition, unread, as the basis for the Fundstellen-Anzeige and structured Absender-/Zeitraum-/
- * Betreff-Filterung tracked in #1164.
+ * <p>{@code io.opaa.query.QueryService#mapSources} reads these back onto {@code ChatSource}, from
+ * where {@code ChatResponseMapper} carries them into the generated {@code SourceReference} (#1164)
+ * - the Fundstellen-Anzeige's mail summary line. {@link MailDocumentPipeline} also renders the same
+ * Kopfdaten as German-labeled context lines into the first body chunk's own text (see {@code
+ * MailDocumentPipeline#headerContextText}), which is what reaches embedding and full-text search;
+ * these structured fields are the separate, machine-readable copy the Fundstellen-Anzeige and a
+ * structured Absender-/Zeitraum-/Betreff-Filterung need. {@code MAIL_DATE_METADATA_KEY} is written
+ * truncated to whole seconds (an {@link java.time.Instant#toString()} rendering) so it stays
+ * lexicographically sortable - {@link java.time.Instant#toString()} omits the fractional part
+ * entirely when it is zero, which would otherwise make two close timestamps compare incorrectly as
+ * text.
  *
  * <p>Public rather than package-private because {@code FileProcessingService} - outside this
  * pipeline's own package - reads these keys back when copying chunk metadata onto the persisted

@@ -21,7 +21,16 @@ Volltextpfad konstruktionsbedingt nicht sieht) und den
 (Issue #1103: Markdown wird über `MarkdownDocumentPipeline` statt `TikaFallbackPipeline`
 gechunkt — kein Messvertragspunkt 1–10 ändert sich, aber alle drei Eval-Domänen brauchen neue
 Baselines auf beiden Pfaden, weil sich Chunkinhalt und -zahl der ausschließlich-Markdown-Korpora
-ändern).
+ändern) und den
+[Nachtrag zum Ingestion-Pipeline-Fixpunkt](#nachtrag-ingestion-pipeline-fixpunkt-issue-1144)
+(Issue #1144: `ingestionPipelineFingerprint` — ein Sammelabdruck über alle registrierten
+Ingestion-Pipelines — wird Fixpunkt auf **beiden** Pfaden, weil beide Chunks derselben Pipelines
+messen; Rohvektor-Messvertrag-Version 3, Pipeline-Messvertrag-Version 4, reine
+Fixpunkt-Ergänzung ohne neuen Messlauf für alle drei Baselines) und den
+[Nachtrag zur Rangreserve](#nachtrag-rangreserve-grenzstabilität-issue-1151)
+(Issue #1151/PR #1206: `MarginAggregate` weist je Golden-Fall/-Gruppe aus, wie knapp ein Treffer das
+Fenster erreicht hat — bewusst nur im Report ausgewiesen, kein Fixpunkt, keine Messvertragsänderung
+auf beiden Pfaden; Folgeentscheidung, ob/wie das ein Fehlerkriterium wird, in Issue #1210).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
@@ -622,3 +631,94 @@ ein Chunk-Size- oder Embedding-Modell-Wechsel, die beide eigene Fixpunkte sind. 
 bewusst nicht geschlossen (Umfang des Issues ist die Registrierung samt Baseline-Neuziehung, nicht der
 Fixpunkt-Katalog); ein Folge-Issue für einen `chunkingPipeline`-Fixpunkt ist sinnvoll, sobald ein
 zweites Format nach seiner eigenen Registrierung denselben Effekt zeigt.
+
+---
+
+## Nachtrag: Ingestion-Pipeline-Fixpunkt (Issue #1144)
+
+**Datum:** 2026-09-03 · **Betrifft:** beide Messpfade, alle drei Eval-Domänen.
+
+Schließt die im Nachtrag zu #1103 offen benannte Lücke: Zwei weitere reale Vorfälle aus derselben
+Arbeit (Eval-Harness leitete ihre Chunk-Map über den alten Tika-Zerleger statt über die produktive
+Pipeline ab; ein `answer_span`-Fehler im Golden Dataset, den erst der reparierte Wächter fand) sind
+Belege derselben Fehlerklasse: die messende Seite sah eine andere Zerlegung als die produktive, ohne
+dass ein Fixpunkt es bemerkt hätte.
+
+### 28. `ingestionPipelineFingerprint` als neuer Fixpunkt auf beiden Pfaden
+
+`Baseline.FixedPoints` und `PipelineBaseline.FixedPoints` führen je ein neues Feld
+`ingestionPipelineFingerprint`: ein sortierter Sammelabdruck `id:version` über **alle** von
+`DocumentPipelineRegistry` gemeldeten Pipelines (einschließlich der Fallback-Pipeline), Komma-getrennt
+und nach Id sortiert — deterministisch unabhängig von der Bean-Registrierungsreihenfolge
+(`IngestionPipelineFingerprint`). Ein kanonischer String statt eines Hashes, nach dem Vorbild von
+`embeddingModel` (neben seinem Digest geführt) statt `corpusManifestSha256` (ein Hash, weil eine
+Dokumentliste unlesbar groß wäre): zehn Pipelines passen in einen Diff, den ein Reviewer auf einen
+Blick liest, und ein Diff, der **welche** Pipeline sich bewegt hat benennt, ist hier strikt
+nützlicher als einer, der nur "etwas hat sich geändert" sagt.
+
+Der Abdruck erfasst bewusst **alle** registrierten Pipelines, nicht nur die vom jeweiligen Korpus
+genutzten — ein Routing-Fehler (ein Dokument landet unerwartet bei der falschen Pipeline) wäre sonst
+selbst dann unsichtbar, wenn beide beteiligten Pipelines für sich genommen unverändert sind.
+
+**Kein neuer Guard in `PipelineHarnessSupport#requireMeasurableConfiguration`** (Issue #1144
+hatte das als offene Frage benannt): Dieser Guard prüft die Query-Konfiguration eines Laufs
+(`top-k`, Dekomposition, Pipeline-Stufen, Volltextpfad, Reranking) — Bedingungen, unter denen
+ein Lauf etwas anderes misst, als seine Feldnamen behaupten. `ingestionPipelineFingerprint`
+ist kein Zustand, den eine Laufkonfiguration versehentlich falsch setzen könnte; er wird aus
+der tatsächlich verdrahteten `DocumentPipelineRegistry` gelesen und ist damit für jeden Lauf
+korrekt, ohne dass eine Bedingung geprüft werden müsste. Der bestehende Vergleich in
+`BaselineComparator`/`PipelineBaselineComparator` genügt.
+
+### 29. Beide Messverträge steigen: Rohvektor 2 → 3, Pipeline 3 → 4
+
+Ein neuer Fixpunkt erweitert, was „dieselbe Messung" heißt (Entscheidung 6) — auf **beiden** Pfaden
+gleichzeitig, weil beide Chunks derselben Ingestion-Pipelines messen (anders als der Nachtrag zu
+#1049, der ausschließlich den Pipeline-Pfad betraf, weil nur dieser den lexikalischen Pfad kennt).
+`EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` steigt von 2 auf **3**,
+`PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` von 3 auf **4**; beide Zählungen
+bleiben unabhängig voneinander (Entscheidung 16), sie bewegen sich hier nur zufällig im selben Schritt.
+
+### 30. Reine Fixpunkt-Ergänzung, kein neuer Messlauf
+
+Die sechs committeten Baselines (drei Domänen × zwei Pfade) wurden **ohne** neuen `evaluateRetrieval`-
+Lauf nachgezogen — nur die Fixpunkte, nicht die Messzahlen, ändern sich: der Eval-Korpus besteht (Stand
+#1145) ausschließlich aus Markdown, sodass `MarkdownDocumentPipeline` die einzige tatsächlich
+beteiligte Pipeline ist und ihre Version durch diesen Nachtrag unverändert bleibt. Der Abdruck selbst
+(`docx:3,email:2,html:1,markdown:1,odp:2,odt:2,pdf:1,pptx:1,tabular:1,tika-fallback:1`, Stand
+`DocumentPipelineRegistry` zum Zeitpunkt dieses Nachtrags) ist identisch in allen sechs Dateien.
+Kein bereits committeter Chunk, keine bereits committete Metrik ändert sich durch diesen Nachtrag —
+nur die Beschreibung der Messbedingungen wird vollständiger.
+
+## Nachtrag: Rangreserve (Grenzstabilität, Issue #1151)
+
+> **Nachtrag vom 2026-09-03, Issue #1151/PR #1206.** Kein neuer Messvertragspunkt, keine
+> Versionsänderung auf beiden Pfaden — hier festgehalten, damit die Existenz der Kennzahl und ihr
+> bewusst report-only-Status nicht nur im PR nachlesbar sind.
+
+Ein Golden-Fall, der mit großem Rangabstand gelöst ist, und einer, der gerade noch über die
+Fensterschwelle rutscht, waren in den bestehenden Metriken nicht unterscheidbar — beide zählen
+binär als „gelöst" (`hitRateAt5`/`hitCountAt5`). `RetrievalMetrics#marginAtK` und `MarginAggregate`
+tragen dafür je Fall bzw. je Gruppe die Rangreserve mit: den Abstand des ersten relevanten Treffers
+zur Fenstergrenze, disjunkt aufgeteilt in Treffer, „knapp gelöst" und „knapp verfehlt" (siehe
+`docs/features/retrieval-benchmark.md`, Abschnitt 7, für die vollständige Definition).
+
+**Bewusst kein Fixpunkt, keine Messvertragsänderung.** Die Rangreserve steckt nicht in
+`MetricsAggregate`/`PipelineMetricsAggregate` und damit nicht in `Baseline`/`PipelineBaseline`;
+`BaselineComparator`/`PipelineBaselineComparator` lesen sie nicht.
+`CURRENT_MEASUREMENT_CONTRACT_VERSION`/`PIPELINE_MEASUREMENT_CONTRACT_VERSION` bleiben bei 3/4.
+Sie ist reine Berichtsanreicherung, keine neue Bedingung dafür, wann zwei Läufe „dasselbe messen"
+(Entscheidung 6) — dieselbe Kategorie wie `allExpectedDocumentsHitAt10` (#913) oder
+`hitCountAt5`/`hitCountAt10` (#306) vor ihrer Aufnahme in die Fallzahlprüfung. Ob und wie die
+Rangreserve später ein Fehlerkriterium nach ADR-0013 wird, klärt Issue #1210 — das wäre dann eine
+eigene Entscheidung dieses ADRs (Baseline-Schema) und/oder von ADR-0013 (Fehlerkriterium), nicht
+rückwirkend dieser Nachtrag.
+
+### 31. Dritter Nachtrag des Fingerabdrucks: `email:2` → `email:3` (Issue #1164, PR #1201)
+
+Chronologisch nach dem Rangreserve-Nachtrag oben (dessen "bleiben bei 3/4" den Stand zum Zeitpunkt von PR #1206 festhält, unberührt von dieser Änderung - die Rangreserve selbst bleibt weiterhin kein Fixpunkt und bewegt keine Vertragsversion).
+
+PR #1201 (Mail-Kopfdaten an der Fundstelle anzeigen und filtern, Issue #1164) kürzt `mail_date` auf Sekundenpräzision, bevor er als Chunk-Metadatum geschrieben wird - `Instant#toString()` lässt den Bruchteil sonst ganz weg, wenn er null ist, was zwei nur millisekundengenau unterschiedliche Zeitpunkte lexikografisch falsch sortieren lässt (Voraussetzung für einen späteren Zeitraumfilter). Das ist eine Chunk-Text-ändernde Pipeline-Änderung (ingestion-pipelines.md, Teil 4 Regel (d)), `MailDocumentPipeline#version()` steigt daher 2 → 3.
+
+Damit bewegt sich der Sammelabdruck aus Entscheidung 28 ein drittes Mal (nach der ursprünglichen Aufnahme des Fixpunkts in Entscheidung 28/29 und dessen Nachzug in Entscheidung 30): `email:2` → `email:3` im `ingestionPipelineFingerprint` aller sechs committeten Baselines. Nach Entscheidung 29 folgt daraus zwingend ein weiterer Versionsschritt auf beiden Messverträgen: `EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` 3 → **4**, `PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` 4 → **5**. Wie in Entscheidung 30: reine Fixpunkt-Ergänzung ohne neuen Messlauf - der Eval-Korpus besteht weiterhin ausschließlich aus Markdown, `MailDocumentPipeline` verarbeitet keines seiner Dokumente, die gemessenen Chunks und Zahlen bleiben unverändert.
+
+**Versionskollision mit ADR-0022 §9 aufgelöst:** ADR-0022 ("Ein Anhang ist ein eigenes Dokument") hatte `MailDocumentPipeline`-Version 3 bereits dem dort beschriebenen Anhangsumbau (Issue #1183) zugesagt. Da dieser PR v3 zuerst für den `mail_date`-Fix verbraucht, geht der Anhangsumbau nun auf **v4** - ADR-0022 §9 und Issue #1183 sind entsprechend korrigiert.

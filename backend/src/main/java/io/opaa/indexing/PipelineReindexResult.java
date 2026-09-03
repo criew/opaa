@@ -1,4 +1,4 @@
-package io.opaa.indexing.pipeline;
+package io.opaa.indexing;
 
 /**
  * What one {@link PipelineReindexService#reindexBatch} call did. A call that returns {@link

@@ -77,7 +77,8 @@ class SearchDiagnosisRerankParityTest {
             mock(KnowledgeLibraryRepository.class),
             mock(io.opaa.group.GroupService.class),
             mock(DocumentRepository.class),
-            rerankModelRole);
+            rerankModelRole,
+            java.time.Clock.systemUTC());
 
     return service.diagnose(
         caller, new DiagnosisQuery("Frage", DiagnosisContextType.SELF, null, null));

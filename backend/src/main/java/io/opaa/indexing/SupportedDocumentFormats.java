@@ -257,10 +257,10 @@ public final class SupportedDocumentFormats {
   }
 
   /**
-   * Whether {@code detectedMimeType} is Tika-detected PDF content - used by {@link
-   * DocumentService#isTextlessPdf} to tell a scan PDF (ingestion-pipelines.md, Teil 3, Punkt 1
-   * "Scan-Erkennung und Bestandsprüfung") apart from any other format that happens to also yield
-   * blank extracted text.
+   * Whether {@code detectedMimeType} is Tika-detected PDF content - used by {@code
+   * io.opaa.indexing.pipeline.TikaFallbackPipeline#isTextlessPdf} to tell a scan PDF
+   * (ingestion-pipelines.md, Teil 3, Punkt 1 "Scan-Erkennung und Bestandsprüfung") apart from any
+   * other format that happens to also yield blank extracted text.
    */
   public static boolean isPdfContent(String detectedMimeType) {
     return ".pdf".equals(extensionForDetectedContent(detectedMimeType));

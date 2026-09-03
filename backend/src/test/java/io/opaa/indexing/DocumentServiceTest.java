@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -168,50 +167,5 @@ class DocumentServiceTest {
 
     assertThat(result).isNotEmpty();
     assertThat(result.getFirst().getText()).contains("Plain text content");
-  }
-
-  // --- #1055: scan-PDF detection -----------------------------------------------------------
-
-  @Test
-  void isTextlessPdfDetectsAPdfWhoseParsedDocumentsCarryOnlyBlankText() throws IOException {
-    Path file = tempDir.resolve("scan.pdf");
-    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
-
-    var parsed = List.of(new org.springframework.ai.document.Document(""));
-
-    assertThat(service.isTextlessPdf(file, parsed)).isTrue();
-  }
-
-  @Test
-  void isTextlessPdfDetectsAPdfWithNoParsedDocumentsAtAll() throws IOException {
-    Path file = tempDir.resolve("empty-parse.pdf");
-    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
-
-    assertThat(service.isTextlessPdf(file, List.of())).isTrue();
-  }
-
-  @Test
-  void isTextlessPdfIsFalseWhenAtLeastOneParsedDocumentCarriesText() throws IOException {
-    Path file = tempDir.resolve("has-text.pdf");
-    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
-
-    var parsed =
-        List.of(
-            new org.springframework.ai.document.Document(""),
-            new org.springframework.ai.document.Document("actual content"));
-
-    assertThat(service.isTextlessPdf(file, parsed)).isFalse();
-  }
-
-  @Test
-  void isTextlessPdfIsFalseForATextlessNonPdfFile() throws IOException {
-    // The rule is scoped to PDF (ingestion-pipelines.md, Teil 3, Punkt 1) - blank text from any
-    // other format is left to the existing generic "no content extracted" handling.
-    Path file = tempDir.resolve("blank.txt");
-    Files.writeString(file, "", StandardCharsets.UTF_8);
-
-    var parsed = List.of(new org.springframework.ai.document.Document(""));
-
-    assertThat(service.isTextlessPdf(file, parsed)).isFalse();
   }
 }

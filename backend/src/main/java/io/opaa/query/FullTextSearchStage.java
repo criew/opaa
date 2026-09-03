@@ -79,7 +79,9 @@ class FullTextSearchStage implements RetrievalStage {
               inFlight,
               inFlight,
               List.of(),
-              List.of("lexical search path switched off (opaa.query.full-text-search-enabled)")));
+              List.of(
+                  RetrievalNote.LEXICAL_PATH_DISABLED.format(
+                      "opaa.query.full-text-search-enabled"))));
     }
 
     Set<UUID> searchable = backfillGate.searchableLibraries(context.searchScope());
@@ -92,9 +94,8 @@ class FullTextSearchStage implements RetrievalStage {
               inFlight,
               List.of(),
               List.of(
-                  "no library of the search scope has a completed full-text backfill",
-                  "the lexical path stays out of the fusion until a library's backfill is"
-                      + " complete")));
+                  RetrievalNote.NO_FULL_TEXT_BACKFILL.format(),
+                  RetrievalNote.FULL_TEXT_BACKFILL_PENDING.format())));
     }
 
     List<String> searchQueries =
@@ -115,7 +116,7 @@ class FullTextSearchStage implements RetrievalStage {
                 + " candidates",
             i + 1,
             e);
-        notes.add("lexical search failed for " + label + ": " + e.getClass().getSimpleName());
+        notes.add(RetrievalNote.LEXICAL_SEARCH_FAILED.format(label, e.getClass().getSimpleName()));
         continue;
       }
       lists.add(new CandidateList(label, candidates));
@@ -133,15 +134,12 @@ class FullTextSearchStage implements RetrievalStage {
     }
 
     int retrieved = lists.stream().mapToInt(list -> list.documents().size()).sum();
-    notes.add(0, "full-text search, " + lists.size() + " list(s)");
-    notes.add(1, "fetch-k " + context.queryProperties().fetchK() + " per list");
+    notes.add(0, RetrievalNote.FULL_TEXT_SEARCH_LISTS.format(lists.size()));
+    notes.add(1, RetrievalNote.FETCH_K.format(context.queryProperties().fetchK()));
     notes.add(
         2,
-        "permission filter applied inside the query: "
-            + searchable.size()
-            + " of "
-            + context.searchScope().size()
-            + " scoped libraries searched, the rest awaiting their backfill");
+        RetrievalNote.FULL_TEXT_PERMISSION_FILTER.format(
+            searchable.size(), context.searchScope().size()));
     // Records the queries actually searched when this stage derived them itself, so a run never
     // reports having searched nothing while it did - the vector path does the same, and either
     // path may be the one that runs.
@@ -153,6 +151,6 @@ class FullTextSearchStage implements RetrievalStage {
   }
 
   static String listLabel(int searchQueryIndex) {
-    return "full-text search · sub-query " + (searchQueryIndex + 1);
+    return RetrievalListLabel.FULL_TEXT_SEARCH.format(searchQueryIndex + 1);
   }
 }

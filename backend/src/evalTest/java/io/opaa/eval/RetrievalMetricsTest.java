@@ -197,4 +197,58 @@ class RetrievalMetricsTest {
   void recallCeilingIsOneWhenExpectedSetFitsWithinK() {
     assertThat(RetrievalMetrics.recallCeilingAtK(java.util.Set.of("e1", "e2"), 10)).isEqualTo(1.0);
   }
+
+  // --- issue #1151: "Benchmark bildet Grenzstabilität nicht ab" ---------------------------------
+
+  @Test
+  void hitRateMarginDistinguishesASafeRankOneHitFromAKnappRankFiveHitBehindIdenticalHitRate() {
+    // The exact gap issue #1151 reports: hitRateAt5 alone cannot tell a comfortable hit from one
+    // that just barely survived the window — both score the identical 1.0. Reproduces the "rot ohne
+    // Änderung" case for this issue as a compile failure: RetrievalMetrics#marginAtK, and therefore
+    // hitRateMarginAt5, did not exist before this change.
+    GoldenCase goldenCase = caseWithExpected(List.of("e"));
+    RetrievalMetrics.QueryResult safe =
+        RetrievalMetrics.evaluate(goldenCase, List.of("e", "d2", "d3", "d4", "d5"));
+    RetrievalMetrics.QueryResult knapp =
+        RetrievalMetrics.evaluate(goldenCase, List.of("d1", "d2", "d3", "d4", "e"));
+
+    assertThat(safe.hitRateAt5())
+        .as("both cases score the identical Hit Rate@5 — the blind spot this issue names")
+        .isEqualTo(knapp.hitRateAt5())
+        .isEqualTo(1.0);
+
+    assertThat(safe.hitRateMarginAt5())
+        .as("rank 1 of 5 has four ranks of slack left before falling out of the window")
+        .isEqualTo(4);
+    assertThat(knapp.hitRateMarginAt5())
+        .as("rank 5 of 5 occupies the window's last permitted rank — no slack left")
+        .isEqualTo(0);
+    assertThat(safe.hitRateMarginAt5()).isGreaterThan(knapp.hitRateMarginAt5());
+  }
+
+  @Test
+  void
+      hitRateMarginIsNegativeOnceTheHitFallsOutsideTheHitRateWindowButRankingMarginStaysPositive() {
+    // The VGS demo case from the issue in miniature: a hit at rank 6 misses hitRateAt5 (margin -1,
+    // "one rank change would have saved it") while still comfortably inside the wider ranking
+    // window (rankingMarginAt10 = 4).
+    GoldenCase goldenCase = caseWithExpected(List.of("e"));
+    RetrievalMetrics.QueryResult result =
+        RetrievalMetrics.evaluate(
+            goldenCase, List.of("d1", "d2", "d3", "d4", "d5", "e", "d7", "d8", "d9", "d10"));
+
+    assertThat(result.hitRateAt5()).isEqualTo(0.0);
+    assertThat(result.hitRateMarginAt5()).isEqualTo(-1);
+    assertThat(result.rankingMarginAt10()).isEqualTo(4);
+  }
+
+  @Test
+  void marginIsNullWhenNoExpectedDocumentAppearsAnywhereInTheRankedList() {
+    GoldenCase goldenCase = caseWithExpected(List.of("e"));
+    RetrievalMetrics.QueryResult result =
+        RetrievalMetrics.evaluate(goldenCase, List.of("d1", "d2", "d3"));
+
+    assertThat(result.hitRateMarginAt5()).isNull();
+    assertThat(result.rankingMarginAt10()).isNull();
+  }
 }

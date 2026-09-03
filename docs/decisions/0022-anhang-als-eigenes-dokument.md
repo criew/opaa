@@ -278,8 +278,15 @@ das bereits gebaute Verfahren aus `docs/features/ingestion-pipelines.md`, Teil 4
 hier beschriebenen Anhangsumbau aus. Zwischenzeitlich hat #1130 Befund 1 (Mail-Kopfdaten als
 Kontextzeilen im Chunk-Text, PR #1166) bereits v2 belegt — dieser PR lag zeitlich vor der Umsetzung
 dieses ADR. Der hier beschriebene Anhangsumbau geht deshalb auf **v3**, nicht v2; die Bestandsmigration
-in diesem Abschnitt gilt inhaltlich unverändert, nur mit der verschobenen Versionsnummer. Bestehende
-`email`-Chunks unterhalb v3 sind damit über die vorhandenen Administrationsendpunkte
+in diesem Abschnitt gilt inhaltlich unverändert, nur mit der verschobenen Versionsnummer.
+
+**Zweite Korrektur (Review zu PR #1201):** #1164 hat v3 zwischenzeitlich für einen eigenen, unabhängigen
+Zweck belegt (mail_date wird seither auf Sekundenpräzision gekürzt geschrieben, damit ein
+späterer Zeitraumfilter lexikografisch sortieren kann) - dieser PR lag wiederum zeitlich vor der
+Umsetzung des hier beschriebenen Anhangsumbaus. Der Anhangsumbau geht deshalb auf **v4**, nicht v3;
+die Bestandsmigration in diesem Abschnitt gilt inhaltlich unverändert, nur mit der abermals
+verschobenen Versionsnummer. Bestehende
+`email`-Chunks unterhalb v4 sind damit über die vorhandenen Administrationsendpunkte
 (`GET /pipeline-versions`, `POST /pipeline-reindex`) als nachzuziehen erkennbar und lassen sich gezielt
 neu erzeugen — kein Sonderfall, dieselbe Mechanik, die für jede andere Pipeline-Versionsänderung bereits
 gilt.

@@ -6,6 +6,7 @@ import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
+import io.opaa.indexing.pipeline.DocumentPipelineRunner;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
 import io.opaa.library.KnowledgeLibrary;
@@ -177,7 +178,8 @@ public class FileProcessingService {
       DocumentPipelineRegistry.Routed routed = pipelineRegistry.routedPipelineFor(file, fileName);
       DocumentPipeline pipeline = routed.pipeline();
       DocumentPipelineResult parsed =
-          pipeline.run(DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()));
+          DocumentPipelineRunner.run(
+              pipeline, DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()));
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
           log.warn("No usable text extracted from {} by pipeline {}", file, pipeline.id());
@@ -339,7 +341,8 @@ public class FileProcessingService {
           pipelineRegistry.routedPipelineFor(localFile, fileName);
       DocumentPipeline pipeline = routed.pipeline();
       DocumentPipelineResult parsed =
-          pipeline.run(
+          DocumentPipelineRunner.run(
+              pipeline,
               DocumentPipelineSource.ofFile(localFile, fileName, routed.detectedExtension()));
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
@@ -463,7 +466,8 @@ public class FileProcessingService {
       // already extracted text and goes to the fallback pipeline directly (ADR-0017, decision 2).
       DocumentPipeline pipeline = pipelineRegistry.fallbackPipeline();
       DocumentPipelineResult parsed =
-          pipeline.run(DocumentPipelineSource.ofExtractedText(mainText, fileName));
+          DocumentPipelineRunner.run(
+              pipeline, DocumentPipelineSource.ofExtractedText(mainText, fileName));
       switch (parsed.outcome()) {
         // Before #1056 this path ignored the outcome entirely and left an entry whose text
         // chunked down to nothing as INDEXED with zero chunks - the same silent empty index the
@@ -555,7 +559,7 @@ public class FileProcessingService {
    *
    * @return whether the document was actually re-indexed
    */
-  public boolean reindexStoredDocument(UUID documentId, Path storedFile) {
+  boolean reindexStoredDocument(UUID documentId, Path storedFile) {
     return processStoredFile(documentId, storedFile, true);
   }
 
@@ -589,7 +593,8 @@ public class FileProcessingService {
           pipelineRegistry.routedPipelineFor(storedFile, doc.getFileName());
       DocumentPipeline pipeline = routed.pipeline();
       DocumentPipelineResult parsed =
-          pipeline.run(
+          DocumentPipelineRunner.run(
+              pipeline,
               DocumentPipelineSource.ofFile(
                   storedFile, doc.getFileName(), routed.detectedExtension()));
       switch (parsed.outcome()) {
@@ -874,8 +879,8 @@ public class FileProcessingService {
 
   /**
    * The connector counterpart to {@link #markConnectorFailed} for a document that never yields a
-   * usable chunk - flagged by {@link DocumentService#isTextlessPdf} or by an empty {@code
-   * chunkDocuments} result. Marks {@code FAILED} with {@link
+   * usable chunk - flagged by {@code io.opaa.indexing.pipeline.TikaFallbackPipeline#isTextlessPdf}
+   * or by an empty {@code chunkDocuments} result. Marks {@code FAILED} with {@link
    * DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE} and reports {@link
    * FileProcessingResult#NO_EXTRACTABLE_TEXT}, the same rejection contract {@link
    * FileProcessingResult#QUOTA_EXCEEDED} already has.

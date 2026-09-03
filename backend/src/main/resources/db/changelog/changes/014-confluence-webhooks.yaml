@@ -1,8 +1,8 @@
 databaseChangeLog:
   # ADR-0023 / #1140: a per-library webhook secret and the WEBHOOK trigger source. Each changeset is
-  # one schema change with its own delta test (io.opaa.migration.Migration012ConfluenceWebhooksTest).
+  # one schema change with its own delta test (io.opaa.migration.Migration014ConfluenceWebhooksTest).
   - changeSet:
-      id: 012-knowledge-libraries-confluence-webhook-secret
+      id: 014-knowledge-libraries-confluence-webhook-secret
       author: opaa
       comment: >-
         #1140: the secret a Confluence instance (Data Center webhook) or an Automation rule (Cloud)
@@ -23,7 +23,7 @@ databaseChangeLog:
               ALTER TABLE public.knowledge_libraries DROP COLUMN source_confluence_webhook_secret;
 
   - changeSet:
-      id: 012-indexing-jobs-triggered-by-webhook
+      id: 014-indexing-jobs-triggered-by-webhook
       author: opaa
       comment: >-
         #1140: a run may be started by an authenticated webhook notification; the check constraint

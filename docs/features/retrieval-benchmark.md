@@ -549,6 +549,16 @@ Drei Milderungen, keine Lösungen:
 > ausdrücklich nicht entschieden (ADR-0012, Nachtrag Volltextpfad, Entscheidung 23). Der Messvertrag
 > des Pipeline-Pfads steht seither auf Version 3, mit den Fixpunkten `fullTextSearchEnabled` und
 > `fullTextBackfillComplete`.
+>
+> **Fortschreibung (Issue #1144, 09/2026):** Kein Fixpunkt hielt fest, welche Ingestion-Pipeline
+> (Kennung/Version) die gemessenen Chunks erzeugt hat — ein Pipelinewechsel für ein bereits
+> registriertes Format verschob die Zahlen ununterscheidbar von einer Retrieval-Regression, belegt an
+> zwei realen Vorfällen aus #1103. `ingestionPipelineFingerprint` — ein sortierter Sammelabdruck
+> `id:version` über alle registrierten Pipelines (`IngestionPipelineFingerprint`) — ist seither
+> Fixpunkt auf **beiden** Pfaden: Rohvektor-Messvertrag Version 2 → 3, Pipeline-Messvertrag Version
+> 3 → 4. Reine Fixpunkt-Ergänzung ohne neuen Messlauf, weil der Eval-Korpus (Stand #1145)
+> ausschließlich aus Markdown besteht — nur `MarkdownDocumentPipeline` trägt zu den gemessenen Chunks
+> bei, der Abdruck listet aber alle registrierten Pipelines, nicht nur die vom Korpus genutzten.
 
 
 Fünf Kategorien kommen hinzu. Jede hat ein benanntes Fehlerbild, eine überprüfbare Ground Truth und
@@ -722,6 +732,56 @@ Zwei Klarstellungen, damit der Grundsatz nicht ins Gegenteil kippt:
 
 Der erwartete Nebeneffekt ist der eigentliche Gewinn: Die Diskussion verschiebt sich von „welches
 Verfahren ist state of the art?" zu „welche unserer Fragen scheitern und woran?".
+
+---
+
+## 7. Grenzstabilität (Rangreserve)
+
+**Befund (Issue #1151, Live-Abnahme zu #938):** `Hit@5` und die anderen Ranking-Metriken sind binär
+je Fenster — ein Fall, der mit großem Abstand auf Rang 1 liegt, und ein Fall, der gerade noch am
+Fensterrand überlebt, zählen im Bericht identisch als „gelöst". Eine Änderung, die viele knappe
+Fälle von „gerade noch" auf „gerade nicht mehr" schiebt, fällt deshalb erst auf, wenn sie tatsächlich
+kippt — nicht schon, wenn sich ihre Marge verringert.
+
+**Kennzahl: Rangreserve statt Score-Abstand.** Für jeden Golden-Fall trägt der Harness zusätzlich den
+Rangabstand des ersten relevanten Treffers zur Fenstergrenze mit (`RetrievalMetrics#marginAtK`):
+`fensterK - rang` des ersten relevanten Treffers, `null` wenn kein erwartetes Dokument in der
+Rangliste vorkommt. Positiv heißt „Luft vor dem Fensterrand", `0` heißt „sitzt exakt auf der letzten
+zulässigen Position", negativ heißt „schon außerhalb dieses Fensters, aber weiter unten in der Liste
+noch gefunden". Bewusst ein **Rangabstand**, kein Score-Abstand zur fusionierten RRF-Verdrängungskante
+(die konkrete Zahl aus der Live-Abnahme, RRF-Differenz ≈ 0,0005): Der Harness misst die ungefilterte
+Rangfolge, nicht vergleichbare Scores über Suchpfade hinweg (ADR-0012, Entscheidung 3), und ein
+Rang-basiertes Maß kommt ohne einen zweiten, score-führenden Messpfad aus. Ein Score-basiertes Maß
+über die tatsächliche RRF-Verdrängungskante bleibt eine mögliche Erweiterung, sobald ein Bedarf dafür
+über die Berichtsebene hinausgeht.
+
+`MarginAggregate` fasst die Rangreserve je Gruppe zusammen (gesamt, je Kategorie, Schwierigkeit,
+Sprache) — und trennt dabei drei disjunkte Mengen, statt sie in einen einzigen Schwellenwertfilter
+zu werfen: **Treffer** (Marge ≥ 0, dieselbe Population wie `hitCountAt5`), davon **„knapp gelöst"**
+(Marge ≤ `MarginAggregate.MARGINAL_THRESHOLD`, aktuell 1 Rang), und separat **„knapp verfehlt"**
+(Marge negativ, aber ≥ `-MARGINAL_THRESHOLD` — der VGS/#938-Fall aus dem Befund oben, Rang 6 gegen
+ein 5-Fenster, Marge −1). Ein Fall weit außerhalb des Fensters (z. B. Rang 20 gegen ein 5-Fenster,
+Marge −15) fällt in keine der drei Mengen — insbesondere **nicht** in „knapp gelöst": Ein
+un-unterer-begrenzter Filter „Marge ≤ Schwelle" hätte genau das falsch gezählt, weil er negative
+Margen nicht ausschließt (Review-Befund zu PR #1206). Erscheint in
+`EvaluationReport`/`PipelineEvaluationReport` als `overallMargins`/`marginsBy*` und in der
+Textzusammenfassung beider Pfade.
+
+**Blinder Fleck bei mehreren erwarteten Dokumenten.** `marginAtK` verwendet wie `reciprocalRank` nur
+den **ersten** relevanten Treffer. Ein `multi_topic`-Fall mit Dokument A auf Rang 1 und Dokument B
+auf Rang 10 meldet eine große, „sichere" Marge, die allein von A kommt — obwohl `recallAt10` von B
+mitabhängt und beim nächsten Rang-Rutsch von B kippen kann, ohne dass sich die Marge bewegt. Eine
+Marge des zuletzt erreichten oder des schwächsten erwarteten Dokuments würde das schließen; hier
+bewusst nicht gebaut, weil noch keine Golden-Fall-Klasse das braucht.
+
+**Nicht Teil des Messvertrags.** Die Rangreserve ist bewusst **nur ausgewiesen, nicht verglichen**:
+Sie steckt nicht in `MetricsAggregate`/`PipelineMetricsAggregate` und damit auch nicht in
+`Baseline`/`PipelineBaseline` — `BaselineComparator`/`PipelineBaselineComparator` lesen sie nicht,
+`measurementContractVersion`/`pipelineMeasurementContractVersion` bleiben unverändert. Eine neue
+Kennzahl braucht erst eine Beobachtungsperiode über mehrere Läufe, bevor sie ein Fehlerkriterium nach
+ADR-0013 werden kann — dieselbe Zurückhaltung, mit der `hitCountAt5`/`hitCountAt10` (#306) erst als
+reine Zählung eingeführt wurden, bevor sie Teil der Fallzahlprüfung wurden. Ob und wie die Rangreserve
+später zum Fehlerkriterium wird, klärt Issue #1210.
 
 ---
 

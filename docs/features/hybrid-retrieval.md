@@ -370,6 +370,20 @@ Alarm „Volltextpfad inaktiv oder unvollständig". Eine Bibliothek, deren Chunk
 volltextindiziert sind, ist damit ein sichtbarer Betriebszustand und nicht eine Vermutung, die aus
 schlechten Antworten erschlossen werden muss.
 
+Dieser Füllstand wird über ein `metadata->>'library_id'`-Prädikat auf `vector_store` ermittelt — ohne
+eigenen Index wäre das bei rund 1 Mio. Chunks ein vollständiger Tabellenscan je Aufruf, und zwar nicht
+nur auf der Administrationsseite: `FullTextBackfillGate#searchableLibraries` fragt denselben Füllstand
+im Antwortpfad der Suche ab und cacht eine noch unvollständige Bibliothek nur für 60 Sekunden. Ein
+Ausdrucksindex auf `metadata->>'library_id'` (#1119) trägt beide Aufrufstellen; ein zusätzlicher Index
+auf den `::uuid`-Cast, den `progressForLibraries` für sein `GROUP BY` verwendet, ist gemessen nicht
+nötig — der Textindex leistet die zeilenbeschränkende Arbeit, der Cast läuft danach nur noch über die
+bereits gefilterten Zeilen.
+
+Auf einer Neuinstallation entsteht dieser Index erst beim **zweiten** Anwendungsstart: `vector_store`
+wird von Spring AI erst nach Liquibase angelegt, das Changeset überspringt sich deshalb beim ersten
+Start selbst und holt die Indexerstellung beim nächsten Start nach (siehe Kommentar in
+`changes/012-vector-store-library-id-index.yaml`).
+
 ### Die deutschen Besonderheiten
 
 Deutsch ist für lexikalische Suche der unfreundlichere Fall, und zwar aus zwei Gründen.
@@ -735,9 +749,11 @@ Entscheidung fällt gegen die Verwaltungs-Evaldomäne und gegen das gemessene La
 > Referenzhardware (Demo-Instanz) hat keine nutzbare GPU.
 >
 > **Zwei Fallen für eine spätere Messung:**
-> [#1154](https://github.com/criew/opaa/issues/1154) — das Rerank-Zeitlimit ist für CPU-Betrieb zu
-> knapp, ein langsamer, aber funktionierender Endpunkt wird als `UNREACHABLE` gemeldet; wer ohne
-> Anhebung misst, misst einen Ausfall statt einer Latenz.
+> [#1154](https://github.com/criew/opaa/issues/1154) — behoben: `OPAA_RERANK_TIMEOUT` trägt jetzt
+> voreingestellt 240s (statt der zu knappen 10s), abgeleitet aus der oben genannten
+> Drei-Minuten-Größenordnung, und die Zustandsseite unterscheidet einen Zeitüberschreitungsfall im
+> `detail`-Text von einer genuin unerreichbaren Gegenstelle. Eine spätere Messung läuft damit nicht
+> mehr in denselben Ausfall wie diese.
 > [#1153](https://github.com/criew/opaa/issues/1153) — die Kandidatenzahl 50 ist nicht belegt, die
 > Wahl zwischen 25 und 50 hängt an einem einzelnen `multi_hop`-Fall.
 
@@ -1367,10 +1383,13 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   Prozesslaufzeit gestoppt, bevor die übrigen Chunks überhaupt durchlaufen); mit #1093 bleibt der
   betroffene Chunk als bestätigter Skip sichtbar liegen, aber die Bibliothek als Ganzes kehrt in
   den lexikalischen Pfad zurück, sobald ihr übriger Bestand fertig ist — begrenzt auf das oben
-  beschriebene Zeitfenster, nicht dauerhaft. Ein Chunk, dessen `document_id`-Metadatum selbst kein
-  wohlgeformtes UUID ist, wird nicht über diese Mehrfachbestätigung geführt, sondern sofort als
-  bestätigter Skip verbucht (`document_id` in `chunk_full_text_skip` dafür nullable) — ein
-  struktureller Defekt heilt nicht durch Wiederholung. Indiziert ein zuvor gescheiterter Chunk
+  beschriebene Zeitfenster, nicht dauerhaft. Ein Chunk, dessen `document_id`-Metadatum fehlt (`NULL`)
+  oder selbst kein wohlgeformtes UUID ist, wird nicht über diese Mehrfachbestätigung geführt, sondern
+  sofort als bestätigter Skip verbucht (`document_id` in `chunk_full_text_skip` dafür nullable) — ein
+  struktureller Defekt heilt nicht durch Wiederholung, in beiden Fällen gleichermaßen (#1170: ein
+  fehlendes `document_id` blieb zunächst ein eigener Fehlermodus, weil die Auswahlabfrage solche
+  Zeilen ausschloss, während die Fortschrittszählung sie weiterhin als offen zählte). Indiziert ein
+  zuvor gescheiterter Chunk
   später erfolgreich, löscht `FullTextChunkStore.clearSkipRows` seine Skip-Zeile wieder — nur auf
   dem Backfill-Pfad, nie beim regulären Ingest, wo eine Skip-Zeile wegen frisch erzeugter Chunk-IDs
   ohnehin nie existieren kann.

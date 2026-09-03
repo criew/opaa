@@ -56,9 +56,8 @@ public class FullTextBackfillProgressService {
    * each), not separate round trips, so a backfill batch committing concurrently cannot produce an
    * inconsistent tuple - {@code READ COMMITTED} allows exactly that across separate statements.
    *
-   * <p>{@code progressForLibrary}/{@code progressForLibraries} query {@code vector_store} with a
-   * predicate on {@code metadata->>'library_id'} that no expression index backs, so each call is a
-   * full scan - acceptable at today's data volumes, and tracked for a real index in #1119.
+   * <p>The {@code vector_store} count is filtered by {@code metadata->>'library_id'}, backed by the
+   * expression index from {@code changes/012-vector-store-library-id-index.yaml} (#1119).
    */
   public FullTextBackfillProgress progressForLibrary(UUID libraryId) {
     String vectorStoreTable = schemaName + "." + tableName;
@@ -115,6 +114,11 @@ public class FullTextBackfillProgressService {
    *
    * <p>The caller always passes the libraries it is allowed to display, never "all" - the query
    * would otherwise aggregate across every organization for a display that shows one of them.
+   *
+   * <p>The {@code vector_store} subquery filters by {@code metadata->>'library_id'} (backed by the
+   * expression index from {@code changes/012-vector-store-library-id-index.yaml}, #1119) and groups
+   * by that same value cast to {@code uuid}; no separate index on the cast is needed - it only ever
+   * runs over the rows the text-expression index already restricted the scan to.
    */
   public List<FullTextBackfillProgress> progressForLibraries(Collection<UUID> libraryIds) {
     Set<UUID> distinct = new LinkedHashSet<>(libraryIds);

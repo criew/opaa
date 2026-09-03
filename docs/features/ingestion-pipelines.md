@@ -217,6 +217,22 @@ wo Chunk-Metadaten liegen: in `vector_store.metadata`. Diese Tabelle legt Spring
 nicht Liquibase — eine Spalte wäre dort gar nicht verfügbar, und eine zweite Tabelle wäre eine dritte
 Zeile je Chunk für einen Wert, der definitorisch zum Chunk gehört.
 
+**Zweiter Rückgabekanal: entdeckte Anhänge (ADR-0022, Teil 2, #1181).** `DocumentPipelineResult`
+trägt neben `chunks` eine Liste `discoveredAttachments` (Elementtyp `DiscoveredAttachment`:
+Dateiname, temporäre Datei, erkannter Medientyp) — eine Pipeline kann damit melden, dass sie beim
+Parsen eingebettete Objekte gefunden hat, ohne sie selbst zu verarbeiten. Default ist die leere
+Liste; kein bestehender Aufrufer ändert sein Verhalten. Die `CHUNKED`-Regel gilt unverändert für
+diesen Kanal mit: `chunks` bleibt leer für jeden Outcome außer `CHUNKED`, und `CHUNKED` ohne eigene
+Chunks bleibt unzulässig, auch wenn `discoveredAttachments` nicht leer ist — eine Pipeline, die nur
+Anhänge findet und selbst nichts liefert, ist ein Fall für den verallgemeinerten Anhangsweg (Teil 3,
+#1182), nicht für diesen Vertrag. Die Verantwortung für die temporäre Datei eines gemeldeten Anhangs
+geht mit der Rückgabe auf den Aufrufer über; solange kein Anhangsweg sie übernimmt, löscht
+`DocumentPipelineRunner#run` — der gemeinsame Aufruf-Wrapper um `DocumentPipeline#run`, den
+`FileProcessingService` für ein Dokument als Ganzes und `MailDocumentPipeline#processAttachment` für
+einen rekursiv verarbeiteten Anhang gleichermaßen nutzen — sie in einem `finally`, unabhängig vom
+erreichten Outcome oder einer währenddessen geworfenen Exception. Aktiv genutzt wird der Kanal erst
+mit der Umstellung von `MailDocumentPipeline` in Teil 4 (#1183).
+
 ### Parsing-Strategie: hybrid, nicht ein Werkzeug für alles
 
 Für die Frage „womit parsen" gibt es keine einheitliche Antwort, und der Versuch, eine zu erzwingen,
@@ -421,6 +437,21 @@ Referenzvarianten-Selbstprüfung des Benchmarks (siehe
 bitgleiche Zahlen zur committeten Baseline. Bleibt sie grün, ist der Nachweis geführt; schlägt sie
 fehl, war die Änderung entgegen der Annahme betroffen — und dann gilt der volle Dreischritt.
 
+**Seit Issue #1144 gilt eine zusätzliche, von "betroffen" unabhängige Auflage:**
+`ingestionPipelineFingerprint` (ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt) ist ein
+Sammelabdruck über die Versionen aller registrierten Pipelines, nicht nur der vom Korpus
+genutzten. Ein Versions-Bump — auch an einer Pipeline, deren Format "Baseline unberührt" gilt
+— verschiebt diesen Abdruck und macht damit alle sechs committeten Baselines ungültig,
+unabhängig davon, ob ein einziger Chunk des Korpus sich ändert. Die Folge: **Jedes
+Format-/Pipeline-Issue, das `version()` irgendeiner registrierten Pipeline erhöht, zieht
+`ingestionPipelineFingerprint` in allen sechs Baseline-Dateien im selben PR nach** — bei
+einem im Korpus nicht vorkommenden Format als reine Fixpunkt-Ergänzung ohne neuen Messlauf
+(genau das Verfahren, das PR #1196 vorführt), sonst als Teil des ohnehin fälligen
+Vorher-Nachher-Laufs aus Schritt 2 oben. `PipelinePathIsolationTest`
+(`committedIngestionPipelineFingerprintsMatchTheRealRegistry`) prüft das Docker-frei in
+`check` — ein vergessenes Nachziehen fällt dort auf, nicht erst nach ~70 Minuten im
+nächtlichen `evaluateRetrieval`-Lauf.
+
 ---
 
 ## Teil 3 — Formatzulassung: was dazukommt und in welcher Reihenfolge
@@ -518,7 +549,10 @@ Tika-Fallback-Pipeline: „ODS wie XLSX" gilt seitdem auch für den Reader, übe
 POI-unabhängigen ODF-XML-Leser (POI selbst versteht kein ODF) — siehe die Begründung unter
 [Punkt 3](#3-xlsx-und-csv).
 
-Baseline unberührt — kein Korpusdokument dieses Typs.
+Baseline unberührt — kein Korpusdokument dieses Typs. (Diese Feststellung galt zum Zeitpunkt
+von #1058, vor `ingestionPipelineFingerprint`; die seit #1144 zusätzliche Auflage — den
+Abdruck bei jedem `TabularDocumentPipeline`-Versions-Bump nachzuziehen — steht oben im
+Abschnitt "Baseline-Aktualisierung als Schritt jedes Format-Issues".)
 
 #### Umgesetzt (#1110, styles.xml seit #1145)
 
@@ -799,8 +833,10 @@ aus Kopfdaten, Text und Anhangstext.
 Die Pipeline trennt drei Dinge:
 
 - **Kopfdaten landen sowohl als Metadaten als auch als Kontextzeilen im Text des ersten Chunks.** Von,
-  An, Betreff, Datum werden auf jeden Kopfdaten tragenden Chunk als Metadatenfeld geschrieben (bewusste
-  Vorhaltung für eine spätere strukturierte Filterung, siehe #1164 — heute ohne Leser) und zusätzlich
+  An, Betreff, Datum werden auf jeden Kopfdaten tragenden Chunk als Metadatenfeld geschrieben — seit
+  #1164 mit Leser: `QueryService#mapSources` liest sie zurück und reicht sie bis in die
+  Fundstellen-Anzeige durch (Beleganzeige; die strukturierte Filterung nach Absender/Zeitraum/Betreff
+  selbst steht noch aus, siehe Issue #1211) — und zusätzlich
   einmalig, deutsch beschriftet, vor den Nachrichtentext des jeweils ersten erzeugten Chunks gesetzt —
   nicht wiederholt auf jedes Thread-Segment oder jedes weiter zerlegte Teilstück, sonst würde derselbe
   Verteilerkopf jeden Chunk eines langen Threads verwässern (#1130 Befund 1).
@@ -817,7 +853,7 @@ Beleg) folgt dabei den bestehenden Regeln des Anlagenwegs, siehe
 
 #### Umgesetzt (#1060)
 
-`MailDocumentPipeline` (`id` `email`, Version 2 seit #1130 Befund 1) beansprucht `.eml` und `.msg` in der
+`MailDocumentPipeline` (`id` `email`, Version 3 seit PR #1201/#1164) beansprucht `.eml` und `.msg` in der
 `DocumentPipelineRegistry`; beide Endungen sind jetzt in `SupportedDocumentFormats` zugelassen —
 unterschiedlich streng, mit einem empirisch belegten Grund: `.msg` bekommt mit
 `application/vnd.ms-outlook` einen eindeutigen, strikten Medientyp (wie PDF/DOCX). `.eml` dagegen
@@ -851,8 +887,17 @@ werden müssen, statt in einen Block zu fließen:
 `mail_from`/`mail_to`/`mail_subject`/`mail_date`, deklariert über
 `MailDocumentPipeline#passthroughMetadataKeys()` (#1107); `FileProcessingService#storeChunks` kopiert
 sie auf den gespeicherten Chunk, genau wie es das schon für `location` tut (Teil 5, Übergabepunkt).
-Diese Felder haben heute keinen Leser — eine bewusste Vorhaltung für die strukturierte Filterung nach
-Absender/Zeitraum/Betreff aus #1164, keine Fehlmodellierung (siehe `ChunkMailMetadata`-Javadoc).
+Seit #1164 (PR #1201) haben diese Felder einen Leser: `QueryService#mapSources` liest sie zurück, die
+Fundstellen-Anzeige zeigt Absender/Datum/Betreff. Die strukturierte Filterung nach
+Absender/Zeitraum/Betreff selbst steht noch aus (Issue #1211, keine Fehlmodellierung — siehe
+`ChunkMailMetadata`-Javadoc). `mail_date` wird seit PR #1201 auf Sekundenpräzision gekürzt
+geschrieben (`MailDocumentPipeline#renderMailDate`), damit ein künftiger Zeitraumfilter
+lexikografisch sortieren kann — `Instant#toString()` allein wäre das nicht zuverlässig (siehe
+`ChunkMailMetadata`-Javadoc). `MailDocumentPipeline#version()` stieg dafür 2 → 3; ein bereits
+indizierter Mail-Bestand unterhalb dieser Version trägt weiterhin den alten, potenziell nicht
+sortierbaren `mail_date`-Wert, bis die Betreiberin ihn über die vorhandenen
+Administrationsendpunkte (`GET /pipeline-versions`, `POST /pipeline-reindex`) nachzieht — Regel (d):
+„Ausgelöst wird nichts von selbst", unverändert.
 
 **Dieselben Kopfdaten landen zusätzlich, deutsch beschriftet, als Kontextzeilen vor dem
 Nachrichtentext** (#1130 Befund 1, entschieden gegen die zuvor offene Formfrage aus Teil 5, Punkt 1)
@@ -916,9 +961,11 @@ Nachricht ist deshalb die engste Passung. **Die Folge ist bewusst in Kauf genomm
 wie „Mail von Müller zum Bebauungsplan" antworten zuverlässig nur die führenden Chunks einer Nachricht
 — findet die Suche stattdessen einen späteren Chunk (eine spätere Antwort im selben Thread, oder bei
 einem sehr großen Verteiler den Chunk, der den eigentlichen Nachrichtentext trägt), trägt der keinen
-Von/Betreff-Kontext im Text mehr, nur noch die `mail_*`-Metadaten ohne Leser. Das ist der Grund, warum
-Folge-Issue #1164 eine strukturierte Beleganzeige nachliefern soll, statt sich auf den Textweg allein
-zu verlassen.
+Von/Betreff-Kontext im Text mehr, nur noch die strukturierten `mail_*`-Metadaten. Genau das ist der
+Grund, warum #1164 (PR #1201) zusätzlich zum Textweg eine strukturierte Beleganzeige nachgeliefert
+hat — `QueryService#mapSources` liest die `mail_*`-Felder unabhängig davon zurück, welcher Chunk
+gefunden wurde, und die Fundstellen-Anzeige zeigt Absender/Datum/Betreff auch dann, wenn der
+gefundene Chunk selbst keinen Kopfblock im Text trägt.
 
 **Ein Segment, das trotzdem zu lang für einen Chunk ist, fällt auf `ChunkingService`s gewöhnlichen
 Token-Splitter zurück** (#1101 Review): Ein langer Rundbrief oder eine Weiterleitungskette ohne
@@ -1301,6 +1348,31 @@ Derselbe exakte Vergleich verhindert außerdem, dass ein einmal so umgeschrieben
 weiteren Nachzieh-Aufruf erneut geparst und eingebettet wird, obwohl sein Inhalt weiterhin auf den
 Fallback zurückfällt.
 
+**Für einen Chunk mit Schlüssel gilt die Verengung auf die Fallback-Pipeline nicht mehr (#1167).**
+Die Endungsnäherung oben bleibt bewusst auf „heraus aus der Fallback-Pipeline" beschränkt, weil sie
+nur rät — ein weiteres Kriterium in die Gegenrichtung würde nie konvergieren. Der exakte Schlüssel
+rät nicht: `pipelineIdForRoutingExtension` bildet jede Endung eindeutig auf höchstens eine Pipeline
+ab, also konvergiert ein Vergleich `pipelineIdForRoutingExtension(routing_extension) <>
+gespeicherte pipeline_id` unabhängig davon, welche Pipeline gerade gespeichert ist — ein
+Nachzieh-Lauf schreibt den Schlüssel frisch aus neu erkanntem Inhalt, trifft also beim nächsten
+Aufruf garantiert wieder zu. Damit ist auch die Richtung „heraus aus einer bereits spezialisierten
+Pipeline in eine andere" erreichbar: Ein Chunk, dessen `pipeline_id` eine seither umbenannte oder
+neu registrierte Pipeline nennt, deren beanspruchte Endung aber weiterhin von genau einer Pipeline
+geführt wird, wird vom Nachzieh-Aufruf gegen diese Pipeline erfasst (`misroutedPredicateFor`s
+exakter Zweig). Nennt der Schlüssel dagegen eine Endung, die **keine** registrierte Pipeline mehr
+beansprucht (die zuständige Pipeline wurde deinstalliert, nicht nur umbenannt), ist das Ziel die
+Fallback-Pipeline selbst — dafür gibt es einen eigenen, ebenfalls exakten Zweig
+(`misroutedPredicateForFallback`), der nicht rät, welche Endungen unbeansprucht sind, sondern sie
+gegen die Vereinigung aller heute beanspruchten Formate prüft. `progressForOrganization` zählt
+beide Fälle direkt als nachzuziehen, ohne `currentVersions` nach der gespeicherten `pipeline_id` zu
+fragen, statt sie (wie zuvor) unsichtbar nur im Gesamtwert mitzuzählen und die Bibliothek fälschlich
+als vollständig zu melden. Für einen Chunk **ohne** Schlüssel (Altbestand vor #1126) bleibt die
+Fallback+Endungsnäherung unverändert der einzige Weg - ihre Konvergenzgarantie beruht weiterhin auf
+der Beschränkung auf die Fallback-Pipeline, und ein solcher Chunk, dessen `pipeline_id` eine
+deinstallierte Pipeline nennt, bleibt entsprechend weiterhin unsichtbar (nur im Gesamtwert gezählt)
+- diese Altbestandsgrenze schließt erst ein vollständiger Durchlauf mit erneuter Inhaltserkennung,
+siehe den nächsten Absatz.
+
 **Kein Nachtrag für den Altbestand in #1126 selbst.** Der Schlüssel wird ab #1126 vorwärts
 geschrieben; ein nachträgliches Setzen für vorhandene Chunks erfordert erneutes Erkennen des
 Inhaltstyps je Dokument (ein vollständiger Durchlauf über den Bestand, siehe die eng verwandte, aber
@@ -1334,12 +1406,13 @@ Hier wird nur der **Übergabepunkt** definiert:
    `MailDocumentPipeline` nutzte ausschließlich eigene Metadatenfelder (`mail_from` usw.), während
    `TabularDocumentPipeline`/`HtmlDocumentPipeline`/`PptxDocumentPipeline` ihren Strukturkontext in den
    Chunk-Text backen (`location` plus eine Kontextzeile). **Entschieden mit #1130 Befund 1: beides.**
-   Die Metadatenfelder bleiben — als Grundlage einer künftigen strukturierten Filterung nach
-   Absender/Zeitraum/Betreff (#1164) —, zusätzlich trägt `MailDocumentPipeline` dieselben Kopfdaten
-   jetzt auch als deutsch beschriftete Kontextzeilen in den Chunk-Text, einmalig auf dem ersten
-   erzeugten Chunk, damit sie Embedding und Volltextindex tatsächlich erreichen. Ein Metadatenfeld
-   ohne Leser ist wirkungslos — die Textform ist die einzige, die vor einer strukturierten Filterung
-   in Suchtreffern ankommt.
+   Die Metadatenfelder bleiben — seit #1164 (PR #1201) gelesen für die Fundstellen-Anzeige, als
+   Grundlage einer künftigen strukturierten Filterung nach Absender/Zeitraum/Betreff (Issue #1211)
+   noch offen —, zusätzlich trägt `MailDocumentPipeline` dieselben Kopfdaten jetzt auch als deutsch
+   beschriftete Kontextzeilen in den Chunk-Text, einmalig auf dem ersten erzeugten Chunk, damit sie
+   Embedding und Volltextindex tatsächlich erreichen. Ein Metadatenfeld ohne Leser ist wirkungslos —
+   zum Zeitpunkt dieser Entscheidung galt das noch für beide Wege: Die Textform war die einzige, die
+   vor Retrieval-Filterung/Beleganzeige in Suchtreffern ankam.
 2. Struktur-Metadaten sind **abgeleitet, nicht geraten**. Sie stammen aus dem Dokument selbst
    (Gliederung, Folienzähler, Blattname, Mail-Header). Inhaltlich interpretierende Felder — Dokumentart,
    Fassung, Thema — entstehen hier ausdrücklich nicht; sie gehören in die Metadaten-Spezifikation, mit
