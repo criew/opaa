@@ -3,6 +3,7 @@ package io.opaa.llm;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
@@ -19,6 +20,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.net.ssl.SSLException;
 import org.springframework.stereotype.Component;
@@ -46,9 +53,13 @@ import tools.jackson.databind.ObjectMapper;
  * user's question, where an unbounded read would tie up a request thread and the heap ({@code
  * OutOfMemoryError} is an {@link Error}, which no {@code catch (Exception)} on that path would
  * catch). Capped are the bytes read from the body ({@link #MAX_RESPONSE_BYTES}), the number of
- * ranking entries (never more than candidates were sent) and the indices they may name. Every
- * breach is a {@link RerankUnavailableException} - the same fallback as an unreachable endpoint, so
- * the query degrades to the order it already had instead of failing.
+ * ranking entries (never more than candidates were sent), the indices they may name, and the
+ * wall-clock time spent reading it: {@link HttpRequest.Builder#timeout(Duration)} only bounds the
+ * wait for response headers, so a body that stalls after headers arrive is read on a separate
+ * thread with its own deadline, carved out of whatever remained of {@link
+ * RerankProperties#timeout()} after the headers came in. Every breach is a {@link
+ * RerankUnavailableException} - the same fallback as an unreachable endpoint, so the query degrades
+ * to the order it already had instead of failing.
  *
  * <p><b>The access key never appears anywhere but the {@code Authorization} header</b> - not in an
  * exception message, not in a log line, not truncated. Redirects are never followed, so the header
@@ -91,6 +102,16 @@ public class RerankClient {
           .followRedirects(HttpClient.Redirect.NEVER)
           .build();
 
+  /**
+   * Runs the body read of one call so it can be bounded by a deadline: {@link
+   * HttpRequest.Builder#timeout(Duration)} only covers the wait for response headers, so a body
+   * that stalls afterward would otherwise block the calling query thread forever. Virtual threads,
+   * not a fixed pool - a stalled read is unblocked by closing its stream (see {@link
+   * #readBounded(InputStream, Duration)}), so no thread accumulates even under a permanently
+   * stalling endpoint, and no pool size needs to trade query concurrency against that case.
+   */
+  private final ExecutorService bodyReadExecutor = Executors.newVirtualThreadPerTaskExecutor();
+
   public RerankClient(ObjectMapper objectMapper) {
     this.objectMapper = objectMapper;
   }
@@ -98,6 +119,7 @@ public class RerankClient {
   @PreDestroy
   void closeHttpClient() {
     httpClient.close();
+    bodyReadExecutor.close();
   }
 
   /**
@@ -189,6 +211,9 @@ public class RerankClient {
       request.header("Authorization", "Bearer " + properties.apiKey());
     }
 
+    // nanoTime, not Instant/currentTimeMillis: a wall-clock jump (e.g. an NTP correction) must not
+    // distort the budget carved out for the body read below.
+    long callStartNanos = System.nanoTime();
     try {
       HttpResponse<InputStream> response =
           httpClient.send(request.build(), HttpResponse.BodyHandlers.ofInputStream());
@@ -199,7 +224,9 @@ public class RerankClient {
         if (response.statusCode() != 200) {
           throw new RerankUnavailableException(describeStatus(response.statusCode()));
         }
-        return parse(readBounded(responseBody), documents.size());
+        Duration elapsed = Duration.ofNanos(System.nanoTime() - callStartNanos);
+        Duration remaining = properties.timeout().minus(elapsed);
+        return parse(readBounded(responseBody, remaining), documents.size());
       }
     } catch (IOException e) {
       String message = describeConnectionError(e);
@@ -237,11 +264,60 @@ public class RerankClient {
   }
 
   /**
+   * Reads the body within {@code remaining} - what is left of {@link RerankProperties#timeout()}
+   * after headers arrived - on {@link #bodyReadExecutor}, so the calling thread never blocks past
+   * the deadline even though a JDK {@link InputStream} read has no timeout parameter of its own.
+   * {@code remaining} may already be spent (the header wait alone can exhaust the whole budget);
+   * that is a timeout too, not a zero-length read.
+   *
+   * <p>A breach closes {@code body} to unblock the read: for {@link
+   * HttpResponse.BodyHandlers#ofInputStream()}, closing before the body is fully consumed drops the
+   * underlying connection rather than returning it to the pool, so the endpoint sees the read end
+   * and the reading thread is freed by the resulting {@link IOException} instead of sitting on the
+   * executor forever.
+   */
+  private String readBounded(InputStream body, Duration remaining) throws IOException {
+    if (remaining.isNegative() || remaining.isZero()) {
+      closeQuietly(body);
+      throw new SocketTimeoutException("no time left to read the response body");
+    }
+    Future<String> read = bodyReadExecutor.submit(() -> readBoundedBytes(body));
+    try {
+      return read.get(remaining.toMillis(), TimeUnit.MILLISECONDS);
+    } catch (TimeoutException e) {
+      read.cancel(true);
+      closeQuietly(body);
+      throw new SocketTimeoutException("timed out reading the response body");
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof IOException io) {
+        throw io;
+      }
+      if (cause instanceof RuntimeException runtime) {
+        throw runtime;
+      }
+      throw new IOException("failed reading the response body", cause);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      closeQuietly(body);
+      throw new InterruptedIOException("interrupted while reading the response body");
+    }
+  }
+
+  private static void closeQuietly(InputStream body) {
+    try {
+      body.close();
+    } catch (IOException ignored) {
+      // The read is being abandoned anyway; a failure to close carries no further information.
+    }
+  }
+
+  /**
    * Reads at most {@link #MAX_RESPONSE_BYTES} of the body and refuses anything longer, rather than
    * materializing whatever the endpoint decides to send. The stream is closed by the caller's
    * try-with-resources, which also discards the remainder of an over-long response unread.
    */
-  private static String readBounded(InputStream body) throws IOException {
+  private static String readBoundedBytes(InputStream body) throws IOException {
     byte[] bytes = body.readNBytes(MAX_RESPONSE_BYTES + 1);
     if (bytes.length > MAX_RESPONSE_BYTES) {
       throw new RerankUnavailableException(
@@ -369,6 +445,11 @@ public class RerankClient {
     }
     if (e instanceof SSLException) {
       return "TLS handshake failed";
+    }
+    if (e instanceof InterruptedIOException) {
+      // Checked after isRequestTimeout: SocketTimeoutException is itself an
+      // InterruptedIOException subclass and must keep its own, more specific message above.
+      return "request interrupted";
     }
     return "endpoint not reachable";
   }
