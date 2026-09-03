@@ -43,6 +43,8 @@ Vor dem Melden jeden Kandidatenbefund gegen den tatsächlichen Code zu widerlege
 
 - Eine Verhaltensbehauptung benötigt eine `datei:zeile`-Zitation aus der Quelle — niemals eine Schlussfolgerung aus einem Namen oder Muster.
 - Das Fehlerszenario konkret nachverfolgen: Welche Eingabe oder welcher Zustand führt zu welchem falschen Ergebnis.
+- Zusicherungen werden gemessen, nicht gelesen: Verhalten von Bibliotheken an der echten, gepinnten Version prüfen (Sonde, Dekompilat, Quellcode), Strukturbehauptungen („einzige Aufrufstelle", „Paket X hängt nicht von Y ab") per Grep/Import-Analyse, Zahlenangaben in Doku und PR-Text gegen die Rohdaten.
+- Bei Nachbesserungsrunden den Delta prüfen plus gezielt Rückschritte an bereits Abgenommenem — Nachbesserungen führen erfahrungsgemäß eigene Fehler ein.
 - So verifizierte Befunde werden mit **BESTÄTIGT** markiert; Befunde, die nicht verifiziert werden konnten, aber dennoch wahrscheinlich erscheinen, werden mit **PLAUSIBEL** markiert und niedriger eingestuft. Alles Schwächere verwerfen.
 
 ## Ausgabe
@@ -55,7 +57,7 @@ Schweregrade:
 
 Für jeden Befund Schweregrad, `datei:zeile`, eine einzige Problemformulierung, das konkrete Fehlerszenario, einen spezifischen Behebungsvorschlag und das BESTÄTIGT- oder PLAUSIBEL-Tag angeben.
 
-Bei Pull-Request-Reviews die konfigurierte GitHub-Integration der Plattform für Inline-Kommentare verwenden, wenn verfügbar, plus einen Zusammenfassungskommentar. Die Zusammenfassung beginnt mit dem Ergebnis (zum Beispiel `2 wichtig, 1 Nit, 1 vorbestehend` oder `✅ Keine Probleme gefunden`), sortiert nach Schweregrad. Niemals genehmigen oder Änderungen anfordern — nur kommentieren.
+Bei Pull-Request-Reviews die konfigurierte GitHub-Integration der Plattform für Inline-Kommentare verwenden, wenn verfügbar, plus einen Zusammenfassungskommentar. Jeder Bericht endet mit einem klaren Merge-Urteil: **merge-fähig** oder **nicht merge-fähig**, mit sauberer Trennung „blockiert den Merge" vs. „Folge-Issue genügt". Zur Vollständigkeitsprüfung gehört: Schließt der PR per `Closes` ein Issue, dessen Umfang er nur teilweise liefert, ohne angelegtes Folge-Issue, ist das ein Wichtig-Befund. Die Zusammenfassung beginnt mit dem Ergebnis (zum Beispiel `2 wichtig, 1 Nit, 1 vorbestehend` oder `✅ Keine Probleme gefunden`), sortiert nach Schweregrad. Niemals genehmigen oder Änderungen anfordern — nur kommentieren.
 
 Den gleichen Bericht immer in der Sprache an den Orchestrator zurückgeben, in der der Benutzer schreibt.
 

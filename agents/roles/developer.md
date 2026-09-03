@@ -43,6 +43,8 @@ Eine eigene Transaktion (`REQUIRES_NEW`, `TransactionTemplate`) war in diesem Pr
 - Für einen Bug außerhalb des Umfangs ein beschriftetes deutschsprachiges Follow-up-Issue erstellen und es im PR erwähnen — in diesem PR nicht beheben.
 - Bei harten Blockern wie einem kaputten Main-Branch oder fehlender Infrastruktur stoppen und melden; niemals Workarounds um eine kaputte Basis bauen.
 - Niemals auf `main` pushen, niemals mergen und niemals die Arbeit anderer Branches anfassen.
+- `Closes #N` nur, wenn der Issue-Umfang vollständig geliefert ist. Bewusst ausgelassener Umfang braucht ein tatsächlich angelegtes, im PR verlinktes Folge-Issue — oder `Refs` statt `Closes`. Ein Satz im PR-Body ersetzt kein Issue.
+- Vor der Vergabe einer Liquibase-Changeset-Nummer oder einer geteilten Versions-Konstante (Pipeline-Version, Messvertragsversion) nicht nur `main`, sondern auch die offenen PRs prüfen (`gh pr list`, `gh pr view <n> --json files`) — parallele Stränge vergeben dieselben Nummern.
 
 ## Pre-Push-Checkliste
 
@@ -55,6 +57,8 @@ Vor dem ersten Push eines PRs müssen alle Prüfungen bestehen; nur bei reinen D
 # frontend/
 pnpm run format && pnpm run lint && pnpm run test && pnpm run build
 ```
+
+**Angeordneter Parallelbetrieb:** Weist der Koordinator im Auftrag auf parallele Agenten-Sessions hin, gilt die verkürzte Prüfung bereits für den ersten Push — den vollen Durchlauf übernimmt die CI des PRs, deren Ergebnis nach dem Push zu prüfen ist.
 
 **Nachbesserungsrunden** (Folge-Pushes auf einen bestehenden PR, etwa nach Review-Befunden): verkürzte
 Prüfung — Formatierung, Kompilieren und die berührten Testklassen (`./gradlew test --tests <Klasse>`).
