@@ -15,6 +15,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -311,9 +312,11 @@ public class PipelineReindexService {
     // (see DocumentPipelineRegistry#routedPipelineFor) does not have to agree with. If the
     // just-written chunks still name the fallback pipeline, re-selecting this document for the same
     // pipelineId would never converge - counted as skipped so the offset scans past it instead. Not
-    // needed for the exact routing-key branch (#1126, #1167): its extension-to-pipeline mapping is
-    // unique, so a candidate it selects is always written under exactly pipelineId and never
-    // selected again for the same target.
+    // needed for either exact routing-key branch (#1126, #1167): DocumentPipelineRegistry maps each
+    // extension to at most one pipeline, so a freshly written routing key never again satisfies the
+    // predicate that selected this candidate for pipelineId - even though the fresh write may
+    // resolve to a different extension than the one stored before, or write no key at all when
+    // detection fails transiently.
     if (stillFallbackLabeledAfterReindex(documentId, pipelineId)) {
       return Advance.SKIPPED;
     }
@@ -328,9 +331,10 @@ public class PipelineReindexService {
   private boolean stillFallbackLabeledAfterReindex(UUID documentId, String pipelineId) {
     String fallbackId = pipelineRegistry.fallbackPipeline().id();
     if (pipelineId.equals(fallbackId)) {
-      // Neither branch of the misrouted predicate ever targets the fallback pipeline itself (see
-      // #misroutedPredicateFor); a plain version-driven fallback re-index does not need this
-      // protection.
+      // The fallback-target branch of #misroutedPredicateFor is exact, not a guess (#1167): a
+      // re-index writes pipeline_id=fallback whenever content still resolves to no claimed
+      // extension, exactly the condition that selected the candidate, so it converges without this
+      // protection the same way the other exact branch does.
       return false;
     }
     List<String> pipelineIds =
@@ -507,26 +511,27 @@ public class PipelineReindexService {
    * {@link #selectStaleDocuments} can keep filtering (and paginating) in the database instead of
    * scanning every document of the organization.
    *
-   * <p>The exact branch compares in both directions - out of the fallback pipeline, out of another
-   * specialized pipeline, or out of a {@code pipeline_id} this deployment no longer registers at
-   * all (#1167) - because it converges regardless of the stored value: a re-index writes the
-   * routing key fresh from re-detected content, and {@link
-   * DocumentPipelineRegistry#pipelineIdForRoutingExtension} maps each extension to at most one
-   * pipeline, so a chunk selected this way is never selected again for the same {@code pipelineId}.
-   * The heuristic branch stays narrower - only a chunk still labeled with the fallback pipeline
-   * (#1105) - because it only guesses from the file name; a wider heuristic condition could
-   * disagree with the content-based re-routing on every call and never converge.
-   *
-   * <p>{@code FALSE} for the fallback pipeline itself, in both branches: a request naming the
-   * fallback pipeline is a plain version-driven re-index and needs no routing check on top of it.
+   * <p>The exact branch compares in every direction, including into the fallback pipeline itself
+   * (#1167: {@link #misroutedPredicateForFallback}, e.g. a specialized pipeline was deinstalled) -
+   * it converges regardless of the stored value, because a re-index writes the routing key fresh
+   * from re-detected content, and {@link DocumentPipelineRegistry#pipelineIdForRoutingExtension}
+   * maps each extension to at most one pipeline, so a chunk selected this way is never selected
+   * again for the same {@code pipelineId}. The heuristic branch stays narrower - a specialized
+   * {@code pipelineId} only, and only a chunk still labeled with the fallback pipeline (#1105) -
+   * because it only guesses from the file name; a wider heuristic condition could disagree with the
+   * content-based re-routing on every call and never converge.
    */
   private MisroutedPredicate misroutedPredicateFor(String pipelineId) {
+    String fallbackId = pipelineRegistry.fallbackPipeline().id();
+    if (pipelineId.equals(fallbackId)) {
+      return misroutedPredicateForFallback(fallbackId);
+    }
     DocumentPipeline pipeline =
         pipelineRegistry.pipelines().stream()
             .filter(candidate -> candidate.id().equals(pipelineId))
             .findFirst()
             .orElse(null);
-    if (pipeline == null || pipeline == pipelineRegistry.fallbackPipeline()) {
+    if (pipeline == null) {
       return new MisroutedPredicate("FALSE", List.of());
     }
     Set<String> extensions = pipeline.handledFormats();
@@ -549,8 +554,8 @@ public class PipelineReindexService {
     exactParams.add(ChunkPipelineMetadata.LEGACY_PIPELINE_ID);
     exactParams.add(pipelineId);
     // Heuristic branch: only reached for a chunk that never had the key written at all (#1125's
-    // pre-#1126 approximation, kept unchanged as the Altbestand path) - and, as before #1167, only
-    // while it is still fallback-labeled (see this method's own Javadoc for why).
+    // pre-#1126 approximation, kept unchanged as the Altbestand path), and only while it is still
+    // fallback-labeled (see this method's own Javadoc for why).
     String heuristicSql =
         extensions.stream()
             .map(extension -> "LOWER(d.file_name) LIKE ?")
@@ -573,8 +578,46 @@ public class PipelineReindexService {
     List<Object> params = new ArrayList<>(exactParams);
     params.addAll(heuristicParams);
     params.add(ChunkPipelineMetadata.LEGACY_PIPELINE_ID);
-    params.add(pipelineRegistry.fallbackPipeline().id());
+    params.add(fallbackId);
     return new MisroutedPredicate(sql, params);
+  }
+
+  /**
+   * The fallback-target counterpart of {@link #misroutedPredicateFor}'s exact branch (#1167): a
+   * chunk whose routing key (#1126) names an extension no registered pipeline claims today - {@link
+   * DocumentPipelineRegistry#pipelineIdForRoutingExtension} would resolve it to {@code fallbackId}
+   * - but whose stored {@code pipeline_id} still names something else, typically a specialized
+   * pipeline that has since been deinstalled. No heuristic counterpart: a chunk without the routing
+   * key has no way to tell "no pipeline claims this extension" from "the file-name approximation
+   * just does not recognize it", so it stays on the Altbestand path unchanged.
+   */
+  private MisroutedPredicate misroutedPredicateForFallback(String fallbackId) {
+    Set<String> claimedExtensions =
+        pipelineRegistry.pipelines().stream()
+            .filter(candidate -> candidate != pipelineRegistry.fallbackPipeline())
+            .flatMap(candidate -> candidate.handledFormats().stream())
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    StringBuilder sql =
+        new StringBuilder(
+            "(v.metadata->>'"
+                + ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY
+                + "' IS NOT NULL");
+    List<Object> params = new ArrayList<>();
+    if (!claimedExtensions.isEmpty()) {
+      sql.append(" AND v.metadata->>'")
+          .append(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY)
+          .append("' NOT IN (")
+          .append(
+              claimedExtensions.stream().map(extension -> "?").collect(Collectors.joining(", ")))
+          .append(")");
+      params.addAll(claimedExtensions);
+    }
+    sql.append(" AND COALESCE(v.metadata->>'")
+        .append(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)
+        .append("', ?) <> ?)");
+    params.add(ChunkPipelineMetadata.LEGACY_PIPELINE_ID);
+    params.add(fallbackId);
+    return new MisroutedPredicate(sql.toString(), params);
   }
 
   /**

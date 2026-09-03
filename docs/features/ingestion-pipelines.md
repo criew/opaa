@@ -1243,13 +1243,22 @@ ab, also konvergiert ein Vergleich `pipelineIdForRoutingExtension(routing_extens
 gespeicherte pipeline_id` unabhängig davon, welche Pipeline gerade gespeichert ist — ein
 Nachzieh-Lauf schreibt den Schlüssel frisch aus neu erkanntem Inhalt, trifft also beim nächsten
 Aufruf garantiert wieder zu. Damit ist auch die Richtung „heraus aus einer bereits spezialisierten
-Pipeline in eine andere" erreichbar, und ein Chunk, dessen `pipeline_id` eine seither deinstallierte
-Pipeline nennt, ist über seinen Schlüssel trotzdem auflösbar — `progressForOrganization` muss dafür
-`currentVersions` gar nicht erst nach der gespeicherten `pipeline_id` fragen, sondern zählt ihn direkt
-als nachzuziehen, statt ihn (wie zuvor) unsichtbar nur im Gesamtwert mitzuzählen und die Bibliothek
-fälschlich als vollständig zu melden. Für einen Chunk **ohne** Schlüssel bleibt die
-Fallback+Endungsnäherung unverändert der einzige Weg - ihre Konvergenzgarantie beruht weiterhin
-auf der Beschränkung auf die Fallback-Pipeline.
+Pipeline in eine andere" erreichbar: Ein Chunk, dessen `pipeline_id` eine seither umbenannte oder
+neu registrierte Pipeline nennt, deren beanspruchte Endung aber weiterhin von genau einer Pipeline
+geführt wird, wird vom Nachzieh-Aufruf gegen diese Pipeline erfasst (`misroutedPredicateFor`s
+exakter Zweig). Nennt der Schlüssel dagegen eine Endung, die **keine** registrierte Pipeline mehr
+beansprucht (die zuständige Pipeline wurde deinstalliert, nicht nur umbenannt), ist das Ziel die
+Fallback-Pipeline selbst — dafür gibt es einen eigenen, ebenfalls exakten Zweig
+(`misroutedPredicateForFallback`), der nicht rät, welche Endungen unbeansprucht sind, sondern sie
+gegen die Vereinigung aller heute beanspruchten Formate prüft. `progressForOrganization` zählt
+beide Fälle direkt als nachzuziehen, ohne `currentVersions` nach der gespeicherten `pipeline_id` zu
+fragen, statt sie (wie zuvor) unsichtbar nur im Gesamtwert mitzuzählen und die Bibliothek fälschlich
+als vollständig zu melden. Für einen Chunk **ohne** Schlüssel (Altbestand vor #1126) bleibt die
+Fallback+Endungsnäherung unverändert der einzige Weg - ihre Konvergenzgarantie beruht weiterhin auf
+der Beschränkung auf die Fallback-Pipeline, und ein solcher Chunk, dessen `pipeline_id` eine
+deinstallierte Pipeline nennt, bleibt entsprechend weiterhin unsichtbar (nur im Gesamtwert gezählt)
+- diese Altbestandsgrenze schließt erst ein vollständiger Durchlauf mit erneuter Inhaltserkennung,
+siehe den nächsten Absatz.
 
 **Kein Nachtrag für den Altbestand in #1126 selbst.** Der Schlüssel wird ab #1126 vorwärts
 geschrieben; ein nachträgliches Setzen für vorhandene Chunks erfordert erneutes Erkennen des
