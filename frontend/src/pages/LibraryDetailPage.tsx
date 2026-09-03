@@ -293,11 +293,17 @@ export default function LibraryDetailPage() {
       {/* #1138 (ADR-0023): the sharing consequence stays visible for everyone who can open the
           library - not only once in the wizard and not only in the manager-only source section. */}
       {details?.sourceType === 'CONFLUENCE' && (
-        <Alert severity="info" sx={{ mb: 2 }} data-testid="confluence-sharing-consequence">
+        <Alert
+          severity="info"
+          role="note"
+          sx={{ mb: 2 }}
+          data-testid="confluence-sharing-consequence"
+        >
           Diese Bibliothek spiegelt ausgewählte Confluence-Spaces. Alles, was daraus indiziert
           wurde, ist für alle Leseberechtigten dieser Bibliothek sichtbar — unabhängig davon, wer es
           in Confluence lesen dürfte. Was das hinterlegte Dienstkonto in Confluence nicht lesen
-          darf, wird nicht aufgenommen und erscheint im Laufprotokoll als übersprungen.
+          darf, nimmt OPAA nicht auf: Seiten, die es gar nicht erst sieht, tauchen nirgends auf; wo
+          ein Abruf oder ein ganzer Space scheitert, weist das Laufprotokoll das aus.
         </Alert>
       )}
       {!canEdit && (
@@ -1625,27 +1631,9 @@ function LibraryIndexingSection({
               <Typography variant="body2">
                 <strong>Proxy:</strong> {library.sourceProxy ?? 'nicht konfiguriert'}
               </Typography>
-              <Typography variant="body2" component="div">
-                <strong>Ausgewählte Spaces:</strong>{' '}
-                <Stack
-                  direction="row"
-                  spacing={0.5}
-                  useFlexGap
-                  component="span"
-                  sx={{ flexWrap: 'wrap' }}
-                >
-                  {(library.confluenceSpaces ?? []).map((space) => (
-                    <Chip
-                      key={space.key}
-                      size="small"
-                      label={space.name ? `${space.name} (${space.key})` : space.key}
-                    />
-                  ))}
-                </Stack>
-              </Typography>
+              <ConfluenceSpacesSummary spaces={library.confluenceSpaces} />
               <Typography variant="caption" color="text.secondary">
-                Alles, was aus diesen Spaces indiziert wird, ist für alle Leseberechtigten dieser
-                Bibliothek sichtbar — unabhängig von den Berechtigungen in Confluence.
+                Dieser Umfang gilt für alle Leseberechtigten der Bibliothek — siehe Hinweis oben.
               </Typography>
             </>
           )}
@@ -1659,9 +1647,25 @@ function LibraryIndexingSection({
         // vocabulary (assetRoleLabel maps EDITOR to "Bearbeiter") - the exact role this hint's
         // gate (canEditSource, the MANAGER/OWNER bar) excludes. "Verwaltende" mirrors MANAGER's
         // own label ("Verwalter") instead.
-        <Alert severity="info" sx={{ mb: 2 }}>
-          Die Verbindungsdaten sind nur für Verwaltende (Verwalter oder Eigentümer) sichtbar.
-        </Alert>
+        <Stack spacing={1} sx={{ mb: 2 }}>
+          <Alert severity="info">
+            Die Verbindungsdaten sind nur für Verwaltende (Verwalter oder Eigentümer) sichtbar.
+          </Alert>
+          {/* #1138 (ADR-0023): the selection is exactly the scope every reader sees - the backend
+              sends edition and spaces to every reader, so they are shown to every reader, unlike
+              address and proxy (#507). */}
+          {configKind === 'confluence' && (
+            <>
+              <Typography variant="body2">
+                <strong>Edition:</strong>{' '}
+                {library.confluenceEdition
+                  ? confluenceEditionLabel(library.confluenceEdition)
+                  : '—'}
+              </Typography>
+              <ConfluenceSpacesSummary spaces={library.confluenceSpaces} />
+            </>
+          )}
+        </Stack>
       )}
 
       {canEditSource && (
@@ -1802,6 +1806,18 @@ function runStatusChipColor(
   return 'default'
 }
 
+// #1138 (ADR-0023): a run that could not read a space or a page must not look like any other
+// completed run - the header names how many of its events are about unreadable content.
+function countUnreadable(events: IndexingRunResponse['events']): number {
+  return events.filter((e) => e.category === 'REJECTED' || e.category === 'UNREACHABLE').length
+}
+
+function runEventsLabel(events: IndexingRunResponse['events']): string {
+  const base = `${events.length} Ereignis${events.length === 1 ? '' : 'se'}`
+  const unreadable = countUnreadable(events)
+  return unreadable > 0 ? `${base}, davon ${unreadable} nicht lesbar` : base
+}
+
 function runStatusLabel(status: IndexingRunResponse['status']): string {
   if (status === 'COMPLETED') return 'Abgeschlossen'
   if (status === 'FAILED') return 'Fehlgeschlagen'
@@ -1818,6 +1834,25 @@ interface LibraryIndexingHistorySectionProps {
 // never return a new array/object identity for an unchanged state slice, or useSyncExternalStore
 // treats every render as a change and re-renders in an infinite loop ("getSnapshot should be
 // cached" warning). Mirrors IDLE_RUN_STATE's own role for runsByLibrary above.
+// #1138 (ADR-0023): the selected spaces are the scope every reader of the library sees - shown
+// to MANAGER (inside the source configuration) and to every other reader alike.
+function ConfluenceSpacesSummary({ spaces }: { spaces?: ConfluenceSpaceRef[] | null }) {
+  return (
+    <Typography variant="body2" component="div">
+      <strong>Ausgewählte Spaces:</strong>{' '}
+      <Stack direction="row" spacing={0.5} useFlexGap component="span" sx={{ flexWrap: 'wrap' }}>
+        {(spaces ?? []).map((space) => (
+          <Chip
+            key={space.key}
+            size="small"
+            label={space.name ? `${space.name} (${space.key})` : space.key}
+          />
+        ))}
+      </Stack>
+    </Typography>
+  )
+}
+
 const EMPTY_RUN_HISTORY: IndexingRunResponse[] = []
 
 // #513: einklappbares Protokoll der letzten Läufe einer Bibliothek - Kopfdaten immer sichtbar,
@@ -1878,8 +1913,9 @@ function LibraryIndexingHistorySection({
                   )}
                   {run.events.length > 0 && (
                     <Chip
-                      label={`${run.events.length} Ereignis${run.events.length === 1 ? '' : 'se'}`}
+                      label={runEventsLabel(run.events)}
                       size="small"
+                      color={countUnreadable(run.events) > 0 ? 'warning' : 'default'}
                     />
                   )}
                 </Stack>

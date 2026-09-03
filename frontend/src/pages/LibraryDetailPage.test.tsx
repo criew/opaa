@@ -568,7 +568,7 @@ describe('LibraryDetailPage', () => {
     expect(screen.getByText(/Data Center/)).toBeInTheDocument()
     expect(screen.getByText(/nach der Anlage nicht änderbar/)).toBeInTheDocument()
     expect(screen.getByText('Bauamt (BAU)')).toBeInTheDocument()
-    expect(screen.getByText(/unabhängig von den Berechtigungen in Confluence/)).toBeInTheDocument()
+    expect(screen.getByText(/gilt für alle Leseberechtigten der Bibliothek/)).toBeInTheDocument()
     // the edition is never an input here
     expect(screen.queryByRole('button', { name: 'Edition erkennen' })).not.toBeInTheDocument()
     // #1138: the sharing consequence is stated permanently, above the fold
@@ -583,12 +583,17 @@ describe('LibraryDetailPage', () => {
       detailsOf(viewerLibrary, {
         sourceType: 'CONFLUENCE',
         confluenceEdition: 'CLOUD',
+        confluenceSpaces: [{ key: 'BAU', name: 'Bauamt' }],
       }),
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     expect(await screen.findByTestId('confluence-sharing-consequence')).toHaveTextContent(
-      /Laufprotokoll als übersprungen/,
+      /weist das Laufprotokoll das aus/,
     )
+    // the scope itself - edition and spaces - is visible to the VIEWER, address and proxy are not
+    expect(screen.getByText('Bauamt (BAU)')).toBeInTheDocument()
+    expect(screen.getByText(/Cloud/)).toBeInTheDocument()
+    expect(screen.queryByText(/Proxy/)).not.toBeInTheDocument()
     unmount()
 
     setLibraryState(
@@ -835,6 +840,11 @@ describe('LibraryDetailPage', () => {
           message: 'Confluence hat den Lauf 2-mal gedrosselt',
           reference: null,
         },
+        {
+          category: 'REJECTED',
+          message: 'Space SEC ist für das hinterlegte Dienstkonto nicht lesbar',
+          reference: 'SEC',
+        },
       ],
       eventsTruncatedCount: 0,
     }
@@ -854,6 +864,8 @@ describe('LibraryDetailPage', () => {
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     expect(await screen.findByTestId('run-mode-run-voll')).toHaveTextContent('Vollabgleich')
+    // #1138: a run that could not read something says so in its header, not only when expanded
+    expect(screen.getByText('2 Ereignisse, davon 1 nicht lesbar')).toBeInTheDocument()
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /Vollabgleich/ }))
     expect(await screen.findByText('Ratenbegrenzung')).toBeInTheDocument()

@@ -70,13 +70,17 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
   static final String TRASHED_MESSAGE = "In Confluence im Papierkorb, entfernt";
 
-  /** Suffix of the per-page skip note; the note itself names space and title (#1138). */
-  static final String UNREADABLE_PAGE_MESSAGE =
-      "ist für das hinterlegte Token nicht lesbar oder nicht mehr vorhanden, übersprungen (kein"
-          + " Löschbefund)";
+  /**
+   * Suffixes of the skip notes (#1138); the notes themselves name space and title - what a reader
+   * of the protocol needs to know what the library does not contain, in the consequence's words,
+   * not the mechanism's.
+   */
+  static final String UNREADABLE_PAGE_SUFFIX =
+      "ist für das hinterlegte Dienstkonto nicht lesbar oder nicht mehr vorhanden, übersprungen;"
+          + " der bereits indizierte Stand bleibt erhalten";
 
-  static final String UNREADABLE_SPACE_MESSAGE =
-      "ist für das hinterlegte Token nicht lesbar; sein Bestand bleibt bis zur nächsten"
+  static final String UNREADABLE_SPACE_SUFFIX =
+      "ist für das hinterlegte Dienstkonto nicht lesbar; sein Bestand bleibt bis zur nächsten"
           + " vollständigen Auflistung unverändert";
 
   private final ConfluenceClientFactory clientFactory;
@@ -229,7 +233,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
         log.warn(
             "Confluence space {} not readable for library {}: {}", key, libraryId, e.getMessage());
         run.events.record(
-            IndexingEventCategory.REJECTED, "Space " + key + " " + UNREADABLE_SPACE_MESSAGE, key);
+            IndexingEventCategory.REJECTED, "Space " + key + " " + UNREADABLE_SPACE_SUFFIX, key);
         run.listingComplete = false;
         continue;
       }
@@ -310,8 +314,20 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     Optional<ConfluencePage> fetched;
     try {
       fetched = run.client.fetchPage(summary.id());
+    } catch (ConfluenceAccessException.Forbidden e) {
+      // a 403 on the page is the same finding as a 404: not readable for this account (#1138)
+      run.events.record(
+          IndexingEventCategory.REJECTED,
+          pageLabel(summary, spaceKey) + UNREADABLE_PAGE_SUFFIX,
+          pagePath);
+      run.progress.recordSkipped();
+      keepKnownAttachments(run, pagePath);
+      return;
     } catch (ConfluenceAccessException e) {
-      run.events.record(IndexingEventCategory.UNREACHABLE, e.getMessage(), pagePath);
+      run.events.record(
+          IndexingEventCategory.UNREACHABLE,
+          pageLabel(summary, spaceKey) + e.getMessage(),
+          pagePath);
       run.progress.recordFailed();
       keepKnownAttachments(run, pagePath);
       return;
@@ -321,7 +337,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       // what the library does not contain, not just that something was skipped.
       run.events.record(
           IndexingEventCategory.REJECTED,
-          "Seite „" + summary.title() + "“ (Space " + spaceKey + ") " + UNREADABLE_PAGE_MESSAGE,
+          pageLabel(summary, spaceKey) + UNREADABLE_PAGE_SUFFIX,
           pagePath);
       run.progress.recordSkipped();
       keepKnownAttachments(run, pagePath);
@@ -378,6 +394,11 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
         documentRepository.findByLibraryIdAndSourceEntryUrl(run.library.getId(), pagePath)) {
       run.currentPaths.add(attachment.getFilePath());
     }
+  }
+
+  /** "Seite „Titel“ (Space KEY) " - how the protocol names a page (#1138). */
+  private static String pageLabel(ConfluencePageSummary summary, String spaceKey) {
+    return "Seite „" + summary.title() + "“ (Space " + spaceKey + ") ";
   }
 
   private boolean recordPageResult(Run run, FileProcessingResult result, String pagePath) {

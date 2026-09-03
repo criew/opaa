@@ -303,7 +303,7 @@ class ConfluenceIndexingExecutorTest {
                 event(
                     IndexingEventCategory.REJECTED,
                     "Seite „Kapitel 1“ (Space ENG) "
-                        + ConfluenceIndexingExecutor.UNREADABLE_PAGE_MESSAGE,
+                        + ConfluenceIndexingExecutor.UNREADABLE_PAGE_SUFFIX,
                     kapitel)));
     verify(fileProcessingService, never())
         .processConfluencePage(any(), eq("Kapitel 1"), any(), any(), any(), any());
@@ -327,7 +327,7 @@ class ConfluenceIndexingExecutorTest {
             argThat(
                 event(
                     IndexingEventCategory.REJECTED,
-                    "Space SEC " + ConfluenceIndexingExecutor.UNREADABLE_SPACE_MESSAGE,
+                    "Space SEC " + ConfluenceIndexingExecutor.UNREADABLE_SPACE_SUFFIX,
                     "SEC")));
     verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 3, 0, 0, 4);
