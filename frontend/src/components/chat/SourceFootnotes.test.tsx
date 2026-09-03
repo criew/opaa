@@ -129,6 +129,23 @@ describe('SourceFootnotes', () => {
 
       expect(screen.queryByTestId('source-mail-summary')).not.toBeInTheDocument()
     })
+
+    // #1164 review: mailTo alone satisfies formatMailSummary's presence guard (a mail source
+    // with only a recipient is still a mail source), but mailTo itself never feeds a rendered
+    // segment (a distribution list is long and not useful for identifying the passage) - with
+    // no from/date/subject to build a segment from, the line still renders nothing at all.
+    it('renders no summary for a mailTo-only source, same as a non-mail source', () => {
+      const citations = buildCitationIndex('Satz【source: doc-1#0 | rundschreiben.eml】', [
+        source('rundschreiben.eml', true, {
+          documentId: 'doc-1',
+          mailTo: 'verteiler@stadt.de',
+        }),
+      ])
+
+      renderFootnotes(citations)
+
+      expect(screen.queryByTestId('source-mail-summary')).not.toBeInTheDocument()
+    })
   })
 
   describe('"Im Dokument öffnen"', () => {

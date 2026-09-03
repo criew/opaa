@@ -684,3 +684,11 @@ beteiligte Pipeline ist und ihre Version durch diesen Nachtrag unverändert blei
 `DocumentPipelineRegistry` zum Zeitpunkt dieses Nachtrags) ist identisch in allen sechs Dateien.
 Kein bereits committeter Chunk, keine bereits committete Metrik ändert sich durch diesen Nachtrag —
 nur die Beschreibung der Messbedingungen wird vollständiger.
+
+### 31. Dritter Nachtrag des Fingerabdrucks: `email:2` → `email:3` (Issue #1164, PR #1201)
+
+PR #1201 (Mail-Kopfdaten an der Fundstelle anzeigen und filtern, Issue #1164) kürzt `mail_date` auf Sekundenpräzision, bevor er als Chunk-Metadatum geschrieben wird - `Instant#toString()` lässt den Bruchteil sonst ganz weg, wenn er null ist, was zwei nur millisekundengenau unterschiedliche Zeitpunkte lexikografisch falsch sortieren lässt (Voraussetzung für einen späteren Zeitraumfilter). Das ist eine Chunk-Text-ändernde Pipeline-Änderung (ingestion-pipelines.md, Teil 4 Regel (d)), `MailDocumentPipeline#version()` steigt daher 2 → 3.
+
+Damit bewegt sich der Sammelabdruck aus Entscheidung 28 ein drittes Mal (nach der ursprünglichen Aufnahme des Fixpunkts in Entscheidung 28/29 und dessen Nachzug in Entscheidung 30): `email:2` → `email:3` im `ingestionPipelineFingerprint` aller sechs committeten Baselines. Nach Entscheidung 29 folgt daraus zwingend ein weiterer Versionsschritt auf beiden Messverträgen: `EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` 3 → **4**, `PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` 4 → **5**. Wie in Entscheidung 30: reine Fixpunkt-Ergänzung ohne neuen Messlauf - der Eval-Korpus besteht weiterhin ausschließlich aus Markdown, `MailDocumentPipeline` verarbeitet keines seiner Dokumente, die gemessenen Chunks und Zahlen bleiben unverändert.
+
+**Versionskollision mit ADR-0022 §9 aufgelöst:** ADR-0022 ("Ein Anhang ist ein eigenes Dokument") hatte `MailDocumentPipeline`-Version 3 bereits dem dort beschriebenen Anhangsumbau (Issue #1183) zugesagt. Da dieser PR v3 zuerst für den `mail_date`-Fix verbraucht, geht der Anhangsumbau nun auf **v4** - ADR-0022 §9 und Issue #1183 sind entsprechend korrigiert.

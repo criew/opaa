@@ -54,16 +54,17 @@ class PipelinePathIsolationTest {
                 + "committed raw-vector baselines' measurementContractVersion or "
                 + "BaselineComparator's fixed-point list being updated to match — reconcile all "
                 + "four rather than adjusting only this assertion")
-        .isEqualTo(3);
+        .isEqualTo(4);
   }
 
   @Test
   void pipelinePathCountsItsOwnContractVersionSeparately() {
-    // Version 4: 3 from issue #1049 (the lexical path's switch and the measured library's
-    // full-text backfill state), plus 1 from issue #1144 (ingestionPipelineFingerprint) — counted
-    // independently of the raw-vector path above, whose own count (2 plus the same #1144 bump)
-    // moves for unrelated reasons at unrelated points in its history.
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(4);
+    // Version 5: 3 from issue #1049 (the lexical path's switch and the measured library's
+    // full-text backfill state), plus 1 from issue #1144 (ingestionPipelineFingerprint), plus 1
+    // from issue #1164/PR #1201 (MailDocumentPipeline#version() moved, shifting the collective
+    // fingerprint) — counted independently of the raw-vector path above, whose own count (2 plus
+    // the same #1144/#1164 bumps) moves for unrelated reasons at unrelated points in its history.
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(5);
   }
 
   @Test

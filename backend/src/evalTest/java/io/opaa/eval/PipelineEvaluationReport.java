@@ -58,8 +58,14 @@ public record PipelineEvaluationReport(
    * <p>Version 4 (issue #1144, ADR-0012 Nachtrag): {@code ingestionPipelineFingerprint} became a
    * fixed point — see {@link IngestionPipelineFingerprint}'s Javadoc for what it records and why
    * {@code corpusManifestSha256} alone did not already cover it.
+   *
+   * <p>Version 5 (issue #1164, PR #1201 review): {@code MailDocumentPipeline#version()} moved 2 → 3
+   * (mail_date truncated to whole seconds for lexicographic sortability), which shifted every
+   * committed baseline's {@code ingestionPipelineFingerprint} even though no corpus in this
+   * repository routes a document through that pipeline - the fingerprint is a collective fixed
+   * point over every registered pipeline, not only the ones a given corpus actually reaches.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 4;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 5;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be
