@@ -33,3 +33,5 @@ databaseChangeLog:
       file: db/changelog/changes/012-vector-store-library-id-index.yaml
   - include:
       file: db/changelog/changes/016-documents-parent-document-id-backfill.yaml
+  - include:
+      file: db/changelog/changes/017-documents-library-checksum-parentless.yaml

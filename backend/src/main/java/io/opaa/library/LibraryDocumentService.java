@@ -251,7 +251,8 @@ public class LibraryDocumentService {
       // different libraries is two legitimate documents, only a second copy inside the *same*
       // library is rejected.
       Optional<Document> existing =
-          documentRepository.findByLibraryIdAndChecksum(libraryId, checksum);
+          documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+              libraryId, checksum);
       if (existing.isPresent()) {
         Document existingDoc = existing.get();
         if (existingDoc.getStatus() != DocumentStatus.FAILED) {
@@ -265,7 +266,17 @@ public class LibraryDocumentService {
         // upload. It should never have surviving chunks (FileProcessingService cleans those up on
         // every failure path), but the delete is unconditional anyway, mirroring processFile's own
         // re-index cleanup - defence in depth costs nothing here.
+        //
+        // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage, #1218): a FAILED mail row can still have
+        // INDEXED attachment children from before the failure (attachments are indexed while the
+        // parent is being parsed, before its own chunks are written) - they must go with it, or
+        // documentRepository.delete below fails fk_documents_parent and the retry is blocked
+        // forever. The retry's re-parse recreates them under the new row's own file_path.
         Path oldFailedFile = uploadedFileIfManagedByThisService(existingDoc, libraryId);
+        for (Document descendant : descendantsDeepestFirst(existingDoc.getId())) {
+          vectorChunkStore.deleteByDocumentId(descendant.getId());
+          documentRepository.delete(descendant);
+        }
         vectorChunkStore.deleteByDocumentId(existingDoc.getId());
         documentRepository.delete(existingDoc);
         if (oldFailedFile != null) {

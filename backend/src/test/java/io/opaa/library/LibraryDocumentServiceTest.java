@@ -207,7 +207,8 @@ class LibraryDocumentServiceTest {
   void editorMayUploadADocument() throws IOException {
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-123");
-    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-123"))
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-123"))
         .thenReturn(Optional.empty());
 
     LibraryDocumentEntry response =
@@ -316,7 +317,8 @@ class LibraryDocumentServiceTest {
     // bytes with a .pdf extension must not be caught by the new guard.
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-real-pdf");
-    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-real-pdf"))
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-real-pdf"))
         .thenReturn(Optional.empty());
 
     LibraryDocumentEntry response =
@@ -338,7 +340,8 @@ class LibraryDocumentServiceTest {
     // production.
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-docx");
-    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-docx"))
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-docx"))
         .thenReturn(Optional.empty());
 
     LibraryDocumentEntry response =
@@ -391,7 +394,8 @@ class LibraryDocumentServiceTest {
     // specific detected media type - Markdown syntax itself is not a distinct magic-byte format.
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-md");
-    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-md"))
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-md"))
         .thenReturn(Optional.empty());
 
     MultipartFile markdown =
@@ -459,7 +463,8 @@ class LibraryDocumentServiceTest {
       throws IOException {
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("duplicate-checksum");
-    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "duplicate-checksum"))
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "duplicate-checksum"))
         .thenReturn(Optional.of(new Document("existing.pdf", "path", "application/pdf", 5L)));
 
     assertThatThrownBy(
@@ -494,7 +499,8 @@ class LibraryDocumentServiceTest {
     oldFailedDoc.setErrorMessage("Die Datei konnte nicht verarbeitet werden");
 
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-retry");
-    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-retry"))
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-retry"))
         .thenReturn(Optional.of(oldFailedDoc));
 
     LibraryDocumentEntry response =
@@ -518,7 +524,8 @@ class LibraryDocumentServiceTest {
     // call into FileProcessingService any more.
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-race");
-    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-race"))
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-race"))
         .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class)))
         .thenThrow(new DataIntegrityViolationException("uk_documents_library_checksum"));
@@ -546,7 +553,8 @@ class LibraryDocumentServiceTest {
     LibraryFolder folder = new LibraryFolder(libraryId, null, "Wird-Geloescht", organizationId);
     when(folderRepository.findById(folderId)).thenReturn(Optional.of(folder));
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-fk-race");
-    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-fk-race"))
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-fk-race"))
         .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class)))
         .thenThrow(
@@ -571,7 +579,8 @@ class LibraryDocumentServiceTest {
   void aPathTraversingFileNameNeverEscapesTheLibraryStorageDirectory() throws IOException {
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-xyz");
-    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-xyz"))
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-xyz"))
         .thenReturn(Optional.empty());
 
     LibraryDocumentEntry response =
@@ -605,7 +614,8 @@ class LibraryDocumentServiceTest {
     // one nothing will ever pick up.
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-queue-full");
-    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-queue-full"))
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-queue-full"))
         .thenReturn(Optional.empty());
     doThrow(new TaskRejectedException("queue is full"))
         .when(fileProcessingService)
@@ -628,7 +638,8 @@ class LibraryDocumentServiceTest {
     // TaskRejectedException case above already is.
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-unexpected");
-    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-unexpected"))
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-unexpected"))
         .thenReturn(Optional.empty());
     doThrow(new IllegalStateException("submission blew up unexpectedly"))
         .when(fileProcessingService)
@@ -652,7 +663,8 @@ class LibraryDocumentServiceTest {
     // markFailed(id, errorMessage) UPDATE the asynchronous path already uses, not a second save.
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-conditional-update");
-    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-conditional-update"))
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-conditional-update"))
         .thenReturn(Optional.empty());
     doThrow(new IllegalStateException("submission blew up unexpectedly"))
         .when(fileProcessingService)
@@ -682,7 +694,8 @@ class LibraryDocumentServiceTest {
     // upload attempt; nothing is silently re-inserted.
     grantEditor();
     when(checksumService.computeSha256(any(Path.class))).thenReturn("checksum-deleted-mid-flight");
-    when(documentRepository.findByLibraryIdAndChecksum(libraryId, "checksum-deleted-mid-flight"))
+    when(documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+            libraryId, "checksum-deleted-mid-flight"))
         .thenReturn(Optional.empty());
     doThrow(new IllegalStateException("submission blew up unexpectedly"))
         .when(fileProcessingService)

@@ -3,9 +3,9 @@ import type { Page, Response } from '@playwright/test'
 
 // The mail fixture is mounted into the backend container by e2e/docker-compose.e2e.yml
 // (demo/seed/e2e-data/filesystem-library/ -> /data/e2e-mail-bibliothek, on the dev profile's
-// filesystem allowlist). A FILESYSTEM library over that mount is the one connector path this
-// suite can drive end to end that actually creates attachment rows for a mail - the UPLOAD path
-// deliberately discards discovered attachments (FileProcessingService#processUploadedFileAsync).
+// filesystem allowlist). A FILESYSTEM library over that mount creates attachment rows for the
+// mail; chosen when the UPLOAD path still discarded discovered attachments (closed by #1227
+// since), and kept as the deterministic fixture-driven connector path.
 const SOURCE_PATH = '/data/e2e-mail-bibliothek'
 const MAIL_FILE_NAME = 'mail-mit-zwei-anhaengen.eml'
 

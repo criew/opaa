@@ -179,6 +179,10 @@ export async function createLibraryWithDocuments(
   page: Page,
   libraryName: string,
   documents: { path: string; name: string }[],
+  // #1218 (ADR-0022): an uploaded mail's attachments become their own indexed document rows, so a
+  // caller uploading an .eml expects more "indiziert" chips than files it uploaded - it passes the
+  // full expected row count here; every other caller keeps the one-chip-per-upload default.
+  expectedIndexedCount: number = documents.length,
 ): Promise<void> {
   await gotoLibraries(page)
   await page.getByRole('button', { name: 'Neue Bibliothek' }).click()
@@ -202,10 +206,11 @@ export async function createLibraryWithDocuments(
     // page (e.g. a status hint) also happens to contain this filename as a substring.
     await expect(page.getByText(name, { exact: true })).toBeVisible()
   }
-  // A fresh library (created moments ago, above) holds nothing but these uploads, so one
-  // "indiziert" status chip per document is the whole, exact expectation - not just "at least
-  // one", which a single stuck upload amid several finished ones would still satisfy.
-  await expect(page.getByText('indiziert')).toHaveCount(documents.length, { timeout: 30_000 })
+  // A fresh library (created moments ago, above) holds nothing but these uploads (plus, since
+  // #1218, the indexed attachment rows of any uploaded mail), so an exact chip count is the whole
+  // expectation - not just "at least one", which a single stuck upload amid several finished ones
+  // would still satisfy.
+  await expect(page.getByText('indiziert')).toHaveCount(expectedIndexedCount, { timeout: 30_000 })
 }
 
 /**

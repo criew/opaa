@@ -89,7 +89,8 @@ class FileProcessingServiceTest {
             defaultIndexingProperties(),
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0));
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
     targetLibrary = library();
     // Default: plenty of headroom, so existing tests never trip the quota check unless they
     // explicitly stub it otherwise (see the quota-specific tests below). lenient() because most
@@ -195,7 +196,8 @@ class FileProcessingServiceTest {
             defaultIndexingProperties(),
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0));
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
 
     when(checksumService.computeSha256(file)).thenReturn("sha256-of-scan");
     when(documentRepository.findByLibraryIdAndFilePath(
@@ -337,7 +339,8 @@ class FileProcessingServiceTest {
             defaultIndexingProperties(),
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0));
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
 
     Path file = tempDir.resolve("replace-under-quota.txt");
     String newContent = "x".repeat(950);
@@ -525,7 +528,8 @@ class FileProcessingServiceTest {
             defaultIndexingProperties(),
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0));
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
 
     when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
     when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
@@ -573,7 +577,8 @@ class FileProcessingServiceTest {
             defaultIndexingProperties(),
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0));
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
 
     when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
     when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
@@ -2081,7 +2086,8 @@ class FileProcessingServiceTest {
             defaultIndexingProperties(),
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0));
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
 
     when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
     when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
