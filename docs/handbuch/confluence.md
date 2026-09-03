@@ -26,7 +26,7 @@ mit Standardwerten in [`deployment.md`](./deployment.md) („Alle Umgebungsvaria
 Eine Confluence-Bibliothek zeigt auf **eine** Instanz (Cloud oder Data Center), mit **einem** Token und
 einer **Auswahl von Spaces** (bis zu 500). Indiziert werden die **aktuellen Seiten** dieser Spaces und
 ihre **Anhänge** in den unterstützten Dateiformaten. Nicht indiziert werden Blogbeiträge, Kommentare,
-Whiteboards, Datenbanken, archivierte Seiten (Cloud) und der Papierkorb. Aus Makros bleibt, was eine
+Whiteboards, Datenbanken, archivierte Seiten und der Papierkorb (beide Editionen listen nur aktuelle Seiten). Aus Makros bleibt, was eine
 Autorin selbst geschrieben hat (Hinweiskästen, Aufklappbereiche, Code); was Confluence zur Laufzeit aus
 anderen Quellen zusammensetzt (Inhaltsverzeichnisse, Kindseitenlisten, Jira-Tabellen, Berichte), fällt
 weg — Einzelheiten in [`features/ingestion-pipelines.md`](../features/ingestion-pipelines.md), Teil 3,
@@ -64,7 +64,10 @@ Token-Fehler.
 Je Bibliothek kann ein Proxy (`host:port`) hinterlegt werden; die Zertifikatsprüfung lässt sich je
 Bibliothek aussetzen (`sourceInsecureSsl`) — nur für Testinstanzen, nie im Produktivbetrieb. Ein
 eigenes Zertifikat der Behörden-CA gehört in den Truststore des Backend-Containers, nicht in das
-Aussetzen der Prüfung.
+Aussetzen der Prüfung (ein dokumentiertes Verfahren dafür fehlt in `deployment.md` noch; bis dahin: das
+CA-Zertifikat in den Java-Truststore des Images importieren oder per `JAVA_TOOL_OPTIONS`
+`-Djavax.net.ssl.trustStore=…` einen eigenen einhängen). **Auch der Proxy-Hostname unterliegt der
+Zielprüfung** aus 2.1 — ein interner Proxy muss ebenfalls in der Allowlist stehen.
 
 ### 2.3 Umgebungsvariablen (Auszug)
 
@@ -85,14 +88,19 @@ Vollständige Tabelle und Erläuterungen: [`deployment.md`](./deployment.md).
 ### 3.1 Confluence Cloud
 
 - **Token-Art:** E-Mail-Adresse des Kontos plus **API-Token** (erzeugt unter
-  *Atlassian-Konto → Sicherheit → API-Token*). OPAA speichert beides als `<E-Mail>:<Token>` verschlüsselt
+  *Atlassian-Konto → Sicherheit → API-Token*; ein klassisches, nicht bereichsbeschränktes Token —
+  Atlassians neuere „scoped“ Token sind für diesen Weg nicht vorgesehen). OPAA speichert beides als `<E-Mail>:<Token>` verschlüsselt
   und sendet es als HTTP Basic.
 - **Minimale Berechtigungen:** Das Konto braucht eine Confluence-Lizenz auf der Site und **Ansehen**
   auf jedem Space der Auswahl — nichts weiter. Kein Site-Admin, kein Space-Admin.
-- **Erkennung:** OPAA erkennt die Edition an der Adresse (`*.atlassian.net/wiki`) ohne Zugangsdaten;
-  der Verbindungstest prüft das Token mit einer Anfrage.
+- **Erkennung:** OPAA erkennt die Edition ohne Zugangsdaten am Antwortverhalten der Instanz
+  (`/_edge/tenant_info` für Cloud, `/status` bzw. `/rest/api/space` für Data Center) — nicht am
+  Hostnamen; eine Cloud-Site hinter eigener Domain wird ebenso erkannt. Der Verbindungstest prüft das
+  Token anschließend mit einer Anfrage.
 - **Ratenbegrenzung:** Cloud rechnet mit einem Punktebudget und antwortet mit `429`/`Retry-After`;
-  OPAA wartet (Abschnitt 6). Zwei Bibliotheken gegen dieselbe Site teilen sich dieses Budget.
+  OPAA wartet (Abschnitt 6). Zwei Bibliotheken gegen dieselbe Site mit demselben Dienstkonto teilen
+  sich dieses Budget (Atlassian rechnet es nach eigener Darstellung überwiegend je Konto/App ab —
+  Annahme, nicht gemessen).
 
 ### 3.2 Confluence Data Center
 
@@ -143,7 +151,7 @@ Konfigurationsinterna), Verwaltenden zusätzlich Adresse, Proxy und Webhook-Zust
 |---|---|---|
 | **Vollabgleich** (`FULL`) | Alle gewählten Spaces vollständig auflisten, Neues und Geändertes holen, am Ende entfernen, was in der Auflistung fehlt | Erster Lauf; nach jeder Änderung der Space-Auswahl oder Adresse; nach einem unterbrochenen Vollabgleich; sobald der letzte Vollabgleich älter als `FULL_SYNC_INTERVAL` ist; manuell über „Vollabgleich starten“ |
 | **Inkrementell** (`INCREMENTAL`) | Per Suche nur die seit dem Anker geänderten Seiten holen (Fenster relativ zur Uhr der Instanz, mit Überlappung); nie wegen Abwesenheit löschen | Jeder andere geplante Lauf und „Jetzt indizieren“ |
-| **Webhook** (Auslöser `WEBHOOK`, Betriebsart inkrementell) | Nur die gemeldeten Seiten gezielt holen | Wenige Sekunden nach einer Benachrichtigung (Abschnitt 5) |
+| **Webhook** (Auslöser `WEBHOOK`; gezielter Abruf, bei übergroßem Stapel die Betriebsart, die der Zustand vorgibt) | Nur die gemeldeten Seiten gezielt holen | Wenige Sekunden nach einer Benachrichtigung (Abschnitt 5) |
 
 „Jetzt indizieren“ folgt dem Zustand der Bibliothek; „Vollabgleich starten“ erzwingt den Vollabgleich.
 Der Vollabgleich bleibt nötig, weil nur er Löschungen nachvollzieht; sein Rhythmus ist verlängerbar,
@@ -166,8 +174,11 @@ nicht abschaltbar (instanzweit; je Bibliothek ist #1200).
 
 Ein entzogenes Leserecht wirkt also **verzögert**: Der Bestand eines nicht mehr lesbaren Spaces bleibt
 sichtbar, bis eine Verwalterin den Space aus der Auswahl nimmt oder das Recht zurückkommt und der
-Vollabgleich entscheidet. Wer Inhalte sofort aus OPAA entfernen muss, nimmt den Space aus der Auswahl
-(erzwingt den Vollabgleich, der den Bestand dieses Spaces entfernt).
+Vollabgleich entscheidet. Wer den Bestand eines Spaces aus OPAA entfernen will, geht in drei Schritten
+vor: den Space aus der Auswahl nehmen (das löscht nur den Synchronisationszustand, noch kein Dokument),
+dann **„Vollabgleich starten“**, und prüfen, dass dieser Lauf **vollständig** aufgelistet hat — ist ein
+verbleibender Space nicht lesbar oder das Budget vorher erschöpft, bereinigt der Lauf nichts und der
+Bestand bleibt. **Sofort** wirkt nur das Löschen der Dokumente bzw. der Bibliothek.
 
 ## 5. Webhooks einrichten
 
@@ -186,7 +197,8 @@ Audit-Protokoll als `LIBRARY_SOURCE_UPDATED` mit dem Feldnamen `confluenceWebhoo
 Wert.
 
 Der Eingang muss für die Instanz erreichbar sein (Firewall/Proxy-Regel von Confluence zu OPAA). Er ist
-der einzige Pfad unter `/api/v1`, der ohne Anmeldung erreichbar ist; die Nachricht weist sich mit dem
+neben `/api/v1/auth/config` und `/api/v1/branding[/logo]` einer der wenigen Pfade unter `/api/v1`, die
+ohne Anmeldung erreichbar sind — und der einzige schreibende; die Nachricht weist sich mit dem
 Geheimnis aus. Der vorgelagerte Proxy **muss** `X-Forwarded-For` autoritativ setzen (siehe
 [`deployment.md`](./deployment.md), „Netzwerkzugang“), sonst greift die Ratenbegrenzung je Client nicht.
 
@@ -205,6 +217,9 @@ Probe: In einem gewählten Space eine Seite bearbeiten; wenige Sekunden später 
 Laufhistorie ein Lauf „per Webhook“ mit genau dieser Seite. Ohne Lauf: Abschnitt 9.
 
 ### 5.3 Cloud (über eine Automation-Regel)
+
+Umfang und Kontingent der Automation (Zahl der Regelausführungen je Monat, Verfügbarkeit globaler
+Regeln) hängen vom Atlassian-Tarif ab — vor der Einrichtung im eigenen Tarif prüfen.
 
 Cloud bietet keine frei konfigurierbaren Webhooks ohne App; der Weg ist eine **Automation-Regel**
 (*Space-Einstellungen → Automation* oder global):
@@ -227,7 +242,7 @@ ausgewählten Space“ und lässt sie liegen.
 ### 5.4 Was eine Nachricht auslöst — und was nicht
 
 - Aus dem Körper werden **nur Seiten-IDs** gelesen (`page.id`, `content.id`, `attachment.pageId`,
-  `pageId`, `pageIds`); die **Ereignisart wird nicht ausgewertet**. Was mit der Seite geschah, sagt der
+  `attachment.container.id`, `pageId`, `pageIds`); die **Ereignisart wird nicht ausgewertet**. Was mit der Seite geschah, sagt der
   Abruf: geändert → neu indiziert; von der Instanz als im Papierkorb ausgewiesen → entfernt; `404`/`403`
   → unverändert.
 - Nachrichten werden je Bibliothek **gesammelt** (`WEBHOOK_DEBOUNCE`, 5 s) und in **einem** kurzen Lauf
@@ -240,15 +255,16 @@ ausgewählten Space“ und lässt sie liegen.
   gemeldeten Seiten noch einmal (je ein Auflistungseintrag).
 - **Kein Replay-Schutz:** Eine mitgeschnittene, gültig signierte Nachricht lässt sich wieder
   einspielen und kostet je einen gezielten Lauf innerhalb der Ratenbegrenzung — für den Index folgenlos.
-- Jede nicht authentifizierte Anfrage (unbekannte Bibliothek, kein Geheimnis, falsche Signatur) erhält
+- Jede nicht authentifizierte Anfrage (unbekannte Bibliothek, Bibliothek eines anderen Quellentyps, kein
+  Geheimnis, falsche Signatur) erhält
   dieselbe `401`; der Körper ist auf 256 KiB begrenzt (`413` darüber).
 
 ## 6. Ratenbegrenzung, Anfragebudget, Kennzahlen
 
 ### 6.1 Wenn die Instanz bremst (`429`)
 
-Antwortet Confluence mit `429` und `Retry-After`, **wartet** der Lauf die genannte Zeit (gedeckelt auf
-`MAX_RETRY_AFTER`, 2 min) und wiederholt die Anfrage — bis zu `MAX_RATE_LIMIT_RETRIES` (6) Mal in Folge,
+Antwortet Confluence mit `429`, **wartet** der Lauf die in `Retry-After` genannte Zeit (gedeckelt auf
+`MAX_RETRY_AFTER`, 2 min; ohne den Header pauschal 5 s) und wiederholt die Anfrage — bis zu `MAX_RATE_LIMIT_RETRIES` (6) Mal in Folge,
 dann bricht der Lauf mit einer klaren Meldung ab. Ein gebremster Lauf ist **kein Fehler**: Das Protokoll
 enthält eine Zeile „Ratenbegrenzung“ mit Anzahl und Gesamtwartezeit, egal wie der Lauf endet. Cloud
 bremst nach einem Punktebudget je Site — mehrere Bibliotheken gegen dieselbe Site bremsen einander;
@@ -304,7 +320,9 @@ So liest man sie:
 - **Drosselungen** auf Cloud: Häufig und lang → Läufe verschiedener Bibliotheken gegen dieselbe Site
   zeitlich entzerren (Zeitpläne versetzen).
 
-Dieselbe Zeile steht je Lauf im Backend-Log (`Confluence run … requests, … throttles …`), für
+Eine entsprechende Zeile steht je Lauf im Backend-Log (`Confluence run … requests, … throttles (… s
+waited), … attachments indexed, … s elapsed, incomplete=…` — ohne übersprungene/fehlgeschlagene Anhänge
+und mit der Dauer in Sekunden), für
 Auswertungen über viele Läufe.
 
 ## 7. Das Laufprotokoll lesen
@@ -315,7 +333,7 @@ Auswertungen über viele Läufe.
 | **Abgewiesen** „Space … ist für das hinterlegte Dienstkonto nicht lesbar; sein Bestand bleibt …“ | Ganzer Space nicht auflistbar | Rechte prüfen oder Space aus der Auswahl nehmen. Solange das steht, bereinigt kein Vollabgleich |
 | **Abgewiesen** „… liegt in einem nicht ausgewählten Space“ | Seite wurde verschoben bzw. per Webhook außerhalb der Auswahl gemeldet | Nichts; ggf. Auswahl erweitern |
 | **Nicht erreichbar** | Netz/Instanz antwortet nicht oder mit Serverfehler | Instanz, Proxy, Allowlist prüfen; der Lauf zählt die Seite als fehlgeschlagen und rückt den Anker nicht vor |
-| **In der Quelle entfernt** „In Confluence im Papierkorb, entfernt“ / „… verschoben“ | Positiver Befund, Dokument entfernt | Nichts |
+| **In der Quelle entfernt** „In der Quelle nicht mehr gefunden, entfernt“ (Vollabgleich) / „In Confluence im Papierkorb, entfernt“ / „… verschoben“ | Positiver Befund, Dokument entfernt | Nichts |
 | **Ratenbegrenzung** | Die Instanz hat gebremst; Anzahl und Wartezeit | Bei Häufung Zeitpläne entzerren |
 | **Anfragebudget erschöpft** | Lauf endete geordnet unvollständig | Nichts — der nächste Lauf setzt fort; bei Dauerzustand Abschnitt 6.2 |
 | **Format nicht unterstützt** / **Fehler** (Anhang) | Anhangsformat nicht indizierbar / Verarbeitung fehlgeschlagen | Erwartbar bei Bildern u. ä.; Fehler bei Häufung im Backend-Log nachsehen |
@@ -329,13 +347,14 @@ Auswertungen über viele Läufe.
 - **Keine Rechteabbildung.** Confluence-Gruppen oder Space-Berechtigungen werden nicht auf OPAA-Rechte
   abgebildet; ein Rechteentzug wirkt verzögert (Abschnitt 4.3).
 - **Nur Seiten und Anhänge.** Keine Blogbeiträge, Kommentare, Whiteboards, Datenbanken, keine weiteren
-  Atlassian-Produkte; archivierte Seiten (Cloud) gelten als nicht vorhanden.
+  Atlassian-Produkte; archivierte Seiten gelten als nicht vorhanden.
 - **Anhänge nur mit dem Vollabgleich vollständig.** Ein neuer oder geänderter Anhang an einer sonst
   unveränderten Seite bewegt deren Änderungszeit nicht; der inkrementelle Lauf sieht ihn nicht, der
   Webhook nur, wenn Confluence das Anhangs-Ereignis meldet.
 - **Makros:** Dynamische Inhalte fallen weg; was fehlt, steht in
   [`features/ingestion-pipelines.md`](../features/ingestion-pipelines.md).
-- **Ratenbudget der Instanz ist geteilt** zwischen allen Bibliotheken gegen dieselbe Instanz; eine
+- **Ratenbudget der Instanz ist geteilt** zwischen allen Bibliotheken gegen dieselbe Instanz mit
+  demselben Dienstkonto; eine
   instanzweite Koordination der Läufe gibt es nicht.
 - **Rhythmus des Vollabgleichs ist instanzweit** (#1200: je Bibliothek); ein bibliotheksweiter Zustand
   „Auflistung unvollständig“ jenseits des Laufprotokolls ist #1191.
@@ -347,7 +366,7 @@ Auswertungen über viele Läufe.
 | Symptom | Wahrscheinliche Ursache | Prüfung / Abhilfe |
 |---|---|---|
 | Verbindungstest: Ziel abgewiesen, obwohl die Instanz erreichbar ist | Zielprüfung blockt die private Adresse | Hostname in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, Backend neu starten |
-| „Edition erkennen“ findet kein Confluence | Falscher Pfad (Kontextpfad fehlt), Proxy nötig, Instanz hinter Anmeldung ohne REST-Zugang | Adresse mit Kontextpfad; Proxy eintragen; `curl <adresse>/rest/api/space?limit=1` aus dem Backend-Netz |
+| „Edition erkennen“ findet kein Confluence | Falscher Pfad (Kontextpfad fehlt), Proxy nötig, Instanz hinter Anmeldung ohne REST-Zugang | Adresse mit Kontextpfad; Proxy eintragen (und seinen Hostnamen in die Allowlist aufnehmen); `curl <adresse>/rest/api/space?limit=1` aus dem Backend-Netz |
 | Data Center: Verbindungstest meldet Token „nicht angenommen“, obwohl es im Browser geht | PAT ungültig/abgelaufen oder Konto darf REST nicht nutzen — DC antwortet anonym | Neues PAT; Rechte des Kontos prüfen |
 | Verbindungstest gut, aber Space-Auswahl leer | Konto hat auf keinen Space „Ansehen“ | Space-Rechte des Dienstkontos setzen |
 | Läufe enden ständig „unvollständig, wird fortgesetzt“, Bestand wächst aber | Sehr große Auswahl, erster Vollabgleich braucht mehrere Läufe | Normal; abwarten oder Budget anheben (Abschnitt 6.2) |
