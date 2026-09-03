@@ -293,6 +293,12 @@ public class PipelineReindexService {
     DocumentSourceType sourceType = document.getSourceType();
     if (sourceType == DocumentSourceType.HTTP_DIRECTORY
         || sourceType == DocumentSourceType.RSS_FEED) {
+      // Never deletes the row itself (ADR-0022, Entscheidung 3 - #1182 review of #1188): this only
+      // clears the change markers a future RssFeedIndexingExecutor run consults, which then
+      // re-processes the entry through FileProcessingService#processRssEntry's own update-in-place
+      // path if its content actually changed - no delete-and-recreate happens here, so an RSS
+      // entry's attachments (parent_document_id, ADR-0022 Entscheidung 4) are never at risk from
+      // this path itself.
       documentRepository.markForReindexOnNextRun(documentId);
       return Advance.MARKED_FOR_NEXT_RUN;
     }

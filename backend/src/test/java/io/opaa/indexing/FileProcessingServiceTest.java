@@ -1661,6 +1661,41 @@ class FileProcessingServiceTest {
   }
 
   @Test
+  void processRssEntryUpdatesAChangedEntryInPlaceInsteadOfDeletingAndRecreatingIt() {
+    // #1182, review of #1188: a delete-and-recreate here used to fail fk_documents_parent whenever
+    // the entry already had attachment rows pointing at it via parent_document_id - the row's own
+    // id must survive a content change, so every existing attachment link stays valid without this
+    // path having to touch attachment rows at all.
+    String entryUrl = "https://example.gov/artikel/geaendert";
+    Document existingDoc =
+        new Document("Alter Titel", entryUrl, "text/html", 10L, DocumentSourceType.RSS_FEED);
+    existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
+    existingDoc.setChecksum("old-sha256");
+    existingDoc.setStatus(DocumentStatus.INDEXED);
+
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("new-sha256");
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl))
+        .thenReturn(Optional.of(existingDoc));
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var chunks = List.of(new org.springframework.ai.document.Document("neuer Inhalt"));
+    when(chunkingService.chunkDocuments(anyString(), any())).thenReturn(chunks);
+
+    FileProcessingResult result =
+        service.processRssEntry(
+            "neuer Inhalt", "Neuer Titel", entryUrl, "2025-06-15T10:30:00Z", targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    verify(documentRepository, never()).delete(any(Document.class));
+    ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository).save(savedDocCaptor.capture());
+    assertThat(savedDocCaptor.getValue().getId()).isEqualTo(existingDoc.getId());
+    assertThat(savedDocCaptor.getValue().getFileName()).isEqualTo("Neuer Titel");
+    verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
+  }
+
+  @Test
   void aReindexWhoseReaderThrowsLeavesTheDocumentsChunksAndStatusUntouched() throws IOException {
     // The likeliest transient failure on the re-index path: the reader throws on a damaged or
     // momentarily unreadable file, before anything has been deleted. Deleting the working chunks

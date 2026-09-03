@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.library.KnowledgeLibrary;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -78,6 +79,17 @@ public class StaleDocumentCleanupService {
 
     List<Document> existing =
         documentRepository.findByLibraryIdAndSourceType(library.getId(), sourceType);
+    // fk_documents_parent (ADR-0022, Entscheidung 4): an attachment removed in the same batch as
+    // its own now-vanished parent must be deleted first, or the parent's own delete fails the FK
+    // check. findByLibraryIdAndSourceType carries no ORDER BY that would guarantee this on its own
+    // (#1182, review of #1188) - sorted here instead, children (a non-null parentDocumentId) before
+    // parents.
+    existing =
+        existing.stream()
+            .sorted(
+                Comparator.comparing(
+                    Document::getParentDocumentId, Comparator.nullsLast(Comparator.naturalOrder())))
+            .toList();
     int removed = 0;
     for (Document document : existing) {
       if (currentFilePaths.contains(document.getFilePath())) {

@@ -702,6 +702,20 @@ public class LibraryDocumentService {
     Path fileManagedByThisService = uploadedFileIfManagedByThisService(document, libraryId);
     UUID chunkFilterDocumentId = document.getId();
 
+    // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage): a document with attachment rows pointing at it
+    // via parent_document_id (#1180) cannot be deleted first without failing fk_documents_parent -
+    // this path decides to take its attachments with it, mirroring StaleDocumentCleanupService's
+    // own
+    // children-before-parent order. None of them are ever an UPLOAD-managed file of this service's
+    // own (only the connector paths that create attachments set parentDocumentId), so there is no
+    // extra file to clean up for a child the way there can be for the parent below.
+    List<Document> attachments = documentRepository.findByParentDocumentId(document.getId());
+    List<UUID> attachmentChunkFilterIds = new ArrayList<>();
+    for (Document attachment : attachments) {
+      attachmentChunkFilterIds.add(attachment.getId());
+      documentRepository.delete(attachment);
+    }
+
     // The row is deleted first, the chunks only afterwards - deliberately the reverse of the order
     // this method used before #614. A concurrent uploadTaskExecutor task finishing the very same
     // document races this method: FileProcessingService#processUploadedFileAsync re-reads the row,
@@ -738,6 +752,18 @@ public class LibraryDocumentService {
     // discussion.
     deleteAfterCommit(
         () -> {
+          for (UUID attachmentId : attachmentChunkFilterIds) {
+            try {
+              vectorChunkStore.deleteByDocumentId(attachmentId);
+            } catch (RuntimeException e) {
+              log.error(
+                  "Failed to remove vector store chunks for deleted attachment {} of document {} -"
+                      + " orphaned chunks may remain",
+                  attachmentId,
+                  chunkFilterDocumentId,
+                  e);
+            }
+          }
           try {
             vectorChunkStore.deleteByDocumentId(chunkFilterDocumentId);
           } catch (RuntimeException e) {
