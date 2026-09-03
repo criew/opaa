@@ -547,6 +547,32 @@ describe('LibraryDetailPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('shows a Confluence library read-only with edition and spaces, and still offers "Bearbeiten" (#1135)', async () => {
+    const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, {
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        sourceCredentialsSet: true,
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'BAU', name: 'Bauamt' }],
+      }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(
+      await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('https://wiki.behoerde.example/confluence')).toBeInTheDocument()
+    expect(screen.getByText(/Data Center/)).toBeInTheDocument()
+    expect(screen.getByText(/nach der Anlage nicht änderbar/)).toBeInTheDocument()
+    expect(screen.getByText('Bauamt (BAU)')).toBeInTheDocument()
+    expect(screen.getByText(/unabhängig von den Berechtigungen in Confluence/)).toBeInTheDocument()
+    // the edition is never an input here
+    expect(screen.queryByRole('button', { name: 'Edition erkennen' })).not.toBeInTheDocument()
+  })
+
   // #507: the backend now only serves sourcePath/sourceUrl/sourceProxy/sourceInsecureSsl/
   // sourceCredentialsSet to a caller with at least MANAGER - a VIEWER's library object simply
   // carries none of them. This test still passes sourcePath explicitly in the VIEWER case to

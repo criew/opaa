@@ -11,12 +11,16 @@ import Stack from '@mui/material/Stack'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import type {
+  ConfluenceEdition,
+  ConfluenceSpaceRef,
   DocumentSourceType,
   LibraryVisibility,
   SourceConnectionTestResponse,
 } from '../types/api'
 import { testLibrarySource } from '../services/api'
 import FieldLabel from './wizard/FieldLabel'
+import ConfluenceSourceForm from './library/ConfluenceSourceForm'
+import { EMPTY_CONFLUENCE_VALUES, type ConfluenceSourceValues } from '../utils/confluenceSource'
 import { useLibraryStore } from '../stores/libraryStore'
 import { documentSourceTypeConfigKind } from '../utils/labels'
 import {
@@ -45,6 +49,8 @@ export interface EditableLibrarySource {
   // Optional/nullable to tolerate a LibraryResponse fixture that predates #542 finding 3 -
   // treated as "nothing stored" (false) rather than crashing or silently claiming otherwise.
   sourceCredentialsSet?: boolean | null
+  confluenceEdition?: ConfluenceEdition | null
+  confluenceSpaces?: ConfluenceSpaceRef[] | null
 }
 
 interface EditLibrarySourceDialogProps {
@@ -76,6 +82,17 @@ export default function EditLibrarySourceDialog({
   const [sourceProxy, setSourceProxy] = useState(library.sourceProxy ?? '')
   const [sourceCredentials, setSourceCredentials] = useState('')
   const [sourceInsecureSsl, setSourceInsecureSsl] = useState(Boolean(library.sourceInsecureSsl))
+  // ADR-0023: the edition is fixed, the stored credentials stand until new ones are typed, and the
+  // current selection is the starting point.
+  const [confluence, setConfluence] = useState<ConfluenceSourceValues>(() => ({
+    ...EMPTY_CONFLUENCE_VALUES,
+    sourceUrl: library.sourceUrl ?? '',
+    sourceProxy: library.sourceProxy ?? '',
+    sourceInsecureSsl: Boolean(library.sourceInsecureSsl),
+    edition: library.confluenceEdition ?? null,
+    credentialsVerified: Boolean(library.sourceCredentialsSet),
+    spaces: library.confluenceSpaces ?? [],
+  }))
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   // #544: mirrors LibraryCreatePage's connection test - the result belongs to the currently
@@ -115,6 +132,7 @@ export default function EditLibrarySourceDialog({
     const validationError = validateLibrarySourceFields(library.sourceType, {
       sourcePath,
       sourceUrl,
+      confluence,
     })
     if (validationError) {
       setError(validationError)
@@ -155,6 +173,7 @@ export default function EditLibrarySourceDialog({
     const validationError = validateLibrarySourceFields(library.sourceType, {
       sourcePath,
       sourceUrl,
+      confluence,
     })
     if (validationError) {
       setError(validationError)
@@ -183,6 +202,7 @@ export default function EditLibrarySourceDialog({
           sourceProxy,
           sourceCredentials,
           sourceInsecureSsl,
+          confluence,
         }),
       })
       onClose()
@@ -301,7 +321,22 @@ export default function EditLibrarySourceDialog({
             </>
           )}
 
-          {configKind !== 'none' && (
+          {configKind === 'confluence' && (
+            <ConfluenceSourceForm
+              mode="edit"
+              idPrefix="edit-source-confluence"
+              libraryId={libraryId}
+              credentialsStored={credentialsStored}
+              originalSourceUrl={library.sourceUrl}
+              values={confluence}
+              onChange={(patch) => {
+                setConfluence((prev) => ({ ...prev, ...patch }))
+                setError(null)
+              }}
+            />
+          )}
+
+          {(configKind === 'path' || configKind === 'url') && (
             <Box>
               <Button
                 onClick={() => void handleTest()}

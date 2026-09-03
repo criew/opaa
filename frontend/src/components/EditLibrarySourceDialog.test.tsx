@@ -27,6 +27,16 @@ const { mockUpdateLibrary, mockTestLibrarySource } = vi.hoisted(() => ({
   })),
 }))
 
+const { mockListConfluenceSpaces } = vi.hoisted(() => ({
+  mockListConfluenceSpaces: vi.fn(async () => ({
+    spaces: [
+      { key: 'BAU', name: 'Bauamt' },
+      { key: 'HR', name: 'Personal' },
+      { key: 'IT', name: 'IT-Betrieb' },
+    ],
+  })),
+}))
+
 vi.mock('../services/api', async () => {
   const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
   return {
@@ -35,6 +45,7 @@ vi.mock('../services/api', async () => {
     getLibraries: vi.fn(async () => []),
     getLibrary: vi.fn(async () => undefined),
     testLibrarySource: mockTestLibrarySource,
+    listConfluenceSpaces: mockListConfluenceSpaces,
   }
 })
 
@@ -484,5 +495,153 @@ describe('EditLibrarySourceDialog', () => {
 
       expect(mockUpdateLibrary).not.toHaveBeenCalled()
     })
+  })
+
+  describe('Confluence library (#1135, ADR-0023)', () => {
+    const confluenceLibrary = {
+      name: 'Wiki Bauamt',
+      description: null,
+      visibility: 'SHARED' as const,
+      listed: false,
+      sourceType: 'CONFLUENCE' as const,
+      sourcePath: null,
+      sourceUrl: 'https://wiki.behoerde.example/confluence',
+      sourceProxy: null,
+      sourceInsecureSsl: false,
+      sourceCredentialsSet: true,
+      confluenceEdition: 'DATA_CENTER' as const,
+      confluenceSpaces: [{ key: 'BAU', name: 'Bauamt' }],
+    }
+
+    it('shows the fixed edition, loads the spaces with the stored token and saves the new selection without touching credentials', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={() => {}}
+          libraryId="lib-wiki"
+          library={confluenceLibrary}
+        />,
+      )
+
+      expect(screen.getByTestId('edit-source-confluence-edition')).toHaveTextContent(
+        'Confluence Data Center',
+      )
+      expect(screen.queryByRole('button', { name: 'Edition erkennen' })).not.toBeInTheDocument()
+      // stored credentials stand: the listing loads right away through the library
+      await waitFor(() =>
+        expect(mockListConfluenceSpaces).toHaveBeenCalledWith(
+          expect.objectContaining({ libraryId: 'lib-wiki', sourceCredentials: undefined }),
+        ),
+      )
+      const picker = await screen.findByLabelText(/Spaces suchen und auswählen/)
+      await user.click(picker)
+      await user.type(picker, 'Personal')
+      await user.click(await screen.findByRole('option', { name: /Personal \(HR\)/ }))
+      await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+      await waitFor(() => expect(mockUpdateLibrary).toHaveBeenCalledTimes(1))
+      const [, request] = mockUpdateLibrary.mock.calls[0]
+      expect(request.confluenceSpaces).toEqual([
+        { key: 'BAU', name: 'Bauamt' },
+        { key: 'HR', name: 'Personal' },
+      ])
+      expect(request.confluenceEdition).toBe('DATA_CENTER')
+      expect(request.sourceUrl).toBe('https://wiki.behoerde.example/confluence')
+      expect(request.sourceCredentials).toBeUndefined()
+    }, 15000)
+
+    it('requires a fresh connection test once a new token is typed', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={() => {}}
+          libraryId="lib-wiki"
+          library={confluenceLibrary}
+        />,
+      )
+      await screen.findByLabelText(/Spaces suchen und auswählen/)
+
+      await user.type(screen.getByLabelText(/Neues Personal Access Token/), 'neues-pat')
+      await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+      expect(
+        screen.getByText(/Bitte die Zugangsdaten mit „Verbindung testen“ prüfen/),
+      ).toBeInTheDocument()
+      expect(mockUpdateLibrary).not.toHaveBeenCalled()
+    }, 10000)
+
+    it('names the missing e-mail address when a new Cloud token is typed instead of silently disabling the test', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={() => {}}
+          libraryId="lib-wiki"
+          library={{
+            ...confluenceLibrary,
+            sourceUrl: 'https://behoerde.atlassian.net',
+            confluenceEdition: 'CLOUD',
+          }}
+        />,
+      )
+      await screen.findByLabelText(/Spaces suchen und auswählen/)
+      expect(screen.getByRole('button', { name: 'Verbindung testen' })).toBeEnabled()
+
+      await user.type(screen.getByLabelText(/Neues API-Token/), 'tok-neu')
+      expect(
+        screen.getByText(/Bei einem neuen API-Token bitte auch die E-Mail-Adresse/),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Verbindung testen' })).toBeDisabled()
+
+      await user.type(screen.getByLabelText(/E-Mail-Adresse/), 'dienst@behoerde.example')
+      expect(screen.getByRole('button', { name: 'Verbindung testen' })).toBeEnabled()
+    }, 15000)
+
+    it('tells that the stored token does not follow a host change and stops relying on it', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={() => {}}
+          libraryId="lib-wiki"
+          library={confluenceLibrary}
+        />,
+      )
+      await screen.findByLabelText(/Spaces suchen und auswählen/)
+      expect(mockListConfluenceSpaces).toHaveBeenCalledTimes(1)
+
+      const address = screen.getByLabelText(/Adresse der Confluence-Instanz/)
+      await user.clear(address)
+      await user.type(address, 'https://anderes-wiki.example/confluence')
+
+      expect(screen.getByText(/zeigt auf einen anderen Server/)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Verbindung testen' })).toBeDisabled()
+      expect(mockListConfluenceSpaces).toHaveBeenCalledTimes(1)
+      await user.click(screen.getByRole('button', { name: 'Speichern' }))
+      expect(
+        screen.getByText(/Bitte die Zugangsdaten mit „Verbindung testen“ prüfen/),
+      ).toBeInTheDocument()
+      expect(mockUpdateLibrary).not.toHaveBeenCalled()
+    }, 15000)
+
+    it('keeps the curated selection when the proxy changes and only withdraws the verification', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={() => {}}
+          libraryId="lib-wiki"
+          library={confluenceLibrary}
+        />,
+      )
+      await screen.findByLabelText(/Spaces suchen und auswählen/)
+
+      await user.type(screen.getByLabelText(/Proxy/), 'proxy.example:3128')
+
+      expect(screen.queryByLabelText(/Spaces suchen und auswählen/)).not.toBeInTheDocument()
+      expect(screen.getByText(/Die bisherige Auswahl \(BAU\) bleibt bestehen/)).toBeInTheDocument()
+    }, 15000)
   })
 })

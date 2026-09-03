@@ -223,7 +223,12 @@ RSS-Feeds — für beide Web-Wege ist die Erschließung bereits gebaut (vier geb
 [Feeds als Quelle](#feeds-als-quelle-gebaut). Als fünfter Typ entsteht **`CONFLUENCE`**
 (Epic #1129, [ADR-0023](../decisions/0023-confluence-konnektor.md)): eine Bibliothek trägt
 Adresse, Edition (Cloud oder Data Center), Zugangsdaten und eine Auswahl von Spaces; Datenmodell und
-Konfiguration sind gebaut (#1133), die Läufe folgen in den weiteren Tickets des Epics. Weitere Quellklassen kommen bedarfsgetrieben hinzu, jede
+Konfiguration sind gebaut (#1133), ebenso der Anlagepfad im Wizard (#1135): Adresse eingeben, Edition
+**erkennen lassen** (nie wählen), Zugangsdaten in der Form der erkannten Edition erfassen, Verbindung
+testen — und erst dann, hinter dem ausdrücklichen Hinweis auf die Freigabefolge der gemeinsamen
+Bibliothek, die Spaces aus der Auflistung der Instanz auswählen. Nach der Anlage sind Typ und Edition
+unveränderlich sichtbar; Adresse, Zugangsdaten und Space-Auswahl bleiben über die Quellkonfiguration
+bearbeitbar. Die Läufe folgen in den weiteren Tickets des Epics. Weitere Quellklassen kommen bedarfsgetrieben hinzu, jede
 als neuer Bibliothekstyp (Template); die Anbindung an Dokumentenmanagement und elektronische Akte
 gehört in den Ausblick der Produktvision.
 

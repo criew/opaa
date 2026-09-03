@@ -1551,9 +1551,7 @@ function LibraryIndexingSection({
         }}
       >
         <SectionHead underline={false}>Quellkonfiguration</SectionHead>
-        {/* The Confluence edit flow (address, credentials, space selection) arrives with #1135;
-            until then an empty dialog would be worse than no button. */}
-        {canEditSource && configKind !== 'confluence' && (
+        {canEditSource && (
           <Button
             size="small"
             onClick={() => setEditSourceOpen(true)}

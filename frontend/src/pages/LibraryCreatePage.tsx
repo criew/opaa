@@ -20,6 +20,8 @@ import { useNavigate } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
 import { blue } from '../theme/tokens'
 import FieldLabel from '../components/wizard/FieldLabel'
+import ConfluenceSourceForm from '../components/library/ConfluenceSourceForm'
+import { EMPTY_CONFLUENCE_VALUES, type ConfluenceSourceValues } from '../utils/confluenceSource'
 import WizardStepBar from '../components/wizard/WizardStepBar'
 import { getMyGroups, testLibrarySource, upsertLibraryGrant } from '../services/api'
 import { useLibraryStore } from '../stores/libraryStore'
@@ -89,6 +91,7 @@ export default function LibraryCreatePage() {
   const [sourceProxy, setSourceProxy] = useState('')
   const [sourceCredentials, setSourceCredentials] = useState('')
   const [sourceInsecureSsl, setSourceInsecureSsl] = useState(false)
+  const [confluence, setConfluence] = useState<ConfluenceSourceValues>(EMPTY_CONFLUENCE_VALUES)
   const [testResult, setTestResult] = useState<SourceConnectionTestResponse | null>(null)
   const [testErrorMessage, setTestErrorMessage] = useState<string | null>(null)
   const [testing, setTesting] = useState(false)
@@ -155,6 +158,9 @@ export default function LibraryCreatePage() {
     description.trim() !== '' ||
     sourcePath !== '' ||
     sourceUrl !== '' ||
+    confluence.sourceUrl !== '' ||
+    confluence.sourceProxy !== '' ||
+    confluence.sourceInsecureSsl ||
     pendingGrants.length > 0
 
   const handleCancel = () => {
@@ -170,7 +176,11 @@ export default function LibraryCreatePage() {
       return
     }
     if (activeStep === 1) {
-      const validationError = validateLibrarySourceFields(sourceType, { sourcePath, sourceUrl })
+      const validationError = validateLibrarySourceFields(sourceType, {
+        sourcePath,
+        sourceUrl,
+        confluence,
+      })
       if (validationError) {
         setError(validationError)
         return
@@ -181,7 +191,11 @@ export default function LibraryCreatePage() {
   }
 
   const handleTest = async () => {
-    const validationError = validateLibrarySourceFields(sourceType, { sourcePath, sourceUrl })
+    const validationError = validateLibrarySourceFields(sourceType, {
+      sourcePath,
+      sourceUrl,
+      confluence,
+    })
     if (validationError) {
       setError(validationError)
       return
@@ -255,6 +269,7 @@ export default function LibraryCreatePage() {
           sourceProxy,
           sourceCredentials,
           sourceInsecureSsl,
+          confluence,
         }),
         visibility,
       })
@@ -437,10 +452,21 @@ export default function LibraryCreatePage() {
             )}
 
             {configKind === 'confluence' && (
-              <Alert severity="info" sx={{ maxWidth: 640 }}>
-                Die Quellkonfiguration von Confluence-Bibliotheken lässt sich über diese Oberfläche
-                noch nicht erfassen. Adresse, Zugangsdaten und Space-Auswahl folgen in Kürze.
-              </Alert>
+              <Box sx={{ maxWidth: 640 }}>
+                <ConfluenceSourceForm
+                  mode="create"
+                  idPrefix="library-create-confluence"
+                  values={confluence}
+                  onChange={(patch) => {
+                    setConfluence((prev) => ({ ...prev, ...patch }))
+                    setError(null)
+                  }}
+                />
+                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 2 }}>
+                  Der erste Lauf startet nach dem Anlegen; sein Stand bleibt auf der Detailseite
+                  sichtbar.
+                </Typography>
+              </Box>
             )}
 
             {configKind === 'path' && (
@@ -554,7 +580,7 @@ export default function LibraryCreatePage() {
               </Box>
             )}
 
-            {configKind !== 'none' && (
+            {(configKind === 'path' || configKind === 'url') && (
               <Box sx={{ maxWidth: 640 }}>
                 <Button onClick={() => void handleTest()} disabled={testing} variant="outlined">
                   {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}

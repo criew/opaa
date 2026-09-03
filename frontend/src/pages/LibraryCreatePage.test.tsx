@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../test/test-utils'
 import LibraryCreatePage from './LibraryCreatePage'
@@ -12,8 +12,10 @@ vi.mock('react-router', async () => {
   return { ...actual, useNavigate: () => mockNavigate }
 })
 
-const { mockGetMyGroups } = vi.hoisted(() => ({
+const { mockGetMyGroups, mockTestLibrarySource, mockListConfluenceSpaces } = vi.hoisted(() => ({
   mockGetMyGroups: vi.fn().mockResolvedValue([]),
+  mockTestLibrarySource: vi.fn(),
+  mockListConfluenceSpaces: vi.fn(),
 }))
 
 vi.mock('../services/api', async () => {
@@ -22,7 +24,8 @@ vi.mock('../services/api', async () => {
     ...actual,
     getMyGroups: mockGetMyGroups,
     getUserSummaries: vi.fn().mockResolvedValue([]),
-    testLibrarySource: vi.fn(),
+    testLibrarySource: mockTestLibrarySource,
+    listConfluenceSpaces: mockListConfluenceSpaces,
   }
 })
 
@@ -53,21 +56,301 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     expect(screen.getByRole('button', { name: 'Weiter' })).toBeEnabled()
   })
 
-  it('offers Confluence as an origin but does not let the wizard finish it yet (#1133)', async () => {
-    const user = userEvent.setup()
-    renderPage()
+  describe('Confluence origin (#1135, ADR-0023)', () => {
+    const spaces = [
+      { key: 'BAU', name: 'Bauamt' },
+      { key: 'HR', name: 'Personal' },
+      { key: 'IT', name: 'IT-Betrieb' },
+    ]
 
-    await user.type(screen.getByLabelText(/Name/), 'Wiki Bauamt')
-    await user.click(screen.getByRole('button', { name: 'Weiter' }))
-    await user.click(screen.getByRole('radio', { name: /Confluence/ }))
+    beforeEach(() => {
+      mockTestLibrarySource.mockReset()
+      mockListConfluenceSpaces.mockReset()
+      mockListConfluenceSpaces.mockResolvedValue({ spaces })
+    })
 
-    expect(
-      screen.getByText(/Quellkonfiguration von Confluence-Bibliotheken lässt sich über diese/),
-    ).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
-    expect(screen.getByText('3 · Rechte')).toBeInTheDocument()
-    expect(screen.getByRole('radiogroup', { name: 'Herkunft wählen' })).toBeInTheDocument()
-    expect(mockCreateNewLibrary).not.toHaveBeenCalled()
+    async function openConfluenceStep() {
+      const user = userEvent.setup()
+      renderPage()
+      await user.type(screen.getByLabelText(/^Name/), 'Wiki Bauamt')
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await user.click(screen.getByRole('radio', { name: /Confluence/ }))
+      return user
+    }
+
+    it('detects the edition before asking for credentials and shows Cloud fields for Cloud', async () => {
+      mockTestLibrarySource.mockResolvedValueOnce({
+        reachable: true,
+        confluenceEdition: 'CLOUD',
+        credentialsVerified: false,
+        message:
+          'Confluence Cloud erkannt. Geben Sie E-Mail-Adresse und API-Token des Dienstkontos ein.',
+      })
+      const user = await openConfluenceStep()
+
+      // no credentials fields before the edition is known - the wizard cannot know which shape
+      expect(screen.queryByLabelText(/API-Token/)).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/Personal Access Token/)).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Edition erkennen' })).toBeDisabled()
+
+      await user.type(
+        screen.getByLabelText(/Adresse der Confluence-Instanz/),
+        'https://site.atlassian.net/wiki',
+      )
+      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+
+      expect(mockTestLibrarySource).toHaveBeenCalledWith({
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://site.atlassian.net/wiki',
+        sourceProxy: undefined,
+        sourceInsecureSsl: false,
+      })
+      expect(await screen.findByTestId('library-create-confluence-edition')).toHaveTextContent(
+        'Confluence Cloud',
+      )
+      expect(screen.getByLabelText(/E-Mail-Adresse/)).toBeInTheDocument()
+      expect(screen.getByLabelText(/^API-Token/)).toBeInTheDocument()
+      expect(screen.queryByLabelText(/Personal Access Token/)).not.toBeInTheDocument()
+      // the consequence stands before the selection, which is not yet offered
+      expect(screen.getByTestId('library-create-confluence-sharing-consequence')).toHaveTextContent(
+        /sieht alles aus allen ausgewählten Spaces/,
+      )
+      expect(screen.queryByLabelText(/Spaces suchen und auswählen/)).not.toBeInTheDocument()
+    })
+
+    it('shows the PAT field for Data Center and refuses to continue without a tested selection', async () => {
+      mockTestLibrarySource.mockResolvedValueOnce({
+        reachable: true,
+        confluenceEdition: 'DATA_CENTER',
+        credentialsVerified: false,
+        message: 'Confluence Data Center erkannt.',
+      })
+      const user = await openConfluenceStep()
+      await user.type(
+        screen.getByLabelText(/Adresse der Confluence-Instanz/),
+        'https://wiki.behoerde.example/confluence',
+      )
+      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+
+      expect(await screen.findByLabelText(/^Personal Access Token/)).toBeInTheDocument()
+      expect(screen.queryByLabelText(/E-Mail-Adresse/)).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      expect(
+        screen.getByText(/Bitte die Zugangsdaten mit „Verbindung testen“ prüfen/),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('radiogroup', { name: 'Herkunft wählen' })).toBeInTheDocument()
+    }, 10000)
+
+    it('verifies credentials, loads the spaces, and sends edition, credentials and selection', async () => {
+      mockTestLibrarySource
+        .mockResolvedValueOnce({
+          reachable: true,
+          confluenceEdition: 'DATA_CENTER',
+          credentialsVerified: false,
+          message: 'Confluence Data Center erkannt.',
+        })
+        .mockResolvedValueOnce({
+          reachable: true,
+          confluenceEdition: 'DATA_CENTER',
+          credentialsVerified: true,
+          message: 'Confluence Data Center erreichbar, Zugangsdaten gültig.',
+        })
+      const user = await openConfluenceStep()
+      await user.type(
+        screen.getByLabelText(/Adresse der Confluence-Instanz/),
+        'https://wiki.behoerde.example/confluence',
+      )
+      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+      await user.type(await screen.findByLabelText(/^Personal Access Token/), 'pat-geheim')
+      await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+
+      expect(mockTestLibrarySource).toHaveBeenLastCalledWith({
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        sourceProxy: undefined,
+        sourceInsecureSsl: false,
+        confluenceEdition: 'DATA_CENTER',
+        sourceCredentials: 'pat-geheim',
+        libraryId: undefined,
+      })
+      const picker = await screen.findByLabelText(/Spaces suchen und auswählen/)
+      await waitFor(() => expect(mockListConfluenceSpaces).toHaveBeenCalled())
+      await user.click(picker)
+      await user.type(picker, 'Bau')
+      await user.click(await screen.findByRole('option', { name: /Bauamt \(BAU\)/ }))
+      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+      await waitFor(() =>
+        expect(mockCreateNewLibrary).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'Wiki Bauamt',
+            sourceType: 'CONFLUENCE',
+            sourceUrl: 'https://wiki.behoerde.example/confluence',
+            sourceCredentials: 'pat-geheim',
+            confluenceEdition: 'DATA_CENTER',
+            confluenceSpaces: [{ key: 'BAU', name: 'Bauamt' }],
+          }),
+        ),
+      )
+      expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu')
+    }, 15000)
+
+    it('joins e-mail and token for Cloud and drops verification when the address changes', async () => {
+      mockTestLibrarySource
+        .mockResolvedValueOnce({
+          reachable: true,
+          confluenceEdition: 'CLOUD',
+          credentialsVerified: false,
+          message: 'Confluence Cloud erkannt.',
+        })
+        .mockResolvedValueOnce({
+          reachable: true,
+          confluenceEdition: 'CLOUD',
+          credentialsVerified: true,
+          message: 'Zugangsdaten gültig.',
+        })
+      const user = await openConfluenceStep()
+      await user.type(
+        screen.getByLabelText(/Adresse der Confluence-Instanz/),
+        'https://site.atlassian.net',
+      )
+      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+      await user.type(await screen.findByLabelText(/E-Mail-Adresse/), 'dienst@behoerde.example')
+      await user.type(screen.getByLabelText(/^API-Token/), 'tok-123')
+      await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+
+      expect(mockTestLibrarySource).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sourceCredentials: 'dienst@behoerde.example:tok-123' }),
+      )
+      await screen.findByLabelText(/Spaces suchen und auswählen/)
+
+      // a changed address invalidates edition, credentials and selection alike
+      await user.type(screen.getByLabelText(/Adresse der Confluence-Instanz/), '/wiki')
+      expect(screen.queryByTestId('library-create-confluence-edition')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText(/Spaces suchen und auswählen/)).not.toBeInTheDocument()
+    }, 15000)
+
+    it('shows a blocked or unreachable address as an error with the backend wording, and never a credentials field', async () => {
+      mockTestLibrarySource.mockResolvedValueOnce({
+        reachable: false,
+        confluenceEdition: null,
+        credentialsVerified: false,
+        message:
+          'Die Adresse zeigt auf ein internes Ziel. Interne Ziele müssen in OPAA_INDEXING_TARGET_ALLOWLIST freigegeben sein.',
+      })
+      const user = await openConfluenceStep()
+      await user.type(
+        screen.getByLabelText(/Adresse der Confluence-Instanz/),
+        'https://10.0.0.5/confluence',
+      )
+      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+
+      const alert = await screen.findByRole('alert')
+      expect(alert).toHaveTextContent(/OPAA_INDEXING_TARGET_ALLOWLIST freigegeben/)
+      expect(alert.className).toMatch(/Error/)
+      expect(screen.queryByLabelText(/Token/)).not.toBeInTheDocument()
+      expect(screen.queryByTestId('library-create-confluence-edition')).not.toBeInTheDocument()
+    }, 15000)
+
+    it('keeps the space picker usable after "Zurück" re-enters the origin step', async () => {
+      mockTestLibrarySource.mockResolvedValue({
+        reachable: true,
+        confluenceEdition: 'DATA_CENTER',
+        credentialsVerified: true,
+        message: 'ok',
+      })
+      const user = await openConfluenceStep()
+      await user.type(
+        screen.getByLabelText(/Adresse der Confluence-Instanz/),
+        'https://wiki.behoerde.example/confluence',
+      )
+      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+      await user.type(await screen.findByLabelText(/^Personal Access Token/), 'pat-geheim')
+      await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+      const picker = await screen.findByLabelText(/Spaces suchen und auswählen/)
+      await user.click(picker)
+      await user.click(await screen.findByRole('option', { name: /Bauamt \(BAU\)/ }))
+      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      await user.click(screen.getByRole('button', { name: 'Zurück' }))
+
+      // the remounted step reloads the listing for the still-verified credentials
+      await waitFor(() => expect(mockListConfluenceSpaces).toHaveBeenCalledTimes(2))
+      expect(await screen.findByRole('status')).toHaveTextContent(
+        '1 von 3 lesbaren Spaces ausgewählt.',
+      )
+      await user.click(screen.getByLabelText(/Spaces suchen und auswählen/))
+      expect(await screen.findByRole('option', { name: /Personal \(HR\)/ })).toBeInTheDocument()
+    }, 20000)
+
+    it('drops a late test answer once the address changed in the meantime', async () => {
+      let answer: (value: unknown) => void = () => {}
+      mockTestLibrarySource
+        .mockResolvedValueOnce({
+          reachable: true,
+          confluenceEdition: 'DATA_CENTER',
+          credentialsVerified: false,
+          message: 'erkannt',
+        })
+        .mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)))
+      const user = await openConfluenceStep()
+      await user.type(
+        screen.getByLabelText(/Adresse der Confluence-Instanz/),
+        'https://wiki.behoerde.example/confluence',
+      )
+      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+      await user.type(await screen.findByLabelText(/^Personal Access Token/), 'pat-geheim')
+      await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+      expect(screen.getByRole('button', { name: 'Verbindung wird getestet …' })).toBeDisabled()
+
+      // the address changes while the answer for the old one is still pending
+      await user.type(screen.getByLabelText(/Adresse der Confluence-Instanz/), '/alt')
+      await act(async () => {
+        answer({
+          reachable: true,
+          confluenceEdition: 'DATA_CENTER',
+          credentialsVerified: true,
+          message: 'Zugangsdaten gültig.',
+        })
+      })
+
+      expect(screen.queryByLabelText(/Spaces suchen und auswählen/)).not.toBeInTheDocument()
+      expect(screen.queryByText('Zugangsdaten gültig.')).not.toBeInTheDocument()
+      expect(mockListConfluenceSpaces).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      expect(
+        screen.getByText('Bitte zuerst die Edition erkennen lassen („Edition erkennen“)'),
+      ).toBeInTheDocument()
+    }, 15000)
+
+    it('offers a retry when the space listing fails, keeping the selection visible', async () => {
+      mockTestLibrarySource.mockResolvedValue({
+        reachable: true,
+        confluenceEdition: 'DATA_CENTER',
+        credentialsVerified: true,
+        message: 'ok',
+      })
+      mockListConfluenceSpaces
+        .mockRejectedValueOnce(new Error('Confluence antwortete mit HTTP 502'))
+        .mockResolvedValueOnce({ spaces })
+      const user = await openConfluenceStep()
+      await user.type(
+        screen.getByLabelText(/Adresse der Confluence-Instanz/),
+        'https://wiki.behoerde.example/confluence',
+      )
+      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+      await user.type(await screen.findByLabelText(/^Personal Access Token/), 'pat-geheim')
+      await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+
+      expect(await screen.findByText('Confluence antwortete mit HTTP 502')).toBeInTheDocument()
+      expect(screen.getByLabelText(/Spaces suchen und auswählen/)).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Erneut laden' }))
+      expect(await screen.findByRole('status')).toHaveTextContent(
+        '0 von 3 lesbaren Spaces ausgewählt.',
+      )
+      expect(screen.queryByText('Confluence antwortete mit HTTP 502')).not.toBeInTheDocument()
+    }, 15000)
   })
 
   it('switches the connection form with the origin card and validates its fields', async () => {
