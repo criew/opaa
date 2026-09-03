@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
@@ -161,13 +162,32 @@ class UrlIndexingExecutorExecuteTest {
         "text/csv",
         "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection".getBytes(StandardCharsets.UTF_8));
     when(fileProcessingService.processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), eq(library)))
+            any(),
+            anyString(),
+            anyString(),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.HTTP_DIRECTORY),
+            isNull(),
+            isNull(),
+            any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute();
 
     verify(fileProcessingService, timeout(5000))
-        .processUrlFile(any(), eq("bescheid.csv"), anyString(), any(), anyLong(), eq(library));
+        .processUrlFile(
+            any(),
+            eq("bescheid.csv"),
+            anyString(),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.HTTP_DIRECTORY),
+            isNull(),
+            isNull(),
+            any());
     verify(indexingRunEventRepository, timeout(5000))
         .save(argThat(categoryIs(IndexingEventCategory.FORMAT_MISMATCH)));
   }
@@ -194,7 +214,7 @@ class UrlIndexingExecutorExecuteTest {
     execute();
 
     verify(fileProcessingService, never())
-        .processUrlFile(any(), any(), any(), any(), anyLong(), any());
+        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
     verify(indexingJobService, timeout(5000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
     verify(indexingRunEventRepository, timeout(5000))
         .save(argThat(categoryIs(IndexingEventCategory.UNSUPPORTED_FORMAT)));
@@ -216,7 +236,7 @@ class UrlIndexingExecutorExecuteTest {
     verify(indexingJobService, timeout(5000))
         .failJob(eq(jobId), eq(ProxyAndCredentials.INVALID_PROXY_MESSAGE));
     verify(fileProcessingService, never())
-        .processUrlFile(any(), any(), any(), any(), anyLong(), any());
+        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
   }
 
   // --- #886: StaleDocumentCleanupService is only ever called after a successful, uncapped run --
@@ -232,7 +252,16 @@ class UrlIndexingExecutorExecuteTest {
             .getBytes(StandardCharsets.UTF_8));
     serve("/files/bericht.txt", "text/plain", "Inhalt.".getBytes(StandardCharsets.UTF_8));
     when(fileProcessingService.processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), eq(library)))
+            any(),
+            anyString(),
+            anyString(),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.HTTP_DIRECTORY),
+            isNull(),
+            isNull(),
+            any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute();
@@ -262,7 +291,16 @@ class UrlIndexingExecutorExecuteTest {
     serve("/files/eins.txt", "text/plain", "Eins.".getBytes(StandardCharsets.UTF_8));
     serve("/files/zwei.txt", "text/plain", "Zwei.".getBytes(StandardCharsets.UTF_8));
     when(fileProcessingService.processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), eq(library)))
+            any(),
+            anyString(),
+            anyString(),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.HTTP_DIRECTORY),
+            isNull(),
+            isNull(),
+            any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute();
@@ -291,7 +329,16 @@ class UrlIndexingExecutorExecuteTest {
           exchange.close();
         });
     when(fileProcessingService.processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), eq(library)))
+            any(),
+            anyString(),
+            anyString(),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.HTTP_DIRECTORY),
+            isNull(),
+            isNull(),
+            any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute();

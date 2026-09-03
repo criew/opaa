@@ -118,9 +118,14 @@ Ablauf beim Hochladen:
    nur, solange die dort geöffnete Bibliothek mindestens `EDITOR` gewährt, sodass sich beide Zwecke
    nie widersprechen können.
 
+Eine hochgeladene `.eml`/`.msg` bringt ihre Anhänge mit: Sie werden seit #1218 über den
+quellentyp-übergreifenden Anhangsweg (ADR-0022) als eigene Dokumente mit `parent_document_id` auf die
+Mail indiziert — derselbe Weg wie bei FILESYSTEM- (#1183) und Webverzeichnis-Läufen (#1219), nur ohne
+Lauf-/Job-Kontext.
+
 Ein hochgeladenes Dokument lässt sich über `DELETE /api/v1/libraries/{libraryId}/documents/{documentId}`
 auch wieder entfernen (`EDITOR` erforderlich) — die Dokumentzeile, ihre Chunks im Vektorspeicher und die
-abgelegte Datei. **Gebaut (#420).**
+abgelegte Datei; Anhangsdokumente der Mail gehen dabei mit (ADR-0022, Entscheidung 3). **Gebaut (#420).**
 
 Zwei Sicherungen gehören zusätzlich dazu, beide noch offen:
 
@@ -280,10 +285,17 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
 4. Geladen wird in einen temporären Bereich; anschließend wird eine **Prüfsumme über den Inhalt**
    gebildet. Sie erkennt Umbenennungen und Verschiebungen und sichert gegen einen unzuverlässigen
    Änderungszeitpunkt ab.
-5. Die Datei durchläuft dieselbe Verarbeitungskette wie jedes andere Dokument.
+5. Die Datei durchläuft dieselbe Verarbeitungskette wie jedes andere Dokument. Meldet ihre
+   Pipeline dabei Anhänge (eine `.eml`/`.msg` aus dem Webverzeichnis), laufen diese seit #1219 über
+   den quellentyp-übergreifenden Anhangsweg (ADR-0022) und werden eigene Dokumente mit
+   `parent_document_id` auf die Mail — wie bei FILESYSTEM-Läufen und beim Upload.
 6. Der temporäre Bereich wird nach der Verarbeitung geräumt — auch bei einem Fehler.
 7. **Löschung durch Abwesenheit ist gebaut** (ADR-0017, Entscheidung 5): Ein Dokument, dessen URL
    im aktuellen Abruf fehlt, wird am Ende eines erfolgreichen Laufs samt seiner Chunks entfernt.
+   Anhangsdokumente folgen der Buchhaltung aus ADR-0022, Entscheidung 3: Ein beim Verarbeiten der
+   Mail gemeldeter Anhang zählt als vorhanden, die Anhänge einer unverändert übersprungenen Mail
+   werden aus der Datenbank nachgetragen, und nur ein aus einer neu verarbeiteten Mail
+   verschwundener Anhang fällt weg.
    Drei Fälle lösen das bewusst **nicht** aus, weil der jeweilige Bestand dann keine verlässliche
    Aussage über ein Verschwinden ist: ein durch Tiefen-/Mengenlimit abgeschnittener Lauf (Schritt
    1), ein Lauf, bei dem mindestens ein Unterverzeichnis nicht abgerufen werden konnte, und ein

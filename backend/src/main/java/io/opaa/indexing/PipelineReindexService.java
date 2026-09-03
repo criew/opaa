@@ -309,6 +309,9 @@ public class PipelineReindexService {
       // path if its content actually changed - no delete-and-recreate happens here, so an RSS
       // entry's attachments (parent_document_id, ADR-0022 Entscheidung 4) are never at risk from
       // this path itself.
+      if (document.getParentDocumentId() != null) {
+        return markRemoteAttachmentChainForNextRun(document);
+      }
       documentRepository.markForReindexOnNextRun(documentId);
       return Advance.MARKED_FOR_NEXT_RUN;
     }
@@ -348,6 +351,49 @@ public class PipelineReindexService {
   }
 
   /**
+   * Marks a remote (HTTP_DIRECTORY/RSS_FEED) attachment document for its next connector run
+   * (#1219): its bytes can only be re-extracted from its root ancestor, which only that run can
+   * re-download - so the <em>whole</em> chain has its change markers cleared, root included.
+   * Clearing only the attachment itself would never converge: the unchanged root would be skipped
+   * by the next run's own change check, its attachments never re-enumerated, and the attachment's
+   * chunks would stay below version forever. With every level cleared, the next run re-processes
+   * the root (no {@code last_modified_remote} to match), each intermediate attachment fails its
+   * checksum comparison (cleared) and is re-parsed, and the target attachment is rewritten at the
+   * current version. A broken or cyclic chain is a skip, mirroring {@link
+   * #reindexAttachmentDocument}'s own treatment.
+   */
+  private Advance markRemoteAttachmentChainForNextRun(Document document) {
+    List<UUID> chainIds = new ArrayList<>();
+    Set<UUID> seen = new HashSet<>();
+    Document current = document;
+    while (true) {
+      if (!seen.add(current.getId())) {
+        log.warn(
+            "Skipping attachment document {}: its parent_document_id chain contains a cycle",
+            document.getId());
+        return Advance.SKIPPED;
+      }
+      chainIds.add(current.getId());
+      if (current.getParentDocumentId() == null) {
+        break;
+      }
+      Document parent = documentRepository.findById(current.getParentDocumentId()).orElse(null);
+      if (parent == null) {
+        log.warn(
+            "Skipping attachment document {}: its parent chain is broken at {}",
+            document.getId(),
+            current.getParentDocumentId());
+        return Advance.SKIPPED;
+      }
+      current = parent;
+    }
+    for (UUID id : chainIds) {
+      documentRepository.markForReindexOnNextRun(id);
+    }
+    return Advance.MARKED_FOR_NEXT_RUN;
+  }
+
+  /**
    * Re-runs the current pipeline over an attachment document (ADR-0022) - a row whose {@code
    * file_path} is synthetic ({@code <parentPath>/<index>/<name>}, see {@code
    * FileProcessingService#attachmentFilePath}) and therefore never resolves to a file of its own.
@@ -381,9 +427,11 @@ public class PipelineReindexService {
       current = parent;
     }
     Document root = current;
-    if (root.getSourceType() != DocumentSourceType.FILESYSTEM) {
+    if (root.getSourceType() != DocumentSourceType.FILESYSTEM
+        && root.getSourceType() != DocumentSourceType.UPLOAD) {
       log.info(
-          "Skipping attachment document {}: only FILESYSTEM parents support re-extraction",
+          "Skipping attachment document {}: only FILESYSTEM and UPLOAD parents support"
+              + " re-extraction",
           document.getId());
       return false;
     }
@@ -506,12 +554,14 @@ public class PipelineReindexService {
   /**
    * The {@link AttachmentAccess} a re-index hands to {@code
    * FileProcessingService#reindexStoredDocument} so attachments a re-run pipeline discovers reach
-   * the generalized attachment path - {@code null} for UPLOAD, whose libraries deliberately have no
-   * attachment indexing yet (see {@code reindexStoredDocument}'s own contract). There is no job or
-   * run here, so events are only logged and no progress is counted.
+   * the generalized attachment path - FILESYSTEM and, since #1218, UPLOAD (the two source types
+   * whose files this machine can re-read, see {@link #localSourceFile}). There is no job or run
+   * here, so events are only logged and no progress is counted ({@link
+   * StandaloneAttachmentAccess}).
    */
   private AttachmentAccess attachmentAccessFor(Document document) {
-    if (document.getSourceType() != DocumentSourceType.FILESYSTEM
+    if ((document.getSourceType() != DocumentSourceType.FILESYSTEM
+            && document.getSourceType() != DocumentSourceType.UPLOAD)
         || document.getLibraryId() == null) {
       return null;
     }
@@ -519,29 +569,7 @@ public class PipelineReindexService {
     if (library == null) {
       return null;
     }
-    return new ReindexAttachmentAccess(library);
-  }
-
-  private record ReindexAttachmentAccess(KnowledgeLibrary targetLibrary)
-      implements AttachmentAccess {
-
-    @Override
-    public IndexingEventSink events() {
-      return (category, message, reference) ->
-          log.info(
-              "Pipeline re-index attachment event [{}]: {} ({})", category, message, reference);
-    }
-
-    @Override
-    public AttachmentProgressSink progress() {
-      return () -> {};
-    }
-
-    @Override
-    public void markDeferred() {
-      // A pipeline re-index has no conditional-GET state to suppress; the next call simply
-      // re-selects whatever is still below the requested version.
-    }
+    return new StandaloneAttachmentAccess(library, "Pipeline re-index");
   }
 
   /**

@@ -102,7 +102,7 @@ class LibraryDocumentServiceIntegrationTest {
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
     registry.add("opaa.upload.storage-path", () -> uploadStorageDir.toAbsolutePath().toString());
-    registry.add("opaa.upload.max-file-size", () -> 1024);
+    registry.add("opaa.upload.max-file-size", () -> 4096);
     registry.add(
         "opaa.indexing.filesystem-allowlist",
         () -> "/data,/tmp," + filesystemAllowlistDir.toAbsolutePath());
@@ -189,7 +189,16 @@ class LibraryDocumentServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    documentRepository.deleteAll();
+    // fk_documents_parent (ADR-0022): attachment rows must be deleted before their parents. A
+    // child's synthetic file_path always embeds (and therefore exceeds) its parent's, so deleting
+    // in descending path length is exactly deepest-first.
+    List<Document> documentsDeepestFirst =
+        documentRepository.findAll().stream()
+            .sorted(
+                java.util.Comparator.comparingInt((Document d) -> d.getFilePath().length())
+                    .reversed())
+            .toList();
+    documentRepository.deleteAll(documentsDeepestFirst);
     libraryRepository.deleteById(libraryId);
     // #238 code review, finding 2+4: asset_grant_history.subject_user_id is ON DELETE RESTRICT
     // (see 018-permission-history.yaml's "Deletion survival" comment) - every library/grant
@@ -269,7 +278,7 @@ class LibraryDocumentServiceIntegrationTest {
 
   @Test
   void aFileOverTheConfiguredLimitIsRejectedWithoutStoringAFile() throws IOException {
-    MultipartFile tooBig = textFile("big.txt", "x".repeat(2000));
+    MultipartFile tooBig = textFile("big.txt", "x".repeat(5000));
 
     assertThatThrownBy(
             () ->
@@ -1706,6 +1715,204 @@ class LibraryDocumentServiceIntegrationTest {
    * *other* terminal status - this instead fails fast with a clear expected/actual mismatch the
    * moment processing is done, whichever status it reached.
    */
+  // --- #1218: attachments of uploaded mails go through the generalized attachment path ---
+
+  @Test
+  void anUploadedEmlWithAttachmentIndexesTheAttachmentAsItsOwnDocument() throws Exception {
+    LibraryDocumentEntry response =
+        documentService.uploadDocument(
+            libraryId,
+            emlFile("anfrage.eml", "Bitte pruefen.", "Anhangsinhalt fuer den Bauantrag."),
+            null,
+            currentUserOf(editor, false));
+
+    Document mail = awaitDocumentStatus(response.document().getId(), DocumentStatus.INDEXED);
+
+    List<Document> children = documentRepository.findByParentDocumentId(mail.getId());
+    assertThat(children).hasSize(1);
+    Document attachment = children.getFirst();
+    assertThat(attachment.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+    assertThat(attachment.getFileName()).isEqualTo("anlage.txt");
+    assertThat(attachment.getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
+    // ADR-0022, Entscheidung 2: the attachment's synthetic file_path embeds the parent's own.
+    assertThat(attachment.getFilePath()).startsWith(mail.getFilePath() + "/");
+    // #1130 Befund 2, structurally fixed: the attachment's chunks carry its own pipeline's id
+    // (the Tika fallback for plain text), never the outer mail pipeline's.
+    assertThat(chunkPipelineIds(attachment.getId())).containsExactly("tika-fallback");
+    assertThat(chunkPipelineIds(mail.getId())).containsExactly("email");
+    // ADR-0022, Entscheidung 6: the mail parent's fileSize no longer includes the attachment
+    // bytes (contentByteSizeOverride) - no double counting against the library quota.
+    assertThat(mail.getFileSize()).isLessThan((long) emlSize());
+  }
+
+  @Test
+  void anUploadedMailInMailIndexesTheGrandchildAttachment() throws Exception {
+    LibraryDocumentEntry response =
+        documentService.uploadDocument(
+            libraryId, nestedEmlFile("weiterleitung.eml"), null, currentUserOf(editor, false));
+
+    Document outerMail = awaitDocumentStatus(response.document().getId(), DocumentStatus.INDEXED);
+
+    List<Document> children = documentRepository.findByParentDocumentId(outerMail.getId());
+    assertThat(children).hasSize(1);
+    Document innerMail = children.getFirst();
+    assertThat(innerMail.getFileName()).isEqualTo("innen.eml");
+    List<Document> grandchildren = documentRepository.findByParentDocumentId(innerMail.getId());
+    assertThat(grandchildren).hasSize(1);
+    // The chain rule of ADR-0022 Entscheidung 2: the grandchild's parent is the INNER mail, and
+    // its path embeds the inner mail's own synthetic path.
+    assertThat(grandchildren.getFirst().getParentDocumentId()).isEqualTo(innerMail.getId());
+    assertThat(grandchildren.getFirst().getFilePath()).startsWith(innerMail.getFilePath() + "/");
+  }
+
+  @Test
+  void deletingAnUploadedMailTakesItsAttachmentDocumentsWith() throws Exception {
+    LibraryDocumentEntry response =
+        documentService.uploadDocument(
+            libraryId,
+            emlFile("loeschen.eml", "Wird geloescht.", "Anhang der geloeschten Mail."),
+            null,
+            currentUserOf(editor, false));
+    Document mail = awaitDocumentStatus(response.document().getId(), DocumentStatus.INDEXED);
+    Document attachment = documentRepository.findByParentDocumentId(mail.getId()).getFirst();
+
+    documentService.deleteDocument(libraryId, mail.getId(), currentUserOf(editor, false));
+
+    assertThat(documentRepository.findById(mail.getId())).isEmpty();
+    assertThat(documentRepository.findById(attachment.getId())).isEmpty();
+    await()
+        .atMost(10, TimeUnit.SECONDS)
+        .until(() -> chunkPipelineIds(attachment.getId()).isEmpty());
+  }
+
+  @Test
+  void retryingAFailedUploadWithAttachmentChildrenReplacesThemInsteadOfFailingTheRetry()
+      throws Exception {
+    // A mail upload can fail AFTER its attachments were already indexed (attachments are handled
+    // while the parent is still being parsed). The #589 FAILED-row replacement must then take the
+    // children with it, or documentRepository.delete on the FAILED parent fails
+    // fk_documents_parent and the retry is blocked forever (ADR-0022, Entscheidung 3's
+    // Nebenpfad-Auflage, #1218).
+    MultipartFile mailFile =
+        emlFile("wiederholung.eml", "Zweiter Versuch.", "Anhang des zweiten Versuchs.");
+    LibraryDocumentEntry first =
+        documentService.uploadDocument(libraryId, mailFile, null, currentUserOf(editor, false));
+    Document firstMail = awaitDocumentStatus(first.document().getId(), DocumentStatus.INDEXED);
+    Document firstAttachment =
+        documentRepository.findByParentDocumentId(firstMail.getId()).getFirst();
+    // Simulate the failed-after-attachments outcome on the parent row.
+    documentRepository.markFailed(firstMail.getId(), "Die Datei konnte nicht verarbeitet werden");
+
+    LibraryDocumentEntry retry =
+        documentService.uploadDocument(libraryId, mailFile, null, currentUserOf(editor, false));
+    Document retriedMail = awaitDocumentStatus(retry.document().getId(), DocumentStatus.INDEXED);
+
+    assertThat(documentRepository.findById(firstMail.getId())).isEmpty();
+    assertThat(documentRepository.findById(firstAttachment.getId())).isEmpty();
+    List<Document> retriedChildren = documentRepository.findByParentDocumentId(retriedMail.getId());
+    assertThat(retriedChildren).hasSize(1);
+    assertThat(retriedChildren.getFirst().getStatus()).isEqualTo(DocumentStatus.INDEXED);
+  }
+
+  @Test
+  void twoUploadedMailsWithAnIdenticalAttachmentAreBothIndexed() throws Exception {
+    // uk_documents_library_checksum is scoped to parentless rows since migration 017 (#1218):
+    // upload dedup is about what users upload, not about content derived from it - two different
+    // mails legitimately carry the same attachment.
+    LibraryDocumentEntry first =
+        documentService.uploadDocument(
+            libraryId,
+            emlFile("erste.eml", "Erste Mail.", "Identischer Anhangsinhalt."),
+            null,
+            currentUserOf(editor, false));
+    awaitDocumentStatus(first.document().getId(), DocumentStatus.INDEXED);
+
+    LibraryDocumentEntry second =
+        documentService.uploadDocument(
+            libraryId,
+            emlFile("zweite.eml", "Zweite Mail.", "Identischer Anhangsinhalt."),
+            null,
+            currentUserOf(editor, false));
+    Document secondMail = awaitDocumentStatus(second.document().getId(), DocumentStatus.INDEXED);
+
+    List<Document> secondChildren = documentRepository.findByParentDocumentId(secondMail.getId());
+    assertThat(secondChildren).hasSize(1);
+    assertThat(secondChildren.getFirst().getStatus()).isEqualTo(DocumentStatus.INDEXED);
+  }
+
+  private int lastEmlSize;
+
+  private MultipartFile emlFile(String fileName, String bodyText, String attachmentText)
+      throws Exception {
+    org.apache.james.mime4j.dom.Message message =
+        org.apache.james.mime4j.dom.Message.Builder.of()
+            .setSubject("Test")
+            .setFrom("a@example.org")
+            .setTo("b@example.org")
+            .setBody(
+                org.apache.james.mime4j.message.MultipartBuilder.create("mixed")
+                    .addTextPart(bodyText, StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        org.apache.james.mime4j.message.BodyPartBuilder.create()
+                            .setBody(attachmentText.getBytes(StandardCharsets.UTF_8), "text/plain")
+                            .setContentDisposition("attachment", "anlage.txt"))
+                    .build())
+            .build();
+    byte[] bytes = org.apache.james.mime4j.message.DefaultMessageWriter.asBytes(message);
+    lastEmlSize = bytes.length;
+    return new MockMultipartFile("file", fileName, "message/rfc822", bytes);
+  }
+
+  private int emlSize() {
+    return lastEmlSize;
+  }
+
+  private MultipartFile nestedEmlFile(String fileName) throws Exception {
+    org.apache.james.mime4j.dom.Message inner =
+        org.apache.james.mime4j.dom.Message.Builder.of()
+            .setSubject("Innen")
+            .setFrom("c@example.org")
+            .setTo("d@example.org")
+            .setBody(
+                org.apache.james.mime4j.message.MultipartBuilder.create("mixed")
+                    .addTextPart("Innerer Text.", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        org.apache.james.mime4j.message.BodyPartBuilder.create()
+                            .setBody("Enkel-Anhang.".getBytes(StandardCharsets.UTF_8), "text/plain")
+                            .setContentDisposition("attachment", "enkel.txt"))
+                    .build())
+            .build();
+    byte[] innerBytes = org.apache.james.mime4j.message.DefaultMessageWriter.asBytes(inner);
+    org.apache.james.mime4j.dom.Message outer =
+        org.apache.james.mime4j.dom.Message.Builder.of()
+            .setSubject("Aussen")
+            .setFrom("a@example.org")
+            .setTo("b@example.org")
+            .setBody(
+                org.apache.james.mime4j.message.MultipartBuilder.create("mixed")
+                    .addTextPart("Aeusserer Text.", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        org.apache.james.mime4j.message.BodyPartBuilder.create()
+                            .setBody(innerBytes, "message/rfc822")
+                            .setContentDisposition("attachment", "innen.eml"))
+                    .build())
+            .build();
+    return new MockMultipartFile(
+        "file",
+        fileName,
+        "message/rfc822",
+        org.apache.james.mime4j.message.DefaultMessageWriter.asBytes(outer));
+  }
+
+  /** The distinct {@code pipeline_id} chunk metadata values stored for {@code documentId}. */
+  private List<String> chunkPipelineIds(UUID documentId) {
+    return jdbcTemplate.queryForList(
+        "SELECT DISTINCT metadata->>'pipeline_id' FROM vector_store WHERE"
+            + " metadata->>'document_id' = ?",
+        String.class,
+        documentId.toString());
+  }
+
   private Document awaitDocumentStatus(UUID documentId, DocumentStatus expected) {
     await()
         .atMost(30, TimeUnit.SECONDS)

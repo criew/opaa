@@ -14,6 +14,7 @@ import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.attachment.AttachmentSource;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.observability.IndexingMetrics;
 import java.io.IOException;
@@ -102,6 +103,13 @@ public class FileProcessingService {
   /** The generalized attachment path's limits for a Mail attachment - see its own Javadoc. */
   private final AttachmentDownloadLimits mailAttachmentLimits;
 
+  /**
+   * Only read by {@link #processUploadedFileAsync} to build the upload path's own {@link
+   * StandaloneAttachmentAccess} (#1218) - an upload has no run/job whose library entity would
+   * already be in hand the way an executor's is.
+   */
+  private final KnowledgeLibraryRepository libraryRepository;
+
   public FileProcessingService(
       DocumentPipelineRegistry pipelineRegistry,
       DocumentRepository documentRepository,
@@ -112,7 +120,8 @@ public class FileProcessingService {
       IndexingProperties indexingProperties,
       Executor embeddingExecutor,
       ObjectProvider<AttachmentIndexer> attachmentIndexerProvider,
-      AttachmentDownloadLimits mailAttachmentLimits) {
+      AttachmentDownloadLimits mailAttachmentLimits,
+      KnowledgeLibraryRepository libraryRepository) {
     this.pipelineRegistry = pipelineRegistry;
     this.documentRepository = documentRepository;
     this.vectorChunkStore = vectorChunkStore;
@@ -124,6 +133,7 @@ public class FileProcessingService {
     this.embeddingExecutor = embeddingExecutor;
     this.attachmentIndexerProvider = attachmentIndexerProvider;
     this.mailAttachmentLimits = mailAttachmentLimits;
+    this.libraryRepository = libraryRepository;
   }
 
   public FileProcessingResult processFile(Path file, KnowledgeLibrary targetLibrary)
@@ -716,7 +726,24 @@ public class FileProcessingService {
    */
   @Async("uploadTaskExecutor")
   public void processUploadedFileAsync(UUID documentId, Path storedFile) {
-    processStoredFile(documentId, storedFile, false, null);
+    processStoredFile(documentId, storedFile, false, uploadAttachmentAccessFor(documentId));
+  }
+
+  /**
+   * The upload path's {@link AttachmentAccess} (#1218): an attachment of an uploaded {@code
+   * .eml}/{@code .msg} is indexed through the generalized attachment path like any connector's,
+   * only without a job - events are logged, progress is a no-op ({@link
+   * StandaloneAttachmentAccess}), the quota runs over the library exactly as in a run. {@code null}
+   * (attachments discarded, the pre-#1218 behaviour) only when the document or its library is
+   * already gone - {@link #processStoredFile} then finds nothing to update either way.
+   */
+  private AttachmentAccess uploadAttachmentAccessFor(UUID documentId) {
+    return documentRepository
+        .findById(documentId)
+        .map(Document::getLibraryId)
+        .flatMap(libraryRepository::findById)
+        .<AttachmentAccess>map(library -> new StandaloneAttachmentAccess(library, "Upload"))
+        .orElse(null);
   }
 
   /**
@@ -745,8 +772,8 @@ public class FileProcessingService {
    * not-yet-extracted one (the pre-ADR-0022 inline-chunk bestand, migrated by the operator-driven
    * email-v4 re-index) becomes its own row for the first time. A {@code null} access discards
    * discovered attachments and keeps the parent's raw {@code fileSize} (no {@code
-   * contentByteSizeOverride}), so the attachment bytes stay accounted on the parent - the UPLOAD
-   * path's declared gap.
+   * contentByteSizeOverride}), so the attachment bytes stay accounted on the parent - since #1218
+   * only the degenerate case of a library deleted mid-flight, no longer a per-source-type gap.
    *
    * @return whether the document was actually re-indexed
    */

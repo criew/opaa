@@ -956,6 +956,101 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   @Test
+  void aPdfPipelineVersionBumpReachesAPdfAttachmentInsideAnUploadedMail() throws Exception {
+    // #1218: the UPLOAD counterpart of aPdfPipelineVersionBumpReachesAPdfAttachmentInsideAMail -
+    // an attachment of an uploaded mail is re-extracted from the managed-storage mail file, so
+    // attachmentAccessFor/reindexAttachmentDocument must accept UPLOAD roots instead of skipping.
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    byte[] pdfBytes = pdfBytes("Die Hundesteuer betraegt 96,00 EUR im Jahr.");
+    Message message =
+        Message.Builder.of()
+            .setSubject("Steuerbescheid")
+            .setFrom("Steueramt <steueramt@example.org>")
+            .setTo("Sachbearbeitung <sachbearbeitung@example.org>")
+            .setBody(
+                MultipartBuilder.create("mixed")
+                    .addTextPart("Der Bescheid haengt an.", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        BodyPartBuilder.create()
+                            .setBody(pdfBytes, "application/pdf")
+                            .setContentDisposition("attachment", "anlage.pdf"))
+                    .build())
+            .build();
+    Path managedDirectory =
+        Path.of(uploadProperties.storagePath()).resolve(uploadLibrary.getId().toString());
+    Files.createDirectories(managedDirectory);
+    Path emlFile = managedDirectory.resolve(UUID.randomUUID() + ".eml");
+    Files.write(emlFile, DefaultMessageWriter.asBytes(message));
+    Document mailDocument =
+        persistedDocumentPointingAt(
+            "bescheid.eml", emlFile, DocumentSourceType.UPLOAD, uploadLibrary.getId());
+    Document attachmentDocument =
+        new Document(
+            "anlage.pdf",
+            emlFile.toAbsolutePath() + "/0/anlage.pdf",
+            "application/pdf",
+            (long) pdfBytes.length,
+            DocumentSourceType.UPLOAD);
+    attachmentDocument.setLibraryId(uploadLibrary.getId());
+    attachmentDocument.setOrganizationId(Organization.DEFAULT_ID);
+    attachmentDocument.setChecksum(new ChecksumService().computeSha256(pdfBytes));
+    attachmentDocument.setParentDocumentId(mailDocument.getId());
+    attachmentDocument = documentRepository.save(attachmentDocument);
+    seedChunk(
+        attachmentDocument.getId(),
+        uploadLibrary.getId(),
+        "alter Anhang-Chunk",
+        pdfPipeline.id(),
+        (short) (pdfPipeline.version() - 1));
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    assertThat(documentRepository.findById(attachmentDocument.getId())).isPresent();
+    assertThat(pipelineIdsOf(attachmentDocument.getId())).containsOnly(pdfPipeline.id());
+    assertThat(chunkTextsOf(attachmentDocument.getId())).doesNotContain("alter Anhang-Chunk");
+  }
+
+  @Test
+  void aRemoteAttachmentDocumentMarksItsWholeParentChainForTheNextRun() {
+    // #1219: a remote (HTTP_DIRECTORY) attachment can only be re-extracted by its parent's own
+    // connector run. Marking only the attachment row would never converge - the unchanged parent
+    // would be skipped by the run's change check and the attachment never re-parsed - so the
+    // whole chain, root included, has its change markers cleared.
+    Document mail = persistedRemoteDocument("https://example.test/mail.eml");
+    mail.setLastModifiedRemote("Mon, 01 Sep 2026 10:00:00 GMT");
+    mail = documentRepository.save(mail);
+    Document attachment =
+        new Document(
+            "anlage.pdf",
+            "https://example.test/mail.eml/0/anlage.pdf",
+            "application/pdf",
+            1024L,
+            DocumentSourceType.HTTP_DIRECTORY);
+    attachment.setLibraryId(library.getId());
+    attachment.setOrganizationId(Organization.DEFAULT_ID);
+    attachment.setChecksum("checksum-attachment");
+    attachment.setParentDocumentId(mail.getId());
+    attachment = documentRepository.save(attachment);
+    seedChunk(attachment.getId(), "alter chunk", null, null);
+
+    PipelineReindexResult result = reindexBatch(10);
+
+    assertThat(result.markedForNextRun()).isEqualTo(1);
+    Document reloadedMail = documentRepository.findById(mail.getId()).orElseThrow();
+    Document reloadedAttachment = documentRepository.findById(attachment.getId()).orElseThrow();
+    assertThat(reloadedAttachment.getChecksum()).isNull();
+    // The root parent is cleared too - without this, the next run skips the unchanged mail and
+    // the attachment stays below version forever.
+    assertThat(reloadedMail.getChecksum()).isNull();
+    assertThat(reloadedMail.getLastModifiedRemote()).isNull();
+    // Drains: the marked attachment leaves the backlog selection on the next call.
+    assertThat(reindexBatch(10).isEmpty()).isTrue();
+  }
+
+  @Test
   void anIndexShiftedAttachmentIsSkippedInsteadOfReindexedWithForeignBytes() throws Exception {
     // Review round 2, finding 2: positional indices are only stable while the parent file is
     // unchanged. If the mail was edited since indexing (an attachment removed, order shifted),
