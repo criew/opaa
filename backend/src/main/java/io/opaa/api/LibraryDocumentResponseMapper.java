@@ -48,7 +48,8 @@ final class LibraryDocumentResponseMapper {
         .sourceUrl(document.getDeepLinkSourceUrl())
         .errorMessage(document.getErrorMessage())
         .folderId(document.getFolderId())
-        .folderPath(folderPath);
+        .folderPath(folderPath)
+        .parentDocumentId(document.getParentDocumentId());
   }
 
   static LibraryDocumentPageResponse toPageResponse(LibraryDocumentPage page) {

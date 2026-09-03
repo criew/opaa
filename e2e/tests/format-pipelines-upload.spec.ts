@@ -37,10 +37,10 @@ test.describe('Formatabdeckung Upload', () => {
   test('XLSX, HTML und EML werden in einem Durchlauf hochgeladen und jeweils indiziert', async ({
     formatPipelinesPage: page,
   }) => {
-    // Regression guard for #1218 (ADR-0022): an uploaded mail's attachments are their own indexed
-    // document rows now, no longer nested chunks of the mail. The expected count is therefore 4,
-    // not 3: the three uploads plus the EML fixture's single supported attachment
-    // (formatdokument-anhang.txt, indexed via the Tika fallback pipeline).
+    // #1184 (ADR-0022, Entscheidung 5): the document list groups attachments collapsed under
+    // their parent, so only the three uploaded top-level rows carry a visible status chip - the
+    // EML fixture's attachment row (its own indexed document since #1218/#1227) is asserted
+    // explicitly below by expanding the group, not via this count.
     await createLibraryWithDocuments(
       page,
       LIBRARY_NAME,
@@ -49,7 +49,7 @@ test.describe('Formatabdeckung Upload', () => {
         { path: join(FIXTURE_DIR, 'formatdokument.html'), name: 'formatdokument.html' },
         { path: join(FIXTURE_DIR, 'formatdokument.eml'), name: 'formatdokument.eml' },
       ],
-      4,
+      3,
     )
 
     // Redundant with createLibraryWithDocuments's own toHaveCount assertion, but explicit here as
@@ -57,5 +57,16 @@ test.describe('Formatabdeckung Upload', () => {
     await expect(page.getByText('formatdokument.xlsx', { exact: true })).toBeVisible()
     await expect(page.getByText('formatdokument.html', { exact: true })).toBeVisible()
     await expect(page.getByText('formatdokument.eml', { exact: true })).toBeVisible()
+
+    // Regression guard for #1218 (ADR-0022): the uploaded mail's attachment is its own indexed
+    // document row, no longer a nested chunk of the mail - visible as a grouped attachment row
+    // (#1184) with its own "indiziert" chip once the group is expanded: 3 parents + 1 attachment.
+    const toggle = page.getByRole('button', {
+      name: 'Anhänge von formatdokument.eml anzeigen',
+    })
+    await expect(toggle).toHaveText(/1 Anhang/)
+    await toggle.click()
+    await expect(page.getByText('formatdokument-anhang.txt', { exact: true })).toBeVisible()
+    await expect(page.getByText('indiziert')).toHaveCount(4)
   })
 })

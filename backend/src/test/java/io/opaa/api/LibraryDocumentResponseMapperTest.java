@@ -109,6 +109,33 @@ class LibraryDocumentResponseMapperTest {
     assertThat(response.getSourceUrl()).isNull();
   }
 
+  // #1184 (ADR-0022, Entscheidung 5): parentDocumentId marks an attachment row so the document
+  // list can group it under its parent - it must survive the mapping, and stay null for a
+  // top-level document.
+  @Test
+  void carriesParentDocumentIdForAnAttachmentAndLeavesItNullForATopLevelDocument() {
+    UUID parentId = UUID.randomUUID();
+    Document attachment =
+        new Document(
+            "anlage.pdf",
+            "/mail/posteingang.eml/0/anlage.pdf",
+            "application/pdf",
+            2048L,
+            DocumentSourceType.UPLOAD);
+    attachment.setParentDocumentId(parentId);
+    Document topLevel =
+        new Document(
+            "posteingang.eml",
+            "/mail/posteingang.eml",
+            "message/rfc822",
+            4096L,
+            DocumentSourceType.UPLOAD);
+
+    assertThat(LibraryDocumentResponseMapper.toResponse(attachment).getParentDocumentId())
+        .isEqualTo(parentId);
+    assertThat(LibraryDocumentResponseMapper.toResponse(topLevel).getParentDocumentId()).isNull();
+  }
+
   // #821: the folder-aware overload - folderPath is always resolved by the caller
   // (LibraryFolderPaths),
   // never stored, so this pins that the mapper simply carries it through onto the response.

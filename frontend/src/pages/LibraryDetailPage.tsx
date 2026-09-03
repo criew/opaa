@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import type { DragEvent } from 'react'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router'
 import Accordion from '@mui/material/Accordion'
@@ -30,9 +30,11 @@ import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import AttachFileIcon from '@mui/icons-material/AttachFile'
 import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder'
 import DeleteIcon from '@mui/icons-material/Delete'
 import DriveFolderUploadIcon from '@mui/icons-material/DriveFolderUpload'
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import FolderIcon from '@mui/icons-material/Folder'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
@@ -493,6 +495,13 @@ function LibraryDocumentsSection({
 
   const [isDragActive, setIsDragActive] = useState(false)
   const [searchInput, setSearchInput] = useState('')
+  // #1184 (ADR-0022, Entscheidung 5): per-parent expansion of the attachment group. An absent key
+  // falls back to the search default below - during a search every group starts expanded so an
+  // attachment hit is immediately visible, while normal browsing starts collapsed to keep the
+  // list at its parent-level length.
+  const [attachmentGroupExpansion, setAttachmentGroupExpansion] = useState<Record<string, boolean>>(
+    {},
+  )
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false)
   const [renameFolderTarget, setRenameFolderTarget] = useState<LibraryFolderListItem | null>(null)
   const [folderMenu, setFolderMenu] = useState<{
@@ -593,6 +602,36 @@ function LibraryDocumentsSection({
   const folders = isFirstPage ? (foldersByLibrary[libraryId] ?? []) : []
   const breadcrumb = breadcrumbByLibrary[libraryId] ?? []
   const pageCount = pageState ? Math.max(1, Math.ceil(pageState.totalElements / pageState.size)) : 1
+
+  // #1184: the backend guarantees each attachment row follows its (transitive) top-level parent
+  // within the same page (see the OpenAPI items description), so grouping is a single sequential
+  // pass. A row whose parent is missing from the page (defensive - the contract forbids it) is
+  // rendered as its own top-level row rather than dropped.
+  const isSearchActive = Boolean(pageState?.q)
+  const documentsById = new Map(documents.map((doc) => [doc.id, doc]))
+  const documentGroups: {
+    parent: LibraryDocumentResponse
+    attachments: LibraryDocumentResponse[]
+  }[] = []
+  for (const doc of documents) {
+    const lastGroup = documentGroups[documentGroups.length - 1]
+    if (doc.parentDocumentId && lastGroup) {
+      lastGroup.attachments.push(doc)
+    } else {
+      documentGroups.push({ parent: doc, attachments: [] })
+    }
+  }
+
+  function isGroupExpanded(parentId: string): boolean {
+    return attachmentGroupExpansion[parentId] ?? isSearchActive
+  }
+
+  function toggleAttachmentGroup(parentId: string) {
+    setAttachmentGroupExpansion((previous) => ({
+      ...previous,
+      [parentId]: !(previous[parentId] ?? isSearchActive),
+    }))
+  }
 
   // #822: navigates into a folder (or back to the root with null) by changing the URL's folder
   // param - the load effect above reacts to that change. Also clears any in-flight search, since a
@@ -770,6 +809,145 @@ function LibraryDocumentsSection({
   // secondary information below (see the "Herkunft"/"Quelle" captions further down).
   async function handleOpenOriginal(document: LibraryDocumentResponse) {
     await openDocument(document.id, document.fileName)
+  }
+
+  // #1184 (ADR-0022, Entscheidung 5): one visual row of the document list - a top-level document
+  // (optionally with the toggle for its attachment group) or an attachment row, indented one
+  // level. Attachments of any nesting depth all indent the same single level under the top-level
+  // parent; a deeper chain (Mail-in-Mail) names its direct parent via `viaFileName` instead of
+  // nesting further, keeping the rows findable without tree navigation.
+  function renderDocumentRow(
+    document: LibraryDocumentResponse,
+    options: { attachments?: LibraryDocumentResponse[]; viaFileName?: string | null } = {},
+  ) {
+    const isAttachment = Boolean(document.parentDocumentId)
+    const attachments = options.attachments ?? []
+    const expanded = isGroupExpanded(document.id)
+    return (
+      <Box
+        key={document.id}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 2,
+          p: 1.5,
+          ml: isAttachment ? 4 : 0,
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 1,
+        }}
+      >
+        <Stack spacing={0.25} sx={{ minWidth: 0, flexGrow: 1 }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
+            {isAttachment && <AttachFileIcon fontSize="small" color="action" />}
+            <Typography sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
+              {document.fileName}
+            </Typography>
+            {isAttachment && <Chip label="Anhang" size="small" variant="outlined" />}
+          </Stack>
+          <Typography variant="caption" color="text.secondary">
+            {formatFileSize(document.fileSize)} · {document.chunkCount}{' '}
+            {document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} ·{' '}
+            {formatIndexedAt(document.indexedAt)}
+          </Typography>
+          {options.viaFileName && (
+            <Typography variant="caption" color="text.secondary">
+              Anhang von: {options.viaFileName}
+            </Typography>
+          )}
+          {/* #822: shown whenever a document sits in a folder - most usefully on a search
+              hit (bibliotheksweit, ADR-0020), whose result list has no breadcrumb of its
+              own to place it in the structure; the link navigates into that folder and
+              clears the active search (navigateToFolder). */}
+          {document.folderPath && (
+            <Typography variant="caption" color="text.secondary">
+              Ordner:{' '}
+              <Link
+                component="button"
+                underline="hover"
+                onClick={() => navigateToFolder(document.folderId ?? null)}
+              >
+                {document.folderPath}
+              </Link>
+            </Typography>
+          )}
+          {/* #493: sourceEntryUrl trägt nur eine Anlage, die von einem RSS-Feed-Eintrag
+              stammt (#468) - der Link macht sichtbar, aus welchem Eintrag sie gefunden
+              wurde, statt sie im Index kontextlos stehen zu lassen. */}
+          {document.sourceEntryUrl && (
+            <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+              Herkunft:{' '}
+              <Link href={document.sourceEntryUrl} target="_blank" rel="noopener noreferrer">
+                {document.sourceEntryUrl}
+              </Link>
+            </Typography>
+          )}
+          {/* #747: sourceUrl (HTTP_DIRECTORY's own location, or a plain RSS entry's own
+              page) stays visible as secondary information now that "Original öffnen"
+              proxies through the content endpoint instead of navigating here directly -
+              only shown when sourceEntryUrl above is absent, to avoid the same remote
+              address appearing twice for an RSS attachment. */}
+          {!document.sourceEntryUrl && document.sourceUrl && (
+            <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+              Quelle:{' '}
+              <Link href={document.sourceUrl} target="_blank" rel="noopener noreferrer">
+                {document.sourceUrl}
+              </Link>
+            </Typography>
+          )}
+          {attachments.length > 0 && (
+            <Box>
+              <Button
+                size="small"
+                onClick={() => toggleAttachmentGroup(document.id)}
+                aria-expanded={expanded}
+                aria-label={`Anhänge von ${document.fileName} ${expanded ? 'verbergen' : 'anzeigen'}`}
+                startIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              >
+                {attachments.length} {attachments.length === 1 ? 'Anhang' : 'Anhänge'}
+              </Button>
+            </Box>
+          )}
+        </Stack>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
+          {/* #434: a FAILED document's asynchronous processing failure is only visible to
+              the user via this German errorMessage - the status chip alone only says
+              something went wrong, not what. */}
+          <Tooltip
+            title={document.status === 'FAILED' ? (document.errorMessage ?? '') : ''}
+            disableHoverListener={document.status !== 'FAILED' || !document.errorMessage}
+          >
+            <Chip
+              label={documentStatusLabel(document.status)}
+              size="small"
+              color={statusChipColor(document.status)}
+              variant="outlined"
+            />
+          </Tooltip>
+          {/* #738/#747: every sourceType now offers the action - the content endpoint
+              proxies HTTP_DIRECTORY/RSS_FEED server-side too, and a source that turns out
+              unreachable (missing local file, offline remote source) is a 404 handled via
+              openOriginalError above, not a reason to hide the button. */}
+          <IconButton
+            aria-label={`Original von ${document.fileName} öffnen`}
+            size="small"
+            onClick={() => void handleOpenOriginal(document)}
+          >
+            <OpenInNewIcon fontSize="small" />
+          </IconButton>
+          {canDelete && (
+            <IconButton
+              aria-label={`Dokument ${document.fileName} löschen`}
+              size="small"
+              onClick={() => void handleDelete(document)}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          )}
+        </Stack>
+      </Box>
+    )
   }
 
   function handleSearchChange(value: string) {
@@ -1058,115 +1236,21 @@ function LibraryDocumentsSection({
               )}
             </Box>
           ))}
-          {documents.map((document) => (
-            <Box
-              key={document.id}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 2,
-                p: 1.5,
-                border: '1px solid',
-                borderColor: 'divider',
-                borderRadius: 1,
-              }}
-            >
-              <Stack spacing={0.25} sx={{ minWidth: 0, flexGrow: 1 }}>
-                <Typography sx={{ fontWeight: 600, wordBreak: 'break-word' }}>
-                  {document.fileName}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {formatFileSize(document.fileSize)} · {document.chunkCount}{' '}
-                  {document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} ·{' '}
-                  {formatIndexedAt(document.indexedAt)}
-                </Typography>
-                {/* #822: shown whenever a document sits in a folder - most usefully on a search
-                    hit (bibliotheksweit, ADR-0020), whose result list has no breadcrumb of its
-                    own to place it in the structure; the link navigates into that folder and
-                    clears the active search (navigateToFolder). */}
-                {document.folderPath && (
-                  <Typography variant="caption" color="text.secondary">
-                    Ordner:{' '}
-                    <Link
-                      component="button"
-                      underline="hover"
-                      onClick={() => navigateToFolder(document.folderId ?? null)}
-                    >
-                      {document.folderPath}
-                    </Link>
-                  </Typography>
+          {documentGroups.map(({ parent, attachments }) => (
+            <Fragment key={parent.id}>
+              {renderDocumentRow(parent, { attachments })}
+              {isGroupExpanded(parent.id) &&
+                attachments.map((attachment) =>
+                  renderDocumentRow(attachment, {
+                    // Mail-in-Mail: an attachment whose direct parent is itself an attachment
+                    // names that parent, since visually it sits flat under the top-level row.
+                    viaFileName:
+                      attachment.parentDocumentId && attachment.parentDocumentId !== parent.id
+                        ? (documentsById.get(attachment.parentDocumentId)?.fileName ?? null)
+                        : null,
+                  }),
                 )}
-                {/* #493: sourceEntryUrl trägt nur eine Anlage, die von einem RSS-Feed-Eintrag
-                    stammt (#468) - der Link macht sichtbar, aus welchem Eintrag sie gefunden
-                    wurde, statt sie im Index kontextlos stehen zu lassen. */}
-                {document.sourceEntryUrl && (
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ wordBreak: 'break-word' }}
-                  >
-                    Herkunft:{' '}
-                    <Link href={document.sourceEntryUrl} target="_blank" rel="noopener noreferrer">
-                      {document.sourceEntryUrl}
-                    </Link>
-                  </Typography>
-                )}
-                {/* #747: sourceUrl (HTTP_DIRECTORY's own location, or a plain RSS entry's own
-                    page) stays visible as secondary information now that "Original öffnen"
-                    proxies through the content endpoint instead of navigating here directly -
-                    only shown when sourceEntryUrl above is absent, to avoid the same remote
-                    address appearing twice for an RSS attachment. */}
-                {!document.sourceEntryUrl && document.sourceUrl && (
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ wordBreak: 'break-word' }}
-                  >
-                    Quelle:{' '}
-                    <Link href={document.sourceUrl} target="_blank" rel="noopener noreferrer">
-                      {document.sourceUrl}
-                    </Link>
-                  </Typography>
-                )}
-              </Stack>
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
-                {/* #434: a FAILED document's asynchronous processing failure is only visible to
-                    the user via this German errorMessage - the status chip alone only says
-                    something went wrong, not what. */}
-                <Tooltip
-                  title={document.status === 'FAILED' ? (document.errorMessage ?? '') : ''}
-                  disableHoverListener={document.status !== 'FAILED' || !document.errorMessage}
-                >
-                  <Chip
-                    label={documentStatusLabel(document.status)}
-                    size="small"
-                    color={statusChipColor(document.status)}
-                    variant="outlined"
-                  />
-                </Tooltip>
-                {/* #738/#747: every sourceType now offers the action - the content endpoint
-                    proxies HTTP_DIRECTORY/RSS_FEED server-side too, and a source that turns out
-                    unreachable (missing local file, offline remote source) is a 404 handled via
-                    openOriginalError above, not a reason to hide the button. */}
-                <IconButton
-                  aria-label={`Original von ${document.fileName} öffnen`}
-                  size="small"
-                  onClick={() => void handleOpenOriginal(document)}
-                >
-                  <OpenInNewIcon fontSize="small" />
-                </IconButton>
-                {canDelete && (
-                  <IconButton
-                    aria-label={`Dokument ${document.fileName} löschen`}
-                    size="small"
-                    onClick={() => void handleDelete(document)}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                )}
-              </Stack>
-            </Box>
+            </Fragment>
           ))}
         </Stack>
       )}

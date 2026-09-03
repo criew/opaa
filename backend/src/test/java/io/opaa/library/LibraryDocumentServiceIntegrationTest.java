@@ -34,6 +34,8 @@ import java.nio.file.Path;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CyclicBarrier;
@@ -43,6 +45,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -189,16 +192,21 @@ class LibraryDocumentServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    // fk_documents_parent (ADR-0022): attachment rows must be deleted before their parents. A
-    // child's synthetic file_path always embeds (and therefore exceeds) its parent's, so deleting
-    // in descending path length is exactly deepest-first.
-    List<Document> documentsDeepestFirst =
-        documentRepository.findAll().stream()
-            .sorted(
-                java.util.Comparator.comparingInt((Document d) -> d.getFilePath().length())
-                    .reversed())
-            .toList();
-    documentRepository.deleteAll(documentsDeepestFirst);
+    // #1184: fk_documents_parent (RESTRICT) forbids deleting a parent before its attachments -
+    // delete leaf-first, one nesting level per round, instead of deleteAll()'s arbitrary order.
+    // More general than sorting by file_path length (#1227's variant): it holds for attachment
+    // identities that do not embed their parent's path (e.g. RSS attachment URLs).
+    List<Document> remaining = documentRepository.findAll();
+    while (!remaining.isEmpty()) {
+      Set<UUID> referencedAsParent =
+          remaining.stream()
+              .map(Document::getParentDocumentId)
+              .filter(Objects::nonNull)
+              .collect(Collectors.toSet());
+      documentRepository.deleteAll(
+          remaining.stream().filter(d -> !referencedAsParent.contains(d.getId())).toList());
+      remaining = documentRepository.findAll();
+    }
     libraryRepository.deleteById(libraryId);
     // #238 code review, finding 2+4: asset_grant_history.subject_user_id is ON DELETE RESTRICT
     // (see 018-permission-history.yaml's "Deletion survival" comment) - every library/grant
@@ -1463,6 +1471,134 @@ class LibraryDocumentServiceIntegrationTest {
         .forEach(documentRepository::delete);
     folderRepository.delete(foreignFolder);
     libraryRepository.deleteById(otherLibrary.library().getId());
+  }
+
+  // #1184 (ADR-0022, Entscheidung 5): attachments (parent_document_id set) are grouped under
+  // their top-level parent - paging, sorting and totalElements operate on the parent level only,
+  // attachments ride along on their parent's page in filePath order.
+
+  private Document seedAttachment(Document parent, int index, String fileName) {
+    Document attachment =
+        new Document(
+            fileName,
+            parent.getFilePath() + "/" + index + "/" + fileName,
+            "text/plain",
+            5L,
+            DocumentSourceType.UPLOAD);
+    attachment.setLibraryId(libraryId);
+    attachment.setOrganizationId(organizationId);
+    attachment.setStatus(DocumentStatus.INDEXED);
+    attachment.setParentDocumentId(parent.getId());
+    return documentRepository.save(attachment);
+  }
+
+  @Test
+  void listDocumentsPagesOnTheParentLevelAndAttachmentsFollowTheirParentOnItsPage() {
+    Document mailA = seedDocument("a-mail.eml");
+    seedDocument("b-dokument.txt");
+    Document mailC = seedDocument("c-mail.eml");
+    seedAttachment(mailA, 0, "anlage-eins.pdf");
+    seedAttachment(mailA, 1, "anlage-zwei.pdf");
+    seedAttachment(mailC, 0, "bericht.pdf");
+
+    var firstPage =
+        libraryService.listDocuments(
+            libraryId, currentUserOf(editor, false), null, null, stableOrder(0, 2));
+    // totalElements counts the 3 parents, never the 3 attachments - and the first page carries
+    // 2 parents plus mailA's 2 attachments, exceeding size=2 by design (group never torn apart).
+    assertThat(firstPage.totalElements()).isEqualTo(3);
+    assertThat(firstPage.documents())
+        .extracting(entry -> entry.document().getFileName())
+        .containsExactly("a-mail.eml", "anlage-eins.pdf", "anlage-zwei.pdf", "b-dokument.txt");
+
+    var secondPage =
+        libraryService.listDocuments(
+            libraryId, currentUserOf(editor, false), null, null, stableOrder(1, 2));
+    assertThat(secondPage.documents())
+        .extracting(entry -> entry.document().getFileName())
+        .containsExactly("c-mail.eml", "bericht.pdf");
+
+    // #1184 (review): the detail header's and the overview card's documentCount both count on the
+    // same parent level as the list's totalElements - 3, never 6 - so the card can never promise
+    // more rows than the list shows; the attachments are visible inside their groups instead.
+    assertThat(libraryService.getLibrary(libraryId, currentUserOf(editor, false)).documentCount())
+        .isEqualTo(3L);
+    assertThat(libraryService.listLibraries(currentUserOf(editor, false)))
+        .filteredOn(summary -> summary.library().getId().equals(libraryId))
+        .extracting(LibrarySummary::documentCount)
+        .containsExactly(3L);
+  }
+
+  @Test
+  void listDocumentsSortsAttachmentsWithinTheirGroupByFilePathNotByName() {
+    Document mail = seedDocument("mail.eml");
+    // Extraction-order index 0 carries the alphabetically later name - filePath order (which
+    // embeds the index, ADR-0022 Entscheidung 2) must win over name order within the group.
+    seedAttachment(mail, 0, "zuletzt-benannt.pdf");
+    seedAttachment(mail, 1, "anfang-benannt.pdf");
+
+    var page =
+        libraryService.listDocuments(
+            libraryId, currentUserOf(editor, false), null, null, stableOrder(0, 20));
+
+    assertThat(page.documents())
+        .extracting(entry -> entry.document().getFileName())
+        .containsExactly("mail.eml", "zuletzt-benannt.pdf", "anfang-benannt.pdf");
+  }
+
+  @Test
+  void listDocumentsFlattensANestedAttachmentChainUnderItsTopLevelParent() {
+    // Mail-in-Mail (ADR-0022, Entscheidung 2): the forwarded mail is itself an attachment with its
+    // own attachment - the whole chain rides along under the outermost mail, depth-first.
+    Document outerMail = seedDocument("posteingang.eml");
+    Document forwardedMail = seedAttachment(outerMail, 0, "weiterleitung.eml");
+    seedAttachment(forwardedMail, 0, "innere-anlage.pdf");
+
+    var page =
+        libraryService.listDocuments(
+            libraryId, currentUserOf(editor, false), null, null, stableOrder(0, 20));
+
+    assertThat(page.totalElements()).isEqualTo(1);
+    assertThat(page.documents())
+        .extracting(entry -> entry.document().getFileName())
+        .containsExactly("posteingang.eml", "weiterleitung.eml", "innere-anlage.pdf");
+    assertThat(page.documents().get(2).document().getParentDocumentId())
+        .isEqualTo(forwardedMail.getId());
+  }
+
+  @Test
+  void listDocumentsSearchMatchingOnlyAnAttachmentSurfacesItsParentGroup() {
+    Document mail = seedDocument("posteingang.eml");
+    seedAttachment(mail, 0, "haushaltsplan.pdf");
+    seedAttachment(mail, 1, "protokoll.pdf");
+    seedDocument("unbeteiligt.txt");
+
+    var page =
+        libraryService.listDocuments(
+            libraryId, currentUserOf(editor, false), "haushalt", null, stableOrder(0, 20));
+
+    // The parent has no own hit but stays visible with its complete group; the unrelated document
+    // does not appear, and totalElements counts the one matching parent.
+    assertThat(page.totalElements()).isEqualTo(1);
+    assertThat(page.documents())
+        .extracting(entry -> entry.document().getFileName())
+        .containsExactly("posteingang.eml", "haushaltsplan.pdf", "protokoll.pdf");
+  }
+
+  @Test
+  void listDocumentsSearchMatchingANestedAttachmentSurfacesTheTopLevelParent() {
+    Document outerMail = seedDocument("posteingang.eml");
+    Document forwardedMail = seedAttachment(outerMail, 0, "weiterleitung.eml");
+    seedAttachment(forwardedMail, 0, "haushaltsplan.pdf");
+
+    var page =
+        libraryService.listDocuments(
+            libraryId, currentUserOf(editor, false), "haushalt", null, stableOrder(0, 20));
+
+    assertThat(page.totalElements()).isEqualTo(1);
+    assertThat(page.documents())
+        .extracting(entry -> entry.document().getFileName())
+        .containsExactly("posteingang.eml", "weiterleitung.eml", "haushaltsplan.pdf");
   }
 
   // #821: POST .../documents' own folderId - upload target validation and the resulting
