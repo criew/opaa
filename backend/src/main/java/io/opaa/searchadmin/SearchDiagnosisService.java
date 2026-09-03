@@ -76,7 +76,8 @@ public class SearchDiagnosisService {
       KnowledgeLibraryRepository libraryRepository,
       GroupService groupService,
       DocumentRepository documentRepository,
-      RerankModelRole rerankModelRole) {
+      RerankModelRole rerankModelRole,
+      Clock clock) {
     this.retrievalPipeline = retrievalPipeline;
     this.queryProperties = queryProperties;
     this.libraryAccessService = libraryAccessService;
@@ -84,7 +85,7 @@ public class SearchDiagnosisService {
     this.groupService = groupService;
     this.documentRepository = documentRepository;
     this.rerankModelRole = rerankModelRole;
-    this.clock = Clock.systemUTC();
+    this.clock = clock;
   }
 
   /** The profiles a diagnosis can be run in: the caller's organization's groups, by name. */
