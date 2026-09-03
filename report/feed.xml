@@ -5,8 +5,22 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-02T04:53:25Z</updated>
+  <updated>2026-09-03T04:51:02Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Mittwoch, 2. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-02.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-02.html</id>
+    <updated>2026-09-03T04:51:02Z</updated>
+    <summary type="text">feat(retrieval): Hybride Suche mit Reranking:
+— Reranking als konfigurierbare Modellrolle mit Schalter und Zustandsanzeige umgesetzt
+— Latenz-/Hardwareprofil auf Referenzhardware als zurückgestellt gekennzeichnet
+Sonstiges:
+— Routing-Schlüssel beim Indizieren persistiert statt über Dateiendung zu schätzen
+— ODT/ODP-Pipelines mit strukturbewusstem Chunking und Header/Footer-Indizierung
+— Markdown auf strukturbewusstes Chunking umgestellt; Testlücken bei PPTX/EML geschlossen
+— Kürzungslogik entdoppelt; Metadaten-Durchreichung als Pipeline-Vertrag</summary>
+  </entry>
   <entry>
     <title>Tagesreport Dienstag, 1. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-01.html"/>
