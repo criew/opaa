@@ -9,12 +9,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The lexical search path against a real PostgreSQL (#1048, docs/features/hybrid-retrieval.md,
@@ -32,7 +31,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class FullTextChunkSearchIntegrationTest {
 
   @Autowired private VectorStore vectorStore;
-  @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private FullTextBackfillService backfillService;
   @Autowired private FullTextChunkSearch fullTextChunkSearch;
 
@@ -40,9 +39,10 @@ class FullTextChunkSearchIntegrationTest {
   private final UUID forbiddenLibrary = UUID.randomUUID();
   private final UUID documentId = UUID.randomUUID();
 
-  @BeforeEach
-  void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text, chunk_full_text_skip");
+  @AfterEach
+  void tearDown() {
+    vectorChunkStore.deleteByLibraryId(readableLibrary);
+    vectorChunkStore.deleteByLibraryId(forbiddenLibrary);
   }
 
   /**

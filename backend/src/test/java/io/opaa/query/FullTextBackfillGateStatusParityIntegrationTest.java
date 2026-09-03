@@ -10,12 +10,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * {@link FullTextBackfillGate#searchableLibraries} against a real Postgres, not just the {@link
@@ -27,16 +26,16 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class FullTextBackfillGateStatusParityIntegrationTest {
 
   @Autowired private VectorStore vectorStore;
-  @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private FullTextBackfillProgressService progressService;
   @Autowired private FullTextBackfillGate gate;
 
   private final UUID libraryId = UUID.randomUUID();
   private final UUID documentId = UUID.randomUUID();
 
-  @BeforeEach
-  void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text, chunk_full_text_skip");
+  @AfterEach
+  void tearDown() {
+    vectorChunkStore.deleteByLibraryId(libraryId);
   }
 
   @Test

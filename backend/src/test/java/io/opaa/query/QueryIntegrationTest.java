@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.ChatSource;
+import io.opaa.indexing.VectorChunkStore;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.ArrayList;
@@ -92,6 +93,7 @@ class QueryIntegrationTest {
   }
 
   @Autowired private VectorStore vectorStore;
+  @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private QueryService queryService;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private ChatMemory chatMemory;
@@ -107,7 +109,6 @@ class QueryIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text, chunk_full_text_skip");
     // Spring AI 2.0 merges ChatModel.getOptions() into every request; a bare mock returns null
     when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
     when(activeChatModelResolver.resolveChatClient())
@@ -144,6 +145,7 @@ class QueryIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    vectorChunkStore.deleteByLibraryId(libraryId);
     jdbcTemplate.update("DELETE FROM asset_grants WHERE library_id = ?", libraryId);
     jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", libraryId);
     // #525: chats/spaces the persisted-chat tests below create for userId - fk_chats_author and

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.VectorChunkStore;
 import io.opaa.query.CandidateOutcome;
 import io.opaa.query.RetrievalPipeline;
 import io.opaa.query.RetrievalStageName;
@@ -42,6 +43,7 @@ class SearchDiagnosisIntegrationTest {
   private static final int DOCUMENT_COUNT = 15;
 
   @Autowired private VectorStore vectorStore;
+  @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private SearchDiagnosisService diagnosisService;
   @Autowired private RetrievalPipeline retrievalPipeline;
@@ -60,7 +62,6 @@ class SearchDiagnosisIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text, chunk_full_text_skip");
     adminId = UUID.randomUUID();
     grantedLibraryId = UUID.randomUUID();
     ungrantedLibraryId = UUID.randomUUID();
@@ -110,6 +111,8 @@ class SearchDiagnosisIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    vectorChunkStore.deleteByLibraryId(grantedLibraryId);
+    vectorChunkStore.deleteByLibraryId(ungrantedLibraryId);
     jdbcTemplate.update(
         "DELETE FROM documents WHERE library_id in (?, ?)", grantedLibraryId, ungrantedLibraryId);
     jdbcTemplate.update(
