@@ -370,6 +370,15 @@ Alarm „Volltextpfad inaktiv oder unvollständig". Eine Bibliothek, deren Chunk
 volltextindiziert sind, ist damit ein sichtbarer Betriebszustand und nicht eine Vermutung, die aus
 schlechten Antworten erschlossen werden muss.
 
+Dieser Füllstand wird über ein `metadata->>'library_id'`-Prädikat auf `vector_store` ermittelt — ohne
+eigenen Index wäre das bei rund 1 Mio. Chunks ein vollständiger Tabellenscan je Aufruf, und zwar nicht
+nur auf der Administrationsseite: `FullTextBackfillGate#searchableLibraries` fragt denselben Füllstand
+im Antwortpfad der Suche ab und cacht eine noch unvollständige Bibliothek nur für 60 Sekunden. Ein
+Ausdrucksindex auf `metadata->>'library_id'` (#1119) trägt beide Aufrufstellen; ein zusätzlicher Index
+auf den `::uuid`-Cast, den `progressForLibraries` für sein `GROUP BY` verwendet, ist gemessen nicht
+nötig — der Textindex leistet die zeilenbeschränkende Arbeit, der Cast läuft danach nur noch über die
+bereits gefilterten Zeilen.
+
 ### Die deutschen Besonderheiten
 
 Deutsch ist für lexikalische Suche der unfreundlichere Fall, und zwar aus zwei Gründen.

@@ -57,8 +57,12 @@ public class FullTextBackfillProgressService {
    * inconsistent tuple - {@code READ COMMITTED} allows exactly that across separate statements.
    *
    * <p>{@code progressForLibrary}/{@code progressForLibraries} query {@code vector_store} with a
-   * predicate on {@code metadata->>'library_id'} that no expression index backs, so each call is a
-   * full scan - acceptable at today's data volumes, and tracked for a real index in #1119.
+   * predicate on {@code metadata->>'library_id'}, backed by the expression index added in #1119
+   * ({@code changes/010-vector-store-library-id-index.yaml}). {@code progressForLibraries} also
+   * groups by the same value cast to {@code uuid}; no separate index on that cast is needed - the
+   * text index already does the row-restricting work, and the cast then runs only over the
+   * resulting, already-filtered rows (verified via {@code EXPLAIN (ANALYZE, BUFFERS)} against ~1M
+   * rows, see that changeSet's own comment).
    */
   public FullTextBackfillProgress progressForLibrary(UUID libraryId) {
     String vectorStoreTable = schemaName + "." + tableName;
