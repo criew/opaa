@@ -2,7 +2,10 @@ package io.opaa.indexing;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.library.KnowledgeLibrary;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -109,6 +112,51 @@ public class StaleDocumentCleanupService {
           library.getId());
     }
     return removed;
+  }
+
+  /**
+   * Folds into {@code currentFilePaths} the {@code file_path} of every existing attachment row
+   * whose parent is present this run ({@code currentFilePaths}) but was <em>not</em> re-parsed
+   * ({@code reprocessedPaths}) - the Nachtragsfall of ADR-0022, Entscheidung 3, applied
+   * breadth-first from the roots down so a grandchild of an unchanged (or merely
+   * checksum-confirmed) ancestor is preserved deterministically, regardless of row order. A child
+   * of a re-parsed parent is only present via the attachment path's own recording; one it did not
+   * re-report stays out and is cleaned up as vanished. Shared by every executor that pairs the
+   * generalized attachment path with {@link #cleanupVanished} - FILESYSTEM (#1183) and
+   * HTTP_DIRECTORY (#1219) today.
+   */
+  public static void foldInPreservedAttachmentPaths(
+      List<Document> existingDocuments,
+      Set<String> currentFilePaths,
+      Set<String> reprocessedPaths) {
+    Map<UUID, List<Document>> childrenByParentId = new HashMap<>();
+    List<Document> roots = new ArrayList<>();
+    for (Document candidate : existingDocuments) {
+      if (candidate.getParentDocumentId() == null) {
+        roots.add(candidate);
+      } else {
+        childrenByParentId
+            .computeIfAbsent(candidate.getParentDocumentId(), id -> new ArrayList<>())
+            .add(candidate);
+      }
+    }
+    Deque<Document> queue = new ArrayDeque<>(roots);
+    Set<UUID> visited = new HashSet<>();
+    while (!queue.isEmpty()) {
+      Document parent = queue.removeFirst();
+      if (!visited.add(parent.getId())) {
+        continue;
+      }
+      boolean preserveChildren =
+          currentFilePaths.contains(parent.getFilePath())
+              && !reprocessedPaths.contains(parent.getFilePath());
+      for (Document child : childrenByParentId.getOrDefault(parent.getId(), List.of())) {
+        if (preserveChildren) {
+          currentFilePaths.add(child.getFilePath());
+        }
+        queue.addLast(child);
+      }
+    }
   }
 
   /**

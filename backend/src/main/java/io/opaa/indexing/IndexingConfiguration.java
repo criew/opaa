@@ -267,7 +267,8 @@ public class IndexingConfiguration {
       IndexingProperties indexingProperties,
       TaskExecutor embeddingTaskExecutor,
       ObjectProvider<AttachmentIndexer> attachmentIndexer,
-      AttachmentDownloadLimits mailAttachmentDownloadLimits) {
+      AttachmentDownloadLimits mailAttachmentDownloadLimits,
+      KnowledgeLibraryRepository knowledgeLibraryRepository) {
     return new FileProcessingService(
         documentPipelineRegistry,
         documentRepository,
@@ -278,7 +279,8 @@ public class IndexingConfiguration {
         indexingProperties,
         embeddingTaskExecutor,
         attachmentIndexer,
-        mailAttachmentDownloadLimits);
+        mailAttachmentDownloadLimits,
+        knowledgeLibraryRepository);
   }
 
   @Bean

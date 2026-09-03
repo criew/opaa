@@ -995,7 +995,11 @@ nicht `email`). Formatzulassung (`SupportedDocumentFormats.decideForFileName`) u
 Fehlerbehandlung je Anhang („ein defekter Anhang kostet nur ihn selbst") übernimmt jetzt
 `AttachmentIndexer`, nicht mehr diese Pipeline. Ein EML-in-EML-Anhang (eine Weiterleitung) wird zu
 einem eigenen `Document`, dessen eigene, rekursiv gemeldeten Anhänge wiederum `parent_document_id`
-auf **diese** innere Mail setzen, nicht auf die äußerste — eine Kette, kein Sonderfall.
+auf **diese** innere Mail setzen, nicht auf die äußerste — eine Kette, kein Sonderfall. Der
+Anhangsweg ist auf **jedem** Zufluss angeschlossen, über den eine Mail in eine Bibliothek gelangt:
+FILESYSTEM-Läufe (#1183), Upload (#1218) und HTTP_DIRECTORY-Läufe (#1219) — die beiden Letzteren
+haben ihn zwischen #1183 und ihrem eigenen Anschluss vorübergehend nicht gehabt (gemeldete Anhänge
+wurden dort verworfen); beide Lücken sind geschlossen.
 
 **`file_path` eines Mail-Anhangs** (ADR-0022, Entscheidung 2, festgelegt in #1183):
 `<file_path des Elterndokuments>/<Positionsindex>/<Dateiname>` — ein gewöhnlicher `/`-Separator
@@ -1229,8 +1233,10 @@ Umgekehrt überlebt der Anhangsbestand die Neuindizierung seines **Elterndokumen
 laufende Eltern-Pipeline Anhänge, gehen sie denselben verallgemeinerten Anhangsweg wie im
 Konnektorlauf — ein unveränderter Anhang wird per Prüfsumme bestätigt, ein noch nie als eigenes
 Dokument erfasster (der Altbestand vor ADR-0022, Bestandsmigration email v4) entsteht dabei
-erstmals. Ausnahme: Upload-Bibliotheken indizieren Anhänge bewusst noch gar nicht (eigenes
-Folge-Issue), dort behält das Elterndokument seine rohe Dateigröße.
+erstmals. Das gilt seit #1218 auch für Upload-Bibliotheken: Anhänge hochgeladener Mails laufen über
+denselben verallgemeinerten Anhangsweg (nur ohne Job — Ereignisse werden protokolliert, kein
+Fortschritt gezählt), und das Elterndokument trägt auch dort die um Anhangsbytes bereinigte
+Dateigröße.
 
 Ein Dokument aus einer entfernten Quelle kann nur sein eigener Konnektorlauf neu lesen; es wird dafür
 vorgemerkt und fällt danach aus der Auswahl, damit der Lauf abschließt. Vorgemerkt heißt: **beide**
@@ -1238,7 +1244,11 @@ vorgemerkt und fällt danach aus der Auswahl, damit der Lauf abschließt. Vorgem
 `last_modified_remote` und dem Status `INDEXED`; die Prüfsumme vergleicht er dort noch gar nicht, weil
 die Bytes dafür bewusst noch nicht geholt wurden. Nur die Prüfsumme zu leeren wäre für den ersten
 Ausgang folglich wirkungslos gewesen. Die Chunks bleiben bis zum Lauf als nachzuziehen ausgewiesen —
-der Füllstand beschönigt das nicht.
+der Füllstand beschönigt das nicht. Für ein **Anhangsdokument** einer entfernten Quelle
+(HTTP_DIRECTORY, RSS) wird dabei die ganze Elternkette bis zur Wurzel vorgemerkt, nicht nur die
+Anhangszeile selbst (#1219): Nur der nächste Lauf kann die Wurzel neu lesen, und nur eine
+Ebene für Ebene neu geparste Kette erreicht den Anhang — eine allein vorgemerkte Anhangszeile bliebe
+sonst hinter einer unverändert übersprungenen Elternmail für immer auf der alten Version.
 
 **Nichts wird zerstört, bevor der Ersatz existiert.** Die alten Chunks fallen erst, wenn die Pipeline
 tatsächlich neue erzeugt hat. Ein Dokument, das diesmal nicht verarbeitbar ist — vorübergehend

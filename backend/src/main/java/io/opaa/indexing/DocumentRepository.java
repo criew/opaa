@@ -153,9 +153,13 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   /**
    * Backs the upload endpoint's per-library deduplication: the same checksum is rejected a second
    * time within the same library, but is deliberately allowed in a different one - see the
-   * acceptance criteria on {@code io.opaa.library.LibraryDocumentService#uploadDocument}.
+   * acceptance criteria on {@code io.opaa.library.LibraryDocumentService#uploadDocument}. Scoped to
+   * parentless rows (#1218), matching {@code uk_documents_library_checksum}'s own scope since
+   * migration 017: an attachment row of an uploaded mail (ADR-0022) is derived content, not a user
+   * upload - uploading a file whose bytes happen to equal an indexed attachment is not a duplicate.
    */
-  Optional<Document> findByLibraryIdAndChecksum(UUID libraryId, String checksum);
+  Optional<Document> findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+      UUID libraryId, String checksum);
 
   /**
    * Backs {@code KnowledgeLibraryService#listLibraries}'s {@code documentCount} column: one grouped
