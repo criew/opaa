@@ -199,17 +199,22 @@ public final class ReportWriter {
   private static void appendMarginLine(StringBuilder sb, String label, MarginAggregate m) {
     sb.append(
         format(
-            "  %-24s Hit@5: n=%d meanMargin=%.2f knapp(<= %d)=%d  |  Ranking-Fenster: n=%d "
-                + "meanMargin=%.2f knapp(<= %d)=%d\n",
+            "  %-24s Hit@5: n=%d meanMargin=%.2f knapp-gelöst(<= %d)=%d knapp-verfehlt(>= -%d)=%d"
+                + "  |  Ranking-Fenster: n=%d meanMargin=%.2f knapp-gelöst(<= %d)=%d "
+                + "knapp-verfehlt(>= -%d)=%d\n",
             label,
             m.hitRateHits(),
             m.meanHitRateMargin(),
             MarginAggregate.MARGINAL_THRESHOLD,
             m.marginalHitRateCount(),
+            MarginAggregate.MARGINAL_THRESHOLD,
+            m.hitRateNarrowMissCount(),
             m.rankingHits(),
             m.meanRankingMargin(),
             MarginAggregate.MARGINAL_THRESHOLD,
-            m.marginalRankingCount()));
+            m.marginalRankingCount(),
+            MarginAggregate.MARGINAL_THRESHOLD,
+            m.rankingNarrowMissCount()));
   }
 
   private static String shortHash(String hash) {

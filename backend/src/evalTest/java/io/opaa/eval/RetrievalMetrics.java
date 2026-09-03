@@ -172,6 +172,14 @@ public final class RetrievalMetrics {
    * this harness scores carries no comparable score across its entries (ADR-0012 decision 3,
    * ranking metrics need the unfiltered rank order, not a score), so rank is the cheap,
    * deterministic quantity available without a second, score-carrying measurement path.
+   *
+   * <p><b>Blind spot for multi-document cases:</b> only the <b>first</b> relevant hit's rank is
+   * used, mirroring {@link #reciprocalRank}. A {@code multi_topic} case whose expected set has
+   * document A at rank 1 and document B at rank 10 reports a large, "safe" margin driven entirely
+   * by A, even though {@code recallAt10} depends on B too and would drop the moment B is pushed one
+   * rank further out. A margin of the <b>last</b> expected document reached within the window (or
+   * of the weakest-margin expected document) would close this gap; not built here because no golden
+   * case class needs it yet.
    */
   static Integer marginAtK(List<String> ranked, Set<String> expected, int k) {
     for (int i = 0; i < ranked.size(); i++) {

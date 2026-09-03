@@ -756,10 +756,23 @@ Rang-basiertes Maß kommt ohne einen zweiten, score-führenden Messpfad aus. Ein
 über die Berichtsebene hinausgeht.
 
 `MarginAggregate` fasst die Rangreserve je Gruppe zusammen (gesamt, je Kategorie, Schwierigkeit,
-Sprache): die Zahl der Treffer, ihre mittlere Reserve, und wie viele davon „knapp gelöst" sind
-(Reserve ≤ `MarginAggregate.MARGINAL_THRESHOLD`, aktuell 1 Rang). Erscheint in
+Sprache) — und trennt dabei drei disjunkte Mengen, statt sie in einen einzigen Schwellenwertfilter
+zu werfen: **Treffer** (Marge ≥ 0, dieselbe Population wie `hitCountAt5`), davon **„knapp gelöst"**
+(Marge ≤ `MarginAggregate.MARGINAL_THRESHOLD`, aktuell 1 Rang), und separat **„knapp verfehlt"**
+(Marge negativ, aber ≥ `-MARGINAL_THRESHOLD` — der VGS/#938-Fall aus dem Befund oben, Rang 6 gegen
+ein 5-Fenster, Marge −1). Ein Fall weit außerhalb des Fensters (z. B. Rang 20 gegen ein 5-Fenster,
+Marge −15) fällt in keine der drei Mengen — insbesondere **nicht** in „knapp gelöst": Ein
+un-unterer-begrenzter Filter „Marge ≤ Schwelle" hätte genau das falsch gezählt, weil er negative
+Margen nicht ausschließt (Review-Befund zu PR #1206). Erscheint in
 `EvaluationReport`/`PipelineEvaluationReport` als `overallMargins`/`marginsBy*` und in der
 Textzusammenfassung beider Pfade.
+
+**Blinder Fleck bei mehreren erwarteten Dokumenten.** `marginAtK` verwendet wie `reciprocalRank` nur
+den **ersten** relevanten Treffer. Ein `multi_topic`-Fall mit Dokument A auf Rang 1 und Dokument B
+auf Rang 10 meldet eine große, „sichere" Marge, die allein von A kommt — obwohl `recallAt10` von B
+mitabhängt und beim nächsten Rang-Rutsch von B kippen kann, ohne dass sich die Marge bewegt. Eine
+Marge des zuletzt erreichten oder des schwächsten erwarteten Dokuments würde das schließen; hier
+bewusst nicht gebaut, weil noch keine Golden-Fall-Klasse das braucht.
 
 **Nicht Teil des Messvertrags.** Die Rangreserve ist bewusst **nur ausgewiesen, nicht verglichen**:
 Sie steckt nicht in `MetricsAggregate`/`PipelineMetricsAggregate` und damit auch nicht in
@@ -768,7 +781,7 @@ Sie steckt nicht in `MetricsAggregate`/`PipelineMetricsAggregate` und damit auch
 Kennzahl braucht erst eine Beobachtungsperiode über mehrere Läufe, bevor sie ein Fehlerkriterium nach
 ADR-0013 werden kann — dieselbe Zurückhaltung, mit der `hitCountAt5`/`hitCountAt10` (#306) erst als
 reine Zählung eingeführt wurden, bevor sie Teil der Fallzahlprüfung wurden. Ob und wie die Rangreserve
-später zum Fehlerkriterium wird, ist ein eigenes, hier bewusst offengelassenes Folge-Issue.
+später zum Fehlerkriterium wird, klärt Issue #1210.
 
 ---
 
