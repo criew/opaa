@@ -13,8 +13,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Delta tests for {@code changes/015-confluence-run-metrics.yaml} (#1141): the nullable metric
- * columns and the {@code incomplete} flag on {@code indexing_jobs}. Builds on 010, 013 and 014 because the
- * fixture rows use the CONFLUENCE type, the run mode and the WEBHOOK trigger they introduced.
+ * columns and the {@code incomplete} flag on {@code indexing_jobs}. Builds on 010, 013 and 014
+ * because the fixture rows use the CONFLUENCE type, the run mode and the WEBHOOK trigger they
+ * introduced.
  */
 class Migration015ConfluenceRunMetricsTest extends AbstractMigrationTest {
 

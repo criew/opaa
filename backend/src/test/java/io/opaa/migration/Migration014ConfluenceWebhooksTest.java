@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
  * Delta tests for {@code changes/014-confluence-webhooks.yaml} (#1140): the per-library webhook
  * secret column on {@code knowledge_libraries} and the widened {@code
  * chk_indexing_jobs_triggered_by}. The baseline fixture is brought through 010 and 013 first,
- * because 012 builds on the CONFLUENCE source type and the run mode they introduced.
+ * because 014 builds on the CONFLUENCE source type and the run mode they introduced.
  */
 class Migration014ConfluenceWebhooksTest extends AbstractMigrationTest {
 
