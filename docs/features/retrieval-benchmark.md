@@ -735,6 +735,43 @@ Verfahren ist state of the art?" zu „welche unserer Fragen scheitern und woran
 
 ---
 
+## 7. Grenzstabilität (Rangreserve)
+
+**Befund (Issue #1151, Live-Abnahme zu #938):** `Hit@5` und die anderen Ranking-Metriken sind binär
+je Fenster — ein Fall, der mit großem Abstand auf Rang 1 liegt, und ein Fall, der gerade noch am
+Fensterrand überlebt, zählen im Bericht identisch als „gelöst". Eine Änderung, die viele knappe
+Fälle von „gerade noch" auf „gerade nicht mehr" schiebt, fällt deshalb erst auf, wenn sie tatsächlich
+kippt — nicht schon, wenn sich ihre Marge verringert.
+
+**Kennzahl: Rangreserve statt Score-Abstand.** Für jeden Golden-Fall trägt der Harness zusätzlich den
+Rangabstand des ersten relevanten Treffers zur Fenstergrenze mit (`RetrievalMetrics#marginAtK`):
+`fensterK - rang` des ersten relevanten Treffers, `null` wenn kein erwartetes Dokument in der
+Rangliste vorkommt. Positiv heißt „Luft vor dem Fensterrand", `0` heißt „sitzt exakt auf der letzten
+zulässigen Position", negativ heißt „schon außerhalb dieses Fensters, aber weiter unten in der Liste
+noch gefunden". Bewusst ein **Rangabstand**, kein Score-Abstand zur fusionierten RRF-Verdrängungskante
+(die konkrete Zahl aus der Live-Abnahme, RRF-Differenz ≈ 0,0005): Der Harness misst die ungefilterte
+Rangfolge, nicht vergleichbare Scores über Suchpfade hinweg (ADR-0012, Entscheidung 3), und ein
+Rang-basiertes Maß kommt ohne einen zweiten, score-führenden Messpfad aus. Ein Score-basiertes Maß
+über die tatsächliche RRF-Verdrängungskante bleibt eine mögliche Erweiterung, sobald ein Bedarf dafür
+über die Berichtsebene hinausgeht.
+
+`MarginAggregate` fasst die Rangreserve je Gruppe zusammen (gesamt, je Kategorie, Schwierigkeit,
+Sprache): die Zahl der Treffer, ihre mittlere Reserve, und wie viele davon „knapp gelöst" sind
+(Reserve ≤ `MarginAggregate.MARGINAL_THRESHOLD`, aktuell 1 Rang). Erscheint in
+`EvaluationReport`/`PipelineEvaluationReport` als `overallMargins`/`marginsBy*` und in der
+Textzusammenfassung beider Pfade.
+
+**Nicht Teil des Messvertrags.** Die Rangreserve ist bewusst **nur ausgewiesen, nicht verglichen**:
+Sie steckt nicht in `MetricsAggregate`/`PipelineMetricsAggregate` und damit auch nicht in
+`Baseline`/`PipelineBaseline` — `BaselineComparator`/`PipelineBaselineComparator` lesen sie nicht,
+`measurementContractVersion`/`pipelineMeasurementContractVersion` bleiben unverändert. Eine neue
+Kennzahl braucht erst eine Beobachtungsperiode über mehrere Läufe, bevor sie ein Fehlerkriterium nach
+ADR-0013 werden kann — dieselbe Zurückhaltung, mit der `hitCountAt5`/`hitCountAt10` (#306) erst als
+reine Zählung eingeführt wurden, bevor sie Teil der Fallzahlprüfung wurden. Ob und wie die Rangreserve
+später zum Fehlerkriterium wird, ist ein eigenes, hier bewusst offengelassenes Folge-Issue.
+
+---
+
 ## Umsetzungsschnitt
 
 Vorschlag des Product Managers für den Zuschnitt in Issues; Reihenfolge ist bindend, weil jeder

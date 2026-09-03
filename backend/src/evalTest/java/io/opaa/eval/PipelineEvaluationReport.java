@@ -29,7 +29,14 @@ public record PipelineEvaluationReport(
     // expected_state fields (see ExpectedStateAudit#evaluate).
     ExpectedStateAudit.Result expectedStateAudit,
     List<PipelineQueryResult> worstQueries,
-    List<PipelineQueryResult> allQueryResults) {
+    List<PipelineQueryResult> allQueryResults,
+    // Issue #1151: how close to the window edge each group's solved cases sit — report-only, see
+    // MarginAggregate's Javadoc for why this is deliberately not part of
+    // pipelineMeasurementContractVersion or PipelineBaseline.
+    MarginAggregate overallMargins,
+    Map<String, MarginAggregate> marginsByCategory,
+    Map<String, MarginAggregate> marginsByDifficulty,
+    Map<String, MarginAggregate> marginsByLanguage) {
 
   /**
    * Version of the pipeline path's own measurement contract (ADR-0012, Nachtrag zum
@@ -172,6 +179,10 @@ public record PipelineEvaluationReport(
       double ndcgAt8,
       double recallAt8,
       double allExpectedDocumentsHitAt8,
+      // Issue #1151: the margin (RetrievalMetrics#marginAtK) this case's first relevant hit had
+      // against each window; null when no expected document appears anywhere in rankedFileNames.
+      Integer hitRateMargin,
+      Integer rankingMargin,
       int chunksReturned,
       int distinctDocumentsReturned,
       List<String> expectedDocuments,

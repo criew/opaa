@@ -167,7 +167,11 @@ class BaselineComparatorTest {
             // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
             null,
             List.of(),
-            List.of());
+            List.of(),
+            MarginAggregate.of(List.of()),
+            Map.of(),
+            Map.of(),
+            Map.of());
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -230,7 +234,11 @@ class BaselineComparatorTest {
             // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
             null,
             List.of(),
-            List.of());
+            List.of(),
+            MarginAggregate.of(List.of()),
+            Map.of(),
+            Map.of(),
+            Map.of());
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -290,7 +298,11 @@ class BaselineComparatorTest {
             // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
             null,
             List.of(),
-            List.of());
+            List.of(),
+            MarginAggregate.of(List.of()),
+            Map.of(),
+            Map.of(),
+            Map.of());
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -347,7 +359,11 @@ class BaselineComparatorTest {
             // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
             null,
             List.of(),
-            List.of());
+            List.of(),
+            MarginAggregate.of(List.of()),
+            Map.of(),
+            Map.of(),
+            Map.of());
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -678,7 +694,11 @@ class BaselineComparatorTest {
             // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
             null,
             List.of(),
-            List.of());
+            List.of(),
+            MarginAggregate.of(List.of()),
+            Map.of(),
+            Map.of(),
+            Map.of());
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -722,7 +742,11 @@ class BaselineComparatorTest {
             // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
             null,
             List.of(),
-            List.of());
+            List.of(),
+            MarginAggregate.of(List.of()),
+            Map.of(),
+            Map.of(),
+            Map.of());
 
     var result = BaselineComparator.compare(baseline, report);
 
@@ -860,7 +884,11 @@ class BaselineComparatorTest {
         noApplicableAnswerSpans(),
         null,
         List.of(),
-        List.of());
+        List.of(),
+        MarginAggregate.of(List.of()),
+        Map.of(),
+        Map.of(),
+        Map.of());
   }
 
   // --- issue #721 code review, Nit 6: fixed-point drift for the new #721 fixed points -----------
