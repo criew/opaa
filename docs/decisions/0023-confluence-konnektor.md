@@ -362,7 +362,9 @@ faktisch abschaltbar, durch Timing statt durch Konfiguration.
 > Auslöser `WEBHOOK` und Betriebsart `INCREMENTAL` geholt, der den Anker nicht bewegt; ein Stapel
 > jenseits einer Obergrenze läuft als gewöhnlicher inkrementeller Abgleich, ein Stapel, der auf
 > einen laufenden Lauf trifft, wartet begrenzt und wird dann verworfen — der nächste Lauf deckt
-> dieselben Seiten ab.
+> dieselben Seiten ab. Bewusst ohne Replay-Schutz: Eine wiedereingespielte Nachricht kostet einen
+> gezielten Lauf innerhalb der Ratenbegrenzung und ändert am Index nichts, was der Abruf nicht
+> bestätigt.
 
 **Anker und Wiederaufnahme.** Der Laufzustand einer Confluence-Bibliothek lebt in einer eigenen
 Zustandstabelle je Bibliothek (Vorbild `rss_feed_state`, dort bereits je `(library_id, feed_url)`

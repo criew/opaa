@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
@@ -898,6 +899,9 @@ class ConfluenceIndexingExecutorTest {
         .noneMatch(r -> r.matches(".*/(content|pages)/100(\\?.*)?$"));
     verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 1, 0, 2, 2);
+    // the heartbeat moves with every page, so the stale-run sweep never mistakes a long batch
+    verify(indexingJobService, atLeast(3))
+        .updateProgress(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
     // the anchor is untouched: the next incremental run re-reads these pages once more
     assertThat(state.getIncrementalAnchor()).isEqualTo(NOW.minus(Duration.ofHours(2)));
     verify(syncStateRepository, never()).save(any());

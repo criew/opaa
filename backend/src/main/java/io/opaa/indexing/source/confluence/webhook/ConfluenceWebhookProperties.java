@@ -33,9 +33,4 @@ public record ConfluenceWebhookProperties(
       maxDeferrals = 120;
     }
   }
-
-  /** All defaults - for callers and tests that need a properties instance without configuration. */
-  public static ConfluenceWebhookProperties defaults() {
-    return new ConfluenceWebhookProperties(null, 0, 0);
-  }
 }

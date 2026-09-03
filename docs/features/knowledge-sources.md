@@ -284,7 +284,10 @@ wird nach `OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_DEFERRALS` Verschiebungen verwor
 Lauf deckt dieselben Seiten ab, ein Verwerfen kostet Aktualität, nie Korrektheit; ein Stapel mit
 mehr als `OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_PENDING_PAGES` Seiten läuft als gewöhnlicher
 inkrementeller Abgleich. Der Webhook ersetzt weder Zeitplan noch Vollabgleich: Ohne ihn ist
-nichts falsch, nur später. **Die Aufbereitung (#1137)** übernimmt
+nichts falsch, nur später. Bewusste Grenze: **kein Replay-Schutz** — eine mitgeschnittene, gültig
+signierte Nachricht (oder der Cloud-Header) lässt sich wieder einspielen und kostet dann je einen
+gezielten Lauf, gedeckelt durch die Ratenbegrenzung; für den Index ist das folgenlos, weil erst der
+Abruf entscheidet. **Die Aufbereitung (#1137)** übernimmt
 `ConfluenceDocumentPipeline`: Makro-Regelwerk (statischer Inhalt bleibt, zur Laufzeit erzeugter
 entfällt), Überschriften, Tabellen, Listen, Code und Hinweiskästen als lesbarer Text, der
 Gliederungspfad der Seite am Dokument und im Chunk-Kontext — Einzelheiten in

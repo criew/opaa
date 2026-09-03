@@ -88,6 +88,21 @@ class ConfluenceWebhookPublicAccessTest {
   }
 
   @Test
+  void anOversizedBodyIsRefusedBeforeItReachesTheIntake() throws Exception {
+    byte[] oversized = new byte[ConfluenceWebhookController.MAX_BODY_BYTES + 1];
+    java.util.Arrays.fill(oversized, (byte) ' ');
+
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/" + UUID.randomUUID() + "/confluence-webhook")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(oversized))
+        .andExpect(status().isPayloadTooLarge());
+
+    org.mockito.Mockito.verifyNoInteractions(webhookService);
+  }
+
+  @Test
   void theSecretEndpointAndTheIndexingTriggerStayClosedWithoutCredentials() throws Exception {
     UUID libraryId = UUID.randomUUID();
     mockMvc

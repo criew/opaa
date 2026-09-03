@@ -94,6 +94,7 @@ class ConfluenceWebhookServiceTest {
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     IndexingJob job = new IndexingJob(JobStatus.RUNNING);
     when(indexingJobService.startJob(any(), any(), any(), any())).thenReturn(job);
+    when(executor.defaultRunMode(any())).thenReturn(IndexingRunMode.INCREMENTAL);
     service =
         new ConfluenceWebhookService(
             libraryRepository,
@@ -174,12 +175,39 @@ class ConfluenceWebhookServiceTest {
   }
 
   @Test
-  void aBatchBeyondTheBoundRunsAnOrdinaryIncrementalSyncInstead() {
+  void aBatchBeyondTheBoundRunsAnOrdinaryRunInTheModeTheLibraryStateCallsFor() {
     acceptSigned(body("1", "2", "3", "4"));
     scheduled.get(0).run();
 
+    verify(indexingJobService)
+        .startJob(any(), any(), eq(JobTriggerSource.WEBHOOK), eq(IndexingRunMode.INCREMENTAL));
     verify(executor).execute(any(), eq(library), eq(IndexingRunMode.INCREMENTAL));
     verify(executor, never()).refreshPages(any(), any(), any());
+
+    // a library without a completed full sync (or with one due) gets the full run its state asks
+    // for - an incremental run would fail there for want of an anchor
+    when(executor.defaultRunMode(library)).thenReturn(IndexingRunMode.FULL);
+    acceptSigned(body("1", "2", "3", "4"));
+    scheduled.get(1).run();
+
+    verify(indexingJobService)
+        .startJob(any(), any(), eq(JobTriggerSource.WEBHOOK), eq(IndexingRunMode.FULL));
+    verify(executor).execute(any(), eq(library), eq(IndexingRunMode.FULL));
+  }
+
+  @Test
+  void notificationsArrivingDuringAWaitDoNotResetTheDeferralCount() {
+    when(indexingJobService.isJobRunning(library.getId(), library.getOrganizationId()))
+        .thenReturn(true);
+    acceptSigned(body("102"));
+    scheduled.get(0).run(); // deferral 1 -> scheduled[1]
+    acceptSigned(body("103")); // joins the waiting batch
+    scheduled.get(1).run(); // deferral 2 (the maximum) -> scheduled[2]
+    acceptSigned(body("104"));
+    scheduled.get(2).run(); // dropped
+
+    assertThat(scheduled).as("no fourth schedule: the batch was dropped, not reset").hasSize(3);
+    verify(indexingJobService, never()).startJob(any(), any(), any(), any());
   }
 
   @Test

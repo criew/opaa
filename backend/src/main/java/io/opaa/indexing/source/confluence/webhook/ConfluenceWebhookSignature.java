@@ -23,6 +23,7 @@ public final class ConfluenceWebhookSignature {
   public static final String SHARED_SECRET_HEADER = "X-OPAA-Webhook-Secret";
 
   private static final String SIGNATURE_PREFIX = "sha256=";
+  private static final String DUMMY_SECRET = "no-secret-configured-for-this-library";
   private static final String HMAC_ALGORITHM = "HmacSHA256";
 
   private ConfluenceWebhookSignature() {}
@@ -36,6 +37,11 @@ public final class ConfluenceWebhookSignature {
   public static boolean verify(
       byte[] body, String hubSignature, String sharedSecret, String secret) {
     if (secret == null || secret.isBlank()) {
+      // The same work as for a library with a secret, so the answer time does not tell a caller
+      // whether this library exists and carries a webhook; the result is discarded.
+      if (hubSignature != null) {
+        matchesHmac(body, hubSignature, DUMMY_SECRET);
+      }
       return false;
     }
     if (hubSignature != null && matchesHmac(body, hubSignature, secret)) {

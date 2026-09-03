@@ -35,11 +35,14 @@ import tools.jackson.databind.json.JsonMapper;
  * hit. Then the page ids the body names are queued per library and, {@code debounce} later, one
  * short-lived {@link JobTriggerSource#WEBHOOK} run fetches exactly those pages ({@link
  * ConfluenceIndexingExecutor#refreshPages}); a batch that grew past {@code maxPendingPages} runs an
- * ordinary incremental sync instead. A notification never deletes by itself and never moves the
- * incremental anchor - it is a hint to look, the instance's answer is the finding (ADR-0023,
- * Entscheidung 4). While another run of the library is in progress the batch waits, up to {@code
- * maxDeferrals} times, then it is dropped: the next scheduled or incremental run covers the same
- * pages, so a drop costs freshness, never correctness.
+ * ordinary run in the mode the library's state calls for instead. A notification never deletes by
+ * itself and never moves the incremental anchor - it is a hint to look, the instance's answer is
+ * the finding (ADR-0023, Entscheidung 4). While another run of the library is in progress the batch
+ * waits, up to {@code maxDeferrals} times, then it is dropped: the next scheduled or incremental
+ * run covers the same pages, so a drop costs freshness, never correctness. Replays are not
+ * detected: a captured, validly signed notification can be sent again and costs one targeted run
+ * each time, bounded by the rate limit - harmless for the index (the fetch is the finding), stated
+ * in the documentation.
  */
 @Service
 public class ConfluenceWebhookService {
@@ -137,21 +140,23 @@ public class ConfluenceWebhookService {
       defer(libraryId, batch);
       return;
     }
+    // A targeted refresh never lists, so it is INCREMENTAL by nature (nothing is removed for being
+    // absent). An overflowed batch becomes an ordinary run, in the mode the library's own state
+    // calls for - FULL while no full sync completed or one is due, INCREMENTAL otherwise.
+    IndexingRunMode runMode =
+        batch.overflowed ? executor.defaultRunMode(library) : IndexingRunMode.INCREMENTAL;
     IndexingJob job;
     try {
       job =
           indexingJobService.startJob(
-              library.getId(),
-              library.getOrganizationId(),
-              JobTriggerSource.WEBHOOK,
-              IndexingRunMode.INCREMENTAL);
+              library.getId(), library.getOrganizationId(), JobTriggerSource.WEBHOOK, runMode);
     } catch (ConflictException e) {
       defer(libraryId, batch);
       return;
     }
     try {
       if (batch.overflowed) {
-        executor.execute(job.getId(), library, IndexingRunMode.INCREMENTAL);
+        executor.execute(job.getId(), library, runMode);
       } else {
         executor.refreshPages(job.getId(), library, batch.pageIds());
       }
@@ -200,6 +205,8 @@ public class ConfluenceWebhookService {
     }
 
     void merge(PendingBatch other, int maxPendingPages) {
+      // a batch that already waited keeps its count - new notifications do not reset the clock
+      deferrals = Math.max(deferrals, other.deferrals);
       if (other.overflowed) {
         overflowed = true;
         ids.clear();

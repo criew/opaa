@@ -72,6 +72,7 @@ class LibraryResponseMapperTest {
     assertThat(response.getSourceUrl()).isNull();
     assertThat(response.getSourceProxy()).isNull();
     assertThat(response.getSourceCredentialsSet()).isNull();
+    assertThat(response.getConfluenceWebhookSecretSet()).isNull();
     assertThat(response.getSchedule()).isNull();
     assertThat(response.getLastScheduledRunsFailed()).isNull();
     assertThat(response.getStorageQuotaBytes()).isNull();
@@ -99,7 +100,7 @@ class LibraryResponseMapperTest {
             "proxy.example.com:8080",
             true,
             true,
-            null,
+            true,
             schedule,
             false,
             1_000_000L,
@@ -109,6 +110,7 @@ class LibraryResponseMapperTest {
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);
 
     assertThat(response.getSourcePath()).isEqualTo("/data/documents");
+    assertThat(response.getConfluenceWebhookSecretSet()).isTrue();
     assertThat(response.getSourceUrl()).isEqualTo(URI.create("https://example.com/documents/"));
     assertThat(response.getSourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(response.getSourceInsecureSsl()).isTrue();

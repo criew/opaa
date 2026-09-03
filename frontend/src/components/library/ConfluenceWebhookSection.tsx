@@ -30,8 +30,7 @@ export default function ConfluenceWebhookSection({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [revealed, setRevealed] = useState<{ secret: string; url: string } | null>(null)
-
-  const endpointUrl = `${window.location.origin}/api/v1/libraries/${libraryId}/confluence-webhook`
+  const [confirm, setConfirm] = useState<'rotate' | 'remove' | null>(null)
 
   const generate = async () => {
     setBusy(true)
@@ -77,11 +76,16 @@ export default function ConfluenceWebhookSection({
         angezeigt.
       </Typography>
       <Stack direction="row" spacing={1} sx={{ mt: 0.75, flexWrap: 'wrap' }} useFlexGap>
-        <Button size="small" variant="outlined" onClick={() => void generate()} disabled={busy}>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => (secretSet ? setConfirm('rotate') : void generate())}
+          disabled={busy}
+        >
           {secretSet ? 'Geheimnis neu erzeugen' : 'Webhook einrichten'}
         </Button>
         {secretSet && (
-          <Button size="small" color="error" onClick={() => void remove()} disabled={busy}>
+          <Button size="small" color="error" onClick={() => setConfirm('remove')} disabled={busy}>
             Webhook entfernen
           </Button>
         )}
@@ -91,6 +95,39 @@ export default function ConfluenceWebhookSection({
           {error}
         </Alert>
       )}
+
+      {/* Rotating or removing invalidates what Confluence has stored - Confluence keeps sending,
+          OPAA answers 401, and nothing in Confluence shows it; a stray click must not do that. */}
+      <Dialog
+        open={confirm !== null}
+        onClose={() => setConfirm(null)}
+        aria-labelledby="confluence-webhook-confirm-title"
+      >
+        <DialogTitle id="confluence-webhook-confirm-title">
+          {confirm === 'remove' ? 'Webhook entfernen?' : 'Geheimnis neu erzeugen?'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            {confirm === 'remove'
+              ? 'Confluence kann OPAA danach nicht mehr benachrichtigen; Benachrichtigungen mit dem bisherigen Geheimnis werden abgewiesen. Änderungen erreichen den Index dann erst mit dem nächsten geplanten Lauf.'
+              : 'Das bisherige Geheimnis gilt sofort nicht mehr. Bis das neue in Confluence hinterlegt ist, werden Benachrichtigungen abgewiesen.'}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirm(null)}>Abbrechen</Button>
+          <Button
+            variant="contained"
+            color={confirm === 'remove' ? 'error' : 'primary'}
+            onClick={() => {
+              const action = confirm
+              setConfirm(null)
+              void (action === 'remove' ? remove() : generate())
+            }}
+          >
+            {confirm === 'remove' ? 'Entfernen' : 'Neu erzeugen'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={revealed !== null}
@@ -122,7 +159,7 @@ export default function ConfluenceWebhookSection({
             component="code"
             sx={{ display: 'block', fontFamily: 'monospace', wordBreak: 'break-all', mb: 2 }}
           >
-            {revealed?.url ?? endpointUrl}
+            {revealed?.url}
           </Typography>
           <Typography variant="body2" sx={{ mb: 1 }}>
             <strong>Data Center:</strong> In der Confluence-Administration unter „Webhooks“ einen

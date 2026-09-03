@@ -472,6 +472,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       }
       for (String pageId : pageIds.stream().sorted().toList()) {
         refreshPage(run, pageId, selectedKeys);
+        run.progress.report();
       }
     } catch (ConfluenceAccessException e) {
       log.warn(

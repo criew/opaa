@@ -438,6 +438,16 @@ export const handlers = [
         { status: 404 },
       )
     }
+    if (library.sourceType !== 'CONFLUENCE') {
+      return HttpResponse.json(
+        {
+          error: 'Ein Webhook-Geheimnis gibt es nur für Bibliotheken vom Typ CONFLUENCE',
+          status: 400,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 },
+      )
+    }
     mockLibraryDetails[libraryId] = { ...library, confluenceWebhookSecretSet: false }
     return new HttpResponse(null, { status: 204 })
   }),
