@@ -81,8 +81,12 @@ public class RerankModelRole implements RerankRoleStatusProvider {
 
   /**
    * Keeps the state current while nothing else exercises the endpoint - so a role that dies in
-   * operation shows up as {@link RerankRoleState#UNREACHABLE} within a minute rather than at the
-   * next query.
+   * operation shows up as {@link RerankRoleState#UNREACHABLE} without waiting for the next query.
+   * "Shows up" is bounded by {@link RerankProperties#timeout()}, not by {@link
+   * #PROBE_INTERVAL_MILLIS}: a probe against a hanging endpoint can itself take up to that budget
+   * (240s by default, see #1154) before it counts as failed, so the honest bound on a dead
+   * endpoint's detection is one probe interval plus one timeout - and the first in-flight query
+   * pays up to one more timeout before it falls back, exactly as this probe does.
    */
   @Scheduled(
       fixedDelay = PROBE_INTERVAL_MILLIS,

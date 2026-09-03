@@ -9,6 +9,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.net.http.HttpClient;
+import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
@@ -140,7 +141,7 @@ public class RerankClient {
    * from every other {@link RerankUnavailableException}, whose causes (refused connection, unknown
    * host, TLS failure) mean the endpoint could not be reached at all. A timeout means the opposite:
    * something answered the connection, it simply did not finish within budget (#1154) - a CPU
-   * reranker under its normal candidate load is the expected case, not a Störung of the same kind.
+   * reranker under its normal candidate load is the expected case, not a failure of the same kind.
    */
   public static class RerankTimeoutException extends RerankUnavailableException {
     public RerankTimeoutException(String message, Throwable cause) {
@@ -202,7 +203,7 @@ public class RerankClient {
       }
     } catch (IOException e) {
       String message = describeConnectionError(e);
-      if (e instanceof HttpTimeoutException || e instanceof SocketTimeoutException) {
+      if (isRequestTimeout(e)) {
         throw new RerankTimeoutException(message, e);
       }
       throw new RerankUnavailableException(message, e);
@@ -360,12 +361,29 @@ public class RerankClient {
     if (e instanceof ConnectException) {
       return "connection refused";
     }
-    if (e instanceof HttpTimeoutException || e instanceof SocketTimeoutException) {
+    if (e instanceof HttpConnectTimeoutException) {
+      return "connection attempt timed out (endpoint did not accept the connection)";
+    }
+    if (isRequestTimeout(e)) {
       return "request timed out";
     }
     if (e instanceof SSLException) {
       return "TLS handshake failed";
     }
     return "endpoint not reachable";
+  }
+
+  /**
+   * Whether {@code e} is the request running past {@link RerankProperties#timeout()} - as opposed
+   * to {@link HttpConnectTimeoutException}, a JDK subclass of {@link HttpTimeoutException} that
+   * fires when nothing ever accepted the TCP connection within {@link #CONNECT_TIMEOUT}. The two
+   * need to stay apart: a connect timeout means the endpoint could not be reached at all (a dead
+   * host, a firewall drop), the same as a refused connection, while a request timeout means it was
+   * reached and simply did not finish scoring in time (#1154's CPU case). Classifying the former as
+   * the latter would send an administrator to raise a timeout that was never the problem.
+   */
+  static boolean isRequestTimeout(IOException e) {
+    return (e instanceof HttpTimeoutException && !(e instanceof HttpConnectTimeoutException))
+        || e instanceof SocketTimeoutException;
   }
 }

@@ -1130,6 +1130,14 @@ nie die Antwort.
 > nach vorn zu holen —, hebt `OPAA_QUERY_FETCH_K` mit an. Reranking allein einzuschalten und die
 > Abrufbreite zu lassen, wie sie ist, wirkt nur zur Hälfte.
 
+> **Reverse-Proxy-Timeouts mit anheben (#1154).** `OPAA_RERANK_TIMEOUT` bindet nur den Rerank-Aufruf
+> selbst, nicht die HTTP-Anfrage der Suche als Ganzes: Eine Suche mit CPU-Reranker kann beim
+> voreingestellten Zeitbudget (`240s`) rund drei Minuten still warten, bevor die Antwort kommt. Ein
+> Reverse-Proxy vor dem Backend (z. B. nginx mit seinem Standard-Read-Timeout von 60s) bricht die
+> Verbindung dann ab, lange bevor die Suche selbst fertig ist — sichtbar als Verbindungsabbruch beim
+> Client, nicht als Fehler im Backend-Log. Wer Reranking auf CPU einschaltet, muss den
+> Proxy-seitigen Read-/Response-Timeout auf mindestens `OPAA_RERANK_TIMEOUT` anheben.
+
 ## Fehlerbehebung
 
 ### Backend gibt leere Antworten oder "Connection refused" zurück
