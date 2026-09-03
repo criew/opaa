@@ -84,14 +84,12 @@ class VectorSearchStage implements RetrievalStage {
             retrieved,
             verdicts,
             List.of(
-                "vector search, " + searchQueries.size() + " list(s)",
-                "fetch-k " + properties.fetchK() + " per list",
-                "similarity threshold "
-                    + properties.similarityThreshold()
-                    + ", applied in-query")));
+                RetrievalNote.VECTOR_SEARCH_LISTS.format(searchQueries.size()),
+                RetrievalNote.FETCH_K.format(properties.fetchK()),
+                RetrievalNote.SIMILARITY_THRESHOLD.format(properties.similarityThreshold()))));
   }
 
   static String listLabel(int searchQueryIndex) {
-    return "vector search · sub-query " + (searchQueryIndex + 1);
+    return RetrievalListLabel.VECTOR_SEARCH.format(searchQueryIndex + 1);
   }
 }
