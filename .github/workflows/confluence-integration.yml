@@ -11,9 +11,10 @@ on:
     # damit nicht mehrere speicherhungrige Container um denselben Runner konkurrieren.
     - cron: '25 4 * * *'
   workflow_dispatch: {}
+  # Kein branches-Filter: die Suite muss auch auf gestapelten PRs (Basis = anderer Feature-Branch)
+  # per Label startbar sein; das Opt-in regelt die if-Bedingung des Jobs.
   pull_request:
     types: [labeled]
-    branches: [main]
 
 permissions:
   contents: read
