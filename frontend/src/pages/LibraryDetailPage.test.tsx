@@ -610,6 +610,39 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByRole('button', { name: 'Vollabgleich starten' })).not.toBeInTheDocument()
   })
 
+  it('shows the webhook row to a manager of a Confluence library only (#1140)', async () => {
+    const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, {
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+        confluenceWebhookSecretSet: true,
+      }),
+    )
+    const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    expect(await screen.findByTestId('confluence-webhook-section')).toHaveTextContent(
+      /Webhook:.*eingerichtet/,
+    )
+    expect(screen.getByRole('button', { name: 'Geheimnis neu erzeugen' })).toBeInTheDocument()
+    unmount()
+
+    // a VIEWER sees edition and spaces (#1138), but no webhook affordance
+    setLibraryState(
+      viewerLibrary,
+      detailsOf(viewerLibrary, {
+        sourceType: 'CONFLUENCE',
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+      }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await screen.findByText('Engineering (ENG)')
+    expect(screen.queryByTestId('confluence-webhook-section')).not.toBeInTheDocument()
+  })
+
   it('states the Confluence sharing consequence to a VIEWER as well, and never for other types (#1138)', async () => {
     setLibraryState(
       viewerLibrary,

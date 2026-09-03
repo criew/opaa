@@ -5,13 +5,16 @@ import static io.opaa.library.LibraryUpdateBuilder.libraryUpdate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.confluence.ConfluenceSyncState;
 import io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository;
@@ -52,6 +55,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
 
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private AssetGrantService grantService;
   @Autowired private ConfluenceSyncStateRepository syncStateRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
@@ -427,6 +431,97 @@ class ConfluenceLibraryConfigurationIntegrationTest {
   }
 
   // ---- helpers ---------------------------------------------------------------------------------
+
+  @Test
+  void aManagerGeneratesRotatesAndRemovesTheWebhookSecretWhichIsNeverReadable() {
+    // #1140: the secret is returned exactly once, stored encrypted, visible afterwards only as a
+    // yes/no, and every change leaves an audit entry naming the field, never the value.
+    UUID owner = user();
+    UUID libraryId =
+        create(currentUser(owner), "Wiki", dataCenter.baseUrl(), "pat", List.of("ENG"));
+    assertThat(
+            libraryService
+                .getLibrary(libraryId, currentUser(owner))
+                .managementDetail()
+                .confluenceWebhookSecretSet())
+        .isFalse();
+
+    String first = libraryService.generateConfluenceWebhookSecret(libraryId, currentUser(owner));
+    assertThat(first).hasSize(43).matches("[A-Za-z0-9_-]+");
+    KnowledgeLibrary stored = libraryRepository.findById(libraryId).orElseThrow();
+    assertThat(stored.getConfluenceWebhookSecret()).isEqualTo(first);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT source_confluence_webhook_secret FROM knowledge_libraries WHERE id = ?",
+                String.class,
+                libraryId))
+        .as("encrypted at rest like the credentials")
+        .startsWith("enc:v1:")
+        .doesNotContain(first);
+    assertThat(
+            libraryService
+                .getLibrary(libraryId, currentUser(owner))
+                .managementDetail()
+                .confluenceWebhookSecretSet())
+        .isTrue();
+
+    String second = libraryService.generateConfluenceWebhookSecret(libraryId, currentUser(owner));
+    assertThat(second).isNotEqualTo(first);
+    assertThat(libraryRepository.findById(libraryId).orElseThrow().getConfluenceWebhookSecret())
+        .isEqualTo(second);
+
+    libraryService.removeConfluenceWebhookSecret(libraryId, currentUser(owner));
+    assertThat(libraryRepository.findById(libraryId).orElseThrow().getConfluenceWebhookSecret())
+        .isNull();
+    libraryService.removeConfluenceWebhookSecret(libraryId, currentUser(owner));
+
+    List<String> audit =
+        jdbcTemplate.queryForList(
+            "SELECT after FROM audit_log WHERE object_id = ? AND event_type = ?"
+                + " ORDER BY recorded_at",
+            String.class,
+            libraryId.toString(),
+            "LIBRARY_SOURCE_UPDATED");
+    assertThat(audit)
+        .as("generate, rotate, remove - the idempotent second remove writes none")
+        .hasSize(3)
+        .allSatisfy(
+            payload ->
+                assertThat(payload)
+                    .contains("confluenceWebhookSecret")
+                    .doesNotContain(first)
+                    .doesNotContain(second));
+  }
+
+  @Test
+  void theWebhookSecretTakesManagerAndOnlyExistsForConfluence() {
+    UUID owner = user();
+    UUID editor = user();
+    UUID libraryId =
+        create(currentUser(owner), "Wiki", dataCenter.baseUrl(), "pat", List.of("ENG"));
+    grantService.upsertGrant(
+        libraryId,
+        new AssetGrantUpsert(PermissionSubjectType.USER, editor, AssetRole.EDITOR),
+        currentUser(owner));
+
+    assertThatThrownBy(
+            () -> libraryService.generateConfluenceWebhookSecret(libraryId, currentUser(editor)))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThatThrownBy(
+            () -> libraryService.removeConfluenceWebhookSecret(libraryId, currentUser(editor)))
+        .isInstanceOf(AccessDeniedException.class);
+
+    UUID upload =
+        libraryService
+            .createLibrary(
+                libraryCreation("Ablage", DocumentSourceType.UPLOAD).build(), currentUser(owner))
+            .library()
+            .getId();
+    assertThatThrownBy(
+            () -> libraryService.generateConfluenceWebhookSecret(upload, currentUser(owner)))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("CONFLUENCE");
+  }
 
   private UUID create(
       CurrentUser caller, String name, String url, String token, List<String> spaceKeys) {

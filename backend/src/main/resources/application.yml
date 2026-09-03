@@ -175,6 +175,11 @@ opaa:
       max-listing-pages: ${OPAA_INDEXING_CONFLUENCE_MAX_LISTING_PAGES:500}
       full-sync-interval: ${OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL:7d}
       incremental-overlap: ${OPAA_INDEXING_CONFLUENCE_INCREMENTAL_OVERLAP:10m}
+      # #1140: the webhook intake - see ConfluenceWebhookProperties.
+      webhook:
+        debounce: ${OPAA_INDEXING_CONFLUENCE_WEBHOOK_DEBOUNCE:5s}
+        max-pending-pages: ${OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_PENDING_PAGES:200}
+        max-deferrals: ${OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_DEFERRALS:120}
     # #1058: DoS-hardening limits for TabularDocumentPipeline (XLSX/CSV/ODS) - own property block,
     # own binding prefix, see TabularProperties's own Javadoc for why.
     tabular:
@@ -259,6 +264,14 @@ opaa:
       max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_MAX_REQUESTS:20}
       window-seconds: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_WINDOW_SECONDS:60}
       global-max-requests: ${OPAA_RATE_LIMIT_DOCUMENT_CONTENT_GLOBAL_MAX_REQUESTS:100}
+    # #1140: the Confluence webhook intake is reachable without a session; the limiter bounds the
+    # signature checks an unauthenticated caller can cause. Per library (capture group), generous
+    # enough for a busy space - an author saving every few seconds - and the intake debounces
+    # anyway, so a burst above this costs freshness, not correctness.
+    webhook:
+      max-requests: ${OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS:120}
+      window-seconds: ${OPAA_RATE_LIMIT_WEBHOOK_WINDOW_SECONDS:60}
+      global-max-requests: ${OPAA_RATE_LIMIT_WEBHOOK_GLOBAL_MAX_REQUESTS:600}
   cors:
     allowed-origins: ${OPAA_CORS_ALLOWED_ORIGINS:http://localhost:5173}
   directory-sync:

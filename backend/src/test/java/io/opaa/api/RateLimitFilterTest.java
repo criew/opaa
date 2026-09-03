@@ -3,6 +3,8 @@ package io.opaa.api;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.LinkedHashMap;
@@ -23,6 +25,8 @@ class RateLimitFilterTest {
   private RateLimitService globalQueryLimiter;
   private RateLimitService globalIndexingLimiter;
   private RateLimitService globalSourceTestLimiter;
+  private RateLimitService webhookLimiter;
+  private RateLimitService globalWebhookLimiter;
   private JsonMapper jsonMapper;
 
   @BeforeEach
@@ -30,6 +34,8 @@ class RateLimitFilterTest {
     queryLimiter = mock(RateLimitService.class);
     indexingLimiter = mock(RateLimitService.class);
     sourceTestLimiter = mock(RateLimitService.class);
+    webhookLimiter = mock(RateLimitService.class);
+    globalWebhookLimiter = mock(RateLimitService.class);
     globalQueryLimiter = mock(RateLimitService.class);
     globalIndexingLimiter = mock(RateLimitService.class);
     globalSourceTestLimiter = mock(RateLimitService.class);
@@ -41,11 +47,14 @@ class RateLimitFilterTest {
     // #514/PR #537 review, finding 3: mirrors RateLimitConfiguration's own registration of
     // POST /api/v1/libraries/source-test.
     perIpLimiters.put("^/api/v1/libraries/source-test$", sourceTestLimiter);
+    perIpLimiters.put("^/api/v1/libraries/([^/]+)/confluence-webhook$", webhookLimiter);
 
     Map<String, RateLimitService> globalLimiters = new LinkedHashMap<>();
     globalLimiters.put("^/api/v1/query", globalQueryLimiter);
     globalLimiters.put("^/api/v1/libraries/([^/]+)/indexing$", globalIndexingLimiter);
     globalLimiters.put("^/api/v1/libraries/source-test$", globalSourceTestLimiter);
+    globalLimiters.put("^/api/v1/libraries/([^/]+)/confluence-webhook$", globalWebhookLimiter);
+    when(globalWebhookLimiter.isAllowed(anyString())).thenReturn(true);
 
     when(globalQueryLimiter.isAllowed(anyString())).thenReturn(true);
     when(globalIndexingLimiter.isAllowed(anyString())).thenReturn(true);
@@ -113,6 +122,27 @@ class RateLimitFilterTest {
     assertThat(response.getStatus()).isEqualTo(429);
     assertThat(response.getContentAsString()).contains(RateLimitFilter.RATE_LIMIT_MESSAGE);
     assertThat(chain.getRequest()).isNull();
+  }
+
+  @Test
+  void keysTheWebhookLimiterByLibraryAndReturns429WhenExceeded() throws Exception {
+    // #1140: the intake is reachable without a session, so the limiter is what bounds the
+    // signature checks a stranger can cause - per library, like the indexing trigger.
+    java.util.UUID library = java.util.UUID.randomUUID();
+    when(webhookLimiter.isAllowed(anyString())).thenReturn(false);
+
+    var request =
+        new MockHttpServletRequest("POST", "/api/v1/libraries/" + library + "/confluence-webhook");
+    request.setRemoteAddr("203.0.113.7");
+    var response = new MockHttpServletResponse();
+    var chain = new MockFilterChain();
+
+    filter.doFilter(request, response, chain);
+
+    assertThat(response.getStatus()).isEqualTo(429);
+    assertThat(chain.getRequest()).isNull();
+    verify(webhookLimiter).isAllowed("203.0.113.7:" + library);
+    verify(indexingLimiter, never()).isAllowed(anyString());
   }
 
   @Test

@@ -3,6 +3,7 @@ package io.opaa.auth;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -49,6 +50,12 @@ public class OidcSecurityConfig {
                     // sign-in page in the first place can already tell. No user, space, library or
                     // configuration data is reachable through either path.
                     .requestMatchers("/api/v1/branding", "/api/v1/branding/logo")
+                    .permitAll()
+                    // #1140: a Confluence instance or Automation rule has no session - the
+                    // notification authenticates itself with the library's own webhook secret
+                    // (ConfluenceWebhookService); nothing is readable through this path, and a
+                    // request without a valid secret is answered 401 there.
+                    .requestMatchers(HttpMethod.POST, "/api/v1/libraries/*/confluence-webhook")
                     .permitAll()
                     .requestMatchers("/api/**")
                     .authenticated()

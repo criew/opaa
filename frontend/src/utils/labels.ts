@@ -12,6 +12,7 @@ import type {
   SpaceVisibility,
   ConfluenceEdition,
   IndexingRunMode,
+  IndexingTriggerSource,
 } from '../types/api'
 import type { AccessLevel } from '../types/chat'
 
@@ -255,6 +256,20 @@ const indexingRunModeLabels: Record<IndexingRunMode, string> = {
 export function indexingRunModeLabel(mode: IndexingRunMode | string | undefined): string {
   if (!mode) return ''
   return indexingRunModeLabels[mode as IndexingRunMode] ?? mode
+}
+
+const indexingTriggerSourceLabels: Record<IndexingTriggerSource, string> = {
+  MANUAL: 'manuell gestartet',
+  SCHEDULED: 'per Zeitplan',
+  WEBHOOK: 'per Webhook',
+}
+
+/** Who started a run (#485, #1140) - shown in the run history beside the run mode. */
+export function indexingTriggerSourceLabel(
+  source: IndexingTriggerSource | string | undefined,
+): string {
+  if (!source) return ''
+  return indexingTriggerSourceLabels[source as IndexingTriggerSource] ?? source
 }
 
 export function indexingRunEventCategoryLabel(

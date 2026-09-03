@@ -1882,6 +1882,105 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/{libraryId}/confluence-webhook-secret:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: generateConfluenceWebhookSecret
+      tags: [library, indexing]
+      summary: Generate or rotate the webhook secret of a CONFLUENCE library
+      description: >
+        #1140: generates a fresh random secret, stores it encrypted (like sourceCredentials) and
+        returns it exactly once, together with the path the Confluence instance or Automation rule
+        has to call. Calling again rotates: the previous secret stops authenticating immediately.
+        MANAGER or above, the same threshold as every other change of the source configuration.
+        Rejected with 400 for every other sourceType. Recorded in the audit log as
+        LIBRARY_SOURCE_UPDATED with changedFields [confluenceWebhookSecret], never with the value.
+      responses:
+        "200":
+          description: The new secret, shown once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfluenceWebhookSecretResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: removeConfluenceWebhookSecret
+      tags: [library, indexing]
+      summary: Remove the webhook secret of a CONFLUENCE library
+      description: >
+        #1140: from the commit on, the library's webhook endpoint answers every call with 401.
+        Idempotent - removing an absent secret succeeds without an audit entry. MANAGER or above.
+      responses:
+        "204":
+          description: Secret removed (or none was stored)
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/confluence-webhook:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: receiveConfluenceWebhook
+      tags: [indexing]
+      summary: Receive a change notification from a Confluence instance or Automation rule
+      description: >
+        #1140: the only endpoint under /api/v1 a caller reaches without a session - the sender
+        has none. The request authenticates itself with the library's webhook secret instead,
+        either as Confluence Data Center signs it (header X-Hub-Signature: sha256=<hex HMAC-SHA256
+        of the raw body>) or as a Confluence Cloud Automation rule sends it (header
+        X-OPAA-Webhook-Secret carrying the secret itself). An unknown library, a library without
+        a secret or of another sourceType, and a wrong or missing signature are all answered with
+        the same 401; no other information leaves this endpoint. Once authenticated, the page ids
+        the body names (page.id, content.id, attachment.pageId, pageId, pageIds) are queued and,
+        a few seconds later (opaa.indexing.confluence.webhook.debounce), one WEBHOOK run fetches
+        exactly those pages: a page the instance reports as trashed is removed with its
+        attachments, a changed page is re-indexed, a 404 or 403 changes nothing (ADR-0023,
+        Entscheidung 4 - deletion needs the instance's own positive finding, the notification is
+        not one). The event type is deliberately not interpreted. A body naming no page is
+        accepted and ignored. Rate-limited per library (opaa.rate-limit.webhook).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: The sender's own payload; only the page ids named in it are read.
+      responses:
+        "202":
+          description: Accepted and queued (or nothing to queue)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/v1/libraries/{libraryId}/indexing:
     parameters:
       - name: libraryId
@@ -2927,8 +3026,11 @@ components:
     IndexingTriggerSource:
       type: string
       description: >
-        Who started a run (#485): a person via "Jetzt indizieren", or the library's own schedule.
-      enum: [MANUAL, SCHEDULED]
+        Who started a run (#485): a person via "Jetzt indizieren", the library's own schedule, or
+        an authenticated Confluence webhook notification (#1140) - a WEBHOOK run fetches only the
+        pages the notification named and never removes anything the instance does not itself
+        report as trashed.
+      enum: [MANUAL, SCHEDULED, WEBHOOK]
       example: MANUAL
 
     IndexingRunMode:
@@ -4143,6 +4245,23 @@ components:
           items:
             $ref: "#/components/schemas/ConfluenceSpaceRef"
 
+    ConfluenceWebhookSecretResponse:
+      type: object
+      required: [secret, path]
+      description: >
+        The webhook secret of a CONFLUENCE library, returned exactly once at generation (#1140),
+        and the path the instance has to notify. The client composes the absolute URL from its
+        own origin - the backend does not know the address the instance reaches it under.
+      properties:
+        secret:
+          type: string
+          description: 32 random bytes, Base64url without padding.
+          example: 3q2-7wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        path:
+          type: string
+          description: The endpoint path, relative to the deployment's origin.
+          example: /api/v1/libraries/7f9c2b3e-1d4a-4c8b-9e2f-0a1b2c3d4e5f/confluence-webhook
+
     SourceConnectionTestRequest:
       type: object
       required: [sourceType]
@@ -4688,6 +4807,15 @@ components:
             other source types.
           items:
             $ref: "#/components/schemas/ConfluenceSpaceRef"
+        confluenceWebhookSecretSet:
+          type: boolean
+          nullable: true
+          description: >
+            Whether a webhook secret is currently stored for this CONFLUENCE library (#1140) -
+            never the secret itself, which is returned exactly once by POST
+            /api/v1/libraries/{libraryId}/confluence-webhook-secret. Only present for sourceType
+            CONFLUENCE and only if myRole is at least MANAGER (the same gate as
+            sourceCredentialsSet); absent otherwise.
         schedule:
           description: >
             The library's indexing schedule (#485) - present only for a connector library

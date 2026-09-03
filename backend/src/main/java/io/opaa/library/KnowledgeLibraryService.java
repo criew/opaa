@@ -34,10 +34,12 @@ import io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import java.net.URI;
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -95,6 +97,11 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Service
 @Transactional(readOnly = true)
 public class KnowledgeLibraryService {
+
+  /** 32 random bytes, Base64url without padding: 43 characters (#1140). */
+  private static final int WEBHOOK_SECRET_BYTES = 32;
+
+  private final SecureRandom secureRandom = new SecureRandom();
 
   /**
    * Upper bound of a Confluence space selection - matches LibraryRequest.confluenceSpaces.maxItems.
@@ -1342,6 +1349,60 @@ public class KnowledgeLibraryService {
   }
 
   /**
+   * Generates a fresh webhook secret for a CONFLUENCE library (#1140) - MANAGER or above, like
+   * every other change of the source configuration - stores it encrypted and returns the plaintext
+   * exactly once. A second call rotates: the previous secret stops authenticating with the commit.
+   * The audit entry names the field, never the value (ADR-0018, Entscheidung 4).
+   */
+  @Transactional
+  public String generateConfluenceWebhookSecret(UUID libraryId, CurrentUser caller) {
+    KnowledgeLibrary library = requireConfluenceLibraryForWebhook(libraryId, caller);
+    byte[] random = new byte[WEBHOOK_SECRET_BYTES];
+    secureRandom.nextBytes(random);
+    String secret = Base64.getUrlEncoder().withoutPadding().encodeToString(random);
+    library.setConfluenceWebhookSecret(secret);
+    libraryRepository.save(library);
+    recordWebhookSecretChange(library, caller);
+    return secret;
+  }
+
+  /** Removes the webhook secret (#1140): the endpoint rejects every call from now on. */
+  @Transactional
+  public void removeConfluenceWebhookSecret(UUID libraryId, CurrentUser caller) {
+    KnowledgeLibrary library = requireConfluenceLibraryForWebhook(libraryId, caller);
+    if (library.getConfluenceWebhookSecret() == null) {
+      return;
+    }
+    library.setConfluenceWebhookSecret(null);
+    libraryRepository.save(library);
+    recordWebhookSecretChange(library, caller);
+  }
+
+  private KnowledgeLibrary requireConfluenceLibraryForWebhook(UUID libraryId, CurrentUser caller) {
+    KnowledgeLibrary library = loadLibrary(libraryId, caller);
+    accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
+    if (library.getSourceType() != DocumentSourceType.CONFLUENCE) {
+      throw new ValidationException(
+          "Ein Webhook-Geheimnis gibt es nur für Bibliotheken vom Typ CONFLUENCE");
+    }
+    return library;
+  }
+
+  private void recordWebhookSecretChange(KnowledgeLibrary library, CurrentUser caller) {
+    List<String> changedFields = List.of("confluenceWebhookSecret");
+    auditEventRecorder.recordUserAction(
+        AuditEvent.builder()
+            .organizationId(library.getOrganizationId())
+            .actor(caller.id())
+            .type(AuditEventType.LIBRARY_SOURCE_UPDATED)
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, library.getId(), library.getName())
+            .before(Map.of("changedFields", changedFields))
+            .after(Map.of("changedFields", changedFields))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
+  }
+
+  /**
    * Loads a library and enforces the organization boundary, treating a library from another
    * organization as not found - mirrors {@code SpaceService#loadSpace}. Applies to system admins as
    * well; the boundary is not overstepped even to reveal existence.
@@ -1398,6 +1459,10 @@ public class KnowledgeLibraryService {
         // a client phrase an accurate "leave blank to keep the current credential" hint only when
         // one is actually stored.
         library.getSourceCredentials() != null,
+        // #1140: the same yes/no for the webhook secret - it is shown once, at generation.
+        library.getSourceType() == DocumentSourceType.CONFLUENCE
+            ? library.getConfluenceWebhookSecret() != null
+            : null,
         schedule,
         lastScheduledRunsFailed,
         storageQuotaService.quotaBytes(),

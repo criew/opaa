@@ -99,6 +99,7 @@ class LibraryResponseMapperTest {
             "proxy.example.com:8080",
             true,
             true,
+            null,
             schedule,
             false,
             1_000_000L,
@@ -135,7 +136,7 @@ class LibraryResponseMapperTest {
             LibraryVisibility.PRIVATE,
             false);
     LibraryManagementDetail managementDetail =
-        new LibraryManagementDetail(null, null, null, false, false, null, null, 0L, 0L);
+        new LibraryManagementDetail(null, null, null, false, false, null, null, null, 0L, 0L);
     LibraryDetail detail = new LibraryDetail(library, AssetRole.OWNER, 0L, managementDetail);
 
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);

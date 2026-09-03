@@ -60,6 +60,7 @@ import type {
   QueryRequest,
   ConfluenceEdition,
   ConfluenceSpaceRef,
+  ConfluenceWebhookSecretResponse,
 } from '../types/api'
 
 // Mirrors SupportedDocumentFormats#EXTENSIONS (backend/src/main/java/io/opaa/indexing) - kept as a
@@ -399,6 +400,46 @@ export const handlers = [
       } satisfies IndexingStatusResponse,
       { status: 202 },
     )
+  }),
+
+  // #1140: the webhook secret is shown once; the mock keeps the yes/no on the library detail.
+  http.post('/api/v1/libraries/:libraryId/confluence-webhook-secret', ({ params }) => {
+    const libraryId = params.libraryId as string
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json(
+        { error: 'Bibliothek nicht gefunden', status: 404, timestamp: new Date().toISOString() },
+        { status: 404 },
+      )
+    }
+    if (library.sourceType !== 'CONFLUENCE') {
+      return HttpResponse.json(
+        {
+          error: 'Ein Webhook-Geheimnis gibt es nur für Bibliotheken vom Typ CONFLUENCE',
+          status: 400,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 },
+      )
+    }
+    mockLibraryDetails[libraryId] = { ...library, confluenceWebhookSecretSet: true }
+    return HttpResponse.json({
+      secret: 'mock-webhook-secret-' + libraryId.slice(0, 8),
+      path: `/api/v1/libraries/${libraryId}/confluence-webhook`,
+    } satisfies ConfluenceWebhookSecretResponse)
+  }),
+
+  http.delete('/api/v1/libraries/:libraryId/confluence-webhook-secret', ({ params }) => {
+    const libraryId = params.libraryId as string
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json(
+        { error: 'Bibliothek nicht gefunden', status: 404, timestamp: new Date().toISOString() },
+        { status: 404 },
+      )
+    }
+    mockLibraryDetails[libraryId] = { ...library, confluenceWebhookSecretSet: false }
+    return new HttpResponse(null, { status: 204 })
   }),
 
   http.get('/api/v1/libraries/:libraryId/indexing/status', ({ params }) => {

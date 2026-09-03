@@ -415,10 +415,17 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       run.progress.recordSkipped();
       return;
     }
-    ConfluencePage page = fetched.get();
+    applyFetchedPage(run, fetched.get(), pagePath, existing);
+  }
+
+  /**
+   * What a freshly fetched page means for the index: trashed is the positive finding a deletion
+   * needs - the instance says so itself (ADR-0023, Entscheidung 4) - everything else is stored.
+   */
+  private void applyFetchedPage(
+      Run run, ConfluencePage page, String pagePath, Optional<Document> existing)
+      throws InterruptedException {
     if (page.status() == ConfluencePageStatus.TRASHED) {
-      // the positive finding a deletion needs - the instance says so itself (a race with the
-      // search: CQL lists current pages only, so this is a safeguard, not the deletion path)
       removeTrashed(run, existing, pagePath);
       run.progress.recordSkipped();
       return;
@@ -430,6 +437,122 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
                 ? null
                 : String.join(SourceDocumentContext.HIERARCHY_SEPARATOR, page.ancestorTitles()));
     storePage(run, page, pagePath, String.valueOf(page.version()), pageContext);
+  }
+
+  /**
+   * The webhook run (#1140): fetches exactly {@code pageIds} and applies what the instance answers
+   * - a page it reports as trashed is removed with its attachments, a changed page is re-indexed,
+   * an unchanged one only has its attachments checked, a 404 or 403 leaves the index untouched (no
+   * positive finding, ADR-0023, Entscheidung 4). Never a listing, never a cleanup, and the
+   * incremental anchor stays where it is: the next incremental run re-reads these pages once more,
+   * which costs a listing entry each and nothing else.
+   */
+  @Async("indexingTaskExecutor")
+  public void refreshPages(UUID jobId, KnowledgeLibrary targetLibrary, Set<String> pageIds) {
+    var progress = new IndexingRunProgress(indexingJobService, jobId);
+    var events =
+        new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId);
+    ConfluenceConnection connection;
+    try {
+      connection = ConfluenceLibraryConnection.of(targetLibrary);
+    } catch (ConfluenceLibraryConnection.InvalidConfluenceConfigurationException e) {
+      progress.fail(e.getMessage());
+      return;
+    }
+    ConfluenceClient client = null;
+    String failure = null;
+    try {
+      client = clientFactory.create(connection);
+      client.verifyCredentials();
+      Run run = new Run(jobId, client, targetLibrary, progress, events);
+      progress.setTotal(pageIds.size());
+      Set<String> selectedKeys = new HashSet<>();
+      for (ConfluenceSpaceSelection selection : targetLibrary.getConfluenceSpaces()) {
+        selectedKeys.add(selection.getSpaceKey());
+      }
+      for (String pageId : pageIds.stream().sorted().toList()) {
+        refreshPage(run, pageId, selectedKeys);
+      }
+    } catch (ConfluenceAccessException e) {
+      log.warn(
+          "Confluence webhook run for library {} failed: {}",
+          targetLibrary.getId(),
+          e.getMessage());
+      failure = e.getMessage();
+    } catch (InterruptedException e) {
+      failure = "Lauf unterbrochen";
+      Thread.currentThread().interrupt();
+    } catch (Exception e) {
+      log.error(
+          "Confluence webhook run for library {} failed unexpectedly", targetLibrary.getId(), e);
+      failure = e.getMessage();
+    }
+    if (client != null) {
+      reportThrottling(client, events);
+    }
+    events.finalizeRun();
+    if (failure == null) {
+      progress.complete();
+    } else {
+      progress.fail(failure);
+    }
+  }
+
+  private void refreshPage(Run run, String pageId, Set<String> selectedKeys)
+      throws InterruptedException {
+    String label = "Seite " + pageId + " (per Webhook gemeldet) ";
+    Optional<ConfluencePage> fetched;
+    try {
+      fetched = run.client.fetchPage(pageId);
+    } catch (ConfluenceAccessException.Forbidden e) {
+      run.events.record(IndexingEventCategory.REJECTED, label + UNREADABLE_PAGE_SUFFIX, pageId);
+      run.progress.recordSkipped();
+      return;
+    } catch (ConfluenceAccessException e) {
+      run.events.record(IndexingEventCategory.UNREACHABLE, label + e.getMessage(), pageId);
+      run.progress.recordFailed();
+      return;
+    }
+    if (fetched.isEmpty()) {
+      run.events.record(IndexingEventCategory.REJECTED, label + UNREADABLE_PAGE_SUFFIX, pageId);
+      run.progress.recordSkipped();
+      return;
+    }
+    ConfluencePage page = fetched.get();
+    String spaceKey = page.spaceKey();
+    String pagePath = run.client.pageUrl(spaceKey, page.id());
+    Optional<Document> existing =
+        documentRepository.findByLibraryIdAndFilePath(run.library.getId(), pagePath);
+    if (page.status() == ConfluencePageStatus.TRASHED) {
+      applyFetchedPage(run, page, pagePath, existing);
+      return;
+    }
+    if (spaceKey == null || !selectedKeys.contains(spaceKey)) {
+      run.events.record(
+          IndexingEventCategory.REJECTED,
+          "Seite „"
+              + page.title()
+              + "“ (Space "
+              + (spaceKey == null ? "?" : spaceKey)
+              + ") liegt in einem nicht ausgewählten Space; der bisherige Stand bleibt bis zum"
+              + " nächsten Vollabgleich",
+          page.id());
+      run.progress.recordSkipped();
+      return;
+    }
+    ConfluencePageSummary summary =
+        new ConfluencePageSummary(page.id(), spaceKey, page.title(), page.version(), null);
+    if (existing.isEmpty()) {
+      removeMovedFrom(run, summary, selectedKeys, pagePath);
+    }
+    if (isUnchanged(existing, String.valueOf(page.version()))) {
+      run.progress.recordSkipped();
+      SourceDocumentContext context =
+          new SourceDocumentContext(spaceKey, existing.get().getSourceHierarchyPath());
+      indexAttachments(run, page.id(), pagePath, context.descend(page.title()));
+      return;
+    }
+    applyFetchedPage(run, page, pagePath, existing);
   }
 
   /**

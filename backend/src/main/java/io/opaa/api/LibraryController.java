@@ -4,6 +4,7 @@ import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
 import io.opaa.api.dto.ConfluenceSpaceListRequest;
 import io.opaa.api.dto.ConfluenceSpaceListResponse;
+import io.opaa.api.dto.ConfluenceWebhookSecretResponse;
 import io.opaa.api.dto.IndexingRunEvent;
 import io.opaa.api.dto.IndexingRunEventCategory;
 import io.opaa.api.dto.IndexingRunListResponse;
@@ -151,6 +152,26 @@ public class LibraryController {
       @Caller CurrentUser caller) {
     return LibraryResponseMapper.toResponse(
         libraryService.updateLibrary(libraryId, LibraryResponseMapper.toUpdate(request), caller));
+  }
+
+  /**
+   * Generates (or rotates) the library's Confluence webhook secret (#1140) and returns it exactly
+   * once, together with the path the instance has to call - the secret is never readable again,
+   * only {@code LibraryResponse.confluenceWebhookSecretSet} tells that one exists.
+   */
+  @PostMapping("/{libraryId}/confluence-webhook-secret")
+  public ConfluenceWebhookSecretResponse generateConfluenceWebhookSecret(
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
+    String secret = libraryService.generateConfluenceWebhookSecret(libraryId, caller);
+    return new ConfluenceWebhookSecretResponse(
+        secret, "/api/v1/libraries/" + libraryId + "/confluence-webhook");
+  }
+
+  @DeleteMapping("/{libraryId}/confluence-webhook-secret")
+  public ResponseEntity<Void> removeConfluenceWebhookSecret(
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
+    libraryService.removeConfluenceWebhookSecret(libraryId, caller);
+    return ResponseEntity.noContent().build();
   }
 
   @DeleteMapping("/{libraryId}")
@@ -333,6 +354,7 @@ public class LibraryController {
     return switch (triggeredBy) {
       case MANUAL -> IndexingTriggerSource.MANUAL;
       case SCHEDULED -> IndexingTriggerSource.SCHEDULED;
+      case WEBHOOK -> IndexingTriggerSource.WEBHOOK;
     };
   }
 

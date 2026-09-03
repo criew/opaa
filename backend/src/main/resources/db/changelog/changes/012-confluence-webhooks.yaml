@@ -1,0 +1,44 @@
+databaseChangeLog:
+  # ADR-0023 / #1140: a per-library webhook secret and the WEBHOOK trigger source. Each changeset is
+  # one schema change with its own delta test (io.opaa.migration.Migration012ConfluenceWebhooksTest).
+  - changeSet:
+      id: 012-knowledge-libraries-confluence-webhook-secret
+      author: opaa
+      comment: >-
+        #1140: the secret a Confluence instance (Data Center webhook) or an Automation rule (Cloud)
+        signs its notifications with - one per library, like the credentials (ADR-0023, "Eine
+        Verbindung je Bibliothek"). Encrypted at rest through SourceCredentialsConverter, hence
+        the same width as source_credentials. NULL until a manager generates one; NULL means the
+        library's webhook endpoint rejects every call.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries
+                  ADD COLUMN source_confluence_webhook_secret character varying(3000);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries DROP COLUMN source_confluence_webhook_secret;
+
+  - changeSet:
+      id: 012-indexing-jobs-triggered-by-webhook
+      author: opaa
+      comment: >-
+        #1140: a run may be started by an authenticated webhook notification; the check constraint
+        on triggered_by learns the third source. Existing rows are untouched.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.indexing_jobs DROP CONSTRAINT chk_indexing_jobs_triggered_by;
+              ALTER TABLE public.indexing_jobs ADD CONSTRAINT chk_indexing_jobs_triggered_by
+                  CHECK (triggered_by IN ('MANUAL', 'SCHEDULED', 'WEBHOOK'));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.indexing_jobs DROP CONSTRAINT chk_indexing_jobs_triggered_by;
+              ALTER TABLE public.indexing_jobs ADD CONSTRAINT chk_indexing_jobs_triggered_by
+                  CHECK (triggered_by IN ('MANUAL', 'SCHEDULED'));

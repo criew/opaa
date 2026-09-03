@@ -65,6 +65,7 @@ import {
   formatFileSize,
   indexingRunEventCategoryLabel,
   indexingRunModeLabel,
+  indexingTriggerSourceLabel,
   libraryVisibilityLabel,
   scheduleFrequencyLabel,
 } from '../utils/labels'
@@ -77,6 +78,7 @@ import {
 import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
 import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../components/EditLibraryScheduleDialog'
+import ConfluenceWebhookSection from '../components/library/ConfluenceWebhookSection'
 import DocumentTextPreviewDialog from '../components/DocumentTextPreviewDialog'
 import PageHeading from '../components/a11y/PageHeading'
 import FieldLabel from '../components/wizard/FieldLabel'
@@ -1509,6 +1511,7 @@ interface LibraryIndexingSectionProps {
     sourceCredentialsSet?: boolean | null
     confluenceEdition?: ConfluenceEdition | null
     confluenceSpaces?: ConfluenceSpaceRef[] | null
+    confluenceWebhookSecretSet?: boolean | null
     schedule?: LibrarySchedule | null
     lastScheduledRunsFailed?: boolean | null
   }
@@ -1635,6 +1638,10 @@ function LibraryIndexingSection({
               <Typography variant="caption" color="text.secondary">
                 Dieser Umfang gilt für alle Leseberechtigten der Bibliothek — siehe Hinweis oben.
               </Typography>
+              <ConfluenceWebhookSection
+                libraryId={libraryId}
+                secretSet={library.confluenceWebhookSecretSet}
+              />
             </>
           )}
         </Stack>
@@ -1918,6 +1925,9 @@ function LibraryIndexingHistorySection({
                   />
                   <Typography variant="body2" color="text.secondary">
                     {formatRunTimestamp(run.startedAt)}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {indexingTriggerSourceLabel(run.triggeredBy)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {run.documentCount} verarbeitet

@@ -121,6 +121,7 @@ final class LibraryResponseMapper {
         .sourceProxy(managementDetail.sourceProxy())
         .sourceInsecureSsl(managementDetail.sourceInsecureSsl())
         .sourceCredentialsSet(managementDetail.sourceCredentialsSet())
+        .confluenceWebhookSecretSet(managementDetail.confluenceWebhookSecretSet())
         .storageQuotaBytes(managementDetail.storageQuotaBytes())
         .storageUsedBytes(managementDetail.storageUsedBytes());
     LibraryScheduleDetail schedule = managementDetail.schedule();

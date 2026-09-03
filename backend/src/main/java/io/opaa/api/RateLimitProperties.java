@@ -16,6 +16,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     HTTP_DIRECTORY}/{@code RSS_FEED} document's original from its remote source (#747), the same
  *     kind of synchronous, outbound-connection-holding request {@code sourceTest} above is already
  *     limited for, except this one is VIEWER-reachable rather than gated by library creation.
+ * @param webhook per-endpoint limits for the Confluence webhook intake (#1140) - {@code POST
+ *     /api/v1/libraries/{libraryId}/confluence-webhook} is reachable without a session, so the
+ *     limiter is the bound on how much signature checking an unauthenticated caller can cause;
+ *     keyed per library so a chatty instance does not starve another library's notifications.
  */
 @ConfigurationProperties(prefix = "opaa.rate-limit")
 public record RateLimitProperties(
@@ -23,7 +27,8 @@ public record RateLimitProperties(
     EndpointLimit query,
     EndpointLimit indexing,
     EndpointLimit sourceTest,
-    EndpointLimit documentContent) {
+    EndpointLimit documentContent,
+    EndpointLimit webhook) {
 
   /**
    * Rate limit settings for a single endpoint.

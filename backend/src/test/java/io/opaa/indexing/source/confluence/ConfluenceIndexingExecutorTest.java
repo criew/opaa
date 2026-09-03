@@ -849,6 +849,132 @@ class ConfluenceIndexingExecutorTest {
         .isEqualTo(IndexingRunMode.FULL);
   }
 
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aWebhookRunFetchesExactlyTheNamedPagesAndNeverListsOrReconciles(ConfluenceEdition edition)
+      throws Exception {
+    // #1140: the notification named Kapitel 1 (changed), Abschnitt 1.1 (known and unchanged) and
+    // a page in a space the library does not select; nothing else is touched.
+    start(edition, null, "ENG");
+    ConfluenceSyncState state = completedFullSync(NOW.minus(Duration.ofHours(2)));
+    server.updatePage("101", "<p>Das erste Kapitel, per Webhook.</p>", NOW);
+    String abschnitt = pagePath(edition, "ENG", "102");
+    Document indexed =
+        new Document("Abschnitt 1.1", abschnitt, "text/html", 10L, DocumentSourceType.CONFLUENCE);
+    indexed.setStatus(DocumentStatus.INDEXED);
+    indexed.setLastModifiedRemote("1");
+    indexed.applySourceContext(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1"));
+    when(documentRepository.findByLibraryIdAndFilePath(library.getId(), abschnitt))
+        .thenReturn(Optional.of(indexed));
+
+    executor.refreshPages(jobId, library, Set.of("101", "102", "200"));
+
+    verify(fileProcessingService)
+        .processConfluencePage(
+            contains("per Webhook"),
+            eq("Kapitel 1"),
+            eq(pagePath(edition, "ENG", "101")),
+            eq("2"),
+            eq(new SourceDocumentContext("ENG", "Handbuch")),
+            eq(library));
+    // unchanged: no body processing, but the attachments are checked
+    verify(fileProcessingService, never())
+        .processConfluencePage(any(), eq("Abschnitt 1.1"), any(), any(), any(), any());
+    verify(fileProcessingService)
+        .processUrlFile(
+            any(),
+            eq("notizen.txt"),
+            any(),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.CONFLUENCE),
+            eq(abschnitt),
+            eq(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1 / Abschnitt 1.1")));
+    verify(eventRepository)
+        .save(argThat(event(IndexingEventCategory.REJECTED, "nicht ausgewählten Space", "200")));
+    assertThat(server.requests())
+        .noneMatch(r -> r.contains("search"))
+        .noneMatch(r -> r.matches(".*/(content|pages)/100(\\?.*)?$"));
+    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(indexingJobService).completeJob(jobId, 1, 0, 2, 2);
+    // the anchor is untouched: the next incremental run re-reads these pages once more
+    assertThat(state.getIncrementalAnchor()).isEqualTo(NOW.minus(Duration.ofHours(2)));
+    verify(syncStateRepository, never()).save(any());
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aWebhookRunRemovesOnlyWhatTheInstanceReportsAsTrashed(ConfluenceEdition edition)
+      throws Exception {
+    // ADR-0023, Entscheidung 4: the notification is not a finding - the fetch is. A trashed page
+    // goes with its attachments, a 404 leaves the Bestand alone.
+    start(edition, null, "ENG");
+    completedFullSync(NOW.minus(Duration.ofHours(2)));
+    String kapitel = pagePath(edition, "ENG", "101");
+    String abschnitt = pagePath(edition, "ENG", "102");
+    Document kapitelDoc =
+        new Document("Kapitel 1", kapitel, "text/html", 10L, DocumentSourceType.CONFLUENCE);
+    Document anhang =
+        new Document(
+            "notizen.txt", abschnitt + "#900", "text/plain", 5L, DocumentSourceType.CONFLUENCE);
+    when(documentRepository.findByLibraryIdAndFilePath(library.getId(), kapitel))
+        .thenReturn(Optional.of(kapitelDoc));
+    when(documentRepository.findByLibraryIdAndSourceEntryUrl(library.getId(), kapitel))
+        .thenReturn(List.of(anhang));
+    server.trashPage("101");
+    server.hideFromFetch("102");
+
+    executor.refreshPages(jobId, library, Set.of("101", "102"));
+
+    verify(documentRepository).delete(kapitelDoc);
+    verify(documentRepository).delete(anhang);
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.REMOVED,
+                    ConfluenceIndexingExecutor.TRASHED_MESSAGE,
+                    kapitel)));
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.REJECTED,
+                    ConfluenceIndexingExecutor.UNREADABLE_PAGE_SUFFIX,
+                    "102")));
+    verify(documentRepository, never()).delete(argThat(d -> abschnitt.equals(d.getFilePath())));
+    verify(indexingJobService).completeJob(jobId, 0, 0, 2, 0);
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aWebhookRunFailsVisiblyWhenTheCredentialsAreRejected(ConfluenceEdition edition)
+      throws Exception {
+    start(edition, null, "ENG");
+    library =
+        KnowledgeLibrary.ownedByUser(
+            library.getOrganizationId(),
+            "Wiki",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false,
+            DocumentSourceType.CONFLUENCE,
+            null,
+            server.baseUrl(),
+            null,
+            edition == ConfluenceEdition.CLOUD ? EMAIL + ":falsch" : "falsch",
+            false);
+    library.configureConfluence(edition, List.of(new ConfluenceSpaceSelection("ENG", null)));
+
+    executor.refreshPages(jobId, library, Set.of("101"));
+
+    verify(indexingJobService).failJob(eq(jobId), any());
+    verify(fileProcessingService, never())
+        .processConfluencePage(any(), any(), any(), any(), any(), any());
+  }
+
   private static ArgumentMatcher<IndexingRunEvent> event(
       IndexingEventCategory category, String messagePart, String reference) {
     return event ->

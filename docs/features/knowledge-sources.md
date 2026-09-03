@@ -264,7 +264,27 @@ unterbrochenen Vollabgleich und jeder Lauf, sobald der letzte Vollabgleich älte
 einstellbar ist #1200) ist, läuft voll — der Vollabgleich bleibt nötig, weil nur er Löschungen
 nachvollzieht, und ist deshalb verlängerbar, nicht abschaltbar.
 Der manuelle Anstoß bietet für Confluence beide Betriebsarten an („Jetzt indizieren“ folgt dem Zustand,
-„Vollabgleich starten“ erzwingt ihn). **Die Aufbereitung (#1137)** übernimmt
+„Vollabgleich starten“ erzwingt ihn). **Webhooks (#1140)** verkürzen die Wartezeit auf den nächsten
+Lauf: Eine Verwalterin erzeugt in der Quellkonfiguration ein Webhook-Geheimnis je Bibliothek (einmal
+angezeigt, verschlüsselt abgelegt wie das Token, jederzeit neu erzeugbar oder entfernbar; im
+Audit-Protokoll als `LIBRARY_SOURCE_UPDATED` mit dem Feldnamen, nie mit dem Wert) und hinterlegt es in
+Confluence — Data Center signiert jede Nachricht damit (`X-Hub-Signature`, HMAC-SHA256 über den
+Rohkörper), eine Cloud-Automation-Regel „Web-Anfrage senden“ schickt es als Header
+`X-OPAA-Webhook-Secret` mit. Der Eingang `POST /api/v1/libraries/{id}/confluence-webhook` ist der
+einzige Pfad unter `/api/v1`, der ohne Sitzung erreichbar ist; er antwortet auf jede nicht
+authentifizierte Anfrage gleichförmig mit `401`, ist je Bibliothek ratenbegrenzt
+(`OPAA_RATE_LIMIT_WEBHOOK_*`) und liest aus dem Körper nur die genannten Seiten-IDs — **nicht die
+Ereignisart**. Die gemeldeten Seiten werden je Bibliothek gesammelt
+(`OPAA_INDEXING_CONFLUENCE_WEBHOOK_DEBOUNCE`, Standard fünf Sekunden) und dann in einem kurzen Lauf
+mit Auslöser `WEBHOOK` gezielt geholt: Was die Instanz als geändert liefert, wird neu indiziert; was
+sie **selbst als im Papierkorb ausweist**, wird mitsamt Anhängen entfernt (der positive Befund aus
+ADR-0023, Entscheidung 4); ein `404` oder `403` ändert nichts. Der Anker des inkrementellen
+Abgleichs bleibt unberührt. Läuft für die Bibliothek gerade ein anderer Lauf, wartet der Stapel und
+wird nach `OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_DEFERRALS` Verschiebungen verworfen — der nächste
+Lauf deckt dieselben Seiten ab, ein Verwerfen kostet Aktualität, nie Korrektheit; ein Stapel mit
+mehr als `OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_PENDING_PAGES` Seiten läuft als gewöhnlicher
+inkrementeller Abgleich. Der Webhook ersetzt weder Zeitplan noch Vollabgleich: Ohne ihn ist
+nichts falsch, nur später. **Die Aufbereitung (#1137)** übernimmt
 `ConfluenceDocumentPipeline`: Makro-Regelwerk (statischer Inhalt bleibt, zur Laufzeit erzeugter
 entfällt), Überschriften, Tabellen, Listen, Code und Hinweiskästen als lesbarer Text, der
 Gliederungspfad der Seite am Dokument und im Chunk-Kontext — Einzelheiten in

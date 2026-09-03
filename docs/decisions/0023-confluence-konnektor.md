@@ -351,6 +351,19 @@ faktisch abschaltbar, durch Timing statt durch Konfiguration.
 > Rhythmus, den dieser Absatz vorsieht, ist als #1200 ausgegliedert; die instanzweite Einstellung
 > bleibt dann seine Vorgabe.
 
+> **Nachtrag (2026-09-03, #1140):** Der Webhook ist wie hier beschrieben umgesetzt — als Anlass zum
+> gezielten Einzelabruf, nie als Befund. Zwei Wege der Authentisierung, weil die Editionen sie
+> vorgeben: Data Center signiert den Rohkörper mit dem je Bibliothek erzeugten Geheimnis
+> (`X-Hub-Signature`, HMAC-SHA256), eine Cloud-Automation-Regel kann nicht signieren und sendet das
+> Geheimnis als Header `X-OPAA-Webhook-Secret`. Beide Vergleiche sind zeitkonstant; jede nicht
+> authentifizierte Anfrage erhält dieselbe `401`. Die Ereignisart im Körper wird bewusst nicht
+> ausgewertet — nur die genannten Seiten-IDs; was mit der Seite geschah, sagt der Abruf. Gemeldete
+> Seiten werden je Bibliothek gesammelt (Standard fünf Sekunden) und in einem kurzen Lauf mit
+> Auslöser `WEBHOOK` und Betriebsart `INCREMENTAL` geholt, der den Anker nicht bewegt; ein Stapel
+> jenseits einer Obergrenze läuft als gewöhnlicher inkrementeller Abgleich, ein Stapel, der auf
+> einen laufenden Lauf trifft, wartet begrenzt und wird dann verworfen — der nächste Lauf deckt
+> dieselben Seiten ab.
+
 **Anker und Wiederaufnahme.** Der Laufzustand einer Confluence-Bibliothek lebt in einer eigenen
 Zustandstabelle je Bibliothek (Vorbild `rss_feed_state`, dort bereits je `(library_id, feed_url)`
 geschlüsselt; für Confluence genügt `library_id`, weil eine Bibliothek genau eine Instanz trägt —

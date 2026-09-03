@@ -52,6 +52,7 @@ import type {
   ConfluenceSpaceListRequest,
   ConfluenceSpaceListResponse,
   IndexingRunMode,
+  ConfluenceWebhookSecretResponse,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
 import { setupAuthInterceptors } from './apiInterceptors'
@@ -412,6 +413,32 @@ export async function triggerIndexing(
       runMode ? { params: { runMode } } : undefined,
     )
     return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * #1140: generates or rotates the Confluence webhook secret of a library. The secret is returned
+ * exactly once - the caller shows it, the API never returns it again.
+ */
+export async function generateConfluenceWebhookSecret(
+  libraryId: string,
+): Promise<ConfluenceWebhookSecretResponse> {
+  try {
+    const { data } = await client.post<ConfluenceWebhookSecretResponse>(
+      `/v1/libraries/${libraryId}/confluence-webhook-secret`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** #1140: removes the webhook secret - the library's webhook endpoint rejects every call from now on. */
+export async function removeConfluenceWebhookSecret(libraryId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/libraries/${libraryId}/confluence-webhook-secret`)
   } catch (err) {
     normalizeError(err)
   }

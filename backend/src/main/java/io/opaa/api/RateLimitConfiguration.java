@@ -41,6 +41,10 @@ public class RateLimitConfiguration {
     // keying the limiter by document id would let the same caller bypass the limit simply by
     // clicking a different document each time.
     String documentContentPattern = "^/api/v1/documents/[^/]+/content$";
+    // #1140: the webhook intake is the only POST under /api/v1 reachable without a session. The
+    // capture group keys the per-IP limiter by library, like the indexing trigger: one instance
+    // notifying several libraries is several senders, not one.
+    String webhookPattern = "^/api/v1/libraries/([^/]+)/confluence-webhook$";
 
     Map<String, RateLimitService> perIpLimiters = new LinkedHashMap<>();
     perIpLimiters.put(
@@ -59,6 +63,10 @@ public class RateLimitConfiguration {
         new RateLimitService(
             properties.documentContent().maxRequests(),
             properties.documentContent().windowSeconds()));
+    perIpLimiters.put(
+        webhookPattern,
+        new RateLimitService(
+            properties.webhook().maxRequests(), properties.webhook().windowSeconds()));
 
     Map<String, RateLimitService> globalLimiters = new LinkedHashMap<>();
     globalLimiters.put(
@@ -78,6 +86,10 @@ public class RateLimitConfiguration {
         new RateLimitService(
             properties.documentContent().globalMaxRequests(),
             properties.documentContent().windowSeconds()));
+    globalLimiters.put(
+        webhookPattern,
+        new RateLimitService(
+            properties.webhook().globalMaxRequests(), properties.webhook().windowSeconds()));
 
     var registration =
         new FilterRegistrationBean<>(
