@@ -1,38 +1,52 @@
 package io.opaa.indexing.source.attachment;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.SupportedDocumentFormats;
-import io.opaa.indexing.source.rss.RssFeedRunContext;
-import io.opaa.indexing.source.rss.RssPoliteness;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
+import io.opaa.sourceaccess.RequestPoliteness;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
-import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Downloads and indexes the attachment candidates {@code DetailPageExtractor} finds on an RSS
- * entry's detail page, split out of {@code RssFeedIndexingExecutor}. Package-private - an
- * implementation detail of the executor, not a new public API.
+ * Indexes the attachments of a parent document into their own {@link io.opaa.indexing.Document}
+ * rows (ADR-0022) - generalized (#1182) from an RSS-only implementation detail into the shared
+ * attachment path every connector uses: RSS today ({@code RssFeedIndexingExecutor}), Mail and
+ * Confluence once their own umstellung tickets (#1183, #1137) wire them in. Carries no dependency
+ * on any single connector's package - a caller supplies an {@link AttachmentAccess} (library, event
+ * log, progress, deferred-marking) and a list of {@link AttachmentSource} (a download job or an
+ * already-extracted local file) instead.
  *
  * <p>Never lets an attachment failure propagate to the caller: a lost attachment (too large,
- * unreachable, rejected, unsupported format, or cut off by the per-entry limit) is logged and
- * skipped, with no effect on the entry's own processed/skipped/failed outcome - but marks {@code
- * ctx.anyEntryDeferred()}, so a future run's conditional {@code GET} is not allowed to suppress a
- * retry of the lost attachment.
+ * unreachable, rejected, unsupported format, or cut off by {@link
+ * AttachmentDownloadLimits#maxPerParent()}) is logged and skipped, with no effect on the parent
+ * document's own processed/skipped/failed outcome - but marks {@link
+ * AttachmentAccess#markDeferred()}, so a future run's conditional {@code GET} (where the caller has
+ * one) is not allowed to suppress a retry of the lost attachment.
+ *
+ * <p>Every attachment successfully created or confirmed unchanged is set as a child of {@code
+ * parentDocumentId} ({@link io.opaa.indexing.Document#getParentDocumentId()}, ADR-0022 Entscheidung
+ * 4) and its {@code file_path} is returned to the caller (ADR-0022 Entscheidung 3) - needed for a
+ * caller that folds attachment paths into its own {@code currentFilePaths} for {@code
+ * StaleDocumentCleanupService}; RSS itself never calls that service (ADR-0017 decision 5) and
+ * simply ignores the returned paths.
  */
 public class AttachmentIndexer {
 
@@ -41,82 +55,132 @@ public class AttachmentIndexer {
   private final BoundedDownloader attachmentDownloader;
   private final FileProcessingService fileProcessingService;
   private final LibraryStorageQuotaService storageQuotaService;
-  private final IndexingProperties.Rss properties;
+  private final DocumentRepository documentRepository;
 
   public AttachmentIndexer(
       BoundedDownloader attachmentDownloader,
       FileProcessingService fileProcessingService,
       LibraryStorageQuotaService storageQuotaService,
-      IndexingProperties.Rss properties) {
+      DocumentRepository documentRepository) {
     this.attachmentDownloader = attachmentDownloader;
     this.fileProcessingService = fileProcessingService;
     this.storageQuotaService = storageQuotaService;
-    this.properties = properties;
+    this.documentRepository = documentRepository;
   }
 
   /**
-   * Downloads and indexes every attachment {@code candidates} lists, up to {@link
-   * IndexingProperties.Rss#maxAttachmentsPerEntry()}. The politeness delay ({@link
-   * IndexingProperties.Rss#requestDelayMs()}) applies between attachments the same way it applies
-   * between detail-page requests - OPAA does not operate the servers an RSS feed points at.
+   * The Nachtragsfall of ADR-0022, Entscheidung 3: a parent document a caller skipped as unchanged
+   * is never re-parsed, so its attachments are never rediscovered by {@link #indexAll} this run -
+   * their paths must still be folded into {@code currentFilePaths}, or a caller that calls {@code
+   * StaleDocumentCleanupService#cleanupVanished} would wrongly remove them despite parent and
+   * attachments both unchanged. Backed by {@link DocumentRepository#findByParentDocumentId}
+   * (ADR-0022 Entscheidung 4) - RSS itself never calls {@code cleanupVanished} (ADR-0017 decision
+   * 5) and so never needs this method, but a future caller that does (Confluence, #1137) does.
    */
-  public void indexAll(
-      RssFeedRunContext ctx, List<AttachmentCandidate> candidates, String entryUrl) {
-    int limit = Math.min(candidates.size(), properties.maxAttachmentsPerEntry());
-    if (candidates.size() > limit) {
-      log.info(
-          "RSS entry {} carries {} attachments, processing only the first {}"
-              + " (opaa.indexing.rss.max-attachments-per-entry)",
-          entryUrl,
-          candidates.size(),
-          limit);
-      ctx.anyEntryDeferred().set(true);
-    }
-    for (AttachmentCandidate candidate : candidates.subList(0, limit)) {
-      RssPoliteness.delayBeforeRequest(properties.requestDelayMs());
-      indexOne(ctx, candidate, entryUrl);
-    }
+  public List<String> existingAttachmentPaths(UUID parentDocumentId) {
+    return documentRepository.findByParentDocumentId(parentDocumentId).stream()
+        .map(Document::getFilePath)
+        .toList();
   }
 
-  private void indexOne(RssFeedRunContext ctx, AttachmentCandidate candidate, String entryUrl) {
+  /**
+   * Indexes every attachment {@code sources} lists, up to {@link
+   * AttachmentDownloadLimits#maxPerParent()}. The politeness delay ({@link
+   * AttachmentDownloadLimits#requestDelayMs()}) applies before each {@link
+   * AttachmentSource.Download} - a no-op before an {@link AttachmentSource.LocalFile}, which makes
+   * no request of its own.
+   *
+   * @param parentDocumentId the row every indexed attachment becomes a child of
+   * @param parentPath the parent document's own {@code file_path} - recorded on every attachment
+   *     via {@code sourceEntryUrl}, alongside {@code parentDocumentId}
+   * @return the {@code file_path} of every attachment created or confirmed unchanged this call,
+   *     never {@code null}
+   */
+  public List<String> indexAll(
+      AttachmentAccess access,
+      List<AttachmentSource> sources,
+      UUID parentDocumentId,
+      String parentPath,
+      DocumentSourceType sourceType,
+      AttachmentDownloadLimits limits) {
+    int limit = Math.min(sources.size(), limits.maxPerParent());
+    if (sources.size() > limit) {
+      log.info(
+          "Parent document {} carries {} attachments, processing only the first {} (attachment"
+              + " limit)",
+          parentPath,
+          sources.size(),
+          limit);
+      access.markDeferred();
+    }
+    List<String> indexedPaths = new ArrayList<>();
+    for (AttachmentSource source : sources.subList(0, limit)) {
+      if (source instanceof AttachmentSource.Download) {
+        RequestPoliteness.delayBeforeRequest(limits.requestDelayMs());
+      }
+      indexOne(access, source, parentDocumentId, parentPath, sourceType, limits)
+          .ifPresent(indexedPaths::add);
+    }
+    return List.copyOf(indexedPaths);
+  }
+
+  private Optional<String> indexOne(
+      AttachmentAccess access,
+      AttachmentSource source,
+      UUID parentDocumentId,
+      String parentPath,
+      DocumentSourceType sourceType,
+      AttachmentDownloadLimits limits) {
+    return switch (source) {
+      case AttachmentSource.Download download ->
+          indexDownload(access, download, parentDocumentId, parentPath, sourceType, limits);
+      case AttachmentSource.LocalFile localFile ->
+          indexLocalFile(access, localFile, parentDocumentId, parentPath, sourceType);
+    };
+  }
+
+  private Optional<String> indexDownload(
+      AttachmentAccess access,
+      AttachmentSource.Download download,
+      UUID parentDocumentId,
+      String parentPath,
+      DocumentSourceType sourceType,
+      AttachmentDownloadLimits limits) {
     BoundedDownloader.DownloadedFile downloaded = null;
     try {
-      // An attachment candidate's own URL is content the feed operator controls, exactly like an
-      // entry's <link> (see RssFeedRunContext#httpClientFor) - sourceInsecureSsl must not weaken
-      // certificate validation once it points off the feed's own origin.
-      HttpClient client = ctx.httpClientFor(candidate.url());
       downloaded =
           attachmentDownloader.downloadBounded(
-              client,
-              candidate.url(),
-              candidate.suggestedFileName(),
-              properties.maxAttachmentSizeBytes(),
-              properties.userAgent(),
-              ctx.authHeaderFor(candidate.url()));
+              download.httpClient(),
+              download.url(),
+              download.suggestedFileName(),
+              limits.maxAttachmentSizeBytes(),
+              limits.userAgent(),
+              download.authHeader());
 
       String contentType = downloaded.contentType();
       if (isHtmlContentType(contentType)) {
-        // An HTML response on what a profile identified as an attachment link - a bot-protection
+        // An HTML response on what the caller identified as an attachment link - a bot-protection
         // challenge or a 200-status error page - must never be trusted just because the URL
         // carried a supported extension.
         log.info(
-            "Skipping RSS attachment that answered with HTML instead of a document (likely a"
-                + " bot-protection or error page): {} (from entry {})",
-            candidate.url(),
-            entryUrl);
-        ctx.events()
+            "Skipping attachment that answered with HTML instead of a document (likely a"
+                + " bot-protection or error page): {} (from {})",
+            download.url(),
+            parentPath);
+        access
+            .events()
             .record(
                 IndexingEventCategory.REJECTED,
                 "Anlage antwortete mit HTML statt einem Dokument (vermutlich Bot-Schutz)",
-                candidate.url());
-        ctx.anyEntryDeferred().set(true);
-        return;
+                download.url());
+        access.markDeferred();
+        return Optional.empty();
       }
 
       // The GSB profile's candidates carry no extension in their URL - resolved here, once the
       // response's actual Content-Type is known. Only a display name / hint from here on; the
       // accept/reject decision below is made from the downloaded bytes.
-      String fileName = resolveFileName(candidate.suggestedFileName(), contentType);
+      String fileName = resolveFileName(download.suggestedFileName(), contentType);
 
       // Caught here, not by the broader catch (IOException | InterruptedException e) below - that
       // one reports "Anlage nicht erreichbar", which would be misleading for a read failure on a
@@ -126,156 +190,117 @@ public class AttachmentIndexer {
         detectedMimeType = SupportedDocumentFormats.detectMediaType(downloaded.path());
       } catch (IOException e) {
         log.warn(
-            "Could not read downloaded RSS attachment to detect its format, skipping: {} (from"
-                + " entry {})",
-            candidate.url(),
-            entryUrl,
+            "Could not read downloaded attachment to detect its format, skipping: {} (from {})",
+            download.url(),
+            parentPath,
             e);
-        ctx.events()
+        access
+            .events()
             .record(
                 IndexingEventCategory.ERROR,
                 "Anlage konnte nach dem Herunterladen nicht auf ihr Format geprüft werden",
-                candidate.url());
-        ctx.anyEntryDeferred().set(true);
-        return;
+                download.url());
+        access.markDeferred();
+        return Optional.empty();
       }
       SupportedDocumentFormats.ContentDecision decision =
           SupportedDocumentFormats.decideForFileName(fileName, detectedMimeType);
       if (!decision.supported()) {
         log.info(
-            "Skipping RSS attachment with an unsupported format: {} (from entry {}, Content-Type"
-                + " {})",
-            candidate.url(),
-            entryUrl,
+            "Skipping attachment with an unsupported format: {} (from {}, Content-Type {})",
+            download.url(),
+            parentPath,
             contentType);
-        ctx.events()
+        access
+            .events()
             .record(
                 IndexingEventCategory.UNSUPPORTED_FORMAT,
                 "Anlagenformat wird nicht unterstützt",
-                candidate.url());
-        ctx.anyEntryDeferred().set(true);
-        return;
+                download.url());
+        access.markDeferred();
+        return Optional.empty();
       }
       if (decision.extensionMismatch()) {
         // Indexed anyway, only reported.
-        ctx.events()
+        access
+            .events()
             .record(
                 IndexingEventCategory.FORMAT_MISMATCH,
                 "Dateiendung passt nicht zum erkannten Inhalt (erkannt: "
                     + decision.detectedExtension()
                     + ")",
-                candidate.url());
+                download.url());
       }
 
       // Files.probeContentType inside FileProcessingService#processUrlFile probes the physical
       // temp file, which for a GSB attachment carries no extension (".tmp") - renaming it to match
       // the resolved name's extension lets that probe succeed.
       Path indexedFile = withMatchingExtension(downloaded.path(), fileName);
-
       long size = Files.size(indexedFile);
-      FileProcessingResult result =
-          fileProcessingService.processUrlFile(
-              indexedFile,
-              fileName,
-              candidate.url(),
-              null,
-              size,
-              ctx.targetLibrary(),
-              DocumentSourceType.RSS_FEED,
-              entryUrl);
-      if (result == FileProcessingResult.QUOTA_EXCEEDED) {
-        // Deferred, not recordSkipped: an attachment was never a discrete unit of the run's own
-        // total, so there is nothing to mark skipped - only the feed's ETag persistence to defer
-        // so a future run retries it.
-        ctx.events()
-            .record(
-                IndexingEventCategory.REJECTED,
-                storageQuotaService.quotaExceededMessage(ctx.targetLibrary().getId()),
-                candidate.url());
-        ctx.anyEntryDeferred().set(true);
-        return;
-      }
-      if (result == FileProcessingResult.NO_EXTRACTABLE_TEXT) {
-        // The document was already rejected and marked FAILED
-        // (io.opaa.indexing.pipeline.TikaFallbackPipeline#isTextlessPdf) -
-        // not deferred: unlike a transient quota/availability issue, a scan PDF will not gain a
-        // text layer on retry.
-        ctx.events()
-            .record(
-                IndexingEventCategory.REJECTED,
-                DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE,
-                candidate.url());
-        return;
-      }
-      if (result == FileProcessingResult.FAILED) {
-        // See AsyncIndexingExecutor's own handling of this outcome; deferred like the catch-all
-        // below, unlike NO_EXTRACTABLE_TEXT above, because a parse failure can be transient
-        // (I/O, an in-flux upstream file) where a scan PDF's missing text layer is not.
-        ctx.events()
-            .record(
-                IndexingEventCategory.ERROR,
-                "Verarbeitung der Anlage fehlgeschlagen",
-                candidate.url());
-        ctx.anyEntryDeferred().set(true);
-        return;
-      }
-      // An unchanged attachment (same checksum as an already-indexed document) is deduplicated by
-      // processUrlFile itself and returns SKIPPED - must not inflate the document count again.
-      if (result == FileProcessingResult.PROCESSED) {
-        ctx.progress().recordDocumentIndexed();
-      }
-      log.info("Indexed RSS attachment: {} (from entry {})", candidate.url(), entryUrl);
+      return storeAttachment(
+          access,
+          indexedFile,
+          fileName,
+          download.url(),
+          size,
+          parentDocumentId,
+          parentPath,
+          sourceType);
     } catch (BoundedDownloader.AttachmentTooLargeException e) {
       log.warn(
-          "Skipping RSS attachment exceeding the size limit of {} bytes: {} (from entry {})",
-          properties.maxAttachmentSizeBytes(),
-          candidate.url(),
-          entryUrl);
-      ctx.events()
+          "Skipping attachment exceeding the size limit of {} bytes: {} (from {})",
+          limits.maxAttachmentSizeBytes(),
+          download.url(),
+          parentPath);
+      access
+          .events()
           .record(
               IndexingEventCategory.REJECTED,
               "Anlage überschreitet die zulässige Größe",
-              candidate.url());
-      ctx.anyEntryDeferred().set(true);
+              download.url());
+      access.markDeferred();
     } catch (RedirectFollowingFetcher.RedirectRejectedException e) {
       log.warn(
-          "RSS attachment redirected to a foreign host, skipping: {} (from entry {}, {})",
-          candidate.url(),
-          entryUrl,
+          "Attachment redirected to a foreign host, skipping: {} (from {}, {})",
+          download.url(),
+          parentPath,
           e.getMessage());
-      ctx.events()
-          .record(IndexingEventCategory.REJECTED, e.userMessage() + " (Anlage)", candidate.url());
-      ctx.anyEntryDeferred().set(true);
+      access
+          .events()
+          .record(IndexingEventCategory.REJECTED, e.userMessage() + " (Anlage)", download.url());
+      access.markDeferred();
     } catch (TargetAddressValidator.TargetAddressBlockedException e) {
       log.warn(
-          "RSS attachment target rejected, skipping: {} (from entry {}, {})",
-          candidate.url(),
-          entryUrl,
+          "Attachment target rejected, skipping: {} (from {}, {})",
+          download.url(),
+          parentPath,
           e.getMessage());
-      ctx.events()
-          .record(IndexingEventCategory.REJECTED, e.getMessage() + " (Anlage)", candidate.url());
-      ctx.anyEntryDeferred().set(true);
+      access
+          .events()
+          .record(IndexingEventCategory.REJECTED, e.getMessage() + " (Anlage)", download.url());
+      access.markDeferred();
     } catch (IOException | InterruptedException e) {
       log.warn(
-          "RSS attachment unreachable, skipping: {} (from entry {}, {})",
-          candidate.url(),
-          entryUrl,
+          "Attachment unreachable, skipping: {} (from {}, {})",
+          download.url(),
+          parentPath,
           e.getMessage());
-      ctx.events()
-          .record(IndexingEventCategory.UNREACHABLE, "Anlage nicht erreichbar", candidate.url());
-      ctx.anyEntryDeferred().set(true);
+      access
+          .events()
+          .record(IndexingEventCategory.UNREACHABLE, "Anlage nicht erreichbar", download.url());
+      access.markDeferred();
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
     } catch (Exception e) {
-      log.error(
-          "Failed to process RSS attachment: {} (from entry {})", candidate.url(), entryUrl, e);
-      ctx.events()
+      log.error("Failed to process attachment: {} (from {})", download.url(), parentPath, e);
+      access
+          .events()
           .record(
               IndexingEventCategory.ERROR,
               "Verarbeitung der Anlage fehlgeschlagen",
-              candidate.url());
-      ctx.anyEntryDeferred().set(true);
+              download.url());
+      access.markDeferred();
     } finally {
       if (downloaded != null) {
         try {
@@ -284,6 +309,152 @@ public class AttachmentIndexer {
           log.warn("Failed to delete temp file: {}", downloaded.path(), e);
         }
       }
+    }
+    return Optional.empty();
+  }
+
+  /**
+   * Indexes an attachment whose bytes are already on disk - the case a future Mail umstellung
+   * (#1183) needs, no download step involved. {@code localFile.fileName()} doubles as this
+   * attachment's identity here; a caller with its own, distinct identity syntax (ADR-0022,
+   * Entscheidung 2 - the Mail file_path rule, not yet decided) resolves it before constructing
+   * {@link AttachmentSource.LocalFile}.
+   */
+  private Optional<String> indexLocalFile(
+      AttachmentAccess access,
+      AttachmentSource.LocalFile localFile,
+      UUID parentDocumentId,
+      String parentPath,
+      DocumentSourceType sourceType) {
+    try {
+      String detectedMimeType = SupportedDocumentFormats.detectMediaType(localFile.file());
+      SupportedDocumentFormats.ContentDecision decision =
+          SupportedDocumentFormats.decideForFileName(localFile.fileName(), detectedMimeType);
+      if (!decision.supported()) {
+        log.info(
+            "Skipping local attachment with an unsupported format: {} (from {})",
+            localFile.fileName(),
+            parentPath);
+        access
+            .events()
+            .record(
+                IndexingEventCategory.UNSUPPORTED_FORMAT,
+                "Anlagenformat wird nicht unterstützt",
+                localFile.fileName());
+        return Optional.empty();
+      }
+      if (decision.extensionMismatch()) {
+        access
+            .events()
+            .record(
+                IndexingEventCategory.FORMAT_MISMATCH,
+                "Dateiendung passt nicht zum erkannten Inhalt (erkannt: "
+                    + decision.detectedExtension()
+                    + ")",
+                localFile.fileName());
+      }
+      long size = Files.size(localFile.file());
+      return storeAttachment(
+          access,
+          localFile.file(),
+          localFile.fileName(),
+          localFile.fileName(),
+          size,
+          parentDocumentId,
+          parentPath,
+          sourceType);
+    } catch (IOException e) {
+      log.warn(
+          "Failed to read local attachment, skipping: {} (from {})",
+          localFile.fileName(),
+          parentPath,
+          e);
+      access
+          .events()
+          .record(
+              IndexingEventCategory.ERROR,
+              "Anlage konnte nicht gelesen werden",
+              localFile.fileName());
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * The {@link FileProcessingService#processUrlFile} call and outcome handling both branches share.
+   */
+  private Optional<String> storeAttachment(
+      AttachmentAccess access,
+      Path localFile,
+      String fileName,
+      String filePathIdentity,
+      long size,
+      UUID parentDocumentId,
+      String parentPath,
+      DocumentSourceType sourceType) {
+    try {
+      FileProcessingResult result =
+          fileProcessingService.processUrlFile(
+              localFile,
+              fileName,
+              filePathIdentity,
+              null,
+              size,
+              access.targetLibrary(),
+              sourceType,
+              parentPath,
+              parentDocumentId);
+      if (result == FileProcessingResult.QUOTA_EXCEEDED) {
+        // Deferred, not recordSkipped: an attachment was never a discrete unit of the run's own
+        // total, so there is nothing to mark skipped - only the deferred flag, so a caller with a
+        // conditional-GET retries it on a future run.
+        access
+            .events()
+            .record(
+                IndexingEventCategory.REJECTED,
+                storageQuotaService.quotaExceededMessage(access.targetLibrary().getId()),
+                filePathIdentity);
+        access.markDeferred();
+        return Optional.empty();
+      }
+      if (result == FileProcessingResult.NO_EXTRACTABLE_TEXT) {
+        // The document was already rejected and marked FAILED - not deferred: unlike a transient
+        // quota/availability issue, a scan PDF will not gain a text layer on retry.
+        access
+            .events()
+            .record(
+                IndexingEventCategory.REJECTED,
+                DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE,
+                filePathIdentity);
+        return Optional.empty();
+      }
+      if (result == FileProcessingResult.FAILED) {
+        access
+            .events()
+            .record(
+                IndexingEventCategory.ERROR,
+                "Verarbeitung der Anlage fehlgeschlagen",
+                filePathIdentity);
+        access.markDeferred();
+        return Optional.empty();
+      }
+      // An unchanged attachment (same checksum as an already-indexed document) is deduplicated by
+      // processUrlFile itself and returns SKIPPED - must not inflate the document count again, but
+      // it is still an attachment this run confirmed present.
+      if (result == FileProcessingResult.PROCESSED) {
+        access.progress().recordDocumentIndexed();
+      }
+      log.info("Indexed attachment: {} (from {})", filePathIdentity, parentPath);
+      return Optional.of(filePathIdentity);
+    } catch (IOException e) {
+      log.error("Failed to process attachment: {} (from {})", filePathIdentity, parentPath, e);
+      access
+          .events()
+          .record(
+              IndexingEventCategory.ERROR,
+              "Verarbeitung der Anlage fehlgeschlagen",
+              filePathIdentity);
+      access.markDeferred();
+      return Optional.empty();
     }
   }
 

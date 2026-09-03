@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.library.KnowledgeLibrary;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -78,6 +79,25 @@ public class StaleDocumentCleanupService {
 
     List<Document> existing =
         documentRepository.findByLibraryIdAndSourceType(library.getId(), sourceType);
+    // fk_documents_parent (ADR-0022, Entscheidung 4): an attachment removed in the same batch as
+    // its own now-vanished parent must be deleted first, or the parent's own delete fails the FK
+    // check. findByLibraryIdAndSourceType carries no ORDER BY that would guarantee this on its own
+    // -
+    // sorted here instead, children (a non-null parentDocumentId) before parents.
+    //
+    // Only one level deep: this sorts a child ahead of its direct parent, not a grandchild ahead of
+    // an intermediate parent that is itself a child of something else. Every attachment source this
+    // class serves today (RSS) nests exactly one level. Mail-in-Mail (#1183) can nest an attachment
+    // inside an attachment - a single Comparator.comparing pass does not generalize to that case
+    // and
+    // needs a topological (or depth-descending) sort instead; #1183 must decide and implement that
+    // when it wires Mail's own parent/child rows into a source type this method scans.
+    existing =
+        existing.stream()
+            .sorted(
+                Comparator.comparing(
+                    Document::getParentDocumentId, Comparator.nullsLast(Comparator.naturalOrder())))
+            .toList();
     int removed = 0;
     for (Document document : existing) {
       if (currentFilePaths.contains(document.getFilePath())) {

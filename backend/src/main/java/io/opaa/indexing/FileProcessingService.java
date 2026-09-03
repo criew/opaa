@@ -265,6 +265,38 @@ public class FileProcessingService {
       DocumentSourceType sourceType,
       String sourceEntryUrl)
       throws IOException {
+    return processUrlFile(
+        localFile,
+        originalFileName,
+        remoteUrl,
+        lastModified,
+        remoteFileSize,
+        targetLibrary,
+        sourceType,
+        sourceEntryUrl,
+        null);
+  }
+
+  /**
+   * The attachment-aware counterpart of the eight-argument overload above, generalized (#1182) from
+   * an RSS-only implementation: sets {@link Document#getParentDocumentId()} (ADR-0022, Entscheidung
+   * 4) so the caller's attachment is a queryable child of {@code parentDocumentId}, used by {@code
+   * io.opaa.indexing.source.attachment.AttachmentIndexer} for every source it serves.
+   *
+   * @param parentDocumentId the row this document is an attachment of, or {@code null} for a
+   *     document that is not an attachment (every use of the eight-argument overload above)
+   */
+  public FileProcessingResult processUrlFile(
+      Path localFile,
+      String originalFileName,
+      String remoteUrl,
+      String lastModified,
+      long remoteFileSize,
+      KnowledgeLibrary targetLibrary,
+      DocumentSourceType sourceType,
+      String sourceEntryUrl,
+      UUID parentDocumentId)
+      throws IOException {
 
     String fileName = originalFileName;
 
@@ -284,6 +316,9 @@ public class FileProcessingService {
       }
       // Content changed, or it was not successfully indexed - delete old data. Deleting by
       // document_id removes every chunk of this document, so no stale chunk survives a re-index.
+      // Safe for an attachment (this overload's callers): unlike an RSS entry's own row (see
+      // FileProcessingService#processRssEntry), an attachment never has children of its own yet
+      // (#1182 scope; nested Mail-in-Mail attachments are #1183).
       vectorChunkStore.deleteByDocumentId(existingDoc.getId());
       documentRepository.delete(existingDoc);
     }
@@ -304,6 +339,7 @@ public class FileProcessingService {
     doc.setLibraryId(targetLibrary.getId());
     doc.setOrganizationId(targetLibrary.getOrganizationId());
     doc.setSourceEntryUrl(sourceEntryUrl);
+    doc.setParentDocumentId(parentDocumentId);
     doc = documentRepository.save(doc);
 
     try {
@@ -398,6 +434,7 @@ public class FileProcessingService {
     // #877, see processFile above.
     Optional<Document> existing =
         documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl);
+    Document doc = null;
     if (existing.isPresent()) {
       Document existingDoc = existing.get();
       if (checksum.equals(existingDoc.getChecksum())
@@ -406,29 +443,60 @@ public class FileProcessingService {
         metrics.recordSkipped();
         return FileProcessingResult.SKIPPED;
       }
-      vectorChunkStore.deleteByDocumentId(existingDoc.getId());
-      documentRepository.delete(existingDoc);
-    }
-
-    // See processFile's own comment on why this runs after the existing-document deletion above.
-    if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), contentBytes.length)) {
-      log.warn(
-          "Skipping RSS entry {}: library {} storage quota would be exceeded",
-          entryUrl,
-          targetLibrary.getId());
-      metrics.recordSkipped();
-      return FileProcessingResult.QUOTA_EXCEEDED;
-    }
-
-    var doc =
-        new Document(
-            fileName,
+      // Updated in place under the same id, not deleted-and-recreated (ADR-0022, Entscheidung 4):
+      // an attachment's parent_document_id points at this row, and deleting it here would fail
+      // fk_documents_parent while its attachments still exist. Only the chunks are exchanged; the
+      // row's own id, and therefore every attachment's parent link, survives unchanged.
+      //
+      // Unlike processFile/processUrlFile above, this row is never removed before the quota check
+      // below - LibraryStorageQuotaService#wouldExceedQuota's own contract ("call after removing
+      // the row being replaced") does not hold here by construction. The check therefore measures
+      // the size delta explicitly instead: checking the full new size against a usedBytes that
+      // still includes the old size would double-count the entry being replaced (a library near
+      // quota could reject a same-size or shrinking update that nets out fine), and deleting the
+      // chunks first would leave a chunkless INDEXED row with a stale checksum behind on a
+      // QUOTA_EXCEEDED rejection - unlike every other rejection path, nothing here would ever clean
+      // that row back up.
+      long previousSize = existingDoc.getFileSize() == null ? 0L : existingDoc.getFileSize();
+      long delta = contentBytes.length - previousSize;
+      if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), delta)) {
+        log.warn(
+            "Skipping RSS entry {}: library {} storage quota would be exceeded",
             entryUrl,
-            "text/html",
-            (long) contentBytes.length,
-            DocumentSourceType.RSS_FEED);
-    doc.setLibraryId(targetLibrary.getId());
-    doc.setOrganizationId(targetLibrary.getOrganizationId());
+            targetLibrary.getId());
+        metrics.recordSkipped();
+        return FileProcessingResult.QUOTA_EXCEEDED;
+      }
+      vectorChunkStore.deleteByDocumentId(existingDoc.getId());
+      existingDoc.setFileName(fileName);
+      existingDoc.setContentType("text/html");
+      existingDoc.setFileSize((long) contentBytes.length);
+      doc = existingDoc;
+    } else {
+      // See processFile's own comment on why this runs after the existing-document deletion there -
+      // there is no existing row to remove on this branch, so the check simply runs before creating
+      // the new one.
+      if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), contentBytes.length)) {
+        log.warn(
+            "Skipping RSS entry {}: library {} storage quota would be exceeded",
+            entryUrl,
+            targetLibrary.getId());
+        metrics.recordSkipped();
+        return FileProcessingResult.QUOTA_EXCEEDED;
+      }
+    }
+
+    if (doc == null) {
+      doc =
+          new Document(
+              fileName,
+              entryUrl,
+              "text/html",
+              (long) contentBytes.length,
+              DocumentSourceType.RSS_FEED);
+      doc.setLibraryId(targetLibrary.getId());
+      doc.setOrganizationId(targetLibrary.getOrganizationId());
+    }
     doc = documentRepository.save(doc);
 
     try {

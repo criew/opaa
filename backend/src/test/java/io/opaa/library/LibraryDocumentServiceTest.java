@@ -787,6 +787,35 @@ class LibraryDocumentServiceTest {
   }
 
   @Test
+  void deletingADocumentWithAttachmentsDeletesTheAttachmentRowsFirst() throws IOException {
+    // ADR-0022, Entscheidung 3: a document with attachment rows still pointing at it via
+    // parent_document_id cannot be deleted first - fk_documents_parent would reject it. This path
+    // takes its attachments with it, deleting them before the parent's own row, exactly like
+    // StaleDocumentCleanupService's own children-before-parents order.
+    grantEditor();
+    UUID documentId = UUID.randomUUID();
+    Document doc = new Document("eintrag.html", "https://feed.example/entry", "text/html", 7L);
+    doc.setLibraryId(libraryId);
+    doc.setSourceType(DocumentSourceType.RSS_FEED);
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
+
+    Document attachment =
+        new Document("anlage.pdf", "https://feed.example/anlage.pdf", "application/pdf", 3L);
+    attachment.setLibraryId(libraryId);
+    attachment.setSourceType(DocumentSourceType.RSS_FEED);
+    attachment.setParentDocumentId(doc.getId());
+    when(documentRepository.findByParentDocumentId(doc.getId())).thenReturn(List.of(attachment));
+
+    service.deleteDocument(libraryId, documentId, caller);
+
+    org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(documentRepository, vectorStore);
+    inOrder.verify(documentRepository).delete(attachment);
+    inOrder.verify(documentRepository).delete(doc);
+    inOrder.verify(vectorStore).delete(documentIdFilter(attachment.getId()));
+    inOrder.verify(vectorStore).delete(documentIdFilter(doc.getId()));
+  }
+
+  @Test
   void aFailingVectorStoreDeleteDuringCleanupStillLetsTheFileBeDeletedAndDoesNotPropagate()
       throws IOException {
     // PR #631 review, finding 1: by the time this afterCommit callback runs, the row deletion has

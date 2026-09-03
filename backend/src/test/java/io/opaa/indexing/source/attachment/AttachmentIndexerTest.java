@@ -12,11 +12,12 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.IndexingRunEventRecorder;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.IndexingRunProgress;
@@ -39,7 +40,9 @@ import org.junit.jupiter.api.io.TempDir;
  * Unit-level coverage of {@link AttachmentIndexer}, split out from {@code
  * RssFeedIndexingExecutorTest}'s heavier end-to-end coverage (real HTTP server, real {@link
  * BoundedDownloader}) - here {@link BoundedDownloader} and {@link FileProcessingService} are both
- * mocked, isolating the one branch that needs its own targeted proof.
+ * mocked, isolating the one branch that needs its own targeted proof. Uses {@link
+ * RssFeedRunContext} as its {@link AttachmentAccess} - the same context RSS itself supplies since
+ * #1182 generalized this class away from a direct RSS dependency.
  */
 class AttachmentIndexerTest {
 
@@ -49,20 +52,23 @@ class AttachmentIndexerTest {
   private FileProcessingService fileProcessingService;
   private IndexingJobService indexingJobService;
   private IndexingRunEventRepository indexingRunEventRepository;
+  private DocumentRepository documentRepository;
   private AttachmentIndexer indexer;
   private RssFeedRunContext ctx;
+  private AttachmentDownloadLimits limits;
+  private UUID parentDocumentId;
 
   @BeforeEach
   void setUp() {
     attachmentDownloader = mock(BoundedDownloader.class);
     fileProcessingService = mock(FileProcessingService.class);
     LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
-    IndexingProperties.Rss properties =
-        new IndexingProperties.Rss(
-            200, 10_485_760L, 5_242_880L, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000);
+    documentRepository = mock(DocumentRepository.class);
+    limits = new AttachmentDownloadLimits(10, 5_242_880L, 0, "opaa-test-agent");
     indexer =
         new AttachmentIndexer(
-            attachmentDownloader, fileProcessingService, storageQuotaService, properties);
+            attachmentDownloader, fileProcessingService, storageQuotaService, documentRepository);
+    parentDocumentId = UUID.randomUUID();
 
     indexingJobService = mock(IndexingJobService.class);
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
@@ -107,14 +113,24 @@ class AttachmentIndexerTest {
             any(), anyString(), anyString(), anyLong(), any(), any()))
         .thenReturn(new BoundedDownloader.DownloadedFile(downloaded, "text/plain"));
     when(fileProcessingService.processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any()))
+            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any()))
         .thenReturn(FileProcessingResult.FAILED);
 
-    indexer.indexAll(
-        ctx,
-        List.of(new AttachmentCandidate("https://example.org/attachment.txt", "attachment.txt")),
-        "https://example.org/entry.html");
+    List<String> indexed =
+        indexer.indexAll(
+            ctx,
+            List.of(
+                new AttachmentSource.Download(
+                    "https://example.org/attachment.txt",
+                    "attachment.txt",
+                    HttpClient.newHttpClient(),
+                    null)),
+            parentDocumentId,
+            "https://example.org/entry.html",
+            DocumentSourceType.RSS_FEED,
+            limits);
 
+    assertThat(indexed).isEmpty();
     assertThat(ctx.anyEntryDeferred()).isTrue();
     verify(indexingRunEventRepository)
         .save(
@@ -126,5 +142,22 @@ class AttachmentIndexerTest {
     // No recordFailed()/recordProcessed() call on this run's own counters - an attachment failure
     // must never call completeJob with an inflated or deflated processed/failed count of its own.
     verifyNoInteractions(indexingJobService);
+  }
+
+  @Test
+  void existingAttachmentPathsReadsThemBackByParentDocumentId() {
+    // ADR-0022, Entscheidung 3's Nachtragsfall: a parent skipped as unchanged is never re-parsed,
+    // so indexAll never rediscovers its attachments this run - a caller that folds attachment paths
+    // into currentFilePaths must instead read the already-persisted ones back by parentDocumentId.
+    Document attachmentOne =
+        new Document("erste.pdf", "https://example.org/erste.pdf", "application/pdf", 10L);
+    Document attachmentTwo =
+        new Document("zweite.pdf", "https://example.org/zweite.pdf", "application/pdf", 20L);
+    when(documentRepository.findByParentDocumentId(parentDocumentId))
+        .thenReturn(List.of(attachmentOne, attachmentTwo));
+
+    assertThat(indexer.existingAttachmentPaths(parentDocumentId))
+        .containsExactlyInAnyOrder(
+            "https://example.org/erste.pdf", "https://example.org/zweite.pdf");
   }
 }
