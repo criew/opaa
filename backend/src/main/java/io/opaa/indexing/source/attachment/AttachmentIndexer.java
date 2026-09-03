@@ -418,6 +418,8 @@ public class AttachmentIndexer {
               IndexingEventCategory.ERROR,
               "Anlage konnte nicht gelesen werden",
               localFile.fileName());
+      // See storeAttachment's own comment: present in the parent, only not readable this run.
+      access.recordIndexedAttachment(localFile.filePathIdentity(), false);
       return Optional.empty();
     }
   }
@@ -458,6 +460,10 @@ public class AttachmentIndexer {
                 storageQuotaService.quotaExceededMessage(access.targetLibrary().getId()),
                 filePathIdentity);
         access.markDeferred();
+        // Still present in the parent, just not (re)processed this run - without this a transient
+        // failure of an already-indexed attachment of a re-parsed parent would let the caller's
+        // vanished-cleanup delete its row permanently (a checksum-skipped parent never retries).
+        access.recordIndexedAttachment(filePathIdentity, false);
         return Optional.empty();
       }
       if (result == FileProcessingResult.NO_EXTRACTABLE_TEXT) {
@@ -469,6 +475,7 @@ public class AttachmentIndexer {
                 IndexingEventCategory.REJECTED,
                 DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE,
                 filePathIdentity);
+        access.recordIndexedAttachment(filePathIdentity, false);
         return Optional.empty();
       }
       if (result == FileProcessingResult.FAILED) {
@@ -479,6 +486,7 @@ public class AttachmentIndexer {
                 "Verarbeitung der Anlage fehlgeschlagen",
                 filePathIdentity);
         access.markDeferred();
+        access.recordIndexedAttachment(filePathIdentity, false);
         return Optional.empty();
       }
       // An unchanged attachment (same checksum as an already-indexed document) is deduplicated by
@@ -499,6 +507,7 @@ public class AttachmentIndexer {
               "Verarbeitung der Anlage fehlgeschlagen",
               filePathIdentity);
       access.markDeferred();
+      access.recordIndexedAttachment(filePathIdentity, false);
       return Optional.empty();
     }
   }

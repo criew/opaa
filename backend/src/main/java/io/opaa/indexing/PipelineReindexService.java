@@ -79,6 +79,7 @@ public class PipelineReindexService {
   private final DocumentRepository documentRepository;
   private final KnowledgeLibraryRepository libraryRepository;
   private final FileProcessingService fileProcessingService;
+  private final ChecksumService checksumService;
   private final VectorChunkStore vectorChunkStore;
   private final FilesystemPathAllowlist filesystemAllowlist;
   private final UploadProperties uploadProperties;
@@ -90,6 +91,7 @@ public class PipelineReindexService {
       DocumentRepository documentRepository,
       KnowledgeLibraryRepository libraryRepository,
       FileProcessingService fileProcessingService,
+      ChecksumService checksumService,
       VectorChunkStore vectorChunkStore,
       FilesystemPathAllowlist filesystemAllowlist,
       UploadProperties uploadProperties,
@@ -100,6 +102,7 @@ public class PipelineReindexService {
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
     this.fileProcessingService = fileProcessingService;
+    this.checksumService = checksumService;
     this.vectorChunkStore = vectorChunkStore;
     this.filesystemAllowlist = filesystemAllowlist;
     this.uploadProperties = uploadProperties;
@@ -425,8 +428,25 @@ public class PipelineReindexService {
         currentFile = extracted;
         currentName = chain.get(chain.size() - 1 - i).getFileName();
       }
+      // Positional indices are only stable while the parent file is unchanged - a parent edited
+      // since the row was created (an attachment removed, order shifted) can leave a DIFFERENT
+      // attachment at this row's index. Extraction is deterministic, so for an unchanged parent
+      // the re-extracted bytes match the row's own stored checksum exactly; a mismatch means the
+      // bytes belong to some other attachment and must never be written under this row.
+      String extractedChecksum = checksumService.computeSha256(currentFile);
+      if (document.getChecksum() != null && !extractedChecksum.equals(document.getChecksum())) {
+        log.info(
+            "Skipping attachment document {}: the re-extracted bytes no longer match its checksum"
+                + " (parent file changed since indexing) - the next indexing run of the parent"
+                + " re-establishes consistency",
+            document.getId());
+        return false;
+      }
       return fileProcessingService.reindexStoredDocument(
           document.getId(), currentFile, attachmentAccessFor(document));
+    } catch (IOException e) {
+      log.warn("Skipping attachment document {}: re-extraction failed", document.getId(), e);
+      return false;
     } finally {
       for (Path extracted : extractedFiles) {
         try {
@@ -445,25 +465,33 @@ public class PipelineReindexService {
    * attachment at that index (the parent file changed since the attachment row was created).
    */
   private Path extractAttachment(Path file, String fileName, int index) {
-    DocumentPipelineRegistry.Routed routed = pipelineRegistry.routedPipelineFor(file, fileName);
     Path[] extracted = new Path[1];
-    DocumentPipelineRunner.run(
-        routed.pipeline(),
-        DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()),
-        result -> {
-          List<DiscoveredAttachment> attachments = result.discoveredAttachments();
-          if (index >= attachments.size()) {
-            return;
-          }
-          DiscoveredAttachment attachment = attachments.get(index);
-          try {
-            Path copy = Files.createTempFile("opaa-reindex-", suffixOf(attachment.fileName()));
-            Files.copy(attachment.tempFile(), copy, StandardCopyOption.REPLACE_EXISTING);
-            extracted[0] = copy;
-          } catch (IOException e) {
-            log.warn("Failed to copy re-extracted attachment {}", attachment.fileName(), e);
-          }
-        });
+    try {
+      DocumentPipelineRegistry.Routed routed = pipelineRegistry.routedPipelineFor(file, fileName);
+      DocumentPipelineRunner.run(
+          routed.pipeline(),
+          DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()),
+          result -> {
+            List<DiscoveredAttachment> attachments = result.discoveredAttachments();
+            if (index >= attachments.size()) {
+              return;
+            }
+            DiscoveredAttachment attachment = attachments.get(index);
+            try {
+              Path copy = Files.createTempFile("opaa-reindex-", suffixOf(attachment.fileName()));
+              Files.copy(attachment.tempFile(), copy, StandardCopyOption.REPLACE_EXISTING);
+              extracted[0] = copy;
+            } catch (IOException e) {
+              log.warn("Failed to copy re-extracted attachment {}", attachment.fileName(), e);
+            }
+          });
+    } catch (RuntimeException e) {
+      // A corrupt or unreadable parent must cost only this candidate (counted as skipped by the
+      // caller), never the whole reindexBatch call - some pipelines still throw on a parse
+      // failure instead of reporting NO_CONTENT.
+      log.warn("Failed to re-extract attachment {} of {}", index, fileName, e);
+      return null;
+    }
     return extracted[0];
   }
 

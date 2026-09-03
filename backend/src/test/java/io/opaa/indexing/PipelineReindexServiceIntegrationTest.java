@@ -926,7 +926,9 @@ class PipelineReindexServiceIntegrationTest {
             (long) pdfBytes.length);
     attachmentDocument.setLibraryId(library.getId());
     attachmentDocument.setOrganizationId(Organization.DEFAULT_ID);
-    attachmentDocument.setChecksum("checksum-anlage-pdf");
+    // The genuine checksum of the attachment bytes, as a real indexing run would have stored it -
+    // the re-index verifies the re-extracted bytes against it before writing anything.
+    attachmentDocument.setChecksum(new ChecksumService().computeSha256(pdfBytes));
     attachmentDocument.setParentDocumentId(mailDocument.getId());
     attachmentDocument = documentRepository.save(attachmentDocument);
     seedChunk(
@@ -951,6 +953,62 @@ class PipelineReindexServiceIntegrationTest {
             Integer.class,
             attachmentDocument.getId().toString());
     assertThat(versions).containsOnly((int) pdfPipeline.version());
+  }
+
+  @Test
+  void anIndexShiftedAttachmentIsSkippedInsteadOfReindexedWithForeignBytes() throws Exception {
+    // Review round 2, finding 2: positional indices are only stable while the parent file is
+    // unchanged. If the mail was edited since indexing (an attachment removed, order shifted),
+    // today's attachment at the row's index carries DIFFERENT bytes - re-indexing them under this
+    // row would put foreign content under a foreign name into search and citations. The checksum
+    // verification must skip the row instead; the next scheduled run of the library heals it.
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    byte[] shiftedPdfBytes = pdfBytes("Ein ganz anderer Bescheid ueber 99,00 EUR.");
+    Message message =
+        Message.Builder.of()
+            .setSubject("Geaenderte Mail")
+            .setFrom("Buergeramt <buergeramt@example.org>")
+            .setTo("Sachbearbeitung <sachbearbeitung@example.org>")
+            .setBody(
+                MultipartBuilder.create("mixed")
+                    .addTextPart(
+                        "Der urspruengliche Anhang wurde entfernt.", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        BodyPartBuilder.create()
+                            .setBody(shiftedPdfBytes, "application/pdf")
+                            .setContentDisposition("attachment", "c.pdf"))
+                    .build())
+            .build();
+    Path emlFile = classTempDir.resolve(UUID.randomUUID() + "-geaendert.eml");
+    Files.write(emlFile, DefaultMessageWriter.asBytes(message));
+    Document mailDocument =
+        persistedDocumentPointingAt(
+            "geaendert.eml", emlFile, DocumentSourceType.FILESYSTEM, library.getId());
+    // The row was created for the mail's FORMER attachment at index 0 (b.pdf) - its checksum
+    // belongs to bytes that today's index 0 no longer carries.
+    Document attachmentDocument =
+        new Document("b.pdf", emlFile.toAbsolutePath() + "/0/b.pdf", "application/pdf", 1024L);
+    attachmentDocument.setLibraryId(library.getId());
+    attachmentDocument.setOrganizationId(Organization.DEFAULT_ID);
+    attachmentDocument.setChecksum(
+        new ChecksumService()
+            .computeSha256("frueherer Anhangsinhalt".getBytes(StandardCharsets.UTF_8)));
+    attachmentDocument.setParentDocumentId(mailDocument.getId());
+    attachmentDocument = documentRepository.save(attachmentDocument);
+    seedChunk(
+        attachmentDocument.getId(),
+        "alter Anhang-Chunk",
+        pdfPipeline.id(),
+        (short) (pdfPipeline.version() - 1));
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(result.reindexedDocuments()).isZero();
+    assertThat(result.skippedDocuments()).isEqualTo(1);
+    // Nothing was destroyed or replaced - the old chunk survives untouched.
+    assertThat(chunkTextsOf(attachmentDocument.getId())).containsExactly("alter Anhang-Chunk");
   }
 
   private DocumentPipeline mailPipeline() {
