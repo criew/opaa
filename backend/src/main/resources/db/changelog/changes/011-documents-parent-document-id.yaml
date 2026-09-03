@@ -1,0 +1,42 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-documents-parent-document-id
+      author: opaa
+      comment: >-
+        ADR-0022, Entscheidung 4 (#1178/#1180): generalizes the RSS-only, string-based parent
+        reference (source_entry_url, a file_path match, no FK) into a real, queryable relationship
+        every attachment source (RSS, mail, future Confluence) can set. Deliberately no ON DELETE
+        CASCADE - a DB-side cascade would remove the attachment row but leave its pgvector chunks
+        orphaned, which only VectorChunkStore#deleteByDocumentId can reach; deleting a parent
+        document therefore stays application code (ADR-0022, Entscheidung 3/4), not a database
+        automatism. source_entry_url is left in place, not replaced here - the migration ticket
+        scope stops at schema plus backfill; switching its readers (QueryService,
+        LibraryDocumentResponseMapper, ChatSource) to parent_document_id is #1182 (ADR-0022 Teil 3).
+        The backfill below only seeds existing RSS attachment rows so that ticket starts from
+        populated data; it joins on library_id in addition to the file_path match
+        source_entry_url already encodes, since file_path is only unique within a library
+        (uk_documents_library_path).
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.documents ADD COLUMN parent_document_id uuid;
+
+              ALTER TABLE public.documents
+                  ADD CONSTRAINT fk_documents_parent FOREIGN KEY (parent_document_id) REFERENCES public.documents(id);
+
+              CREATE INDEX idx_documents_parent ON public.documents USING btree (parent_document_id);
+
+              UPDATE public.documents child
+              SET parent_document_id = parent.id
+              FROM public.documents parent
+              WHERE child.source_entry_url = parent.file_path
+                AND child.library_id = parent.library_id
+                AND child.source_entry_url IS NOT NULL
+                AND child.parent_document_id IS NULL;
+      rollback:
+        - sql:
+            sql: |
+              DROP INDEX IF EXISTS idx_documents_parent;
+              ALTER TABLE public.documents DROP CONSTRAINT IF EXISTS fk_documents_parent;
+              ALTER TABLE public.documents DROP COLUMN IF EXISTS parent_document_id;

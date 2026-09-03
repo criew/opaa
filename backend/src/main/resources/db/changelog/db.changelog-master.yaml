@@ -27,3 +27,5 @@ databaseChangeLog:
       file: db/changelog/changes/008-asset-grants-granted-by-backfill.yaml
   - include:
       file: db/changelog/changes/009-chunk-full-text-skip-table.yaml
+  - include:
+      file: db/changelog/changes/011-documents-parent-document-id.yaml
