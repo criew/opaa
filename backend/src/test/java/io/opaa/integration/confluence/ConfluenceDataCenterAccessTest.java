@@ -198,7 +198,16 @@ class ConfluenceDataCenterAccessTest {
     ConfluenceClient admin = client(confluence.adminToken());
     Instant longAgo = Instant.parse("2000-01-01T00:00:00Z");
 
+    // CQL reads the search index, which Data Center updates asynchronously after a write - the
+    // fixture's youngest pages can lag behind by a few seconds, so the search is repeated until the
+    // index has caught up (the first CI runs saw "Onboarding" missing once).
     List<String> ids = admin.searchPageIdsModifiedSince(Set.of("ENG", "HR"), longAgo);
+    long deadline = System.currentTimeMillis() + Duration.ofSeconds(60).toMillis();
+    while (!ids.containsAll(List.of(confluence.pageId("Handbuch"), confluence.pageId("Onboarding")))
+        && System.currentTimeMillis() < deadline) {
+      Thread.sleep(3000);
+      ids = admin.searchPageIdsModifiedSince(Set.of("ENG", "HR"), longAgo);
+    }
 
     assertThat(ids)
         .contains(confluence.pageId("Handbuch"), confluence.pageId("Onboarding"))
