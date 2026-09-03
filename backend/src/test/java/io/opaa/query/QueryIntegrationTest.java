@@ -354,6 +354,7 @@ class QueryIntegrationTest {
       assertThat(opened.getSources()).hasSize(1);
       assertThat(opened.getSources().getFirst().getFileName()).isEqualTo("batman.md");
     } finally {
+      vectorChunkStore.deleteByLibraryId(closedLibraryId);
       jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", closedLibraryId);
       jdbcTemplate.update("DELETE FROM users WHERE id = ?", otherOwnerId);
     }
@@ -432,6 +433,7 @@ class QueryIntegrationTest {
       assertThat(response.getSources().stream().mapToInt(ChatSource::getMatchCount).sum())
           .isEqualTo(8);
     } finally {
+      vectorChunkStore.deleteByLibraryId(ungrantedLibraryId);
       jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", ungrantedLibraryId);
     }
   }
@@ -560,6 +562,7 @@ class QueryIntegrationTest {
       assertThat(response.getSources().stream().mapToInt(ChatSource::getMatchCount).sum())
           .isEqualTo(8);
     } finally {
+      vectorChunkStore.deleteByLibraryId(ungrantedLibraryId);
       jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", ungrantedLibraryId);
     }
   }

@@ -26,6 +26,12 @@ import org.springframework.beans.factory.annotation.Autowired;
  * <p>Chunks are written via {@link VectorStore#add} and then indexed by {@link
  * FullTextBackfillService}, which uses the same {@code FullTextChunkStore#indexChunks} the ingest
  * path uses - so what is searched here is byte-identical to what production stores.
+ *
+ * <p>{@link FullTextBackfillService#backfillBatch} selects its pending backlog across every
+ * library, with no {@code library_id} filter - each call here relies on every sibling class in this
+ * shared {@code @OpaaIndexingIntegrationTest} context cleaning up its own chunks (#1197), or a
+ * leftover, unrelated chunk could consume this class's {@code backfillBatch(100)} budget before its
+ * own seeded chunks are indexed.
  */
 @OpaaIndexingIntegrationTest
 class FullTextChunkSearchIntegrationTest {
