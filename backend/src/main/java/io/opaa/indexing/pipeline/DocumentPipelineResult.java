@@ -37,8 +37,8 @@ public record DocumentPipelineResult(Outcome outcome, List<Document> chunks) {
     NO_CONTENT,
     /**
      * The document parsed, but carries no usable text - a PDF without a text layer (see {@link
-     * DocumentService#isTextlessPdf}), or text that chunked down to nothing. Maps to {@link
-     * DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE}.
+     * TikaFallbackPipeline#isTextlessPdf}), or text that chunked down to nothing. Maps to {@code
+     * io.opaa.indexing.DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE}.
      */
     NO_EXTRACTABLE_TEXT
   }

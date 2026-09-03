@@ -196,7 +196,8 @@ public class AttachmentIndexer {
         return;
       }
       if (result == FileProcessingResult.NO_EXTRACTABLE_TEXT) {
-        // The document was already rejected and marked FAILED (DocumentService#isTextlessPdf) -
+        // The document was already rejected and marked FAILED
+        // (io.opaa.indexing.pipeline.TikaFallbackPipeline#isTextlessPdf) -
         // not deferred: unlike a transient quota/availability issue, a scan PDF will not gain a
         // text layer on retry.
         ctx.events()

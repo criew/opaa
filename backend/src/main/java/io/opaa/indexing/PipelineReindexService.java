@@ -1,11 +1,9 @@
-package io.opaa.indexing.pipeline;
+package io.opaa.indexing;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.VectorChunkStore;
-import io.opaa.indexing.VectorStoreWriter;
+import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
+import io.opaa.indexing.pipeline.DocumentPipeline;
+import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;

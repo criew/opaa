@@ -220,7 +220,7 @@ class FileProcessingServiceTest {
 
   @Test
   void chunkingProducingNoChunksIsRejectedInsteadOfIndexedWithZeroChunks() throws IOException {
-    // #1090 review finding 1: DocumentService#isTextlessPdf only guards the pre-chunking stage
+    // #1090 review finding 1: TikaFallbackPipeline#isTextlessPdf only guards the pre-chunking stage
     // (blank parsed text). ChunkingService's own minChunkLengthToEmbed/minChunkSizeChars can still
     // reduce non-blank text (OCR noise, page footers) to zero chunks afterwards, and a non-PDF
     // format with blank parsed text never reaches isTextlessPdf at all (it is PDF-only). The
@@ -1843,7 +1843,6 @@ class FileProcessingServiceTest {
     when(documentRepository.findById(doc.getId())).thenReturn(Optional.of(doc));
     var parsed = List.of(new org.springframework.ai.document.Document(""));
     when(documentService.parseDocument(file)).thenReturn(parsed);
-    when(documentService.isTextlessPdf(file, parsed)).thenReturn(true);
     when(documentRepository.markFailed(doc.getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE))
         .thenReturn(1);
 
