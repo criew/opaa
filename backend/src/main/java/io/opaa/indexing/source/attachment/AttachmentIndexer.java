@@ -52,6 +52,23 @@ public class AttachmentIndexer {
 
   private static final Logger log = LoggerFactory.getLogger(AttachmentIndexer.class);
 
+  /**
+   * The default {@link AttachmentDownloadLimits#maxAttachmentDepth()} for a caller with no
+   * format-specific depth concept of its own (RSS) - {@code MailProperties#maxAttachmentDepth()}'s
+   * own default before #1183 moved the limit here.
+   */
+  public static final int DEFAULT_MAX_ATTACHMENT_DEPTH = 5;
+
+  /**
+   * How many levels of attachment-in-attachment recursion the current thread is at - {@code null}
+   * outside of any {@link #indexAll} call. An attachment whose own pipeline reports further {@code
+   * discoveredAttachments} (e.g. a nested {@code .eml}) re-enters this class synchronously, through
+   * {@code FileProcessingService#processUrlFile}'s own attachment handling, on the same thread -
+   * mirrors {@code MailDocumentPipeline}'s pre-#1183 {@code RECURSION_DEPTH} field, moved here as
+   * part of ADR-0022 Entscheidung 6.
+   */
+  private static final ThreadLocal<Integer> RECURSION_DEPTH = new ThreadLocal<>();
+
   private final BoundedDownloader attachmentDownloader;
   private final FileProcessingService fileProcessingService;
   private final LibraryStorageQuotaService storageQuotaService;
@@ -103,25 +120,53 @@ public class AttachmentIndexer {
       String parentPath,
       DocumentSourceType sourceType,
       AttachmentDownloadLimits limits) {
-    int limit = Math.min(sources.size(), limits.maxPerParent());
-    if (sources.size() > limit) {
-      log.info(
-          "Parent document {} carries {} attachments, processing only the first {} (attachment"
-              + " limit)",
+    if (sources.isEmpty()) {
+      return List.of();
+    }
+    boolean topLevel = RECURSION_DEPTH.get() == null;
+    int depth = topLevel ? 0 : RECURSION_DEPTH.get();
+    if (depth >= limits.maxAttachmentDepth()) {
+      log.warn(
+          "Maximum attachment depth ({}) reached for {}, skipping {} nested attachment(s)",
+          limits.maxAttachmentDepth(),
           parentPath,
-          sources.size(),
-          limit);
+          sources.size());
       access.markDeferred();
+      return List.of();
     }
-    List<String> indexedPaths = new ArrayList<>();
-    for (AttachmentSource source : sources.subList(0, limit)) {
-      if (source instanceof AttachmentSource.Download) {
-        RequestPoliteness.delayBeforeRequest(limits.requestDelayMs());
+    if (topLevel) {
+      RECURSION_DEPTH.set(0);
+    }
+    try {
+      int limit = Math.min(sources.size(), limits.maxPerParent());
+      if (sources.size() > limit) {
+        log.info(
+            "Parent document {} carries {} attachments, processing only the first {} (attachment"
+                + " limit)",
+            parentPath,
+            sources.size(),
+            limit);
+        access.markDeferred();
       }
-      indexOne(access, source, parentDocumentId, parentPath, sourceType, limits)
-          .ifPresent(indexedPaths::add);
+      List<String> indexedPaths = new ArrayList<>();
+      RECURSION_DEPTH.set(depth + 1);
+      try {
+        for (AttachmentSource source : sources.subList(0, limit)) {
+          if (source instanceof AttachmentSource.Download) {
+            RequestPoliteness.delayBeforeRequest(limits.requestDelayMs());
+          }
+          indexOne(access, source, parentDocumentId, parentPath, sourceType, limits)
+              .ifPresent(indexedPaths::add);
+        }
+      } finally {
+        RECURSION_DEPTH.set(depth);
+      }
+      return List.copyOf(indexedPaths);
+    } finally {
+      if (topLevel) {
+        RECURSION_DEPTH.remove();
+      }
     }
-    return List.copyOf(indexedPaths);
   }
 
   private Optional<String> indexOne(
@@ -314,11 +359,9 @@ public class AttachmentIndexer {
   }
 
   /**
-   * Indexes an attachment whose bytes are already on disk - the case a future Mail umstellung
-   * (#1183) needs, no download step involved. {@code localFile.fileName()} doubles as this
-   * attachment's identity here; a caller with its own, distinct identity syntax (ADR-0022,
-   * Entscheidung 2 - the Mail file_path rule, not yet decided) resolves it before constructing
-   * {@link AttachmentSource.LocalFile}.
+   * Indexes an attachment whose bytes are already on disk - the case Mail (#1183) needs, no
+   * download step involved. {@code localFile.filePathIdentity()} is this attachment's {@code
+   * file_path} (ADR-0022, Entscheidung 2); {@code localFile.fileName()} is only its display name.
    */
   private Optional<String> indexLocalFile(
       AttachmentAccess access,
@@ -358,7 +401,7 @@ public class AttachmentIndexer {
           access,
           localFile.file(),
           localFile.fileName(),
-          localFile.fileName(),
+          localFile.filePathIdentity(),
           size,
           parentDocumentId,
           parentPath,
@@ -375,6 +418,8 @@ public class AttachmentIndexer {
               IndexingEventCategory.ERROR,
               "Anlage konnte nicht gelesen werden",
               localFile.fileName());
+      // See storeAttachment's own comment: present in the parent, only not readable this run.
+      access.recordIndexedAttachment(localFile.filePathIdentity(), false);
       return Optional.empty();
     }
   }
@@ -402,7 +447,8 @@ public class AttachmentIndexer {
               access.targetLibrary(),
               sourceType,
               parentPath,
-              parentDocumentId);
+              parentDocumentId,
+              access);
       if (result == FileProcessingResult.QUOTA_EXCEEDED) {
         // Deferred, not recordSkipped: an attachment was never a discrete unit of the run's own
         // total, so there is nothing to mark skipped - only the deferred flag, so a caller with a
@@ -414,6 +460,10 @@ public class AttachmentIndexer {
                 storageQuotaService.quotaExceededMessage(access.targetLibrary().getId()),
                 filePathIdentity);
         access.markDeferred();
+        // Still present in the parent, just not (re)processed this run - without this a transient
+        // failure of an already-indexed attachment of a re-parsed parent would let the caller's
+        // vanished-cleanup delete its row permanently (a checksum-skipped parent never retries).
+        access.recordIndexedAttachment(filePathIdentity, false);
         return Optional.empty();
       }
       if (result == FileProcessingResult.NO_EXTRACTABLE_TEXT) {
@@ -425,6 +475,7 @@ public class AttachmentIndexer {
                 IndexingEventCategory.REJECTED,
                 DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE,
                 filePathIdentity);
+        access.recordIndexedAttachment(filePathIdentity, false);
         return Optional.empty();
       }
       if (result == FileProcessingResult.FAILED) {
@@ -435,6 +486,7 @@ public class AttachmentIndexer {
                 "Verarbeitung der Anlage fehlgeschlagen",
                 filePathIdentity);
         access.markDeferred();
+        access.recordIndexedAttachment(filePathIdentity, false);
         return Optional.empty();
       }
       // An unchanged attachment (same checksum as an already-indexed document) is deduplicated by
@@ -443,6 +495,7 @@ public class AttachmentIndexer {
       if (result == FileProcessingResult.PROCESSED) {
         access.progress().recordDocumentIndexed();
       }
+      access.recordIndexedAttachment(filePathIdentity, result == FileProcessingResult.PROCESSED);
       log.info("Indexed attachment: {} (from {})", filePathIdentity, parentPath);
       return Optional.of(filePathIdentity);
     } catch (IOException e) {
@@ -454,6 +507,7 @@ public class AttachmentIndexer {
               "Verarbeitung der Anlage fehlgeschlagen",
               filePathIdentity);
       access.markDeferred();
+      access.recordIndexedAttachment(filePathIdentity, false);
       return Optional.empty();
     }
   }

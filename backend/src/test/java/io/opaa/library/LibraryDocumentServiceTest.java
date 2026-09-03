@@ -816,6 +816,56 @@ class LibraryDocumentServiceTest {
   }
 
   @Test
+  void deletingADocumentWithAGrandchildAttachmentDeletesTheWholeChainDeepestFirst()
+      throws IOException {
+    // #1183: a Mail-in-Mail chain nests an attachment inside an attachment (a forwarded .eml with
+    // its own attachment) - descendantsDeepestFirst must walk both levels, not only the direct
+    // children deletingADocumentWithAttachmentsDeletesTheAttachmentRowsFirst covers.
+    grantEditor();
+    UUID documentId = UUID.randomUUID();
+    Document outerMail =
+        new Document("aussenmail.eml", "https://feed.example/outer", "message/rfc822", 10L);
+    outerMail.setLibraryId(libraryId);
+    outerMail.setSourceType(DocumentSourceType.RSS_FEED);
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(outerMail));
+
+    Document innerMail =
+        new Document(
+            "weitergeleitet.eml",
+            "https://feed.example/outer/0/weitergeleitet.eml",
+            "message/rfc822",
+            8L);
+    innerMail.setLibraryId(libraryId);
+    innerMail.setSourceType(DocumentSourceType.RSS_FEED);
+    innerMail.setParentDocumentId(outerMail.getId());
+    Document grandchildAttachment =
+        new Document(
+            "anlage.pdf",
+            "https://feed.example/outer/0/weitergeleitet.eml/0/anlage.pdf",
+            "application/pdf",
+            5L);
+    grandchildAttachment.setLibraryId(libraryId);
+    grandchildAttachment.setSourceType(DocumentSourceType.RSS_FEED);
+    grandchildAttachment.setParentDocumentId(innerMail.getId());
+    when(documentRepository.findByParentDocumentId(outerMail.getId()))
+        .thenReturn(List.of(innerMail));
+    when(documentRepository.findByParentDocumentId(innerMail.getId()))
+        .thenReturn(List.of(grandchildAttachment));
+    when(documentRepository.findByParentDocumentId(grandchildAttachment.getId()))
+        .thenReturn(List.of());
+
+    service.deleteDocument(libraryId, documentId, caller);
+
+    org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(documentRepository, vectorStore);
+    inOrder.verify(documentRepository).delete(grandchildAttachment);
+    inOrder.verify(documentRepository).delete(innerMail);
+    inOrder.verify(documentRepository).delete(outerMail);
+    inOrder.verify(vectorStore).delete(documentIdFilter(grandchildAttachment.getId()));
+    inOrder.verify(vectorStore).delete(documentIdFilter(innerMail.getId()));
+    inOrder.verify(vectorStore).delete(documentIdFilter(outerMail.getId()));
+  }
+
+  @Test
   void aFailingVectorStoreDeleteDuringCleanupStillLetsTheFileBeDeletedAndDoesNotPropagate()
       throws IOException {
     // PR #631 review, finding 1: by the time this afterCommit callback runs, the row deletion has

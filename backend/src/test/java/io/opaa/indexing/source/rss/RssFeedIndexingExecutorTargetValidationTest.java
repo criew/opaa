@@ -17,6 +17,7 @@ import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.TargetAddressValidator;
@@ -100,7 +101,11 @@ class RssFeedIndexingExecutorTargetValidationTest {
             indexingJobService,
             documentRepository,
             feedStateRepository,
-            new BoundedDownloader(enabledValidator),
+            new io.opaa.indexing.source.attachment.AttachmentIndexer(
+                new BoundedDownloader(enabledValidator),
+                fileProcessingService,
+                mock(LibraryStorageQuotaService.class),
+                documentRepository),
             properties,
             indexingRunEventRepository,
             enabledValidator,

@@ -34,9 +34,35 @@ class DocumentPipelineResultTest {
 
   @Test
   void aNullDiscoveredAttachmentsListIsNormalizedToEmptyLikeChunksAlreadyIsForOlderCallers() {
-    var result = new DocumentPipelineResult(DocumentPipelineResult.Outcome.NO_CONTENT, null, null);
+    var result =
+        new DocumentPipelineResult(DocumentPipelineResult.Outcome.NO_CONTENT, null, null, null);
 
     assertThat(result.chunks()).isEmpty();
     assertThat(result.discoveredAttachments()).isEmpty();
+    assertThat(result.contentByteSizeOverride()).isEmpty();
+  }
+
+  @Test
+  void noExtractableTextWithAttachmentsCarriesTheAttachmentsButNoChunks() {
+    // ADR-0022, part 4 (#1183): the case DocumentPipelineResult's own Javadoc reserves for the
+    // generalized attachment path - a message with nothing chunk-worthy of its own but at least
+    // one attachment still reports that attachment here.
+    var attachment =
+        new DiscoveredAttachment("anlage.pdf", Path.of("/tmp/anlage.pdf"), "application/pdf");
+
+    DocumentPipelineResult result = DocumentPipelineResult.noExtractableText(List.of(attachment));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+    assertThat(result.chunks()).isEmpty();
+    assertThat(result.discoveredAttachments()).containsExactly(attachment);
+  }
+
+  @Test
+  void chunkedWithAContentByteSizeOverrideCarriesIt() {
+    var chunks = List.of(new Document("text"));
+
+    DocumentPipelineResult result = DocumentPipelineResult.chunked(chunks, List.of(), 42L);
+
+    assertThat(result.contentByteSizeOverride()).hasValue(42L);
   }
 }

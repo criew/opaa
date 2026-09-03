@@ -71,8 +71,12 @@ public record PipelineEvaluationReport(
    * committed baseline's {@code ingestionPipelineFingerprint} even though no corpus in this
    * repository routes a document through that pipeline - the fingerprint is a collective fixed
    * point over every registered pipeline, not only the ones a given corpus actually reaches.
+   *
+   * <p>Version 6 (issue #1183, ADR-0022): {@code MailDocumentPipeline#version()} moved 3 → 4 (an
+   * attachment is now a separate, generalized-attachment-path {@code Document} instead of a chunk
+   * nested under its Mail parent) - same collective-fingerprint reasoning as version 5 above.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 5;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 6;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be

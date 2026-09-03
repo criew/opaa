@@ -62,8 +62,14 @@ public record EvaluationReport(
    * repository routes a document through that pipeline — the fingerprint is a collective fixed
    * point over every registered pipeline (see {@link IngestionPipelineFingerprint}'s Javadoc), not
    * only the ones a given corpus actually reaches.
+   *
+   * <p><b>Bumped to 5 by issue #1183 (ADR-0022):</b> {@code MailDocumentPipeline#version()} moved 3
+   * → 4 (an attachment is now a separate, generalized-attachment-path {@code Document} instead of a
+   * chunk nested under its Mail parent) - the same collective-fingerprint reasoning as the #1164
+   * bump above, not a corpus routing change (no corpus in this repository routes a document through
+   * {@code MailDocumentPipeline}).
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 4;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 5;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(

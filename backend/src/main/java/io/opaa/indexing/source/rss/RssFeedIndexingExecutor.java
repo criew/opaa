@@ -22,7 +22,6 @@ import io.opaa.indexing.source.attachment.AttachmentSource;
 import io.opaa.indexing.source.web.DetailPageExtractor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
-import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.RequestPoliteness;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
@@ -98,7 +97,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
       RssFeedStateRepository feedStateRepository,
-      BoundedDownloader attachmentDownloader,
+      AttachmentIndexer attachmentIndexer,
       IndexingProperties properties,
       IndexingRunEventRepository indexingRunEventRepository,
       TargetAddressValidator targetAddressValidator,
@@ -112,15 +111,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     this.feedFetcher =
         new FeedFetcher(targetAddressValidator, feedStateRepository, feedParser, this.properties);
     this.detailPageExtractor = new DetailPageExtractor(targetAddressValidator, this.properties);
-    this.attachmentIndexer =
-        new AttachmentIndexer(
-            attachmentDownloader, fileProcessingService, storageQuotaService, documentRepository);
+    this.attachmentIndexer = attachmentIndexer;
     this.attachmentLimits =
         new AttachmentDownloadLimits(
             this.properties.maxAttachmentsPerEntry(),
             this.properties.maxAttachmentSizeBytes(),
             this.properties.requestDelayMs(),
-            this.properties.userAgent());
+            this.properties.userAgent(),
+            AttachmentIndexer.DEFAULT_MAX_ATTACHMENT_DEPTH);
   }
 
   @Override
