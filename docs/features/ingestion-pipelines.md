@@ -998,9 +998,11 @@ einem eigenen `Document`, dessen eigene, rekursiv gemeldeten Anhänge wiederum `
 auf **diese** innere Mail setzen, nicht auf die äußerste — eine Kette, kein Sonderfall.
 
 **`file_path` eines Mail-Anhangs** (ADR-0022, Entscheidung 2, festgelegt in #1183):
-`<file_path des Elterndokuments>!<Positionsindex>/<Dateiname>` — `!` in Anlehnung an die
-JAR-URL-Konvention für „eine eingebettete Ressource innerhalb einer Datei" (`jar:file:a.jar!/b.txt`),
-ein im Dateisystem praktisch nie vorkommendes Zeichen. Der Positionsindex (0-basiert,
+`<file_path des Elterndokuments>/<Positionsindex>/<Dateiname>` — ein gewöhnlicher `/`-Separator
+genügt, weil der Elternpfad eine *Datei* benennt: Unterhalb einer Datei kann kein reales Dateisystem
+weitere Einträge führen, ein Pfad dieser Form ist also für jede echte Datei unerreichbar und
+kollisionsfrei (ein `!`-Sonderzeichen nach JAR-URL-Vorbild wäre dagegen in echten Dateinamen legal
+und könnte kollidieren). Der Positionsindex (0-basiert,
 Extraktionsreihenfolge) disambiguiert zwei gleichnamige Anhänge derselben Mail; der eingebettete
 Elternpfad allein sorgt bereits für Eindeutigkeit über verschiedene Mails hinweg und für Stabilität
 über Läufe hinweg, solange die Mail-Datei selbst nicht verschoben wird. Für eine verschachtelte Mail
@@ -1213,6 +1215,22 @@ bestehen wie beim Ausliefern eines Originals (Allowlist, Lage unterhalb des konf
 Quellverzeichnisses der Bibliothek bzw. des verwalteten Upload-Verzeichnisses, aufgelöst über
 `toRealPath` gegen Symlinks; ADR-0018, Entscheidung 6). Eine nachträglich verkleinerte Allowlist wirkt
 damit auch auf die Neuindizierung — sie ist nicht der eine Pfad, der weiterliest.
+
+**Ein Anhangsdokument (ADR-0022) wird über seine Elternkette neu gewonnen** (#1183): Sein
+`file_path` ist synthetisch (`<Elternpfad>/<Index>/<Name>`, siehe oben) und löst zu keiner eigenen
+Datei auf. Die Neuindizierung läuft stattdessen die `parent_document_id`-Kette bis zum
+Wurzeldokument hoch, dessen Quelldatei denselben Laufzeitprüfungen wie oben unterliegt, extrahiert
+den Anhang entlang der im Pfad kodierten Positionsindizes erneut (auch über mehrere
+Verschachtelungsebenen, Mail-in-Mail) und verarbeitet ihn unter seiner eigenen Dokument-ID neu — so
+erreicht ein Versionssprung einer Sub-Pipeline (z. B. PDF) einen Anhang in einer Mail, ohne dass die
+Mail-Datei selbst sich geändert haben muss (der Kernfall aus #1130 Befund 2). Passt die Kette nicht
+mehr (Elterndatei geändert, Index entfallen), wird das Dokument übersprungen, nie zerstört.
+Umgekehrt überlebt der Anhangsbestand die Neuindizierung seines **Elterndokuments**: Meldet die neu
+laufende Eltern-Pipeline Anhänge, gehen sie denselben verallgemeinerten Anhangsweg wie im
+Konnektorlauf — ein unveränderter Anhang wird per Prüfsumme bestätigt, ein noch nie als eigenes
+Dokument erfasster (der Altbestand vor ADR-0022, Bestandsmigration email v4) entsteht dabei
+erstmals. Ausnahme: Upload-Bibliotheken indizieren Anhänge bewusst noch gar nicht (eigenes
+Folge-Issue), dort behält das Elterndokument seine rohe Dateigröße.
 
 Ein Dokument aus einer entfernten Quelle kann nur sein eigener Konnektorlauf neu lesen; es wird dafür
 vorgemerkt und fällt danach aus der Auswahl, damit der Lauf abschließt. Vorgemerkt heißt: **beide**

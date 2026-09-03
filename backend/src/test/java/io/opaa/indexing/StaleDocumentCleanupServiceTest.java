@@ -97,7 +97,7 @@ class StaleDocumentCleanupServiceTest {
     Document innerMail =
         new Document(
             "weitergeleitet.eml",
-            "https://feed.example/outer!0/weitergeleitet.eml",
+            "https://feed.example/outer/0/weitergeleitet.eml",
             "message/rfc822",
             8L);
     innerMail.setLibraryId(library.getId());
@@ -105,7 +105,7 @@ class StaleDocumentCleanupServiceTest {
     Document grandchildAttachment =
         new Document(
             "anlage.pdf",
-            "https://feed.example/outer!0/weitergeleitet.eml!0/anlage.pdf",
+            "https://feed.example/outer/0/weitergeleitet.eml/0/anlage.pdf",
             "application/pdf",
             5L);
     grandchildAttachment.setLibraryId(library.getId());

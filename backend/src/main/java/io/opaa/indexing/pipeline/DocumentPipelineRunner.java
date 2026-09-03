@@ -2,7 +2,6 @@ package io.opaa.indexing.pipeline;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.List;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,25 +30,27 @@ public final class DocumentPipelineRunner {
 
   public static DocumentPipelineResult run(
       DocumentPipeline pipeline, DocumentPipelineSource source) {
-    return run(pipeline, source, attachments -> {});
+    return run(pipeline, source, result -> {});
   }
 
   /**
-   * Like {@link #run(DocumentPipeline, DocumentPipelineSource)}, plus {@code attachmentHandler} -
-   * invoked with {@code result.discoveredAttachments()} (possibly empty) before any temp file is
-   * deleted, so the handler can index an attachment's bytes while its temp file still exists.
-   * {@code attachmentHandler} must never throw for an individual attachment's own failure (mirrors
-   * {@code AttachmentIndexer}'s own "never lets an attachment failure propagate" contract) - a
-   * handler failure here would otherwise turn an already-successful parent document result into an
+   * Like {@link #run(DocumentPipeline, DocumentPipelineSource)}, plus {@code resultHandler} -
+   * invoked with the full result before any {@link DocumentPipelineResult#discoveredAttachments()}
+   * temp file is deleted, so the handler can index an attachment's bytes while its temp file still
+   * exists, and can apply {@link DocumentPipelineResult#contentByteSizeOverride()} to the parent
+   * row <em>before</em> any attachment's own quota check runs against it. {@code resultHandler}
+   * must never throw for an individual attachment's own failure (mirrors {@code
+   * AttachmentIndexer}'s own "never lets an attachment failure propagate" contract) - a handler
+   * failure here would otherwise turn an already-successful parent document result into an
    * exception.
    */
   public static DocumentPipelineResult run(
       DocumentPipeline pipeline,
       DocumentPipelineSource source,
-      Consumer<List<DiscoveredAttachment>> attachmentHandler) {
+      Consumer<DocumentPipelineResult> resultHandler) {
     DocumentPipelineResult result = pipeline.run(source);
     try {
-      attachmentHandler.accept(result.discoveredAttachments());
+      resultHandler.accept(result);
     } finally {
       for (DiscoveredAttachment attachment : result.discoveredAttachments()) {
         try {

@@ -8,7 +8,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.longThat;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -38,7 +37,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -310,20 +308,21 @@ class FileProcessingServiceTest {
   }
 
   @Test
-  void quotaCheckMeasuresTheDeltaOnlyAfterAnExistingDocumentHasBeenDeleted() throws IOException {
-    // #119, PR #700 review finding 5: uses a REAL LibraryStorageQuotaService, not a mock, so the
-    // "checked after the old row is deleted, measures the true delta" promise is genuinely
-    // exercised rather than merely asserted against a stub. documentRepository stays a mock (a
-    // data-layer boundary, not the thing under test) - its sumFileSizeByLibraryId answer flips
-    // from the pre-delete to the post-delete figure the moment documentRepository.delete is
-    // called, exactly mirroring how the real aggregate query would behave once that DELETE has
-    // actually run.
+  void quotaCheckMeasuresTheSizeDeltaOfAnInPlaceUpdateNotTheFullNewSize() throws IOException {
+    // #119, PR #700 review finding 5, rewritten for #1183's update-in-place contract (mirrors
+    // processRssEntryChecksTheQuotaDeltaNotTheFullNewSizeWhenUpdatingInPlace): uses a REAL
+    // LibraryStorageQuotaService, not a mock, so "the delta, not the full new size" is genuinely
+    // exercised. The existing row is never deleted here (fk_documents_parent, see this method's
+    // own Javadoc) - documentRepository.sumFileSizeByLibraryId stays at the pre-update figure
+    // (900, the old document still on that path) throughout, exactly mirroring the real aggregate
+    // query's own answer since no DELETE ever runs on this path.
     //
-    // Quota 1000, an existing 900-byte document being replaced by a 950-byte one: checking BEFORE
-    // the delete would see 900 (old) + 950 (new) = 1850 > 1000 and wrongly reject; checking AFTER
-    // (the actual, correct order) sees 0 (old already gone) + 950 = 950 <= 1000 and accepts. A
-    // regression that reordered the two calls would flip this test's result from PROCESSED to
-    // QUOTA_EXCEEDED.
+    // Quota 1000, an existing 900-byte document being replaced by a 950-byte one: checking the
+    // full new size against usedBytes that still includes the old row would see 900 (old,
+    // un-deleted) + 950 (full new size) = 1850 > 1000 and wrongly reject; checking the delta (the
+    // actual, correct behaviour) sees 900 (old) + 50 (delta) = 950 <= 1000 and accepts. A
+    // regression that checked the full new size here would flip this test's result from
+    // PROCESSED to QUOTA_EXCEEDED.
     LibraryStorageQuotaService realQuotaService =
         new LibraryStorageQuotaService(
             documentRepository, new UploadProperties(null, 0, null, 0, 1000));
@@ -348,23 +347,15 @@ class FileProcessingServiceTest {
         new Document(
             "replace-under-quota.txt", file.toAbsolutePath().toString(), "text/plain", 900L);
     existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
     existingDoc.setChecksum("old-checksum");
     existingDoc.setStatus(DocumentStatus.INDEXED);
 
-    AtomicBoolean oldRowDeleted = new AtomicBoolean(false);
     when(checksumService.computeSha256(file)).thenReturn("new-checksum");
     when(documentRepository.findByLibraryIdAndFilePath(
             targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.of(existingDoc));
-    doAnswer(
-            inv -> {
-              oldRowDeleted.set(true);
-              return null;
-            })
-        .when(documentRepository)
-        .delete(existingDoc);
-    when(documentRepository.sumFileSizeByLibraryId(targetLibrary.getId()))
-        .thenAnswer(inv -> oldRowDeleted.get() ? 0L : 900L);
+    when(documentRepository.sumFileSizeByLibraryId(targetLibrary.getId())).thenReturn(900L);
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
     when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), any(), any()))
         .thenReturn(1);
@@ -378,7 +369,10 @@ class FileProcessingServiceTest {
     FileProcessingResult result = serviceWithRealQuota.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    verify(documentRepository).delete(existingDoc);
+    verify(documentRepository, never()).delete(any(Document.class));
+    ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, atLeastOnce()).save(savedDocCaptor.capture());
+    assertThat(savedDocCaptor.getValue().getId()).isEqualTo(existingDoc.getId());
   }
 
   @Test
@@ -459,7 +453,7 @@ class FileProcessingServiceTest {
 
     Files.delete(file);
 
-    boolean reindexed = service.reindexStoredDocument(documentId, file);
+    boolean reindexed = service.reindexStoredDocument(documentId, file, null);
 
     assertThat(reindexed).isTrue();
     @SuppressWarnings("unchecked")
@@ -909,6 +903,7 @@ class FileProcessingServiceTest {
     existingDoc.setChecksum("old-checksum");
     existingDoc.setStatus(DocumentStatus.INDEXED);
     existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
     when(documentRepository.findByLibraryIdAndFilePath(
             targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.of(existingDoc));
@@ -928,17 +923,21 @@ class FileProcessingServiceTest {
     FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    // #1183: updated in place - only the chunks are exchanged, the row (and with it every
+    // attachment's parent_document_id) survives under its own id.
     verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
-    verify(documentRepository).delete(existingDoc);
+    verify(documentRepository, never()).delete(any(Document.class));
+    ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, atLeastOnce()).save(savedDocCaptor.capture());
+    assertThat(savedDocCaptor.getValue().getId()).isEqualTo(existingDoc.getId());
     verify(documentService).parseDocument(file);
   }
 
   @Test
   void reindexingKeepsTheLibraryAssignmentWhenTheTargetLibraryIsUnchanged() throws IOException {
-    // #419 acceptance criteria: re-indexing into the same library keeps the assignment. The old
-    // document row is deleted and a new one created (see reindexesDocumentWithChangedChecksum
-    // above), so this pins that the replacement row still carries the chosen library, not a
-    // dangling/absent one.
+    // #419 acceptance criteria: re-indexing into the same library keeps the assignment. Since
+    // #1183 the row is updated in place (see reindexesDocumentWithChangedChecksum above), so this
+    // pins that the updated row still carries the chosen library, not a dangling/absent one.
     Path file = tempDir.resolve("reindexed.txt");
     Files.writeString(file, "new content");
 
@@ -965,10 +964,10 @@ class FileProcessingServiceTest {
 
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
-    Document newDoc = docCaptor.getAllValues().getFirst();
-    assertThat(newDoc.getId()).isNotEqualTo(existingDoc.getId());
-    assertThat(newDoc.getLibraryId()).isEqualTo(targetLibrary.getId());
-    assertThat(newDoc.getOrganizationId()).isEqualTo(targetLibrary.getOrganizationId());
+    Document updatedDoc = docCaptor.getAllValues().getFirst();
+    assertThat(updatedDoc.getId()).isEqualTo(existingDoc.getId());
+    assertThat(updatedDoc.getLibraryId()).isEqualTo(targetLibrary.getId());
+    assertThat(updatedDoc.getOrganizationId()).isEqualTo(targetLibrary.getOrganizationId());
   }
 
   @Test
@@ -1037,6 +1036,8 @@ class FileProcessingServiceTest {
 
     Document existingDoc = new Document("legacy.txt", file.toAbsolutePath().toString(), null, 10L);
     existingDoc.setStatus(DocumentStatus.INDEXED);
+    existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
     // checksum is null (legacy document without checksum)
     when(documentRepository.findByLibraryIdAndFilePath(
             targetLibrary.getId(), file.toAbsolutePath().toString()))
@@ -1053,7 +1054,7 @@ class FileProcessingServiceTest {
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
-    verify(documentRepository).delete(existingDoc);
+    verify(documentRepository, never()).delete(any(Document.class));
   }
 
   @Test
@@ -1067,6 +1068,7 @@ class FileProcessingServiceTest {
     existingDoc.setChecksum("same-checksum");
     existingDoc.setStatus(DocumentStatus.FAILED);
     existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
     when(documentRepository.findByLibraryIdAndFilePath(
             targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.of(existingDoc));
@@ -1663,7 +1665,7 @@ class FileProcessingServiceTest {
     when(documentService.parseDocument(file))
         .thenThrow(new RuntimeException("Tika konnte die Datei nicht lesen"));
 
-    boolean reindexed = service.reindexStoredDocument(documentId, file);
+    boolean reindexed = service.reindexStoredDocument(documentId, file, null);
 
     assertThat(reindexed).isFalse();
     verify(vectorStore, never()).delete(any(Filter.Expression.class));

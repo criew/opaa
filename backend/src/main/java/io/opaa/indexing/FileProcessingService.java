@@ -232,6 +232,7 @@ public class FileProcessingService {
     }
     doc = documentRepository.save(doc);
 
+    Document savedDoc = doc;
     UUID documentId = doc.getId();
     try {
       DocumentPipelineRegistry.Routed routed = pipelineRegistry.routedPipelineFor(file, fileName);
@@ -240,13 +241,17 @@ public class FileProcessingService {
           DocumentPipelineRunner.run(
               pipeline,
               DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()),
-              discovered ->
-                  processDiscoveredAttachments(
-                      discovered,
-                      documentId,
-                      filePath,
-                      DocumentSourceType.FILESYSTEM,
-                      attachmentAccess));
+              result -> {
+                // Before the attachments: their own quota checks must already see the parent's
+                // corrected (attachment-free) fileSize, or the attachment bytes count twice.
+                applyContentByteSizeOverride(savedDoc, result);
+                processDiscoveredAttachments(
+                    result.discoveredAttachments(),
+                    documentId,
+                    filePath,
+                    DocumentSourceType.FILESYSTEM,
+                    attachmentAccess);
+              });
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
           log.warn("No usable text extracted from {} by pipeline {}", file, pipeline.id());
@@ -264,7 +269,6 @@ public class FileProcessingService {
                 pipeline.id());
       }
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
-      applyContentByteSizeOverride(doc, parsed);
 
       // Enrich chunks with metadata and store via VectorStore
       storeChunks(
@@ -469,6 +473,7 @@ public class FileProcessingService {
     }
     doc = documentRepository.save(doc);
 
+    Document savedDoc = doc;
     UUID documentId = doc.getId();
     try {
       DocumentPipelineRegistry.Routed routed =
@@ -478,9 +483,16 @@ public class FileProcessingService {
           DocumentPipelineRunner.run(
               pipeline,
               DocumentPipelineSource.ofFile(localFile, fileName, routed.detectedExtension()),
-              discovered ->
-                  processDiscoveredAttachments(
-                      discovered, documentId, remoteUrl, sourceType, attachmentAccess));
+              result -> {
+                // Before the attachments - see processFile's handler on the quota ordering.
+                applyContentByteSizeOverride(savedDoc, result);
+                processDiscoveredAttachments(
+                    result.discoveredAttachments(),
+                    documentId,
+                    remoteUrl,
+                    sourceType,
+                    attachmentAccess);
+              });
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
           log.warn(
@@ -501,7 +513,6 @@ public class FileProcessingService {
                 pipeline.id());
       }
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
-      applyContentByteSizeOverride(doc, parsed);
 
       // fileName is always a real file name here regardless of sourceType - both HTTP_DIRECTORY
       // and an RSS_FEED entry's attachment (see this method's own Javadoc) go through this path,
@@ -705,7 +716,7 @@ public class FileProcessingService {
    */
   @Async("uploadTaskExecutor")
   public void processUploadedFileAsync(UUID documentId, Path storedFile) {
-    processStoredFile(documentId, storedFile, false);
+    processStoredFile(documentId, storedFile, false, null);
   }
 
   /**
@@ -727,10 +738,21 @@ public class FileProcessingService {
    * to the upload path's cleanup, because from that point there is no untouched state left to
    * preserve.
    *
+   * <p><b>Attachments survive a version re-index</b> (#1183, ADR-0022 Entscheidung 3's rule for
+   * every path that replaces a parent document): when {@code attachmentAccess} is non-{@code null},
+   * every attachment the re-run pipeline discovers is handed to the generalized attachment path,
+   * exactly as in {@link #processFile} - an unchanged attachment is confirmed by checksum, a
+   * not-yet-extracted one (the pre-ADR-0022 inline-chunk bestand, migrated by the operator-driven
+   * email-v4 re-index) becomes its own row for the first time. A {@code null} access discards
+   * discovered attachments and keeps the parent's raw {@code fileSize} (no {@code
+   * contentByteSizeOverride}), so the attachment bytes stay accounted on the parent - the UPLOAD
+   * path's declared gap.
+   *
    * @return whether the document was actually re-indexed
    */
-  boolean reindexStoredDocument(UUID documentId, Path storedFile) {
-    return processStoredFile(documentId, storedFile, true);
+  boolean reindexStoredDocument(
+      UUID documentId, Path storedFile, AttachmentAccess attachmentAccess) {
+    return processStoredFile(documentId, storedFile, true, attachmentAccess);
   }
 
   /**
@@ -746,7 +768,10 @@ public class FileProcessingService {
    * @return whether chunks were written and the document transitioned to {@code INDEXED}
    */
   private boolean processStoredFile(
-      UUID documentId, Path storedFile, boolean replacingExistingChunks) {
+      UUID documentId,
+      Path storedFile,
+      boolean replacingExistingChunks,
+      AttachmentAccess attachmentAccess) {
     Document doc = documentRepository.findById(documentId).orElse(null);
     if (doc == null) {
       log.warn(
@@ -762,11 +787,28 @@ public class FileProcessingService {
       DocumentPipelineRegistry.Routed routed =
           pipelineRegistry.routedPipelineFor(storedFile, doc.getFileName());
       DocumentPipeline pipeline = routed.pipeline();
+      Document storedDoc = doc;
       DocumentPipelineResult parsed =
           DocumentPipelineRunner.run(
               pipeline,
               DocumentPipelineSource.ofFile(
-                  storedFile, doc.getFileName(), routed.detectedExtension()));
+                  storedFile, doc.getFileName(), routed.detectedExtension()),
+              result -> {
+                if (attachmentAccess == null) {
+                  // No attachment path for this caller (see reindexStoredDocument's contract):
+                  // discovered attachments are discarded and the parent keeps its raw fileSize -
+                  // reducing it without indexing the attachments would under-count the quota.
+                  return;
+                }
+                // Before the attachments - see processFile's handler on the quota ordering.
+                applyContentByteSizeOverride(storedDoc, result);
+                processDiscoveredAttachments(
+                    result.discoveredAttachments(),
+                    storedDoc.getId(),
+                    storedDoc.getFilePath(),
+                    storedDoc.getSourceType(),
+                    attachmentAccess);
+              });
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
           log.warn(
@@ -1001,17 +1043,42 @@ public class FileProcessingService {
    * different parents never collide ({@code uk_documents_library_path} is scoped to {@code
    * (library_id, file_path)} only, not to the attachment's own name), and the positional index
    * disambiguates two identically-named attachments of the <em>same</em> parent (e.g. two {@code
-   * "anlage.pdf"} in different MIME parts of the same mail). {@code "!"} mirrors the JAR-URL
-   * convention for "a nested resource inside a file" (e.g. {@code jar:file:a.jar!/b.txt}) - a
-   * character vanishingly unlikely to appear in a real filesystem path, unambiguous once read back,
-   * and readable as-is in a citation. Recursion (Mail-in-Mail: an attachment that is itself a
+   * "anlage.pdf"} in different MIME parts of the same mail). The shape is {@code
+   * <parentFilePath>/<index>/<fileName>}: a plain {@code "/"} cannot collide with a real filesystem
+   * path, because {@code parentFilePath} names a <em>file</em> - no real filesystem can have
+   * further entries underneath a file, so every path of this shape is unreachable by any actual
+   * file a directory walk could discover. Recursion (Mail-in-Mail: an attachment that is itself a
    * parent with its own attachments, e.g. a forwarded {@code .eml}) is not a special case: that
    * inner message's own {@code file_path} (already of this same shape) becomes the {@code
    * parentFilePath} its own attachments are built from here, chaining naturally rather than needing
    * distinct handling per nesting level.
    */
   static String attachmentFilePath(String parentFilePath, int index, String fileName) {
-    return parentFilePath + "!" + index + "/" + fileName;
+    return parentFilePath + "/" + index + "/" + fileName;
+  }
+
+  /**
+   * The inverse of {@link #attachmentFilePath}: the 0-based extraction-order index encoded in
+   * {@code attachmentPath}, given the known {@code parentFilePath} it was built from, or {@code -1}
+   * when {@code attachmentPath} does not have that shape (a parent path that changed since, a
+   * malformed row). Used by {@code PipelineReindexService} to re-extract an attachment from its
+   * parent's source file.
+   */
+  public static int attachmentIndexIn(String parentFilePath, String attachmentPath) {
+    String prefix = parentFilePath + "/";
+    if (attachmentPath == null || !attachmentPath.startsWith(prefix)) {
+      return -1;
+    }
+    String remainder = attachmentPath.substring(prefix.length());
+    int slash = remainder.indexOf('/');
+    if (slash <= 0) {
+      return -1;
+    }
+    try {
+      return Integer.parseInt(remainder.substring(0, slash));
+    } catch (NumberFormatException e) {
+      return -1;
+    }
   }
 
   /**

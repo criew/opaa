@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.filesystem;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -30,6 +31,7 @@ import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.TestPipelineRegistries;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.VectorStoreWriter;
+import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -39,10 +41,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 
 /**
  * Unit-level coverage of {@link AsyncIndexingExecutor} (FILESYSTEM). Uses a real {@link
@@ -275,5 +279,118 @@ class AsyncIndexingExecutorTest {
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), anyInt());
     verify(indexingRunEventRepository, timeout(2000).times(0)).save(any());
+  }
+
+  @Test
+  void aRemovedAttachmentOfAReprocessedMailIsCleanedUpAsVanished() throws IOException {
+    // ADR-0022, Entscheidung 3: for a mail that was actually re-parsed this run, only the
+    // attachments the attachment path re-reported count as present - a bestand row of a since-
+    // removed attachment must NOT be folded into currentFilePaths just because its parent's file
+    // still exists, or it would never fall away.
+    Path mailFile = documentDir.resolve("mail.eml");
+    Files.writeString(mailFile, "mail content");
+    String mailPath = mailFile.toAbsolutePath().toString();
+    String keptPath = mailPath + "/0/behalten.pdf";
+    String removedPath = mailPath + "/1/entfernt.pdf";
+
+    Document mailDoc = filesystemDocument("mail.eml", mailPath, null);
+    Document keptDoc = filesystemDocument("behalten.pdf", keptPath, mailDoc.getId());
+    Document removedDoc = filesystemDocument("entfernt.pdf", removedPath, mailDoc.getId());
+    when(documentRepository.findByLibraryIdAndSourceType(
+            library.getId(), DocumentSourceType.FILESYSTEM))
+        .thenReturn(List.of(mailDoc, keptDoc, removedDoc));
+
+    when(fileProcessingService.processFile(eq(mailFile), eq(library), isNull(), any()))
+        .thenAnswer(
+            invocation -> {
+              AttachmentAccess access = invocation.getArgument(3);
+              access.recordIndexedAttachment(keptPath, true);
+              return FileProcessingResult.PROCESSED;
+            });
+
+    executor.execute(UUID.randomUUID(), library);
+
+    Set<String> currentFilePaths = capturedCurrentFilePaths();
+    assertThat(currentFilePaths).contains(mailPath, keptPath);
+    assertThat(currentFilePaths).doesNotContain(removedPath);
+  }
+
+  @Test
+  void attachmentsOfAChecksumSkippedMailArePreservedRecursivelyFromTheDatabase()
+      throws IOException {
+    // The Nachtragsfall of ADR-0022, Entscheidung 3: an unchanged (checksum-skipped) mail is
+    // never re-parsed, so its attachment rows - including a grandchild of a nested mail - must be
+    // folded in from the database, deterministically regardless of the rows' iteration order (the
+    // bestand list below deliberately lists the grandchild before its own parent).
+    Path mailFile = documentDir.resolve("unveraendert.eml");
+    Files.writeString(mailFile, "mail content");
+    String mailPath = mailFile.toAbsolutePath().toString();
+    String innerMailPath = mailPath + "/0/weitergeleitet.eml";
+    String grandchildPath = innerMailPath + "/0/anlage.pdf";
+
+    Document mailDoc = filesystemDocument("unveraendert.eml", mailPath, null);
+    Document innerMailDoc =
+        filesystemDocument("weitergeleitet.eml", innerMailPath, mailDoc.getId());
+    Document grandchildDoc = filesystemDocument("anlage.pdf", grandchildPath, innerMailDoc.getId());
+    when(documentRepository.findByLibraryIdAndSourceType(
+            library.getId(), DocumentSourceType.FILESYSTEM))
+        .thenReturn(List.of(grandchildDoc, mailDoc, innerMailDoc));
+
+    when(fileProcessingService.processFile(eq(mailFile), eq(library), isNull(), any()))
+        .thenReturn(FileProcessingResult.SKIPPED);
+
+    executor.execute(UUID.randomUUID(), library);
+
+    assertThat(capturedCurrentFilePaths()).contains(mailPath, innerMailPath, grandchildPath);
+  }
+
+  @Test
+  void aGrandchildOfAnUnchangedInnerMailSurvivesTheOuterMailsReprocessing() throws IOException {
+    // The mixed case: the outer mail was re-parsed (its direct attachment set is authoritative
+    // from the attachment path's own recording), but the inner, nested mail was merely confirmed
+    // unchanged by checksum - so ITS children were not rediscovered and must be preserved from the
+    // database, again independent of row order.
+    Path mailFile = documentDir.resolve("aussen.eml");
+    Files.writeString(mailFile, "mail content");
+    String mailPath = mailFile.toAbsolutePath().toString();
+    String innerMailPath = mailPath + "/0/weitergeleitet.eml";
+    String grandchildPath = innerMailPath + "/0/anlage.pdf";
+
+    Document mailDoc = filesystemDocument("aussen.eml", mailPath, null);
+    Document innerMailDoc =
+        filesystemDocument("weitergeleitet.eml", innerMailPath, mailDoc.getId());
+    Document grandchildDoc = filesystemDocument("anlage.pdf", grandchildPath, innerMailDoc.getId());
+    when(documentRepository.findByLibraryIdAndSourceType(
+            library.getId(), DocumentSourceType.FILESYSTEM))
+        .thenReturn(List.of(grandchildDoc, mailDoc, innerMailDoc));
+
+    when(fileProcessingService.processFile(eq(mailFile), eq(library), isNull(), any()))
+        .thenAnswer(
+            invocation -> {
+              AttachmentAccess access = invocation.getArgument(3);
+              // The inner mail was confirmed unchanged (SKIPPED), not re-parsed.
+              access.recordIndexedAttachment(innerMailPath, false);
+              return FileProcessingResult.PROCESSED;
+            });
+
+    executor.execute(UUID.randomUUID(), library);
+
+    assertThat(capturedCurrentFilePaths()).contains(mailPath, innerMailPath, grandchildPath);
+  }
+
+  private Document filesystemDocument(String fileName, String filePath, UUID parentDocumentId) {
+    Document document = new Document(fileName, filePath, "application/octet-stream", 1L);
+    document.setLibraryId(library.getId());
+    document.setParentDocumentId(parentDocumentId);
+    return document;
+  }
+
+  @SuppressWarnings("unchecked")
+  private Set<String> capturedCurrentFilePaths() {
+    ArgumentCaptor<Set<String>> pathsCaptor = ArgumentCaptor.forClass(Set.class);
+    verify(staleDocumentCleanupService, timeout(2000))
+        .cleanupVanished(
+            eq(library), eq(DocumentSourceType.FILESYSTEM), pathsCaptor.capture(), any());
+    return pathsCaptor.getValue();
   }
 }

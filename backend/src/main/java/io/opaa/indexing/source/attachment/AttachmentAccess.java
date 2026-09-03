@@ -29,4 +29,16 @@ public interface AttachmentAccess {
    * RssFeedIndexingExecutor#execute}).
    */
   void markDeferred();
+
+  /**
+   * Called once for every attachment {@link AttachmentIndexer} created or confirmed unchanged, at
+   * any nesting depth - the channel a caller that runs {@code
+   * StaleDocumentCleanupService#cleanupVanished} uses to fold the attachment's {@code file_path}
+   * into its {@code currentFilePaths} (ADR-0022, Entscheidung 3). {@code reprocessed} is {@code
+   * true} when the attachment's content was actually re-parsed this call (so its own child
+   * attachments were freshly enumerated too) and {@code false} for a checksum-confirmed, unchanged
+   * attachment (whose existing children were <em>not</em> rediscovered and must be preserved from
+   * the database instead). Default no-op for a caller that never cleans up by path (RSS).
+   */
+  default void recordIndexedAttachment(String filePath, boolean reprocessed) {}
 }

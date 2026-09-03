@@ -20,7 +20,9 @@ import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -173,7 +175,16 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       progress.setTotal(discovered.totalFound());
       progress.report();
 
-      var attachmentAccess = new FilesystemAttachmentAccess(targetLibrary, events, progress);
+      // What the attachment path created or confirmed this run, and which of those were actually
+      // re-parsed - feeds the vanished-cleanup bookkeeping below (ADR-0022, Entscheidung 3).
+      Set<String> indexedAttachmentPaths = new HashSet<>();
+      Set<String> reprocessedAttachmentPaths = new HashSet<>();
+      var attachmentAccess =
+          new FilesystemAttachmentAccess(
+              targetLibrary, events, progress, indexedAttachmentPaths, reprocessedAttachmentPaths);
+      // Files whose content was actually (re-)parsed this run - their attachment set was freshly
+      // enumerated, so only the attachment paths recorded above count for them.
+      Set<String> reprocessedFilePaths = new HashSet<>();
 
       // The set of folders this run actually materialized/touched - everything else under this
       // library once the loop below finishes is a candidate for pruneOrphanedFolders.
@@ -223,6 +234,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
           } else if (result == FileProcessingResult.SKIPPED) {
             progress.recordSkipped();
           } else {
+            reprocessedFilePaths.add(file.toAbsolutePath().toString());
             progress.recordProcessed();
             log.info("Indexing completed: {}", fileName);
           }
@@ -245,31 +257,21 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
             Stream.concat(files.stream(), discovered.rejected().stream())
                 .map(f -> f.toAbsolutePath().toString())
                 .collect(Collectors.toCollection(HashSet::new));
-        // ADR-0022, Entscheidung 3 ("the one real Falle"): a Mail attachment of a parent that
-        // still exists on disk this run (whether newly processed, unchanged-skipped, rejected or
-        // failed - every case that added its own path above) must be folded in here too, or
-        // cleanupVanished below would remove it despite parent and attachment both still present.
-        // No new query is needed for the "skipped, so never re-parsed" case that motivates this at
-        // all (ADR-0022) - every attachment of this library is already read once via
-        // findByLibraryIdAndSourceType, the same call staleDocumentCleanupService itself makes
-        // right after.
+        // ADR-0022, Entscheidung 3: an attachment counts as present this run either because the
+        // attachment path itself created/confirmed it while its parent was re-parsed
+        // (indexedAttachmentPaths), or - the Nachtragsfall - because its parent still exists but
+        // was NOT re-parsed this run (checksum-skipped, rejected, failed), so its existing
+        // attachment rows must be preserved from the database. An attachment of a re-parsed
+        // parent that was NOT re-reported is genuinely gone (removed from the mail) and is
+        // deliberately not folded in, so cleanupVanished below removes it.
+        currentFilePaths.addAll(indexedAttachmentPaths);
+        Set<String> reprocessedPaths = new HashSet<>(reprocessedFilePaths);
+        reprocessedPaths.addAll(reprocessedAttachmentPaths);
         List<Document> existingFilesystemDocuments =
             documentRepository.findByLibraryIdAndSourceType(
                 targetLibrary.getId(), DocumentSourceType.FILESYSTEM);
-        Map<UUID, String> filePathById = new HashMap<>();
-        for (Document candidate : existingFilesystemDocuments) {
-          filePathById.put(candidate.getId(), candidate.getFilePath());
-        }
-        for (Document candidate : existingFilesystemDocuments) {
-          UUID parentId = candidate.getParentDocumentId();
-          if (parentId == null) {
-            continue;
-          }
-          String parentPath = filePathById.get(parentId);
-          if (parentPath != null && currentFilePaths.contains(parentPath)) {
-            currentFilePaths.add(candidate.getFilePath());
-          }
-        }
+        foldInPreservedAttachmentPaths(
+            existingFilesystemDocuments, currentFilePaths, reprocessedPaths);
         staleDocumentCleanupService.cleanupVanished(
             targetLibrary, DocumentSourceType.FILESYSTEM, currentFilePaths, events);
       } catch (Exception e) {
@@ -298,6 +300,49 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       log.error("Indexing failed unexpectedly", e);
       events.finalizeRun();
       progress.fail(e.getMessage());
+    }
+  }
+
+  /**
+   * Folds into {@code currentFilePaths} the {@code file_path} of every existing attachment row
+   * whose parent is present this run ({@code currentFilePaths}) but was <em>not</em> re-parsed
+   * ({@code reprocessedPaths}) - the Nachtragsfall of ADR-0022, Entscheidung 3, applied
+   * breadth-first from the roots down so a grandchild of an unchanged (or merely
+   * checksum-confirmed) ancestor is preserved deterministically, regardless of row order. A child
+   * of a re-parsed parent is only present via the attachment path's own recording; one it did not
+   * re-report stays out and is cleaned up as vanished.
+   */
+  private static void foldInPreservedAttachmentPaths(
+      List<Document> existingDocuments,
+      Set<String> currentFilePaths,
+      Set<String> reprocessedPaths) {
+    Map<UUID, List<Document>> childrenByParentId = new HashMap<>();
+    List<Document> roots = new ArrayList<>();
+    for (Document candidate : existingDocuments) {
+      if (candidate.getParentDocumentId() == null) {
+        roots.add(candidate);
+      } else {
+        childrenByParentId
+            .computeIfAbsent(candidate.getParentDocumentId(), id -> new ArrayList<>())
+            .add(candidate);
+      }
+    }
+    Deque<Document> queue = new ArrayDeque<>(roots);
+    Set<UUID> visited = new HashSet<>();
+    while (!queue.isEmpty()) {
+      Document parent = queue.removeFirst();
+      if (!visited.add(parent.getId())) {
+        continue;
+      }
+      boolean preserveChildren =
+          currentFilePaths.contains(parent.getFilePath())
+              && !reprocessedPaths.contains(parent.getFilePath());
+      for (Document child : childrenByParentId.getOrDefault(parent.getId(), List.of())) {
+        if (preserveChildren) {
+          currentFilePaths.add(child.getFilePath());
+        }
+        queue.addLast(child);
+      }
     }
   }
 

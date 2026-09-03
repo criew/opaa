@@ -487,6 +487,7 @@ public class AttachmentIndexer {
       if (result == FileProcessingResult.PROCESSED) {
         access.progress().recordDocumentIndexed();
       }
+      access.recordIndexedAttachment(filePathIdentity, result == FileProcessingResult.PROCESSED);
       log.info("Indexed attachment: {} (from {})", filePathIdentity, parentPath);
       return Optional.of(filePathIdentity);
     } catch (IOException e) {
