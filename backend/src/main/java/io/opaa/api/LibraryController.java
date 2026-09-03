@@ -8,6 +8,7 @@ import io.opaa.api.dto.ConfluenceWebhookSecretResponse;
 import io.opaa.api.dto.IndexingRunEvent;
 import io.opaa.api.dto.IndexingRunEventCategory;
 import io.opaa.api.dto.IndexingRunListResponse;
+import io.opaa.api.dto.IndexingRunMetrics;
 import io.opaa.api.dto.IndexingRunResponse;
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.IndexingStatusResponse;
@@ -30,6 +31,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJob;
+import io.opaa.indexing.IndexingRunCost;
 import io.opaa.indexing.IndexingRunDetail;
 import io.opaa.indexing.IndexingStatusView;
 import io.opaa.indexing.JobStatus;
@@ -359,15 +361,14 @@ public class LibraryController {
         : base;
   }
 
-  private static io.opaa.api.dto.IndexingRunMetrics toIndexingRunMetrics(
-      io.opaa.indexing.IndexingRunMetrics metrics) {
+  private static IndexingRunMetrics toIndexingRunMetrics(IndexingRunCost metrics) {
     if (metrics == null) {
       return null;
     }
-    return new io.opaa.api.dto.IndexingRunMetrics(
+    return new IndexingRunMetrics(
         metrics.requestsSent(),
         metrics.throttleCount(),
-        metrics.throttleWaitMillis() / 1000,
+        Math.round(metrics.throttleWaitMillis() / 1000.0),
         metrics.attachmentsProcessed(),
         metrics.attachmentsSkipped(),
         metrics.attachmentsFailed());

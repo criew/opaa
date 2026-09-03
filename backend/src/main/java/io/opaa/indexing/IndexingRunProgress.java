@@ -71,6 +71,11 @@ public final class IndexingRunProgress {
     return failed;
   }
 
+  /** Source items this run processed so far - the executor's "did this run make progress" check. */
+  public int processedCount() {
+    return processed;
+  }
+
   public void recordSkipped() {
     skipped++;
   }
@@ -98,7 +103,7 @@ public final class IndexingRunProgress {
     }
   }
 
-  /** The attachment counters, for the executor's {@link IndexingRunMetrics}. */
+  /** The attachment counters, for the executor's {@link IndexingRunCost}. */
   public int attachmentsProcessed() {
     return attachmentsProcessed;
   }

@@ -36,6 +36,22 @@ public class ConfluenceClientFactory {
    *     itself is validated on every request the client sends)
    */
   public ConfluenceClient create(ConfluenceConnection connection) throws ConfluenceAccessException {
+    return create(connection, 0);
+  }
+
+  /**
+   * A client for one indexing run (#1141): bounded by {@link
+   * ConfluenceProperties#requestBudgetPerRun} so the run ends in an orderly way as incomplete once
+   * the budget is spent. The wizard's probes and the edition detection use {@link #create} - they
+   * have no run to continue in.
+   */
+  public ConfluenceClient createForRun(ConfluenceConnection connection)
+      throws ConfluenceAccessException {
+    return create(connection, properties.requestBudgetPerRun());
+  }
+
+  private ConfluenceClient create(ConfluenceConnection connection, int requestBudget)
+      throws ConfluenceAccessException {
     ConfluenceHttp.validateProxy(targetAddressValidator, connection.proxyHost());
     if (connection.credentials() == null) {
       throw new IllegalArgumentException("a ConfluenceClient needs credentials");
@@ -57,7 +73,9 @@ public class ConfluenceClientFactory {
             properties,
             targetAddressValidator,
             sleeper,
-            new ConfluenceRequestMeter());
+            new ConfluenceRequestMeter(),
+            null,
+            requestBudget);
     return switch (connection.edition()) {
       case CLOUD -> new CloudConfluenceClient(http);
       case DATA_CENTER -> new DataCenterConfluenceClient(http);

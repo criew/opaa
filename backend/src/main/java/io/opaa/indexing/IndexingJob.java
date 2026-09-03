@@ -268,11 +268,11 @@ public class IndexingJob {
   }
 
   /** The metrics the run recorded, or {@code null} when it recorded none (#1141). */
-  public IndexingRunMetrics getMetrics() {
+  public IndexingRunCost getMetrics() {
     if (requestsSent == null) {
       return null;
     }
-    return new IndexingRunMetrics(
+    return new IndexingRunCost(
         requestsSent,
         throttleCount == null ? 0 : throttleCount,
         throttleWaitMillis == null ? 0L : throttleWaitMillis,
@@ -282,7 +282,7 @@ public class IndexingJob {
         incomplete);
   }
 
-  public void applyMetrics(IndexingRunMetrics metrics) {
+  public void applyMetrics(IndexingRunCost metrics) {
     this.requestsSent = metrics.requestsSent();
     this.throttleCount = metrics.throttleCount();
     this.throttleWaitMillis = metrics.throttleWaitMillis();

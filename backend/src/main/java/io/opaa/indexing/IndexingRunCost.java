@@ -14,7 +14,7 @@ package io.opaa.indexing;
  * @param incomplete {@code true} when the run stopped in an orderly way before covering everything
  *     (the request budget ran out) and the next run continues where this one left off
  */
-public record IndexingRunMetrics(
+public record IndexingRunCost(
     int requestsSent,
     int throttleCount,
     long throttleWaitMillis,

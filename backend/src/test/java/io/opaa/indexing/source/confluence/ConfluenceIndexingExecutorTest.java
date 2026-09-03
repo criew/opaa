@@ -12,6 +12,7 @@ import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,9 +27,9 @@ import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJobService;
+import io.opaa.indexing.IndexingRunCost;
 import io.opaa.indexing.IndexingRunEvent;
 import io.opaa.indexing.IndexingRunEventRepository;
-import io.opaa.indexing.IndexingRunMetrics;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
@@ -1016,7 +1017,7 @@ class ConfluenceIndexingExecutorTest {
                     IndexingEventCategory.BUDGET_EXHAUSTED,
                     "Anfragebudget von 6 Anfragen erschöpft",
                     null)));
-    ArgumentCaptor<IndexingRunMetrics> metrics = ArgumentCaptor.forClass(IndexingRunMetrics.class);
+    ArgumentCaptor<IndexingRunCost> metrics = ArgumentCaptor.forClass(IndexingRunCost.class);
     verify(indexingJobService).recordRunMetrics(eq(jobId), metrics.capture());
     assertThat(metrics.getValue().incomplete()).isTrue();
     assertThat(metrics.getValue().requestsSent()).isEqualTo(6);
@@ -1090,9 +1091,9 @@ class ConfluenceIndexingExecutorTest {
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
-    ArgumentCaptor<IndexingRunMetrics> metrics = ArgumentCaptor.forClass(IndexingRunMetrics.class);
+    ArgumentCaptor<IndexingRunCost> metrics = ArgumentCaptor.forClass(IndexingRunCost.class);
     verify(indexingJobService).recordRunMetrics(eq(jobId), metrics.capture());
-    IndexingRunMetrics recorded = metrics.getValue();
+    IndexingRunCost recorded = metrics.getValue();
     assertThat(recorded.incomplete()).isFalse();
     assertThat(recorded.requestsSent()).isEqualTo(server.requests().size());
     assertThat(recorded.throttleCount()).isEqualTo(1);
@@ -1100,6 +1101,132 @@ class ConfluenceIndexingExecutorTest {
     assertThat(recorded.attachmentsProcessed()).isEqualTo(1);
     assertThat(recorded.attachmentsSkipped()).isZero();
     assertThat(recorded.attachmentsFailed()).isZero();
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aResumedFullSyncSpendsNothingOnPagesAlreadyStoredAndConverges(ConfluenceEdition edition)
+      throws Exception {
+    // #1141: the first run stores Handbuch (100) and Kapitel 1 (101) and runs out of budget; the
+    // second run, resumed with the same budget, must not spend a call on those two pages - not even
+    // for their attachment lists - and therefore reaches the rest and completes.
+    requestBudget = 7;
+    start(edition, null, "ENG");
+    List<Document> stored = new ArrayList<>();
+    when(fileProcessingService.processConfluencePage(any(), any(), any(), any(), any(), any()))
+        .thenAnswer(
+            inv -> {
+              Document doc =
+                  new Document(
+                      inv.getArgument(1),
+                      inv.getArgument(2),
+                      "text/html",
+                      10L,
+                      DocumentSourceType.CONFLUENCE);
+              doc.setStatus(DocumentStatus.INDEXED);
+              doc.setLastModifiedRemote(inv.getArgument(3));
+              doc.applySourceContext(inv.getArgument(4));
+              stored.add(doc);
+              return FileProcessingResult.PROCESSED;
+            });
+    when(documentRepository.findByLibraryIdAndFilePath(any(), anyString()))
+        .thenAnswer(
+            inv ->
+                stored.stream()
+                    .filter(d -> d.getFilePath().equals(inv.getArgument(1)))
+                    .findFirst());
+    ArgumentCaptor<ConfluenceSyncState> state = ArgumentCaptor.forClass(ConfluenceSyncState.class);
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(eventRepository)
+        .save(argThat(event(IndexingEventCategory.BUDGET_EXHAUSTED, "Anfragebudget", null)));
+    verify(eventRepository, never())
+        .save(argThat(event(IndexingEventCategory.ERROR, "reicht für diese Bibliothek", null)));
+    assertThat(stored).as("progress before the budget ran out").isNotEmpty();
+    int firstRunPages = stored.size();
+    verify(syncStateRepository, atLeast(1)).save(state.capture());
+    when(syncStateRepository.findByLibraryId(library.getId()))
+        .thenReturn(Optional.of(state.getValue()));
+    server.requests().clear();
+
+    UUID second = UUID.randomUUID();
+    executor.execute(second, library, IndexingRunMode.FULL);
+
+    for (Document done : stored.subList(0, firstRunPages)) {
+      String id = done.getFilePath().replaceAll(".*[=/](\\d+)$", "$1");
+      assertThat(server.requests())
+          .as("no call for an already stored page")
+          .noneMatch(r -> r.matches(".*/(content|pages)/" + id + "(/.*|\\?.*)?$"));
+    }
+    assertThat(stored).as("the remaining pages were taken in").hasSizeGreaterThan(firstRunPages);
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aBudgetTooSmallForAnyProgressIsReportedAsAnError(ConfluenceEdition edition)
+      throws Exception {
+    // verify (1) + listing ENG page 1 (2) + page 2 (3) - no page body fits
+    requestBudget = 3;
+    start(edition, null, "ENG");
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService, never()).failJob(any(), any());
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(IndexingEventCategory.ERROR, "reicht für diese Bibliothek nicht aus", null)));
+    verify(fileProcessingService, never())
+        .processConfluencePage(any(), any(), any(), any(), any(), any());
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aBudgetSpentOnTheChangeSearchEndsTheIncrementalRunOrderly(ConfluenceEdition edition)
+      throws Exception {
+    // the credential check takes the only call; the search itself is refused
+    requestBudget = 1;
+    start(edition, null, "ENG");
+    ConfluenceSyncState state = completedFullSync(NOW.minus(Duration.ofHours(2)));
+
+    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
+
+    verify(indexingJobService, never()).failJob(any(), any());
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.BUDGET_EXHAUSTED,
+                    "dasselbe Änderungsfenster erneut",
+                    null)));
+    ArgumentCaptor<IndexingRunCost> cost = ArgumentCaptor.forClass(IndexingRunCost.class);
+    verify(indexingJobService).recordRunMetrics(eq(jobId), cost.capture());
+    assertThat(cost.getValue().incomplete()).isTrue();
+    verify(syncStateRepository, never()).save(state);
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aWebhookRunLeavesTheRemainingPagesToTheNextRunWhenTheBudgetRunsOut(ConfluenceEdition edition)
+      throws Exception {
+    // the credential check and the first page fit, the first page's attachment list or the
+    // second page is refused - either way exactly one page is stored
+    requestBudget = 3;
+    start(edition, null, "ENG");
+
+    executor.refreshPages(jobId, library, Set.of("100", "101"));
+
+    verify(indexingJobService, never()).failJob(any(), any());
+    verify(fileProcessingService, times(1))
+        .processConfluencePage(any(), any(), any(), any(), any(), any());
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(IndexingEventCategory.BUDGET_EXHAUSTED, "übrigen gemeldeten Seiten", null)));
+    ArgumentCaptor<IndexingRunCost> cost = ArgumentCaptor.forClass(IndexingRunCost.class);
+    verify(indexingJobService).recordRunMetrics(eq(jobId), cost.capture());
+    assertThat(cost.getValue().incomplete()).isTrue();
   }
 
   private static ArgumentMatcher<IndexingRunEvent> event(

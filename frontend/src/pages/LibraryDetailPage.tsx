@@ -1864,9 +1864,28 @@ function runMetricsLabel(run: IndexingRunResponse): string | null {
       0,
       Math.round((new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime()) / 1000),
     )
-    parts.push(`Dauer ${Math.floor(seconds / 60)} min ${seconds % 60} s`)
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    parts.push(
+      hours > 0 ? `Dauer ${hours} h ${minutes} min` : `Dauer ${minutes} min ${seconds % 60} s`,
+    )
   }
   return parts.join(' · ')
+}
+
+function RunMetricsLine({ run }: { run: IndexingRunResponse }) {
+  const label = runMetricsLabel(run)
+  if (!label) return null
+  return (
+    <Typography
+      variant="body2"
+      color="text.secondary"
+      sx={{ mb: 1.5 }}
+      data-testid={`run-metrics-${run.id}`}
+    >
+      {label}
+    </Typography>
+  )
 }
 
 function runStatusLabel(status: IndexingRunResponse['status']): string {
@@ -1988,16 +2007,7 @@ function LibraryIndexingHistorySection({
                     {run.message}
                   </Typography>
                 )}
-                {runMetricsLabel(run) && (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mb: 1.5 }}
-                    data-testid={`run-metrics-${run.id}`}
-                  >
-                    {runMetricsLabel(run)}
-                  </Typography>
-                )}
+                <RunMetricsLine run={run} />
                 {run.events.length === 0 ? (
                   <Typography variant="body2" color="text.secondary">
                     Dieser Lauf hat keine übersprungenen, fehlgeschlagenen oder abweichend erkannten

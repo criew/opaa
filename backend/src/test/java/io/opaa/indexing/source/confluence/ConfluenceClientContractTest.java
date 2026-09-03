@@ -83,6 +83,18 @@ class ConfluenceClientContractTest {
     return factory(properties, validator).create(connection(deployment.edition(), credentials));
   }
 
+  /** A run's client (#1141): bounded by the properties' request budget. */
+  private ConfluenceClient runClient(Deployment deployment, int requestBudget) throws IOException {
+    server = new FakeConfluenceServer(deployment.edition(), deployment.contextPath());
+    seed(server);
+    ConfluenceCredentials credentials =
+        server.addToken(EMAIL, TOKEN, Set.of("ENG", "HR", "DOC", "OPS"));
+    ConfluenceProperties properties =
+        new ConfluenceProperties(0, null, null, 0, null, 0, 0, null, 0, null, null, requestBudget);
+    return factory(properties, TargetAddressValidator.disabled())
+        .createForRun(connection(deployment.edition(), credentials));
+  }
+
   private ConfluenceConnection connection(
       ConfluenceEdition edition, ConfluenceCredentials credentials) {
     return new ConfluenceConnection(
@@ -130,13 +142,9 @@ class ConfluenceClientContractTest {
   @MethodSource("deployments")
   void theRequestBudgetCountsEveryRequestAndEndsTheClientOrderly(Deployment deployment)
       throws Exception {
-    // #1141: the budget is the run's own bound - after three requests the next one is refused
-    // before it is sent, as BudgetExhausted rather than a failure of the instance.
-    ConfluenceClient client =
-        client(
-            deployment,
-            new ConfluenceProperties(2, null, null, 0, null, 0, 0, null, 0, null, null, 3),
-            TargetAddressValidator.disabled());
+    // #1141: the budget is the run's own bound - after three calls the next one is refused before
+    // it is sent, as BudgetExhausted rather than a failure of the instance.
+    ConfluenceClient client = runClient(deployment, 3);
 
     client.verifyCredentials();
     assertThat(client.meter().requests()).isEqualTo(1);
@@ -148,8 +156,45 @@ class ConfluenceClientContractTest {
             })
         .isInstanceOf(ConfluenceAccessException.BudgetExhausted.class)
         .hasMessageContaining("Anfragebudget von 3 Anfragen");
-    assertThat(client.meter().requests()).as("the refused request is not counted").isEqualTo(3);
+    assertThat(client.meter().requests()).as("the refused call is not counted").isEqualTo(3);
     assertThat(server.requests()).hasSize(3);
+  }
+
+  @ParameterizedTest
+  @MethodSource("deployments")
+  void anAttachmentDownloadCountsAgainstTheBudgetToo(Deployment deployment) throws Exception {
+    // learn what the credential check and the attachment listing cost on this edition, then give a
+    // run's client exactly that - the download is the first call over the line
+    ConfluenceClient probe = client(deployment);
+    probe.verifyCredentials();
+    List<ConfluenceAttachment> attachments = probe.listAttachments("102");
+    assertThat(attachments).isNotEmpty();
+    int callsBeforeDownload = probe.meter().requests();
+    server.close();
+
+    ConfluenceClient client = runClient(deployment, callsBeforeDownload);
+    client.verifyCredentials();
+    List<ConfluenceAttachment> again = client.listAttachments("102");
+
+    assertThatThrownBy(() -> client.downloadAttachment(again.get(0)))
+        .isInstanceOf(ConfluenceAccessException.BudgetExhausted.class);
+    assertThat(server.requests())
+        .as("nothing was sent for the download")
+        .hasSize(callsBeforeDownload);
+  }
+
+  @ParameterizedTest
+  @MethodSource("deployments")
+  void theWizardsClientIsNeverBoundedByTheRunBudget(Deployment deployment) throws Exception {
+    // the connection test and the edition detection have no run to continue in
+    ConfluenceClient client =
+        client(
+            deployment,
+            new ConfluenceProperties(2, null, null, 0, null, 0, 0, null, 0, null, null, 1),
+            TargetAddressValidator.disabled());
+    client.verifyCredentials();
+    assertThat(client.listSpaces()).isNotEmpty();
+    assertThat(client.meter().requests()).isGreaterThan(1);
   }
 
   @ParameterizedTest

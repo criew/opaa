@@ -188,7 +188,7 @@ public class IndexingJobService {
    * no-op once the job is no longer {@link JobStatus#RUNNING}, like {@link #updateProgress}.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void recordRunMetrics(UUID jobId, IndexingRunMetrics metrics) {
+  public void recordRunMetrics(UUID jobId, IndexingRunCost metrics) {
     var job =
         indexingJobRepository
             .findById(jobId)

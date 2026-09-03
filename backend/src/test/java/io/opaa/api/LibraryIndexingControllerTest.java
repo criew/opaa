@@ -24,6 +24,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJob;
+import io.opaa.indexing.IndexingRunCost;
 import io.opaa.indexing.IndexingRunDetail;
 import io.opaa.indexing.IndexingRunEvent;
 import io.opaa.indexing.IndexingStatusView;
@@ -108,6 +109,49 @@ class LibraryIndexingControllerTest {
         .andExpect(jsonPath("$.documentCount").value(0))
         .andExpect(jsonPath("$.totalDocuments").value(0))
         .andExpect(jsonPath("$.documentsSkipped").value(0));
+  }
+
+  @Test
+  void aRunListsItsIncompleteStateAndCostFiguresAndSaysSoInTheMessage() throws Exception {
+    // #1141: the flag, the figures (wait time rounded to seconds) and the sentence a reader sees.
+    UUID libraryId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    job.setDocumentsProcessed(400);
+    job.setDocumentsSkipped(20);
+    job.applyMetrics(new IndexingRunCost(1000, 3, 2700L, 30, 5, 1, true));
+    job.setStatus(JobStatus.COMPLETED);
+    when(indexingService.getRecentRuns(eq(libraryId), eq(caller)))
+        .thenReturn(List.of(new IndexingRunDetail(job, List.of())));
+
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/indexing/runs").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.runs[0].incomplete").value(true))
+        .andExpect(jsonPath("$.runs[0].metrics.requestsSent").value(1000))
+        .andExpect(jsonPath("$.runs[0].metrics.throttleCount").value(3))
+        .andExpect(jsonPath("$.runs[0].metrics.throttleWaitSeconds").value(3))
+        .andExpect(jsonPath("$.runs[0].metrics.attachmentsProcessed").value(30))
+        .andExpect(jsonPath("$.runs[0].metrics.attachmentsSkipped").value(5))
+        .andExpect(jsonPath("$.runs[0].metrics.attachmentsFailed").value(1))
+        .andExpect(
+            jsonPath("$.runs[0].message")
+                .value(
+                    "Indizierung abgeschlossen: 400 verarbeitet, 20 übersprungen, 0 fehlgeschlagen"
+                        + " — unvollständig (Anfragebudget erschöpft), der nächste Lauf setzt"
+                        + " fort"));
+
+    var plain = new IndexingJob(JobStatus.RUNNING);
+    plain.setStatus(JobStatus.COMPLETED);
+    when(indexingService.getRecentRuns(eq(libraryId), eq(caller)))
+        .thenReturn(List.of(new IndexingRunDetail(plain, List.of())));
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/indexing/runs").with(asTestUser()))
+        .andExpect(jsonPath("$.runs[0].incomplete").value(false))
+        .andExpect(jsonPath("$.runs[0].metrics").value(org.hamcrest.Matchers.nullValue()))
+        .andExpect(
+            jsonPath("$.runs[0].message")
+                .value(
+                    "Indizierung abgeschlossen: 0 verarbeitet, 0 übersprungen, 0 fehlgeschlagen"));
   }
 
   @Test

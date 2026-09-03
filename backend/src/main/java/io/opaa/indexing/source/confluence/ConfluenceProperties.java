@@ -41,8 +41,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param requestBudgetPerRun how many requests one run may send to its instance before it ends in
  *     an orderly way as "incomplete, continued by the next run" (#1141) - the bound that makes a
  *     run against a very large instance plannable, for Cloud (a points budget answered with 429)
- *     and Data Center (no built-in limit, the instance is simply kept busy) alike. Zero disables
- *     the budget; the default is the operational value documented in deployment.md
+ *     and Data Center (no built-in limit, the instance is simply kept busy) alike. Applied only to
+ *     a run's client ({@code ConfluenceClientFactory#createForRun}), never to the wizard's probes.
+ *     Zero disables the budget; the default is {@link #DEFAULT_REQUEST_BUDGET_PER_RUN}
  */
 @ConfigurationProperties(prefix = "opaa.indexing.confluence")
 public record ConfluenceProperties(
@@ -62,11 +63,14 @@ public record ConfluenceProperties(
   static final String DEFAULT_USER_AGENT = "OPAA-Indexer/1.0";
 
   /**
-   * Requests per run before the run ends as incomplete (#1141). Measured against a real Data Center
-   * in the container suite: a page costs about two requests (body, attachment list) plus its
-   * attachment downloads and a share of the listing; 50 000 requests therefore cover roughly 20 000
-   * pages per run, so a weekly full sync of a 100 000-page selection finishes within a working week
-   * of daily runs while a single run stays under an hour even at Cloud's pace.
+   * Calls per run before the run ends as incomplete (#1141). Measured against a real Data Center in
+   * the container suite (run 33772411512): a full sync of 4 readable pages with 2 attachments cost
+   * 13 calls - 1 credential check, 2 listings, 4 page bodies, 4 attachment lists, 2 downloads - so
+   * a page costs 2 calls plus its downloads plus one listing call per {@code pageSize} pages; an
+   * incremental run for one change cost 6. 50 000 calls therefore cover roughly 20 000 pages of new
+   * or changed content per run. A resumed full sync re-lists its unfinished spaces but spends no
+   * call on a page already stored at the listed version, so the chain of runs converges as long as
+   * the budget exceeds one space's listing plus a handful of pages.
    */
   public static final int DEFAULT_REQUEST_BUDGET_PER_RUN = 50_000;
 

@@ -287,21 +287,31 @@ inkrementeller Abgleich. Der Webhook ersetzt weder Zeitplan noch Vollabgleich: O
 nichts falsch, nur später. Bewusste Grenze: **kein Replay-Schutz** — eine mitgeschnittene, gültig
 signierte Nachricht (oder der Cloud-Header) lässt sich wieder einspielen und kostet dann je einen
 gezielten Lauf, gedeckelt durch die Ratenbegrenzung; für den Index ist das folgenlos, weil erst der
-Abruf entscheidet. **Betriebsgrenzen (#1141):** Jeder Lauf hat ein Anfragebudget
-(`OPAA_INDEXING_CONFLUENCE_REQUEST_BUDGET_PER_RUN`, Standard 50 000 Anfragen; Wiederholungen nach
-`429` zählen mit). Ist es erschöpft, endet der Lauf **geordnet als „unvollständig, wird
+Abruf entscheidet.
+
+**Betriebsgrenzen (#1141):** Jeder Lauf hat ein Anfragebudget
+(`OPAA_INDEXING_CONFLUENCE_REQUEST_BUDGET_PER_RUN`, Standard 50 000 Aufrufe; Wiederholungen nach
+`429` und Anhangs-Downloads zählen mit; es gilt nur für Läufe, nicht für Verbindungstest und
+Editionserkennung). Ist es erschöpft, endet der Lauf **geordnet als „unvollständig, wird
 fortgesetzt“** — im Laufprotokoll als eigenes Ereignis mit der Stelle, an der der nächste Lauf
 ansetzt, im Zustand und in der API als `incomplete`, nicht als Fehler. Der Vollabgleich hält seinen
-Fortschritt je Space fest (auch über einen Prozessneustart hinweg); ein angebrochener Space wird beim
-nächsten Lauf erneut aufgelistet, bereits gespeicherte Seiten kosten dabei nur einen
-Auflistungseintrag (Versionsvergleich vor dem Abruf), geholt wird nur, was noch fehlt. Der
-inkrementelle Abgleich lässt seinen Anker stehen und durchsucht dasselbe Fenster erneut; ein
-Webhook-Lauf überlässt die übrigen gemeldeten Seiten dem nächsten Lauf. Jeder Lauf trägt seine
-**Kennzahlen** (gesendete Anfragen, Drosselungen und Wartezeit, indizierte/übersprungene/
-fehlgeschlagene Anhänge, Dauer aus Start- und Endzeit) in der Laufübersicht; zusammen mit den
-Dokumentzählern liest der Betrieb daran Durchsatz und Budgetverbrauch ab. Der Standardwert ist aus
-einer Messung gegen ein echtes Confluence Data Center begründet (Container-Suite, Zahlen im PR zu
-#1141): etwa zwei Anfragen je Seite plus Anhänge und Auflistung, also rund 20 000 Seiten je Lauf. **Die Aufbereitung (#1137)** übernimmt
+Fortschritt je Space fest (auch über einen Prozessneustart hinweg); ein Wiederaufnahmelauf listet die
+offenen Spaces erneut auf, gibt aber für eine bereits in der aufgelisteten Version gespeicherte Seite
+**keinen Aufruf** aus — auch nicht für ihre Anhangsliste; neue Anhänge an solchen Seiten erreichen
+den Index mit dem nächsten vollständigen Vollabgleich. So konvergiert die Kette der
+Wiederaufnahmeläufe, solange das Budget die Auflistung eines Spaces plus eine Handvoll Seiten
+übersteigt; ein Lauf, der trotz erschöpftem Budget keine Seite neu aufgenommen hat, meldet das als
+Fehler („reicht für diese Bibliothek nicht aus“). Der inkrementelle Abgleich lässt seinen Anker
+stehen und durchsucht dasselbe Fenster erneut; ein Webhook-Lauf überlässt die übrigen gemeldeten
+Seiten dem nächsten Lauf. Jeder Lauf trägt seine **Kennzahlen** (gesendete Aufrufe, Drosselungen und
+Wartezeit, indizierte/übersprungene/fehlgeschlagene Anhänge, Dauer aus Start- und Endzeit) in der
+Laufübersicht; zusammen mit den Dokumentzählern liest der Betrieb daran Durchsatz und
+Budgetverbrauch ab. Der Standardwert ist gemessen (Container-Suite gegen ein echtes Confluence Data
+Center, Zahlen in PR #1205): zwei Aufrufe je Seite plus ein Download je Anhang plus ein
+Auflistungsaufruf je 100 Seiten — 50 000 Aufrufe decken rund 20 000 neue oder geänderte Seiten je
+Lauf.
+
+**Die Aufbereitung (#1137)** übernimmt
 `ConfluenceDocumentPipeline`: Makro-Regelwerk (statischer Inhalt bleibt, zur Laufzeit erzeugter
 entfällt), Überschriften, Tabellen, Listen, Code und Hinweiskästen als lesbarer Text, der
 Gliederungspfad der Seite am Dokument und im Chunk-Kontext — Einzelheiten in

@@ -10,9 +10,9 @@ import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJobService;
+import io.opaa.indexing.IndexingRunCost;
 import io.opaa.indexing.IndexingRunEventRecorder;
 import io.opaa.indexing.IndexingRunEventRepository;
-import io.opaa.indexing.IndexingRunMetrics;
 import io.opaa.indexing.IndexingRunProgress;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.StaleDocumentCleanupService;
@@ -179,7 +179,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     Run run = null;
     String failure = null;
     try {
-      client = clientFactory.create(connection);
+      client = clientFactory.createForRun(connection);
       // ADR-0023, Entscheidung 2: before the first listing, never after - see the class Javadoc.
       client.verifyCredentials();
       run = new Run(jobId, client, targetLibrary, progress, events);
@@ -225,7 +225,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       boolean incomplete = failure == null && run != null && run.incomplete;
       indexingJobService.recordRunMetrics(
           jobId,
-          new IndexingRunMetrics(
+          new IndexingRunCost(
               meter.requests(),
               meter.throttles(),
               meter.throttledTime().toMillis(),
@@ -265,6 +265,16 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
             + " Anfragen erschöpft; der Lauf endet unvollständig, "
             + continuation,
         null);
+    if (run.progress.processedCount() == 0 && run.progress.attachmentsProcessed() == 0) {
+      // a run that stored nothing new will not do better next time - the chain has stalled
+      run.events.record(
+          IndexingEventCategory.ERROR,
+          "Das Anfragebudget von "
+              + e.budget()
+              + " Anfragen reicht für diese Bibliothek nicht aus: Der Lauf hat keine Seite neu"
+              + " aufgenommen. Budget anheben oder die Space-Auswahl aufteilen.",
+          null);
+    }
   }
 
   /** Everything one run shares across its spaces, pages and attachments. */
@@ -287,6 +297,13 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
      * run with the same window.
      */
     boolean incomplete;
+
+    /**
+     * True when this full sync continues an interrupted one (#1141): a page already stored at the
+     * listed version then costs no call at all - its attachments were listed by the run that stored
+     * it, and a chain of resumed runs must converge, not re-spend its budget on the done part.
+     */
+    boolean resumed;
 
     int total;
 
@@ -312,6 +329,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
             .findByLibraryId(libraryId)
             .orElseGet(() -> new ConfluenceSyncState(libraryId));
     List<ConfluenceSpaceSelection> spaces = orderForResumption(run.library, state);
+    run.resumed = state.isFullSyncInterrupted();
     state.beginFullSync(run.jobId);
     state = syncStateRepository.save(state);
 
@@ -348,8 +366,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
               e,
               "der nächste Lauf setzt bei Space "
                   + key
-                  + " fort (Auflistung ohne Abruf"
-                  + " bereits gespeicherter Seiten)");
+                  + " fort; bereits gespeicherte Seiten kosten dabei keinen Abruf");
           return;
         }
         run.progress.report();
@@ -412,7 +429,13 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       selectedKeys.add(space.getSpaceKey());
     }
     Instant since = state.getIncrementalAnchor().minus(properties.incrementalOverlap());
-    List<ConfluencePageSummary> changed = run.client.searchPagesModifiedSince(selectedKeys, since);
+    List<ConfluencePageSummary> changed;
+    try {
+      changed = run.client.searchPagesModifiedSince(selectedKeys, since);
+    } catch (ConfluenceAccessException.BudgetExhausted e) {
+      recordBudgetExhausted(run, e, "der nächste Lauf durchsucht dasselbe Änderungsfenster erneut");
+      return;
+    }
     run.total = changed.size();
     run.progress.setTotal(run.total);
     run.progress.report();
@@ -551,7 +574,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     Run run = null;
     String failure = null;
     try {
-      client = clientFactory.create(connection);
+      client = clientFactory.createForRun(connection);
       client.verifyCredentials();
       run = new Run(jobId, client, targetLibrary, progress, events);
       progress.setTotal(pageIds.size());
@@ -702,8 +725,14 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     String version = String.valueOf(summary.version());
     if (isUnchanged(existing, version)) {
       // ADR-0017, Entscheidung 2: the version is checked before any body is fetched. Attachments
-      // do not bump a page's version, so they are listed regardless.
+      // do not bump a page's version, so they are listed regardless - except in a resumed full
+      // sync (#1141), where the done part must cost nothing: new attachments of a page unchanged
+      // since the interrupted run reach the index with the next complete full sync.
       run.progress.recordSkipped();
+      if (run.resumed) {
+        keepKnownAttachments(run, pagePath);
+        return;
+      }
       SourceDocumentContext context =
           new SourceDocumentContext(spaceKey, existing.get().getSourceHierarchyPath());
       indexAttachments(run, summary.id(), pagePath, context.descend(summary.title()));
