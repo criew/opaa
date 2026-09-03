@@ -217,6 +217,22 @@ wo Chunk-Metadaten liegen: in `vector_store.metadata`. Diese Tabelle legt Spring
 nicht Liquibase — eine Spalte wäre dort gar nicht verfügbar, und eine zweite Tabelle wäre eine dritte
 Zeile je Chunk für einen Wert, der definitorisch zum Chunk gehört.
 
+**Zweiter Rückgabekanal: entdeckte Anhänge (ADR-0022, Teil 2, #1181).** `DocumentPipelineResult`
+trägt neben `chunks` eine Liste `discoveredAttachments` (Elementtyp `DiscoveredAttachment`:
+Dateiname, temporäre Datei, erkannter Medientyp) — eine Pipeline kann damit melden, dass sie beim
+Parsen eingebettete Objekte gefunden hat, ohne sie selbst zu verarbeiten. Default ist die leere
+Liste; kein bestehender Aufrufer ändert sein Verhalten. Die `CHUNKED`-Regel gilt unverändert für
+diesen Kanal mit: `chunks` bleibt leer für jeden Outcome außer `CHUNKED`, und `CHUNKED` ohne eigene
+Chunks bleibt unzulässig, auch wenn `discoveredAttachments` nicht leer ist — eine Pipeline, die nur
+Anhänge findet und selbst nichts liefert, ist ein Fall für den verallgemeinerten Anhangsweg (Teil 3,
+#1182), nicht für diesen Vertrag. Die Verantwortung für die temporäre Datei eines gemeldeten Anhangs
+geht mit der Rückgabe auf den Aufrufer über; solange kein Anhangsweg sie übernimmt, löscht
+`DocumentPipelineRunner#run` — der gemeinsame Aufruf-Wrapper um `DocumentPipeline#run`, den
+`FileProcessingService` für ein Dokument als Ganzes und `MailDocumentPipeline#processAttachment` für
+einen rekursiv verarbeiteten Anhang gleichermaßen nutzen — sie in einem `finally`, unabhängig vom
+erreichten Outcome oder einer währenddessen geworfenen Exception. Aktiv genutzt wird der Kanal erst
+mit der Umstellung von `MailDocumentPipeline` in Teil 4 (#1183).
+
 ### Parsing-Strategie: hybrid, nicht ein Werkzeug für alles
 
 Für die Frage „womit parsen" gibt es keine einheitliche Antwort, und der Versuch, eine zu erzwingen,

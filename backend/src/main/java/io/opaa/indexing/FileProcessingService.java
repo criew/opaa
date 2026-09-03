@@ -6,6 +6,7 @@ import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
+import io.opaa.indexing.pipeline.DocumentPipelineRunner;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -176,7 +177,8 @@ public class FileProcessingService {
       DocumentPipelineRegistry.Routed routed = pipelineRegistry.routedPipelineFor(file, fileName);
       DocumentPipeline pipeline = routed.pipeline();
       DocumentPipelineResult parsed =
-          pipeline.run(DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()));
+          DocumentPipelineRunner.run(
+              pipeline, DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()));
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
           log.warn("No usable text extracted from {} by pipeline {}", file, pipeline.id());
@@ -309,7 +311,8 @@ public class FileProcessingService {
           pipelineRegistry.routedPipelineFor(localFile, fileName);
       DocumentPipeline pipeline = routed.pipeline();
       DocumentPipelineResult parsed =
-          pipeline.run(
+          DocumentPipelineRunner.run(
+              pipeline,
               DocumentPipelineSource.ofFile(localFile, fileName, routed.detectedExtension()));
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
@@ -433,7 +436,8 @@ public class FileProcessingService {
       // already extracted text and goes to the fallback pipeline directly (ADR-0017, decision 2).
       DocumentPipeline pipeline = pipelineRegistry.fallbackPipeline();
       DocumentPipelineResult parsed =
-          pipeline.run(DocumentPipelineSource.ofExtractedText(mainText, fileName));
+          DocumentPipelineRunner.run(
+              pipeline, DocumentPipelineSource.ofExtractedText(mainText, fileName));
       switch (parsed.outcome()) {
         // Before #1056 this path ignored the outcome entirely and left an entry whose text
         // chunked down to nothing as INDEXED with zero chunks - the same silent empty index the
@@ -559,7 +563,8 @@ public class FileProcessingService {
           pipelineRegistry.routedPipelineFor(storedFile, doc.getFileName());
       DocumentPipeline pipeline = routed.pipeline();
       DocumentPipelineResult parsed =
-          pipeline.run(
+          DocumentPipelineRunner.run(
+              pipeline,
               DocumentPipelineSource.ofFile(
                   storedFile, doc.getFileName(), routed.detectedExtension()));
       switch (parsed.outcome()) {

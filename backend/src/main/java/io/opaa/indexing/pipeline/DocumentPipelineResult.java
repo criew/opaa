@@ -14,8 +14,16 @@ import org.springframework.ai.document.Document;
  * the PDF pipeline says so, not because the caller knows about PDFs.
  *
  * @param chunks never {@code null}; empty for every outcome other than {@link Outcome#CHUNKED}
+ * @param discoveredAttachments embedded objects (e.g. mail/archive attachments) this pipeline found
+ *     while parsing but did not itself turn into chunks (ADR-0022, part 2) - never {@code null},
+ *     empty by default. Reporting one here does not exempt {@code chunks} from the {@link
+ *     Outcome#CHUNKED} rule above: a pipeline that finds only attachments and produces no chunks of
+ *     its own reports {@link #noExtractableText()} (or {@link #noContent()}), never {@code CHUNKED}
+ *     with an empty chunk list - that combination is reserved for the generalized attachment path
+ *     (ADR-0022, part 4), not this contract.
  */
-public record DocumentPipelineResult(Outcome outcome, List<Document> chunks) {
+public record DocumentPipelineResult(
+    Outcome outcome, List<Document> chunks, List<DiscoveredAttachment> discoveredAttachments) {
 
   public enum Outcome {
     /** At least one chunk was produced. */
@@ -45,17 +53,29 @@ public record DocumentPipelineResult(Outcome outcome, List<Document> chunks) {
 
   public DocumentPipelineResult {
     chunks = chunks == null ? List.of() : List.copyOf(chunks);
+    discoveredAttachments =
+        discoveredAttachments == null ? List.of() : List.copyOf(discoveredAttachments);
   }
 
   public static DocumentPipelineResult chunked(List<Document> chunks) {
-    return new DocumentPipelineResult(Outcome.CHUNKED, chunks);
+    return new DocumentPipelineResult(Outcome.CHUNKED, chunks, List.of());
+  }
+
+  /**
+   * Like {@link #chunked(List)}, plus embedded objects this pipeline found but did not itself
+   * process (ADR-0022, part 2) - {@code chunks} must still be non-empty, see this record's own
+   * Javadoc.
+   */
+  public static DocumentPipelineResult chunked(
+      List<Document> chunks, List<DiscoveredAttachment> discoveredAttachments) {
+    return new DocumentPipelineResult(Outcome.CHUNKED, chunks, discoveredAttachments);
   }
 
   public static DocumentPipelineResult noContent() {
-    return new DocumentPipelineResult(Outcome.NO_CONTENT, List.of());
+    return new DocumentPipelineResult(Outcome.NO_CONTENT, List.of(), List.of());
   }
 
   public static DocumentPipelineResult noExtractableText() {
-    return new DocumentPipelineResult(Outcome.NO_EXTRACTABLE_TEXT, List.of());
+    return new DocumentPipelineResult(Outcome.NO_EXTRACTABLE_TEXT, List.of(), List.of());
   }
 }

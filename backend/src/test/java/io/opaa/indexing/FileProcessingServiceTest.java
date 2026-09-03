@@ -17,6 +17,7 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
+import io.opaa.indexing.pipeline.DiscoveredAttachment;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
@@ -2034,5 +2035,75 @@ class FileProcessingServiceTest {
     verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
     Document newDoc = docCaptor.getAllValues().getFirst();
     assertThat(newDoc.getLibraryId()).isEqualTo(targetLibrary.getId());
+  }
+
+  /**
+   * A stand-in pipeline reporting a {@link DiscoveredAttachment} - #1181 (ADR-0022, part 2): no
+   * real pipeline reports one yet, so this is the only way to exercise the wiring between {@code
+   * FileProcessingService} and {@code DocumentPipelineRunner}. The cleanup contract itself (outcome
+   * branch, exception branch, a failing delete never turning success into failure) is covered once,
+   * generically, in {@code DocumentPipelineRunnerTest}.
+   */
+  private record FakeDiscoveringPipeline(
+      List<org.springframework.ai.document.Document> chunksToReturn,
+      List<DiscoveredAttachment> discoveredAttachments)
+      implements DocumentPipeline {
+
+    @Override
+    public String id() {
+      return "fake-discovering";
+    }
+
+    @Override
+    public short version() {
+      return 1;
+    }
+
+    @Override
+    public Set<String> handledFormats() {
+      return Set.of();
+    }
+
+    @Override
+    public DocumentPipelineResult run(DocumentPipelineSource source) {
+      return DocumentPipelineResult.chunked(chunksToReturn, discoveredAttachments);
+    }
+  }
+
+  @Test
+  void aDiscoveredAttachmentsTempFileIsDeletedAfterProcessing() throws IOException {
+    // #1181 (ADR-0022, part 2): FileProcessingService routes DocumentPipeline#run through
+    // DocumentPipelineRunner, which owns deleting a reported attachment's temp file - there is no
+    // attachment path yet to take that ownership instead (ADR-0022, part 3, #1182).
+    Path attachmentTempFile = tempDir.resolve("discovered-attachment.tmp");
+    Files.writeString(attachmentTempFile, "attachment bytes");
+    var attachment = new DiscoveredAttachment("anlage.pdf", attachmentTempFile, "application/pdf");
+    var chunks = List.of(new org.springframework.ai.document.Document("chunk1"));
+    var fakePipeline = new FakeDiscoveringPipeline(chunks, List.of(attachment));
+    var registry = new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline);
+    FileProcessingService serviceWithFakePipeline =
+        new FileProcessingService(
+            registry,
+            documentRepository,
+            vectorChunkStore,
+            checksumService,
+            new IndexingMetrics(meterRegistry),
+            storageQuotaService,
+            defaultIndexingProperties(),
+            Runnable::run);
+
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
+    when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    serviceWithFakePipeline.processRssEntry(
+        "entry main text",
+        "Titel",
+        "https://example.gov/entry",
+        "2025-06-15T10:30:00Z",
+        targetLibrary);
+
+    assertThat(Files.exists(attachmentTempFile)).isFalse();
   }
 }

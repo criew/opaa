@@ -47,6 +47,12 @@ public interface DocumentPipeline {
    * Parses and splits {@code source} into chunks. Never throws for a parse failure of {@code
    * source} itself - reports it as {@link DocumentPipelineResult.Outcome#NO_CONTENT} instead (see
    * that outcome's own Javadoc for the exact contract a new implementation must follow).
+   *
+   * <p>A pipeline that finds embedded objects while parsing (e.g. mail attachments) without itself
+   * turning them into chunks reports them via {@link
+   * DocumentPipelineResult#discoveredAttachments()} (ADR-0022, part 2) rather than processing them
+   * inline. Every caller of this method goes through {@link DocumentPipelineRunner#run}, which owns
+   * deleting any temporary file such an attachment carries.
    */
   DocumentPipelineResult run(DocumentPipelineSource source);
 
