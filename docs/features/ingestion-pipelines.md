@@ -436,6 +436,21 @@ Referenzvarianten-Selbstprüfung des Benchmarks (siehe
 bitgleiche Zahlen zur committeten Baseline. Bleibt sie grün, ist der Nachweis geführt; schlägt sie
 fehl, war die Änderung entgegen der Annahme betroffen — und dann gilt der volle Dreischritt.
 
+**Seit Issue #1144 gilt eine zusätzliche, von "betroffen" unabhängige Auflage:**
+`ingestionPipelineFingerprint` (ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt) ist ein
+Sammelabdruck über die Versionen aller registrierten Pipelines, nicht nur der vom Korpus
+genutzten. Ein Versions-Bump — auch an einer Pipeline, deren Format "Baseline unberührt" gilt
+— verschiebt diesen Abdruck und macht damit alle sechs committeten Baselines ungültig,
+unabhängig davon, ob ein einziger Chunk des Korpus sich ändert. Die Folge: **Jedes
+Format-/Pipeline-Issue, das `version()` irgendeiner registrierten Pipeline erhöht, zieht
+`ingestionPipelineFingerprint` in allen sechs Baseline-Dateien im selben PR nach** — bei
+einem im Korpus nicht vorkommenden Format als reine Fixpunkt-Ergänzung ohne neuen Messlauf
+(genau das Verfahren, das PR #1196 vorführt), sonst als Teil des ohnehin fälligen
+Vorher-Nachher-Laufs aus Schritt 2 oben. `PipelinePathIsolationTest`
+(`committedIngestionPipelineFingerprintsMatchTheRealRegistry`) prüft das Docker-frei in
+`check` — ein vergessenes Nachziehen fällt dort auf, nicht erst nach ~70 Minuten im
+nächtlichen `evaluateRetrieval`-Lauf.
+
 ---
 
 ## Teil 3 — Formatzulassung: was dazukommt und in welcher Reihenfolge
@@ -533,7 +548,10 @@ Tika-Fallback-Pipeline: „ODS wie XLSX" gilt seitdem auch für den Reader, übe
 POI-unabhängigen ODF-XML-Leser (POI selbst versteht kein ODF) — siehe die Begründung unter
 [Punkt 3](#3-xlsx-und-csv).
 
-Baseline unberührt — kein Korpusdokument dieses Typs.
+Baseline unberührt — kein Korpusdokument dieses Typs. (Diese Feststellung galt zum Zeitpunkt
+von #1058, vor `ingestionPipelineFingerprint`; die seit #1144 zusätzliche Auflage — den
+Abdruck bei jedem `TabularDocumentPipeline`-Versions-Bump nachzuziehen — steht oben im
+Abschnitt "Baseline-Aktualisierung als Schritt jedes Format-Issues".)
 
 #### Umgesetzt (#1110, styles.xml seit #1145)
 
@@ -1250,6 +1268,31 @@ ein Chunk, dessen Inhalt dauerhaft auf die Fallback-Pipeline zurückfällt, trä
 Derselbe exakte Vergleich verhindert außerdem, dass ein einmal so umgeschriebenes Dokument bei jedem
 weiteren Nachzieh-Aufruf erneut geparst und eingebettet wird, obwohl sein Inhalt weiterhin auf den
 Fallback zurückfällt.
+
+**Für einen Chunk mit Schlüssel gilt die Verengung auf die Fallback-Pipeline nicht mehr (#1167).**
+Die Endungsnäherung oben bleibt bewusst auf „heraus aus der Fallback-Pipeline" beschränkt, weil sie
+nur rät — ein weiteres Kriterium in die Gegenrichtung würde nie konvergieren. Der exakte Schlüssel
+rät nicht: `pipelineIdForRoutingExtension` bildet jede Endung eindeutig auf höchstens eine Pipeline
+ab, also konvergiert ein Vergleich `pipelineIdForRoutingExtension(routing_extension) <>
+gespeicherte pipeline_id` unabhängig davon, welche Pipeline gerade gespeichert ist — ein
+Nachzieh-Lauf schreibt den Schlüssel frisch aus neu erkanntem Inhalt, trifft also beim nächsten
+Aufruf garantiert wieder zu. Damit ist auch die Richtung „heraus aus einer bereits spezialisierten
+Pipeline in eine andere" erreichbar: Ein Chunk, dessen `pipeline_id` eine seither umbenannte oder
+neu registrierte Pipeline nennt, deren beanspruchte Endung aber weiterhin von genau einer Pipeline
+geführt wird, wird vom Nachzieh-Aufruf gegen diese Pipeline erfasst (`misroutedPredicateFor`s
+exakter Zweig). Nennt der Schlüssel dagegen eine Endung, die **keine** registrierte Pipeline mehr
+beansprucht (die zuständige Pipeline wurde deinstalliert, nicht nur umbenannt), ist das Ziel die
+Fallback-Pipeline selbst — dafür gibt es einen eigenen, ebenfalls exakten Zweig
+(`misroutedPredicateForFallback`), der nicht rät, welche Endungen unbeansprucht sind, sondern sie
+gegen die Vereinigung aller heute beanspruchten Formate prüft. `progressForOrganization` zählt
+beide Fälle direkt als nachzuziehen, ohne `currentVersions` nach der gespeicherten `pipeline_id` zu
+fragen, statt sie (wie zuvor) unsichtbar nur im Gesamtwert mitzuzählen und die Bibliothek fälschlich
+als vollständig zu melden. Für einen Chunk **ohne** Schlüssel (Altbestand vor #1126) bleibt die
+Fallback+Endungsnäherung unverändert der einzige Weg - ihre Konvergenzgarantie beruht weiterhin auf
+der Beschränkung auf die Fallback-Pipeline, und ein solcher Chunk, dessen `pipeline_id` eine
+deinstallierte Pipeline nennt, bleibt entsprechend weiterhin unsichtbar (nur im Gesamtwert gezählt)
+- diese Altbestandsgrenze schließt erst ein vollständiger Durchlauf mit erneuter Inhaltserkennung,
+siehe den nächsten Absatz.
 
 **Kein Nachtrag für den Altbestand in #1126 selbst.** Der Schlüssel wird ab #1126 vorwärts
 geschrieben; ein nachträgliches Setzen für vorhandene Chunks erfordert erneutes Erkennen des

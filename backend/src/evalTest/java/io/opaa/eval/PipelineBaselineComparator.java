@@ -249,6 +249,14 @@ public final class PipelineBaselineComparator {
         "goldenCaseCount",
         String.valueOf(fp.goldenCaseCount()),
         String.valueOf(cfg.goldenCaseCount()));
+    // Issue #1144: a pipeline change (routing, or a version bump on a pipeline the corpus uses)
+    // moves the produced chunks without moving corpusManifestSha256 (which describes the input
+    // files, not what processed them) — see IngestionPipelineFingerprint's Javadoc.
+    addIfDiffers(
+        mismatches,
+        "ingestionPipelineFingerprint",
+        fp.ingestionPipelineFingerprint(),
+        cfg.ingestionPipelineFingerprint());
     return List.copyOf(mismatches);
   }
 

@@ -125,7 +125,8 @@ class BaselineTest {
           "corpusDocumentCount": 1448,
           "goldenDatasetFile": "eval/golden/comic-characters.json",
           "goldenDatasetSha256": "ghi",
-          "goldenCaseCount": 2
+          "goldenCaseCount": 2,
+          "ingestionPipelineFingerprint": "markdown:1"
         },
         "groups": {
           "overall": {
@@ -165,7 +166,8 @@ class BaselineTest {
           "corpusDocumentCount": 1448,
           "goldenDatasetFile": "eval/golden/comic-characters.json",
           "goldenDatasetSha256": "ghi",
-          "goldenCaseCount": 121
+          "goldenCaseCount": 121,
+          "ingestionPipelineFingerprint": "markdown:1"
         },
         "groups": {
           "overall": {

@@ -863,6 +863,10 @@ class VerwaltungRetrievalEvaluationHarnessTest {
                 + "docs/features/retrieval-benchmark.md, Abschnitt 4, \"Ehrliche Einschränkung: "
                 + "Benchmark-Overfitting\".");
 
+    // Issue #1144: the pipeline registry FileProcessingService actually routed through while
+    // indexing this corpus, not a second, potentially drifting re-derivation.
+    String ingestionPipelineFingerprint = IngestionPipelineFingerprint.of(pipelineRegistry);
+
     RunConfiguration runConfiguration =
         new RunConfiguration(
             "ollama",
@@ -886,6 +890,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             "eval/golden/" + DOMAIN.goldenDatasetFileName(),
             GoldenDataset.sha256(goldenFile),
             goldenCases.size(),
+            ingestionPipelineFingerprint,
             runStart.toString(),
             Duration.between(runStart, Instant.now()).toMillis() / 1000.0,
             EvalOllamaEndpoint.isExternal());
@@ -942,7 +947,8 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             "eval/golden/" + DOMAIN.goldenDatasetFileName(),
             GoldenDataset.sha256(goldenFile),
             // Issue #1049: whether the lexical path could contribute at all in this run.
-            fullTextBackfillProgressService.progressForLibrary(evalLibraryId).isComplete()),
+            fullTextBackfillProgressService.progressForLibrary(evalLibraryId).isComplete(),
+            ingestionPipelineFingerprint),
         queryService,
         queryProperties,
         pipelineProperties,
@@ -973,7 +979,8 @@ class VerwaltungRetrievalEvaluationHarnessTest {
               manifest.fileNames().size(),
               "eval/golden/" + DOMAIN.goldenDatasetFileName(),
               GoldenDataset.sha256(goldenFile),
-              fullTextBackfillProgressService.progressForLibrary(evalLibraryId).isComplete()),
+              fullTextBackfillProgressService.progressForLibrary(evalLibraryId).isComplete(),
+              ingestionPipelineFingerprint),
           queryService,
           queryProperties,
           indexingProperties,

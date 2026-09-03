@@ -250,11 +250,14 @@ class PipelineReindexServiceIntegrationTest {
   @Test
   void aChunkAlreadyNamingASpecializedPipelineIsNotPulledBackByAnUnrelatedPipelineReindex()
       throws IOException {
-    // Regression guard for the #1125 review: the misrouted branch only targets chunks still
-    // naming the fallback pipeline (COALESCE(...) = fallbackId, see #misroutedPredicateFor). A
-    // chunk that already names a different specialized pipeline must stay excluded even though
-    // its file name matches another pipeline's claimed extension - widening that equality to
-    // "<> pipelineId" would pull such a chunk back into a pipeline it was never routed to.
+    // Regression guard for the #1125 review, for a chunk without a routing key (#1126): the
+    // heuristic branch of the misrouted predicate only targets chunks still naming the fallback
+    // pipeline (see #misroutedPredicateFor). A chunk that already names a different specialized
+    // pipeline must stay excluded even though its file name matches another pipeline's claimed
+    // extension - widening the file-name guess to "<> pipelineId" would pull such a chunk back
+    // into a pipeline it was never routed to, and could never converge (see
+    // #currentPipelineIdForFileName's own Javadoc). The exact branch below (#1167) is what makes
+    // this direction reachable for a chunk that does carry a routing key.
     DocumentPipeline pdfPipeline = pdfPipeline();
     Document document = persistedFilesystemPdfDocument("x.pdf");
     seedChunk(document.getId(), "html chunk", "html", (short) 1);
@@ -266,6 +269,121 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(result.isEmpty()).isTrue();
     assertThat(result.reindexedDocuments()).isZero();
     assertThat(pipelineIdsOf(document.getId())).containsOnly("html");
+  }
+
+  @Test
+  void aChunkNamingAnotherSpecializedPipelineIsPulledIntoTheOneItsRoutingKeyClaimsToday()
+      throws IOException {
+    // Reproduces #1167 finding 1: the routing gap (#1105) was only ever closed in the direction
+    // "out of the fallback pipeline". A document whose chunks already name one specialized
+    // pipeline ("html") but whose forward-written routing key (#1126) now resolves to another
+    // ("pdf") was unreachable before this fix, because #misroutedPredicateFor required the stored
+    // pipeline_id to equal the fallback's own id. With the exact routing key, no such restriction
+    // is needed: the extension-to-pipeline mapping is unique, so the corrected chunk always ends
+    // up under pdfPipeline and is never selected again.
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    Document document = persistedFilesystemPdfDocument("satzung.pdf");
+    seedChunk(document.getId(), library.getId(), "html chunk", "html", (short) 1, ".pdf");
+
+    PipelineVersionProgress progress =
+        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    assertThat(progress.staleChunks()).isEqualTo(1);
+    assertThat(progress.currentVersionChunks()).isZero();
+    assertThat(progress.isComplete()).isFalse();
+
+    PipelineReindexResult first =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+    assertThat(first.reindexedDocuments()).isEqualTo(1);
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(pdfPipeline.id());
+
+    // Convergence: a second call against the same target must not reselect it.
+    PipelineReindexResult second =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+    assertThat(second.isEmpty()).isTrue();
+    assertThat(second.reindexedDocuments()).isZero();
+  }
+
+  @Test
+  void aChunkNamingAPipelineNoLongerRegisteredIsStaleRatherThanInvisibleWhenItHasARoutingKey()
+      throws IOException {
+    // Reproduces #1167 finding 2, the renaming case: the chunk's routing key (".pdf") is still
+    // claimed today, just by a pipeline registered under a different id than the one stored on the
+    // chunk. progressForOrganization used to skip a chunk whose pipeline_id has no entry in
+    // currentVersions (a pipeline this deployment no longer registers under that id) entirely -
+    // counted in the total only, so a library holding only such chunks falsely reported
+    // isComplete() as true. With the routing key (#1126), the chunk's target pipeline is resolved
+    // from the key itself and never needs to look the stored pipeline_id up in currentVersions -
+    // and selectStaleDocuments reaches it the same way, symmetric to the counting fix.
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    Document document = persistedFilesystemPdfDocument("satzung.pdf");
+    seedChunk(
+        document.getId(),
+        library.getId(),
+        "verwaister chunk",
+        "obsolete-pipeline",
+        (short) 1,
+        ".pdf");
+
+    PipelineVersionProgress progress =
+        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+
+    assertThat(progress.totalChunks()).isEqualTo(1);
+    assertThat(progress.currentVersionChunks()).isZero();
+    assertThat(progress.staleChunks()).isEqualTo(1);
+    assertThat(progress.isComplete()).isFalse();
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(pdfPipeline.id());
+    assertThat(
+            reindexService
+                .progressForOrganization(Organization.DEFAULT_ID)
+                .getFirst()
+                .staleChunks())
+        .isZero();
+  }
+
+  @Test
+  void aChunkNamingADeinstalledPipelineWhoseFormatNooneClaimsIsPulledIntoTheFallbackPipeline()
+      throws IOException {
+    // Reproduces #1167 review finding: the deinstallation case (not the renaming case above) - the
+    // chunk's routing key names an extension no registered pipeline claims at all today, so its
+    // target is the fallback pipeline itself. Before this fix, misroutedPredicateFor returned FALSE
+    // unconditionally for a fallback target, so this chunk was counted stale by
+    // progressForOrganization but unreachable by reindexBatch: stale forever, isComplete() stuck at
+    // false with no way to drain it.
+    Document document =
+        persistedFilesystemDocument("altbestand.txt", "Alter Inhalt ohne beanspruchtes Format");
+    seedChunk(
+        document.getId(),
+        library.getId(),
+        "verwaister chunk",
+        "deinstalled-pipeline",
+        (short) 1,
+        ".xyz-not-claimed-by-any-pipeline");
+
+    PipelineVersionProgress progress =
+        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    assertThat(progress.staleChunks()).isEqualTo(1);
+    assertThat(progress.isComplete()).isFalse();
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION, 10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackPipeline.ID);
+    assertThat(
+            reindexService
+                .progressForOrganization(Organization.DEFAULT_ID)
+                .getFirst()
+                .staleChunks())
+        .isZero();
   }
 
   @Test

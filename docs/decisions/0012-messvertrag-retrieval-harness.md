@@ -21,7 +21,12 @@ Volltextpfad konstruktionsbedingt nicht sieht) und den
 (Issue #1103: Markdown wird über `MarkdownDocumentPipeline` statt `TikaFallbackPipeline`
 gechunkt — kein Messvertragspunkt 1–10 ändert sich, aber alle drei Eval-Domänen brauchen neue
 Baselines auf beiden Pfaden, weil sich Chunkinhalt und -zahl der ausschließlich-Markdown-Korpora
-ändern).
+ändern) und den
+[Nachtrag zum Ingestion-Pipeline-Fixpunkt](#nachtrag-ingestion-pipeline-fixpunkt-issue-1144)
+(Issue #1144: `ingestionPipelineFingerprint` — ein Sammelabdruck über alle registrierten
+Ingestion-Pipelines — wird Fixpunkt auf **beiden** Pfaden, weil beide Chunks derselben Pipelines
+messen; Rohvektor-Messvertrag-Version 3, Pipeline-Messvertrag-Version 4, reine
+Fixpunkt-Ergänzung ohne neuen Messlauf für alle drei Baselines).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
@@ -622,3 +627,60 @@ ein Chunk-Size- oder Embedding-Modell-Wechsel, die beide eigene Fixpunkte sind. 
 bewusst nicht geschlossen (Umfang des Issues ist die Registrierung samt Baseline-Neuziehung, nicht der
 Fixpunkt-Katalog); ein Folge-Issue für einen `chunkingPipeline`-Fixpunkt ist sinnvoll, sobald ein
 zweites Format nach seiner eigenen Registrierung denselben Effekt zeigt.
+
+---
+
+## Nachtrag: Ingestion-Pipeline-Fixpunkt (Issue #1144)
+
+**Datum:** 2026-09-03 · **Betrifft:** beide Messpfade, alle drei Eval-Domänen.
+
+Schließt die im Nachtrag zu #1103 offen benannte Lücke: Zwei weitere reale Vorfälle aus derselben
+Arbeit (Eval-Harness leitete ihre Chunk-Map über den alten Tika-Zerleger statt über die produktive
+Pipeline ab; ein `answer_span`-Fehler im Golden Dataset, den erst der reparierte Wächter fand) sind
+Belege derselben Fehlerklasse: die messende Seite sah eine andere Zerlegung als die produktive, ohne
+dass ein Fixpunkt es bemerkt hätte.
+
+### 28. `ingestionPipelineFingerprint` als neuer Fixpunkt auf beiden Pfaden
+
+`Baseline.FixedPoints` und `PipelineBaseline.FixedPoints` führen je ein neues Feld
+`ingestionPipelineFingerprint`: ein sortierter Sammelabdruck `id:version` über **alle** von
+`DocumentPipelineRegistry` gemeldeten Pipelines (einschließlich der Fallback-Pipeline), Komma-getrennt
+und nach Id sortiert — deterministisch unabhängig von der Bean-Registrierungsreihenfolge
+(`IngestionPipelineFingerprint`). Ein kanonischer String statt eines Hashes, nach dem Vorbild von
+`embeddingModel` (neben seinem Digest geführt) statt `corpusManifestSha256` (ein Hash, weil eine
+Dokumentliste unlesbar groß wäre): zehn Pipelines passen in einen Diff, den ein Reviewer auf einen
+Blick liest, und ein Diff, der **welche** Pipeline sich bewegt hat benennt, ist hier strikt
+nützlicher als einer, der nur "etwas hat sich geändert" sagt.
+
+Der Abdruck erfasst bewusst **alle** registrierten Pipelines, nicht nur die vom jeweiligen Korpus
+genutzten — ein Routing-Fehler (ein Dokument landet unerwartet bei der falschen Pipeline) wäre sonst
+selbst dann unsichtbar, wenn beide beteiligten Pipelines für sich genommen unverändert sind.
+
+**Kein neuer Guard in `PipelineHarnessSupport#requireMeasurableConfiguration`** (Issue #1144
+hatte das als offene Frage benannt): Dieser Guard prüft die Query-Konfiguration eines Laufs
+(`top-k`, Dekomposition, Pipeline-Stufen, Volltextpfad, Reranking) — Bedingungen, unter denen
+ein Lauf etwas anderes misst, als seine Feldnamen behaupten. `ingestionPipelineFingerprint`
+ist kein Zustand, den eine Laufkonfiguration versehentlich falsch setzen könnte; er wird aus
+der tatsächlich verdrahteten `DocumentPipelineRegistry` gelesen und ist damit für jeden Lauf
+korrekt, ohne dass eine Bedingung geprüft werden müsste. Der bestehende Vergleich in
+`BaselineComparator`/`PipelineBaselineComparator` genügt.
+
+### 29. Beide Messverträge steigen: Rohvektor 2 → 3, Pipeline 3 → 4
+
+Ein neuer Fixpunkt erweitert, was „dieselbe Messung" heißt (Entscheidung 6) — auf **beiden** Pfaden
+gleichzeitig, weil beide Chunks derselben Ingestion-Pipelines messen (anders als der Nachtrag zu
+#1049, der ausschließlich den Pipeline-Pfad betraf, weil nur dieser den lexikalischen Pfad kennt).
+`EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` steigt von 2 auf **3**,
+`PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` von 3 auf **4**; beide Zählungen
+bleiben unabhängig voneinander (Entscheidung 16), sie bewegen sich hier nur zufällig im selben Schritt.
+
+### 30. Reine Fixpunkt-Ergänzung, kein neuer Messlauf
+
+Die sechs committeten Baselines (drei Domänen × zwei Pfade) wurden **ohne** neuen `evaluateRetrieval`-
+Lauf nachgezogen — nur die Fixpunkte, nicht die Messzahlen, ändern sich: der Eval-Korpus besteht (Stand
+#1145) ausschließlich aus Markdown, sodass `MarkdownDocumentPipeline` die einzige tatsächlich
+beteiligte Pipeline ist und ihre Version durch diesen Nachtrag unverändert bleibt. Der Abdruck selbst
+(`docx:3,email:2,html:1,markdown:1,odp:2,odt:2,pdf:1,pptx:1,tabular:1,tika-fallback:1`, Stand
+`DocumentPipelineRegistry` zum Zeitpunkt dieses Nachtrags) ist identisch in allen sechs Dateien.
+Kein bereits committeter Chunk, keine bereits committete Metrik ändert sich durch diesen Nachtrag —
+nur die Beschreibung der Messbedingungen wird vollständiger.
