@@ -98,7 +98,7 @@ class PipelineBaselineTest {
   private static final String VALID_JSON =
       """
       {
-        "pipelineMeasurementContractVersion": 3,
+        "pipelineMeasurementContractVersion": 4,
         "fixedPoints": {
           "embeddingModel": "nomic-embed-text:v1.5",
           "embeddingModelDigest": "abc",
@@ -123,7 +123,8 @@ class PipelineBaselineTest {
           "corpusDocumentCount": 1448,
           "goldenDatasetFile": "eval/golden/comic-characters.json",
           "goldenDatasetSha256": "ghi",
-          "goldenCaseCount": 121
+          "goldenCaseCount": 121,
+          "ingestionPipelineFingerprint": "markdown:1"
         },
         "groups": {
           "overall": {

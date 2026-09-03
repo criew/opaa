@@ -62,7 +62,8 @@ class PipelineBaselineComparatorTest {
         3,
         "eval/golden/test.json",
         "golden",
-        20);
+        20,
+        "markdown:1");
   }
 
   private static PipelineBaseline baseline(double value, int n) {
@@ -123,6 +124,7 @@ class PipelineBaselineComparatorTest {
         "eval/golden/test.json",
         "golden",
         20,
+        "markdown:1",
         1,
         PipelineHarnessSupport.SEARCH_SCOPE_NOTE,
         "2026-08-31T00:00:00Z",
@@ -161,6 +163,7 @@ class PipelineBaselineComparatorTest {
         cfg.goldenDatasetFile(),
         cfg.goldenDatasetSha256(),
         cfg.goldenCaseCount(),
+        cfg.ingestionPipelineFingerprint(),
         cfg.searchScopeLibraryCount(),
         cfg.searchScopeNote(),
         cfg.runStartedAt(),
@@ -221,6 +224,62 @@ class PipelineBaselineComparatorTest {
     assertThat(result.fixedPointMismatches())
         .extracting(BaselineComparator.FixedPointMismatch::field)
         .containsExactly("mmrLambda");
+    assertThat(result.checks()).isEmpty();
+  }
+
+  /**
+   * Issue #1144: a pipeline change (routing, or a version bump on a pipeline the corpus uses) moves
+   * the produced chunks without moving corpusManifestSha256, which describes the input files rather
+   * than what processed them.
+   */
+  @Test
+  void aChangedIngestionPipelineFingerprintInvalidatesTheBaseline() {
+    PipelineEvaluationReport.PipelineRunConfiguration cfg = matchingRunConfiguration();
+    PipelineEvaluationReport.PipelineRunConfiguration withDifferentFingerprint =
+        new PipelineEvaluationReport.PipelineRunConfiguration(
+            cfg.domain(),
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            cfg.embeddingModelDigest(),
+            cfg.ollamaImage(),
+            cfg.embeddingDimensions(),
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            cfg.chunkOverlap(),
+            cfg.fetchK(),
+            cfg.topK(),
+            cfg.similarityThreshold(),
+            cfg.similarityThresholdNote(),
+            cfg.maxChunksPerDocument(),
+            cfg.mmrLambda(),
+            cfg.fullTextSearchEnabled(),
+            cfg.fullTextBackfillComplete(),
+            cfg.queryDecompositionEnabled(),
+            cfg.maxSubQueries(),
+            cfg.chatModel(),
+            cfg.hitRateK(),
+            cfg.rankingK(),
+            cfg.pgvectorIndexType(),
+            cfg.corpusManifestSha256(),
+            cfg.corpusDocumentCount(),
+            cfg.goldenDatasetFile(),
+            cfg.goldenDatasetSha256(),
+            cfg.goldenCaseCount(),
+            "markdown:2",
+            cfg.searchScopeLibraryCount(),
+            cfg.searchScopeNote(),
+            cfg.runStartedAt(),
+            cfg.runDurationSeconds(),
+            cfg.externalOllamaEndpoint());
+
+    PipelineBaselineComparator.ComparisonResult result =
+        PipelineBaselineComparator.compare(
+            baseline(0.5, 20), report(0.5, 20, withDifferentFingerprint));
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("ingestionPipelineFingerprint");
     assertThat(result.checks()).isEmpty();
   }
 

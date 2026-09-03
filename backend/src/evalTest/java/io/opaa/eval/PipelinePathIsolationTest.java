@@ -25,20 +25,22 @@ class PipelinePathIsolationTest {
 
   @Test
   void rawVectorPathKeepsItsMeasurementContractVersion() {
+    // Version 3 since issue #1144 made ingestionPipelineFingerprint a fixed point on both paths.
     assertThat(EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION)
         .as(
-            "the raw-vector path's contract did not change; raising this version would invalidate "
-                + "every committed baseline (BaselineComparator treats it as a fixed point) for a "
-                + "measurement whose definitions and values did not move")
-        .isEqualTo(2);
+            "both paths' fixed points move together for issue #1144 (both measure chunks the same "
+                + "ingestion pipelines produced) — see PipelineEvaluationReport's own version for "
+                + "the pipeline path's independent count")
+        .isEqualTo(3);
   }
 
   @Test
   void pipelinePathCountsItsOwnContractVersionSeparately() {
-    // Version 3 since issue #1049 made the lexical path's switch and the measured library's
-    // full-text backfill state fixed points; the raw-vector path's version above stays at 2 for its
-    // own, unrelated reasons - that path never sees the lexical candidates at all.
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(3);
+    // Version 4: 3 from issue #1049 (the lexical path's switch and the measured library's
+    // full-text backfill state), plus 1 from issue #1144 (ingestionPipelineFingerprint) — counted
+    // independently of the raw-vector path above, whose own count (2 plus the same #1144 bump)
+    // moves for unrelated reasons at unrelated points in its history.
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(4);
   }
 
   @Test

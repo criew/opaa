@@ -43,8 +43,12 @@ public record EvaluationReport(
    * coincide (see {@code EvalDomainConfig#COMIC_CHARACTERS}), so this version bump changes report
    * *shape*, not comic-characters' measured *values* — see the PR description's before/after
    * comparison for the empirical confirmation.
+   *
+   * <p><b>Bumped to 3 by issue #1144 (ADR-0012 Nachtrag):</b> {@code ingestionPipelineFingerprint}
+   * became a fixed point — see {@link IngestionPipelineFingerprint}'s Javadoc for what it records
+   * and why {@code corpusManifestSha256} alone did not already cover it.
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 2;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 3;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(
@@ -85,6 +89,10 @@ public record EvaluationReport(
       String goldenDatasetFile,
       String goldenDatasetSha256,
       int goldenCaseCount,
+      // Issue #1144: which ingestion pipeline (id:version) produced the corpus's chunks — see
+      // IngestionPipelineFingerprint's Javadoc for why corpusManifestSha256 alone does not answer
+      // that question.
+      String ingestionPipelineFingerprint,
       String runStartedAt,
       double runDurationSeconds,
       // Issue #1076: true when this run talked to an external Ollama endpoint

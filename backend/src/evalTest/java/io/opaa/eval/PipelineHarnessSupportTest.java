@@ -37,7 +37,8 @@ class PipelineHarnessSupportTest {
           1,
           "golden",
           "hash",
-          true);
+          true,
+          "markdown:1");
 
   private static QueryProperties productionLikeProperties(
       int topK, boolean queryDecompositionEnabled) {

@@ -52,6 +52,10 @@ public record PipelineBaseline(
    * it was switched off — or in which the backfill gate kept it out of the measured library — is
    * measuring a different configuration, not scoring worse.
    *
+   * <p>Since issue #1144 it also includes {@code ingestionPipelineFingerprint} — see {@link
+   * IngestionPipelineFingerprint}'s Javadoc for what it records and why {@code
+   * corpusManifestSha256} alone does not already cover it.
+   *
    * @param chatModel {@code null} while the harness measures the {@code decomposition-off} variant
    *     — a value here would claim a model took part in the run that did not.
    * @param hitRateK the two metric windows the report's field names state literally; a change makes
@@ -82,7 +86,11 @@ public record PipelineBaseline(
       int corpusDocumentCount,
       String goldenDatasetFile,
       String goldenDatasetSha256,
-      int goldenCaseCount) {}
+      int goldenCaseCount,
+      // Issue #1144: which ingestion pipeline (id:version) produced the corpus's chunks — see
+      // IngestionPipelineFingerprint's Javadoc for why corpusManifestSha256 alone does not answer
+      // that question.
+      String ingestionPipelineFingerprint) {}
 
   public static PipelineBaseline load(Path file) throws IOException {
     PipelineBaseline baseline =

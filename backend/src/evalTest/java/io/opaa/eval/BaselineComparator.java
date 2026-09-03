@@ -20,8 +20,8 @@ import java.util.function.ToIntFunction;
  *   <li>{@link ComparisonResult#baselineValid()} — do the fixed points (measurement-contract
  *       version, corpus manifest, golden dataset, embedding model digest, chunk size, {@code
  *       searchTopK}, {@code pgvectorIndexType}, embedding dimensions, production similarity
- *       threshold) still match what the baseline was measured under? If not, no metric comparison
- *       is meaningful and none is attempted.
+ *       threshold, ingestion pipeline fingerprint) still match what the baseline was measured
+ *       under? If not, no metric comparison is meaningful and none is attempted.
  *   <li>Only if the baseline is valid: does every group's metrics stay within tolerance of the
  *       baseline, and do the four overall metrics clear a hard floor combining a baseline-relative
  *       and a fixed absolute component (see {@link #HARD_FLOOR_FRACTION_OF_BASELINE})?
@@ -469,6 +469,14 @@ public final class BaselineComparator {
         "goldenCaseCount",
         String.valueOf(fp.goldenCaseCount()),
         String.valueOf(cfg.goldenCaseCount()));
+    // Issue #1144: a pipeline change (routing, or a version bump on a pipeline the corpus uses)
+    // moves the produced chunks without moving corpusManifestSha256 (which describes the input
+    // files, not what processed them) — see IngestionPipelineFingerprint's Javadoc.
+    addIfDiffers(
+        mismatches,
+        "ingestionPipelineFingerprint",
+        fp.ingestionPipelineFingerprint(),
+        cfg.ingestionPipelineFingerprint());
     return List.copyOf(mismatches);
   }
 
