@@ -9,8 +9,14 @@
  * to the deployment handbook.
  */
 
-/** A note the backend can produce, and the German sentence that carries the same statement. */
+/**
+ * A note the backend can produce, and the German sentence that carries the same statement. `name`
+ * is the backend's enum constant (`io.opaa.query.RetrievalNote`/`RetrievalListLabel`/`StageStatus`)
+ * this rule translates - the join key `retrievalProtocolText.test.ts` uses against
+ * `retrieval-note-templates.json` to check coverage in both directions (#1207).
+ */
 type NoteRule = {
+  name: string
   pattern: RegExp
   german: (match: RegExpMatchArray) => string
 }
@@ -22,15 +28,18 @@ function plural(count: string, one: string, many: string) {
 const NOTE_RULES: NoteRule[] = [
   // SearchScopeStage
   {
+    name: 'SEARCH_SCOPE_EMPTY',
     pattern: /^empty search scope: nothing readable in scope, retrieval halted$/,
     german: () =>
       'Leerer Suchbereich: In diesem Rechtekontext ist nichts lesbar, die Suche wurde abgebrochen.',
   },
   {
+    name: 'SEARCH_SCOPE',
     pattern: /^search scope: (\d+) (?:library|libraries)$/,
     german: (m) => `Suchbereich: ${plural(m[1], 'Bibliothek', 'Bibliotheken')}.`,
   },
   {
+    name: 'SEARCH_SCOPE_PERMISSION_FILTER',
     pattern: /^permission filter applied inside every search of this run, never afterwards$/,
     german: () =>
       'Rechtefilter in jeder Suche dieses Laufs angewendet, nie erst nachträglich auf das Ergebnis.',
@@ -38,47 +47,64 @@ const NOTE_RULES: NoteRule[] = [
 
   // SubQueryDecompositionStage
   {
+    name: 'DECOMPOSITION_PRODUCED',
     pattern: /^decomposition produced (\d+) sub-quer(?:y|ies)$/,
     german: (m) => `Zerlegung hat ${plural(m[1], 'Teilfrage', 'Teilfragen')} erzeugt.`,
   },
   {
+    name: 'DECOMPOSITION_FAILED',
     pattern: /^decomposition returned nothing \(failed or unparsable\): single-query fallback$/,
     german: () =>
       'Zerlegung lieferte nichts (fehlgeschlagen oder nicht auswertbar): Rückfall auf eine einzelne Suchanfrage.',
   },
   {
+    name: 'DECOMPOSITION_DISABLED',
     pattern: /^decomposition switched off by configuration: single-query fallback$/,
     german: () =>
       'Zerlegung per Konfiguration abgeschaltet: Rückfall auf eine einzelne Suchanfrage.',
   },
-  { pattern: /^search query: (.*)$/s, german: (m) => `Suchanfrage: ${m[1]}` },
+  {
+    name: 'SEARCH_QUERY',
+    pattern: /^search query: (.*)$/s,
+    german: (m) => `Suchanfrage: ${m[1]}`,
+  },
 
   // VectorSearchStage
   {
+    name: 'VECTOR_SEARCH_LISTS',
     pattern: /^vector search, (\d+) list\(s\)$/,
     german: (m) => `Vektorsuche über ${plural(m[1], 'Liste', 'Listen')}.`,
   },
-  { pattern: /^fetch-k (\d+) per list$/, german: (m) => `fetch-k ${m[1]} je Liste.` },
   {
+    name: 'FETCH_K',
+    pattern: /^fetch-k (\d+) per list$/,
+    german: (m) => `fetch-k ${m[1]} je Liste.`,
+  },
+  {
+    name: 'SIMILARITY_THRESHOLD',
     pattern: /^similarity threshold (.+), applied in-query$/,
     german: (m) => `Ähnlichkeitsschwelle ${m[1]}, in der Suchanfrage angewendet.`,
   },
 
   // FullTextSearchStage
   {
+    name: 'LEXICAL_PATH_DISABLED',
     pattern: /^lexical search path switched off \((.+)\)$/,
     german: (m) => `Volltextpfad abgeschaltet (${m[1]}).`,
   },
   {
+    name: 'NO_FULL_TEXT_BACKFILL',
     pattern: /^no library of the search scope has a completed full-text backfill$/,
     german: () => 'Keine Bibliothek des Suchbereichs hat einen abgeschlossenen Volltext-Backfill.',
   },
   {
+    name: 'FULL_TEXT_BACKFILL_PENDING',
     pattern: /^the lexical path stays out of the fusion until a library's backfill is complete$/,
     german: () =>
       'Der Volltextpfad bleibt aus der Fusion heraus, bis der Backfill mindestens einer Bibliothek abgeschlossen ist.',
   },
   {
+    name: 'LEXICAL_SEARCH_FAILED',
     // The exception type the backend appends is developer diagnostics and stays in the server log:
     // a Java class name says nothing to the operator that this sentence does not say better.
     pattern: /^lexical search failed for (.+?): \w+$/,
@@ -86,10 +112,12 @@ const NOTE_RULES: NoteRule[] = [
       `Volltextsuche für die Liste „${translateListLabel(m[1])}“ fehlgeschlagen; der Lauf wurde ohne ihre Treffer fortgesetzt.`,
   },
   {
+    name: 'FULL_TEXT_SEARCH_LISTS',
     pattern: /^full-text search, (\d+) list\(s\)$/,
     german: (m) => `Volltextsuche über ${plural(m[1], 'Liste', 'Listen')}.`,
   },
   {
+    name: 'FULL_TEXT_PERMISSION_FILTER',
     pattern:
       /^permission filter applied inside the query: (\d+) of (\d+) scoped libraries searched, the rest awaiting their backfill$/,
     german: (m) =>
@@ -97,12 +125,18 @@ const NOTE_RULES: NoteRule[] = [
   },
 
   // MmrSelectionStage
-  { pattern: /^per-list budget (\d+)$/, german: (m) => `Auswahlgrenze je Liste: ${m[1]}.` },
   {
+    name: 'PER_LIST_BUDGET',
+    pattern: /^per-list budget (\d+)$/,
+    german: (m) => `Auswahlgrenze je Liste: ${m[1]}.`,
+  },
+  {
+    name: 'MMR_LAMBDA_INACTIVE',
     pattern: /^mmr-lambda (.+) \(diversity term inactive: plain top-k by relevance\)$/,
     german: (m) => `mmr-lambda ${m[1]} (Vielfaltsanteil inaktiv: reine Rangfolge nach Relevanz).`,
   },
   {
+    name: 'MMR_LAMBDA_ACTIVE',
     pattern:
       /^mmr-lambda (.+) \(diversity term active, cosine similarity of real chunk embeddings\)$/,
     german: (m) =>
@@ -111,15 +145,22 @@ const NOTE_RULES: NoteRule[] = [
 
   // RankFusionStage
   {
+    name: 'RANK_FUSION_LISTS',
     pattern: /^reciprocal rank fusion over (\d+) list\(s\)$/,
     german: (m) => `Reziproke Rangfusion über ${plural(m[1], 'Liste', 'Listen')}.`,
   },
   {
+    name: 'BUDGET_WIDENED_TO_RERANK_WINDOW',
     pattern: /^budget widened to the rerank candidate window (\d+)$/,
     german: (m) => `Auswahlgrenze auf das Kandidatenfenster der Neubewertung erweitert: ${m[1]}.`,
   },
-  { pattern: /^overall budget top-k (\d+)$/, german: (m) => `Gesamtgrenze top-k: ${m[1]}.` },
   {
+    name: 'OVERALL_BUDGET_TOP_K',
+    pattern: /^overall budget top-k (\d+)$/,
+    german: (m) => `Gesamtgrenze top-k: ${m[1]}.`,
+  },
+  {
+    name: 'DEDUPLICATED_BY_CHUNK_ID',
     pattern: /^deduplicated by chunk id: (\d+) list entries became (\d+) distinct candidates$/,
     german: (m) =>
       `Nach Abschnitts-Kennung entdoppelt: Aus ${m[1]} Listeneinträgen wurden ${m[2]} verschiedene Kandidaten.`,
@@ -127,14 +168,17 @@ const NOTE_RULES: NoteRule[] = [
 
   // RerankStage
   {
+    name: 'RERANK_DISABLED_BY_ROLE_SWITCH',
     pattern: /^reranking switched off through the rerank model role's own switch \((.+)\)$/,
     german: (m) => `Neubewertung über den Schalter der Modellrolle abgeschaltet (${m[1]}).`,
   },
   {
+    name: 'RERANK_DISABLED_BY_CANDIDATE_COUNT',
     pattern: /^reranking switched off through (.+)$/,
     german: (m) => `Neubewertung abgeschaltet über ${m[1]}.`,
   },
   {
+    name: 'RERANK_NOT_USABLE',
     // The backend points at the role's status provider here; on this page the same answer stands a
     // few lines further up, in the card of the rerank model role.
     pattern: /^the rerank model role is switched on but was not usable when this run started/,
@@ -142,30 +186,36 @@ const NOTE_RULES: NoteRule[] = [
       'Die Modellrolle Reranking ist eingeschaltet, war beim Start dieses Laufs aber nicht nutzbar: kein Endpunkt oder Modell hinterlegt, oder der Endpunkt hat nicht geantwortet. Welcher Fall vorliegt, steht oben im Zustand der Modellrolle.',
   },
   {
+    name: 'RERANK_NOTHING_TO_RERANK',
     pattern: /^no candidate reached this stage; there was nothing to rerank$/,
     german: () => 'Kein Kandidat hat diese Stufe erreicht; es war nichts neu zu bewerten.',
   },
   {
+    name: 'RERANK_SCORED_NOTHING',
     pattern:
       /^the rerank model role scored nothing; the fused order was kept and capped at top-k (\d+)$/,
     german: (m) =>
       `Die Modellrolle Reranking hat nichts bewertet; die fusionierte Reihenfolge blieb erhalten und wurde auf top-k ${m[1]} gekappt.`,
   },
   {
+    name: 'RERANK_CANDIDATE_WINDOW',
     pattern: /^rerank candidate window (\d+)$/,
     german: (m) => `Kandidatenfenster der Neubewertung: ${m[1]}.`,
   },
   {
+    name: 'RERANK_SCORED_COUNT',
     pattern: /^(\d+) of (\d+) candidate\(s\) scored by the rerank model$/,
     german: (m) => `${m[1]} von ${m[2]} Kandidaten vom Reranking-Modell bewertet.`,
   },
 
   // DocumentCompletionStage
   {
+    name: 'MAX_CHUNKS_PER_DOCUMENT',
     pattern: /^max-chunks-per-document (\d+)$/,
     german: (m) => `max-chunks-per-document ${m[1]} (Abschnitte je Dokument).`,
   },
   {
+    name: 'SIBLINGS_COMPLETED',
     pattern: /^(\d+) sibling chunk\(s\) completed from the candidate pool$/,
     german: (m) =>
       `${plural(m[1], 'weiterer Abschnitt', 'weitere Abschnitte')} aus dem Kandidatenvorrat ergänzt.`,
@@ -173,14 +223,17 @@ const NOTE_RULES: NoteRule[] = [
 
   // StageStatus - the generic note of a stage that did not run
   {
+    name: 'DISABLED',
     pattern: /^stage switched off for this run$/,
     german: () => 'Stufe für diesen Lauf abgeschaltet.',
   },
   {
+    name: 'UNAVAILABLE',
     pattern: /^stage switched on but unavailable: the run continued without it$/,
     german: () => 'Stufe eingeschaltet, aber nicht verfügbar: Der Lauf wurde ohne sie fortgesetzt.',
   },
   {
+    name: 'NOT_REACHED',
     pattern: /^run halted before this stage: nothing left to retrieve$/,
     german: () => 'Der Lauf endete vor dieser Stufe: Es war nichts mehr zu holen.',
   },
@@ -188,15 +241,30 @@ const NOTE_RULES: NoteRule[] = [
 
 const LIST_LABEL_RULES: NoteRule[] = [
   {
+    name: 'VECTOR_SEARCH',
     pattern: /^vector search · sub-query (\d+)$/,
     german: (m) => `Vektorsuche · Teilfrage ${m[1]}`,
   },
   {
+    name: 'FULL_TEXT_SEARCH',
     pattern: /^full-text search · sub-query (\d+)$/,
     german: (m) => `Volltextsuche · Teilfrage ${m[1]}`,
   },
-  { pattern: /^fused \(RRF\)$/, german: () => 'fusioniert (RRF)' },
+  { name: 'FUSED', pattern: /^fused \(RRF\)$/, german: () => 'fusioniert (RRF)' },
 ]
+
+/**
+ * The rule names of both inventories - the coverage check in `retrievalProtocolText.test.ts` reads
+ * only this, never the regexes or German wording, to stay a name-set comparison against
+ * `retrieval-note-templates.json` rather than a re-implementation of {@link translate}.
+ */
+export function noteRuleNames(): string[] {
+  return NOTE_RULES.map((rule) => rule.name)
+}
+
+export function listLabelRuleNames(): string[] {
+  return LIST_LABEL_RULES.map((rule) => rule.name)
+}
 
 function translate(rules: NoteRule[], text: string): string {
   for (const rule of rules) {

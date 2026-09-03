@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { translateListLabel, translateStageNote } from './retrievalProtocolText'
+import {
+  listLabelRuleNames,
+  noteRuleNames,
+  translateListLabel,
+  translateStageNote,
+} from './retrievalProtocolText'
+import retrievalNoteTemplates from './retrieval-note-templates.json'
 
 /**
  * Every note the retrieval stages can produce today, in the exact wording the backend emits. A note
@@ -136,5 +142,24 @@ describe('translateListLabel', () => {
   it('names a label-less verdict exactly like the explicit fused label', () => {
     expect(translateListLabel(null)).toBe('fusioniert (RRF)')
     expect(translateListLabel(undefined)).toBe('fusioniert (RRF)')
+  })
+})
+
+/**
+ * `retrieval-note-templates.json` is the mechanical export of `io.opaa.query.RetrievalNoteTest`
+ * (#1207): a name-set comparison against it, not against wording, so this stays robust while still
+ * catching the exact drift the issue names - a template renamed or added on the backend without a
+ * matching entry here, or a `NOTE_RULES`/`LIST_LABEL_RULES` entry left behind after a backend
+ * template was removed.
+ */
+describe('retrieval-note-templates.json coverage', () => {
+  it('translates every backend note and stage-status note', () => {
+    const backendNames = retrievalNoteTemplates.notes.map((entry) => entry.name).sort()
+    expect(noteRuleNames().sort()).toEqual(backendNames)
+  })
+
+  it('translates every backend list label', () => {
+    const backendNames = retrievalNoteTemplates.listLabels.map((entry) => entry.name).sort()
+    expect(listLabelRuleNames().sort()).toEqual(backendNames)
   })
 })
