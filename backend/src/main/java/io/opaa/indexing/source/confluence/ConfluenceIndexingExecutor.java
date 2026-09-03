@@ -69,11 +69,15 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private static final Logger log = LoggerFactory.getLogger(ConfluenceIndexingExecutor.class);
 
   static final String TRASHED_MESSAGE = "In Confluence im Papierkorb, entfernt";
+
+  /** Suffix of the per-page skip note; the note itself names space and title (#1138). */
   static final String UNREADABLE_PAGE_MESSAGE =
-      "Seite nicht lesbar oder nicht mehr vorhanden, übersprungen (kein Löschbefund)";
+      "ist für das hinterlegte Token nicht lesbar oder nicht mehr vorhanden, übersprungen (kein"
+          + " Löschbefund)";
+
   static final String UNREADABLE_SPACE_MESSAGE =
-      "Space nicht lesbar; sein Bestand bleibt bis zur nächsten vollständigen Auflistung"
-          + " unverändert";
+      "ist für das hinterlegte Token nicht lesbar; sein Bestand bleibt bis zur nächsten"
+          + " vollständigen Auflistung unverändert";
 
   private final ConfluenceClientFactory clientFactory;
   private final FileProcessingService fileProcessingService;
@@ -224,7 +228,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
         // leaves this space's bestand alone.
         log.warn(
             "Confluence space {} not readable for library {}: {}", key, libraryId, e.getMessage());
-        run.events.record(IndexingEventCategory.REJECTED, UNREADABLE_SPACE_MESSAGE, key);
+        run.events.record(
+            IndexingEventCategory.REJECTED, "Space " + key + " " + UNREADABLE_SPACE_MESSAGE, key);
         run.listingComplete = false;
         continue;
       }
@@ -312,7 +317,12 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       return;
     }
     if (fetched.isEmpty()) {
-      run.events.record(IndexingEventCategory.REJECTED, UNREADABLE_PAGE_MESSAGE, pagePath);
+      // #1138: visible, not silent - and named by space and title, so the protocol tells a reader
+      // what the library does not contain, not just that something was skipped.
+      run.events.record(
+          IndexingEventCategory.REJECTED,
+          "Seite „" + summary.title() + "“ (Space " + spaceKey + ") " + UNREADABLE_PAGE_MESSAGE,
+          pagePath);
       run.progress.recordSkipped();
       keepKnownAttachments(run, pagePath);
       return;

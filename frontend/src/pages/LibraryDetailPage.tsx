@@ -290,6 +290,16 @@ export default function LibraryDetailPage() {
           {storeError}
         </Alert>
       )}
+      {/* #1138 (ADR-0023): the sharing consequence stays visible for everyone who can open the
+          library - not only once in the wizard and not only in the manager-only source section. */}
+      {details?.sourceType === 'CONFLUENCE' && (
+        <Alert severity="info" sx={{ mb: 2 }} data-testid="confluence-sharing-consequence">
+          Diese Bibliothek spiegelt ausgewählte Confluence-Spaces. Alles, was daraus indiziert
+          wurde, ist für alle Leseberechtigten dieser Bibliothek sichtbar — unabhängig davon, wer es
+          in Confluence lesen dürfte. Was das hinterlegte Dienstkonto in Confluence nicht lesen
+          darf, wird nicht aufgenommen und erscheint im Laufprotokoll als übersprungen.
+        </Alert>
+      )}
       {!canEdit && (
         <Alert severity="info" sx={{ mb: 2 }}>
           Sie können diese Bibliothek einsehen, aber nicht bearbeiten.

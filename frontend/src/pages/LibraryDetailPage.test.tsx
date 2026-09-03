@@ -571,6 +571,33 @@ describe('LibraryDetailPage', () => {
     expect(screen.getByText(/unabhängig von den Berechtigungen in Confluence/)).toBeInTheDocument()
     // the edition is never an input here
     expect(screen.queryByRole('button', { name: 'Edition erkennen' })).not.toBeInTheDocument()
+    // #1138: the sharing consequence is stated permanently, above the fold
+    expect(screen.getByTestId('confluence-sharing-consequence')).toHaveTextContent(
+      /für alle Leseberechtigten dieser Bibliothek sichtbar/,
+    )
+  })
+
+  it('states the Confluence sharing consequence to a VIEWER as well, and never for other types (#1138)', async () => {
+    setLibraryState(
+      viewerLibrary,
+      detailsOf(viewerLibrary, {
+        sourceType: 'CONFLUENCE',
+        confluenceEdition: 'CLOUD',
+      }),
+    )
+    const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    expect(await screen.findByTestId('confluence-sharing-consequence')).toHaveTextContent(
+      /Laufprotokoll als übersprungen/,
+    )
+    unmount()
+
+    setLibraryState(
+      viewerLibrary,
+      detailsOf(viewerLibrary, { sourceType: 'RSS_FEED', sourceUrl: 'https://example.org/feed' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await screen.findByText(/Sie können diese Bibliothek einsehen/)
+    expect(screen.queryByTestId('confluence-sharing-consequence')).not.toBeInTheDocument()
   })
 
   // #507: the backend now only serves sourcePath/sourceUrl/sourceProxy/sourceInsecureSsl/

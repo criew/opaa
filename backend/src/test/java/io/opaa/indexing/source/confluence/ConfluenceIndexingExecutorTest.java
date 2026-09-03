@@ -296,12 +296,14 @@ class ConfluenceIndexingExecutorTest {
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
     String kapitel = pagePath(edition, "ENG", "101");
+    // #1138: the protocol names space and title, not just a URL
     verify(eventRepository)
         .save(
             argThat(
                 event(
                     IndexingEventCategory.REJECTED,
-                    ConfluenceIndexingExecutor.UNREADABLE_PAGE_MESSAGE,
+                    "Seite „Kapitel 1“ (Space ENG) "
+                        + ConfluenceIndexingExecutor.UNREADABLE_PAGE_MESSAGE,
                     kapitel)));
     verify(fileProcessingService, never())
         .processConfluencePage(any(), eq("Kapitel 1"), any(), any(), any(), any());
@@ -325,7 +327,7 @@ class ConfluenceIndexingExecutorTest {
             argThat(
                 event(
                     IndexingEventCategory.REJECTED,
-                    ConfluenceIndexingExecutor.UNREADABLE_SPACE_MESSAGE,
+                    "Space SEC " + ConfluenceIndexingExecutor.UNREADABLE_SPACE_MESSAGE,
                     "SEC")));
     verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 3, 0, 0, 4);
