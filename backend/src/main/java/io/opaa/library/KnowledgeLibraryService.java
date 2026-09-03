@@ -344,7 +344,7 @@ public class KnowledgeLibraryService {
     // once per row - a library with no rows here simply has zero documents.
     Map<UUID, Long> documentCounts =
         documentRepository
-            .countByLibraryIdIn(libraries.stream().map(KnowledgeLibrary::getId).toList())
+            .countTopLevelByLibraryIdIn(libraries.stream().map(KnowledgeLibrary::getId).toList())
             .stream()
             .collect(
                 Collectors.toMap(
@@ -845,18 +845,24 @@ public class KnowledgeLibraryService {
    * Walks each attachment in {@code attachments} up its {@code parentDocumentId} chain to the
    * top-level document ({@code parentDocumentId == null}) it transitively belongs to - one {@code
    * findAllById} per nesting level. A parent that no longer resolves (deleted concurrently) simply
-   * drops out rather than failing the search.
+   * drops out rather than failing the search. {@code visited} guards against a cyclic {@code
+   * parent_document_id} chain (nothing in the schema forbids one) hanging the request thread - a
+   * cycle simply never reaches a root and contributes nothing.
    */
-  private Set<UUID> topLevelRootsOf(List<Document> attachments) {
+  private Set<UUID> topLevelRootsOf(List<DocumentRepository.AttachmentParentRef> attachments) {
     Set<UUID> roots = new HashSet<>();
+    Set<UUID> visited = new HashSet<>();
     Set<UUID> parentIds =
-        attachments.stream().map(Document::getParentDocumentId).collect(Collectors.toSet());
+        attachments.stream()
+            .map(DocumentRepository.AttachmentParentRef::getParentDocumentId)
+            .collect(Collectors.toSet());
     while (!parentIds.isEmpty()) {
+      visited.addAll(parentIds);
       Set<UUID> next = new HashSet<>();
       for (Document parent : documentRepository.findAllById(parentIds)) {
         if (parent.getParentDocumentId() == null) {
           roots.add(parent.getId());
-        } else {
+        } else if (!visited.contains(parent.getParentDocumentId())) {
           next.add(parent.getParentDocumentId());
         }
       }
@@ -1242,7 +1248,10 @@ public class KnowledgeLibraryService {
   }
 
   private LibraryDetail toLibraryDetail(KnowledgeLibrary library, AssetRole myRole) {
-    long documentCount = documentRepository.countByLibraryId(library.getId());
+    // #1184: top-level documents only, consistent with the document list's own parent-level
+    // totalElements - attachments are visible inside their parent's group, not in this count.
+    long documentCount =
+        documentRepository.countByLibraryIdAndParentDocumentIdIsNull(library.getId());
     // #507/#119: sourcePath/sourceUrl/sourceProxy/schedule/storage quota are administration
     // detail - internal server paths, crawl targets and bestand size - gated at MANAGER, not
     // exposed to a mere VIEWER (or even EDITOR) of an organization-wide library.

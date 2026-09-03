@@ -1515,6 +1515,16 @@ class LibraryDocumentServiceIntegrationTest {
     assertThat(secondPage.documents())
         .extracting(entry -> entry.document().getFileName())
         .containsExactly("c-mail.eml", "bericht.pdf");
+
+    // #1184 (review): the detail header's and the overview card's documentCount both count on the
+    // same parent level as the list's totalElements - 3, never 6 - so the card can never promise
+    // more rows than the list shows; the attachments are visible inside their groups instead.
+    assertThat(libraryService.getLibrary(libraryId, currentUserOf(editor, false)).documentCount())
+        .isEqualTo(3L);
+    assertThat(libraryService.listLibraries(currentUserOf(editor, false)))
+        .filteredOn(summary -> summary.library().getId().equals(libraryId))
+        .extracting(LibrarySummary::documentCount)
+        .containsExactly(3L);
   }
 
   @Test

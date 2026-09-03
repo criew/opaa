@@ -78,6 +78,13 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long countByLibraryId(UUID libraryId);
 
   /**
+   * The parent-level counterpart of {@link #countByLibraryId} (#1184): top-level documents only,
+   * matching what the document list pages over - shown as a library's {@code documentCount}. {@link
+   * #countByLibraryId} keeps backing the delete guard, which must see every row.
+   */
+  long countByLibraryIdAndParentDocumentIdIsNull(UUID libraryId);
+
+  /**
    * The paged search behind {@code KnowledgeLibraryService#listDocuments} with {@code q} (#1184,
    * ADR-0022 Entscheidung 5): top-level documents only ({@code parentDocumentId IS NULL}), matching
    * either their own file name or - via {@code attachmentRootIds}, resolved by the caller from
@@ -103,10 +110,19 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    * Every attachment row of {@code libraryId} whose file name matches {@code q} case-insensitively
    * - the first step of the attachment-aware search above: the caller walks each hit up its {@code
    * parentDocumentId} chain to the top-level root before paging. Derived query, so LIKE
-   * metacharacters in {@code q} are escaped automatically.
+   * metacharacters in {@code q} are escaped automatically. A slim projection, not full entities -
+   * only the two ids are needed, and the hit count is unbounded.
    */
-  List<Document> findByLibraryIdAndParentDocumentIdIsNotNullAndFileNameContainingIgnoreCase(
-      UUID libraryId, String q);
+  List<AttachmentParentRef>
+      findByLibraryIdAndParentDocumentIdIsNotNullAndFileNameContainingIgnoreCase(
+          UUID libraryId, String q);
+
+  /** The two ids the attachment-aware search prefilter needs (#1184) - see the finder above. */
+  interface AttachmentParentRef {
+    UUID getId();
+
+    UUID getParentDocumentId();
+  }
 
   /**
    * The attachment rows of every parent in {@code parentDocumentIds}, ordered by {@code filePath}
@@ -191,13 +207,17 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
    * Backs {@code KnowledgeLibraryService#listLibraries}'s {@code documentCount} column: one grouped
-   * query for the whole page instead of {@link #countByLibraryId} once per row. Libraries with no
-   * documents simply have no row here - the caller defaults those to zero.
+   * query for the whole page instead of one count per row. Libraries with no documents simply have
+   * no row here - the caller defaults those to zero. Top-level documents only since #1184, matching
+   * the document list's own parent-level totalElements - attachments show up inside their parent's
+   * group, not in this count.
    */
   @Query(
       "select d.libraryId as libraryId, count(d) as documentCount from Document d"
-          + " where d.libraryId in :libraryIds group by d.libraryId")
-  List<LibraryDocumentCount> countByLibraryIdIn(@Param("libraryIds") Collection<UUID> libraryIds);
+          + " where d.libraryId in :libraryIds and d.parentDocumentId is null"
+          + " group by d.libraryId")
+  List<LibraryDocumentCount> countTopLevelByLibraryIdIn(
+      @Param("libraryIds") Collection<UUID> libraryIds);
 
   interface LibraryDocumentCount {
     UUID getLibraryId();
