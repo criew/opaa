@@ -26,7 +26,11 @@ Baselines auf beiden Pfaden, weil sich Chunkinhalt und -zahl der ausschließlich
 (Issue #1144: `ingestionPipelineFingerprint` — ein Sammelabdruck über alle registrierten
 Ingestion-Pipelines — wird Fixpunkt auf **beiden** Pfaden, weil beide Chunks derselben Pipelines
 messen; Rohvektor-Messvertrag-Version 3, Pipeline-Messvertrag-Version 4, reine
-Fixpunkt-Ergänzung ohne neuen Messlauf für alle drei Baselines).
+Fixpunkt-Ergänzung ohne neuen Messlauf für alle drei Baselines) und den
+[Nachtrag zur Rangreserve](#nachtrag-rangreserve-grenzstabilität-issue-1151)
+(Issue #1151/PR #1206: `MarginAggregate` weist je Golden-Fall/-Gruppe aus, wie knapp ein Treffer das
+Fenster erreicht hat — bewusst nur im Report ausgewiesen, kein Fixpunkt, keine Messvertragsänderung
+auf beiden Pfaden; Folgeentscheidung, ob/wie das ein Fehlerkriterium wird, in Issue #1210).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
@@ -684,3 +688,27 @@ beteiligte Pipeline ist und ihre Version durch diesen Nachtrag unverändert blei
 `DocumentPipelineRegistry` zum Zeitpunkt dieses Nachtrags) ist identisch in allen sechs Dateien.
 Kein bereits committeter Chunk, keine bereits committete Metrik ändert sich durch diesen Nachtrag —
 nur die Beschreibung der Messbedingungen wird vollständiger.
+
+## Nachtrag: Rangreserve (Grenzstabilität, Issue #1151)
+
+> **Nachtrag vom 2026-09-03, Issue #1151/PR #1206.** Kein neuer Messvertragspunkt, keine
+> Versionsänderung auf beiden Pfaden — hier festgehalten, damit die Existenz der Kennzahl und ihr
+> bewusst report-only-Status nicht nur im PR nachlesbar sind.
+
+Ein Golden-Fall, der mit großem Rangabstand gelöst ist, und einer, der gerade noch über die
+Fensterschwelle rutscht, waren in den bestehenden Metriken nicht unterscheidbar — beide zählen
+binär als „gelöst" (`hitRateAt5`/`hitCountAt5`). `RetrievalMetrics#marginAtK` und `MarginAggregate`
+tragen dafür je Fall bzw. je Gruppe die Rangreserve mit: den Abstand des ersten relevanten Treffers
+zur Fenstergrenze, disjunkt aufgeteilt in Treffer, „knapp gelöst" und „knapp verfehlt" (siehe
+`docs/features/retrieval-benchmark.md`, Abschnitt 7, für die vollständige Definition).
+
+**Bewusst kein Fixpunkt, keine Messvertragsänderung.** Die Rangreserve steckt nicht in
+`MetricsAggregate`/`PipelineMetricsAggregate` und damit nicht in `Baseline`/`PipelineBaseline`;
+`BaselineComparator`/`PipelineBaselineComparator` lesen sie nicht.
+`CURRENT_MEASUREMENT_CONTRACT_VERSION`/`PIPELINE_MEASUREMENT_CONTRACT_VERSION` bleiben bei 3/4.
+Sie ist reine Berichtsanreicherung, keine neue Bedingung dafür, wann zwei Läufe „dasselbe messen"
+(Entscheidung 6) — dieselbe Kategorie wie `allExpectedDocumentsHitAt10` (#913) oder
+`hitCountAt5`/`hitCountAt10` (#306) vor ihrer Aufnahme in die Fallzahlprüfung. Ob und wie die
+Rangreserve später ein Fehlerkriterium nach ADR-0013 wird, klärt Issue #1210 — das wäre dann eine
+eigene Entscheidung dieses ADRs (Baseline-Schema) und/oder von ADR-0013 (Fehlerkriterium), nicht
+rückwirkend dieser Nachtrag.

@@ -29,8 +29,19 @@ public final class RetrievalMetrics {
 
   /**
    * Per-query result: the four ranking metrics plus a fifth, binary field ({@code
-   * allExpectedDocumentsHitAt10}, issue #913) and the ranked list that produced them (for
-   * reporting).
+   * allExpectedDocumentsHitAt10}, issue #913), two margin fields (issue #1151, see {@link
+   * #marginAtK}), and the ranked list that produced them (for reporting).
+   *
+   * @param hitRateMarginAt5 how many ranks of slack the first relevant hit had left within the Hit
+   *     Rate@5 window ({@code 5 - rank}); negative once the hit falls outside that window but is
+   *     still found lower in the (document-bound) ranked list. {@code null} when no expected
+   *     document appears anywhere in the ranked list — the same "no hit" condition {@link
+   *     #reciprocalRank} reports as {@code 0.0}. A case with a large positive margin sits
+   *     comfortably inside the window; one with a margin near zero is one rank change away from
+   *     falling out of it — the distinction issue #1151 exists to make visible, since {@code
+   *     hitRateAt5} alone reports both as the identical {@code 1.0}.
+   * @param rankingMarginAt10 the same margin against the wider ranking window (nDCG@10/Recall@10,
+   *     MRR's own window). {@code null} under the same condition as {@code hitRateMarginAt5}.
    */
   public record QueryResult(
       GoldenCase goldenCase,
@@ -39,7 +50,9 @@ public final class RetrievalMetrics {
       double reciprocalRank,
       double ndcgAt10,
       double recallAt10,
-      double allExpectedDocumentsHitAt10) {}
+      double allExpectedDocumentsHitAt10,
+      Integer hitRateMarginAt5,
+      Integer rankingMarginAt10) {}
 
   public static QueryResult evaluate(GoldenCase goldenCase, List<String> rankedFileNames) {
     Set<String> expected = new LinkedHashSet<>(goldenCase.expectedDocuments());
@@ -50,7 +63,9 @@ public final class RetrievalMetrics {
         reciprocalRank(rankedFileNames, expected),
         ndcgAtK(rankedFileNames, expected, NDCG_K),
         recallAtK(rankedFileNames, expected, RECALL_K),
-        allExpectedDocumentsHitAtK(rankedFileNames, expected, RECALL_K));
+        allExpectedDocumentsHitAtK(rankedFileNames, expected, RECALL_K),
+        marginAtK(rankedFileNames, expected, HIT_RATE_K),
+        marginAtK(rankedFileNames, expected, NDCG_K));
   }
 
   /**
@@ -65,6 +80,10 @@ public final class RetrievalMetrics {
    * @param hitRateK the window Hit Rate was computed at.
    * @param rankingK the window MRR, nDCG, Recall and {@code allExpectedDocumentsHit} were computed
    *     at.
+   * @param hitRateMargin the margin (issue #1151, see {@link #marginAtK}) against {@code hitRateK};
+   *     {@code null} when no expected document was found at all.
+   * @param rankingMargin the margin against {@code rankingK}; {@code null} under the same condition
+   *     as {@code hitRateMargin}.
    */
   public record WindowedQueryResult(
       GoldenCase goldenCase,
@@ -75,7 +94,9 @@ public final class RetrievalMetrics {
       double reciprocalRank,
       double ndcg,
       double recall,
-      double allExpectedDocumentsHit) {}
+      double allExpectedDocumentsHit,
+      Integer hitRateMargin,
+      Integer rankingMargin) {}
 
   /**
    * Evaluates one case at explicitly given windows, unlike {@link #evaluate} which pins the
@@ -104,7 +125,9 @@ public final class RetrievalMetrics {
         reciprocalRankAtK(rankedFileNames, expected, rankingK),
         ndcgAtK(rankedFileNames, expected, rankingK),
         recallAtK(rankedFileNames, expected, rankingK),
-        allExpectedDocumentsHitAtK(rankedFileNames, expected, rankingK));
+        allExpectedDocumentsHitAtK(rankedFileNames, expected, rankingK),
+        marginAtK(rankedFileNames, expected, hitRateK),
+        marginAtK(rankedFileNames, expected, rankingK));
   }
 
   static double hitRateAtK(List<String> ranked, Set<String> expected, int k) {
@@ -135,6 +158,36 @@ public final class RetrievalMetrics {
       }
     }
     return 0.0;
+  }
+
+  /**
+   * The distance in ranks between the first relevant hit and the edge of a {@code k}-window ({@code
+   * k - rank}, 1-based rank), issue #1151 ("Benchmark bildet Grenzstabilität nicht ab"): a positive
+   * margin is how much room the hit has before a rank change alone would push it out of the window;
+   * zero means it occupies the window's last permitted rank; negative means it already fell outside
+   * that window while still appearing lower in the ranked list. {@code null} when the expected
+   * document set is not found anywhere in {@code ranked} at all (mirrors {@link #reciprocalRank}
+   * returning {@code 0.0} for the same condition). Deliberately a rank distance, not a score
+   * distance (e.g. the fused RRF score's gap to the first displaced candidate): the ranked list
+   * this harness scores carries no comparable score across its entries (ADR-0012 decision 3,
+   * ranking metrics need the unfiltered rank order, not a score), so rank is the cheap,
+   * deterministic quantity available without a second, score-carrying measurement path.
+   *
+   * <p><b>Blind spot for multi-document cases:</b> only the <b>first</b> relevant hit's rank is
+   * used, mirroring {@link #reciprocalRank}. A {@code multi_topic} case whose expected set has
+   * document A at rank 1 and document B at rank 10 reports a large, "safe" margin driven entirely
+   * by A, even though {@code recallAt10} depends on B too and would drop the moment B is pushed one
+   * rank further out. A margin of the <b>last</b> expected document reached within the window (or
+   * of the weakest-margin expected document) would close this gap; not built here because no golden
+   * case class needs it yet.
+   */
+  static Integer marginAtK(List<String> ranked, Set<String> expected, int k) {
+    for (int i = 0; i < ranked.size(); i++) {
+      if (expected.contains(ranked.get(i))) {
+        return k - (i + 1);
+      }
+    }
+    return null;
   }
 
   /**
