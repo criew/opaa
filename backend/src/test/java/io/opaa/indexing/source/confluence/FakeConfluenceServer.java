@@ -473,11 +473,19 @@ public final class FakeConfluenceServer implements AutoCloseable {
       return;
     }
     String token = authenticateDataCenter(ex);
-    if (token == null) {
-      send(ex, 401, "{\"statusCode\":401,\"message\":\"No permission\"}");
+    // Like the real Data Center (#1171): an unknown token is not refused, the request runs
+    // anonymously - and anonymous reads nothing here.
+    Set<String> readable = token == null ? Set.of() : tokens.get(token);
+    if (path.equals("/rest/api/user/current")) {
+      send(
+          ex,
+          200,
+          token == null
+              ? "{\"type\":\"anonymous\",\"username\":\"anonymous\",\"displayName\":\"Anonymous\"}"
+              : "{\"type\":\"known\",\"username\":\"dienstkonto\",\"userKey\":\"8a7f\","
+                  + "\"displayName\":\"Dienstkonto\"}");
       return;
     }
-    Set<String> readable = tokens.get(token);
     int limit = intParam(q, "limit", 25);
     int start = intParam(q, "start", 0);
 

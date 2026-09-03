@@ -243,7 +243,7 @@ final class ConfluenceHttp {
     return status == 429;
   }
 
-  private JsonNode parse(Response response, String resource) throws ConfluenceAccessException {
+  JsonNode parse(Response response, String resource) throws ConfluenceAccessException {
     try {
       return JSON.readTree(response.body());
     } catch (JacksonException e) {

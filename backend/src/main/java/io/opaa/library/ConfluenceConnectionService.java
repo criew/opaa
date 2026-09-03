@@ -168,6 +168,9 @@ public class ConfluenceConnectionService {
                   proxyConfig.proxyHost(),
                   proxyConfig.proxyPort(),
                   insecureSsl));
+      // Data Center answers an unknown token anonymously with an empty listing rather than
+      // refusing it - the check has to come first, or "keine Spaces" would hide a dead token
+      client.verifyCredentials();
       return client.listSpaces();
     } catch (ConfluenceAccessException e) {
       throw new ValidationException(e.getMessage());

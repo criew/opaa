@@ -31,14 +31,25 @@ final class DataCenterConfluenceClient extends AbstractConfluenceClient {
 
   @Override
   public void verifyCredentials() throws ConfluenceAccessException, InterruptedException {
-    ConfluenceHttp.Response response =
-        http.get(base() + REST + "/space?limit=1", "die Space-Liste");
+    // Data Center does not refuse an unknown or revoked token: it serves the request anonymously
+    // with HTTP 200 (seen against the real instance, #1171) - a space listing would simply be
+    // empty. Only the current-user resource tells who the token actually is.
+    String resource = "das angemeldete Benutzerkonto";
+    ConfluenceHttp.Response response = http.get(base() + REST + "/user/current", resource);
     if (response.status() == 404) {
       throw new ConfluenceAccessException.EditionMismatch(
           "Unter dieser Adresse antwortet kein Confluence Data Center (die API /rest/api fehlt).");
     }
     if (response.status() != 200) {
-      throw http.failure(response.status(), "die Space-Liste");
+      throw http.failure(response.status(), resource);
+    }
+    JsonNode user = http.parse(response, resource);
+    if ("anonymous".equalsIgnoreCase(user.path("type").asString(""))
+        || "anonymous".equalsIgnoreCase(user.path("username").asString(""))) {
+      throw new ConfluenceAccessException.Authentication(
+          "Confluence Data Center hat das Personal Access Token nicht angenommen und behandelt die"
+              + " Anfrage anonym (HTTP 200, anonymer Benutzer): Das Token ist ungültig, abgelaufen"
+              + " oder widerrufen.");
     }
   }
 

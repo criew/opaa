@@ -138,9 +138,11 @@ class ConfluenceClientContractTest {
         factory(ConfluenceProperties.defaults(), TargetAddressValidator.disabled())
             .create(connection(deployment.edition(), wrong));
 
+    // Cloud refuses (401); Data Center serves an unknown token anonymously with 200 and the client
+    // has to read that from the current-user resource
     assertThatThrownBy(wrongClient::verifyCredentials)
         .isInstanceOf(ConfluenceAccessException.Authentication.class)
-        .hasMessageContaining("401")
+        .hasMessageContaining(deployment.edition() == ConfluenceEdition.CLOUD ? "401" : "anonym")
         .satisfies(ConfluenceClientContractTest::carriesNoCredentials);
   }
 

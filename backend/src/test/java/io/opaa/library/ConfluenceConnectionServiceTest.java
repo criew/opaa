@@ -128,7 +128,9 @@ class ConfluenceConnectionServiceTest {
     assertThat(refused.reachable()).isFalse();
     assertThat(refused.detectedEdition()).isEqualTo(deployment.edition());
     assertThat(refused.credentialsVerified()).isFalse();
-    assertThat(refused.message()).contains("401").doesNotContain(TOKEN);
+    assertThat(refused.message())
+        .contains(deployment.edition() == ConfluenceEdition.CLOUD ? "401" : "anonym")
+        .doesNotContain(TOKEN);
 
     ConfluenceConnectionService.Probe mismatch =
         service.probe(url, null, credentials(deployment.edition()), false, other);
@@ -236,7 +238,7 @@ class ConfluenceConnectionServiceTest {
                     credentials(deployment.edition()) + "x",
                     false))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("401")
+        .hasMessageContaining(deployment.edition() == ConfluenceEdition.CLOUD ? "401" : "anonym")
         .satisfies(e -> assertThat(e.getMessage()).doesNotContain(TOKEN));
     assertThatThrownBy(() -> service.listSpaces(url, null, null, TOKEN, false))
         .isInstanceOf(ValidationException.class)
