@@ -2,9 +2,9 @@ databaseChangeLog:
   # ADR-0023, Entscheidung 4 (#1136): the run mode as an attribute of every indexing run, the two
   # Confluence context columns on documents, and the per-library Confluence sync state. Each
   # changeset is one schema change with its own delta test
-  # (io.opaa.migration.Migration011ConfluenceFullSyncTest).
+  # (io.opaa.migration.Migration014ConfluenceFullSyncTest).
   - changeSet:
-      id: 011-indexing-jobs-run-mode
+      id: 014-indexing-jobs-run-mode
       author: opaa
       comment: >-
         ADR-0023, Entscheidung 4: every run declares whether it listed its source completely (FULL)
@@ -31,7 +31,7 @@ databaseChangeLog:
               ALTER TABLE public.indexing_jobs DROP COLUMN run_mode;
 
   - changeSet:
-      id: 011-documents-source-context
+      id: 014-documents-source-context
       author: opaa
       comment: >-
         ADR-0023 ("Identität und Metadaten"): the container a document came from (a Confluence
@@ -52,7 +52,7 @@ databaseChangeLog:
               ALTER TABLE public.documents DROP COLUMN source_container_key;
 
   - changeSet:
-      id: 011-confluence-sync-state
+      id: 014-confluence-sync-state
       author: opaa
       comment: >-
         ADR-0023, Entscheidung 4 ("Anker und Wiederaufnahme"): one row per CONFLUENCE library (the

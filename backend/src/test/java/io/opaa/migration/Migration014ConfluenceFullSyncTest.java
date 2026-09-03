@@ -15,17 +15,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Delta tests for {@code changes/011-confluence-full-sync.yaml} (ADR-0023, Entscheidung 4): the run
+ * Delta tests for {@code changes/014-confluence-full-sync.yaml} (ADR-0023, Entscheidung 4): the run
  * mode on {@code indexing_jobs} with its backfill from the library's source type, the two context
  * columns on {@code documents}, and the per-library {@code confluence_sync_state} table with its
  * uniqueness and cascade. The baseline fixture is brought to the state 010 leaves behind first,
- * because 011 builds on the CONFLUENCE source type 010 introduced.
+ * because 014 builds on the CONFLUENCE source type 010 introduced.
  */
-class Migration011ConfluenceFullSyncTest extends AbstractMigrationTest {
+class Migration014ConfluenceFullSyncTest extends AbstractMigrationTest {
 
   private static final String CHANGELOG_010 =
       "db/changelog/changes/010-confluence-source-type.yaml";
-  private static final String CHANGELOG_PATH = "db/changelog/changes/011-confluence-full-sync.yaml";
+  private static final String CHANGELOG_PATH = "db/changelog/changes/014-confluence-full-sync.yaml";
   private static final String ORGANIZATION = "00000000-0000-0000-0000-000000000001";
 
   private Connection connection;
