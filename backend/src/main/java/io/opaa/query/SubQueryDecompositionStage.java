@@ -53,15 +53,14 @@ class SubQueryDecompositionStage implements RetrievalStage {
     List<String> notes = new ArrayList<>();
     if (decomposed) {
       notes.add(
-          "decomposition produced "
-              + searchQueries.size()
-              + (searchQueries.size() == 1 ? " sub-query" : " sub-queries"));
+          RetrievalNote.DECOMPOSITION_PRODUCED.format(
+              searchQueries.size(), searchQueries.size() == 1 ? "sub-query" : "sub-queries"));
     } else if (properties.queryDecompositionEnabled()) {
-      notes.add("decomposition returned nothing (failed or unparsable): single-query fallback");
+      notes.add(RetrievalNote.DECOMPOSITION_FAILED.format());
     } else {
-      notes.add("decomposition switched off by configuration: single-query fallback");
+      notes.add(RetrievalNote.DECOMPOSITION_DISABLED.format());
     }
-    searchQueries.forEach(query -> notes.add("search query: " + query));
+    searchQueries.forEach(query -> notes.add(RetrievalNote.SEARCH_QUERY.format(query)));
 
     return new StageOutcome(
         state.withSearchQueries(searchQueries),

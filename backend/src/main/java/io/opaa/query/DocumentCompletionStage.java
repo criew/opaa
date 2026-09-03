@@ -85,9 +85,9 @@ class DocumentCompletionStage implements RetrievalStage {
             completed.size(),
             verdicts,
             List.of(
-                "max-chunks-per-document " + properties.maxChunksPerDocument(),
-                "overall budget top-k " + properties.topK(),
-                events.size() + " sibling chunk(s) completed from the candidate pool")));
+                RetrievalNote.MAX_CHUNKS_PER_DOCUMENT.format(properties.maxChunksPerDocument()),
+                RetrievalNote.OVERALL_BUDGET_TOP_K.format(properties.topK()),
+                RetrievalNote.SIBLINGS_COMPLETED.format(events.size()))));
   }
 
   /**

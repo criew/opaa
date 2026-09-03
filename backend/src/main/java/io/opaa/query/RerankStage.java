@@ -53,35 +53,21 @@ class RerankStage implements RetrievalStage {
 
     if (properties.rerankCandidateCount() == 0) {
       return identity(
-          state,
-          StageStatus.DISABLED,
-          "reranking switched off through opaa.query.rerank-candidate-count=0");
+          state, StageStatus.DISABLED, RetrievalNote.RERANK_DISABLED_BY_CANDIDATE_COUNT.format());
     }
     if (context.rerankAvailability() == RerankAvailability.SWITCHED_OFF) {
       return identity(
-          state,
-          StageStatus.DISABLED,
-          "reranking switched off through the rerank model role's own switch "
-              + "(opaa.rerank.enabled / OPAA_RERANK_ENABLED)");
+          state, StageStatus.DISABLED, RetrievalNote.RERANK_DISABLED_BY_ROLE_SWITCH.format());
     }
     if (context.rerankAvailability() == RerankAvailability.NOT_USABLE) {
-      return identity(
-          state,
-          StageStatus.UNAVAILABLE,
-          "the rerank model role is switched on but was not usable when this run started - no "
-              + "endpoint or model is configured for it, or its endpoint did not answer; the "
-              + "role's own state says which (RerankRoleStatusProvider#currentStatus)");
+      return identity(state, StageStatus.UNAVAILABLE, RetrievalNote.RERANK_NOT_USABLE.format());
     }
     if (incoming.isEmpty()) {
       return new StageOutcome(
           state.withCandidateLists(
               List.of(new CandidateList(RankFusionStage.FUSED_LIST_LABEL, List.of()))),
           StageExplanation.executed(
-              name(),
-              0,
-              0,
-              List.of(),
-              List.of("no candidate reached this stage; there was nothing to rerank")));
+              name(), 0, 0, List.of(), List.of(RetrievalNote.RERANK_NOTHING_TO_RERANK.format())));
     }
 
     List<Document> window =
@@ -94,8 +80,7 @@ class RerankStage implements RetrievalStage {
           state,
           incoming.subList(0, Math.min(incoming.size(), topK)),
           StageStatus.UNAVAILABLE,
-          "the rerank model role scored nothing; the fused order was kept and capped at top-k "
-              + topK);
+          RetrievalNote.RERANK_SCORED_NOTHING.format(topK));
     }
 
     List<RankedCandidate> reranked = new ArrayList<>(incoming.size());
@@ -132,9 +117,9 @@ class RerankStage implements RetrievalStage {
             selection.size(),
             verdicts,
             List.of(
-                "rerank candidate window " + properties.rerankCandidateCount(),
-                scored.size() + " of " + window.size() + " candidate(s) scored by the rerank model",
-                "overall budget top-k " + topK)));
+                RetrievalNote.RERANK_CANDIDATE_WINDOW.format(properties.rerankCandidateCount()),
+                RetrievalNote.RERANK_SCORED_COUNT.format(scored.size(), window.size()),
+                RetrievalNote.OVERALL_BUDGET_TOP_K.format(topK))));
   }
 
   /**

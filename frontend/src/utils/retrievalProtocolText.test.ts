@@ -4,6 +4,10 @@ import { translateListLabel, translateStageNote } from './retrievalProtocolText'
 /**
  * Every note the retrieval stages can produce today, in the exact wording the backend emits. A note
  * missing here would reach the German administration page in English.
+ *
+ * The backend side of this coupling is `io.opaa.query.RetrievalNoteTest`: it pins the exact set of
+ * note/list-label templates in `io.opaa.query.RetrievalNote`/`RetrievalListLabel` and fails, with a
+ * message pointing back at this file, the moment a stage gains a new or reworded template (#1160).
  */
 const BACKEND_NOTES = [
   'empty search scope: nothing readable in scope, retrieval halted',

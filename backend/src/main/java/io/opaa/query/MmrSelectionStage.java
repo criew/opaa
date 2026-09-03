@@ -92,12 +92,10 @@ class MmrSelectionStage implements RetrievalStage {
             outgoing,
             verdicts,
             List.of(
-                "per-list budget " + context.candidateBudget(),
-                "mmr-lambda "
-                    + properties.mmrLambda()
-                    + (properties.mmrLambda() >= 1.0
-                        ? " (diversity term inactive: plain top-k by relevance)"
-                        : " (diversity term active, cosine similarity of real chunk embeddings)"))));
+                RetrievalNote.PER_LIST_BUDGET.format(context.candidateBudget()),
+                properties.mmrLambda() >= 1.0
+                    ? RetrievalNote.MMR_LAMBDA_INACTIVE.format(properties.mmrLambda())
+                    : RetrievalNote.MMR_LAMBDA_ACTIVE.format(properties.mmrLambda()))));
   }
 
   /**
