@@ -90,7 +90,11 @@ class PipelineBaselineComparatorTest {
         // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
         null,
         List.of(),
-        List.of());
+        List.of(),
+        MarginAggregate.ofWindowed(List.of()),
+        Map.of(),
+        Map.of(),
+        Map.of());
   }
 
   private static PipelineEvaluationReport.PipelineRunConfiguration runConfiguration(

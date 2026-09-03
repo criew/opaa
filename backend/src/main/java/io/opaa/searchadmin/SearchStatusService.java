@@ -289,7 +289,7 @@ public class SearchStatusService {
         conditionOf(status.state()),
         status.baseUrl(),
         status.modelIdentifier(),
-        rerankDetail(status.state()));
+        rerankDetail(status));
   }
 
   private static ModelRoleCondition conditionOf(RerankRoleState state) {
@@ -301,8 +301,14 @@ public class SearchStatusService {
     };
   }
 
-  private static String rerankDetail(RerankRoleState state) {
-    return switch (state) {
+  /**
+   * A timed-out {@link RerankRoleState#UNREACHABLE} gets its own wording (#1154): "antwortet nicht"
+   * reads as a dead endpoint, which a CPU reranker still working within {@code opaa.rerank.timeout}
+   * is not - it is slow, and the remedy (raise the timeout for its hardware) differs from the
+   * remedy for an actually unreachable one.
+   */
+  private static String rerankDetail(RerankRoleStatus status) {
+    return switch (status.state()) {
       case DISABLED ->
           "Reranking ist ausdrücklich abgeschaltet. Die Suche läuft ohne diese Stufe - das ist"
               + " die Voreinstellung, kein Fehler.";
@@ -311,8 +317,14 @@ public class SearchStatusService {
           "Reranking ist eingeschaltet, aber es ist keine Rerank-Modellrolle hinterlegt. Die Suche"
               + " läuft weiter - ohne diese Stufe.";
       case UNREACHABLE ->
-          "Reranking ist eingeschaltet, aber der hinterlegte Endpunkt antwortet nicht. Die Suche"
-              + " läuft weiter - ohne diese Stufe.";
+          status.timedOut()
+              ? "Reranking ist eingeschaltet, aber der hinterlegte Endpunkt hat nicht innerhalb"
+                  + " des Zeitbudgets (OPAA_RERANK_TIMEOUT) geantwortet. Das kann Langsamkeit"
+                  + " sein statt eines Ausfalls, etwa bei Reranking auf einer CPU - prüfen Sie,"
+                  + " ob das Zeitbudget zur Hardware passt. Die Suche läuft weiter - ohne diese"
+                  + " Stufe."
+              : "Reranking ist eingeschaltet, aber der hinterlegte Endpunkt antwortet nicht. Die"
+                  + " Suche läuft weiter - ohne diese Stufe.";
     };
   }
 

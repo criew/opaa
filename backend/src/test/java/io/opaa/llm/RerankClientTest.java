@@ -8,7 +8,11 @@ import io.opaa.llm.RerankClient.RerankUnavailableException;
 import io.opaa.llm.RerankClient.ScoredCandidate;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
+import java.net.SocketTimeoutException;
+import java.net.http.HttpConnectTimeoutException;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -151,19 +155,55 @@ class RerankClientTest {
   }
 
   @Test
-  void aRefusedConnectionIsReportedAsUnavailable() {
+  void aRefusedConnectionIsReportedAsUnavailableButNotAsATimeout() {
     // Port 1 on loopback: nothing listens there, and no DNS lookup is involved.
     RerankProperties unreachable =
         new RerankProperties(true, "http://127.0.0.1:1/v1", "m", "", Duration.ofSeconds(2));
 
-    assertThat(client.probeFailureMessage(unreachable)).isNotBlank();
+    RerankClient.ProbeFailure failure = client.probe(unreachable);
+
+    assertThat(failure).isNotNull();
+    assertThat(failure.message()).isNotBlank();
+    assertThat(failure.timedOut()).isFalse();
   }
 
   @Test
-  void aReachableEndpointProbesWithoutAFailureMessage() {
+  void aReachableEndpointProbesWithoutAFailure() {
     respond("[{\"index\":0,\"score\":1.0}]", new AtomicReference<>());
 
-    assertThat(client.probeFailureMessage(properties(""))).isNull();
+    assertThat(client.probe(properties(""))).isNull();
+  }
+
+  /**
+   * The finding #1154 exists for: an endpoint that is reachable but too slow for the configured
+   * budget must be reported as a timeout, not folded into the same "unreachable" bucket as a
+   * refused connection - the two need different remedies (raise the timeout vs. fix the endpoint).
+   */
+  @Test
+  void anEndpointThatAnswersAfterTheTimeoutIsReportedAsATimeoutNotARefusedConnection() {
+    server.createContext(
+        "/v1/rerank",
+        exchange -> {
+          try {
+            Thread.sleep(500);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          byte[] response = "[{\"index\":0,\"score\":1.0}]".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, response.length);
+          try (OutputStream out = exchange.getResponseBody()) {
+            out.write(response);
+          }
+        });
+    RerankProperties slow =
+        new RerankProperties(true, baseUrl, "bge-reranker", "", Duration.ofMillis(50));
+
+    assertThatThrownBy(() -> client.rerank(slow, "Frage", List.of("a")))
+        .isInstanceOf(RerankClient.RerankTimeoutException.class);
+
+    RerankClient.ProbeFailure failure = client.probe(slow);
+    assertThat(failure).isNotNull();
+    assertThat(failure.timedOut()).isTrue();
   }
 
   @Test
@@ -258,6 +298,33 @@ class RerankClientTest {
     assertThatThrownBy(() -> client.rerank(properties(""), "Frage", List.of("a", "b")))
         .isInstanceOf(RerankUnavailableException.class)
         .hasMessageContaining("out of range");
+  }
+
+  /**
+   * The finding from the #1204 review: {@link HttpConnectTimeoutException} is a JDK subclass of
+   * {@link HttpTimeoutException}, so a naive {@code instanceof HttpTimeoutException} check would
+   * misclassify "nothing ever accepted the TCP connection" (a genuinely unreachable endpoint,
+   * bounded by the client's fixed connect timeout) as a slow-but-reachable one bounded by {@code
+   * opaa.rerank.timeout}. An administrator told to raise the request timeout for a dead host would
+   * never find the actual cause.
+   */
+  @Test
+  void aConnectTimeoutIsNotClassifiedAsARequestTimeout() {
+    assertThat(RerankClient.isRequestTimeout(new HttpConnectTimeoutException("connect timed out")))
+        .isFalse();
+  }
+
+  @Test
+  void aRequestTimeoutOrASocketReadTimeoutIsClassifiedAsARequestTimeout() {
+    assertThat(RerankClient.isRequestTimeout(new HttpTimeoutException("request timed out")))
+        .isTrue();
+    assertThat(RerankClient.isRequestTimeout(new SocketTimeoutException("read timed out")))
+        .isTrue();
+  }
+
+  @Test
+  void aRefusedConnectionIsNotClassifiedAsARequestTimeout() {
+    assertThat(RerankClient.isRequestTimeout(new ConnectException("connection refused"))).isFalse();
   }
 
   @Test

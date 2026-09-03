@@ -119,7 +119,11 @@ public final class PipelineRetrievalEvaluator {
                                 r.goldenCase().expectedDocuments())))
                 .toList()),
         allQueryResults.stream().limit(10).toList(),
-        allQueryResults);
+        allQueryResults,
+        MarginAggregate.ofWindowed(results),
+        MarginAggregate.groupByWindowed(results, GoldenCase::category),
+        MarginAggregate.groupByWindowed(results, GoldenCase::difficulty),
+        MarginAggregate.groupByWindowed(results, GoldenCase::language));
   }
 
   static SelectionCoverage selectionCoverage(List<CaseOutcome> outcomes) {
@@ -149,6 +153,8 @@ public final class PipelineRetrievalEvaluator {
         m.ndcg(),
         m.recall(),
         m.allExpectedDocumentsHit(),
+        m.hitRateMargin(),
+        m.rankingMargin(),
         outcome.chunksReturned(),
         outcome.distinctDocumentsReturned(),
         m.goldenCase().expectedDocuments(),

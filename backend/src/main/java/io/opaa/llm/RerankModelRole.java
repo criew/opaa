@@ -81,8 +81,12 @@ public class RerankModelRole implements RerankRoleStatusProvider {
 
   /**
    * Keeps the state current while nothing else exercises the endpoint - so a role that dies in
-   * operation shows up as {@link RerankRoleState#UNREACHABLE} within a minute rather than at the
-   * next query.
+   * operation shows up as {@link RerankRoleState#UNREACHABLE} without waiting for the next query.
+   * "Shows up" is bounded by {@link RerankProperties#timeout()}, not by {@link
+   * #PROBE_INTERVAL_MILLIS}: a probe against a hanging endpoint can itself take up to that budget
+   * (240s by default, see #1154) before it counts as failed, so the honest bound on a dead
+   * endpoint's detection is one probe interval plus one timeout - and the first in-flight query
+   * pays up to one more timeout before it falls back, exactly as this probe does.
    */
   @Scheduled(
       fixedDelay = PROBE_INTERVAL_MILLIS,
@@ -101,11 +105,11 @@ public class RerankModelRole implements RerankRoleStatusProvider {
       lastKnown.set(null);
       return currentStatus();
     }
-    String failure = client.probeFailureMessage(properties);
+    RerankClient.ProbeFailure failure = client.probe(properties);
     RerankRoleStatus probed =
         failure == null
             ? status(RerankRoleState.READY, null)
-            : status(RerankRoleState.UNREACHABLE, failure);
+            : status(RerankRoleState.UNREACHABLE, failure.message(), failure.timedOut());
     lastKnown.set(probed);
     return probed;
   }
@@ -148,9 +152,11 @@ public class RerankModelRole implements RerankRoleStatusProvider {
     } catch (RuntimeException e) {
       // Deliberately every runtime failure, not just RerankUnavailableException: the promise above
       // is absolute, and a client-side fault (an unserializable request body, say) must cost the
-      // ordering exactly as an unreachable endpoint does.
+      // ordering exactly as an unreachable endpoint does. A timeout is still reported distinctly
+      // (#1154): the endpoint answered the connection, it simply did not finish in time.
       degradedCalls.incrementAndGet();
-      lastKnown.set(status(RerankRoleState.UNREACHABLE, e.getMessage()));
+      boolean timedOut = e instanceof RerankClient.RerankTimeoutException;
+      lastKnown.set(status(RerankRoleState.UNREACHABLE, e.getMessage(), timedOut));
       // The exception object, not just its message: a programming error caught here (NPE from a
       // client bug, say) has a null message and would otherwise be indistinguishable from a dead
       // endpoint.
@@ -164,7 +170,12 @@ public class RerankModelRole implements RerankRoleStatusProvider {
   }
 
   private RerankRoleStatus status(RerankRoleState state, String diagnostic) {
-    return new RerankRoleStatus(state, properties.baseUrl(), properties.model(), diagnostic);
+    return status(state, diagnostic, false);
+  }
+
+  private RerankRoleStatus status(RerankRoleState state, String diagnostic, boolean timedOut) {
+    return new RerankRoleStatus(
+        state, properties.baseUrl(), properties.model(), diagnostic, timedOut);
   }
 
   private static String emptyToNull(String value) {

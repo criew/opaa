@@ -30,7 +30,7 @@ import org.springframework.stereotype.Component;
 @Component
 class RankFusionStage implements RetrievalStage {
 
-  static final String FUSED_LIST_LABEL = "fused (RRF)";
+  static final String FUSED_LIST_LABEL = RetrievalListLabel.FUSED.format();
 
   @Override
   public RetrievalStageName name() {
@@ -71,14 +71,10 @@ class RankFusionStage implements RetrievalStage {
             selection.size(),
             verdicts,
             List.of(
-                "reciprocal rank fusion over " + rankedLists.size() + " list(s)",
+                RetrievalNote.RANK_FUSION_LISTS.format(rankedLists.size()),
                 context.rerankActive()
-                    ? "budget widened to the rerank candidate window " + budget
-                    : "overall budget top-k " + budget,
-                "deduplicated by chunk id: "
-                    + incoming
-                    + " list entries became "
-                    + fused.size()
-                    + " distinct candidates")));
+                    ? RetrievalNote.BUDGET_WIDENED_TO_RERANK_WINDOW.format(budget)
+                    : RetrievalNote.OVERALL_BUDGET_TOP_K.format(budget),
+                RetrievalNote.DEDUPLICATED_BY_CHUNK_ID.format(incoming, fused.size()))));
   }
 }
