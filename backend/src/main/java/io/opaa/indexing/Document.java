@@ -93,6 +93,19 @@ public class Document {
   private String sourceEntryUrl;
 
   /**
+   * The row this document is an attachment of (ADR-0022, Entscheidung 4), or {@code null} for a
+   * document that is not an attachment. Generalizes {@link #sourceEntryUrl}'s RSS-only, path-string
+   * reference into a real FK usable by every attachment source - RSS, mail, future Confluence. No
+   * {@code @ManyToOne}, the same convention {@link #libraryId} follows: callers that need the
+   * parent row look it up through {@code DocumentRepository} themselves. {@code
+   * fk_documents_parent} carries no {@code ON DELETE CASCADE} - deleting a parent document stays
+   * application code, since a DB-side cascade would orphan the parent's pgvector chunks (migration
+   * 011).
+   */
+  @Column(name = "parent_document_id")
+  private UUID parentDocumentId;
+
+  /**
    * A German, user-facing reason {@link #status} is {@link DocumentStatus#FAILED} - set by {@code
    * FileProcessingService#processUploadedFileAsync} when parsing or embedding an uploaded file
    * fails asynchronously, after the row has already been returned to the caller with {@code
@@ -238,6 +251,14 @@ public class Document {
 
   public void setSourceEntryUrl(String sourceEntryUrl) {
     this.sourceEntryUrl = sourceEntryUrl;
+  }
+
+  public UUID getParentDocumentId() {
+    return parentDocumentId;
+  }
+
+  public void setParentDocumentId(UUID parentDocumentId) {
+    this.parentDocumentId = parentDocumentId;
   }
 
   public String getErrorMessage() {

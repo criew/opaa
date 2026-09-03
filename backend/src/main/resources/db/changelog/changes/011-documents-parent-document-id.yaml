@@ -1,0 +1,37 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-documents-parent-document-id
+      author: opaa
+      comment: >-
+        ADR-0022, Entscheidung 4 (#1178/#1180): generalizes the RSS-only, string-based parent
+        reference (source_entry_url, a file_path match, no FK) into a real, queryable relationship
+        every attachment source (RSS, mail, future Confluence) can set. Deliberately no ON DELETE
+        CASCADE - a DB-side cascade would remove the attachment row but leave its pgvector chunks
+        orphaned, which only VectorChunkStore#deleteByDocumentId can reach; deleting a parent
+        document therefore stays application code (ADR-0022, Entscheidung 3/4), not a database
+        automatism. source_entry_url is left in place, not replaced here - the migration ticket
+        scope stops at schema only; switching its readers (QueryService,
+        LibraryDocumentResponseMapper, ChatSource) to parent_document_id is #1182 (ADR-0022 Teil 3).
+        Deliberately no backfill here: no existing delete path (processRssEntry's
+        delete-and-recreate-under-a-new-id, the single-document delete API,
+        PipelineReindexService#advance) treats an attachment row yet - populating the FK against
+        Bestandsdaten before those paths handle it would make every one of them fail against
+        fk_documents_parent on their first run against a backfilled row, per ADR-0022's own rule
+        that every delete path must explicitly decide what happens to attachment rows. The backfill
+        belongs in #1182, alongside the delete-path fixes it depends on.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.documents ADD COLUMN parent_document_id uuid;
+
+              ALTER TABLE public.documents
+                  ADD CONSTRAINT fk_documents_parent FOREIGN KEY (parent_document_id) REFERENCES public.documents(id);
+
+              CREATE INDEX idx_documents_parent ON public.documents USING btree (parent_document_id);
+      rollback:
+        - sql:
+            sql: |
+              DROP INDEX IF EXISTS idx_documents_parent;
+              ALTER TABLE public.documents DROP CONSTRAINT IF EXISTS fk_documents_parent;
+              ALTER TABLE public.documents DROP COLUMN IF EXISTS parent_document_id;

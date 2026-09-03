@@ -35,6 +35,14 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    */
   boolean existsBySourceEntryUrlAndLibraryId(String sourceEntryUrl, UUID libraryId);
 
+  /**
+   * Every attachment of {@code parentDocumentId} (ADR-0022, Entscheidung 4) - the FK-backed
+   * generalization of {@link #existsBySourceEntryUrlAndLibraryId}'s RSS-only path lookup. No writer
+   * sets {@link Document#getParentDocumentId()} yet (#1180 is schema-only); this backs the lookup
+   * side that #1182 onwards builds on.
+   */
+  List<Document> findByParentDocumentId(UUID parentDocumentId);
+
   List<Document> findByLibraryId(UUID libraryId);
 
   /**
