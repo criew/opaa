@@ -71,19 +71,20 @@ final class ConfluenceAdminApi {
     expect(page, "upload " + fileName, 200);
   }
 
-  /** Read restriction to one user - every other account gets 404 on the page and never lists it. */
+  /**
+   * Read restriction to one user - every other account gets 404 on the page and never lists it.
+   * Data Center 8.5 serves content restrictions only under {@code /rest/experimental}; the JSON-RPC
+   * {@code setContentPermissions} is the stable path there.
+   */
   void restrictReadToUser(String pageId, String userName) throws IOException, InterruptedException {
-    ConfluenceHttpSession.Page page =
-        session.rest(
-            "PUT",
-            "/rest/api/content/"
-                + pageId
-                + "/restriction/byOperation/read/user?userName="
-                + userName,
-            null,
-            user,
-            password);
-    expect(page, "restrict page " + pageId, 200);
+    String result =
+        jsonRpc(
+            "setContentPermissions",
+            "[" + pageId + ",\"View\",[{\"type\":\"View\",\"userName\":\"" + userName + "\"}]]");
+    log.info("setContentPermissions {} View {} -> {}", pageId, userName, result);
+    if (!"true".equals(result)) {
+      throw new IOException("restrict page " + pageId + " failed: " + result);
+    }
   }
 
   /**
