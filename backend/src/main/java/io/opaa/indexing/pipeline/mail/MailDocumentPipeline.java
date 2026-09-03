@@ -12,7 +12,9 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -66,7 +68,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
   private static final Logger log = LoggerFactory.getLogger(MailDocumentPipeline.class);
 
   static final String ID = "email";
-  static final short VERSION = 2;
+  static final short VERSION = 3;
 
   /**
    * Renders {@link ParsedMailMessage#date()} in the leading context line, in {@link #clock}'s own
@@ -283,9 +285,22 @@ public class MailDocumentPipeline implements DocumentPipeline {
       metadata.put(ChunkMailMetadata.MAIL_TO_METADATA_KEY, message.to());
     }
     if (message.date() != null) {
-      metadata.put(ChunkMailMetadata.MAIL_DATE_METADATA_KEY, message.date().toString());
+      metadata.put(ChunkMailMetadata.MAIL_DATE_METADATA_KEY, renderMailDate(message.date()));
     }
     return metadata;
+  }
+
+  /**
+   * Renders {@code date} for {@link ChunkMailMetadata#MAIL_DATE_METADATA_KEY}, truncated to whole
+   * seconds first (#1164) - {@link Instant#toString()} omits the fractional part entirely when it
+   * is zero, so two messages a millisecond apart could otherwise produce ISO-8601 strings that do
+   * not compare correctly as text (".500Z" sorts before "Z" lexicographically) once a Zeitraum
+   * filter compares {@code mail_date} as a string. An EML Date header (RFC 5322) never carries
+   * sub-second precision to begin with, but {@link MsgReader} reads an Outlook FILETIME through
+   * {@link java.util.Calendar}, which can.
+   */
+  static String renderMailDate(Instant date) {
+    return date.truncatedTo(ChronoUnit.SECONDS).toString();
   }
 
   /**

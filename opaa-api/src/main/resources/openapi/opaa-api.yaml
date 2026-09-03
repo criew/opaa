@@ -3196,6 +3196,38 @@ components:
             indexing pipeline could not determine one (plain text without headings, a format without
             page breaks). Absent for a synthetic entry (#386).
 
+        mailFrom:
+          type: string
+          nullable: true
+          description: >-
+            The message's Absender (#1164), read back from the mail_from chunk metadata
+            ChunkMailMetadata declares (Teil 3, Punkt 5 of docs/features/ingestion-pipelines.md).
+            Null for a source that is not an EML/MSG message's own body chunk.
+          example: mueller@stadt.de
+        mailTo:
+          type: string
+          nullable: true
+          description: >-
+            The message's Empfänger (#1164), read back from the mail_to chunk metadata. Null for a
+            source that is not an EML/MSG message's own body chunk.
+          example: poststelle@stadt.de
+        mailSubject:
+          type: string
+          nullable: true
+          description: >-
+            The message's Betreff (#1164), read back from the mail_subject chunk metadata. Null for
+            a source that is not an EML/MSG message's own body chunk.
+          example: Bebauungsplan Nord
+        mailDate:
+          type: string
+          nullable: true
+          description: >-
+            The message's Datum (#1164), read back from the mail_date chunk metadata as the indexing
+            pipeline wrote it (an ISO-8601 instant, truncated to whole seconds so it stays
+            lexicographically sortable). Null for a source that is not an EML/MSG message's own body
+            chunk.
+          example: "2026-03-14T09:15:00Z"
+
     ChunkLocation:
       type: object
       required: [chunkIndex]
