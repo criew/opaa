@@ -1,17 +1,24 @@
 package io.opaa.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 /**
- * Pins the exact set of note and list-label templates the retrieval stages can produce. A new or
- * changed {@link RetrievalNote} or {@link RetrievalListLabel} constant makes this test fail until
- * the expected map below is updated - the point at which the failure message tells the developer to
- * also update the German translation in {@code frontend/src/utils/retrievalProtocolText.ts} and its
- * test's {@code BACKEND_NOTES}/{@code LIST_LABEL} inventory (#1160).
+ * Pins the exact set of note and list-label templates the retrieval stages can produce - the closed
+ * ones in {@link RetrievalNote} and {@link RetrievalListLabel}, and the three generic ones in
+ * {@link StageStatus} that a not-run stage falls back to. A new or changed constant in any of the
+ * three makes this test fail until the expected map below is updated - the point at which the
+ * failure message tells the developer to also update the German translation in {@code
+ * frontend/src/utils/retrievalProtocolText.ts} and its test's {@code BACKEND_NOTES}/{@code
+ * LIST_LABEL} inventory (#1160).
  */
 class RetrievalNoteTest {
 
@@ -109,5 +116,57 @@ class RetrievalNoteTest {
     }
 
     assertThat(actual).as(TRANSLATION_REMINDER).isEqualTo(expected);
+  }
+
+  @Test
+  void stageStatusNotesMatchTheExpectedTemplateInventory() {
+    Map<String, String> expected = new LinkedHashMap<>();
+    expected.put("DISABLED", "stage switched off for this run");
+    expected.put("UNAVAILABLE", "stage switched on but unavailable: the run continued without it");
+    expected.put("NOT_REACHED", "run halted before this stage: nothing left to retrieve");
+
+    Map<String, String> actual = new LinkedHashMap<>();
+    for (StageStatus status : StageStatus.values()) {
+      // EXECUTED's own note ("executed") never reaches the protocol: an executed stage always
+      // supplies its own notes via StageExplanation#executed, never the generic notRun(...) path
+      // that reads status.note().
+      if (status != StageStatus.EXECUTED) {
+        actual.put(status.name(), status.note());
+      }
+    }
+
+    assertThat(actual).as(TRANSLATION_REMINDER).isEqualTo(expected);
+  }
+
+  @Test
+  void everyNoteFormatsWithoutThrowing() {
+    for (RetrievalNote note : RetrievalNote.values()) {
+      assertThatCode(() -> note.format(dummyArgsFor(note.template())))
+          .as("RetrievalNote.%s's template does not match its own placeholders", note.name())
+          .doesNotThrowAnyException();
+    }
+  }
+
+  @Test
+  void everyListLabelFormatsWithoutThrowing() {
+    for (RetrievalListLabel label : RetrievalListLabel.values()) {
+      assertThatCode(() -> label.format(dummyArgsFor(label.template())))
+          .as("RetrievalListLabel.%s's template does not match its own placeholders", label.name())
+          .doesNotThrowAnyException();
+    }
+  }
+
+  /**
+   * One dummy argument per {@code %d}/{@code %s} placeholder in {@code template}, in the order they
+   * appear - enough to exercise {@link RetrievalNote#format} and {@link RetrievalListLabel#format}
+   * against a template's own placeholder count and types without needing a real call site.
+   */
+  private static Object[] dummyArgsFor(String template) {
+    Matcher matcher = Pattern.compile("%[ds]").matcher(template);
+    List<Object> args = new ArrayList<>();
+    while (matcher.find()) {
+      args.add("%d".equals(matcher.group()) ? 1 : "x");
+    }
+    return args.toArray();
   }
 }
