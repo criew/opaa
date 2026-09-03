@@ -19,6 +19,8 @@ import io.opaa.indexing.pipeline.tabular.TabularDocumentPipeline;
 import io.opaa.indexing.pipeline.tabular.TabularProperties;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
+import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
@@ -259,6 +261,16 @@ public class IndexingConfiguration {
   TargetAddressValidator targetAddressValidator(IndexingProperties properties) {
     return new TargetAddressValidator(
         properties.targetValidation().enabled(), properties.targetValidation().allowlist());
+  }
+
+  /**
+   * Builds per-library Confluence clients (ADR-0023); shares the target validation every other
+   * outbound source fetch uses.
+   */
+  @Bean
+  ConfluenceClientFactory confluenceClientFactory(
+      ConfluenceProperties confluenceProperties, TargetAddressValidator targetAddressValidator) {
+    return new ConfluenceClientFactory(confluenceProperties, targetAddressValidator);
   }
 
   /**

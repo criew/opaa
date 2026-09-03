@@ -5,6 +5,7 @@ import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.pipeline.mail.MailProperties;
 import io.opaa.indexing.pipeline.office.OdfProperties;
 import io.opaa.indexing.pipeline.tabular.TabularProperties;
+import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.web.CrawlProperties;
 import io.opaa.library.RemoteContentProperties;
 import io.opaa.library.UploadProperties;
@@ -25,6 +26,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   RemoteContentProperties.class,
   SettingsEncryptionProperties.class,
   CrawlProperties.class,
+  ConfluenceProperties.class,
   TabularProperties.class,
   MailProperties.class,
   OdfProperties.class,

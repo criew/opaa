@@ -25,10 +25,13 @@ import org.slf4j.LoggerFactory;
  * io.opaa.indexing.source.web.AutoindexCrawlerService}) keeps following an off-origin redirect,
  * only dropping {@code Authorization} the moment it stops matching the original target - a
  * browser's own cross-origin redirect behaviour. A file/attachment download ({@link
- * BoundedDownloader}, an RSS detail-page fetch) instead refuses to follow at all: the target is
+ * BoundedDownloader}, an RSS detail-page fetch) by default refuses to follow at all: the target is
  * content a feed or directory listing operator controls, not one the library owner vouches for, so
  * silently walking off to a different origin (even without credentials) is not an acceptable
- * outcome there.
+ * outcome there. The one named exception is a Confluence Cloud attachment download, whose bytes the
+ * instance itself hands off to a pre-signed media host - that caller chooses the dropping policy
+ * explicitly ({@link BoundedDownloader#downloadBounded(java.net.http.HttpClient, String, String,
+ * long, String, String, RedirectPolicy)}).
  *
  * <p>{@code targetAddressValidator} is validated against the current URI at the top of every
  * iteration - the initial request and every redirect hop alike - before a single further byte is
@@ -74,9 +77,9 @@ public final class RedirectFollowingFetcher {
 
     /**
      * Refuses to follow an off-origin redirect at all - {@link RedirectRejectedException} is thrown
-     * before the foreign target is ever contacted. Used for file/attachment downloads and
-     * detail-page fetches, where the target is content a feed or directory listing operator
-     * controls.
+     * before the foreign target is ever contacted. Used for detail-page fetches, JSON API calls and
+     * - by default - file/attachment downloads, where the target is content a feed or directory
+     * listing operator controls.
      */
     REJECT_OFF_ORIGIN
   }

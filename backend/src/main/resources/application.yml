@@ -161,6 +161,17 @@ opaa:
     crawl:
       max-depth: ${OPAA_INDEXING_CRAWL_MAX_DEPTH:10}
       max-entries: ${OPAA_INDEXING_CRAWL_MAX_ENTRIES:5000}
+    # ADR-0023: bounds of the Confluence access layer (io.opaa.indexing.source.confluence) - own
+    # property block like crawl above, see ConfluenceProperties.
+    confluence:
+      page-size: ${OPAA_INDEXING_CONFLUENCE_PAGE_SIZE:100}
+      request-timeout: ${OPAA_INDEXING_CONFLUENCE_REQUEST_TIMEOUT:30s}
+      max-rate-limit-retries: ${OPAA_INDEXING_CONFLUENCE_MAX_RATE_LIMIT_RETRIES:6}
+      max-retry-after: ${OPAA_INDEXING_CONFLUENCE_MAX_RETRY_AFTER:2m}
+      max-response-bytes: ${OPAA_INDEXING_CONFLUENCE_MAX_RESPONSE_BYTES:10485760}
+      max-attachment-size-bytes: ${OPAA_INDEXING_CONFLUENCE_MAX_ATTACHMENT_SIZE_BYTES:20971520}
+      user-agent: ${OPAA_INDEXING_CONFLUENCE_USER_AGENT:OPAA-Indexer/1.0}
+      max-listing-pages: ${OPAA_INDEXING_CONFLUENCE_MAX_LISTING_PAGES:500}
     # #1058: DoS-hardening limits for TabularDocumentPipeline (XLSX/CSV/ODS) - own property block,
     # own binding prefix, see TabularProperties's own Javadoc for why.
     tabular:
