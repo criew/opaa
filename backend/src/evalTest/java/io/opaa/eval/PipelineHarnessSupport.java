@@ -78,8 +78,9 @@ public final class PipelineHarnessSupport {
       // library whose backfill is incomplete, and a run in which it silently contributed nothing
       // must not look like a hybrid one.
       boolean fullTextBackfillComplete,
-      // Issue #1144: which ingestion pipeline (id:version) produced the corpus's chunks — see
-      // IngestionPipelineFingerprint's Javadoc.
+      // Issue #1144: under which ingestion pipeline versions (all registered, not just the ones
+      // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
+      // Javadoc.
       String ingestionPipelineFingerprint) {}
 
   /**

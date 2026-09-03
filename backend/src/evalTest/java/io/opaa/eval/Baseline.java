@@ -78,9 +78,9 @@ public record Baseline(
       String goldenDatasetFile,
       String goldenDatasetSha256,
       int goldenCaseCount,
-      // Issue #1144: which ingestion pipeline (id:version) produced the corpus's chunks — see
-      // IngestionPipelineFingerprint's Javadoc for why corpusManifestSha256 alone does not answer
-      // that question.
+      // Issue #1144: under which ingestion pipeline versions (all registered, not just the ones
+      // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
+      // Javadoc for why corpusManifestSha256 alone does not answer that question.
       String ingestionPipelineFingerprint) {}
 
   /** Group keys used in {@link #groups()} — must match how the report's groups are addressed. */

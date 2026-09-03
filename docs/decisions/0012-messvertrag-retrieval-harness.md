@@ -656,6 +656,15 @@ Der Abdruck erfasst bewusst **alle** registrierten Pipelines, nicht nur die vom 
 genutzten — ein Routing-Fehler (ein Dokument landet unerwartet bei der falschen Pipeline) wäre sonst
 selbst dann unsichtbar, wenn beide beteiligten Pipelines für sich genommen unverändert sind.
 
+**Kein neuer Guard in `PipelineHarnessSupport#requireMeasurableConfiguration`** (Issue #1144
+hatte das als offene Frage benannt): Dieser Guard prüft die Query-Konfiguration eines Laufs
+(`top-k`, Dekomposition, Pipeline-Stufen, Volltextpfad, Reranking) — Bedingungen, unter denen
+ein Lauf etwas anderes misst, als seine Feldnamen behaupten. `ingestionPipelineFingerprint`
+ist kein Zustand, den eine Laufkonfiguration versehentlich falsch setzen könnte; er wird aus
+der tatsächlich verdrahteten `DocumentPipelineRegistry` gelesen und ist damit für jeden Lauf
+korrekt, ohne dass eine Bedingung geprüft werden müsste. Der bestehende Vergleich in
+`BaselineComparator`/`PipelineBaselineComparator` genügt.
+
 ### 29. Beide Messverträge steigen: Rohvektor 2 → 3, Pipeline 3 → 4
 
 Ein neuer Fixpunkt erweitert, was „dieselbe Messung" heißt (Entscheidung 6) — auf **beiden** Pfaden
