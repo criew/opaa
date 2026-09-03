@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -78,9 +79,9 @@ public class FullTextBackfillService {
    * whose {@code library_id} is not a well-formed UUID can never be attributed to a real library
    * anyway (every progress/gate query matches it by exact equality against a known library's UUID
    * string), so excluding it here mirrors the pre-existing "missing metadata" exclusion rather than
-   * introducing a new kind of loss. {@code document_id} is deliberately <em>not</em> filtered here
-   * - see {@link #partitionByDocumentIdValidity} for why a malformed one is handled explicitly
-   * instead of being dropped from selection.
+   * introducing a new kind of loss. {@code document_id} is deliberately <em>not</em> filtered here,
+   * not even for {@code NULL} - see {@link #partitionByDocumentIdValidity} for why a missing or
+   * malformed one is handled explicitly instead of being dropped from selection.
    */
   private static final String UUID_PATTERN =
       "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
@@ -110,10 +111,10 @@ public class FullTextBackfillService {
    * backlog is empty (as of this call; new chunks written after #1047 never add to it, since they
    * are indexed at write time already).
    *
-   * <p>A chunk whose {@code document_id} metadata is not a well-formed UUID is recorded as an
-   * immediately confirmed skip (see {@link #partitionByDocumentIdValidity}) rather than attempted -
-   * it is a structural defect no retry can fix, and leaving it merely "pending" would keep {@link
-   * FullTextBackfillProgress#isComplete()} false for its library forever.
+   * <p>A chunk whose {@code document_id} metadata is missing or not a well-formed UUID is recorded
+   * as an immediately confirmed skip (see {@link #partitionByDocumentIdValidity}) rather than
+   * attempted - it is a structural defect no retry can fix, and leaving it merely "pending" would
+   * keep {@link FullTextBackfillProgress#isComplete()} false for its library forever.
    *
    * <p>A genuinely systemic failure (the database itself is unreachable, the connection pool is
    * exhausted, a deadlock) still propagates out of this method - see {@link #isolateFailingChunk} -
@@ -129,7 +130,7 @@ public class FullTextBackfillService {
       return 0;
     }
     Partition partition = partitionByDocumentIdValidity(pending);
-    int resolved = partition.malformedDocumentIdCount();
+    int resolved = partition.invalidDocumentIdCount();
     if (!partition.wellFormed().isEmpty()) {
       resolved += indexWithIsolation(partition.wellFormed());
     }
@@ -153,18 +154,24 @@ public class FullTextBackfillService {
             + "  SELECT 1 FROM chunk_full_text_skip s "
             + "  WHERE s.chunk_id = v.id AND s.content_tsv_version = ? AND s.attempts >= ?"
             + ") "
-            + "  AND metadata->>'document_id' IS NOT NULL "
             + "  AND metadata->>'library_id' ~ '"
             + UUID_PATTERN
             + "' "
             + "LIMIT ?",
-        (rs, rowNum) ->
-            new org.springframework.ai.document.Document(
-                rs.getString("id"),
-                rs.getString("content"),
-                Map.of(
-                    VectorChunkStore.DOCUMENT_ID_METADATA_KEY, rs.getString("document_id"),
-                    VectorChunkStore.LIBRARY_ID_METADATA_KEY, rs.getString("library_id"))),
+        (rs, rowNum) -> {
+          // A null document_id metadata value reaches this row mapper by design (see the
+          // UUID_PATTERN javadoc above). Both Map.of() and the Document constructor itself reject
+          // null metadata values, so the key is simply omitted rather than mapped to null -
+          // partitionByDocumentIdValidity() treats an absent key the same as a null one.
+          String documentId = rs.getString("document_id");
+          Map<String, Object> metadata = new HashMap<>();
+          if (documentId != null) {
+            metadata.put(VectorChunkStore.DOCUMENT_ID_METADATA_KEY, documentId);
+          }
+          metadata.put(VectorChunkStore.LIBRARY_ID_METADATA_KEY, rs.getString("library_id"));
+          return new org.springframework.ai.document.Document(
+              rs.getString("id"), rs.getString("content"), metadata);
+        },
         FullTextChunkStore.CURRENT_TSV_VERSION,
         FullTextChunkStore.CURRENT_TSV_VERSION,
         SKIP_CONFIRMATION_ATTEMPTS,
@@ -173,9 +180,9 @@ public class FullTextBackfillService {
 
   /**
    * Splits {@code pending} into chunks whose {@code document_id} metadata is a well-formed UUID and
-   * ones that are not - immediately recording the latter as confirmed skips ({@link
-   * FullTextChunkStore#recordConfirmedSkip}) rather than attempting to index them. A malformed
-   * {@code document_id} would otherwise reach {@code UUID.fromString} inside {@link
+   * ones that are missing or not - immediately recording the latter as confirmed skips ({@link
+   * FullTextChunkStore#recordConfirmedSkip}) rather than attempting to index them. A missing or
+   * malformed {@code document_id} would otherwise reach {@code UUID.fromString} inside {@link
    * FullTextChunkStore#indexChunks} and throw - a per-row, structural defect no retry heals, so
    * routing it through the {@link #SKIP_CONFIRMATION_ATTEMPTS}-attempt confirmation dance would
    * only delay the same, inevitable outcome. Recording it here also sidesteps a real problem the
@@ -186,41 +193,41 @@ public class FullTextBackfillService {
   private Partition partitionByDocumentIdValidity(
       List<org.springframework.ai.document.Document> pending) {
     List<org.springframework.ai.document.Document> wellFormed = new ArrayList<>(pending.size());
-    int malformedCount = 0;
+    int invalidCount = 0;
     for (org.springframework.ai.document.Document chunk : pending) {
       String documentId =
           (String) chunk.getMetadata().get(VectorChunkStore.DOCUMENT_ID_METADATA_KEY);
       if (documentId != null && documentId.matches(UUID_PATTERN)) {
         wellFormed.add(chunk);
       } else {
-        recordMalformedDocumentIdSkip(chunk, documentId);
-        malformedCount++;
+        recordInvalidDocumentIdSkip(chunk, documentId);
+        invalidCount++;
       }
     }
-    return new Partition(wellFormed, malformedCount);
+    return new Partition(wellFormed, invalidCount);
   }
 
   private record Partition(
-      List<org.springframework.ai.document.Document> wellFormed, int malformedDocumentIdCount) {}
+      List<org.springframework.ai.document.Document> wellFormed, int invalidDocumentIdCount) {}
 
-  private void recordMalformedDocumentIdSkip(
-      org.springframework.ai.document.Document chunk, String malformedDocumentId) {
+  private void recordInvalidDocumentIdSkip(
+      org.springframework.ai.document.Document chunk, String invalidDocumentId) {
     UUID chunkId = UUID.fromString(chunk.getId());
     UUID libraryId =
         UUID.fromString((String) chunk.getMetadata().get(VectorChunkStore.LIBRARY_ID_METADATA_KEY));
+    String reason =
+        invalidDocumentId == null
+            ? "missing document_id metadata"
+            : "malformed document_id metadata: " + invalidDocumentId;
     log.warn(
-        "Full-text backfill: chunk {} (library {}) has a malformed document_id metadata value "
-            + "('{}') - recording it as a permanently skipped chunk instead of retrying, since this "
-            + "is a structural defect that cannot heal on its own",
+        "Full-text backfill: chunk {} (library {}) has {} - recording it as a permanently skipped "
+            + "chunk instead of retrying, since this is a structural defect that cannot heal on its "
+            + "own",
         chunkId,
         libraryId,
-        malformedDocumentId);
+        reason);
     fullTextChunkStore.recordConfirmedSkip(
-        chunkId,
-        null,
-        libraryId,
-        "malformed document_id metadata: " + malformedDocumentId,
-        SKIP_CONFIRMATION_ATTEMPTS);
+        chunkId, null, libraryId, reason, SKIP_CONFIRMATION_ATTEMPTS);
   }
 
   /**
