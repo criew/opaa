@@ -382,8 +382,14 @@ public class IndexingConfiguration {
         libraryStorageQuotaService);
   }
 
+  /**
+   * Declared as the concrete type, not as {@link SourceIndexingExecutor} like its siblings: {@code
+   * ConfluenceWebhookService} injects the executor directly for its targeted webhook run (#1140),
+   * and Spring resolves an injection point by the bean method's declared type - the registry still
+   * collects it through the interface it implements.
+   */
   @Bean
-  SourceIndexingExecutor confluenceIndexingExecutor(
+  ConfluenceIndexingExecutor confluenceIndexingExecutor(
       ConfluenceClientFactory confluenceClientFactory,
       ConfluenceProperties confluenceProperties,
       FileProcessingService fileProcessingService,
