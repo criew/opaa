@@ -43,6 +43,7 @@ Eine eigene Transaktion (`REQUIRES_NEW`, `TransactionTemplate`) war in diesem Pr
 - Für einen Bug außerhalb des Umfangs ein beschriftetes deutschsprachiges Follow-up-Issue erstellen und es im PR erwähnen — in diesem PR nicht beheben.
 - Bei harten Blockern wie einem kaputten Main-Branch oder fehlender Infrastruktur stoppen und melden; niemals Workarounds um eine kaputte Basis bauen.
 - Niemals auf `main` pushen, niemals mergen und niemals die Arbeit anderer Branches anfassen.
+- Beim PR-Abschluss die Abnahmekriterien-Checkboxen im Issue abhaken; Abweichungen bleiben offen und werden mit Verweis auf den PR begründet.
 - `Closes #N` nur, wenn der Issue-Umfang vollständig geliefert ist. Bewusst ausgelassener Umfang braucht ein tatsächlich angelegtes, im PR verlinktes Folge-Issue — oder `Refs` statt `Closes`. Ein Satz im PR-Body ersetzt kein Issue.
 - Vor der Vergabe einer Liquibase-Changeset-Nummer oder einer geteilten Versions-Konstante (Pipeline-Version, Messvertragsversion) nicht nur `main`, sondern auch die offenen PRs prüfen (`gh pr list`, `gh pr view <n> --json files`) — parallele Stränge vergeben dieselben Nummern.
 
