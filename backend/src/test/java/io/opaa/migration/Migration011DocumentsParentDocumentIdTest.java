@@ -16,14 +16,9 @@ import org.junit.jupiter.api.Test;
  * Delta test for {@code changes/011-documents-parent-document-id.yaml} (ADR-0022, Entscheidung 4,
  * #1180): pins all three properties the changeSet's comment promises for {@code
  * documents.parent_document_id} - nullable, FK-enforced against {@code documents(id)}, and no
- * cascading delete - plus the backfill that seeds it from the existing RSS {@code
- * source_entry_url}/{@code file_path} convention, scoped to {@code library_id} since {@code
- * file_path} is only unique within a library ({@code uk_documents_library_path}).
- *
- * <p>Backfill tests insert their fixture rows on the pre-migration schema (no {@code
- * parent_document_id} column yet) and only then apply the changeSet, so the backfill under test
- * actually runs against them - the FK/nullability tests do the reverse, applying the changeSet
- * first since they need the column and constraint to already exist.
+ * cascading delete. Deliberately schema-only, no backfill: the changeSet's own comment explains why
+ * a backfill against Bestandsdaten belongs in #1182 instead, alongside the delete-path fixes
+ * (processRssEntry, the single-document delete API, PipelineReindexService#advance) it depends on.
  */
 class Migration011DocumentsParentDocumentIdTest extends AbstractMigrationTest {
 
@@ -45,6 +40,7 @@ class Migration011DocumentsParentDocumentIdTest extends AbstractMigrationTest {
     connection = connect();
     UUID ownerUserId = insertUser("owner");
     libraryId = insertLibrary(ownerUserId);
+    applyChangelog(connection, CHANGELOG_PATH);
   }
 
   @AfterEach
@@ -54,31 +50,24 @@ class Migration011DocumentsParentDocumentIdTest extends AbstractMigrationTest {
 
   @Test
   void parentDocumentIdIsNullableAndDefaultsToNull() throws Exception {
-    UUID documentId = insertDocumentPreMigration(libraryId, "/corpus/report.pdf", null);
-    applyChangelog(connection, CHANGELOG_PATH);
+    UUID documentId = insertDocument(libraryId, "/corpus/report.pdf", null);
 
     assertThat(parentDocumentId(documentId)).isNull();
   }
 
   @Test
   void parentDocumentIdAcceptsAnExistingDocumentAsParent() throws Exception {
-    UUID parentId = insertDocumentPreMigration(libraryId, "https://feed.example/entry", null);
-    applyChangelog(connection, CHANGELOG_PATH);
-    UUID childId =
-        insertDocumentPostMigration(libraryId, "/attachments/report.pdf", null, parentId);
+    UUID parentId = insertDocument(libraryId, "https://feed.example/entry", null);
+    UUID childId = insertDocument(libraryId, "/attachments/report.pdf", parentId);
 
     assertThat(parentDocumentId(childId)).isEqualTo(parentId);
   }
 
   @Test
-  void parentDocumentIdRejectsAnIdThatIsNotAnExistingDocument() throws Exception {
-    applyChangelog(connection, CHANGELOG_PATH);
+  void parentDocumentIdRejectsAnIdThatIsNotAnExistingDocument() {
     UUID danglingParentId = UUID.randomUUID();
 
-    assertThatThrownBy(
-            () ->
-                insertDocumentPostMigration(
-                    libraryId, "/attachments/report.pdf", null, danglingParentId))
+    assertThatThrownBy(() -> insertDocument(libraryId, "/attachments/report.pdf", danglingParentId))
         .isInstanceOf(SQLException.class)
         .hasMessageContaining("fk_documents_parent");
   }
@@ -90,74 +79,12 @@ class Migration011DocumentsParentDocumentIdTest extends AbstractMigrationTest {
    */
   @Test
   void deletingAParentWithAnExistingChildFailsInsteadOfCascading() throws Exception {
-    applyChangelog(connection, CHANGELOG_PATH);
-    UUID parentId =
-        insertDocumentPostMigration(libraryId, "https://feed.example/entry", null, null);
-    insertDocumentPostMigration(libraryId, "/attachments/report.pdf", null, parentId);
+    UUID parentId = insertDocument(libraryId, "https://feed.example/entry", null);
+    insertDocument(libraryId, "/attachments/report.pdf", parentId);
 
     assertThatThrownBy(() -> deleteDocument(parentId))
         .isInstanceOf(SQLException.class)
         .hasMessageContaining("fk_documents_parent");
-  }
-
-  @Test
-  void backfillLinksAnRssAttachmentToItsEntryByFilePathAndLibrary() throws Exception {
-    UUID entryId = insertDocumentPreMigration(libraryId, "https://feed.example/entry-1", null);
-    UUID attachmentId =
-        insertDocumentPreMigration(
-            libraryId, "/attachments/report.pdf", "https://feed.example/entry-1");
-
-    applyChangelog(connection, CHANGELOG_PATH);
-
-    assertThat(parentDocumentId(attachmentId)).isEqualTo(entryId);
-  }
-
-  /**
-   * The library-scoping requirement the coordinator called out: the same entry URL indexed into two
-   * different libraries produces two independent entry rows (per {@code
-   * uk_documents_library_path}), and the backfill must not let an attachment in one library link to
-   * an identically-pathed entry that belongs to another.
-   */
-  @Test
-  void backfillDoesNotCrossLibraryBoundaries() throws Exception {
-    UUID otherOwnerId = insertUser("other-owner");
-    UUID otherLibraryId = insertLibrary(otherOwnerId);
-    insertDocumentPreMigration(otherLibraryId, "https://feed.example/entry-1", null);
-    UUID entryInOwnLibrary =
-        insertDocumentPreMigration(libraryId, "https://feed.example/entry-1", null);
-    UUID attachmentId =
-        insertDocumentPreMigration(
-            libraryId, "/attachments/report.pdf", "https://feed.example/entry-1");
-
-    applyChangelog(connection, CHANGELOG_PATH);
-
-    assertThat(parentDocumentId(attachmentId)).isEqualTo(entryInOwnLibrary);
-  }
-
-  @Test
-  void backfillLeavesADocumentWithoutASourceEntryUrlUntouched() throws Exception {
-    UUID documentId = insertDocumentPreMigration(libraryId, "/corpus/report.pdf", null);
-
-    applyChangelog(connection, CHANGELOG_PATH);
-
-    assertThat(parentDocumentId(documentId)).isNull();
-  }
-
-  /**
-   * A dangling {@code source_entry_url} (the referenced entry row does not exist, e.g. it was
-   * deleted before this migration ran) must not turn the backfill's own {@code UPDATE ... FROM}
-   * into a constraint violation - it simply finds no matching parent row and leaves the column
-   * {@code null}, exactly like {@link #backfillLeavesADocumentWithoutASourceEntryUrlUntouched}.
-   */
-  @Test
-  void backfillLeavesADanglingSourceEntryUrlAsNull() throws Exception {
-    UUID attachmentId =
-        insertDocumentPreMigration(
-            libraryId, "/attachments/report.pdf", "https://feed.example/vanished-entry");
-
-    applyChangelog(connection, CHANGELOG_PATH);
-
-    assertThat(parentDocumentId(attachmentId)).isNull();
   }
 
   private UUID parentDocumentId(UUID documentId) throws SQLException {
@@ -179,41 +106,19 @@ class Migration011DocumentsParentDocumentIdTest extends AbstractMigrationTest {
     }
   }
 
-  /** Inserts a document on the schema as it exists before this migration's changeSet runs. */
-  private UUID insertDocumentPreMigration(UUID libraryId, String filePath, String sourceEntryUrl)
+  private UUID insertDocument(UUID libraryId, String filePath, UUID parentDocumentId)
       throws SQLException {
     UUID id = UUID.randomUUID();
     try (PreparedStatement statement =
         connection.prepareStatement(
             "INSERT INTO documents (id, file_name, file_path, status, source_type, library_id,"
-                + " organization_id, source_entry_url) VALUES (?, 'report.pdf', ?, 'INDEXED',"
+                + " organization_id, parent_document_id) VALUES (?, 'report.pdf', ?, 'INDEXED',"
                 + " 'RSS_FEED', ?, ?, ?)")) {
       statement.setObject(1, id);
       statement.setString(2, filePath);
       statement.setObject(3, libraryId);
       statement.setObject(4, ORGANIZATION_ID);
-      statement.setString(5, sourceEntryUrl);
-      statement.executeUpdate();
-    }
-    return id;
-  }
-
-  /** Inserts a document once this migration's changeSet has already run. */
-  private UUID insertDocumentPostMigration(
-      UUID libraryId, String filePath, String sourceEntryUrl, UUID parentDocumentId)
-      throws SQLException {
-    UUID id = UUID.randomUUID();
-    try (PreparedStatement statement =
-        connection.prepareStatement(
-            "INSERT INTO documents (id, file_name, file_path, status, source_type, library_id,"
-                + " organization_id, source_entry_url, parent_document_id) VALUES (?, 'report.pdf',"
-                + " ?, 'INDEXED', 'RSS_FEED', ?, ?, ?, ?)")) {
-      statement.setObject(1, id);
-      statement.setString(2, filePath);
-      statement.setObject(3, libraryId);
-      statement.setObject(4, ORGANIZATION_ID);
-      statement.setString(5, sourceEntryUrl);
-      statement.setObject(6, parentDocumentId);
+      statement.setObject(5, parentDocumentId);
       statement.executeUpdate();
     }
     return id;
