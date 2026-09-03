@@ -1,19 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
-  listLabelRuleNames,
-  noteRuleNames,
+  listLabelRules,
+  noteRules,
   translateListLabel,
   translateStageNote,
 } from './retrievalProtocolText'
 import retrievalNoteTemplates from './retrieval-note-templates.json'
 
 /**
- * Every note the retrieval stages can produce today, in the exact wording the backend emits. A note
- * missing here would reach the German administration page in English.
- *
- * The backend side of this coupling is `io.opaa.query.RetrievalNoteTest`: it pins the exact set of
- * note/list-label templates in `io.opaa.query.RetrievalNote`/`RetrievalListLabel` and fails, with a
- * message pointing back at this file, the moment a stage gains a new or reworded template (#1160).
+ * A curated subset of the notes the retrieval stages can produce, used below only for wording-
+ * quality spot checks (no English left over, singular/plural, no leaked Java type, ...). The
+ * mechanical coverage of the full backend inventory - every template has a same-named rule whose
+ * pattern actually matches it, no orphaned rule left behind - is `retrieval-note-templates.json
+ * coverage` further down, sourced from `io.opaa.query.RetrievalNoteTemplateExport` (#1207).
  */
 const BACKEND_NOTES = [
   'empty search scope: nothing readable in scope, retrieval halted',
@@ -146,20 +145,73 @@ describe('translateListLabel', () => {
 })
 
 /**
+ * A backend template's `%d`/`%s` placeholders carry no information about the vocabulary a real call
+ * site fills them with (e.g. `SEARCH_SCOPE`'s `%s` is "library" or "libraries", chosen by
+ * `SearchScopeStage`, not by the template) - so a fixed dummy value cannot always instantiate a
+ * template into something a correct pattern matches. This tries a small, deliberately open pool of
+ * candidate values instead of one fixed pair, and only for the numeric/free-text placeholders that
+ * genuinely occur; the pool grows if a future template needs a value not covered here.
+ */
+const DUMMY_NUMBER = '2'
+const DUMMY_STRING_CANDIDATES = ['x', 'library', 'libraries', 'sub-query', 'sub-queries']
+
+function instantiate(template: string, stringValue: string): string {
+  return template.replace(/%d/g, DUMMY_NUMBER).replace(/%s/g, stringValue)
+}
+
+/** Whether some instantiation of `template` matches `pattern` - see {@link DUMMY_STRING_CANDIDATES}. */
+function matchesSomeInstantiation(pattern: RegExp, template: string): boolean {
+  return DUMMY_STRING_CANDIDATES.some((value) => pattern.test(instantiate(template, value)))
+}
+
+/**
  * `retrieval-note-templates.json` is the mechanical export of `io.opaa.query.RetrievalNoteTest`
- * (#1207): a name-set comparison against it, not against wording, so this stays robust while still
- * catching the exact drift the issue names - a template renamed or added on the backend without a
- * matching entry here, or a `NOTE_RULES`/`LIST_LABEL_RULES` entry left behind after a backend
- * template was removed.
+ * (#1207). Coverage here is two-layered: every backend template's name has a same-named rule (in
+ * both directions - a name-only comparison would miss a mechanical drift), and that rule's pattern
+ * actually matches an instantiation of the backend's own raw template - the layer that catches a
+ * reworded template whose name did not change, or two rules swapped between names, neither of which
+ * a name-only comparison would notice.
  */
 describe('retrieval-note-templates.json coverage', () => {
   it('translates every backend note and stage-status note', () => {
     const backendNames = retrievalNoteTemplates.notes.map((entry) => entry.name).sort()
-    expect(noteRuleNames().sort()).toEqual(backendNames)
+    expect(
+      noteRules()
+        .map((rule) => rule.name)
+        .sort(),
+    ).toEqual(backendNames)
   })
+
+  it.each(retrievalNoteTemplates.notes)(
+    "the $name rule's pattern matches the backend template it is named after",
+    ({ name, template }) => {
+      const rule = noteRules().find((r) => r.name === name)
+      expect(rule, `No NOTE_RULES entry named ${name}`).toBeDefined()
+      expect(
+        matchesSomeInstantiation(rule!.pattern, template),
+        `NOTE_RULES's ${name} pattern does not match "${template}" for any of ${DUMMY_STRING_CANDIDATES.join(', ')}`,
+      ).toBe(true)
+    },
+  )
 
   it('translates every backend list label', () => {
     const backendNames = retrievalNoteTemplates.listLabels.map((entry) => entry.name).sort()
-    expect(listLabelRuleNames().sort()).toEqual(backendNames)
+    expect(
+      listLabelRules()
+        .map((rule) => rule.name)
+        .sort(),
+    ).toEqual(backendNames)
   })
+
+  it.each(retrievalNoteTemplates.listLabels)(
+    "the $name rule's pattern matches the backend template it is named after",
+    ({ name, template }) => {
+      const rule = listLabelRules().find((r) => r.name === name)
+      expect(rule, `No LIST_LABEL_RULES entry named ${name}`).toBeDefined()
+      expect(
+        matchesSomeInstantiation(rule!.pattern, template),
+        `LIST_LABEL_RULES's ${name} pattern does not match "${template}" for any of ${DUMMY_STRING_CANDIDATES.join(', ')}`,
+      ).toBe(true)
+    },
+  )
 })

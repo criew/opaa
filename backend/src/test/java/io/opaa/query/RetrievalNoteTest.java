@@ -40,7 +40,11 @@ class RetrievalNoteTest {
 
   /**
    * The regeneration path {@link #TRANSLATION_REMINDER} points at - off by default, so a regular
-   * test run never rewrites the committed file underneath a genuine drift.
+   * test run never rewrites the committed file underneath a genuine drift. A regeneration run
+   * executes both this test and {@link #notesAndListLabelsMatchTheCommittedFrontendExport} in the
+   * same JVM; on a genuine drift the latter still fails in that same run (it read the file before
+   * this test rewrote it) even though the file on disk is correct afterwards - review the diff
+   * instead of treating that run's red result as a failed regeneration.
    */
   @Test
   @EnabledIfSystemProperty(named = "opaa.retrievalNoteTemplates.regenerate", matches = "true")

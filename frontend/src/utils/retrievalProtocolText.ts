@@ -254,16 +254,18 @@ const LIST_LABEL_RULES: NoteRule[] = [
 ]
 
 /**
- * The rule names of both inventories - the coverage check in `retrievalProtocolText.test.ts` reads
- * only this, never the regexes or German wording, to stay a name-set comparison against
- * `retrieval-note-templates.json` rather than a re-implementation of {@link translate}.
+ * Both rule inventories, name and pattern only (never the German wording) - what
+ * `retrievalProtocolText.test.ts` reads to check `retrieval-note-templates.json` coverage: every
+ * backend template's name has a same-named rule here, and that rule's pattern actually matches an
+ * instantiation of the backend's own raw template (#1207 review: a name-only comparison would miss
+ * a reworded template or two rules swapped between names).
  */
-export function noteRuleNames(): string[] {
-  return NOTE_RULES.map((rule) => rule.name)
+export function noteRules(): readonly Pick<NoteRule, 'name' | 'pattern'>[] {
+  return NOTE_RULES
 }
 
-export function listLabelRuleNames(): string[] {
-  return LIST_LABEL_RULES.map((rule) => rule.name)
+export function listLabelRules(): readonly Pick<NoteRule, 'name' | 'pattern'>[] {
+  return LIST_LABEL_RULES
 }
 
 function translate(rules: NoteRule[], text: string): string {
