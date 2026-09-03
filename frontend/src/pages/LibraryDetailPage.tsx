@@ -1736,15 +1736,35 @@ function LibraryIndexingSection({
 
       {canTrigger ? (
         <>
-          <Button
-            variant="contained"
-            startIcon={<PlayArrowIcon />}
-            onClick={() => void trigger(libraryId, library.sourceType)}
-            disabled={isRunning}
-            sx={{ mb: 2 }}
-          >
-            {isRunning ? 'Indizierung läuft …' : 'Jetzt indizieren'}
-          </Button>
+          <Stack direction="row" spacing={1.5} sx={{ mb: 2, flexWrap: 'wrap' }} useFlexGap>
+            <Button
+              variant="contained"
+              startIcon={<PlayArrowIcon />}
+              onClick={() => void trigger(libraryId, library.sourceType)}
+              disabled={isRunning}
+            >
+              {isRunning ? 'Indizierung läuft …' : 'Jetzt indizieren'}
+            </Button>
+            {/* ADR-0023, Entscheidung 4 (#1139): "Jetzt indizieren" follows the library's state
+                (incremental between two full runs); the full reconciliation can be forced. */}
+            {configKind === 'confluence' && (
+              <Button
+                variant="outlined"
+                onClick={() => void trigger(libraryId, library.sourceType, 'FULL')}
+                disabled={isRunning}
+              >
+                Vollabgleich starten
+              </Button>
+            )}
+          </Stack>
+          {configKind === 'confluence' && !isRunning && (
+            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
+              „Jetzt indizieren“ nimmt nur Änderungen seit dem letzten Lauf auf und löscht nichts;
+              der Vollabgleich prüft alle ausgewählten Spaces vollständig und entfernt, was in
+              Confluence nicht mehr vorhanden ist. Er läuft ohnehin nach jeder Auswahländerung und
+              spätestens im vom Betrieb eingestellten Abstand.
+            </Typography>
+          )}
 
           {isRunning && (
             <Box sx={{ mb: 2 }}>

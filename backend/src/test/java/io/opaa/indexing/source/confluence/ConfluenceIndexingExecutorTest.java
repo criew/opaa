@@ -62,6 +62,14 @@ import org.mockito.ArgumentMatcher;
 class ConfluenceIndexingExecutorTest {
 
   private static final Instant NOW = Instant.parse("2026-09-03T10:00:00Z");
+
+  /**
+   * When the seeded pages were last modified - well before any incremental anchor in these tests.
+   */
+  private static final Instant SEEDED_AT = NOW.minus(Duration.ofDays(3));
+
+  private static final Duration FULL_SYNC_INTERVAL = Duration.ofDays(7);
+  private static final Duration OVERLAP = Duration.ofMinutes(10);
   private static final String EMAIL = "dienst@behoerde.example";
   private static final String TOKEN = "geheimes-token";
 
@@ -122,23 +130,23 @@ class ConfluenceIndexingExecutorTest {
     server.addSpace("1", "ENG", "Engineering");
     server.addSpace("2", "HR", "Personal");
     server.addSpace("3", "SEC", "Geheimschutz");
-    server.addPage("100", "ENG", "Handbuch", null, "<p>Willkommen im Handbuch.</p>", NOW);
-    server.addPage("101", "ENG", "Kapitel 1", "100", "<p>Das erste Kapitel.</p>", NOW);
+    server.addPage("100", "ENG", "Handbuch", null, "<p>Willkommen im Handbuch.</p>", SEEDED_AT);
+    server.addPage("101", "ENG", "Kapitel 1", "100", "<p>Das erste Kapitel.</p>", SEEDED_AT);
     server.addPage(
         "102",
         "ENG",
         "Abschnitt 1.1",
         "101",
         "<h1>Zuständigkeiten</h1><p>Das Bauamt bearbeitet Anträge innerhalb von 14 Tagen.</p>",
-        NOW);
+        SEEDED_AT);
     server.addAttachment(
         "900",
         "102",
         "notizen.txt",
         "text/plain",
         "Notizen zur Sitzung".getBytes(StandardCharsets.UTF_8));
-    server.addPage("200", "HR", "Onboarding", null, "<p>Erste Schritte.</p>", NOW);
-    server.addPage("300", "SEC", "Streng geheim", null, "<p>Nicht für alle.</p>", NOW);
+    server.addPage("200", "HR", "Onboarding", null, "<p>Erste Schritte.</p>", SEEDED_AT);
+    server.addPage("300", "SEC", "Streng geheim", null, "<p>Nicht für alle.</p>", SEEDED_AT);
     ConfluenceCredentials credentials = server.addToken(EMAIL, TOKEN, readableSpaces);
     String stored =
         credentials instanceof ConfluenceCredentials.CloudApiToken ? EMAIL + ":" + TOKEN : TOKEN;
@@ -161,14 +169,15 @@ class ConfluenceIndexingExecutorTest {
       selection.add(new ConfluenceSpaceSelection(key, null));
     }
     library.configureConfluence(edition, selection);
+    ConfluenceProperties properties =
+        new ConfluenceProperties(
+            2, null, null, 3, Duration.ofSeconds(2), 0, 0, null, 0, FULL_SYNC_INTERVAL, OVERLAP);
     ConfluenceClientFactory factory =
-        new ConfluenceClientFactory(
-            new ConfluenceProperties(2, null, null, 3, Duration.ofSeconds(2), 0, 0, null, 0),
-            TargetAddressValidator.disabled(),
-            sleeps::add);
+        new ConfluenceClientFactory(properties, TargetAddressValidator.disabled(), sleeps::add);
     executor =
         new ConfluenceIndexingExecutor(
             factory,
+            properties,
             fileProcessingService,
             indexingJobService,
             documentRepository,
@@ -449,18 +458,6 @@ class ConfluenceIndexingExecutorTest {
 
   @ParameterizedTest
   @MethodSource("editions")
-  void anUndeclaredRunModeFailsTheRunWithoutTouchingTheInstance(ConfluenceEdition edition)
-      throws Exception {
-    start(edition, null, "ENG");
-
-    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
-
-    verify(indexingJobService).failJob(eq(jobId), contains("INCREMENTAL"));
-    assertThat(server.requests()).isEmpty();
-  }
-
-  @ParameterizedTest
-  @MethodSource("editions")
   void attachmentsOfAPageThisRunCouldNotProcessStayInTheReconciliationSet(ConfluenceEdition edition)
       throws Exception {
     // #1179 review, CRITICAL: a page that cannot be fetched (404) or stored (quota) is no finding
@@ -618,6 +615,140 @@ class ConfluenceIndexingExecutorTest {
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
     verify(cleanupService).cleanupVanished(any(), any(), current.capture(), any(), any(), any());
     assertThat(current.getValue()).anyMatch(path -> path.endsWith("/werkzeug.exe"));
+  }
+
+  // ---- incremental run (#1139) ----------------------------------------------------------------
+
+  private ConfluenceSyncState completedFullSync(Instant anchor) {
+    ConfluenceSyncState state = new ConfluenceSyncState(library.getId());
+    state.beginFullSync(UUID.randomUUID());
+    state.completeFullSync(anchor);
+    when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(state));
+    return state;
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void anIncrementalRunTakesTheChangedPagesOnlyAndNeverReconciles(ConfluenceEdition edition)
+      throws Exception {
+    start(edition, null, "ENG", "HR");
+    ConfluenceSyncState state = completedFullSync(NOW.minus(Duration.ofHours(2)));
+    // changed after the anchor (minus overlap): Kapitel 1 edited, Onboarding edited; Handbuch and
+    // Abschnitt 1.1 are older and must not even be fetched
+    server.updatePage(
+        "101", "<p>Das erste Kapitel, überarbeitet.</p>", NOW.minus(Duration.ofHours(1)));
+    server.updatePage("200", "<p>Erste Schritte, neu.</p>", NOW.minus(Duration.ofMinutes(30)));
+
+    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
+
+    verify(fileProcessingService)
+        .processConfluencePage(
+            contains("überarbeitet"),
+            eq("Kapitel 1"),
+            eq(pagePath(edition, "ENG", "101")),
+            eq("2"),
+            eq(new SourceDocumentContext("ENG", "Handbuch")),
+            eq(library));
+    verify(fileProcessingService)
+        .processConfluencePage(any(), eq("Onboarding"), any(), eq("2"), any(), eq(library));
+    verify(fileProcessingService, never())
+        .processConfluencePage(any(), eq("Handbuch"), any(), any(), any(), any());
+    verify(fileProcessingService, never())
+        .processConfluencePage(any(), eq("Abschnitt 1.1"), any(), any(), any(), any());
+    // the change search asked for identifiers only, never for bodies
+    assertThat(server.requests())
+        .filteredOn(r -> r.contains("search"))
+        .isNotEmpty()
+        .noneMatch(r -> r.contains("body"));
+    // "ergänzend": nothing is ever removed for being absent from the window
+    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(indexingJobService).completeJob(jobId, 2, 0, 0, 2);
+    // the anchor moves to this run's start, not its end
+    assertThat(state.getIncrementalAnchor()).isEqualTo(NOW);
+    verify(syncStateRepository).save(state);
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void anIncrementalRunSearchesFromTheAnchorMinusTheOverlapAndSkipsUnchangedVersions(
+      ConfluenceEdition edition) throws Exception {
+    start(edition, null, "ENG");
+    Instant anchor = NOW.minus(Duration.ofHours(1));
+    completedFullSync(anchor);
+    // modified inside the overlap window before the anchor: found again, but the version is known
+    server.updatePage(
+        "100", "<p>Willkommen, leicht geändert.</p>", anchor.minus(Duration.ofMinutes(5)));
+    String handbuch = pagePath(edition, "ENG", "100");
+    Document indexed =
+        new Document("Handbuch", handbuch, "text/html", 10L, DocumentSourceType.CONFLUENCE);
+    indexed.setStatus(DocumentStatus.INDEXED);
+    indexed.setLastModifiedRemote("2");
+    when(documentRepository.findByLibraryIdAndFilePath(library.getId(), handbuch))
+        .thenReturn(Optional.of(indexed));
+
+    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
+
+    assertThat(server.requests())
+        .as("the CQL window starts before the anchor")
+        .anyMatch(r -> r.contains("search") && r.contains(cqlStamp(anchor.minus(OVERLAP))));
+    verify(fileProcessingService, never())
+        .processConfluencePage(any(), any(), any(), any(), any(), any());
+    verify(indexingJobService).completeJob(jobId, 0, 0, 1, 0);
+  }
+
+  /** The adapters format CQL timestamps as "yyyy-MM-dd HH:mm" in UTC; the space is URL-encoded. */
+  private static String cqlStamp(Instant instant) {
+    return java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        .withZone(java.time.ZoneOffset.UTC)
+        .format(instant);
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aFailedPageKeepsTheAnchorSoTheWindowIsSearchedAgain(ConfluenceEdition edition)
+      throws Exception {
+    start(edition, null, "ENG");
+    Instant anchor = NOW.minus(Duration.ofHours(2));
+    ConfluenceSyncState state = completedFullSync(anchor);
+    server.updatePage("101", "<p>geändert</p>", NOW.minus(Duration.ofMinutes(20)));
+    when(fileProcessingService.processConfluencePage(
+            any(), eq("Kapitel 1"), any(), any(), any(), any()))
+        .thenReturn(FileProcessingResult.FAILED);
+
+    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
+
+    verify(indexingJobService).completeJob(jobId, 0, 1, 0, 0);
+    assertThat(state.getIncrementalAnchor()).as("unchanged after a failure").isEqualTo(anchor);
+    verify(syncStateRepository, never()).save(state);
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void anIncrementalRunWithoutACompletedFullSyncFailsWithAClearMessage(ConfluenceEdition edition)
+      throws Exception {
+    start(edition, null, "ENG");
+
+    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
+
+    verify(indexingJobService).failJob(eq(jobId), contains("abgeschlossenen Vollabgleich"));
+    verify(fileProcessingService, never())
+        .processConfluencePage(any(), any(), any(), any(), any(), any());
+    assertThat(server.requests()).noneMatch(r -> r.contains("search"));
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void theDefaultRunModeFollowsTheSyncState(ConfluenceEdition edition) throws Exception {
+    start(edition, null, "ENG");
+    assertThat(executor.defaultRunMode(library)).as("no state yet").isEqualTo(IndexingRunMode.FULL);
+
+    ConfluenceSyncState state = completedFullSync(NOW.minus(Duration.ofDays(2)));
+    assertThat(executor.defaultRunMode(library))
+        .as("recent full sync")
+        .isEqualTo(IndexingRunMode.INCREMENTAL);
+
+    state.beginFullSync(UUID.randomUUID());
+    assertThat(executor.defaultRunMode(library)).as("interrupted").isEqualTo(IndexingRunMode.FULL);
   }
 
   private static ArgumentMatcher<IndexingRunEvent> event(

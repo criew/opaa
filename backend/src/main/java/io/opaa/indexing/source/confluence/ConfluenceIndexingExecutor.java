@@ -84,6 +84,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
           + " vollständigen Auflistung unverändert";
 
   private final ConfluenceClientFactory clientFactory;
+  private final ConfluenceProperties properties;
   private final FileProcessingService fileProcessingService;
   private final IndexingJobService indexingJobService;
   private final DocumentRepository documentRepository;
@@ -96,6 +97,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
   public ConfluenceIndexingExecutor(
       ConfluenceClientFactory clientFactory,
+      ConfluenceProperties properties,
       FileProcessingService fileProcessingService,
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
@@ -106,6 +108,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       VectorChunkStore vectorChunkStore,
       Clock clock) {
     this.clientFactory = clientFactory;
+    this.properties = properties;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
     this.documentRepository = documentRepository;
@@ -124,9 +127,30 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
   @Override
   public Map<IndexingRunMode, VanishedDocumentPolicy> runModes() {
-    // ADR-0023, Entscheidung 4: the full sync is "vollständig auflistend"; the incremental,
-    // "ergänzende" run joins with #1139.
-    return Map.of(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE);
+    // ADR-0023, Entscheidung 4: the full sync is "vollständig auflistend", the incremental run
+    // "ergänzend" - it never removes anything for being absent from its change window (#1139).
+    return Map.of(
+        IndexingRunMode.FULL,
+        VanishedDocumentPolicy.REMOVE_ON_ABSENCE,
+        IndexingRunMode.INCREMENTAL,
+        VanishedDocumentPolicy.KEEP_ON_ABSENCE);
+  }
+
+  /**
+   * ADR-0023, Entscheidung 4 ("Betriebsarten im Zeitplan"): the first run, every run after a change
+   * of the space selection (KnowledgeLibraryService deletes the state then), a run after an
+   * interrupted full sync and every run once {@code fullSyncInterval} has passed since the last
+   * completed full sync are full ones; the routine run in between is incremental. Decided from the
+   * state at trigger time, so a full run that fell due while an incremental one was running is
+   * taken at the next tick, not lost.
+   */
+  @Override
+  public IndexingRunMode defaultRunMode(KnowledgeLibrary library) {
+    return syncStateRepository
+        .findByLibraryId(library.getId())
+        .filter(state -> !state.isFullSyncDue(properties.fullSyncInterval(), clock.instant()))
+        .map(state -> IndexingRunMode.INCREMENTAL)
+        .orElse(IndexingRunMode.FULL);
   }
 
   @Override
@@ -153,7 +177,12 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       client = clientFactory.create(connection);
       // ADR-0023, Entscheidung 2: before the first listing, never after - see the class Javadoc.
       client.verifyCredentials();
-      fullSync(new Run(jobId, client, targetLibrary, progress, events), startedAt);
+      Run run = new Run(jobId, client, targetLibrary, progress, events);
+      if (runMode == IndexingRunMode.INCREMENTAL) {
+        incrementalSync(run, startedAt);
+      } else {
+        fullSync(run, startedAt);
+      }
     } catch (ConfluenceAccessException e) {
       log.warn("Confluence run for library {} failed: {}", targetLibrary.getId(), e.getMessage());
       failure = e.getMessage();
@@ -277,6 +306,117 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     syncStateRepository.save(state);
   }
 
+  /**
+   * The incremental run (#1139): asks CQL for the identifiers of the pages in the selected spaces
+   * modified since the anchor minus the overlap, fetches each one individually and takes over what
+   * is new or changed. It never calls the reconciliation - a page absent from this window is not
+   * evidence of anything (ADR-0023, Entscheidung 4) - and it removes only what the instance itself
+   * reports as trashed. The anchor moves to this run's start only when the run failed nothing, so
+   * no change window is ever lost to an aborted run.
+   */
+  private void incrementalSync(Run run, Instant startedAt)
+      throws ConfluenceAccessException, InterruptedException {
+    UUID libraryId = run.library.getId();
+    ConfluenceSyncState state =
+        syncStateRepository
+            .findByLibraryId(libraryId)
+            .filter(s -> s.getIncrementalAnchor() != null && !s.isFullSyncInterrupted())
+            .orElseThrow(
+                () ->
+                    new ConfluenceAccessException(
+                        "Ein inkrementeller Abgleich braucht einen abgeschlossenen Vollabgleich;"
+                            + " bitte zuerst einen Vollabgleich starten."));
+    Set<String> selectedKeys = new HashSet<>();
+    for (ConfluenceSpaceSelection space : run.library.getConfluenceSpaces()) {
+      selectedKeys.add(space.getSpaceKey());
+    }
+    Instant since = state.getIncrementalAnchor().minus(properties.incrementalOverlap());
+    List<String> changed = run.client.searchPageIdsModifiedSince(selectedKeys, since);
+    run.total = changed.size();
+    run.progress.setTotal(run.total);
+    run.progress.report();
+    for (String pageId : changed) {
+      processChangedPage(run, pageId, selectedKeys);
+      run.progress.report();
+    }
+    if (run.progress.failedCount() == 0) {
+      state.advanceIncrementalAnchor(startedAt);
+      syncStateRepository.save(state);
+    } else {
+      log.info(
+          "Not advancing the Confluence anchor for library {} - this run failed at least one"
+              + " page, the next run searches the same window again",
+          libraryId);
+    }
+  }
+
+  /** One page the change search named - fetched individually, judged like in the full run. */
+  private void processChangedPage(Run run, String pageId, Set<String> selectedKeys)
+      throws InterruptedException {
+    Optional<ConfluencePage> fetched;
+    try {
+      fetched = run.client.fetchPage(pageId);
+    } catch (ConfluenceAccessException.Forbidden e) {
+      run.events.record(
+          IndexingEventCategory.REJECTED,
+          "Geänderte Seite " + pageId + " " + UNREADABLE_PAGE_SUFFIX,
+          pageId);
+      run.progress.recordSkipped();
+      return;
+    } catch (ConfluenceAccessException e) {
+      run.events.record(IndexingEventCategory.UNREACHABLE, e.getMessage(), pageId);
+      run.progress.recordFailed();
+      return;
+    }
+    if (fetched.isEmpty()) {
+      // a 404 is "gone" as much as "not readable" - no deletion finding either way
+      run.events.record(
+          IndexingEventCategory.REJECTED,
+          "Geänderte Seite " + pageId + " " + UNREADABLE_PAGE_SUFFIX,
+          pageId);
+      run.progress.recordSkipped();
+      return;
+    }
+    ConfluencePage page = fetched.get();
+    String pagePath = run.client.pageUrl(page.spaceKey(), page.id());
+    Optional<Document> existing =
+        documentRepository.findByLibraryIdAndFilePath(run.library.getId(), pagePath);
+    if (page.status() == ConfluencePageStatus.TRASHED) {
+      // the positive finding a deletion needs - the instance says so itself
+      removeTrashed(run, existing, pagePath);
+      run.progress.recordSkipped();
+      return;
+    }
+    if (!selectedKeys.contains(page.spaceKey())) {
+      // moved out of the selection: the old document stays until the next full run judges it
+      run.events.record(
+          IndexingEventCategory.REJECTED,
+          pageLabel(
+                  new ConfluencePageSummary(
+                      page.id(), page.spaceKey(), page.title(), page.version(), null),
+                  page.spaceKey())
+              + "liegt in einem nicht ausgewählten Space; der bisherige Stand bleibt bis zum"
+              + " nächsten Vollabgleich",
+          pagePath);
+      run.progress.recordSkipped();
+      return;
+    }
+    String version = String.valueOf(page.version());
+    SourceDocumentContext pageContext =
+        new SourceDocumentContext(
+            page.spaceKey(),
+            page.ancestorTitles().isEmpty()
+                ? null
+                : String.join(SourceDocumentContext.HIERARCHY_SEPARATOR, page.ancestorTitles()));
+    if (isUnchanged(existing, version)) {
+      // re-read through the overlap, or an attachment-only change: attachments are still listed
+      run.progress.recordSkipped();
+      indexAttachments(run, page.id(), pagePath, pageContext.descend(page.title()));
+      return;
+    }
+    storePage(run, page, pagePath, version, pageContext);
+  }
+
   /** Unfinished spaces of an interrupted full sync first, then the already completed ones. */
   static List<ConfluenceSpaceSelection> orderForResumption(
       KnowledgeLibrary library, ConfluenceSyncState state) {
@@ -357,6 +497,19 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
             page.ancestorTitles().isEmpty()
                 ? null
                 : String.join(SourceDocumentContext.HIERARCHY_SEPARATOR, page.ancestorTitles()));
+    storePage(run, page, pagePath, version, pageContext);
+  }
+
+  /**
+   * Text and attachments of a fetched, current page - shared by the full and the incremental run.
+   */
+  private void storePage(
+      Run run,
+      ConfluencePage page,
+      String pagePath,
+      String version,
+      SourceDocumentContext pageContext)
+      throws InterruptedException {
     String storageBody = page.storageBody() == null ? "" : page.storageBody();
     if (storageBody.isBlank()) {
       run.events.record(

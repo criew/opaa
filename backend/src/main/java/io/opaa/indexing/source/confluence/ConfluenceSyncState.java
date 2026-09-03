@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -125,6 +126,28 @@ public class ConfluenceSyncState {
     completedSpaceKeys = null;
     fullSyncJobId = null;
     touch();
+  }
+
+  /**
+   * An incremental run completed without failures: the next one searches from {@code anchor} (the
+   * start of the run that just finished, minus the caller's overlap) - never from its end, so
+   * changes during the run are not lost (ADR-0023, Entscheidung 4).
+   */
+  public void advanceIncrementalAnchor(Instant anchor) {
+    incrementalAnchor = anchor;
+    touch();
+  }
+
+  /**
+   * Whether the next run has to be a full one: nothing completed yet, the last full sync was
+   * interrupted, or the last completed one is older than {@code interval}. Only a completed full
+   * sync leaves the anchor an incremental run needs.
+   */
+  public boolean isFullSyncDue(Duration interval, Instant now) {
+    return fullSyncCompletedAt == null
+        || isFullSyncInterrupted()
+        || incrementalAnchor == null
+        || !fullSyncCompletedAt.plus(interval).isAfter(now);
   }
 
   private void touch() {

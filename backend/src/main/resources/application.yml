@@ -173,6 +173,8 @@ opaa:
       max-attachment-size-bytes: ${OPAA_INDEXING_CONFLUENCE_MAX_ATTACHMENT_SIZE_BYTES:20971520}
       user-agent: ${OPAA_INDEXING_CONFLUENCE_USER_AGENT:OPAA-Indexer/1.0}
       max-listing-pages: ${OPAA_INDEXING_CONFLUENCE_MAX_LISTING_PAGES:500}
+      full-sync-interval: ${OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL:7d}
+      incremental-overlap: ${OPAA_INDEXING_CONFLUENCE_INCREMENTAL_OVERLAP:10m}
     # #1058: DoS-hardening limits for TabularDocumentPipeline (XLSX/CSV/ODS) - own property block,
     # own binding prefix, see TabularProperties's own Javadoc for why.
     tabular:

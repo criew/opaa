@@ -3,6 +3,7 @@ package io.opaa.indexing.source;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.library.KnowledgeLibrary;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -27,6 +28,22 @@ public interface SourceIndexingExecutor {
    * VanishedDocumentPolicy#REMOVE_ON_ABSENCE}.
    */
   Map<IndexingRunMode, VanishedDocumentPolicy> runModes();
+
+  /**
+   * The mode a run of {@code library} takes when none is requested (scheduler, plain "Jetzt
+   * indizieren"). A one-mode executor has nothing to decide; an executor with several modes must
+   * override this and decide from the library's own state (ADR-0023, Entscheidung 4: the first run
+   * and every run after a selection change are full ones, a full reconciliation stays due
+   * regularly).
+   */
+  default IndexingRunMode defaultRunMode(KnowledgeLibrary library) {
+    Set<IndexingRunMode> modes = runModes().keySet();
+    if (modes.size() != 1) {
+      throw new IllegalStateException(
+          sourceType() + " declares " + modes + " and must override defaultRunMode");
+    }
+    return modes.iterator().next();
+  }
 
   /** The source type this executor serves. Used as the registry's lookup key. */
   IndexingSourceType sourceType();

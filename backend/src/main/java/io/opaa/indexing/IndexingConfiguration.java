@@ -386,6 +386,7 @@ public class IndexingConfiguration {
   @Bean
   SourceIndexingExecutor confluenceIndexingExecutor(
       ConfluenceClientFactory confluenceClientFactory,
+      ConfluenceProperties confluenceProperties,
       FileProcessingService fileProcessingService,
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
@@ -396,6 +397,7 @@ public class IndexingConfiguration {
       VectorChunkStore vectorChunkStore) {
     return new ConfluenceIndexingExecutor(
         confluenceClientFactory,
+        confluenceProperties,
         fileProcessingService,
         indexingJobService,
         documentRepository,

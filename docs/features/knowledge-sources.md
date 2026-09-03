@@ -244,8 +244,20 @@ werden im nächsten Lauf per Versionsvergleich übersprungen, und die noch nicht
 Spaces kommen zuerst an die Reihe. Drosselt Confluence den Lauf (429, `Retry-After`), wartet er und
 meldet die Summe der Wartezeit als eigenes Ereignis (`RATE_LIMITED`), statt zu scheitern. Jeder
 Lauf trägt seine **Betriebsart** (`FULL`, `INCREMENTAL`; ADR-0023, Entscheidung 4) im
-Laufprotokoll und in der API; der manuelle Anstoß nimmt sie als Parameter `runMode` entgegen — für
-Confluence gibt es bis #1139 nur den Vollabgleich. **Die Aufbereitung (#1137)** übernimmt
+Laufprotokoll und in der API; der manuelle Anstoß nimmt sie als Parameter `runMode` entgegen.
+**Der inkrementelle Abgleich (#1139)** ist die Regelbetriebsart zwischen zwei Vollabgleichen: Er
+fragt per CQL nur die Kennungen der seit dem Anker geänderten Seiten der ausgewählten Spaces ab
+(mit Überlappung nach hinten, `OPAA_INDEXING_CONFLUENCE_INCREMENTAL_OVERLAP`, Standard 10 Minuten),
+holt jede einzeln, nimmt Neues, Geändertes und Verschobenes auf und **löscht nie wegen
+Abwesenheit** — nur eine Seite, die die Instanz selbst als im Papierkorb ausweist, verschwindet samt
+Anhängen. Der Anker rückt nach einem fehlerfreien Lauf auf dessen Startzeit vor; ein Abbruch lässt
+ihn stehen, sodass kein Änderungsfenster verloren geht. Ohne ausdrückliche Betriebsart entscheidet der
+Zustand der Bibliothek: Der erste Lauf, jeder Lauf nach einer Änderung der Space-Auswahl, nach einem
+unterbrochenen Vollabgleich und jeder Lauf, sobald der letzte Vollabgleich älter als
+`OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL` (Standard: eine Woche) ist, läuft voll — der Vollabgleich
+bleibt nötig, weil nur er Löschungen nachvollzieht, und ist deshalb verlängerbar, nicht abschaltbar.
+Der manuelle Anstoß bietet für Confluence beide Betriebsarten an („Jetzt indizieren“ folgt dem Zustand,
+„Vollabgleich starten“ erzwingt ihn). **Die Aufbereitung (#1137)** übernimmt
 `ConfluenceDocumentPipeline`: Makro-Regelwerk (statischer Inhalt bleibt, zur Laufzeit erzeugter
 entfällt), Überschriften, Tabellen, Listen, Code und Hinweiskästen als lesbarer Text, der
 Gliederungspfad der Seite am Dokument und im Chunk-Kontext — Einzelheiten in

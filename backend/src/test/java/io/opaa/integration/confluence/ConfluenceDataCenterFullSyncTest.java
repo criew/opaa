@@ -57,6 +57,7 @@ class ConfluenceDataCenterFullSyncTest {
 
   private static ConfluenceDataCenterFixture confluence;
   private static ConfluenceClientFactory factory;
+  private static ConfluenceProperties properties;
 
   private FileProcessingService fileProcessingService;
   private IndexingJobService indexingJobService;
@@ -68,10 +69,8 @@ class ConfluenceDataCenterFullSyncTest {
   @BeforeAll
   static void start() {
     confluence = ConfluenceDataCenterFixture.get();
-    factory =
-        new ConfluenceClientFactory(
-            new ConfluenceProperties(25, null, null, 0, null, 0, 0, null, 0),
-            TargetAddressValidator.disabled());
+    properties = new ConfluenceProperties(25, null, null, 0, null, 0, 0, null, 0, null, null);
+    factory = new ConfluenceClientFactory(properties, TargetAddressValidator.disabled());
   }
 
   @BeforeEach
@@ -96,6 +95,7 @@ class ConfluenceDataCenterFullSyncTest {
     executor =
         new ConfluenceIndexingExecutor(
             factory,
+            properties,
             fileProcessingService,
             indexingJobService,
             documentRepository,
@@ -225,6 +225,45 @@ class ConfluenceDataCenterFullSyncTest {
                         && "SEC".equals(event.getReference())));
     verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(eq(jobId), anyInt(), eq(0), anyInt(), anyInt());
+  }
+
+  @Test
+  void anIncrementalRunPicksUpAChangedPageAndRemovesNothing() throws Exception {
+    // #1139 core scenario against the real instance: full run first (anchors the state), then a
+    // change in Confluence, then an incremental run that takes it over and reconciles nothing.
+    KnowledgeLibrary library = library(confluence.adminToken(), "HR");
+    java.util.Map<UUID, io.opaa.indexing.source.confluence.ConfluenceSyncState> states =
+        new java.util.HashMap<>();
+    when(syncStateRepository.findByLibraryId(any()))
+        .thenAnswer(inv -> Optional.ofNullable(states.get(inv.<UUID>getArgument(0))));
+    when(syncStateRepository.save(any()))
+        .thenAnswer(
+            inv -> {
+              io.opaa.indexing.source.confluence.ConfluenceSyncState s = inv.getArgument(0);
+              states.put(s.getLibraryId(), s);
+              return s;
+            });
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+    assertThat(executor.defaultRunMode(library)).isEqualTo(IndexingRunMode.INCREMENTAL);
+    org.mockito.Mockito.clearInvocations(fileProcessingService, cleanupService);
+
+    confluence.updatePage("Onboarding", 2, "<p>Erste Schritte, aktualisiert am Tag zwei.</p>");
+    // the search index catches up asynchronously (see ConfluenceDataCenterAccessTest)
+    Thread.sleep(5000);
+
+    UUID jobId = UUID.randomUUID();
+    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
+
+    verify(fileProcessingService)
+        .processConfluencePage(
+            argThat(text -> text.contains("aktualisiert am Tag zwei")),
+            eq("Onboarding"),
+            eq(pagePath("Onboarding")),
+            eq("2"),
+            any(),
+            eq(library));
+    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(indexingJobService, never()).failJob(eq(jobId), any());
   }
 
   @Test

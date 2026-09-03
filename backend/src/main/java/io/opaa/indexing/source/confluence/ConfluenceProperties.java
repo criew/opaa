@@ -43,7 +43,9 @@ public record ConfluenceProperties(
     long maxResponseBytes,
     long maxAttachmentSizeBytes,
     String userAgent,
-    int maxListingPages) {
+    int maxListingPages,
+    Duration fullSyncInterval,
+    Duration incrementalOverlap) {
 
   static final String DEFAULT_USER_AGENT = "OPAA-Indexer/1.0";
 
@@ -86,10 +88,22 @@ public record ConfluenceProperties(
     if (maxListingPages == 0) {
       maxListingPages = 500;
     }
+    // ADR-0023, Entscheidung 4 ("Betriebsarten im Zeitplan"): a full reconciliation stays
+    // necessary - it is the only way deletions Confluence never reports reach the index - so the
+    // interval can be lengthened, never switched off; weekly is the documented default.
+    if (fullSyncInterval == null || fullSyncInterval.isZero() || fullSyncInterval.isNegative()) {
+      fullSyncInterval = Duration.ofDays(7);
+    }
+    // The incremental run searches from the last anchor minus this overlap: clock skew between
+    // OPAA and the instance, CQL's minute granularity and edits during the previous run are
+    // absorbed by re-reading a little; an unchanged page costs one listing entry, no body fetch.
+    if (incrementalOverlap == null || incrementalOverlap.isNegative()) {
+      incrementalOverlap = Duration.ofMinutes(10);
+    }
   }
 
   /** All defaults - for callers and tests that need a properties instance without configuration. */
   public static ConfluenceProperties defaults() {
-    return new ConfluenceProperties(0, null, null, 0, null, 0, 0, null, 0);
+    return new ConfluenceProperties(0, null, null, 0, null, 0, 0, null, 0, null, null);
   }
 }

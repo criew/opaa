@@ -51,6 +51,7 @@ import type {
   UserSummary,
   ConfluenceSpaceListRequest,
   ConfluenceSpaceListResponse,
+  IndexingRunMode,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
 import { setupAuthInterceptors } from './apiInterceptors'
@@ -395,10 +396,20 @@ export async function archiveSpace(spaceId: string): Promise<SpaceResponse> {
 // #478: the trigger reduces to "index this library" - sourceType and every typed configuration
 // field (url/proxy/credentials/insecureSsl) now live on the library itself (ADR-0018) and are no
 // longer sent from the frontend.
-export async function triggerIndexing(libraryId: string): Promise<IndexingStatusResponse> {
+/**
+ * Starts a run; `runMode` (ADR-0023, Entscheidung 4) is optional - without it the backend picks
+ * the library's own default (the only mode of a one-mode source type, or for Confluence the mode
+ * its sync state calls for).
+ */
+export async function triggerIndexing(
+  libraryId: string,
+  runMode?: IndexingRunMode,
+): Promise<IndexingStatusResponse> {
   try {
     const { data } = await client.post<IndexingStatusResponse>(
       `/v1/libraries/${libraryId}/indexing`,
+      undefined,
+      runMode ? { params: { runMode } } : undefined,
     )
     return data
   } catch (err) {

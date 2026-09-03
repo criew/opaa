@@ -577,6 +577,37 @@ describe('LibraryDetailPage', () => {
     )
   })
 
+  it('offers a forced full reconciliation only for a Confluence library (#1139)', async () => {
+    const mockTrigger = vi.fn().mockResolvedValue(undefined)
+    useIndexingStore.setState({ triggerIndexing: mockTrigger })
+    const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, {
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+      }),
+    )
+    const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Vollabgleich starten' }))
+    expect(mockTrigger).toHaveBeenCalledWith(ownerLibrary.id, 'CONFLUENCE', 'FULL')
+    await user.click(screen.getByRole('button', { name: 'Jetzt indizieren' }))
+    expect(mockTrigger).toHaveBeenLastCalledWith(ownerLibrary.id, 'CONFLUENCE')
+    expect(screen.getByText(/nimmt nur Änderungen seit dem letzten Lauf auf/)).toBeInTheDocument()
+    unmount()
+
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await screen.findByRole('button', { name: 'Jetzt indizieren' })
+    expect(screen.queryByRole('button', { name: 'Vollabgleich starten' })).not.toBeInTheDocument()
+  })
+
   it('states the Confluence sharing consequence to a VIEWER as well, and never for other types (#1138)', async () => {
     setLibraryState(
       viewerLibrary,
@@ -867,7 +898,8 @@ describe('LibraryDetailPage', () => {
     // #1138: a run that could not read something says so in its header, not only when expanded
     expect(screen.getByText('2 Ereignisse, davon 1 nicht lesbar')).toBeInTheDocument()
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: /Vollabgleich/ }))
+    // expanding the run through its own header (the mode chip sits inside the accordion summary)
+    await user.click(screen.getByTestId('run-mode-run-voll'))
     expect(await screen.findByText('Ratenbegrenzung')).toBeInTheDocument()
     unmount()
 

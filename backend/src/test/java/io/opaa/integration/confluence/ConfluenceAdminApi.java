@@ -58,6 +58,25 @@ final class ConfluenceAdminApi {
     return ConfluenceHttpSession.json(page).path("id").asString();
   }
 
+  /** A new version of the page's body - the change an incremental run has to pick up (#1139). */
+  void updatePage(String pageId, String title, int nextVersion, String storageBody)
+      throws IOException, InterruptedException {
+    ConfluenceHttpSession.Page page =
+        session.rest(
+            "PUT",
+            "/rest/api/content/" + pageId,
+            "{\"type\":\"page\",\"title\":\""
+                + title
+                + "\",\"version\":{\"number\":"
+                + nextVersion
+                + "},\"body\":{\"storage\":{\"value\":"
+                + ConfluenceHttpSession.JSON.writeValueAsString(storageBody)
+                + ",\"representation\":\"storage\"}}}",
+            user,
+            password);
+    expect(page, "update page " + pageId, 200);
+  }
+
   void uploadAttachment(String pageId, String fileName, String contentType, byte[] bytes)
       throws IOException, InterruptedException {
     ConfluenceHttpSession.Page page =

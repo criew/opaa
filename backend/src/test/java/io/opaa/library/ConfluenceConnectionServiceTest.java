@@ -49,7 +49,7 @@ class ConfluenceConnectionServiceTest {
   private final ConfluenceConnectionService service =
       new ConfluenceConnectionService(
           new ConfluenceClientFactory(
-              new ConfluenceProperties(2, null, null, 0, null, 0, 0, null, 0),
+              new ConfluenceProperties(2, null, null, 0, null, 0, 0, null, 0, null, null),
               TargetAddressValidator.disabled()));
 
   @AfterEach

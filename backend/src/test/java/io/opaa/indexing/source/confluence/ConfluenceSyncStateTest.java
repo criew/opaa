@@ -32,6 +32,29 @@ class ConfluenceSyncStateTest {
   }
 
   @Test
+  void aFullSyncIsDueWithoutACompletedOneAfterAnInterruptionAndOnceTheIntervalPassed() {
+    Instant now = Instant.parse("2026-09-10T10:00:00Z");
+    java.time.Duration weekly = java.time.Duration.ofDays(7);
+    ConfluenceSyncState state = new ConfluenceSyncState(UUID.randomUUID());
+    assertThat(state.isFullSyncDue(weekly, now)).as("never completed").isTrue();
+
+    state.beginFullSync(UUID.randomUUID());
+    assertThat(state.isFullSyncDue(weekly, now)).as("in progress / interrupted").isTrue();
+
+    state.completeFullSync(now.minus(java.time.Duration.ofDays(1)));
+    assertThat(state.isFullSyncDue(weekly, now.plusSeconds(60))).as("completed just now").isFalse();
+    assertThat(state.isFullSyncDue(java.time.Duration.ofSeconds(1), now.plusSeconds(60)))
+        .as("interval passed")
+        .isTrue();
+
+    state.advanceIncrementalAnchor(now);
+    assertThat(state.getIncrementalAnchor()).isEqualTo(now);
+    assertThat(state.getFullSyncCompletedAt())
+        .as("the anchor does not restart the interval")
+        .isBeforeOrEqualTo(Instant.now());
+  }
+
+  @Test
   void aNewRunAfterAnInterruptionKeepsTheCompletedSpacesButAfterACompletionStartsOver() {
     ConfluenceSyncState state = new ConfluenceSyncState(UUID.randomUUID());
     state.beginFullSync(UUID.randomUUID());

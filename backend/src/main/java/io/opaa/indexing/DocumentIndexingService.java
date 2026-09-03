@@ -189,9 +189,10 @@ public class DocumentIndexingService {
 
   /**
    * The executor's declaration decides (ADR-0023, Entscheidung 4): a requested mode must be one it
-   * supports; without a request, a one-mode executor runs its only mode, an executor with several
-   * runs FULL - the mode that can never leave a stale bestand behind. (The scheduler's own
-   * incremental default and the "full run due" bookkeeping for Confluence are #1139's.)
+   * supports; without a request the executor's own default for this library applies - the only mode
+   * a one-mode executor knows, or for Confluence the mode its sync state calls for (a full run when
+   * none completed yet, after a selection change or once the full-sync interval passed, incremental
+   * otherwise; #1139).
    */
   private static IndexingRunMode resolveRunMode(
       SourceIndexingExecutor executor, KnowledgeLibrary library, IndexingRunMode requested) {
@@ -208,10 +209,7 @@ public class DocumentIndexingService {
       }
       return requested;
     }
-    if (supported.size() == 1) {
-      return supported.iterator().next();
-    }
-    return IndexingRunMode.FULL;
+    return executor.defaultRunMode(library);
   }
 
   /**

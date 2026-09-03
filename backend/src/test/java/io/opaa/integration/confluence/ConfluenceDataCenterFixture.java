@@ -134,6 +134,13 @@ public final class ConfluenceDataCenterFixture {
     return trashedPageId;
   }
 
+  /** Writes a new version of a seeded page - for the incremental-run scenarios (#1139). */
+  public void updatePage(String title, int nextVersion, String storageBody)
+      throws IOException, InterruptedException {
+    new ConfluenceAdminApi(new ConfluenceHttpSession(baseUrl()), ADMIN_USER, ADMIN_PASSWORD)
+        .updatePage(pageId(title), title, nextVersion, storageBody);
+  }
+
   private void start() throws Exception {
     log.info("starting Postgres and Confluence Data Center ({})", CONFLUENCE_IMAGE);
     postgres.start();

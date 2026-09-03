@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -71,6 +72,13 @@ class DocumentIndexingServiceTest {
     when(urlIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.HTTP_DIRECTORY);
     when(rssFeedIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.RSS_FEED);
     when(confluenceIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.CONFLUENCE);
+    // ADR-0023, Entscheidung 4 (#1139): without a requested mode the executor decides; the mocks
+    // answer like the one-mode executors do
+    lenient().when(asyncIndexingExecutor.defaultRunMode(any())).thenReturn(IndexingRunMode.FULL);
+    lenient().when(urlIndexingExecutor.defaultRunMode(any())).thenReturn(IndexingRunMode.FULL);
+    lenient()
+        .when(rssFeedIndexingExecutor.defaultRunMode(any()))
+        .thenReturn(IndexingRunMode.INCREMENTAL);
     var registry =
         new IndexingSourceExecutorRegistry(
             List.of(
@@ -338,6 +346,23 @@ class DocumentIndexingServiceTest {
     verify(rssFeedIndexingExecutor).execute(job.getId(), rssLibrary, IndexingRunMode.INCREMENTAL);
     verify(asyncIndexingExecutor, never()).execute(any(), any(), any());
     verify(urlIndexingExecutor, never()).execute(any(), any(), any());
+  }
+
+  @Test
+  void withoutARequestedModeTheExecutorDecidesForTheLibrary() {
+    // an executor with two modes decides from the library's own state - the service only hands
+    // the decision through to the job row and the run
+    stubEditableLibrary();
+    when(asyncIndexingExecutor.defaultRunMode(library)).thenReturn(IndexingRunMode.INCREMENTAL);
+    var job = new IndexingJob(JobStatus.RUNNING);
+    when(indexingJobService.startJob(
+            library.getId(), organizationId, JobTriggerSource.MANUAL, IndexingRunMode.INCREMENTAL))
+        .thenReturn(job);
+
+    IndexingJob result = service.triggerIndexing(library.getId(), caller);
+
+    assertThat(result).isEqualTo(job);
+    verify(asyncIndexingExecutor).execute(job.getId(), library, IndexingRunMode.INCREMENTAL);
   }
 
   @Test
