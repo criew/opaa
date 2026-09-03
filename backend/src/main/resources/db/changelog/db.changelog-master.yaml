@@ -28,4 +28,4 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/009-chunk-full-text-skip-table.yaml
   - include:
-      file: db/changelog/changes/010-vector-store-library-id-index.yaml
+      file: db/changelog/changes/012-vector-store-library-id-index.yaml

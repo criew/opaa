@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: 010-vector-store-library-id-index
+      id: 012-vector-store-library-id-index
       author: opaa
       comment: >-
         #1119: expression index on vector_store's metadata->>'library_id', backing

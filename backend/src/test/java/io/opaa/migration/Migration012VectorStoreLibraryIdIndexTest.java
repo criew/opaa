@@ -11,7 +11,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Delta test for {@code changes/010-vector-store-library-id-index.yaml} (#1119): the expression
+ * Delta test for {@code changes/012-vector-store-library-id-index.yaml} (#1119): the expression
  * index backing {@code FullTextBackfillProgressService}'s {@code metadata->>'library_id'} predicate
  * on {@code vector_store}.
  *
@@ -19,11 +19,11 @@ import org.junit.jupiter.api.Test;
  * this changeSet's own comment), so each test creates it itself, mirroring the columns {@code
  * PgVectorStore} actually creates, rather than relying on the fixture chain.
  */
-class Migration010VectorStoreLibraryIdIndexTest extends AbstractMigrationTest {
+class Migration012VectorStoreLibraryIdIndexTest extends AbstractMigrationTest {
 
   private static final String CHANGELOG_PATH =
-      "db/changelog/changes/010-vector-store-library-id-index.yaml";
-  private static final String CHANGESET_ID = "010-vector-store-library-id-index";
+      "db/changelog/changes/012-vector-store-library-id-index.yaml";
+  private static final String CHANGESET_ID = "012-vector-store-library-id-index";
 
   private Connection connection;
 
