@@ -367,9 +367,8 @@ public class SearchStatusService {
         documentStatsReader.statsForOrganization(organizationId);
     List<KnowledgeLibrary> libraries = libraryRepository.findByOrganizationId(organizationId);
     // Only this organization's libraries are counted; an unfiltered progress read would scan the
-    // whole vector store across organizations for rows this page never shows. The remaining scan
-    // cost is the missing expression index (#1119), see the Javadoc of
-    // FullTextBackfillProgressService#progressForLibraries.
+    // whole vector store across organizations for rows this page never shows, even with the
+    // expression index added in #1119 (see FullTextBackfillProgressService#progressForLibraries).
     Set<UUID> libraryIds = new LinkedHashSet<>();
     for (KnowledgeLibrary library : libraries) {
       libraryIds.add(library.getId());

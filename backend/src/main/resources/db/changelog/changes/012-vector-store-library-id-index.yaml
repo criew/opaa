@@ -1,0 +1,53 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-vector-store-library-id-index
+      author: opaa
+      comment: >-
+        #1119: expression index on vector_store's metadata->>'library_id', backing
+        FullTextBackfillProgressService#progressForLibrary/progressForLibraries - previously an
+        unindexed full scan, on the response path of search via
+        io.opaa.query.FullTextBackfillGate#searchableLibraries (cached only 60s while a library's
+        backfill is incomplete, see FullTextBackfillGate.RECHECK_INTERVAL) and on every load of the
+        "Suche & Indexierung" admin page via io.opaa.searchadmin.SearchStatusService#libraryStatus.
+        No index on the ::uuid cast progressForLibraries additionally groups by: EXPLAIN (ANALYZE,
+        BUFFERS) against ~1M rows (see PR description) shows the planner uses this text expression
+        index to do the row-restricting work in every one of these queries' scans, then computes the
+        cast only over the already-filtered rows - cheap regardless of an index on the cast. Built
+        CONCURRENTLY, like 004-chunk-full-text-gin-index.yaml, and for the same reason: an index
+        build over the full, already-populated table must not block concurrent writes.
+
+        vector_store is created by Spring AI at application startup
+        (spring.ai.vectorstore.pgvector.initialize-schema=true), never by Liquibase (see
+        003-chunk-full-text-table.yaml) - and Spring Boot's own dependency wiring
+        (JdbcTemplate beans depend on any database initializer, including SpringLiquibase, via
+        SpringJdbcDependsOnDatabaseInitializationDetector) guarantees Liquibase always finishes
+        before the vectorStore bean, and therefore vector_store itself, is created. On a genuinely
+        fresh install this changeSet's own tableExists precondition therefore fails on the very
+        first application start; onFail: CONTINUE skips it without recording it as executed, so
+        Liquibase retries it - and succeeds - on the next application start, by which time
+        vector_store exists from the previous start's schema init. An installation upgrading from an
+        existing, already-populated vector_store hits none of this: the table already exists the
+        first time this changeSet runs.
+
+        Hardcodes public.vector_store, unlike FullTextBackfillProgressService/ChunkEmbeddingLookup,
+        which read schema/table from spring.ai.vectorstore.pgvector.schema-name/table-name. This
+        changeSet only covers that default; an installation that overrides schema-name or
+        table-name needs its own changeSet targeting the actual name - otherwise the precondition
+        never passes and this index is silently never created.
+      preConditions:
+        onFail: CONTINUE
+        onFailMessage: >-
+          public.vector_store does not exist yet (Spring AI creates it at application startup, not
+          Liquibase - see this changeSet's own comment); retried on the next application start.
+        tableExists:
+          schemaName: public
+          tableName: vector_store
+      runInTransaction: false
+      changes:
+        - sql:
+            sql: |
+              DROP INDEX CONCURRENTLY IF EXISTS public.idx_vector_store_library_id;
+              CREATE INDEX CONCURRENTLY idx_vector_store_library_id ON public.vector_store ((metadata->>'library_id'));
+      rollback:
+        - sql:
+            sql: DROP INDEX CONCURRENTLY IF EXISTS public.idx_vector_store_library_id;
