@@ -111,5 +111,12 @@ class ConfluenceWebhookPublicAccessTest {
     mockMvc
         .perform(post("/api/v1/libraries/" + libraryId + "/indexing"))
         .andExpect(status().isUnauthorized());
+    // the Confluence space listing (#1134) is an outbound probe and stays behind authentication too
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/confluence/spaces")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sourceUrl\":\"http://127.0.0.1:9/confluence\"}"))
+        .andExpect(status().isUnauthorized());
   }
 }

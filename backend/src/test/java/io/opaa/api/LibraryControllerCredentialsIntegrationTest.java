@@ -187,24 +187,6 @@ class LibraryControllerCredentialsIntegrationTest {
   }
 
   @Test
-  void confluenceSpaceListingRequiresAuthentication() throws Exception {
-    String listing =
-        """
-        {
-          "sourceUrl": "http://127.0.0.1:9/confluence",
-          "confluenceEdition": "DATA_CENTER",
-          "sourceCredentials": "irgendwas"
-        }
-        """;
-    mockMvc
-        .perform(
-            post("/api/v1/libraries/confluence/spaces")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(listing))
-        .andExpect(status().isUnauthorized());
-  }
-
-  @Test
   void aValidationErrorNeverEchoesTheSubmittedCredentialsInTheRawResponseBody() throws Exception {
     // FILESYSTEM rejects sourceCredentials outright (validateConfigurationForType) - the request
     // body that triggers the 400 still carries the plaintext credential, so this pins that

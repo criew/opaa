@@ -69,8 +69,10 @@ class Migration010ConfluenceSourceTypeTest extends AbstractMigrationTest {
 
     assertThatThrownBy(() -> insertDocument(libraryId, "JIRA"))
         .hasMessageContaining("chk_documents_source_type");
+    // Postgres reports the alphabetically first violated CHECK - for an unknown type that is the
+    // configuration rule (which also enumerates the types) before the value list itself.
     assertThatThrownBy(() -> insertLibrary("JIRA", null, null, null, "bogus"))
-        .hasMessageContaining("chk_knowledge_libraries_source_type");
+        .hasMessageContaining("chk_knowledge_libraries_source_");
   }
 
   @Test

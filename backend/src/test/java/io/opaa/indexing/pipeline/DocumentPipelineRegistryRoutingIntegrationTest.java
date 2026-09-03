@@ -3,6 +3,7 @@ package io.opaa.indexing.pipeline;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.ChunkingService;
+import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
 import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
 import io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline;
 import io.opaa.test.OpaaIndexingIntegrationTest;
@@ -111,6 +112,11 @@ class DocumentPipelineRegistryRoutingIntegrationTest {
             "odt", Set.of(ChunkingService.LOCATION_METADATA_KEY),
             "odp", Set.of(ChunkingService.LOCATION_METADATA_KEY),
             "markdown", Set.of(ChunkingService.LOCATION_METADATA_KEY),
+            "confluence",
+                Set.of(
+                    ChunkingService.LOCATION_METADATA_KEY,
+                    ConfluenceDocumentPipeline.SPACE_METADATA_KEY,
+                    ConfluenceDocumentPipeline.HIERARCHY_METADATA_KEY),
             "email",
                 Set.of(
                     ChunkingService.LOCATION_METADATA_KEY,

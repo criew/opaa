@@ -104,8 +104,8 @@ class Migration014ConfluenceWebhooksTest extends AbstractMigrationTest {
                 + " source_insecure_ssl, source_confluence_edition, created_at, updated_at)"
                 + " VALUES (?, '"
                 + ORGANIZATION
-                + "', ?, 'USER', ?, 'CONFLUENCE', 'https://wiki.example.org', 'enc:v1:abc', false,"
-                + " 'DATA_CENTER', now(), now())")) {
+                + "', ?, 'USER', ?, 'PRIVATE', false, 'CONFLUENCE', 'https://wiki.example.org',"
+                + " 'enc:v1:abc', false, 'DATA_CENTER', now(), now())")) {
       statement.setObject(1, id);
       statement.setString(2, "Wiki " + id);
       statement.setObject(3, owner);
