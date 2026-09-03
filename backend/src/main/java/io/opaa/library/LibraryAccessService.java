@@ -157,9 +157,9 @@ public class LibraryAccessService {
       readable.addAll(
           grantRepository.findReadableLibraryIdsByGroupGrant(groupIds, organizationId, now));
     }
-    libraryRepository
-        .findByOrganizationIdAndVisibility(organizationId, LibraryVisibility.ORGANIZATION)
-        .forEach(library -> readable.add(library.getId()));
+    readable.addAll(
+        libraryRepository.findIdsByOrganizationIdAndVisibility(
+            organizationId, LibraryVisibility.ORGANIZATION));
     return readable;
   }
 
@@ -216,9 +216,9 @@ public class LibraryAccessService {
         new HashSet<>(
             grantRepository.findReadableLibraryIdsByGroupGrant(
                 Set.of(groupId), organizationId, Instant.now()));
-    libraryRepository
-        .findByOrganizationIdAndVisibility(organizationId, LibraryVisibility.ORGANIZATION)
-        .forEach(library -> readable.add(library.getId()));
+    readable.addAll(
+        libraryRepository.findIdsByOrganizationIdAndVisibility(
+            organizationId, LibraryVisibility.ORGANIZATION));
     return readable;
   }
 
@@ -232,11 +232,9 @@ public class LibraryAccessService {
       Collection<UUID> groupIds, UUID organizationId) {
     Instant now = Instant.now();
     Set<UUID> organizationWide =
-        libraryRepository
-            .findByOrganizationIdAndVisibility(organizationId, LibraryVisibility.ORGANIZATION)
-            .stream()
-            .map(KnowledgeLibrary::getId)
-            .collect(Collectors.toSet());
+        new HashSet<>(
+            libraryRepository.findIdsByOrganizationIdAndVisibility(
+                organizationId, LibraryVisibility.ORGANIZATION));
     Map<UUID, Set<UUID>> grantedByGroup = new HashMap<>();
     for (AssetGrant grant : grantRepository.findActiveGroupGrants(organizationId, now)) {
       grantedByGroup

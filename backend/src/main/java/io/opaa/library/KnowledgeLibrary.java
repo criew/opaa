@@ -25,8 +25,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import org.hibernate.annotations.Fetch;
-import org.hibernate.annotations.FetchMode;
 
 /**
  * The first asset type (#201, see docs/features/spaces-and-assets.md#assets): a document container
@@ -154,12 +152,11 @@ public class KnowledgeLibrary {
    * list-valued piece of source configuration, kept in {@code knowledge_library_confluence_spaces}
    * and replaced as a whole by {@link #updateConfluenceSpaces}. Non-empty for {@code CONFLUENCE} (a
    * library without spaces would index nothing), empty for every other type. {@code EAGER} because
-   * the selection is small and read with every library detail - and fetched by {@code SUBSELECT},
-   * so a page of libraries loads every selection with one query instead of one per row (the
-   * flat-query-count guard in {@code KnowledgeLibraryServiceIntegrationTest}).
+   * the selection is small and read with every library detail; the list loader ({@code
+   * KnowledgeLibraryRepository#findAllById}) joins it in with an entity graph, so a page of
+   * libraries costs one query, not one per row.
    */
   @ElementCollection(fetch = FetchType.EAGER)
-  @Fetch(FetchMode.SUBSELECT)
   @CollectionTable(
       name = "knowledge_library_confluence_spaces",
       joinColumns = @JoinColumn(name = "library_id"))
