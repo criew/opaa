@@ -351,7 +351,7 @@ ein Dokument. Was indiziert werden soll, muss OPAA erst aus dieser Seite gewinne
    kennzeichnen. Jede gefundene Anlage durchläuft dieselbe Verarbeitungskette wie eine Datei aus einer
    Verzeichnisliste, über den quellentyp-übergreifenden Anhangsweg
    (`io.opaa.indexing.source.attachment.AttachmentIndexer`, ADR-0022, seit #1182 ohne RSS-spezifische
-   Abhängigkeiten — derselbe Weg, den Mail und Confluence künftig mitnutzen). Diese dritte Stufe läuft
+   Abhängigkeiten — denselben Weg nutzt Mail seit #1183, Confluence künftig). Diese dritte Stufe läuft
    nicht bei jedem Eintrag: Sie folgt entweder aus einer tatsächlichen Neuverarbeitung (Stufe 2) oder —
    bei einem unveränderten Eintrag ohne bisherige Anlagen — aus dem Nachholmechanismus der
    Änderungserkennung unten.
@@ -359,7 +359,7 @@ ein Dokument. Was indiziert werden soll, muss OPAA erst aus dieser Seite gewinne
 **Herkunftsanzeige (gebaut, #493; verallgemeinert, ADR-0022 Entscheidung 4).** Eine Anlage führt intern
 fest, zu welchem Eintrag sie gehört — über `source_entry_url` (RSS-spezifisch, unverändert seit #493)
 und über `parent_document_id`, die FK-basierte, quellentyp-übergreifende Fassung derselben Beziehung,
-die auch Mail- und künftige Confluence-Anhänge setzen. Die Bibliotheksdetailseite zeigt diesen Eintrag
+die seit #1183 auch Mail-Anhänge setzen (künftig Confluence). Die Bibliotheksdetailseite zeigt diesen Eintrag
 als Link unter der Anlage an, und `LibraryDocumentResponse` trägt ihn als `sourceEntryUrl` — eine
 Anlage im Index bleibt damit ihrem Feed-Eintrag zuordenbar. Noch nicht durchgereicht ist er in die
 Belegangabe einer Chat-Antwort (`SourceReference`); das ist als eigenständiger Folgeschritt in

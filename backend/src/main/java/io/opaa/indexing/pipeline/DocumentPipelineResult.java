@@ -1,6 +1,7 @@
 package io.opaa.indexing.pipeline;
 
 import java.util.List;
+import java.util.OptionalLong;
 import org.springframework.ai.document.Document;
 
 /**
@@ -21,9 +22,19 @@ import org.springframework.ai.document.Document;
  *     its own reports {@link #noExtractableText()} (or {@link #noContent()}), never {@code CHUNKED}
  *     with an empty chunk list - that combination is reserved for the generalized attachment path
  *     (ADR-0022, part 4), not this contract.
+ * @param contentByteSizeOverride the byte size to persist as {@code Document#getFileSize()} for
+ *     this document, in place of the raw source file's own size, or {@link OptionalLong#empty()} to
+ *     keep the caller's default (every pipeline but {@code MailDocumentPipeline}). ADR-0022,
+ *     Entscheidung 6: a message file's own bytes include its attachments' (base64-encoded) payload,
+ *     which - once an attachment is its own {@code Document} row with its own {@code fileSize} -
+ *     would otherwise count twice against a library's storage quota. {@code MailDocumentPipeline}
+ *     reports only its Kopfdaten/body text bytes here, excluding every attachment.
  */
 public record DocumentPipelineResult(
-    Outcome outcome, List<Document> chunks, List<DiscoveredAttachment> discoveredAttachments) {
+    Outcome outcome,
+    List<Document> chunks,
+    List<DiscoveredAttachment> discoveredAttachments,
+    OptionalLong contentByteSizeOverride) {
 
   public enum Outcome {
     /** At least one chunk was produced. */
@@ -55,10 +66,12 @@ public record DocumentPipelineResult(
     chunks = chunks == null ? List.of() : List.copyOf(chunks);
     discoveredAttachments =
         discoveredAttachments == null ? List.of() : List.copyOf(discoveredAttachments);
+    contentByteSizeOverride =
+        contentByteSizeOverride == null ? OptionalLong.empty() : contentByteSizeOverride;
   }
 
   public static DocumentPipelineResult chunked(List<Document> chunks) {
-    return new DocumentPipelineResult(Outcome.CHUNKED, chunks, List.of());
+    return new DocumentPipelineResult(Outcome.CHUNKED, chunks, List.of(), OptionalLong.empty());
   }
 
   /**
@@ -68,14 +81,42 @@ public record DocumentPipelineResult(
    */
   public static DocumentPipelineResult chunked(
       List<Document> chunks, List<DiscoveredAttachment> discoveredAttachments) {
-    return new DocumentPipelineResult(Outcome.CHUNKED, chunks, discoveredAttachments);
+    return new DocumentPipelineResult(
+        Outcome.CHUNKED, chunks, discoveredAttachments, OptionalLong.empty());
+  }
+
+  /**
+   * Like {@link #chunked(List, List)}, plus {@code contentByteSizeOverride} (ADR-0022, Entscheidung
+   * 6) - used by {@code MailDocumentPipeline}, the sole producer of both extra channels.
+   */
+  public static DocumentPipelineResult chunked(
+      List<Document> chunks,
+      List<DiscoveredAttachment> discoveredAttachments,
+      long contentByteSizeOverride) {
+    return new DocumentPipelineResult(
+        Outcome.CHUNKED, chunks, discoveredAttachments, OptionalLong.of(contentByteSizeOverride));
   }
 
   public static DocumentPipelineResult noContent() {
-    return new DocumentPipelineResult(Outcome.NO_CONTENT, List.of(), List.of());
+    return new DocumentPipelineResult(
+        Outcome.NO_CONTENT, List.of(), List.of(), OptionalLong.empty());
   }
 
   public static DocumentPipelineResult noExtractableText() {
-    return new DocumentPipelineResult(Outcome.NO_EXTRACTABLE_TEXT, List.of(), List.of());
+    return new DocumentPipelineResult(
+        Outcome.NO_EXTRACTABLE_TEXT, List.of(), List.of(), OptionalLong.empty());
+  }
+
+  /**
+   * Like {@link #noExtractableText()}, plus embedded objects found while parsing (ADR-0022, part
+   * 2/4) - the case this record's own Javadoc reserves for the generalized attachment path: a
+   * message with no chunk-worthy text of its own (no body, no Kopfdaten) but at least one
+   * attachment still reports that attachment here, so the caller's attachment path can index it
+   * even though the parent document itself carries nothing indexable.
+   */
+  public static DocumentPipelineResult noExtractableText(
+      List<DiscoveredAttachment> discoveredAttachments) {
+    return new DocumentPipelineResult(
+        Outcome.NO_EXTRACTABLE_TEXT, List.of(), discoveredAttachments, OptionalLong.empty());
   }
 }

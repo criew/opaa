@@ -130,7 +130,11 @@ class RssFeedIndexingExecutorTest {
         indexingJobService,
         documentRepository,
         feedStateRepository,
-        new BoundedDownloader(targetAddressValidator),
+        new io.opaa.indexing.source.attachment.AttachmentIndexer(
+            new BoundedDownloader(targetAddressValidator),
+            fileProcessingService,
+            storageQuotaService,
+            documentRepository),
         properties,
         indexingRunEventRepository,
         targetAddressValidator,
@@ -511,6 +515,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             any(),
             anyString(),
+            any(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
@@ -526,6 +531,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             eq(DocumentSourceType.RSS_FEED),
             eq(baseUrl + "/a.html"),
+            any(),
             any());
     // The entry's own main text was never reprocessed - only its attachment was backfilled.
     verify(fileProcessingService, never())
@@ -580,6 +586,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             any(),
             anyString(),
+            any(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
@@ -595,6 +602,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             eq(DocumentSourceType.RSS_FEED),
             eq(baseUrl + "/a.html"),
+            any(),
             any());
   }
 
@@ -729,7 +737,7 @@ class RssFeedIndexingExecutorTest {
                         && DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE.equals(event.getMessage())));
     verify(fileProcessingService, never())
         .processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any());
+            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -1104,6 +1112,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             any(),
             anyString(),
+            any(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
@@ -1119,6 +1128,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             eq(DocumentSourceType.RSS_FEED),
             eq(baseUrl + "/a.html"),
+            any(),
             any());
     // #518: documentsIndexedTotal counts the entry's own document plus its attachment (2), while
     // documentsProcessed still counts only the one feed entry.
@@ -1160,6 +1170,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             any(),
             anyString(),
+            any(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
@@ -1175,6 +1186,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             eq(DocumentSourceType.RSS_FEED),
             eq(baseUrl + "/a.html"),
+            any(),
             any());
     verify(indexingRunEventRepository, timeout(2000))
         .save(
@@ -1221,6 +1233,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             any(),
             anyString(),
+            any(),
             any()))
         .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
     when(storageQuotaService.quotaExceededMessage(library.getId()))
@@ -1296,6 +1309,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             any(),
             anyString(),
+            any(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
@@ -1325,7 +1339,7 @@ class RssFeedIndexingExecutorTest {
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     verify(fileProcessingService, never())
-        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any());
+        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -1361,6 +1375,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             any(),
             anyString(),
+            any(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
@@ -1376,6 +1391,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             eq(DocumentSourceType.RSS_FEED),
             eq(baseUrl + "/a.html"),
+            any(),
             any());
   }
 
@@ -1409,6 +1425,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             any(),
             anyString(),
+            any(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
@@ -1424,6 +1441,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             eq(DocumentSourceType.RSS_FEED),
             eq(baseUrl + "/a.html"),
+            any(),
             any());
   }
 
@@ -1465,6 +1483,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             any(),
             anyString(),
+            any(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
@@ -1480,6 +1499,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             eq(DocumentSourceType.RSS_FEED),
             eq(baseUrl + "/a.html"),
+            any(),
             any());
     verify(fileProcessingService, timeout(2000))
         .processUrlFile(
@@ -1491,6 +1511,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             eq(DocumentSourceType.RSS_FEED),
             eq(baseUrl + "/b.html"),
+            any(),
             any());
   }
 
@@ -1517,7 +1538,7 @@ class RssFeedIndexingExecutorTest {
     // The entry itself still counts as processed - only the attachment failed.
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     verify(fileProcessingService, never())
-        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any());
+        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
     // #492 review, finding 2: a lost attachment must defer the feed's ETag persistence the same
     // way a lost entry does - otherwise a future 304 would permanently suppress a retry.
     verify(feedStateRepository, never()).save(any());
@@ -1549,7 +1570,7 @@ class RssFeedIndexingExecutorTest {
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     verify(fileProcessingService, never())
-        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any());
+        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
     verify(feedStateRepository, never()).save(any());
   }
 
@@ -1591,6 +1612,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             any(),
             anyString(),
+            any(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
@@ -1606,6 +1628,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             eq(DocumentSourceType.RSS_FEED),
             eq(baseUrl + "/a.html"),
+            any(),
             any());
     verify(fileProcessingService, never())
         .processUrlFile(
@@ -1615,6 +1638,7 @@ class RssFeedIndexingExecutorTest {
             any(),
             anyLong(),
             eq(library),
+            any(),
             any(),
             any(),
             any());
@@ -1647,7 +1671,7 @@ class RssFeedIndexingExecutorTest {
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     verify(fileProcessingService, never())
-        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any());
+        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
   }
 
   @Test
@@ -1729,7 +1753,7 @@ class RssFeedIndexingExecutorTest {
 
       verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
       verify(fileProcessingService, never())
-          .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any());
+          .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
     } finally {
       foreignServer.stop(0);
     }
@@ -1781,6 +1805,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             any(),
             anyString(),
+            any(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
@@ -1796,6 +1821,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             any(),
             anyString(),
+            any(),
             any());
     assertThat(userAgent.get()).isEqualTo("OPAA-Indexer/attachment-test");
   }
@@ -1889,6 +1915,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             any(),
             anyString(),
+            any(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
@@ -1904,6 +1931,7 @@ class RssFeedIndexingExecutorTest {
             eq(library),
             any(),
             anyString(),
+            any(),
             any());
     assertThat(authorization.get()).isEqualTo(expectedBasicAuth("attachment:credentials"));
   }
@@ -2021,6 +2049,7 @@ class RssFeedIndexingExecutorTest {
               eq(library),
               any(),
               anyString(),
+              any(),
               any()))
           .thenReturn(FileProcessingResult.PROCESSED);
 
@@ -2036,6 +2065,7 @@ class RssFeedIndexingExecutorTest {
               eq(library),
               any(),
               anyString(),
+              any(),
               any());
       assertThat(authorization.get()).isNull();
     } finally {
@@ -2096,7 +2126,7 @@ class RssFeedIndexingExecutorTest {
 
       verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
       verify(fileProcessingService, never())
-          .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any());
+          .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
       assertThat(authorization.get()).isEqualTo("(never contacted)");
     } finally {
       foreignServer.stop(0);

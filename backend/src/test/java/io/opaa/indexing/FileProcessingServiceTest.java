@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.longThat;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -88,7 +89,9 @@ class FileProcessingServiceTest {
             new IndexingMetrics(meterRegistry),
             storageQuotaService,
             defaultIndexingProperties(),
-            Runnable::run);
+            Runnable::run,
+            org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0));
     targetLibrary = library();
     // Default: plenty of headroom, so existing tests never trip the quota check unless they
     // explicitly stub it otherwise (see the quota-specific tests below). lenient() because most
@@ -192,7 +195,9 @@ class FileProcessingServiceTest {
             new IndexingMetrics(meterRegistry),
             storageQuotaService,
             defaultIndexingProperties(),
-            Runnable::run);
+            Runnable::run,
+            org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0));
 
     when(checksumService.computeSha256(file)).thenReturn("sha256-of-scan");
     when(documentRepository.findByLibraryIdAndFilePath(
@@ -331,7 +336,9 @@ class FileProcessingServiceTest {
             new IndexingMetrics(meterRegistry),
             realQuotaService,
             defaultIndexingProperties(),
-            Runnable::run);
+            Runnable::run,
+            org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0));
 
     Path file = tempDir.resolve("replace-under-quota.txt");
     String newContent = "x".repeat(950);
@@ -522,7 +529,9 @@ class FileProcessingServiceTest {
             new IndexingMetrics(meterRegistry),
             storageQuotaService,
             defaultIndexingProperties(),
-            Runnable::run);
+            Runnable::run,
+            org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0));
 
     when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
     when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
@@ -568,7 +577,9 @@ class FileProcessingServiceTest {
             new IndexingMetrics(meterRegistry),
             storageQuotaService,
             defaultIndexingProperties(),
-            Runnable::run);
+            Runnable::run,
+            org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0));
 
     when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
     when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
@@ -591,147 +602,6 @@ class FileProcessingServiceTest {
     // library_id carries the permission-scoped search filter - a chunk that smuggled a different
     // value through here would leak or hide content across library boundaries.
     assertThat(metadata).containsEntry("library_id", targetLibrary.getId().toString());
-  }
-
-  /**
-   * A stand-in for a future format pipeline with its own structural metadata (Docling-style, e.g.
-   * {@code slide_number}) - stands in for a real pipeline claiming {@code .pdf} without pulling a
-   * real parser into this test.
-   */
-  private record FakeStructuralAttachmentPipeline() implements DocumentPipeline {
-
-    static final String STRUCTURAL_KEY = "slide_number";
-
-    @Override
-    public String id() {
-      return "fake-structural";
-    }
-
-    @Override
-    public short version() {
-      return 1;
-    }
-
-    @Override
-    public Set<String> handledFormats() {
-      return Set.of(".pdf");
-    }
-
-    @Override
-    public Set<String> passthroughMetadataKeys() {
-      return Set.of(STRUCTURAL_KEY);
-    }
-
-    @Override
-    public DocumentPipelineResult run(DocumentPipelineSource source) {
-      return DocumentPipelineResult.chunked(
-          List.of(
-              new org.springframework.ai.document.Document(
-                  "Anhangtext", Map.of(STRUCTURAL_KEY, "3"))));
-    }
-  }
-
-  @Test
-  void aNestedPipelinesOwnPassthroughKeyRidesAlongEvenWhenTheOuterMailPipelineDoesNotDeclareIt()
-      throws Exception {
-    // Regression for the #1128 review blocker: MailDocumentPipeline routes an attachment through a
-    // different pipeline entirely (registry.routedPipelineFor), then reports the attachment's
-    // chunks as its own. storeChunks must therefore filter against every registered pipeline's
-    // declaration, not only the one it was called with - otherwise a key only the inner,
-    // per-attachment pipeline declares is silently dropped.
-    var fakeAttachmentPipeline = new FakeStructuralAttachmentPipeline();
-    var fallback =
-        new io.opaa.indexing.pipeline.TikaFallbackPipeline(
-            new DocumentService(), new ChunkingService(defaultIndexingProperties()));
-
-    io.opaa.indexing.pipeline.DocumentPipelineRegistry[] registryHolder =
-        new io.opaa.indexing.pipeline.DocumentPipelineRegistry[1];
-    org.springframework.beans.factory.ObjectProvider<
-            io.opaa.indexing.pipeline.DocumentPipelineRegistry>
-        registryProvider =
-            new org.springframework.beans.factory.ObjectProvider<>() {
-              @Override
-              public io.opaa.indexing.pipeline.DocumentPipelineRegistry getObject() {
-                return registryHolder[0];
-              }
-
-              @Override
-              public io.opaa.indexing.pipeline.DocumentPipelineRegistry getIfAvailable() {
-                return registryHolder[0];
-              }
-
-              @Override
-              public io.opaa.indexing.pipeline.DocumentPipelineRegistry getIfUnique() {
-                return registryHolder[0];
-              }
-            };
-    var mailPipeline =
-        new io.opaa.indexing.pipeline.mail.MailDocumentPipeline(
-            registryProvider,
-            new ChunkingService(defaultIndexingProperties()),
-            new io.opaa.indexing.pipeline.mail.MailProperties(0, 0, 0, 0),
-            java.time.Clock.systemUTC());
-    registryHolder[0] =
-        new io.opaa.indexing.pipeline.DocumentPipelineRegistry(
-            List.of(fallback, fakeAttachmentPipeline, mailPipeline), fallback);
-
-    FileProcessingService serviceWithMailPipeline =
-        new FileProcessingService(
-            registryHolder[0],
-            documentRepository,
-            vectorChunkStore,
-            checksumService,
-            new IndexingMetrics(meterRegistry),
-            storageQuotaService,
-            defaultIndexingProperties(),
-            Runnable::run);
-
-    byte[] pdfBytes = readTestResourceBytes("test-documents/test-document.pdf");
-    org.apache.james.mime4j.dom.Message message =
-        org.apache.james.mime4j.dom.Message.Builder.of()
-            .setSubject("Anfrage mit Anlage")
-            .setFrom("max@example.org")
-            .setTo("erika@example.org")
-            .setDate(java.util.Date.from(java.time.Instant.parse("2024-01-03T09:15:00Z")))
-            .setBody(
-                org.apache.james.mime4j.message.MultipartBuilder.create("mixed")
-                    .addTextPart("Anbei der Antrag.", java.nio.charset.StandardCharsets.UTF_8)
-                    .addBodyPart(
-                        org.apache.james.mime4j.message.BodyPartBuilder.create()
-                            .setBody(pdfBytes, "application/pdf")
-                            .setContentDisposition("attachment", "folie.pdf"))
-                    .build())
-            .build();
-    Path file = tempDir.resolve("mit-anlage.eml");
-    Files.write(file, org.apache.james.mime4j.message.DefaultMessageWriter.asBytes(message));
-
-    when(checksumService.computeSha256(file)).thenReturn("mail-with-attachment");
-    when(documentRepository.findByLibraryIdAndFilePath(
-            targetLibrary.getId(), file.toAbsolutePath().toString()))
-        .thenReturn(Optional.empty());
-    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
-
-    serviceWithMailPipeline.processFile(file, targetLibrary);
-
-    @SuppressWarnings("unchecked")
-    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
-        ArgumentCaptor.forClass(List.class);
-    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
-    List<org.springframework.ai.document.Document> storedChunks = chunkCaptor.getValue();
-    // Every stored chunk is attributed to the outer pipeline (mail)...
-    assertThat(storedChunks)
-        .allSatisfy(
-            chunk ->
-                assertThat(chunk.getMetadata())
-                    .containsEntry(
-                        ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY, mailPipeline.id()));
-    // ...but the attachment's own pipeline's structural key still rides along, even though only
-    // the inner, per-attachment pipeline (not MailDocumentPipeline) declares it.
-    assertThat(storedChunks)
-        .anySatisfy(
-            chunk ->
-                assertThat(chunk.getMetadata())
-                    .containsEntry(FakeStructuralAttachmentPipeline.STRUCTURAL_KEY, "3"));
   }
 
   private static byte[] readTestResourceBytes(String resourcePath) throws IOException {
@@ -1515,7 +1385,12 @@ class FileProcessingServiceTest {
   }
 
   @Test
-  void processUrlFileReindexesChangedDocument() throws IOException {
+  void processUrlFileUpdatesAChangedDocumentInPlaceInsteadOfDeletingAndRecreatingIt()
+      throws IOException {
+    // #1183: mirrors processRssEntryUpdatesAChangedEntryInPlaceInsteadOfDeletingAndRecreatingIt -
+    // a delete-and-recreate here would fail fk_documents_parent the moment this document (itself
+    // possibly an attachment reprocessed via AttachmentIndexer, or a Mail-in-Mail attachment with
+    // its own children) has descendant rows pointing at it via parent_document_id.
     Path file = tempDir.resolve("changed-url.pdf");
     Files.writeString(file, "new pdf content");
 
@@ -1531,6 +1406,7 @@ class FileProcessingServiceTest {
     existingDoc.setChecksum("old-sha256");
     existingDoc.setStatus(DocumentStatus.INDEXED);
     existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
 
     when(documentRepository.findByLibraryIdAndFilePath(
             targetLibrary.getId(), "https://example.com/docs/changed-url.pdf"))
@@ -1554,7 +1430,10 @@ class FileProcessingServiceTest {
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
-    verify(documentRepository).delete(existingDoc);
+    verify(documentRepository, never()).delete(any(Document.class));
+    ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, atLeastOnce()).save(savedDocCaptor.capture());
+    assertThat(savedDocCaptor.getValue().getId()).isEqualTo(existingDoc.getId());
     verify(documentService).parseDocument(file);
   }
 
@@ -2198,7 +2077,9 @@ class FileProcessingServiceTest {
             new IndexingMetrics(meterRegistry),
             storageQuotaService,
             defaultIndexingProperties(),
-            Runnable::run);
+            Runnable::run,
+            org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0));
 
     when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
     when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))

@@ -18,6 +18,8 @@ import io.opaa.indexing.pipeline.tabular.TabularDocumentPipeline;
 import io.opaa.indexing.pipeline.tabular.TabularProperties;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
+import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
@@ -164,26 +166,22 @@ public class IndexingConfiguration {
   }
 
   /**
-   * EML/MSG pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5) - an {@link
-   * org.springframework.beans.factory.ObjectProvider}, not a direct {@link
-   * DocumentPipelineRegistry} dependency, breaks the circular bean graph the recursive-attachment
-   * case creates (see {@link MailDocumentPipeline}'s own Javadoc): {@link
-   * #documentPipelineRegistry} below needs every {@link DocumentPipeline} bean including this one,
-   * so this one cannot in turn need the finished registry at construction time. The {@code Clock}
-   * parameter resolves the same way {@link LibraryIndexingScheduler}'s own does - by type, to
-   * whichever single {@link Clock} bean is {@code @Primary} in this application ({@code
+   * EML/MSG pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5). Since #1183 this
+   * pipeline no longer recurses into a sub-pipeline itself (ADR-0022, Entscheidung 10) - it only
+   * reports its attachments via {@link DocumentPipelineResult#discoveredAttachments()} - so it no
+   * longer needs {@link DocumentPipelineRegistry} at all, and the {@link
+   * org.springframework.beans.factory.ObjectProvider} that used to break its circular dependency on
+   * {@link #documentPipelineRegistry} below is gone with it. The {@code Clock} parameter resolves
+   * the same way {@link LibraryIndexingScheduler}'s own does - by type, to whichever single {@link
+   * Clock} bean is {@code @Primary} in this application ({@code
    * io.opaa.auth.AuthConfiguration#clock()} today, not {@link #schedulingClock()} despite the
    * parameter's name, since Spring's {@code @Primary} resolution outranks name matching) - not a
    * second, independently configured clock.
    */
   @Bean
   MailDocumentPipeline mailDocumentPipeline(
-      ObjectProvider<DocumentPipelineRegistry> documentPipelineRegistry,
-      ChunkingService chunkingService,
-      MailProperties mailProperties,
-      Clock schedulingClock) {
-    return new MailDocumentPipeline(
-        documentPipelineRegistry, chunkingService, mailProperties, schedulingClock);
+      ChunkingService chunkingService, MailProperties mailProperties, Clock schedulingClock) {
+    return new MailDocumentPipeline(chunkingService, mailProperties, schedulingClock);
   }
 
   /**
@@ -223,6 +221,39 @@ public class IndexingConfiguration {
         tableName);
   }
 
+  /**
+   * The generalized attachment path's shared indexer (ADR-0022, Entscheidung 8) - a bean since
+   * #1183, so both {@code RssFeedIndexingExecutor} and {@link FileProcessingService} share one
+   * instance instead of each constructing their own.
+   */
+  @Bean
+  AttachmentIndexer attachmentIndexer(
+      BoundedDownloader boundedDownloader,
+      FileProcessingService fileProcessingService,
+      LibraryStorageQuotaService libraryStorageQuotaService,
+      DocumentRepository documentRepository) {
+    return new AttachmentIndexer(
+        boundedDownloader, fileProcessingService, libraryStorageQuotaService, documentRepository);
+  }
+
+  /**
+   * The generalized attachment path's limits for a Mail attachment (ADR-0022, Entscheidung 6) -
+   * {@code maxAttachmentsPerMessage}/{@code maxAttachmentBytes} mirror {@code MailProperties}' own
+   * parse-time DoS-hardening ceilings (redundant-but-harmless safety once an attachment already
+   * passed {@code EmlReader}/{@code MsgReader}'s own extraction-loop limits); {@code
+   * requestDelayMs}/{@code userAgent} are unused for an {@code AttachmentSource.LocalFile} (no
+   * request of its own), which is all a Mail attachment ever is.
+   */
+  @Bean
+  AttachmentDownloadLimits mailAttachmentDownloadLimits(MailProperties mailProperties) {
+    return new AttachmentDownloadLimits(
+        mailProperties.maxAttachmentsPerMessage(),
+        mailProperties.maxAttachmentBytes(),
+        0L,
+        "",
+        mailProperties.maxAttachmentDepth());
+  }
+
   @Bean
   FileProcessingService fileProcessingService(
       DocumentPipelineRegistry documentPipelineRegistry,
@@ -232,7 +263,9 @@ public class IndexingConfiguration {
       IndexingMetrics indexingMetrics,
       LibraryStorageQuotaService libraryStorageQuotaService,
       IndexingProperties indexingProperties,
-      TaskExecutor embeddingTaskExecutor) {
+      TaskExecutor embeddingTaskExecutor,
+      ObjectProvider<AttachmentIndexer> attachmentIndexer,
+      AttachmentDownloadLimits mailAttachmentDownloadLimits) {
     return new FileProcessingService(
         documentPipelineRegistry,
         documentRepository,
@@ -241,7 +274,9 @@ public class IndexingConfiguration {
         indexingMetrics,
         libraryStorageQuotaService,
         indexingProperties,
-        embeddingTaskExecutor);
+        embeddingTaskExecutor,
+        attachmentIndexer,
+        mailAttachmentDownloadLimits);
   }
 
   @Bean
@@ -284,7 +319,8 @@ public class IndexingConfiguration {
       IndexingRunEventRepository indexingRunEventRepository,
       LibraryStorageQuotaService libraryStorageQuotaService,
       LibraryFolderService libraryFolderService,
-      StaleDocumentCleanupService staleDocumentCleanupService) {
+      StaleDocumentCleanupService staleDocumentCleanupService,
+      DocumentRepository documentRepository) {
     return new AsyncIndexingExecutor(
         documentService,
         fileProcessingService,
@@ -293,7 +329,8 @@ public class IndexingConfiguration {
         indexingRunEventRepository,
         libraryStorageQuotaService,
         libraryFolderService,
-        staleDocumentCleanupService);
+        staleDocumentCleanupService,
+        documentRepository);
   }
 
   @Bean
@@ -340,7 +377,7 @@ public class IndexingConfiguration {
       IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
       RssFeedStateRepository rssFeedStateRepository,
-      BoundedDownloader boundedDownloader,
+      AttachmentIndexer attachmentIndexer,
       IndexingProperties properties,
       IndexingRunEventRepository indexingRunEventRepository,
       TargetAddressValidator targetAddressValidator,
@@ -351,7 +388,7 @@ public class IndexingConfiguration {
         indexingJobService,
         documentRepository,
         rssFeedStateRepository,
-        boundedDownloader,
+        attachmentIndexer,
         properties,
         indexingRunEventRepository,
         targetAddressValidator,

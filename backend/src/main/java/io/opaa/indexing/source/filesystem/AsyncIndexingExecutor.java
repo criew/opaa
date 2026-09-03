@@ -1,6 +1,8 @@
 package io.opaa.indexing.source.filesystem;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -70,6 +72,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   private final LibraryStorageQuotaService storageQuotaService;
   private final LibraryFolderService folderService;
   private final StaleDocumentCleanupService staleDocumentCleanupService;
+  private final DocumentRepository documentRepository;
 
   public AsyncIndexingExecutor(
       DocumentService documentService,
@@ -79,7 +82,8 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       IndexingRunEventRepository indexingRunEventRepository,
       LibraryStorageQuotaService storageQuotaService,
       LibraryFolderService folderService,
-      StaleDocumentCleanupService staleDocumentCleanupService) {
+      StaleDocumentCleanupService staleDocumentCleanupService,
+      DocumentRepository documentRepository) {
     this.documentService = documentService;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
@@ -88,6 +92,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     this.storageQuotaService = storageQuotaService;
     this.folderService = folderService;
     this.staleDocumentCleanupService = staleDocumentCleanupService;
+    this.documentRepository = documentRepository;
   }
 
   @Override
@@ -168,6 +173,8 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       progress.setTotal(discovered.totalFound());
       progress.report();
 
+      var attachmentAccess = new FilesystemAttachmentAccess(targetLibrary, events, progress);
+
       // The set of folders this run actually materialized/touched - everything else under this
       // library once the loop below finishes is a candidate for pruneOrphanedFolders.
       Set<UUID> seenFolderIds = new HashSet<>();
@@ -187,7 +194,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
             seenFolderIds.add(folderId);
           }
           FileProcessingResult result =
-              fileProcessingService.processFile(file, targetLibrary, folderId);
+              fileProcessingService.processFile(file, targetLibrary, folderId, attachmentAccess);
           if (result == FileProcessingResult.QUOTA_EXCEEDED) {
             // The library's storage quota was reached mid-run - the file is skipped, not treated
             // as an error, and the reason is recorded so an operator can see why the bestand
@@ -237,7 +244,32 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
         Set<String> currentFilePaths =
             Stream.concat(files.stream(), discovered.rejected().stream())
                 .map(f -> f.toAbsolutePath().toString())
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(HashSet::new));
+        // ADR-0022, Entscheidung 3 ("the one real Falle"): a Mail attachment of a parent that
+        // still exists on disk this run (whether newly processed, unchanged-skipped, rejected or
+        // failed - every case that added its own path above) must be folded in here too, or
+        // cleanupVanished below would remove it despite parent and attachment both still present.
+        // No new query is needed for the "skipped, so never re-parsed" case that motivates this at
+        // all (ADR-0022) - every attachment of this library is already read once via
+        // findByLibraryIdAndSourceType, the same call staleDocumentCleanupService itself makes
+        // right after.
+        List<Document> existingFilesystemDocuments =
+            documentRepository.findByLibraryIdAndSourceType(
+                targetLibrary.getId(), DocumentSourceType.FILESYSTEM);
+        Map<UUID, String> filePathById = new HashMap<>();
+        for (Document candidate : existingFilesystemDocuments) {
+          filePathById.put(candidate.getId(), candidate.getFilePath());
+        }
+        for (Document candidate : existingFilesystemDocuments) {
+          UUID parentId = candidate.getParentDocumentId();
+          if (parentId == null) {
+            continue;
+          }
+          String parentPath = filePathById.get(parentId);
+          if (parentPath != null && currentFilePaths.contains(parentPath)) {
+            currentFilePaths.add(candidate.getFilePath());
+          }
+        }
         staleDocumentCleanupService.cleanupVanished(
             targetLibrary, DocumentSourceType.FILESYSTEM, currentFilePaths, events);
       } catch (Exception e) {

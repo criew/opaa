@@ -226,12 +226,14 @@ diesen Kanal mit: `chunks` bleibt leer für jeden Outcome außer `CHUNKED`, und 
 Chunks bleibt unzulässig, auch wenn `discoveredAttachments` nicht leer ist — eine Pipeline, die nur
 Anhänge findet und selbst nichts liefert, ist ein Fall für den verallgemeinerten Anhangsweg (Teil 3,
 #1182), nicht für diesen Vertrag. Die Verantwortung für die temporäre Datei eines gemeldeten Anhangs
-geht mit der Rückgabe auf den Aufrufer über; solange kein Anhangsweg sie übernimmt, löscht
-`DocumentPipelineRunner#run` — der gemeinsame Aufruf-Wrapper um `DocumentPipeline#run`, den
-`FileProcessingService` für ein Dokument als Ganzes und `MailDocumentPipeline#processAttachment` für
-einen rekursiv verarbeiteten Anhang gleichermaßen nutzen — sie in einem `finally`, unabhängig vom
-erreichten Outcome oder einer währenddessen geworfenen Exception. Aktiv genutzt wird der Kanal erst
-mit der Umstellung von `MailDocumentPipeline` in Teil 4 (#1183).
+geht mit der Rückgabe auf den Aufrufer über: `DocumentPipelineRunner#run` — der gemeinsame
+Aufruf-Wrapper um `DocumentPipeline#run`, den `FileProcessingService` für jedes Dokument nutzt (seit
+#1183 der einzige Aufrufer, `MailDocumentPipeline` rekursiert nicht mehr selbst) — reicht die Liste
+zuerst an einen von `FileProcessingService` übergebenen Handler weiter, der einen Anhang über den
+verallgemeinerten Anhangsweg indiziert, bevor `DocumentPipelineRunner#run` in einem `finally`
+unbedingt und idempotent aufräumt: ein vom Handler bereits verarbeiteter Anhang wird kein zweites Mal
+gelöscht, ein nie übernommener nie geleakt. Aktiv genutzt wird der Kanal seit der Umstellung von
+`MailDocumentPipeline` in Teil 4 (#1183, siehe unten).
 
 ### Parsing-Strategie: hybrid, nicht ein Werkzeug für alles
 
@@ -841,10 +843,12 @@ Die Pipeline trennt drei Dinge:
   Verteilerkopf jeden Chunk eines langen Threads verwässern (#1130 Befund 1).
 - **Ein Chunk je Nachricht**, bei langen Threads je Nachricht im Thread. Ein Thread ist kein Dokument,
   sondern eine Folge von Dokumenten.
-- **Anhänge laufen durch die Pipeline ihres eigenen Typs.** Ein PDF-Anhang einer Mail wird von der
-  PDF-Pipeline verarbeitet, nicht vom Mail-Parser mit extrahiert. Das ist die eigentliche
-  Rechtfertigung der Registry: Der Anhangsfall braucht die Pipeline-Auswahl rekursiv, und mit der
-  Abstraktion ist das ein Aufruf statt eines Sonderwegs.
+- **Ein Anhang ist ein eigenes Dokument, das durch die Pipeline seines eigenen Typs läuft** (ADR-0022,
+  #1183). Ein PDF-Anhang einer Mail wird von der PDF-Pipeline verarbeitet und als eigene
+  `Document`-Zeile mit eigener Prüfsumme, eigener Quote und `parent_document_id` auf die Mail
+  gespeichert — derselbe verallgemeinerte Anhangsweg, den RSS und (künftig) Confluence auch nutzen,
+  nicht ein mail-spezifischer Sonderpfad. `MailDocumentPipeline` selbst routet dafür nichts mehr
+  rekursiv; sie meldet jeden Anhang nur noch über `DocumentPipelineResult#discoveredAttachments()`.
 
 Die Rechte- und Herkunftsfrage von Anhängen (welche Bibliothek, welche Fundstellenangabe, welcher
 Beleg) folgt dabei den bestehenden Regeln des Anlagenwegs, siehe
@@ -852,7 +856,7 @@ Beleg) folgt dabei den bestehenden Regeln des Anlagenwegs, siehe
 
 #### Umgesetzt (#1060)
 
-`MailDocumentPipeline` (`id` `email`, Version 3 seit PR #1201/#1164) beansprucht `.eml` und `.msg` in der
+`MailDocumentPipeline` (`id` `email`, Version 4 seit #1183) beansprucht `.eml` und `.msg` in der
 `DocumentPipelineRegistry`; beide Endungen sind jetzt in `SupportedDocumentFormats` zugelassen —
 unterschiedlich streng, mit einem empirisch belegten Grund: `.msg` bekommt mit
 `application/vnd.ms-outlook` einen eindeutigen, strikten Medientyp (wie PDF/DOCX). `.eml` dagegen
@@ -977,46 +981,47 @@ zerlegt — derselbe Rückfall, den Token-Chunking projektweit spielt, sobald St
 „Der Grundsatz"). Jedes weiter zerlegte Teilstück trägt weiterhin dieselben Kopfdaten und einen
 disambiguierenden Fundort (`Teil j von M`, ggf. kombiniert mit `Nachricht i von N`).
 
-**Anhänge laufen rekursiv durch `DocumentPipelineRegistry`.** `MailDocumentPipeline` selbst injiziert
-die Registry über `ObjectProvider<DocumentPipelineRegistry>` statt direkt — die Registry wird aus
-jeder registrierten `DocumentPipeline` gebaut, auch dieser selbst, eine direkte Konstruktorabhängigkeit
-würde also einen Zirkel in Springs Bean-Erzeugung schließen. Ein Anhang durchläuft dieselbe
-Formatzulassung wie jedes andere Dokument (`SupportedDocumentFormats.decideForFileName`) — ein nicht
-zugelassenes Format wird übersprungen und protokolliert, nicht `FAILED` für die ganze Mail; dasselbe
-gilt, wenn die zuständige Sub-Pipeline selbst mit einer Exception scheitert (eine defekte
-verschachtelte `.eml` oder ein beschädigtes XLSX kostet nur diesen einen Anhang). Ein EML-in-EML-Anhang
-(eine Weiterleitung) erreicht `MailDocumentPipeline` dadurch ein weiteres Mal, mit seinen eigenen
-Kopfdaten. Der Fundort eines Anhang-Chunks trägt `Anhang: <Dateiname>` als Präfix vor dem Fundort, den
-die Sub-Pipeline selbst ermittelt hat (z. B. `Anhang: antrag.pdf`).
+**Anhänge laufen über den verallgemeinerten Anhangsweg, nicht mehr rekursiv innerhalb dieser
+Pipeline** (ADR-0022, #1183, löst #1130 Befund 2 strukturell). `EmlReader`/`MsgReader` extrahieren
+jeden Anhang weiterhin in eine eigene temporäre Datei (unverändert Parse-Zeit-Aufgabe), aber
+`MailDocumentPipeline` routet ihn nicht mehr selbst durch `DocumentPipelineRegistry` — sie meldet ihn
+nur noch als `DiscoveredAttachment` über `DocumentPipelineResult#discoveredAttachments()`.
+`FileProcessingService` übergibt jeden gemeldeten Anhang an
+`io.opaa.indexing.source.attachment.AttachmentIndexer#indexAll`, denselben Weg, den RSS-Anhänge
+schon seit #1182 nehmen: eigene `Document`-Zeile, eigene Prüfsumme, eigene Speicherquote,
+`parent_document_id` auf die Mail, und — der eigentliche Fix — die korrekte `pipeline_id`/
+`pipeline_version` der tatsächlich zuständigen Sub-Pipeline (PDF-Anhang trägt `pipeline_id=pdf`,
+nicht `email`). Formatzulassung (`SupportedDocumentFormats.decideForFileName`) und die
+Fehlerbehandlung je Anhang („ein defekter Anhang kostet nur ihn selbst") übernimmt jetzt
+`AttachmentIndexer`, nicht mehr diese Pipeline. Ein EML-in-EML-Anhang (eine Weiterleitung) wird zu
+einem eigenen `Document`, dessen eigene, rekursiv gemeldeten Anhänge wiederum `parent_document_id`
+auf **diese** innere Mail setzen, nicht auf die äußerste — eine Kette, kein Sonderfall.
 
-**Welche Metadaten-Schlüssel eines Anhang-Chunks durchgereicht werden, entscheidet nicht allein
-`MailDocumentPipeline#passthroughMetadataKeys()`.** `FileProcessingService#storeChunks` filtert gegen
-die Vereinigung der Deklarationen aller registrierten Pipelines (`DocumentPipelineRegistry
-#allPassthroughMetadataKeys()`), nicht gegen die eine Pipeline, mit der `storeChunks` für das
-Gesamtdokument aufgerufen wurde — sonst würde ein Struktur-Schlüssel, den nur die innere,
-tatsächlich für den Anhang zuständige Pipeline deklariert (z. B. eine künftige Folien-/
-Blatt-Metadatum-Pipeline), an genau der Stelle verworfen, an der `pipeline_id`/`pipeline_version`
-ohnehin schon die äußere Mail-Pipeline tragen (siehe die Einschränkung unten).
+**`file_path` eines Mail-Anhangs** (ADR-0022, Entscheidung 2, festgelegt in #1183):
+`<file_path des Elterndokuments>!<Positionsindex>/<Dateiname>` — `!` in Anlehnung an die
+JAR-URL-Konvention für „eine eingebettete Ressource innerhalb einer Datei" (`jar:file:a.jar!/b.txt`),
+ein im Dateisystem praktisch nie vorkommendes Zeichen. Der Positionsindex (0-basiert,
+Extraktionsreihenfolge) disambiguiert zwei gleichnamige Anhänge derselben Mail; der eingebettete
+Elternpfad allein sorgt bereits für Eindeutigkeit über verschiedene Mails hinweg und für Stabilität
+über Läufe hinweg, solange die Mail-Datei selbst nicht verschoben wird. Für eine verschachtelte Mail
+gilt dieselbe Regel rekursiv: Der `file_path` eines Anhangs einer weitergeleiteten Mail enthält
+bereits den synthetischen `file_path` dieser weitergeleiteten Mail selbst.
 
-**Bekannte Einschränkung: Jeder Chunk — auch ein rekursiv erzeugter Anhang-Chunk — trägt
-`pipeline_id=email`/die Version dieser Pipeline** (#1101 Review), nicht die der Sub-Pipeline, die ihn
-tatsächlich erzeugt hat. `FileProcessingService#storeChunks` prägt `pipeline_id`/`pipeline_version`
-genau einmal, von der einen Top-Level-Pipeline, die für das ganze Dokument aufgerufen wurde — ein
-Versionssprung der PDF-Pipeline erreicht einen PDF-Anhang innerhalb einer Mail über
-`PipelineReindexService`s selektiven Nachlauf deshalb nicht; nur ein erneuter Durchlauf der Mail
-selbst (diese Pipeline-Version) zieht ihn nach. Das ist zugleich eine bewusste Abweichung vom
-gewöhnlichen Anlagenweg-Muster (docs/features/knowledge-sources.md): Dort wird ein Anhang eine eigene
-`Document`-Zeile mit eigener Pipeline-Zuordnung (`AttachmentIndexer`/`processUrlFile`); ein
-Mail-Anhang wird stattdessen zu weiteren Chunks derselben `Document`-Zeile wie die Nachricht selbst,
-weil `FileProcessingService#storeChunks` immer nur für ein Dokument auf einmal schreibt und dieser
-Pipeline kein Kanal zur Verfügung steht, dafür eine zusätzliche Dokumentzeile anzulegen.
+**Die Rekursionstiefe (Mail-in-Mail) lebt auf dem verallgemeinerten Anhangsweg, nicht mehr in dieser
+Pipeline** (ADR-0022, Entscheidung 6): `AttachmentIndexer` zählt die Verschachtelungstiefe über einen
+threadlokalen Zähler, sobald ein gemeldeter Anhang selbst wieder über `FileProcessingService
+#processUrlFile` verarbeitet wird und dabei erneut Anhänge meldet — dieselbe Rolle, die
+`MailDocumentPipeline`s eigenes `RECURSION_DEPTH`-Feld vor #1183 gespielt hat, jetzt auf der
+gemeinsamen Ebene, weil auch RSS/Confluence-Anhänge grundsätzlich verschachtelt sein können.
 
 **Drei Sicherheits-Grenzfälle, Muster `TabularProperties`** (`MailProperties`,
-`opaa.indexing.mail.*`): `max-attachment-depth` (gesetzt 5) deckelt die Rekursionstiefe gegen eine
-Mail, die sich selbst oder zyklisch weiterleitet; `max-attachments-per-message` (gesetzt 50) deckelt
-die Anzahl der Anhänge — durchgesetzt direkt in der Extraktionsschleife von `EmlReader`/`MsgReader`
-selbst, sodass für einen Anhang jenseits der Grenze erst gar keine temporäre Datei entsteht; und
-`max-attachment-bytes` (gesetzt 50 MiB) deckelt die Größe eines einzelnen Anhangs. Bei EML wird diese
+`opaa.indexing.mail.*`): `max-attachment-depth` (Standard 5, seit #1183 nur noch der Vorgabewert für
+`AttachmentDownloadLimits#maxAttachmentDepth()` auf dem Anhangsweg, siehe oben) deckelt die
+Rekursionstiefe gegen eine Mail, die sich selbst oder zyklisch weiterleitet; `max-attachments-per-message`
+(gesetzt 50) deckelt die Anzahl der Anhänge — durchgesetzt direkt in der Extraktionsschleife von
+`EmlReader`/`MsgReader` selbst, sodass für einen Anhang jenseits der Grenze erst gar keine temporäre
+Datei entsteht; und `max-attachment-bytes` (gesetzt 50 MiB) deckelt die Größe eines einzelnen
+Anhangs. Bei EML wird diese
 Byte-Grenze beim Kopieren des Anhangs in eine temporäre Datei durchgesetzt (wie
 `TabularDocumentPipeline`s ODS-Leser), bei MSG nur nachträglich (siehe unten). **Diese drei Grenzen
 schützen Platte und nachgelagerte Verarbeitung, nicht den Parse-Vorgang selbst** — sowohl mime4j
@@ -1037,6 +1042,15 @@ Thread-Segment), nie nach Tokenzahl geschnitten. Ein Segment, das trotzdem die k
 `opaa.indexing.chunk-size` überschreitet (ein langer Rundbrief ohne erkennbare Zitatgrenze), fällt auf
 denselben Token-Splitter zurück, den `TikaFallbackPipeline` ohnehin verwendet — kein eigener
 Zuschnitts-Parameter dieser Pipeline, sondern der bestehende projektweite Fallback.
+
+**`file_size` des Mail-Elterndokuments zählt seit #1183 nur noch Kopfdaten und Nachrichtentext, nicht
+die Anhangsbytes** (ADR-0022, Entscheidung 6): Die rohe `.eml`/`.msg`-Datei enthält Anhänge
+base64-kodiert bereits in ihrer eigenen Dateigröße; sobald ein Anhang eine eigene `Document`-Zeile
+mit eigenem `fileSize` ist, würde er sonst doppelt gegen die Speicherquote der Bibliothek zählen.
+`DocumentPipelineResult#contentByteSizeOverride()` trägt dafür die Summe aus Kopfblock- und
+Nachrichtentext-Bytes; `FileProcessingService` überschreibt `Document#getFileSize()` damit, sobald
+die Pipeline einen Wert meldet — ein reines Mail-spezifisches Detail, jede andere Pipeline lässt
+diesen Kanal leer und behält die Dateigröße auf der Platte.
 
 **Baseline unberührt** — der bestehende Evaluierungskorpus enthält keine EML- oder MSG-Dokumente.
 

@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
  * JobStatus#RUNNING} forever and permanently blocking every future run of that library. Centralized
  * here rather than in each executor's own call sites, so every executor is covered by construction.
  */
-public final class IndexingRunEventRecorder {
+public final class IndexingRunEventRecorder implements IndexingEventSink {
 
   private static final Logger log = LoggerFactory.getLogger(IndexingRunEventRecorder.class);
 
@@ -49,6 +49,7 @@ public final class IndexingRunEventRecorder {
    * {@link IndexingRunEvent}'s Javadoc on what {@code reference} may and may not contain (never a
    * raw challenge/redirect URL). Never throws - see the class Javadoc.
    */
+  @Override
   public void record(IndexingEventCategory category, String message, String reference) {
     if (persistedCount >= MAX_EVENTS_PER_RUN) {
       overflowCount++;

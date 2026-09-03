@@ -61,6 +61,7 @@ class AsyncIndexingExecutorTest {
   private LibraryStorageQuotaService storageQuotaService;
   private LibraryFolderService folderService;
   private StaleDocumentCleanupService staleDocumentCleanupService;
+  private DocumentRepository documentRepository;
   private AsyncIndexingExecutor executor;
   private KnowledgeLibrary library;
 
@@ -72,6 +73,10 @@ class AsyncIndexingExecutorTest {
     storageQuotaService = mock(LibraryStorageQuotaService.class);
     folderService = mock(LibraryFolderService.class);
     staleDocumentCleanupService = mock(StaleDocumentCleanupService.class);
+    documentRepository = mock(DocumentRepository.class);
+    // #1183: the deepest-first attachment-path fold every successful run performs before
+    // cleanupVanished - an empty bestand for a library with no Mail attachments of its own.
+    when(documentRepository.findByLibraryIdAndSourceType(any(), any())).thenReturn(List.of());
     FilesystemPathAllowlist allowlist = mock(FilesystemPathAllowlist.class);
     when(allowlist.isAllowed(any())).thenReturn(true);
 
@@ -99,7 +104,8 @@ class AsyncIndexingExecutorTest {
             indexingRunEventRepository,
             storageQuotaService,
             folderService,
-            staleDocumentCleanupService);
+            staleDocumentCleanupService,
+            documentRepository);
   }
 
   @Test
@@ -110,7 +116,7 @@ class AsyncIndexingExecutorTest {
     Path file = documentDir.resolve("over-quota.txt");
     Files.writeString(file, "content");
 
-    when(fileProcessingService.processFile(eq(file), eq(library), isNull()))
+    when(fileProcessingService.processFile(eq(file), eq(library), isNull(), any()))
         .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
     when(storageQuotaService.quotaExceededMessage(library.getId()))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
@@ -136,7 +142,7 @@ class AsyncIndexingExecutorTest {
     Path file = documentDir.resolve("scan.txt");
     Files.writeString(file, "content");
 
-    when(fileProcessingService.processFile(eq(file), eq(library), isNull()))
+    when(fileProcessingService.processFile(eq(file), eq(library), isNull(), any()))
         .thenReturn(FileProcessingResult.NO_EXTRACTABLE_TEXT);
 
     executor.execute(UUID.randomUUID(), library);
@@ -160,7 +166,7 @@ class AsyncIndexingExecutorTest {
     Path file = documentDir.resolve("corrupt.txt");
     Files.writeString(file, "content");
 
-    when(fileProcessingService.processFile(eq(file), eq(library), isNull()))
+    when(fileProcessingService.processFile(eq(file), eq(library), isNull(), any()))
         .thenReturn(FileProcessingResult.FAILED);
 
     executor.execute(UUID.randomUUID(), library);
@@ -188,11 +194,14 @@ class AsyncIndexingExecutorTest {
     Path file = documentDir.resolve("scan.pdf");
     Files.writeString(file, "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection");
 
-    DocumentRepository documentRepository = mock(DocumentRepository.class);
-    when(documentRepository.findByLibraryIdAndFilePath(eq(library.getId()), any()))
+    DocumentRepository realFlowDocumentRepository = mock(DocumentRepository.class);
+    when(realFlowDocumentRepository.findByLibraryIdAndFilePath(eq(library.getId()), any()))
         .thenReturn(Optional.empty());
-    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
-    when(documentRepository.markFailed(any(), any())).thenReturn(1);
+    when(realFlowDocumentRepository.save(any(Document.class)))
+        .thenAnswer(inv -> inv.getArgument(0));
+    when(realFlowDocumentRepository.markFailed(any(), any())).thenReturn(1);
+    when(realFlowDocumentRepository.findByLibraryIdAndSourceType(any(), any()))
+        .thenReturn(List.of());
     org.springframework.ai.vectorstore.VectorStore vectorStore =
         mock(org.springframework.ai.vectorstore.VectorStore.class);
     LibraryStorageQuotaService realFlowQuotaService = mock(LibraryStorageQuotaService.class);
@@ -213,7 +222,7 @@ class AsyncIndexingExecutorTest {
         new FileProcessingService(
             TestPipelineRegistries.fallbackOnly(
                 scanDetectingDocumentService, new ChunkingService(indexingProperties)),
-            documentRepository,
+            realFlowDocumentRepository,
             new VectorChunkStore(
                 vectorStore,
                 mock(org.springframework.ai.embedding.EmbeddingModel.class),
@@ -224,7 +233,9 @@ class AsyncIndexingExecutorTest {
             new IndexingMetrics(new SimpleMeterRegistry()),
             realFlowQuotaService,
             indexingProperties,
-            Runnable::run);
+            Runnable::run,
+            org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0));
 
     FilesystemPathAllowlist realFlowAllowlist = mock(FilesystemPathAllowlist.class);
     when(realFlowAllowlist.isAllowed(any())).thenReturn(true);
@@ -237,7 +248,8 @@ class AsyncIndexingExecutorTest {
             indexingRunEventRepository,
             realFlowQuotaService,
             folderService,
-            staleDocumentCleanupService);
+            staleDocumentCleanupService,
+            realFlowDocumentRepository);
 
     realFlowExecutor.execute(UUID.randomUUID(), library);
 
@@ -256,7 +268,7 @@ class AsyncIndexingExecutorTest {
     Path file = documentDir.resolve("ok.txt");
     Files.writeString(file, "content");
 
-    when(fileProcessingService.processFile(eq(file), eq(library), isNull()))
+    when(fileProcessingService.processFile(eq(file), eq(library), isNull(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     executor.execute(UUID.randomUUID(), library);

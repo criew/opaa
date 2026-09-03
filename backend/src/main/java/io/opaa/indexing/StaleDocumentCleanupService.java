@@ -3,8 +3,12 @@ package io.opaa.indexing;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.library.KnowledgeLibrary;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,22 +86,11 @@ public class StaleDocumentCleanupService {
     // fk_documents_parent (ADR-0022, Entscheidung 4): an attachment removed in the same batch as
     // its own now-vanished parent must be deleted first, or the parent's own delete fails the FK
     // check. findByLibraryIdAndSourceType carries no ORDER BY that would guarantee this on its own
-    // -
-    // sorted here instead, children (a non-null parentDocumentId) before parents.
-    //
-    // Only one level deep: this sorts a child ahead of its direct parent, not a grandchild ahead of
-    // an intermediate parent that is itself a child of something else. Every attachment source this
-    // class serves today (RSS) nests exactly one level. Mail-in-Mail (#1183) can nest an attachment
-    // inside an attachment - a single Comparator.comparing pass does not generalize to that case
-    // and
-    // needs a topological (or depth-descending) sort instead; #1183 must decide and implement that
-    // when it wires Mail's own parent/child rows into a source type this method scans.
-    existing =
-        existing.stream()
-            .sorted(
-                Comparator.comparing(
-                    Document::getParentDocumentId, Comparator.nullsLast(Comparator.naturalOrder())))
-            .toList();
+    // - sorted here instead, deepest nesting level first (#1183): a grandchild (a Mail-in-Mail
+    // attachment's own attachment) is deleted before its intermediate parent, which is deleted
+    // before the outermost parent, generalizing the one-level-deep "children before parents" sort
+    // this method used before #1183 introduced multi-level parent chains.
+    existing = sortedDeepestFirst(existing);
     int removed = 0;
     for (Document document : existing) {
       if (currentFilePaths.contains(document.getFilePath())) {
@@ -116,5 +109,61 @@ public class StaleDocumentCleanupService {
           library.getId());
     }
     return removed;
+  }
+
+  /**
+   * Sorts {@code documents} by nesting depth, deepest first (#1183 review, generalizing the
+   * one-level {@code Comparator.comparing(Document::getParentDocumentId, ...)} pass this method
+   * used before): a document with no parent (or whose parent is not itself in {@code documents} -
+   * scoped to one {@code (library, sourceType)} pair, so a cross-source-type parent, none exist
+   * today, would look like a root here too) has depth 0; every other document's depth is one more
+   * than its own parent's. Ties (siblings at the same depth) are left in whatever order {@link
+   * #depthOf} happens to visit them - {@code fk_documents_parent} only requires a child before its
+   * own parent, not a total order across unrelated documents.
+   */
+  private static List<Document> sortedDeepestFirst(List<Document> documents) {
+    Map<UUID, Document> byId = new HashMap<>();
+    for (Document document : documents) {
+      byId.put(document.getId(), document);
+    }
+    Map<UUID, Integer> depthCache = new HashMap<>();
+    return documents.stream()
+        .sorted(Comparator.comparingInt((Document d) -> depthOf(d, byId, depthCache)).reversed())
+        .toList();
+  }
+
+  /**
+   * The nesting depth of {@code document} within {@code byId} (see {@link #sortedDeepestFirst}),
+   * memoized in {@code depthCache} so a chain shared by several documents (e.g. every grandchild of
+   * the same Mail-in-Mail root) is only walked once. {@code visiting} guards against a cyclic
+   * {@code parentDocumentId} chain - never expected from well-formed data, but a corrupt or
+   * adversarial one must terminate rather than stack-overflow; a document on a detected cycle is
+   * treated as its own root (depth 0) rather than propagating the cycle further.
+   */
+  private static int depthOf(
+      Document document, Map<UUID, Document> byId, Map<UUID, Integer> depthCache) {
+    return depthOf(document, byId, depthCache, new HashSet<>());
+  }
+
+  private static int depthOf(
+      Document document,
+      Map<UUID, Document> byId,
+      Map<UUID, Integer> depthCache,
+      Set<UUID> visiting) {
+    Integer cached = depthCache.get(document.getId());
+    if (cached != null) {
+      return cached;
+    }
+    UUID parentId = document.getParentDocumentId();
+    Document parent = parentId == null ? null : byId.get(parentId);
+    int depth;
+    if (parent == null || !visiting.add(document.getId())) {
+      depth = 0;
+    } else {
+      depth = 1 + depthOf(parent, byId, depthCache, visiting);
+      visiting.remove(document.getId());
+    }
+    depthCache.put(document.getId(), depth);
+    return depth;
   }
 }

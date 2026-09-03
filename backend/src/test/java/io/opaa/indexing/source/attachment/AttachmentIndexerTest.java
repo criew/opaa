@@ -64,7 +64,9 @@ class AttachmentIndexerTest {
     fileProcessingService = mock(FileProcessingService.class);
     LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
     documentRepository = mock(DocumentRepository.class);
-    limits = new AttachmentDownloadLimits(10, 5_242_880L, 0, "opaa-test-agent");
+    limits =
+        new AttachmentDownloadLimits(
+            10, 5_242_880L, 0, "opaa-test-agent", AttachmentIndexer.DEFAULT_MAX_ATTACHMENT_DEPTH);
     indexer =
         new AttachmentIndexer(
             attachmentDownloader, fileProcessingService, storageQuotaService, documentRepository);
@@ -113,7 +115,7 @@ class AttachmentIndexerTest {
             any(), anyString(), anyString(), anyLong(), any(), any()))
         .thenReturn(new BoundedDownloader.DownloadedFile(downloaded, "text/plain"));
     when(fileProcessingService.processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any()))
+            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any()))
         .thenReturn(FileProcessingResult.FAILED);
 
     List<String> indexed =
