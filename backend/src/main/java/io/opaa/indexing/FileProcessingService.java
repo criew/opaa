@@ -3,10 +3,10 @@ package io.opaa.indexing;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
-import io.opaa.indexing.pipeline.DiscoveredAttachment;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
+import io.opaa.indexing.pipeline.DocumentPipelineRunner;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -177,41 +177,38 @@ public class FileProcessingService {
       DocumentPipelineRegistry.Routed routed = pipelineRegistry.routedPipelineFor(file, fileName);
       DocumentPipeline pipeline = routed.pipeline();
       DocumentPipelineResult parsed =
-          pipeline.run(DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()));
-      try {
-        switch (parsed.outcome()) {
-          case NO_EXTRACTABLE_TEXT -> {
-            log.warn("No usable text extracted from {} by pipeline {}", file, pipeline.id());
-            return markConnectorRejected(doc.getId());
-          }
-          case NO_CONTENT -> {
-            log.warn("No content extracted from: {}", file);
-            return markConnectorFailed(doc.getId());
-          }
-          case CHUNKED ->
-              log.debug(
-                  "File {} produced {} chunks via pipeline {}",
-                  fileName,
-                  parsed.chunks().size(),
-                  pipeline.id());
+          DocumentPipelineRunner.run(
+              pipeline, DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()));
+      switch (parsed.outcome()) {
+        case NO_EXTRACTABLE_TEXT -> {
+          log.warn("No usable text extracted from {} by pipeline {}", file, pipeline.id());
+          return markConnectorRejected(doc.getId());
         }
-        List<org.springframework.ai.document.Document> chunks = parsed.chunks();
-
-        // Enrich chunks with metadata and store via VectorStore
-        storeChunks(
-            doc,
-            chunks,
-            ChunkContextTitle.deriveTitle(fileName),
-            pipeline,
-            routingExtensionFor(routed));
-
-        FileProcessingResult result =
-            markConnectorIndexed(doc.getId(), chunks.size(), checksum, null);
-        if (result == FileProcessingResult.SKIPPED) {
-          return result;
+        case NO_CONTENT -> {
+          log.warn("No content extracted from: {}", file);
+          return markConnectorFailed(doc.getId());
         }
-      } finally {
-        cleanupDiscoveredAttachments(parsed);
+        case CHUNKED ->
+            log.debug(
+                "File {} produced {} chunks via pipeline {}",
+                fileName,
+                parsed.chunks().size(),
+                pipeline.id());
+      }
+      List<org.springframework.ai.document.Document> chunks = parsed.chunks();
+
+      // Enrich chunks with metadata and store via VectorStore
+      storeChunks(
+          doc,
+          chunks,
+          ChunkContextTitle.deriveTitle(fileName),
+          pipeline,
+          routingExtensionFor(routed));
+
+      FileProcessingResult result =
+          markConnectorIndexed(doc.getId(), chunks.size(), checksum, null);
+      if (result == FileProcessingResult.SKIPPED) {
+        return result;
       }
     } catch (Exception e) {
       markConnectorFailedAfterException(doc.getId());
@@ -314,49 +311,46 @@ public class FileProcessingService {
           pipelineRegistry.routedPipelineFor(localFile, fileName);
       DocumentPipeline pipeline = routed.pipeline();
       DocumentPipelineResult parsed =
-          pipeline.run(
+          DocumentPipelineRunner.run(
+              pipeline,
               DocumentPipelineSource.ofFile(localFile, fileName, routed.detectedExtension()));
-      try {
-        switch (parsed.outcome()) {
-          case NO_EXTRACTABLE_TEXT -> {
-            log.warn(
-                "No usable text extracted from URL document {} by pipeline {}",
-                remoteUrl,
+      switch (parsed.outcome()) {
+        case NO_EXTRACTABLE_TEXT -> {
+          log.warn(
+              "No usable text extracted from URL document {} by pipeline {}",
+              remoteUrl,
+              pipeline.id());
+          return markConnectorRejected(doc.getId());
+        }
+        case NO_CONTENT -> {
+          log.warn("No content extracted from URL document: {}", remoteUrl);
+          return markConnectorFailed(doc.getId());
+        }
+        case CHUNKED ->
+            log.debug(
+                "URL file {} produced {} chunks via pipeline {}",
+                fileName,
+                parsed.chunks().size(),
                 pipeline.id());
-            return markConnectorRejected(doc.getId());
-          }
-          case NO_CONTENT -> {
-            log.warn("No content extracted from URL document: {}", remoteUrl);
-            return markConnectorFailed(doc.getId());
-          }
-          case CHUNKED ->
-              log.debug(
-                  "URL file {} produced {} chunks via pipeline {}",
-                  fileName,
-                  parsed.chunks().size(),
-                  pipeline.id());
-        }
-        List<org.springframework.ai.document.Document> chunks = parsed.chunks();
+      }
+      List<org.springframework.ai.document.Document> chunks = parsed.chunks();
 
-        // fileName is always a real file name here regardless of sourceType - both HTTP_DIRECTORY
-        // and an RSS_FEED entry's attachment (see this method's own Javadoc) go through this path,
-        // so ChunkContextTitle's filesystem-style-name assumption always applies; only
-        // processRssEntry's own entry-body document (never routed through processUrlFile) uses a
-        // headline instead - see storeChunks's Javadoc for why that distinction is call-site-bound.
-        storeChunks(
-            doc,
-            chunks,
-            ChunkContextTitle.deriveTitle(fileName),
-            pipeline,
-            routingExtensionFor(routed));
+      // fileName is always a real file name here regardless of sourceType - both HTTP_DIRECTORY
+      // and an RSS_FEED entry's attachment (see this method's own Javadoc) go through this path,
+      // so ChunkContextTitle's filesystem-style-name assumption always applies; only
+      // processRssEntry's own entry-body document (never routed through processUrlFile) uses a
+      // headline instead - see storeChunks's Javadoc for why that distinction is call-site-bound.
+      storeChunks(
+          doc,
+          chunks,
+          ChunkContextTitle.deriveTitle(fileName),
+          pipeline,
+          routingExtensionFor(routed));
 
-        FileProcessingResult result =
-            markConnectorIndexed(doc.getId(), chunks.size(), checksum, lastModified);
-        if (result == FileProcessingResult.SKIPPED) {
-          return result;
-        }
-      } finally {
-        cleanupDiscoveredAttachments(parsed);
+      FileProcessingResult result =
+          markConnectorIndexed(doc.getId(), chunks.size(), checksum, lastModified);
+      if (result == FileProcessingResult.SKIPPED) {
+        return result;
       }
     } catch (Exception e) {
       markConnectorFailedAfterException(doc.getId());
@@ -442,36 +436,33 @@ public class FileProcessingService {
       // already extracted text and goes to the fallback pipeline directly (ADR-0017, decision 2).
       DocumentPipeline pipeline = pipelineRegistry.fallbackPipeline();
       DocumentPipelineResult parsed =
-          pipeline.run(DocumentPipelineSource.ofExtractedText(mainText, fileName));
-      try {
-        switch (parsed.outcome()) {
-          // Before #1056 this path ignored the outcome entirely and left an entry whose text
-          // chunked down to nothing as INDEXED with zero chunks - the same silent empty index the
-          // file paths already guard against, only reached through a feed instead of a file.
-          case NO_EXTRACTABLE_TEXT -> {
-            log.warn("No usable text in RSS entry {}", entryUrl);
-            return markConnectorRejected(doc.getId());
-          }
-          case NO_CONTENT -> {
-            log.warn("No content extracted from RSS entry: {}", entryUrl);
-            return markConnectorFailed(doc.getId());
-          }
-          case CHUNKED ->
-              log.debug("RSS entry {} produced {} chunks", entryUrl, parsed.chunks().size());
+          DocumentPipelineRunner.run(
+              pipeline, DocumentPipelineSource.ofExtractedText(mainText, fileName));
+      switch (parsed.outcome()) {
+        // Before #1056 this path ignored the outcome entirely and left an entry whose text
+        // chunked down to nothing as INDEXED with zero chunks - the same silent empty index the
+        // file paths already guard against, only reached through a feed instead of a file.
+        case NO_EXTRACTABLE_TEXT -> {
+          log.warn("No usable text in RSS entry {}", entryUrl);
+          return markConnectorRejected(doc.getId());
         }
-        List<org.springframework.ai.document.Document> chunks = parsed.chunks();
-
-        // No routing decision was ever made for this text (see the pipeline selection above) - no
-        // routing key is written at all, same as a failed detection (#routingExtensionFor).
-        storeChunks(doc, chunks, contextTitle, pipeline, Optional.empty());
-
-        FileProcessingResult result =
-            markConnectorIndexed(doc.getId(), chunks.size(), checksum, publishedAt);
-        if (result == FileProcessingResult.SKIPPED) {
-          return result;
+        case NO_CONTENT -> {
+          log.warn("No content extracted from RSS entry: {}", entryUrl);
+          return markConnectorFailed(doc.getId());
         }
-      } finally {
-        cleanupDiscoveredAttachments(parsed);
+        case CHUNKED ->
+            log.debug("RSS entry {} produced {} chunks", entryUrl, parsed.chunks().size());
+      }
+      List<org.springframework.ai.document.Document> chunks = parsed.chunks();
+
+      // No routing decision was ever made for this text (see the pipeline selection above) - no
+      // routing key is written at all, same as a failed detection (#routingExtensionFor).
+      storeChunks(doc, chunks, contextTitle, pipeline, Optional.empty());
+
+      FileProcessingResult result =
+          markConnectorIndexed(doc.getId(), chunks.size(), checksum, publishedAt);
+      if (result == FileProcessingResult.SKIPPED) {
+        return result;
       }
     } catch (Exception e) {
       markConnectorFailedAfterException(doc.getId());
@@ -572,69 +563,66 @@ public class FileProcessingService {
           pipelineRegistry.routedPipelineFor(storedFile, doc.getFileName());
       DocumentPipeline pipeline = routed.pipeline();
       DocumentPipelineResult parsed =
-          pipeline.run(
+          DocumentPipelineRunner.run(
+              pipeline,
               DocumentPipelineSource.ofFile(
                   storedFile, doc.getFileName(), routed.detectedExtension()));
-      try {
-        switch (parsed.outcome()) {
-          case NO_EXTRACTABLE_TEXT -> {
-            log.warn(
-                "No usable text extracted from stored document {} by pipeline {}",
-                doc.getFileName(),
-                pipeline.id());
-            if (replacingExistingChunks) {
-              return false;
-            }
-            // metrics.recordFailed(), not recordSkipped(): every other outcome on this path is
-            // INDEXED or FAILED - a single, deliberate upload has no "skipped" concept the way a
-            // connector run's item count does.
-            markUploadFailed(doc.getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
-            metrics.recordFailed();
-            return false;
-          }
-          case NO_CONTENT -> {
-            log.warn("No content extracted from uploaded document: {}", doc.getFileName());
-            if (replacingExistingChunks) {
-              return false;
-            }
-            markUploadFailed(doc.getId(), "Aus der Datei konnte kein Text extrahiert werden");
-            metrics.recordFailed();
-            return false;
-          }
-          case CHUNKED ->
-              log.debug(
-                  "Stored file {} produced {} chunks via pipeline {}",
-                  doc.getFileName(),
-                  parsed.chunks().size(),
-                  pipeline.id());
-        }
-        List<org.springframework.ai.document.Document> chunks = parsed.chunks();
-
-        if (replacingExistingChunks) {
-          vectorChunkStore.deleteByDocumentId(doc.getId());
-          previousChunksDeleted = true;
-        }
-        storeChunks(
-            doc,
-            chunks,
-            ChunkContextTitle.deriveTitle(doc.getFileName()),
-            pipeline,
-            routingExtensionFor(routed));
-
-        int updated = documentRepository.markIndexed(doc.getId(), chunks.size(), Instant.now());
-        if (updated == 0) {
+      switch (parsed.outcome()) {
+        case NO_EXTRACTABLE_TEXT -> {
           log.warn(
-              "Uploaded document {} was deleted while its chunks were being written; removing them"
-                  + " again",
-              doc.getId());
-          vectorChunkStore.deleteByDocumentId(doc.getId());
+              "No usable text extracted from stored document {} by pipeline {}",
+              doc.getFileName(),
+              pipeline.id());
+          if (replacingExistingChunks) {
+            return false;
+          }
+          // metrics.recordFailed(), not recordSkipped(): every other outcome on this path is
+          // INDEXED or FAILED - a single, deliberate upload has no "skipped" concept the way a
+          // connector run's item count does.
+          markUploadFailed(doc.getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+          metrics.recordFailed();
           return false;
         }
-        metrics.recordProcessed();
-        return true;
-      } finally {
-        cleanupDiscoveredAttachments(parsed);
+        case NO_CONTENT -> {
+          log.warn("No content extracted from uploaded document: {}", doc.getFileName());
+          if (replacingExistingChunks) {
+            return false;
+          }
+          markUploadFailed(doc.getId(), "Aus der Datei konnte kein Text extrahiert werden");
+          metrics.recordFailed();
+          return false;
+        }
+        case CHUNKED ->
+            log.debug(
+                "Stored file {} produced {} chunks via pipeline {}",
+                doc.getFileName(),
+                parsed.chunks().size(),
+                pipeline.id());
       }
+      List<org.springframework.ai.document.Document> chunks = parsed.chunks();
+
+      if (replacingExistingChunks) {
+        vectorChunkStore.deleteByDocumentId(doc.getId());
+        previousChunksDeleted = true;
+      }
+      storeChunks(
+          doc,
+          chunks,
+          ChunkContextTitle.deriveTitle(doc.getFileName()),
+          pipeline,
+          routingExtensionFor(routed));
+
+      int updated = documentRepository.markIndexed(doc.getId(), chunks.size(), Instant.now());
+      if (updated == 0) {
+        log.warn(
+            "Uploaded document {} was deleted while its chunks were being written; removing them"
+                + " again",
+            doc.getId());
+        vectorChunkStore.deleteByDocumentId(doc.getId());
+        return false;
+      }
+      metrics.recordProcessed();
+      return true;
     } catch (Exception e) {
       log.error("Failed to process stored document {}", doc.getFileName(), e);
       if (replacingExistingChunks && !previousChunksDeleted) {
@@ -760,26 +748,6 @@ public class FileProcessingService {
     int updated = documentRepository.markFailed(documentId, null);
     if (updated == 0) {
       log.warn("Document {} was deleted before it could be marked FAILED", documentId);
-    }
-  }
-
-  /**
-   * Deletes every temporary file {@code parsed}'s {@link
-   * DocumentPipelineResult#discoveredAttachments()} carries (ADR-0022, part 2). This method is the
-   * sole caller of {@link DocumentPipeline#run} in the codebase, and no attachment path exists yet
-   * to take ownership of a discovered attachment's temp file (part 3, #1182) - cleanup
-   * responsibility therefore lands here, unconditionally, regardless of the outcome that was
-   * reached or any exception thrown while handling {@code parsed}. A future attachment path
-   * claiming a temp file before this runs makes the corresponding {@link
-   * java.nio.file.Files#deleteIfExists} a silent no-op rather than a double-delete failure.
-   */
-  private void cleanupDiscoveredAttachments(DocumentPipelineResult parsed) {
-    for (DiscoveredAttachment attachment : parsed.discoveredAttachments()) {
-      try {
-        Files.deleteIfExists(attachment.tempFile());
-      } catch (IOException e) {
-        log.warn("Failed to delete discovered attachment temp file: {}", attachment.tempFile(), e);
-      }
     }
   }
 

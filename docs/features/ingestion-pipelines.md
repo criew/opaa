@@ -227,9 +227,11 @@ Chunks bleibt unzulässig, auch wenn `discoveredAttachments` nicht leer ist — 
 Anhänge findet und selbst nichts liefert, ist ein Fall für den verallgemeinerten Anhangsweg (Teil 3,
 #1182), nicht für diesen Vertrag. Die Verantwortung für die temporäre Datei eines gemeldeten Anhangs
 geht mit der Rückgabe auf den Aufrufer über; solange kein Anhangsweg sie übernimmt, löscht
-`FileProcessingService` (die einzige Stelle, die `DocumentPipeline#run` aufruft) sie in einem
-`finally`, unabhängig vom erreichten Outcome oder einer währenddessen geworfenen Exception. Aktiv
-genutzt wird der Kanal erst mit der Umstellung von `MailDocumentPipeline` in Teil 4 (#1183).
+`DocumentPipelineRunner#run` — der gemeinsame Aufruf-Wrapper um `DocumentPipeline#run`, den
+`FileProcessingService` für ein Dokument als Ganzes und `MailDocumentPipeline#processAttachment` für
+einen rekursiv verarbeiteten Anhang gleichermaßen nutzen — sie in einem `finally`, unabhängig vom
+erreichten Outcome oder einer währenddessen geworfenen Exception. Aktiv genutzt wird der Kanal erst
+mit der Umstellung von `MailDocumentPipeline` in Teil 4 (#1183).
 
 ### Parsing-Strategie: hybrid, nicht ein Werkzeug für alles
 

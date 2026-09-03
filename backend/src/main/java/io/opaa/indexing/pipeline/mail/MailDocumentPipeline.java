@@ -5,6 +5,7 @@ import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
+import io.opaa.indexing.pipeline.DocumentPipelineRunner;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -49,7 +50,11 @@ import org.springframework.beans.factory.ObjectProvider;
  * MailProperties#maxAttachmentDepth()}. Every chunk this pipeline produces, including an
  * attachment's own, is attributed to this pipeline's {@link #id()}/{@link #version()} - a
  * version-selective re-index of a nested attachment's own pipeline is therefore not reachable
- * except by reprocessing the whole mail.
+ * except by reprocessing the whole mail. Routing an attachment through {@link
+ * DocumentPipelineRunner#run} rather than calling the sub-pipeline's {@link DocumentPipeline#run}
+ * directly (#1181 review) matters here specifically: a sub-pipeline that itself reports {@link
+ * DocumentPipelineResult#discoveredAttachments()} (ADR-0022, part 2) must not leak its temp files
+ * just because this class does not yet forward them further (that is part 4, #1183).
  *
  * <p>{@code registryProvider} is an {@link ObjectProvider} rather than a plain constructor
  * dependency to break the circular bean graph this pipeline's own recursion creates: {@link
@@ -408,11 +413,10 @@ public class MailDocumentPipeline implements DocumentPipeline {
     RECURSION_DEPTH.set(depth + 1);
     try {
       DocumentPipelineResult result =
-          routed
-              .pipeline()
-              .run(
-                  DocumentPipelineSource.ofFile(
-                      attachment.tempFile(), fileName, routed.detectedExtension()));
+          DocumentPipelineRunner.run(
+              routed.pipeline(),
+              DocumentPipelineSource.ofFile(
+                  attachment.tempFile(), fileName, routed.detectedExtension()));
       if (result.outcome() != DocumentPipelineResult.Outcome.CHUNKED) {
         log.info(
             "No usable content extracted from mail attachment {} by pipeline {}",

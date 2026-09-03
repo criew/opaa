@@ -51,8 +51,8 @@ public interface DocumentPipeline {
    * <p>A pipeline that finds embedded objects while parsing (e.g. mail attachments) without itself
    * turning them into chunks reports them via {@link
    * DocumentPipelineResult#discoveredAttachments()} (ADR-0022, part 2) rather than processing them
-   * inline. Ownership of any temporary file such an attachment carries passes to the caller of this
-   * method on return - see that field's own Javadoc for the exact cleanup contract.
+   * inline. Every caller of this method goes through {@link DocumentPipelineRunner#run}, which owns
+   * deleting any temporary file such an attachment carries.
    */
   DocumentPipelineResult run(DocumentPipelineSource source);
 
