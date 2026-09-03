@@ -58,8 +58,10 @@ public final class ReportWriter {
             cfg.pgvectorIndexType()));
     sb.append(
         format(
-            "  Korpus: %d Dokumente, Manifest %s\n",
-            cfg.corpusDocumentCount(), shortHash(cfg.corpusManifestSha256())));
+            "  Korpus: %d Dokumente, Manifest %s, Ingestion-Pipelines %s\n",
+            cfg.corpusDocumentCount(),
+            shortHash(cfg.corpusManifestSha256()),
+            cfg.ingestionPipelineFingerprint()));
     sb.append(
         format(
             "  Golden Dataset: %s, %d Fälle, Hash %s\n",

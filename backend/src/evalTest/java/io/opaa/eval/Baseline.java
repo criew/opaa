@@ -42,6 +42,10 @@ public record Baseline(
    * BaselineComparator#compare}, which reports the two cases with different messages on purpose
    * (ADR-0011/ADR-0012: corpus, golden dataset, embedding model and measurement contract are all
    * baseline-defining and require a deliberate re-measurement on change).
+   *
+   * <p>Since issue #1144, {@code ingestionPipelineFingerprint} is one of these fields too — see
+   * {@link IngestionPipelineFingerprint}'s Javadoc for what it records and why {@code
+   * corpusManifestSha256} alone does not already cover it.
    */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record FixedPoints(
@@ -73,7 +77,11 @@ public record Baseline(
       int corpusDocumentCount,
       String goldenDatasetFile,
       String goldenDatasetSha256,
-      int goldenCaseCount) {}
+      int goldenCaseCount,
+      // Issue #1144: under which ingestion pipeline versions (all registered, not just the ones
+      // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
+      // Javadoc for why corpusManifestSha256 alone does not answer that question.
+      String ingestionPipelineFingerprint) {}
 
   /** Group keys used in {@link #groups()} — must match how the report's groups are addressed. */
   public static final String OVERALL = "overall";

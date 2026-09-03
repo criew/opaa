@@ -549,6 +549,16 @@ Drei Milderungen, keine Lösungen:
 > ausdrücklich nicht entschieden (ADR-0012, Nachtrag Volltextpfad, Entscheidung 23). Der Messvertrag
 > des Pipeline-Pfads steht seither auf Version 3, mit den Fixpunkten `fullTextSearchEnabled` und
 > `fullTextBackfillComplete`.
+>
+> **Fortschreibung (Issue #1144, 09/2026):** Kein Fixpunkt hielt fest, welche Ingestion-Pipeline
+> (Kennung/Version) die gemessenen Chunks erzeugt hat — ein Pipelinewechsel für ein bereits
+> registriertes Format verschob die Zahlen ununterscheidbar von einer Retrieval-Regression, belegt an
+> zwei realen Vorfällen aus #1103. `ingestionPipelineFingerprint` — ein sortierter Sammelabdruck
+> `id:version` über alle registrierten Pipelines (`IngestionPipelineFingerprint`) — ist seither
+> Fixpunkt auf **beiden** Pfaden: Rohvektor-Messvertrag Version 2 → 3, Pipeline-Messvertrag Version
+> 3 → 4. Reine Fixpunkt-Ergänzung ohne neuen Messlauf, weil der Eval-Korpus (Stand #1145)
+> ausschließlich aus Markdown besteht — nur `MarkdownDocumentPipeline` trägt zu den gemessenen Chunks
+> bei, der Abdruck listet aber alle registrierten Pipelines, nicht nur die vom Korpus genutzten.
 
 
 Fünf Kategorien kommen hinzu. Jede hat ein benanntes Fehlerbild, eine überprüfbare Ground Truth und

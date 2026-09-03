@@ -77,7 +77,11 @@ public final class PipelineHarnessSupport {
       // FullTextBackfillProgressService after indexing — the lexical path contributes nothing for a
       // library whose backfill is incomplete, and a run in which it silently contributed nothing
       // must not look like a hybrid one.
-      boolean fullTextBackfillComplete) {}
+      boolean fullTextBackfillComplete,
+      // Issue #1144: under which ingestion pipeline versions (all registered, not just the ones
+      // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
+      // Javadoc.
+      String ingestionPipelineFingerprint) {}
 
   /**
    * Runs the pipeline measurement path and writes its report — <b>without ever failing the harness
@@ -350,6 +354,7 @@ public final class PipelineHarnessSupport {
         identity.goldenDatasetFile(),
         identity.goldenDatasetSha256(),
         goldenCaseCount,
+        identity.ingestionPipelineFingerprint(),
         searchScopeLibraryCount,
         SEARCH_SCOPE_NOTE,
         pipelineRunStart.toString(),

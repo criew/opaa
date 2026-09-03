@@ -861,6 +861,10 @@ class RetrievalEvaluationHarnessTest {
                 + "(de vs. en) ist zusätzlich mit dem Anteil an 'hard'-Fällen konfundiert — siehe "
                 + "eval/README.md.");
 
+    // Issue #1144: the pipeline registry FileProcessingService actually routed through while
+    // indexing this corpus, not a second, potentially drifting re-derivation.
+    String ingestionPipelineFingerprint = IngestionPipelineFingerprint.of(pipelineRegistry);
+
     RunConfiguration runConfiguration =
         new RunConfiguration(
             "ollama",
@@ -884,6 +888,7 @@ class RetrievalEvaluationHarnessTest {
             "eval/golden/" + DOMAIN.goldenDatasetFileName(),
             GoldenDataset.sha256(goldenFile),
             goldenCases.size(),
+            ingestionPipelineFingerprint,
             runStart.toString(),
             Duration.between(runStart, Instant.now()).toMillis() / 1000.0,
             EvalOllamaEndpoint.isExternal());
@@ -934,7 +939,8 @@ class RetrievalEvaluationHarnessTest {
             "eval/golden/" + DOMAIN.goldenDatasetFileName(),
             GoldenDataset.sha256(goldenFile),
             // Issue #1049: whether the lexical path could contribute at all in this run.
-            fullTextBackfillProgressService.progressForLibrary(evalLibraryId).isComplete());
+            fullTextBackfillProgressService.progressForLibrary(evalLibraryId).isComplete(),
+            ingestionPipelineFingerprint);
     PipelineHarnessSupport.runAndWriteGuarded(
         DOMAIN,
         identity,

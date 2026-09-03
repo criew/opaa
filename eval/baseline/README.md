@@ -372,8 +372,10 @@ einziges Ja/Nein zusammengefasst:
 
 1. **Ist die Baseline noch gültig?** Stimmen `measurementContractVersion`,
    `corpusManifestSha256`, `goldenDatasetSha256`, `embeddingModelDigest`, `embeddingDimensions`,
-   `chunkSize`, `chunkSizeMatchesApplicationDefault`, `searchTopK`, `productionSimilarityThreshold`
-   und `pgvectorIndexType` mit dem aktuellen Lauf überein? Wenn nicht, bricht der Job mit einer
+   `chunkSize`, `chunkSizeMatchesApplicationDefault`, `searchTopK`, `productionSimilarityThreshold`,
+   `pgvectorIndexType` und (seit Issue #1144) `ingestionPipelineFingerprint` — ein Sammelabdruck über
+   alle registrierten Ingestion-Pipelines, siehe ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt — mit
+   dem aktuellen Lauf überein? Wenn nicht, bricht der Job mit einer
    Meldung ab, die ausdrücklich **"Baseline ungültig, Messgrundlage geändert"** sagt, samt Tabelle
    der abweichenden Felder — nicht "Retrieval ist schlechter geworden". In diesem Fall wird **keine**
    Metrik verglichen.
@@ -484,6 +486,11 @@ Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
   beantworten „hat der Volltextpfad in diesem Lauf beigetragen?" — ohne sie wäre ein
   `vector-only`-Lauf von einem hybriden nicht zu unterscheiden (ADR-0012, Nachtrag Volltextpfad,
   Entscheidung 22).
+- Beide Pfade führen seit Issue #1144 zusätzlich `ingestionPipelineFingerprint` — ein sortierter
+  Sammelabdruck `id:version` über alle von `DocumentPipelineRegistry` gemeldeten Pipelines
+  (`IngestionPipelineFingerprint`). Ein Diff dieses Felds zeigt, welche Pipeline sich zwischen zwei
+  Baselines bewegt hat, statt einen Pipelinewechsel unentdeckt gegen die Retrieval-Metriken laufen zu
+  lassen (ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt).
 - `hitCountAt5`/`hitCountAt8` stehen nicht in der Textausgabe; sie werden aus `allQueryResults` des
   Pipeline-Reports (`build/eval-reports/pipeline-metrics-<domäne>.json`) desselben Laufs gezählt
   (`hitRateAt5 > 0` bzw. `ndcgAt8 > 0`) — nicht aus den Mittelwerten zurückgerechnet.

@@ -54,8 +54,12 @@ public record PipelineEvaluationReport(
    * all). Without them a hybrid run and a vector-only run would carry the identical {@code
    * runConfiguration} fingerprint and the difference between them would be booked against the
    * committed baseline as a code change.
+   *
+   * <p>Version 4 (issue #1144, ADR-0012 Nachtrag): {@code ingestionPipelineFingerprint} became a
+   * fixed point — see {@link IngestionPipelineFingerprint}'s Javadoc for what it records and why
+   * {@code corpusManifestSha256} alone did not already cover it.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 3;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 4;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be
@@ -110,6 +114,10 @@ public record PipelineEvaluationReport(
       String goldenDatasetFile,
       String goldenDatasetSha256,
       int goldenCaseCount,
+      // Issue #1144: under which ingestion pipeline versions (all registered, not just the ones
+      // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
+      // Javadoc for why corpusManifestSha256 alone does not answer that question.
+      String ingestionPipelineFingerprint,
       int searchScopeLibraryCount,
       String searchScopeNote,
       String runStartedAt,

@@ -436,6 +436,21 @@ Referenzvarianten-Selbstprüfung des Benchmarks (siehe
 bitgleiche Zahlen zur committeten Baseline. Bleibt sie grün, ist der Nachweis geführt; schlägt sie
 fehl, war die Änderung entgegen der Annahme betroffen — und dann gilt der volle Dreischritt.
 
+**Seit Issue #1144 gilt eine zusätzliche, von "betroffen" unabhängige Auflage:**
+`ingestionPipelineFingerprint` (ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt) ist ein
+Sammelabdruck über die Versionen aller registrierten Pipelines, nicht nur der vom Korpus
+genutzten. Ein Versions-Bump — auch an einer Pipeline, deren Format "Baseline unberührt" gilt
+— verschiebt diesen Abdruck und macht damit alle sechs committeten Baselines ungültig,
+unabhängig davon, ob ein einziger Chunk des Korpus sich ändert. Die Folge: **Jedes
+Format-/Pipeline-Issue, das `version()` irgendeiner registrierten Pipeline erhöht, zieht
+`ingestionPipelineFingerprint` in allen sechs Baseline-Dateien im selben PR nach** — bei
+einem im Korpus nicht vorkommenden Format als reine Fixpunkt-Ergänzung ohne neuen Messlauf
+(genau das Verfahren, das PR #1196 vorführt), sonst als Teil des ohnehin fälligen
+Vorher-Nachher-Laufs aus Schritt 2 oben. `PipelinePathIsolationTest`
+(`committedIngestionPipelineFingerprintsMatchTheRealRegistry`) prüft das Docker-frei in
+`check` — ein vergessenes Nachziehen fällt dort auf, nicht erst nach ~70 Minuten im
+nächtlichen `evaluateRetrieval`-Lauf.
+
 ---
 
 ## Teil 3 — Formatzulassung: was dazukommt und in welcher Reihenfolge
@@ -533,7 +548,10 @@ Tika-Fallback-Pipeline: „ODS wie XLSX" gilt seitdem auch für den Reader, übe
 POI-unabhängigen ODF-XML-Leser (POI selbst versteht kein ODF) — siehe die Begründung unter
 [Punkt 3](#3-xlsx-und-csv).
 
-Baseline unberührt — kein Korpusdokument dieses Typs.
+Baseline unberührt — kein Korpusdokument dieses Typs. (Diese Feststellung galt zum Zeitpunkt
+von #1058, vor `ingestionPipelineFingerprint`; die seit #1144 zusätzliche Auflage — den
+Abdruck bei jedem `TabularDocumentPipeline`-Versions-Bump nachzuziehen — steht oben im
+Abschnitt "Baseline-Aktualisierung als Schritt jedes Format-Issues".)
 
 #### Umgesetzt (#1110, styles.xml seit #1145)
 
