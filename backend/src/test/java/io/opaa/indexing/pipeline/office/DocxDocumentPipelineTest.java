@@ -42,7 +42,7 @@ class DocxDocumentPipelineTest {
   void claimsExactlyDocx() {
     assertThat(pipeline.handledFormats()).containsExactly(".docx");
     assertThat(pipeline.id()).isEqualTo("docx");
-    assertThat(pipeline.version()).isEqualTo((short) 2);
+    assertThat(pipeline.version()).isEqualTo((short) 3);
   }
 
   @Test
@@ -409,6 +409,96 @@ class DocxDocumentPipelineTest {
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(2);
     assertThat(result.chunks().getFirst().getText()).isEqualTo("Seite  von 9");
+  }
+
+  @Test
+  void aNestedFieldWithNoResultPartOfItsOwnDoesNotEndTheOuterFieldsExclusionEarly()
+      throws IOException {
+    // regression guard for #1162: a nested field with no result part of its own (BEGIN/instrText/
+    // END, never updated by Word - here the inner PAGE field) must not end the surrounding field's
+    // (here IF) exclusion early just because its own END fires before the outer field's END. Built
+    // at the CT level, not via XWPFRun#setText, to get the exact begin/separate/end run sequence.
+    Path file = tempDir.resolve("verschachteltes-feld.docx");
+    try (XWPFDocument doc = new XWPFDocument()) {
+      XWPFHeaderFooterPolicy policy = doc.createHeaderFooterPolicy();
+      XWPFFooter footer = policy.createFooter(XWPFHeaderFooterPolicy.DEFAULT);
+      XWPFParagraph paragraph = footer.createParagraph();
+      paragraph.createRun().setText("Vor");
+      paragraph.createRun().getCTR().addNewFldChar().setFldCharType(STFldCharType.BEGIN);
+      paragraph.createRun().getCTR().addNewInstrText().setStringValue(" IF ");
+      paragraph.createRun().getCTR().addNewFldChar().setFldCharType(STFldCharType.SEPARATE);
+      paragraph.createRun().setText("LEAK-OUTER1 ");
+      paragraph.createRun().getCTR().addNewFldChar().setFldCharType(STFldCharType.BEGIN);
+      paragraph.createRun().getCTR().addNewInstrText().setStringValue(" PAGE ");
+      paragraph.createRun().getCTR().addNewFldChar().setFldCharType(STFldCharType.END);
+      paragraph.createRun().setText("LEAK-OUTER2 Ende");
+      paragraph.createRun().getCTR().addNewFldChar().setFldCharType(STFldCharType.END);
+      paragraph.createRun().setText(" Nach");
+      addParagraph(doc, "Fachlicher Inhalt.");
+      write(doc, file);
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "verschachteltes-feld.docx", ".docx"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().getFirst().getText())
+        .isEqualTo("Vor Nach")
+        .doesNotContain("LEAK-OUTER1", "LEAK-OUTER2");
+  }
+
+  @Test
+  void anEndWithNoOpenFieldDoesNotSwallowSubsequentText() throws IOException {
+    // Robustness property from the #1162 fix: an END with no matching BEGIN must not drive the
+    // frame stack into a state where it later excludes real text.
+    Path file = tempDir.resolve("end-ohne-begin.docx");
+    try (XWPFDocument doc = new XWPFDocument()) {
+      XWPFHeaderFooterPolicy policy = doc.createHeaderFooterPolicy();
+      XWPFFooter footer = policy.createFooter(XWPFHeaderFooterPolicy.DEFAULT);
+      XWPFParagraph paragraph = footer.createParagraph();
+      paragraph.createRun().getCTR().addNewFldChar().setFldCharType(STFldCharType.END);
+      paragraph.createRun().setText("Bleibt");
+      addParagraph(doc, "Fachlicher Inhalt.");
+      write(doc, file);
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "end-ohne-begin.docx", ".docx"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().getFirst().getText()).isEqualTo("Bleibt");
+  }
+
+  @Test
+  void anUnclosedFieldOnlySwallowsTheRestOfItsOwnParagraph() throws IOException {
+    // Robustness property from the #1162 fix: an unbalanced BEGIN/SEPARATE with no matching END
+    // resets at the next paragraph rather than leaking into it - the frame stack is local to each
+    // paragraph's own call of paragraphTextExcludingFieldValues.
+    Path file = tempDir.resolve("unbalanciertes-feld.docx");
+    try (XWPFDocument doc = new XWPFDocument()) {
+      XWPFHeaderFooterPolicy policy = doc.createHeaderFooterPolicy();
+      XWPFFooter footer = policy.createFooter(XWPFHeaderFooterPolicy.DEFAULT);
+      XWPFParagraph unclosed = footer.createParagraph();
+      unclosed.createRun().getCTR().addNewFldChar().setFldCharType(STFldCharType.BEGIN);
+      unclosed.createRun().getCTR().addNewInstrText().setStringValue(" PAGE ");
+      unclosed.createRun().getCTR().addNewFldChar().setFldCharType(STFldCharType.SEPARATE);
+      unclosed.createRun().setText("LEAK");
+      XWPFParagraph next = footer.createParagraph();
+      next.createRun().setText("Naechster Absatz");
+      addParagraph(doc, "Fachlicher Inhalt.");
+      write(doc, file);
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "unbalanciertes-feld.docx", ".docx"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().getFirst().getText())
+        .contains("Naechster Absatz")
+        .doesNotContain("LEAK");
   }
 
   @Test

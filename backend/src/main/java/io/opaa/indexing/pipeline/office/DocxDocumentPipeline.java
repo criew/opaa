@@ -8,7 +8,9 @@ import io.opaa.indexing.pipeline.RepeatingHeaderChunk;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +68,7 @@ public class DocxDocumentPipeline implements DocumentPipeline {
   private static final Logger log = LoggerFactory.getLogger(DocxDocumentPipeline.class);
 
   static final String ID = "docx";
-  static final short VERSION = 2;
+  static final short VERSION = 3;
 
   private static final String HEADER_FOOTER_LOCATION = "Kopf-/Fußzeile";
 
@@ -183,11 +185,15 @@ public class DocxDocumentPipeline implements DocumentPipeline {
    * last-computed display value, then an {@code end} marker. The cached value is excluded here - it
    * is correct for at most one page/moment, not document content. Nested fields (a field whose
    * cached value itself contains another field, e.g. {@code IF} wrapping {@code PAGE}) are tracked
-   * with a depth counter rather than a flag - a flag would clear on the inner field's own {@code
-   * END} and let the remainder of the outer field's cached value leak through. A narrower gap
-   * remains for a nested field with no result part of its own ({@code BEGIN}/{@code instrText}/
-   * {@code END}, never updated): its own {@code END} still decrements the shared counter, ending
-   * exclusion of the outer field's result early (over-collection, not text loss) - see #1162.
+   * with a stack of open-field frames rather than a single counter: each {@code BEGIN} pushes an
+   * unseparated frame, each {@code SEPARATE} marks the top frame separated, each {@code END} pops
+   * it. A run is inside a field's result exactly when the stack holds at least one separated frame
+   * - so a nested field with no result part of its own ({@code BEGIN}/{@code instrText}/{@code
+   * END}, never updated) pops its own, still-unseparated frame without ending the exclusion of an
+   * outer field's separated frame further down the stack. An {@code END} with no open frame is a
+   * no-op rather than driving the stack negative; an unbalanced {@code BEGIN}/{@code SEPARATE} with
+   * no matching {@code END} can swallow at most the rest of this paragraph, since the stack is
+   * local to each call of this method.
    *
    * <p>A {@code w:fldSimple} field (LibreOffice's export form, as opposed to Word's begin/separate
    * /end form above) is a distinct POI run type ({@code XWPFFieldRun}) that carries neither {@code
@@ -205,20 +211,24 @@ public class DocxDocumentPipeline implements DocumentPipeline {
    */
   private static String paragraphTextExcludingFieldValues(XWPFParagraph paragraph) {
     StringBuilder text = new StringBuilder();
-    int fieldValueDepth = 0;
+    Deque<Boolean> fieldFrames = new ArrayDeque<>();
     for (XWPFRun run : paragraph.getRuns()) {
       if (run instanceof XWPFFieldRun) {
         continue;
       }
       CTR ctr = run.getCTR();
       for (CTFldChar fldChar : ctr.getFldCharArray()) {
-        if (fldChar.getFldCharType() == STFldCharType.SEPARATE) {
-          fieldValueDepth++;
-        } else if (fldChar.getFldCharType() == STFldCharType.END && fieldValueDepth > 0) {
-          fieldValueDepth--;
+        if (fldChar.getFldCharType() == STFldCharType.BEGIN) {
+          fieldFrames.push(Boolean.FALSE);
+        } else if (fldChar.getFldCharType() == STFldCharType.SEPARATE && !fieldFrames.isEmpty()) {
+          fieldFrames.pop();
+          fieldFrames.push(Boolean.TRUE);
+        } else if (fldChar.getFldCharType() == STFldCharType.END && !fieldFrames.isEmpty()) {
+          fieldFrames.pop();
         }
       }
-      if (ctr.sizeOfInstrTextArray() > 0 || ctr.sizeOfDelTextArray() > 0 || fieldValueDepth > 0) {
+      boolean insideFieldResult = fieldFrames.contains(Boolean.TRUE);
+      if (ctr.sizeOfInstrTextArray() > 0 || ctr.sizeOfDelTextArray() > 0 || insideFieldResult) {
         continue;
       }
       text.append(run.text());
