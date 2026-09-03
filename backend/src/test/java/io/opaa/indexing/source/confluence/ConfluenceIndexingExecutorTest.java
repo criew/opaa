@@ -28,6 +28,7 @@ import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunEvent;
 import io.opaa.indexing.IndexingRunEventRepository;
+import io.opaa.indexing.IndexingRunMetrics;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
@@ -84,6 +85,10 @@ class ConfluenceIndexingExecutorTest {
   private ConfluenceSyncStateRepository syncStateRepository;
   private VectorChunkStore vectorChunkStore;
   private final List<Duration> sleeps = new ArrayList<>();
+
+  /** #1141: the request budget the executor under test runs with; 0 (the default) is unbounded. */
+  private int requestBudget;
+
   private ConfluenceIndexingExecutor executor;
   private KnowledgeLibrary library;
   private UUID jobId;
@@ -172,7 +177,18 @@ class ConfluenceIndexingExecutorTest {
     library.configureConfluence(edition, selection);
     ConfluenceProperties properties =
         new ConfluenceProperties(
-            2, null, null, 3, Duration.ofSeconds(2), 0, 0, null, 0, FULL_SYNC_INTERVAL, OVERLAP);
+            2,
+            null,
+            null,
+            3,
+            Duration.ofSeconds(2),
+            0,
+            0,
+            null,
+            0,
+            FULL_SYNC_INTERVAL,
+            OVERLAP,
+            requestBudget);
     ConfluenceClientFactory factory =
         new ConfluenceClientFactory(properties, TargetAddressValidator.disabled(), sleeps::add);
     executor =
@@ -735,7 +751,8 @@ class ConfluenceIndexingExecutorTest {
             null,
             0,
             FULL_SYNC_INTERVAL,
-            Duration.ofMinutes(1));
+            Duration.ofMinutes(1),
+            0);
     executor =
         new ConfluenceIndexingExecutor(
             new ConfluenceClientFactory(
@@ -977,6 +994,112 @@ class ConfluenceIndexingExecutorTest {
     verify(indexingJobService).failJob(eq(jobId), any());
     verify(fileProcessingService, never())
         .processConfluencePage(any(), any(), any(), any(), any(), any());
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void anExhaustedBudgetEndsTheFullSyncOrderlyAndTheNextRunContinues(ConfluenceEdition edition)
+      throws Exception {
+    // #1141: verify (1) + list ENG (2 pages of 2 = 2) + 3 pages x (fetch + attachments) ... the
+    // budget of 6 runs out inside ENG; the run ends COMPLETED and incomplete, not FAILED.
+    requestBudget = 6;
+    start(edition, null, "ENG", "HR");
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService, never()).failJob(any(), any());
+    verify(indexingJobService).completeJob(eq(jobId), anyInt(), eq(0), anyInt(), anyInt());
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.BUDGET_EXHAUSTED,
+                    "Anfragebudget von 6 Anfragen erschöpft",
+                    null)));
+    ArgumentCaptor<IndexingRunMetrics> metrics = ArgumentCaptor.forClass(IndexingRunMetrics.class);
+    verify(indexingJobService).recordRunMetrics(eq(jobId), metrics.capture());
+    assertThat(metrics.getValue().incomplete()).isTrue();
+    assertThat(metrics.getValue().requestsSent()).isEqualTo(6);
+    // no reconciliation on an incomplete listing, and the full sync stays open
+    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    ArgumentCaptor<ConfluenceSyncState> state = ArgumentCaptor.forClass(ConfluenceSyncState.class);
+    verify(syncStateRepository, atLeast(1)).save(state.capture());
+    assertThat(state.getValue().isFullSyncInterrupted()).isTrue();
+    assertThat(state.getValue().getIncrementalAnchor()).isNull();
+
+    // the next run, unbounded, continues from the saved state and completes
+    when(syncStateRepository.findByLibraryId(library.getId()))
+        .thenReturn(Optional.of(state.getValue()));
+    requestBudget = 0;
+    sleeps.clear();
+    ConfluenceProperties unbounded =
+        new ConfluenceProperties(
+            2, null, null, 3, Duration.ofSeconds(2), 0, 0, null, 0, FULL_SYNC_INTERVAL, OVERLAP, 0);
+    executor =
+        new ConfluenceIndexingExecutor(
+            new ConfluenceClientFactory(unbounded, TargetAddressValidator.disabled(), sleeps::add),
+            unbounded,
+            fileProcessingService,
+            indexingJobService,
+            documentRepository,
+            eventRepository,
+            storageQuotaService,
+            cleanupService,
+            syncStateRepository,
+            vectorChunkStore,
+            Clock.fixed(NOW, ZoneOffset.UTC));
+    UUID second = UUID.randomUUID();
+    executor.execute(second, library, IndexingRunMode.FULL);
+
+    verify(cleanupService).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(syncStateRepository, atLeast(2)).save(state.capture());
+    assertThat(state.getValue().isFullSyncInterrupted()).isFalse();
+    assertThat(state.getValue().getIncrementalAnchor()).isEqualTo(NOW);
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void anExhaustedBudgetLeavesTheIncrementalAnchorWhereItWas(ConfluenceEdition edition)
+      throws Exception {
+    requestBudget = 3;
+    start(edition, null, "ENG", "HR");
+    Instant anchor = NOW.minus(Duration.ofHours(2));
+    ConfluenceSyncState state = completedFullSync(anchor);
+    server.updatePage("101", "<p>neu</p>", NOW.minus(Duration.ofHours(1)));
+    server.updatePage("200", "<p>neu</p>", NOW.minus(Duration.ofMinutes(30)));
+
+    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
+
+    verify(indexingJobService, never()).failJob(any(), any());
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.BUDGET_EXHAUSTED,
+                    "dasselbe Änderungsfenster erneut",
+                    null)));
+    assertThat(state.getIncrementalAnchor()).isEqualTo(anchor);
+    verify(syncStateRepository, never()).save(state);
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aRunRecordsItsCostAndItsAttachmentShare(ConfluenceEdition edition) throws Exception {
+    start(edition, null, "ENG");
+    server.throttleNext(1, "1");
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    ArgumentCaptor<IndexingRunMetrics> metrics = ArgumentCaptor.forClass(IndexingRunMetrics.class);
+    verify(indexingJobService).recordRunMetrics(eq(jobId), metrics.capture());
+    IndexingRunMetrics recorded = metrics.getValue();
+    assertThat(recorded.incomplete()).isFalse();
+    assertThat(recorded.requestsSent()).isEqualTo(server.requests().size());
+    assertThat(recorded.throttleCount()).isEqualTo(1);
+    assertThat(recorded.throttleWaitMillis()).isEqualTo(1000L);
+    assertThat(recorded.attachmentsProcessed()).isEqualTo(1);
+    assertThat(recorded.attachmentsSkipped()).isZero();
+    assertThat(recorded.attachmentsFailed()).isZero();
   }
 
   private static ArgumentMatcher<IndexingRunEvent> event(

@@ -610,6 +610,69 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByRole('button', { name: 'Vollabgleich starten' })).not.toBeInTheDocument()
   })
 
+  it('marks an incomplete run and shows its cost figures (#1141)', async () => {
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, {
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+      }),
+    )
+    server.use(
+      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
+        HttpResponse.json({
+          runs: [
+            {
+              id: 'run-budget',
+              status: 'COMPLETED',
+              triggeredBy: 'SCHEDULED',
+              runMode: 'FULL',
+              documentCount: 400,
+              totalDocuments: 900,
+              documentsSkipped: 20,
+              documentsFailed: 0,
+              documentsIndexedTotal: 430,
+              message:
+                'Indizierung abgeschlossen: 400 verarbeitet, 20 übersprungen, 0 fehlgeschlagen — unvollständig (Anfragebudget erschöpft), der nächste Lauf setzt fort',
+              startedAt: '2026-09-03T09:00:00Z',
+              completedAt: '2026-09-03T09:12:30Z',
+              incomplete: true,
+              metrics: {
+                requestsSent: 1000,
+                throttleCount: 2,
+                throttleWaitSeconds: 45,
+                attachmentsProcessed: 30,
+                attachmentsSkipped: 5,
+                attachmentsFailed: 1,
+              },
+              events: [
+                {
+                  category: 'BUDGET_EXHAUSTED',
+                  message:
+                    'Anfragebudget von 1000 Anfragen erschöpft; der Lauf endet unvollständig, der nächste Lauf setzt bei Space HR fort',
+                  reference: null,
+                },
+              ],
+              eventsTruncatedCount: 0,
+            },
+          ],
+        } satisfies IndexingRunListResponse),
+      ),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(await screen.findByTestId('run-incomplete-run-budget')).toHaveTextContent(
+      'unvollständig, wird fortgesetzt',
+    )
+    expect(screen.getByText('per Zeitplan')).toBeInTheDocument()
+    expect(screen.getByTestId('run-metrics-run-budget')).toHaveTextContent(
+      '1000 Anfragen an die Quelle · 2-mal gedrosselt (45 s gewartet) · Anhänge: 30 indiziert, 5 übersprungen, 1 fehlgeschlagen · Dauer 12 min 30 s',
+    )
+    expect(screen.getByText('Anfragebudget erschöpft')).toBeInTheDocument()
+  })
+
   it('shows the webhook row to a manager of a Confluence library only (#1140)', async () => {
     const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
     setLibraryState(

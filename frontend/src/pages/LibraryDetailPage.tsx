@@ -1846,6 +1846,29 @@ function runEventsLabel(events: IndexingRunResponse['events']): string {
   return unreadable > 0 ? `${base}, davon ${unreadable} nicht lesbar` : base
 }
 
+// #1141: the operator's line on what a run cost - only when the run recorded it (Confluence).
+function runMetricsLabel(run: IndexingRunResponse): string | null {
+  const metrics = run.metrics
+  if (!metrics) return null
+  const parts = [`${metrics.requestsSent} Anfragen an die Quelle`]
+  if (metrics.throttleCount > 0) {
+    parts.push(
+      `${metrics.throttleCount}-mal gedrosselt (${metrics.throttleWaitSeconds} s gewartet)`,
+    )
+  }
+  parts.push(
+    `Anhänge: ${metrics.attachmentsProcessed} indiziert, ${metrics.attachmentsSkipped} übersprungen, ${metrics.attachmentsFailed} fehlgeschlagen`,
+  )
+  if (run.completedAt) {
+    const seconds = Math.max(
+      0,
+      Math.round((new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime()) / 1000),
+    )
+    parts.push(`Dauer ${Math.floor(seconds / 60)} min ${seconds % 60} s`)
+  }
+  return parts.join(' · ')
+}
+
 function runStatusLabel(status: IndexingRunResponse['status']): string {
   if (status === 'COMPLETED') return 'Abgeschlossen'
   if (status === 'FAILED') return 'Fehlgeschlagen'
@@ -1942,6 +1965,14 @@ function LibraryIndexingHistorySection({
                       data-testid={`run-mode-${run.id}`}
                     />
                   )}
+                  {run.incomplete && (
+                    <Chip
+                      label="unvollständig, wird fortgesetzt"
+                      size="small"
+                      color="warning"
+                      data-testid={`run-incomplete-${run.id}`}
+                    />
+                  )}
                   {run.events.length > 0 && (
                     <Chip
                       label={runEventsLabel(run.events)}
@@ -1955,6 +1986,16 @@ function LibraryIndexingHistorySection({
                 {run.message && (
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                     {run.message}
+                  </Typography>
+                )}
+                {runMetricsLabel(run) && (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 1.5 }}
+                    data-testid={`run-metrics-${run.id}`}
+                  >
+                    {runMetricsLabel(run)}
                   </Typography>
                 )}
                 {run.events.length === 0 ? (

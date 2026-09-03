@@ -47,6 +47,27 @@ public class ConfluenceAccessException extends IOException {
     }
   }
 
+  /**
+   * The run's request budget ({@code ConfluenceProperties#requestBudgetPerRun}, #1141) is spent -
+   * not a failure of the instance or the credentials but the run's own bound; the executor ends the
+   * run in an orderly way as incomplete and the next run continues.
+   */
+  public static final class BudgetExhausted extends ConfluenceAccessException {
+    private final int budget;
+
+    public BudgetExhausted(int budget) {
+      super(
+          "Anfragebudget von "
+              + budget
+              + " Anfragen für diesen Lauf erschöpft; der nächste Lauf setzt fort");
+      this.budget = budget;
+    }
+
+    public int budget() {
+      return budget;
+    }
+  }
+
   /** The address answers, but not like the edition this connection was configured for. */
   public static final class EditionMismatch extends ConfluenceAccessException {
     public EditionMismatch(String message) {

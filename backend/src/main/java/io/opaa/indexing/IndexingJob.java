@@ -111,6 +111,33 @@ public class IndexingJob {
   @Column(name = "run_mode", nullable = false, length = 20)
   private IndexingRunMode runMode = IndexingRunMode.FULL;
 
+  /**
+   * #1141: a COMPLETED run that stopped in an orderly way before covering everything (its request
+   * budget ran out) and is continued by the next run - distinct from FAILED, which means the run
+   * itself broke. Never {@code true} on a FAILED or RUNNING row.
+   */
+  @Column(name = "incomplete", nullable = false)
+  private boolean incomplete;
+
+  /** #1141: the run's own cost figures; {@code null} until the executor records them at the end. */
+  @Column(name = "requests_sent")
+  private Integer requestsSent;
+
+  @Column(name = "throttle_count")
+  private Integer throttleCount;
+
+  @Column(name = "throttle_wait_millis")
+  private Long throttleWaitMillis;
+
+  @Column(name = "attachments_processed")
+  private Integer attachmentsProcessed;
+
+  @Column(name = "attachments_skipped")
+  private Integer attachmentsSkipped;
+
+  @Column(name = "attachments_failed")
+  private Integer attachmentsFailed;
+
   protected IndexingJob() {}
 
   public IndexingJob(JobStatus status) {
@@ -234,6 +261,35 @@ public class IndexingJob {
 
   public void setRunMode(IndexingRunMode runMode) {
     this.runMode = runMode;
+  }
+
+  public boolean isIncomplete() {
+    return incomplete;
+  }
+
+  /** The metrics the run recorded, or {@code null} when it recorded none (#1141). */
+  public IndexingRunMetrics getMetrics() {
+    if (requestsSent == null) {
+      return null;
+    }
+    return new IndexingRunMetrics(
+        requestsSent,
+        throttleCount == null ? 0 : throttleCount,
+        throttleWaitMillis == null ? 0L : throttleWaitMillis,
+        attachmentsProcessed == null ? 0 : attachmentsProcessed,
+        attachmentsSkipped == null ? 0 : attachmentsSkipped,
+        attachmentsFailed == null ? 0 : attachmentsFailed,
+        incomplete);
+  }
+
+  public void applyMetrics(IndexingRunMetrics metrics) {
+    this.requestsSent = metrics.requestsSent();
+    this.throttleCount = metrics.throttleCount();
+    this.throttleWaitMillis = metrics.throttleWaitMillis();
+    this.attachmentsProcessed = metrics.attachmentsProcessed();
+    this.attachmentsSkipped = metrics.attachmentsSkipped();
+    this.attachmentsFailed = metrics.attachmentsFailed();
+    this.incomplete = metrics.incomplete();
   }
 
   public void setTriggeredBy(JobTriggerSource triggeredBy) {

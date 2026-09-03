@@ -244,6 +244,7 @@ const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> =
   REMOVED: 'In der Quelle entfernt',
   // #1136: the source throttled the run and it slowed down instead of failing - one summary note.
   RATE_LIMITED: 'Ratenbegrenzung',
+  BUDGET_EXHAUSTED: 'Anfragebudget erschöpft',
 }
 
 // ADR-0023, Entscheidung 4 (#1136): the Betriebsart of a run - whether its listing was complete

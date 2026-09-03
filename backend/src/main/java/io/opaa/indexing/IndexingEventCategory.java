@@ -29,5 +29,10 @@ public enum IndexingEventCategory {
    * failing (ADR-0023, #1136) - one summary note per run about how often and how long it waited,
    * not about any single item's outcome.
    */
-  RATE_LIMITED
+  RATE_LIMITED,
+  /**
+   * The run spent its request budget (#1141) and ended in an orderly way as incomplete - one note
+   * per run naming the budget and where the next run continues, not an item's outcome.
+   */
+  BUDGET_EXHAUSTED
 }

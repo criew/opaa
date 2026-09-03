@@ -322,14 +322,7 @@ public class LibraryController {
     String message =
         switch (job.getStatus()) {
           case RUNNING -> "Indizierung läuft";
-          case COMPLETED ->
-              "Indizierung abgeschlossen: "
-                  + job.getDocumentsProcessed()
-                  + " verarbeitet, "
-                  + job.getDocumentsSkipped()
-                  + " übersprungen, "
-                  + job.getDocumentsFailed()
-                  + " fehlgeschlagen";
+          case COMPLETED -> completedMessage(job);
           case FAILED -> "Indizierung fehlgeschlagen: " + job.getErrorMessage();
         };
     return new IndexingRunResponse(
@@ -346,7 +339,38 @@ public class LibraryController {
             detail.events().stream().map(this::toIndexingRunEventResponse).toList(),
             job.getEventsTruncatedCount())
         .message(message)
-        .completedAt(job.getCompletedAt());
+        .completedAt(job.getCompletedAt())
+        .incomplete(job.isIncomplete())
+        .metrics(toIndexingRunMetrics(job.getMetrics()));
+  }
+
+  /** #1141: "unvollständig, wird fortgesetzt" is part of the sentence, not only a flag. */
+  private static String completedMessage(IndexingJob job) {
+    String base =
+        "Indizierung abgeschlossen: "
+            + job.getDocumentsProcessed()
+            + " verarbeitet, "
+            + job.getDocumentsSkipped()
+            + " übersprungen, "
+            + job.getDocumentsFailed()
+            + " fehlgeschlagen";
+    return job.isIncomplete()
+        ? base + " — unvollständig (Anfragebudget erschöpft), der nächste Lauf setzt fort"
+        : base;
+  }
+
+  private static io.opaa.api.dto.IndexingRunMetrics toIndexingRunMetrics(
+      io.opaa.indexing.IndexingRunMetrics metrics) {
+    if (metrics == null) {
+      return null;
+    }
+    return new io.opaa.api.dto.IndexingRunMetrics(
+        metrics.requestsSent(),
+        metrics.throttleCount(),
+        metrics.throttleWaitMillis() / 1000,
+        metrics.attachmentsProcessed(),
+        metrics.attachmentsSkipped(),
+        metrics.attachmentsFailed());
   }
 
   private IndexingTriggerSource mapIndexingTriggerSource(
@@ -374,6 +398,7 @@ public class LibraryController {
       case FORMAT_MISMATCH -> IndexingRunEventCategory.FORMAT_MISMATCH;
       case REMOVED -> IndexingRunEventCategory.REMOVED;
       case RATE_LIMITED -> IndexingRunEventCategory.RATE_LIMITED;
+      case BUDGET_EXHAUSTED -> IndexingRunEventCategory.BUDGET_EXHAUSTED;
     };
   }
 
@@ -397,14 +422,7 @@ public class LibraryController {
     String message =
         switch (job.getStatus()) {
           case RUNNING -> "Indizierung läuft";
-          case COMPLETED ->
-              "Indizierung abgeschlossen: "
-                  + job.getDocumentsProcessed()
-                  + " verarbeitet, "
-                  + job.getDocumentsSkipped()
-                  + " übersprungen, "
-                  + job.getDocumentsFailed()
-                  + " fehlgeschlagen";
+          case COMPLETED -> completedMessage(job);
           case FAILED ->
               canSeeErrorDetail
                   ? "Indizierung fehlgeschlagen: " + job.getErrorMessage()
@@ -419,7 +437,8 @@ public class LibraryController {
             job.getDocumentsIndexedTotal(),
             job.getCompletedAt() != null ? job.getCompletedAt() : job.getStartedAt())
         .message(message)
-        .libraryId(job.getLibraryId());
+        .libraryId(job.getLibraryId())
+        .incomplete(job.isIncomplete());
   }
 
   private IndexingStatus mapIndexingStatus(JobStatus jobStatus) {

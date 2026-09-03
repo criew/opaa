@@ -97,7 +97,7 @@ class ConfluenceClientContractTest {
   /** Small page size so every listing paginates; three rate-limit retries, two-second cap. */
   private static ConfluenceProperties smallPages() {
     return new ConfluenceProperties(
-        2, null, null, 3, Duration.ofSeconds(2), 0, 0, null, 0, null, null);
+        2, null, null, 3, Duration.ofSeconds(2), 0, 0, null, 0, null, null, 0);
   }
 
   private static void seed(FakeConfluenceServer server) {
@@ -124,6 +124,32 @@ class ConfluenceClientContractTest {
     server.addAttachment("9002", "102", "gross.bin", "application/octet-stream", new byte[5000]);
     server.addAttachment(
         "9003", "102", "notizen.txt", "text/plain", "Notizen".getBytes(StandardCharsets.UTF_8));
+  }
+
+  @ParameterizedTest
+  @MethodSource("deployments")
+  void theRequestBudgetCountsEveryRequestAndEndsTheClientOrderly(Deployment deployment)
+      throws Exception {
+    // #1141: the budget is the run's own bound - after three requests the next one is refused
+    // before it is sent, as BudgetExhausted rather than a failure of the instance.
+    ConfluenceClient client =
+        client(
+            deployment,
+            new ConfluenceProperties(2, null, null, 0, null, 0, 0, null, 0, null, null, 3),
+            TargetAddressValidator.disabled());
+
+    client.verifyCredentials();
+    assertThat(client.meter().requests()).isEqualTo(1);
+    assertThatThrownBy(
+            () -> {
+              for (int i = 0; i < 10; i++) {
+                client.listPages("ENG");
+              }
+            })
+        .isInstanceOf(ConfluenceAccessException.BudgetExhausted.class)
+        .hasMessageContaining("Anfragebudget von 3 Anfragen");
+    assertThat(client.meter().requests()).as("the refused request is not counted").isEqualTo(3);
+    assertThat(server.requests()).hasSize(3);
   }
 
   @ParameterizedTest
@@ -451,7 +477,7 @@ class ConfluenceClientContractTest {
   void aListingThatNeverEndsIsAbandonedVisibly(Deployment deployment) throws Exception {
     ConfluenceProperties threePages =
         new ConfluenceProperties(
-            2, null, null, 3, Duration.ofSeconds(2), 0, 0, null, 3, null, null);
+            2, null, null, 3, Duration.ofSeconds(2), 0, 0, null, 3, null, null, 0);
     ConfluenceClient client = client(deployment, threePages, TargetAddressValidator.disabled());
     // the instance keeps handing out the same first page as "next"
     String path =

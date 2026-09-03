@@ -3014,6 +3014,12 @@ components:
             migration 019 added the column, or once the run's target library has since been
             deleted (indexing_jobs.library_id is ON DELETE SET NULL - a run's history is not the
             same thing as its right to still write there, see IndexingJob#getLibraryId's Javadoc).
+        incomplete:
+          type: boolean
+          nullable: true
+          description: >
+            #1141: true when the most recent run completed as incomplete (request budget spent,
+            continued by the next run) - see IndexingRunResponse.incomplete.
         timestamp:
           type: string
           format: date-time
@@ -3074,6 +3080,8 @@ components:
             documentsFailed either.
           * RATE_LIMITED - the source throttled the run (HTTP 429, Retry-After) and the run slowed
             down instead of failing (#1136); one summary note per run, not an item outcome.
+          * BUDGET_EXHAUSTED - the run spent its request budget (#1141) and ended in an orderly
+            way as incomplete; the next run continues where this one left off.
       enum:
         [
           REJECTED,
@@ -3085,6 +3093,7 @@ components:
           SCHEDULE_SKIPPED,
           REMOVED,
           RATE_LIMITED,
+          BUDGET_EXHAUSTED,
         ]
       example: REJECTED
 
@@ -3180,6 +3189,60 @@ components:
             list above (#513) - 0 when every event fit. The UI renders this as "… und N weitere".
           example: 0
 
+        incomplete:
+          type: boolean
+          nullable: true
+          description: >
+            #1141: true for a COMPLETED run that stopped in an orderly way before covering
+            everything - its request budget (opaa.indexing.confluence.request-budget-per-run) ran
+            out - and is continued by the next run: a full sync resumes with the spaces it did not
+            finish, an incremental run searches the same window again (its anchor did not move).
+            Distinct from FAILED, which means the run itself broke. Absent or false otherwise.
+        metrics:
+          $ref: "#/components/schemas/IndexingRunMetrics"
+    IndexingRunMetrics:
+      type: object
+      nullable: true
+      required:
+        [
+          requestsSent,
+          throttleCount,
+          throttleWaitSeconds,
+          attachmentsProcessed,
+          attachmentsSkipped,
+          attachmentsFailed,
+        ]
+      description: >
+        #1141: what a run cost - recorded by executors that can measure it (Confluence); absent
+        for other source types and for runs from before the figures were recorded. Together with
+        startedAt/completedAt (the duration) and the document counters this is what an operator
+        reads throughput and the request budget against.
+      properties:
+        requestsSent:
+          type: integer
+          description: Requests the run sent to its source, retries after a 429 included.
+          example: 1842
+        throttleCount:
+          type: integer
+          description: How often the source answered 429 and the run waited instead of failing.
+          example: 3
+        throttleWaitSeconds:
+          type: integer
+          format: int64
+          description: The total time the run spent waiting on those throttles, in seconds.
+          example: 95
+        attachmentsProcessed:
+          type: integer
+          description: Attachment documents indexed - a subset of documentsIndexedTotal.
+          example: 120
+        attachmentsSkipped:
+          type: integer
+          description: Attachments met but not indexed (unchanged, unsupported format, rejected).
+          example: 800
+        attachmentsFailed:
+          type: integer
+          description: Attachments whose download or processing failed.
+          example: 2
     IndexingRunListResponse:
       type: object
       required: [runs]

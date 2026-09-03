@@ -69,7 +69,7 @@ class ConfluenceDataCenterFullSyncTest {
   @BeforeAll
   static void start() {
     confluence = ConfluenceDataCenterFixture.get();
-    properties = new ConfluenceProperties(25, null, null, 0, null, 0, 0, null, 0, null, null);
+    properties = new ConfluenceProperties(25, null, null, 0, null, 0, 0, null, 0, null, null, 0);
     factory = new ConfluenceClientFactory(properties, TargetAddressValidator.disabled());
   }
 

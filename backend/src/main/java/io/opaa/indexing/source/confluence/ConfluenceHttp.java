@@ -134,6 +134,11 @@ final class ConfluenceHttp {
     }
     int attempt = 0;
     while (true) {
+      // #1141: the budget counts every request sent, retries after a 429 included - the meter is
+      // per client, a client is per run, so this is the run's bound.
+      if (properties.hasRequestBudget() && meter.requests() >= properties.requestBudgetPerRun()) {
+        throw new ConfluenceAccessException.BudgetExhausted(properties.requestBudgetPerRun());
+      }
       meter.recordRequest();
       HttpResponse<InputStream> response;
       try {
@@ -191,6 +196,11 @@ final class ConfluenceHttp {
       throws ConfluenceAccessException, InterruptedException {
     String authHeader =
         connection.credentials() == null ? null : connection.credentials().authorizationHeader();
+    // #1141: a download is a request to the instance like any other - it counts against the budget
+    if (properties.hasRequestBudget() && meter.requests() >= properties.requestBudgetPerRun()) {
+      throw new ConfluenceAccessException.BudgetExhausted(properties.requestBudgetPerRun());
+    }
+    meter.recordRequest();
     try {
       return downloader.downloadBounded(
           httpClient,

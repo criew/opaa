@@ -287,7 +287,21 @@ inkrementeller Abgleich. Der Webhook ersetzt weder Zeitplan noch Vollabgleich: O
 nichts falsch, nur später. Bewusste Grenze: **kein Replay-Schutz** — eine mitgeschnittene, gültig
 signierte Nachricht (oder der Cloud-Header) lässt sich wieder einspielen und kostet dann je einen
 gezielten Lauf, gedeckelt durch die Ratenbegrenzung; für den Index ist das folgenlos, weil erst der
-Abruf entscheidet. **Die Aufbereitung (#1137)** übernimmt
+Abruf entscheidet. **Betriebsgrenzen (#1141):** Jeder Lauf hat ein Anfragebudget
+(`OPAA_INDEXING_CONFLUENCE_REQUEST_BUDGET_PER_RUN`, Standard 50 000 Anfragen; Wiederholungen nach
+`429` zählen mit). Ist es erschöpft, endet der Lauf **geordnet als „unvollständig, wird
+fortgesetzt“** — im Laufprotokoll als eigenes Ereignis mit der Stelle, an der der nächste Lauf
+ansetzt, im Zustand und in der API als `incomplete`, nicht als Fehler. Der Vollabgleich hält seinen
+Fortschritt je Space fest (auch über einen Prozessneustart hinweg); ein angebrochener Space wird beim
+nächsten Lauf erneut aufgelistet, bereits gespeicherte Seiten kosten dabei nur einen
+Auflistungseintrag (Versionsvergleich vor dem Abruf), geholt wird nur, was noch fehlt. Der
+inkrementelle Abgleich lässt seinen Anker stehen und durchsucht dasselbe Fenster erneut; ein
+Webhook-Lauf überlässt die übrigen gemeldeten Seiten dem nächsten Lauf. Jeder Lauf trägt seine
+**Kennzahlen** (gesendete Anfragen, Drosselungen und Wartezeit, indizierte/übersprungene/
+fehlgeschlagene Anhänge, Dauer aus Start- und Endzeit) in der Laufübersicht; zusammen mit den
+Dokumentzählern liest der Betrieb daran Durchsatz und Budgetverbrauch ab. Der Standardwert ist aus
+einer Messung gegen ein echtes Confluence Data Center begründet (Container-Suite, Zahlen im PR zu
+#1141): etwa zwei Anfragen je Seite plus Anhänge und Auflistung, also rund 20 000 Seiten je Lauf. **Die Aufbereitung (#1137)** übernimmt
 `ConfluenceDocumentPipeline`: Makro-Regelwerk (statischer Inhalt bleibt, zur Laufzeit erzeugter
 entfällt), Überschriften, Tabellen, Listen, Code und Hinweiskästen als lesbarer Text, der
 Gliederungspfad der Seite am Dokument und im Chunk-Kontext — Einzelheiten in

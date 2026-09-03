@@ -33,3 +33,5 @@ databaseChangeLog:
       file: db/changelog/changes/011-confluence-full-sync.yaml
   - include:
       file: db/changelog/changes/012-confluence-webhooks.yaml
+  - include:
+      file: db/changelog/changes/013-confluence-run-metrics.yaml

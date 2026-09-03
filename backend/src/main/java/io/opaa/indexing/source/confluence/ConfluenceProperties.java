@@ -38,6 +38,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param incrementalOverlap how far before the last anchor an incremental run searches, absorbing
  *     clock skew between OPAA and the instance and CQL's minute granularity; a re-found unchanged
  *     page costs a listing entry, no body fetch; ten minutes by default (zero falls back to it)
+ * @param requestBudgetPerRun how many requests one run may send to its instance before it ends in
+ *     an orderly way as "incomplete, continued by the next run" (#1141) - the bound that makes a
+ *     run against a very large instance plannable, for Cloud (a points budget answered with 429)
+ *     and Data Center (no built-in limit, the instance is simply kept busy) alike. Zero disables
+ *     the budget; the default is the operational value documented in deployment.md
  */
 @ConfigurationProperties(prefix = "opaa.indexing.confluence")
 public record ConfluenceProperties(
@@ -51,9 +56,19 @@ public record ConfluenceProperties(
     String userAgent,
     int maxListingPages,
     Duration fullSyncInterval,
-    Duration incrementalOverlap) {
+    Duration incrementalOverlap,
+    int requestBudgetPerRun) {
 
   static final String DEFAULT_USER_AGENT = "OPAA-Indexer/1.0";
+
+  /**
+   * Requests per run before the run ends as incomplete (#1141). Measured against a real Data Center
+   * in the container suite: a page costs about two requests (body, attachment list) plus its
+   * attachment downloads and a share of the listing; 50 000 requests therefore cover roughly 20 000
+   * pages per run, so a weekly full sync of a 100 000-page selection finishes within a working week
+   * of daily runs while a single run stays under an hour even at Cloud's pace.
+   */
+  public static final int DEFAULT_REQUEST_BUDGET_PER_RUN = 50_000;
 
   public ConfluenceProperties {
     if (pageSize < 0) {
@@ -108,10 +123,20 @@ public record ConfluenceProperties(
         || incrementalOverlap.isNegative()) {
       incrementalOverlap = Duration.ofMinutes(10);
     }
+    if (requestBudgetPerRun < 0) {
+      throw new IllegalArgumentException(
+          "requestBudgetPerRun must not be negative, got " + requestBudgetPerRun);
+    }
+  }
+
+  /** {@code true} when a run is bounded by {@link #requestBudgetPerRun}; zero means unbounded. */
+  public boolean hasRequestBudget() {
+    return requestBudgetPerRun > 0;
   }
 
   /** All defaults - for callers and tests that need a properties instance without configuration. */
   public static ConfluenceProperties defaults() {
-    return new ConfluenceProperties(0, null, null, 0, null, 0, 0, null, 0, null, null);
+    return new ConfluenceProperties(
+        0, null, null, 0, null, 0, 0, null, 0, null, null, DEFAULT_REQUEST_BUDGET_PER_RUN);
   }
 }

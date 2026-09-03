@@ -175,6 +175,10 @@ opaa:
       max-listing-pages: ${OPAA_INDEXING_CONFLUENCE_MAX_LISTING_PAGES:500}
       full-sync-interval: ${OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL:7d}
       incremental-overlap: ${OPAA_INDEXING_CONFLUENCE_INCREMENTAL_OVERLAP:10m}
+      # #1141: requests one run may send before it ends as "unvollständig, wird fortgesetzt";
+      # 0 disables the budget. Default measured against a real Data Center (see
+      # ConfluenceProperties.DEFAULT_REQUEST_BUDGET_PER_RUN and deployment.md).
+      request-budget-per-run: ${OPAA_INDEXING_CONFLUENCE_REQUEST_BUDGET_PER_RUN:50000}
       # #1140: the webhook intake - see ConfluenceWebhookProperties.
       webhook:
         debounce: ${OPAA_INDEXING_CONFLUENCE_WEBHOOK_DEBOUNCE:5s}

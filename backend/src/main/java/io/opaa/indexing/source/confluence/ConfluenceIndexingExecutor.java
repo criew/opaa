@@ -12,6 +12,7 @@ import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunEventRecorder;
 import io.opaa.indexing.IndexingRunEventRepository;
+import io.opaa.indexing.IndexingRunMetrics;
 import io.opaa.indexing.IndexingRunProgress;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.StaleDocumentCleanupService;
@@ -175,12 +176,13 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       return;
     }
     ConfluenceClient client = null;
+    Run run = null;
     String failure = null;
     try {
       client = clientFactory.create(connection);
       // ADR-0023, Entscheidung 2: before the first listing, never after - see the class Javadoc.
       client.verifyCredentials();
-      Run run = new Run(jobId, client, targetLibrary, progress, events);
+      run = new Run(jobId, client, targetLibrary, progress, events);
       if (runMode == IndexingRunMode.INCREMENTAL) {
         incrementalSync(run, startedAt);
       } else {
@@ -200,10 +202,49 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       log.error("Confluence run for library {} failed unexpectedly", targetLibrary.getId(), e);
       failure = e.getMessage();
     }
-    // Throttling is reported whether the run succeeded or not - a run that the instance slowed
-    // down forty times before it failed is exactly what an operator wants to see in the protocol.
+    finish(jobId, targetLibrary, client, run, progress, events, startedAt, failure);
+  }
+
+  /**
+   * The common end of every run: throttling is reported whether the run succeeded or not - a run
+   * that the instance slowed down forty times before it failed is exactly what an operator wants to
+   * see in the protocol - the cost figures (#1141) are recorded, and one log line names them.
+   */
+  private void finish(
+      UUID jobId,
+      KnowledgeLibrary library,
+      ConfluenceClient client,
+      Run run,
+      IndexingRunProgress progress,
+      IndexingRunEventRecorder events,
+      Instant startedAt,
+      String failure) {
     if (client != null) {
       reportThrottling(client, events);
+      ConfluenceRequestMeter meter = client.meter();
+      boolean incomplete = failure == null && run != null && run.incomplete;
+      indexingJobService.recordRunMetrics(
+          jobId,
+          new IndexingRunMetrics(
+              meter.requests(),
+              meter.throttles(),
+              meter.throttledTime().toMillis(),
+              progress.attachmentsProcessed(),
+              progress.attachmentsSkipped(),
+              progress.attachmentsFailed(),
+              incomplete));
+      log.info(
+          "Confluence run {} for library {}: {} requests, {} throttles ({} s waited), {} attachments"
+              + " indexed, {} s elapsed, incomplete={}, failure={}",
+          jobId,
+          library.getId(),
+          meter.requests(),
+          meter.throttles(),
+          meter.throttledTime().toSeconds(),
+          progress.attachmentsProcessed(),
+          Duration.between(startedAt, clock.instant()).toSeconds(),
+          incomplete,
+          failure);
     }
     events.finalizeRun();
     if (failure == null) {
@@ -211,6 +252,19 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     } else {
       progress.fail(failure);
     }
+  }
+
+  /** One protocol note when the budget ran out (#1141), naming where the next run continues. */
+  private static void recordBudgetExhausted(
+      Run run, ConfluenceAccessException.BudgetExhausted e, String continuation) {
+    run.incomplete = true;
+    run.events.record(
+        IndexingEventCategory.BUDGET_EXHAUSTED,
+        "Anfragebudget von "
+            + e.budget()
+            + " Anfragen erschöpft; der Lauf endet unvollständig, "
+            + continuation,
+        null);
   }
 
   /** Everything one run shares across its spaces, pages and attachments. */
@@ -226,6 +280,13 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
     /** False once any selected space or attachment list could not be listed completely. */
     boolean listingComplete = true;
+
+    /**
+     * True once the request budget ran out (#1141): the run ends in an orderly way, covers what it
+     * covered, and the next run continues - a full sync with the unfinished spaces, an incremental
+     * run with the same window.
+     */
+    boolean incomplete;
 
     int total;
 
@@ -259,6 +320,10 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       List<ConfluencePageSummary> pages;
       try {
         pages = run.client.listPages(key);
+      } catch (ConfluenceAccessException.BudgetExhausted e) {
+        // #1141: the state already holds every completed space - the next run starts with this one
+        recordBudgetExhausted(run, e, "der nächste Lauf setzt bei Space " + key + " fort");
+        return;
       } catch (ConfluenceAccessException.Forbidden | ConfluenceAccessException.NotFound e) {
         // ADR-0023, Entscheidung 4: a revoked right is no deletion finding - the run says so and
         // leaves this space's bestand alone.
@@ -273,7 +338,20 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       run.progress.setTotal(run.total);
       run.progress.report();
       for (ConfluencePageSummary page : pages) {
-        processPage(run, key, page);
+        try {
+          processPage(run, key, page);
+        } catch (ConfluenceAccessException.BudgetExhausted e) {
+          // #1141: pages already stored keep their version, so the next run re-lists this space
+          // cheaply (listing entries only) and fetches only what is still missing
+          recordBudgetExhausted(
+              run,
+              e,
+              "der nächste Lauf setzt bei Space "
+                  + key
+                  + " fort (Auflistung ohne Abruf"
+                  + " bereits gespeicherter Seiten)");
+          return;
+        }
         run.progress.report();
       }
       state.markSpaceCompleted(key);
@@ -339,7 +417,14 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     run.progress.setTotal(run.total);
     run.progress.report();
     for (ConfluencePageSummary summary : changed) {
-      processChangedPage(run, summary, selectedKeys);
+      try {
+        processChangedPage(run, summary, selectedKeys);
+      } catch (ConfluenceAccessException.BudgetExhausted e) {
+        // #1141: the anchor stays, so the next run searches the same window again
+        recordBudgetExhausted(
+            run, e, "der nächste Lauf durchsucht dasselbe Änderungsfenster erneut");
+        return;
+      }
       run.progress.report();
     }
     if (run.progress.failedCount() == 0) {
@@ -361,7 +446,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
    * as a positive finding (the instance says where the page is now), never as absence.
    */
   private void processChangedPage(Run run, ConfluencePageSummary summary, Set<String> selectedKeys)
-      throws InterruptedException {
+      throws InterruptedException, ConfluenceAccessException.BudgetExhausted {
     String spaceKey = summary.spaceKey();
     if (spaceKey == null || !selectedKeys.contains(spaceKey)) {
       // moved out of the selection: the old document stays until the next full run judges it
@@ -391,6 +476,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     Optional<ConfluencePage> fetched;
     try {
       fetched = run.client.fetchPage(summary.id());
+    } catch (ConfluenceAccessException.BudgetExhausted e) {
+      throw e;
     } catch (ConfluenceAccessException.Forbidden e) {
       run.events.record(
           IndexingEventCategory.REJECTED,
@@ -424,7 +511,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
    */
   private void applyFetchedPage(
       Run run, ConfluencePage page, String pagePath, Optional<Document> existing)
-      throws InterruptedException {
+      throws InterruptedException, ConfluenceAccessException.BudgetExhausted {
     if (page.status() == ConfluencePageStatus.TRASHED) {
       removeTrashed(run, existing, pagePath);
       run.progress.recordSkipped();
@@ -452,6 +539,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     var progress = new IndexingRunProgress(indexingJobService, jobId);
     var events =
         new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId);
+    Instant startedAt = clock.instant();
     ConfluenceConnection connection;
     try {
       connection = ConfluenceLibraryConnection.of(targetLibrary);
@@ -460,18 +548,24 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       return;
     }
     ConfluenceClient client = null;
+    Run run = null;
     String failure = null;
     try {
       client = clientFactory.create(connection);
       client.verifyCredentials();
-      Run run = new Run(jobId, client, targetLibrary, progress, events);
+      run = new Run(jobId, client, targetLibrary, progress, events);
       progress.setTotal(pageIds.size());
       Set<String> selectedKeys = new HashSet<>();
       for (ConfluenceSpaceSelection selection : targetLibrary.getConfluenceSpaces()) {
         selectedKeys.add(selection.getSpaceKey());
       }
       for (String pageId : pageIds.stream().sorted().toList()) {
-        refreshPage(run, pageId, selectedKeys);
+        try {
+          refreshPage(run, pageId, selectedKeys);
+        } catch (ConfluenceAccessException.BudgetExhausted e) {
+          recordBudgetExhausted(run, e, "die übrigen gemeldeten Seiten nimmt der nächste Lauf auf");
+          break;
+        }
         run.progress.report();
       }
     } catch (ConfluenceAccessException e) {
@@ -488,23 +582,17 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
           "Confluence webhook run for library {} failed unexpectedly", targetLibrary.getId(), e);
       failure = e.getMessage();
     }
-    if (client != null) {
-      reportThrottling(client, events);
-    }
-    events.finalizeRun();
-    if (failure == null) {
-      progress.complete();
-    } else {
-      progress.fail(failure);
-    }
+    finish(jobId, targetLibrary, client, run, progress, events, startedAt, failure);
   }
 
   private void refreshPage(Run run, String pageId, Set<String> selectedKeys)
-      throws InterruptedException {
+      throws InterruptedException, ConfluenceAccessException.BudgetExhausted {
     String label = "Seite " + pageId + " (per Webhook gemeldet) ";
     Optional<ConfluencePage> fetched;
     try {
       fetched = run.client.fetchPage(pageId);
+    } catch (ConfluenceAccessException.BudgetExhausted e) {
+      throw e;
     } catch (ConfluenceAccessException.Forbidden e) {
       run.events.record(IndexingEventCategory.REJECTED, label + UNREADABLE_PAGE_SUFFIX, pageId);
       run.progress.recordSkipped();
@@ -606,7 +694,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   }
 
   private void processPage(Run run, String spaceKey, ConfluencePageSummary summary)
-      throws InterruptedException {
+      throws InterruptedException, ConfluenceAccessException.BudgetExhausted {
     String pagePath = run.client.pageUrl(spaceKey, summary.id());
     run.currentPaths.add(pagePath);
     Optional<Document> existing =
@@ -624,6 +712,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     Optional<ConfluencePage> fetched;
     try {
       fetched = run.client.fetchPage(summary.id());
+    } catch (ConfluenceAccessException.BudgetExhausted e) {
+      throw e;
     } catch (ConfluenceAccessException.Forbidden e) {
       // a 403 on the page is the same finding as a 404: not readable for this account (#1138)
       run.events.record(
@@ -679,7 +769,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       String pagePath,
       String version,
       SourceDocumentContext pageContext)
-      throws InterruptedException {
+      throws InterruptedException, ConfluenceAccessException.BudgetExhausted {
     String storageBody = page.storageBody() == null ? "" : page.storageBody();
     if (storageBody.isBlank()) {
       run.events.record(
@@ -786,10 +876,12 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
   private void indexAttachments(
       Run run, String pageId, String pagePath, SourceDocumentContext context)
-      throws InterruptedException {
+      throws InterruptedException, ConfluenceAccessException.BudgetExhausted {
     List<ConfluenceAttachment> attachments;
     try {
       attachments = run.client.listAttachments(pageId);
+    } catch (ConfluenceAccessException.BudgetExhausted e) {
+      throw e;
     } catch (ConfluenceAccessException e) {
       // Without the list, this page's attachments would look vanished to the reconciliation.
       run.events.record(
@@ -805,6 +897,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       Optional<Document> existing =
           documentRepository.findByLibraryIdAndFilePath(run.library.getId(), path);
       if (isUnchanged(existing, String.valueOf(attachment.version()))) {
+        run.progress.recordAttachment(IndexingRunProgress.AttachmentOutcome.SKIPPED);
         continue;
       }
       indexAttachment(run, attachment, path, pagePath, context);
@@ -817,7 +910,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       String path,
       String pagePath,
       SourceDocumentContext context)
-      throws InterruptedException {
+      throws InterruptedException, ConfluenceAccessException.BudgetExhausted {
     BoundedDownloader.DownloadedFile downloaded = null;
     try {
       downloaded = run.client.downloadAttachment(attachment);
@@ -827,6 +920,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       if (!decision.supported()) {
         run.events.record(
             IndexingEventCategory.UNSUPPORTED_FORMAT, "Anhangsformat wird nicht unterstützt", path);
+        run.progress.recordAttachment(IndexingRunProgress.AttachmentOutcome.SKIPPED);
         return;
       }
       if (decision.extensionMismatch()) {
@@ -849,34 +943,45 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
               pagePath,
               context);
       switch (result) {
-        case QUOTA_EXCEEDED ->
-            run.events.record(
-                IndexingEventCategory.REJECTED,
-                storageQuotaService.quotaExceededMessage(run.library.getId()),
-                path);
-        case NO_EXTRACTABLE_TEXT ->
-            run.events.record(
-                IndexingEventCategory.REJECTED, DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE, path);
-        case FAILED ->
-            run.events.record(
-                IndexingEventCategory.ERROR, "Verarbeitung des Anhangs fehlgeschlagen", path);
+        case QUOTA_EXCEEDED -> {
+          run.events.record(
+              IndexingEventCategory.REJECTED,
+              storageQuotaService.quotaExceededMessage(run.library.getId()),
+              path);
+          run.progress.recordAttachment(IndexingRunProgress.AttachmentOutcome.SKIPPED);
+        }
+        case NO_EXTRACTABLE_TEXT -> {
+          run.events.record(
+              IndexingEventCategory.REJECTED, DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE, path);
+          run.progress.recordAttachment(IndexingRunProgress.AttachmentOutcome.SKIPPED);
+        }
+        case FAILED -> {
+          run.events.record(
+              IndexingEventCategory.ERROR, "Verarbeitung des Anhangs fehlgeschlagen", path);
+          run.progress.recordAttachment(IndexingRunProgress.AttachmentOutcome.FAILED);
+        }
         case PROCESSED -> {
-          run.progress.recordDocumentIndexed();
+          run.progress.recordAttachment(IndexingRunProgress.AttachmentOutcome.PROCESSED);
           log.info("Indexed Confluence attachment: {}", path);
         }
-        default -> {
-          // SKIPPED: unchanged content, deduplicated by processUrlFile itself
-        }
+        default ->
+            // SKIPPED: unchanged content, deduplicated by processUrlFile itself
+            run.progress.recordAttachment(IndexingRunProgress.AttachmentOutcome.SKIPPED);
       }
     } catch (BoundedDownloader.AttachmentTooLargeException e) {
       run.events.record(
           IndexingEventCategory.REJECTED, "Anhang überschreitet die Größengrenze", path);
+      run.progress.recordAttachment(IndexingRunProgress.AttachmentOutcome.SKIPPED);
+    } catch (ConfluenceAccessException.BudgetExhausted e) {
+      throw e;
     } catch (ConfluenceAccessException e) {
       run.events.record(IndexingEventCategory.UNREACHABLE, e.getMessage(), path);
+      run.progress.recordAttachment(IndexingRunProgress.AttachmentOutcome.FAILED);
     } catch (IOException e) {
       log.warn("Failed to process Confluence attachment {}", path, e);
       run.events.record(
           IndexingEventCategory.ERROR, "Verarbeitung des Anhangs fehlgeschlagen", path);
+      run.progress.recordAttachment(IndexingRunProgress.AttachmentOutcome.FAILED);
     } finally {
       if (downloaded != null) {
         try {

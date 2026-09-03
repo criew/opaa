@@ -183,6 +183,24 @@ public class IndexingJobService {
   }
 
   /**
+   * Records the run's cost figures and its incomplete flag (#1141) - called once by an executor
+   * right before {@link #completeJob}, so a COMPLETED row either carries them or never will. A
+   * no-op once the job is no longer {@link JobStatus#RUNNING}, like {@link #updateProgress}.
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void recordRunMetrics(UUID jobId, IndexingRunMetrics metrics) {
+    var job =
+        indexingJobRepository
+            .findById(jobId)
+            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+    if (job.getStatus() != JobStatus.RUNNING) {
+      return;
+    }
+    job.applyMetrics(metrics);
+    indexingJobRepository.save(job);
+  }
+
+  /**
    * Records how many further {@link IndexingRunEvent}s {@code jobId}'s run recorded beyond {@link
    * IndexingRunEventRecorder#MAX_EVENTS_PER_RUN} - a no-op call (0) is never made; every executor
    * only calls this once, at the end of a run, when {@code
