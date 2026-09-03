@@ -66,7 +66,7 @@ class ConfluenceLogLeakTest {
       ConfluenceCredentials good = server.addToken(EMAIL, TOKEN, Set.of("ENG"));
       ConfluenceClientFactory factory =
           new ConfluenceClientFactory(
-              new ConfluenceProperties(2, null, 2, null, 0, 0, null, 0),
+              new ConfluenceProperties(2, null, null, 2, null, 0, 0, null, 0),
               TargetAddressValidator.disabled(),
               duration -> {});
       ConfluenceClient client =

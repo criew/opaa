@@ -31,7 +31,12 @@ public class ConfluenceClientFactory {
     this.sleeper = sleeper;
   }
 
-  public ConfluenceClient create(ConfluenceConnection connection) {
+  /**
+   * @throws ConfluenceAccessException when the proxy host fails the target validation (the target
+   *     itself is validated on every request the client sends)
+   */
+  public ConfluenceClient create(ConfluenceConnection connection) throws ConfluenceAccessException {
+    ConfluenceHttp.validateProxy(targetAddressValidator, connection.proxyHost());
     if (connection.credentials() == null) {
       throw new IllegalArgumentException("a ConfluenceClient needs credentials");
     }

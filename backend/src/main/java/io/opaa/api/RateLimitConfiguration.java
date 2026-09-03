@@ -29,10 +29,12 @@ public class RateLimitConfiguration {
     // per-IP limiter by library, so triggering indexing for one library doesn't block a different
     // library from the same client.
     String indexingTriggerPattern = "^/api/v1/libraries/([^/]+)/indexing$";
-    // #514/PR #537 review, finding 3: a plain literal, not a regex capture group like the
-    // indexing trigger above - source-test carries no library (there is none yet), so there is
-    // nothing to key a per-library limiter by.
-    String sourceTestPattern = "^/api/v1/libraries/source-test$";
+    // No capture group here (unlike the indexing trigger above): these probes carry no library -
+    // there is none yet - so the per-IP limiter is keyed by the client alone. The alternation is
+    // non-capturing on purpose: a capturing group would give each path its own bucket and double
+    // the outbound probe budget. The Confluence space listing (ADR-0023) is the same kind of
+    // synchronous outbound probe as the connection test and shares its limit.
+    String sourceTestPattern = "^/api/v1/libraries/(?:source-test|confluence/spaces)$";
     // #748 review, finding 1: a flat pattern, mirroring source-test above rather than the
     // per-library indexing trigger's capture group - unlike triggering an indexing run, "Im
     // Dokument öffnen" is a routine per-document click any VIEWER can make on any document, so

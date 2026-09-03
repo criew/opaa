@@ -52,6 +52,7 @@ final class ConfluenceHttp {
   private final HttpClient httpClient;
   private final ConfluenceConnection connection;
   private final ConfluenceProperties properties;
+  private final Duration requestTimeout;
   private final TargetAddressValidator targetAddressValidator;
   private final BoundedDownloader downloader;
   private final Sleeper sleeper;
@@ -64,6 +65,19 @@ final class ConfluenceHttp {
       TargetAddressValidator targetAddressValidator,
       Sleeper sleeper,
       ConfluenceRequestMeter meter) {
+    this(httpClient, connection, properties, targetAddressValidator, sleeper, meter, null);
+  }
+
+  /** {@code requestTimeout} overrides the configured per-request timeout when non-null. */
+  ConfluenceHttp(
+      HttpClient httpClient,
+      ConfluenceConnection connection,
+      ConfluenceProperties properties,
+      TargetAddressValidator targetAddressValidator,
+      Sleeper sleeper,
+      ConfluenceRequestMeter meter,
+      Duration requestTimeout) {
+    this.requestTimeout = requestTimeout == null ? properties.requestTimeout() : requestTimeout;
     this.httpClient = httpClient;
     this.connection = connection;
     this.properties = properties;
@@ -127,7 +141,7 @@ final class ConfluenceHttp {
             RedirectFollowingFetcher.sendFollowingRedirects(
                 httpClient,
                 url,
-                properties.requestTimeout(),
+                requestTimeout,
                 headers,
                 targetAddressValidator,
                 RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN);
@@ -197,6 +211,20 @@ final class ConfluenceHttp {
 
   ConfluenceConnection connection() {
     return connection;
+  }
+
+  /**
+   * The proxy is as caller-controlled as the target and decides where the TCP connection - and the
+   * credentials on it - actually go; it passes the same address-range check, with the same
+   * allowlist hint.
+   */
+  static void validateProxy(TargetAddressValidator validator, String proxyHost)
+      throws ConfluenceAccessException {
+    try {
+      validator.validateHost(proxyHost);
+    } catch (IOException e) {
+      throw new ConfluenceAccessException(e.getMessage() + " " + ALLOWLIST_HINT, e);
+    }
   }
 
   ConfluenceRequestMeter meter() {

@@ -95,7 +95,7 @@ class ConfluenceClientContractTest {
 
   /** Small page size so every listing paginates; three rate-limit retries, two-second cap. */
   private static ConfluenceProperties smallPages() {
-    return new ConfluenceProperties(2, null, 3, Duration.ofSeconds(2), 0, 0, null, 0);
+    return new ConfluenceProperties(2, null, null, 3, Duration.ofSeconds(2), 0, 0, null, 0);
   }
 
   private static void seed(FakeConfluenceServer server) {
@@ -420,7 +420,7 @@ class ConfluenceClientContractTest {
   @MethodSource("deployments")
   void aListingThatNeverEndsIsAbandonedVisibly(Deployment deployment) throws Exception {
     ConfluenceProperties threePages =
-        new ConfluenceProperties(2, null, 3, Duration.ofSeconds(2), 0, 0, null, 3);
+        new ConfluenceProperties(2, null, null, 3, Duration.ofSeconds(2), 0, 0, null, 3);
     ConfluenceClient client = client(deployment, threePages, TargetAddressValidator.disabled());
     // the instance keeps handing out the same first page as "next"
     String path =

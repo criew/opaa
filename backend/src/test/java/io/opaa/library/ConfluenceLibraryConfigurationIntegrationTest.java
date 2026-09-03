@@ -13,9 +13,11 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.confluence.FakeConfluenceServer;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.TestPropertySource;
 
 /**
  * {@code CONFLUENCE} as a library's quellentyp (ADR-0023, #1133): configuration validated per
@@ -32,8 +35,18 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * and the multi-library model of the epic - several libraries against the same instance with the
  * same or different tokens and overlapping selections, created by different people.
  */
+// Own Spring context on purpose: creating a CONFLUENCE library re-checks the edition against the
+// instance (ADR-0023, Entscheidung 2), and the only instance a test can offer is the loopback test
+// double - which the default target validation rejects. Every other @OpaaIntegrationTest class
+// keeps
+// the shared context; this property split is the one this class needs.
 @OpaaIntegrationTest
+@TestPropertySource(properties = "opaa.indexing.target-validation.enabled=false")
 class ConfluenceLibraryConfigurationIntegrationTest {
+
+  private FakeConfluenceServer cloud;
+  private FakeConfluenceServer dataCenter;
+  private FakeConfluenceServer secondDataCenter;
 
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
@@ -45,7 +58,10 @@ class ConfluenceLibraryConfigurationIntegrationTest {
   private final List<UUID> userIds = new ArrayList<>();
 
   @BeforeEach
-  void setUp() {
+  void setUp() throws IOException {
+    cloud = new FakeConfluenceServer(ConfluenceEdition.CLOUD);
+    dataCenter = new FakeConfluenceServer(ConfluenceEdition.DATA_CENTER, "/confluence");
+    secondDataCenter = new FakeConfluenceServer(ConfluenceEdition.DATA_CENTER);
     organizationId =
         organizationRepository
             .save(new Organization(UUID.randomUUID(), "Confluence-Test-Org " + UUID.randomUUID()))
@@ -54,6 +70,9 @@ class ConfluenceLibraryConfigurationIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    cloud.close();
+    dataCenter.close();
+    secondDataCenter.close();
     List<KnowledgeLibrary> own =
         libraryRepository.findAll().stream()
             .filter(l -> organizationId.equals(l.getOrganizationId()))
@@ -75,7 +94,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     UUID owner = user();
     LibraryCreation request =
         libraryCreation("Wiki Bauamt", DocumentSourceType.CONFLUENCE)
-            .sourceUrl(URI.create("https://Wiki.Behoerde.example/confluence/"))
+            .sourceUrl(URI.create(dataCenter.baseUrl() + "/"))
             .sourceCredentials("pat-geheim")
             .confluenceEdition(ConfluenceEdition.DATA_CENTER)
             .confluenceSpaces(
@@ -89,7 +108,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     KnowledgeLibrary library = detail.library();
     assertThat(library.getSourceType()).isEqualTo(DocumentSourceType.CONFLUENCE);
     assertThat(library.getSourceConfluenceEdition()).isEqualTo(ConfluenceEdition.DATA_CENTER);
-    assertThat(library.getSourceUrl()).isEqualTo("https://wiki.behoerde.example/confluence");
+    assertThat(library.getSourceUrl()).isEqualTo(dataCenter.baseUrl());
     assertThat(library.getConfluenceSpaces())
         .extracting(ConfluenceSpaceSelection::getSpaceKey)
         .containsExactly("BAU", "HR");
@@ -104,7 +123,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
   void cloudNeedsEmailAndTokenAndLosesTheWikiSuffix() {
     UUID owner = user();
     LibraryCreation withoutEmail =
-        confluence("Cloud ohne E-Mail", ConfluenceEdition.CLOUD, "https://site.atlassian.net/wiki")
+        confluence("Cloud ohne E-Mail", ConfluenceEdition.CLOUD, cloud.baseUrl() + "/wiki")
             .sourceCredentials("nur-token")
             .build();
     assertThatThrownBy(() -> libraryService.createLibrary(withoutEmail, currentUser(owner)))
@@ -113,11 +132,11 @@ class ConfluenceLibraryConfigurationIntegrationTest {
 
     LibraryDetail detail =
         libraryService.createLibrary(
-            confluence("Cloud", ConfluenceEdition.CLOUD, "https://site.atlassian.net/wiki")
+            confluence("Cloud", ConfluenceEdition.CLOUD, cloud.baseUrl() + "/wiki")
                 .sourceCredentials("dienst@behoerde.example:api-token")
                 .build(),
             currentUser(owner));
-    assertThat(detail.library().getSourceUrl()).isEqualTo("https://site.atlassian.net");
+    assertThat(detail.library().getSourceUrl()).isEqualTo(cloud.baseUrl());
     assertThat(detail.library().getSourceConfluenceEdition()).isEqualTo(ConfluenceEdition.CLOUD);
   }
 
@@ -130,7 +149,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
             () ->
                 libraryService.createLibrary(
                     libraryCreation("ohne Edition", DocumentSourceType.CONFLUENCE)
-                        .sourceUrl(URI.create("https://wiki.example.org"))
+                        .sourceUrl(URI.create(dataCenter.baseUrl()))
                         .sourceCredentials("pat")
                         .confluenceSpaces(List.of(new ConfluenceSpaceSelection("A", null)))
                         .build(),
@@ -140,10 +159,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     assertThatThrownBy(
             () ->
                 libraryService.createLibrary(
-                    confluence(
-                            "ohne Spaces",
-                            ConfluenceEdition.DATA_CENTER,
-                            "https://wiki.example.org")
+                    confluence("ohne Spaces", ConfluenceEdition.DATA_CENTER, dataCenter.baseUrl())
                         .confluenceSpaces(List.of())
                         .build(),
                     caller))
@@ -152,10 +168,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     assertThatThrownBy(
             () ->
                 libraryService.createLibrary(
-                    confluence(
-                            "ohne Spaces",
-                            ConfluenceEdition.DATA_CENTER,
-                            "https://wiki.example.org")
+                    confluence("ohne Spaces", ConfluenceEdition.DATA_CENTER, dataCenter.baseUrl())
                         .confluenceSpaces(null)
                         .build(),
                     caller))
@@ -164,8 +177,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     assertThatThrownBy(
             () ->
                 libraryService.createLibrary(
-                    confluence(
-                            "ohne Token", ConfluenceEdition.DATA_CENTER, "https://wiki.example.org")
+                    confluence("ohne Token", ConfluenceEdition.DATA_CENTER, dataCenter.baseUrl())
                         .sourceCredentials(null)
                         .build(),
                     caller))
@@ -174,7 +186,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     assertThatThrownBy(
             () ->
                 libraryService.createLibrary(
-                    confluence("doppelt", ConfluenceEdition.DATA_CENTER, "https://wiki.example.org")
+                    confluence("doppelt", ConfluenceEdition.DATA_CENTER, dataCenter.baseUrl())
                         .confluenceSpaces(
                             List.of(
                                 new ConfluenceSpaceSelection("A", null),
@@ -186,8 +198,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     assertThatThrownBy(
             () ->
                 libraryService.createLibrary(
-                    confluence(
-                            "mit Pfad", ConfluenceEdition.DATA_CENTER, "https://wiki.example.org")
+                    confluence("mit Pfad", ConfluenceEdition.DATA_CENTER, dataCenter.baseUrl())
                         .sourcePath("/srv/docs")
                         .build(),
                     caller))
@@ -216,12 +227,26 @@ class ConfluenceLibraryConfigurationIntegrationTest {
   }
 
   @Test
+  void creationRefusesAnEditionTheInstanceIsNot() {
+    UUID owner = user();
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    confluence("falsche Edition", ConfluenceEdition.CLOUD, dataCenter.baseUrl())
+                        .build(),
+                    currentUser(owner)))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Data Center")
+        .hasMessageContaining("erkannt, nicht gewählt");
+  }
+
+  @Test
   void editionIsImmutableButTheSelectionIsNot() {
     UUID owner = user();
     CurrentUser caller = currentUser(owner);
     LibraryDetail created =
         libraryService.createLibrary(
-            confluence("Wiki", ConfluenceEdition.DATA_CENTER, "https://wiki.example.org").build(),
+            confluence("Wiki", ConfluenceEdition.DATA_CENTER, dataCenter.baseUrl()).build(),
             caller);
     UUID libraryId = created.library().getId();
 
@@ -311,7 +336,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     UUID libraryId =
         libraryService
             .createLibrary(
-                confluence("Cloud", ConfluenceEdition.CLOUD, "https://site.atlassian.net")
+                confluence("Cloud", ConfluenceEdition.CLOUD, cloud.baseUrl())
                     .sourceCredentials("dienst@behoerde.example:token")
                     .build(),
                 caller)
@@ -320,10 +345,10 @@ class ConfluenceLibraryConfigurationIntegrationTest {
 
     libraryService.updateLibrary(
         libraryId,
-        libraryUpdate("Cloud").sourceUrl(URI.create("https://site.atlassian.net/wiki/")).build(),
+        libraryUpdate("Cloud").sourceUrl(URI.create(cloud.baseUrl() + "/wiki/")).build(),
         caller);
     KnowledgeLibrary sameOrigin = libraryRepository.findById(libraryId).orElseThrow();
-    assertThat(sameOrigin.getSourceUrl()).isEqualTo("https://site.atlassian.net");
+    assertThat(sameOrigin.getSourceUrl()).isEqualTo(cloud.baseUrl());
     assertThat(sameOrigin.getSourceCredentials()).isEqualTo("dienst@behoerde.example:token");
 
     // a new host drops the stored credentials, so the update must bring valid ones
@@ -332,7 +357,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                 libraryService.updateLibrary(
                     libraryId,
                     libraryUpdate("Cloud")
-                        .sourceUrl(URI.create("https://other.atlassian.net"))
+                        .sourceUrl(URI.create(cloud.baseUrl().replace("127.0.0.1", "localhost")))
                         .build(),
                     caller))
         .isInstanceOf(ValidationException.class)
@@ -342,7 +367,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                 libraryService.updateLibrary(
                     libraryId,
                     libraryUpdate("Cloud")
-                        .sourceUrl(URI.create("https://other.atlassian.net"))
+                        .sourceUrl(URI.create(cloud.baseUrl().replace("127.0.0.1", "localhost")))
                         .sourceCredentials("nur-token")
                         .build(),
                     caller))
@@ -359,8 +384,8 @@ class ConfluenceLibraryConfigurationIntegrationTest {
   void manyLibrariesAgainstTheSameInstanceAreIndependent() {
     CurrentUser alice = currentUser(user());
     CurrentUser bob = currentUser(user());
-    String instance1 = "https://wiki-1.example.org";
-    String instance2 = "https://wiki-2.example.org";
+    String instance1 = dataCenter.baseUrl();
+    String instance2 = secondDataCenter.baseUrl();
 
     UUID a = create(alice, "Instanz 1, Space 1", instance1, "token-1", List.of("S1"));
     UUID b = create(alice, "Instanz 1, Space 2+3", instance1, "token-1", List.of("S2", "S3"));

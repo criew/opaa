@@ -2,6 +2,8 @@ package io.opaa.api;
 
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
+import io.opaa.api.dto.ConfluenceSpaceListRequest;
+import io.opaa.api.dto.ConfluenceSpaceListResponse;
 import io.opaa.api.dto.IndexingRunEvent;
 import io.opaa.api.dto.IndexingRunEventCategory;
 import io.opaa.api.dto.IndexingRunListResponse;
@@ -116,6 +118,19 @@ public class LibraryController {
     return SourceConnectionTestResponseMapper.toResponse(
         sourceConnectionTestService.test(
             SourceConnectionTestResponseMapper.toDomain(request), caller));
+  }
+
+  /**
+   * Space selection source for a CONFLUENCE library (ADR-0023, #1134) - same permission bar and
+   * rate limit as the connection test above; credentials travel in the body and never come back.
+   */
+  @PostMapping("/confluence/spaces")
+  public ConfluenceSpaceListResponse listConfluenceSpaces(
+      @Valid @RequestBody ConfluenceSpaceListRequest request, @Caller CurrentUser caller) {
+    return SourceConnectionTestResponseMapper.toResponse(
+        SourceConnectionTestResponseMapper.toRefs(
+            sourceConnectionTestService.listConfluenceSpaces(
+                SourceConnectionTestResponseMapper.toDomain(request), caller)));
   }
 
   @GetMapping

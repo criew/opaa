@@ -124,6 +124,7 @@ public class KnowledgeLibraryService {
   private final LibraryStorageQuotaService storageQuotaService;
   private final LibraryFolderRepository folderRepository;
   private final ApplicationEventPublisher eventPublisher;
+  private final ConfluenceConnectionService confluenceConnectionService;
 
   public KnowledgeLibraryService(
       KnowledgeLibraryRepository libraryRepository,
@@ -144,7 +145,8 @@ public class KnowledgeLibraryService {
       Clock schedulingClock,
       LibraryStorageQuotaService storageQuotaService,
       LibraryFolderRepository folderRepository,
-      ApplicationEventPublisher eventPublisher) {
+      ApplicationEventPublisher eventPublisher,
+      ConfluenceConnectionService confluenceConnectionService) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
@@ -164,6 +166,7 @@ public class KnowledgeLibraryService {
     this.storageQuotaService = storageQuotaService;
     this.folderRepository = folderRepository;
     this.eventPublisher = eventPublisher;
+    this.confluenceConnectionService = confluenceConnectionService;
   }
 
   @Transactional
@@ -227,6 +230,13 @@ public class KnowledgeLibraryService {
               sourceConfiguration.sourceInsecureSsl());
     }
     if (sourceConfiguration.sourceType() == DocumentSourceType.CONFLUENCE) {
+      // ADR-0023, Entscheidung 2: the stored edition must be the instance's - one credential-free
+      // probe at creation, so the invariant never depends on what the client sent.
+      confluenceConnectionService.requireEdition(
+          sourceConfiguration.sourceUrl(),
+          sourceConfiguration.sourceProxy(),
+          sourceConfiguration.sourceInsecureSsl(),
+          sourceConfiguration.confluenceEdition());
       library.configureConfluence(
           sourceConfiguration.confluenceEdition(), sourceConfiguration.confluenceSpaces());
     }

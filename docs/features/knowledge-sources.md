@@ -176,7 +176,18 @@ diesen Weg bewusst **nicht** möglich — dafür bleibt nur das Löschen und Neu
 testen"-Knopf die eingegebene Quellkonfiguration serverseitig, bevor die Bibliothek überhaupt
 angelegt wird — `FILESYSTEM` meldet die Anzahl gefundener, unterstützter Dokumente (unter derselben
 Pfad-Allowlist wie die Anlage selbst, siehe unten), `HTTP_DIRECTORY` die Anzahl verlinkter Dokumente
-auf der obersten Verzeichnisebene, `RSS_FEED` die Anzahl der Feed-Einträge. Der Test ist optional und
+auf der obersten Verzeichnisebene, `RSS_FEED` die Anzahl der Feed-Einträge, `CONFLUENCE` in zwei Stufen (#1134,
+[ADR-0023](../decisions/0023-confluence-konnektor.md)): Ohne Zugangsdaten **erkennt** er die Edition
+(Cloud oder Data Center) aus der Antwortsignatur der Instanz — nie aus dem Hostnamen — und nennt die
+dazu passende Art von Zugangsdaten; mit Zugangsdaten prüft er sie und zählt die lesbaren Spaces. Für
+Confluence ist der Test nicht optional: Die Anlage bestätigt die Edition erneut gegen die Instanz und
+lehnt eine Edition ab, die die Instanz nicht ist (eine spätere Adressänderung prüft die gespeicherte
+Edition nicht erneut — die Edition ist unveränderlich, die Adresse muss dieselbe Instanz nennen), und
+die Space-Auswahl kommt aus einer eigenen Auflistung (`POST /api/v1/libraries/confluence/spaces`),
+die nur mit gültigen Zugangsdaten antwortet. Beide Sonden unterliegen wie jeder Lauf der Zielprüfung
+(#267) — ein selbst betriebenes Confluence Data Center im privaten Adressbereich braucht deshalb den
+Eintrag in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, und die Fehlermeldung nennt ihn. Für die
+übrigen Typen ist der Test optional und
 ersetzt weder die Ziel- noch die Formatprüfung des eigentlichen Laufs. Er nutzt für `HTTP_DIRECTORY`
 und `RSS_FEED` dieselben ausgehenden Verbindungen wie ein Lauf und unterliegt deshalb **derselben
 Zielprüfung (gebaut, #267)** — konfigurierbar über `opaa.indexing.target-validation`, siehe
@@ -508,7 +519,7 @@ Entscheidung, kein Rollenkonstrukt tritt an ihre Stelle (ADR-0018, Entscheidung 
 
 | Wer | Entscheidet |
 |---|---|
-| Wer die Bibliothek anlegt | Quellentyp und Konfiguration — jeder mit Anlageberechtigung; für `FILESYSTEM` sichert die Pfad-Allowlist ab (**gebaut**, #484), für `HTTP_DIRECTORY`/`RSS_FEED` sichert die Zielprüfung ab (**gebaut**, #267) |
+| Wer die Bibliothek anlegt | Quellentyp und Konfiguration — jeder mit Anlageberechtigung; für `FILESYSTEM` sichert die Pfad-Allowlist ab (**gebaut**, #484), für `HTTP_DIRECTORY`/`RSS_FEED`/`CONFLUENCE` sichert die Zielprüfung ab (**gebaut**, #267) |
 | Eigentümer der Bibliothek | wer den Bestand lesen darf, bis zur **Obergrenze der Freigabe** bei lauf-basierten Bibliotheken |
 
 Ohne die Obergrenze könnte ein Bibliothekseigentümer einen lauf-basierten Bestand organisationsweit

@@ -143,6 +143,68 @@ class LibraryControllerCredentialsIntegrationTest {
   }
 
   @Test
+  void confluenceConnectionTestAndSpaceListingNeverEchoCredentials() throws Exception {
+    // A loopback address: with the default target validation active, both probes are refused
+    // before any connection is attempted - the test reports that as a result with the allowlist
+    // hint, the listing as a 400; neither carries the submitted token.
+    String token = "pat-streng-geheim-4711";
+    String test =
+        """
+        {
+          "sourceType": "CONFLUENCE",
+          "sourceUrl": "http://127.0.0.1:9/confluence",
+          "sourceCredentials": "%s"
+        }
+        """
+            .formatted(token);
+    var testResult =
+        mockMvc
+            .perform(post("/api/v1/libraries/source-test").with(devUser()).content(test))
+            .andExpect(status().isOk())
+            .andReturn();
+    String testBody = testResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
+    assertThat(testBody)
+        .contains("\"reachable\":false")
+        .contains("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST")
+        .doesNotContain(token);
+
+    String listing =
+        """
+        {
+          "sourceUrl": "http://127.0.0.1:9/confluence",
+          "confluenceEdition": "DATA_CENTER",
+          "sourceCredentials": "%s"
+        }
+        """
+            .formatted(token);
+    var listingResult =
+        mockMvc
+            .perform(post("/api/v1/libraries/confluence/spaces").with(devUser()).content(listing))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+    assertThat(listingResult.getResponse().getContentAsString(StandardCharsets.UTF_8))
+        .doesNotContain(token);
+  }
+
+  @Test
+  void confluenceSpaceListingRequiresAuthentication() throws Exception {
+    String listing =
+        """
+        {
+          "sourceUrl": "http://127.0.0.1:9/confluence",
+          "confluenceEdition": "DATA_CENTER",
+          "sourceCredentials": "irgendwas"
+        }
+        """;
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/confluence/spaces")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(listing))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
   void aValidationErrorNeverEchoesTheSubmittedCredentialsInTheRawResponseBody() throws Exception {
     // FILESYSTEM rejects sourceCredentials outright (validateConfigurationForType) - the request
     // body that triggers the 400 still carries the plaintext credential, so this pins that

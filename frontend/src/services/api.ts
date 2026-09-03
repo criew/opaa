@@ -49,6 +49,8 @@ import type {
   SpaceVisibility,
   UserInfo,
   UserSummary,
+  ConfluenceSpaceListRequest,
+  ConfluenceSpaceListResponse,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
 import { setupAuthInterceptors } from './apiInterceptors'
@@ -571,6 +573,21 @@ export async function testLibrarySource(
   try {
     const { data } = await client.post<SourceConnectionTestResponse>(
       '/v1/libraries/source-test',
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** #1134: the spaces a Confluence token may read - basis of the wizard's space selection. */
+export async function listConfluenceSpaces(
+  request: ConfluenceSpaceListRequest,
+): Promise<ConfluenceSpaceListResponse> {
+  try {
+    const { data } = await client.post<ConfluenceSpaceListResponse>(
+      '/v1/libraries/confluence/spaces',
       request,
     )
     return data

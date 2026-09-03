@@ -56,6 +56,7 @@ public final class ConfluenceEditionDetector {
    */
   public Detected detect(String rawBaseUrl, String proxyHost, int proxyPort, boolean insecureSsl)
       throws ConfluenceAccessException, InterruptedException {
+    ConfluenceHttp.validateProxy(targetAddressValidator, proxyHost);
     URI dataCenterBase =
         ConfluenceConnection.normalizeBaseUrl(rawBaseUrl, ConfluenceEdition.DATA_CENTER);
     URI cloudBase = ConfluenceConnection.normalizeBaseUrl(rawBaseUrl, ConfluenceEdition.CLOUD);
@@ -67,7 +68,14 @@ public final class ConfluenceEditionDetector {
         new ConfluenceConnection(
             cloudBase, ConfluenceEdition.CLOUD, null, proxyHost, proxyPort, insecureSsl);
     ConfluenceHttp cloudHttp =
-        new ConfluenceHttp(client, cloud, properties, targetAddressValidator, sleeper, meter);
+        new ConfluenceHttp(
+            client,
+            cloud,
+            properties,
+            targetAddressValidator,
+            sleeper,
+            meter,
+            properties.detectionTimeout());
     ProbeOutcome tenant = probe(cloudHttp, hostRoot(cloudBase) + "/_edge/tenant_info", resource);
     if (tenant.response != null
         && tenant.response.status() == 200
@@ -79,7 +87,14 @@ public final class ConfluenceEditionDetector {
         new ConfluenceConnection(
             dataCenterBase, ConfluenceEdition.DATA_CENTER, null, proxyHost, proxyPort, insecureSsl);
     ConfluenceHttp dcHttp =
-        new ConfluenceHttp(client, dataCenter, properties, targetAddressValidator, sleeper, meter);
+        new ConfluenceHttp(
+            client,
+            dataCenter,
+            properties,
+            targetAddressValidator,
+            sleeper,
+            meter,
+            properties.detectionTimeout());
     ProbeOutcome status = probe(dcHttp, dataCenter.url("/status"), resource);
     if (status.response != null
         && status.response.status() == 200
@@ -112,6 +127,59 @@ public final class ConfluenceEditionDetector {
                   + " Token ohne Browser-Anmeldung zulassen.");
     }
     throw new ConfluenceAccessException.NoConfluence(message.toString());
+  }
+
+  /**
+   * Confirms one expected edition with the fewest probes - its own signature only (one request for
+   * Cloud, one or two for Data Center). Used when a library is created: the stored edition must be
+   * the instance's, but the instance was fully detected seconds earlier and need not be again.
+   *
+   * @return whether the instance answers with the expected edition's signature
+   */
+  public boolean confirms(
+      String rawBaseUrl,
+      String proxyHost,
+      int proxyPort,
+      boolean insecureSsl,
+      ConfluenceEdition expected)
+      throws ConfluenceAccessException, InterruptedException {
+    ConfluenceHttp.validateProxy(targetAddressValidator, proxyHost);
+    HttpClient client = SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, insecureSsl);
+    ConfluenceRequestMeter meter = new ConfluenceRequestMeter();
+    String resource = "die Editionsprüfung";
+    URI base = ConfluenceConnection.normalizeBaseUrl(rawBaseUrl, expected);
+    ConfluenceConnection connection =
+        new ConfluenceConnection(base, expected, null, proxyHost, proxyPort, insecureSsl);
+    ConfluenceHttp http =
+        new ConfluenceHttp(
+            client,
+            connection,
+            properties,
+            targetAddressValidator,
+            sleeper,
+            meter,
+            properties.detectionTimeout());
+    if (expected == ConfluenceEdition.CLOUD) {
+      ProbeOutcome tenant = probe(http, hostRoot(base) + "/_edge/tenant_info", resource);
+      if (tenant.failure != null) {
+        throw tenant.failure;
+      }
+      return tenant.response.status() == 200 && jsonHas(tenant.response, "cloudId");
+    }
+    ProbeOutcome status = probe(http, connection.url("/status"), resource);
+    if (status.response != null
+        && status.response.status() == 200
+        && jsonHas(status.response, "state")) {
+      return true;
+    }
+    ProbeOutcome spaces =
+        probe(http, connection.url(DataCenterConfluenceClient.REST + "/space?limit=1"), resource);
+    if (spaces.failure != null && status.failure != null) {
+      throw spaces.failure;
+    }
+    return spaces.response != null
+        && (spaces.response.status() == 200 || spaces.response.status() == 401)
+        && isJsonObject(spaces.response);
   }
 
   private record ProbeOutcome(

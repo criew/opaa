@@ -36,6 +36,7 @@ import {
   resetMockLibraryFolders,
   resetMockLibraryGrants,
   resetMockChats,
+  mockConfluenceSpaces,
 } from './fixtures'
 import type { MockLibraryFolder } from './fixtures'
 import type {
@@ -1175,6 +1176,29 @@ export const handlers = [
     return HttpResponse.json(detail, { status: 201 })
   }),
 
+  // #1134: the Confluence spaces the mock token may read - a fixed, searchable set for the wizard.
+  http.post('/api/v1/libraries/confluence/spaces', async ({ request }) => {
+    const body = (await request.json()) as {
+      sourceUrl?: string
+      confluenceEdition?: ConfluenceEdition
+      sourceCredentials?: string | null
+      libraryId?: string | null
+    }
+    if (!body.sourceUrl || !body.confluenceEdition) {
+      return HttpResponse.json(
+        { error: 'sourceUrl und confluenceEdition sind erforderlich' },
+        { status: 400 },
+      )
+    }
+    if (!body.sourceCredentials && !body.libraryId) {
+      return HttpResponse.json(
+        { error: 'sourceCredentials sind für die Space-Auflistung erforderlich' },
+        { status: 400 },
+      )
+    }
+    return HttpResponse.json({ spaces: mockConfluenceSpaces })
+  }),
+
   // #514: mirrors SourceConnectionTestService's per-type validation just enough that the mock
   // dialog's "Verbindung testen" button gets a plausible response in mock mode instead of an
   // unhandled request (onUnhandledRequest: 'bypass' would otherwise leave it hanging forever).
@@ -1183,6 +1207,58 @@ export const handlers = [
       sourceType: DocumentSourceType
       sourcePath?: string | null
       sourceUrl?: string | null
+      sourceCredentials?: string | null
+      confluenceEdition?: ConfluenceEdition | null
+    }
+    if (body.sourceType === 'CONFLUENCE') {
+      // Mirrors ConfluenceConnectionService#probe: the mock treats *.atlassian.net as Cloud and
+      // everything else as Data Center (the real detector reads the instance's signature, never
+      // the host name); credentials are verified only when given.
+      if (!body.sourceUrl) {
+        return HttpResponse.json(
+          { error: 'sourceUrl ist erforderlich, wenn sourceType CONFLUENCE ist' },
+          { status: 400 },
+        )
+      }
+      const detected: ConfluenceEdition = /atlassian\.net/i.test(body.sourceUrl)
+        ? 'CLOUD'
+        : 'DATA_CENTER'
+      const label = (edition: ConfluenceEdition) => (edition === 'CLOUD' ? 'Cloud' : 'Data Center')
+      if (body.confluenceEdition && body.confluenceEdition !== detected) {
+        return HttpResponse.json({
+          reachable: false,
+          confluenceEdition: detected,
+          credentialsVerified: false,
+          message: `Unter dieser Adresse antwortet Confluence ${label(detected)}, nicht ${label(body.confluenceEdition)}.`,
+        })
+      }
+      if (!body.sourceCredentials) {
+        return HttpResponse.json({
+          reachable: true,
+          confluenceEdition: detected,
+          credentialsVerified: false,
+          message:
+            detected === 'CLOUD'
+              ? 'Confluence Cloud erkannt. Geben Sie E-Mail-Adresse und API-Token des Dienstkontos ein.'
+              : 'Confluence Data Center erkannt. Geben Sie das Personal Access Token des Dienstkontos ein.',
+        })
+      }
+      if (detected === 'CLOUD' && !body.sourceCredentials.includes(':')) {
+        return HttpResponse.json({
+          reachable: false,
+          confluenceEdition: detected,
+          credentialsVerified: false,
+          message:
+            'Confluence Cloud erwartet E-Mail-Adresse und API-Token, getrennt durch einen Doppelpunkt (E-Mail:Token).',
+        })
+      }
+      return HttpResponse.json({
+        reachable: true,
+        confluenceEdition: detected,
+        credentialsVerified: true,
+        documentCount: mockConfluenceSpaces.length,
+        message: `Confluence ${label(detected)} erreichbar, Zugangsdaten gültig, ${mockConfluenceSpaces.length} lesbare Spaces.`,
+      })
     }
     if (body.sourceType === 'UPLOAD') {
       return HttpResponse.json(

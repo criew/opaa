@@ -1322,6 +1322,45 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/confluence/spaces:
+    post:
+      operationId: listConfluenceSpaces
+      tags: [library]
+      summary: >
+        List the spaces a Confluence token may read, for the space selection of a CONFLUENCE
+        library (ADR-0023, #1134).
+      description: >
+        Authenticates against the instance with the given credentials (Cloud: e-mail + API
+        token as HTTP Basic against /wiki/api/v2; Data Center: personal access token as Bearer
+        against /rest/api) and returns every readable space, following the instance's own
+        pagination to the end. A POST because the credentials travel in the body and no library
+        needs to exist yet. Permission bar like the connection test: any authenticated user
+        without libraryId, AssetRole.MANAGER on that library with it. Rate-limited like the
+        connection test (opaa.rate-limit.source-test) and subject to the same outbound target
+        validation - a private on-premises address needs its allowlist entry and the error
+        message says so. Credentials appear in no response and no error message.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfluenceSpaceListRequest"
+      responses:
+        "200":
+          description: The readable spaces.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfluenceSpaceListResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries/{libraryId}:
     parameters:
       - name: libraryId
@@ -4080,7 +4119,11 @@ components:
         visibility/... have no meaning before a library exists and would only invite a client
         to pass a half-filled LibraryRequest by mistake. Which fields are accepted depends on
         sourceType exactly like LibraryRequest; UPLOAD accepts none and is rejected outright
-        (there is nothing to test).
+        (there is nothing to test). CONFLUENCE (ADR-0023) works in two stages with the same
+        endpoint: with sourceUrl alone the instance's edition is detected without credentials
+        (response.confluenceEdition, credentialsVerified false); with sourceCredentials in the
+        detected edition's format the credentials are verified with a single request
+        (credentialsVerified true; the readable spaces come from the listing endpoint).
       properties:
         sourceType:
           $ref: "#/components/schemas/DocumentSourceType"
@@ -4136,6 +4179,14 @@ components:
             not-found/forbidden split every other library endpoint uses). The library's own
             sourceType must match this request's sourceType, otherwise 400. Absent, this behaves
             exactly like before #544 - a standalone test with no stored library to fall back to.
+        confluenceEdition:
+          description: >
+            Only for sourceType CONFLUENCE, optional: the edition the caller expects (normally the
+            one an earlier detection returned). The test always detects the edition itself and
+            reports a mismatch as not reachable rather than authenticating against the wrong API.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConfluenceEdition"
 
     SourceConnectionTestResponse:
       type: object
@@ -4158,11 +4209,75 @@ components:
             own SupportedDocumentFormats filter; HTTP_DIRECTORY: only the top-level listing,
             filtered the same way, not a recursive crawl of the whole tree; RSS_FEED: entries,
             capped at opaa.indexing.rss.max-entries like the run itself) - null when reachable
-            is false, since nothing could be counted.
+            is false, since nothing could be counted, and always null for CONFLUENCE, whose test
+            verifies the credentials with a single request and leaves counting to the space
+            listing endpoint.
         message:
           type: string
           description: German, user-facing summary of the result.
           example: Verzeichnis erreichbar, 42 Dokumente gefunden
+        confluenceEdition:
+          description: >
+            Only for sourceType CONFLUENCE: the edition detected from the instance's own response
+            signature (ADR-0023, Entscheidung 2) - the value a client passes on to LibraryRequest.
+            Absent when no Confluence was recognised or for other source types.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConfluenceEdition"
+        credentialsVerified:
+          type: boolean
+          nullable: true
+          description: >
+            Only for sourceType CONFLUENCE: whether the credentials were accepted by the instance.
+            false after a detection-only test (no credentials given) or when the instance rejected
+            them; absent for other source types.
+
+    ConfluenceSpaceListRequest:
+      type: object
+      required: [sourceUrl, confluenceEdition]
+      description: >
+        Connection data for listing the spaces a Confluence token may read (ADR-0023; the basis
+        of the wizard's space selection). Credentials are used for this one request only, never
+        persisted or echoed. With libraryId (an existing CONFLUENCE library the caller manages),
+        omitted credentials fall back to the stored ones when sourceUrl names the same origin -
+        the same rule the connection test applies.
+      properties:
+        sourceUrl:
+          type: string
+          format: uri
+          description: The instance's base address, normalised like LibraryRequest.sourceUrl.
+        confluenceEdition:
+          $ref: "#/components/schemas/ConfluenceEdition"
+        sourceCredentials:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Credentials in the edition's format (see LibraryRequest.sourceCredentials).
+        sourceProxy:
+          type: string
+          maxLength: 255
+          nullable: true
+        sourceInsecureSsl:
+          type: boolean
+          nullable: true
+          default: false
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+
+    ConfluenceSpaceListResponse:
+      type: object
+      required: [spaces]
+      description: >
+        Every space the credentials may read, fully paginated over both editions, in the
+        instance's order. An empty list is a valid answer (a token without any readable space),
+        distinct from an error.
+      properties:
+        spaces:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConfluenceSpaceRef"
 
     ScheduleFrequency:
       type: string

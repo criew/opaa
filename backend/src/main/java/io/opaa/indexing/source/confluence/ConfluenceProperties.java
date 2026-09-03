@@ -14,6 +14,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     value as-is and follow whatever page size the instance actually returns. Default 100. {@code
  *     0} falls back to the default; a negative value is rejected.
  * @param requestTimeout per-request timeout for JSON calls. Default 30 seconds.
+ * @param detectionTimeout per-probe timeout of the credential-free edition detection, which also
+ *     runs inside a library creation - kept short so a slow instance cannot hold a transaction and
+ *     a worker thread for long. Default 10 seconds.
  * @param maxRateLimitRetries how many consecutive {@code 429} responses one logical request
  *     survives before giving up with a rate-limit error. Default 6.
  * @param maxRetryAfter the longest single wait honoured from a {@code Retry-After} header; a longer
@@ -34,6 +37,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record ConfluenceProperties(
     int pageSize,
     Duration requestTimeout,
+    Duration detectionTimeout,
     int maxRateLimitRetries,
     Duration maxRetryAfter,
     long maxResponseBytes,
@@ -52,6 +56,9 @@ public record ConfluenceProperties(
     }
     if (requestTimeout == null || requestTimeout.isZero() || requestTimeout.isNegative()) {
       requestTimeout = Duration.ofSeconds(30);
+    }
+    if (detectionTimeout == null || detectionTimeout.isZero() || detectionTimeout.isNegative()) {
+      detectionTimeout = Duration.ofSeconds(10);
     }
     if (maxRateLimitRetries < 0) {
       throw new IllegalArgumentException(
@@ -83,6 +90,6 @@ public record ConfluenceProperties(
 
   /** All defaults - for callers and tests that need a properties instance without configuration. */
   public static ConfluenceProperties defaults() {
-    return new ConfluenceProperties(0, null, 0, null, 0, 0, null, 0);
+    return new ConfluenceProperties(0, null, null, 0, null, 0, 0, null, 0);
   }
 }

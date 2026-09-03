@@ -126,7 +126,8 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
             Clock.systemDefaultZone(),
             storageQuotaService,
             folderRepository,
-            eventPublisher);
+            eventPublisher,
+            org.mockito.Mockito.mock(ConfluenceConnectionService.class));
 
     ownerId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();

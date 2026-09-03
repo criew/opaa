@@ -96,7 +96,8 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             Clock.systemDefaultZone(),
             storageQuotaService,
             folderRepository,
-            eventPublisher);
+            eventPublisher,
+            org.mockito.Mockito.mock(ConfluenceConnectionService.class));
 
     ownerId = UUID.randomUUID();
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");

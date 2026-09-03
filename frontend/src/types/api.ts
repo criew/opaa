@@ -78,6 +78,8 @@ export type DocumentStatus = components['schemas']['DocumentStatus']
 export type DocumentSourceType = components['schemas']['DocumentSourceType']
 export type ConfluenceEdition = components['schemas']['ConfluenceEdition']
 export type ConfluenceSpaceRef = components['schemas']['ConfluenceSpaceRef']
+export type ConfluenceSpaceListRequest = components['schemas']['ConfluenceSpaceListRequest']
+export type ConfluenceSpaceListResponse = components['schemas']['ConfluenceSpaceListResponse']
 export type LibraryDocumentResponse = components['schemas']['LibraryDocumentResponse']
 export type LibraryDocumentPageResponse = components['schemas']['LibraryDocumentPageResponse']
 

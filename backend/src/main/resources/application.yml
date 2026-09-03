@@ -166,6 +166,7 @@ opaa:
     confluence:
       page-size: ${OPAA_INDEXING_CONFLUENCE_PAGE_SIZE:100}
       request-timeout: ${OPAA_INDEXING_CONFLUENCE_REQUEST_TIMEOUT:30s}
+      detection-timeout: ${OPAA_INDEXING_CONFLUENCE_DETECTION_TIMEOUT:10s}
       max-rate-limit-retries: ${OPAA_INDEXING_CONFLUENCE_MAX_RATE_LIMIT_RETRIES:6}
       max-retry-after: ${OPAA_INDEXING_CONFLUENCE_MAX_RETRY_AFTER:2m}
       max-response-bytes: ${OPAA_INDEXING_CONFLUENCE_MAX_RESPONSE_BYTES:10485760}

@@ -8,6 +8,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.SupportedDocumentFormats;
+import io.opaa.indexing.source.confluence.ConfluenceSpace;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedEntry;
 import io.opaa.indexing.source.rss.RssFeedParseException;
@@ -42,12 +43,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Tests a source configuration <em>before</em> a library is created (#514) - the same three checks
- * {@link KnowledgeLibraryService#createLibrary} and the corresponding {@code
+ * Tests a source configuration <em>before</em> a library is created (#514) - the same checks {@link
+ * KnowledgeLibraryService#createLibrary} and the corresponding {@code
  * io.opaa.indexing.source.SourceIndexingExecutor} would otherwise only surface much later, at the
  * first indexing run: whether a FILESYSTEM directory exists and is readable, whether an
- * HTTP_DIRECTORY page answers under the configured proxy/credentials/certificate settings, and
- * whether an RSS_FEED URL serves a parseable feed.
+ * HTTP_DIRECTORY page answers under the configured proxy/credentials/certificate settings, whether
+ * an RSS_FEED URL serves a parseable feed, and - for CONFLUENCE (ADR-0023) - which edition an
+ * address is and whether the credentials fit it ({@link ConfluenceConnectionService}).
  *
  * <p><b>Same building blocks as the real runs, deliberately</b> (issue #514): {@link
  * SourceHttpClientFactory#buildHttpClient} and {@link SourceHttpClientFactory#buildAuthHeader} are
@@ -74,8 +76,9 @@ import org.springframework.stereotype.Service;
  * {@code RateLimitConfiguration} additionally caps this endpoint per IP and globally, the same way
  * it already does for the indexing trigger. No response ever reveals more about a directory's
  * contents than a count - never a file name, a listing, or an exception's raw text. Target
- * validation for HTTP_DIRECTORY/RSS_FEED addresses themselves (blocking internal/private ranges)
- * remains #267's responsibility, same as for the indexing run this tests - see
+ * validation for the URL-based types' addresses themselves (blocking internal/private ranges,
+ * {@code TargetAddressValidator}) applies to every fetch here exactly as to the indexing run - for
+ * CONFLUENCE including the credential-free edition probes and the proxy host - see
  * docs/features/knowledge-sources.md.
  *
  * <p><b>Testing an existing library's stored quellkonfiguration (#544).</b> {@link
@@ -117,6 +120,7 @@ public class SourceConnectionTestService {
   private final long maxFeedSizeBytes;
   private final int maxFeedEntries;
   private final TargetAddressValidator targetAddressValidator;
+  private final ConfluenceConnectionService confluenceConnectionService;
 
   public SourceConnectionTestService(
       DocumentService documentService,
@@ -126,7 +130,8 @@ public class SourceConnectionTestService {
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
       IndexingProperties properties,
-      TargetAddressValidator targetAddressValidator) {
+      TargetAddressValidator targetAddressValidator,
+      ConfluenceConnectionService confluenceConnectionService) {
     this.documentService = documentService;
     this.crawlerService = crawlerService;
     this.rssFeedParser = rssFeedParser;
@@ -138,6 +143,7 @@ public class SourceConnectionTestService {
     this.maxFeedSizeBytes = properties.rss().maxFeedSizeBytes();
     this.maxFeedEntries = properties.rss().maxEntries();
     this.targetAddressValidator = targetAddressValidator;
+    this.confluenceConnectionService = confluenceConnectionService;
   }
 
   /**
@@ -176,10 +182,86 @@ public class SourceConnectionTestService {
       case FILESYSTEM -> testFilesystem(effectiveRequest);
       case HTTP_DIRECTORY -> testHttpDirectory(effectiveRequest);
       case RSS_FEED -> testRssFeed(effectiveRequest);
-      case CONFLUENCE ->
-          throw new ValidationException(
-              "Der Verbindungstest für Confluence-Bibliotheken ist noch nicht verfügbar.");
+      case CONFLUENCE -> testConfluence(effectiveRequest);
     };
+  }
+
+  /**
+   * ADR-0023, #1134: detects the edition without credentials and, when credentials are given,
+   * verifies them and counts the readable spaces. {@code sourceCredentials} may already be the
+   * stored fallback (same origin, {@link #withStoredCredentialsIfOmitted}). An instance problem is
+   * the test's result, not an exception.
+   */
+  private SourceConnectionTestResult testConfluence(SourceConnectionTest request) {
+    if (request.sourcePath() != null && !request.sourcePath().isBlank()) {
+      throw new ValidationException("sourcePath ist für sourceType CONFLUENCE nicht zulässig");
+    }
+    if (request.sourceUrl() == null) {
+      throw new ValidationException("sourceUrl ist erforderlich, wenn sourceType CONFLUENCE ist");
+    }
+    ConfluenceConnectionService.Probe probe;
+    try {
+      probe =
+          confluenceConnectionService.probe(
+              request.sourceUrl().toString(),
+              blankToNull(request.sourceProxy()),
+              blankToNull(request.sourceCredentials()),
+              Boolean.TRUE.equals(request.sourceInsecureSsl()),
+              request.confluenceEdition());
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return unreachable("Der Verbindungstest wurde unterbrochen.");
+    }
+    return new SourceConnectionTestResult(
+        probe.reachable(),
+        probe.message(),
+        probe.readableSpaces(),
+        probe.detectedEdition(),
+        probe.credentialsVerified());
+  }
+
+  /**
+   * The spaces a Confluence token may read (ADR-0023), for the wizard's selection - the same
+   * permission bar, stored-credentials fallback and proxy/TLS forcing as {@link #test}, through the
+   * very same {@link #withStoredCredentialsIfOmitted}, so the two paths cannot drift apart.
+   */
+  public List<ConfluenceSpace> listConfluenceSpaces(
+      ConfluenceSpaceListing request, CurrentUser caller) {
+    if (request.sourceUrl() == null) {
+      throw new ValidationException("sourceUrl ist erforderlich");
+    }
+    SourceConnectionTest effective =
+        new SourceConnectionTest(
+            DocumentSourceType.CONFLUENCE,
+            null,
+            request.sourceUrl(),
+            request.sourceProxy(),
+            request.sourceCredentials(),
+            request.sourceInsecureSsl(),
+            request.libraryId(),
+            request.confluenceEdition());
+    if (request.libraryId() != null) {
+      KnowledgeLibrary library = requireManagedLibrary(request.libraryId(), caller);
+      if (library.getSourceType() != DocumentSourceType.CONFLUENCE) {
+        throw new ValidationException("Die Bibliothek ist keine Confluence-Bibliothek");
+      }
+      effective = withStoredCredentialsIfOmitted(effective, library);
+    }
+    String credentials = blankToNull(effective.sourceCredentials());
+    if (credentials == null) {
+      throw new ValidationException("sourceCredentials sind für die Space-Auflistung erforderlich");
+    }
+    try {
+      return confluenceConnectionService.listSpaces(
+          effective.sourceUrl().toString(),
+          effective.confluenceEdition(),
+          blankToNull(effective.sourceProxy()),
+          credentials,
+          Boolean.TRUE.equals(effective.sourceInsecureSsl()));
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ValidationException("Die Space-Auflistung wurde unterbrochen.");
+    }
   }
 
   /**
@@ -245,7 +327,8 @@ public class SourceConnectionTestService {
         library.getSourceProxy(),
         library.getSourceCredentials(),
         library.isSourceInsecureSsl(),
-        request.libraryId());
+        request.libraryId(),
+        request.confluenceEdition());
   }
 
   private SourceConnectionTestResult testFilesystem(SourceConnectionTest request) {

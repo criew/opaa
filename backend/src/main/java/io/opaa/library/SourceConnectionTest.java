@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import java.net.URI;
 import java.util.UUID;
@@ -19,4 +20,5 @@ public record SourceConnectionTest(
     String sourceProxy,
     String sourceCredentials,
     Boolean sourceInsecureSsl,
-    UUID libraryId) {}
+    UUID libraryId,
+    ConfluenceEdition confluenceEdition) {}
