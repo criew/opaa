@@ -16,6 +16,7 @@ import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.llm.LlmModel;
 import io.opaa.llm.LlmModelConnectionTester;
 import io.opaa.llm.LlmModelService;
+import io.opaa.llm.RerankRoleState;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.llm.RerankRoleStatusProvider;
 import io.opaa.query.QueryProperties;
@@ -139,12 +140,58 @@ class SearchStatusProbeCacheTest {
     assertThat(conditionOf(status, ModelRole.CHAT)).isEqualTo(ModelRoleCondition.ACTIVE);
   }
 
+  /**
+   * The finding #1154 exists for: a reachable but slow rerank endpoint must not read as the same
+   * "antwortet nicht" a genuinely dead one gets - the two need different remedies (raise {@code
+   * OPAA_RERANK_TIMEOUT} vs. fix the endpoint).
+   */
+  @Test
+  void aTimedOutRerankEndpointIsReportedDifferentlyFromAGenuinelyUnreachableOne() {
+    when(rerankRoleStatusProvider.currentStatus())
+        .thenReturn(
+            new RerankRoleStatus(
+                RerankRoleState.UNREACHABLE,
+                "http://reranker.example.invalid",
+                "bge-reranker",
+                "request timed out",
+                true));
+
+    String detail = detailOf(service.statusForOrganization(ORGANIZATION_ID), ModelRole.RERANK);
+
+    assertThat(detail).contains("OPAA_RERANK_TIMEOUT");
+    assertThat(detail).doesNotContain("antwortet nicht");
+  }
+
+  @Test
+  void aRefusedConnectionKeepsTheOriginalUnreachableWording() {
+    when(rerankRoleStatusProvider.currentStatus())
+        .thenReturn(
+            new RerankRoleStatus(
+                RerankRoleState.UNREACHABLE,
+                "http://reranker.example.invalid",
+                "bge-reranker",
+                "connection refused"));
+
+    String detail = detailOf(service.statusForOrganization(ORGANIZATION_ID), ModelRole.RERANK);
+
+    assertThat(detail).contains("antwortet nicht");
+    assertThat(detail).doesNotContain("OPAA_RERANK_TIMEOUT");
+  }
+
   private static ModelRoleCondition conditionOf(SearchStatus status, ModelRole role) {
     return status.modelRoles().stream()
         .filter(r -> r.role() == role)
         .findFirst()
         .orElseThrow()
         .condition();
+  }
+
+  private static String detailOf(SearchStatus status, ModelRole role) {
+    return status.modelRoles().stream()
+        .filter(r -> r.role() == role)
+        .findFirst()
+        .orElseThrow()
+        .detail();
   }
 
   /** A {@link Clock} whose instant the test moves by hand instead of waiting out the TTL. */

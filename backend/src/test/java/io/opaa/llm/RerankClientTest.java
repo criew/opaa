@@ -151,19 +151,55 @@ class RerankClientTest {
   }
 
   @Test
-  void aRefusedConnectionIsReportedAsUnavailable() {
+  void aRefusedConnectionIsReportedAsUnavailableButNotAsATimeout() {
     // Port 1 on loopback: nothing listens there, and no DNS lookup is involved.
     RerankProperties unreachable =
         new RerankProperties(true, "http://127.0.0.1:1/v1", "m", "", Duration.ofSeconds(2));
 
-    assertThat(client.probeFailureMessage(unreachable)).isNotBlank();
+    RerankClient.ProbeFailure failure = client.probe(unreachable);
+
+    assertThat(failure).isNotNull();
+    assertThat(failure.message()).isNotBlank();
+    assertThat(failure.timedOut()).isFalse();
   }
 
   @Test
-  void aReachableEndpointProbesWithoutAFailureMessage() {
+  void aReachableEndpointProbesWithoutAFailure() {
     respond("[{\"index\":0,\"score\":1.0}]", new AtomicReference<>());
 
-    assertThat(client.probeFailureMessage(properties(""))).isNull();
+    assertThat(client.probe(properties(""))).isNull();
+  }
+
+  /**
+   * The finding #1154 exists for: an endpoint that is reachable but too slow for the configured
+   * budget must be reported as a timeout, not folded into the same "unreachable" bucket as a
+   * refused connection - the two need different remedies (raise the timeout vs. fix the endpoint).
+   */
+  @Test
+  void anEndpointThatAnswersAfterTheTimeoutIsReportedAsATimeoutNotARefusedConnection() {
+    server.createContext(
+        "/v1/rerank",
+        exchange -> {
+          try {
+            Thread.sleep(500);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          byte[] response = "[{\"index\":0,\"score\":1.0}]".getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, response.length);
+          try (OutputStream out = exchange.getResponseBody()) {
+            out.write(response);
+          }
+        });
+    RerankProperties slow =
+        new RerankProperties(true, baseUrl, "bge-reranker", "", Duration.ofMillis(50));
+
+    assertThatThrownBy(() -> client.rerank(slow, "Frage", List.of("a")))
+        .isInstanceOf(RerankClient.RerankTimeoutException.class);
+
+    RerankClient.ProbeFailure failure = client.probe(slow);
+    assertThat(failure).isNotNull();
+    assertThat(failure.timedOut()).isTrue();
   }
 
   @Test

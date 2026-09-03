@@ -50,10 +50,14 @@ class RerankRoleStartupCheck implements ApplicationListener<ApplicationReadyEven
             || status.state() == RerankRoleState.UNREACHABLE;
     if (contradictsIntent) {
       log.error(
-          "Rerank role is switched on but not usable (state {}): {}. Endpoint: {}. Retrieval "
+          "Rerank role is switched on but not usable (state {}{}): {}. Endpoint: {}. Retrieval "
               + "continues without reranking; the state stays readable via "
               + "RerankRoleStatusProvider#currentStatus.",
           status.state(),
+          // A timeout means the endpoint answered the connection but not within
+          // opaa.rerank.timeout - worth calling out separately, because it is a tuning question,
+          // not evidence the endpoint is down (#1154).
+          status.timedOut() ? ", timed out rather than unreachable" : "",
           status.diagnostic(),
           status.baseUrl() == null ? "(none configured)" : status.baseUrl());
       return;

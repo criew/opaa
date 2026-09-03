@@ -136,6 +136,19 @@ public class RerankClient {
   }
 
   /**
+   * The request ran into {@link RerankProperties#timeout()} before the endpoint answered - distinct
+   * from every other {@link RerankUnavailableException}, whose causes (refused connection, unknown
+   * host, TLS failure) mean the endpoint could not be reached at all. A timeout means the opposite:
+   * something answered the connection, it simply did not finish within budget (#1154) - a CPU
+   * reranker under its normal candidate load is the expected case, not a Störung of the same kind.
+   */
+  public static class RerankTimeoutException extends RerankUnavailableException {
+    public RerankTimeoutException(String message, Throwable cause) {
+      super(message, cause);
+    }
+  }
+
+  /**
    * Scores {@code documents} against {@code query}, best first.
    *
    * @return one entry per document the endpoint scored, sorted by descending score. An endpoint may
@@ -188,7 +201,11 @@ public class RerankClient {
         return parse(readBounded(responseBody), documents.size());
       }
     } catch (IOException e) {
-      throw new RerankUnavailableException(describeConnectionError(e), e);
+      String message = describeConnectionError(e);
+      if (e instanceof HttpTimeoutException || e instanceof SocketTimeoutException) {
+        throw new RerankTimeoutException(message, e);
+      }
+      throw new RerankUnavailableException(message, e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new RerankUnavailableException("the call was interrupted", e);
@@ -196,17 +213,25 @@ public class RerankClient {
   }
 
   /**
+   * A probe's outcome, carrying whether the failure was a timeout rather than a genuinely
+   * unreachable endpoint - see {@link RerankTimeoutException}.
+   */
+  public record ProbeFailure(String message, boolean timedOut) {}
+
+  /**
    * Probes the endpoint with a single, minimal document - the same request shape a real call uses,
    * because an endpoint that answers a health check but rejects a rerank request is not usable.
    *
-   * @return the failure message, or {@code null} when the endpoint answered.
+   * @return the failure, or {@code null} when the endpoint answered.
    */
-  public String probeFailureMessage(RerankProperties properties) {
+  public ProbeFailure probe(RerankProperties properties) {
     try {
       rerank(properties, "Ping", List.of("Ping"));
       return null;
+    } catch (RerankTimeoutException e) {
+      return new ProbeFailure(e.getMessage(), true);
     } catch (RerankUnavailableException e) {
-      return e.getMessage();
+      return new ProbeFailure(e.getMessage(), false);
     }
   }
 

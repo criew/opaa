@@ -42,7 +42,7 @@ class RerankModelRoleTest {
     assertThat(status.state()).isEqualTo(RerankRoleState.DISABLED);
     assertThat(status.diagnostic()).isNull();
     assertThat(role.usable()).isFalse();
-    verify(client, never()).probeFailureMessage(any());
+    verify(client, never()).probe(any());
   }
 
   @Test
@@ -57,7 +57,7 @@ class RerankModelRoleTest {
     assertThat(status.modelIdentifier()).isNull();
     assertThat(status.diagnostic()).contains("opaa.rerank.base-url");
     assertThat(role.usable()).isFalse();
-    verify(client, never()).probeFailureMessage(any());
+    verify(client, never()).probe(any());
   }
 
   /** Half a configuration is no configuration: an endpoint without a model cannot be called. */
@@ -84,7 +84,7 @@ class RerankModelRoleTest {
   @Test
   void aBoundRoleWhoseEndpointAnswersIsReadyAfterTheProbe() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probeFailureMessage(any())).thenReturn(null);
+    when(client.probe(any())).thenReturn(null);
     RerankModelRole role = role(client, true, ENDPOINT, "m");
 
     assertThat(role.refresh().state()).isEqualTo(RerankRoleState.READY);
@@ -96,7 +96,8 @@ class RerankModelRoleTest {
   @Test
   void aBoundRoleWhoseEndpointStaysSilentIsUnreachable() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probeFailureMessage(any())).thenReturn("connection refused");
+    when(client.probe(any()))
+        .thenReturn(new RerankClient.ProbeFailure("connection refused", false));
     RerankModelRole role = role(client, true, ENDPOINT, "m");
 
     RerankRoleStatus status = role.refresh();
@@ -110,7 +111,7 @@ class RerankModelRoleTest {
   @Test
   void neitherTheStatusNorTheUsabilityCheckProbes() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probeFailureMessage(any())).thenReturn(null);
+    when(client.probe(any())).thenReturn(null);
     RerankModelRole role = role(client, true, ENDPOINT, "m");
     role.refresh();
 
@@ -119,14 +120,14 @@ class RerankModelRoleTest {
       role.usable();
     }
 
-    verify(client, org.mockito.Mockito.times(1)).probeFailureMessage(any());
+    verify(client, org.mockito.Mockito.times(1)).probe(any());
   }
 
   /** A failed call is a state change, not an exception the query has to survive. */
   @Test
   void aFailedCallYieldsNoScoresAndMovesTheRoleToUnreachable() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probeFailureMessage(any())).thenReturn(null);
+    when(client.probe(any())).thenReturn(null);
     when(client.rerank(any(), anyString(), any()))
         .thenThrow(new RerankUnavailableException("endpoint not reachable"));
     RerankModelRole role = role(client, true, ENDPOINT, "m");
@@ -135,6 +136,40 @@ class RerankModelRoleTest {
     assertThat(role.rerank("Frage", List.of("a"))).isEmpty();
     assertThat(role.currentStatus().state()).isEqualTo(RerankRoleState.UNREACHABLE);
     assertThat(role.currentStatus().diagnostic()).isEqualTo("endpoint not reachable");
+    assertThat(role.currentStatus().timedOut()).isFalse();
+  }
+
+  /**
+   * The finding #1154 exists for: a call that ran into the configured timeout still moves the role
+   * to {@link RerankRoleState#UNREACHABLE} - a run must fall back to the fused order either way -
+   * but the status keeps that the endpoint was merely slow, not unreachable.
+   */
+  @Test
+  void aTimedOutCallMovesTheRoleToUnreachableButMarksItAsTimedOut() {
+    RerankClient client = mock(RerankClient.class);
+    when(client.probe(any())).thenReturn(null);
+    when(client.rerank(any(), anyString(), any()))
+        .thenThrow(new RerankClient.RerankTimeoutException("request timed out", null));
+    RerankModelRole role = role(client, true, ENDPOINT, "m");
+    role.refresh();
+
+    assertThat(role.rerank("Frage", List.of("a"))).isEmpty();
+    assertThat(role.currentStatus().state()).isEqualTo(RerankRoleState.UNREACHABLE);
+    assertThat(role.currentStatus().diagnostic()).isEqualTo("request timed out");
+    assertThat(role.currentStatus().timedOut()).isTrue();
+  }
+
+  /** The same distinction holds for the startup/scheduled probe, not only for a live call. */
+  @Test
+  void aProbeThatTimesOutMarksTheStatusAsTimedOut() {
+    RerankClient client = mock(RerankClient.class);
+    when(client.probe(any())).thenReturn(new RerankClient.ProbeFailure("request timed out", true));
+    RerankModelRole role = role(client, true, ENDPOINT, "m");
+
+    RerankRoleStatus status = role.refresh();
+
+    assertThat(status.state()).isEqualTo(RerankRoleState.UNREACHABLE);
+    assertThat(status.timedOut()).isTrue();
   }
 
   @Test
@@ -196,7 +231,8 @@ class RerankModelRoleTest {
   @Test
   void noStateEverCarriesTheAccessKey() {
     RerankClient client = mock(RerankClient.class);
-    when(client.probeFailureMessage(any())).thenReturn("connection refused");
+    when(client.probe(any()))
+        .thenReturn(new RerankClient.ProbeFailure("connection refused", false));
     RerankModelRole unreachable = role(client, true, ENDPOINT, "m");
     unreachable.refresh();
 
