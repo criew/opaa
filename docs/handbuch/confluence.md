@@ -262,10 +262,13 @@ sendet — Wiederholungen nach `429` und Anhangs-Downloads eingerechnet. Ist es 
 wird fortgesetzt“**, ein Protokolleintrag „Anfragebudget erschöpft“ nennt, wo der nächste Lauf ansetzt.
 
 - **Vollabgleich:** Der Fortschritt je Space ist gespeichert (auch über einen Neustart hinweg); der
-  nächste Lauf beginnt mit den offenen Spaces. Ein angebrochener Space wird erneut aufgelistet; bereits
-  gespeicherte Seiten kosten dabei nur einen Auflistungseintrag (Versionsvergleich vor dem Abruf), geholt
-  wird nur, was fehlt. Ein unvollständiger Vollabgleich **bereinigt nichts** — die Auflistung war nicht
-  vollständig.
+  nächste Lauf beginnt mit den offenen Spaces. Ein angebrochener Space wird erneut aufgelistet; eine
+  bereits in der aufgelisteten Version gespeicherte Seite kostet dabei **keinen Aufruf** — auch keine
+  Anhangsliste (neue Anhänge an solchen Seiten kommen mit dem nächsten vollständigen Vollabgleich) —,
+  geholt wird nur, was fehlt. So konvergiert die Kette der Wiederaufnahmeläufe. Ein unvollständiger
+  Vollabgleich **bereinigt nichts** — die Auflistung war nicht vollständig. Hat ein Lauf trotz
+  erschöpftem Budget **keine Seite neu aufgenommen**, steht das als Fehler im Protokoll („reicht für
+  diese Bibliothek nicht aus“): Budget anheben oder Auswahl aufteilen.
 - **Inkrementell:** Der Anker bleibt stehen; der nächste Lauf durchsucht dasselbe Fenster erneut.
 - **Webhook-Lauf:** Die übrigen gemeldeten Seiten nimmt der nächste Lauf auf.
 
@@ -274,9 +277,11 @@ Anhangs-Downloads und einen Anteil der Auflistung (100 Seiten je Anfrage). 50 00
 rund 20 000 Seiten je Lauf. Eine Auswahl von 100 000 Seiten braucht für den ersten Vollabgleich also
 etwa fünf Läufe — bei täglichem Zeitplan eine Arbeitswoche, danach sind inkrementelle Läufe klein. Das
 Budget ist **kein** Schutz vor der Bremse der Instanz (das leistet Abschnitt 6.1), sondern eine Grenze für
-die Dauer eines einzelnen Laufs; wer es kleiner setzt als ein einzelner großer Space an Anfragen braucht,
-erlebt Läufe, die denselben Space immer wieder auflisten und wenig hinzugewinnen — dann das Budget
-anheben oder den Space in eine eigene Bibliothek nehmen. `0` schaltet das Budget ab.
+die Dauer eines einzelnen Laufs. Es muss die Auflistung eines Spaces plus eine Handvoll Seiten
+übersteigen, sonst kommt kein Lauf voran — das meldet der Lauf dann selbst als Fehler. Das Budget gilt
+nur für Läufe; Verbindungstest und Editionserkennung zählen nicht dagegen. `0` schaltet das Budget ab.
+Gemessen (Container-Suite, PR #1205): 13 Aufrufe für einen Vollabgleich über 4 Seiten mit 2 Anhängen,
+6 Aufrufe für einen inkrementellen Lauf mit einer Änderung.
 
 ### 6.3 Kennzahlen lesen
 
@@ -345,7 +350,8 @@ Auswertungen über viele Läufe.
 | „Edition erkennen“ findet kein Confluence | Falscher Pfad (Kontextpfad fehlt), Proxy nötig, Instanz hinter Anmeldung ohne REST-Zugang | Adresse mit Kontextpfad; Proxy eintragen; `curl <adresse>/rest/api/space?limit=1` aus dem Backend-Netz |
 | Data Center: Verbindungstest meldet Token „nicht angenommen“, obwohl es im Browser geht | PAT ungültig/abgelaufen oder Konto darf REST nicht nutzen — DC antwortet anonym | Neues PAT; Rechte des Kontos prüfen |
 | Verbindungstest gut, aber Space-Auswahl leer | Konto hat auf keinen Space „Ansehen“ | Space-Rechte des Dienstkontos setzen |
-| Läufe enden ständig „unvollständig, wird fortgesetzt“ | Budget kleiner als ein einzelner Space braucht; oder sehr große Auswahl | Abschnitt 6.2: Budget anheben, Auswahl aufteilen |
+| Läufe enden ständig „unvollständig, wird fortgesetzt“, Bestand wächst aber | Sehr große Auswahl, erster Vollabgleich braucht mehrere Läufe | Normal; abwarten oder Budget anheben (Abschnitt 6.2) |
+| Läufe enden unvollständig **mit** Fehler „reicht für diese Bibliothek nicht aus“ | Budget kleiner als die Auflistung eines Spaces plus einige Seiten | Budget anheben oder Auswahl aufteilen |
 | Läufe brechen mit Ratenbegrenzung ab | Mehr als 6 aufeinanderfolgende `429`; Cloud-Punktebudget durch parallele Läufe erschöpft | Zeitpläne entzerren; `MAX_RATE_LIMIT_RETRIES`/`MAX_RETRY_AFTER` anheben |
 | Webhook: kein Lauf nach einer Änderung | Eingang von Confluence aus nicht erreichbar; Geheimnis falsch (Confluence erhält `401`); Ereignis ohne Seiten-ID; Stapel wartet auf laufenden Lauf | Backend-Log „Rejected Confluence webhook … not authenticated“ → Geheimnis neu erzeugen und in Confluence eintragen; Erreichbarkeit vom Confluence-Host prüfen; Laufhistorie auf laufenden Lauf prüfen |
 | Webhook: `413` | Nachricht größer als 256 KiB | Body der Automation-Regel auf die Seiten-ID beschränken |
