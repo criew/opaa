@@ -78,14 +78,43 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long countByLibraryId(UUID libraryId);
 
   /**
-   * Backs {@code KnowledgeLibraryService#listDocuments}'s paging and optional stichwort search: a
-   * page of a library's documents, plus the total across all pages the caller's paging controls
-   * need. {@code q} is matched as a case-insensitive substring of the file name when present, or
-   * ignored entirely when {@code null} or blank - {@link #findByLibraryId(UUID, Pageable)} below
-   * backs that second case.
+   * The paged search behind {@code KnowledgeLibraryService#listDocuments} with {@code q} (#1184,
+   * ADR-0022 Entscheidung 5): top-level documents only ({@code parentDocumentId IS NULL}), matching
+   * either their own file name or - via {@code attachmentRootIds}, resolved by the caller from
+   * matching attachment rows - an attachment anywhere in their subtree. {@code escapedQ} must have
+   * {@code \}, {@code %} and {@code _} backslash-escaped by the caller (see {@code
+   * KnowledgeLibraryService#escapeLike}); the hand-written LIKE has no automatic escaping the way
+   * the derived {@code ...ContainingIgnoreCase} finders do.
    */
-  Page<Document> findByLibraryIdAndFileNameContainingIgnoreCase(
-      UUID libraryId, String fileNameQuery, Pageable pageable);
+  @Query(
+      """
+      SELECT d FROM Document d
+      WHERE d.libraryId = :libraryId AND d.parentDocumentId IS NULL
+        AND (LOWER(d.fileName) LIKE LOWER(CONCAT('%', :escapedQ, '%')) ESCAPE '\\'
+             OR d.id IN :attachmentRootIds)
+      """)
+  Page<Document> searchTopLevelByFileNameOrAttachmentRoot(
+      @Param("libraryId") UUID libraryId,
+      @Param("escapedQ") String escapedQ,
+      @Param("attachmentRootIds") Collection<UUID> attachmentRootIds,
+      Pageable pageable);
+
+  /**
+   * Every attachment row of {@code libraryId} whose file name matches {@code q} case-insensitively
+   * - the first step of the attachment-aware search above: the caller walks each hit up its {@code
+   * parentDocumentId} chain to the top-level root before paging. Derived query, so LIKE
+   * metacharacters in {@code q} are escaped automatically.
+   */
+  List<Document> findByLibraryIdAndParentDocumentIdIsNotNullAndFileNameContainingIgnoreCase(
+      UUID libraryId, String q);
+
+  /**
+   * The attachment rows of every parent in {@code parentDocumentIds}, ordered by {@code filePath}
+   * (which embeds the extraction-order index for mail attachments, ADR-0022 Entscheidung 2) - backs
+   * {@code KnowledgeLibraryService#listDocuments}'s per-page subtree expansion (#1184), called once
+   * per nesting level, not once per parent.
+   */
+  List<Document> findByParentDocumentIdInOrderByFilePathAsc(Collection<UUID> parentDocumentIds);
 
   Page<Document> findByLibraryId(UUID libraryId, Pageable pageable);
 
@@ -99,9 +128,12 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   /**
    * The library root's counterpart to {@link #findByLibraryIdAndFolderId} - backs {@code GET
    * .../documents} with no {@code folderId} and no {@code q}, ADR-0020's convention that a {@code
-   * null folder_id} means the library's root.
+   * null folder_id} means the library's root. Top-level documents only since #1184: an attachment
+   * ({@code parentDocumentId} set) is never paged independently, it rides along with its parent
+   * (see {@link #findByParentDocumentIdInOrderByFilePathAsc}).
    */
-  Page<Document> findByLibraryIdAndFolderIdIsNull(UUID libraryId, Pageable pageable);
+  Page<Document> findByLibraryIdAndFolderIdIsNullAndParentDocumentIdIsNull(
+      UUID libraryId, Pageable pageable);
 
   /**
    * The recursive document counts of a set of folders - each folder's own documents plus every

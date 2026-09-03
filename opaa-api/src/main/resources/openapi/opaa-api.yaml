@@ -1432,6 +1432,14 @@ paths:
         endpoint's root-only response is therefore identical to its pre-#821 one until someone
         creates a folder and uploads into it - at which point browsing into that folder is exactly
         what folderId is for (frontend navigation follows in #822).
+
+        **Attachment-aware since #1184 (ADR-0022, Entscheidung 5).** Documents carrying a
+        parentDocumentId (attachments of a mail, an RSS entry, ...) are never paged, sorted or
+        counted independently: page/size/totalElements and the fileName order all operate on
+        top-level documents only, and each returned top-level document brings its complete
+        (transitive) attachment subtree along on the same page, in file_path order. A q search
+        additionally matches attachment file names: a hit on an attachment returns its top-level
+        parent (with all its attachments), so the group stays visible.
       parameters:
         - name: page
           in: query
@@ -1455,7 +1463,9 @@ paths:
           required: false
           description: >
             Case-insensitive substring match against the document's file name, searched across the
-            whole library regardless of folderId (#821).
+            whole library regardless of folderId (#821). Also matches attachment file names: a hit
+            on an attachment surfaces its top-level parent document together with all of that
+            parent's attachments (#1184).
           schema:
             type: string
         - name: folderId
@@ -4630,6 +4640,17 @@ components:
           description: >
             The document's folder chain as a display path, e.g. "Protokolle/2026" (#821) - derived
             from library_folders, never stored. Null for a root-level document (folderId null).
+        parentDocumentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            Set when this document is an attachment of another document in the same library
+            (ADR-0022, Entscheidung 4) - e.g. a PDF attached to an indexed mail, or a file linked
+            from an RSS entry's detail page. Null for every top-level document. In GET
+            .../documents responses an attachment row always follows its (transitive) top-level
+            parent within the same page, so a client can group attachments under their parent
+            without a second request (#1184).
 
     LibraryFolderListItem:
       type: object
@@ -4673,6 +4694,12 @@ components:
       properties:
         items:
           type: array
+          description: >
+            Top-level documents in the requested order, each immediately followed by its attachment
+            rows - every (transitive) attachment of a top-level document, in file_path order, each
+            carrying parentDocumentId (#1184, ADR-0022 Entscheidung 5). Paging, sorting and
+            totalElements operate on the top-level documents only; attachments always appear on
+            their parent's page.
           items:
             $ref: "#/components/schemas/LibraryDocumentResponse"
         page:
@@ -4684,7 +4711,10 @@ components:
         totalElements:
           type: integer
           format: int64
-          description: Total number of documents matching the (optional) q filter, across all pages.
+          description: >
+            Total number of top-level documents matching the (optional) q filter, across all pages
+            (#1184): attachments never count towards totalElements or the page size - they ride
+            along with their parent (see items), so a page may contain more than size rows.
         folderId:
           type: string
           format: uuid
