@@ -20,6 +20,7 @@ import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.net.URI;
 import java.nio.file.Files;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -81,8 +82,11 @@ class ConfluenceDataCenterAccessTest {
         .isFalse();
 
     client(confluence.adminToken()).verifyCredentials();
+    // pinned to the mechanism, not just the class: Data Center serves an unknown token anonymously
+    // (HTTP 200) - should Atlassian ever switch to 401, this line is what tells us
     assertThatThrownBy(() -> client("kein-gueltiges-token").verifyCredentials())
         .isInstanceOf(ConfluenceAccessException.Authentication.class)
+        .hasMessageContaining("anonym")
         .satisfies(e -> assertThat(e.getMessage()).doesNotContain("kein-gueltiges-token"));
   }
 
@@ -182,6 +186,11 @@ class ConfluenceDataCenterAccessTest {
     Optional<ConfluencePage> trashed = admin.fetchPage(confluence.trashedPageId());
     assertThat(trashed).isPresent();
     assertThat(trashed.get().status()).isEqualTo(ConfluencePageStatus.TRASHED);
+    assertThat(limited.fetchPage(confluence.trashedPageId()))
+        .isPresent()
+        .get()
+        .extracting(ConfluencePage::status)
+        .isEqualTo(ConfluencePageStatus.TRASHED);
   }
 
   @Test
@@ -194,7 +203,9 @@ class ConfluenceDataCenterAccessTest {
     assertThat(ids)
         .contains(confluence.pageId("Handbuch"), confluence.pageId("Onboarding"))
         .doesNotContain(confluence.trashedPageId(), confluence.pageId("Streng geheim"));
-    assertThat(admin.searchPageIdsModifiedSince(Set.of("ENG"), Instant.now().plusSeconds(3600)))
+    // a full day ahead: CQL evaluates lastmodified in the instance's time zone, not UTC
+    assertThat(
+            admin.searchPageIdsModifiedSince(Set.of("ENG"), Instant.now().plus(Duration.ofDays(1))))
         .isEmpty();
   }
 }

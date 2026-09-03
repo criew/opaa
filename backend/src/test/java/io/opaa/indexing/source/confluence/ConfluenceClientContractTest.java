@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -143,6 +144,20 @@ class ConfluenceClientContractTest {
     assertThatThrownBy(wrongClient::verifyCredentials)
         .isInstanceOf(ConfluenceAccessException.Authentication.class)
         .hasMessageContaining(deployment.edition() == ConfluenceEdition.CLOUD ? "401" : "anonym")
+        .satisfies(ConfluenceClientContractTest::carriesNoCredentials);
+  }
+
+  @ParameterizedTest
+  @MethodSource("deployments")
+  void aHostWithoutTheDataCenterApiIsAnEditionMismatchNotARejectedToken(Deployment deployment)
+      throws Exception {
+    Assumptions.assumeTrue(deployment.edition() == ConfluenceEdition.DATA_CENTER);
+    ConfluenceClient client = client(deployment);
+    server.hideDataCenterApi();
+
+    assertThatThrownBy(client::verifyCredentials)
+        .isInstanceOf(ConfluenceAccessException.EditionMismatch.class)
+        .hasMessageContaining("/rest/api")
         .satisfies(ConfluenceClientContractTest::carriesNoCredentials);
   }
 

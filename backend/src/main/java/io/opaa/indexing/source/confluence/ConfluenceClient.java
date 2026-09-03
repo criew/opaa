@@ -34,7 +34,11 @@ public interface ConfluenceClient {
   ConfluenceEdition edition();
 
   /**
-   * Verifies the credentials with the cheapest authenticated call the edition offers.
+   * Verifies the credentials with the cheapest authenticated call the edition offers. Data Center
+   * does not refuse an unknown or revoked token - it serves the request anonymously with HTTP 200
+   * (#1171) - so every listing path calls this first: an anonymous, empty listing is otherwise
+   * indistinguishable from a complete one, and a full run must never mistake it for a positive
+   * deletion finding (ADR-0023, Entscheidung 4).
    *
    * @throws ConfluenceAccessException.Authentication when the instance rejects them
    * @throws ConfluenceAccessException.EditionMismatch when the instance does not answer like this

@@ -95,6 +95,8 @@ public final class FakeConfluenceServer implements AutoCloseable {
   /** token -> readable space keys ({@code null} value = every space). */
   private final Map<String, Set<String>> tokens = new LinkedHashMap<>();
 
+  private volatile boolean dataCenterApiHidden;
+
   private final Map<String, String> cloudEmailByToken = new LinkedHashMap<>();
   private final List<String> requests = new CopyOnWriteArrayList<>();
   private final AtomicInteger throttleRemaining = new AtomicInteger();
@@ -193,6 +195,11 @@ public final class FakeConfluenceServer implements AutoCloseable {
   }
 
   /** Attachment downloads answer {@code status} from now on. */
+  /** From now on nothing under {@code /rest/api} exists - a host that is no Data Center at all. */
+  public void hideDataCenterApi() {
+    dataCenterApiHidden = true;
+  }
+
   public void refuseAttachmentDownloads(int status) {
     attachmentDownloadStatus = status;
   }
@@ -468,7 +475,7 @@ public final class FakeConfluenceServer implements AutoCloseable {
       send(ex, 200, "{\"state\":\"RUNNING\"}");
       return;
     }
-    if (!path.startsWith("/rest/api/") && !path.startsWith("/download/")) {
+    if (dataCenterApiHidden || (!path.startsWith("/rest/api/") && !path.startsWith("/download/"))) {
       send(ex, 404, "<html>not here</html>");
       return;
     }

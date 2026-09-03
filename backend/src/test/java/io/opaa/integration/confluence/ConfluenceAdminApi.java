@@ -116,7 +116,10 @@ final class ConfluenceAdminApi {
                 + password
                 + "\"]");
     log.info("addUser {} -> {}", userName, result);
-    jsonRpc("addUserToGroup", "[\"" + userName + "\",\"confluence-users\"]");
+    String added = jsonRpc("addUserToGroup", "[\"" + userName + "\",\"confluence-users\"]");
+    if (!"true".equals(added)) {
+      throw new IOException("addUserToGroup " + userName + " failed: " + added);
+    }
   }
 
   /** Removes {@code VIEWSPACE} for a group so its members no longer see the space at all. */
@@ -126,6 +129,10 @@ final class ConfluenceAdminApi {
         jsonRpc(
             "removePermissionFromSpace", "[\"VIEWSPACE\",\"" + group + "\",\"" + spaceKey + "\"]");
     log.info("removePermissionFromSpace {} {} -> {}", spaceKey, group, result);
+    if (!"true".equals(result)) {
+      throw new IOException(
+          "removePermissionFromSpace " + spaceKey + " " + group + " failed: " + result);
+    }
   }
 
   private String jsonRpc(String method, String paramsJson)

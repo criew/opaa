@@ -200,7 +200,12 @@ die gespeicherte Edition. Der Port liefert ein gemeinsames Zwischenmodell (Space
 Kennung/Titel/Version/Vorfahren/Storage-Body, Anhang), an dem alle nachgelagerten Schritte —
 Aufbereitung (#1137), Vollabgleich (#1136), inkrementeller Abgleich (#1139) — editionsunabhängig
 arbeiten. Kein nachgelagerter Schritt unterscheidet die Edition; wo eine Unterscheidung nötig wird,
-gehört sie in den Adapter. Beide Adapter werden gegen **dasselbe Testdoppel** abgenommen; ein Test,
+gehört sie in den Adapter. Eine solche Unterscheidung ist die Prüfung der Zugangsdaten: Data Center
+weist ein unbekanntes oder widerrufenes Token **nicht** ab, sondern bedient die Anfrage anonym mit
+HTTP 200 (Befund der Container-Suite, #1171) — der Adapter liest deshalb das angemeldete
+Benutzerkonto und wertet einen anonymen Benutzer als abgelehntes Token; jeder auflistende Pfad,
+auch jeder Lauf, prüft die Zugangsdaten *vor* der ersten Auflistung, weil eine anonyme, leere
+Auflistung von einer vollständigen sonst nicht zu unterscheiden wäre (Entscheidung 4). Beide Adapter werden gegen **dasselbe Testdoppel** abgenommen; ein Test,
 der nur eine Edition abdeckt, gilt als unvollständig. Die Container-Suite gegen eine echte
 Data-Center-Instanz (#1171) ist eine *zusätzliche* Ebene, die das Testdoppel nicht ersetzt — Cloud
 lässt sich nicht containerisieren.

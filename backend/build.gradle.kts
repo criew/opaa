@@ -284,11 +284,9 @@ tasks.register<Test>("confluenceIntegrationTest") {
     group = "verification"
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
-    useJUnitPlatform()
     filter {
         includeTestsMatching("io.opaa.integration.confluence.*")
     }
-    jvmArgs("-XX:+EnableDynamicAgentLoading")
     testLogging {
         events("passed", "skipped", "failed")
         showStandardStreams = true

@@ -37,8 +37,16 @@ final class DataCenterConfluenceClient extends AbstractConfluenceClient {
     String resource = "das angemeldete Benutzerkonto";
     ConfluenceHttp.Response response = http.get(base() + REST + "/user/current", resource);
     if (response.status() == 404) {
-      throw new ConfluenceAccessException.EditionMismatch(
-          "Unter dieser Adresse antwortet kein Confluence Data Center (die API /rest/api fehlt).");
+      // A 404 on a resource with a subject says "no current user" first - only the API root
+      // decides whether there is a Data Center here at all (the same signature the detector uses).
+      ConfluenceHttp.Response api = http.get(base() + REST + "/space?limit=1", "die Space-Liste");
+      if (api.status() == 404) {
+        throw new ConfluenceAccessException.EditionMismatch(
+            "Unter dieser Adresse antwortet kein Confluence Data Center (die API /rest/api fehlt).");
+      }
+      throw new ConfluenceAccessException.Authentication(
+          "Confluence Data Center hat das Personal Access Token nicht angenommen (HTTP 404 auf das"
+              + " angemeldete Benutzerkonto): Das Token ist ungültig, abgelaufen oder widerrufen.");
     }
     if (response.status() != 200) {
       throw http.failure(response.status(), resource);

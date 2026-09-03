@@ -45,8 +45,8 @@ final class TimeBombLicense {
     return pickConfluence(response.body());
   }
 
-  /** The licence whose preceding text names Confluence; visible for the parser test. */
-  static String pickConfluence(String html) {
+  /** The licence whose preceding text names Confluence. */
+  private static String pickConfluence(String html) {
     String cleaned = html.replaceAll("(?is)<(script|style)\\b[^>]*>.*?</\\1>", " ");
     Matcher m = LICENSE.matcher(cleaned);
     while (m.find()) {

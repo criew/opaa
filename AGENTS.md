@@ -46,7 +46,7 @@ Die Projektsprache ist **Deutsch**. Englisch bleibt ausschließlich dem Quellcod
 ./gradlew openAiIntegrationTest   # OpenAI-E2E-Tests (io.opaa.integration.*); braucht
                                   # OPAA_OPENAI_API_KEY und Docker, nicht Teil von build/test
 OPAA_CONFLUENCE_IT=true ./gradlew confluenceIntegrationTest
-                                  # Zugriffsschicht und Läufe gegen ein echtes Confluence Data
+                                  # Zugriffsschicht gegen ein echtes Confluence Data
                                   # Center im Container (io.opaa.integration.confluence.*);
                                   # braucht Docker, ~4 GB RAM und Internet für die 3-Stunden-
                                   # Testlizenz; nicht Teil von build/test, in CI nightly und per
