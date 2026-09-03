@@ -1235,6 +1235,22 @@ Derselbe exakte Vergleich verhindert außerdem, dass ein einmal so umgeschrieben
 weiteren Nachzieh-Aufruf erneut geparst und eingebettet wird, obwohl sein Inhalt weiterhin auf den
 Fallback zurückfällt.
 
+**Für einen Chunk mit Schlüssel gilt die Verengung auf die Fallback-Pipeline nicht mehr (#1167).**
+Die Endungsnäherung oben bleibt bewusst auf „heraus aus der Fallback-Pipeline" beschränkt, weil sie
+nur rät — ein weiteres Kriterium in die Gegenrichtung würde nie konvergieren. Der exakte Schlüssel
+rät nicht: `pipelineIdForRoutingExtension` bildet jede Endung eindeutig auf höchstens eine Pipeline
+ab, also konvergiert ein Vergleich `pipelineIdForRoutingExtension(routing_extension) <>
+gespeicherte pipeline_id` unabhängig davon, welche Pipeline gerade gespeichert ist — ein
+Nachzieh-Lauf schreibt den Schlüssel frisch aus neu erkanntem Inhalt, trifft also beim nächsten
+Aufruf garantiert wieder zu. Damit ist auch die Richtung „heraus aus einer bereits spezialisierten
+Pipeline in eine andere" erreichbar, und ein Chunk, dessen `pipeline_id` eine seither deinstallierte
+Pipeline nennt, ist über seinen Schlüssel trotzdem auflösbar — `progressForOrganization` muss dafür
+`currentVersions` gar nicht erst nach der gespeicherten `pipeline_id` fragen, sondern zählt ihn direkt
+als nachzuziehen, statt ihn (wie zuvor) unsichtbar nur im Gesamtwert mitzuzählen und die Bibliothek
+fälschlich als vollständig zu melden. Für einen Chunk **ohne** Schlüssel bleibt die
+Fallback+Endungsnäherung unverändert der einzige Weg - ihre Konvergenzgarantie beruht weiterhin
+auf der Beschränkung auf die Fallback-Pipeline.
+
 **Kein Nachtrag für den Altbestand in #1126 selbst.** Der Schlüssel wird ab #1126 vorwärts
 geschrieben; ein nachträgliches Setzen für vorhandene Chunks erfordert erneutes Erkennen des
 Inhaltstyps je Dokument (ein vollständiger Durchlauf über den Bestand, siehe die eng verwandte, aber
