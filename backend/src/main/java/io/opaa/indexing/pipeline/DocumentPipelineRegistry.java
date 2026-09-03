@@ -163,8 +163,8 @@ public class DocumentPipelineRegistry {
    * The id of the pipeline that claims {@code routingExtension} today - the exact counterpart of
    * {@link #pipelineFor(String, String)} for a chunk's own {@link
    * ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} instead of a freshly detected media type
-   * (#1126). Used by {@link PipelineReindexService} to tell whether a chunk is still routed the way
-   * it would be today, without re-reading or re-detecting its source file.
+   * (#1126). Used by {@code io.opaa.indexing.PipelineReindexService} to tell whether a chunk is
+   * still routed the way it would be today, without re-reading or re-detecting its source file.
    *
    * @param routingExtension {@code null} or {@link ChunkPipelineMetadata#NO_ROUTING_EXTENSION} for
    *     a chunk whose routing never resolved an extension - resolves to {@link #fallbackPipeline()}

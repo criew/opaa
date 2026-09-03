@@ -172,7 +172,7 @@ class FileProcessingServiceTest {
     // Uses a spy around a real DocumentService (only #parseDocument stubbed) instead of the class'
     // own mocked field, so the scan-detection path this test exercises runs for real against the
     // file on disk - only its magic bytes, which is enough for Tika's own content-type detection
-    // (see DocumentServiceTest's identical PDF_MAGIC_BYTES fixture).
+    // (see TikaFallbackPipelineTest's identical PDF_MAGIC_BYTES fixture).
     Path file = tempDir.resolve("scan.pdf");
     Files.writeString(file, "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection");
 
