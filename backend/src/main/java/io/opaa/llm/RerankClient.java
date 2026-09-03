@@ -16,7 +16,6 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,10 +53,10 @@ import tools.jackson.databind.ObjectMapper;
  * user's question, where an unbounded read would tie up a request thread and the heap ({@code
  * OutOfMemoryError} is an {@link Error}, which no {@code catch (Exception)} on that path would
  * catch). Capped are the bytes read from the body ({@link #MAX_RESPONSE_BYTES}), the number of
- * ranking entries (never more than candidates were sent), the indices they may name, and - since
- * #1209 - the wall-clock time spent reading it: {@link HttpRequest.Builder#timeout(Duration)} only
- * bounds the wait for response headers, so a body that stalls after headers arrive is read on a
- * separate thread with its own deadline, carved out of whatever remained of {@link
+ * ranking entries (never more than candidates were sent), the indices they may name, and the
+ * wall-clock time spent reading it: {@link HttpRequest.Builder#timeout(Duration)} only bounds the
+ * wait for response headers, so a body that stalls after headers arrive is read on a separate
+ * thread with its own deadline, carved out of whatever remained of {@link
  * RerankProperties#timeout()} after the headers came in. Every breach is a {@link
  * RerankUnavailableException} - the same fallback as an unreachable endpoint, so the query degrades
  * to the order it already had instead of failing.
@@ -104,7 +103,7 @@ public class RerankClient {
           .build();
 
   /**
-   * Runs the body read of one call so it can be bounded by a deadline (#1209): {@link
+   * Runs the body read of one call so it can be bounded by a deadline: {@link
    * HttpRequest.Builder#timeout(Duration)} only covers the wait for response headers, so a body
    * that stalls afterward would otherwise block the calling query thread forever. Virtual threads,
    * not a fixed pool - a stalled read is unblocked by closing its stream (see {@link
@@ -212,7 +211,9 @@ public class RerankClient {
       request.header("Authorization", "Bearer " + properties.apiKey());
     }
 
-    Instant callStart = Instant.now();
+    // nanoTime, not Instant/currentTimeMillis: a wall-clock jump (e.g. an NTP correction) must not
+    // distort the budget carved out for the body read below.
+    long callStartNanos = System.nanoTime();
     try {
       HttpResponse<InputStream> response =
           httpClient.send(request.build(), HttpResponse.BodyHandlers.ofInputStream());
@@ -223,7 +224,8 @@ public class RerankClient {
         if (response.statusCode() != 200) {
           throw new RerankUnavailableException(describeStatus(response.statusCode()));
         }
-        Duration remaining = properties.timeout().minus(Duration.between(callStart, Instant.now()));
+        Duration elapsed = Duration.ofNanos(System.nanoTime() - callStartNanos);
+        Duration remaining = properties.timeout().minus(elapsed);
         return parse(readBounded(responseBody, remaining), documents.size());
       }
     } catch (IOException e) {
@@ -443,6 +445,11 @@ public class RerankClient {
     }
     if (e instanceof SSLException) {
       return "TLS handshake failed";
+    }
+    if (e instanceof InterruptedIOException) {
+      // Checked after isRequestTimeout: SocketTimeoutException is itself an
+      // InterruptedIOException subclass and must keep its own, more specific message above.
+      return "request interrupted";
     }
     return "endpoint not reachable";
   }
