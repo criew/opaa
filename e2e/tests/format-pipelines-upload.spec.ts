@@ -37,11 +37,20 @@ test.describe('Formatabdeckung Upload', () => {
   test('XLSX, HTML und EML werden in einem Durchlauf hochgeladen und jeweils indiziert', async ({
     formatPipelinesPage: page,
   }) => {
-    await createLibraryWithDocuments(page, LIBRARY_NAME, [
-      { path: join(FIXTURE_DIR, 'formatdokument.xlsx'), name: 'formatdokument.xlsx' },
-      { path: join(FIXTURE_DIR, 'formatdokument.html'), name: 'formatdokument.html' },
-      { path: join(FIXTURE_DIR, 'formatdokument.eml'), name: 'formatdokument.eml' },
-    ])
+    // Regression guard for #1218 (ADR-0022): an uploaded mail's attachments are their own indexed
+    // document rows now, no longer nested chunks of the mail. The expected count is therefore 4,
+    // not 3: the three uploads plus the EML fixture's single supported attachment
+    // (formatdokument-anhang.txt, indexed via the Tika fallback pipeline).
+    await createLibraryWithDocuments(
+      page,
+      LIBRARY_NAME,
+      [
+        { path: join(FIXTURE_DIR, 'formatdokument.xlsx'), name: 'formatdokument.xlsx' },
+        { path: join(FIXTURE_DIR, 'formatdokument.html'), name: 'formatdokument.html' },
+        { path: join(FIXTURE_DIR, 'formatdokument.eml'), name: 'formatdokument.eml' },
+      ],
+      4,
+    )
 
     // Redundant with createLibraryWithDocuments's own toHaveCount assertion, but explicit here as
     // the scenario's actual point, not just a side effect of the helper it calls.
