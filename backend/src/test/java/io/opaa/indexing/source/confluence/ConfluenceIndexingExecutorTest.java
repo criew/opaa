@@ -102,7 +102,7 @@ class ConfluenceIndexingExecutorTest {
   void setUp() throws Exception {
     fileProcessingService = mock(FileProcessingService.class);
     when(fileProcessingService.processUrlFile(
-            any(), any(), any(), any(), anyLong(), any(), any(), any(), any()))
+            any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
     indexingJobService = mock(IndexingJobService.class);
     documentRepository = mock(DocumentRepository.class);
@@ -251,6 +251,7 @@ class ConfluenceIndexingExecutorTest {
             eq(library),
             eq(DocumentSourceType.CONFLUENCE),
             eq(abschnitt),
+            any(),
             eq(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1 / Abschnitt 1.1")));
     assertThat(attachmentPath.getValue()).doesNotContain("?").contains("notizen.txt");
 
@@ -309,7 +310,16 @@ class ConfluenceIndexingExecutorTest {
         .noneMatch(r -> r.matches(".*/(content|pages)/102(\\?.*)?$"));
     verify(fileProcessingService)
         .processUrlFile(
-            any(), eq("notizen.txt"), any(), any(), anyLong(), any(), any(), eq(abschnitt), any());
+            any(),
+            eq("notizen.txt"),
+            any(),
+            any(),
+            anyLong(),
+            any(),
+            any(),
+            eq(abschnitt),
+            any(),
+            any());
     verify(indexingJobService).completeJob(jobId, 2, 0, 1, 3);
   }
 
@@ -529,7 +539,7 @@ class ConfluenceIndexingExecutorTest {
     assertThat(current.getValue()).contains(knownAttachment.getFilePath());
     verify(fileProcessingService, never())
         .processUrlFile(
-            any(), eq("notizen.txt"), any(), any(), anyLong(), any(), any(), any(), any());
+            any(), eq("notizen.txt"), any(), any(), anyLong(), any(), any(), any(), any(), any());
   }
 
   @ParameterizedTest
@@ -627,7 +637,7 @@ class ConfluenceIndexingExecutorTest {
                     null)));
     verify(fileProcessingService, never())
         .processUrlFile(
-            any(), eq("werkzeug.exe"), any(), any(), anyLong(), any(), any(), any(), any());
+            any(), eq("werkzeug.exe"), any(), any(), anyLong(), any(), any(), any(), any(), any());
     // the unsupported attachment is still part of the bestand the reconciliation compares against
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
@@ -909,6 +919,7 @@ class ConfluenceIndexingExecutorTest {
             eq(library),
             eq(DocumentSourceType.CONFLUENCE),
             eq(abschnitt),
+            any(),
             eq(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1 / Abschnitt 1.1")));
     verify(eventRepository)
         .save(argThat(event(IndexingEventCategory.REJECTED, "nicht ausgewählten Space", "200")));

@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.longThat;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -1762,6 +1763,113 @@ class FileProcessingServiceTest {
     ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository).save(savedDocCaptor.capture());
     verify(vectorStore).delete(documentIdFilter(savedDocCaptor.getValue().getId()));
+  }
+
+  @Test
+  void processRssEntryUpdatesAChangedEntryInPlaceInsteadOfDeletingAndRecreatingIt() {
+    // A delete-and-recreate here would fail fk_documents_parent whenever the entry already has
+    // attachment rows pointing at it via parent_document_id (ADR-0022, Entscheidung 4) - the row's
+    // own id must survive a content change, so every existing attachment link stays valid without
+    // this path having to touch attachment rows at all.
+    String entryUrl = "https://example.gov/artikel/geaendert";
+    Document existingDoc =
+        new Document("Alter Titel", entryUrl, "text/html", 10L, DocumentSourceType.RSS_FEED);
+    existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
+    existingDoc.setChecksum("old-sha256");
+    existingDoc.setStatus(DocumentStatus.INDEXED);
+
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("new-sha256");
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl))
+        .thenReturn(Optional.of(existingDoc));
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var chunks = List.of(new org.springframework.ai.document.Document("neuer Inhalt"));
+    when(chunkingService.chunkDocuments(anyString(), any())).thenReturn(chunks);
+
+    FileProcessingResult result =
+        service.processRssEntry(
+            "neuer Inhalt", "Neuer Titel", entryUrl, "2025-06-15T10:30:00Z", targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    verify(documentRepository, never()).delete(any(Document.class));
+    ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository).save(savedDocCaptor.capture());
+    assertThat(savedDocCaptor.getValue().getId()).isEqualTo(existingDoc.getId());
+    assertThat(savedDocCaptor.getValue().getFileName()).isEqualTo("Neuer Titel");
+    verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
+  }
+
+  @Test
+  void processRssEntryChecksTheQuotaDeltaNotTheFullNewSizeWhenUpdatingInPlace() {
+    // LibraryStorageQuotaService#wouldExceedQuota's own contract expects a caller to check after
+    // removing the row being replaced, so usedBytes already excludes it - the update-in-place path
+    // above never removes the row, so it must pass the size delta (new minus old) instead of the
+    // full new size, or a library near its quota would wrongly reject an update that nets out fine
+    // (same size, or even shrinking).
+    String entryUrl = "https://example.gov/artikel/quota-delta";
+    Document existingDoc =
+        new Document("Alter Titel", entryUrl, "text/html", 1_000L, DocumentSourceType.RSS_FEED);
+    existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
+    existingDoc.setChecksum("old-sha256");
+    existingDoc.setStatus(DocumentStatus.INDEXED);
+
+    String newContent = "neuer Inhalt"; // shorter than the old 1000-byte size
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("new-sha256");
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl))
+        .thenReturn(Optional.of(existingDoc));
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    var chunks = List.of(new org.springframework.ai.document.Document("neuer Inhalt"));
+    when(chunkingService.chunkDocuments(anyString(), any())).thenReturn(chunks);
+
+    service.processRssEntry(
+        newContent, "Neuer Titel", entryUrl, "2025-06-15T10:30:00Z", targetLibrary);
+
+    long expectedDelta =
+        newContent.getBytes(java.nio.charset.StandardCharsets.UTF_8).length - 1_000L;
+    verify(storageQuotaService).wouldExceedQuota(targetLibrary.getId(), expectedDelta);
+    verify(storageQuotaService, never())
+        .wouldExceedQuota(eq(targetLibrary.getId()), longThat(value -> value != expectedDelta));
+  }
+
+  @Test
+  void processRssEntryLeavesTheExistingRowUntouchedWhenTheQuotaDeltaWouldExceedIt() {
+    // Before this method checked the delta up front, a QUOTA_EXCEEDED rejection here still deleted
+    // the row's chunks first - the row survived (nothing recreates it, unlike processFile/
+    // processUrlFile which fully delete-and-return), leaving it INDEXED with a stale checksum and
+    // chunkCount but zero actual chunks in the vector store. Checking the quota before touching
+    // anything means a rejection now leaves the previously working row exactly as it was.
+    String entryUrl = "https://example.gov/artikel/quota-zombie";
+    Document existingDoc =
+        new Document("Alter Titel", entryUrl, "text/html", 10L, DocumentSourceType.RSS_FEED);
+    existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
+    existingDoc.setChecksum("old-sha256");
+    existingDoc.setStatus(DocumentStatus.INDEXED);
+
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("new-sha256");
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl))
+        .thenReturn(Optional.of(existingDoc));
+    when(storageQuotaService.wouldExceedQuota(eq(targetLibrary.getId()), anyLong()))
+        .thenReturn(true);
+
+    FileProcessingResult result =
+        service.processRssEntry(
+            "neuer, groesserer Inhalt",
+            "Neuer Titel",
+            entryUrl,
+            "2025-06-15T10:30:00Z",
+            targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.QUOTA_EXCEEDED);
+    verify(vectorStore, never()).delete(any(Filter.Expression.class));
+    verify(documentRepository, never()).save(any(Document.class));
+    // The existing row itself must still carry its own, pre-rejection state - never mutated by the
+    // rejected attempt.
+    assertThat(existingDoc.getChecksum()).isEqualTo("old-sha256");
+    assertThat(existingDoc.getFileSize()).isEqualTo(10L);
+    assertThat(existingDoc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
   }
 
   @Test

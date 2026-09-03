@@ -970,6 +970,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
               run.library,
               DocumentSourceType.CONFLUENCE,
               pagePath,
+              null,
               context);
       switch (result) {
         case QUOTA_EXCEEDED -> {

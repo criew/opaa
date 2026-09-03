@@ -297,6 +297,12 @@ public class PipelineReindexService {
       // Confluence (#1137): clearing checksum and version marker makes the next run fetch and
       // process the page again - the executor's pre-fetch version check and processConfluencePage's
       // checksum check both see "changed".
+      // Never deletes the row itself (ADR-0022, Entscheidung 3): this only
+      // clears the change markers a future RssFeedIndexingExecutor run consults, which then
+      // re-processes the entry through FileProcessingService#processRssEntry's own update-in-place
+      // path if its content actually changed - no delete-and-recreate happens here, so an RSS
+      // entry's attachments (parent_document_id, ADR-0022 Entscheidung 4) are never at risk from
+      // this path itself.
       documentRepository.markForReindexOnNextRun(documentId);
       return Advance.MARKED_FOR_NEXT_RUN;
     }

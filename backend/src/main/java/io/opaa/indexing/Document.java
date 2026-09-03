@@ -184,6 +184,26 @@ public class Document {
     return fileSize;
   }
 
+  /**
+   * Backs {@code FileProcessingService#processRssEntry}'s update-in-place path (#1182): a changed
+   * RSS entry keeps its row's identity so {@link #getId()} - and therefore any attachment's {@link
+   * #parentDocumentId} pointing at it - stays valid, instead of the delete-and-recreate every other
+   * connector path uses when a document's content changes.
+   */
+  public void setFileName(String fileName) {
+    this.fileName = fileName;
+  }
+
+  /** See {@link #setFileName(String)}. */
+  public void setContentType(String contentType) {
+    this.contentType = contentType;
+  }
+
+  /** See {@link #setFileName(String)}. */
+  public void setFileSize(Long fileSize) {
+    this.fileSize = fileSize;
+  }
+
   public int getChunkCount() {
     return chunkCount;
   }

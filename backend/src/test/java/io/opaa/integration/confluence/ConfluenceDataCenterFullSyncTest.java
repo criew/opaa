@@ -79,7 +79,7 @@ class ConfluenceDataCenterFullSyncTest {
     when(fileProcessingService.processConfluencePage(any(), any(), any(), any(), any(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
     when(fileProcessingService.processUrlFile(
-            any(), any(), any(), any(), anyLong(), any(), any(), any(), any()))
+            any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
     indexingJobService = mock(IndexingJobService.class);
     DocumentRepository documentRepository = mock(DocumentRepository.class);
@@ -164,6 +164,7 @@ class ConfluenceDataCenterFullSyncTest {
             eq(library),
             eq(DocumentSourceType.CONFLUENCE),
             eq(pagePath("Abschnitt 1.1")),
+            any(),
             eq(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1 / Abschnitt 1.1")));
 
     @SuppressWarnings("unchecked")
