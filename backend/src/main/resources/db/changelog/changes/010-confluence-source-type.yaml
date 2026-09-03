@@ -1,0 +1,137 @@
+databaseChangeLog:
+  # ADR-0023: CONFLUENCE as the fifth source type. Each changeset is one schema change with its own
+  # delta test (io.opaa.migration.Migration010ConfluenceSourceTypeTest); CHECK constraints from the
+  # baseline are dropped and recreated (ADR-0017 migration pattern), never edited in place.
+  - changeSet:
+      id: 010-documents-source-type-confluence
+      author: opaa
+      comment: >-
+        ADR-0023: widens chk_documents_source_type to accept 'CONFLUENCE' - the value a Confluence
+        run writes into documents.source_type for pages and attachments.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.documents DROP CONSTRAINT chk_documents_source_type;
+              ALTER TABLE public.documents ADD CONSTRAINT chk_documents_source_type
+                  CHECK (source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY', 'UPLOAD', 'RSS_FEED', 'CONFLUENCE'));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.documents DROP CONSTRAINT chk_documents_source_type;
+              ALTER TABLE public.documents ADD CONSTRAINT chk_documents_source_type
+                  CHECK (source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY', 'UPLOAD', 'RSS_FEED'));
+
+  - changeSet:
+      id: 010-libraries-source-type-confluence
+      author: opaa
+      comment: >-
+        ADR-0023: widens chk_knowledge_libraries_source_type to accept 'CONFLUENCE' as a library's
+        quellentyp (ADR-0018: one type per library, chosen at creation, immutable).
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_source_type;
+              ALTER TABLE public.knowledge_libraries ADD CONSTRAINT chk_knowledge_libraries_source_type
+                  CHECK (source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY', 'UPLOAD', 'RSS_FEED', 'CONFLUENCE'));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_source_type;
+              ALTER TABLE public.knowledge_libraries ADD CONSTRAINT chk_knowledge_libraries_source_type
+                  CHECK (source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY', 'UPLOAD', 'RSS_FEED'));
+
+  - changeSet:
+      id: 010-libraries-confluence-edition
+      author: opaa
+      comment: >-
+        ADR-0023, Entscheidung 2: the Confluence edition a CONFLUENCE library points at (CLOUD or
+        DATA_CENTER), detected by the connection test and immutable afterwards like source_type
+        itself. NULL for every other source type - enforced together with the type by
+        chk_knowledge_libraries_source_configuration (next changeset); this constraint only binds
+        the value set.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries
+                  ADD COLUMN source_confluence_edition character varying(20);
+              ALTER TABLE public.knowledge_libraries ADD CONSTRAINT chk_knowledge_libraries_confluence_edition
+                  CHECK (source_confluence_edition IS NULL OR source_confluence_edition IN ('CLOUD', 'DATA_CENTER'));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_confluence_edition;
+              ALTER TABLE public.knowledge_libraries DROP COLUMN source_confluence_edition;
+
+  - changeSet:
+      id: 010-libraries-source-configuration-confluence
+      author: opaa
+      comment: >-
+        ADR-0023: adds the CONFLUENCE arm to chk_knowledge_libraries_source_configuration - base
+        address (source_url) and credentials are required, a filesystem path is forbidden, proxy
+        and source_insecure_ssl stay optional, the edition is required - and binds
+        source_confluence_edition to NULL for every other type. The four existing arms keep their
+        baseline shape otherwise.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_source_configuration;
+              ALTER TABLE public.knowledge_libraries ADD CONSTRAINT chk_knowledge_libraries_source_configuration
+                  CHECK (
+                      ((source_type)::text = 'UPLOAD'::text AND source_path IS NULL AND source_url IS NULL
+                          AND source_proxy IS NULL AND source_credentials IS NULL AND source_insecure_ssl = false
+                          AND source_confluence_edition IS NULL)
+                      OR ((source_type)::text = 'FILESYSTEM'::text AND source_path IS NOT NULL AND source_url IS NULL
+                          AND source_proxy IS NULL AND source_credentials IS NULL AND source_insecure_ssl = false
+                          AND source_confluence_edition IS NULL)
+                      OR ((source_type)::text = 'HTTP_DIRECTORY'::text AND source_path IS NULL AND source_url IS NOT NULL
+                          AND source_confluence_edition IS NULL)
+                      OR ((source_type)::text = 'RSS_FEED'::text AND source_path IS NULL AND source_url IS NOT NULL
+                          AND source_confluence_edition IS NULL)
+                      OR ((source_type)::text = 'CONFLUENCE'::text AND source_path IS NULL AND source_url IS NOT NULL
+                          AND source_credentials IS NOT NULL AND source_confluence_edition IS NOT NULL)
+                  );
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_source_configuration;
+              ALTER TABLE public.knowledge_libraries ADD CONSTRAINT chk_knowledge_libraries_source_configuration
+                  CHECK (
+                      ((source_type)::text = 'UPLOAD'::text AND source_path IS NULL AND source_url IS NULL
+                          AND source_proxy IS NULL AND source_credentials IS NULL AND source_insecure_ssl = false)
+                      OR ((source_type)::text = 'FILESYSTEM'::text AND source_path IS NOT NULL AND source_url IS NULL
+                          AND source_proxy IS NULL AND source_credentials IS NULL AND source_insecure_ssl = false)
+                      OR ((source_type)::text = 'HTTP_DIRECTORY'::text AND source_path IS NULL AND source_url IS NOT NULL)
+                      OR ((source_type)::text = 'RSS_FEED'::text AND source_path IS NULL AND source_url IS NOT NULL)
+                  );
+
+  - changeSet:
+      id: 010-library-confluence-spaces
+      author: opaa
+      comment: >-
+        ADR-0023, Entscheidung 1: the space selection of a CONFLUENCE library - the first
+        list-valued piece of source configuration (an explicit, narrow break with ADR-0018's
+        single-value model). One row per selected space; the primary key makes a key unique per
+        library, ON DELETE CASCADE removes the selection with its library. space_name is the
+        display name at selection time. Deliberately no address, credentials or schedule here: the
+        library stays the single source, this table is the value of one of its attributes.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.knowledge_library_confluence_spaces (
+                  library_id uuid NOT NULL REFERENCES public.knowledge_libraries(id) ON DELETE CASCADE,
+                  space_key character varying(255) NOT NULL,
+                  space_name character varying(255),
+                  CONSTRAINT pk_knowledge_library_confluence_spaces PRIMARY KEY (library_id, space_key)
+              );
+      rollback:
+        - sql:
+            sql: DROP TABLE IF EXISTS public.knowledge_library_confluence_spaces;

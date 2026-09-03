@@ -176,6 +176,9 @@ public class SourceConnectionTestService {
       case FILESYSTEM -> testFilesystem(effectiveRequest);
       case HTTP_DIRECTORY -> testHttpDirectory(effectiveRequest);
       case RSS_FEED -> testRssFeed(effectiveRequest);
+      case CONFLUENCE ->
+          throw new ValidationException(
+              "Der Verbindungstest für Confluence-Bibliotheken ist noch nicht verfügbar.");
     };
   }
 

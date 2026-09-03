@@ -354,7 +354,7 @@ public class PipelineReindexService {
     return switch (document.getSourceType()) {
       case FILESYSTEM -> filesystemFileWithinConfiguredDirectory(document, candidate);
       case UPLOAD -> uploadedFileWithinManagedStorage(document, candidate);
-      case HTTP_DIRECTORY, RSS_FEED -> null;
+      case HTTP_DIRECTORY, RSS_FEED, CONFLUENCE -> null;
     };
   }
 

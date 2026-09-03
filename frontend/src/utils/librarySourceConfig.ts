@@ -47,6 +47,12 @@ export function validateLibrarySourceFields(
   if (configKind === 'url' && trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) {
     return 'Adresse (URL) muss mit http:// oder https:// beginnen'
   }
+  if (configKind === 'confluence') {
+    // The Confluence flow (address, detected edition, credentials, connection test, space
+    // selection) arrives with #1135; until then neither wizard nor edit dialog can assemble a
+    // valid request.
+    return 'Die Quellkonfiguration von Confluence-Bibliotheken lässt sich über diese Oberfläche noch nicht erfassen.'
+  }
   return null
 }
 

@@ -1,9 +1,11 @@
 package io.opaa.library;
 
+import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -25,6 +27,8 @@ public final class LibraryCreationBuilder {
   private String sourceProxy;
   private String sourceCredentials;
   private Boolean sourceInsecureSsl;
+  private ConfluenceEdition confluenceEdition;
+  private List<ConfluenceSpaceSelection> confluenceSpaces;
 
   private LibraryCreationBuilder(String name, DocumentSourceType sourceType) {
     this.name = name;
@@ -85,6 +89,16 @@ public final class LibraryCreationBuilder {
     return this;
   }
 
+  public LibraryCreationBuilder confluenceEdition(ConfluenceEdition confluenceEdition) {
+    this.confluenceEdition = confluenceEdition;
+    return this;
+  }
+
+  public LibraryCreationBuilder confluenceSpaces(List<ConfluenceSpaceSelection> confluenceSpaces) {
+    this.confluenceSpaces = confluenceSpaces;
+    return this;
+  }
+
   public LibraryCreation build() {
     return new LibraryCreation(
         name,
@@ -98,6 +112,8 @@ public final class LibraryCreationBuilder {
         sourceUrl,
         sourceProxy,
         sourceCredentials,
-        sourceInsecureSsl);
+        sourceInsecureSsl,
+        confluenceEdition,
+        confluenceSpaces);
   }
 }

@@ -53,6 +53,23 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     expect(screen.getByRole('button', { name: 'Weiter' })).toBeEnabled()
   })
 
+  it('offers Confluence as an origin but does not let the wizard finish it yet (#1133)', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.type(screen.getByLabelText(/Name/), 'Wiki Bauamt')
+    await user.click(screen.getByRole('button', { name: 'Weiter' }))
+    await user.click(screen.getByRole('radio', { name: /Confluence/ }))
+
+    expect(
+      screen.getByText(/Quellkonfiguration von Confluence-Bibliotheken lässt sich über diese/),
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+    expect(screen.getByText('3 · Rechte')).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'Herkunft wählen' })).toBeInTheDocument()
+    expect(mockCreateNewLibrary).not.toHaveBeenCalled()
+  })
+
   it('switches the connection form with the origin card and validates its fields', async () => {
     const user = userEvent.setup()
     renderPage()

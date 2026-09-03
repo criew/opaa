@@ -48,8 +48,11 @@ import type {
   LibrarySchedule,
   LibrarySpaceAssociationResponse,
   LibraryVisibility,
+  ConfluenceEdition,
+  ConfluenceSpaceRef,
 } from '../types/api'
 import { detachSpaceLibrary, getLibraryFolder, getLibrarySpaceAssociations } from '../services/api'
+import { confluenceEditionLabel } from '../utils/labels'
 import { useAuthStore } from '../stores/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { DEFAULT_PAGE_SIZE, useDocumentStore } from '../stores/documentStore'
@@ -1481,12 +1484,14 @@ interface LibraryIndexingSectionProps {
     description?: string | null
     visibility: LibraryVisibility
     listed: boolean
-    sourceType: 'FILESYSTEM' | 'HTTP_DIRECTORY' | 'RSS_FEED' | 'UPLOAD'
+    sourceType: DocumentSourceType
     sourcePath?: string | null
     sourceUrl?: string | null
     sourceProxy?: string | null
     sourceInsecureSsl?: boolean | null
     sourceCredentialsSet?: boolean | null
+    confluenceEdition?: ConfluenceEdition | null
+    confluenceSpaces?: ConfluenceSpaceRef[] | null
     schedule?: LibrarySchedule | null
     lastScheduledRunsFailed?: boolean | null
   }
@@ -1546,7 +1551,9 @@ function LibraryIndexingSection({
         }}
       >
         <SectionHead underline={false}>Quellkonfiguration</SectionHead>
-        {canEditSource && (
+        {/* The Confluence edit flow (address, credentials, space selection) arrives with #1135;
+            until then an empty dialog would be worse than no button. */}
+        {canEditSource && configKind !== 'confluence' && (
           <Button
             size="small"
             onClick={() => setEditSourceOpen(true)}
@@ -1591,6 +1598,47 @@ function LibraryIndexingSection({
               Zugangsdaten sind aus Sicherheitsgründen nie Teil einer API-Antwort - diese Ansicht
               zeigt sie deshalb weder ein noch aus.
             </Typography>
+          )}
+          {configKind === 'confluence' && (
+            <>
+              <Typography variant="body2">
+                <strong>Adresse:</strong> {library.sourceUrl ?? '—'}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Edition:</strong>{' '}
+                {library.confluenceEdition
+                  ? confluenceEditionLabel(library.confluenceEdition)
+                  : '—'}{' '}
+                <Typography component="span" variant="caption" color="text.secondary">
+                  (erkannt, nach der Anlage nicht änderbar)
+                </Typography>
+              </Typography>
+              <Typography variant="body2">
+                <strong>Proxy:</strong> {library.sourceProxy ?? 'nicht konfiguriert'}
+              </Typography>
+              <Typography variant="body2" component="div">
+                <strong>Ausgewählte Spaces:</strong>{' '}
+                <Stack
+                  direction="row"
+                  spacing={0.5}
+                  useFlexGap
+                  component="span"
+                  sx={{ flexWrap: 'wrap' }}
+                >
+                  {(library.confluenceSpaces ?? []).map((space) => (
+                    <Chip
+                      key={space.key}
+                      size="small"
+                      label={space.name ? `${space.name} (${space.key})` : space.key}
+                    />
+                  ))}
+                </Stack>
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Alles, was aus diesen Spaces indiziert wird, ist für alle Leseberechtigten dieser
+                Bibliothek sichtbar — unabhängig von den Berechtigungen in Confluence.
+              </Typography>
+            </>
           )}
         </Stack>
       ) : (

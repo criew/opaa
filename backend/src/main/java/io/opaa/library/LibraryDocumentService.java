@@ -443,6 +443,9 @@ public class LibraryDocumentService {
           case UPLOAD -> uploadedFileIfManagedByThisService(document, library.getId());
           case FILESYSTEM -> filesystemFileIfWithinConfiguredDirectory(document, library);
           case HTTP_DIRECTORY, RSS_FEED -> null; // unreachable, handled above
+          // A Confluence page has no file of its own and its content sits behind the instance's
+          // authentication; the citation opens the page directly via getDeepLinkSourceUrl.
+          case CONFLUENCE -> null;
         };
     if (resolvedFile == null || !Files.isRegularFile(resolvedFile)) {
       throw new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");

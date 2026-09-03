@@ -4,6 +4,7 @@ import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
+import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
@@ -27,6 +28,8 @@ import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
 import io.opaa.indexing.LibraryScheduleCodec;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.source.confluence.ConfluenceConnection;
+import io.opaa.indexing.source.confluence.ConfluenceCredentials;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import java.net.URI;
@@ -40,6 +43,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -90,6 +94,11 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @Service
 @Transactional(readOnly = true)
 public class KnowledgeLibraryService {
+
+  /**
+   * Upper bound of a Confluence space selection - matches LibraryRequest.confluenceSpaces.maxItems.
+   */
+  static final int MAX_CONFLUENCE_SPACES = 500;
 
   private static final Logger log = LoggerFactory.getLogger(KnowledgeLibraryService.class);
 
@@ -216,6 +225,10 @@ public class KnowledgeLibraryService {
               sourceConfiguration.sourceProxy(),
               sourceConfiguration.sourceCredentials(),
               sourceConfiguration.sourceInsecureSsl());
+    }
+    if (sourceConfiguration.sourceType() == DocumentSourceType.CONFLUENCE) {
+      library.configureConfluence(
+          sourceConfiguration.confluenceEdition(), sourceConfiguration.confluenceSpaces());
     }
 
     KnowledgeLibrary saved = libraryRepository.save(library);
@@ -432,6 +445,24 @@ public class KnowledgeLibraryService {
       throw new ValidationException(
           "sourceType kann nach dem Anlegen der Bibliothek nicht mehr geändert werden");
     }
+    // ADR-0023, Entscheidung 2: the edition is as permanent as the type - a Data Center library
+    // does not become a Cloud library by editing, whatever migration the instance went through.
+    if (request.confluenceEdition() != null
+        && library.getSourceType() != DocumentSourceType.CONFLUENCE) {
+      throw new ValidationException("confluenceEdition ist nur für sourceType CONFLUENCE zulässig");
+    }
+    if (request.confluenceEdition() != null
+        && request.confluenceEdition() != library.getSourceConfluenceEdition()) {
+      throw new ValidationException(
+          "confluenceEdition kann nach dem Anlegen der Bibliothek nicht mehr geändert werden");
+    }
+    // ADR-0023, Entscheidung 1: the space selection is configuration, not identity - replaced as a
+    // whole when present, left alone when absent, exactly like the schedule below.
+    boolean replacesConfluenceSpaces = request.confluenceSpaces() != null;
+    List<ConfluenceSpaceSelection> confluenceSpaces =
+        replacesConfluenceSpaces
+            ? validateConfluenceSpaces(library.getSourceType(), request.confluenceSpaces())
+            : null;
     // #476 code review, finding 4: the typed configuration - unlike sourceType itself - can be
     // updated (credential rotation, moving a crawl target) without deleting and recreating the
     // library. Only actually replaced when the request carries at least one configuration field
@@ -461,6 +492,8 @@ public class KnowledgeLibraryService {
     String previousSourceProxy = library.getSourceProxy();
     String previousSourceCredentials = library.getSourceCredentials();
     boolean previousSourceInsecureSsl = library.isSourceInsecureSsl();
+    List<String> previousConfluenceSpaceKeys =
+        library.getConfluenceSpaces().stream().map(ConfluenceSpaceSelection::getSpaceKey).toList();
     library.updateDetails(normalizedName, request.description(), request.visibility(), listed);
     if (replacesSchedule) {
       library.updateSchedule(validatedSchedule.enabled(), validatedSchedule.cron());
@@ -472,6 +505,9 @@ public class KnowledgeLibraryService {
           sourceConfiguration.sourceProxy(),
           sourceConfiguration.sourceCredentials(),
           sourceConfiguration.sourceInsecureSsl());
+    }
+    if (replacesConfluenceSpaces) {
+      library.updateConfluenceSpaces(confluenceSpaces);
     }
     KnowledgeLibrary updated = libraryRepository.save(library);
     boolean visibilityOrListedChanged =
@@ -522,7 +558,7 @@ public class KnowledgeLibraryService {
     // Only the set of changed fields is recorded, never their values - sourceCredentials in
     // particular must never appear in the log (ADR-0018, Entscheidung 4), so unlike
     // LIBRARY_CHANGED's before/after this event carries no value at all, not even a redacted one.
-    if (replacesSourceConfiguration) {
+    if (replacesSourceConfiguration || replacesConfluenceSpaces) {
       List<String> changedSourceFields = new ArrayList<>();
       if (!Objects.equals(previousSourcePath, updated.getSourcePath())) {
         changedSourceFields.add("sourcePath");
@@ -552,6 +588,15 @@ public class KnowledgeLibraryService {
       }
       if (previousSourceInsecureSsl != updated.isSourceInsecureSsl()) {
         changedSourceFields.add("sourceInsecureSsl");
+      }
+      List<String> currentConfluenceSpaceKeys =
+          updated.getConfluenceSpaces().stream()
+              .map(ConfluenceSpaceSelection::getSpaceKey)
+              .toList();
+      if (!previousConfluenceSpaceKeys.equals(currentConfluenceSpaceKeys)) {
+        // ADR-0023: the selection is exactly what every reader of the library may see - widening
+        // or narrowing it is a source change like any other and leaves the same audit trail.
+        changedSourceFields.add("confluenceSpaces");
       }
       if (!changedSourceFields.isEmpty()) {
         auditEventRecorder.recordUserAction(
@@ -896,10 +941,83 @@ public class KnowledgeLibraryService {
     String sourceCredentials = blankToNull(request.sourceCredentials());
     boolean sourceInsecureSsl = Boolean.TRUE.equals(request.sourceInsecureSsl());
 
-    validateConfigurationForType(
-        sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
+    sourceUrl =
+        validateConfigurationForType(
+            sourceType,
+            sourcePath,
+            sourceUrl,
+            sourceProxy,
+            sourceCredentials,
+            sourceInsecureSsl,
+            request.confluenceEdition());
+    List<ConfluenceSpaceSelection> confluenceSpaces =
+        validateConfluenceSpaces(sourceType, request.confluenceSpaces());
+    if (sourceType == DocumentSourceType.CONFLUENCE && confluenceSpaces.isEmpty()) {
+      throw new ValidationException(
+          "confluenceSpaces: mindestens ein Space ist erforderlich, wenn sourceType CONFLUENCE"
+              + " ist");
+    }
     return new SourceConfiguration(
-        sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
+        sourceType,
+        sourcePath,
+        sourceUrl,
+        sourceProxy,
+        sourceCredentials,
+        sourceInsecureSsl,
+        request.confluenceEdition(),
+        confluenceSpaces);
+  }
+
+  /**
+   * Validates a space selection (ADR-0023, Entscheidung 1): only a {@code CONFLUENCE} library may
+   * carry one, keys are non-blank, at most 255 characters and unique per library. Returns the
+   * normalised (trimmed) selection; an absent selection is an empty list - the caller decides
+   * whether that is acceptable (creation: no; update: absent means "leave alone" and never reaches
+   * this method).
+   */
+  private List<ConfluenceSpaceSelection> validateConfluenceSpaces(
+      DocumentSourceType sourceType, List<ConfluenceSpaceSelection> requested) {
+    if (requested == null) {
+      return List.of();
+    }
+    if (sourceType != DocumentSourceType.CONFLUENCE) {
+      throw new ValidationException("confluenceSpaces sind nur für sourceType CONFLUENCE zulässig");
+    }
+    if (requested.isEmpty()) {
+      throw new ValidationException(
+          "confluenceSpaces: mindestens ein Space ist erforderlich, wenn sourceType CONFLUENCE"
+              + " ist");
+    }
+    if (requested.size() > MAX_CONFLUENCE_SPACES) {
+      throw new ValidationException(
+          "confluenceSpaces: höchstens " + MAX_CONFLUENCE_SPACES + " Spaces je Bibliothek");
+    }
+    Set<String> seen = new HashSet<>();
+    List<ConfluenceSpaceSelection> normalized = new ArrayList<>();
+    for (ConfluenceSpaceSelection selection : requested) {
+      String key = selection == null ? null : blankToNull(selection.getSpaceKey());
+      if (key == null) {
+        throw new ValidationException(
+            "confluenceSpaces: jeder Eintrag braucht einen Space-Schlüssel");
+      }
+      if (key.length() > 255) {
+        throw new ValidationException(
+            "confluenceSpaces: der Space-Schlüssel darf höchstens 255 Zeichen lang sein");
+      }
+      // Confluence treats space keys case-insensitively in practice - two spellings of one key
+      // would list the same pages twice in a full sync.
+      if (!seen.add(key.toUpperCase(Locale.ROOT))) {
+        throw new ValidationException(
+            "confluenceSpaces: der Space " + key + " ist mehrfach ausgewählt");
+      }
+      String name = blankToNull(selection.getSpaceName());
+      if (name != null && name.length() > 255) {
+        throw new ValidationException(
+            "confluenceSpaces: der Space-Name darf höchstens 255 Zeichen lang sein");
+      }
+      normalized.add(new ConfluenceSpaceSelection(key, name));
+    }
+    return normalized;
   }
 
   /**
@@ -956,10 +1074,24 @@ public class KnowledgeLibraryService {
     }
     boolean sourceInsecureSsl = Boolean.TRUE.equals(request.sourceInsecureSsl());
 
-    validateConfigurationForType(
-        sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
+    sourceUrl =
+        validateConfigurationForType(
+            sourceType,
+            sourcePath,
+            sourceUrl,
+            sourceProxy,
+            sourceCredentials,
+            sourceInsecureSsl,
+            library.getSourceConfluenceEdition());
     return new SourceConfiguration(
-        sourceType, sourcePath, sourceUrl, sourceProxy, sourceCredentials, sourceInsecureSsl);
+        sourceType,
+        sourcePath,
+        sourceUrl,
+        sourceProxy,
+        sourceCredentials,
+        sourceInsecureSsl,
+        library.getSourceConfluenceEdition(),
+        List.of());
   }
 
   /**
@@ -973,13 +1105,17 @@ public class KnowledgeLibraryService {
    * Postgres error text includes the failing row (and thus {@code source_credentials}) - exactly
    * what ADR-0018, Entscheidung 4 rules out.
    */
-  private void validateConfigurationForType(
+  private String validateConfigurationForType(
       DocumentSourceType sourceType,
       String sourcePath,
       String sourceUrl,
       String sourceProxy,
       String sourceCredentials,
-      boolean sourceInsecureSsl) {
+      boolean sourceInsecureSsl,
+      ConfluenceEdition confluenceEdition) {
+    if (confluenceEdition != null && sourceType != DocumentSourceType.CONFLUENCE) {
+      throw new ValidationException("confluenceEdition ist nur für sourceType CONFLUENCE zulässig");
+    }
     switch (sourceType) {
       case UPLOAD -> {
         if (sourcePath != null
@@ -1025,9 +1161,52 @@ public class KnowledgeLibraryService {
       }
       case HTTP_DIRECTORY -> validateUrlBasedConfiguration(sourceType, sourcePath, sourceUrl);
       case RSS_FEED -> validateUrlBasedConfiguration(sourceType, sourcePath, sourceUrl);
+      case CONFLUENCE -> {
+        return validateConfluenceConfiguration(
+            sourcePath, sourceUrl, sourceCredentials, confluenceEdition);
+      }
       default ->
           throw new ValidationException("sourceType " + sourceType + " wird nicht unterstützt");
     }
+    return sourceUrl;
+  }
+
+  /**
+   * The {@code CONFLUENCE} arm (ADR-0023): the edition is required, {@code sourceUrl} is the
+   * instance's base address and is stored in its normalised form (site root without {@code /wiki}
+   * for Cloud, including the context path for Data Center - {@link
+   * ConfluenceConnection#normalizeBaseUrl}), credentials are required and must parse for the
+   * edition ({@link ConfluenceCredentials#parse}), a filesystem path is forbidden. Returns the
+   * normalised address; the German messages of the two parsers are user-facing and passed through.
+   */
+  private String validateConfluenceConfiguration(
+      String sourcePath, String sourceUrl, String sourceCredentials, ConfluenceEdition edition) {
+    if (edition == null) {
+      throw new ValidationException(
+          "confluenceEdition ist erforderlich, wenn sourceType CONFLUENCE ist");
+    }
+    if (sourcePath != null) {
+      throw new ValidationException("sourcePath ist für sourceType CONFLUENCE nicht zulässig");
+    }
+    if (sourceUrl == null) {
+      throw new ValidationException("sourceUrl ist erforderlich, wenn sourceType CONFLUENCE ist");
+    }
+    String normalizedUrl;
+    try {
+      normalizedUrl = ConfluenceConnection.normalizeBaseUrl(sourceUrl, edition).toString();
+    } catch (ConfluenceConnection.InvalidBaseUrlException e) {
+      throw new ValidationException(e.getMessage());
+    }
+    if (sourceCredentials == null) {
+      throw new ValidationException(
+          "sourceCredentials sind erforderlich, wenn sourceType CONFLUENCE ist");
+    }
+    try {
+      ConfluenceCredentials.parse(edition, sourceCredentials);
+    } catch (ConfluenceCredentials.InvalidCredentialsFormatException e) {
+      throw new ValidationException(e.getMessage());
+    }
+    return normalizedUrl;
   }
 
   /** Shared by {@code HTTP_DIRECTORY} and {@code RSS_FEED} (#474) - both carry sourceUrl only. */
@@ -1118,7 +1297,9 @@ public class KnowledgeLibraryService {
       String sourceUrl,
       String sourceProxy,
       String sourceCredentials,
-      boolean sourceInsecureSsl) {}
+      boolean sourceInsecureSsl,
+      ConfluenceEdition confluenceEdition,
+      List<ConfluenceSpaceSelection> confluenceSpaces) {}
 
   /**
    * Resolves a group and enforces the organization boundary, treating a group from another

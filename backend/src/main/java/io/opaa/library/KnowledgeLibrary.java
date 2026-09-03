@@ -1,19 +1,31 @@
 package io.opaa.library;
 
+import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import org.hibernate.annotations.BatchSize;
 
 /**
  * The first asset type (#201, see docs/features/spaces-and-assets.md#assets): a document container
@@ -113,6 +125,31 @@ public class KnowledgeLibrary {
 
   @Column(name = "source_insecure_ssl", nullable = false)
   private boolean sourceInsecureSsl;
+
+  /**
+   * The Confluence edition of a {@code CONFLUENCE} library (ADR-0023, Entscheidung 2) - set once
+   * via {@link #configureConfluence}, immutable afterwards like {@link #sourceType} (enforced by
+   * {@code KnowledgeLibraryService#updateLibrary}), {@code null} for every other type (migration
+   * 010's {@code chk_knowledge_libraries_source_configuration}).
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "source_confluence_edition", length = 20)
+  private ConfluenceEdition sourceConfluenceEdition;
+
+  /**
+   * The selected spaces of a {@code CONFLUENCE} library (ADR-0023, Entscheidung 1) - the first
+   * list-valued piece of source configuration, kept in {@code knowledge_library_confluence_spaces}
+   * and replaced as a whole by {@link #updateConfluenceSpaces}. Non-empty for {@code CONFLUENCE} (a
+   * library without spaces would index nothing), empty for every other type. {@code EAGER} because
+   * the selection is small and read with every library detail.
+   */
+  @ElementCollection(fetch = FetchType.EAGER)
+  @BatchSize(size = 100)
+  @CollectionTable(
+      name = "knowledge_library_confluence_spaces",
+      joinColumns = @JoinColumn(name = "library_id"))
+  @OrderBy("spaceKey ASC")
+  private List<ConfluenceSpaceSelection> confluenceSpaces = new ArrayList<>();
 
   /**
    * Whether this library's indexing runs are triggered automatically on a schedule (#485) - always
@@ -357,6 +394,31 @@ public class KnowledgeLibrary {
     this.scheduleCron = scheduleCron;
   }
 
+  /**
+   * Sets the Confluence-specific half of a {@code CONFLUENCE} library's configuration at creation
+   * (ADR-0023): the edition, permanent from here on, and the initial space selection. Only valid on
+   * a library of that type - {@code KnowledgeLibraryService} validates before calling.
+   */
+  public void configureConfluence(
+      ConfluenceEdition edition, List<ConfluenceSpaceSelection> selection) {
+    if (sourceType != DocumentSourceType.CONFLUENCE) {
+      throw new IllegalStateException("only a CONFLUENCE library carries an edition and spaces");
+    }
+    this.sourceConfluenceEdition = Objects.requireNonNull(edition, "edition");
+    updateConfluenceSpaces(selection);
+  }
+
+  /**
+   * Replaces the space selection as a whole (ADR-0023, Entscheidung 1) - validated by the caller.
+   */
+  public void updateConfluenceSpaces(List<ConfluenceSpaceSelection> selection) {
+    this.confluenceSpaces.clear();
+    selection.stream()
+        .sorted(Comparator.comparing(ConfluenceSpaceSelection::getSpaceKey))
+        .forEach(this.confluenceSpaces::add);
+    this.updatedAt = Instant.now();
+  }
+
   public boolean isOwnedByUser(UUID userId) {
     return ownerType == LibraryOwnerType.USER && ownerUserId.equals(userId);
   }
@@ -427,6 +489,15 @@ public class KnowledgeLibrary {
 
   public String getSourceCredentials() {
     return sourceCredentials;
+  }
+
+  public ConfluenceEdition getSourceConfluenceEdition() {
+    return sourceConfluenceEdition;
+  }
+
+  /** The selected spaces, ordered by key; empty for every type but {@code CONFLUENCE}. */
+  public List<ConfluenceSpaceSelection> getConfluenceSpaces() {
+    return Collections.unmodifiableList(confluenceSpaces);
   }
 
   public boolean isSourceInsecureSsl() {

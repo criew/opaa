@@ -115,6 +115,34 @@ class LibraryControllerCredentialsIntegrationTest {
   }
 
   @Test
+  void aConfluenceValidationErrorNeverEchoesTheSubmittedCredentials() throws Exception {
+    // ADR-0023: a Cloud credential without the e-mail separator is rejected before anything is
+    // stored or contacted - and the 400 must not carry the value back.
+    String token = "api-token-streng-geheim";
+    String body =
+        """
+        {
+          "name": "Wiki ohne E-Mail",
+          "sourceType": "CONFLUENCE",
+          "sourceUrl": "https://site.atlassian.net/wiki",
+          "confluenceEdition": "CLOUD",
+          "sourceCredentials": "%s",
+          "confluenceSpaces": [{"key": "ENG"}]
+        }
+        """
+            .formatted(token);
+
+    var result =
+        mockMvc
+            .perform(post("/api/v1/libraries").with(devUser()).content(body))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+
+    String rawResponseBody = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
+    assertThat(rawResponseBody).contains("E-Mail").doesNotContain(token);
+  }
+
+  @Test
   void aValidationErrorNeverEchoesTheSubmittedCredentialsInTheRawResponseBody() throws Exception {
     // FILESYSTEM rejects sourceCredentials outright (validateConfigurationForType) - the request
     // body that triggers the 400 still carries the plaintext credential, so this pins that

@@ -105,6 +105,7 @@ val typeMappingsConfig = mapOf(
     "NotificationType" to "NotificationType",
     "ScheduleFrequency" to "ScheduleFrequency",
     "ScheduleWeekday" to "ScheduleWeekday",
+    "ConfluenceEdition" to "ConfluenceEdition",
 )
 
 tasks.withType<Test> {
@@ -174,6 +175,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "NotificationType" to "io.opaa.api.types.NotificationType",
         "ScheduleFrequency" to "io.opaa.api.types.ScheduleFrequency",
         "ScheduleWeekday" to "io.opaa.api.types.ScheduleWeekday",
+        "ConfluenceEdition" to "io.opaa.api.types.ConfluenceEdition",
     ))
 }
 

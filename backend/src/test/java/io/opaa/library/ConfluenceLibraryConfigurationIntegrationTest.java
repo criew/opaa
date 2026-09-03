@@ -1,0 +1,435 @@
+package io.opaa.library;
+
+import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
+import static io.opaa.library.LibraryUpdateBuilder.libraryUpdate;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import io.opaa.api.types.ConfluenceEdition;
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.LibraryVisibility;
+import io.opaa.api.types.SystemRole;
+import io.opaa.auth.CurrentUser;
+import io.opaa.auth.User;
+import io.opaa.auth.UserRepository;
+import io.opaa.common.ValidationException;
+import io.opaa.organization.Organization;
+import io.opaa.organization.OrganizationRepository;
+import io.opaa.test.OpaaIntegrationTest;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+/**
+ * {@code CONFLUENCE} as a library's quellentyp (ADR-0023, #1133): configuration validated per
+ * edition, edition immutable, space selection changeable and non-empty, credentials never returned,
+ * and the multi-library model of the epic - several libraries against the same instance with the
+ * same or different tokens and overlapping selections, created by different people.
+ */
+@OpaaIntegrationTest
+class ConfluenceLibraryConfigurationIntegrationTest {
+
+  @Autowired private KnowledgeLibraryService libraryService;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private UserRepository userRepository;
+  @Autowired private OrganizationRepository organizationRepository;
+  @Autowired private JdbcTemplate jdbcTemplate;
+
+  private UUID organizationId;
+  private final List<UUID> userIds = new ArrayList<>();
+
+  @BeforeEach
+  void setUp() {
+    organizationId =
+        organizationRepository
+            .save(new Organization(UUID.randomUUID(), "Confluence-Test-Org " + UUID.randomUUID()))
+            .getId();
+  }
+
+  @AfterEach
+  void tearDown() {
+    List<KnowledgeLibrary> own =
+        libraryRepository.findAll().stream()
+            .filter(l -> organizationId.equals(l.getOrganizationId()))
+            .toList();
+    libraryRepository.deleteAll(own);
+    jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
+    jdbcTemplate.update(
+        "DELETE FROM asset_grant_history WHERE subject_user_id IN (SELECT id FROM users WHERE"
+            + " organization_id = ?)",
+        organizationId);
+    for (UUID userId : userIds) {
+      userRepository.deleteById(userId);
+    }
+    organizationRepository.deleteById(organizationId);
+  }
+
+  @Test
+  void createsADataCenterLibraryWithNormalisedAddressAndSelectionAndNeverReturnsTheToken() {
+    UUID owner = user();
+    LibraryCreation request =
+        libraryCreation("Wiki Bauamt", DocumentSourceType.CONFLUENCE)
+            .sourceUrl(URI.create("https://Wiki.Behoerde.example/confluence/"))
+            .sourceCredentials("pat-geheim")
+            .confluenceEdition(ConfluenceEdition.DATA_CENTER)
+            .confluenceSpaces(
+                List.of(
+                    new ConfluenceSpaceSelection("HR", "Personal"),
+                    new ConfluenceSpaceSelection("BAU", "Bauamt")))
+            .build();
+
+    LibraryDetail detail = libraryService.createLibrary(request, currentUser(owner));
+
+    KnowledgeLibrary library = detail.library();
+    assertThat(library.getSourceType()).isEqualTo(DocumentSourceType.CONFLUENCE);
+    assertThat(library.getSourceConfluenceEdition()).isEqualTo(ConfluenceEdition.DATA_CENTER);
+    assertThat(library.getSourceUrl()).isEqualTo("https://wiki.behoerde.example/confluence");
+    assertThat(library.getConfluenceSpaces())
+        .extracting(ConfluenceSpaceSelection::getSpaceKey)
+        .containsExactly("BAU", "HR");
+    assertThat(detail.managementDetail().sourceCredentialsSet()).isTrue();
+
+    KnowledgeLibrary reloaded = libraryRepository.findById(library.getId()).orElseThrow();
+    assertThat(reloaded.getConfluenceSpaces()).hasSize(2);
+    assertThat(reloaded.getSourceCredentials()).isEqualTo("pat-geheim");
+  }
+
+  @Test
+  void cloudNeedsEmailAndTokenAndLosesTheWikiSuffix() {
+    UUID owner = user();
+    LibraryCreation withoutEmail =
+        confluence("Cloud ohne E-Mail", ConfluenceEdition.CLOUD, "https://site.atlassian.net/wiki")
+            .sourceCredentials("nur-token")
+            .build();
+    assertThatThrownBy(() -> libraryService.createLibrary(withoutEmail, currentUser(owner)))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("E-Mail");
+
+    LibraryDetail detail =
+        libraryService.createLibrary(
+            confluence("Cloud", ConfluenceEdition.CLOUD, "https://site.atlassian.net/wiki")
+                .sourceCredentials("dienst@behoerde.example:api-token")
+                .build(),
+            currentUser(owner));
+    assertThat(detail.library().getSourceUrl()).isEqualTo("https://site.atlassian.net");
+    assertThat(detail.library().getSourceConfluenceEdition()).isEqualTo(ConfluenceEdition.CLOUD);
+  }
+
+  @Test
+  void rejectsIncompleteOrContradictoryConfiguration() {
+    UUID owner = user();
+    CurrentUser caller = currentUser(owner);
+
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    libraryCreation("ohne Edition", DocumentSourceType.CONFLUENCE)
+                        .sourceUrl(URI.create("https://wiki.example.org"))
+                        .sourceCredentials("pat")
+                        .confluenceSpaces(List.of(new ConfluenceSpaceSelection("A", null)))
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("confluenceEdition ist erforderlich");
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    confluence(
+                            "ohne Spaces",
+                            ConfluenceEdition.DATA_CENTER,
+                            "https://wiki.example.org")
+                        .confluenceSpaces(List.of())
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("mindestens ein Space");
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    confluence(
+                            "ohne Spaces",
+                            ConfluenceEdition.DATA_CENTER,
+                            "https://wiki.example.org")
+                        .confluenceSpaces(null)
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("mindestens ein Space");
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    confluence(
+                            "ohne Token", ConfluenceEdition.DATA_CENTER, "https://wiki.example.org")
+                        .sourceCredentials(null)
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("sourceCredentials sind erforderlich");
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    confluence("doppelt", ConfluenceEdition.DATA_CENTER, "https://wiki.example.org")
+                        .confluenceSpaces(
+                            List.of(
+                                new ConfluenceSpaceSelection("A", null),
+                                new ConfluenceSpaceSelection("A", "nochmal")))
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("mehrfach");
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    confluence(
+                            "mit Pfad", ConfluenceEdition.DATA_CENTER, "https://wiki.example.org")
+                        .sourcePath("/srv/docs")
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("sourcePath");
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    libraryCreation("RSS mit Edition", DocumentSourceType.RSS_FEED)
+                        .sourceUrl(URI.create("https://example.org/feed.xml"))
+                        .confluenceEdition(ConfluenceEdition.CLOUD)
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("nur für sourceType CONFLUENCE");
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    libraryCreation("RSS mit Spaces", DocumentSourceType.RSS_FEED)
+                        .sourceUrl(URI.create("https://example.org/feed.xml"))
+                        .confluenceSpaces(List.of(new ConfluenceSpaceSelection("A", null)))
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("nur für sourceType CONFLUENCE");
+  }
+
+  @Test
+  void editionIsImmutableButTheSelectionIsNot() {
+    UUID owner = user();
+    CurrentUser caller = currentUser(owner);
+    LibraryDetail created =
+        libraryService.createLibrary(
+            confluence("Wiki", ConfluenceEdition.DATA_CENTER, "https://wiki.example.org").build(),
+            caller);
+    UUID libraryId = created.library().getId();
+
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    libraryId,
+                    libraryUpdate("Wiki").confluenceEdition(ConfluenceEdition.CLOUD).build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("confluenceEdition kann nach dem Anlegen");
+
+    // echoing the stored edition is fine, like sourceType
+    libraryService.updateLibrary(
+        libraryId,
+        libraryUpdate("Wiki").confluenceEdition(ConfluenceEdition.DATA_CENTER).build(),
+        caller);
+
+    LibraryDetail updated =
+        libraryService.updateLibrary(
+            libraryId,
+            libraryUpdate("Wiki")
+                .confluenceSpaces(
+                    List.of(
+                        new ConfluenceSpaceSelection("OPS", "Betrieb"),
+                        new ConfluenceSpaceSelection("ENG", null)))
+                .build(),
+            caller);
+    assertThat(updated.library().getConfluenceSpaces())
+        .extracting(ConfluenceSpaceSelection::getSpaceKey)
+        .containsExactly("ENG", "OPS");
+    assertThat(libraryRepository.findById(libraryId).orElseThrow().getConfluenceSpaces())
+        .extracting(ConfluenceSpaceSelection::getSpaceKey)
+        .containsExactly("ENG", "OPS");
+
+    // a rename leaves the selection alone
+    libraryService.updateLibrary(libraryId, libraryUpdate("Wiki umbenannt").build(), caller);
+    assertThat(libraryRepository.findById(libraryId).orElseThrow().getConfluenceSpaces())
+        .hasSize(2);
+
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    libraryId, libraryUpdate("Wiki").confluenceSpaces(List.of()).build(), caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("mindestens ein Space");
+  }
+
+  @Test
+  void editionAndSpacesAreRefusedOnALibraryOfAnotherType() {
+    UUID owner = user();
+    CurrentUser caller = currentUser(owner);
+    UUID rss =
+        libraryService
+            .createLibrary(
+                libraryCreation("Feed", DocumentSourceType.RSS_FEED)
+                    .sourceUrl(URI.create("https://example.org/feed.xml"))
+                    .build(),
+                caller)
+            .library()
+            .getId();
+
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    rss,
+                    libraryUpdate("Feed").confluenceEdition(ConfluenceEdition.CLOUD).build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("nur für sourceType CONFLUENCE zulässig");
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    rss,
+                    libraryUpdate("Feed")
+                        .confluenceSpaces(List.of(new ConfluenceSpaceSelection("A", null)))
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("nur für sourceType CONFLUENCE zulässig");
+  }
+
+  @Test
+  void updatingTheAddressKeepsCredentialsOnTheSameOriginAndValidatesForTheStoredEdition() {
+    UUID owner = user();
+    CurrentUser caller = currentUser(owner);
+    UUID libraryId =
+        libraryService
+            .createLibrary(
+                confluence("Cloud", ConfluenceEdition.CLOUD, "https://site.atlassian.net")
+                    .sourceCredentials("dienst@behoerde.example:token")
+                    .build(),
+                caller)
+            .library()
+            .getId();
+
+    libraryService.updateLibrary(
+        libraryId,
+        libraryUpdate("Cloud").sourceUrl(URI.create("https://site.atlassian.net/wiki/")).build(),
+        caller);
+    KnowledgeLibrary sameOrigin = libraryRepository.findById(libraryId).orElseThrow();
+    assertThat(sameOrigin.getSourceUrl()).isEqualTo("https://site.atlassian.net");
+    assertThat(sameOrigin.getSourceCredentials()).isEqualTo("dienst@behoerde.example:token");
+
+    // a new host drops the stored credentials, so the update must bring valid ones
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    libraryId,
+                    libraryUpdate("Cloud")
+                        .sourceUrl(URI.create("https://other.atlassian.net"))
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("sourceCredentials sind erforderlich");
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    libraryId,
+                    libraryUpdate("Cloud")
+                        .sourceUrl(URI.create("https://other.atlassian.net"))
+                        .sourceCredentials("nur-token")
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("E-Mail");
+  }
+
+  /**
+   * The epic's example (ADR-0023, Entscheidung 5): five libraries over two instances with three
+   * tokens, created by two people - no uniqueness on address or token, overlapping selections
+   * allowed, every library independent.
+   */
+  @Test
+  void manyLibrariesAgainstTheSameInstanceAreIndependent() {
+    CurrentUser alice = currentUser(user());
+    CurrentUser bob = currentUser(user());
+    String instance1 = "https://wiki-1.example.org";
+    String instance2 = "https://wiki-2.example.org";
+
+    UUID a = create(alice, "Instanz 1, Space 1", instance1, "token-1", List.of("S1"));
+    UUID b = create(alice, "Instanz 1, Space 2+3", instance1, "token-1", List.of("S2", "S3"));
+    UUID c = create(bob, "Instanz 1, Space 4", instance1, "token-2", List.of("S4"));
+    UUID d = create(bob, "Instanz 2, Space A", instance2, "token-a", List.of("A"));
+    UUID e = create(alice, "Instanz 2, Space B", instance2, "token-b", List.of("B"));
+    // overlapping selection against the same instance is allowed as well (indexed twice, ADR-0023)
+    UUID f = create(bob, "Instanz 1, Space 1 nochmal", instance1, "token-2", List.of("S1", "S2"));
+
+    List<KnowledgeLibrary> all = libraryRepository.findAllById(List.of(a, b, c, d, e, f));
+    assertThat(all).hasSize(6);
+    assertThat(all).allMatch(l -> l.getSourceType() == DocumentSourceType.CONFLUENCE);
+    assertThat(all.stream().filter(l -> l.getSourceUrl().equals(instance1))).hasSize(4);
+    assertThat(libraryRepository.findById(a).orElseThrow().getConfluenceSpaces())
+        .extracting(ConfluenceSpaceSelection::getSpaceKey)
+        .containsExactly("S1");
+    assertThat(libraryRepository.findById(f).orElseThrow().getConfluenceSpaces())
+        .extracting(ConfluenceSpaceSelection::getSpaceKey)
+        .containsExactly("S1", "S2");
+
+    // changing one selection touches no other library
+    libraryService.updateLibrary(
+        b,
+        libraryUpdate("Instanz 1, Space 2+3")
+            .confluenceSpaces(List.of(new ConfluenceSpaceSelection("S3", null)))
+            .build(),
+        alice);
+    assertThat(libraryRepository.findById(f).orElseThrow().getConfluenceSpaces()).hasSize(2);
+    assertThat(libraryRepository.findById(b).orElseThrow().getConfluenceSpaces()).hasSize(1);
+  }
+
+  // ---- helpers ---------------------------------------------------------------------------------
+
+  private UUID create(
+      CurrentUser caller, String name, String url, String token, List<String> spaceKeys) {
+    List<ConfluenceSpaceSelection> spaces =
+        spaceKeys.stream().map(k -> new ConfluenceSpaceSelection(k, null)).toList();
+    return libraryService
+        .createLibrary(
+            confluence(name, ConfluenceEdition.DATA_CENTER, url)
+                .sourceCredentials(token)
+                .confluenceSpaces(spaces)
+                .build(),
+            caller)
+        .library()
+        .getId();
+  }
+
+  private static LibraryCreationBuilder confluence(
+      String name, ConfluenceEdition edition, String url) {
+    return libraryCreation(name, DocumentSourceType.CONFLUENCE)
+        .sourceUrl(URI.create(url))
+        .sourceCredentials(edition == ConfluenceEdition.CLOUD ? "a@b.example:token" : "pat-token")
+        .confluenceEdition(edition)
+        .confluenceSpaces(List.of(new ConfluenceSpaceSelection("ENG", "Engineering")))
+        .visibility(LibraryVisibility.PRIVATE);
+  }
+
+  private UUID user() {
+    User user =
+        new User(
+            "confluence-" + UUID.randomUUID(), "https://issuer.example", null, "Confluence Tester");
+    user.setOrganizationId(organizationId);
+    UUID id = userRepository.save(user).getId();
+    userIds.add(id);
+    return id;
+  }
+
+  private CurrentUser currentUser(UUID userId) {
+    return CurrentUser.of(userId, organizationId, SystemRole.USER, "Confluence Tester");
+  }
+}

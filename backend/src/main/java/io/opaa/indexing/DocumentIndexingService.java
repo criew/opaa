@@ -178,6 +178,10 @@ public class DocumentIndexingService {
       case RSS_FEED -> IndexingSourceType.RSS_FEED;
       case UPLOAD ->
           throw new ConflictException("Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf");
+      case CONFLUENCE ->
+          throw new ConflictException(
+              "Indizierungsläufe für Confluence-Bibliotheken sind noch nicht verfügbar; die"
+                  + " Bibliothek lässt sich bereits konfigurieren, der erste Vollabgleich folgt.");
     };
   }
 

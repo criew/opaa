@@ -3968,8 +3968,11 @@ components:
         never changed afterwards (see LibraryUpdateRequest). Which of sourcePath/sourceUrl/
         sourceProxy/sourceCredentials/sourceInsecureSsl may be set depends on sourceType - UPLOAD
         accepts none of them, FILESYSTEM accepts sourcePath only, HTTP_DIRECTORY and RSS_FEED
-        both accept sourceUrl (sourceProxy/sourceCredentials/sourceInsecureSsl optional). A
-        combination that contradicts sourceType is rejected with 400.
+        both accept sourceUrl (sourceProxy/sourceCredentials/sourceInsecureSsl optional).
+        CONFLUENCE (ADR-0023) requires sourceUrl (the instance's base address), sourceCredentials
+        (format depends on confluenceEdition), confluenceEdition and a non-empty confluenceSpaces
+        selection; sourceProxy/sourceInsecureSsl stay optional. A combination that contradicts
+        sourceType is rejected with 400.
       properties:
         name:
           type: string
@@ -4015,31 +4018,58 @@ components:
           format: uri
           nullable: true
           description: >
-            URL of an Apache mod_autoindex directory listing (HTTP_DIRECTORY) or an RSS-2.0 feed
-            (RSS_FEED) to crawl. http/https only.
+            URL of an Apache mod_autoindex directory listing (HTTP_DIRECTORY), an RSS-2.0 feed
+            (RSS_FEED) or the base address of a Confluence instance (CONFLUENCE: the site root
+            without /wiki for Cloud, including any context path for Data Center - a trailing
+            /wiki or slash is normalised away, ADR-0023). http/https only.
           example: https://files.example.com/documents/
         sourceProxy:
           type: string
           maxLength: 255
           nullable: true
           description: >
-            Proxy server in host:port format - only for sourceType HTTP_DIRECTORY or RSS_FEED.
+            Proxy server in host:port format - only for sourceType HTTP_DIRECTORY, RSS_FEED or
+            CONFLUENCE.
           example: proxy.example.com:8080
         sourceCredentials:
           type: string
           maxLength: 500
           nullable: true
           description: >
-            Basic auth credentials in user:password format - only for sourceType
-            HTTP_DIRECTORY or RSS_FEED. Write-only: never returned by any API response
-            (ADR-0018).
+            Credentials, write-only: never returned by any API response (ADR-0018). For
+            HTTP_DIRECTORY/RSS_FEED optional Basic auth in user:password format. For CONFLUENCE
+            required, in the edition's format (ADR-0023, Entscheidung 3): CLOUD as
+            e-mail:api-token (HTTP Basic with the e-mail as user name), DATA_CENTER as the bare
+            personal access token (Bearer).
           example: admin:secret
         sourceInsecureSsl:
           type: boolean
           nullable: true
           description: >
-            Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY or RSS_FEED.
+            Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY, RSS_FEED or
+            CONFLUENCE.
           default: false
+        confluenceEdition:
+          description: >
+            Required for sourceType CONFLUENCE, rejected for every other type. Take the value the
+            connection test detected; the edition cannot be changed after creation.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConfluenceEdition"
+        confluenceSpaces:
+          type: array
+          nullable: true
+          minItems: 1
+          maxItems: 500
+          description: >
+            The spaces this library indexes - required and non-empty for sourceType CONFLUENCE
+            (a library without spaces would index nothing and report an empty success), rejected
+            for every other type. Keys must be unique. Changeable after creation via
+            LibraryUpdateRequest; every change forces the next run to be a full sync (ADR-0023).
+            Note the consequence stated before the selection in the UI: everything indexed from
+            every selected space is readable by everyone who may read this library.
+          items:
+            $ref: "#/components/schemas/ConfluenceSpaceRef"
 
     SourceConnectionTestRequest:
       type: object
@@ -4273,24 +4303,28 @@ components:
           format: uri
           nullable: true
           description: >
-            URL of an Apache mod_autoindex directory listing (HTTP_DIRECTORY) or an RSS-2.0 feed
-            (RSS_FEED) to crawl. http/https only.
+            URL of an Apache mod_autoindex directory listing (HTTP_DIRECTORY), an RSS-2.0 feed
+            (RSS_FEED) or the base address of a Confluence instance (CONFLUENCE, normalised like
+            LibraryRequest.sourceUrl). http/https only.
           example: https://files.example.com/documents/
         sourceProxy:
           type: string
           maxLength: 255
           nullable: true
           description: >
-            Proxy server in host:port format - only for sourceType HTTP_DIRECTORY or RSS_FEED.
+            Proxy server in host:port format - only for sourceType HTTP_DIRECTORY, RSS_FEED or
+            CONFLUENCE.
           example: proxy.example.com:8080
         sourceCredentials:
           type: string
           maxLength: 500
           nullable: true
           description: >
-            Basic auth credentials in user:password format - only for sourceType
-            HTTP_DIRECTORY or RSS_FEED. Write-only: never returned by any API response
-            (ADR-0018). Omitting this field while replacing the rest of the configuration (e.g.
+            Credentials, write-only: never returned by any API response (ADR-0018). For
+            HTTP_DIRECTORY/RSS_FEED optional Basic auth in user:password format; for CONFLUENCE
+            in the edition's format (CLOUD e-mail:api-token, DATA_CENTER the bare personal access
+            token, ADR-0023). Omitted while sourceUrl keeps the same origin, the stored value is
+            kept. Omitting this field while replacing the rest of the configuration (e.g.
             only sourceUrl changes) leaves the currently stored credentials untouched - there is
             no way to read them back to resend, and no way to explicitly clear them via this
             request.
@@ -4299,8 +4333,28 @@ components:
           type: boolean
           nullable: true
           description: >
-            Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY or RSS_FEED.
+            Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY, RSS_FEED or
+            CONFLUENCE.
           default: false
+        confluenceEdition:
+          description: >
+            Accepted only when it equals the library's stored edition (like sourceType, ADR-0023:
+            immutable after creation); any other value is rejected with 400.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConfluenceEdition"
+        confluenceSpaces:
+          type: array
+          nullable: true
+          minItems: 1
+          maxItems: 500
+          description: >
+            Replaces the space selection of a CONFLUENCE library as a whole when present; absent
+            leaves the stored selection untouched. Must stay non-empty. Removing a space takes
+            effect with the next full sync, which any change to the selection forces (ADR-0023).
+            Rejected for every other sourceType.
+          items:
+            $ref: "#/components/schemas/ConfluenceSpaceRef"
         schedule:
           $ref: "#/components/schemas/LibraryScheduleRequest"
 
@@ -4468,6 +4522,24 @@ components:
             accurate "leave blank to keep the current credential" hint only when one actually
             exists, instead of implying one is configured when none is. Set only if myRole is at
             least MANAGER (#507) - see sourcePath above for why.
+        confluenceEdition:
+          description: >
+            The edition of a CONFLUENCE library (ADR-0023) - present for every reader, absent for
+            other source types. Not configuration detail in the #507 sense: it says which kind of
+            Confluence the library mirrors, not where.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConfluenceEdition"
+        confluenceSpaces:
+          type: array
+          nullable: true
+          description: >
+            The selected spaces of a CONFLUENCE library, present for every reader (not only
+            MANAGER): the selection is exactly the scope every reader of this library can see, and
+            naming it is part of making that consequence visible (ADR-0023, #1138). Absent for
+            other source types.
+          items:
+            $ref: "#/components/schemas/ConfluenceSpaceRef"
         schedule:
           description: >
             The library's indexing schedule (#485) - present only for a connector library
@@ -4518,8 +4590,38 @@ components:
 
     DocumentSourceType:
       type: string
-      enum: [FILESYSTEM, HTTP_DIRECTORY, UPLOAD, RSS_FEED]
+      enum: [FILESYSTEM, HTTP_DIRECTORY, UPLOAD, RSS_FEED, CONFLUENCE]
       example: FILESYSTEM
+
+    ConfluenceEdition:
+      type: string
+      description: >
+        The Confluence edition a CONFLUENCE library points at (ADR-0023, Entscheidung 2).
+        Detected by the connection test from the instance's own response signature - never
+        guessed from the host name - stored at creation and immutable afterwards, like
+        sourceType itself. CLOUD authenticates with e-mail + API token (HTTP Basic) against
+        /wiki/api/v2, DATA_CENTER with a personal access token (Bearer) against /rest/api.
+      enum: [CLOUD, DATA_CENTER]
+      example: DATA_CENTER
+
+    ConfluenceSpaceRef:
+      type: object
+      required: [key]
+      description: >
+        One space of a CONFLUENCE library's selection (ADR-0023, Entscheidung 1). key is the
+        stable Confluence space key the run lists; name is the display name at the time of
+        selection so the UI can show the selection without asking Confluence again.
+      properties:
+        key:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: ENG
+        name:
+          type: string
+          maxLength: 255
+          nullable: true
+          example: Engineering
 
     LibraryDocumentResponse:
       type: object

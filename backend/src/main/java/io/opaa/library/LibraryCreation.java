@@ -1,9 +1,11 @@
 package io.opaa.library;
 
+import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -27,4 +29,6 @@ public record LibraryCreation(
     URI sourceUrl,
     String sourceProxy,
     String sourceCredentials,
-    Boolean sourceInsecureSsl) {}
+    Boolean sourceInsecureSsl,
+    ConfluenceEdition confluenceEdition,
+    List<ConfluenceSpaceSelection> confluenceSpaces) {}

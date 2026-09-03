@@ -436,6 +436,13 @@ export default function LibraryCreatePage() {
               </Typography>
             )}
 
+            {configKind === 'confluence' && (
+              <Alert severity="info" sx={{ maxWidth: 640 }}>
+                Die Quellkonfiguration von Confluence-Bibliotheken lässt sich über diese Oberfläche
+                noch nicht erfassen. Adresse, Zugangsdaten und Space-Auswahl folgen in Kürze.
+              </Alert>
+            )}
+
             {configKind === 'path' && (
               <Box sx={{ maxWidth: 640 }}>
                 <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>

@@ -275,7 +275,8 @@ public class Document {
    */
   public String getDeepLinkSourceUrl() {
     if (sourceType == DocumentSourceType.HTTP_DIRECTORY
-        || sourceType == DocumentSourceType.RSS_FEED) {
+        || sourceType == DocumentSourceType.RSS_FEED
+        || sourceType == DocumentSourceType.CONFLUENCE) {
       return filePath;
     }
     return null;

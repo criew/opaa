@@ -209,7 +209,10 @@ Vorgangs- und Ticketsysteme sowie einfache Webinhalte einschließlich offener Ve
 RSS-Feeds — für beide Web-Wege ist die Erschließung bereits gebaut (vier gebaute Quellentypen insgesamt:
 `UPLOAD`, `FILESYSTEM`, `HTTP_DIRECTORY`, `RSS_FEED`), siehe
 [Webverzeichnis](#webverzeichnis-gebaut) und
-[Feeds als Quelle](#feeds-als-quelle-gebaut). Weitere Quellklassen kommen bedarfsgetrieben hinzu, jede
+[Feeds als Quelle](#feeds-als-quelle-gebaut). Als fünfter Typ entsteht **`CONFLUENCE`**
+(Epic #1129, [ADR-0023](../decisions/0023-confluence-konnektor.md)): eine Bibliothek trägt
+Adresse, Edition (Cloud oder Data Center), Zugangsdaten und eine Auswahl von Spaces; Datenmodell und
+Konfiguration sind gebaut (#1133), die Läufe folgen in den weiteren Tickets des Epics. Weitere Quellklassen kommen bedarfsgetrieben hinzu, jede
 als neuer Bibliothekstyp (Template); die Anbindung an Dokumentenmanagement und elektronische Akte
 gehört in den Ausblick der Produktvision.
 

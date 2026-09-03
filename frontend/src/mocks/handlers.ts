@@ -57,6 +57,8 @@ import type {
   LlmModelRequest,
   LlmModelTestRequest,
   QueryRequest,
+  ConfluenceEdition,
+  ConfluenceSpaceRef,
 } from '../types/api'
 
 // Mirrors SupportedDocumentFormats#EXTENSIONS (backend/src/main/java/io/opaa/indexing) - kept as a
@@ -1009,6 +1011,8 @@ export const handlers = [
       sourceProxy?: string | null
       sourceCredentials?: string | null
       sourceInsecureSsl?: boolean | null
+      confluenceEdition?: ConfluenceEdition | null
+      confluenceSpaces?: ConfluenceSpaceRef[] | null
     }
     if (!body.name || body.name.trim() === '') {
       return HttpResponse.json(
@@ -1070,6 +1074,37 @@ export const handlers = [
         )
       }
     }
+    if (body.sourceType === 'CONFLUENCE') {
+      // Mirrors KnowledgeLibraryService#validateConfluenceConfiguration just enough for the
+      // wizard tests; the full flow arrives with #1135.
+      if (!body.sourceUrl) {
+        return HttpResponse.json(
+          { error: 'sourceUrl ist erforderlich, wenn sourceType CONFLUENCE ist' },
+          { status: 400 },
+        )
+      }
+      if (!body.confluenceEdition) {
+        return HttpResponse.json(
+          { error: 'confluenceEdition ist erforderlich, wenn sourceType CONFLUENCE ist' },
+          { status: 400 },
+        )
+      }
+      if (!body.sourceCredentials) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind erforderlich, wenn sourceType CONFLUENCE ist' },
+          { status: 400 },
+        )
+      }
+      if (!body.confluenceSpaces || body.confluenceSpaces.length === 0) {
+        return HttpResponse.json(
+          {
+            error:
+              'confluenceSpaces: mindestens ein Space ist erforderlich, wenn sourceType CONFLUENCE ist',
+          },
+          { status: 400 },
+        )
+      }
+    }
     if (body.sourceType === 'HTTP_DIRECTORY' || body.sourceType === 'RSS_FEED') {
       if (!body.sourceUrl) {
         return HttpResponse.json(
@@ -1115,16 +1150,24 @@ export const handlers = [
       sourceType: body.sourceType,
       sourcePath: body.sourceType === 'FILESYSTEM' ? (body.sourcePath ?? null) : null,
       sourceUrl:
-        body.sourceType === 'HTTP_DIRECTORY' || body.sourceType === 'RSS_FEED'
+        body.sourceType === 'HTTP_DIRECTORY' ||
+        body.sourceType === 'RSS_FEED' ||
+        body.sourceType === 'CONFLUENCE'
           ? (body.sourceUrl ?? null)
           : null,
       sourceProxy:
-        body.sourceType === 'HTTP_DIRECTORY' || body.sourceType === 'RSS_FEED'
+        body.sourceType === 'HTTP_DIRECTORY' ||
+        body.sourceType === 'RSS_FEED' ||
+        body.sourceType === 'CONFLUENCE'
           ? (body.sourceProxy ?? null)
           : null,
+      confluenceEdition: body.sourceType === 'CONFLUENCE' ? (body.confluenceEdition ?? null) : null,
+      confluenceSpaces: body.sourceType === 'CONFLUENCE' ? (body.confluenceSpaces ?? null) : null,
       // sourceCredentials ist Nur-Schreiben (ADR-0018) - bewusst nicht in der Detailantwort.
       sourceInsecureSsl:
-        body.sourceType === 'HTTP_DIRECTORY' || body.sourceType === 'RSS_FEED'
+        body.sourceType === 'HTTP_DIRECTORY' ||
+        body.sourceType === 'RSS_FEED' ||
+        body.sourceType === 'CONFLUENCE'
           ? Boolean(body.sourceInsecureSsl)
           : null,
     }
