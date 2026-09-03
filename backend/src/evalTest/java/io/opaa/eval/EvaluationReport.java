@@ -30,7 +30,15 @@ public record EvaluationReport(
     // absent, not "audited and clean" (see ExpectedStateAudit#evaluate).
     ExpectedStateAudit.Result expectedStateAudit,
     List<WorstQuery> worstQueries,
-    List<WorstQuery> allQueryResults) {
+    List<WorstQuery> allQueryResults,
+    // Issue #1151: how close to the window edge each group's solved cases sit — report-only,
+    // deliberately not part of measurementContractVersion or any Baseline (see MarginAggregate's
+    // Javadoc). Added after allQueryResults, at the end, so an existing committed report JSON grows
+    // a field instead of reordering — irrelevant to Jackson but keeps a textual diff minimal.
+    MarginAggregate overallMargins,
+    Map<String, MarginAggregate> marginsByCategory,
+    Map<String, MarginAggregate> marginsByDifficulty,
+    Map<String, MarginAggregate> marginsByLanguage) {
 
   /**
    * Version of the measurement contract this report was produced under — see ADR-0012. Bump this
@@ -47,8 +55,15 @@ public record EvaluationReport(
    * <p><b>Bumped to 3 by issue #1144 (ADR-0012 Nachtrag):</b> {@code ingestionPipelineFingerprint}
    * became a fixed point — see {@link IngestionPipelineFingerprint}'s Javadoc for what it records
    * and why {@code corpusManifestSha256} alone did not already cover it.
+   *
+   * <p><b>Bumped to 4 by issue #1164 (PR #1201 review):</b> {@code MailDocumentPipeline#version()}
+   * moved 2 → 3 (mail_date truncated to whole seconds for lexicographic sortability), which shifted
+   * every committed baseline's {@code ingestionPipelineFingerprint} even though no corpus in this
+   * repository routes a document through that pipeline — the fingerprint is a collective fixed
+   * point over every registered pipeline (see {@link IngestionPipelineFingerprint}'s Javadoc), not
+   * only the ones a given corpus actually reaches.
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 3;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 4;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(
@@ -184,6 +199,10 @@ public record EvaluationReport(
       // allQueryResults lets a reader verify a multi_topic case's coverage without recomputing it
       // from rankedFileNames/expectedDocuments.
       double allExpectedDocumentsHitAt10,
+      // Issue #1151: the margin (RetrievalMetrics#marginAtK) this case's first relevant hit had
+      // against each window; null when no expected document appears anywhere in rankedFileNames.
+      Integer hitRateMarginAt5,
+      Integer rankingMarginAt10,
       List<String> expectedDocuments,
       List<String> rankedFileNames) {}
 }

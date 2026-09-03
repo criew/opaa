@@ -29,7 +29,14 @@ public record PipelineEvaluationReport(
     // expected_state fields (see ExpectedStateAudit#evaluate).
     ExpectedStateAudit.Result expectedStateAudit,
     List<PipelineQueryResult> worstQueries,
-    List<PipelineQueryResult> allQueryResults) {
+    List<PipelineQueryResult> allQueryResults,
+    // Issue #1151: how close to the window edge each group's solved cases sit — report-only, see
+    // MarginAggregate's Javadoc for why this is deliberately not part of
+    // pipelineMeasurementContractVersion or PipelineBaseline.
+    MarginAggregate overallMargins,
+    Map<String, MarginAggregate> marginsByCategory,
+    Map<String, MarginAggregate> marginsByDifficulty,
+    Map<String, MarginAggregate> marginsByLanguage) {
 
   /**
    * Version of the pipeline path's own measurement contract (ADR-0012, Nachtrag zum
@@ -58,8 +65,14 @@ public record PipelineEvaluationReport(
    * <p>Version 4 (issue #1144, ADR-0012 Nachtrag): {@code ingestionPipelineFingerprint} became a
    * fixed point — see {@link IngestionPipelineFingerprint}'s Javadoc for what it records and why
    * {@code corpusManifestSha256} alone did not already cover it.
+   *
+   * <p>Version 5 (issue #1164, PR #1201 review): {@code MailDocumentPipeline#version()} moved 2 → 3
+   * (mail_date truncated to whole seconds for lexicographic sortability), which shifted every
+   * committed baseline's {@code ingestionPipelineFingerprint} even though no corpus in this
+   * repository routes a document through that pipeline - the fingerprint is a collective fixed
+   * point over every registered pipeline, not only the ones a given corpus actually reaches.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 4;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 5;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be
@@ -172,6 +185,10 @@ public record PipelineEvaluationReport(
       double ndcgAt8,
       double recallAt8,
       double allExpectedDocumentsHitAt8,
+      // Issue #1151: the margin (RetrievalMetrics#marginAtK) this case's first relevant hit had
+      // against each window; null when no expected document appears anywhere in rankedFileNames.
+      Integer hitRateMargin,
+      Integer rankingMargin,
       int chunksReturned,
       int distinctDocumentsReturned,
       List<String> expectedDocuments,

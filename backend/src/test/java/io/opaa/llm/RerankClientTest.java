@@ -2,6 +2,7 @@ package io.opaa.llm;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.llm.RerankClient.RerankUnavailableException;
@@ -15,6 +16,7 @@ import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -204,6 +206,45 @@ class RerankClientTest {
     RerankClient.ProbeFailure failure = client.probe(slow);
     assertThat(failure).isNotNull();
     assertThat(failure.timedOut()).isTrue();
+  }
+
+  /**
+   * regression guard for #1209: {@code HttpRequest.Builder#timeout(Duration)} only bounds the wait
+   * for response headers, not the body read that follows. An endpoint that sends headers and then
+   * stalls must still be classified as a timeout, and the whole call - not just the header phase -
+   * must return within {@code OPAA_RERANK_TIMEOUT}. {@code assertTimeoutPreemptively} is the test's
+   * own safety net: without the fix, the call blocks past it and the assertion itself fails with a
+   * timeout instead of the test hanging forever.
+   */
+  @Test
+  void aBodyThatStallsAfterHeadersIsReportedAsATimeoutWithinTheConfiguredBudget() {
+    server.createContext(
+        "/v1/rerank",
+        exchange -> {
+          exchange.getRequestBody().readAllBytes();
+          // Chunked (length 0): headers go out immediately, independent of a Content-Length.
+          exchange.sendResponseHeaders(200, 0);
+          try (OutputStream out = exchange.getResponseBody()) {
+            out.write("[".getBytes(StandardCharsets.UTF_8));
+            out.flush();
+            Thread.sleep(5000);
+          } catch (IOException e) {
+            // The client closed the connection on timeout; that is the expected outcome.
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+        });
+    RerankProperties stallingBody =
+        new RerankProperties(true, baseUrl, "bge-reranker", "", Duration.ofMillis(300));
+
+    assertTimeoutPreemptively(
+        Duration.ofSeconds(3),
+        () -> {
+          Instant start = Instant.now();
+          assertThatThrownBy(() -> client.rerank(stallingBody, "Frage", List.of("a")))
+              .isInstanceOf(RerankClient.RerankTimeoutException.class);
+          assertThat(Duration.between(start, Instant.now())).isLessThan(Duration.ofSeconds(2));
+        });
   }
 
   @Test

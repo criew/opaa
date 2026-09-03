@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.FullTextBackfillProgress;
 import io.opaa.indexing.FullTextBackfillProgressService;
+import io.opaa.indexing.VectorChunkStore;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ class SearchStatusIntegrationTest {
   @Autowired private SearchStatusService searchStatusService;
   @Autowired private FullTextBackfillProgressService backfillProgressService;
   @Autowired private VectorStore vectorStore;
+  @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private UUID ownerId;
@@ -37,7 +39,6 @@ class SearchStatusIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text, chunk_full_text_skip");
     ownerId = UUID.randomUUID();
     libraryId = UUID.randomUUID();
     jdbcTemplate.update(
@@ -60,6 +61,7 @@ class SearchStatusIntegrationTest {
 
   @AfterEach
   void tearDown() {
+    vectorChunkStore.deleteByLibraryId(libraryId);
     jdbcTemplate.update("DELETE FROM documents WHERE library_id = ?", libraryId);
     jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", libraryId);
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", ownerId);

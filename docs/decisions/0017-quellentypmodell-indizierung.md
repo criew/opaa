@@ -187,6 +187,16 @@ ausdrücklich für „vollständig auflistend" oder „ergänzend" entscheiden; 
 Standardwert. `UPLOAD` braucht keine solche Registrierung, da es ohnehin keinen Executor hat
 (Entscheidung 3).
 
+> **Nachtrag (2026-09-03, #1131):** [ADR-0023](0023-confluence-konnektor.md), Entscheidung 4
+> verfeinert diese Zuordnung: Die Kategorie gilt **je Betriebsart eines Laufs**, nicht je Quellentyp.
+> Confluence ist der erste Typ mit zwei Betriebsarten — der Vollabgleich ist „vollständig
+> auflistend", der inkrementelle Abgleich „ergänzend". Für `FILESYSTEM`, `HTTP_DIRECTORY` und
+> `RSS_FEED` ändert sich nichts: Sie kennen je genau eine Betriebsart, deren Kategorie die hier
+> festgelegte bleibt. Die Registrierung bleibt ausdrücklich, ohne impliziten Standardwert; neu ist,
+> dass sie je unterstützter Betriebsart erfolgt. Ergänzend gilt für explizite Lösch-Ereignisse
+> (Webhook) und für `404`/`trashed` beim Einzelabruf die Regel aus ADR-0023: Löschung braucht einen
+> positiven Befund der Instanz — Abwesenheit in einem ergänzenden Lauf ist nie einer.
+
 ## Ausdrücklich offen
 
 Dieser ADR entscheidet **nicht**:

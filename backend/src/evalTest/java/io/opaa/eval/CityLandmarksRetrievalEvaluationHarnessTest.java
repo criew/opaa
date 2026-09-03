@@ -831,6 +831,11 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     var byCategory = MetricsAggregate.groupBy(results, GoldenCase::category);
     var byDifficulty = MetricsAggregate.groupBy(results, GoldenCase::difficulty);
     var byLanguage = MetricsAggregate.groupBy(results, GoldenCase::language);
+    // Issue #1151: report-only margin summary, not part of MetricsAggregate/Baseline.
+    MarginAggregate overallMargins = MarginAggregate.of(results);
+    var marginsByCategory = MarginAggregate.groupBy(results, GoldenCase::category);
+    var marginsByDifficulty = MarginAggregate.groupBy(results, GoldenCase::difficulty);
+    var marginsByLanguage = MarginAggregate.groupBy(results, GoldenCase::language);
 
     Comparator<RetrievalMetrics.QueryResult> worstFirst =
         Comparator.comparingDouble(RetrievalMetrics.QueryResult::ndcgAt10)
@@ -905,7 +910,11 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             // golden dataset carries no expected_state fields.
             ExpectedStateAudit.fromRawVectorResults(results),
             worstQueries,
-            allQueryResults);
+            allQueryResults,
+            overallMargins,
+            marginsByCategory,
+            marginsByDifficulty,
+            marginsByLanguage);
 
     // Domain-specific report file name: RetrievalEvaluationHarnessTest (comic-characters) writes
     // to the plain "retrieval-metrics.json" for backward compatibility with existing tooling and
@@ -995,6 +1004,8 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
         r.reciprocalRank(),
         r.recallAt10(),
         r.allExpectedDocumentsHitAt10(),
+        r.hitRateMarginAt5(),
+        r.rankingMarginAt10(),
         r.goldenCase().expectedDocuments(),
         r.rankedFileNames());
   }

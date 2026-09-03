@@ -26,7 +26,11 @@ Baselines auf beiden Pfaden, weil sich Chunkinhalt und -zahl der ausschließlich
 (Issue #1144: `ingestionPipelineFingerprint` — ein Sammelabdruck über alle registrierten
 Ingestion-Pipelines — wird Fixpunkt auf **beiden** Pfaden, weil beide Chunks derselben Pipelines
 messen; Rohvektor-Messvertrag-Version 3, Pipeline-Messvertrag-Version 4, reine
-Fixpunkt-Ergänzung ohne neuen Messlauf für alle drei Baselines).
+Fixpunkt-Ergänzung ohne neuen Messlauf für alle drei Baselines) und den
+[Nachtrag zur Rangreserve](#nachtrag-rangreserve-grenzstabilität-issue-1151)
+(Issue #1151/PR #1206: `MarginAggregate` weist je Golden-Fall/-Gruppe aus, wie knapp ein Treffer das
+Fenster erreicht hat — bewusst nur im Report ausgewiesen, kein Fixpunkt, keine Messvertragsänderung
+auf beiden Pfaden; Folgeentscheidung, ob/wie das ein Fehlerkriterium wird, in Issue #1210).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
@@ -684,3 +688,37 @@ beteiligte Pipeline ist und ihre Version durch diesen Nachtrag unverändert blei
 `DocumentPipelineRegistry` zum Zeitpunkt dieses Nachtrags) ist identisch in allen sechs Dateien.
 Kein bereits committeter Chunk, keine bereits committete Metrik ändert sich durch diesen Nachtrag —
 nur die Beschreibung der Messbedingungen wird vollständiger.
+
+## Nachtrag: Rangreserve (Grenzstabilität, Issue #1151)
+
+> **Nachtrag vom 2026-09-03, Issue #1151/PR #1206.** Kein neuer Messvertragspunkt, keine
+> Versionsänderung auf beiden Pfaden — hier festgehalten, damit die Existenz der Kennzahl und ihr
+> bewusst report-only-Status nicht nur im PR nachlesbar sind.
+
+Ein Golden-Fall, der mit großem Rangabstand gelöst ist, und einer, der gerade noch über die
+Fensterschwelle rutscht, waren in den bestehenden Metriken nicht unterscheidbar — beide zählen
+binär als „gelöst" (`hitRateAt5`/`hitCountAt5`). `RetrievalMetrics#marginAtK` und `MarginAggregate`
+tragen dafür je Fall bzw. je Gruppe die Rangreserve mit: den Abstand des ersten relevanten Treffers
+zur Fenstergrenze, disjunkt aufgeteilt in Treffer, „knapp gelöst" und „knapp verfehlt" (siehe
+`docs/features/retrieval-benchmark.md`, Abschnitt 7, für die vollständige Definition).
+
+**Bewusst kein Fixpunkt, keine Messvertragsänderung.** Die Rangreserve steckt nicht in
+`MetricsAggregate`/`PipelineMetricsAggregate` und damit nicht in `Baseline`/`PipelineBaseline`;
+`BaselineComparator`/`PipelineBaselineComparator` lesen sie nicht.
+`CURRENT_MEASUREMENT_CONTRACT_VERSION`/`PIPELINE_MEASUREMENT_CONTRACT_VERSION` bleiben bei 3/4.
+Sie ist reine Berichtsanreicherung, keine neue Bedingung dafür, wann zwei Läufe „dasselbe messen"
+(Entscheidung 6) — dieselbe Kategorie wie `allExpectedDocumentsHitAt10` (#913) oder
+`hitCountAt5`/`hitCountAt10` (#306) vor ihrer Aufnahme in die Fallzahlprüfung. Ob und wie die
+Rangreserve später ein Fehlerkriterium nach ADR-0013 wird, klärt Issue #1210 — das wäre dann eine
+eigene Entscheidung dieses ADRs (Baseline-Schema) und/oder von ADR-0013 (Fehlerkriterium), nicht
+rückwirkend dieser Nachtrag.
+
+### 31. Dritter Nachtrag des Fingerabdrucks: `email:2` → `email:3` (Issue #1164, PR #1201)
+
+Chronologisch nach dem Rangreserve-Nachtrag oben (dessen "bleiben bei 3/4" den Stand zum Zeitpunkt von PR #1206 festhält, unberührt von dieser Änderung - die Rangreserve selbst bleibt weiterhin kein Fixpunkt und bewegt keine Vertragsversion).
+
+PR #1201 (Mail-Kopfdaten an der Fundstelle anzeigen und filtern, Issue #1164) kürzt `mail_date` auf Sekundenpräzision, bevor er als Chunk-Metadatum geschrieben wird - `Instant#toString()` lässt den Bruchteil sonst ganz weg, wenn er null ist, was zwei nur millisekundengenau unterschiedliche Zeitpunkte lexikografisch falsch sortieren lässt (Voraussetzung für einen späteren Zeitraumfilter). Das ist eine Chunk-Text-ändernde Pipeline-Änderung (ingestion-pipelines.md, Teil 4 Regel (d)), `MailDocumentPipeline#version()` steigt daher 2 → 3.
+
+Damit bewegt sich der Sammelabdruck aus Entscheidung 28 ein drittes Mal (nach der ursprünglichen Aufnahme des Fixpunkts in Entscheidung 28/29 und dessen Nachzug in Entscheidung 30): `email:2` → `email:3` im `ingestionPipelineFingerprint` aller sechs committeten Baselines. Nach Entscheidung 29 folgt daraus zwingend ein weiterer Versionsschritt auf beiden Messverträgen: `EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` 3 → **4**, `PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` 4 → **5**. Wie in Entscheidung 30: reine Fixpunkt-Ergänzung ohne neuen Messlauf - der Eval-Korpus besteht weiterhin ausschließlich aus Markdown, `MailDocumentPipeline` verarbeitet keines seiner Dokumente, die gemessenen Chunks und Zahlen bleiben unverändert.
+
+**Versionskollision mit ADR-0022 §9 aufgelöst:** ADR-0022 ("Ein Anhang ist ein eigenes Dokument") hatte `MailDocumentPipeline`-Version 3 bereits dem dort beschriebenen Anhangsumbau (Issue #1183) zugesagt. Da dieser PR v3 zuerst für den `mail_date`-Fix verbraucht, geht der Anhangsumbau nun auf **v4** - ADR-0022 §9 und Issue #1183 sind entsprechend korrigiert.

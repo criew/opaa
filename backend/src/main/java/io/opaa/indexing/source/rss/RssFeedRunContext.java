@@ -2,6 +2,7 @@ package io.opaa.indexing.source.rss;
 
 import io.opaa.indexing.IndexingRunEventRecorder;
 import io.opaa.indexing.IndexingRunProgress;
+import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import java.net.URI;
@@ -34,7 +35,14 @@ public record RssFeedRunContext(
     String feedUrl,
     IndexingRunProgress progress,
     IndexingRunEventRecorder events,
-    AtomicBoolean anyEntryDeferred) {
+    AtomicBoolean anyEntryDeferred)
+    implements AttachmentAccess {
+
+  /** {@link AttachmentAccess#markDeferred()} - delegates to {@link #anyEntryDeferred}. */
+  @Override
+  public void markDeferred() {
+    anyEntryDeferred.set(true);
+  }
 
   /**
    * Picks {@code insecureClient} for a request whose target shares the feed's own origin, {@code

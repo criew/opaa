@@ -12,6 +12,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import type { CitationIndex } from './citations'
+import { formatMailSummary } from './citations'
 import type { DocumentSourceType } from '../../types/api'
 import { fontFamily } from '../../theme/tokens'
 
@@ -59,6 +60,8 @@ interface EvidenceDoc {
    *  LibraryDocumentResponse.sourceUrl (#738) - shown as secondary information alongside the
    *  documentId deep link above, not itself the primary way to open the original any more. */
   sourceUrl?: string | null
+  /** #1164: "Mail von …, TT.MM.JJJJ — Betreff", undefined for a non-mail source. */
+  mailSummary?: string
 }
 
 function formatAnsweredAt(answeredAt: Date): string {
@@ -106,6 +109,7 @@ export default function SourceEvidenceDrawer({
       documentId: doc.source?.documentId,
       sourceType: doc.source?.sourceType,
       sourceUrl: doc.source?.sourceUrl,
+      mailSummary: formatMailSummary(doc.source),
     }))
     const uncited: EvidenceDoc[] = citations.uncited.map((source) => ({
       fileName: source.fileName,
@@ -119,6 +123,7 @@ export default function SourceEvidenceDrawer({
       documentId: source.documentId,
       sourceType: source.sourceType,
       sourceUrl: source.sourceUrl,
+      mailSummary: formatMailSummary(source),
     }))
     // #1102: order by the position the retrieval pipeline settled on, never by relevanceScore -
     // a persisted message's snapshot may still carry the pre-#1102 path-dependent raw score, and
@@ -287,6 +292,17 @@ export default function SourceEvidenceDrawer({
                   </Box>
                 )}
               </Box>
+              {/* #1164: the mail Kopfdaten summary ("Mail von …, TT.MM.JJJJ — Betreff"), only for a
+                  source whose retrieved chunk carried mail_* metadata. */}
+              {doc.mailSummary && (
+                <Typography
+                  component="span"
+                  data-testid="source-mail-summary"
+                  sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
+                >
+                  {doc.mailSummary}
+                </Typography>
+              )}
               <Box
                 sx={{
                   display: 'flex',

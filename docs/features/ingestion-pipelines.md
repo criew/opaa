@@ -832,8 +832,10 @@ aus Kopfdaten, Text und Anhangstext.
 Die Pipeline trennt drei Dinge:
 
 - **Kopfdaten landen sowohl als Metadaten als auch als Kontextzeilen im Text des ersten Chunks.** Von,
-  An, Betreff, Datum werden auf jeden Kopfdaten tragenden Chunk als Metadatenfeld geschrieben (bewusste
-  Vorhaltung für eine spätere strukturierte Filterung, siehe #1164 — heute ohne Leser) und zusätzlich
+  An, Betreff, Datum werden auf jeden Kopfdaten tragenden Chunk als Metadatenfeld geschrieben — seit
+  #1164 mit Leser: `QueryService#mapSources` liest sie zurück und reicht sie bis in die
+  Fundstellen-Anzeige durch (Beleganzeige; die strukturierte Filterung nach Absender/Zeitraum/Betreff
+  selbst steht noch aus, siehe Issue #1211) — und zusätzlich
   einmalig, deutsch beschriftet, vor den Nachrichtentext des jeweils ersten erzeugten Chunks gesetzt —
   nicht wiederholt auf jedes Thread-Segment oder jedes weiter zerlegte Teilstück, sonst würde derselbe
   Verteilerkopf jeden Chunk eines langen Threads verwässern (#1130 Befund 1).
@@ -850,7 +852,7 @@ Beleg) folgt dabei den bestehenden Regeln des Anlagenwegs, siehe
 
 #### Umgesetzt (#1060)
 
-`MailDocumentPipeline` (`id` `email`, Version 2 seit #1130 Befund 1) beansprucht `.eml` und `.msg` in der
+`MailDocumentPipeline` (`id` `email`, Version 3 seit PR #1201/#1164) beansprucht `.eml` und `.msg` in der
 `DocumentPipelineRegistry`; beide Endungen sind jetzt in `SupportedDocumentFormats` zugelassen —
 unterschiedlich streng, mit einem empirisch belegten Grund: `.msg` bekommt mit
 `application/vnd.ms-outlook` einen eindeutigen, strikten Medientyp (wie PDF/DOCX). `.eml` dagegen
@@ -884,8 +886,17 @@ werden müssen, statt in einen Block zu fließen:
 `mail_from`/`mail_to`/`mail_subject`/`mail_date`, deklariert über
 `MailDocumentPipeline#passthroughMetadataKeys()` (#1107); `FileProcessingService#storeChunks` kopiert
 sie auf den gespeicherten Chunk, genau wie es das schon für `location` tut (Teil 5, Übergabepunkt).
-Diese Felder haben heute keinen Leser — eine bewusste Vorhaltung für die strukturierte Filterung nach
-Absender/Zeitraum/Betreff aus #1164, keine Fehlmodellierung (siehe `ChunkMailMetadata`-Javadoc).
+Seit #1164 (PR #1201) haben diese Felder einen Leser: `QueryService#mapSources` liest sie zurück, die
+Fundstellen-Anzeige zeigt Absender/Datum/Betreff. Die strukturierte Filterung nach
+Absender/Zeitraum/Betreff selbst steht noch aus (Issue #1211, keine Fehlmodellierung — siehe
+`ChunkMailMetadata`-Javadoc). `mail_date` wird seit PR #1201 auf Sekundenpräzision gekürzt
+geschrieben (`MailDocumentPipeline#renderMailDate`), damit ein künftiger Zeitraumfilter
+lexikografisch sortieren kann — `Instant#toString()` allein wäre das nicht zuverlässig (siehe
+`ChunkMailMetadata`-Javadoc). `MailDocumentPipeline#version()` stieg dafür 2 → 3; ein bereits
+indizierter Mail-Bestand unterhalb dieser Version trägt weiterhin den alten, potenziell nicht
+sortierbaren `mail_date`-Wert, bis die Betreiberin ihn über die vorhandenen
+Administrationsendpunkte (`GET /pipeline-versions`, `POST /pipeline-reindex`) nachzieht — Regel (d):
+„Ausgelöst wird nichts von selbst", unverändert.
 
 **Dieselben Kopfdaten landen zusätzlich, deutsch beschriftet, als Kontextzeilen vor dem
 Nachrichtentext** (#1130 Befund 1, entschieden gegen die zuvor offene Formfrage aus Teil 5, Punkt 1)
@@ -949,9 +960,11 @@ Nachricht ist deshalb die engste Passung. **Die Folge ist bewusst in Kauf genomm
 wie „Mail von Müller zum Bebauungsplan" antworten zuverlässig nur die führenden Chunks einer Nachricht
 — findet die Suche stattdessen einen späteren Chunk (eine spätere Antwort im selben Thread, oder bei
 einem sehr großen Verteiler den Chunk, der den eigentlichen Nachrichtentext trägt), trägt der keinen
-Von/Betreff-Kontext im Text mehr, nur noch die `mail_*`-Metadaten ohne Leser. Das ist der Grund, warum
-Folge-Issue #1164 eine strukturierte Beleganzeige nachliefern soll, statt sich auf den Textweg allein
-zu verlassen.
+Von/Betreff-Kontext im Text mehr, nur noch die strukturierten `mail_*`-Metadaten. Genau das ist der
+Grund, warum #1164 (PR #1201) zusätzlich zum Textweg eine strukturierte Beleganzeige nachgeliefert
+hat — `QueryService#mapSources` liest die `mail_*`-Felder unabhängig davon zurück, welcher Chunk
+gefunden wurde, und die Fundstellen-Anzeige zeigt Absender/Datum/Betreff auch dann, wenn der
+gefundene Chunk selbst keinen Kopfblock im Text trägt.
 
 **Ein Segment, das trotzdem zu lang für einen Chunk ist, fällt auf `ChunkingService`s gewöhnlichen
 Token-Splitter zurück** (#1101 Review): Ein langer Rundbrief oder eine Weiterleitungskette ohne
@@ -1327,12 +1340,13 @@ Hier wird nur der **Übergabepunkt** definiert:
    `MailDocumentPipeline` nutzte ausschließlich eigene Metadatenfelder (`mail_from` usw.), während
    `TabularDocumentPipeline`/`HtmlDocumentPipeline`/`PptxDocumentPipeline` ihren Strukturkontext in den
    Chunk-Text backen (`location` plus eine Kontextzeile). **Entschieden mit #1130 Befund 1: beides.**
-   Die Metadatenfelder bleiben — als Grundlage einer künftigen strukturierten Filterung nach
-   Absender/Zeitraum/Betreff (#1164) —, zusätzlich trägt `MailDocumentPipeline` dieselben Kopfdaten
-   jetzt auch als deutsch beschriftete Kontextzeilen in den Chunk-Text, einmalig auf dem ersten
-   erzeugten Chunk, damit sie Embedding und Volltextindex tatsächlich erreichen. Ein Metadatenfeld
-   ohne Leser ist wirkungslos — die Textform ist die einzige, die vor einer strukturierten Filterung
-   in Suchtreffern ankommt.
+   Die Metadatenfelder bleiben — seit #1164 (PR #1201) gelesen für die Fundstellen-Anzeige, als
+   Grundlage einer künftigen strukturierten Filterung nach Absender/Zeitraum/Betreff (Issue #1211)
+   noch offen —, zusätzlich trägt `MailDocumentPipeline` dieselben Kopfdaten jetzt auch als deutsch
+   beschriftete Kontextzeilen in den Chunk-Text, einmalig auf dem ersten erzeugten Chunk, damit sie
+   Embedding und Volltextindex tatsächlich erreichen. Ein Metadatenfeld ohne Leser ist wirkungslos —
+   zum Zeitpunkt dieser Entscheidung galt das noch für beide Wege: Die Textform war die einzige, die
+   vor Retrieval-Filterung/Beleganzeige in Suchtreffern ankam.
 2. Struktur-Metadaten sind **abgeleitet, nicht geraten**. Sie stammen aus dem Dokument selbst
    (Gliederung, Folienzähler, Blattname, Mail-Header). Inhaltlich interpretierende Felder — Dokumentart,
    Fassung, Thema — entstehen hier ausdrücklich nicht; sie gehören in die Metadaten-Spezifikation, mit

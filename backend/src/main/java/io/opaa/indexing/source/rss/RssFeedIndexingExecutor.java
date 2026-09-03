@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.rss;
 
+import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
@@ -14,12 +15,16 @@ import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.IndexingRunProgress;
 import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.attachment.AttachmentCandidate;
+import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
+import io.opaa.indexing.source.attachment.AttachmentSource;
 import io.opaa.indexing.source.web.DetailPageExtractor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
+import io.opaa.sourceaccess.RequestPoliteness;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
@@ -85,6 +90,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private final FeedFetcher feedFetcher;
   private final DetailPageExtractor detailPageExtractor;
   private final AttachmentIndexer attachmentIndexer;
+  private final AttachmentDownloadLimits attachmentLimits;
 
   public RssFeedIndexingExecutor(
       RssFeedParser feedParser,
@@ -108,7 +114,13 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     this.detailPageExtractor = new DetailPageExtractor(targetAddressValidator, this.properties);
     this.attachmentIndexer =
         new AttachmentIndexer(
-            attachmentDownloader, fileProcessingService, storageQuotaService, this.properties);
+            attachmentDownloader, fileProcessingService, storageQuotaService, documentRepository);
+    this.attachmentLimits =
+        new AttachmentDownloadLimits(
+            this.properties.maxAttachmentsPerEntry(),
+            this.properties.maxAttachmentSizeBytes(),
+            this.properties.requestDelayMs(),
+            this.properties.userAgent());
   }
 
   @Override
@@ -243,7 +255,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       return;
     }
 
-    RssPoliteness.delayBeforeRequest(properties.requestDelayMs());
+    RequestPoliteness.delayBeforeRequest(properties.requestDelayMs());
 
     Optional<DetailPageExtractor.DetailPage> fetched =
         fetchDetailPageForEntry(ctx, entryUrl, false);
@@ -293,7 +305,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       } else {
         progress.recordProcessed();
         log.info("Indexed RSS entry: {}", entryUrl);
-        attachmentIndexer.indexAll(ctx, detailPage.attachments(), entryUrl);
+        indexAttachments(ctx, detailPage.attachments(), entryUrl);
       }
     } catch (Exception e) {
       log.error("Failed to process RSS entry: {}", entryUrl, e);
@@ -328,10 +340,47 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         "RSS entry unchanged but has no attachment documents yet, fetching its detail page to"
             + " backfill attachments only: {}",
         entryUrl);
-    RssPoliteness.delayBeforeRequest(properties.requestDelayMs());
+    RequestPoliteness.delayBeforeRequest(properties.requestDelayMs());
     Optional<DetailPageExtractor.DetailPage> fetched = fetchDetailPageForEntry(ctx, entryUrl, true);
-    fetched.ifPresent(
-        detailPage -> attachmentIndexer.indexAll(ctx, detailPage.attachments(), entryUrl));
+    fetched.ifPresent(detailPage -> indexAttachments(ctx, detailPage.attachments(), entryUrl));
+  }
+
+  /**
+   * Converts {@code candidates} into {@link AttachmentSource.Download} jobs (the {@link HttpClient}
+   * and {@code Authorization} header a download uses are decided per candidate by {@code
+   * ctx.httpClientFor}/{@code ctx.authHeaderFor}, exactly as before #1182's generalization) and
+   * hands them to {@link AttachmentIndexer#indexAll}, looking up {@code entryUrl}'s own document
+   * row as {@code parentDocumentId} - present at this point on every call site, since both call it
+   * only once its own entry document is known to exist.
+   */
+  private void indexAttachments(
+      RssFeedRunContext ctx, List<AttachmentCandidate> candidates, String entryUrl) {
+    Optional<Document> entryDocument =
+        documentRepository.findByLibraryIdAndFilePath(ctx.targetLibrary().getId(), entryUrl);
+    if (entryDocument.isEmpty()) {
+      log.warn(
+          "RSS entry document vanished before its attachments could be indexed, skipping: {}",
+          entryUrl);
+      return;
+    }
+    List<AttachmentSource> sources =
+        candidates.stream()
+            .map(
+                candidate ->
+                    (AttachmentSource)
+                        new AttachmentSource.Download(
+                            candidate.url(),
+                            candidate.suggestedFileName(),
+                            ctx.httpClientFor(candidate.url()),
+                            ctx.authHeaderFor(candidate.url())))
+            .toList();
+    attachmentIndexer.indexAll(
+        ctx,
+        sources,
+        entryDocument.get().getId(),
+        entryUrl,
+        DocumentSourceType.RSS_FEED,
+        attachmentLimits);
   }
 
   /**

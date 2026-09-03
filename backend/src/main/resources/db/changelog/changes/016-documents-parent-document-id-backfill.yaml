@@ -1,0 +1,34 @@
+databaseChangeLog:
+  - changeSet:
+      id: 016-documents-parent-document-id-backfill
+      author: opaa
+      comment: >-
+        ADR-0022, Entscheidung 4 (#1182): backfills parent_document_id (added schema-only by 011)
+        for existing RSS attachment rows, now that #1182 has given every delete path that could
+        touch a parent document (processRssEntry's update-in-place, LibraryDocumentService#
+        deleteDocument, StaleDocumentCleanupService's children-before-parents ordering) an explicit
+        answer for its attachment rows - the precondition 011's own comment named for deferring this
+        backfill. Joins on source_entry_url = file_path within the same library, the same identity
+        RssFeedIndexingExecutor#isUnchanged and DocumentRepository#existsBySourceEntryUrlAndLibraryId
+        already use for this relationship. AND child.id <> parent.id guards against a row matching
+        itself as its own parent, should source_entry_url ever equal a row's own file_path -
+        theoretical today (an attachment's file_path is its own download URL, never its entry's
+        detail-page URL), but a backfill running once against Bestandsdaten must not depend on that
+        holding by construction. Idempotent (WHERE parent_document_id IS NULL) - safe to run again on
+        an installation that already partially applied it.
+      changes:
+        - sql:
+            sql: |
+              UPDATE public.documents AS child
+              SET parent_document_id = parent.id
+              FROM public.documents AS parent
+              WHERE child.source_entry_url = parent.file_path
+                AND child.library_id = parent.library_id
+                AND child.id <> parent.id
+                AND child.parent_document_id IS NULL;
+      rollback:
+        - sql:
+            sql: |
+              UPDATE public.documents
+              SET parent_document_id = NULL
+              WHERE source_entry_url IS NOT NULL;
