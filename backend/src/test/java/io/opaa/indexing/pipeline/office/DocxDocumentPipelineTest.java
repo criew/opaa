@@ -449,6 +449,45 @@ class DocxDocumentPipelineTest {
   }
 
   @Test
+  void aFieldNestedInsideAnOuterFieldsInstructionPartHasBothCachedValuesExcluded()
+      throws IOException {
+    // regression guard for #1162 review, follow-up 1: a field nested inside its outer field's
+    // own instruction part (BEGIN outer/instr/BEGIN inner/instr/SEPARATE innerValue END/SEPARATE
+    // outerValue END), as opposed to being nested inside the outer field's result - both the
+    // inner and the outer cached value must be excluded. Locks in the stack's frame-per-BEGIN
+    // behavior against a future refactor back to a plain separated-frame counter.
+    Path file = tempDir.resolve("feld-im-instruktionsteil.docx");
+    try (XWPFDocument doc = new XWPFDocument()) {
+      XWPFHeaderFooterPolicy policy = doc.createHeaderFooterPolicy();
+      XWPFFooter footer = policy.createFooter(XWPFHeaderFooterPolicy.DEFAULT);
+      XWPFParagraph paragraph = footer.createParagraph();
+      paragraph.createRun().setText("Vor");
+      paragraph.createRun().getCTR().addNewFldChar().setFldCharType(STFldCharType.BEGIN);
+      paragraph.createRun().getCTR().addNewInstrText().setStringValue(" IF ");
+      paragraph.createRun().getCTR().addNewFldChar().setFldCharType(STFldCharType.BEGIN);
+      paragraph.createRun().getCTR().addNewInstrText().setStringValue(" PAGE ");
+      paragraph.createRun().getCTR().addNewFldChar().setFldCharType(STFldCharType.SEPARATE);
+      paragraph.createRun().setText("INNERWERT");
+      paragraph.createRun().getCTR().addNewFldChar().setFldCharType(STFldCharType.END);
+      paragraph.createRun().getCTR().addNewFldChar().setFldCharType(STFldCharType.SEPARATE);
+      paragraph.createRun().setText("OUTERWERT");
+      paragraph.createRun().getCTR().addNewFldChar().setFldCharType(STFldCharType.END);
+      paragraph.createRun().setText(" Nach");
+      addParagraph(doc, "Fachlicher Inhalt.");
+      write(doc, file);
+    }
+
+    DocumentPipelineResult result =
+        pipeline.run(DocumentPipelineSource.ofFile(file, "feld-im-instruktionsteil.docx", ".docx"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().getFirst().getText())
+        .isEqualTo("Vor Nach")
+        .doesNotContain("INNERWERT", "OUTERWERT");
+  }
+
+  @Test
   void anEndWithNoOpenFieldDoesNotSwallowSubsequentText() throws IOException {
     // Robustness property from the #1162 fix: an END with no matching BEGIN must not drive the
     // frame stack into a state where it later excludes real text.

@@ -193,7 +193,11 @@ public class DocxDocumentPipeline implements DocumentPipeline {
    * outer field's separated frame further down the stack. An {@code END} with no open frame is a
    * no-op rather than driving the stack negative; an unbalanced {@code BEGIN}/{@code SEPARATE} with
    * no matching {@code END} can swallow at most the rest of this paragraph, since the stack is
-   * local to each call of this method.
+   * local to each call of this method. The mirror case - a {@code SEPARATE} with no open frame,
+   * because its {@code BEGIN} was in a previous paragraph - is likewise a no-op rather than an
+   * error; the field's cached value that follows is then no longer recognized as inside a result
+   * and is included rather than excluded. Accepted: over-collection, not text loss, and a field
+   * split across paragraphs is rare in header/footer content.
    *
    * <p>A {@code w:fldSimple} field (LibreOffice's export form, as opposed to Word's begin/separate
    * /end form above) is a distinct POI run type ({@code XWPFFieldRun}) that carries neither {@code
