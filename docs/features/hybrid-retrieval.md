@@ -656,10 +656,11 @@ schlechterer Suchqualität führen, nie zu einem Fehler für den fragenden Mensc
 >   wird beim Start, im Minutentakt und bei jedem echten Rerank-Aufruf fortgeschrieben.
 > - **Die Stufe** `RERANK` zwischen Fusion und Dokument-Vervollständigung, mit eigenem Eintrag im
 >   Erklärprotokoll — inklusive des Status `UNAVAILABLE` für „eingeschaltet, aber nicht nutzbar".
-> - **Die Kandidatenzahl** `OPAA_QUERY_RERANK_CANDIDATE_COUNT` (Startwert 50, `0` schaltet die Stufe
+> - **Die Kandidatenzahl** `OPAA_QUERY_RERANK_CANDIDATE_COUNT` (Wert 50, `0` schaltet die Stufe
 >   über ihren eigenen Parameter ab), gemessen über den Variantenvergleich
 >   `eval/variants/verwaltung-reranking.json` — siehe
->   [Gemessene Wirkung](#gemessene-wirkung-und-gemessene-kandidatenzahl-1050).
+>   [Gemessene Wirkung](#gemessene-wirkung-und-gemessene-kandidatenzahl-1050) und die
+>   [Neubelegung mit aktivem Ausfallwächter](#neubelegung-mit-aktivem-ausfallwächter-1153).
 >
 > **Nicht geliefert**: die Aktivierung. Siehe [Die Lehre aus MMR](#die-lehre-aus-mmr).
 
@@ -748,14 +749,15 @@ Entscheidung fällt gegen die Verwaltungs-Evaldomäne und gegen das gemessene La
 > ohne GPU rerankt mit diesem Modell voraussichtlich nicht sinnvoll; die naheliegende
 > Referenzhardware (Demo-Instanz) hat keine nutzbare GPU.
 >
-> **Zwei Fallen für eine spätere Messung:**
-> [#1154](https://github.com/criew/opaa/issues/1154) — behoben: `OPAA_RERANK_TIMEOUT` trägt jetzt
+> **Zwei Fallen für eine spätere Messung, beide inzwischen behoben:**
+> [#1154](https://github.com/criew/opaa/issues/1154) — `OPAA_RERANK_TIMEOUT` trägt jetzt
 > voreingestellt 240s (statt der zu knappen 10s), abgeleitet aus der oben genannten
 > Drei-Minuten-Größenordnung, und die Zustandsseite unterscheidet einen Zeitüberschreitungsfall im
-> `detail`-Text von einer genuin unerreichbaren Gegenstelle. Eine spätere Messung läuft damit nicht
-> mehr in denselben Ausfall wie diese.
-> [#1153](https://github.com/criew/opaa/issues/1153) — die Kandidatenzahl 50 ist nicht belegt, die
-> Wahl zwischen 25 und 50 hängt an einem einzelnen `multi_hop`-Fall.
+> `detail`-Text von einer genuin unerreichbaren Gegenstelle.
+> [#1153](https://github.com/criew/opaa/issues/1153) — die Kandidatenzahl 50 war nicht belegt, die
+> Wahl zwischen 25 und 50 hing an einem einzelnen `multi_hop`-Fall. Mit aktivem Ausfallwächter und
+> auf dem Stand nach #1154 neu gemessen: 50 bestätigt, jetzt ohne den Einzelfall-Vorbehalt — siehe
+> [Neubelegung mit aktivem Ausfallwächter](#neubelegung-mit-aktivem-ausfallwächter-1153).
 
 Qualität und Latenz werden getrennt gemessen, weil sie verschiedene Messaufbauten brauchen. Der
 [Retrieval-Benchmark](./retrieval-benchmark.md) misst Qualität in einem Testcontainers-Lauf auf
@@ -851,11 +853,87 @@ dem die letzte Anfrage der Variante `rerank-50` zurückkam. Sollte die allerletz
 betroffen gewesen sein, wäre einer der 46 Fälle dieser Variante ohne Neubewertung gemessen worden.
 
 Die **Qualitätsaussage** hängt an keinem Einzelfall — die Sprünge bei `literal_term_weak_embedding`
-und `compound_word` sind dafür zu groß. Die **Wahl der Kandidatenzahl 50 gegenüber 25** hängt sehr
+und `compound_word` sind dafür zu groß. Die **Wahl der Kandidatenzahl 50 gegenüber 25** hing sehr
 wohl an einem: `multi_hop` hat neun Fälle, ein Fall entspricht 0,111 im Klassenwert, und genau ein
-Fall ist der gesamte Unterschied zwischen den beiden Fenstern. Die Zahl 50 ist damit begründet, aber
-nicht belegt; die Wiederholung mit dem inzwischen gebauten Ausfallwächter ist als
-[#1153](https://github.com/criew/opaa/issues/1153) festgehalten.
+Fall war der gesamte Unterschied zwischen den beiden Fenstern. Die Zahl 50 war damit begründet, aber
+nicht belegt — die Neubelegung folgt im nächsten Abschnitt.
+
+### Neubelegung mit aktivem Ausfallwächter (#1153)
+
+Derselbe Variantenvergleich (`eval/variants/verwaltung-reranking.json`, Verwaltungs-Evaldomäne,
+46 Golden-Fälle, Pipeline-Messpfad), auf dem Stand nach [#1154](https://github.com/criew/opaa/issues/1154)
+wiederholt: `OPAA_RERANK_TIMEOUT=240s`, damit normale CPU-Latenz nicht als `UNREACHABLE` fehlklassifiziert
+wird. Rerank-Modell weiterhin `BAAI/bge-reranker-v2-m3` über Text Embeddings Inference auf CPU
+(`--max-batch-tokens 2048 --auto-truncate`, 8 Tokenisierungs-Worker — enger als die
+TEI-Voreinstellung, weil die Standardeinstellung beim Warmup den Prozess auf dem gemeinsam genutzten
+Docker-Host wiederholt out-of-memory hat laufen lassen; die Kandidatentexte dieses Korpus liegen
+ohnehin deutlich unter 2048 Token). Einbettungen liefen über einen externen, GPU-beschleunigten
+Ollama-Endpunkt (Host-GPU, `-Dopaa.eval.ollamaBaseUrl`) — wie beim #1050-Lauf sind die absoluten
+Zahlen deshalb nicht mit der committeten Baseline vergleichbar, die Deltas innerhalb dieses Laufs
+sehr wohl.
+
+**Der Ausfallwächter hat für keine der drei Varianten angeschlagen.** Der Konsolenbericht markiert
+`ohne-reranking`, `rerank-25` und `rerank-50` jeweils mit `(keine Änderung)` — der Text, den
+`VariantRunner` genau dann ausgibt, wenn `RerankModelRole#degradedCallCount()` über die gesamte
+Variante hinweg bei null blieb (siehe dessen Javadoc). Die Referenzvarianten-Selbstprüfung (bitgleiche
+Zahlen zum direkten Pipeline-Lauf) bestand ebenfalls. Rohdaten:
+`backend/build/eval-reports/variant-report-verwaltung-reranking.json` (nicht committet, siehe
+`eval/README.md`, „Der Bericht ist ein Artefakt, keine Baseline").
+
+| Klasse | n | nDCG@8 ohne → 25 → 50 | MRR@8 ohne → 25 → 50 | Recall@8 ohne → 25 → 50 |
+|---|---|---|---|---|
+| gesamt | 46 | 0,740 → 0,847 → **0,882** | 0,779 → 0,868 → **0,900** | 0,837 → 0,906 → **0,942** |
+| `compound_word` | 9 | 0,625 → 0,845 → **0,932** | 0,889 → 0,889 → **1,000** | 0,556 → 0,852 → **0,926** |
+| `literal_term_weak_embedding` | 9 | 0,537 → 0,834 → **0,945** | 0,444 → 0,833 → **0,944** | 0,833 → 0,889 → **1,000** |
+| `exact_identifier` | 10 | 1,000 → 1,000 → **1,000** | 1,000 → 1,000 → **1,000** | 1,000 → 1,000 → **1,000** |
+| `metadata_filter` | 9 | 0,855 → 0,840 → **0,840** | 0,806 → 0,787 → **0,787** | 1,000 → 1,000 → **1,000** |
+| `multi_hop` | 9 | 0,652 → 0,699 → **0,678** | 0,731 → 0,815 → **0,759** | 0,778 → 0,778 → **0,778** |
+
+Zusätzlich, gegenüber der Referenz `ohne-reranking` (`hitRateAt5=0,957`): `rerank-25` bleibt bei
+0,957, `rerank-50` erreicht **1,000** — nur Fenster 50 trifft alle 46 Fälle innerhalb der obersten
+fünf Treffer.
+
+**50 schlägt 25 diesmal auf jeder Gesamtmetrik, nicht nur im `multi_hop`-Einzelfall.** nDCG@8 gesamt
+0,847 → 0,882, MRR@8 0,868 → 0,900, Recall@8 0,906 → 0,942, HitRate@5 0,957 → 1,000 — ein
+durchgehender, mehrere Prozentpunkte großer Vorsprung über vier von fünf Klassen
+(`compound_word`, `literal_term_weak_embedding`, `exact_identifier` und `metadata_filter` sind bei
+50 gleich oder besser als bei 25). Einzige Ausnahme ist `multi_hop`, wo 25 im nDCG@8 knapp vorn liegt
+(0,699 gegenüber 0,678) — beide Fenster liegen dort aber klar über der Referenz (0,652) und bei
+gleichem Recall@8 (0,778), sodass diese eine Klasse die Wahl nicht mehr entscheidet, anders als im
+#1050-Lauf. `metadata_filter` zeigt in beiden Fenstern dieselbe kleine Abweichung gegenüber der
+Referenz (0,855 → 0,840) — das deckt sich mit der im Report dokumentierten Einschränkung, dass diese
+Klasse ohne echten Metadatenfilter gelöst wird (die richtige Fassung rankt zufällig oben, siehe
+`expectedStateAudit.acceptedDeviations` im JSON-Report) und ist kein Reranking-Effekt.
+
+**Latenz, gemessen als Nebenprodukt dieses Laufs (kein Ersatz für das zurückgestellte
+[Arbeitspaket „Latenz-/Hardwareprofil"](#arbeitspaket-latenz-hardwareprofil)):** Der Pipeline-Messpfad
+lief `ohne-reranking` in 3,6s für alle 46 Fragen (kein Rerank-Aufruf), `rerank-25` in 1737s
+(**≈ 37,8 s je Frage**) und `rerank-50` in 3284s (**≈ 71,4 s je Frage**) — auf derselben 20-Kern-CPU
+wie der #1050-Lauf, aber mit enger gefasster TEI-Batch-Konfiguration und damit deutlich unter dessen
+Drei-Minuten-Richtwert bei Fenster 50. Diese Zahl bleibt trotzdem eine Aussage über diesen
+Messaufbau (ein gemeinsam mit anderen Agenten genutzter Entwicklungs-Host, kein dedizierter
+Referenzrechner) und keine über den Betrieb; sie ändert nichts an der Feststellung, dass die
+Aktivierungsempfehlung weiterhin am zurückgestellten Latenzprofil hängt.
+
+**Ergebnis: Die Kandidatenzahl 50 ist bestätigt**, diesmal ohne den Einzelfall-Vorbehalt des
+#1050-Laufs — der Vorsprung von 50 gegenüber 25 trägt über die Gesamtmetrik und über vier der fünf
+Klassen, nicht nur über einen `multi_hop`-Fall. `OPAA_QUERY_RERANK_CANDIDATE_COUNT` bleibt bei `50`.
+
+**Warum kein Fenster über 50 gemessen wurde:** Mit `OPAA_QUERY_FETCH_K=25` (Produktionsvorgabe,
+unverändert von diesem Issue) liefern Vektor- und Volltextpfad je Anfrage zusammen höchstens 50
+verschiedene Chunks — das ist keine Beobachtung dieses Laufs, sondern folgt aus dem Code selbst:
+`RankFusionStage` kappt die fusionierte Liste auf `min(candidateBudget, fused.size())`
+(`backend/src/main/java/io/opaa/query/RankFusionStage.java`), und `fused.size()` ist durch die Summe
+der Eingabelisten begrenzt. `RerankStage` wiederum nimmt als Fenster
+`incoming.subList(0, min(incoming.size(), rerankCandidateCount))`
+(`backend/src/main/java/io/opaa/query/RerankStage.java`) — für `rerankCandidateCount=100` ist
+`incoming.size()` bei unverändertem `fetch-k` aber bereits durch 50 gedeckelt, sodass das Fenster
+bei 100 exakt dasselbe wäre wie bei 50: derselbe Kandidatensatz, dieselbe Bewertung, nur doppelte
+Rerank-Laufzeit. Eine Variante `rerank-100` hätte deshalb keine neue Messung geliefert, sondern eine
+bereits durch den Code bewiesene Wiederholung von `rerank-50` — ein Fenster über 50 zu prüfen setzt
+voraus, `OPAA_QUERY_FETCH_K` mitzuheben (siehe [„Reranking einschalten"](../handbuch/deployment.md#reranking-einschalten)),
+was eine andere Frage (Abrufbreite) als die dieses Issues (Rerank-Fenstergröße bei gegebener
+Abrufbreite) beantworten würde.
 
 ### Die Lehre aus MMR
 
