@@ -10,6 +10,13 @@ x-embedding-dimensions: &embedding-dimensions "1536"
 
 services:
   backend:
+    # #1184: a FILESYSTEM library over this mount is the one connector path the suite can drive
+    # end to end that actually creates attachment rows (parent_document_id) for a mail - the
+    # UPLOAD path deliberately discards discovered attachments (see
+    # FileProcessingService#processUploadedFileAsync). /data is already on the dev profile's
+    # filesystem allowlist (application.yml).
+    volumes:
+      - ./demo/seed/e2e-data/filesystem-library:/data/e2e-mail-bibliothek:ro
     depends_on:
       ai-stub:
         # Not service_started: Spring AI's PgVectorStore can probe the embedding provider's
