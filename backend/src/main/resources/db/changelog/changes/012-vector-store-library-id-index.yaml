@@ -28,6 +28,12 @@ databaseChangeLog:
         vector_store exists from the previous start's schema init. An installation upgrading from an
         existing, already-populated vector_store hits none of this: the table already exists the
         first time this changeSet runs.
+
+        Hardcodes public.vector_store, unlike FullTextBackfillProgressService/ChunkEmbeddingLookup,
+        which read schema/table from spring.ai.vectorstore.pgvector.schema-name/table-name. This
+        changeSet only covers that default; an installation that overrides schema-name or
+        table-name needs its own changeSet targeting the actual name - otherwise the precondition
+        never passes and this index is silently never created.
       preConditions:
         onFail: CONTINUE
         onFailMessage: >-

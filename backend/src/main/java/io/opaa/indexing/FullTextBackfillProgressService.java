@@ -56,13 +56,8 @@ public class FullTextBackfillProgressService {
    * each), not separate round trips, so a backfill batch committing concurrently cannot produce an
    * inconsistent tuple - {@code READ COMMITTED} allows exactly that across separate statements.
    *
-   * <p>{@code progressForLibrary}/{@code progressForLibraries} query {@code vector_store} with a
-   * predicate on {@code metadata->>'library_id'}, backed by the expression index added in #1119
-   * ({@code changes/012-vector-store-library-id-index.yaml}). {@code progressForLibraries} also
-   * groups by the same value cast to {@code uuid}; no separate index on that cast is needed - the
-   * text index already does the row-restricting work, and the cast then runs only over the
-   * resulting, already-filtered rows (verified via {@code EXPLAIN (ANALYZE, BUFFERS)} against ~1M
-   * rows, see that changeSet's own comment).
+   * <p>The {@code vector_store} count is filtered by {@code metadata->>'library_id'}, backed by the
+   * expression index from {@code changes/012-vector-store-library-id-index.yaml} (#1119).
    */
   public FullTextBackfillProgress progressForLibrary(UUID libraryId) {
     String vectorStoreTable = schemaName + "." + tableName;
@@ -119,6 +114,11 @@ public class FullTextBackfillProgressService {
    *
    * <p>The caller always passes the libraries it is allowed to display, never "all" - the query
    * would otherwise aggregate across every organization for a display that shows one of them.
+   *
+   * <p>The {@code vector_store} subquery filters by {@code metadata->>'library_id'} (backed by the
+   * expression index from {@code changes/012-vector-store-library-id-index.yaml}, #1119) and groups
+   * by that same value cast to {@code uuid}; no separate index on the cast is needed - it only ever
+   * runs over the rows the text-expression index already restricted the scan to.
    */
   public List<FullTextBackfillProgress> progressForLibraries(Collection<UUID> libraryIds) {
     Set<UUID> distinct = new LinkedHashSet<>(libraryIds);
