@@ -1376,10 +1376,13 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   Prozesslaufzeit gestoppt, bevor die übrigen Chunks überhaupt durchlaufen); mit #1093 bleibt der
   betroffene Chunk als bestätigter Skip sichtbar liegen, aber die Bibliothek als Ganzes kehrt in
   den lexikalischen Pfad zurück, sobald ihr übriger Bestand fertig ist — begrenzt auf das oben
-  beschriebene Zeitfenster, nicht dauerhaft. Ein Chunk, dessen `document_id`-Metadatum selbst kein
-  wohlgeformtes UUID ist, wird nicht über diese Mehrfachbestätigung geführt, sondern sofort als
-  bestätigter Skip verbucht (`document_id` in `chunk_full_text_skip` dafür nullable) — ein
-  struktureller Defekt heilt nicht durch Wiederholung. Indiziert ein zuvor gescheiterter Chunk
+  beschriebene Zeitfenster, nicht dauerhaft. Ein Chunk, dessen `document_id`-Metadatum fehlt (`NULL`)
+  oder selbst kein wohlgeformtes UUID ist, wird nicht über diese Mehrfachbestätigung geführt, sondern
+  sofort als bestätigter Skip verbucht (`document_id` in `chunk_full_text_skip` dafür nullable) — ein
+  struktureller Defekt heilt nicht durch Wiederholung, in beiden Fällen gleichermaßen (#1170: ein
+  fehlendes `document_id` blieb zunächst ein eigener Fehlermodus, weil die Auswahlabfrage solche
+  Zeilen ausschloss, während die Fortschrittszählung sie weiterhin als offen zählte). Indiziert ein
+  zuvor gescheiterter Chunk
   später erfolgreich, löscht `FullTextChunkStore.clearSkipRows` seine Skip-Zeile wieder — nur auf
   dem Backfill-Pfad, nie beim regulären Ingest, wo eine Skip-Zeile wegen frisch erzeugter Chunk-IDs
   ohnehin nie existieren kann.

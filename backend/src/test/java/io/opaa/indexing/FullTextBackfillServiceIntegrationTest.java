@@ -525,6 +525,52 @@ class FullTextBackfillServiceIntegrationTest {
     return chunkId;
   }
 
+  /**
+   * Reproduction for #1170: a chunk whose {@code document_id} metadata is entirely {@code NULL} -
+   * distinct from a malformed, non-null value ({@link
+   * #aChunkWithAMalformedDocumentIdIsImmediatelyConfirmedSkippedWithoutBlockingTheGate}) - hit the
+   * same permanent-gate-closure failure mode, but via a different code path: {@link
+   * FullTextBackfillService#selectPending} used to exclude {@code document_id IS NULL} rows from
+   * selection entirely while {@link FullTextBackfillProgressService} counted them as missing
+   * regardless, so the row was never selected, never indexed, never confirmed skipped, and {@code
+   * missingChunks} stayed stuck at 1 forever.
+   */
+  @Test
+  void aChunkWithANullDocumentIdIsImmediatelyConfirmedSkippedWithoutBlockingTheGate() {
+    UUID healthyChunk = seedUnindexedChunk("Befreiung von der Verwaltungsgebühr");
+    UUID nullDocumentIdChunk = seedChunkWithNullDocumentId();
+
+    int resolved = backfillService.backfillBatch(10);
+
+    assertThat(resolved).isEqualTo(2);
+    assertThat(isIndexed(healthyChunk)).isTrue();
+    assertThat(isIndexed(nullDocumentIdChunk)).isFalse();
+    assertThat(isConfirmedSkipped(nullDocumentIdChunk)).isTrue();
+
+    FullTextBackfillProgress progress = progressService.progressForLibrary(libraryId);
+    assertThat(progress.totalChunks()).isEqualTo(2);
+    assertThat(progress.indexedChunks()).isEqualTo(1);
+    assertThat(progress.missingChunks()).isZero();
+    assertThat(progress.skippedChunks()).isEqualTo(1);
+    assertThat(progress.isComplete()).isTrue();
+
+    // A second tick never re-selects the confirmed skip - no repeated WARN/ERROR log spam.
+    assertThat(backfillService.backfillBatch(10)).isZero();
+  }
+
+  private UUID seedChunkWithNullDocumentId() {
+    UUID chunkId = UUID.randomUUID();
+    String zeroVector = "[" + String.join(",", java.util.Collections.nCopies(1536, "0")) + "]";
+    jdbcTemplate.update(
+        "INSERT INTO public.vector_store (id, content, metadata, embedding) "
+            + "VALUES (?, ?, ?::jsonb, ?::vector)",
+        chunkId,
+        "Auszug aus der Gebührenordnung",
+        "{\"document_id\":null,\"library_id\":\"" + libraryId + "\"}",
+        zeroVector);
+    return chunkId;
+  }
+
   private long identifierMatches(UUID chunkId) {
     return matchesLexeme(chunkId, "xpar35baugb");
   }
