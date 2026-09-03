@@ -12,10 +12,10 @@ import org.slf4j.LoggerFactory;
  * returning, so no caller can forget the cleanup a reported-but-unclaimed attachment requires.
  * Cleanup never throws, so it can never turn an otherwise successful result into a failure.
  *
- * <p>{@code FileProcessingService} is the sole caller today (#1183): {@code MailDocumentPipeline}
- * no longer recurses into a sub-pipeline itself (ADR-0022, Entscheidung 10), so every {@code
- * discoveredAttachments} entry a pipeline reports reaches this class exactly once, from {@code
- * FileProcessingService}'s own top-level call. The {@link #run(DocumentPipeline,
+ * <p>{@code MailDocumentPipeline} no longer recurses into a sub-pipeline itself (ADR-0022,
+ * Entscheidung 10), so every {@code discoveredAttachments} entry a pipeline reports reaches this
+ * class exactly once, from the caller's own top-level call ({@code FileProcessingService}, or
+ * {@code PipelineReindexService}'s attachment re-extraction). The {@link #run(DocumentPipeline,
  * DocumentPipelineSource, Consumer)} overload lets that caller process (index) an attachment's
  * bytes before this class deletes its temp file - the handler runs first, so it can read/copy the
  * file; cleanup afterwards is unconditional and idempotent ({@link Files#deleteIfExists}), so a

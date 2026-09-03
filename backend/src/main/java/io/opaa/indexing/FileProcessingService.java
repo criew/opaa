@@ -1064,7 +1064,7 @@ public class FileProcessingService {
    * malformed row). Used by {@code PipelineReindexService} to re-extract an attachment from its
    * parent's source file.
    */
-  public static int attachmentIndexIn(String parentFilePath, String attachmentPath) {
+  static int attachmentIndexIn(String parentFilePath, String attachmentPath) {
     String prefix = parentFilePath + "/";
     if (attachmentPath == null || !attachmentPath.startsWith(prefix)) {
       return -1;
