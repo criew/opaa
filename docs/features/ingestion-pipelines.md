@@ -1026,8 +1026,9 @@ der **Anzeigetext eines Links** bleibt, sein Ziel nicht.
 
 **Struktur:** h1–h3 schneiden einen Chunk, h4–h6 falten in den Text (wie HTML und Markdown);
 Tabellen werden eine Zeile je Tabellenzeile mit „ | " zwischen den Zellen; Listen eine Zeile je
-Eintrag mit Marker (•, ◦, ▪ nach Verschachtelungstiefe bzw. Nummer — Einrückung überlebt den
-Schnitt nicht, der Marker trägt die Tiefe); Aufgabenlisten behalten ihren Zustand (`[x]`/`[ ]`);
+Eintrag mit Marker (•, ◦, ▪ nach Verschachtelungstiefe bzw. verschachtelte Nummer wie „2.1.“ —
+Einrückung überlebt den Schnitt nicht, der Marker trägt die Tiefe); Aufgabenlisten behalten ihren
+Zustand (`[x]`/`[ ]`);
 Code behält seine Zeilenumbrüche. Der Überschriftenpfad steht als erste Zeile im Chunk und als
 `location` („Abschn. …") in den Metadaten — geteilt mit den anderen Pipelines über
 `HeadingSectionSplitter`, Schnittbudget 4000/20000 Zeichen wie dort (gesetzt, nicht gemessen: der
@@ -1036,7 +1037,8 @@ Evaluierungskorpus enthält keine Confluence-Seiten, Baseline unberührt).
 **Gliederungspfad der Seite** (Querschnittsregel (b)): Space-Schlüssel und Vorfahrentitel liegen
 nicht im Körper; der Aufruf schreibt sie an das Dokument (`source_container_key`,
 `source_hierarchy_path`, #1136) **und** an jeden Chunk als Durchreiche-Metadaten
-(`source_container_key`, `source_hierarchy_path` = Vorfahren plus Seitentitel), die die Pipeline als
+(`source_container_key`, `source_hierarchy_path` — derselbe Vorfahrenpfad wie an der Spalte des
+Dokuments; der Seitentitel steht am Chunk als `file_name`), die die Pipeline als
 `passthroughMetadataKeys` deklariert. Der Chunk-Kontext-Präfix (Embedding und Volltext, nie im
 zitierten Rohtext) ist der Ort der Seite im Space — `[Handbuch / Kapitel 1 / Abschnitt 1.1]` —, nicht
 nur ihr Titel. Die Zitatanzeige liest diese Metadaten noch nicht (siehe Offene Punkte).
@@ -1048,7 +1050,9 @@ wird als `UNSUPPORTED_FORMAT` sichtbar übersprungen und bleibt Teil der Abgleic
 **Beide Editionen, ein Ergebnis:** Der Vollabgleich übergibt für Cloud und Data Center denselben
 Storage-Körper (Vertragstest gegen das Testdoppel); die Aufbereitung kennt die Edition nicht.
 `atlas_doc_format` (nur Cloud) wird bewusst nicht verwendet — das Storage-Format ist das
-gemeinsame Zwischenformat.
+gemeinsame Zwischenformat. Elemente des neuen Cloud-Editors (`ac:adf-extension`) werden über
+ihren `ac:adf-content` genommen; die wiederholte Altkopie (`ac:adf-fallback`) und die
+ADF-Attribute bleiben unsichtbar, damit kein Inhalt doppelt erscheint.
 
 **Beantwortbarkeit als Testfall:** `ConfluencePageIndexingIntegrationTest` indiziert eine
 repräsentative Seite (Inhaltsverzeichnis, Tabelle, Hinweiskasten, Jira-Makro, Hierarchie) über den

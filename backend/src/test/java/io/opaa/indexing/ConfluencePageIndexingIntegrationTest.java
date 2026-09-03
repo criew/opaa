@@ -128,7 +128,7 @@ class ConfluencePageIndexingIntegrationTest {
     assertThat(hits)
         .allMatch(
             hit ->
-                "Handbuch / Kapitel 1 / Abschnitt 1.1"
+                "Handbuch / Kapitel 1"
                     .equals(
                         hit.getMetadata().get(ConfluenceDocumentPipeline.HIERARCHY_METADATA_KEY)));
     org.springframework.ai.document.Document deadline =

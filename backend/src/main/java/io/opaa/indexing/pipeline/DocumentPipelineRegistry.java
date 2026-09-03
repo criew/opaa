@@ -155,16 +155,16 @@ public class DocumentPipelineRegistry {
    * The pipeline for content that never was a file and therefore has no detectable format - an RSS
    * entry's already-extracted main text (see {@code FileProcessingService#processRssEntry}).
    */
+  public DocumentPipeline fallbackPipeline() {
+    return fallback;
+  }
+
   /**
    * The registered pipeline with {@code id}, for a caller that invokes a pipeline directly instead
    * of routing by format - the Confluence page pipeline claims no format at all (#1137).
    */
   public java.util.Optional<DocumentPipeline> pipelineById(String id) {
     return all.stream().filter(pipeline -> pipeline.id().equals(id)).findFirst();
-  }
-
-  public DocumentPipeline fallbackPipeline() {
-    return fallback;
   }
 
   /**

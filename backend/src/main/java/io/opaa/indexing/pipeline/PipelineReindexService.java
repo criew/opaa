@@ -269,7 +269,11 @@ public class PipelineReindexService {
     Document document = found.get();
     DocumentSourceType sourceType = document.getSourceType();
     if (sourceType == DocumentSourceType.HTTP_DIRECTORY
-        || sourceType == DocumentSourceType.RSS_FEED) {
+        || sourceType == DocumentSourceType.RSS_FEED
+        || sourceType == DocumentSourceType.CONFLUENCE) {
+      // Confluence (#1137): clearing checksum and version marker makes the next run fetch and
+      // process the page again - the executor's pre-fetch version check and processConfluencePage's
+      // checksum check both see "changed".
       documentRepository.markForReindexOnNextRun(documentId);
       return Advance.MARKED_FOR_NEXT_RUN;
     }

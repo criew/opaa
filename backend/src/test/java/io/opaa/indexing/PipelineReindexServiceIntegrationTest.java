@@ -503,6 +503,25 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   @Test
+  void aConfluencePageIsMarkedForItsNextRunAndLosesItsVersionMarker() {
+    // #1137 (Querschnittsregel (d)): a Confluence page has no local file to re-read, like an RSS
+    // entry or a crawled file - so a pipeline version bump hands it to the next run, and clearing
+    // the version marker is what makes the executor's pre-fetch check see "changed".
+    Document document =
+        persistedConfluenceDocument("https://wiki.example.test/pages/viewpage.action?pageId=102");
+    seedChunk(document.getId(), "alter chunk", null, null);
+
+    PipelineReindexResult first = reindexBatch(10);
+
+    assertThat(first.markedForNextRun()).isEqualTo(1);
+    assertThat(first.reindexedDocuments()).isZero();
+    Document marked = documentRepository.findById(document.getId()).orElseThrow();
+    assertThat(marked.getChecksum()).isNull();
+    assertThat(marked.getLastModifiedRemote()).isNull();
+    assertThat(reindexBatch(10).isEmpty()).isTrue();
+  }
+
+  @Test
   void aRemoteDocumentIsMarkedForItsNextRunOnceAndThenLeavesTheBacklog() {
     Document document = persistedRemoteDocument("https://example.test/satzung.pdf");
     seedChunk(document.getId(), "alter chunk", null, null);
@@ -750,6 +769,17 @@ class PipelineReindexServiceIntegrationTest {
     document.setLibraryId(library.getId());
     document.setOrganizationId(Organization.DEFAULT_ID);
     document.setChecksum("checksum-remote");
+    return documentRepository.save(document);
+  }
+
+  /** A Confluence page row as the full sync writes it (#1136): identity URL, version as marker. */
+  private Document persistedConfluenceDocument(String url) {
+    Document document =
+        new Document("Abschnitt 1.1", url, "text/html", 1024L, DocumentSourceType.CONFLUENCE);
+    document.setLibraryId(library.getId());
+    document.setOrganizationId(Organization.DEFAULT_ID);
+    document.setChecksum("checksum-remote");
+    document.setLastModifiedRemote("7");
     return documentRepository.save(document);
   }
 

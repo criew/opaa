@@ -887,6 +887,19 @@ class FileProcessingServiceTest {
         .doesNotContain("future_bookkeeping_key", "some-future-uuid");
   }
 
+  /** A service whose registry carries the Confluence pipeline, the way production is wired. */
+  private FileProcessingService serviceWithConfluencePipeline() {
+    return new FileProcessingService(
+        TestPipelineRegistries.fallbackAndConfluence(documentService, chunkingService),
+        documentRepository,
+        vectorChunkStore,
+        checksumService,
+        new IndexingMetrics(meterRegistry),
+        storageQuotaService,
+        defaultIndexingProperties(),
+        Runnable::run);
+  }
+
   @Test
   void aConfluencePageIsStoredWithItsSpaceHierarchyVersionAndTitleAsChunkContext() {
     // ADR-0023 (#1136): identity by the title-free page URL, the version as the pre-fetch change
@@ -897,20 +910,17 @@ class FileProcessingServiceTest {
     when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), pageUrl))
         .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
-    var chunks =
-        List.of(
-            new org.springframework.ai.document.Document("erster Abschnitt"),
-            new org.springframework.ai.document.Document("zweiter Abschnitt"));
-    when(chunkingService.chunkDocuments(eq("Abschnitt 1.1"), any())).thenReturn(chunks);
-
+    // two h1 sections -> two chunks through the real Confluence pipeline (no mocked chunking)
     FileProcessingResult result =
-        service.processConfluencePage(
-            "Zuständigkeiten\nDas Bauamt bearbeitet Anträge.",
-            "Abschnitt 1.1",
-            pageUrl,
-            "7",
-            new SourceDocumentContext("ENG", "Handbuch / Kapitel 1"),
-            targetLibrary);
+        serviceWithConfluencePipeline()
+            .processConfluencePage(
+                "<h1>Zuständigkeiten</h1><p>Das Bauamt bearbeitet Anträge.</p>"
+                    + "<h1>Fristen</h1><p>14 Tage.</p>",
+                "Abschnitt 1.1",
+                pageUrl,
+                "7",
+                new SourceDocumentContext("ENG", "Handbuch / Kapitel 1"),
+                targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     ArgumentCaptor<Document> saved = ArgumentCaptor.forClass(Document.class);
@@ -930,12 +940,17 @@ class FileProcessingServiceTest {
     verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
     // ingestion-pipelines.md, Querschnittsregel (b) / #1137: the page's place in the space is the
     // chunk-context prefix, so a chunk embeds with the outline it sits in
-    assertThat(
-            chunkCaptor
-                .getValue()
-                .getFirst()
-                .getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
-        .isEqualTo("[Handbuch / Kapitel 1 / Abschnitt 1.1]\n\nerster Abschnitt");
+    org.springframework.ai.document.Document firstChunk = chunkCaptor.getValue().getFirst();
+    assertThat(firstChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
+        .isEqualTo(
+            "[Handbuch / Kapitel 1 / Abschnitt 1.1]\n\nZuständigkeiten\n\nDas Bauamt bearbeitet"
+                + " Anträge.");
+    // the space and the ancestors travel with every chunk; the title is the chunk's file_name
+    assertThat(firstChunk.getMetadata())
+        .containsEntry("source_container_key", "ENG")
+        .containsEntry("source_hierarchy_path", "Handbuch / Kapitel 1")
+        .containsEntry("file_name", "Abschnitt 1.1")
+        .containsEntry("pipeline_id", "confluence");
   }
 
   @Test
@@ -954,13 +969,14 @@ class FileProcessingServiceTest {
         .thenReturn(Optional.of(existing));
 
     FileProcessingResult result =
-        service.processConfluencePage(
-            "unveränderter Text",
-            "Abschnitt 1.1 (umbenannt)",
-            pageUrl,
-            "8",
-            new SourceDocumentContext("ENG", null),
-            targetLibrary);
+        serviceWithConfluencePipeline()
+            .processConfluencePage(
+                "unveränderter Text",
+                "Abschnitt 1.1 (umbenannt)",
+                pageUrl,
+                "8",
+                new SourceDocumentContext("ENG", null),
+                targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
     verify(documentRepository)

@@ -22,4 +22,13 @@ public final class TestPipelineRegistries {
     TikaFallbackPipeline fallback = new TikaFallbackPipeline(documentService, chunkingService);
     return new DocumentPipelineRegistry(List.of(fallback), fallback);
   }
+
+  /** The fallback plus the Confluence page pipeline (#1137) - for processConfluencePage tests. */
+  public static DocumentPipelineRegistry fallbackAndConfluence(
+      DocumentService documentService, ChunkingService chunkingService) {
+    TikaFallbackPipeline fallback = new TikaFallbackPipeline(documentService, chunkingService);
+    return new DocumentPipelineRegistry(
+        List.of(fallback, new io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline()),
+        fallback);
+  }
 }

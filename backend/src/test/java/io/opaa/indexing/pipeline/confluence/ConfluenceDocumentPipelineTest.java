@@ -164,6 +164,84 @@ class ConfluenceDocumentPipelineTest {
   }
 
   @Test
+  void emptyEditorLinesWithNonBreakingSpacesLeaveNoBlock() {
+    // Confluence writes <p>&nbsp;</p> for every empty editor line; U+00A0 is whitespace to
+    // Jsoup but not to Java's \s - #1192 review, finding 1
+    List<Document> chunks =
+        chunk("<p>Frist:&nbsp;14 Tage</p><p>&nbsp;</p><p>\u00a0</p><p>Ende.</p>");
+
+    assertThat(chunks).hasSize(1);
+    assertThat(chunks.getFirst().getText()).isEqualTo("Frist: 14 Tage\n\nEnde.");
+    assertThat(
+            pipeline
+                .run(DocumentPipelineSource.ofExtractedText("<p>&nbsp;</p><p>\u00a0</p>", "Leer"))
+                .outcome())
+        .isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+  }
+
+  @Test
+  void macrosInsideHeadingsFollowTheSameRulesAsInTheBody() {
+    // a status lozenge keeps its title, a Jira macro leaves nothing - also in the heading path
+    List<Document> chunks =
+        chunk(
+            "<h1>Antrag <ac:structured-macro ac:name=\"status\"><ac:parameter ac:name=\"colour\">"
+                + "Green</ac:parameter><ac:parameter ac:name=\"title\">Entwurf</ac:parameter>"
+                + "</ac:structured-macro></h1><p>Text.</p>"
+                + "<h2>Kapitel <ac:structured-macro ac:name=\"jira\"><ac:parameter ac:name=\"key\">"
+                + "BAU-1</ac:parameter></ac:structured-macro></h2><p>Mehr.</p>");
+
+    assertThat(chunks).hasSize(2);
+    assertThat(chunks.get(0).getMetadata())
+        .containsEntry(ChunkingService.LOCATION_METADATA_KEY, "Abschn. Antrag Entwurf");
+    assertThat(chunks.get(1).getMetadata())
+        .containsEntry(ChunkingService.LOCATION_METADATA_KEY, "Abschn. Antrag Entwurf › Kapitel");
+    assertThat(chunks.get(0).getText()).doesNotContain("Green");
+    assertThat(chunks.get(1).getText()).doesNotContain("BAU-1");
+  }
+
+  @Test
+  void aNestedTableIsFlattenedIntoItsOuterCellOnce() {
+    List<Document> chunks =
+        chunk(
+            "<table><tbody><tr><td>Aussen</td><td><table><tbody><tr><td>Innen1</td>"
+                + "<td>Innen2</td></tr></tbody></table></td></tr></tbody></table>");
+
+    assertThat(chunks.getFirst().getText()).isEqualTo("Aussen | Innen1 | Innen2");
+  }
+
+  @Test
+  void cloudEditorElementsAreTakenOnceNotFromTheirFallbackCopy() {
+    List<Document> chunks =
+        chunk(
+            "<ac:adf-extension><ac:adf-node type=\"panel\"><ac:adf-attribute key=\"panel-type\">"
+                + "info</ac:adf-attribute><ac:adf-content><p>Panel Inhalt</p></ac:adf-content>"
+                + "</ac:adf-node><ac:adf-fallback><ac:structured-macro ac:name=\"panel\">"
+                + "<ac:rich-text-body><p>Panel Inhalt</p></ac:rich-text-body></ac:structured-macro>"
+                + "</ac:adf-fallback></ac:adf-extension>");
+
+    assertThat(chunks.getFirst().getText()).isEqualTo("Panel Inhalt");
+  }
+
+  @Test
+  void aCodeMacroWithoutAPlainTextBodyKeepsItsRichText() {
+    List<Document> chunks =
+        chunk(
+            "<ac:structured-macro ac:name=\"code\"><ac:rich-text-body><p>SELECT 1;</p>"
+                + "</ac:rich-text-body></ac:structured-macro>");
+
+    assertThat(chunks.getFirst().getText()).isEqualTo("SELECT 1;");
+  }
+
+  @Test
+  void nestedOrderedListsCarryTheirLevelInTheNumber() {
+    List<Document> chunks =
+        chunk("<ol><li>Eins</li><li>Zwei<ol><li>Zwei-a</li><li>Zwei-b</li></ol></li></ol>");
+
+    assertThat(chunks.getFirst().getText())
+        .isEqualTo("1. Eins\n\n2. Zwei\n\n2.1. Zwei-a\n\n2.2. Zwei-b");
+  }
+
+  @Test
   void headingsDeeperThanH3FoldIntoTheSectionText() {
     List<Document> chunks =
         chunk("<h2>Verfahren</h2><p>Einleitung.</p><h4>Schritt 1</h4><p>Antrag stellen.</p>");

@@ -43,10 +43,10 @@ import org.springframework.ai.document.Document;
  * <p><b>Structure</b>: h1-h6 become headings ({@link #MAX_CUTTING_LEVEL} h1-h3 cut a chunk, deeper
  * headings fold into the text like every other outline-driven pipeline); tables become one line per
  * row with cells separated by " | "; lists become one line per item with a marker (•, ◦, ▪ by
- * nesting depth, or a number); code and {@code noformat} blocks keep their line breaks; task lists
- * keep their state; link texts stay, link targets and images do not. The heading path in effect at
- * each cut is written as the chunk's first line and as its {@code location} metadata (Fundort),
- * shared with the other pipelines via {@link HeadingSectionSplitter}.
+ * nesting depth, or a nested number such as "2.1."); code and {@code noformat} blocks keep their
+ * line breaks; task lists keep their state; link texts stay, link targets and images do not. The
+ * heading path in effect at each cut is written as the chunk's first line and as its {@code
+ * location} metadata (Fundort), shared with the other pipelines via {@link HeadingSectionSplitter}.
  *
  * <p><b>Context</b>: the space key and the page's hierarchy path are not in the body - the caller
  * knows them and writes them onto every chunk under {@link #SPACE_METADATA_KEY} and {@link
@@ -61,13 +61,18 @@ public class ConfluenceDocumentPipeline implements DocumentPipeline {
   /** Chunk metadata: the Confluence space key the page belongs to. */
   public static final String SPACE_METADATA_KEY = "source_container_key";
 
-  /** Chunk metadata: the page's ancestors root first, joined with " / ", plus the page title. */
+  /**
+   * Chunk metadata: the page's ancestors root first, joined with " / " - the same value as the
+   * document's own column of that name; the page title is the chunk's {@code file_name}.
+   */
   public static final String HIERARCHY_METADATA_KEY = "source_hierarchy_path";
 
   /** h1-h3 open a new chunk, like the HTML and Markdown pipelines; h4-h6 fold into the text. */
   static final int MAX_CUTTING_LEVEL = 3;
 
-  private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+  // Jsoup counts U+00A0 as whitespace, Java does not - and Confluence writes <p>&nbsp;</p> for
+  // every empty editor line (the same pattern the DOCX/ODF pipelines use).
+  private static final Pattern WHITESPACE = Pattern.compile("[\\s\\u00A0\\u202F]+");
   private static final Set<String> BLOCK_TAGS =
       Set.of(
           "p",
@@ -76,15 +81,23 @@ public class ConfluenceDocumentPipeline implements DocumentPipeline {
           "section",
           "hr",
           "br",
+          "dt",
+          "dd",
           "ac:layout",
           "ac:layout-section",
           "ac:layout-cell",
-          "ac:rich-text-body");
+          "ac:rich-text-body",
+          // Cloud's new editor wraps its elements as ac:adf-extension: the adf-content is the body
+          "ac:adf-content");
 
   /** Elements whose subtree never carries visible text. */
   private static final Set<String> INVISIBLE_TAGS =
       Set.of(
           "ac:parameter",
+          // Cloud repeats an ADF element's content as a legacy fallback - one copy is enough
+          "ac:adf-fallback",
+          "ac:adf-attribute",
+          "ac:adf-node-attribute",
           "ac:image",
           "ac:emoticon",
           "ac:placeholder",
@@ -173,7 +186,7 @@ public class ConfluenceDocumentPipeline implements DocumentPipeline {
       }
       switch (tag) {
         case "h1", "h2", "h3", "h4", "h5", "h6" -> heading(element, tag.charAt(1) - '0');
-        case "ul", "ol" -> list(element, tag.equals("ol"), 0);
+        case "ul", "ol" -> list(element, tag.equals("ol"), 0, "");
         case "table" -> table(element);
         case "pre" -> verbatim(element.wholeText());
         case "ac:structured-macro", "ac:macro" -> macro(element);
@@ -200,13 +213,20 @@ public class ConfluenceDocumentPipeline implements DocumentPipeline {
 
     private void heading(Element element, int level) {
       flushBlock();
-      String title = normalize(element.text());
+      // through the macro-aware walker, not Element#text(): a status lozenge or a Jira macro inside
+      // a heading must not leak its parameters into the heading path
+      String title = cellText(element);
       if (!title.isEmpty()) {
         events.add(new Heading(level, title));
       }
     }
 
-    private void list(Element listElement, boolean ordered, int depth) {
+    /**
+     * @param numbering the enclosing ordered list's number prefix ("2." for the second item's
+     *     nested list), so nesting is carried by the marker ("2.1.") - HeadingSectionSplitter
+     *     strips every block, leading spaces would not survive the cut
+     */
+    private void list(Element listElement, boolean ordered, int depth, String numbering) {
       flushBlock();
       int index = 0;
       for (Element item : listElement.children()) {
@@ -214,9 +234,8 @@ public class ConfluenceDocumentPipeline implements DocumentPipeline {
           continue;
         }
         index++;
-        // Nesting is carried by the marker, not by indentation - HeadingSectionSplitter strips
-        // every block, so leading spaces would not survive the cut.
-        String marker = ordered ? index + ". " : bulletFor(depth);
+        String number = numbering + index + ".";
+        String marker = ordered ? number + " " : bulletFor(depth);
         StringBuilder line = new StringBuilder(marker);
         for (Node child : item.childNodes()) {
           if (child instanceof Element nested
@@ -231,7 +250,7 @@ public class ConfluenceDocumentPipeline implements DocumentPipeline {
             } else if (!ownText.isEmpty()) {
               emitLine(ownText);
             }
-            list(nested, nested.tagName().equalsIgnoreCase("ol"), depth + 1);
+            list(nested, nested.tagName().equalsIgnoreCase("ol"), depth + 1, ordered ? number : "");
             continue;
           }
           walk(child);
@@ -257,6 +276,10 @@ public class ConfluenceDocumentPipeline implements DocumentPipeline {
     private void table(Element table) {
       flushBlock();
       for (Element row : table.select("tr")) {
+        if (row.closest("table") != table) {
+          // a nested table's rows are already flattened into their outer cell
+          continue;
+        }
         List<String> cells = new ArrayList<>();
         for (Element cell : row.children()) {
           String cellTag = cell.tagName().toLowerCase(Locale.ROOT);
@@ -296,8 +319,19 @@ public class ConfluenceDocumentPipeline implements DocumentPipeline {
         case VERBATIM -> {
           flushBlock();
           Element body = macro.selectFirst("> ac|plain-text-body");
+          if (body == null) {
+            // a code macro without a plain-text body (old editors wrote a rich-text body) keeps
+            // whatever text it carries rather than losing it
+            for (Element child : macro.children()) {
+              if (child.tagName().equalsIgnoreCase("ac:rich-text-body")) {
+                walkChildren(child);
+                flushBlock();
+              }
+            }
+            return;
+          }
           String language = parameter(macro, "language");
-          String code = body == null ? "" : body.wholeText().strip();
+          String code = body.wholeText().strip();
           if (!code.isEmpty()) {
             events.add(new Paragraph(language.isEmpty() ? code : language + ":\n" + code));
           }

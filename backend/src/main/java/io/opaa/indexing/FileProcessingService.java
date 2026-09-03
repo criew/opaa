@@ -685,8 +685,8 @@ public class FileProcessingService {
    * and ancestor titles in the two context columns and as passthrough metadata on every chunk, the
    * page's own place (hierarchy path plus title) as the chunk-context prefix
    * (ingestion-pipelines.md, Querschnittsregel (b)). The body goes to {@code
-   * ConfluenceDocumentPipeline} directly - there is no file to route by format; where that pipeline
-   * is not registered (a reduced test registry) the fallback pipeline takes the body as text.
+   * ConfluenceDocumentPipeline} directly - there is no file to route by format; a registry without
+   * that pipeline is a wiring error, not a fallback case.
    *
    * @param storageBody the page body in Confluence storage format (XHTML with macro elements)
    * @param version the page's Confluence version number, the executor's pre-fetch change marker
@@ -754,7 +754,12 @@ public class FileProcessingService {
       DocumentPipeline pipeline =
           pipelineRegistry
               .pipelineById(ConfluenceDocumentPipeline.ID)
-              .orElseGet(pipelineRegistry::fallbackPipeline);
+              .orElseThrow(
+                  () ->
+                      new IllegalStateException(
+                          "Document pipeline "
+                              + ConfluenceDocumentPipeline.ID
+                              + " is not registered"));
       DocumentPipelineResult parsed =
           pipeline.run(DocumentPipelineSource.ofExtractedText(storageBody, fileName));
       switch (parsed.outcome()) {
@@ -779,10 +784,10 @@ public class FileProcessingService {
                 .getMetadata()
                 .put(ConfluenceDocumentPipeline.SPACE_METADATA_KEY, context.containerKey());
           }
-          if (contextTitle != null) {
+          if (context.hierarchyPath() != null) {
             chunk
                 .getMetadata()
-                .put(ConfluenceDocumentPipeline.HIERARCHY_METADATA_KEY, contextTitle);
+                .put(ConfluenceDocumentPipeline.HIERARCHY_METADATA_KEY, context.hierarchyPath());
           }
         }
       }
@@ -802,19 +807,6 @@ public class FileProcessingService {
   }
 
   /**
-   * The connector counterpart to {@link #markConnectorFailed}, backing the successful transition to
-   * {@code INDEXED} in {@link #processFile}/{@link #processUrlFile}/{@link #processRssEntry}. Uses
-   * {@link DocumentRepository#markIndexedFromSource} - a conditional {@code UPDATE} - instead of a
-   * plain save, because the row can be deleted concurrently between this method's caller
-   * creating/re-reading it and {@link #storeChunks} finishing; a plain save would not notice
-   * ({@link Document} assigns its own id and carries no {@code @Version}) and would silently
-   * re-insert it as a zombie row.
-   *
-   * @return {@link FileProcessingResult#SKIPPED} if the row was gone (its chunks, just written by
-   *     {@link #storeChunks}, are removed again here), otherwise {@link
-   *     FileProcessingResult#PROCESSED}
-   */
-  /**
    * The chunk-context prefix of a Confluence page: its place in the space - ancestor titles root
    * first, then the page title - so a chunk embeds and full-text-indexes with the outline it sits
    * in, not just its own heading (ingestion-pipelines.md, Querschnittsregel (b); #1137). {@code
@@ -830,6 +822,19 @@ public class FileProcessingService {
     return context.hierarchyPath() + SourceDocumentContext.HIERARCHY_SEPARATOR + title;
   }
 
+  /**
+   * The connector counterpart to {@link #markConnectorFailed}, backing the successful transition to
+   * {@code INDEXED} in {@link #processFile}/{@link #processUrlFile}/{@link #processRssEntry}. Uses
+   * {@link DocumentRepository#markIndexedFromSource} - a conditional {@code UPDATE} - instead of a
+   * plain save, because the row can be deleted concurrently between this method's caller
+   * creating/re-reading it and {@link #storeChunks} finishing; a plain save would not notice
+   * ({@link Document} assigns its own id and carries no {@code @Version}) and would silently
+   * re-insert it as a zombie row.
+   *
+   * @return {@link FileProcessingResult#SKIPPED} if the row was gone (its chunks, just written by
+   *     {@link #storeChunks}, are removed again here), otherwise {@link
+   *     FileProcessingResult#PROCESSED}
+   */
   private FileProcessingResult markConnectorIndexed(
       UUID documentId, int chunkCount, String checksum, String lastModifiedRemote) {
     int updated =
