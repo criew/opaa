@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.FullTextBackfillProgress;
 import io.opaa.indexing.FullTextBackfillProgressService;
+import io.opaa.query.FullTextBackfillGate;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +21,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * The status display against a real Postgres - above all that the per-library full-text fill state
  * is the very number {@link FullTextBackfillProgressService} produces for the completion gate, not
- * a second count with its own logic (#1053 acceptance criterion 2).
+ * a second count with its own logic (#1053 acceptance criterion 2), and that the derived condition
+ * on this page actually matches what {@link FullTextBackfillGate} decides for a library it has not
+ * cached yet (#1120).
  */
 @OpaaIndexingIntegrationTest
 class SearchStatusIntegrationTest {
@@ -29,6 +33,7 @@ class SearchStatusIntegrationTest {
 
   @Autowired private SearchStatusService searchStatusService;
   @Autowired private FullTextBackfillProgressService backfillProgressService;
+  @Autowired private FullTextBackfillGate backfillGate;
   @Autowired private VectorStore vectorStore;
   @Autowired private JdbcTemplate jdbcTemplate;
 
@@ -83,6 +88,10 @@ class SearchStatusIntegrationTest {
     assertThat(gateSource.isComplete()).isFalse();
     assertThat(status.fullTextIndexCondition())
         .isEqualTo(LibrarySearchStatus.IndexCondition.INCOMPLETE);
+    // The count above matching the gate's own count is necessary but not sufficient - this is the
+    // gate's actual decision, taken on a library it has never seen before this call so its
+    // process-lifetime cache cannot mask a divergence (#1120).
+    assertThat(backfillGate.searchableLibraries(Set.of(libraryId))).isEmpty();
   }
 
   @Test

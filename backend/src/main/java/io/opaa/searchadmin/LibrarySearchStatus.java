@@ -8,7 +8,16 @@ import java.util.UUID;
  *
  * <p>{@code fullTextMissingChunks}/{@code fullTextSkippedChunks} are read from the same query the
  * full-text completion gate reads (see {@code io.opaa.indexing.FullTextBackfillProgressService}) -
- * neither is counted a second time here, so the display and the gate cannot drift apart.
+ * neither is counted a second time here, so the display and the gate cannot drift apart on the
+ * numbers themselves.
+ *
+ * <p><b>The two can still disagree on the resulting decision.</b> {@code
+ * io.opaa.query.FullTextBackfillGate} caches "complete" for a library's remaining process lifetime
+ * once its backfill has finished. This page reads the count fresh on every load and has no such
+ * memory. Should chunks that will never be backfilled appear in an already-complete library after
+ * the gate cached its answer, this page reports {@link IndexCondition#INCOMPLETE} while the gate
+ * keeps searching the library regardless - a deliberate consequence of the gate's own
+ * process-lifetime memoization (see that class's Javadoc), not a bug to fix here.
  *
  * @param chunkCount chunks the {@code documents} rows record as produced.
  * @param vectorChunkCount chunks actually present in the vector store. A gap to {@code chunkCount}

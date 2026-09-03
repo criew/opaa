@@ -32,7 +32,7 @@ const EMPTY: Omit<SearchAdminState, 'reset' | 'loadStatus' | 'runDiagnosis'> = {
 /**
  * The read-only state of the "Suche & Indexierung" administration page (#1053).
  *
- * <p>A diagnosis result of a run in someone else's rights context is never persisted anywhere -
+ * A diagnosis result of a run in someone else's rights context is never persisted anywhere -
  * it lives in this store for as long as the page is open and is dropped on sign-out like every
  * other session-scoped cache.
  */
