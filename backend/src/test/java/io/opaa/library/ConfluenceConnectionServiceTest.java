@@ -110,7 +110,12 @@ class ConfluenceConnectionServiceTest {
         .contains("Zugangsdaten gültig")
         .doesNotContain(TOKEN)
         .doesNotContain(EMAIL);
-    assertThat(server.requests().stream().filter(r -> r.contains("space")).count()).isEqualTo(1);
+    // Cloud probes the space listing, Data Center the current user - one request either way
+    assertThat(
+            server.requests().stream()
+                .filter(r -> r.contains("space") || r.contains("user/current"))
+                .count())
+        .isEqualTo(1);
   }
 
   @ParameterizedTest
