@@ -18,7 +18,8 @@ import java.util.Set;
  * ChunkPipelineMetadata}), written by {@code FileProcessingService#storeChunks}. {@link #version()}
  * is raised whenever this pipeline's cut or the structure metadata it emits changes - never for a
  * fix without an effect on the produced chunks. That is what makes "re-index every chunk below
- * version N of this pipeline" answerable at all; see {@link PipelineReindexService}.
+ * version N of this pipeline" answerable at all; see {@code
+ * io.opaa.indexing.PipelineReindexService}.
  */
 public interface DocumentPipeline {
 

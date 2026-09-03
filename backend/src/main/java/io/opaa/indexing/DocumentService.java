@@ -17,7 +17,8 @@ public class DocumentService {
   private static final Logger log = LoggerFactory.getLogger(DocumentService.class);
 
   /**
-   * The user-facing message a document is rejected with when {@link #isTextlessPdf} detects it -
+   * The user-facing message a document is rejected with when {@code
+   * io.opaa.indexing.pipeline.TikaFallbackPipeline} detects it carries no extractable text -
    * ingestion-pipelines.md, Teil 3, Punkt 1 "Scan-Erkennung und Bestandsprüfung". Shared by every
    * caller that needs to both set it as {@link Document#getErrorMessage()} and report the same
    * wording as an {@link IndexingRunEvent}, so the two never drift apart.
@@ -99,29 +100,6 @@ public class DocumentService {
    */
   boolean isSupportedFormat(Path file) {
     return classify(file).supported();
-  }
-
-  /**
-   * Whether {@code parsed} carries no extractable text at all and {@code file} was detected as a
-   * PDF. Tika's PDF parser returns a {@link org.springframework.ai.document.Document} even for a
-   * scan without a text layer - just with blank text - so {@code parsed.isEmpty()} alone does not
-   * catch this case. Scoped to PDF for now; meant to extend to TIFF/PNG/JPEG once accepted.
-   */
-  public boolean isTextlessPdf(Path file, List<org.springframework.ai.document.Document> parsed) {
-    boolean hasText = parsed.stream().anyMatch(d -> d.getText() != null && !d.getText().isBlank());
-    if (hasText) {
-      return false;
-    }
-    return isPdf(file);
-  }
-
-  private boolean isPdf(Path file) {
-    try {
-      return SupportedDocumentFormats.isPdfContent(SupportedDocumentFormats.detectMediaType(file));
-    } catch (IOException e) {
-      log.warn("Could not read {} to detect whether it is a PDF", file, e);
-      return false;
-    }
   }
 
   private SupportedDocumentFormats.ContentDecision classify(Path file) {

@@ -9,6 +9,7 @@ import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.IndexingProperties;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -28,6 +29,10 @@ import org.junit.jupiter.params.provider.ValueSource;
 class TikaFallbackPipelineTest {
 
   @TempDir Path tempDir;
+
+  // A PDF's magic string alone ("%PDF-") is enough for Tika's own magic-byte detection to report
+  // application/pdf, without a fully valid PDF structure.
+  private static final String PDF_MAGIC_BYTES = "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection";
 
   private final IndexingProperties properties =
       new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1);
@@ -137,6 +142,52 @@ class TikaFallbackPipelineTest {
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
     assertThat(result.chunks()).isEmpty();
+  }
+
+  // --- #1055/#1117: scan-PDF detection, moved here from DocumentServiceTest along with
+  // isTextlessPdf itself (only this pipeline ever asks it) ------------------------------------
+
+  @Test
+  void isTextlessPdfDetectsAPdfWhoseParsedDocumentsCarryOnlyBlankText() throws IOException {
+    Path file = tempDir.resolve("scan.pdf");
+    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
+
+    var parsed = List.of(new org.springframework.ai.document.Document(""));
+
+    assertThat(pipeline.isTextlessPdf(file, parsed)).isTrue();
+  }
+
+  @Test
+  void isTextlessPdfDetectsAPdfWithNoParsedDocumentsAtAll() throws IOException {
+    Path file = tempDir.resolve("empty-parse.pdf");
+    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
+
+    assertThat(pipeline.isTextlessPdf(file, List.of())).isTrue();
+  }
+
+  @Test
+  void isTextlessPdfIsFalseWhenAtLeastOneParsedDocumentCarriesText() throws IOException {
+    Path file = tempDir.resolve("has-text.pdf");
+    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
+
+    var parsed =
+        List.of(
+            new org.springframework.ai.document.Document(""),
+            new org.springframework.ai.document.Document("actual content"));
+
+    assertThat(pipeline.isTextlessPdf(file, parsed)).isFalse();
+  }
+
+  @Test
+  void isTextlessPdfIsFalseForATextlessNonPdfFile() throws IOException {
+    // The rule is scoped to PDF (ingestion-pipelines.md, Teil 3, Punkt 1) - blank text from any
+    // other format is left to the existing generic "no content extracted" handling.
+    Path file = tempDir.resolve("blank.txt");
+    Files.writeString(file, "", StandardCharsets.UTF_8);
+
+    var parsed = List.of(new org.springframework.ai.document.Document(""));
+
+    assertThat(pipeline.isTextlessPdf(file, parsed)).isFalse();
   }
 
   private Path copyTestResource(String resourceName, String targetFileName) throws IOException {

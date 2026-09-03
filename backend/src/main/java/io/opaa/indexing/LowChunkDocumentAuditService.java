@@ -13,10 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The one-time inventory check for scan-PDF fallout (ingestion-pipelines.md, Teil 3, Punkt 1):
- * {@link DocumentService#isTextlessPdf} only guards new ingests, so a pre-fix document indexed with
- * too few chunks stays undetected otherwise. {@link #findLowChunkDocuments} is a live query over
- * {@code documents.chunk_count}, not a stored snapshot - always current, no audit table to drift
- * from reality.
+ * {@code io.opaa.indexing.pipeline.TikaFallbackPipeline#isTextlessPdf} only guards new ingests, so
+ * a pre-fix document indexed with too few chunks stays undetected otherwise. {@link
+ * #findLowChunkDocuments} is a live query over {@code documents.chunk_count}, not a stored snapshot
+ * - always current, no audit table to drift from reality.
  */
 public class LowChunkDocumentAuditService {
 
