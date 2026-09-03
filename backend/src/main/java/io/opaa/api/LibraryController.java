@@ -23,6 +23,7 @@ import io.opaa.api.dto.LibrarySpaceAssociationResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.DocumentIndexingService;
@@ -268,8 +269,10 @@ public class LibraryController {
 
   @PostMapping("/{libraryId}/indexing")
   public ResponseEntity<IndexingStatusResponse> triggerIndexing(
-      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    IndexingJob job = indexingService.triggerIndexing(libraryId, caller);
+      @PathVariable UUID libraryId,
+      @RequestParam(name = "runMode", required = false) IndexingRunMode runMode,
+      @Caller CurrentUser caller) {
+    IndexingJob job = indexingService.triggerIndexing(libraryId, caller, runMode);
     return ResponseEntity.status(HttpStatus.ACCEPTED).body(toIndexingStatusResponse(job));
   }
 
@@ -312,6 +315,7 @@ public class LibraryController {
             job.getId(),
             status,
             mapIndexingTriggerSource(job.getTriggeredBy()),
+            job.getRunMode(),
             job.getDocumentsProcessed(),
             job.getDocumentsTotal(),
             job.getDocumentsSkipped(),
@@ -347,6 +351,7 @@ public class LibraryController {
       case ERROR -> IndexingRunEventCategory.ERROR;
       case FORMAT_MISMATCH -> IndexingRunEventCategory.FORMAT_MISMATCH;
       case REMOVED -> IndexingRunEventCategory.REMOVED;
+      case RATE_LIMITED -> IndexingRunEventCategory.RATE_LIMITED;
     };
   }
 

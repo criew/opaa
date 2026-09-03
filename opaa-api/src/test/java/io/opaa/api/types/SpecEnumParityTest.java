@@ -79,7 +79,8 @@ class SpecEnumParityTest {
         Arguments.of("NotificationType", NotificationType.values()),
         Arguments.of("ScheduleFrequency", ScheduleFrequency.values()),
         Arguments.of("ScheduleWeekday", ScheduleWeekday.values()),
-        Arguments.of("ConfluenceEdition", ConfluenceEdition.values()));
+        Arguments.of("ConfluenceEdition", ConfluenceEdition.values()),
+        Arguments.of("IndexingRunMode", IndexingRunMode.values()));
   }
 
   @ParameterizedTest(name = "{0}")

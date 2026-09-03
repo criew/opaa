@@ -1,6 +1,8 @@
 package io.opaa.indexing.source;
 
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.library.KnowledgeLibrary;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -17,6 +19,15 @@ import java.util.UUID;
  */
 public interface SourceIndexingExecutor {
 
+  /**
+   * The run modes this executor supports, each with the policy its absence evidence carries
+   * (ADR-0023, Entscheidung 4). Explicit registration, no implicit default: {@code
+   * DocumentIndexingService} rejects a requested mode that is not a key here, and {@code
+   * StaleDocumentCleanupService} rejects a cleanup call from a mode whose policy is not {@link
+   * VanishedDocumentPolicy#REMOVE_ON_ABSENCE}.
+   */
+  Map<IndexingRunMode, VanishedDocumentPolicy> runModes();
+
   /** The source type this executor serves. Used as the registry's lookup key. */
   IndexingSourceType sourceType();
 
@@ -25,5 +36,5 @@ public interface SourceIndexingExecutor {
    * same way every executor has always done. {@code targetLibrary} carries both the destination for
    * every document/chunk this run writes and, since ADR-0018, the run's own quellkonfiguration.
    */
-  void execute(UUID jobId, KnowledgeLibrary targetLibrary);
+  void execute(UUID jobId, KnowledgeLibrary targetLibrary, IndexingRunMode runMode);
 }

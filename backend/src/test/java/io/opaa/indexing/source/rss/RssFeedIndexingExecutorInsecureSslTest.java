@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsServer;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
@@ -261,7 +262,10 @@ class RssFeedIndexingExecutorInsecureSslTest {
 
   @Test
   void sourceInsecureSslTrueAcceptsTheSelfSignedCertificateOfTheFeedsOwnOrigin() {
-    executor.execute(UUID.randomUUID(), library(feedServer.baseUrl() + EMPTY_FEED_PATH, true));
+    executor.execute(
+        UUID.randomUUID(),
+        library(feedServer.baseUrl() + EMPTY_FEED_PATH, true),
+        IndexingRunMode.INCREMENTAL);
 
     verify(indexingJobService, timeout(5000)).completeJob(any(), eq(0), eq(0), eq(0), eq(0));
     verify(indexingJobService, never()).failJob(any(), anyString());
@@ -269,7 +273,10 @@ class RssFeedIndexingExecutorInsecureSslTest {
 
   @Test
   void sourceInsecureSslFalseStillRejectsTheSelfSignedCertificate() {
-    executor.execute(UUID.randomUUID(), library(feedServer.baseUrl() + EMPTY_FEED_PATH, false));
+    executor.execute(
+        UUID.randomUUID(),
+        library(feedServer.baseUrl() + EMPTY_FEED_PATH, false),
+        IndexingRunMode.INCREMENTAL);
 
     ArgumentCaptor<String> errorMessage = ArgumentCaptor.forClass(String.class);
     verify(indexingJobService, timeout(5000)).failJob(any(), errorMessage.capture());
@@ -295,7 +302,9 @@ class RssFeedIndexingExecutorInsecureSslTest {
     // certificate must still be validated normally, exactly as it would be with
     // sourceInsecureSsl: false.
     executor.execute(
-        UUID.randomUUID(), library(feedServer.baseUrl() + FEED_WITH_FOREIGN_LINK_PATH, true));
+        UUID.randomUUID(),
+        library(feedServer.baseUrl() + FEED_WITH_FOREIGN_LINK_PATH, true),
+        IndexingRunMode.INCREMENTAL);
 
     // The run still completes - a foreign detail page's TLS failure only skips that one entry, it
     // never fails the whole run (ADR-0017's "Verhalten gegenüber fremden Zielen").

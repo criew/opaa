@@ -30,6 +30,7 @@ import io.opaa.indexing.LibraryScheduleCodec;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.confluence.ConfluenceConnection;
 import io.opaa.indexing.source.confluence.ConfluenceCredentials;
+import io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import java.net.URI;
@@ -120,6 +121,7 @@ public class KnowledgeLibraryService {
   private final IndexingJobRepository indexingJobRepository;
   private final IndexingJobService indexingJobService;
   private final RssFeedStateRepository rssFeedStateRepository;
+  private final ConfluenceSyncStateRepository confluenceSyncStateRepository;
   private final Clock schedulingClock;
   private final LibraryStorageQuotaService storageQuotaService;
   private final LibraryFolderRepository folderRepository;
@@ -142,6 +144,7 @@ public class KnowledgeLibraryService {
       IndexingJobRepository indexingJobRepository,
       IndexingJobService indexingJobService,
       RssFeedStateRepository rssFeedStateRepository,
+      ConfluenceSyncStateRepository confluenceSyncStateRepository,
       Clock schedulingClock,
       LibraryStorageQuotaService storageQuotaService,
       LibraryFolderRepository folderRepository,
@@ -162,6 +165,7 @@ public class KnowledgeLibraryService {
     this.indexingJobRepository = indexingJobRepository;
     this.indexingJobService = indexingJobService;
     this.rssFeedStateRepository = rssFeedStateRepository;
+    this.confluenceSyncStateRepository = confluenceSyncStateRepository;
     this.schedulingClock = schedulingClock;
     this.storageQuotaService = storageQuotaService;
     this.folderRepository = folderRepository;
@@ -607,6 +611,14 @@ public class KnowledgeLibraryService {
         // ADR-0023: the selection is exactly what every reader of the library may see - widening
         // or narrowing it is a source change like any other and leaves the same audit trail.
         changedSourceFields.add("confluenceSpaces");
+      }
+      if (updated.getSourceType() == DocumentSourceType.CONFLUENCE
+          && (sourceUrlChanged
+              || !previousConfluenceSpaceKeys.equals(currentConfluenceSpaceKeys))) {
+        // ADR-0023, Entscheidung 4: the first run after a change of address or selection is a
+        // full one - "no sync state" is how the next run learns that, and how an interrupted
+        // full sync's per-space progress for a now-different selection is discarded.
+        confluenceSyncStateRepository.deleteByLibraryId(updated.getId());
       }
       if (!changedSourceFields.isEmpty()) {
         auditEventRecorder.recordUserAction(

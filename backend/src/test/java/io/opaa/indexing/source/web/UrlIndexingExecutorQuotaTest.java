@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
@@ -116,7 +117,7 @@ class UrlIndexingExecutorQuotaTest {
     when(storageQuotaService.quotaExceededMessage(library.getId()))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
 
-    executor.execute(UUID.randomUUID(), library);
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
     String expectedMessage =
         "Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)";

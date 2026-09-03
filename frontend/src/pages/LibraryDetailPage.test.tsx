@@ -743,6 +743,7 @@ describe('LibraryDetailPage', () => {
               id: 'run-1',
               status: 'COMPLETED',
               triggeredBy: 'MANUAL',
+              runMode: 'FULL',
               documentCount: 10,
               totalDocuments: 12,
               documentsSkipped: 2,
@@ -785,6 +786,61 @@ describe('LibraryDetailPage', () => {
     ).toBeVisible()
   })
 
+  // ADR-0023, Entscheidung 4 (#1136): a Confluence library's runs name their Betriebsart; for
+  // every other type the mode is implied by the source type and no chip is shown.
+  it("names the run mode on a Confluence library's runs and only there", async () => {
+    const run = {
+      id: 'run-voll',
+      status: 'COMPLETED',
+      triggeredBy: 'MANUAL',
+      runMode: 'FULL',
+      documentCount: 4,
+      totalDocuments: 4,
+      documentsSkipped: 0,
+      documentsFailed: 0,
+      documentsIndexedTotal: 5,
+      message: null,
+      startedAt: '2026-09-03T09:00:00Z',
+      completedAt: '2026-09-03T09:01:00Z',
+      events: [
+        {
+          category: 'RATE_LIMITED',
+          message: 'Confluence hat den Lauf 2-mal gedrosselt',
+          reference: null,
+        },
+      ],
+      eventsTruncatedCount: 0,
+    }
+    server.use(
+      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
+        HttpResponse.json({ runs: [run] }),
+      ),
+    )
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, {
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+      }),
+    )
+    const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    expect(await screen.findByTestId('run-mode-run-voll')).toHaveTextContent('Vollabgleich')
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: /Vollabgleich/ }))
+    expect(await screen.findByText('Ratenbegrenzung')).toBeInTheDocument()
+    unmount()
+
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await screen.findByText(/4 verarbeitet/)
+    expect(screen.queryByTestId('run-mode-run-voll')).not.toBeInTheDocument()
+  })
+
   it('names how many further events a run recorded beyond the protocol cap', async () => {
     setLibraryState(
       managerLibrary,
@@ -798,6 +854,7 @@ describe('LibraryDetailPage', () => {
               id: 'run-1',
               status: 'COMPLETED',
               triggeredBy: 'MANUAL',
+              runMode: 'FULL',
               documentCount: 1,
               totalDocuments: 600,
               documentsSkipped: 599,

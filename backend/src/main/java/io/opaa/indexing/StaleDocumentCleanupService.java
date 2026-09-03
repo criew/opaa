@@ -1,6 +1,9 @@
 package io.opaa.indexing;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
 import java.util.List;
 import java.util.Set;
@@ -66,7 +69,24 @@ public class StaleDocumentCleanupService {
       KnowledgeLibrary library,
       DocumentSourceType sourceType,
       Set<String> currentFilePaths,
-      IndexingRunEventRecorder events) {
+      IndexingRunEventRecorder events,
+      SourceIndexingExecutor executor,
+      IndexingRunMode runMode) {
+    // ADR-0023, Entscheidung 4: the executor's own declaration decides whether this run mode may
+    // delete by absence - an "ergänzend" run (RSS, an incremental Confluence run) never may, and a
+    // caller that tries anyway has a bug this guard makes loud instead of letting it empty an
+    // index.
+    VanishedDocumentPolicy policy = executor.runModes().get(runMode);
+    if (policy != VanishedDocumentPolicy.REMOVE_ON_ABSENCE) {
+      throw new IllegalStateException(
+          "cleanupVanished called for run mode "
+              + runMode
+              + " of "
+              + sourceType
+              + ", whose declared policy is "
+              + policy
+              + " - only REMOVE_ON_ABSENCE runs may delete by absence");
+    }
     if (currentFilePaths.isEmpty()) {
       log.info(
           "Skipping stale-document cleanup for library {} ({}) - this run's own bestand is empty,"

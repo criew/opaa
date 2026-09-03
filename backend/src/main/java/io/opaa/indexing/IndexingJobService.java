@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.ConflictException;
 import java.time.Duration;
 import java.time.Instant;
@@ -53,7 +54,7 @@ public class IndexingJobService {
    */
   @Transactional
   public IndexingJob startJob(UUID libraryId, UUID organizationId) {
-    return doStartJob(libraryId, organizationId, JobTriggerSource.MANUAL);
+    return doStartJob(libraryId, organizationId, JobTriggerSource.MANUAL, IndexingRunMode.FULL);
   }
 
   /**
@@ -63,7 +64,14 @@ public class IndexingJobService {
    */
   @Transactional
   public IndexingJob startJob(UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy) {
-    return doStartJob(libraryId, organizationId, triggeredBy);
+    return doStartJob(libraryId, organizationId, triggeredBy, IndexingRunMode.FULL);
+  }
+
+  /** Starts a run in an explicit {@link IndexingRunMode} (ADR-0023, Entscheidung 4). */
+  @Transactional
+  public IndexingJob startJob(
+      UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy, IndexingRunMode runMode) {
+    return doStartJob(libraryId, organizationId, triggeredBy, runMode);
   }
 
   /**
@@ -74,11 +82,12 @@ public class IndexingJobService {
    * arriving from outside the bean.
    */
   private IndexingJob doStartJob(
-      UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy) {
+      UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy, IndexingRunMode runMode) {
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setLibraryId(libraryId);
     job.setOrganizationId(organizationId);
     job.setTriggeredBy(triggeredBy);
+    job.setRunMode(runMode);
     IndexingJob saved;
     try {
       saved = indexingJobRepository.saveAndFlush(job);

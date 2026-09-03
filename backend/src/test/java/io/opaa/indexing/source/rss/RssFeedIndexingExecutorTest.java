@@ -16,6 +16,7 @@ import static org.mockito.Mockito.when;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
@@ -175,7 +176,7 @@ class RssFeedIndexingExecutorTest {
 
   private void execute(String feedUrl) {
     library.updateSourceConfiguration(null, feedUrl, null, null, false);
-    executor.execute(UUID.randomUUID(), library);
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
   }
 
   /**
@@ -184,7 +185,7 @@ class RssFeedIndexingExecutorTest {
    */
   private void execute(String feedUrl, String proxy, String credentials) {
     library.updateSourceConfiguration(null, feedUrl, proxy, credentials, false);
-    executor.execute(UUID.randomUUID(), library);
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
   }
 
   @Test

@@ -93,6 +93,17 @@ public class Document {
   private String sourceEntryUrl;
 
   /**
+   * ADR-0023 ("Identität und Metadaten"): the container this document came from - a Confluence
+   * space key - and its hierarchy path (ancestor titles, root first, " / "-joined). Both {@code
+   * null} for every source type without such a notion.
+   */
+  @Column(name = "source_container_key", length = 255)
+  private String sourceContainerKey;
+
+  @Column(name = "source_hierarchy_path", length = 2000)
+  private String sourceHierarchyPath;
+
+  /**
    * A German, user-facing reason {@link #status} is {@link DocumentStatus#FAILED} - set by {@code
    * FileProcessingService#processUploadedFileAsync} when parsing or embedding an uploaded file
    * fails asynchronously, after the row has already been returned to the caller with {@code
@@ -234,6 +245,27 @@ public class Document {
 
   public String getSourceEntryUrl() {
     return sourceEntryUrl;
+  }
+
+  public String getSourceContainerKey() {
+    return sourceContainerKey;
+  }
+
+  public String getSourceHierarchyPath() {
+    return sourceHierarchyPath;
+  }
+
+  /** Applies {@code context}'s container and hierarchy; a {@code null} context clears neither. */
+  public void applySourceContext(SourceDocumentContext context) {
+    if (context == null) {
+      return;
+    }
+    this.sourceContainerKey = context.containerKey();
+    this.sourceHierarchyPath = truncate(context.hierarchyPath(), 2000);
+  }
+
+  private static String truncate(String value, int max) {
+    return value != null && value.length() > max ? value.substring(0, max) : value;
   }
 
   public void setSourceEntryUrl(String sourceEntryUrl) {

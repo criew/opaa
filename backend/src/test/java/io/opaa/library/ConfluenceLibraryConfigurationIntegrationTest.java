@@ -13,6 +13,8 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.confluence.ConfluenceSyncState;
+import io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository;
 import io.opaa.indexing.source.confluence.FakeConfluenceServer;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
@@ -50,6 +52,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
 
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private ConfluenceSyncStateRepository syncStateRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -265,6 +268,9 @@ class ConfluenceLibraryConfigurationIntegrationTest {
         libraryUpdate("Wiki").confluenceEdition(ConfluenceEdition.DATA_CENTER).build(),
         caller);
 
+    // ADR-0023, Entscheidung 4: a changed selection discards the run state, so the next run is a
+    // full one; a rename leaves it alone
+    syncStateRepository.save(new ConfluenceSyncState(libraryId));
     LibraryDetail updated =
         libraryService.updateLibrary(
             libraryId,
@@ -275,6 +281,8 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                         new ConfluenceSpaceSelection("ENG", null)))
                 .build(),
             caller);
+    assertThat(syncStateRepository.findByLibraryId(libraryId)).isEmpty();
+    syncStateRepository.save(new ConfluenceSyncState(libraryId));
     assertThat(updated.library().getConfluenceSpaces())
         .extracting(ConfluenceSpaceSelection::getSpaceKey)
         .containsExactly("ENG", "OPS");
@@ -282,10 +290,11 @@ class ConfluenceLibraryConfigurationIntegrationTest {
         .extracting(ConfluenceSpaceSelection::getSpaceKey)
         .containsExactly("ENG", "OPS");
 
-    // a rename leaves the selection alone
+    // a rename leaves the selection alone - and the run state
     libraryService.updateLibrary(libraryId, libraryUpdate("Wiki umbenannt").build(), caller);
     assertThat(libraryRepository.findById(libraryId).orElseThrow().getConfluenceSpaces())
         .hasSize(2);
+    assertThat(syncStateRepository.findByLibraryId(libraryId)).isPresent();
 
     assertThatThrownBy(
             () ->

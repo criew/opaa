@@ -20,7 +20,9 @@ import io.opaa.indexing.pipeline.tabular.TabularProperties;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
+import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
+import io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository;
 import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
@@ -369,6 +371,30 @@ public class IndexingConfiguration {
         indexingRunEventRepository,
         targetAddressValidator,
         libraryStorageQuotaService);
+  }
+
+  @Bean
+  SourceIndexingExecutor confluenceIndexingExecutor(
+      ConfluenceClientFactory confluenceClientFactory,
+      FileProcessingService fileProcessingService,
+      IndexingJobService indexingJobService,
+      DocumentRepository documentRepository,
+      IndexingRunEventRepository indexingRunEventRepository,
+      LibraryStorageQuotaService libraryStorageQuotaService,
+      StaleDocumentCleanupService staleDocumentCleanupService,
+      ConfluenceSyncStateRepository confluenceSyncStateRepository,
+      VectorChunkStore vectorChunkStore) {
+    return new ConfluenceIndexingExecutor(
+        confluenceClientFactory,
+        fileProcessingService,
+        indexingJobService,
+        documentRepository,
+        indexingRunEventRepository,
+        libraryStorageQuotaService,
+        staleDocumentCleanupService,
+        confluenceSyncStateRepository,
+        vectorChunkStore,
+        Clock.systemUTC());
   }
 
   /**

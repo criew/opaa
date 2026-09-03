@@ -63,6 +63,9 @@ public final class FakeConfluenceServer implements AutoCloseable {
     Instant lastModified;
     boolean restricted;
 
+    /** Listed, but every fetch answers 404 - a right revoked between listing and fetch. */
+    boolean fetchHidden;
+
     Page(
         String id,
         String spaceKey,
@@ -159,6 +162,11 @@ public final class FakeConfluenceServer implements AutoCloseable {
    */
   public void restrictPage(String id) {
     pages.get(id).restricted = true;
+  }
+
+  /** The page stays in listings but answers {@code 404} on fetch - listing and fetch disagree. */
+  public void hideFromFetch(String id) {
+    pages.get(id).fetchHidden = true;
   }
 
   public Attachment addAttachment(
@@ -321,7 +329,7 @@ public final class FakeConfluenceServer implements AutoCloseable {
     }
     if ((m = Pattern.compile("^/wiki/api/v2/pages/(\\d+)$").matcher(path)).matches()) {
       Page p = pages.get(m.group(1));
-      if (p == null || p.restricted || !canRead(readable, p.spaceKey)) {
+      if (p == null || p.restricted || p.fetchHidden || !canRead(readable, p.spaceKey)) {
         send(ex, 404, cloudError(404));
         return;
       }
@@ -330,7 +338,7 @@ public final class FakeConfluenceServer implements AutoCloseable {
     }
     if ((m = Pattern.compile("^/wiki/api/v2/pages/(\\d+)/ancestors$").matcher(path)).matches()) {
       Page p = pages.get(m.group(1));
-      if (p == null || p.restricted || !canRead(readable, p.spaceKey)) {
+      if (p == null || p.restricted || p.fetchHidden || !canRead(readable, p.spaceKey)) {
         send(ex, 404, cloudError(404));
         return;
       }
@@ -347,7 +355,7 @@ public final class FakeConfluenceServer implements AutoCloseable {
     }
     if ((m = Pattern.compile("^/wiki/api/v2/pages/(\\d+)/attachments$").matcher(path)).matches()) {
       Page p = pages.get(m.group(1));
-      if (p == null || p.restricted || !canRead(readable, p.spaceKey)) {
+      if (p == null || p.restricted || p.fetchHidden || !canRead(readable, p.spaceKey)) {
         send(ex, 404, cloudError(404));
         return;
       }
@@ -538,7 +546,7 @@ public final class FakeConfluenceServer implements AutoCloseable {
     if ((m = Pattern.compile("^/rest/api/content/(\\d+)$").matcher(path)).matches()) {
       Page p = pages.get(m.group(1));
       boolean wantTrashed = "trashed".equals(first(q, "status"));
-      if (p == null || p.restricted || !canRead(readable, p.spaceKey)) {
+      if (p == null || p.restricted || p.fetchHidden || !canRead(readable, p.spaceKey)) {
         send(ex, 404, "{\"statusCode\":404,\"message\":\"No content with id\"}");
         return;
       }
@@ -552,7 +560,7 @@ public final class FakeConfluenceServer implements AutoCloseable {
     if ((m = Pattern.compile("^/rest/api/content/(\\d+)/child/attachment$").matcher(path))
         .matches()) {
       Page p = pages.get(m.group(1));
-      if (p == null || p.restricted || !canRead(readable, p.spaceKey)) {
+      if (p == null || p.restricted || p.fetchHidden || !canRead(readable, p.spaceKey)) {
         send(ex, 404, "{\"statusCode\":404,\"message\":\"No content with id\"}");
         return;
       }

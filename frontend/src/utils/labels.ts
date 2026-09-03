@@ -11,6 +11,7 @@ import type {
   SpaceRole,
   SpaceVisibility,
   ConfluenceEdition,
+  IndexingRunMode,
 } from '../types/api'
 import type { AccessLevel } from '../types/chat'
 
@@ -240,6 +241,20 @@ const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> =
   // #886: the document no longer exists at its source and was removed at the end of a
   // successful, complete run - a note about the removal, not a skip/reject/error of this run.
   REMOVED: 'In der Quelle entfernt',
+  // #1136: the source throttled the run and it slowed down instead of failing - one summary note.
+  RATE_LIMITED: 'Ratenbegrenzung',
+}
+
+// ADR-0023, Entscheidung 4 (#1136): the Betriebsart of a run - whether its listing was complete
+// (and could remove what it did not meet again) or only picked up changes.
+const indexingRunModeLabels: Record<IndexingRunMode, string> = {
+  FULL: 'Vollabgleich',
+  INCREMENTAL: 'Inkrementell',
+}
+
+export function indexingRunModeLabel(mode: IndexingRunMode | string | undefined): string {
+  if (!mode) return ''
+  return indexingRunModeLabels[mode as IndexingRunMode] ?? mode
 }
 
 export function indexingRunEventCategoryLabel(

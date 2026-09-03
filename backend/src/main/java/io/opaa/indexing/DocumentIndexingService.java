@@ -2,11 +2,13 @@ package io.opaa.indexing;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ServiceUnavailableException;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.SourceIndexingExecutor;
@@ -14,7 +16,9 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.core.task.TaskRejectedException;
 
 /**
@@ -72,15 +76,32 @@ public class DocumentIndexingService {
    * intact and answers the caller with 503 instead of a misleading 202.
    */
   public IndexingJob triggerIndexing(UUID libraryId, CurrentUser caller) {
+    return triggerIndexing(libraryId, caller, null);
+  }
+
+  /**
+   * Starts a manual run in {@code requestedRunMode}, or - when {@code null} - in the executor's own
+   * default (ADR-0023, Entscheidung 4): the single mode a one-mode executor declares; FULL for an
+   * executor with several modes. A requested mode the executor does not declare is a validation
+   * error naming the modes it does.
+   */
+  public IndexingJob triggerIndexing(
+      UUID libraryId, CurrentUser caller, IndexingRunMode requestedRunMode) {
     KnowledgeLibrary targetLibrary = requireEditableLibrary(libraryId, caller);
     IndexingSourceType sourceType = toIndexingSourceType(targetLibrary.getSourceType());
+    SourceIndexingExecutor executor = executorRegistry.resolve(sourceType);
+    IndexingRunMode runMode = resolveRunMode(executor, targetLibrary, requestedRunMode);
     if (indexingJobService.isJobRunning(targetLibrary.getId(), targetLibrary.getOrganizationId())) {
       throw new ConflictException("Für diese Bibliothek läuft bereits ein Indizierungslauf");
     }
-    SourceIndexingExecutor executor = executorRegistry.resolve(sourceType);
-    var job = indexingJobService.startJob(targetLibrary.getId(), targetLibrary.getOrganizationId());
+    var job =
+        indexingJobService.startJob(
+            targetLibrary.getId(),
+            targetLibrary.getOrganizationId(),
+            JobTriggerSource.MANUAL,
+            runMode);
     try {
-      executor.execute(job.getId(), targetLibrary);
+      executor.execute(job.getId(), targetLibrary, runMode);
     } catch (TaskRejectedException e) {
       indexingJobService.failJob(
           job.getId(), "Indizierungslauf abgelehnt: Kapazität derzeit erschöpft");
@@ -102,11 +123,12 @@ public class DocumentIndexingService {
   public IndexingJob triggerScheduledIndexing(KnowledgeLibrary library) {
     IndexingSourceType sourceType = toIndexingSourceType(library.getSourceType());
     SourceIndexingExecutor executor = executorRegistry.resolve(sourceType);
+    IndexingRunMode runMode = resolveRunMode(executor, library, null);
     var job =
         indexingJobService.startJob(
-            library.getId(), library.getOrganizationId(), JobTriggerSource.SCHEDULED);
+            library.getId(), library.getOrganizationId(), JobTriggerSource.SCHEDULED, runMode);
     try {
-      executor.execute(job.getId(), library);
+      executor.execute(job.getId(), library, runMode);
     } catch (TaskRejectedException e) {
       indexingJobService.failJob(
           job.getId(), "Indizierungslauf abgelehnt: Kapazität derzeit erschöpft");
@@ -171,6 +193,33 @@ public class DocumentIndexingService {
    * no run at all and is rejected with a German 409 - not a 400, since the library itself is a
    * perfectly valid target, it simply has nothing to run.
    */
+  /**
+   * The executor's declaration decides (ADR-0023, Entscheidung 4): a requested mode must be one it
+   * supports; without a request, a one-mode executor runs its only mode, an executor with several
+   * runs FULL - the mode that can never leave a stale bestand behind. (The scheduler's own
+   * incremental default and the "full run due" bookkeeping for Confluence are #1139's.)
+   */
+  private static IndexingRunMode resolveRunMode(
+      SourceIndexingExecutor executor, KnowledgeLibrary library, IndexingRunMode requested) {
+    Set<IndexingRunMode> supported = executor.runModes().keySet();
+    if (requested != null) {
+      if (!supported.contains(requested)) {
+        throw new ValidationException(
+            "Betriebsart "
+                + requested
+                + " ist für Bibliotheken vom Typ "
+                + library.getSourceType()
+                + " nicht verfügbar; möglich: "
+                + supported.stream().sorted().map(Enum::name).collect(Collectors.joining(", ")));
+      }
+      return requested;
+    }
+    if (supported.size() == 1) {
+      return supported.iterator().next();
+    }
+    return IndexingRunMode.FULL;
+  }
+
   private IndexingSourceType toIndexingSourceType(DocumentSourceType sourceType) {
     return switch (sourceType) {
       case FILESYSTEM -> IndexingSourceType.FILESYSTEM;
@@ -178,10 +227,7 @@ public class DocumentIndexingService {
       case RSS_FEED -> IndexingSourceType.RSS_FEED;
       case UPLOAD ->
           throw new ConflictException("Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf");
-      case CONFLUENCE ->
-          throw new ConflictException(
-              "Indizierungsläufe für Confluence-Bibliotheken sind noch nicht verfügbar; die"
-                  + " Bibliothek lässt sich bereits konfigurieren, der erste Vollabgleich folgt.");
+      case CONFLUENCE -> IndexingSourceType.CONFLUENCE;
     };
   }
 

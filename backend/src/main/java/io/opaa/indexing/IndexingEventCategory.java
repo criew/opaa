@@ -23,5 +23,11 @@ public enum IndexingEventCategory {
    * A previously indexed document no longer exists at its source and was removed at the end of a
    * successful, complete run - see {@link StaleDocumentCleanupService} (#886).
    */
-  REMOVED
+  REMOVED,
+  /**
+   * The source throttled this run (HTTP 429 with Retry-After) and the run slowed down instead of
+   * failing (ADR-0023, #1136) - one summary note per run about how often and how long it waited,
+   * not about any single item's outcome.
+   */
+  RATE_LIMITED
 }

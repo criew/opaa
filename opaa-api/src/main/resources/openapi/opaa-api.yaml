@@ -1895,6 +1895,17 @@ paths:
       operationId: triggerLibraryIndexing
       tags: [library, indexing]
       summary: Trigger an indexing run for a library, using its own stored quellkonfiguration
+      parameters:
+        - name: runMode
+          in: query
+          required: false
+          description: >
+            The Betriebsart to run in (ADR-0023, Entscheidung 4). Optional: without it the
+            executor's own default applies - the only mode a one-mode source type knows
+            (FILESYSTEM/HTTP_DIRECTORY: FULL, RSS_FEED: INCREMENTAL), FULL for CONFLUENCE. A
+            mode the source type does not support is rejected with 400, naming the supported ones.
+          schema:
+            $ref: "#/components/schemas/IndexingRunMode"
       description: >
         ADR-0018: a library carries at most one quellentyp and quellkonfiguration, so the
         trigger no longer takes any request body - it reads sourceType/sourcePath/sourceUrl/
@@ -1913,6 +1924,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IndexingStatusResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -2915,6 +2928,17 @@ components:
       enum: [MANUAL, SCHEDULED]
       example: MANUAL
 
+    IndexingRunMode:
+      type: string
+      description: >
+        The Betriebsart of a run (ADR-0023, Entscheidung 4): FULL listed the source completely,
+        so a previously indexed document missing from the listing was removed at the end of the
+        run; INCREMENTAL only picked up what changed since the last anchor and never removes
+        anything for being absent. FILESYSTEM and HTTP_DIRECTORY only know FULL, RSS_FEED only
+        INCREMENTAL; CONFLUENCE knows both (#1136, #1139).
+      enum: [FULL, INCREMENTAL]
+      example: FULL
+
     IndexingRunEventCategory:
       type: string
       description: >
@@ -2943,6 +2967,8 @@ components:
             at the end of a successful, complete run (#886, ADR-0017 Entscheidung 5) - like
             FORMAT_MISMATCH/SCHEDULE_SKIPPED, this does not count among documentsSkipped/
             documentsFailed either.
+          * RATE_LIMITED - the source throttled the run (HTTP 429, Retry-After) and the run slowed
+            down instead of failing (#1136); one summary note per run, not an item outcome.
       enum:
         [
           REJECTED,
@@ -2953,6 +2979,7 @@ components:
           FORMAT_MISMATCH,
           SCHEDULE_SKIPPED,
           REMOVED,
+          RATE_LIMITED,
         ]
       example: REJECTED
 
@@ -2996,6 +3023,7 @@ components:
           events,
           eventsTruncatedCount,
           triggeredBy,
+          runMode,
         ]
       properties:
         id:
@@ -3005,6 +3033,8 @@ components:
           $ref: "#/components/schemas/IndexingStatus"
         triggeredBy:
           $ref: "#/components/schemas/IndexingTriggerSource"
+        runMode:
+          $ref: "#/components/schemas/IndexingRunMode"
         documentCount:
           type: integer
           example: 42

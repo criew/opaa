@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
@@ -18,13 +19,16 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ServiceUnavailableException;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +52,7 @@ class DocumentIndexingServiceTest {
   @Mock private SourceIndexingExecutor asyncIndexingExecutor;
   @Mock private SourceIndexingExecutor urlIndexingExecutor;
   @Mock private SourceIndexingExecutor rssFeedIndexingExecutor;
+  @Mock private SourceIndexingExecutor confluenceIndexingExecutor;
   @Mock private KnowledgeLibraryRepository libraryRepository;
   @Mock private LibraryAccessService libraryAccessService;
   @Mock private IndexingRunEventRepository indexingRunEventRepository;
@@ -65,9 +70,14 @@ class DocumentIndexingServiceTest {
     when(asyncIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.FILESYSTEM);
     when(urlIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.HTTP_DIRECTORY);
     when(rssFeedIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.RSS_FEED);
+    when(confluenceIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.CONFLUENCE);
     var registry =
         new IndexingSourceExecutorRegistry(
-            List.of(asyncIndexingExecutor, urlIndexingExecutor, rssFeedIndexingExecutor));
+            List.of(
+                asyncIndexingExecutor,
+                urlIndexingExecutor,
+                rssFeedIndexingExecutor,
+                confluenceIndexingExecutor));
     service =
         new DocumentIndexingService(
             indexingJobService,
@@ -119,8 +129,8 @@ class DocumentIndexingServiceTest {
 
     assertThatThrownBy(() -> service.triggerIndexing(library.getId(), caller))
         .isInstanceOf(AccessDeniedException.class);
-    verify(indexingJobService, never()).startJob(any(), any());
-    verify(asyncIndexingExecutor, never()).execute(any(), any());
+    verify(indexingJobService, never()).startJob(any(), any(), any(), any());
+    verify(asyncIndexingExecutor, never()).execute(any(), any(), any());
   }
 
   @Test
@@ -141,7 +151,7 @@ class DocumentIndexingServiceTest {
     assertThatThrownBy(() -> service.triggerIndexing(foreignLibrary.getId(), caller))
         .isInstanceOf(NotFoundException.class)
         .hasMessage("Bibliothek nicht gefunden");
-    verify(indexingJobService, never()).startJob(any(), any());
+    verify(indexingJobService, never()).startJob(any(), any(), any(), any());
   }
 
   @Test
@@ -157,14 +167,16 @@ class DocumentIndexingServiceTest {
   void triggerIndexingWithAnEditorGrantStartsTheJobAgainstTheLibrarysOwnConfiguration() {
     stubEditableLibrary();
     var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(library.getId(), organizationId)).thenReturn(job);
+    when(indexingJobService.startJob(
+            library.getId(), organizationId, JobTriggerSource.MANUAL, IndexingRunMode.FULL))
+        .thenReturn(job);
 
     IndexingJob result = service.triggerIndexing(library.getId(), caller);
 
     assertThat(result).isEqualTo(job);
-    verify(asyncIndexingExecutor).execute(job.getId(), library);
-    verify(urlIndexingExecutor, never()).execute(any(), any());
-    verify(rssFeedIndexingExecutor, never()).execute(any(), any());
+    verify(asyncIndexingExecutor).execute(job.getId(), library, IndexingRunMode.FULL);
+    verify(urlIndexingExecutor, never()).execute(any(), any(), any());
+    verify(rssFeedIndexingExecutor, never()).execute(any(), any(), any());
   }
 
   @Test
@@ -182,7 +194,7 @@ class DocumentIndexingServiceTest {
 
     assertThatThrownBy(() -> service.triggerIndexing(library.getId(), systemAdminCaller))
         .isInstanceOf(NotFoundException.class);
-    verify(indexingJobService, never()).startJob(any(), any());
+    verify(indexingJobService, never()).startJob(any(), any(), any(), any());
     verify(libraryAccessService)
         .requireRole(library, systemAdminCaller.id(), false, AssetRole.EDITOR);
     verify(libraryAccessService, never())
@@ -196,7 +208,7 @@ class DocumentIndexingServiceTest {
 
     assertThatThrownBy(() -> service.triggerIndexing(library.getId(), caller))
         .isInstanceOf(ConflictException.class);
-    verify(indexingJobService, never()).startJob(any(), any());
+    verify(indexingJobService, never()).startJob(any(), any(), any(), any());
   }
 
   /**
@@ -209,10 +221,12 @@ class DocumentIndexingServiceTest {
   void triggerIndexingRejectedByAFullQueueFailsTheJobAndReturnsServiceUnavailable() {
     stubEditableLibrary();
     var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(library.getId(), organizationId)).thenReturn(job);
+    when(indexingJobService.startJob(
+            library.getId(), organizationId, JobTriggerSource.MANUAL, IndexingRunMode.FULL))
+        .thenReturn(job);
     doThrow(new TaskRejectedException("queue is full"))
         .when(asyncIndexingExecutor)
-        .execute(job.getId(), library);
+        .execute(job.getId(), library, IndexingRunMode.FULL);
 
     assertThatThrownBy(() -> service.triggerIndexing(library.getId(), caller))
         .isInstanceOf(ServiceUnavailableException.class);
@@ -225,7 +239,9 @@ class DocumentIndexingServiceTest {
     // *this* library's id, never a global flag.
     stubEditableLibrary();
     var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(library.getId(), organizationId)).thenReturn(job);
+    when(indexingJobService.startJob(
+            library.getId(), organizationId, JobTriggerSource.MANUAL, IndexingRunMode.FULL))
+        .thenReturn(job);
     when(indexingJobService.isJobRunning(library.getId(), organizationId)).thenReturn(false);
 
     IndexingJob result = service.triggerIndexing(library.getId(), caller);
@@ -249,8 +265,8 @@ class DocumentIndexingServiceTest {
 
     assertThatThrownBy(() -> service.triggerIndexing(uploadLibrary.getId(), caller))
         .isInstanceOf(ConflictException.class);
-    verify(indexingJobService, never()).startJob(any(), any());
-    verify(asyncIndexingExecutor, never()).execute(any(), any());
+    verify(indexingJobService, never()).startJob(any(), any(), any(), any());
+    verify(asyncIndexingExecutor, never()).execute(any(), any(), any());
   }
 
   @Test
@@ -273,13 +289,17 @@ class DocumentIndexingServiceTest {
     when(libraryAccessService.requireRole(httpLibrary, caller.id(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);
     var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(httpLibrary.getId(), organizationId)).thenReturn(job);
+    when(urlIndexingExecutor.runModes())
+        .thenReturn(Map.of(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE));
+    when(indexingJobService.startJob(
+            httpLibrary.getId(), organizationId, JobTriggerSource.MANUAL, IndexingRunMode.FULL))
+        .thenReturn(job);
 
     IndexingJob result = service.triggerIndexing(httpLibrary.getId(), caller);
 
     assertThat(result).isEqualTo(job);
-    verify(urlIndexingExecutor).execute(job.getId(), httpLibrary);
-    verify(asyncIndexingExecutor, never()).execute(any(), any());
+    verify(urlIndexingExecutor).execute(job.getId(), httpLibrary, IndexingRunMode.FULL);
+    verify(asyncIndexingExecutor, never()).execute(any(), any(), any());
   }
 
   @Test
@@ -302,14 +322,54 @@ class DocumentIndexingServiceTest {
     when(libraryAccessService.requireRole(rssLibrary, caller.id(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);
     var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingJobService.startJob(rssLibrary.getId(), organizationId)).thenReturn(job);
+    // ADR-0023, Entscheidung 4: a one-mode executor runs its declared mode - the run row says so
+    when(rssFeedIndexingExecutor.runModes())
+        .thenReturn(Map.of(IndexingRunMode.INCREMENTAL, VanishedDocumentPolicy.KEEP_ON_ABSENCE));
+    when(indexingJobService.startJob(
+            rssLibrary.getId(),
+            organizationId,
+            JobTriggerSource.MANUAL,
+            IndexingRunMode.INCREMENTAL))
+        .thenReturn(job);
 
     IndexingJob result = service.triggerIndexing(rssLibrary.getId(), caller);
 
     assertThat(result).isEqualTo(job);
-    verify(rssFeedIndexingExecutor).execute(job.getId(), rssLibrary);
-    verify(asyncIndexingExecutor, never()).execute(any(), any());
-    verify(urlIndexingExecutor, never()).execute(any(), any());
+    verify(rssFeedIndexingExecutor).execute(job.getId(), rssLibrary, IndexingRunMode.INCREMENTAL);
+    verify(asyncIndexingExecutor, never()).execute(any(), any(), any());
+    verify(urlIndexingExecutor, never()).execute(any(), any(), any());
+  }
+
+  @Test
+  void aRequestedRunModeTheExecutorDoesNotDeclareIsRejectedBeforeAnyJobStarts() {
+    stubEditableLibrary();
+    when(asyncIndexingExecutor.runModes())
+        .thenReturn(Map.of(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE));
+
+    assertThatThrownBy(
+            () -> service.triggerIndexing(library.getId(), caller, IndexingRunMode.INCREMENTAL))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("INCREMENTAL")
+        .hasMessageContaining("FILESYSTEM")
+        .hasMessageContaining("FULL");
+    verify(indexingJobService, never()).startJob(any(), any(), any(), any());
+    verify(asyncIndexingExecutor, never()).execute(any(), any(), any());
+  }
+
+  @Test
+  void aRequestedRunModeTheExecutorDeclaresIsHandedThroughToTheJobAndTheExecutor() {
+    stubEditableLibrary();
+    when(asyncIndexingExecutor.runModes())
+        .thenReturn(Map.of(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE));
+    var job = new IndexingJob(JobStatus.RUNNING);
+    when(indexingJobService.startJob(
+            library.getId(), organizationId, JobTriggerSource.MANUAL, IndexingRunMode.FULL))
+        .thenReturn(job);
+
+    IndexingJob result = service.triggerIndexing(library.getId(), caller, IndexingRunMode.FULL);
+
+    assertThat(result).isEqualTo(job);
+    verify(asyncIndexingExecutor).execute(job.getId(), library, IndexingRunMode.FULL);
   }
 
   @Test

@@ -64,6 +64,7 @@ import {
   documentStatusLabel,
   formatFileSize,
   indexingRunEventCategoryLabel,
+  indexingRunModeLabel,
   libraryVisibilityLabel,
   scheduleFrequencyLabel,
 } from '../utils/labels'
@@ -421,7 +422,7 @@ export default function LibraryDetailPage() {
           that same MANAGER/OWNER threshold (see canEditSource above), so the section is never
           rendered - and its GET never even fired - for a caller who could not read it anyway. */}
       {details && details.sourceType !== 'UPLOAD' && canEdit && (
-        <LibraryIndexingHistorySection libraryId={libraryId} />
+        <LibraryIndexingHistorySection libraryId={libraryId} sourceType={details.sourceType} />
       )}
       {details && (
         <LibraryDocumentsSection
@@ -1800,6 +1801,7 @@ function runStatusLabel(status: IndexingRunResponse['status']): string {
 
 interface LibraryIndexingHistorySectionProps {
   libraryId: string
+  sourceType: DocumentSourceType
 }
 
 // A stable module-level reference (not a fresh `[]` literal per render) - a Zustand selector must
@@ -1812,8 +1814,14 @@ const EMPTY_RUN_HISTORY: IndexingRunResponse[] = []
 // die Ereignisliste (Kategorie/Meldung/Referenz je übersprungenem oder fehlgeschlagenem Element)
 // nur nach dem Aufklappen. Getrennt von LibraryIndexingSection oben, deren runsByLibrary nur den
 // aktuellen/letzten Lauf für die Fortschrittsanzeige trägt.
-function LibraryIndexingHistorySection({ libraryId }: LibraryIndexingHistorySectionProps) {
+function LibraryIndexingHistorySection({
+  libraryId,
+  sourceType,
+}: LibraryIndexingHistorySectionProps) {
   const runs = useIndexingStore((s) => s.runHistoryByLibrary[libraryId] ?? EMPTY_RUN_HISTORY)
+  // ADR-0023, Entscheidung 4: only Confluence knows two Betriebsarten - for every other type the
+  // mode is implied by the source type and a chip would only repeat it.
+  const showRunMode = sourceType === 'CONFLUENCE'
   const loadRunHistory = useIndexingStore((s) => s.loadRunHistory)
 
   useEffect(() => {
@@ -1850,6 +1858,14 @@ function LibraryIndexingHistorySection({ libraryId }: LibraryIndexingHistorySect
                     {run.documentsSkipped > 0 ? `, ${run.documentsSkipped} übersprungen` : ''}
                     {run.documentsFailed > 0 ? `, ${run.documentsFailed} fehlgeschlagen` : ''}
                   </Typography>
+                  {showRunMode && (
+                    <Chip
+                      label={indexingRunModeLabel(run.runMode)}
+                      size="small"
+                      variant="outlined"
+                      data-testid={`run-mode-${run.id}`}
+                    />
+                  )}
                   {run.events.length > 0 && (
                     <Chip
                       label={`${run.events.length} Ereignis${run.events.length === 1 ? '' : 'se'}`}

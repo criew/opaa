@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
@@ -139,7 +140,7 @@ class UrlIndexingExecutorExecuteTest {
   private void execute() {
     library.updateSourceConfiguration(null, baseUrl + "/files/", null, null, false);
     UUID jobId = UUID.randomUUID();
-    executor.execute(jobId, library);
+    executor.execute(jobId, library, IndexingRunMode.FULL);
     verify(indexingJobService, timeout(5000))
         .completeJob(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
   }
@@ -211,7 +212,7 @@ class UrlIndexingExecutorExecuteTest {
         null, baseUrl + "/files/", "127.0.0.1:not-a-port", null, false);
     UUID jobId = UUID.randomUUID();
 
-    executor.execute(jobId, library);
+    executor.execute(jobId, library, IndexingRunMode.FULL);
 
     verify(indexingJobService, timeout(5000))
         .failJob(eq(jobId), eq(ProxyAndCredentials.INVALID_PROXY_MESSAGE));
@@ -242,6 +243,8 @@ class UrlIndexingExecutorExecuteTest {
             eq(library),
             eq(DocumentSourceType.HTTP_DIRECTORY),
             eq(Set.of(baseUrl + "/files/bericht.txt")),
+            any(),
+            any(),
             any());
   }
 
@@ -318,7 +321,8 @@ class UrlIndexingExecutorExecuteTest {
     execute();
 
     verify(staleDocumentCleanupService, timeout(5000))
-        .cleanupVanished(eq(library), eq(DocumentSourceType.HTTP_DIRECTORY), eq(Set.of()), any());
+        .cleanupVanished(
+            eq(library), eq(DocumentSourceType.HTTP_DIRECTORY), eq(Set.of()), any(), any(), any());
   }
 
   private static org.mockito.ArgumentMatcher<IndexingRunEvent> categoryIs(

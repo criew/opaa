@@ -263,6 +263,34 @@ public class FileProcessingService {
       DocumentSourceType sourceType,
       String sourceEntryUrl)
       throws IOException {
+    return processUrlFile(
+        localFile,
+        originalFileName,
+        remoteUrl,
+        lastModified,
+        remoteFileSize,
+        targetLibrary,
+        sourceType,
+        sourceEntryUrl,
+        SourceDocumentContext.NONE);
+  }
+
+  /**
+   * Like the eight-argument overload, additionally recording where inside its source the document
+   * sits ({@link SourceDocumentContext}, ADR-0023) - a Confluence attachment's space and page
+   * hierarchy.
+   */
+  public FileProcessingResult processUrlFile(
+      Path localFile,
+      String originalFileName,
+      String remoteUrl,
+      String lastModified,
+      long remoteFileSize,
+      KnowledgeLibrary targetLibrary,
+      DocumentSourceType sourceType,
+      String sourceEntryUrl,
+      SourceDocumentContext context)
+      throws IOException {
 
     String fileName = originalFileName;
 
@@ -302,6 +330,7 @@ public class FileProcessingService {
     doc.setLibraryId(targetLibrary.getId());
     doc.setOrganizationId(targetLibrary.getOrganizationId());
     doc.setSourceEntryUrl(sourceEntryUrl);
+    doc.applySourceContext(context);
     doc = documentRepository.save(doc);
 
     try {
@@ -660,6 +689,100 @@ public class FileProcessingService {
    *     {@link #storeChunks}, are removed again here), otherwise {@link
    *     FileProcessingResult#PROCESSED}
    */
+  /**
+   * Processes one Confluence page's already-extracted text (ADR-0023, #1136) the way {@link
+   * #processRssEntry} processes an RSS entry's: identity by the title-free page URL in {@code
+   * file_path}, SHA-256 checksum as the content-based change layer behind the executor's own
+   * version check, the version number in {@code last_modified_remote}, the space key and ancestor
+   * titles in the two context columns, the title as {@code file_name} and chunk context. The text
+   * goes to the fallback pipeline directly - there is no file to detect a format from.
+   *
+   * @param version the page's Confluence version number, the executor's pre-fetch change marker
+   */
+  public FileProcessingResult processConfluencePage(
+      String text,
+      String title,
+      String pageUrl,
+      String version,
+      SourceDocumentContext context,
+      KnowledgeLibrary targetLibrary) {
+    boolean hasTitle = title != null && !title.isBlank();
+    String fileName = hasTitle ? title : pageUrl;
+    String contextTitle = hasTitle ? title : null;
+    byte[] contentBytes = text.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    String checksum = checksumService.computeSha256(contentBytes);
+    Optional<Document> existing =
+        documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), pageUrl);
+    if (existing.isPresent()) {
+      Document existingDoc = existing.get();
+      if (checksum.equals(existingDoc.getChecksum())
+          && existingDoc.getStatus() == DocumentStatus.INDEXED) {
+        // Same content under a new version (a title-only or label-only edit): only the version
+        // marker moves, so the next run's pre-fetch check skips it again.
+        documentRepository.markIndexedFromSource(
+            existingDoc.getId(),
+            existingDoc.getChunkCount(),
+            existingDoc.getIndexedAt(),
+            checksum,
+            version);
+        log.info("Skipping unchanged Confluence page (same checksum): {}", pageUrl);
+        metrics.recordSkipped();
+        return FileProcessingResult.SKIPPED;
+      }
+      vectorChunkStore.deleteByDocumentId(existingDoc.getId());
+      documentRepository.delete(existingDoc);
+    }
+    if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), contentBytes.length)) {
+      log.warn(
+          "Skipping Confluence page {}: library {} storage quota would be exceeded",
+          pageUrl,
+          targetLibrary.getId());
+      metrics.recordSkipped();
+      return FileProcessingResult.QUOTA_EXCEEDED;
+    }
+    var doc =
+        new Document(
+            fileName,
+            pageUrl,
+            "text/html",
+            (long) contentBytes.length,
+            DocumentSourceType.CONFLUENCE);
+    doc.setLibraryId(targetLibrary.getId());
+    doc.setOrganizationId(targetLibrary.getOrganizationId());
+    doc.applySourceContext(context);
+    doc = documentRepository.save(doc);
+    try {
+      DocumentPipeline pipeline = pipelineRegistry.fallbackPipeline();
+      DocumentPipelineResult parsed =
+          pipeline.run(DocumentPipelineSource.ofExtractedText(text, fileName));
+      switch (parsed.outcome()) {
+        case NO_EXTRACTABLE_TEXT -> {
+          log.warn("No usable text in Confluence page {}", pageUrl);
+          return markConnectorRejected(doc.getId());
+        }
+        case NO_CONTENT -> {
+          log.warn("No content extracted from Confluence page: {}", pageUrl);
+          return markConnectorFailed(doc.getId());
+        }
+        case CHUNKED ->
+            log.debug("Confluence page {} produced {} chunks", pageUrl, parsed.chunks().size());
+      }
+      List<org.springframework.ai.document.Document> chunks = parsed.chunks();
+      storeChunks(doc, chunks, contextTitle, pipeline, Optional.empty());
+      FileProcessingResult result =
+          markConnectorIndexed(doc.getId(), chunks.size(), checksum, version);
+      if (result == FileProcessingResult.SKIPPED) {
+        return result;
+      }
+    } catch (Exception e) {
+      markConnectorFailedAfterException(doc.getId());
+      metrics.recordFailed();
+      throw e;
+    }
+    metrics.recordProcessed();
+    return FileProcessingResult.PROCESSED;
+  }
+
   private FileProcessingResult markConnectorIndexed(
       UUID documentId, int chunkCount, String checksum, String lastModifiedRemote) {
     int updated =

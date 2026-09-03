@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.api.types.IndexingRunMode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -100,6 +101,15 @@ public class IndexingJob {
   @Enumerated(EnumType.STRING)
   @Column(name = "triggered_by", nullable = false, length = 20)
   private JobTriggerSource triggeredBy = JobTriggerSource.MANUAL;
+
+  /**
+   * ADR-0023, Entscheidung 4: whether this run listed its source completely (FULL) or only picked
+   * up changes (INCREMENTAL) - the attribute the deletion semantics hang on, visible in the run
+   * protocol and the API. Chosen by DocumentIndexingService from the executor's declaration.
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "run_mode", nullable = false, length = 20)
+  private IndexingRunMode runMode = IndexingRunMode.FULL;
 
   protected IndexingJob() {}
 
@@ -216,6 +226,14 @@ public class IndexingJob {
 
   public JobTriggerSource getTriggeredBy() {
     return triggeredBy;
+  }
+
+  public IndexingRunMode getRunMode() {
+    return runMode;
+  }
+
+  public void setRunMode(IndexingRunMode runMode) {
+    this.runMode = runMode;
   }
 
   public void setTriggeredBy(JobTriggerSource triggeredBy) {

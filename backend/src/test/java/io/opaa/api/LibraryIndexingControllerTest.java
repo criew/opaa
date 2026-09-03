@@ -3,6 +3,7 @@ package io.opaa.api;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -10,6 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.TestSecurityConfig;
@@ -18,6 +20,7 @@ import io.opaa.auth.UserService;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJob;
@@ -96,7 +99,7 @@ class LibraryIndexingControllerTest {
   void triggerIndexingReturnsAcceptedWithRunningStatus() throws Exception {
     UUID libraryId = UUID.randomUUID();
     var job = new IndexingJob(JobStatus.RUNNING);
-    when(indexingService.triggerIndexing(eq(libraryId), eq(caller))).thenReturn(job);
+    when(indexingService.triggerIndexing(eq(libraryId), eq(caller), isNull())).thenReturn(job);
 
     mockMvc
         .perform(post("/api/v1/libraries/" + libraryId + "/indexing").with(asTestUser()))
@@ -108,9 +111,53 @@ class LibraryIndexingControllerTest {
   }
 
   @Test
+  void triggerIndexingHandsARequestedRunModeThroughAndReportsItOnTheRun() throws Exception {
+    // ADR-0023, Entscheidung 4 (#1136): the Betriebsart is a query parameter on the trigger and a
+    // field of every run in the list.
+    UUID libraryId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    job.setRunMode(IndexingRunMode.FULL);
+    when(indexingService.triggerIndexing(eq(libraryId), eq(caller), eq(IndexingRunMode.FULL)))
+        .thenReturn(job);
+    when(indexingService.getRecentRuns(eq(libraryId), eq(caller)))
+        .thenReturn(List.of(new IndexingRunDetail(job, List.of())));
+
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/" + libraryId + "/indexing?runMode=FULL").with(asTestUser()))
+        .andExpect(status().isAccepted());
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/indexing/runs").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.runs[0].runMode").value("FULL"));
+  }
+
+  @Test
+  void triggerIndexingRejectsARunModeTheSourceTypeDoesNotSupportWith400() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    when(indexingService.triggerIndexing(
+            eq(libraryId), eq(caller), eq(IndexingRunMode.INCREMENTAL)))
+        .thenThrow(
+            new ValidationException(
+                "Betriebsart INCREMENTAL ist für Bibliotheken vom Typ FILESYSTEM nicht verfügbar;"
+                    + " möglich: FULL"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/" + libraryId + "/indexing?runMode=INCREMENTAL")
+                .with(asTestUser()))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value(containsString("möglich: FULL")));
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/" + libraryId + "/indexing?runMode=PARTIAL").with(asTestUser()))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
   void triggerIndexingReturnsConflictWhenALibraryHasNoRunType() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(indexingService.triggerIndexing(eq(libraryId), eq(caller)))
+    when(indexingService.triggerIndexing(eq(libraryId), eq(caller), isNull()))
         .thenThrow(
             new ConflictException("Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf"));
 
@@ -124,7 +171,7 @@ class LibraryIndexingControllerTest {
   @Test
   void triggerIndexingReturnsConflictWhenAlreadyRunningForThisLibrary() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(indexingService.triggerIndexing(eq(libraryId), eq(caller)))
+    when(indexingService.triggerIndexing(eq(libraryId), eq(caller), isNull()))
         .thenThrow(
             new ConflictException("Für diese Bibliothek läuft bereits ein Indizierungslauf"));
 
@@ -137,7 +184,7 @@ class LibraryIndexingControllerTest {
   @Test
   void triggerWithInsufficientRoleReturnsForbidden() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(indexingService.triggerIndexing(eq(libraryId), eq(caller)))
+    when(indexingService.triggerIndexing(eq(libraryId), eq(caller), isNull()))
         .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
 
     mockMvc
@@ -149,7 +196,7 @@ class LibraryIndexingControllerTest {
   @Test
   void triggerWithAForeignLibraryReturnsNotFound() throws Exception {
     UUID libraryId = UUID.randomUUID();
-    when(indexingService.triggerIndexing(eq(libraryId), eq(caller)))
+    when(indexingService.triggerIndexing(eq(libraryId), eq(caller), isNull()))
         .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
 
     mockMvc

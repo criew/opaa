@@ -228,7 +228,24 @@ Konfiguration sind gebaut (#1133), ebenso der Anlagepfad im Wizard (#1135): Adre
 testen — und erst dann, hinter dem ausdrücklichen Hinweis auf die Freigabefolge der gemeinsamen
 Bibliothek, die Spaces aus der Auflistung der Instanz auswählen. Nach der Anlage sind Typ und Edition
 unveränderlich sichtbar; Adresse, Zugangsdaten und Space-Auswahl bleiben über die Quellkonfiguration
-bearbeitbar. Die Läufe folgen in den weiteren Tickets des Epics. Abgenommen wird der Konnektor auf
+bearbeitbar. **Der Vollabgleich ist gebaut (#1136):** Ein Lauf prüft zuerst die Zugangsdaten (Data
+Center bedient ein widerrufenes Token anonym mit leerer Auflistung — sie darf nie als vollständig
+gelten), listet dann jeden ausgewählten Space vollständig auf — Kennungen, Titel und Versionen, nie
+den Inhalt —, holt jede Seite einzeln, deren Version sich geändert hat, und nimmt ihre Anhänge als
+eigene Dokumente auf (ADR-0022). Jedes Dokument trägt Space-Schlüssel, Gliederungspfad
+(Titel der Vorfahren), Seitentitel, Versionsnummer und die titelfreie Confluence-URL, über die der
+Beleg es öffnet. Erst wenn **alle** ausgewählten Spaces vollständig aufgelistet wurden, verschwindet
+aus dem Index, was der Lauf nicht wieder angetroffen hat: gelöschte und in den Papierkorb
+verschobene Seiten, Seiten aus abgewählten Spaces, ihre Anhänge. Ein Space, den das Token nicht
+lesen darf, macht die Auflistung unvollständig — der Lauf meldet ihn sichtbar im Laufprotokoll und
+entfernt nichts; eine einzelne nicht lesbare Seite wird sichtbar übersprungen und bleibt stehen
+(Rechteentzug ist kein Löschbefund). Ein Abbruch verliert nichts: Bereits aufgenommene Seiten
+werden im nächsten Lauf per Versionsvergleich übersprungen, und die noch nicht abgeschlossenen
+Spaces kommen zuerst an die Reihe. Drosselt Confluence den Lauf (429, `Retry-After`), wartet er und
+meldet die Summe der Wartezeit als eigenes Ereignis (`RATE_LIMITED`), statt zu scheitern. Jeder
+Lauf trägt seine **Betriebsart** (`FULL`, `INCREMENTAL`; ADR-0023, Entscheidung 4) im
+Laufprotokoll und in der API; der manuelle Anstoß nimmt sie als Parameter `runMode` entgegen — für
+Confluence gibt es bis #1139 nur den Vollabgleich. Abgenommen wird der Konnektor auf
 zwei Ebenen: Das gemeinsame Testdoppel beider Editionen läuft mit jedem PR; zusätzlich startet
 `./gradlew confluenceIntegrationTest` (#1171) ein echtes Confluence Data Center im Container —
 Einrichtungsassistent, 3-Stunden-Testlizenz, Administrator, zwei Token mit unterschiedlichen

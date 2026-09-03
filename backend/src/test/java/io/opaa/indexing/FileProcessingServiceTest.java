@@ -29,6 +29,7 @@ import io.opaa.observability.IndexingMetrics;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -884,6 +885,87 @@ class FileProcessingServiceTest {
     assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
         .isEqualTo("[embed content]\n\nfirst chunk text")
         .doesNotContain("future_bookkeeping_key", "some-future-uuid");
+  }
+
+  @Test
+  void aConfluencePageIsStoredWithItsSpaceHierarchyVersionAndTitleAsChunkContext() {
+    // ADR-0023 (#1136): identity by the title-free page URL, the version as the pre-fetch change
+    // marker in last_modified_remote, space and ancestors in the context columns, the title as
+    // file_name and embed prefix.
+    String pageUrl = "https://wiki.behoerde.example/pages/viewpage.action?pageId=102";
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-page");
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), pageUrl))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    var chunks =
+        List.of(
+            new org.springframework.ai.document.Document("erster Abschnitt"),
+            new org.springframework.ai.document.Document("zweiter Abschnitt"));
+    when(chunkingService.chunkDocuments(eq("Abschnitt 1.1"), any())).thenReturn(chunks);
+
+    FileProcessingResult result =
+        service.processConfluencePage(
+            "Zuständigkeiten\nDas Bauamt bearbeitet Anträge.",
+            "Abschnitt 1.1",
+            pageUrl,
+            "7",
+            new SourceDocumentContext("ENG", "Handbuch / Kapitel 1"),
+            targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    ArgumentCaptor<Document> saved = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository).save(saved.capture());
+    Document document = saved.getValue();
+    assertThat(document.getSourceType()).isEqualTo(DocumentSourceType.CONFLUENCE);
+    assertThat(document.getFileName()).isEqualTo("Abschnitt 1.1");
+    assertThat(document.getFilePath()).isEqualTo(pageUrl);
+    assertThat(document.getSourceContainerKey()).isEqualTo("ENG");
+    assertThat(document.getSourceHierarchyPath()).isEqualTo("Handbuch / Kapitel 1");
+    assertThat(document.getLibraryId()).isEqualTo(targetLibrary.getId());
+    verify(documentRepository)
+        .markIndexedFromSource(eq(document.getId()), eq(2), any(), eq("sha256-of-page"), eq("7"));
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
+        ArgumentCaptor.forClass(List.class);
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
+    assertThat(
+            chunkCaptor
+                .getValue()
+                .getFirst()
+                .getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
+        .isEqualTo("[Abschnitt 1.1]\n\nerster Abschnitt");
+  }
+
+  @Test
+  void aConfluencePageWithUnchangedContentOnlyMovesItsVersionMarker() {
+    // A title-only or label-only edit bumps the version without changing the body: the chunks
+    // stay, only last_modified_remote advances so the next run's pre-fetch check skips the page.
+    String pageUrl = "https://wiki.behoerde.example/pages/viewpage.action?pageId=102";
+    Document existing =
+        new Document("Abschnitt 1.1", pageUrl, "text/html", 40L, DocumentSourceType.CONFLUENCE);
+    existing.setStatus(DocumentStatus.INDEXED);
+    existing.setChecksum("sha256-of-page");
+    existing.setChunkCount(2);
+    existing.setIndexedAt(Instant.parse("2026-09-01T08:00:00Z"));
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-page");
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), pageUrl))
+        .thenReturn(Optional.of(existing));
+
+    FileProcessingResult result =
+        service.processConfluencePage(
+            "unveränderter Text",
+            "Abschnitt 1.1 (umbenannt)",
+            pageUrl,
+            "8",
+            new SourceDocumentContext("ENG", null),
+            targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+    verify(documentRepository)
+        .markIndexedFromSource(
+            existing.getId(), 2, Instant.parse("2026-09-01T08:00:00Z"), "sha256-of-page", "8");
+    verify(documentRepository, never()).save(any(Document.class));
+    verify(documentRepository, never()).delete(any(Document.class));
   }
 
   @Test

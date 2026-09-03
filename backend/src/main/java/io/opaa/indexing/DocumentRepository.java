@@ -35,6 +35,13 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    */
   boolean existsBySourceEntryUrlAndLibraryId(String sourceEntryUrl, UUID libraryId);
 
+  /**
+   * The documents found through {@code sourceEntryUrl} in this library - a Confluence page's
+   * attachment documents (ADR-0022), which a verified deletion of the page removes explicitly
+   * together with it (ADR-0023, Entscheidung 4).
+   */
+  List<Document> findByLibraryIdAndSourceEntryUrl(UUID libraryId, String sourceEntryUrl);
+
   List<Document> findByLibraryId(UUID libraryId);
 
   /**
