@@ -872,11 +872,16 @@ Ollama-Endpunkt (Host-GPU, `-Dopaa.eval.ollamaBaseUrl`) — wie beim #1050-Lauf 
 Zahlen deshalb nicht mit der committeten Baseline vergleichbar, die Deltas innerhalb dieses Laufs
 sehr wohl.
 
-**Der Ausfallwächter hat für keine der drei Varianten angeschlagen.** Der Konsolenbericht markiert
-`ohne-reranking`, `rerank-25` und `rerank-50` jeweils mit `(keine Änderung)` — der Text, den
-`VariantRunner` genau dann ausgibt, wenn `RerankModelRole#degradedCallCount()` über die gesamte
-Variante hinweg bei null blieb (siehe dessen Javadoc). Die Referenzvarianten-Selbstprüfung (bitgleiche
-Zahlen zum direkten Pipeline-Lauf) bestand ebenfalls. Rohdaten:
+**Der Ausfallwächter hat für keine der drei Varianten angeschlagen.** Das `(keine Änderung)` im
+Konsolenbericht ist dafür *nicht* der Beleg — der Text stammt aus `VariantReportWriter#describeOverrides`
+und heißt nur „keine gelisteten Query-Overrides"; er erschiene wortgleich auch ohne jeden Wächter,
+weil `describeOverrides` den `rerankCandidateCount`-Override gar nicht rendert (Folgeproblem dazu:
+[#1222](https://github.com/criew/opaa/issues/1222)). Der tatsächliche Beleg steht im JSON-Report:
+Eine Variante, bei der `RerankModelRole#degradedCallCount()` während des Laufs zunahm, würde als
+`notMeasurable` und im Konsolenbericht als „nicht ausgeführt — …" gerendert (siehe `VariantRunner`s
+Javadoc); alle drei Outcomes in `variant-report-verwaltung-reranking.json` tragen stattdessen
+`"executed" : true` und `"skipReason" : null`. Die Referenzvarianten-Selbstprüfung (bitgleiche Zahlen
+zum direkten Pipeline-Lauf) bestand ebenfalls. Rohdaten:
 `backend/build/eval-reports/variant-report-verwaltung-reranking.json` (nicht committet, siehe
 `eval/README.md`, „Der Bericht ist ein Artefakt, keine Baseline").
 
