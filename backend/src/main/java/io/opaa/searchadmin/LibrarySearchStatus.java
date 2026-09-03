@@ -11,13 +11,11 @@ import java.util.UUID;
  * neither is counted a second time here, so the display and the gate cannot drift apart on the
  * numbers themselves.
  *
- * <p><b>The two can still disagree on the resulting decision.</b> {@code
- * io.opaa.query.FullTextBackfillGate} caches "complete" for a library's remaining process lifetime
- * once its backfill has finished. This page reads the count fresh on every load and has no such
- * memory. Should chunks that will never be backfilled appear in an already-complete library after
- * the gate cached its answer, this page reports {@link IndexCondition#INCOMPLETE} while the gate
- * keeps searching the library regardless - a deliberate consequence of the gate's own
- * process-lifetime memoization (see that class's Javadoc), not a bug to fix here.
+ * <p><b>The two can still disagree on the resulting decision:</b> {@code
+ * io.opaa.query.FullTextBackfillGate} caches "complete" for a library's remaining process lifetime,
+ * so a library that gains never-backfilled chunks afterwards shows {@link
+ * IndexCondition#INCOMPLETE} here while the gate keeps searching it regardless - deliberate, not a
+ * bug to fix here.
  *
  * @param chunkCount chunks the {@code documents} rows record as produced.
  * @param vectorChunkCount chunks actually present in the vector store. A gap to {@code chunkCount}
@@ -61,7 +59,7 @@ public record LibrarySearchStatus(
 
   /**
    * Incomplete while a chunk still lacks its full-text row, or once one has been permanently given
-   * up on. The two are not the same condition - {@code io.opaa.indexing.FullTextBackfillGate} only
+   * up on. The two are not the same condition - {@code io.opaa.query.FullTextBackfillGate} only
    * closes on the former, since a chunk it will never resolve on its own must not silence every
    * other, healthy chunk of the library - but this display deliberately does not distinguish them:
    * a library must never look flawlessly READY while it is quietly missing content the lexical

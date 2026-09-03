@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.group.GroupService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -18,6 +19,7 @@ import io.opaa.query.RetrievalPipelineTestSupport;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -44,7 +46,7 @@ class SearchDiagnosisClockTest {
         CurrentUser.of(UUID.randomUUID(), UUID.randomUUID(), SystemRole.SYSTEM_ADMIN, "Admin");
     when(libraryAccessService.readableLibraryIds(caller.id(), caller.organizationId()))
         .thenReturn(Set.of(LIBRARY_ID));
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(java.util.List.of());
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     when(rerankModelRole.currentStatus()).thenReturn(RerankRoleStatus.disabled());
     RetrievalPipeline pipeline =
         RetrievalPipelineTestSupport.vectorSearchPipeline(vectorStore, rerankModelRole);
@@ -57,7 +59,7 @@ class SearchDiagnosisClockTest {
             properties,
             libraryAccessService,
             mock(KnowledgeLibraryRepository.class),
-            mock(io.opaa.group.GroupService.class),
+            mock(GroupService.class),
             mock(DocumentRepository.class),
             rerankModelRole,
             fixedClock);

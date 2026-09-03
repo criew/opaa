@@ -43,13 +43,9 @@ import org.springframework.stereotype.Component;
  * only - a chunk the backfill gave up on for good is not pending, so it cannot keep a library
  * incomplete forever the way a genuinely stuck chunk would. See that record's own Javadoc for why
  * the alternative would be worse than the half-filled index this gate exists to prevent.
- *
- * <p>Public so the search-admin page's status test can assert against this decision directly
- * (#1120) rather than only against the progress count it is derived from - the gap between the two
- * is exactly the "just finished" window this class's own Javadoc above documents.
  */
 @Component
-public class FullTextBackfillGate {
+class FullTextBackfillGate {
 
   /** How long an incomplete library keeps its answer before the counts are read again. */
   static final Duration RECHECK_INTERVAL = Duration.ofSeconds(60);
@@ -75,7 +71,7 @@ public class FullTextBackfillGate {
    * passed in. The gate narrows the search scope; it can never widen it, which is what keeps it
    * from becoming a second, weaker permission decision (ADR-0008 §5).
    */
-  public Set<UUID> searchableLibraries(Set<UUID> searchScope) {
+  Set<UUID> searchableLibraries(Set<UUID> searchScope) {
     Set<UUID> searchable = new LinkedHashSet<>();
     Instant now = clock.instant();
     for (UUID libraryId : searchScope) {
