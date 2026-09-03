@@ -4,8 +4,8 @@ package io.opaa.indexing.pipeline;
  * The two chunk metadata keys carrying the version of the verfahren that produced a chunk
  * (docs/features/ingestion-pipelines.md, cross-cutting rule (d)). Written by {@code
  * FileProcessingService#storeChunks} onto every chunk, alongside the existing technical metadata,
- * and read back by {@link PipelineReindexService} to select "every chunk below version N of this
- * pipeline".
+ * and read back by {@code io.opaa.indexing.PipelineReindexService} to select "every chunk below
+ * version N of this pipeline".
  *
  * <p>Deliberately chunk metadata in {@code vector_store}, not a column in a second table: {@code
  * vector_store} is created by Spring AI at application startup and is not Liquibase-owned (see
@@ -36,9 +36,10 @@ public final class ChunkPipelineMetadata {
   /**
    * The extension {@link DocumentPipelineRegistry#routedPipelineFor} actually resolved when this
    * chunk was written (#1126), never the chunk's file name. Absent for a chunk where routing could
-   * not be attempted or completed (the pre-#1126 Altbestand; a failed detection) - {@link
-   * PipelineReindexService} then falls back to its pre-#1126 file-name approximation instead of the
-   * exact comparison {@link DocumentPipelineRegistry#pipelineIdForRoutingExtension(String)} gives.
+   * not be attempted or completed (the pre-#1126 Altbestand; a failed detection) - {@code
+   * io.opaa.indexing.PipelineReindexService} then falls back to its pre-#1126 file-name
+   * approximation instead of the exact comparison {@link
+   * DocumentPipelineRegistry#pipelineIdForRoutingExtension(String)} gives.
    */
   public static final String ROUTING_EXTENSION_METADATA_KEY = "routing_extension";
 

@@ -2,8 +2,13 @@ package io.opaa.indexing.pipeline;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentService;
+import io.opaa.indexing.SupportedDocumentFormats;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 
 /**
@@ -20,6 +25,8 @@ import org.springframework.ai.document.Document;
  * subject of the per-format issues, not of this one.
  */
 public class TikaFallbackPipeline implements DocumentPipeline {
+
+  private static final Logger log = LoggerFactory.getLogger(TikaFallbackPipeline.class);
 
   public static final String ID = "tika-fallback";
 
@@ -59,7 +66,7 @@ public class TikaFallbackPipeline implements DocumentPipeline {
     List<Document> parsed;
     if (source.file() != null) {
       parsed = documentService.parseDocument(source.file());
-      if (documentService.isTextlessPdf(source.file(), parsed)) {
+      if (isTextlessPdf(source.file(), parsed)) {
         return DocumentPipelineResult.noExtractableText();
       }
       if (parsed.isEmpty()) {
@@ -78,5 +85,32 @@ public class TikaFallbackPipeline implements DocumentPipeline {
       return DocumentPipelineResult.noExtractableText();
     }
     return DocumentPipelineResult.chunked(chunks);
+  }
+
+  /**
+   * Whether {@code parsed} carries no extractable text at all and {@code file} was detected as a
+   * PDF. Tika's PDF parser returns a {@link Document} even for a scan without a text layer - just
+   * with blank text - so {@code parsed.isEmpty()} alone does not catch this case. Scoped to PDF for
+   * now; meant to extend to TIFF/PNG/JPEG once accepted.
+   *
+   * <p>Lives here rather than on {@link DocumentService}: it is only ever asked by this pipeline,
+   * about the parse result this pipeline just produced (ingestion-pipelines.md, Teil 3, Punkt 1
+   * "Scan-Erkennung und Bestandsprüfung").
+   */
+  boolean isTextlessPdf(Path file, List<Document> parsed) {
+    boolean hasText = parsed.stream().anyMatch(d -> d.getText() != null && !d.getText().isBlank());
+    if (hasText) {
+      return false;
+    }
+    return isPdf(file);
+  }
+
+  private boolean isPdf(Path file) {
+    try {
+      return SupportedDocumentFormats.isPdfContent(SupportedDocumentFormats.detectMediaType(file));
+    } catch (IOException e) {
+      log.warn("Could not read {} to detect whether it is a PDF", file, e);
+      return false;
+    }
   }
 }

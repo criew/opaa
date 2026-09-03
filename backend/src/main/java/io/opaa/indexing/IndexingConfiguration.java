@@ -3,7 +3,6 @@ package io.opaa.indexing;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
-import io.opaa.indexing.pipeline.PipelineReindexService;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
 import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
 import io.opaa.indexing.pipeline.mail.MailDocumentPipeline;

@@ -525,7 +525,7 @@ public class FileProcessingService {
    *
    * @return whether the document was actually re-indexed
    */
-  public boolean reindexStoredDocument(UUID documentId, Path storedFile) {
+  boolean reindexStoredDocument(UUID documentId, Path storedFile) {
     return processStoredFile(documentId, storedFile, true);
   }
 
@@ -699,8 +699,8 @@ public class FileProcessingService {
 
   /**
    * The connector counterpart to {@link #markConnectorFailed} for a document that never yields a
-   * usable chunk - flagged by {@link DocumentService#isTextlessPdf} or by an empty {@code
-   * chunkDocuments} result. Marks {@code FAILED} with {@link
+   * usable chunk - flagged by {@code io.opaa.indexing.pipeline.TikaFallbackPipeline#isTextlessPdf}
+   * or by an empty {@code chunkDocuments} result. Marks {@code FAILED} with {@link
    * DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE} and reports {@link
    * FileProcessingResult#NO_EXTRACTABLE_TEXT}, the same rejection contract {@link
    * FileProcessingResult#QUOTA_EXCEEDED} already has.
