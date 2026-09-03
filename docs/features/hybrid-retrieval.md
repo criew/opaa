@@ -749,9 +749,11 @@ Entscheidung fällt gegen die Verwaltungs-Evaldomäne und gegen das gemessene La
 > Referenzhardware (Demo-Instanz) hat keine nutzbare GPU.
 >
 > **Zwei Fallen für eine spätere Messung:**
-> [#1154](https://github.com/criew/opaa/issues/1154) — das Rerank-Zeitlimit ist für CPU-Betrieb zu
-> knapp, ein langsamer, aber funktionierender Endpunkt wird als `UNREACHABLE` gemeldet; wer ohne
-> Anhebung misst, misst einen Ausfall statt einer Latenz.
+> [#1154](https://github.com/criew/opaa/issues/1154) — behoben: `OPAA_RERANK_TIMEOUT` trägt jetzt
+> voreingestellt 240s (statt der zu knappen 10s), abgeleitet aus der oben genannten
+> Drei-Minuten-Größenordnung, und die Zustandsseite unterscheidet einen Zeitüberschreitungsfall im
+> `detail`-Text von einer genuin unerreichbaren Gegenstelle. Eine spätere Messung läuft damit nicht
+> mehr in denselben Ausfall wie diese.
 > [#1153](https://github.com/criew/opaa/issues/1153) — die Kandidatenzahl 50 ist nicht belegt, die
 > Wahl zwischen 25 und 50 hängt an einem einzelnen `multi_hop`-Fall.
 

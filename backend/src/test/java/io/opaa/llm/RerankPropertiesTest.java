@@ -29,13 +29,13 @@ class RerankPropertiesTest {
   }
 
   @Test
-  void aMissingOrNonPositiveTimeoutFallsBackToTenSeconds() {
-    assertThat(new RerankProperties(true, "u", "m", "", null).timeout())
-        .isEqualTo(Duration.ofSeconds(10));
+  void aMissingOrNonPositiveTimeoutFallsBackToTheCpuTunedDefault() {
+    Duration expected = Duration.ofSeconds(RerankProperties.DEFAULT_TIMEOUT_SECONDS);
+    assertThat(new RerankProperties(true, "u", "m", "", null).timeout()).isEqualTo(expected);
     assertThat(new RerankProperties(true, "u", "m", "", Duration.ZERO).timeout())
-        .isEqualTo(Duration.ofSeconds(10));
+        .isEqualTo(expected);
     assertThat(new RerankProperties(true, "u", "m", "", Duration.ofSeconds(-5)).timeout())
-        .isEqualTo(Duration.ofSeconds(10));
+        .isEqualTo(expected);
   }
 
   /**
