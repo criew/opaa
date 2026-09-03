@@ -102,28 +102,30 @@ class DocumentPipelineRegistryRoutingIntegrationTest {
   @Test
   void everyPipelineDeclaresExactlyItsOwnMetadataKeys() {
     Map<String, Set<String>> expectedByPipelineId =
-        Map.of(
-            "pdf", Set.of(ChunkingService.LOCATION_METADATA_KEY),
-            "docx", Set.of(ChunkingService.LOCATION_METADATA_KEY),
-            "pptx", Set.of(ChunkingService.LOCATION_METADATA_KEY),
-            "tabular", Set.of(ChunkingService.LOCATION_METADATA_KEY),
-            "html", Set.of(ChunkingService.LOCATION_METADATA_KEY),
-            "tika-fallback", Set.of(ChunkingService.LOCATION_METADATA_KEY),
-            "odt", Set.of(ChunkingService.LOCATION_METADATA_KEY),
-            "odp", Set.of(ChunkingService.LOCATION_METADATA_KEY),
-            "markdown", Set.of(ChunkingService.LOCATION_METADATA_KEY),
-            "confluence",
+        Map.ofEntries(
+            Map.entry("pdf", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
+            Map.entry("docx", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
+            Map.entry("pptx", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
+            Map.entry("tabular", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
+            Map.entry("html", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
+            Map.entry("tika-fallback", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
+            Map.entry("odt", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
+            Map.entry("odp", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
+            Map.entry("markdown", Set.of(ChunkingService.LOCATION_METADATA_KEY)),
+            Map.entry(
+                "confluence",
                 Set.of(
                     ChunkingService.LOCATION_METADATA_KEY,
                     ConfluenceDocumentPipeline.SPACE_METADATA_KEY,
-                    ConfluenceDocumentPipeline.HIERARCHY_METADATA_KEY),
-            "email",
+                    ConfluenceDocumentPipeline.HIERARCHY_METADATA_KEY)),
+            Map.entry(
+                "email",
                 Set.of(
                     ChunkingService.LOCATION_METADATA_KEY,
                     ChunkMailMetadata.MAIL_FROM_METADATA_KEY,
                     ChunkMailMetadata.MAIL_TO_METADATA_KEY,
                     ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY,
-                    ChunkMailMetadata.MAIL_DATE_METADATA_KEY));
+                    ChunkMailMetadata.MAIL_DATE_METADATA_KEY)));
 
     assertThat(registry.pipelines())
         .extracting(DocumentPipeline::id)
