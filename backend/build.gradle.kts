@@ -292,6 +292,8 @@ tasks.register<Test>("confluenceIntegrationTest") {
     testLogging {
         events("passed", "skipped", "failed")
         showStandardStreams = true
+        // the fixture's failure message names the rejected call and the instance's answer
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
     }
     outputs.upToDateWhen { false }
     outputs.cacheIf { false }

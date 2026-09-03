@@ -147,6 +147,7 @@ public final class ConfluenceDataCenterFixture {
     new ConfluenceSetupWizard(session, ADMIN_USER, ADMIN_PASSWORD).run(licence);
     waitUntilRestReady(session);
     adminToken = createToken(session, ADMIN_USER, ADMIN_PASSWORD, "opaa-admin");
+    confirmWebSudo(session);
     seed(session);
     limitedToken =
         createToken(
@@ -238,6 +239,37 @@ public final class ConfluenceDataCenterFixture {
       throw new IOException("PAT response carried no rawToken: " + created.body());
     }
     return raw;
+  }
+
+  /**
+   * Administrative calls on a cookie session - the JSON-RPC user administration in particular -
+   * need WebSudo ({@code WebSudoRequiredException} otherwise): the password confirmed once more on
+   * {@code /doauthenticate.action}, valid for ten minutes, ample for the seeding.
+   */
+  private void confirmWebSudo(ConfluenceHttpSession session)
+      throws IOException, InterruptedException {
+    ConfluenceHttpSession.Page challenge =
+        session.get(baseUrl() + "/authenticate.action?destination=%2Findex.action");
+    ConfluenceHttpSession.Page confirmed =
+        session.postForm(
+            baseUrl() + "/doauthenticate.action",
+            ConfluenceHttpSession.fields(
+                "atl_token",
+                challenge.atlToken(),
+                "password",
+                ADMIN_PASSWORD,
+                "destination",
+                "/index.action",
+                "authenticate",
+                "Confirm"));
+    log.info("websudo -> {} {}", confirmed.status(), confirmed.url());
+    if (confirmed.url().toString().contains("authenticate.action")) {
+      throw new IOException(
+          "websudo confirmation was not accepted: HTTP "
+              + confirmed.status()
+              + " at "
+              + confirmed.url());
+    }
   }
 
   // ---- seeding ---------------------------------------------------------------------------------
