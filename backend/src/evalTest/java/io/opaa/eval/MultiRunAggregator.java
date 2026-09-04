@@ -7,10 +7,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Turns a variant's repeated pipeline runs into a {@link MultiRunSummary} (issue #1044,
- * docs/features/retrieval-benchmark.md §3). The only caller is {@link VariantRunner}; kept as its
- * own, Docker-free unit so the aggregation math is exercised without a real {@code QueryService}
- * (see {@code MultiRunAggregatorTest}).
+ * Turns repeated pipeline runs into a {@link MultiRunSummary} (issue #1044,
+ * docs/features/retrieval-benchmark.md §3). Called only through {@link MehrfachlaufRule}, which is
+ * where the "once or three times" decision itself lives; kept as its own, Docker-free unit so the
+ * aggregation math is exercised without a real {@code QueryService} (see {@code
+ * MultiRunAggregatorTest}).
  */
 final class MultiRunAggregator {
 

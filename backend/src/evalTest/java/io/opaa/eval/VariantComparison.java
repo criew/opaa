@@ -100,7 +100,8 @@ public record VariantComparison(
    * (tens-of-minutes) corpus indexing the comparison would otherwise only fail after — the same
    * reasoning as {@code PipelineHarnessSupport#requireMeasurableConfiguration}.
    */
-  public void requireExecutableReference(QueryProperties productionQueryProperties) {
+  public void requireExecutableReference(
+      QueryProperties productionQueryProperties, boolean chatModelAvailable) {
     for (PipelineVariant variant : variants) {
       try {
         VariantQueryProperties.apply(productionQueryProperties, variant.queryOverrides());
@@ -119,7 +120,7 @@ public record VariantComparison(
     PipelineVariant reference = reference();
     QueryProperties effective =
         VariantQueryProperties.apply(productionQueryProperties, reference.queryOverrides());
-    VariantPrerequisites.unmetReason(reference, effective)
+    VariantPrerequisites.unmetReason(reference, effective, chatModelAvailable)
         .ifPresent(
             reason -> {
               throw new IllegalStateException(
