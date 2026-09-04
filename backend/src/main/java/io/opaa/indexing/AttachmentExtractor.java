@@ -72,7 +72,7 @@ public class AttachmentExtractor {
           });
     } catch (RuntimeException e) {
       // A corrupt or unreadable parent must cost only this one extraction - some pipelines still
-      // throw on a parse failure instead of reporting NO_CONTENT.
+      // throw on a parse failure instead of reporting PARSE_FAILED.
       log.warn("Failed to re-extract attachment {} of {}", index, parentFileName, e);
       return null;
     }

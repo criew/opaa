@@ -287,7 +287,7 @@ public class KnowledgeLibraryService {
     eventPublisher.publishEvent(
         new LibraryChanged(
             saved, LibraryChanged.Cause.CREATED, currentUserId, null, libraryAuditPayload(saved)));
-    return toLibraryDetail(saved, AssetRole.OWNER);
+    return toLibraryDetail(saved, AssetRole.OWNER, currentUserId);
   }
 
   private Map<String, Object> libraryAuditPayload(KnowledgeLibrary library) {
@@ -416,7 +416,7 @@ public class KnowledgeLibraryService {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
     AssetRole role =
         accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
-    return toLibraryDetail(library, role);
+    return toLibraryDetail(library, role, caller.id());
   }
 
   @Transactional
@@ -569,7 +569,7 @@ public class KnowledgeLibraryService {
       }
     }
     return toLibraryDetail(
-        updated, accessService.effectiveRole(updated, currentUserId, systemAdmin));
+        updated, accessService.effectiveRole(updated, currentUserId, systemAdmin), currentUserId);
   }
 
   @Transactional
@@ -1291,7 +1291,7 @@ public class KnowledgeLibraryService {
     return library;
   }
 
-  private LibraryDetail toLibraryDetail(KnowledgeLibrary library, AssetRole myRole) {
+  private LibraryDetail toLibraryDetail(KnowledgeLibrary library, AssetRole myRole, UUID userId) {
     // #1184: top-level documents only, consistent with the document list's own parent-level
     // totalElements - attachments are visible inside their parent's group, not in this count.
     long documentCount =
@@ -1305,7 +1305,11 @@ public class KnowledgeLibraryService {
         myRole.atLeast(AssetRole.MANAGER)
             ? toManagementDetail(library)
             : LibraryManagementDetail.EMPTY;
-    return new LibraryDetail(library, myRole, documentCount, managementDetail);
+    // #1278 review: myRole alone cannot tell a client whether PUT .../diagnostics-lock will
+    // succeed - it bypasses to OWNER for a system admin, holdsIndependentOwnerRole never does.
+    boolean diagnosticsLockToggleable = accessService.holdsIndependentOwnerRole(library, userId);
+    return new LibraryDetail(
+        library, myRole, documentCount, managementDetail, diagnosticsLockToggleable);
   }
 
   private LibraryManagementDetail toManagementDetail(KnowledgeLibrary library) {

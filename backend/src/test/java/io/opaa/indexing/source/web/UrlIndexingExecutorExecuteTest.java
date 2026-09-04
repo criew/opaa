@@ -152,7 +152,8 @@ class UrlIndexingExecutorExecuteTest {
         indexingRunEventRepository,
         mock(LibraryStorageQuotaService.class),
         staleDocumentCleanupService,
-        crawlProperties);
+        crawlProperties,
+        mock(io.opaa.library.LibraryFolderService.class));
   }
 
   @AfterEach

@@ -274,9 +274,9 @@ public class LibraryDocumentService {
         // per-library dedup check above (and uk_documents_library_checksum, migration 020) can't
         // otherwise tell "this content already succeeded" from "this content failed once and the
         // user is trying again", so it replaces the old FAILED row instead of rejecting the new
-        // upload. It should never have surviving chunks (FileProcessingService cleans those up on
-        // every failure path), but the delete is unconditional anyway, mirroring processFile's own
-        // re-index cleanup - defence in depth costs nothing here.
+        // upload. A FAILED connector row can legitimately still have chunks since #1268 (a version
+        // whose parsing failed keeps the previous, working ones), so the delete below is what
+        // actually removes them here - not merely defence in depth.
         //
         // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage, #1218): a FAILED mail row can still have
         // INDEXED attachment children from before the failure (attachments are indexed while the

@@ -97,6 +97,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
         .when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), any(), any()))
         .thenReturn(1);
     lenient().when(documentRepository.markFailed(any(), any())).thenReturn(1);
+    lenient().when(documentRepository.markFailedWithoutChunks(any(), any())).thenReturn(1);
     lenient()
         .when(documentRepository.save(any(Document.class)))
         .thenAnswer(inv -> inv.getArgument(0));
@@ -271,7 +272,8 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
         .isInstanceOf(RuntimeException.class)
         .hasMessage("embedding call blew up");
 
-    verify(documentRepository).markFailed(any(), org.mockito.ArgumentMatchers.isNull());
+    verify(documentRepository)
+        .markFailedWithoutChunks(any(), org.mockito.ArgumentMatchers.isNull());
   }
 
   /**

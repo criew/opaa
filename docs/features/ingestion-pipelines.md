@@ -207,10 +207,70 @@ die Registry noch `FileProcessingService` noch `SupportedDocumentFormats` änder
 Zwei Pipelines, die dasselbe Format beanspruchen, sind ein Verdrahtungsfehler und lassen den Kontext
 beim Start scheitern, statt die Bean-Reihenfolge entscheiden zu lassen.
 
-Die drei Ausgänge, die `FileProcessingService` bisher selbst entschied — „Scan ohne Textebene",
+Die Ausgänge, die `FileProcessingService` bisher selbst entschied — „Scan ohne Textebene",
 „gar nichts geparst", „Text, aber keine Chunks" — entscheidet jetzt die Pipeline für ihr eigenes
 Format. Genau das braucht eine PDF-Pipeline später, um Scan-Erkennung anders zu beantworten als eine
 Tabellen-Pipeline.
+
+**Vierter Ausgang: `PARSE_FAILED` (#1268).** „Gar nichts geparst" trug bis dahin zwei
+unterscheidbare Fälle: die Quelle war lesbar und ist leer (`NO_CONTENT`), und die Quelle ließ sich
+gar nicht erst lesen — beschädigter Container, abgewiesene XXE-Auflösung, überschrittene
+Schutzgrenze. Der zweite Fall heißt jetzt `PARSE_FAILED`. Eine Pipeline, die beides nicht
+auseinanderhalten kann, meldet `PARSE_FAILED`; sie sagt damit nur, dass sie nichts über den Inhalt
+weiß. Die Pipelines für PDF, DOCX, PPTX, ODT, ODP und XLSX/CSV/ODS fangen ihre Lesefehler selbst ab
+und melden diesen Ausgang; HTML, Markdown und der Tika-Fallback werfen weiterhin eine Ausnahme —
+der Aufrufer behandelt beides gleich.
+
+### Übergabepunkt: die Reihenfolge, in der Chunks ersetzt werden
+
+Der Übergabepunkt zwischen Pipeline und Ablage ist nicht nur eine Datenstruktur, sondern eine
+**Reihenfolge**: Beim erneuten Aufnehmen eines geänderten Dokuments bleiben die alten Chunks stehen,
+bis die neue Fassung tatsächlich geparst und gechunkt ist. Erst unmittelbar vor dem Schreiben der
+neuen Chunks werden die alten gelöscht — in beiden Speichern (`vector_store`, `chunk_full_text`),
+über denselben Aufruf, der sie auch beim Löschen eines Dokuments gemeinsam entfernt.
+
+Vor #1268 löschten `processFile`, `processUrlFile` und `processRssEntry` die alten Chunks direkt
+nach der Kontingentprüfung, also **vor** dem Parsen. Scheiterte das Parsen der neuen Fassung, stand
+das Dokument bis zum nächsten erfolgreichen Lauf ohne Chunks im Bestand — der zuvor gültige,
+durchsuchbare Stand war verloren, obwohl er fachlich weiterhin der beste verfügbare war. Der
+Pipeline-Nachzug (`PipelineReindexService`) verfuhr schon vorher nach der jetzt allgemeinen Regel.
+
+Welcher Ausgang was bedeutet — für die Konnektorwege (`processFile`, `processUrlFile`,
+`processRssEntry`), die eine geänderte Quelle verarbeiten:
+
+| Ausgang | Alte Chunks | Dokumentzustand |
+|---|---|---|
+| `CHUNKED` | werden unmittelbar vor dem Schreiben der neuen ersetzt | `INDEXED` |
+| `NO_CONTENT` (geparst, leer) | werden entfernt — „leer" ist eine Aussage über die neue Fassung | `FAILED`, `chunk_count = 0` |
+| `NO_EXTRACTABLE_TEXT` (z. B. Scan-PDF ohne Textebene) | werden entfernt — dieselbe Begründung | `FAILED`, `chunk_count = 0`, mit Hinweis auf fehlenden extrahierbaren Text |
+| `PARSE_FAILED` oder Ausnahme **vor** dem Löschen | **bleiben unverändert** | `FAILED`, `chunk_count` unverändert, Ereignis protokolliert |
+| Ausnahme **nach** dem Löschen (Embedding, Schreibvorgang) | sind bereits weg; angefangene neue werden mit entfernt | `FAILED`, `chunk_count = 0`, Ereignis protokolliert |
+
+`chunk_count` ist damit auch die Auskunft darüber, welcher `FAILED`-Fall vorliegt: ein Wert größer
+null heißt „noch mit dem alten Stand durchsuchbar", null heißt „ohne Chunks". Maßgeblich ist dabei
+nicht der Ausgang, sondern ob gelöscht wurde — eine Ausnahme, die erst nach dem Löschen auftritt,
+hinterlässt ebenfalls eine Null.
+
+Auf dem **Nachzugsweg** (`PipelineReindexService` → `reindexStoredDocument`) bleiben auch die leeren
+Ausgänge folgenlos: Dort ist die Datei unverändert und nur die Pipeline-Version neu, ein leeres
+Ergebnis sagt also nichts über eine neue Fassung aus. Das Dokument behält seine Chunks und seine
+`INDEXED`-Zeile und wird als nicht nachgezogen zurückgemeldet.
+
+**Löschen und Schreiben liegen nicht in einer Transaktion.** Zwischen beiden liegt der
+Embedding-Aufruf (ein HTTP-Rundlauf, bewusst außerhalb jeder Transaktion, siehe
+`VectorStoreWriter`), und die Konnektorwege sind selbst nicht `@Transactional`. In diesem Fenster
+hat das Dokument **keine** Chunks, während seine Zeile noch `INDEXED` mit dem alten `chunk_count`
+zeigt; ein Absturz genau darin hinterlässt den chunklosen Zustand, den diese Reihenfolge verhindern
+soll. Das ist der verbleibende Restfall — das Fenster ist aber deutlich kleiner als vor #1268, wo es
+Parsen **und** Embedding umspannte. Alte und neue Chunks existieren zu keinem Zeitpunkt
+nebeneinander; eine Fundstelle kann dasselbe Dokument also nie aus zwei Fassungen zugleich belegen.
+
+**Das Speicherkontingent bleibt unberührt.** Es wird über die Dokumentzeile (`file_size`) gemessen,
+nie über Chunks — die Reihenfolge des Chunk-Austauschs taucht in der Delta-Prüfung gar nicht auf.
+
+Anhänge (ADR-0022) sind ebenfalls nicht betroffen: Eine Elternmail, deren Parsen scheitert, meldet
+überhaupt keine Anhänge, der verallgemeinerte Anhangsweg läuft dann nicht an, und die vorhandenen
+Anhangsdokumente bleiben mitsamt ihrem `parent_document_id` unverändert stehen.
 
 **Keine Datenbankänderung nötig.** Die Pipeline-Version ist ein Chunk-Metadatum und liegt damit dort,
 wo Chunk-Metadaten liegen: in `vector_store.metadata`. Diese Tabelle legt Spring AI beim Start an,

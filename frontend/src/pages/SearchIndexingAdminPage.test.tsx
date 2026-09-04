@@ -13,7 +13,24 @@ import {
   mockSearchDiagnosisContext,
   mockSearchStatus,
 } from '../mocks/fixtures'
-import SearchIndexingAdminPage, { LibraryStatusTable } from './SearchIndexingAdminPage'
+import SearchIndexingAdminPage from './SearchIndexingAdminPage'
+
+// A test wrapper around the real table counts its renders without reaching into React internals:
+// the page must not re-render it while the diagnosis form is typed in.
+const { libraryStatusTableRenderSpy } = vi.hoisted(() => ({
+  libraryStatusTableRenderSpy: vi.fn(),
+}))
+vi.mock('../components/searchadmin/LibraryStatusTable', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../components/searchadmin/LibraryStatusTable')>()
+  return {
+    ...actual,
+    default: (props: Parameters<typeof actual.default>[0]) => {
+      libraryStatusTableRenderSpy()
+      return <actual.default {...props} />
+    },
+  }
+})
 
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
   useAuthStore.setState({
@@ -125,28 +142,16 @@ describe('SearchIndexingAdminPage', () => {
 
   it('does not re-render the library status table while typing in the diagnosis form', async () => {
     signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
 
-    // `LibraryStatusTable` is `React.memo`-wrapped; its inner render function lives on `.type`.
-    // Swapping it for a spy - and restoring the original afterwards - counts renders without
-    // touching production code, and without relying on DOM node identity, which reconciliation
-    // preserves whether or not the component actually re-rendered.
-    const mutableTable = LibraryStatusTable as unknown as { type: typeof LibraryStatusTable.type }
-    const originalRender = mutableTable.type
-    const renderSpy = vi.fn(originalRender)
-    mutableTable.type = renderSpy
-    try {
-      const user = userEvent.setup()
-      renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
 
-      await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
-      const rendersAfterMount = renderSpy.mock.calls.length
+    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    const rendersAfterMount = libraryStatusTableRenderSpy.mock.calls.length
 
-      await user.type(screen.getByRole('textbox', { name: /Testfrage/ }), 'Wer')
+    await user.type(screen.getByRole('textbox', { name: /Testfrage/ }), 'Wer')
 
-      expect(renderSpy.mock.calls.length).toBe(rendersAfterMount)
-    } finally {
-      mutableTable.type = originalRender
-    }
+    expect(libraryStatusTableRenderSpy.mock.calls.length).toBe(rendersAfterMount)
   })
 
   it('shows the core-field extraction state and the fill per field in the library row', async () => {

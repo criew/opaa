@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -8,8 +9,10 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.longThat;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -106,6 +109,7 @@ class FileProcessingServiceTest {
         .when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), any(), any()))
         .thenReturn(1);
     lenient().when(documentRepository.markFailed(any(), any())).thenReturn(1);
+    lenient().when(documentRepository.markFailedWithoutChunks(any(), any())).thenReturn(1);
   }
 
   private KnowledgeLibrary library() {
@@ -223,7 +227,7 @@ class FileProcessingServiceTest {
     verify(documentRepository).save(docCaptor.capture());
     ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
     verify(documentRepository)
-        .markFailed(eq(docCaptor.getValue().getId()), messageCaptor.capture());
+        .markFailedWithoutChunks(eq(docCaptor.getValue().getId()), messageCaptor.capture());
     assertThat(messageCaptor.getValue()).containsIgnoringCase("Scan");
   }
 
@@ -255,19 +259,21 @@ class FileProcessingServiceTest {
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository).save(docCaptor.capture());
     verify(documentRepository)
-        .markFailed(docCaptor.getValue().getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+        .markFailedWithoutChunks(
+            docCaptor.getValue().getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
   }
 
   @Test
-  void processFileMarksDocumentFailedAndReportsFailedWhenThePipelineCannotParseTheDocumentAtAll()
+  void processFileMarksDocumentFailedAndReportsFailedWhenThePipelineReportsNoContent()
       throws IOException {
-    // #1108 review, blocker 1: NO_CONTENT (an unparseable document - a corrupt archive, e.g.) must
-    // be reported the same way an uncaught pipeline exception on the same document would be -
+    // #1108 review, blocker 1: NO_CONTENT (the source was readable and holds nothing) must be
+    // reported the same way an uncaught pipeline exception on the same document would be -
     // FileProcessingResult#FAILED, documentsFailed incremented, never counted as processed.
-    Path file = tempDir.resolve("unparseable.txt");
-    Files.writeString(file, "content the fallback pipeline reports as unparseable");
+    // Since #1268 a source that could not be read at all is the separate PARSE_FAILED outcome.
+    Path file = tempDir.resolve("empty.txt");
+    Files.writeString(file, "content the fallback pipeline reads as empty");
 
-    when(checksumService.computeSha256(file)).thenReturn("sha256-of-unparseable");
+    when(checksumService.computeSha256(file)).thenReturn("sha256-of-empty");
     when(documentRepository.findByLibraryIdAndFilePath(
             targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.empty());
@@ -282,7 +288,7 @@ class FileProcessingServiceTest {
     verify(documentRepository, never()).markIndexedFromSource(any(), anyInt(), any(), any(), any());
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository).save(docCaptor.capture());
-    verify(documentRepository).markFailed(docCaptor.getValue().getId(), null);
+    verify(documentRepository).markFailedWithoutChunks(docCaptor.getValue().getId(), null);
     assertThat(
             meterRegistry.get("opaa.indexing.documents").tag("result", "failed").counter().count())
         .isEqualTo(1.0);
@@ -943,6 +949,45 @@ class FileProcessingServiceTest {
   }
 
   @Test
+  void aWriteFailureAfterTheOldChunksWereDeletedRemovesTheNewlyWrittenOnes() throws IOException {
+    // #1268: past the delete there is no untouched previous state left to preserve, so the failure
+    // path must clean up exactly as it does for a first-time document - otherwise a FAILED row
+    // could keep partially written new chunks. The counterpart, a failure *before* the delete, is
+    // covered by ChunkReplacementOrderIntegrationTest.
+    Path file = tempDir.resolve("write-fails.txt");
+    Files.writeString(file, "new content");
+
+    when(checksumService.computeSha256(file)).thenReturn("new-checksum");
+
+    Document existingDoc =
+        new Document("write-fails.txt", file.toAbsolutePath().toString(), null, 10L);
+    existingDoc.setChecksum("old-checksum");
+    existingDoc.setStatus(DocumentStatus.INDEXED);
+    existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
+    when(documentRepository.findByLibraryIdAndFilePath(
+            targetLibrary.getId(), file.toAbsolutePath().toString()))
+        .thenReturn(Optional.of(existingDoc));
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+    when(chunkingService.chunkDocuments(eq("write-fails.txt"), eq(parsed)))
+        .thenReturn(List.of(new org.springframework.ai.document.Document("chunk1")));
+    doThrow(new IllegalStateException("vector store unavailable"))
+        .when(vectorStoreWriter)
+        .writeEmbeddedChunks(any(), any());
+
+    assertThatThrownBy(() -> service.processFile(file, targetLibrary))
+        .isInstanceOf(IllegalStateException.class);
+
+    // Twice: once to make room for the new chunks, once to remove whatever the failed write left.
+    verify(vectorStore, times(2)).delete(documentIdFilter(existingDoc.getId()));
+    // ... and the row must say so: the chunks are gone, so the count cannot keep claiming them.
+    verify(documentRepository).markFailedWithoutChunks(existingDoc.getId(), null);
+  }
+
+  @Test
   void reindexingKeepsTheLibraryAssignmentWhenTheTargetLibraryIsUnchanged() throws IOException {
     // #419 acceptance criteria: re-indexing into the same library keeps the assignment. Since
     // #1183 the row is updated in place (see reindexesDocumentWithChangedChecksum above), so this
@@ -1169,7 +1214,8 @@ class FileProcessingServiceTest {
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository).save(docCaptor.capture());
     verify(documentRepository)
-        .markFailed(docCaptor.getValue().getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+        .markFailedWithoutChunks(
+            docCaptor.getValue().getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
   }
 
   @Test
@@ -1508,7 +1554,7 @@ class FileProcessingServiceTest {
             targetLibrary.getId(), "https://example.com/docs/empty-url-doc.pdf"))
         .thenReturn(Optional.empty());
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
-    when(documentRepository.markFailed(any(), any())).thenReturn(0);
+    when(documentRepository.markFailedWithoutChunks(any(), any())).thenReturn(0);
     when(documentService.parseDocument(file)).thenReturn(List.of());
 
     FileProcessingResult result =
@@ -1700,7 +1746,8 @@ class FileProcessingServiceTest {
         service.processRssEntry("x", "Titel", entryUrl, "2025-06-15T10:30:00Z", targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.NO_EXTRACTABLE_TEXT);
-    verify(documentRepository).markFailed(any(), eq(DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE));
+    verify(documentRepository)
+        .markFailedWithoutChunks(any(), eq(DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE));
     verify(documentRepository, never()).markIndexedFromSource(any(), anyInt(), any(), any(), any());
     verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
   }
@@ -1747,7 +1794,7 @@ class FileProcessingServiceTest {
         .thenReturn(chunks);
     when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), anyString(), any()))
         .thenThrow(new RuntimeException("final update blew up"));
-    when(documentRepository.markFailed(any(), any())).thenReturn(1);
+    when(documentRepository.markFailedWithoutChunks(any(), any())).thenReturn(1);
 
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () -> service.processFile(file, targetLibrary))
@@ -1763,7 +1810,8 @@ class FileProcessingServiceTest {
     verify(documentRepository).save(docCaptor.capture());
     verify(vectorStore).delete(documentIdFilter(docCaptor.getValue().getId()));
     verify(documentRepository)
-        .markFailed(eq(docCaptor.getValue().getId()), org.mockito.ArgumentMatchers.isNull());
+        .markFailedWithoutChunks(
+            eq(docCaptor.getValue().getId()), org.mockito.ArgumentMatchers.isNull());
   }
 
   // #434/#589: processUploadedFile is now processUploadedFileAsync - it no longer creates or
@@ -1886,12 +1934,14 @@ class FileProcessingServiceTest {
     when(documentService.parseDocument(file)).thenReturn(parsed);
     when(chunkingService.chunkDocuments(eq("upload-that-fails-later.pdf"), eq(parsed)))
         .thenThrow(new RuntimeException("chunking blew up"));
-    when(documentRepository.markFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden"))
+    when(documentRepository.markFailedWithoutChunks(
+            doc.getId(), "Die Datei konnte nicht verarbeitet werden"))
         .thenReturn(1);
 
     service.processUploadedFileAsync(doc.getId(), file);
 
-    verify(documentRepository).markFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
+    verify(documentRepository)
+        .markFailedWithoutChunks(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
     // The catch block's vectorStore.delete call is made unconditionally, the same way
     // processFile/processUrlFile's own re-index paths always do regardless of whether there was
     // anything to remove (chunkDocuments itself threw here, before storeChunks could run).
@@ -1971,7 +2021,8 @@ class FileProcessingServiceTest {
         .thenReturn(chunks);
     when(documentRepository.markIndexed(eq(doc.getId()), eq(1), any()))
         .thenThrow(new RuntimeException("final update blew up"));
-    when(documentRepository.markFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden"))
+    when(documentRepository.markFailedWithoutChunks(
+            doc.getId(), "Die Datei konnte nicht verarbeitet werden"))
         .thenReturn(1);
 
     service.processUploadedFileAsync(doc.getId(), file);
@@ -1982,7 +2033,8 @@ class FileProcessingServiceTest {
     // else points at them.
     verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
     verify(vectorStore).delete(documentIdFilter(doc.getId()));
-    verify(documentRepository).markFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
+    verify(documentRepository)
+        .markFailedWithoutChunks(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
     verify(documentRepository, never()).delete(any(Document.class));
   }
 

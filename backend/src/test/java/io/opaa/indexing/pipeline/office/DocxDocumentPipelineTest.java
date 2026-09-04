@@ -572,14 +572,14 @@ class DocxDocumentPipelineTest {
   }
 
   @Test
-  void aFilelessSourceHasNoContent() {
+  void aFilelessSourceIsAParseFailure() {
     // A DOCX pipeline is only ever reached through a genuine .docx file (never RSS-extracted
     // text, ADR-0017 decision 2) - defensive fallback, mirrors PdfDocumentPipeline/
     // PptxDocumentPipeline.
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofExtractedText("irrelevanter Text", "quelle.docx"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
     assertThat(result.chunks()).isEmpty();
   }
 
@@ -615,14 +615,14 @@ class DocxDocumentPipelineTest {
   }
 
   @Test
-  void aFileThatIsNotAValidDocxHasNoContent() throws IOException {
+  void aFileThatIsNotAValidDocxIsAParseFailure() throws IOException {
     Path file = tempDir.resolve("kaputt.docx");
     Files.writeString(file, "das ist kein docx");
 
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.docx", ".docx"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   private static void addHeading(XWPFDocument doc, String text, String styleId) {

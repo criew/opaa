@@ -421,13 +421,13 @@ class OdtDocumentPipelineTest {
   }
 
   @Test
-  void aFilelessSourceHasNoContent() {
+  void aFilelessSourceIsAParseFailure() {
     // An ODT pipeline is only ever reached through a genuine .odt file (never RSS-extracted text,
     // ADR-0017 decision 2) - defensive fallback, mirrors DocxDocumentPipeline/PptxDocumentPipeline.
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofExtractedText("irrelevanter Text", "quelle.odt"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
     assertThat(result.chunks()).isEmpty();
   }
 
@@ -448,7 +448,7 @@ class OdtDocumentPipelineTest {
   @Test
   void aDocumentWithoutAnyTextIsRejectedAsNoExtractableText() throws IOException {
     // A well-formed but empty <office:text/> is a parsed document with nothing to chunk, not an
-    // unparseable one - distinct from aZipWithoutAContentXmlEntryHasNoContent below. Matches the
+    // unparseable one - distinct from aZipWithoutAContentXmlEntryIsAParseFailure below. Matches the
     // NO_EXTRACTABLE_TEXT outcome TikaFallbackPipeline reported for this exact case before this
     // pipeline existed (#1057), so an empty document's skipped-not-failed treatment is unchanged.
     Path file = tempDir.resolve("leer.odt");
@@ -462,7 +462,7 @@ class OdtDocumentPipelineTest {
   }
 
   @Test
-  void aZipWithoutAContentXmlEntryHasNoContent() throws IOException {
+  void aZipWithoutAContentXmlEntryIsAParseFailure() throws IOException {
     Path file = tempDir.resolve("ohne-content-xml.odt");
     try (var out = new ZipOutputStream(Files.newOutputStream(file))) {
       out.putNextEntry(new ZipEntry("mimetype"));
@@ -473,18 +473,18 @@ class OdtDocumentPipelineTest {
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofFile(file, "ohne-content-xml.odt", ".odt"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
-  void aFileThatIsNotAValidZipArchiveHasNoContent() throws IOException {
+  void aFileThatIsNotAValidZipArchiveIsAParseFailure() throws IOException {
     Path file = tempDir.resolve("kaputt.odt");
     Files.writeString(file, "das ist kein odt");
 
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.odt", ".odt"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
@@ -508,7 +508,7 @@ class OdtDocumentPipelineTest {
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.odt", ".odt"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
@@ -521,7 +521,7 @@ class OdtDocumentPipelineTest {
     DocumentPipelineResult result =
         tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.odt", ".odt"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
@@ -572,7 +572,7 @@ class OdtDocumentPipelineTest {
     DocumentPipelineResult result =
         tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odt", ".odt"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
@@ -605,7 +605,7 @@ class OdtDocumentPipelineTest {
     DocumentPipelineResult result =
         tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-absaetze.odt", ".odt"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test

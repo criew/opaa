@@ -106,7 +106,8 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
             mock(IndexingRunEventRepository.class),
             mock(LibraryStorageQuotaService.class),
             staleDocumentCleanupService,
-            new CrawlProperties(0, 0, 0));
+            new CrawlProperties(0, 0, 0),
+            mock(io.opaa.library.LibraryFolderService.class));
   }
 
   private void stubProcessUrlFile(org.mockito.stubbing.Answer<FileProcessingResult> answer)

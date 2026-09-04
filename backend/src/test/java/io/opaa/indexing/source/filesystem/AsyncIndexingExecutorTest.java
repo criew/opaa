@@ -204,6 +204,7 @@ class AsyncIndexingExecutorTest {
     when(realFlowDocumentRepository.save(any(Document.class)))
         .thenAnswer(inv -> inv.getArgument(0));
     when(realFlowDocumentRepository.markFailed(any(), any())).thenReturn(1);
+    when(realFlowDocumentRepository.markFailedWithoutChunks(any(), any())).thenReturn(1);
     when(realFlowDocumentRepository.findByLibraryIdAndSourceType(any(), any()))
         .thenReturn(List.of());
     org.springframework.ai.vectorstore.VectorStore vectorStore =
