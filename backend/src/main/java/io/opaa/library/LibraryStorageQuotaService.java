@@ -7,8 +7,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * Enforces the per-library storage quota (#119, Maintainer-Entscheidung: Standardkontingent je
- * Bibliothek, {@link UploadProperties#libraryQuotaBytes}). Shared by every ingestion path that
- * stores document content - the upload endpoint ({@link LibraryDocumentService}) and the
+ * Bibliothek, {@link LibraryProperties#quotaBytes}). Shared by every ingestion path that stores
+ * document content - the upload endpoint ({@link LibraryDocumentService}) and the
  * FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connector paths ({@code
  * io.opaa.indexing.FileProcessingService}) - so a library cannot grow past its quota through either
  * route.
@@ -33,23 +33,23 @@ import org.springframework.stereotype.Service;
 public class LibraryStorageQuotaService {
 
   private final DocumentRepository documentRepository;
-  private final UploadProperties uploadProperties;
+  private final LibraryProperties libraryProperties;
 
   public LibraryStorageQuotaService(
-      DocumentRepository documentRepository, UploadProperties uploadProperties) {
+      DocumentRepository documentRepository, LibraryProperties libraryProperties) {
     this.documentRepository = documentRepository;
-    this.uploadProperties = uploadProperties;
+    this.libraryProperties = libraryProperties;
   }
 
   /**
    * The configured per-library quota in bytes ({@code application.yml}'s own default resolves to 10
    * GiB when unset), or {@code <= 0} if the operator has configured {@link
-   * UploadProperties#libraryQuotaBytes} to mean <em>unbegrenzt</em> (#119, PR #700 review finding
-   * 2) - see that property's own Javadoc for why {@code 0}/negative is a real configuration here
-   * rather than being normalized away.
+   * LibraryProperties#quotaBytes} to mean <em>unbegrenzt</em> (#119, PR #700 review finding 2) -
+   * see that property's own Javadoc for why {@code 0}/negative is a real configuration here rather
+   * than being normalized away.
    */
   public long quotaBytes() {
-    return uploadProperties.libraryQuotaBytes();
+    return libraryProperties.quotaBytes();
   }
 
   /**

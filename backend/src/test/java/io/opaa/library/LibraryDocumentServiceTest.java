@@ -133,7 +133,7 @@ class LibraryDocumentServiceTest {
             mock(org.springframework.ai.embedding.BatchingStrategy.class),
             mock(VectorStoreWriter.class),
             mock(FullTextChunkStore.class));
-    uploadProperties = new UploadProperties(storageDir.toString(), 10L * 1024, null, 0, 0);
+    uploadProperties = new UploadProperties(storageDir.toString(), 10L * 1024, null, 0);
     storageQuotaService = mock(LibraryStorageQuotaService.class);
     // Default: plenty of headroom, so existing tests exercising other behaviour never trip the
     // quota check unless they explicitly stub it otherwise (see
@@ -1408,7 +1408,7 @@ class LibraryDocumentServiceTest {
             checksumService,
             fileProcessingService,
             vectorChunkStore,
-            new UploadProperties(storageDir.toString(), 10L * 1024, null, 0, 0),
+            new UploadProperties(storageDir.toString(), 10L * 1024, null, 0),
             storageQuotaService,
             filesystemAllowlist,
             new BoundedDownloader(enabledValidator),
