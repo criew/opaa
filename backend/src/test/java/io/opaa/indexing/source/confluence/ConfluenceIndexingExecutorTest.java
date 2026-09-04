@@ -2,6 +2,7 @@ package io.opaa.indexing.source.confluence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -339,6 +340,8 @@ class ConfluenceIndexingExecutorTest {
             pagePath(edition, "HR", "200"),
             attachmentPath.getValue());
     verify(indexingJobService).completeJob(jobId, 4, 0, 0, 5);
+    // #1191: a complete listing records a positive assessment, clearing any earlier warning
+    verify(indexingJobService).recordListingAssessment(jobId, true, List.of());
 
     ArgumentCaptor<ConfluenceSyncState> state = ArgumentCaptor.forClass(ConfluenceSyncState.class);
     verify(syncStateRepository, timeout(5000).atLeast(2)).save(state.capture());
@@ -428,6 +431,8 @@ class ConfluenceIndexingExecutorTest {
                     "SEC")));
     verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 3, 0, 0, 4);
+    // #1191: the run's assessment names the unreadable space, for the warning at the library
+    verify(indexingJobService).recordListingAssessment(jobId, false, List.of("SEC"));
     ArgumentCaptor<ConfluenceSyncState> state = ArgumentCaptor.forClass(ConfluenceSyncState.class);
     verify(syncStateRepository, timeout(5000).atLeast(1)).save(state.capture());
     assertThat(state.getValue().isFullSyncInterrupted())
@@ -764,6 +769,8 @@ class ConfluenceIndexingExecutorTest {
     // "ergänzend": nothing is ever removed for being absent from the window
     verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 2, 0, 0, 2);
+    // #1191: an incremental run cannot see an unreadable space and never assesses the listing
+    verify(indexingJobService, never()).recordListingAssessment(any(), anyBoolean(), any());
     // the anchor moves to this run's start, not its end
     assertThat(state.getIncrementalAnchor()).isEqualTo(NOW);
     verify(syncStateRepository).save(state);
@@ -1002,6 +1009,8 @@ class ConfluenceIndexingExecutorTest {
         .noneMatch(r -> r.matches(".*/(content|pages)/100(\\?.*)?$"));
     verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 1, 0, 2, 2);
+    // #1191: a webhook run fetches named pages only and never judges the listing
+    verify(indexingJobService, never()).recordListingAssessment(any(), anyBoolean(), any());
     // the heartbeat moves with every page, so the stale-run sweep never mistakes a long batch
     verify(indexingJobService, atLeast(3))
         .updateProgress(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
@@ -1109,6 +1118,8 @@ class ConfluenceIndexingExecutorTest {
     verify(indexingJobService).recordRunMetrics(eq(jobId), metrics.capture());
     assertThat(metrics.getValue().incomplete()).isTrue();
     assertThat(metrics.getValue().requestsSent()).isEqualTo(6);
+    // #1191: a budget-truncated run has not seen every space and must not overwrite the verdict
+    verify(indexingJobService, never()).recordListingAssessment(any(), anyBoolean(), any());
     // no reconciliation on an incomplete listing, and the full sync stays open
     verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
     ArgumentCaptor<ConfluenceSyncState> state = ArgumentCaptor.forClass(ConfluenceSyncState.class);

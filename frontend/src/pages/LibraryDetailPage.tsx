@@ -52,6 +52,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import SearchIcon from '@mui/icons-material/Search'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
+import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import { alpha } from '@mui/material/styles'
 import { fontFamily } from '../theme/tokens'
 import type {
@@ -133,6 +134,18 @@ function canDeleteLibrary(role: AssetRole | undefined): boolean {
 // Schwelle wie beim Hoch- und Löschen von Dokumenten.
 function canManageDocuments(role: AssetRole | undefined): boolean {
   return role === 'EDITOR' || role === 'MANAGER' || role === 'OWNER'
+}
+
+/**
+ * #1191: names an unreadable space the way the documents area does ("Name (KEY)"), from the
+ * library's own space selection - the key alone when the selection no longer carries the space.
+ */
+function confluenceSpaceHeroLabel(
+  key: string,
+  spaces: ConfluenceSpaceRef[] | null | undefined,
+): string {
+  const name = spaces?.find((space) => space.key === key)?.name
+  return name ? `${name} (${key})` : key
 }
 
 function formatIndexedAt(indexedAt: string | null | undefined): string {
@@ -740,6 +753,35 @@ export default function LibraryDetailPage() {
                 das aus.
               </Typography>
             </Stack>
+            {run.unreadableSpaceKeys.length > 0 && (
+              <Stack
+                direction="row"
+                spacing={1}
+                role="note"
+                data-testid="confluence-incomplete-listing-warning"
+                sx={{
+                  alignItems: 'flex-start',
+                  mt: 0.5,
+                  px: 1.25,
+                  py: 1,
+                  borderRadius: 2,
+                  border: 1,
+                  borderColor: 'warning.main',
+                  bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
+                }}
+              >
+                <WarningAmberIcon
+                  aria-hidden
+                  sx={{ fontSize: 16, color: 'warning.main', mt: '2px', flexShrink: 0 }}
+                />
+                <Typography sx={{ fontSize: 12.5 }}>
+                  {run.unreadableSpaceKeys.length === 1
+                    ? `Der letzte Vollabgleich konnte den Space ${confluenceSpaceHeroLabel(run.unreadableSpaceKeys[0], details.confluenceSpaces)} nicht vollständig lesen; sein Bestand ist möglicherweise veraltet.`
+                    : `Der letzte Vollabgleich konnte die Spaces ${run.unreadableSpaceKeys.map((key) => confluenceSpaceHeroLabel(key, details.confluenceSpaces)).join(', ')} nicht vollständig lesen; ihr Bestand ist möglicherweise veraltet.`}{' '}
+                  Der Hinweis bleibt, bis ein Vollabgleich wieder alle Spaces lesen kann.
+                </Typography>
+              </Stack>
+            )}
           </Box>
         )}
 

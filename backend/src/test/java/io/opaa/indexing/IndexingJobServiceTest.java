@@ -15,6 +15,8 @@ import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.ConflictException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,6 +69,55 @@ class IndexingJobServiceTest {
     assertThat(failed.isIncomplete()).isFalse();
     verify(indexingJobRepository, times(1)).save(running);
     verify(indexingJobRepository, never()).save(failed);
+  }
+
+  @Test
+  void recordListingAssessmentWritesTheVerdictOntoARunningJobOnly() {
+    // #1191: the verdict lands on the row while it is RUNNING; a job the stale sweep already
+    // failed keeps its state - the same conditional guard recordRunMetrics has.
+    var running = new IndexingJob(JobStatus.RUNNING);
+    var failed = new IndexingJob(JobStatus.FAILED);
+    when(indexingJobRepository.findById(running.getId())).thenReturn(Optional.of(running));
+    when(indexingJobRepository.findById(failed.getId())).thenReturn(Optional.of(failed));
+
+    service.recordListingAssessment(running.getId(), false, List.of("SEC", "IT"));
+    service.recordListingAssessment(failed.getId(), false, List.of("SEC"));
+
+    assertThat(running.getListingComplete()).isFalse();
+    assertThat(running.getUnreadableSpaceKeys()).containsExactly("SEC", "IT");
+    assertThat(failed.getListingComplete()).isNull();
+    assertThat(failed.getUnreadableSpaceKeys()).isEmpty();
+    verify(indexingJobRepository, times(1)).save(any());
+  }
+
+  @Test
+  void aCompleteListingAssessmentCarriesNoKeys() {
+    var running = new IndexingJob(JobStatus.RUNNING);
+    when(indexingJobRepository.findById(running.getId())).thenReturn(Optional.of(running));
+
+    service.recordListingAssessment(running.getId(), true, List.of());
+
+    assertThat(running.getListingComplete()).isTrue();
+    assertThat(running.getUnreadableSpaceKeys()).isEmpty();
+  }
+
+  @Test
+  void pruningKeepsTheMostRecentListingAssessmentBeyondTheCap() {
+    // #1191: the library's incomplete-listing warning hangs on the most recent assessing run - a
+    // burst of webhook runs (which never assess) must not prune that row away.
+    UUID libraryId = UUID.randomUUID();
+    List<IndexingJob> runs = new ArrayList<>();
+    for (int i = 0; i < 12; i++) {
+      runs.add(new IndexingJob(JobStatus.COMPLETED));
+    }
+    runs.get(10).recordListingAssessment(false, List.of("SEC"));
+    when(indexingJobRepository.findByLibraryIdOrderByStartedAtDesc(libraryId)).thenReturn(runs);
+    when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    service.startJob(libraryId, UUID.randomUUID(), JobTriggerSource.MANUAL, IndexingRunMode.FULL);
+
+    verify(indexingJobRepository).deleteAllByIdInBatch(List.of(runs.get(11).getId()));
   }
 
   @Test

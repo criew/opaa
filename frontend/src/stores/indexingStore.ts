@@ -50,6 +50,10 @@ interface IndexingRunState {
   // documentsIndexedTotal, which happens to coincide for an RSS_FEED run whose entries carried no
   // attachments at all and would otherwise make the same library's label flicker from run to run.
   sourceType: DocumentSourceType | null
+  // #1191: the Confluence spaces the most recent listing-assessing full sync could not read
+  // completely - carried by the status response independently of which run is the latest one, so
+  // the warning at the library survives incremental and webhook runs in between.
+  unreadableSpaceKeys: string[]
 }
 
 export const IDLE_RUN_STATE: IndexingRunState = {
@@ -63,6 +67,7 @@ export const IDLE_RUN_STATE: IndexingRunState = {
   timestamp: null,
   isPolling: false,
   sourceType: null,
+  unreadableSpaceKeys: [],
 }
 
 interface IndexingState {
@@ -222,6 +227,7 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
           message: response.message,
           timestamp: response.timestamp,
           sourceType,
+          unreadableSpaceKeys: response.unreadableSpaceKeys ?? [],
         },
         set,
         get,
@@ -293,6 +299,7 @@ function startPolling(
           documentsIndexedTotal: response.documentsIndexedTotal,
           message: response.message,
           timestamp: response.timestamp,
+          unreadableSpaceKeys: response.unreadableSpaceKeys ?? [],
         },
         set,
         get,
