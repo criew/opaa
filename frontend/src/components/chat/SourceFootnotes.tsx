@@ -5,7 +5,13 @@ import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import type { CitationIndex } from './citations'
-import { citationRowId, describeMetadata, formatMailSummary, formatMetadataLine } from './citations'
+import {
+  citationRowId,
+  describeMetadata,
+  formatMailSummary,
+  formatMetadataLine,
+  metadataFilterMatchLabel,
+} from './citations'
 import type { SourceReference } from '../../types/api'
 import type { OpenableDocument } from '../../hooks/useDocumentPreview'
 import { fontFamily } from '../../theme/tokens'
@@ -102,6 +108,7 @@ function renderDocRow(
   const indexedAtLabel = formatIndexedAt(doc.source?.indexedAt)
   const mailSummary = formatMailSummary(doc.source)
   const metadataLine = formatMetadataLine(doc.source)
+  const filterMatchLabel = metadataFilterMatchLabel(doc.source)
   return (
     <Box
       key={doc.fileName}
@@ -153,6 +160,26 @@ function renderDocRow(
           sx={{ fontSize: 12, color: 'text.secondary' }}
         >
           {metadataLine}
+        </Typography>
+      )}
+      {/* #1070: a hit the Leerwert rule kept under an active filter is marked, exactly where the
+          mark makes a statement - in the result list of a set filter, never in a plain Beleg. */}
+      {filterMatchLabel && (
+        <Typography
+          component="span"
+          data-testid="source-filter-match"
+          aria-label="Metadatenfilter: ohne Angabe im gefilterten Feld"
+          sx={{
+            fontSize: 11,
+            color: 'text.secondary',
+            border: 1,
+            borderColor: 'divider',
+            borderRadius: '4px',
+            px: 0.75,
+            lineHeight: 1.6,
+          }}
+        >
+          {filterMatchLabel}
         </Typography>
       )}
       {/* #1164: the mail Kopfdaten summary ("Mail von …, TT.MM.JJJJ — Betreff"), only for a source

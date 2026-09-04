@@ -48,8 +48,8 @@ public record PipelineBaseline(
    * so all of them are validity fields here.
    *
    * <p>Since issue #1049 that set includes the two full-text fields: {@code fullTextSearchEnabled}
-   * and {@code fullTextBackfillComplete}. The lexical path moves the selection, so a run in which
-   * it was switched off — or in which the backfill gate kept it out of the measured library — is
+   * and {@code fullTextIndexComplete}. The lexical path moves the selection, so a run in which it
+   * was switched off — or in which the measured library's full-text index was incomplete — is
    * measuring a different configuration, not scoring worse.
    *
    * <p>Since issue #1144 it also includes {@code ingestionPipelineFingerprint} — see {@link
@@ -75,7 +75,7 @@ public record PipelineBaseline(
       int maxChunksPerDocument,
       double mmrLambda,
       boolean fullTextSearchEnabled,
-      boolean fullTextBackfillComplete,
+      boolean fullTextIndexComplete,
       boolean queryDecompositionEnabled,
       int maxSubQueries,
       String chatModel,

@@ -124,6 +124,15 @@ opaa:
     # for it while reranking runs. An Ebene-1 benchmark value (see QueryProperties); 0 switches the
     # stage off through its own parameter, independently of the role switch below.
     rerank-candidate-count: ${OPAA_QUERY_RERANK_CANDIDATE_COUNT:50}
+    # #1070: the entry condition of the core-field filter - the fill level a field must reach in
+    # the asking person's search scope before the filter interface offers it. Committed before the
+    # first measurement (ADR-0012); overridable for tests and deliberate experiments, not an
+    # administration setting. The cache TTL bounds staleness of the bestand only; a rights change
+    # discards a person's cached options immediately.
+    metadata-filter:
+      document-type-offer-threshold: ${OPAA_QUERY_METADATA_FILTER_DOCUMENT_TYPE_THRESHOLD:0.90}
+      document-date-offer-threshold: ${OPAA_QUERY_METADATA_FILTER_DOCUMENT_DATE_THRESHOLD:0.75}
+      options-cache-ttl: ${OPAA_QUERY_METADATA_FILTER_OPTIONS_CACHE_TTL:5m}
   # #1050: the rerank model role - on the same level as the chat and embedding roles. The switch
   # is deliberately separate from the endpoint fields: reranking being off must be an operator's
   # statement, not an indistinguishable consequence of a missing configuration line

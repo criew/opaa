@@ -1,5 +1,6 @@
 package io.opaa.chat;
 
+import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,8 +18,23 @@ public final class ChatPatch {
   private String title;
   private Boolean useKnowledge;
   private List<UUID> referencedLibraryIds;
+  private MetadataFilter metadataFilter;
 
   public ChatPatch() {}
+
+  /**
+   * The chat's core-field filter (#1070): {@code null} means "omitted", an empty filter means
+   * "clear" - the same omitted/cleared distinction {@code referencedLibraryIds} draws with an empty
+   * list.
+   */
+  public ChatPatch metadataFilter(MetadataFilter metadataFilter) {
+    this.metadataFilter = metadataFilter;
+    return this;
+  }
+
+  public MetadataFilter getMetadataFilter() {
+    return metadataFilter;
+  }
 
   public ChatPatch title(String title) {
     this.title = title;

@@ -2,6 +2,7 @@ package io.opaa.query;
 
 import static java.util.stream.Collectors.toMap;
 
+import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatService;
@@ -12,6 +13,8 @@ import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
+import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -64,6 +67,7 @@ public class QueryService {
   private final KnowledgeLibraryRepository knowledgeLibraryRepository;
   private final RerankModelRole rerankModelRole;
   private final DocumentMetadataService documentMetadataService;
+  private final DocumentTypeVocabularyRepository vocabularyRepository;
 
   public QueryService(
       RetrievalPipeline retrievalPipeline,
@@ -79,7 +83,9 @@ public class QueryService {
       QueryProperties queryProperties,
       KnowledgeLibraryRepository knowledgeLibraryRepository,
       RerankModelRole rerankModelRole,
-      DocumentMetadataService documentMetadataService) {
+      DocumentMetadataService documentMetadataService,
+      DocumentTypeVocabularyRepository vocabularyRepository) {
+    this.vocabularyRepository = vocabularyRepository;
     this.retrievalPipeline = retrievalPipeline;
     this.answerGenerationService = answerGenerationService;
     this.chatMemory = chatMemory;
@@ -152,6 +158,24 @@ public class QueryService {
       CurrentUser caller,
       boolean useKnowledge,
       List<UUID> requestedLibraryIds) {
+    return query(question, chatId, caller, useKnowledge, requestedLibraryIds, MetadataFilter.NONE);
+  }
+
+  /**
+   * The same query with a core-field filter (#1070). Like the search scope, the filter of a
+   * persisted chat governs entirely - the chat's sticky filter is the Kontext der Unterhaltung -
+   * and only an ephemeral query takes {@code requestedMetadataFilter}. The effective filter is
+   * validated against the Dokumentart vocabulary (400 for an unknown code) and applied inside both
+   * search paths, subordinate to the permission filter; every returned source says whether it
+   * matched or was kept as "ohne Angabe".
+   */
+  public QueryResult query(
+      String question,
+      UUID chatId,
+      CurrentUser caller,
+      boolean useKnowledge,
+      List<UUID> requestedLibraryIds,
+      MetadataFilter requestedMetadataFilter) {
     UUID currentUserId = caller.id();
     return metrics
         .queryTimer()
@@ -199,13 +223,14 @@ public class QueryService {
                 // query (no owned chat) falls back to the request-level useKnowledge/
                 // requestedLibraryIds (#526).
                 Set<UUID> searchScope =
-                    chat.map(c -> chatService.effectiveLibraryScope(c, readableLibraryIds))
-                        .orElseGet(
-                            () ->
-                                useKnowledge
-                                    ? readableLibraryIds
-                                    : intersectWithReadable(
-                                        requestedLibraryIds, readableLibraryIds));
+                    resolveSearchScope(chat, useKnowledge, requestedLibraryIds, readableLibraryIds);
+                MetadataFilter metadataFilter =
+                    validatedMetadataFilter(
+                        chat.map(Chat::getMetadataFilter)
+                            .orElse(
+                                requestedMetadataFilter == null
+                                    ? MetadataFilter.NONE
+                                    : requestedMetadataFilter));
                 boolean effectiveUseKnowledge = chat.map(Chat::isUseKnowledge).orElse(useKnowledge);
                 boolean answeredWithoutKnowledge = !effectiveUseKnowledge && searchScope.isEmpty();
                 // Distinct from answeredWithoutKnowledge above: the #203 fail-open case where the
@@ -229,7 +254,7 @@ public class QueryService {
                 } else {
                   relevantChunks =
                       retrieveRelevantChunksInGivenScope(
-                          question, chatMemory.get(conversationKey), searchScope);
+                          question, chatMemory.get(conversationKey), searchScope, metadataFilter);
                 }
 
                 // --- LLM call: the slowest step, and the reason no phase in this method carries a
@@ -254,7 +279,8 @@ public class QueryService {
                         validatedCitations,
                         matchCounts,
                         sourceDocumentsByDocId,
-                        coreMetadataByDocId);
+                        coreMetadataByDocId,
+                        metadataFilter);
 
                 log.debug(
                     "Citations found: {} validated, {} total sources",
@@ -290,6 +316,37 @@ public class QueryService {
                 throw e;
               }
             });
+  }
+
+  /**
+   * The search scope a question runs in - a persisted chat's own settings govern it entirely; only
+   * an ephemeral query (no owned chat) falls back to the request-level {@code useKnowledge}/{@code
+   * requestedLibraryIds} (#526). Never wider than {@code readableLibraryIds}. Public so the filter
+   * options (#1070) are built over exactly the libraries the next question would search.
+   */
+  public Set<UUID> resolveSearchScope(
+      Optional<Chat> chat,
+      boolean useKnowledge,
+      List<UUID> requestedLibraryIds,
+      Set<UUID> readableLibraryIds) {
+    return chat.map(c -> chatService.effectiveLibraryScope(c, readableLibraryIds))
+        .orElseGet(
+            () ->
+                useKnowledge
+                    ? readableLibraryIds
+                    : intersectWithReadable(requestedLibraryIds, readableLibraryIds));
+  }
+
+  /**
+   * The filter with its Dokumentart codes checked against the vocabulary - an unknown code is a
+   * caller error (400), never silently a filter that matches nothing but the documents without a
+   * value.
+   */
+  private MetadataFilter validatedMetadataFilter(MetadataFilter filter) {
+    if (filter.isEmpty()) {
+      return filter;
+    }
+    return filter.validatedAgainst(vocabularyRepository.snapshot());
   }
 
   /**
@@ -405,8 +462,18 @@ public class QueryService {
    */
   public List<Document> retrieveRelevantChunksInGivenScope(
       String question, List<Message> conversationHistory, Set<UUID> searchScope) {
+    return retrieveRelevantChunksInGivenScope(
+        question, conversationHistory, searchScope, MetadataFilter.NONE);
+  }
+
+  /** The same retrieval with a core-field filter (#1070) carried into the run as given. */
+  public List<Document> retrieveRelevantChunksInGivenScope(
+      String question,
+      List<Message> conversationHistory,
+      Set<UUID> searchScope,
+      MetadataFilter metadataFilter) {
     return retrieveRelevantChunksInGivenScopeWithDecomposition(
-            question, conversationHistory, searchScope)
+            question, conversationHistory, searchScope, metadataFilter)
         .chunks();
   }
 
@@ -443,12 +510,23 @@ public class QueryService {
    */
   public RetrievalWithDecomposition retrieveRelevantChunksInGivenScopeWithDecomposition(
       String question, List<Message> conversationHistory, Set<UUID> searchScope) {
+    return retrieveRelevantChunksInGivenScopeWithDecomposition(
+        question, conversationHistory, searchScope, MetadataFilter.NONE);
+  }
+
+  /** The same retrieval with a core-field filter (#1070) carried into the run as given. */
+  public RetrievalWithDecomposition retrieveRelevantChunksInGivenScopeWithDecomposition(
+      String question,
+      List<Message> conversationHistory,
+      Set<UUID> searchScope,
+      MetadataFilter metadataFilter) {
     RetrievalPipelineResult result =
         retrievalPipeline.run(
             new RetrievalContext(
                 question,
                 conversationHistory,
                 searchScope,
+                metadataFilter,
                 queryProperties,
                 // Read once per run, so every stage sees the same answer: fusion widens its
                 // budget for the reranker only if the reranker can actually be called.
@@ -592,7 +670,8 @@ public class QueryService {
       List<CitationValidator.ValidatedCitation> validatedCitations,
       Map<String, Integer> matchCounts,
       Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId,
-      Map<UUID, CoreMetadata> coreMetadataByDocId) {
+      Map<UUID, CoreMetadata> coreMetadataByDocId,
+      MetadataFilter metadataFilter) {
     Set<String> retrievedDocumentIds =
         chunks.stream()
             .map(c -> c.getMetadata().getOrDefault("document_id", "").toString())
@@ -629,11 +708,13 @@ public class QueryService {
                   Instant indexedAt = sourceDocument != null ? sourceDocument.getIndexedAt() : null;
                   String sourceEntryUrl =
                       sourceDocument != null ? sourceDocument.getSourceEntryUrl() : null;
-                  List<ChatSourceMetadataEntry> metadataEntries =
+                  CoreMetadata core =
                       sourceDocument != null
-                          ? ChatSourceMetadataEntry.fromCore(
-                              coreMetadataByDocId.get(sourceDocument.getId()))
-                          : List.of();
+                          ? coreMetadataByDocId.getOrDefault(
+                              sourceDocument.getId(), CoreMetadata.EMPTY)
+                          : null;
+                  List<ChatSourceMetadataEntry> metadataEntries =
+                      core != null ? ChatSourceMetadataEntry.fromCore(core) : List.of();
                   ChatSource reference =
                       new ChatSource(fileName, score, matches, cited)
                           .indexedAt(indexedAt)
@@ -652,7 +733,8 @@ public class QueryService {
                               mailMetadataValue(chunk, ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
                           .mailDate(
                               mailMetadataValue(chunk, ChunkMailMetadata.MAIL_DATE_METADATA_KEY))
-                          .metadata(metadataEntries.isEmpty() ? null : metadataEntries);
+                          .metadata(metadataEntries.isEmpty() ? null : metadataEntries)
+                          .metadataFilterMatch(metadataFilterMatch(metadataFilter, core));
                   return Map.entry(groupKey, reference);
                 })
             .collect(
@@ -689,6 +771,20 @@ public class QueryService {
 
     return Stream.concat(fromChunksByDocumentId.values().stream(), unmatchedOrphanEntries.stream())
         .toList();
+  }
+
+  /**
+   * #1070: whether a retrieved document matched every filtered field or was kept by the Leerwert
+   * rule alone - read from the document's core fields, the same values the chunk keys mirror. Null
+   * without an active filter, and for a chunk whose document no longer resolves.
+   */
+  static MetadataFilterMatch metadataFilterMatch(MetadataFilter filter, CoreMetadata core) {
+    if (filter == null || filter.isEmpty() || core == null) {
+      return null;
+    }
+    return filter.keptWithoutValue(core.documentTypeCode(), core.documentDate())
+        ? MetadataFilterMatch.NO_VALUE
+        : MetadataFilterMatch.MATCHED;
   }
 
   /**

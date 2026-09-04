@@ -77,7 +77,7 @@ class SourceConnectionTestServiceTest {
             filesystemAllowlist,
             libraryRepository,
             libraryAccessService,
-            new IndexingProperties(1000, 0, 50, null, null, null, null, null, 0),
+            new IndexingProperties(1000, 0, 50, null, null, null, null, 0),
             TargetAddressValidator.disabled(),
             org.mockito.Mockito.mock(ConfluenceConnectionService.class));
   }
@@ -461,7 +461,6 @@ class SourceConnectionTestServiceTest {
                 new IndexingProperties.Rss(200, 10, 10, 0, null, null, null, 0, 0),
                 null,
                 null,
-                null,
                 0),
             TargetAddressValidator.disabled(),
             org.mockito.Mockito.mock(ConfluenceConnectionService.class));
@@ -601,7 +600,6 @@ class SourceConnectionTestServiceTest {
                 new IndexingProperties.Rss(1, 0, 0, 0, null, null, null, 0, 0),
                 null,
                 null,
-                null,
                 0),
             TargetAddressValidator.disabled(),
             org.mockito.Mockito.mock(ConfluenceConnectionService.class));
@@ -655,7 +653,6 @@ class SourceConnectionTestServiceTest {
                 50,
                 null,
                 new IndexingProperties.Rss(200, 10, 10, 0, null, null, null, 0, 0),
-                null,
                 null,
                 null,
                 0),

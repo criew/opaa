@@ -122,21 +122,19 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
   }
 
   @Test
-  void mutualCycleTerminatesAndVisitsEachDirectoryOnce() throws IOException, InterruptedException {
-    // /a/ links (absolute, same-origin) to /b/, /b/ links back to /a/ - without a visited-URL
-    // guard, crawlRecursive alternates between the two forever.
+  void aSelfReferencingDirectoryTerminatesAndIsVisitedOnce()
+      throws IOException, InterruptedException {
+    // /a/ links (absolute, same-origin) back to itself - without a visited-URL guard,
+    // crawlRecursive would recurse into it forever. staysUnderBase requires every link, relative
+    // or absolute, to resolve at or below the directory page it appears on rather than merely
+    // somewhere under the overall crawl root, so a mutual cycle between two sibling directories
+    // cannot arise: neither sibling is ever "under" the other.
     AtomicInteger requestCount = new AtomicInteger();
     server.createContext(
         "/a/",
         exchange -> {
           requestCount.incrementAndGet();
-          respond(exchange, directoryListing(baseUrl + "/b/", "b", "file-a.txt"));
-        });
-    server.createContext(
-        "/b/",
-        exchange -> {
-          requestCount.incrementAndGet();
-          respond(exchange, directoryListing(baseUrl + "/a/", "a", "file-b.txt"));
+          respond(exchange, directoryListing(baseUrl + "/a/", "a", "file-a.txt"));
         });
 
     AutoindexCrawlerService service =
@@ -150,12 +148,12 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
 
     assertThat(result.entries())
         .extracting(AutoindexCrawlerService.CrawledFileEntry::name)
-        .containsExactlyInAnyOrder("file-a.txt", "file-b.txt");
+        .containsExactly("file-a.txt");
     assertThat(result.depthLimitReached()).isFalse();
     assertThat(result.entryLimitReached()).isFalse();
-    // Exactly one fetch per directory - the second visit of either is skipped by the visited
-    // guard rather than fetched (and recursed into) again.
-    assertThat(requestCount.get()).isEqualTo(2);
+    // Exactly one fetch - the self-link's second "visit" is skipped by the visited guard rather
+    // than fetched (and recursed into) again.
+    assertThat(requestCount.get()).isEqualTo(1);
   }
 
   @Test

@@ -18,7 +18,7 @@ final class VariantPrerequisites {
    * The prerequisites decidable before the corpus is indexed — everything that follows from the
    * variant's declaration and its effective {@link QueryProperties} alone. {@link
    * VariantComparison#requireExecutableReference} uses this overload, because at that point no
-   * index exists to ask about the full-text backfill.
+   * index exists to ask about the full-text index.
    *
    * @param effective the variant's {@link QueryProperties} after {@link
    *     VariantQueryProperties#apply} — prerequisites are checked against what would actually run,
@@ -50,11 +50,11 @@ final class VariantPrerequisites {
 
   /**
    * The full set of prerequisites, including the one only an existing index can answer (issue
-   * #1049): a variant that runs the lexical path needs the measured library's full-text backfill to
-   * be complete, because {@code FullTextBackfillGate} keeps an incomplete library out of that path
-   * entirely. Such a variant would measure the vector-only configuration under a name that promises
-   * the hybrid one — and its Δ0.000 against the vector-only reference would read as "the lexical
-   * path changes nothing", the strongest possible wrong conclusion this comparison could produce.
+   * #1049): a variant that runs the lexical path needs the measured library's full-text index to be
+   * complete, because chunks missing from it are invisible to that path. Such a variant would
+   * measure a diminished lexical contribution under a name that promises the full hybrid one — and
+   * a Δ near zero against the vector-only reference would read as "the lexical path changes
+   * nothing", the strongest possible wrong conclusion this comparison could produce.
    *
    * <p>Since issue #1050 it also covers the rerank role: a variant that <b>declares</b> a non-zero
    * rerank candidate window needs a usable rerank model role, for exactly the same reason - it
@@ -67,7 +67,7 @@ final class VariantPrerequisites {
       PipelineVariant variant,
       QueryProperties effective,
       boolean chatModelAvailable,
-      boolean fullTextBackfillComplete,
+      boolean fullTextIndexComplete,
       boolean rerankRoleUsable) {
     Optional<String> earlier = unmetReason(variant, effective, chatModelAvailable);
     if (earlier.isPresent()) {
@@ -81,13 +81,12 @@ final class VariantPrerequisites {
               + "siehe io.opaa.llm.RerankModelRole#status). Die Variante würde die "
               + "Konfiguration ohne Reranking unter dem Namen der mit Reranking messen.");
     }
-    if (effective.fullTextSearchEnabled() && !fullTextBackfillComplete) {
+    if (effective.fullTextSearchEnabled() && !fullTextIndexComplete) {
       return Optional.of(
-          "Diese Variante lässt den lexikalischen Pfad laufen, aber der Volltext-Backfill der "
-              + "gemessenen Bibliothek ist unvollständig — das Backfill-Tor "
-              + "(FullTextBackfillGate) hält die Bibliothek dann vollständig aus diesem Pfad "
-              + "heraus. Die Variante würde die vector-only-Konfiguration unter dem Namen der "
-              + "hybriden messen.");
+          "Diese Variante lässt den lexikalischen Pfad laufen, aber der Volltextindex der "
+              + "gemessenen Bibliothek ist unvollständig — die fehlenden Abschnitte sind für "
+              + "diesen Pfad unsichtbar. Die Variante würde einen geschmälerten lexikalischen "
+              + "Beitrag unter dem Namen der vollen hybriden Konfiguration messen.");
     }
     return Optional.empty();
   }

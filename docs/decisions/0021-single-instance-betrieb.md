@@ -46,6 +46,7 @@ potenziell veraltete Kopie):
 | `RateLimitService.requestLog` | Zeitfenster-Anfragehistorie pro Client-IP | `expireAfterAccess`, kein aktives Invalidieren |
 | `ActiveChatModelResolver.cache` | Der eine `ChatClient` des systemweit aktiven LLM-Modells (Single-Slot, kein Map-Cache) | Ereignisgesteuert via `ActiveChatModelChangedEvent` nach Commit (`TransactionalEventListener`) |
 | `CaffeineChatMemoryRepository` | Chatverlauf, LRU auf 50 gleichzeitige Konversationen begrenzt | TTL nach letztem Zugriff |
+| `FullTextIndexCompleteness.complete`/`.incompleteUntil` | Ob der Volltextindex einer Bibliothek vollständig ist — rein meldend im Erklärprotokoll der Suche (#1270), nie den Suchbereich verengend | Vollständig: kein Verfall für die Prozesslaufzeit (kann nur ein Deployment mit erhöhter `content_tsv_version` ungültig machen, und das startet den Prozess neu). Unvollständig: 60 Sekunden, danach neu gezählt |
 
 Bei mehreren Instanzen sieht jede ihre eigene Kopie: eine Rechteänderung, die auf Instanz A verarbeitet
 wird, invalidiert nicht den Cache auf Instanz B — eine Anfrage, die zufällig auf B landet, sieht bis

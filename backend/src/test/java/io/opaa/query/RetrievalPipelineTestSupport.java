@@ -2,6 +2,7 @@ package io.opaa.query;
 
 import static org.mockito.Mockito.mock;
 
+import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.llm.RerankModelRole;
 import org.springframework.ai.vectorstore.VectorStore;
 
@@ -28,10 +29,11 @@ public final class RetrievalPipelineTestSupport {
     return new QueryConfiguration()
         .retrievalPipeline(
             new SearchScopeStage(),
+            new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
             new SubQueryDecompositionStage(mock(QueryDecompositionService.class)),
             new VectorSearchStage(vectorStore),
             new FullTextSearchStage(
-                mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
+                mock(FullTextChunkSearch.class), mock(FullTextIndexCompleteness.class)),
             new MmrSelectionStage(mock(ChunkEmbeddingLookup.class)),
             new RankFusionStage(),
             new RerankStage(rerankModelRole),

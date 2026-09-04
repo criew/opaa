@@ -29,10 +29,16 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * rule (d)): every chunk below version N of one pipeline, triggerable, resumable, and with progress
  * queryable per library.
  *
+ * <p><b>Also the recovery path of the lexical index (#1270).</b> A chunk whose {@code
+ * chunk_full_text} row is missing or was built under an older {@link
+ * FullTextChunkStore#CURRENT_TSV_VERSION} is selected too, independently of any pipeline version -
+ * since the full-text backfill was removed, nothing else brings such a row up to date. The price is
+ * stated where it is paid: unlike the removed backfill, this path re-parses, re-chunks and
+ * <b>re-embeds</b> the document.
+ *
  * <p><b>Resumable by construction, not through a cursor table.</b> The remaining work is always
  * re-derived from the chunk metadata itself: a chunk rewritten at the current version is no longer
- * selected, so a run interrupted at any point simply continues where it stood on the next call -
- * the same property {@code FullTextBackfillService} has, and for the same reason.
+ * selected, so a run interrupted at any point simply continues where it stood on the next call.
  *
  * <p><b>Every call terminates and every call makes progress.</b> A candidate that cannot be
  * advanced right now - its file is outside what this deployment is allowed to read, or the pipeline
@@ -49,7 +55,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * moment a version is raised.
  *
  * <p>Table/schema name come from the same {@code spring.ai.vectorstore.pgvector.*} properties
- * {@code PgVectorStore} itself binds, mirroring {@code FullTextBackfillService}'s pattern.
+ * {@code PgVectorStore} itself binds, never hardcoded independently of that configuration.
  */
 public class PipelineReindexService {
 
@@ -98,8 +104,7 @@ public class PipelineReindexService {
    * per library or per pipeline.
    *
    * <p>Reads {@code vector_store} with a {@code metadata->>...} predicate that no expression index
-   * backs - the same accepted cost {@code FullTextBackfillProgressService} already carries at
-   * today's data volumes.
+   * backs - an accepted cost at today's data volumes.
    */
   public List<PipelineVersionProgress> progressForOrganization(UUID organizationId) {
     Map<String, Short> currentVersions = currentVersionsById();
@@ -116,7 +121,11 @@ public class PipelineReindexService {
             + "       v.metadata->>'"
             + ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY
             + "' AS routing_extension, "
-            + "       count(*) AS chunk_count "
+            + "       count(*) AS chunk_count, "
+            // Chunks whose lexical index entry is missing or built under an older tsv version
+            // (#1270): stale for this display too, even when their pipeline version is current -
+            // see #selectStaleDocuments for why this re-index is the only path that repairs them.
+            + "       count(*) FILTER (WHERE f.chunk_id IS NULL) AS tsv_stale_count "
             + "FROM "
             + vectorStoreTable
             + " v "
@@ -126,6 +135,7 @@ public class PipelineReindexService {
             // comparison also tolerates - NULL never equals a non-null d.id::text) would otherwise
             // fail the entire admin status page with "invalid input syntax for type uuid".
             + "LEFT JOIN documents d ON d.id::text = v.metadata->>'document_id' "
+            + "LEFT JOIN chunk_full_text f ON f.chunk_id = v.id AND f.content_tsv_version = ? "
             + "WHERE v.metadata->>'library_id' IS NOT NULL "
             + "  AND v.metadata->>'organization_id' = ? "
             + "GROUP BY 1, 2, 3, 4, 5, 6";
@@ -141,6 +151,7 @@ public class PipelineReindexService {
           String sourceType = rs.getString("source_type");
           String routingExtension = rs.getString("routing_extension");
           long count = rs.getLong("chunk_count");
+          long tsvStale = rs.getLong("tsv_stale_count");
           long[] counters = byLibrary.computeIfAbsent(libraryId, key -> new long[3]);
           counters[0] += count;
           boolean isRss = DocumentSourceType.RSS_FEED.name().equals(sourceType);
@@ -164,7 +175,8 @@ public class PipelineReindexService {
               return;
             }
             if (version >= currentVersion) {
-              counters[1] += count;
+              counters[1] += count - tsvStale;
+              counters[2] += tsvStale;
             } else {
               counters[2] += count;
             }
@@ -186,13 +198,15 @@ public class PipelineReindexService {
                   && fileName != null
                   && !pipelineId.equals(currentPipelineIdForFileName(fileName));
           if (!routingStale && version >= currentVersion) {
-            counters[1] += count;
+            counters[1] += count - tsvStale;
+            counters[2] += tsvStale;
           } else {
             counters[2] += count;
           }
         },
         ChunkPipelineMetadata.LEGACY_PIPELINE_ID,
         ChunkPipelineMetadata.LEGACY_PIPELINE_VERSION,
+        FullTextChunkStore.CURRENT_TSV_VERSION,
         organizationId.toString());
 
     return byLibrary.entrySet().stream()
@@ -294,6 +308,9 @@ public class PipelineReindexService {
           ? Advance.MARKED_FOR_NEXT_RUN
           : Advance.SKIPPED;
     }
+    // Read before the rewrite: it decides how a rewritten-but-still-fallback-labeled document is
+    // counted below - a document selected for its stale lexical index was genuinely repaired.
+    boolean hadFullTextGap = !fullTextRowsCurrent(documentId);
     boolean advanced;
     if (document.getParentDocumentId() != null) {
       // Re-runs the current pipeline over an attachment re-extracted from its root ancestor, so a
@@ -331,10 +348,30 @@ public class PipelineReindexService {
     // predicate that selected this candidate for pipelineId - even though the fresh write may
     // resolve to a different extension than the one stored before, or write no key at all when
     // detection fails transiently.
-    if (stillFallbackLabeledAfterReindex(documentId, pipelineId)) {
+    // Not applied to a document that was selected for its stale or missing lexical index (#1270):
+    // that document was genuinely repaired - its rows now carry the current version - and reporting
+    // it as skipped would understate what the call did. It cannot loop either: with the gap closed,
+    // the lexical-index branch no longer selects it, and if the routing gap alone still did, the
+    // next attempt takes the branch below and scans past it.
+    if (!hadFullTextGap && stillFallbackLabeledAfterReindex(documentId, pipelineId)) {
       return Advance.SKIPPED;
     }
     return Advance.REINDEXED;
+  }
+
+  /** Whether every chunk of {@code documentId} carries its {@code chunk_full_text} row today. */
+  private boolean fullTextRowsCurrent(UUID documentId) {
+    Long missing =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM "
+                + vectorStoreTable
+                + " v WHERE v.metadata->>'document_id' = ? AND NOT EXISTS ("
+                + "  SELECT 1 FROM chunk_full_text f "
+                + "  WHERE f.chunk_id = v.id AND f.content_tsv_version = ?)",
+            Long.class,
+            documentId.toString(),
+            FullTextChunkStore.CURRENT_TSV_VERSION);
+    return missing != null && missing == 0;
   }
 
   /**
@@ -424,6 +461,19 @@ public class PipelineReindexService {
             + "       OR ("
             + misrouted.sql()
             + "            AND COALESCE(d.source_type, '') <> 'RSS_FEED')"
+            // The lexical-index gap (#1270): a chunk without a chunk_full_text row at the current
+            // FullTextChunkStore#CURRENT_TSV_VERSION is invisible to the lexical search path, and
+            // since the full-text backfill was removed this re-index is the only thing that
+            // repairs it. Deliberately independent of pipelineId and belowVersion: raising
+            // CURRENT_TSV_VERSION raises no DocumentPipeline#version(), so a selection tied to the
+            // pipeline version would report "nothing to do" for exactly the situation the
+            // documented recovery path names. The re-index rewrites a document through whichever
+            // pipeline claims it today anyway, so selecting it under another pipeline's request
+            // still writes the correct chunks - and it converges, because the rewritten rows carry
+            // the current version.
+            + "       OR NOT EXISTS ("
+            + "            SELECT 1 FROM chunk_full_text f "
+            + "            WHERE f.chunk_id = v.id AND f.content_tsv_version = ?)"
             + "      ) "
             // A remote document already marked for its next run (both change markers cleared, see
             // DocumentRepository#markForReindexOnNextRun) has had everything done to it that this
@@ -443,6 +493,7 @@ public class PipelineReindexService {
     params.add(ChunkPipelineMetadata.LEGACY_PIPELINE_VERSION);
     params.add(belowVersion);
     params.addAll(misrouted.params());
+    params.add(FullTextChunkStore.CURRENT_TSV_VERSION);
     params.add(offset);
     params.add(batchSize);
 

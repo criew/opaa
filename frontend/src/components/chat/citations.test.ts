@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { buildCitationIndex, describeMetadata, formatMetadataLine } from './citations'
+import {
+  buildCitationIndex,
+  describeMetadata,
+  formatMetadataLine,
+  metadataFilterMatchLabel,
+} from './citations'
 import type { SourceReference } from '../../types/api'
 
 // #1066 (metadata-schema.md, Wirkstelle 3): the generic metadata line shared by the Fundstellen
@@ -64,6 +69,19 @@ function source(
     documentId,
   }
 }
+
+describe('metadataFilterMatchLabel (#1070)', () => {
+  test('marks only a hit the Leerwert rule kept', () => {
+    expect(
+      metadataFilterMatchLabel({ ...source('a.pdf', true), metadataFilterMatch: 'NO_VALUE' }),
+    ).toBe('ohne Angabe')
+    expect(
+      metadataFilterMatchLabel({ ...source('a.pdf', true), metadataFilterMatch: 'MATCHED' }),
+    ).toBeUndefined()
+    expect(metadataFilterMatchLabel(source('a.pdf', true))).toBeUndefined()
+    expect(metadataFilterMatchLabel(undefined)).toBeUndefined()
+  })
+})
 
 describe('buildCitationIndex', () => {
   test('numbers markers in order of first appearance and reuses numbers for repeats', () => {

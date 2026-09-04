@@ -27,12 +27,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    // Long enough that FullTextBackfillScheduler's tick (#1047) never fires during a test run -
-    // it would otherwise race a test's own assertions against chunk_full_text/vector_store in the
-    // shared context this signature provides.
-    properties = "opaa.indexing.full-text-backfill.tick-ms=3600000")
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 @ActiveProfiles({"local", "dev"})
 @Testcontainers(disabledWithoutDocker = true)

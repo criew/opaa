@@ -45,6 +45,39 @@ const NOTE_RULES: NoteRule[] = [
       'Rechtefilter in jeder Suche dieses Laufs angewendet, nie erst nachträglich auf das Ergebnis.',
   },
 
+  // MetadataFilterStage (#1070)
+  {
+    name: 'METADATA_FILTER_NONE',
+    pattern: /^no metadata filter set: every candidate of the search scope qualifies$/,
+    german: () => 'Kein Metadatenfilter gesetzt: Jeder Kandidat des Suchbereichs kommt in Frage.',
+  },
+  {
+    name: 'METADATA_FILTER_DOCUMENT_TYPES',
+    pattern: /^metadata filter: document type in \[(.*)\]$/s,
+    german: (m) => `Metadatenfilter: Dokumentart in [${m[1]}].`,
+  },
+  {
+    name: 'METADATA_FILTER_DATE_WINDOW',
+    pattern:
+      /^metadata filter: document date from (.+?) to (.+?), a value counting for the whole span its precision leaves open$/,
+    german: (m) =>
+      `Metadatenfilter: Datum/Stand von ${m[1] === 'open start' ? 'offen' : m[1]} bis ${m[2] === 'open end' ? 'offen' : m[2]}; ein Wert gilt für den ganzen Zeitraum, den seine Genauigkeit offenlässt.`,
+  },
+  {
+    name: 'METADATA_FILTER_SUBORDINATE',
+    pattern:
+      /^metadata filter applied inside both search paths, AND-ed to the permission filter; a document without a value for a filtered field is kept$/,
+    german: () =>
+      'Metadatenfilter in beiden Suchpfaden innerhalb der Abfrage angewendet, mit UND unter dem Rechtefilter; ein Dokument ohne Wert im gefilterten Feld bleibt enthalten.',
+  },
+  {
+    name: 'METADATA_FILTER_NO_VALUE_CANDIDATES',
+    pattern:
+      /^metadata filter applied inside the query: (\d+) of (\d+) candidate\(s\) kept without a value for a filtered field$/,
+    german: (m) =>
+      `Metadatenfilter in der Suchanfrage angewendet: ${m[1]} von ${plural(m[2], 'Kandidat', 'Kandidaten')} ohne Angabe im gefilterten Feld behalten.`,
+  },
+
   // SubQueryDecompositionStage
   {
     name: 'DECOMPOSITION_PRODUCED',
@@ -93,17 +126,6 @@ const NOTE_RULES: NoteRule[] = [
     german: (m) => `Volltextpfad abgeschaltet (${m[1]}).`,
   },
   {
-    name: 'NO_FULL_TEXT_BACKFILL',
-    pattern: /^no library of the search scope has a completed full-text backfill$/,
-    german: () => 'Keine Bibliothek des Suchbereichs hat einen abgeschlossenen Volltext-Backfill.',
-  },
-  {
-    name: 'FULL_TEXT_BACKFILL_PENDING',
-    pattern: /^the lexical path stays out of the fusion until a library's backfill is complete$/,
-    german: () =>
-      'Der Volltextpfad bleibt aus der Fusion heraus, bis der Backfill mindestens einer Bibliothek abgeschlossen ist.',
-  },
-  {
     name: 'LEXICAL_SEARCH_FAILED',
     // The exception type the backend appends is developer diagnostics and stays in the server log:
     // a Java class name says nothing to the operator that this sentence does not say better.
@@ -119,9 +141,9 @@ const NOTE_RULES: NoteRule[] = [
   {
     name: 'FULL_TEXT_PERMISSION_FILTER',
     pattern:
-      /^permission filter applied inside the query: (\d+) of (\d+) scoped libraries searched, the rest awaiting their backfill$/,
+      /^permission filter applied inside the query: (\d+) scoped libraries searched, (\d+) of them with an incomplete full-text index$/,
     german: (m) =>
-      `Rechtefilter in der Suchanfrage angewendet: ${m[1]} von ${m[2]} Bibliotheken des Suchbereichs durchsucht, die übrigen warten auf ihren Backfill.`,
+      `Rechtefilter in der Suchanfrage angewendet: ${plural(m[1], 'Bibliothek', 'Bibliotheken')} des Suchbereichs durchsucht, davon ${m[2]} mit unvollständigem Volltextindex.`,
   },
 
   // MmrSelectionStage

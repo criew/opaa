@@ -31,6 +31,7 @@ import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
+import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -106,6 +107,7 @@ class QueryServiceTest {
         new QueryConfiguration()
             .retrievalPipeline(
                 new SearchScopeStage(),
+                new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
                 new SubQueryDecompositionStage(queryDecompositionService),
                 new VectorSearchStage(vectorStore),
                 // The lexical path is switched off in every QueryProperties this class builds
@@ -113,7 +115,7 @@ class QueryServiceTest {
                 // the selection, not about how the selection is retrieved (see
                 // FullTextSearchStageTest).
                 new FullTextSearchStage(
-                    mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
+                    mock(FullTextChunkSearch.class), mock(FullTextIndexCompleteness.class)),
                 new MmrSelectionStage(chunkEmbeddingLookup),
                 new RankFusionStage(),
                 new RerankStage(disabledRerankRole()),
@@ -133,7 +135,8 @@ class QueryServiceTest {
         queryProperties,
         knowledgeLibraryRepository,
         disabledRerankRole(),
-        documentMetadataService);
+        documentMetadataService,
+        mock(DocumentTypeVocabularyRepository.class));
   }
 
   /**
@@ -2340,22 +2343,21 @@ class QueryServiceTest {
   @Nested
   class RelevanceScoreAcrossSearchPaths {
 
-    private QueryService newHybridQueryService(
-        FullTextChunkSearch fullTextChunkSearch, FullTextBackfillGate backfillGate) {
-      return newHybridQueryService(fullTextChunkSearch, backfillGate, 1);
+    private QueryService newHybridQueryService(FullTextChunkSearch fullTextChunkSearch) {
+      return newHybridQueryService(fullTextChunkSearch, 1);
     }
 
     private QueryService newHybridQueryService(
-        FullTextChunkSearch fullTextChunkSearch,
-        FullTextBackfillGate backfillGate,
-        int maxChunksPerDocument) {
+        FullTextChunkSearch fullTextChunkSearch, int maxChunksPerDocument) {
       RetrievalPipeline pipeline =
           new QueryConfiguration()
               .retrievalPipeline(
                   new SearchScopeStage(),
+                  new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
                   new SubQueryDecompositionStage(queryDecompositionService),
                   new VectorSearchStage(vectorStore),
-                  new FullTextSearchStage(fullTextChunkSearch, backfillGate),
+                  new FullTextSearchStage(
+                      fullTextChunkSearch, mock(FullTextIndexCompleteness.class)),
                   new MmrSelectionStage(chunkEmbeddingLookup),
                   new RankFusionStage(),
                   new RerankStage(disabledRerankRole()),
@@ -2375,7 +2377,8 @@ class QueryServiceTest {
           new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, maxChunksPerDocument, true, 50),
           knowledgeLibraryRepository,
           disabledRerankRole(),
-          documentMetadataService);
+          documentMetadataService,
+          mock(DocumentTypeVocabularyRepository.class));
     }
 
     /**
@@ -2388,9 +2391,6 @@ class QueryServiceTest {
     void aLexicalOnlyChunkKeepsTheRelevanceScoreOfItsFusedRank() {
       when(chatMemory.get(any())).thenReturn(List.of());
       FullTextChunkSearch fullTextChunkSearch = mock(FullTextChunkSearch.class);
-      FullTextBackfillGate backfillGate = mock(FullTextBackfillGate.class);
-      when(backfillGate.searchableLibraries(Set.of(readableLibraryId)))
-          .thenReturn(Set.of(readableLibraryId));
       var vectorChunk =
           Document.builder()
               .text("vector hit")
@@ -2404,13 +2404,13 @@ class QueryServiceTest {
               .score(0.09)
               .build();
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(vectorChunk));
-      when(fullTextChunkSearch.search(any(), any(), anyInt())).thenReturn(List.of(lexicalChunk));
+      when(fullTextChunkSearch.search(any(), any(), any(), anyInt()))
+          .thenReturn(List.of(lexicalChunk));
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
       when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
       QueryResult response =
-          newHybridQueryService(fullTextChunkSearch, backfillGate)
-              .query("Frage", null, caller, true, List.of());
+          newHybridQueryService(fullTextChunkSearch).query("Frage", null, caller, true, List.of());
 
       assertThat(response.getSources())
           .extracting(ChatSource::getFileName, ChatSource::getRelevanceScore)
@@ -2426,20 +2426,17 @@ class QueryServiceTest {
     void ranksSourcesByTheirOwnPositionWhenOneDocumentContributesSeveralChunks() {
       when(chatMemory.get(any())).thenReturn(List.of());
       FullTextChunkSearch fullTextChunkSearch = mock(FullTextChunkSearch.class);
-      FullTextBackfillGate backfillGate = mock(FullTextBackfillGate.class);
-      when(backfillGate.searchableLibraries(Set.of(readableLibraryId)))
-          .thenReturn(Set.of(readableLibraryId));
       var firstChunkOfA = chunkOf("a.md", "doc-a", "A, erster Abschnitt", 0.9);
       var secondChunkOfA = chunkOf("a.md", "doc-a", "A, zweiter Abschnitt", 0.85);
       var chunkOfB = chunkOf("b.md", "doc-b", "B, einziger Abschnitt", 0.8);
       when(vectorStore.similaritySearch(any(SearchRequest.class)))
           .thenReturn(List.of(firstChunkOfA, secondChunkOfA, chunkOfB));
-      when(fullTextChunkSearch.search(any(), any(), anyInt())).thenReturn(List.of());
+      when(fullTextChunkSearch.search(any(), any(), any(), anyInt())).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
       when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
       QueryResult response =
-          newHybridQueryService(fullTextChunkSearch, backfillGate, 2)
+          newHybridQueryService(fullTextChunkSearch, 2)
               .query("Frage", null, caller, true, List.of());
 
       assertThat(response.getSources())

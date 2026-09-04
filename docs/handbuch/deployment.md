@@ -575,6 +575,9 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_RERANK_API_KEY` | — (leer) | nicht gesetzt | Optionaler Zugangsschlüssel. Er erscheint ausschließlich im `Authorization`-Header der Rerank-Anfrage — nie in einem Log, nie in einer Zustandsantwort, auch nicht gekürzt |
 | `OPAA_RERANK_TIMEOUT` | `240s` | `240s` | Zeitbudget einer einzelnen Rerank-Anfrage — die Gesamtfrist von Verbindungsaufbau über Antwort-Header bis zum vollständig gelesenen Antwortkörper (#1209); ein Endpunkt, der nach den Headern beim Senden des Bodys stockt, kostet nicht mehr als dieses Budget. Läuft die Frist ab, behält die Suche die fusionierte Reihenfolge — ein langsamer Endpunkt kostet die Sortierung, nie die Antwort. Der Startwert trägt den CPU-Fall: #1050 maß rund drei Minuten je Frage für das Kandidatenfenster 50 auf einer 20-Kern-CPU mit `BAAI/bge-reranker-v2-m3` (siehe [Hybride Suche mit Reranking](../features/hybrid-retrieval.md#arbeitspaket-latenz-hardwareprofil)). Ein knapperer Wert meldet normale CPU-Latenz als `UNREACHABLE` statt als Langsamkeit (#1154) — die Zustandsseite unterscheidet die beiden inzwischen im `detail`-Text, aber nur, wenn der Endpunkt überhaupt die Chance bekommt, innerhalb des Budgets zu antworten. Eine Installation mit einem schnelleren (typischerweise GPU-gestützten) Endpunkt darf den Wert senken |
 | `OPAA_QUERY_RERANK_CANDIDATE_COUNT` | `50` | `50` | Wie viele fusionierte Kandidaten die Rerank-Stufe bewertet, und zugleich das Budget, das MMR-Auswahl und Fusion für sie behalten, solange Reranking läuft (0–200, #1050, Kandidatenzahl mit aktivem Ausfallwächter erneut belegt in #1153). `0` schaltet die Stufe über ihren eigenen Parameter ab, unabhängig von `OPAA_RERANK_ENABLED`. Der Wert 50 entspricht dem, was zwei Suchpfade bei `OPAA_QUERY_FETCH_K=25` je Teilfrage überhaupt liefern können — das Fenster deckt damit einen vollständigen Lauf des Auslieferungsstands mit einer Teilfrage ab. **Das Fenster vergrößert die Reichweite der Suche nicht:** Was keine Suchstufe zurückgibt, kann keine Fusion und kein Reranking heben. Die Reichweite ist `OPAA_QUERY_FETCH_K` je Liste mal der Zahl der Listen (Teilfragen mal aktive Suchpfade); diesen Wert anzuheben, ohne `OPAA_QUERY_FETCH_K` mit anzuheben, bringt deshalb nichts (siehe [„Reranking einschalten“](#reranking-einschalten)). Gemessen wird er gegen die Verwaltungs-Evaldomäne — der Wert gehört zu den benchmark-gehärteten internen Defaults und nicht in eine Administrationsoberfläche |
+| `OPAA_QUERY_METADATA_FILTER_DOCUMENT_TYPE_THRESHOLD` | `0.90` | `0.90` | Eintrittsbedingung des Kernfeld-Filters (#1070): der Füllstand (Anteil der indizierten Dokumente mit Wert oder „kein Wert ermittelbar" im Suchbereich der fragenden Person), ab dem die Filter-Oberfläche die Dokumentart anbietet. Vor der ersten Messung committet (ADR-0012); ein Feld darunter wird nicht angeboten, mit sichtbarer Begründung. Für Tests und bewusste Experimente überschreibbar, keine Verwaltungseinstellung |
+| `OPAA_QUERY_METADATA_FILTER_DOCUMENT_DATE_THRESHOLD` | `0.75` | `0.75` | Dieselbe Eintrittsbedingung für Datum/Stand — niedriger, weil ein fehlendes Datum wegen der Leerwert-Regel nur Schärfe kostet, nie ein Dokument |
+| `OPAA_QUERY_METADATA_FILTER_OPTIONS_CACHE_TTL` | `5m` | `5m` | Wie lange die Filteroptionen einer Person (Füllstand, vorkommende Werte) zwischengespeichert bleiben, bevor sie über den aktuellen Bestand neu gezählt werden. Begrenzt nur die Veraltung des Bestands: Eine Rechteänderung der Person verwirft ihren Eintrag sofort |
 | **Indizierung** | | | |
 | `OPAA_INDEXING_CHUNK_SIZE` | `1000` | `1000` | Ziel-Tokens pro Chunk (1–10.000) |
 | `OPAA_INDEXING_CHUNK_OVERLAP` | `100` | nicht gesetzt (Anwendungs-Default gilt) | Anzahl der Tokens, die jeder Chunk vom Ende seines Vorgängers wiederholt, damit eine Aussage an einer Chunk-Grenze in mindestens einem Chunk vollständig erhalten bleibt (#374). Muss kleiner als `OPAA_INDEXING_CHUNK_SIZE` sein; `0` deaktiviert die Überlappung, ein negativer Wert wird auf `0` normalisiert |
@@ -1086,18 +1089,24 @@ Erlassnummern, seltene Fachbegriffe.
 
 ### Was zu tun ist
 
-Nichts. Jeder neu indexierte Chunk bekommt seinen Volltexteintrag in derselben Transaktion wie den
-Vektor. Der **Bestand** aus der Zeit davor wird von einem Hintergrundlauf nachgezogen, der in kleinen
-Stapeln arbeitet, jederzeit unterbrechbar ist und nach einem Neustart dort weitermacht, wo er stand.
-Erst wenn der Nachlauf einer Bibliothek abgeschlossen ist, wird diese Bibliothek volltextlich
-durchsucht — ein halb gefüllter Index liefert Treffer und verschweigt den Rest, und das ist schlechter,
-als gar nichts zu liefern.
+Im laufenden Betrieb nichts. Jeder indexierte Chunk bekommt seinen Volltexteintrag in derselben
+Transaktion wie den Vektor; auf diesem Weg entsteht kein Abschnitt, der vektorisiert, aber nicht
+volltextindiziert ist.
 
-Dasselbe passiert automatisch, wenn ein Update die Art ändert, wie der Volltextindex gebildet wird: Die
-betroffenen Zeilen gelten dann als fehlend und werden nachgezogen. Ein manueller Reindex ist dafür
-**nicht** nötig — anders als bei einer Änderung am Einbettungsmodell (siehe
-[„Was ein Update mit dem Index macht"](#was-ein-update-mit-dem-index-macht)), denn hier ist kein
-Modellaufruf im Spiel.
+**Ändert ein Update die Art, wie der Volltextindex gebildet wird**, gelten die betroffenen Zeilen als
+fehlend: Der lexikalische Pfad findet sie nicht mehr, und die Seite „Suche & Indexierung" zeigt die
+betroffenen Bibliotheken als **unvollständig** an. Einen Hintergrundlauf, der das von selbst
+nachzieht, gibt es nicht — **nötig ist dann der Nachzug auf der Administrationsseite**
+(„Suche & Indexierung", Pipeline-Nachzug). Er erfasst solche Abschnitte ausdrücklich, auch wenn sich
+an der Aufbereitung des Dokuments sonst nichts geändert hat.
+
+**Was das kostet:** Der Nachzug liest jedes betroffene Dokument neu ein, zerlegt es erneut in
+Abschnitte und **bettet diese neu ein** — er verursacht also Aufrufe beim Einbettungsmodell und ist
+in derselben Größenordnung teuer wie eine Neuindizierung dieser Dokumente. Er ist damit teurer als
+das reine Neuschreiben der Volltextspalte wäre, aber der einzige Weg, der dieselben Abschnitte
+lückenlos wiederherstellt. Der Lauf ist stapelweise, unterbrechbar und wiederaufnehmbar; bis er
+durch ist, arbeitet die Suche für die betroffenen Bestände rein vektoriell weiter. Ein Update, das
+diesen Nachzug nötig macht, wird in den Release-Hinweisen ausdrücklich genannt.
 
 ### Bekannte Grenze: `ts_rank` ist kein BM25
 

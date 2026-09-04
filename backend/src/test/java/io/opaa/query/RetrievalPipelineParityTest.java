@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankModelRole;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,6 +45,7 @@ class RetrievalPipelineParityTest {
     return new QueryConfiguration()
         .retrievalPipeline(
             new SearchScopeStage(),
+            new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
             new SubQueryDecompositionStage(queryDecompositionService),
             new VectorSearchStage(vectorStore),
             // The lexical path is switched off in every QueryProperties this class builds
@@ -50,7 +53,7 @@ class RetrievalPipelineParityTest {
             // which had no second search path. Its own behaviour is covered by
             // FullTextSearchStageTest and FullTextChunkSearchIntegrationTest.
             new FullTextSearchStage(
-                mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
+                mock(FullTextChunkSearch.class), mock(FullTextIndexCompleteness.class)),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(mock(RerankModelRole.class)),
@@ -112,6 +115,7 @@ class RetrievalPipelineParityTest {
                 "Frage",
                 List.of(),
                 Set.of(LIBRARY_ID),
+                MetadataFilter.NONE,
                 properties,
                 RerankAvailability.SWITCHED_OFF))
         .chunks();

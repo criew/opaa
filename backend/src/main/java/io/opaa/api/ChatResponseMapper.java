@@ -33,7 +33,8 @@ final class ChatResponseMapper {
             chat.getCreatedAt(),
             chat.getUpdatedAt())
         .title(chat.getTitle())
-        .referencedLibraryIds(List.copyOf(chat.getReferencedLibraryIds()));
+        .referencedLibraryIds(List.copyOf(chat.getReferencedLibraryIds()))
+        .metadataFilter(MetadataFilterMapper.toResponse(chat.getMetadataFilter()));
   }
 
   static List<ChatSummary> toSummaryResponses(List<Chat> chats) {
@@ -53,7 +54,8 @@ final class ChatResponseMapper {
             conversation.getCreatedAt(),
             conversation.getUpdatedAt())
         .title(conversation.getTitle())
-        .referencedLibraryIds(conversation.getReferencedLibraryIds());
+        .referencedLibraryIds(conversation.getReferencedLibraryIds())
+        .metadataFilter(MetadataFilterMapper.toResponse(conversation.getMetadataFilter()));
   }
 
   private static ChatMessageResponse toMessageResponse(ChatTurn turn) {
@@ -86,7 +88,8 @@ final class ChatResponseMapper {
         .mailTo(source.getMailTo())
         .mailSubject(source.getMailSubject())
         .mailDate(source.getMailDate())
-        .metadata(toMetadataEntries(source.getMetadata()));
+        .metadata(toMetadataEntries(source.getMetadata()))
+        .metadataFilterMatch(source.getMetadataFilterMatch());
   }
 
   /** An absent or empty list maps to null - the Beleg has nothing to render either way. */

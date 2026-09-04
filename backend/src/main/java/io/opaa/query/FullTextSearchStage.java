@@ -26,15 +26,19 @@ import org.springframework.stereotype.Component;
  * permission filter as the vector path's candidates, so the pool invariant that confines document
  * completion to permission-scoped chunks (#932) holds unchanged.
  *
- * <p><b>Two gates, both narrowing, never widening:</b>
+ * <p><b>One gate, narrowing, never widening:</b> {@link QueryProperties#fullTextSearchEnabled()} -
+ * the operator's switch, and the {@code vector-only} measurement variant. Every library of the
+ * search scope is searched otherwise; the per-library completion gate that used to hold an
+ * incompletely indexed library out of this path entirely is gone (#1270).
  *
- * <ul>
- *   <li>{@link QueryProperties#fullTextSearchEnabled()} - the operator's switch, and the {@code
- *       vector-only} measurement variant.
- *   <li>{@link FullTextBackfillGate} - a library whose backfill has not finished is not searched. A
- *       half-filled full-text index returns hits and hides the rest, which is worse than returning
- *       nothing (docs/features/hybrid-retrieval.md, "Arbeitspaket 2a").
- * </ul>
+ * <p><b>A half-filled full-text index is therefore possible and deliberately tolerated.</b> On the
+ * regular write path a chunk's full-text row is written in the same transaction as its vector row,
+ * so no gap opens there - but a raised {@code FullTextChunkStore#CURRENT_TSV_VERSION}, an orphaned
+ * row, or a write that bypassed {@code VectorChunkStore} leaves chunks this path cannot find, and
+ * it then contributes a partially filled list to the fusion instead of none. That state is not
+ * silent: {@link FullTextIndexCompleteness} puts the number of affected libraries into this stage's
+ * notes, the administration page shows the library as incomplete, and the pipeline re-index is what
+ * repairs it.
  *
  * <p><b>A failure degrades the path, never the answer.</b> A missing or broken full-text column may
  * cost search quality and must not raise for the person asking (docs/features/hybrid-retrieval.md,
@@ -50,11 +54,12 @@ class FullTextSearchStage implements RetrievalStage {
   private static final Logger log = LoggerFactory.getLogger(FullTextSearchStage.class);
 
   private final FullTextChunkSearch fullTextChunkSearch;
-  private final FullTextBackfillGate backfillGate;
+  private final FullTextIndexCompleteness indexCompleteness;
 
-  FullTextSearchStage(FullTextChunkSearch fullTextChunkSearch, FullTextBackfillGate backfillGate) {
+  FullTextSearchStage(
+      FullTextChunkSearch fullTextChunkSearch, FullTextIndexCompleteness indexCompleteness) {
     this.fullTextChunkSearch = fullTextChunkSearch;
-    this.backfillGate = backfillGate;
+    this.indexCompleteness = indexCompleteness;
   }
 
   @Override
@@ -84,19 +89,7 @@ class FullTextSearchStage implements RetrievalStage {
                       "opaa.query.full-text-search-enabled"))));
     }
 
-    Set<UUID> searchable = backfillGate.searchableLibraries(context.searchScope());
-    if (searchable.isEmpty()) {
-      return new StageOutcome(
-          state,
-          StageExplanation.executed(
-              name(),
-              inFlight,
-              inFlight,
-              List.of(),
-              List.of(
-                  RetrievalNote.NO_FULL_TEXT_BACKFILL.format(),
-                  RetrievalNote.FULL_TEXT_BACKFILL_PENDING.format())));
-    }
+    Set<UUID> searchScope = context.searchScope();
 
     List<String> searchQueries =
         state.searchQueries().isEmpty() ? List.of(context.question()) : state.searchQueries();
@@ -109,7 +102,10 @@ class FullTextSearchStage implements RetrievalStage {
       try {
         candidates =
             fullTextChunkSearch.search(
-                searchQueries.get(i), searchable, context.queryProperties().fetchK());
+                searchQueries.get(i),
+                searchScope,
+                state.metadataFilter(),
+                context.queryProperties().fetchK());
       } catch (RuntimeException e) {
         log.warn(
             "Lexical search path failed for sub-query {} - retrieval continues without its"
@@ -139,7 +135,15 @@ class FullTextSearchStage implements RetrievalStage {
     notes.add(
         2,
         RetrievalNote.FULL_TEXT_PERMISSION_FILTER.format(
-            searchable.size(), context.searchScope().size()));
+            searchScope.size(), indexCompleteness.incompleteLibraryCount(searchScope)));
+    if (!state.metadataFilter().isEmpty()) {
+      List<Document> all = lists.stream().flatMap(list -> list.documents().stream()).toList();
+      notes.add(
+          3,
+          RetrievalNote.METADATA_FILTER_NO_VALUE_CANDIDATES.format(
+              MetadataFilterExpressions.countKeptWithoutValue(state.metadataFilter(), all),
+              all.size()));
+    }
     // Records the queries actually searched when this stage derived them itself, so a run never
     // reports having searched nothing while it did - the vector path does the same, and either
     // path may be the one that runs.

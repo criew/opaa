@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankClient.ScoredCandidate;
 import io.opaa.llm.RerankModelRole;
 import java.util.List;
@@ -41,6 +42,7 @@ class RerankStageTest {
         "Wie hoch ist die Verwaltungsgebühr?",
         List.of(),
         Set.of(UUID.randomUUID()),
+        MetadataFilter.NONE,
         properties(rerankCandidateCount),
         availability);
   }

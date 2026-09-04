@@ -41,9 +41,9 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
   Feld — die Metriknamen des Pipeline-Pfads (`hitRateAt5`, `ndcgAt8`, …) sind an das
   Produktionsfenster gebunden (siehe `retrieval-benchmark.md`, Abschnitt 1).
 - Eine Variante mit `fullTextSearchEnabled: true` wird als „nicht ausgeführt" gemeldet, solange der
-  Volltext-Backfill der gemessenen Bibliothek unvollständig ist: Das Backfill-Tor hielte die
-  Bibliothek dann vollständig aus dem lexikalischen Pfad heraus, und die Variante hätte die
-  vector-only-Konfiguration unter dem Namen der hybriden gemessen.
+  Volltextindex der gemessenen Bibliothek unvollständig ist: Die fehlenden Abschnitte sind für den
+  lexikalischen Pfad unsichtbar, und die Variante hätte einen geschmälerten lexikalischen Beitrag
+  unter dem Namen der vollen hybriden Konfiguration gemessen.
 - Der Vergleich `verwaltung-reranking.json` (Issue #1050) misst die Rerank-Stufe und ihr
   Kandidatenfenster; das Ergebnis steht in
   [`docs/features/hybrid-retrieval.md`](../../docs/features/hybrid-retrieval.md), Arbeitspaket 4.

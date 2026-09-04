@@ -72,7 +72,7 @@ class PipelineReindexServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text, chunk_full_text_skip");
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
     // A single-statement delete, not documentRepository.deleteAll(): per-entity deletes in
     // arbitrary order trip fk_documents_parent for a bestand with attachment child rows, while
     // one statement removes parents and children together.
@@ -544,6 +544,52 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(chunkIdsOf(document.getId())).isEqualTo(chunkIdsAfterFirstCall);
   }
 
+  /**
+   * #1270 Nachreview: a document selected purely for its stale lexical index is reported as
+   * re-indexed even when its rewritten chunks still name the fallback pipeline - it was genuinely
+   * repaired, and the loop protection that counts such a document as skipped exists for the routing
+   * gap, which is not why this one was selected.
+   */
+  @Test
+  void aDocumentRepairedOnlyForItsStaleFullTextRowsCountsAsReindexedNotSkipped()
+      throws IOException {
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    Document document =
+        persistedFilesystemTextDocumentNamedLikePdf(
+            "bericht.pdf", "Dies ist kein PDF, sondern reiner Text. ");
+    // NO_ROUTING_EXTENSION excludes this chunk from the routing-gap branch, so only the stale
+    // full-text row can select it - while a re-index still writes fallback-labeled chunks.
+    UUID chunkId =
+        seedChunk(
+            document.getId(),
+            library.getId(),
+            "alter chunk",
+            TikaFallbackPipeline.ID,
+            TikaFallbackPipeline.VERSION,
+            ChunkPipelineMetadata.NO_ROUTING_EXTENSION);
+    jdbcTemplate.update(
+        "UPDATE chunk_full_text SET content_tsv_version = ? WHERE chunk_id = ?",
+        (short) (FullTextChunkStore.CURRENT_TSV_VERSION - 1),
+        chunkId);
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    assertThat(result.skippedDocuments()).isZero();
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackPipeline.ID);
+    assertThat(currentVersionFullTextRowsOf(document.getId()))
+        .isEqualTo(chunkTextsOf(document.getId()).size())
+        .isPositive();
+    // And it terminates: with the gap closed, nothing selects the document again.
+    assertThat(
+            reindexService
+                .reindexBatch(Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10)
+                .isEmpty())
+        .isTrue();
+  }
+
   private List<String> chunkIdsOf(UUID documentId) {
     return jdbcTemplate.queryForList(
         "SELECT id FROM vector_store WHERE metadata->>'document_id' = ? ORDER BY id",
@@ -562,6 +608,62 @@ class PipelineReindexServiceIntegrationTest {
     document.setOrganizationId(Organization.DEFAULT_ID);
     document.setChecksum("checksum-" + fileName);
     return documentRepository.save(document);
+  }
+
+  /**
+   * #1270: raising FullTextChunkStore#CURRENT_TSV_VERSION raises no DocumentPipeline#version(), so
+   * a selection tied to the pipeline version alone would report "nothing to do" for exactly the
+   * situation the documented recovery path names. The document is selected on its stale full-text
+   * row, and afterwards every chunk of it carries a row at the current version.
+   */
+  @Test
+  void aDocumentWhoseFullTextRowsAreBelowTheCurrentTsvVersionIsReindexed() throws IOException {
+    Document document =
+        persistedFilesystemDocument(
+            "gebuehrensatzung.txt", "Die Verwaltungsgebühr beträgt 37,00 EUR je Vorgang.");
+    // Current pipeline version, so only the stale tsv version can select this document.
+    UUID chunkId =
+        seedChunk(
+            document.getId(),
+            "aktueller chunk",
+            TikaFallbackPipeline.ID,
+            TikaFallbackPipeline.VERSION);
+    jdbcTemplate.update(
+        "UPDATE chunk_full_text SET content_tsv_version = ? WHERE chunk_id = ?",
+        (short) (FullTextChunkStore.CURRENT_TSV_VERSION - 1),
+        chunkId);
+    assertThat(currentVersionFullTextRowsOf(document.getId())).isZero();
+    assertThat(
+            reindexService
+                .progressForOrganization(Organization.DEFAULT_ID)
+                .getFirst()
+                .staleChunks())
+        .isEqualTo(1);
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION, 10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    assertThat(currentVersionFullTextRowsOf(document.getId()))
+        .isEqualTo(chunkTextsOf(document.getId()).size())
+        .isPositive();
+    // Drained: the rewritten rows carry the current version, so nothing selects them again.
+    assertThat(
+            reindexService
+                .reindexBatch(
+                    Organization.DEFAULT_ID,
+                    TikaFallbackPipeline.ID,
+                    TikaFallbackPipeline.VERSION,
+                    10)
+                .isEmpty())
+        .isTrue();
+    assertThat(
+            reindexService
+                .progressForOrganization(Organization.DEFAULT_ID)
+                .getFirst()
+                .staleChunks())
+        .isZero();
   }
 
   @Test
@@ -1200,13 +1302,13 @@ class PipelineReindexServiceIntegrationTest {
     return documentRepository.save(document);
   }
 
-  private void seedChunk(UUID documentId, String text, String pipelineId, Short pipelineVersion) {
-    seedChunk(documentId, library.getId(), text, pipelineId, pipelineVersion);
+  private UUID seedChunk(UUID documentId, String text, String pipelineId, Short pipelineVersion) {
+    return seedChunk(documentId, library.getId(), text, pipelineId, pipelineVersion);
   }
 
-  private void seedChunk(
+  private UUID seedChunk(
       UUID documentId, UUID libraryId, String text, String pipelineId, Short pipelineVersion) {
-    seedChunk(documentId, libraryId, text, pipelineId, pipelineVersion, null);
+    return seedChunk(documentId, libraryId, text, pipelineId, pipelineVersion, null);
   }
 
   /**
@@ -1215,7 +1317,7 @@ class PipelineReindexServiceIntegrationTest {
    * entirely (the pre-#1126 Altbestand this class's other tests already cover), matching a
    * forward-written chunk otherwise.
    */
-  private void seedChunk(
+  private UUID seedChunk(
       UUID documentId,
       UUID libraryId,
       String text,
@@ -1233,7 +1335,30 @@ class PipelineReindexServiceIntegrationTest {
     if (routingExtension != null) {
       metadata.put(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY, routingExtension);
     }
-    vectorStore.add(List.of(new org.springframework.ai.document.Document(text, metadata)));
+    org.springframework.ai.document.Document chunk =
+        new org.springframework.ai.document.Document(text, metadata);
+    vectorStore.add(List.of(chunk));
+    // Mirrors the production write path, which fills chunk_full_text in the same transaction: a
+    // chunk without a current-version row is stale for the re-index in its own right (#1270), and
+    // this class's other tests are about pipeline routing, not about that.
+    insertFullTextRow(
+        UUID.fromString(chunk.getId()),
+        documentId,
+        libraryId,
+        FullTextChunkStore.CURRENT_TSV_VERSION);
+    return UUID.fromString(chunk.getId());
+  }
+
+  private void insertFullTextRow(
+      UUID chunkId, UUID documentId, UUID libraryId, short contentTsvVersion) {
+    jdbcTemplate.update(
+        "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv, "
+            + "content_tsv_version) VALUES (?, ?, ?, to_tsvector('german', ?), ?)",
+        chunkId,
+        documentId,
+        libraryId,
+        "inhalt",
+        contentTsvVersion);
   }
 
   private List<String> chunkTextsOf(UUID documentId) {
@@ -1241,6 +1366,14 @@ class PipelineReindexServiceIntegrationTest {
         "SELECT content FROM vector_store WHERE metadata->>'document_id' = ?",
         String.class,
         documentId.toString());
+  }
+
+  private long currentVersionFullTextRowsOf(UUID documentId) {
+    return jdbcTemplate.queryForObject(
+        "SELECT count(*) FROM chunk_full_text WHERE document_id = ? AND content_tsv_version = ?",
+        Long.class,
+        documentId,
+        FullTextChunkStore.CURRENT_TSV_VERSION);
   }
 
   private long fullTextRowCountOf(UUID documentId) {

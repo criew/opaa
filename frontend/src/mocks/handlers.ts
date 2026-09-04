@@ -35,6 +35,7 @@ import {
   mockLibraryFolders,
   mockDocumentMetadata,
   mockDocumentTypeVocabulary,
+  mockMetadataFilterOptions,
   resetMockDocumentMetadata,
   mockLibraryGrants,
   mockMyGroups,
@@ -633,6 +634,7 @@ export const handlers = [
       title: body.title ?? null,
       useKnowledge: body.useKnowledge ?? true,
       referencedLibraryIds: body.referencedLibraryIds ?? [],
+      metadataFilter: body.metadataFilter ?? null,
       status: 'PRIVATE',
       messages: [],
       createdAt: now,
@@ -663,6 +665,15 @@ export const handlers = [
     }
     if (body.referencedLibraryIds !== undefined && body.referencedLibraryIds !== null) {
       chat.referencedLibraryIds = body.referencedLibraryIds
+    }
+    // #1070: omitted/null leaves the filter unchanged, an object without any condition clears it.
+    if (body.metadataFilter !== undefined && body.metadataFilter !== null) {
+      const filter = body.metadataFilter
+      const empty =
+        (filter.documentTypes ?? []).length === 0 &&
+        !filter.documentDateFrom &&
+        !filter.documentDateTo
+      chat.metadataFilter = empty ? null : filter
     }
     chat.updatedAt = new Date().toISOString()
     return HttpResponse.json(chat)
@@ -1845,6 +1856,13 @@ export const handlers = [
   // #1068: manual metadata correction - read, set, delete, bulk, plus the vocabulary.
   http.get('/api/v1/metadata/document-types', () =>
     HttpResponse.json({ items: mockDocumentTypeVocabulary }),
+  ),
+
+  // #1070: the Füllstand and the occurring values of the filterable core fields for the caller's
+  // search scope. The mock's bestand offers the Dokumentart (above the 0.90 threshold) but not
+  // the date (below 0.75), so both states of the filter interface are exercised in dev mode.
+  http.get('/api/v1/search/metadata-filter-options', () =>
+    HttpResponse.json(mockMetadataFilterOptions),
   ),
 
   http.get('/api/v1/libraries/:libraryId/documents/:documentId/metadata', ({ params }) => {

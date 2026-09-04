@@ -1408,8 +1408,8 @@ Daraus folgen drei Fähigkeiten:
   dieser Pipeline" neu erzeugen, statt den gesamten Bestand anzufassen. Das ist der Unterschied
   zwischen einer Umstellung, die über Nacht läuft, und einer, die niemand auslöst.
 - **Wiederaufnehmbarkeit mit Fortschritt je Bibliothek.** Der Lauf darf abbrechen und fortsetzen; sein
-  Stand ist je Bibliothek abfragbar — dieselbe Anforderung wie an den Volltext-Backfill in
-  [Hybrides Retrieval](./hybrid-retrieval.md#arbeitspaket-2a-backfill-des-bestands), und aus demselben
+  Stand ist je Bibliothek abfragbar — dieselbe Anforderung wie an den Füllstand des Volltextindex in
+  [Hybrides Retrieval](./hybrid-retrieval.md#arbeitspaket-2a-volltextspalte-index-und-füllstand), und aus demselben
   Grund: Ein Lauf über den ganzen Bestand, der nur ganz oder gar nicht kann, wird im Betrieb nicht
   gefahren.
 - **Ehrliche Messung.** Ein Vergleich, der versehentlich über gemischte Verfahrensstände läuft, misst

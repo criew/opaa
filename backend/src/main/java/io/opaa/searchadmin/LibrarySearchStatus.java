@@ -7,26 +7,15 @@ import java.util.UUID;
 /**
  * One library's index state, as the administration page shows it.
  *
- * <p>{@code fullTextMissingChunks}/{@code fullTextSkippedChunks} are read from the same query the
- * full-text completion gate reads (see {@code io.opaa.indexing.FullTextBackfillProgressService}) -
- * neither is counted a second time here, so the display and the gate cannot drift apart on the
- * numbers themselves.
- *
- * <p><b>The two can still disagree on the resulting decision:</b> {@code
- * io.opaa.query.FullTextBackfillGate} caches "complete" for a library's remaining process lifetime,
- * so a library that gains never-backfilled chunks afterwards shows {@link
- * IndexCondition#INCOMPLETE} here while the gate keeps searching it regardless - deliberate, not a
- * bug to fix here.
+ * <p>{@code fullTextIndexedChunks}/{@code fullTextMissingChunks} are read from {@code
+ * io.opaa.indexing.FullTextIndexFillStateService} and counted nowhere else, so no second count with
+ * its own logic can contradict this display.
  *
  * @param chunkCount chunks the {@code documents} rows record as produced.
  * @param vectorChunkCount chunks actually present in the vector store. A gap to {@code chunkCount}
  *     means the two stores disagree, which is itself the finding.
  * @param lowChunkDocumentCount documents geführt as indexed with null or auffällig wenige chunks -
  *     a permanent operational metric, not a one-off cleanup number (#1055).
- * @param fullTextSkippedChunks chunks the full-text backfill permanently gave up indexing after
- *     repeated failures ("poison chunks", #1093) - see {@link #fullTextIndexCondition()} for why
- *     this, unlike {@code fullTextMissingChunks}, does not by itself keep the search gate closed,
- *     but still must not go unseen on this page.
  * @param metadataBackfill the core-metadata extraction state and Füllgrad per field (#1067), read
  *     from the same selection the backfill itself drains.
  */
@@ -43,7 +32,6 @@ public record LibrarySearchStatus(
     Instant lastIndexedAt,
     long fullTextIndexedChunks,
     long fullTextMissingChunks,
-    long fullTextSkippedChunks,
     MetadataBackfillProgress metadataBackfill) {
 
   /** Whether an index holds what it is supposed to hold. */
@@ -62,20 +50,14 @@ public record LibrarySearchStatus(
   }
 
   /**
-   * Incomplete while a chunk still lacks its full-text row, or once one has been permanently given
-   * up on. The two are not the same condition - {@code io.opaa.query.FullTextBackfillGate} only
-   * closes on the former, since a chunk it will never resolve on its own must not silence every
-   * other, healthy chunk of the library - but this display deliberately does not distinguish them:
-   * a library must never look flawlessly READY while it is quietly missing content the lexical
-   * search can never find. {@link #fullTextSkippedChunks} stays separately visible for an operator
-   * to tell the two apart.
+   * Incomplete while a chunk lacks its full-text row at the current tsv version - content the
+   * lexical search path cannot find, and which no background job repairs since #1270: the remedy is
+   * a reindex. A library must never look flawlessly READY while it is quietly missing such content.
    */
   public IndexCondition fullTextIndexCondition() {
     if (vectorChunkCount == 0) {
       return IndexCondition.EMPTY;
     }
-    return fullTextMissingChunks > 0 || fullTextSkippedChunks > 0
-        ? IndexCondition.INCOMPLETE
-        : IndexCondition.READY;
+    return fullTextMissingChunks > 0 ? IndexCondition.INCOMPLETE : IndexCondition.READY;
   }
 }

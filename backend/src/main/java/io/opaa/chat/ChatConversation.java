@@ -1,6 +1,7 @@
 package io.opaa.chat;
 
 import io.opaa.api.types.ChatStatus;
+import io.opaa.indexing.metadata.MetadataFilter;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +26,7 @@ public final class ChatConversation {
   private final String title;
   private final boolean useKnowledge;
   private final List<UUID> referencedLibraryIds;
+  private final MetadataFilter metadataFilter;
   private final ChatStatus status;
   private final List<ChatTurn> messages;
   private final Instant createdAt;
@@ -37,6 +39,7 @@ public final class ChatConversation {
     this.title = chat.getTitle();
     this.useKnowledge = chat.isUseKnowledge();
     this.referencedLibraryIds = List.copyOf(chat.getReferencedLibraryIds());
+    this.metadataFilter = chat.getMetadataFilter();
     this.status = chat.getStatus();
     this.messages = messages;
     this.createdAt = chat.getCreatedAt();
@@ -61,6 +64,11 @@ public final class ChatConversation {
 
   public boolean getUseKnowledge() {
     return useKnowledge;
+  }
+
+  /** The chat's sticky core-field filter (#1070), {@link MetadataFilter#NONE} without one. */
+  public MetadataFilter getMetadataFilter() {
+    return metadataFilter;
   }
 
   public List<UUID> getReferencedLibraryIds() {

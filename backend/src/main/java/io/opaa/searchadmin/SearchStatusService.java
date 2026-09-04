@@ -1,7 +1,7 @@
 package io.opaa.searchadmin;
 
-import io.opaa.indexing.FullTextBackfillProgress;
-import io.opaa.indexing.FullTextBackfillProgressService;
+import io.opaa.indexing.FullTextIndexFillState;
+import io.opaa.indexing.FullTextIndexFillStateService;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.indexing.metadata.MetadataBackfillService;
 import io.opaa.library.KnowledgeLibrary;
@@ -48,14 +48,10 @@ import org.springframework.stereotype.Service;
  * <p><b>Read-only by construction.</b> This service has no method that changes anything, and the
  * records it returns carry no access key in any form.
  *
- * <p><b>The full-text fill state comes from {@link FullTextBackfillProgressService} and nowhere
- * else</b> - the same query the completion gate reads before it lets the lexical path search a
- * library. A second count with its own logic could show "vollständig" against a gate that refuses
- * the library on a different rule, which is precisely the confusion this page exists to end. The
- * two can still disagree for a moment: this page reads the count fresh on every load, while {@code
- * FullTextBackfillGate} keeps an incomplete library's answer for its recheck interval, so a
- * backfill that just finished shows as complete here up to that interval before the gate lets the
- * library into the fusion.
+ * <p><b>The full-text fill state comes from {@link FullTextIndexFillStateService} and nowhere
+ * else</b>, read fresh on every load - a second count with its own logic could show "vollständig"
+ * for a library whose chunks the lexical path cannot find, which is precisely the confusion this
+ * page exists to end.
  *
  * <p><b>The two reachability probes are bounded in time and shared across callers.</b> Without that
  * bound every page load costs one chat and one embedding round trip per administrator, per
@@ -86,7 +82,7 @@ public class SearchStatusService {
   private final RerankRoleStatusProvider rerankRoleStatusProvider;
   private final KnowledgeLibraryRepository libraryRepository;
   private final LibraryDocumentStatsReader documentStatsReader;
-  private final FullTextBackfillProgressService fullTextBackfillProgressService;
+  private final FullTextIndexFillStateService fullTextIndexFillStateService;
   private final MetadataBackfillService metadataBackfillService;
   private final QueryProperties queryProperties;
   private final RetrievalPipelineProperties pipelineProperties;
@@ -130,7 +126,7 @@ public class SearchStatusService {
       RerankRoleStatusProvider rerankRoleStatusProvider,
       KnowledgeLibraryRepository libraryRepository,
       LibraryDocumentStatsReader documentStatsReader,
-      FullTextBackfillProgressService fullTextBackfillProgressService,
+      FullTextIndexFillStateService fullTextIndexFillStateService,
       MetadataBackfillService metadataBackfillService,
       QueryProperties queryProperties,
       RetrievalPipelineProperties pipelineProperties,
@@ -142,7 +138,7 @@ public class SearchStatusService {
     this.rerankRoleStatusProvider = rerankRoleStatusProvider;
     this.libraryRepository = libraryRepository;
     this.documentStatsReader = documentStatsReader;
-    this.fullTextBackfillProgressService = fullTextBackfillProgressService;
+    this.fullTextIndexFillStateService = fullTextIndexFillStateService;
     this.metadataBackfillService = metadataBackfillService;
     this.queryProperties = queryProperties;
     this.pipelineProperties = pipelineProperties;
@@ -342,7 +338,7 @@ public class SearchStatusService {
   /**
    * A path switched off at stage level or by its own property reports {@code DISABLED}; a running
    * path that cannot yet cover every library reports {@code INCOMPLETE}. For the full-text path the
-   * incomplete count is the number of libraries the completion gate would still refuse.
+   * incomplete count is the number of libraries with chunks missing from the full-text index.
    */
   private List<SearchPathStatus> searchPaths(List<LibrarySearchStatus> libraries) {
     long withChunks = libraries.stream().filter(l -> l.vectorChunkCount() > 0).count();
@@ -391,15 +387,15 @@ public class SearchStatusService {
     List<KnowledgeLibrary> libraries = libraryRepository.findByOrganizationId(organizationId);
     // Only this organization's libraries are counted; an unfiltered progress read would scan the
     // whole vector store across organizations for rows this page never shows, even with the
-    // expression index added in #1119 (see FullTextBackfillProgressService#progressForLibraries).
+    // expression index added in #1119 (see FullTextIndexFillStateService#fillStateForLibraries).
     Set<UUID> libraryIds = new LinkedHashSet<>();
     for (KnowledgeLibrary library : libraries) {
       libraryIds.add(library.getId());
     }
-    Map<UUID, FullTextBackfillProgress> progressByLibrary = new HashMap<>();
-    for (FullTextBackfillProgress progress :
-        fullTextBackfillProgressService.progressForLibraries(libraryIds)) {
-      progressByLibrary.put(progress.libraryId(), progress);
+    Map<UUID, FullTextIndexFillState> fillStateByLibrary = new HashMap<>();
+    for (FullTextIndexFillState fillState :
+        fullTextIndexFillStateService.fillStateForLibraries(libraryIds)) {
+      fillStateByLibrary.put(fillState.libraryId(), fillState);
     }
     // Read from the same selection column the backfill drains (metadata_extraction_version);
     // "pending" here is the superset of what a call selects - the part waiting for its connector
@@ -411,9 +407,9 @@ public class SearchStatusService {
     for (KnowledgeLibrary library : libraries) {
       LibraryDocumentStats stats =
           statsByLibrary.getOrDefault(library.getId(), LibraryDocumentStats.empty(library.getId()));
-      FullTextBackfillProgress progress =
-          progressByLibrary.getOrDefault(
-              library.getId(), new FullTextBackfillProgress(library.getId(), 0, 0, 0, 0));
+      FullTextIndexFillState fillState =
+          fillStateByLibrary.getOrDefault(
+              library.getId(), new FullTextIndexFillState(library.getId(), 0, 0, 0));
       MetadataBackfillProgress metadataBackfill =
           metadataByLibrary.getOrDefault(
               library.getId(), MetadataBackfillProgress.empty(library.getId()));
@@ -427,11 +423,10 @@ public class SearchStatusService {
               stats.failedDocumentCount(),
               stats.lowChunkDocumentCount(),
               stats.chunkCount(),
-              progress.totalChunks(),
+              fillState.totalChunks(),
               stats.lastIndexedAt(),
-              progress.indexedChunks(),
-              progress.missingChunks(),
-              progress.skippedChunks(),
+              fillState.indexedChunks(),
+              fillState.missingChunks(),
               metadataBackfill));
     }
     result.sort(

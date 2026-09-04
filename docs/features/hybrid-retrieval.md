@@ -24,7 +24,7 @@ ersetzt keines der beiden Dokumente:
 
 - **Arbeitspaket 1** — Pipeline als benannte Stufen mit Erklärprotokoll
   ([#1046](https://github.com/criew/opaa/issues/1046))
-- **Arbeitspaket 2a** — Volltextspalte, GIN-Index, wiederaufnehmbarer Backfill
+- **Arbeitspaket 2a** — Volltextspalte, GIN-Index, Füllstand je Bibliothek
   ([#1047](https://github.com/criew/opaa/issues/1047))
 - **Arbeitspaket 2** — lexikalischer Suchpfad mit Kennungsschutz und Rechtefilter
   ([#1048](https://github.com/criew/opaa/issues/1048))
@@ -195,8 +195,8 @@ Antwortgenerierung mit Belegen (gebaut)
    Grundlage des Diagnosepfads in der Administration.
 3. **Der lexikalische Pfad bleibt in PostgreSQL** — `tsvector` mit `german`-Konfiguration und GIN-Index
    auf der vorhandenen Chunk-Tabelle. Kein zweites System, kein zweiter Betriebsnachweis. Der
-   **Bestand** bekommt seinen Volltextindex über einen eigenen, wiederaufnehmbaren Backfill mit
-   sichtbarem Füllstand — nicht nebenbei durch die Migration.
+   Volltextindex entsteht beim Schreiben des Chunks, in derselben Transaktion wie Text und Vektor;
+   der Füllstand je Bibliothek bleibt sichtbar — nicht nebenbei durch die Migration.
 4. **`ts_rank` ist kein BM25**, und das wird als bekannte Grenze geführt, nicht kaschiert. Für die
    rangbasierte Fusion genügt die Ordnung; ob sie genügt, entscheidet die Messung.
 5. **Eskalation nur gegen gemessene Lücke.** Für den Fall, dass PostgreSQL-Volltext nicht trägt, sind
@@ -249,6 +249,7 @@ Kandidaten sehen, als ihr übergeben wurden.
 | Stufe | Aufgabe | Stand |
 |---|---|---|
 | Suchbereich bestimmen | lesbare Bibliotheken ∩ Kontext des Chats | gebaut |
+| **Metadatenfilter setzen** | Kernfeld-Filter der Person/des Chats in beide Suchpfade tragen, unter dem Rechtefilter | gebaut (#1070) |
 | Teilfragen bilden | 1..`max-sub-queries` eigenständige Suchanfragen | gebaut (#923) |
 | Vektorsuche je Teilfrage | `fetch-k` Kandidaten, Rechtefilter, Ähnlichkeitsschwelle | gebaut |
 | **Volltextsuche je Teilfrage** | `fetch-k` Kandidaten, identischer Rechtefilter | gebaut (#1048), in der Fusion seit #1049 |
@@ -257,9 +258,14 @@ Kandidaten sehen, als ihr übergeben wurden.
 | **Reranking** | Cross-Encoder über die fusionierte Kandidatenmenge | **neu (AP 4)** |
 | Dokument-Vervollständigung | bis `max-chunks-per-document` Chunks je Dokument | gebaut (#932/#935) |
 
-Als Stufen registriert sind heute `SEARCH_SCOPE`, `SUB_QUERY_DECOMPOSITION`, `VECTOR_SEARCH`,
-`FULL_TEXT_SEARCH`, `MMR_SELECTION`, `RANK_FUSION` und `DOCUMENT_COMPLETION`, in dieser Reihenfolge; die
-Reranking-Stufe wird an der in der Tabelle genannten Stelle eingehängt.
+Als Stufen registriert sind heute `SEARCH_SCOPE`, `METADATA_FILTER`, `SUB_QUERY_DECOMPOSITION`,
+`VECTOR_SEARCH`, `FULL_TEXT_SEARCH`, `MMR_SELECTION`, `RANK_FUSION`, `RERANK` und
+`DOCUMENT_COMPLETION`, in dieser Reihenfolge. `METADATA_FILTER` (#1070) trägt den Kernfeld-Filter aus
+[Metadatenschema, Wirkstelle 1](./metadata-schema.md#umgesetzt-1070-teil-1) in den Lauf: Sie
+übersetzt ihn einmal in die Form des Vektorpfads (`Filter.Expression`) und reicht beide Formen im
+Zustand weiter; die zwei Suchstufen hängen ihn **innerhalb ihrer Abfrage** mit UND unter den
+Rechtefilter — dieselbe Bedingung in beiden Pfaden, nie ein Nachfilter, und ein Dokument ohne Wert im
+gefilterten Feld bleibt enthalten. Die Stufe ist abschaltbar; ohne sie suchen die Pfade ungefiltert.
 
 Zwei Eigenschaften sind verbindlich, weil alles Weitere daran hängt:
 
@@ -315,8 +321,8 @@ nebenbei die Suchqualität verändert, ist im Nachhinein nicht mehr von einer Re
 > [Arbeitspaket 3](#arbeitspaket-3-fusion)). Dort steht auch die Wirkung.
 >
 > **Die Auflage für #1049 ist erfüllt:** `opaa.query.full-text-search-enabled` ist Fixpunkt des
-> Pipeline-Messvertrags (zusammen mit `fullTextBackfillComplete`, dem Zustand des Backfill-Tors für die
-> gemessene Bibliothek), die Vertragsversion steht auf 3, und die Pipeline-Baselines aller drei Domänen
+> Pipeline-Messvertrags (zusammen mit `fullTextIndexComplete`, dem Füllstand des Volltextindex der
+> gemessenen Bibliothek), die Vertragsversion steht auf 3, und die Pipeline-Baselines aller drei Domänen
 > sind neu gezogen. Der Harness-Guard
 > (`PipelineHarnessSupport#requireMeasurableConfiguration`) weist einen Lauf mit `enabled=false` ab: Die
 > committete Baseline beschreibt die ausgelieferte hybride Konfiguration, ein vector-only-Lauf gehört in
@@ -338,15 +344,38 @@ Die Konsequenz für die Indexierung **von Neuzugängen**: Der Volltextindex ents
 Chunks**, in derselben Transaktion wie Text und Vektor. Für jeden nach der Umstellung geschriebenen
 Chunk gibt es damit keinen Zustand, in dem er vektorisiert, aber noch nicht volltextindiziert ist.
 
-Für den **Bestand** gilt das ausdrücklich nicht. Die zum Umstellungszeitpunkt bereits gespeicherten
-Chunks tragen keinen Volltextindex und bekommen ihn nur durch einen eigenen Nachlauf — das ist
-Gegenstand des nächsten Abschnitts und nicht ein Nebeneffekt der Migration.
+Für den **Bestand** galt das ausdrücklich nicht: Die zum Umstellungszeitpunkt bereits gespeicherten
+Chunks trugen keinen Volltextindex und bekamen ihn nur durch einen eigenen Nachlauf — Gegenstand des
+nächsten Abschnitts und nicht ein Nebeneffekt der Migration.
 
-### Arbeitspaket 2a: Backfill des Bestands
+### Arbeitspaket 2a: Volltextspalte, Index und Füllstand
 
-Ein Volltextpfad, der nur die Hälfte des Bestands sieht, ist schlimmer als keiner: Er liefert Treffer,
-und die fehlenden fallen niemandem auf. Der Backfill ist deshalb ein eigenes, benanntes Arbeitspaket
-und Voraussetzung dafür, dass der Volltextpfad überhaupt in die Fusion aufgenommen wird.
+> **Stand seit [#1270](https://github.com/criew/opaa/issues/1270) (09/2026): Der Nachzug ist
+> entfernt.** Es gibt keinen Bestand mehr, der nachgezogen werden müsste; seit #1047 entsteht die
+> Volltextzeile in derselben Transaktion wie der Vektor. Damit sind
+> `FullTextBackfillService`/`-Scheduler`, das Tor `FullTextBackfillGate` und die Tabelle
+> `chunk_full_text_skip` (Gift-Chunk-Isolierung) ersatzlos entfallen. Geblieben ist der **Füllstand
+> je Bibliothek** (`FullTextIndexFillStateService`) als Betriebszustand auf der
+> Administrationsseite.
+>
+> **Bewusst in Kauf genommene Folge:** Ein künftiger Bump der Volltext-Aufbereitung
+> (`FullTextChunkStore.CURRENT_TSV_VERSION`) hat keinen eigenen, billigen Nachzug mehr.
+> Bestandszeilen gelten dann als fehlend, sind für den lexikalischen Pfad unsichtbar und die
+> Bibliothek erscheint auf der Administrationsseite als `INCOMPLETE`. Der Weg zurück ist der
+> **Pipeline-Nachzug** (`POST /api/v1/admin/indexing/pipeline-reindex`), der genau dafür
+> versionsbewusst erweitert wurde: Er wählt ein Dokument auch dann aus, wenn nur seine
+> `chunk_full_text`-Zeilen unter der aktuellen `content_tsv_version` liegen (oder fehlen) —
+> unabhängig von der Pipeline-Version, denn ein Bump dieser Konstante hebt keine
+> `DocumentPipeline#version()`. **Der Preis ist benannt:** Dieser Weg liest, zerlegt und
+> **bettet neu ein**; er ist damit deutlich teurer als das reine Neuschreiben der `tsvector`-Spalte,
+> das der entfernte Backfill leistete. Ein Bump ist damit eine bewusste, eingeplante Betriebsaufgabe
+> und kein Selbstläufer mehr.
+
+Die ursprüngliche Begründung des Arbeitspakets bleibt hier stehen, weil sie die Schemaentscheidungen
+trägt, die weiterhin gelten. Ein Volltextpfad, der nur die Hälfte des Bestands sieht, ist schlimmer
+als keiner: Er liefert Treffer, und die fehlenden fallen niemandem auf. Der Backfill war deshalb ein
+eigenes, benanntes Arbeitspaket und Voraussetzung dafür, dass der Volltextpfad überhaupt in die
+Fusion aufgenommen wurde.
 
 **Die Schemaänderung legt nur Spalte und Index an.** Das Liquibase-Changeset erzeugt die
 `tsvector`-Spalte und den GIN-Index — Letzteren mit `CREATE INDEX CONCURRENTLY` und damit außerhalb
@@ -355,14 +384,11 @@ Dauer der Migration sperrt. Das Changeset befüllt **nichts**; ein `UPDATE` übe
 innerhalb der Migration würde den Anwendungsstart um die Dauer des Backfills verzögern und bei Abbruch
 in einem halb migrierten Zustand enden.
 
-**Die Befüllung ist ein Batch, kein Migrationsschritt.** Verbindlich sind drei Eigenschaften:
-
-- **Idempotent.** Ein zweiter Lauf über bereits befüllte Chunks ändert nichts und ist kein Fehler.
-- **Wiederaufnehmbar mit persistiertem Fortschritt.** Der Lauf darf jederzeit abgebrochen werden — durch
-  Neustart, Wartungsfenster oder Ausfall — und setzt danach dort fort, wo er stand, nicht am Anfang.
-- **Rückwirkungsarm.** Er läuft in Stapeln mit begrenzter Größe und ist gegenüber dem Abfragebetrieb
-  nachrangig; er gehört in dieselbe Kategorie wie ein Indizierungslauf (siehe
-  [Skalierung und Zielwerte](./deployment-infrastructure.md#skalierung-und-zielwerte)).
+**Die Befüllung war ein Batch, kein Migrationsschritt** — idempotent, wiederaufnehmbar,
+rückwirkungsarm in Stapeln begrenzter Größe. Mit #1270 ist dieser Batch entfernt; dieselben drei
+Eigenschaften gelten unverändert für den **Pipeline-Nachzug**, der seither der einzige Weg ist, eine
+bereits gespeicherte Zeile neu aufzubereiten (siehe
+[Skalierung und Zielwerte](./deployment-infrastructure.md#skalierung-und-zielwerte)).
 
 **Der Füllstand je Bibliothek ist abfragbarer Zustand**, kein Logeintrag. Er ist die Datenquelle für
 zwei Dinge zugleich: die Zustandsanzeige der [Administrationsseite](#was-die-seite-anzeigt) und den
@@ -371,13 +397,15 @@ volltextindiziert sind, ist damit ein sichtbarer Betriebszustand und nicht eine 
 schlechten Antworten erschlossen werden muss.
 
 Dieser Füllstand wird über ein `metadata->>'library_id'`-Prädikat auf `vector_store` ermittelt — ohne
-eigenen Index wäre das bei rund 1 Mio. Chunks ein vollständiger Tabellenscan je Aufruf, und zwar nicht
-nur auf der Administrationsseite: `FullTextBackfillGate#searchableLibraries` fragt denselben Füllstand
-im Antwortpfad der Suche ab und cacht eine noch unvollständige Bibliothek nur für 60 Sekunden. Ein
-Ausdrucksindex auf `metadata->>'library_id'` (#1119) trägt beide Aufrufstellen; ein zusätzlicher Index
-auf den `::uuid`-Cast, den `progressForLibraries` für sein `GROUP BY` verwendet, ist gemessen nicht
-nötig — der Textindex leistet die zeilenbeschränkende Arbeit, der Cast läuft danach nur noch über die
-bereits gefilterten Zeilen.
+eigenen Index wäre das bei rund 1 Mio. Chunks ein vollständiger Tabellenscan je Aufruf. Ein
+Ausdrucksindex auf `metadata->>'library_id'` (#1119) trägt ihn; ein zusätzlicher Index auf den
+`::uuid`-Cast, den `fillStateForLibraries` für sein `GROUP BY` verwendet, ist gemessen nicht nötig —
+der Textindex leistet die zeilenbeschränkende Arbeit, der Cast läuft danach nur noch über die bereits
+gefilterten Zeilen. Gelesen wird er an zwei Stellen: auf der Administrationsseite bei jedem
+Seitenaufruf, und im Antwortpfad der Suche durch `FullTextIndexCompleteness` — dort nur noch
+**meldend** (die Zahl der unvollständigen Bibliotheken im Erklärprotokoll), seit das frühere Tor mit
+#1270 entfallen ist. Die Cache-Regel dieser zweiten Aufrufstelle ist unverändert: eine vollständige
+Bibliothek für die Prozesslaufzeit, eine unvollständige höchstens 60 Sekunden.
 
 Auf einer Neuinstallation entsteht dieser Index erst beim **zweiten** Anwendungsstart: `vector_store`
 wird von Spring AI erst nach Liquibase angelegt, das Changeset überspringt sich deshalb beim ersten
@@ -449,7 +477,7 @@ behebt genau diese Asymmetrie, mit demselben Mechanismus wie bei Aktenzeichen.
   schreibt Gewichte in Positionen, ist dort also stillschweigend wirkungslos. Gebaut ist deshalb
   `setweight(to_tsvector('simple', …), 'A')`.
 - **Eine Änderung der Tokenbildung erhöht `content_tsv_version`.** Bestandszeilen gelten damit als
-  fehlend und werden vom Backfill des Arbeitspakets 2a nachgezogen — ohne Migration, ohne Skript.
+  fehlend, sind für den lexikalischen Pfad unsichtbar und werden über den Pipeline-Nachzug neu aufbereitet (seit #1270 gibt es dafür keinen automatischen Nachlauf mehr, siehe Arbeitspaket 2a).
 
 ### Die bekannte Grenze: `ts_rank` ist kein BM25
 
@@ -1092,8 +1120,8 @@ Arbeitspaket 1 die Erklärbarkeit jeder Stufe verlangt.
   über den ganzen Bestand aufgebaut ist, ist hier sichtbar und nicht erst an schlechten Antworten
   spürbar.
 - der **Indexstatus** je Bibliothek: Zahl der Dokumente und Chunks, letzter Lauf, Rückstand, Zustand
-  von Vektor- und Volltextindex — einschließlich des **Füllstands des Volltext-Backfills** aus
-  [Arbeitspaket 2a](#arbeitspaket-2a-backfill-des-bestands), aus derselben Datenquelle, die auch den
+  von Vektor- und Volltextindex — einschließlich des **Füllstands des Volltextindex** aus
+  [Arbeitspaket 2a](#arbeitspaket-2a-volltextspalte-index-und-füllstand), aus derselben Datenquelle, die auch den
   Alarm „Volltextpfad inaktiv oder unvollständig" auslöst.
 - der **Stand der Kernfelder** je Bibliothek (seit #1067): wie viele indizierte Dokumente die aktuelle
   Extraktionsversion tragen, wie viele ausstehen (davon: wie viele auf ihren nächsten Konnektorlauf
@@ -1497,15 +1525,16 @@ ist.
 |---|---|---|---|
 | 0 | Benchmark misst die produktive Pipeline | — | Vorbedingung; ohne sie ist nichts abnehmbar |
 | 1 | Pipeline als benannte Stufen | 0 | Kein fachlicher; Voraussetzung für 2, 5 und die Diagnose |
-| 2 | Volltextspalte, Index und **Backfill des Bestands** (AP 2a) | 1 | Der Volltextpfad wird überhaupt erst vollständig speisbar; Füllstand wird sichtbar |
+| 2 | Volltextspalte, Index und **Füllstand je Bibliothek** (AP 2a) | 1 | Der Volltextpfad wird überhaupt erst vollständig speisbar; Füllstand wird sichtbar |
 | 3 | Lexikalischer Suchpfad + Fusion (AP 2/AP 3) | 1, 2 | Löst die #938-Klasse; wirkt ohne jedes weitere Modell — **gebaut (#1048/#1049)**, gemessen in AP 3 |
 | 4 | Rerank-Modellrolle + Reranking-Stufe | 1, 3 | Präzision auf der fusionierten Menge; nur mit Modell |
 | 5 | Admin-Seite „Suche & Indexierung" | 1, Befugnis-/Protokollmodell | Diagnosepfad; wird mit jedem weiteren Paket wertvoller |
 | 6 | Latenz-/Hardwareprofil auf Referenzhardware — **zurückgestellt (#1051)** | 4 | Voraussetzung jeder Aktivierungsempfehlung für Reranking; ohne das Profil bleibt Reranking voreingestellt aus |
 
 Paket 2 steht vor Paket 3, weil ein Volltextpfad über einem halb befüllten Index falsche Messwerte und
-falsche Antworten zugleich erzeugt. Aufgenommen in die Fusion wird der Pfad erst, wenn der Backfill
-einer Bibliothek abgeschlossen ist.
+falsche Antworten zugleich erzeugt. Bis #1270 wurde der Pfad je Bibliothek erst nach abgeschlossenem
+Backfill in die Fusion aufgenommen; seit dem Wegfall des Nachzugs entsteht die Volltextzeile ohnehin
+mit dem Vektor, sodass es keinen halb befüllten Zustand mehr zu überbrücken gibt.
 
 Paket 5 hängt nicht an 3 und 4 — die Diagnose ist auch für die heutige Pipeline schon nützlich, und ein
 früher Bau bedeutet, dass die Pakete 3 und 4 gegen ein vorhandenes Diagnosewerkzeug entwickelt werden
@@ -1547,7 +1576,7 @@ des Pakets:
   Vergabe der „Sicht als"-Befugnis mit Geltungsbereich und Befristung sowie die davon getrennte
   Befugnis zur Protokollauswertung.
 - **[Deployment und Infrastruktur](./deployment-infrastructure.md)** — Referenzhardware und
-  Lastannahmen für das Latenzprofil, das nächtliche Zeitfenster für den Backfill und der
+  Lastannahmen für das Latenzprofil, das nächtliche Zeitfenster für Indizierungsläufe und der
   Offline-Beschaffungsweg für Rerank-Modelle.
 - **[ADR-0014](../decisions/0014-produktausrichtung-oeffentliche-verwaltung.md)** — pgvector als
   einziger Vektorspeicher; die Postgres-native Volltextsuche ist die konsequente Fortsetzung derselben
@@ -1588,71 +1617,32 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   entscheidbar — und nur, wenn das Komposita-Segment des Benchmarks überhaupt eine Lücke zeigt. Beide
   Wege haben unterschiedliche Pflegekosten für das Wörterbuch.
 - ~~**Wie wird der Volltextindex bei einer Änderung der Analysekette nachgezogen?**~~ Beantwortet
-  mit #1047/#1048/#1093: `FullTextChunkStore#CURRENT_TSV_VERSION` markiert jede geänderte
-  `tsvector`-Form, `FullTextBackfillService`/`FullTextBackfillScheduler` ziehen jede Zeile
-  unterhalb der aktuellen Version in kleinen Chargen nach (Standard 200 Chunks je 5-Sekunden-Tick),
-  ohne erneutes Einbetten. #1130 belegt diesen Weg erstmals in der Praxis mit einem Bump, der den
-  gesamten Altbestand betrifft (neues Muster in `FullTextIdentifiers` für E-Mail-Adressen, Version
-  3 → 4).
+  mit #1047/#1048/#1093, **neu beantwortet mit #1270.**
+  `FullTextChunkStore#CURRENT_TSV_VERSION` markiert weiterhin jede geänderte `tsvector`-Form, und
+  Zeilen unterhalb der aktuellen Version gelten weiterhin als fehlend. Was entfällt, ist der
+  automatische Nachzug: `FullTextBackfillService`/`-Scheduler` zogen solche Zeilen bis dahin in
+  kleinen Chargen selbsttätig nach, samt Gift-Chunk-Isolierung (`chunk_full_text_skip`, #1093) und
+  einem Tor, das eine noch unvollständige Bibliothek ganz aus dem lexikalischen Pfad hielt. Beides
+  ist mit #1270 entfernt, weil es keinen Bestand mehr gab, den es nachzuziehen galt.
 
-  **Die tatsächliche Wirkung ist gröber als ein Zeilenfilter:** `FullTextBackfillGate` (siehe oben,
-  "Reihenfolge") nimmt eine Bibliothek erst dann wieder in den lexikalischen Suchbereich auf, wenn
-  ihr Backfill **vollständig** ist — `FullTextSearchStage` fragt `searchableLibraries(...)` und lässt
-  jede noch nicht vollständige Bibliothek ganz aus der Fusion heraus, nicht nur die einzelnen noch
-  veralteten Zeilen. Ein Versionssprung markiert jede Zeile jeder Bibliothek als veraltet, also
-  verlässt in dem Moment **der gesamte Bestand** den lexikalischen Pfad, nicht nur die noch nicht
-  bearbeiteten Chunks — exakt die Konsequenz aus "Ein Volltextpfad, der nur die Hälfte des Bestands
-  sieht, ist schlimmer als keiner" (siehe oben), hier auf die Bump-Situation angewandt: keine
-  graduelle Verschlechterung, sondern ein harter Rückfall auf reines Vektor-Retrieval für alles, bis
-  jede Bibliothek einzeln durchgelaufen ist. Bei rund 1 Mio. Chunks bei Standardwerten (144.000
-  Chunks/h) etwa sieben Stunden. Danach wird jede Bibliothek einzeln wieder aufgenommen, sobald ihr
-  eigener Nachlauf fertig ist — keine globale Wiederkehr auf einen Schlag.
+  **Die bewusst in Kauf genommene Folge:** Ein Bump von `CURRENT_TSV_VERSION` markiert schlagartig
+  jede Zeile jeder Bibliothek als veraltet. Diese Zeilen sind für den lexikalischen Pfad unsichtbar
+  — dessen Abfrage filtert auf die aktuelle Version —, und nichts holt sie von selbst wieder ein.
+  Der Bestand ist damit bis zum Nachzug **vollständig** aus dem lexikalischen Pfad heraus, und
+  während der Nachzug läuft, arbeitet jede noch nicht fertige Bibliothek mit einem **halb gefüllten**
+  Volltextindex — genau der Zustand, den dieses Arbeitspaket weiter oben als „schlimmer als keiner"
+  führt. Das frühere Tor verhinderte ihn; ohne Tor ist er möglich und wird hingenommen, dafür aber
+  ausgewiesen: `fullTextIndexCondition()` zeigt `INCOMPLETE`, der Suchpfad meldet sich als
+  unvollständig, und das Erklärprotokoll jeder Suche nennt die Zahl der betroffenen Bibliotheken
+  (`FULL_TEXT_PERMISSION_FILTER`).
 
-  **Genau dieses Fenster ist der Grund, warum #1093 (Gift-Chunk-Isolation) Voraussetzung war, nicht
-  nur Komfort.** Ohne sie hätte ein einzelner Gift-Chunk (Inhalt, an dem `to_tsvector` scheitert,
-  z. B. weil der resultierende Vektor Postgres' 1-MiB-Grenze überschreitet) den Fortschritt der
-  gesamten Bibliothek angehalten, in der er liegt: `FullTextBackfillService.backfillBatch` halbiert
-  einen fehlschlagenden Batch rekursiv, bis der verursachende Chunk isoliert ist, klassifiziert ihn
-  anhand des PostgreSQL-`SQLSTATE` der ursprünglichen Fehlermeldung (Klassen `22`/`54`/`42` als
-  Gift-Chunk-Kandidat, alles andere als Systemstörung) — **nicht** über eine nachträgliche Sonde:
-  eine Sonde liefe auf einer anderen, später geliehenen Verbindung und würde alles, was im
-  Zeitfenster dazwischen ausheilt (ein konkurrierendes `DELETE`, ein Lock-Timeout), fälschlich als
-  „Datenbank gesund, also Gift-Chunk" einordnen und den Chunk dauerhaft verlieren (#1093-Review,
-  Blocker 1). Ein als Gift-Chunk-Kandidat eingestufter Chunk wird zusätzlich nicht beim ersten
-  Fehlschlag aufgegeben, sondern erst nach `FullTextBackfillService.SKIP_CONFIRMATION_ATTEMPTS`
-  aufeinanderfolgenden Fehlschlägen dauerhaft in `chunk_full_text_skip` eingetragen — ein
-  Fehlschlag, der sich innerhalb weniger Ticks von selbst löst, wird stattdessen einfach erneut
-  versucht. **Ein Versionssprung macht dabei auch einen bereits bestätigten Skip wieder angreifbar**
-  (`recordOrIncrementSkip` setzt `attempts` auf 1 zurück, sobald die gespeicherte
-  `content_tsv_version` von der aktuellen abweicht, und die Selektion in `selectPending` schließt
-  nur Zeilen bei der jeweils aktuellen Version aus) — ein Chunk, der unter der Analysekette vor
-  #1130 als Gift-Chunk galt, bekommt unter der neuen Version dieselbe dreimalige Chance wie jeder
-  andere, bevor er erneut als Skip verbucht wird. Erst ein bestätigter Skip zählt in
-  `FullTextBackfillProgress#skippedChunks` (sichtbar auf der Administrationsseite „Suche &
-  Indexierung" als eigener Hinweis je Bibliothek, `LibrarySearchStatusResponse.fullTextSkippedChunks`
-  — eine Bibliothek mit bestätigten Skips gilt dort nicht mehr als makellos „bereit",
-  `fullTextIndexCondition()` zeigt `INCOMPLETE`), **ohne `FullTextBackfillGate` an dieser einen
-  Bibliothek für immer zu blockieren** — `isComplete()`, die Methode, die den Gate tatsächlich
-  steuert, gated bewusst nur auf noch ausstehende (`missingChunks`), nicht auf dauerhaft
-  übersprungene Chunks. Das ist die Stelle, an der sich Betriebsanleitung und Isolationsmechanik
-  schließen: Ohne #1093 hätte ein einzelner kaputter Datensatz eine Bibliothek dauerhaft aus dem
-  lexikalischen Pfad gehalten (der Scheduler-Backoff hätte die Ticks für den Rest der
-  Prozesslaufzeit gestoppt, bevor die übrigen Chunks überhaupt durchlaufen); mit #1093 bleibt der
-  betroffene Chunk als bestätigter Skip sichtbar liegen, aber die Bibliothek als Ganzes kehrt in
-  den lexikalischen Pfad zurück, sobald ihr übriger Bestand fertig ist — begrenzt auf das oben
-  beschriebene Zeitfenster, nicht dauerhaft. Ein Chunk, dessen `document_id`-Metadatum fehlt (`NULL`)
-  oder selbst kein wohlgeformtes UUID ist, wird nicht über diese Mehrfachbestätigung geführt, sondern
-  sofort als bestätigter Skip verbucht (`document_id` in `chunk_full_text_skip` dafür nullable) — ein
-  struktureller Defekt heilt nicht durch Wiederholung, in beiden Fällen gleichermaßen (#1170: ein
-  fehlendes `document_id` blieb zunächst ein eigener Fehlermodus, weil die Auswahlabfrage solche
-  Zeilen ausschloss, während die Fortschrittszählung sie weiterhin als offen zählte). Indiziert ein
-  zuvor gescheiterter Chunk
-  später erfolgreich, löscht `FullTextChunkStore.clearSkipRows` seine Skip-Zeile wieder — nur auf
-  dem Backfill-Pfad, nie beim regulären Ingest, wo eine Skip-Zeile wegen frisch erzeugter Chunk-IDs
-  ohnehin nie existieren kann.
-
-  **Voraussetzung erfüllt:** #1093 ist mit PR #1168 gemergt, bevor #1130s Versionssprung den ersten
-  bestandsweiten Bump auslöst — genau die Reihenfolge, die oben beschrieben ist.
+  Der Weg heraus ist der **Pipeline-Nachzug** (`POST /api/v1/admin/indexing/pipeline-reindex`), der
+  ein Dokument seit #1270 auch allein wegen veralteter oder fehlender `chunk_full_text`-Zeilen
+  auswählt — unabhängig von der Pipeline-Version, weil ein Bump dieser Konstante keine
+  `DocumentPipeline#version()` hebt. **Er ist teurer als der entfernte Backfill:** Er liest, zerlegt
+  und bettet neu ein, statt nur die `tsvector`-Spalte zu überschreiben. Ein Bump der
+  Volltext-Aufbereitung ist damit **eine geplante Betriebsaufgabe** mit benannten Kosten; wer ihn
+  vornimmt, plant den Nachzug mit ein, statt sich auf einen Hintergrundlauf zu verlassen.
 - **Wirkt der Kontextpräfix aus Contextual Chunking (#933/#940) auch in den Volltextindex?**
   Anthropics „contextual BM25" spricht dafür, und die Roadmap sieht es in Phase 2a vor. Es ist aber eine
   eigene Messung wert: Ein Titelpräfix in jedem Chunk verändert die Termstatistik des ganzen Index.

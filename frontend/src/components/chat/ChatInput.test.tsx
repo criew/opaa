@@ -61,7 +61,13 @@ const dienstanweisungen: LibraryListResponse = {
 
 describe('ChatInput', () => {
   beforeEach(() => {
-    useChatStore.setState({ scope: 'all', referencedLibraryIds: [], spaceId: null })
+    useChatStore.setState({
+      scope: 'all',
+      referencedLibraryIds: [],
+      spaceId: null,
+      chatId: null,
+      metadataFilter: null,
+    })
     useLibraryStore.setState({
       libraries: [rechtsquellen, dienstanweisungen],
       libraryDetails: {},
@@ -246,6 +252,44 @@ describe('ChatInput', () => {
     useChatStore.setState({ scope: 'none', referencedLibraryIds: [] })
     render(<ChatInput onSend={vi.fn()} />)
     expect(screen.getByText(/antwortet ohne Wissensbasis/)).toBeInTheDocument()
+  })
+
+  // #1070: the chat's sticky core-field filter is visible as removable chips next to the scope
+  // chips; removing one chip drops only that field's condition.
+  it('shows the active metadata filter as removable chips (#1070)', async () => {
+    const user = userEvent.setup()
+    const setMetadataFilter = vi.fn()
+    useChatStore.setState({
+      scope: 'all',
+      metadataFilter: {
+        documentTypes: ['VERMERK'],
+        documentDateFrom: '2024-01-01',
+        documentDateTo: '2024-12-31',
+      },
+      setMetadataFilter,
+    })
+    render(<ChatInput onSend={vi.fn()} />)
+
+    expect(screen.getByTestId('metadata-filter-chip-document-type')).toHaveTextContent(
+      'Dokumentart: VERMERK',
+    )
+    expect(screen.getByTestId('metadata-filter-chip-document-date')).toHaveTextContent(
+      'Datum: 01.01.2024 – 31.12.2024',
+    )
+    expect(screen.getByRole('button', { name: 'Metadatenfilter setzen' })).toBeInTheDocument()
+
+    // A chip's delete action is reachable by keyboard on the focused, labelled chip - the same
+    // way the library chips are removed in the tests above.
+    const dateChip = screen.getByRole('button', { name: 'Filter nach Datum entfernen' })
+    dateChip.focus()
+    await user.keyboard('{Backspace}')
+    expect(setMetadataFilter).toHaveBeenCalledWith({ documentTypes: ['VERMERK'] })
+  })
+
+  it('offers no filter for the empty scope', () => {
+    useChatStore.setState({ scope: 'none', referencedLibraryIds: [] })
+    render(<ChatInput onSend={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'Metadatenfilter setzen' })).not.toBeInTheDocument()
   })
 
   it('labels library suggestions with the type badge (#591, mockup 1h)', async () => {

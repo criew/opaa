@@ -29,12 +29,8 @@
       "template": "fetch-k %d per list"
     },
     {
-      "name": "FULL_TEXT_BACKFILL_PENDING",
-      "template": "the lexical path stays out of the fusion until a library's backfill is complete"
-    },
-    {
       "name": "FULL_TEXT_PERMISSION_FILTER",
-      "template": "permission filter applied inside the query: %d of %d scoped libraries searched, the rest awaiting their backfill"
+      "template": "permission filter applied inside the query: %d scoped libraries searched, %d of them with an incomplete full-text index"
     },
     {
       "name": "FULL_TEXT_SEARCH_LISTS",
@@ -53,6 +49,26 @@
       "template": "max-chunks-per-document %d"
     },
     {
+      "name": "METADATA_FILTER_DATE_WINDOW",
+      "template": "metadata filter: document date from %s to %s, a value counting for the whole span its precision leaves open"
+    },
+    {
+      "name": "METADATA_FILTER_DOCUMENT_TYPES",
+      "template": "metadata filter: document type in [%s]"
+    },
+    {
+      "name": "METADATA_FILTER_NONE",
+      "template": "no metadata filter set: every candidate of the search scope qualifies"
+    },
+    {
+      "name": "METADATA_FILTER_NO_VALUE_CANDIDATES",
+      "template": "metadata filter applied inside the query: %d of %d candidate(s) kept without a value for a filtered field"
+    },
+    {
+      "name": "METADATA_FILTER_SUBORDINATE",
+      "template": "metadata filter applied inside both search paths, AND-ed to the permission filter; a document without a value for a filtered field is kept"
+    },
+    {
       "name": "MMR_LAMBDA_ACTIVE",
       "template": "mmr-lambda %s (diversity term active, cosine similarity of real chunk embeddings)"
     },
@@ -63,10 +79,6 @@
     {
       "name": "NOT_REACHED",
       "template": "run halted before this stage: nothing left to retrieve"
-    },
-    {
-      "name": "NO_FULL_TEXT_BACKFILL",
-      "template": "no library of the search scope has a completed full-text backfill"
     },
     {
       "name": "OVERALL_BUDGET_TOP_K",

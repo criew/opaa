@@ -99,6 +99,9 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    */
   long countByLibraryIdAndStatus(UUID libraryId, DocumentStatus status);
 
+  /** The indexed bestand of a whole search scope - the base of the filter Füllstand (#1070). */
+  long countByLibraryIdInAndStatus(Collection<UUID> libraryIds, DocumentStatus status);
+
   /**
    * The parent-level counterpart of {@link #countByLibraryId} (#1184): top-level documents only,
    * matching what the document list pages over - shown as a library's {@code documentCount}. {@link

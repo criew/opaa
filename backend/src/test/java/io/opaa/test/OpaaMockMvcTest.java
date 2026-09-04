@@ -41,15 +41,10 @@ public @interface OpaaMockMvcTest {
    * runtime from a resource (e.g. a Testcontainers container) still belong in the test class's own
    * {@code @DynamicPropertySource}, not here.
    *
-   * <p>The default already sets {@code opaa.indexing.full-text-backfill.tick-ms} high enough that
-   * {@code FullTextBackfillScheduler}'s tick never fires during a test run - it would otherwise
-   * race a test's own assertions against {@code chunk_full_text}/{@code vector_store} in the shared
-   * context this signature provides. A class overriding {@code properties()} replaces the whole
-   * array (an {@code @AliasFor} array attribute does not merge - see {@link
-   * OpaaIndexingIntegrationTest}'s own Javadoc for the same caveat) and therefore loses this
-   * default; such a class should carry it forward explicitly if it also exercises the full-text
-   * write path.
+   * <p>A class overriding {@code properties()} replaces the whole array (an {@code @AliasFor} array
+   * attribute does not merge - see {@link OpaaIndexingIntegrationTest}'s own Javadoc for the same
+   * caveat) and thereby leaves the shared context this signature otherwise provides.
    */
   @AliasFor(annotation = SpringBootTest.class, attribute = "properties")
-  String[] properties() default {"opaa.indexing.full-text-backfill.tick-ms=3600000"};
+  String[] properties() default {};
 }

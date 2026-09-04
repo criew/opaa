@@ -363,16 +363,24 @@ class UrlFolderMappingIntegrationTest {
   }
 
   @Test
-  void aSegmentThatDecodesToATraversalOrSeparatorLandsAtTheLibraryRoot() {
-    // AK 3, rejection branch: "%2E%2E" and "%2F" survive URI normalization and only become a
-    // traversal/separator once decoded - neither may become a folder name.
+  void aSegmentThatDecodesToATraversalOrSeparatorIsNeverDiscoveredAtAll() {
+    // #1287: "%2E%2E" and "a%2Fb" survive URI#normalize() and only become a traversal segment or
+    // a path separator once decoded - AutoindexCrawlerService#staysUnderBase now rejects the link
+    // before it is ever followed, so these files are not merely mapped to the library root (the
+    // pre-#1287 behaviour), they are never discovered at all.
     servedFiles.put("%2E%2E/gefahr.txt", "Aufsteigend.".getBytes(StandardCharsets.UTF_8));
     servedFiles.put("a%2Fb/trenner.txt", "Trenner.".getBytes(StandardCharsets.UTF_8));
 
     run();
 
-    assertThat(documentAt("%2E%2E/gefahr.txt").getFolderId()).isNull();
-    assertThat(documentAt("a%2Fb/trenner.txt").getFolderId()).isNull();
+    assertThat(
+            documentRepository.findByLibraryIdAndFilePath(
+                library.getId(), baseUrl + "/dokumente/%2E%2E/gefahr.txt"))
+        .isEmpty();
+    assertThat(
+            documentRepository.findByLibraryIdAndFilePath(
+                library.getId(), baseUrl + "/dokumente/a%2Fb/trenner.txt"))
+        .isEmpty();
     assertThat(folderRepository.findByLibraryId(library.getId())).isEmpty();
   }
 

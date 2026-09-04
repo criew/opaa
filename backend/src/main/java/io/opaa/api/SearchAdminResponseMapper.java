@@ -184,7 +184,8 @@ final class SearchAdminResponseMapper {
               + status.incompleteLibraryCount()
               + " von "
               + status.libraryCount()
-              + " Bibliotheken sind unvollständig und werden von diesem Pfad nicht durchsucht.";
+              + " Bibliotheken sind unvollständig; ihre fehlenden Abschnitte findet dieser Pfad"
+              + " nicht.";
     };
   }
 
@@ -203,7 +204,6 @@ final class SearchAdminResponseMapper {
             toIndexState(status.fullTextIndexCondition()),
             status.fullTextIndexedChunks(),
             status.fullTextMissingChunks(),
-            status.fullTextSkippedChunks(),
             MetadataBackfillResponseMapper.toStatusResponse(status.metadataBackfill()))
         .lastIndexedAt(status.lastIndexedAt());
   }
@@ -312,6 +312,7 @@ final class SearchAdminResponseMapper {
   private static RetrievalStage toStage(RetrievalStageName stage) {
     return switch (stage) {
       case SEARCH_SCOPE -> RetrievalStage.SEARCH_SCOPE;
+      case METADATA_FILTER -> RetrievalStage.METADATA_FILTER;
       case SUB_QUERY_DECOMPOSITION -> RetrievalStage.SUB_QUERY_DECOMPOSITION;
       case VECTOR_SEARCH -> RetrievalStage.VECTOR_SEARCH;
       case FULL_TEXT_SEARCH -> RetrievalStage.FULL_TEXT_SEARCH;

@@ -27,8 +27,10 @@ siehe [Umgesetzt (#1067)](#umgesetzt-1067); manuelle Korrektur, Sammelzuweisung 
 #1068, siehe [Umgesetzt (#1068)](#umgesetzt-1068); Pflege-Anker und der dritte Zustand „kein Wert
 ermittelbar" — #1069, siehe [Umgesetzt (#1069)](#umgesetzt-1069); Dokumentart auch aus Dokumentkopf
 und Dateiformat — #1263, siehe [Umgesetzt (#1263)](#umgesetzt-1263), mit der Kopfregel auf die
-Titelzeile verengt in #1289); alles Weitere — Filter,
-Bibliotheksfelder, Modell-Extraktion — ist noch nicht gebaut.
+Titelzeile verengt in #1289), **dazu der Kernfeld-Filter in beiden Suchpfaden mit Füllstand und
+Eintrittsbedingung** (Arbeitspaket 4, erster Teil von #1070, siehe
+[Umgesetzt (#1070, Teil 1)](#umgesetzt-1070-teil-1)); Benchmark-Messung des Filters,
+Bibliotheksfelder und Modell-Extraktion sind noch nicht gebaut.
 
 ---
 
@@ -882,6 +884,112 @@ Der Preis ist ein weniger scharfer Filter, und er wird bewusst gezahlt: Ein zu w
 sichtbares Ärgernis, ein zu enger ein unsichtbarer Fehler. Der [Pflege-Anker](#der-pflege-anker) ist
 die Gegenmaßnahme auf der richtigen Seite — er behebt die Ursache, statt die Folge zu verstecken.
 
+### Umgesetzt (#1070, Teil 1)
+
+Der erste von zwei Teilen von Arbeitspaket 4: der Filter selbst in beiden Suchpfaden, die Query-/Chat-
+API, die Filter-Oberfläche mit Füllstand und Eintrittsbedingung. Der zweite Teil (Golden-Filterfeld,
+`MetadataFilterAudit`, Fixpunkt und Baseline-Neuziehung — die Messung der beiden Fehlerrichtungen)
+folgt in einem eigenen PR.
+
+**Filtermodell.** `MetadataFilter` (`io.opaa.indexing.metadata`) trägt genau die zwei filterbaren
+Kernfelder: eine Menge von Dokumentart-Codes und ein inklusives Datumsfenster `documentDateFrom`/
+`documentDateTo`. Der Titel ist nicht filterbar, Schlagworte gibt es nicht — und ein Test hält fest,
+dass der Record keine weiteren Komponenten hat. An der API (`MetadataFilter`-Schema) wird ein
+unbekannter Feldschlüssel mit 400 abgewiesen, nicht stillschweigend ignoriert (ein eigener
+Deserialisierer, weil der Anwendungs-Mapper unbekannte Felder sonst überall toleriert); ebenso ein
+Code außerhalb des Vokabulars, ein unmögliches Datum und ein Fenster, das vor seinem Beginn endet.
+
+**Genauigkeitssemantik des Datums.** Ein gespeicherter Wert gilt für den ganzen Zeitraum, den seine
+Genauigkeit offenlässt — „Fassung 2024" (`YEAR`) für 2024-01-01 bis 2024-12-31, „03/2024" (`MONTH`) für
+den Monat — und liegt im Fenster, wenn sich die beiden Zeiträume überschneiden. Da ein Wert als erster
+Tag seines Zeitraums gespeichert ist, sind das zwei Vergleiche: `Wert <= bis` und `Wert >= Untergrenze`,
+wobei die Untergrenze je Genauigkeit der Monats- bzw. Jahresanfang des Fensterbeginns ist. „Fassung
+2024" liegt damit im Fenster 2024, nicht im Fenster 2023, und auch im Fenster „ab 15.06.2024" — die
+weite Lesart, bewusst in der Richtung „lieber zu weit als zu eng".
+
+**Beide Pfade, vor dem Ranking.** Die neue Pipeline-Stufe `METADATA_FILTER` steht direkt hinter
+`SEARCH_SCOPE` und übersetzt den Filter einmal in beide Formen (`MetadataFilterExpressions`): Der
+Vektorpfad erhält eine Spring-AI-`Filter.Expression`, die `VectorSearchStage` **unter** den
+Rechtefilter hängt (`libraryFilter AND (...)`, die Rechte bleiben der äußere Operand); der Volltextpfad
+erhält dieselbe Bedingung als SQL über `vector_store.metadata` (`doc_type`, `doc_date`,
+`doc_date_precision`, ADR-0024 Entscheidung 5), im selben `WHERE` wie `library_id = ANY(?)`. Beide
+Formen sagen dasselbe: `(doc_type in Auswahl OR doc_type fehlt) AND (doc_date im Fenster je
+Genauigkeit OR doc_date fehlt)`. Der pgvector-Konverter kennt kein `IS NULL`; „fehlt" wird in beiden
+Pfaden als `NOT IN` über alle übrigen Werte des Schlüssels ausgedrückt (das Vokabular bzw. die drei
+Genauigkeiten), was für einen Chunk ohne den Schlüssel wahr ist — die Parität beider Pfade hängt an
+der Geschlossenheit dieser Wertemenge, weshalb auch das SQL diese Form trägt statt `IN … OR IS NULL`;
+ein Wert außerhalb (etwa ein entfallener Vokabular-Code auf alten Chunks) gilt in beiden Pfaden als
+„fehlt" (Test). Die Klammerung ist explizit: Der Konverter klammert geschachtelte Ausdrücke nicht,
+jede ODER-Bedingung wird deshalb als `Filter.Group` gekapselt, damit der Rechtefilter der äußere
+Operand der **ganzen** Bedingung ist (Unit-Test auf den gerenderten jsonpath). Ein Integrationstest gegen
+echtes Postgres belegt, dass beide Pfade dieselbe Dokumentmenge liefern, dass ein Nachfilter über dem
+`fetch-k`-Fenster das Verhalten **nicht** reproduziert (über `fetch-k` passende Dokumente der falschen
+Art vor dem gesuchten) und dass kein leerer, fehlender oder fehlerhafter Filter die Menge über den
+Rechtekontext hinaus erweitert — auch ein Filter auf eine Dokumentart, die nur eine fremde Bibliothek
+trägt, erreicht sie nicht. Die Stufe ist abschaltbar (dann suchen die Pfade ungefiltert und das
+Protokoll sagt es); `SEARCH_SCOPE` bleibt die einzige nicht abschaltbare.
+
+**Leerwerte und „kein Wert ermittelbar".** Ein Dokument ohne Chunk-Schlüssel für das gefilterte Feld
+— leer oder als „kein Wert ermittelbar" markiert, beides entfernt die Schlüssel (#1069) — wird in
+beiden Pfaden gefunden. Jeder Treffer der Antwort trägt `SourceReference.metadataFilterMatch`:
+`MATCHED`, wenn jedes gefilterte Feld einen passenden Wert hatte, `NO_VALUE`, wenn die Leerwert-Regel
+ihn gehalten hat; ohne aktiven Filter ist das Feld leer. Fundstellenzeile und Belegfenster zeigen
+`NO_VALUE` als „ohne Angabe" — nur dort, wo die Kennzeichnung eine Aussage trägt.
+
+**Erklärprotokoll.** Die Stufe nennt den aktiven Filter (Dokumentarten, Datumsfenster, die
+Nachordnung) oder dass keiner gesetzt ist; die beiden Suchstufen nennen je Pfad, wie viele ihrer
+Kandidaten nur wegen der Leerwert-Regel enthalten sind. Die Diagnose der Seite „Suche & Indexierung"
+nimmt den Filter entgegen (`SearchDiagnosisRequest.metadataFilter`), damit „Sicht als" prüfen kann,
+was die gefilterte Frage einer Person sieht; die Dokumentarten stammen dort aus dem Vokabular
+(Schema, kein Aggregat), weil die Diagnose in einem fremden Rechtekontext laufen kann.
+
+**API und Chat-Kontext.** `QueryRequest.metadataFilter` wirkt für eine flüchtige Anfrage; ein
+persistierter Chat trägt seinen Filter selbst (`chats.metadata_filter`, Migration 022, ein `jsonb`-
+Objekt), gesetzt beim Anlegen oder per `PATCH /api/v1/chats/{chatId}` — genau wie der Suchbereich
+über `useKnowledge`/`referencedLibraryIds`: Der Chat-Filter gilt, was die Anfrage mitschickt, wird
+ignoriert. Im PATCH heißt ein ausgelassenes Feld „unverändert", ein Objekt ohne Bedingung „löschen".
+Die Codes werden beim Setzen gegen das Vokabular geprüft, nicht erst beim Anwenden. Keine Ableitung
+aus der Frage: Den Filter setzt die Person oder der Kontext des Chats.
+
+**Füllstand und Eintrittsbedingung.** `GET /api/v1/search/metadata-filter-options` liefert für den
+Suchbereich der fragenden Person — aufgelöst mit denselben Regeln wie die Frage selbst (Chat zuerst,
+sonst `useKnowledge`/`libraryIds`, nie weiter als lesbar) — je Feld den Füllstand (Dokumente mit Wert
+**oder** „kein Wert ermittelbar" an den indizierten Dokumenten), den Schwellwert und `offered`, dazu
+die **im Bestand vorkommenden** Dokumentarten mit Anzahl und die Spanne der Datumswerte. Die
+Schwellwerte sind vor der ersten Messung committet (Koordinator-Festlegung 04.09.2026 am Issue,
+ADR-0012): **Dokumentart ≥ 0,90, Datum/Stand ≥ 0,75** — als Voreinstellung von
+`opaa.query.metadata-filter.document-type-offer-threshold`/`document-date-offer-threshold`, für Tests
+überschreibbar, keine Verwaltungseinstellung. Ein leerer Suchbereich bietet nichts an. Der
+nutzerbezogene Zwischenspeicher, den die [Rechte-Invariante](#rechte-invariante-der-extraktion-und-aller-aggregate)
+ausdrücklich zulässt, ist `MetadataFilterOptionsCache`: Schlüssel sind Person **und** aufgelöster
+Suchbereich (ein Eintrag wird nur für genau die Bibliotheken ausgeliefert, über die er gebildet
+wurde), verworfen bei jeder Rechteänderung, die die Person betrifft — Berechtigungsänderung
+(`GrantChanged`, nach Abschluss der Transaktion), Sichtbarkeits- oder Anlagevorgang einer Bibliothek
+(`LibraryChanged`) und Gruppenmitgliedschaft (über `GroupMembershipChangeListener`, das
+`GroupMembershipResolver` bei jeder Eviction ruft — dieselbe Stelle, an der der Gruppen-Cache selbst
+invalidiert wird). Ein Zeitablauf (`options-cache-ttl`, 5 Minuten) begrenzt nur die Veraltung des
+Bestands, nicht die der Rechte. Ein Integrationstest belegt beide Richtungen mit zwei Personen und
+den echten Schreibpfaden (`AssetGrantService#revokeGrant`, `GroupService#addMember`).
+
+**Oberfläche.** Neben den Suchbereichs-Chips steht „Filter": ein Popover je Kernfeld mit
+Füllstandszeile („Datum/Stand bei 92 % der Dokumente vorhanden"), Dokumentart als Mehrfachauswahl
+aus den vorkommenden Werten (mit Anzahl), Datum von/bis; ein Feld unter der Schwelle wird **nicht
+angeboten** und sagt warum („nur bei 55 % der Dokumente vorhanden (Schwelle 75 %)") — eine bereits
+gesetzte Bedingung auf diesem Feld bleibt wirksam und wird beim Anwenden unverändert durchgereicht;
+nur ihr Chip entfernt sie. Der aktive Filter
+erscheint als entfernbare Chips („Dokumentart: Vermerk", „Datum: 01.01.2024 – 31.12.2024") und
+bleibt am Chat. Die Optionen werden bei jedem Öffnen für den aktuellen Suchbereich geladen.
+
+**Zu #1211 (Mail-Filter).** Der Zeitraumfilter für Mails ist damit abgedeckt, sofern das Mail-Datum
+als Kernfeld Datum/Stand extrahiert ist (#1066 tut das); Absender kommt mit #1242 als typisiertes
+Feld, der Betreff bleibt nach Maintainer-Entscheidung ein Anzeigefeld. Das Datumsfenster vergleicht
+Kalendertage des gespeicherten Werts, nicht UTC-Zeitstempel — die in #1211 genannte
+Lokaltag-Abweichung entsteht hier nicht, weil `doc_date` bereits ein Kalendertag ist.
+
+**Bewusst nicht gebaut.** Keine Filterableitung aus der Frage; kein Filter auf den Titel; kein
+Nachfilter auf einem Suchergebnis — auch nicht als Rückfall; kein globaler oder bibliotheksweiter
+Zwischenspeicher der Optionen.
+
 ## Wirkstelle 2: Kontextpräfix
 
 Metadaten fließen in den Kontextpräfix, den jeder Chunk trägt (`ChunkContextTitle`, #933/#940;
@@ -1060,7 +1168,7 @@ Nachbefüllung. Jeder dieser Automatismen erzeugt Arbeit, die niemand beauftragt
 davon würde die Regel „lieber leer als geraten" untergraben, indem er zum Ausfüllen drängt, wo niemand
 den Wert kennt.
 
-Die Zahl ist derselbe Datentyp wie der Füllstand des Volltext-Backfills: **abfragbarer Zustand, kein
+Die Zahl ist derselbe Datentyp wie der Füllstand des Volltextindex: **abfragbarer Zustand, kein
 Logeintrag** — und gehört damit in dieselbe Zustandsübersicht wie dieser (siehe
 [Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)).
 
@@ -1222,7 +1330,7 @@ solange keine Füllstandsverteilung eines echten Bestands vorliegt.
 | 1 | Kernfelder: Datenmodell, Herkunft/Konfidenz/Akteur, deterministische Extraktion beim Aufnehmen — **umgesetzt mit #1066**, siehe [Umgesetzt (#1066)](#umgesetzt-1066) | — | Beleg-Anzeige wird einordbar; Grundlage für alles Weitere |
 | 2 | **Deterministischer Bestandslauf** über den Altbestand, bibliotheksweise, mit den Nachlauf-Zusagen — **umgesetzt mit #1067**, siehe [Umgesetzt (#1067)](#umgesetzt-1067) | 1 | Die Kernfelder gelten für den vorhandenen Bestand, nicht nur für künftige Dokumente |
 | 3 | Manuelle Korrektur, Sammelzuweisung, Audit-Ereignis — **umgesetzt mit #1068**, siehe [Umgesetzt (#1068)](#umgesetzt-1068) — und Pflege-Anker („N ohne Wert", absolut und anteilig) samt drittem Zustand — **umgesetzt mit #1069**, siehe [Umgesetzt (#1069)](#umgesetzt-1069) | 1, 2 | Die Leerwert-Regel wird behebbar statt Dauerzustand |
-| 4 | Metadatenfilter in beiden Suchpfaden, mit Füllstandsanzeige je Feld | 2, 3, Hybrid-Suche AP 3 | Löst Szenario 9; die `metadata_filter`-Fälle werden erstmals lösbar |
+| 4 | Metadatenfilter in beiden Suchpfaden, mit Füllstandsanzeige je Feld — **Filter, API, Oberfläche und Füllstand umgesetzt mit #1070 (Teil 1)**, siehe [Umgesetzt (#1070, Teil 1)](#umgesetzt-1070-teil-1); die Benchmark-Messung folgt als Teil 2 | 2, 3, Hybrid-Suche AP 3 | Löst Szenario 9; die `metadata_filter`-Fälle werden erstmals lösbar |
 | 5 | Bibliotheksfelder: Schemakonfiguration je Bibliothek, Wertelisten mit bestätigter Abbildung | 1, 4 | Fassung und Rechtsebene werden führbar |
 | 6 | Metadaten im Kontextpräfix, mit Folgekostenanzeige und selektivem Nachlauf | 5, Ingestion Regel (b)/(d) | Wirkung auch ohne gesetzten Filter |
 | 7 | Modellgestützte Extraktion mit Konfidenz, je Bibliothek abschaltbar | 1, 5 | Felder, die deterministisch nicht erreichbar sind |
@@ -1341,9 +1449,8 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   ausgelieferte Liste ist je Installation erweiterbar. Offen ist, ob eine Erweiterung auf
   Organisationsebene oder je Bibliothek gilt — Ersteres hält das Vokabular zusammen, Letzteres passt
   zur Ebene-3-Zuordnung des übrigen Schemas.
-- **Welcher Füllstand genügt, damit ein Kernfeld als Filter angeboten wird?** Dass es einen vorab
-  festgelegten Schwellwert gibt und ein Feld darunter nicht angeboten wird, ist entschieden (siehe
-  [Eintrittsbedingung](#eintrittsbedingung-für-den-kernfeld-filter)); die Zahl selbst ist es nicht.
-  Sie ist erst mit der Füllstandsverteilung eines echten Bestands festlegbar und muss — wie jede
-  Benchmark-Schwelle — vor der ersten Messung committet sein. Denkbar ist auch, dass sie je Feld
-  verschieden ausfällt: Ein Datum ist deterministisch häufiger erreichbar als eine Dokumentart.
+- **Welcher Füllstand genügt, damit ein Kernfeld als Filter angeboten wird?** Vorab committet
+  (Koordinator-Festlegung 04.09.2026, siehe [Umgesetzt (#1070, Teil 1)](#umgesetzt-1070-teil-1)):
+  Dokumentart 0,90, Datum/Stand 0,75. Offen bleibt die Kalibrierung an der Demo-Instanz nach dem
+  Nachzug von #1263 — ob die Werte dort tragen, zeigt erst der Füllstandsnachweis auf dem echten
+  Bestand.

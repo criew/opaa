@@ -67,7 +67,7 @@ class SourceConnectionTestServiceConfluenceTest {
             mock(FilesystemPathAllowlist.class),
             libraryRepository,
             libraryAccessService,
-            new IndexingProperties(1000, 0, 50, null, null, null, null, null, 0),
+            new IndexingProperties(1000, 0, 50, null, null, null, null, 0),
             TargetAddressValidator.disabled(),
             confluenceConnectionService);
   }

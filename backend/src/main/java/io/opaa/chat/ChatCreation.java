@@ -1,5 +1,6 @@
 package io.opaa.chat;
 
+import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,8 +17,19 @@ public final class ChatCreation {
   private String title;
   private Boolean useKnowledge;
   private List<UUID> referencedLibraryIds;
+  private MetadataFilter metadataFilter;
 
   public ChatCreation() {}
+
+  /** The chat's initial core-field filter (#1070); {@code null} or empty means none. */
+  public ChatCreation metadataFilter(MetadataFilter metadataFilter) {
+    this.metadataFilter = metadataFilter;
+    return this;
+  }
+
+  public MetadataFilter getMetadataFilter() {
+    return metadataFilter;
+  }
 
   public ChatCreation title(String title) {
     this.title = title;

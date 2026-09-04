@@ -78,13 +78,15 @@ public class ChatController {
     return creation
         .title(request.getTitle())
         .useKnowledge(request.getUseKnowledge())
-        .referencedLibraryIds(request.getReferencedLibraryIds());
+        .referencedLibraryIds(request.getReferencedLibraryIds())
+        .metadataFilter(MetadataFilterMapper.toPatchDomain(request.getMetadataFilter()));
   }
 
   private ChatPatch toChatPatch(ChatUpdateRequest request) {
     return new ChatPatch()
         .title(request.getTitle())
         .useKnowledge(request.getUseKnowledge())
-        .referencedLibraryIds(request.getReferencedLibraryIds());
+        .referencedLibraryIds(request.getReferencedLibraryIds())
+        .metadataFilter(MetadataFilterMapper.toPatchDomain(request.getMetadataFilter()));
   }
 }

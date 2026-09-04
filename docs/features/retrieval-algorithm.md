@@ -89,6 +89,18 @@ Javadoc-Begründung an `QueryService#query`). Ein leerer Suchbereich überspring
 vollständig (`relevantChunks = List.of()`, keine der dortigen Aufrufe läuft) — Schritt 7 läuft trotzdem,
 mit null Chunks im Kontext, und markiert das Ergebnis über `QueryOutcome#answeredWithoutKnowledge`.
 
+### 1b. Metadatenfilter (#1070)
+
+Direkt hinter der Scope-Bestimmung trägt `MetadataFilterStage` den Kernfeld-Filter der Person oder
+des Chats (`MetadataFilter`: Dokumentart-Codes, Datumsfenster) in den Lauf — bei einem persistierten
+Chat dessen eigener Filter (`chats.metadata_filter`), sonst der aus der Anfrage. Die Stufe übersetzt
+ihn einmal in die `Filter.Expression` des Vektorpfads und reicht beide Formen im Zustand weiter; die
+Suchstufen 3 und 3b hängen ihn **innerhalb ihrer Abfrage** mit UND unter den Rechtefilter, der
+Volltextpfad als SQL über dieselben Chunk-Schlüssel (`doc_type`, `doc_date`, `doc_date_precision`).
+Ein Dokument ohne Wert im gefilterten Feld bleibt in beiden Pfaden enthalten und wird in Schritt 7 am
+`SourceReference` als `NO_VALUE` („ohne Angabe") gekennzeichnet. Semantik und Tests: [Metadatenschema,
+Umgesetzt (#1070, Teil 1)](./metadata-schema.md#umgesetzt-1070-teil-1).
+
 ### 2. LLM-Teilfragen-Zerlegung/Reformulierung
 
 `SubQueryDecompositionStage` ruft, sofern `opaa.query.query-decomposition-enabled`
@@ -143,12 +155,15 @@ Beide Hälften entstehen aus bereinigten Tokens (Wörter auf Buchstaben und Ziff
 Kennungs-Lexeme per Konstruktion ASCII-alphanumerisch); kein Zeichen der Nutzerfrage erreicht
 `to_tsquery` als Operator.
 
-**Zwei Tore, beide verengend:** `opaa.query.full-text-search-enabled` (`OPAA_QUERY_FULL_TEXT_SEARCH_ENABLED`,
-Ebene-1-Wert, Default `true`) und
-das Backfill-Tor — eine Bibliothek, deren Volltext-Backfill nicht abgeschlossen ist, wird nicht durchsucht
-(`FullTextBackfillGate`, siehe [Arbeitspaket 2a](./hybrid-retrieval.md#arbeitspaket-2a-backfill-des-bestands)).
-Ein halb gefüllter Volltextindex liefert Treffer und verschweigt den Rest; das ist schlechter als nichts
-zu liefern.
+**Ein Tor, verengend:** `opaa.query.full-text-search-enabled` (`OPAA_QUERY_FULL_TEXT_SEARCH_ENABLED`,
+Ebene-1-Wert, Default `true`). Jede Bibliothek des Rechtebereichs wird sonst durchsucht; das frühere
+Backfill-Tor ist mit #1270 entfallen (siehe
+[Arbeitspaket 2a](./hybrid-retrieval.md#arbeitspaket-2a-volltextspalte-index-und-füllstand)). Auf dem
+regulären Schreibweg entsteht der Volltexteintrag in derselben Transaktion wie der Vektor, ein halb
+gefüllter Index also nicht — **wohl aber nach einem Bump von `content_tsv_version`** (Bestandszeilen
+gelten dann als fehlend) oder durch verwaiste Zeilen. Der Pfad liefert dann eine unvollständige
+Liste statt gar keiner; das Erklärprotokoll weist die Zahl der betroffenen Bibliotheken aus, und die
+Administrationsseite zeigt sie als unvollständig.
 
 **Ein Fehlschlag degradiert den Pfad, nie die Antwort.** Eine defekte oder fehlende Volltextspalte darf
 Suchqualität kosten, aber nie zum Fehler für den fragenden Menschen werden; die Rückfallebene ist eine
@@ -335,7 +350,7 @@ Frage + Gesprächsverlauf
         ↓
 3. Je Suchanfrage: similaritySearch (fetch-k Kandidaten, Rechtefilter + Schwelle)
         ↓
-3b. Je Suchanfrage: Volltextsuche (fetch-k, identischer Rechtefilter, Backfill-Tor)
+3b. Je Suchanfrage: Volltextsuche (fetch-k, identischer Rechtefilter)
         ↓
 4. Je Liste (Teilfrage × Suchpfad): MMR-Auswahl auf das Kandidatenbudget (mmr-lambda)
         ↓

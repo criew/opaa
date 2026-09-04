@@ -122,7 +122,7 @@ class FileProcessingServiceTest {
   // storeChunks path (a single vectorStore.add call) unless it opts into concurrency itself (see
   // EmbeddingConcurrencyTest) - Runnable::run above is therefore never actually invoked here.
   private static IndexingProperties defaultIndexingProperties() {
-    return new IndexingProperties(1000, 0, 50, null, null, null, null, null, 1);
+    return new IndexingProperties(1000, 0, 50, null, null, null, null, 1);
   }
 
   // Mirrors VectorChunkStore#deleteByDocumentId's own filter construction, so assertions here

@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankModelRole;
 import java.util.ArrayList;
 import java.util.List;
@@ -54,6 +56,7 @@ class RetrievalPipelineTest {
     return new QueryConfiguration()
         .retrievalPipeline(
             new SearchScopeStage(),
+            new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
             new SubQueryDecompositionStage(queryDecompositionService),
             new VectorSearchStage(vectorStore),
             // The lexical path is switched off through every QueryProperties this class builds
@@ -61,7 +64,7 @@ class RetrievalPipelineTest {
             // the vector path's candidates. The lexical stage's own behaviour is covered by
             // FullTextSearchStageTest.
             new FullTextSearchStage(
-                mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
+                mock(FullTextChunkSearch.class), mock(FullTextIndexCompleteness.class)),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(mock(RerankModelRole.class)),
@@ -71,7 +74,12 @@ class RetrievalPipelineTest {
 
   private RetrievalContext context(Set<UUID> searchScope) {
     return new RetrievalContext(
-        "Frage", List.of(), searchScope, PROPERTIES, RerankAvailability.SWITCHED_OFF);
+        "Frage",
+        List.of(),
+        searchScope,
+        MetadataFilter.NONE,
+        PROPERTIES,
+        RerankAvailability.SWITCHED_OFF);
   }
 
   private void stubSearch(List<Document> results) {
@@ -188,6 +196,7 @@ class RetrievalPipelineTest {
                     "Frage",
                     List.of(),
                     Set.of(LIBRARY_ID),
+                    MetadataFilter.NONE,
                     twoChunkBudget,
                     RerankAvailability.SWITCHED_OFF));
 
@@ -216,6 +225,7 @@ class RetrievalPipelineTest {
                     "Zweite Frage",
                     history,
                     Set.of(LIBRARY_ID),
+                    MetadataFilter.NONE,
                     new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, false, 50),
                     RerankAvailability.SWITCHED_OFF));
 
@@ -245,10 +255,20 @@ class RetrievalPipelineTest {
         new QueryProperties(3, 25, 1.0, 0.3, 1.0, false, 3, 1, false, 50);
     RetrievalContext completingRun =
         new RetrievalContext(
-            "Frage", List.of(), Set.of(LIBRARY_ID), completing, RerankAvailability.SWITCHED_OFF);
+            "Frage",
+            List.of(),
+            Set.of(LIBRARY_ID),
+            MetadataFilter.NONE,
+            completing,
+            RerankAvailability.SWITCHED_OFF);
     RetrievalContext notCompletingRun =
         new RetrievalContext(
-            "Frage", List.of(), Set.of(LIBRARY_ID), notCompleting, RerankAvailability.SWITCHED_OFF);
+            "Frage",
+            List.of(),
+            Set.of(LIBRARY_ID),
+            MetadataFilter.NONE,
+            notCompleting,
+            RerankAvailability.SWITCHED_OFF);
 
     List<Document> stageSwitchedOff =
         pipeline(new RetrievalPipelineProperties(Set.of(RetrievalStageName.DOCUMENT_COMPLETION)))
