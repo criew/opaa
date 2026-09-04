@@ -39,3 +39,5 @@ databaseChangeLog:
       file: db/changelog/changes/018-document-metadata-core-fields.yaml
   - include:
       file: db/changelog/changes/019-documents-library-status-index.yaml
+  - include:
+      file: db/changelog/changes/020-document-type-suffixes.yaml

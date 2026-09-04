@@ -21,6 +21,7 @@ import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
+import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.filesystem.FilesystemProperties;
@@ -261,9 +262,14 @@ public class IndexingConfiguration {
       BoundedDownloader boundedDownloader,
       FileProcessingService fileProcessingService,
       LibraryStorageQuotaService libraryStorageQuotaService,
-      DocumentRepository documentRepository) {
+      DocumentRepository documentRepository,
+      AttachmentProperties attachmentProperties) {
     return new AttachmentIndexer(
-        boundedDownloader, fileProcessingService, libraryStorageQuotaService, documentRepository);
+        boundedDownloader,
+        fileProcessingService,
+        libraryStorageQuotaService,
+        documentRepository,
+        attachmentProperties);
   }
 
   /**
@@ -272,16 +278,14 @@ public class IndexingConfiguration {
    * parse-time DoS-hardening ceilings (redundant-but-harmless safety once an attachment already
    * passed {@code EmlReader}/{@code MsgReader}'s own extraction-loop limits); {@code
    * requestDelayMs}/{@code userAgent} are unused for an {@code AttachmentSource.LocalFile} (no
-   * request of its own), which is all a Mail attachment ever is.
+   * request of its own), which is all a Mail attachment ever is. The nesting depth is not part of
+   * this record any more (#1269) - {@link AttachmentIndexer} enforces {@link
+   * AttachmentProperties#maxDepth()} itself, the same value for every connector.
    */
   @Bean
   AttachmentDownloadLimits mailAttachmentDownloadLimits(MailProperties mailProperties) {
     return new AttachmentDownloadLimits(
-        mailProperties.maxAttachmentsPerMessage(),
-        mailProperties.maxAttachmentBytes(),
-        0L,
-        "",
-        mailProperties.maxAttachmentDepth());
+        mailProperties.maxAttachmentsPerMessage(), mailProperties.maxAttachmentBytes(), 0L, "");
   }
 
   @Bean

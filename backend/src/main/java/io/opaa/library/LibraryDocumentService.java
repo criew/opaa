@@ -15,7 +15,7 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.VectorChunkStore;
-import io.opaa.indexing.pipeline.mail.MailProperties;
+import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
@@ -127,7 +127,7 @@ public class LibraryDocumentService {
   private final LibraryFolderRepository folderRepository;
   private final LibraryFolderService folderService;
   private final AttachmentExtractor attachmentExtractor;
-  private final MailProperties mailProperties;
+  private final AttachmentProperties attachmentProperties;
   private final AttachmentExtractionLimiter attachmentExtractionLimiter;
 
   public LibraryDocumentService(
@@ -146,7 +146,7 @@ public class LibraryDocumentService {
       LibraryFolderRepository folderRepository,
       LibraryFolderService folderService,
       AttachmentExtractor attachmentExtractor,
-      MailProperties mailProperties,
+      AttachmentProperties attachmentProperties,
       AttachmentExtractionLimiter attachmentExtractionLimiter) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
@@ -163,7 +163,7 @@ public class LibraryDocumentService {
     this.folderRepository = folderRepository;
     this.folderService = folderService;
     this.attachmentExtractor = attachmentExtractor;
-    this.mailProperties = mailProperties;
+    this.attachmentProperties = attachmentProperties;
     this.attachmentExtractionLimiter = attachmentExtractionLimiter;
   }
 
@@ -680,12 +680,12 @@ public class LibraryDocumentService {
 
   /**
    * The chain length {@link #loadAttachmentContent} still follows: the nesting depth the indexing
-   * path itself may produce ({@code opaa.indexing.mail.max-attachment-depth}) plus one level of
+   * path itself may produce ({@code opaa.indexing.attachments.max-depth}) plus one level of
    * headroom, so raising that property never makes an indexable attachment unopenable, while a
    * corrupt or cyclic chain is still cut off after a bounded number of steps.
    */
   private int maxAttachmentChainDepth() {
-    return mailProperties.maxAttachmentDepth() + 1;
+    return attachmentProperties.maxDepth() + 1;
   }
 
   /**

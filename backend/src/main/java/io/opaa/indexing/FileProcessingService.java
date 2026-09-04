@@ -752,11 +752,14 @@ public class FileProcessingService {
       // routing key is written at all, same as a failed detection (#routingExtensionFor).
       // The entry's headline and its feed-declared publication instant are its declared
       // properties (ADR-0024); the file name is never a naming convention here.
+      // The name of this document is the entry's headline (or its URL), never a file name -
+      // marked as such so no naming convention is read out of it (#1263).
       DocumentPipelineResult withHeadline =
           parsed.withProperties(
               parsed
                   .properties()
                   .withTitle(contextTitle)
+                  .withSyntheticName(true)
                   .withDocumentDate(DocumentProperties.instantToLocalDate(publishedAt)));
       if (replacingExistingChunks) {
         // Only now, with the new chunks in hand - see this method's own Javadoc (#1268).

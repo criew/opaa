@@ -201,11 +201,7 @@ public class ForeignDiagnosticContextService {
 
     ForeignDiagnosticContext context =
         new ForeignDiagnosticContext(
-            actor.organizationId(),
-            targetKind,
-            searchable,
-            locked,
-            permissionSnapshot(searchable, locked));
+            actor.organizationId(), targetKind, searchable, permissionSnapshot(searchable, locked));
 
     ForeignDiagnosticFindings<T> findings;
     try {

@@ -92,7 +92,11 @@ public class DocumentMetadataService {
             .pipeline()
             .readProperties(
                 DocumentPipelineSource.ofFile(
-                    file, document.getFileName(), routed.detectedExtension()));
+                    file, document.getFileName(), routed.detectedExtension()))
+            // Attached here for the same reason DocumentPipelineRunner attaches it on the ingest
+            // path (#1263): the routed format is a source of the Dokumentart, not a pipeline's
+            // finding.
+            .withFormatExtension(routed.detectedExtension());
     return reextractFromProperties(document, properties);
   }
 

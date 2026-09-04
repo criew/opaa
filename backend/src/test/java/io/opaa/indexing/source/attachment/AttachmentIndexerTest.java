@@ -2,16 +2,21 @@ package io.opaa.indexing.source.attachment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.indexing.AttachmentProgressSink;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
@@ -64,12 +69,14 @@ class AttachmentIndexerTest {
     fileProcessingService = mock(FileProcessingService.class);
     LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
     documentRepository = mock(DocumentRepository.class);
-    limits =
-        new AttachmentDownloadLimits(
-            10, 5_242_880L, 0, "opaa-test-agent", AttachmentIndexer.DEFAULT_MAX_ATTACHMENT_DEPTH);
+    limits = new AttachmentDownloadLimits(10, 5_242_880L, 0, "opaa-test-agent");
     indexer =
         new AttachmentIndexer(
-            attachmentDownloader, fileProcessingService, storageQuotaService, documentRepository);
+            attachmentDownloader,
+            fileProcessingService,
+            storageQuotaService,
+            documentRepository,
+            new AttachmentProperties(5));
     parentDocumentId = UUID.randomUUID();
 
     indexingJobService = mock(IndexingJobService.class);
@@ -192,6 +199,132 @@ class AttachmentIndexerTest {
     assertThat(indexed).isEmpty();
     verify(access).recordIndexedAttachment("/mail.eml/0/anlage.txt", false);
     verify(access).markDeferred();
+  }
+
+  @Test
+  void theSameConfiguredDepthGovernsBothMailInMailAndFeedAttachmentChains()
+      throws IOException, InterruptedException {
+    // #1269: the recursion-depth cutoff moved out of AttachmentDownloadLimits (a per-source,
+    // per-connector record) into AttachmentProperties, one value AttachmentIndexer applies
+    // regardless of which connector's own, differently-shaped AttachmentDownloadLimits (count,
+    // size, politeness, user agent) a given call carries.
+    AttachmentIndexer shallowIndexer =
+        new AttachmentIndexer(
+            attachmentDownloader,
+            fileProcessingService,
+            mock(LibraryStorageQuotaService.class),
+            documentRepository,
+            new AttachmentProperties(1));
+
+    // Mail-in-Mail: a LocalFile attachment whose own processing reports one more nested LocalFile
+    // attachment - mirrors FileProcessingService#processUrlFile routing a discovered .eml back
+    // through this class on the same thread.
+    KnowledgeLibrary filesystemLibrary =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Bibliothek",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false,
+            DocumentSourceType.FILESYSTEM,
+            tempDir.toString(),
+            null,
+            null,
+            null,
+            false);
+    AttachmentAccess mailAccess = mock(AttachmentAccess.class);
+    when(mailAccess.targetLibrary()).thenReturn(filesystemLibrary);
+    when(mailAccess.events()).thenReturn((category, message, reference) -> {});
+    when(mailAccess.progress()).thenReturn(mock(AttachmentProgressSink.class));
+    Path outerMail = tempDir.resolve("aussen.eml");
+    Files.writeString(outerMail, "outer");
+    Path innerMail = tempDir.resolve("innen.eml");
+    Files.writeString(innerMail, "inner");
+    AttachmentSource.LocalFile nestedMailSource =
+        new AttachmentSource.LocalFile(innerMail, "innen.eml", "/aussen.eml/0");
+    // doAnswer, not when(...).thenAnswer(...): the latter evaluates processUrlFile(...) eagerly as
+    // a plain Java call, which would run whatever stub is already active (there is none here yet,
+    // but the feed restubbing below would otherwise re-trigger this very answer as a side effect).
+    doAnswer(
+            invocation -> {
+              shallowIndexer.indexAll(
+                  mailAccess,
+                  List.of(nestedMailSource),
+                  parentDocumentId,
+                  "/aussen.eml",
+                  DocumentSourceType.FILESYSTEM,
+                  limits);
+              return FileProcessingResult.PROCESSED;
+            })
+        .when(fileProcessingService)
+        .processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any());
+
+    List<String> mailIndexed =
+        shallowIndexer.indexAll(
+            mailAccess,
+            List.of(new AttachmentSource.LocalFile(outerMail, "aussen.eml", "/parent.eml/0")),
+            parentDocumentId,
+            "/parent.eml",
+            DocumentSourceType.FILESYSTEM,
+            limits);
+
+    assertThat(mailIndexed).hasSize(1);
+    // The nested attachment at depth 1 was cut off, not indexed - proves the depth limit applied.
+    verify(mailAccess).markDeferred();
+    verify(mailAccess, never()).recordIndexedAttachment(eq("/aussen.eml/0"), anyBoolean());
+
+    // Feed-Anlage: the RSS/HTTP-directory analogue, a Download attachment whose own processing
+    // reports one more nested Download attachment - a different, feed-shaped
+    // AttachmentDownloadLimits (its own count/size/politeness/user-agent), the same
+    // AttachmentProperties.maxDepth() cutoff.
+    AttachmentDownloadLimits feedLimits =
+        new AttachmentDownloadLimits(20, 1_048_576L, 250, "opaa-feed-agent");
+    Path outerFeedFile = tempDir.resolve("aussen.txt");
+    Files.writeString(outerFeedFile, "outer feed content");
+    when(attachmentDownloader.downloadBounded(
+            any(), anyString(), anyString(), anyLong(), any(), any()))
+        .thenReturn(new BoundedDownloader.DownloadedFile(outerFeedFile, "text/plain"));
+    AttachmentSource.Download nestedFeedSource =
+        new AttachmentSource.Download(
+            "https://example.org/innen.txt", "innen.txt", HttpClient.newHttpClient(), null);
+    // doAnswer again - restubbing processUrlFile via when(...) here would evaluate the call
+    // eagerly and re-trigger the mail answer above as a side effect (the mock is still stubbed
+    // with it at this point).
+    doAnswer(
+            invocation -> {
+              shallowIndexer.indexAll(
+                  ctx,
+                  List.of(nestedFeedSource),
+                  parentDocumentId,
+                  "https://example.org/aussen.txt",
+                  DocumentSourceType.RSS_FEED,
+                  feedLimits);
+              return FileProcessingResult.PROCESSED;
+            })
+        .when(fileProcessingService)
+        .processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any());
+
+    List<String> feedIndexed =
+        shallowIndexer.indexAll(
+            ctx,
+            List.of(
+                new AttachmentSource.Download(
+                    "https://example.org/aussen.txt",
+                    "aussen.txt",
+                    HttpClient.newHttpClient(),
+                    null)),
+            parentDocumentId,
+            "https://example.org/entry.html",
+            DocumentSourceType.RSS_FEED,
+            feedLimits);
+
+    assertThat(feedIndexed).hasSize(1);
+    // Same cutoff, same depth - proven present via the shared ctx's deferred flag, exactly like
+    // the mail chain's markDeferred() above.
+    assertThat(ctx.anyEntryDeferred()).isTrue();
   }
 
   @Test

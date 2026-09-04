@@ -1,5 +1,6 @@
 package io.opaa.indexing.pipeline.office;
 
+import io.opaa.indexing.pipeline.DocumentHeadText;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
@@ -126,12 +127,16 @@ public class DocxDocumentPipeline implements DocumentPipeline {
       chunks.add(0, headerFooterChunk);
     }
     return DocumentPipelineResult.chunked(chunks)
-        .withProperties(content.properties().withFirstHeading(firstTopLevelHeading(events)));
+        .withProperties(
+            content
+                .properties()
+                .withFirstHeading(firstTopLevelHeading(events))
+                .withHeadText(DocumentHeadText.ofEvents(events)));
   }
 
   /**
-   * The OOXML core properties (dc:title, created, modified) plus the first level-1 heading
-   * (ADR-0024), read without building the chunk stream.
+   * The OOXML core properties (dc:title, created, modified), the first level-1 heading (ADR-0024)
+   * and the opening of the body text (#1263), read without building the chunk stream.
    */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
@@ -142,9 +147,11 @@ public class DocxDocumentPipeline implements DocumentPipeline {
     if (content == null) {
       return DocumentProperties.EMPTY;
     }
+    List<HeadingSectionSplitter.Event> events = toEvents(content.bodyElements());
     return content
         .properties()
-        .withFirstHeading(firstTopLevelHeading(toEvents(content.bodyElements())));
+        .withFirstHeading(firstTopLevelHeading(events))
+        .withHeadText(DocumentHeadText.ofEvents(events));
   }
 
   private record DocxContent(
@@ -171,6 +178,9 @@ public class DocxDocumentPipeline implements DocumentPipeline {
         DocumentProperties.toLocalDate(core.getModified()),
         null,
         null,
+        null,
+        null,
+        false,
         Map.of());
   }
 

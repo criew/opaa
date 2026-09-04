@@ -555,8 +555,8 @@ Die wichtigsten Schlüssel unter `opaa.indexing.*`:
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
-| `filesystem.allowlist` | leer | freigegebene Basisverzeichnisse; leer schaltet `FILESYSTEM` ab (bis zur Umsetzung von #1271 noch `filesystem-allowlist`) |
-| `attachments.max-depth` | 5 | Verschachtelungstiefe von Anhängen (bis zur Umsetzung von #1269 noch `mail.max-attachment-depth`) |
+| `filesystem.allowlist` | leer | freigegebene Basisverzeichnisse; leer schaltet `FILESYSTEM` ab |
+| `attachments.max-depth` | 5 | Verschachtelungstiefe von Anhängen (Mail-in-Mail, Feed-Anlage) - ein Wert für jeden Konnektor |
 | `chunk-size` / `chunk-overlap` | 1000 / 100 Tokens | nur Auffang-Pipeline und strukturlose Texte |
 | `batch-size` | 50 | Chunks je Embedding-Aufruf |
 | `embedding-concurrency` | 3 | parallele Embedding-Pakete je Dokument |

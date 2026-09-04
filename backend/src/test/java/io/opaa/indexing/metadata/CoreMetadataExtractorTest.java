@@ -118,6 +118,295 @@ class CoreMetadataExtractorTest {
     }
   }
 
+  /** #1263: the Kompositum ending rule seeded per vocabulary value in migration 020. */
+  @Nested
+  class KompositumEndings {
+
+    @Test
+    void aTokenEndingOnASeededSuffixDenotesThatDokumentart() {
+      assertThat(
+              extract("01_verwaltungsgebuehrensatzung.pdf", DocumentProperties.EMPTY)
+                  .documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+      assertThat(
+              extract("Friedhofsgebuehrenordnung.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+      assertThat(
+              extract("Verwaltungsgebührenverzeichnis.pdf", DocumentProperties.EMPTY)
+                  .documentTypeCode())
+          .contains("GEBUEHRENVERZEICHNIS");
+      assertThat(extract("Rahmendienstanweisung.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .contains("DIENSTANWEISUNG");
+    }
+
+    @Test
+    void aTooShortPrefixInFrontOfTheEndingNeverCounts() {
+      // "Anordnung" is an Anordnung, not an Ordnung: two characters in front of the ending are
+      // below the seeded minimum, and the seed lists the token as an exclusion on top of that.
+      assertThat(extract("Anordnung_Streugut.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .isEmpty();
+      assertThat(extract("Zuordnung_Aktenzeichen.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void aSeededExclusionIsNeverClaimedByItsEnding() {
+      // Frequent administrative compounds that are no Dokumentart; no length rule separates them
+      // from "Verordnung" or "Hausordnung", so the seed names them one by one.
+      for (String fileName :
+          List.of(
+              "Einordnung_Rechtslage.pdf",
+              "Neuordnung_Aemter.pdf",
+              "Tagesordnung_Ratssitzung.pdf",
+              "Groessenordnung_Beschaffung.pdf",
+              "Größenordnung_Beschaffung.pdf",
+              "Sitzordnung_Ratssaal.pdf",
+              "Rangordnung.pdf",
+              "Sperrvermerk_Haushalt.pdf",
+              "Eingangsvermerk.pdf")) {
+        assertThat(extract(fileName, DocumentProperties.EMPTY).documentTypeCode())
+            .as(fileName)
+            .isEmpty();
+      }
+    }
+
+    @Test
+    void aCompoundThatIsGenuinelyARechtsnormStaysAdmitted() {
+      assertThat(extract("Hausordnung_Rathaus.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+      assertThat(extract("Hundesteuerverordnung.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+    }
+
+    @Test
+    void anEndingNeverBeatsAnExactVocabularyTerm() {
+      // "dienstanordnung" is a seeded synonym of DIENSTANWEISUNG; the ending "-ordnung" would
+      // otherwise make it a Satzung/Ordnung.
+      assertThat(extract("Dienstanordnung_IT.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .contains("DIENSTANWEISUNG");
+    }
+  }
+
+  /** #1263: the Kopfbereich as the third source, and its boundary. */
+  @Nested
+  class DocumentHeadSource {
+
+    @Test
+    void theFirstHeadingNamesTheDokumentartWhenTheFileNameDoesNot() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withFirstHeading("Dienstanweisung Nr. 1 - Identitaetszweifel");
+
+      assertThat(extract("01_identitaetszweifel-ausweisantrag.docx", properties).documentTypeCode())
+          .contains("DIENSTANWEISUNG");
+    }
+
+    @Test
+    void theOpeningOfTheBodyTextCountsAsWell() {
+      assertThat(
+              extract(
+                      "anlage.pdf",
+                      DocumentProperties.EMPTY.withHeadText(
+                          "Niederschrift ueber die Sitzung des Rates"))
+                  .documentTypeCode())
+          .contains("PROTOKOLL");
+    }
+
+    @Test
+    void aWordBeyondTheHeadAreaNeverBecomesADokumentart() {
+      String longLead = "Sehr geehrte Damen und Herren, ".repeat(20);
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withHeadText(longLead + "Protokoll der Sitzung");
+
+      assertThat(properties.headText())
+          .as("DocumentProperties cuts the head itself, so the word is no longer in it")
+          .doesNotContain("Protokoll");
+      assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
+    }
+
+    @Test
+    void theKompositumEndingNeverAppliesToRunningText() {
+      // The ending rule is for file names; running text is full of compounds that are no
+      // Dokumentart, and a wrong DETERMINISTIC value is the damage the Leitregel excludes.
+      for (String head :
+          List.of(
+              "Beschaffungen in dieser Größenordnung beduerfen der Zustimmung des Rates.",
+              "Die Tagesordnung wird zu Beginn der Sitzung festgestellt.",
+              "Der Vorgang traegt einen Sperrvermerk.",
+              "Diese Gebuehrensatzung wurde am 12.03.2026 beschlossen.")) {
+        assertThat(
+                extract("anlage.pdf", DocumentProperties.EMPTY.withHeadText(head))
+                    .documentTypeCode())
+            .as(head)
+            .isEmpty();
+      }
+      // An exact vocabulary term in the head still counts - that is the source's whole purpose.
+      assertThat(
+              extract(
+                      "anlage.pdf",
+                      DocumentProperties.EMPTY.withHeadText(
+                          "Satzung ueber die Erhebung von" + " Gebuehren"))
+                  .documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+    }
+
+    @Test
+    void theHeadIsCutAtAWordBoundarySoNoFragmentEverMatches() {
+      // The limit falls exactly behind "Gebührensatzung" inside "Gebührensatzungsentwurf" - a hard
+      // cut would turn the fragment into a seeded synonym and yield a DETERMINISTIC value.
+      String lead = "a".repeat(DocumentProperties.MAX_HEAD_TEXT_LENGTH - 16) + " ";
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withHeadText(lead + "Gebührensatzungsentwurf liegt vor");
+
+      assertThat(properties.headText()).doesNotContain("ebühren");
+      assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
+    }
+
+    @Test
+    void onlyWholeWordsMatch() {
+      assertThat(
+              extract(
+                      "anlage.pdf",
+                      DocumentProperties.EMPTY.withHeadText("Vermerkzettel und Protokollanten"))
+                  .documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void theFileNameOutranksTheHeadArea() {
+      DocumentProperties properties = DocumentProperties.EMPTY.withFirstHeading("Vermerk");
+
+      assertThat(extract("Protokoll_Sitzung.pdf", properties).documentTypeCode())
+          .contains("PROTOKOLL");
+    }
+
+    @Test
+    void anAmbiguousFileNameStillLetsTheHeadAreaDecide() {
+      // Unlike the frontmatter declaration, an ambiguous file name is no statement about the
+      // document - it yields nothing, and the next source is still asked.
+      DocumentProperties properties = DocumentProperties.EMPTY.withFirstHeading("Vermerk");
+
+      assertThat(extract("Protokoll_zur_Dienstanweisung.pdf", properties).documentTypeCode())
+          .contains("VERMERK");
+    }
+
+    @Test
+    void twoDifferentDokumentartenInTheHeadAreaLeaveTheFieldEmpty() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withFirstHeading("Protokoll")
+              .withHeadText("Anlage zur Dienstanweisung vom 12.03.2026");
+
+      assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
+    }
+  }
+
+  /** #1263: the file format as the last source. */
+  @Nested
+  class SyntheticName {
+
+    private final DocumentProperties headline = DocumentProperties.EMPTY.withSyntheticName(true);
+
+    @Test
+    void aHeadlineIsNoNamingConventionForTheDokumentart() {
+      // An RSS entry's name is its headline: it names what the article is about, not what the
+      // article is. Both the exact token and the Kompositum ending are off here.
+      assertThat(extract("Rat beschließt neue Hundesteuersatzung", headline).documentTypeCode())
+          .isEmpty();
+      assertThat(extract("Vermerk zur Sitzung veröffentlicht", headline).documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void aHeadlineIsNoNamingConventionForTheDate() {
+      assertThat(extract("Haushalt 2024 beschlossen", headline).date()).isEmpty();
+      assertThat(extract("Bürgerbüro ab 12.03.2026 länger geöffnet", headline).date()).isEmpty();
+      // A date the feed itself declares still counts - it is the entry's own date, not a name.
+      assertThat(
+              extract(
+                      "Haushalt 2024 beschlossen",
+                      headline.withDocumentDate(LocalDate.of(2026, 3, 12)))
+                  .date())
+          .contains(ExtractedDate.day(LocalDate.of(2026, 3, 12)));
+    }
+
+    @Test
+    void aHeadlineIsStillATitle() {
+      assertThat(extract("Rat beschließt neue Hundesteuersatzung", headline).title())
+          .hasValueSatisfying(title -> assertThat(title).contains("Hundesteuersatzung"));
+    }
+
+    @Test
+    void aRealFileNameOfTheSameWordingStillCarriesItsConvention() {
+      assertThat(
+              extract("Rat beschließt neue Hundesteuersatzung.pdf", DocumentProperties.EMPTY)
+                  .documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+      assertThat(extract("Haushalt 2024 beschlossen.pdf", DocumentProperties.EMPTY).date())
+          .contains(ExtractedDate.year(2024));
+    }
+  }
+
+  /** #1263: the file format as the last source. */
+  @Nested
+  class FileFormatSource {
+
+    @Test
+    void aPresentationFormatYieldsPraesentationWhenNoTextSourceDoes() {
+      assertThat(
+              extract(
+                      "21_onboarding-buergerbuero.pptx",
+                      DocumentProperties.EMPTY.withFormatExtension(".pptx"))
+                  .documentTypeCode())
+          .contains("PRAESENTATION");
+      assertThat(
+              extract("folien.odp", DocumentProperties.EMPTY.withFormatExtension(".odp"))
+                  .documentTypeCode())
+          .contains("PRAESENTATION");
+      // Only the two formats SupportedDocumentFormats admits as presentations.
+      assertThat(
+              extract("folien.ppt", DocumentProperties.EMPTY.withFormatExtension(".ppt"))
+                  .documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void everyTextSourceOutranksTheFormat() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withFormatExtension(".pptx").withFirstHeading("Vermerk");
+
+      assertThat(extract("anlage.pptx", properties).documentTypeCode()).contains("VERMERK");
+      assertThat(
+              extract(
+                      "Protokoll_Sitzung.pptx",
+                      DocumentProperties.EMPTY.withFormatExtension(".pptx"))
+                  .documentTypeCode())
+          .contains("PROTOKOLL");
+    }
+
+    @Test
+    void aFormatThatCarriesEveryDokumentartYieldsNone() {
+      assertThat(
+              extract("anlage.pdf", DocumentProperties.EMPTY.withFormatExtension(".pdf"))
+                  .documentTypeCode())
+          .isEmpty();
+      assertThat(
+              extract("anlage.docx", DocumentProperties.EMPTY.withFormatExtension(".docx"))
+                  .documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void aVocabularyWithoutThePresentationCodeYieldsNothingForTheFormat() {
+      ExtractedCoreMetadata result =
+          CoreMetadataExtractor.extract(
+              "folien.pptx",
+              DocumentProperties.EMPTY.withFormatExtension(".pptx"),
+              DocumentTypeVocabulary.empty());
+
+      assertThat(result.documentTypeCode()).isEmpty();
+    }
+  }
+
   @Nested
   class TitleSourceOrder {
 

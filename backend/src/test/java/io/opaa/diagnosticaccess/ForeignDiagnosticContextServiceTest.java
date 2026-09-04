@@ -130,7 +130,10 @@ class ForeignDiagnosticContextServiceTest {
             context -> new ForeignDiagnosticFindings<>(List.of("chunk-1"), "Anzeige"));
 
     assertThat(outcome.context().searchableLibraryIds()).containsExactly(openLibrary);
-    assertThat(outcome.context().lockedLibraryIds()).containsExactly(lockedLibrary);
+    // Named in the rights snapshot and nowhere else: the answer the caller builds from this
+    // context cannot reach the locked set at all.
+    assertThat(outcome.context().permissionSnapshot())
+        .isEqualTo("libraries=[" + openLibrary + "];lockedLibraries=[" + lockedLibrary + "]");
     assertThat(outcome.presentation()).isEqualTo("Anzeige");
   }
 
