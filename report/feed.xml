@@ -5,8 +5,25 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-03T04:51:02Z</updated>
+  <updated>2026-09-04T04:54:15Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Donnerstag, 3. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-03.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-03.html</id>
+    <updated>2026-09-04T04:54:15Z</updated>
+    <summary type="text">feat(indexing): ADR-0022 umsetzen — Anhänge als eigene Dokumente:
+— ADR-0022 vollständig umgesetzt: Anhänge als eigene Dokumente mit parent_document_id
+— Mail-Anhänge aus Upload- und HTTP_DIRECTORY-Beständen indiziert
+feat: Confluence als Datenquelle anbinden (Konnektor für Cloud und Data Center):
+— ADR-0023 festgelegt: Confluence-Konnektor mit Space-Auswahl und Löschsemantik
+— Integrationstests gegen echte Confluence-Data-Center-Instanz geplant
+Sonstiges:
+— Rerank-Timeout auf 240s erhöht, Read-Timeout für Antwortkörper hinzugefügt
+— Confluence-Webhooks, inkrementeller Abgleich und Betriebsgrenzen implementiert
+— Testisolation: TRUNCATE durch bibliotheksbezogenes Aufräumen ersetzt
+— Rangreserve als Grenzstabilitäts-Kennzahl in Benchmark aufgenommen</summary>
+  </entry>
   <entry>
     <title>Tagesreport Mittwoch, 2. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-02.html"/>
