@@ -183,6 +183,78 @@ public class DocumentMetadataService {
     valueRepository.save(target);
   }
 
+  /**
+   * Sets {@code field} of {@code documentId} to {@code input} (already validated) by hand: the row
+   * becomes {@code MANUAL} with {@code actorUserId}, whatever its origin was, and the filterable
+   * chunk keys are rewritten in the same transaction. A row that already holds exactly this manual
+   * value is left alone and reported as unchanged. Rights and audit are the caller's ({@link
+   * DocumentMetadataCorrectionService}); this method only owns the rows.
+   */
+  public ManualValueChange setManualValue(
+      UUID documentId, CoreMetadataField field, MetadataValueInput input, UUID actorUserId) {
+    return transactionTemplate.execute(
+        status -> {
+          DocumentMetadataValue current =
+              valueRepository.findByDocumentIdAndFieldKey(documentId, field.key()).orElse(null);
+          MetadataValueSnapshot before = current == null ? null : MetadataValueSnapshot.of(current);
+          if (before != null && before.origin() == MetadataOrigin.MANUAL && before.holds(input)) {
+            return ManualValueChange.unchanged(before);
+          }
+          DocumentMetadataValue target;
+          if (current != null) {
+            current.markManual(actorUserId);
+            target = current;
+          } else {
+            target = DocumentMetadataValue.manual(documentId, field, actorUserId);
+          }
+          input.applyTo(target);
+          valueRepository.save(target);
+          propagateToChunks(documentId, field);
+          return new ManualValueChange(before, MetadataValueSnapshot.of(target), true);
+        });
+  }
+
+  /**
+   * Removes the row of {@code field}, whatever its origin, so the field is empty again and the next
+   * extraction may fill it; chunk keys are rewritten in the same transaction. An already empty
+   * field is reported as unchanged.
+   */
+  public ManualValueChange deleteValue(UUID documentId, CoreMetadataField field) {
+    return transactionTemplate.execute(
+        status -> {
+          DocumentMetadataValue current =
+              valueRepository.findByDocumentIdAndFieldKey(documentId, field.key()).orElse(null);
+          if (current == null) {
+            return ManualValueChange.unchanged(null);
+          }
+          MetadataValueSnapshot before = MetadataValueSnapshot.of(current);
+          valueRepository.delete(current);
+          propagateToChunks(documentId, field);
+          return new ManualValueChange(before, null, true);
+        });
+  }
+
+  /** The title is not a chunk key (ADR-0024, Entscheidung 5) - only the other two are rewritten. */
+  private void propagateToChunks(UUID documentId, CoreMetadataField field) {
+    if (field == CoreMetadataField.TITLE) {
+      return;
+    }
+    valueRepository.flush();
+    CoreMetadata core =
+        toCoreMetadata(
+            valueRepository.findByDocumentId(documentId), vocabularyRepository.snapshot());
+    vectorChunkStore.updateDocumentMetadata(
+        documentId, core.chunkMetadata(), CoreMetadataChunkKeys.ALL);
+  }
+
+  /** Every stored row of {@code documentId} as detached snapshots, in no particular order. */
+  @Transactional(readOnly = true)
+  public List<MetadataValueSnapshot> snapshotsFor(UUID documentId) {
+    return valueRepository.findByDocumentId(documentId).stream()
+        .map(MetadataValueSnapshot::of)
+        .toList();
+  }
+
   @Transactional(readOnly = true)
   public CoreMetadata coreMetadataFor(UUID documentId) {
     return toCoreMetadata(

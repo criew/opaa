@@ -1696,6 +1696,174 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/{libraryId}/documents/{documentId}/metadata:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getDocumentMetadata
+      tags: [library]
+      summary: >
+        The core metadata fields of one document with the provenance of every value
+        (docs/features/metadata-schema.md, "Jeder Wert trägt seine Herkunft"; #1068). Every core
+        field is listed, an empty one with value null. Readable by everyone who may see the
+        library's document list (VIEWER or above); a document of another library or a library of
+        another organization is absent (404).
+      responses:
+        "200":
+          description: The document's core fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentMetadataResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/documents/{documentId}/metadata/{fieldKey}:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: path
+        required: true
+        description: One of the core field keys title, document_type or document_date.
+        schema:
+          type: string
+          example: document_type
+
+    put:
+      operationId: setDocumentMetadataValue
+      tags: [library]
+      summary: >
+        Set or change one core field of a document by hand (#1068, metadata-schema.md "Manuelle
+        Korrektur ist Teil des ersten Schnitts"). The stored value carries origin MANUAL, the
+        calling person as actor and the time of the call; no automatic extraction ever overwrites
+        it afterwards. The filterable keys on the document's chunks are rewritten in the same
+        transaction, without re-embedding. Requires the right to edit the library's documents
+        (EDITOR or above) - no management right at the library. Every call that changes something
+        writes one audit event (DOCUMENT_METADATA_CHANGED) with the old and the new value; an
+        identical manual value already in place changes nothing and writes no event. Validation:
+        a Dokumentart outside the vocabulary, a title that is blank, a date without precision or a
+        value of the wrong kind for the field are rejected with 400. The value body is designed so
+        that #1069 adds the third state "kein Wert ermittelbar" as one more alternative of the same
+        request, not as a separate operation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MetadataValueRequest"
+      responses:
+        "200":
+          description: The field after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentMetadataFieldResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: deleteDocumentMetadataValue
+      tags: [library]
+      summary: >
+        Remove the stored value of one core field (#1068). Removes the row whatever its origin, so
+        the field is empty again and the next automatic extraction may fill it - a lasting "there
+        is no value" is the third state of #1069, not a deletion. Same right as setting a value
+        (EDITOR or above); writes one audit event carrying the removed value. Deleting an already
+        empty field is a no-op that writes no event.
+      responses:
+        "204":
+          description: Value removed (or already absent)
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/documents/metadata/bulk:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: bulkSetDocumentMetadata
+      tags: [library]
+      summary: >
+        Set one field to one value on a chosen set of this library's documents (#1068,
+        metadata-schema.md "Sammelzuweisung auf einer Auswahl"). Same right and same validation as
+        the single-document PUT; every document gets its own MANUAL value, its own chunk rewrite
+        and its own audit event with old and new value - the events of one call share a
+        correlationRef, returned in the response. An id that is not a document of this library
+        (deleted meanwhile, or belonging to another library) is rejected and listed in
+        rejectedDocumentIds - never silently skipped - while the remaining documents are still
+        processed; the whole call is one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkMetadataValueRequest"
+      responses:
+        "200":
+          description: Counters of the bulk assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BulkMetadataValueResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/metadata/document-types:
+    get:
+      operationId: listDocumentTypes
+      tags: [library]
+      summary: >
+        The controlled Dokumentart vocabulary (ADR-0024, Entscheidung 3) in display order - the
+        choice list a client offers when a person sets the field. Schema, not an aggregate over
+        documents: the list exists independently of any document and is visible to every
+        authenticated user (metadata-schema.md, Rechte-Invariante: "Die konfigurierte Werteliste
+        ... ist von dieser Regel ausgenommen").
+      responses:
+        "200":
+          description: The vocabulary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentTypeVocabularyResponse"
+
   /api/v1/libraries/{libraryId}/folders:
     parameters:
       - name: libraryId
@@ -4910,6 +5078,180 @@ components:
           items:
             $ref: "#/components/schemas/LibraryFolderBreadcrumbItem"
 
+    MetadataValueRequest:
+      type: object
+      description: >-
+        The value a person sets for one core field (#1068): exactly one of textValue (title),
+        vocabularyCode (document_type) or dateValue plus datePrecision (document_date), matching the
+        field addressed. #1069 extends this object by the state "kein Wert ermittelbar" as one more
+        alternative of the same operation.
+      properties:
+        textValue:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: The title text; blank is rejected.
+          example: Dienstanweisung zur IT-Nutzung
+        vocabularyCode:
+          type: string
+          nullable: true
+          description: A code of the Dokumentart vocabulary; anything else is rejected with 400.
+          example: DIENSTANWEISUNG
+        dateValue:
+          type: string
+          nullable: true
+          pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          description: >-
+            The ISO-8601 calendar date; an impossible date is rejected with 400. Padded
+            server-side to the first day of what datePrecision leaves unknown.
+          example: "2026-03-12"
+        datePrecision:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/DatePrecision"
+          description: Required together with dateValue.
+
+    DocumentMetadataFieldResponse:
+      type: object
+      required: [fieldKey, label]
+      description: >-
+        One core field of a document with everything metadata-schema.md demands a value to carry
+        ("Jeder Wert trägt seine Herkunft"). An empty field has value, displayValue and origin
+        null.
+      properties:
+        fieldKey:
+          type: string
+          example: document_type
+        label:
+          type: string
+          description: The German field label.
+          example: Dokumentart
+        value:
+          type: string
+          nullable: true
+          description: >-
+            The machine-readable value - vocabulary code, ISO-8601 date or the text itself; null
+            when the field is empty.
+        displayValue:
+          type: string
+          nullable: true
+          description: >-
+            What a client shows - the German vocabulary label, or the date at its own precision.
+        origin:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataOrigin"
+        datePrecision:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/DatePrecision"
+        confidence:
+          type: number
+          format: double
+          nullable: true
+          description: Only for a DERIVED value.
+        modelId:
+          type: string
+          nullable: true
+          description: Only for a DERIVED value.
+        extractionVersion:
+          type: integer
+          nullable: true
+          description: Set for every non-manual value.
+        actorUserId:
+          type: string
+          format: uuid
+          nullable: true
+          description: The person who set a MANUAL value.
+        actorDisplayName:
+          type: string
+          nullable: true
+          description: >-
+            The display name of that person, null when the account no longer exists.
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the current value was written.
+
+    DocumentMetadataResponse:
+      type: object
+      required: [documentId, fields]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        fields:
+          type: array
+          description: Every core field in schema order (Titel, Dokumentart, Datum/Stand).
+          items:
+            $ref: "#/components/schemas/DocumentMetadataFieldResponse"
+
+    BulkMetadataValueRequest:
+      type: object
+      required: [fieldKey, value, documentIds]
+      properties:
+        fieldKey:
+          type: string
+          description: The core field to set on every listed document.
+          example: document_type
+        value:
+          $ref: "#/components/schemas/MetadataValueRequest"
+        documentIds:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          description: >-
+            The chosen documents - ids taken from this library's own document list. Duplicates are
+            processed once.
+          items:
+            type: string
+            format: uuid
+
+    BulkMetadataValueResponse:
+      type: object
+      required: [updatedCount, unchangedCount, rejectedDocumentIds, correlationRef]
+      properties:
+        updatedCount:
+          type: integer
+          description: Documents whose value was set or changed - one audit event each.
+        unchangedCount:
+          type: integer
+          description: >-
+            Documents that already carried exactly this manual value; nothing written, no event.
+        rejectedDocumentIds:
+          type: array
+          description: >-
+            Ids that are not documents of this library; none of them was touched.
+          items:
+            type: string
+            format: uuid
+        correlationRef:
+          type: string
+          description: >-
+            The correlationRef every audit event of this call carries, so the whole bulk
+            assignment can be read back from the audit log as one operation.
+
+    DocumentTypeVocabularyEntryResponse:
+      type: object
+      required: [code, label]
+      properties:
+        code:
+          type: string
+          example: DIENSTANWEISUNG
+        label:
+          type: string
+          example: Dienstanweisung
+
+    DocumentTypeVocabularyResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentTypeVocabularyEntryResponse"
+
     LowChunkDocumentResponse:
       type: object
       required: [documentId, libraryId, libraryName, fileName, chunkCount]
@@ -5624,6 +5966,7 @@ components:
           CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
           INDEXING_PIPELINE_REINDEX_TRIGGERED,
           INDEXING_METADATA_BACKFILL_TRIGGERED,
+          DOCUMENT_METADATA_CHANGED,
           BRANDING_SETTINGS_CHANGED,
           LLM_MODEL_CREATED,
           LLM_MODEL_CHANGED,

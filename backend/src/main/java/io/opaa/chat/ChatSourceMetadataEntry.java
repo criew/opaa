@@ -4,8 +4,8 @@ import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.CoreMetadataField;
+import io.opaa.indexing.metadata.MetadataValueDisplay;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,9 +23,6 @@ public record ChatSourceMetadataEntry(
     String displayValue,
     MetadataOrigin origin,
     DatePrecision datePrecision) {
-
-  private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-  private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MM/yyyy");
 
   /** The core fields of {@code core} in schema order; empty (not null-padded) for absent fields. */
   public static List<ChatSourceMetadataEntry> fromCore(CoreMetadata core) {
@@ -68,13 +65,6 @@ public record ChatSourceMetadataEntry(
 
   /** "12.03.2026", "03/2026" or "2024" - a date at its own precision, never a padded day. */
   static String displayDate(LocalDate date, DatePrecision precision) {
-    if (precision == null) {
-      return DAY.format(date);
-    }
-    return switch (precision) {
-      case DAY -> DAY.format(date);
-      case MONTH -> MONTH.format(date);
-      case YEAR -> Integer.toString(date.getYear());
-    };
+    return MetadataValueDisplay.displayDate(date, precision);
   }
 }

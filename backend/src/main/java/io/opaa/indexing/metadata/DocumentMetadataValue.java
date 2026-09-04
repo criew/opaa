@@ -121,6 +121,19 @@ public class DocumentMetadataValue {
     return value;
   }
 
+  /**
+   * Re-labels an existing row as set by hand by {@code actorUserId} (#1068): origin {@code MANUAL},
+   * no confidence, model or extraction version - from now on no extraction touches it.
+   */
+  void markManual(UUID actorUserId) {
+    this.origin = MetadataOrigin.MANUAL;
+    this.actorUserId = actorUserId;
+    this.extractionVersion = null;
+    this.confidence = null;
+    this.modelId = null;
+    this.updatedAt = Instant.now();
+  }
+
   /** Re-labels an existing (non-manual) row as the result of deterministic extraction. */
   void markDeterministic(int extractionVersion) {
     this.origin = MetadataOrigin.DETERMINISTIC;

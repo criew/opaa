@@ -203,23 +203,25 @@ class AuditEventRecorderTest {
   }
 
   @Test
-  void recordUserActionRejectsAnEventBuiltWithACorrelationRef() {
+  void recordUserActionCarriesACorrelationRefOntoTheEntry() {
+    // #1068: the per-document entries of one person's Sammelzuweisung are linked by it.
     UUID organizationId = UUID.randomUUID();
     UUID actorUserId = UUID.randomUUID();
     when(pseudonymService.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
-    AuditEvent event =
+
+    recorder.recordUserAction(
         AuditEvent.builder()
             .organizationId(organizationId)
             .actor(actorUserId)
-            .type(AuditEventType.SPACE_CREATED)
-            .object(AuditObjectType.SPACE, UUID.randomUUID(), "Team Alpha")
+            .type(AuditEventType.DOCUMENT_METADATA_CHANGED)
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, UUID.randomUUID(), "Bibliothek")
             .outcome(AuditOutcome.SUCCESS)
-            .correlationRef("run-1")
-            .build();
+            .correlationRef("metadata-bulk-1")
+            .build());
 
-    assertThatThrownBy(() -> recorder.recordUserAction(event))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("correlationRef");
+    ArgumentCaptor<AuditLogEntry> captor = ArgumentCaptor.forClass(AuditLogEntry.class);
+    verify(auditLogService).record(captor.capture());
+    assertThat(captor.getValue().getCorrelationRef()).isEqualTo("metadata-bulk-1");
   }
 
   @Test
