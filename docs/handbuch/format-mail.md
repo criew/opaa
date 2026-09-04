@@ -127,10 +127,13 @@ Schlüssel unter `opaa.indexing.mail.*`:
 | `max-message-bytes` | 100 MiB | Obergrenze der Datei; die eigentliche Speichergrenze, weil die Leser alles im Speicher halten |
 | `max-attachments-per-message` | 50 | ab dieser Zahl wird kein Anhang mehr ausgepackt |
 | `max-attachment-bytes` | 50 MiB | je Anhang |
-| `max-attachment-depth` | 5 | Verschachtelungstiefe; wird mit Ticket #1269 durch die allgemeine Grenze `opaa.indexing.attachments.max-depth` ersetzt |
 
-Die drei Anhangsgrenzen schützen Platte und nachgelagerte Verarbeitung, nicht den
-Parse-Vorgang selbst.
+Die Verschachtelungstiefe für Mail-in-Mail ist seit #1269 kein eigener Mail-Schlüssel mehr, sondern
+die allgemeine `opaa.indexing.attachments.max-depth` (siehe [Indexierung](indexierung.md)) - dieselbe
+Grenze gilt für jede Anhangskette, unabhängig vom Konnektor.
+
+Die Anhangsgrenzen oben schützen Platte und nachgelagerte Verarbeitung, nicht den Parse-Vorgang
+selbst.
 
 ## 8. Nicht verarbeitet
 

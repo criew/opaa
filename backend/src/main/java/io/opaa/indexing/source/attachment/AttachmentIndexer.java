@@ -53,13 +53,6 @@ public class AttachmentIndexer {
   private static final Logger log = LoggerFactory.getLogger(AttachmentIndexer.class);
 
   /**
-   * The default {@link AttachmentDownloadLimits#maxAttachmentDepth()} for a caller with no
-   * format-specific depth concept of its own (RSS) - {@code MailProperties#maxAttachmentDepth()}'s
-   * own default before #1183 moved the limit here.
-   */
-  public static final int DEFAULT_MAX_ATTACHMENT_DEPTH = 5;
-
-  /**
    * How many levels of attachment-in-attachment recursion the current thread is at - {@code null}
    * outside of any {@link #indexAll} call. An attachment whose own pipeline reports further {@code
    * discoveredAttachments} (e.g. a nested {@code .eml}) re-enters this class synchronously, through
@@ -73,16 +66,19 @@ public class AttachmentIndexer {
   private final FileProcessingService fileProcessingService;
   private final LibraryStorageQuotaService storageQuotaService;
   private final DocumentRepository documentRepository;
+  private final AttachmentProperties attachmentProperties;
 
   public AttachmentIndexer(
       BoundedDownloader attachmentDownloader,
       FileProcessingService fileProcessingService,
       LibraryStorageQuotaService storageQuotaService,
-      DocumentRepository documentRepository) {
+      DocumentRepository documentRepository,
+      AttachmentProperties attachmentProperties) {
     this.attachmentDownloader = attachmentDownloader;
     this.fileProcessingService = fileProcessingService;
     this.storageQuotaService = storageQuotaService;
     this.documentRepository = documentRepository;
+    this.attachmentProperties = attachmentProperties;
   }
 
   /**
@@ -125,10 +121,10 @@ public class AttachmentIndexer {
     }
     boolean topLevel = RECURSION_DEPTH.get() == null;
     int depth = topLevel ? 0 : RECURSION_DEPTH.get();
-    if (depth >= limits.maxAttachmentDepth()) {
+    if (depth >= attachmentProperties.maxDepth()) {
       log.warn(
           "Maximum attachment depth ({}) reached for {}, skipping {} nested attachment(s)",
-          limits.maxAttachmentDepth(),
+          attachmentProperties.maxDepth(),
           parentPath,
           sources.size());
       access.markDeferred();
