@@ -3,7 +3,6 @@ package io.opaa.eval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.Volume;
 import io.opaa.api.types.DocumentSourceType;
@@ -27,16 +26,13 @@ import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
+import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.organization.Organization;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.QueryService;
 import io.opaa.query.RetrievalPipelineProperties;
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -71,7 +67,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.ollama.OllamaContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Retrieval-quality evaluation harness (issue #227). Indexes the frozen `eval/corpus/`
@@ -108,7 +103,7 @@ import tools.jackson.databind.json.JsonMapper;
  *
  * <p>Deliberately not part of {@code ./gradlew build}/{@code test} — see the {@code evalTest}
  * source set and {@code evaluateRetrieval} task in {@code build.gradle.kts}. Run explicitly with
- * {@code ./gradlew evaluateRetrieval}; needs Docker and pulls the {@code nomic-embed-text} model
+ * {@code ./gradlew evaluateRetrieval}; needs Docker and pulls the pinned embedding and chat models
  * into the Ollama Testcontainer on first run.
  */
 // AuthProfileGuard (ADR-0005) refuses to start the context without an auth profile, so the harness
@@ -132,7 +127,7 @@ class RetrievalEvaluationHarnessTest {
   // Captured with `ollama pull nomic-embed-text:v1.5` against a freshly started
   // ollama/ollama:0.6.5 container and read back from GET /api/tags (the "digest" field), on
   // 2026-08-03. If a future pull ever reports a different digest for this exact tag, that is model
-  // drift, not a harness bug — see the assertion in pullEmbeddingModel() and ADR-0011 decision 4.
+  // drift, not a harness bug — see EvalOllamaModel#ensurePresent and ADR-0011 decision 4.
   private static final String EXPECTED_EMBEDDING_MODEL_DIGEST =
       "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f";
 
@@ -150,6 +145,10 @@ class RetrievalEvaluationHarnessTest {
   private static final String OLLAMA_MODEL_VOLUME_PATH = "/root/.ollama";
 
   private static volatile String actualEmbeddingModelDigest;
+
+  // Issue #1085: the chat model this run pinned and made systemwide active, or null before
+  // the models were pulled. Null means "decomposition cannot be measured in this run".
+  private static volatile String activeChatModel;
 
   // Issue #721: comic-characters' domain configuration — chunk-count expectation, document-bound
   // k-window, chunk-search sizing. See EvalDomainConfig's Javadoc for why chunkTopK() == 10 here
@@ -186,68 +185,31 @@ class RetrievalEvaluationHarnessTest {
   @org.junit.jupiter.api.io.TempDir static Path corpusWorkingDir;
 
   @BeforeAll
-  static void pullEmbeddingModel() throws IOException, InterruptedException {
+  static void pullModels() throws IOException, InterruptedException {
     startOllamaIfNeeded();
-
-    // Check the /api/tags endpoint before pulling anything. If the model is already present with
-    // exactly the expected digest — the common case on a warm OLLAMA_MODEL_VOLUME, whether on a
-    // developer machine or restored from the CI cache (see
-    // .github/workflows/retrieval-regression.yml) — skip 'ollama pull' entirely. Without this
-    // check, 'ollama pull' always reaches out to the model registry to resolve the tag's manifest
-    // even when every layer is already cached locally, which contradicted this harness's claim
-    // (eval/README.md, ADR-0011) of not needing to download the embedding model again on a warm
-    // cache (PR #301 review, Befund 5). Narrowly scoped claim, not "no third-party network access
-    // at all": the pgvector/pgvector and ollama/ollama base images are still pulled from Docker
-    // Hub regardless of this check (Testcontainers itself does that, independent of the model). GET
-    // /api/tags itself never leaves the Docker network either way in the default (Testcontainer)
-    // mode — it talks to the Ollama container this test just started, not to any third party.
-    String cachedDigest = tryFetchEmbeddingModelDigest();
-    if (cachedDigest != null && EXPECTED_EMBEDDING_MODEL_DIGEST.equalsIgnoreCase(cachedDigest)) {
-      log.info(
-          "{} already present at {} with the expected digest {} — skipping 'ollama pull'.",
-          EMBEDDING_MODEL,
-          ollamaEndpoint(),
-          cachedDigest);
-      actualEmbeddingModelDigest = cachedDigest;
-      return;
-    }
-
-    log.info(
-        "Pulling {} into the Ollama endpoint at {}"
-            + (EvalOllamaEndpoint.isExternal()
-                ? "..."
-                : " (cached in the '"
-                    + OLLAMA_MODEL_VOLUME
-                    + "' Docker volume after the first "
-                    + "run)..."),
-        EMBEDDING_MODEL,
-        ollamaEndpoint());
-    if (EvalOllamaEndpoint.isExternal()) {
-      pullEmbeddingModelViaHttp();
-    } else {
-      var pullResult = ollama.execInContainer("ollama", "pull", EMBEDDING_MODEL);
-      if (pullResult.getExitCode() != 0) {
-        throw new IllegalStateException(
-            "Failed to pull '"
-                + EMBEDDING_MODEL
-                + "' in the Ollama container: "
-                + pullResult.getStderr());
-      }
-    }
-    actualEmbeddingModelDigest = fetchEmbeddingModelDigest();
-    if (!EXPECTED_EMBEDDING_MODEL_DIGEST.equalsIgnoreCase(actualEmbeddingModelDigest)) {
-      throw new IllegalStateException(
-          "Embedding model drift detected: '"
-              + EMBEDDING_MODEL
-              + "' now resolves to digest "
-              + actualEmbeddingModelDigest
-              + ", but this harness pins "
-              + EXPECTED_EMBEDDING_MODEL_DIGEST
-              + " (see EXPECTED_EMBEDDING_MODEL_DIGEST javadoc). The tag was force-updated "
-              + "upstream — treat this as a deliberate baseline re-pin (new digest constant, new "
-              + "evaluateRetrieval run, updated numbers in the PR), not a code bug.");
-    }
-    log.info("Embedding model digest verified: {}", actualEmbeddingModelDigest);
+    String cacheHint =
+        EvalOllamaEndpoint.isExternal()
+            ? "..."
+            : " (cached in the '" + OLLAMA_MODEL_VOLUME + "' Docker volume after the first run)...";
+    actualEmbeddingModelDigest =
+        EvalOllamaModel.ensurePresent(
+            ollamaEndpoint(),
+            ollama,
+            EMBEDDING_MODEL,
+            EXPECTED_EMBEDDING_MODEL_DIGEST,
+            log,
+            cacheHint);
+    // Issue #1085: the chat model the Teilfragen-Zerlegung needs, pinned by tag and content digest
+    // exactly like the embedding model. Pulled on every run rather than only on a decomposing one,
+    // so a broken model pin surfaces in the nightly job instead of only in a rare manual run.
+    EvalOllamaModel.ensurePresent(
+        ollamaEndpoint(),
+        ollama,
+        EvalChatModel.MODEL,
+        EvalChatModel.EXPECTED_DIGEST,
+        log,
+        cacheHint);
+    activeChatModel = EvalChatModel.MODEL;
   }
 
   /**
@@ -338,94 +300,6 @@ class RetrievalEvaluationHarnessTest {
         : ollama.getEndpoint();
   }
 
-  /**
-   * Like {@link #fetchEmbeddingModelDigest()}, but {@code null} instead of throwing when the tag is
-   * not present in the container yet (fresh/empty volume) — the expected case on the very first
-   * run.
-   */
-  private static String tryFetchEmbeddingModelDigest() throws IOException, InterruptedException {
-    try {
-      return fetchEmbeddingModelDigest();
-    } catch (IllegalStateException e) {
-      return null;
-    }
-  }
-
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  private record OllamaTagsResponse(List<OllamaModelTag> models) {}
-
-  @JsonIgnoreProperties(ignoreUnknown = true)
-  private record OllamaModelTag(String name, String digest) {}
-
-  private static String fetchEmbeddingModelDigest() throws IOException, InterruptedException {
-    HttpClient client = HttpClient.newHttpClient();
-    HttpRequest request =
-        HttpRequest.newBuilder(URI.create(ollamaEndpoint() + "/api/tags")).GET().build();
-    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-    if (response.statusCode() != 200) {
-      throw new IllegalStateException(
-          "GET /api/tags on the Ollama endpoint failed with status " + response.statusCode());
-    }
-    OllamaTagsResponse tags =
-        JsonMapper.builder().build().readValue(response.body(), OllamaTagsResponse.class);
-    return tags.models().stream()
-        .filter(m -> EMBEDDING_MODEL.equals(m.name()))
-        .map(OllamaModelTag::digest)
-        .findFirst()
-        .orElseThrow(
-            () ->
-                new IllegalStateException(
-                    "Model '" + EMBEDDING_MODEL + "' not found in /api/tags response: " + tags));
-  }
-
-  // Non-streaming POST /api/pull only returns once the whole ~275 MB model is on disk; 10 minutes
-  // comfortably covers a cold pull over a normal connection without masking a genuinely hung
-  // request as a slow one indefinitely.
-  private static final Duration PULL_TIMEOUT = Duration.ofMinutes(10);
-
-  /**
-   * Pulls {@link #EMBEDDING_MODEL} on an external Ollama endpoint (issue #1076) — {@code
-   * ollama.execInContainer} only works against a Testcontainer, so this equivalent goes through
-   * Ollama's {@code POST /api/pull} HTTP API instead, non-streaming so the call blocks until the
-   * pull actually finishes (or fails).
-   */
-  private static void pullEmbeddingModelViaHttp() throws IOException, InterruptedException {
-    HttpClient client = HttpClient.newHttpClient();
-    String requestBody =
-        JsonMapper.builder()
-            .build()
-            .writeValueAsString(Map.of("model", EMBEDDING_MODEL, "stream", false));
-    HttpRequest request =
-        HttpRequest.newBuilder(URI.create(ollamaEndpoint() + "/api/pull"))
-            .timeout(PULL_TIMEOUT)
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-            .build();
-    HttpResponse<String> response;
-    try {
-      response = client.send(request, HttpResponse.BodyHandlers.ofString());
-    } catch (java.net.http.HttpTimeoutException e) {
-      throw new IllegalStateException(
-          "Timed out after "
-              + PULL_TIMEOUT
-              + " pulling '"
-              + EMBEDDING_MODEL
-              + "' via POST /api/pull on the external Ollama endpoint "
-              + ollamaEndpoint()
-              + " — check that the endpoint is reachable and has network access to pull the model.",
-          e);
-    }
-    if (response.statusCode() != 200) {
-      throw new IllegalStateException(
-          "Failed to pull '"
-              + EMBEDDING_MODEL
-              + "' via POST /api/pull on the external Ollama endpoint: HTTP "
-              + response.statusCode()
-              + " — "
-              + response.body());
-    }
-  }
-
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
     registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -447,12 +321,14 @@ class RetrievalEvaluationHarnessTest {
     // EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE javadoc and ADR-0010: the harness measures whatever
     // chunk-size production is actually configured with (application.yml's own default).
     registry.add("opaa.indexing.batch-size", () -> 50);
-    // The only opaa.query.* override: the pipeline path measures the decomposition-off variant,
-    // because this context has no chat model and a failing decomposition would silently degrade to
-    // single-query retrieval (ADR-0012, Nachtrag Pipeline-Messpfad, Entscheidung 15 — where the
-    // open model decision is recorded). Every other query parameter stays at its production
-    // default and is read from the running context.
-    registry.add("opaa.query.query-decomposition-enabled", () -> false);
+    // The only opaa.query.* override, and an opt-in one since issue #1085: every committed
+    // pipeline baseline is drawn with decomposition off, because the shipped decomposition-on
+    // configuration costs one chat call per query and, under the Mehrfachlauf-Regel, three runs of
+    // the whole pipeline path — more than the nightly budget carries (see EvalQueryDecomposition
+    // and docs/features/retrieval-benchmark.md, "Offene Punkte" 3). Every other query parameter
+    // stays at its production default and is read from the running context.
+    registry.add(
+        "opaa.query.query-decomposition-enabled", EvalQueryDecomposition::requestedForThisRun);
     // Single-threaded on purpose (unlike the production default of core=2/max=4): with more than
     // one worker thread, the order in which chunks are inserted into pgvector — and therefore the
     // shape of the HNSW graph the approximate search walks — becomes nondeterministic across runs.
@@ -497,6 +373,9 @@ class RetrievalEvaluationHarnessTest {
   // #1050: whether this run could rerank at all - a fact about the context, and the one
   // requireMeasurableConfiguration needs to keep a reranking run out of the committed baseline.
   @Autowired private RerankModelRole rerankModelRole;
+  // #1085: the production resolver of the systemwide active chat model - used to prove the
+  // installed eval chat model actually answers before a decomposing run measures anything.
+  @Autowired private ActiveChatModelResolver activeChatModelResolver;
   // #1041: the variant-comparison step builds its own QueryService instances around the same
   // collaborators the autowired queryService above uses — two of those collaborators
   // (ChunkEmbeddingLookup, QueryDecompositionService) are package-private in io.opaa.query and
@@ -523,6 +402,11 @@ class RetrievalEvaluationHarnessTest {
 
   @BeforeEach
   void setUpIndexingTarget() {
+    // Issue #1085: replace whatever LlmModelSeeder wrote at context startup with the pinned
+    // eval chat model, so QueryDecompositionService resolves it through the production path.
+    // Safe here because nothing has resolved a chat client yet (ActiveChatModelResolver builds
+    // lazily), so no client can have been cached from the seeded row.
+    EvalChatModel.installAsSystemwideActiveModel(jdbcTemplate, ollamaEndpoint());
     jdbcTemplate.update("DELETE FROM users WHERE email = 'eval-harness@example.com'");
     evalUserId = UUID.randomUUID();
     jdbcTemplate.update(
@@ -574,7 +458,12 @@ class RetrievalEvaluationHarnessTest {
     // check reads nothing but the query configuration, which is fixed from context startup. Failing
     // it after the hour-long raw-vector path would cost that path its baseline verdict for nothing.
     PipelineHarnessSupport.requireMeasurableConfiguration(
-        queryProperties, pipelineProperties, rerankModelRole.usable());
+        queryProperties, pipelineProperties, rerankModelRole.usable(), activeChatModel);
+    if (queryProperties.queryDecompositionEnabled()) {
+      // One real call before the expensive part: a decomposition that fails per query is
+      // swallowed by QueryDecompositionService and would be measured as a run without it.
+      EvalChatModel.requireUsable(activeChatModelResolver);
+    }
 
     // Same reasoning for the variant-comparison opt-in (#1041 review, Befund 3): a broken
     // comparison file, an unresolvable referenceVariant, an invalid QueryProperties override
@@ -585,7 +474,8 @@ class RetrievalEvaluationHarnessTest {
     // local variable) — see runVariantComparison's own Javadoc for why that repeat is guarded while
     // this one is not.
     if (VariantComparisonStep.isRequested()) {
-      VariantComparisonStep.loadAndValidate(queryProperties, DEFAULT_VARIANT_COMPARISON_FILE);
+      VariantComparisonStep.loadAndValidate(
+          queryProperties, DEFAULT_VARIANT_COMPARISON_FILE, activeChatModel);
     }
 
     Path evalDir = RepoPaths.evalDir();
@@ -949,7 +839,8 @@ class RetrievalEvaluationHarnessTest {
             GoldenDataset.sha256(goldenFile),
             // Issue #1049: whether the lexical path could contribute at all in this run.
             fullTextBackfillProgressService.progressForLibrary(evalLibraryId).isComplete(),
-            ingestionPipelineFingerprint);
+            ingestionPipelineFingerprint,
+            activeChatModel);
     PipelineHarnessSupport.runAndWriteGuarded(
         DOMAIN,
         identity,

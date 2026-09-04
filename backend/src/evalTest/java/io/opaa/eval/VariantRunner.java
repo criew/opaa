@@ -5,7 +5,6 @@ import io.opaa.query.QueryProperties;
 import io.opaa.query.QueryService;
 import io.opaa.query.QueryServiceDependencies;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -45,7 +44,11 @@ public final class VariantRunner {
 
     var unmetReason =
         VariantPrerequisites.unmetReason(
-            variant, effective, identity.fullTextBackfillComplete(), rerankWatch.usable());
+            variant,
+            effective,
+            identity.chatModel() != null,
+            identity.fullTextBackfillComplete(),
+            rerankWatch.usable());
     if (unmetReason.isPresent()) {
       return VariantOutcome.skipped(variant, unmetReason.get());
     }
@@ -114,16 +117,10 @@ public final class VariantRunner {
       PipelineVariant variant,
       QueryProperties effective,
       Supplier<PipelineEvaluationReport> measure) {
-    if (!effective.queryDecompositionEnabled()) {
-      return VariantOutcome.executed(variant, measure.get());
-    }
-
-    List<PipelineEvaluationReport> runs =
-        new ArrayList<>(MultiRunAggregator.DECOMPOSITION_RUN_COUNT);
-    for (int i = 0; i < MultiRunAggregator.DECOMPOSITION_RUN_COUNT; i++) {
-      runs.add(measure.get());
-    }
-    MultiRunSummary summary = MultiRunAggregator.summarize(runs);
-    return VariantOutcome.executedMultiRun(variant, runs.get(summary.medianRunIndex()), summary);
+    MehrfachlaufRule.Measurement measurement =
+        MehrfachlaufRule.measure(effective.queryDecompositionEnabled(), measure);
+    return measurement.multiRun()
+        ? VariantOutcome.executedMultiRun(variant, measurement.report(), measurement.summary())
+        : VariantOutcome.executed(variant, measurement.report());
   }
 }

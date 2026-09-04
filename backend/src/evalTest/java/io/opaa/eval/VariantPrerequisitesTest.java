@@ -16,12 +16,12 @@ class VariantPrerequisitesTest {
 
   @Test
   void aVariantWithoutUnmetPrerequisitesCanRun() {
-    assertThat(VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE)).isEmpty();
+    assertThat(VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, true)).isEmpty();
   }
 
   @Test
   void aReindexRequiringVariantIsSkipped() {
-    var reason = VariantPrerequisites.unmetReason(variant(true), PRODUCTION_LIKE);
+    var reason = VariantPrerequisites.unmetReason(variant(true), PRODUCTION_LIKE, true);
 
     assertThat(reason).isPresent();
     assertThat(reason.get()).contains("requiresReindex");
@@ -31,10 +31,35 @@ class VariantPrerequisitesTest {
   void aVariantThatEnablesDecompositionIsSkippedForLackOfAChatModel() {
     var decompositionOn = new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, true, 50);
 
-    var reason = VariantPrerequisites.unmetReason(variant(false), decompositionOn);
+    var reason = VariantPrerequisites.unmetReason(variant(false), decompositionOn, false);
 
     assertThat(reason).isPresent();
     assertThat(reason.get()).contains("query-decomposition-enabled");
+  }
+
+  /**
+   * Issue #1085: with the pinned chat model installed, the same variant is measurable — the
+   * prerequisite constrains the missing model, not the decomposition itself.
+   */
+  @Test
+  void aVariantThatEnablesDecompositionRunsOnceAChatModelIsAvailable() {
+    var decompositionOn = new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, true, 50);
+
+    assertThat(VariantPrerequisites.unmetReason(variant(false), decompositionOn, true)).isEmpty();
+    assertThat(VariantPrerequisites.unmetReason(variant(false), decompositionOn, true, true, false))
+        .isEmpty();
+  }
+
+  /** The full overload keeps the chat-model prerequisite ahead of the later, index-bound ones. */
+  @Test
+  void theFullOverloadStillSkipsADecomposingVariantWithoutAChatModel() {
+    var decompositionOn = new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, 2, true, 50);
+
+    var reason =
+        VariantPrerequisites.unmetReason(variant(false), decompositionOn, false, true, false);
+
+    assertThat(reason).isPresent();
+    assertThat(reason.get()).contains("Chat-Modell");
   }
 
   /**
@@ -45,7 +70,8 @@ class VariantPrerequisitesTest {
    */
   @Test
   void aHybridVariantIsSkippedWhileTheFullTextBackfillIsIncomplete() {
-    var reason = VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, false, false);
+    var reason =
+        VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, true, false, false);
 
     assertThat(reason).isPresent();
     assertThat(reason.get()).contains("Backfill");
@@ -56,9 +82,9 @@ class VariantPrerequisitesTest {
   void theBackfillPrerequisiteOnlyConstrainsAVariantThatUsesTheLexicalPath() {
     var vectorOnly = new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
 
-    assertThat(VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, true, false))
+    assertThat(VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, true, true, false))
         .isEmpty();
-    assertThat(VariantPrerequisites.unmetReason(variant(false), vectorOnly, false, false))
+    assertThat(VariantPrerequisites.unmetReason(variant(false), vectorOnly, true, false, false))
         .isEmpty();
   }
 
@@ -69,17 +95,20 @@ class VariantPrerequisitesTest {
    */
   @Test
   void theRerankPrerequisiteOnlyConstrainsAVariantThatDeclaresAWindow() {
-    assertThat(VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, true, false))
+    assertThat(VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, true, true, false))
         .isEmpty();
-    assertThat(VariantPrerequisites.unmetReason(rerankVariant(50), PRODUCTION_LIKE, true, true))
+    assertThat(
+            VariantPrerequisites.unmetReason(rerankVariant(50), PRODUCTION_LIKE, true, true, true))
         .isEmpty();
-    assertThat(VariantPrerequisites.unmetReason(rerankVariant(0), PRODUCTION_LIKE, true, false))
+    assertThat(
+            VariantPrerequisites.unmetReason(rerankVariant(0), PRODUCTION_LIKE, true, true, false))
         .isEmpty();
   }
 
   @Test
   void aRerankingVariantIsSkippedWithoutAUsableRerankRole() {
-    var reason = VariantPrerequisites.unmetReason(rerankVariant(50), PRODUCTION_LIKE, true, false);
+    var reason =
+        VariantPrerequisites.unmetReason(rerankVariant(50), PRODUCTION_LIKE, true, true, false);
 
     assertThat(reason).isPresent();
     assertThat(reason.get()).contains("Rerank-Modellrolle");

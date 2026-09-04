@@ -79,9 +79,11 @@ die Zahl der Golden-Fälle, bei denen sich die von der Zerlegung erzeugten Teilf
 drei Läufen unterschieden haben — die eigentliche Kennzahl der Instabilität. Für den Delta-Vergleich
 gegen die Referenzvariante zählt der **Median-Lauf**, keine Mittelwertbildung über die drei Läufe.
 Jede Variante ohne LLM-Anteil bleibt bei einem Lauf; ein abweichender zweiter Lauf wäre dort ein
-Befund, kein Anlass für Statistik. Solange keine Zerlegungsvariante ausführbar ist (siehe oben), ist
-diese Regel über `MultiRunAggregatorTest` mit synthetischen Reports abgesichert statt über einen
-echten Lauf.
+Befund, kein Anlass für Statistik. Seit Issue #1085 ist die Regel auch real ausführbar (der Harness
+hat ein gepinntes Chat-Modell) und gilt an drei Stellen über dieselbe Implementierung
+(`io.opaa.eval.MehrfachlaufRule`): für eine zerlegende Variante, für den Pipeline-Messpfad selbst
+und für den direkten Vergleichslauf der Selbstprüfung unten. Docker-frei bleibt sie zusätzlich über
+`MultiRunAggregatorTest`/`VariantRunnerTest`/`ReferenceVariantSelfCheckTest` abgesichert.
 
 ## Nächtlich vs. manuell
 
@@ -124,6 +126,23 @@ zusätzlich als lesbare Zusammenfassung auf der Konsole ausgegeben — ein Artef
 committetes Ergebnis (siehe `docs/features/retrieval-benchmark.md`, Abschnitt 2, „Der Bericht ist
 ein Artefakt, keine Baseline").
 
+### Wirkungsnachweis der Teilfragen-Zerlegung (Issue #1085)
+
+`verwaltung-decomposition.json` stellt die ausgelieferte Konfiguration mit aktiver Zerlegung gegen
+dieselbe Konfiguration ohne sie. Der Vergleich ist nur zusammen mit dem Opt-in sinnvoll, das die
+gemessene Konfiguration überhaupt erst zerlegen lässt:
+
+```bash
+./gradlew evaluateVerwaltungRetrieval -Dopaa.eval.queryDecomposition=true \
+  -Dopaa.eval.runVariantComparison=true \
+  -Dopaa.eval.variantComparisonFile=eval/variants/verwaltung-decomposition.json
+```
+
+Ohne `-Dopaa.eval.queryDecomposition=true` zerlegt auch die Referenzvariante nicht, und beide
+Varianten messen dieselbe Konfiguration. Kostenhinweis: Die Referenzvariante läuft dreimal, der
+direkte Vergleichslauf der Selbstprüfung ebenfalls — bei gemessenen ~10 s je Chat-Aufruf auf CPU ist
+das der mit Abstand teuerste Vergleich dieses Verzeichnisses.
+
 ### Wirkungsnachweis des lexikalischen Pfads (Issue #1049)
 
 `comic-characters-lexical-path.json`, `verwaltung-lexical-path.json` und
@@ -144,10 +163,16 @@ die Variantenmechanik dieselbe Pipeline trifft wie die Produktion. Der Harness a
 beide Messungen bitgleiche Zahlen liefern — Metriken (`overall()`, `allQueryResults()`) **und**
 die Laufkonfiguration (`runConfiguration()`, ohne die naturgemäß unterschiedlichen Zeitstempel-
 und Laufzeitfelder) —, damit auch eine rangfolge-neutrale, versehentlich angewandte Override
-auffällt (Abnahmekriterium des Issues). Das ist die stärkste heute mögliche Ausprägung dieser
-Prüfung: Für den Pipeline-Pfad existiert noch keine committete Baseline-Datei (das ist Gegenstand
-von Issue #1040); sobald sie vorliegt, kann derselbe Referenzvarianten-Bericht zusätzlich gegen sie
-geprüft werden.
+auffällt (Abnahmekriterium des Issues).
+
+**Beide Seiten folgen der Mehrfachlauf-Regel** (Issue #1085). Zerlegt die gemessene Konfiguration
+selbst (`opaa.query.query-decomposition-enabled=true`), ist die Referenzvariante nach
+[`retrieval-benchmark.md`](../../docs/features/retrieval-benchmark.md) Abschnitt 3 der Median aus
+drei Läufen — ein einzelner Direktaufruf könnte dazu strukturell nie bitgleich sein, egal wie stabil
+das Chat-Modell ist. `ReferenceVariantSelfCheck` misst deshalb auch direkt dreimal und vergleicht
+Median gegen Median. Schlägt der Vergleich trotzdem fehl, nennt die Fehlermeldung die
+Abweichungszahl der Zerlegung beider Seiten: Bei einer instabilen Zerlegung ist zuerst das
+Chat-Modell zu prüfen, nicht die Variantenmechanik.
 
 ## Fail-Fast und Fehlerbehandlung
 

@@ -1,7 +1,5 @@
 package io.opaa.eval;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.QueryService;
@@ -45,12 +43,13 @@ public final class VariantComparisonStep {
    * of state to thread through 400+ lines of its test method.
    */
   public static VariantComparison loadAndValidate(
-      QueryProperties queryProperties, String defaultComparisonFile) throws IOException {
+      QueryProperties queryProperties, String defaultComparisonFile, String chatModel)
+      throws IOException {
     Path repoRoot = RepoPaths.evalDir().getParent();
     Path comparisonFile =
         repoRoot.resolve(System.getProperty(FILE_PROPERTY, defaultComparisonFile));
     VariantComparison comparison = VariantComparisonDataset.load(comparisonFile);
-    comparison.requireExecutableReference(queryProperties);
+    comparison.requireExecutableReference(queryProperties, chatModel != null);
     return comparison;
   }
 
@@ -83,7 +82,8 @@ public final class VariantComparisonStep {
       List<GoldenCase> goldenCases,
       Logger log) {
     try {
-      VariantComparison comparison = loadAndValidate(queryProperties, defaultComparisonFile);
+      VariantComparison comparison =
+          loadAndValidate(queryProperties, defaultComparisonFile, identity.chatModel());
       QueryServiceDependencies dependencies =
           QueryServiceDependencies.fromContext(applicationContext);
 
@@ -103,46 +103,31 @@ public final class VariantComparisonStep {
       // computes for the unchanged production configuration — the very bean the pipeline path
       // already measured with, not a second, hand-built instance (issue #1041 review, Befund 1: a
       // hand-built instance from QueryServiceDependencies would only prove the mechanism is
-      // internally deterministic, not that it matches the production-wired pipeline).
-      PipelineEvaluationReport directReferenceMeasurement =
-          PipelineHarnessSupport.measure(
-              domain,
-              identity,
-              queryService,
-              queryProperties,
-              indexingProperties,
-              evalLibraryId,
-              goldenCases,
-              Instant.now());
-      PipelineEvaluationReport referenceReport =
+      // internally deterministic, not that it matches the production-wired pipeline). Both sides
+      // follow the Mehrfachlauf-Regel — see ReferenceVariantSelfCheck.
+      VariantOutcome referenceOutcome =
           report.outcomes().stream()
               .filter(o -> o.variant().name().equals(report.referenceVariant()))
               .findFirst()
-              .orElseThrow()
-              .report();
-      assertThat(referenceReport.overall())
-          .as(
-              "reference variant must be bit-identical to a direct pipeline measurement through "
-                  + "the production-wired QueryService bean (Referenzvarianten-Selbstprüfung, "
-                  + "issue #1041)")
-          .isEqualTo(directReferenceMeasurement.overall());
-      assertThat(referenceReport.allQueryResults())
-          .as(
-              "reference variant's per-case results must be bit-identical to the direct measurement")
-          .isEqualTo(directReferenceMeasurement.allQueryResults());
-      // ignoringFields: runStartedAt/runDurationSeconds necessarily differ between two separate
-      // measurements taken seconds apart — every other field, including fetchK/maxSubQueries/etc.,
-      // must match exactly, so a variant-mechanism bug that silently applied an override the
-      // reference variant should not have (a rank-neutral one, invisible in overall()/
-      // allQueryResults() because it does not change which chunks were selected) still fails here.
-      assertThat(referenceReport.runConfiguration())
-          .usingRecursiveComparison()
-          .ignoringFields("runStartedAt", "runDurationSeconds")
-          .as("reference variant's run configuration must match the direct measurement's")
-          .isEqualTo(directReferenceMeasurement.runConfiguration());
+              .orElseThrow();
+      MehrfachlaufRule.Measurement direct =
+          ReferenceVariantSelfCheck.assertMatchesDirectMeasurement(
+              referenceOutcome,
+              queryProperties.queryDecompositionEnabled(),
+              () ->
+                  PipelineHarnessSupport.measure(
+                      domain,
+                      identity,
+                      queryService,
+                      queryProperties,
+                      indexingProperties,
+                      evalLibraryId,
+                      goldenCases,
+                      Instant.now()));
       log.info(
           "Referenzvarianten-Selbstprüfung bestanden: bitgleiche Zahlen zum direkten Pipeline-Lauf"
-              + " über das produktiv verdrahtete QueryService-Bean.");
+              + " über das produktiv verdrahtete QueryService-Bean.{}",
+          direct.multiRun() ? "\n" + MehrfachlaufRule.render(direct.summary()) : "");
 
       Path reportFile =
           Path.of("build", "eval-reports", "variant-report-" + comparison.name() + ".json");

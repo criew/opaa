@@ -1,0 +1,20 @@
+{
+  "name": "verwaltung-decomposition",
+  "description": "Wirkungsnachweis der Teilfragen-Zerlegung (Issue #1085): die ausgelieferte Konfiguration mit aktiver Zerlegung gegen dieselbe Konfiguration ohne sie, gepaart über dasselbe Golden Dataset und denselben Index. Nur mit -Dopaa.eval.queryDecomposition=true sinnvoll — sonst zerlegt auch die Referenzvariante nicht und beide Varianten sind identisch. Referenzvariante ist die Produktionskonfiguration, weil die Selbstprüfung der Variantenmechanik das verlangt (docs/features/retrieval-benchmark.md, Abschnitt 2); die ausgewiesenen Deltas sind deshalb decomposition-off minus decomposition-on — ein negatives Delta ist ein Gewinn der Zerlegung. Die Referenzvariante läuft dabei nach der Mehrfachlauf-Regel dreimal (Abschnitt 3), die Variante ohne Zerlegung einmal.",
+  "domain": "verwaltung",
+  "referenceVariant": "decomposition-on",
+  "variants": [
+    {
+      "name": "decomposition-on",
+      "description": "Unveränderte Produktionskonfiguration: die Anfrage wird vor dem Retrieval in bis zu max-sub-queries eigenständige Suchanfragen zerlegt. Die Referenzvariante — muss bitgleiche Zahlen zum direkten Pipeline-Lauf desselben Harness-Laufs liefern (Selbstprüfung, beide Seiten als Median aus drei Läufen).",
+      "requiresReindex": false,
+      "queryOverrides": {}
+    },
+    {
+      "name": "decomposition-off",
+      "description": "Die Konfiguration, die jede committete Pipeline-Baseline beschreibt: kein Chat-Aufruf, eine Suchanfrage je Golden-Fall. Deterministisch und deshalb ein einziger Lauf.",
+      "requiresReindex": false,
+      "queryOverrides": { "queryDecompositionEnabled": false }
+    }
+  ]
+}

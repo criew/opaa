@@ -108,8 +108,9 @@ ausgeführt, ohne dass `check`/`build` Docker braucht oder langsamer wird (~1 s 
 ### Modell-Cache
 
 Der Ollama-Testcontainer bindet ein benanntes Docker-Volume (`opaa-eval-ollama-models`) unter
-`/root/.ollama` ein. Auf einer Entwickler-Maschine überlebt das gepullte Modell dadurch mehrere
-`./gradlew evaluateRetrieval`-Läufe — nur der allererste Lauf zieht die ~275 MB. Auf einem
+`/root/.ollama` ein. Auf einer Entwickler-Maschine überleben die gepullten Modelle dadurch mehrere
+`./gradlew evaluateRetrieval`-Läufe — nur der allererste Lauf zieht die rund 1,26 GB
+(`nomic-embed-text:v1.5` ~275 MB, `qwen2.5:1.5b-instruct` ~986 MB). Auf einem
 **ephemeren CI-Runner** (der bei jedem Job neu startet) gibt es diese Persistenz nicht: Dort wird
 bei jedem Lauf neu gepullt, sofern der Runner selbst kein Docker-Volume-Caching zwischen Jobs
 anbietet. Das war in einer früheren Fassung dieses Dokuments unzutreffend als "danach reicht der
@@ -129,6 +130,31 @@ Entscheidung 4 verlangt eine feste Modellversion). Der Harness pinnt deshalb zwe
    Drift-Fehlermeldung ab, statt still eine andere Baseline zu messen. `RunConfiguration` im Report
    führt sowohl Tag als auch Digest, damit sich zwei Reports auch nachträglich auf Modellgleichheit
    prüfen lassen.
+
+Seit Issue #1085 gilt dasselbe zweistufige Pinning für das **Chat-Modell** der
+Teilfragen-Zerlegung (`io.opaa.eval.EvalChatModel`): `qwen2.5:1.5b-instruct`, Digest
+`65ec06548149b04c096a120e4a6da9d4017ea809c91734ea5631e89f96ddc57b`, Temperatur 0. Beide Modelle
+laufen durch denselben Pin-und-Prüf-Weg (`EvalOllamaModel#ensurePresent`), und das Chat-Modell wird
+in **jedem** Lauf gezogen — auch im nächtlichen, der die Zerlegung gar nicht misst —, damit ein
+gebrochener Modell-Pin dort auffällt statt erst bei einer seltenen manuellen Messung. Verdrahtet ist
+es über den produktiven Weg: eine aktive Zeile in `llm_models`, aufgelöst von
+`ActiveChatModelResolver` wie bei jeder echten Anfrage.
+
+### Zerlegender Lauf (Issue #1085)
+
+Standardmäßig misst der Pipeline-Pfad mit `opaa.query.query-decomposition-enabled=false` — das ist
+die Konfiguration, die jede committete Pipeline-Baseline beschreibt. Die ausgelieferte
+Konfiguration (`true`) wird mit einem Opt-in gemessen:
+
+```bash
+./gradlew evaluateVerwaltungRetrieval -Dopaa.eval.queryDecomposition=true
+```
+
+Ein solcher Lauf ist eine bewusste Einzelmessung, **nicht** mit der committeten Baseline
+vergleichbar: Seine Festpunkte (`queryDecompositionEnabled`, `chatModel`) unterscheiden sich, was
+`PipelineBaselineComparator` als unvergleichbare Baseline meldet und nicht als Regression. Er
+kostet außerdem einen Chat-Aufruf je Anfrage und läuft nach der Mehrfachlauf-Regel dreimal — auf
+CPU rund 10 s je Aufruf gemessen (siehe `docs/features/retrieval-benchmark.md`, „Offene Punkte" 3).
 
 ### CPU statt GPU
 

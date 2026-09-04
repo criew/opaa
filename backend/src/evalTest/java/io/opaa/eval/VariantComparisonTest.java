@@ -74,7 +74,7 @@ class VariantComparisonTest {
     var comparison =
         new VariantComparison("c", "desc", "domain", "a", List.of(variant("a"), variant("b")));
 
-    assertThatCode(() -> comparison.requireExecutableReference(PRODUCTION_LIKE))
+    assertThatCode(() -> comparison.requireExecutableReference(PRODUCTION_LIKE, true))
         .doesNotThrowAnyException();
   }
 
@@ -85,13 +85,15 @@ class VariantComparisonTest {
     var comparison =
         new VariantComparison("c", "desc", "domain", "a", List.of(reindexReference, variant("b")));
 
-    assertThatThrownBy(() -> comparison.requireExecutableReference(PRODUCTION_LIKE))
+    assertThatThrownBy(() -> comparison.requireExecutableReference(PRODUCTION_LIKE, true))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("Referenzvariante");
   }
 
+  /** Without a chat model in the run, a decomposing reference variant is not executable. */
   @Test
-  void requireExecutableReferenceRejectsAReferenceVariantThatEnablesDecomposition() {
+  void
+      requireExecutableReferenceRejectsAReferenceVariantThatEnablesDecompositionWithoutAChatModel() {
     var decompositionReference =
         new PipelineVariant(
             "a",
@@ -102,9 +104,11 @@ class VariantComparisonTest {
         new VariantComparison(
             "c", "desc", "domain", "a", List.of(decompositionReference, variant("b")));
 
-    assertThatThrownBy(() -> comparison.requireExecutableReference(PRODUCTION_LIKE))
+    assertThatThrownBy(() -> comparison.requireExecutableReference(PRODUCTION_LIKE, false))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("Referenzvariante");
+    assertThatCode(() -> comparison.requireExecutableReference(PRODUCTION_LIKE, true))
+        .doesNotThrowAnyException();
   }
 
   /**
@@ -127,7 +131,7 @@ class VariantComparisonTest {
         new VariantComparison(
             "c", "desc", "domain", "a", List.of(variant("a"), invalidNonReference));
 
-    assertThatThrownBy(() -> comparison.requireExecutableReference(PRODUCTION_LIKE))
+    assertThatThrownBy(() -> comparison.requireExecutableReference(PRODUCTION_LIKE, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("'b'")
         .hasMessageContaining("ungültige Konfiguration");
