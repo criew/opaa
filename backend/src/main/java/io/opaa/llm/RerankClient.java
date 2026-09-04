@@ -330,7 +330,11 @@ public class RerankClient {
     URI uri;
     try {
       uri = ModelEndpointUri.append(baseUrl, "/rerank");
-    } catch (IllegalArgumentException | URISyntaxException e) {
+    } catch (IllegalArgumentException e) {
+      // Syntactically valid, but carrying credentials - a different fault from an unparsable
+      // address, and the message must say so without repeating the address (#1147).
+      throw new RerankUnavailableException("base URL carries credentials", e);
+    } catch (URISyntaxException e) {
       throw new RerankUnavailableException("base URL is not a valid URI", e);
     }
     String scheme = uri.getScheme();

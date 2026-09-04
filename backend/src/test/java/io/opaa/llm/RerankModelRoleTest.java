@@ -23,6 +23,7 @@ class RerankModelRoleTest {
 
   private static final String KEY = "s3cret-key";
   private static final String ENDPOINT = "http://localhost:8081/v1";
+  private static final String SECRET_IN_BASE_URL = "benutzer:geheim";
 
   private static RerankProperties properties(boolean enabled, String baseUrl, String model) {
     return new RerankProperties(enabled, baseUrl, model, KEY, Duration.ofSeconds(5));
@@ -58,6 +59,30 @@ class RerankModelRoleTest {
     assertThat(status.diagnostic()).contains("opaa.rerank.base-url");
     assertThat(role.usable()).isFalse();
     verify(client, never()).probe(any());
+  }
+
+  /**
+   * A base address carrying userinfo must never reach the status, a log line or the endpoint. The
+   * role treats it as no configuration at all: the operator's intent (switch on) is contradicted
+   * either way, and the address itself may not be echoed anywhere.
+   */
+  @Test
+  void aBaseUrlWithCredentialsIsRejectedAndNeverAppearsInTheStatus() {
+    RerankClient client = mock(RerankClient.class);
+    RerankModelRole role =
+        role(client, true, "https://" + SECRET_IN_BASE_URL + "@reranker.example.internal/v1", "m");
+
+    RerankRoleStatus status = role.currentStatus();
+
+    assertThat(status.state()).isEqualTo(RerankRoleState.UNCONFIGURED);
+    assertThat(status.baseUrl()).isNull();
+    assertThat(status.baseUrlRejected()).isTrue();
+    assertThat(status.diagnostic()).doesNotContain(SECRET_IN_BASE_URL);
+    assertThat(role.usable()).isFalse();
+    assertThat(role.refresh().baseUrl()).isNull();
+    assertThat(role.rerank("q", List.of("a"))).isEmpty();
+    verify(client, never()).probe(any());
+    verify(client, never()).rerank(any(), anyString(), any());
   }
 
   /** Half a configuration is no configuration: an endpoint without a model cannot be called. */

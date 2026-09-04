@@ -7,6 +7,7 @@ import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
 import java.util.List;
@@ -80,6 +81,7 @@ public class LlmModelService {
       BigDecimal temperature,
       int maxTokens,
       String apiKey) {
+    requireBaseUrlWithoutCredentials(baseUrl);
     LlmModel model =
         new LlmModel(
             displayName,
@@ -122,6 +124,7 @@ public class LlmModelService {
       BigDecimal temperature,
       int maxTokens,
       String apiKey) {
+    requireBaseUrlWithoutCredentials(baseUrl);
     LlmModel model = repository.findById(id).orElseThrow(() -> notFound(id));
     Map<String, Object> before = auditState(model);
     String apiKeyCiphertext =
@@ -251,6 +254,17 @@ public class LlmModelService {
         "maxTokens", model.getMaxTokens(),
         "apiKeySet", model.getApiKeyCiphertext() != null,
         "active", model.isActive());
+  }
+
+  /**
+   * Rejected before the row is written (#1147): a stored base URL is reproduced verbatim by {@link
+   * #auditState}, by every {@code LlmModelResponse} and thus on the administration page, none of
+   * which may ever carry credentials.
+   */
+  private static void requireBaseUrlWithoutCredentials(String baseUrl) {
+    if (ModelEndpointUri.containsCredentials(baseUrl)) {
+      throw new ValidationException(ModelEndpointUri.CREDENTIALS_REJECTED_MESSAGE);
+    }
   }
 
   private String objectLabel(LlmModel model) {

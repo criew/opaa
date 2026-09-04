@@ -260,12 +260,45 @@ mit den Vorgaben-Ebenen eine Wirkung und wären vorher ein Formular ohne Folge.
 | Angabe | Bedeutung |
 |---|---|
 | Anzeigename | wie das Modell in der Verwaltung heißt, in Fachsprache |
-| Basis-Adresse | der Endpunkt der OpenAI-kompatiblen Schnittstelle |
+| Basis-Adresse | der Endpunkt der OpenAI-kompatiblen Schnittstelle — **ohne Anmeldedaten** (siehe unten) |
 | Modell-Kennung | welches Modell an diesem Endpunkt angesprochen wird |
 | Zugangsschlüssel | optional; verschlüsselt abgelegt, nie zurückgegeben |
 | Streuung der Erzeugung | Temperatur |
 | Längenbegrenzung | maximale Antwortlänge |
 | Aktiv | ob dieses Modell derzeit antwortet |
+
+### Keine Anmeldedaten in der Basis-Adresse
+
+Eine Basis-Adresse der Form `https://benutzer:geheim@host/v1` wird **abgelehnt** — für alle
+Modellrollen gleich, die verwaltete Chat-Rolle ebenso wie die über Umgebungsvariablen konfigurierte
+Rerank-Rolle ([#1147](https://github.com/criew/opaa/issues/1147)). Der Grund ist keine Formalie: Eine
+Basis-Adresse gilt an mehreren Stellen ausdrücklich als geheimnisfrei und wird deshalb wörtlich
+weitergereicht — in die Datenbank, in das Audit-Log, in die Schnittstellenantwort und damit in die
+Administrationsoberfläche, bei der Rerank-Rolle zusätzlich in die Startmeldung im Log und in die
+Statusanzeige „Suche & Indexierung". Anmeldedaten in der Adresse landen so in genau den Ausgaben, aus
+denen sie herausgehalten werden sollen.
+
+Abgelehnt statt stillschweigend entfernt: Wer Anmeldedaten einträgt, will, dass sie verwendet werden.
+Ein stilles Entfernen nähme diese Absicht wortlos zurück und hinterließe einen Endpunkt, der ohne
+erkennbaren Grund mit „nicht authentifiziert" antwortet. Die Ablehnung sagt es stattdessen — und
+wiederholt den beanstandeten Anteil dabei nicht, weil die Fehlermeldung selbst wieder in Antwort und
+Log wandert. Der Zugangsschlüssel gehört in das dafür vorgesehene Feld (Chat-Rolle) bzw. in
+`OPAA_RERANK_API_KEY` (Rerank-Rolle); er wird als `Authorization`-Kopfzeile gesendet.
+
+Die Prüfung greift **beim Schreiben** — beim Anlegen und Ändern eines Modells, beim Verbindungstest,
+bei der einmaligen Übernahme aus der Umgebungskonfiguration und beim Start für die
+Umgebungs-Basis-Adressen. Eine Maskierung auf der Leseseite gibt es bewusst nicht: Es existieren
+keine Bestandsinstallationen mit bereits gespeicherten Adressen, und eine zweite Darstellungsschicht
+für einen Fall, den es nicht gibt, wäre Aufwand ohne Nutzen.
+
+Die Einbettungs-Rolle führt **keine Basis-Adresse in Anzeige, Audit oder Schnittstelle**:
+`io.opaa.llm.EmbeddingInfoService` liest nur Anbieter, Modell-Kennung und Dimensionszahl. Eine
+Basis-Adresse hat sie aber sehr wohl — `OPAA_OPENAI_EMBEDDING_BASE_URL` —, und diese verlässt den
+Prozess auch: Ein fehlgeschlagener Einbettungsaufruf trägt die Ziel-Adresse im Meldungstext der
+Spring-Ausnahme und landet mit dem Stacktrace im Log. Sie wird deshalb beim Start geprüft
+(`io.opaa.config.OpenAiBaseUrlGuard`, gemeinsam mit der Chat-Basis-Adresse aus derselben
+Umgebungskonfiguration) — hier ist ein **Startabbruch** richtig, anders als bei der Rerank-Rolle:
+Ohne Einbettungen findet die Suche nichts, es gibt also keinen sinnvoll eingeschränkten Weiterbetrieb.
 
 ### Ein Anbindungsweg, nicht zwei
 

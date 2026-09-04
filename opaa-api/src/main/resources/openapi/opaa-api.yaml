@@ -6007,7 +6007,11 @@ components:
           type: string
           minLength: 1
           maxLength: 500
-          description: The OpenAI-compatible endpoint, including any provider-specific path suffix.
+          description: >
+            The OpenAI-compatible endpoint, including any provider-specific path suffix. Must not
+            contain userinfo (https://user:secret@host/v1) - such an address is rejected with 400,
+            because a stored base URL is returned by this API and written to the audit log. The
+            access key belongs in apiKey.
           example: http://ollama:11434/v1
         modelIdentifier:
           type: string
@@ -6044,6 +6048,9 @@ components:
         baseUrl:
           type: string
           minLength: 1
+          description: >
+            Must not contain userinfo (https://user:secret@host/v1) - such an address is rejected
+            with 400 before any probe, because the probe URI is logged on failure.
           example: http://ollama:11434/v1
         modelIdentifier:
           type: string

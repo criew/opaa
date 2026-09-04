@@ -44,6 +44,13 @@ public class RerankModelRole implements RerankRoleStatusProvider {
   private final RerankClient client;
 
   /**
+   * Whether {@code opaa.rerank.base-url} carries userinfo. Such an address leaves the role unusable
+   * exactly as an unset one does; the application still starts, for the same reason a broken
+   * endpoint does not fail it.
+   */
+  private final boolean baseUrlRejected;
+
+  /**
    * The last probe or call result for a switched-on, bound role; {@code null} until the first
    * probe. The switched-off and unbound states are derived from configuration instead, so they can
    * never go stale.
@@ -61,12 +68,22 @@ public class RerankModelRole implements RerankRoleStatusProvider {
   public RerankModelRole(RerankProperties properties, RerankClient client) {
     this.properties = properties;
     this.client = client;
+    this.baseUrlRejected = ModelEndpointUri.containsCredentials(properties.baseUrl());
   }
 
   @Override
   public RerankRoleStatus currentStatus() {
     if (!properties.enabled()) {
       return RerankRoleStatus.disabled();
+    }
+    if (baseUrlRejected) {
+      return new RerankRoleStatus(
+          RerankRoleState.UNCONFIGURED,
+          null,
+          emptyToNull(properties.model()),
+          "rerank role switched on, but opaa.rerank.base-url carries credentials and was rejected",
+          false,
+          true);
     }
     if (!properties.bound()) {
       return new RerankRoleStatus(
@@ -101,7 +118,7 @@ public class RerankModelRole implements RerankRoleStatusProvider {
    * startup check and the schedule above - never from a query or a page load.
    */
   public RerankRoleStatus refresh() {
-    if (!properties.enabled() || !properties.bound()) {
+    if (!properties.enabled() || baseUrlRejected || !properties.bound()) {
       lastKnown.set(null);
       return currentStatus();
     }
@@ -137,7 +154,7 @@ public class RerankModelRole implements RerankRoleStatusProvider {
    * afterwards.
    */
   public List<RerankClient.ScoredCandidate> rerank(String query, List<String> texts) {
-    if (!properties.enabled() || !properties.bound()) {
+    if (!properties.enabled() || baseUrlRejected || !properties.bound()) {
       return List.of();
     }
     try {
