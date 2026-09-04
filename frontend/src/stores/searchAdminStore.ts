@@ -1,11 +1,17 @@
 import { create } from 'zustand'
 import type {
+  DocumentChunksResponse,
   SearchDiagnosisRequest,
   SearchDiagnosisResponse,
   SearchPermissionProfileResponse,
   SearchStatusResponse,
 } from '../types/api'
-import { getSearchPermissionProfiles, getSearchStatus, runSearchDiagnosis } from '../services/api'
+import {
+  getDocumentChunks,
+  getSearchPermissionProfiles,
+  getSearchStatus,
+  runSearchDiagnosis,
+} from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 interface SearchAdminState {
@@ -15,18 +21,28 @@ interface SearchAdminState {
   diagnosis: SearchDiagnosisResponse | null
   diagnosisError: string | null
   isRunningDiagnosis: boolean
+  documentChunks: DocumentChunksResponse | null
+  documentChunksError: string | null
+  isLoadingDocumentChunks: boolean
   reset: () => void
   loadStatus: () => Promise<void>
   runDiagnosis: (request: SearchDiagnosisRequest) => Promise<void>
+  loadDocumentChunks: (documentId: string) => Promise<void>
 }
 
-const EMPTY: Omit<SearchAdminState, 'reset' | 'loadStatus' | 'runDiagnosis'> = {
+const EMPTY: Omit<
+  SearchAdminState,
+  'reset' | 'loadStatus' | 'runDiagnosis' | 'loadDocumentChunks'
+> = {
   status: null,
   profiles: [],
   statusError: null,
   diagnosis: null,
   diagnosisError: null,
   isRunningDiagnosis: false,
+  documentChunks: null,
+  documentChunksError: null,
+  isLoadingDocumentChunks: false,
 }
 
 /**
@@ -70,6 +86,23 @@ export const useSearchAdminStore = create<SearchAdminState>((set) => ({
       set({
         diagnosisError: err instanceof Error ? err.message : 'Diagnose fehlgeschlagen',
         isRunningDiagnosis: false,
+      })
+    }
+  },
+
+  loadDocumentChunks: async (documentId) => {
+    const sessionEpoch = currentSessionEpoch()
+    set({ isLoadingDocumentChunks: true, documentChunks: null, documentChunksError: null })
+    try {
+      const documentChunks = await getDocumentChunks(documentId)
+      if (isStaleSessionEpoch(sessionEpoch)) return
+      set({ documentChunks, isLoadingDocumentChunks: false })
+    } catch (err) {
+      if (isStaleSessionEpoch(sessionEpoch)) return
+      set({
+        documentChunksError:
+          err instanceof Error ? err.message : 'Chunks konnten nicht geladen werden',
+        isLoadingDocumentChunks: false,
       })
     }
   },

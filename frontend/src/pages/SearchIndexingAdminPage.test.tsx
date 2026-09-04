@@ -5,7 +5,12 @@ import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
-import { mockSearchDiagnosis, mockSearchStatus } from '../mocks/fixtures'
+import {
+  MOCK_SATZUNG_DOCUMENT_ID,
+  mockDocumentChunks,
+  mockSearchDiagnosis,
+  mockSearchStatus,
+} from '../mocks/fixtures'
 import SearchIndexingAdminPage from './SearchIndexingAdminPage'
 
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
@@ -211,5 +216,126 @@ describe('SearchIndexingAdminPage', () => {
 
     expect(screen.getByText(/liest keine bestehenden Gespräche/)).toBeInTheDocument()
     expect(screen.getByText(/kein Nachweis über zurückliegende Zugriffe/)).toBeInTheDocument()
+  })
+
+  it('opens a chunk preview from a stage table with content, metadata and a copyable id', async () => {
+    signInAs('SYSTEM_ADMIN')
+
+    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    await runDiagnosis(user)
+
+    await user.click(await screen.findByRole('button', { name: /^Vektorsuche/ }))
+    const verdicts = await screen.findByRole('table', { name: 'Kandidaten der Stufe Vektorsuche' })
+    await user.click(within(verdicts).getAllByRole('button', { name: 'Chunk anzeigen' })[0])
+
+    const dialog = await screen.findByRole('dialog', { name: 'Chunk-Vorschau' })
+    expect(
+      await within(dialog).findByText(
+        (_, element) =>
+          element?.tagName === 'P' &&
+          element.textContent === 'Dokument: verwaltungsgebuehrensatzung.pdf',
+      ),
+    ).toBeInTheDocument()
+    expect(within(dialog).getByText('Chunk-Index: 3')).toBeInTheDocument()
+    expect(within(dialog).getByText('chunk-1')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Chunk-ID kopieren' })).toBeInTheDocument()
+    // The stored text keeps its line breaks and the context prefix the pipeline prepended.
+    expect(
+      within(dialog).getByText(/Verwaltungsgebuehrensatzung > § 4 Befreiung/),
+    ).toHaveTextContent(/\(1\) Von der Gebuehr wird auf Antrag befreit/)
+    const metadata = within(dialog).getByRole('table', { name: 'Chunk-Metadaten' })
+    expect(within(metadata).getByText('location')).toBeInTheDocument()
+    expect(within(metadata).getByText('Seite 2')).toBeInTheDocument()
+    expect(within(dialog).queryByText(/embedding/i)).not.toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Schließen' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
+  it('opens a chunk preview from the final selection and shows the error for an unknown chunk', async () => {
+    signInAs('SYSTEM_ADMIN')
+    server.use(
+      http.get('/api/v1/admin/search/chunks/:chunkId', () =>
+        HttpResponse.json({ error: 'Der Chunk wurde nicht gefunden.' }, { status: 404 }),
+      ),
+    )
+
+    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    await runDiagnosis(user)
+
+    const selection = await screen.findByRole('table', { name: 'Endauswahl' })
+    await user.click(within(selection).getAllByRole('button', { name: 'Chunk anzeigen' })[0])
+
+    const dialog = await screen.findByRole('dialog', { name: 'Chunk-Vorschau' })
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Der Chunk wurde nicht gefunden.',
+    )
+  })
+
+  it('lists every stored chunk of a document in order and flags a count mismatch', async () => {
+    signInAs('SYSTEM_ADMIN')
+
+    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+
+    await user.type(screen.getByRole('textbox', { name: 'Dokument-ID' }), MOCK_SATZUNG_DOCUMENT_ID)
+    await user.click(screen.getByRole('button', { name: 'Chunks laden' }))
+
+    expect(await screen.findByText(/2 gespeicherte Chunks, laut Dokument 3/)).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /weicht von der im Dokument vermerkten Anzahl/,
+    )
+    const headings = screen.getAllByRole('heading', { level: 4 })
+    expect(headings.map((h) => h.textContent)).toEqual([
+      expect.stringMatching(/^Chunk 0/),
+      expect.stringMatching(/^Chunk 3/),
+    ])
+    expect(headings[0]).toHaveTextContent('Fundort: Seite 1')
+    expect(headings[0]).toHaveTextContent(`${mockDocumentChunks.chunks[0].content.length} Zeichen`)
+
+    await user.click(screen.getByRole('button', { name: /^Chunk 0/ }))
+    expect(await screen.findByText(/§ 1 Geltungsbereich/)).toBeInTheDocument()
+  })
+
+  it('reports an unknown document id instead of an empty list', async () => {
+    signInAs('SYSTEM_ADMIN')
+
+    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Dokument-ID' }),
+      '99999999-9999-4999-8999-999999999999',
+    )
+    await user.click(screen.getByRole('button', { name: 'Chunks laden' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Das Dokument wurde nicht gefunden.')
+  })
+
+  it('jumps from a document title in the diagnosis to the chunks of that document', async () => {
+    signInAs('SYSTEM_ADMIN')
+
+    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    await runDiagnosis(user)
+
+    const selection = await screen.findByRole('table', { name: 'Endauswahl' })
+    await user.click(
+      within(selection).getByRole('button', { name: 'verwaltungsgebuehrensatzung.pdf' }),
+    )
+
+    expect(screen.getByRole('textbox', { name: 'Dokument-ID' })).toHaveValue(
+      MOCK_SATZUNG_DOCUMENT_ID,
+    )
+    expect(await screen.findByText(/2 gespeicherte Chunks, laut Dokument 3/)).toBeInTheDocument()
   })
 })
