@@ -27,6 +27,9 @@ import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.DocumentMetadataCorrectionService;
 import io.opaa.indexing.metadata.DocumentMetadataFieldView;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
+import io.opaa.indexing.metadata.LibraryMetadataMaintenance;
+import io.opaa.indexing.metadata.LibraryMetadataMaintenanceService;
+import io.opaa.indexing.metadata.MetadataFieldMaintenance;
 import io.opaa.indexing.metadata.MetadataValueInput;
 import io.opaa.indexing.metadata.MetadataValueSnapshot;
 import io.opaa.indexing.metadata.MetadataValueState;
@@ -62,6 +65,7 @@ class DocumentMetadataControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private DocumentMetadataCorrectionService correctionService;
+  @MockitoBean private LibraryMetadataMaintenanceService maintenanceService;
   @MockitoBean private UserService userService;
 
   private final UUID libraryId = UUID.randomUUID();
@@ -291,5 +295,75 @@ class DocumentMetadataControllerTest {
         .andExpect(jsonPath("$.items[0].code").value("SATZUNG_ORDNUNG"))
         .andExpect(jsonPath("$.items[0].label").value("Satzung/Ordnung"))
         .andExpect(jsonPath("$.items[1].code").value("VERMERK"));
+  }
+
+  @Test
+  void theThirdStateIsSetThroughTheSameOperationWithoutAValue() throws Exception {
+    MetadataValueSnapshot after =
+        new MetadataValueSnapshot(
+            "document_date",
+            MetadataValueState.NOT_DETERMINABLE,
+            null,
+            null,
+            null,
+            null,
+            MetadataOrigin.MANUAL,
+            null,
+            null,
+            null,
+            currentUserId,
+            Instant.parse("2026-09-04T10:00:00Z"));
+    when(correctionService.setValue(
+            eq(libraryId), eq(documentId), eq("document_date"), any(), eq(caller)))
+        .thenReturn(
+            new DocumentMetadataFieldView(
+                CoreMetadataField.DOCUMENT_DATE, after, null, "Test User"));
+
+    mockMvc
+        .perform(
+            put(metadataPath() + "/document_date")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"state\":\"NOT_DETERMINABLE\"}")
+                .with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.state").value("NOT_DETERMINABLE"))
+        .andExpect(jsonPath("$.value").doesNotExist())
+        .andExpect(jsonPath("$.origin").value("MANUAL"));
+
+    ArgumentCaptor<MetadataValueInput> input = ArgumentCaptor.forClass(MetadataValueInput.class);
+    verify(correctionService)
+        .setValue(eq(libraryId), eq(documentId), eq("document_date"), input.capture(), eq(caller));
+    org.assertj.core.api.Assertions.assertThat(input.getValue())
+        .isEqualTo(MetadataValueInput.notDeterminable());
+  }
+
+  @Test
+  void theAnchorIsReadableByEveryoneWhoMayReadTheLibraryAndAbsentOtherwise() throws Exception {
+    when(maintenanceService.maintenanceOf(libraryId, caller))
+        .thenReturn(
+            new LibraryMetadataMaintenance(
+                libraryId,
+                10,
+                List.of(
+                    new MetadataFieldMaintenance(CoreMetadataField.TITLE, 10, 10, 0),
+                    new MetadataFieldMaintenance(CoreMetadataField.DOCUMENT_TYPE, 10, 4, 2),
+                    new MetadataFieldMaintenance(CoreMetadataField.DOCUMENT_DATE, 10, 0, 0))));
+
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/metadata/maintenance").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalDocuments").value(10))
+        .andExpect(jsonPath("$.fields[1].fieldKey").value("document_type"))
+        .andExpect(jsonPath("$.fields[1].documentsWithoutValue").value(4))
+        .andExpect(jsonPath("$.fields[1].notDeterminableDocuments").value(2))
+        .andExpect(jsonPath("$.fields[1].missingShare").value(0.4))
+        .andExpect(jsonPath("$.fields[2].documentsWithoutValue").value(10));
+
+    UUID foreign = UUID.randomUUID();
+    when(maintenanceService.maintenanceOf(eq(foreign), any()))
+        .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
+    mockMvc
+        .perform(get("/api/v1/libraries/" + foreign + "/metadata/maintenance").with(asTestUser()))
+        .andExpect(status().isNotFound());
   }
 }

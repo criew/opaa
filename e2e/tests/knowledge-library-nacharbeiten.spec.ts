@@ -237,7 +237,7 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
     // body needs over the suite's tiny committed fixtures - the document itself stays a
     // single-digit number of chunks (see buildLargePdf), so this is not an embedding-load wait.
     await expect(page.getByText(fileName)).toBeVisible({ timeout: 30_000 })
-    await expect(page.getByText('indiziert')).toBeVisible({ timeout: 30_000 })
+    await expect(page.getByText('indiziert', { exact: true })).toBeVisible({ timeout: 30_000 })
   })
 })
 

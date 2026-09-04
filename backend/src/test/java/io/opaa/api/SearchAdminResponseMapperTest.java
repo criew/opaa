@@ -155,7 +155,8 @@ class SearchAdminResponseMapperTest {
                 Map.of(
                     CoreMetadataField.TITLE, 10L,
                     CoreMetadataField.DOCUMENT_TYPE, 4L,
-                    CoreMetadataField.DOCUMENT_DATE, 6L)));
+                    CoreMetadataField.DOCUMENT_DATE, 6L),
+                Map.of(CoreMetadataField.DOCUMENT_TYPE, 2L)));
 
     var response =
         SearchAdminResponseMapper.toStatusResponse(
@@ -179,11 +180,15 @@ class SearchAdminResponseMapperTest {
             CoreMetadataFieldFillResponse::getFieldKey,
             CoreMetadataFieldFillResponse::getLabel,
             CoreMetadataFieldFillResponse::getFilledDocuments,
-            CoreMetadataFieldFillResponse::getFilledShare)
+            CoreMetadataFieldFillResponse::getFilledShare,
+            CoreMetadataFieldFillResponse::getNotDeterminableDocuments,
+            CoreMetadataFieldFillResponse::getDocumentsWithoutValue,
+            CoreMetadataFieldFillResponse::getMissingShare)
         .containsExactly(
-            tuple("title", "Titel", 10L, 1.0d),
-            tuple("document_type", "Dokumentart", 4L, 0.4d),
-            tuple("document_date", "Datum/Stand", 6L, 0.6d));
+            tuple("title", "Titel", 10L, 1.0d, 0L, 0L, 0.0d),
+            // Four filled, two marked "kein Wert ermittelbar" - the anchor counts the four left.
+            tuple("document_type", "Dokumentart", 4L, 0.4d, 2L, 4L, 0.4d),
+            tuple("document_date", "Datum/Stand", 6L, 0.6d, 0L, 4L, 0.4d));
     assertThat(response.getLibraryName()).isEqualTo("Satzungen");
     assertThat(response.getDocumentCount()).isEqualTo(12);
     assertThat(response.getIndexedDocumentCount()).isEqualTo(10);

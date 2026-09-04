@@ -133,4 +133,41 @@ describe('BulkMetadataDialog', () => {
     expect(await within(dialog).findByText('Kein Zugriff auf diese Bibliothek')).toBeVisible()
     expect(within(dialog).getByRole('button', { name: 'Weiter' })).toBeInTheDocument()
   })
+
+  it('assigns "kein Wert ermittelbar" to the whole selection through the same steps', async () => {
+    mockBulkSetDocumentMetadata.mockResolvedValue({
+      updatedCount: 3,
+      unchangedCount: 0,
+      rejectedDocumentIds: [],
+      correlationRef: 'metadata-bulk-3',
+    })
+    renderWithProviders(
+      <BulkMetadataDialog
+        open
+        onClose={vi.fn()}
+        libraryId="library-team"
+        documentIds={['doc-1', 'doc-2', 'doc-3']}
+        onDone={vi.fn()}
+      />,
+    )
+    const user = userEvent.setup()
+
+    const dialog = await screen.findByRole('dialog', { name: 'Feld für 3 Dokumente setzen' })
+    await user.click(within(dialog).getByRole('combobox', { name: /^Feld$/ }))
+    await user.click(await screen.findByRole('option', { name: 'Datum/Stand' }))
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Kein Wert ermittelbar' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
+    expect(
+      within(dialog).getByText(/Datum\/Stand = „kein Wert ermittelbar" für 3 Dokumente setzen\?/),
+    ).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Zuweisen' }))
+
+    await waitFor(() =>
+      expect(mockBulkSetDocumentMetadata).toHaveBeenCalledWith('library-team', {
+        fieldKey: 'document_date',
+        value: { state: 'NOT_DETERMINABLE' },
+        documentIds: ['doc-1', 'doc-2', 'doc-3'],
+      }),
+    )
+  })
 })
