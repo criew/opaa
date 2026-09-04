@@ -225,6 +225,68 @@ class MetadataBackfillServiceIntegrationTest {
                     .isEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION));
   }
 
+  /**
+   * #1289: the Version-2-Bestand carries wrong DETERMINISTIC Dokumentart values from the old head
+   * rule (a label line, a quotation). The rerun has to remove them where nothing is left to
+   * extract, and to leave a manual correction untouched.
+   */
+  @Test
+  void aWrongDeterministicValueOfAnOlderVersionIsRemovedWhileAManualOneSurvives()
+      throws IOException {
+    Path leistung = classTempDir.resolve("13_fabrikneues-fahrzeug-anmelden.md");
+    Files.writeString(
+        leistung,
+        """
+        # Fabrikneues Fahrzeug anmelden
+
+        **Formular:** RF-KFZ-001
+
+        Die Zulassungsstelle nimmt den Antrag persoenlich entgegen.
+        """);
+    Path faq = classTempDir.resolve("15_faq-ausweisbeantragung.md");
+    Files.writeString(
+        faq,
+        """
+        # Haeufige Fragen zur Ausweisbeantragung
+
+        Termine werden nach der Dienstanweisung zur Terminvergabe vergeben.
+        """);
+    for (Path file : List.of(leistung, faq)) {
+      assertThat(fileProcessingService.processFile(file, library))
+          .isEqualTo(FileProcessingResult.PROCESSED);
+    }
+    Document leistungDocument = documentNamed("13_fabrikneues-fahrzeug-anmelden.md");
+    Document faqDocument = documentNamed("15_faq-ausweisbeantragung.md");
+    jdbcTemplate.update("DELETE FROM document_metadata_values WHERE field_key = 'document_type'");
+    valueRepository.save(
+        DocumentMetadataValue.deterministic(
+                leistungDocument.getId(),
+                CoreMetadataField.DOCUMENT_TYPE,
+                CoreMetadataExtractor.EXTRACTION_VERSION - 1)
+            .assignVocabularyCode("FORMULAR"));
+    valueRepository.save(
+        DocumentMetadataValue.manual(faqDocument.getId(), CoreMetadataField.DOCUMENT_TYPE, null)
+            .assignVocabularyCode("VERMERK"));
+    valueRepository.flush();
+    jdbcTemplate.update(
+        "UPDATE documents SET metadata_extraction_version = ?",
+        CoreMetadataExtractor.EXTRACTION_VERSION - 1);
+
+    MetadataBackfillResult rerun =
+        backfillService.backfillBatch(Organization.DEFAULT_ID, library.getId(), 10);
+
+    assertThat(rerun.processedDocuments()).isEqualTo(2);
+    assertThat(documentMetadataService.coreMetadataFor(leistungDocument.getId()).documentTypeCode())
+        .isNull();
+    assertThat(valueRepository.findByDocumentId(leistungDocument.getId()))
+        .noneMatch(value -> value.getFieldKey().equals(CoreMetadataField.DOCUMENT_TYPE.key()));
+    assertThat(chunkMetadata(leistungDocument.getId()))
+        .isNotEmpty()
+        .allSatisfy(metadata -> assertThat(metadata).doesNotContainKey("doc_type"));
+    assertThat(documentMetadataService.coreMetadataFor(faqDocument.getId()).documentTypeCode())
+        .isEqualTo("VERMERK");
+  }
+
   @Test
   void aManuallySetValueIsNeverOverwrittenByTheBackfill() throws IOException {
     indexAltbestand();
