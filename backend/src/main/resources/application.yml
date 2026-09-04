@@ -165,7 +165,7 @@ opaa:
     # so neither an oversized nor an afterwards-rejected entry can fill the temp partition.
     crawl:
       max-depth: ${OPAA_INDEXING_CRAWL_MAX_DEPTH:10}
-      max-entries: ${OPAA_INDEXING_CRAWL_MAX_ENTRIES:5000}
+      max-entries: ${OPAA_INDEXING_CRAWL_MAX_ENTRIES:50000}
       max-file-size-bytes: ${OPAA_INDEXING_CRAWL_MAX_FILE_SIZE_BYTES:104857600}
     # #1058: DoS-hardening limits for TabularDocumentPipeline (XLSX/CSV/ODS) - own property block,
     # own binding prefix, see TabularProperties's own Javadoc for why.
