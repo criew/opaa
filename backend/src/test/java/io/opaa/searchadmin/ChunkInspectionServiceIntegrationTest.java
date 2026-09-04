@@ -35,6 +35,8 @@ class ChunkInspectionServiceIntegrationTest {
   private UUID documentId;
   private UUID foreignDocumentId;
   private final List<UUID> chunkIds = new java.util.ArrayList<>();
+  private UUID stringIndexChunkId;
+  private UUID indexlessChunkId;
   private UUID orphanChunkId;
 
   @BeforeEach
@@ -46,6 +48,8 @@ class ChunkInspectionServiceIntegrationTest {
     foreignLibraryId = UUID.randomUUID();
     documentId = UUID.randomUUID();
     foreignDocumentId = UUID.randomUUID();
+    stringIndexChunkId = UUID.randomUUID();
+    indexlessChunkId = UUID.randomUUID();
     orphanChunkId = UUID.randomUUID();
     chunkIds.clear();
 
@@ -56,9 +60,9 @@ class ChunkInspectionServiceIntegrationTest {
     insertUser(foreignUserId, foreignOrganizationId);
     insertLibrary(libraryId, DEFAULT_ORGANIZATION_ID, "Satzungen", userId);
     insertLibrary(foreignLibraryId, foreignOrganizationId, "Fremde Satzungen", foreignUserId);
-    // chunk_count deliberately disagrees with the stored rows (4 vs. 3): the listing must report
+    // chunk_count deliberately disagrees with the stored rows (7 vs. 5): the listing must report
     // the entity's number, not count the rows again.
-    insertDocument(documentId, DEFAULT_ORGANIZATION_ID, libraryId, "satzung.pdf", 4);
+    insertDocument(documentId, DEFAULT_ORGANIZATION_ID, libraryId, "satzung.pdf", 7);
     insertDocument(foreignDocumentId, foreignOrganizationId, foreignLibraryId, "fremd.pdf", 1);
 
     // Inserted out of order on purpose.
@@ -67,12 +71,17 @@ class ChunkInspectionServiceIntegrationTest {
       chunkIds.add(chunkId);
       insertChunk(chunkId, documentId, index, "Abschnitt " + index + "\nmit Zeilenumbruch");
     }
+    // Inserted before the numeric rows would sort it, and as a JSON string rather than a number.
+    insertChunk(stringIndexChunkId, documentId, "\"3\"", "Abschnitt 3 mit Index als Text");
+    insertChunk(indexlessChunkId, documentId, null, "Abschnitt ohne Index");
     insertChunk(orphanChunkId, UUID.randomUUID(), 0, "Rest eines gelöschten Dokuments");
   }
 
   @AfterEach
   void tearDown() {
     List<UUID> allChunkIds = new java.util.ArrayList<>(chunkIds);
+    allChunkIds.add(stringIndexChunkId);
+    allChunkIds.add(indexlessChunkId);
     allChunkIds.add(orphanChunkId);
     for (UUID chunkId : allChunkIds) {
       jdbcTemplate.update("DELETE FROM public.vector_store WHERE id = ?", chunkId);
@@ -106,6 +115,18 @@ class ChunkInspectionServiceIntegrationTest {
   }
 
   @Test
+  void findChunkReadsAChunkIndexStoredAsTextAndReportsAMissingOneAsNull() {
+    ChunkInspection textIndexed =
+        service.findChunk(DEFAULT_ORGANIZATION_ID, stringIndexChunkId.toString()).orElseThrow();
+    assertThat(textIndexed.chunkIndex()).isEqualTo(3);
+
+    ChunkInspection indexless =
+        service.findChunk(DEFAULT_ORGANIZATION_ID, indexlessChunkId.toString()).orElseThrow();
+    assertThat(indexless.chunkIndex()).isNull();
+    assertThat(indexless.metadata()).doesNotContainKey("chunk_index");
+  }
+
+  @Test
   void findChunkIsEmptyForAnotherOrganization() {
     assertThat(service.findChunk(foreignOrganizationId, chunkIds.get(0).toString())).isEmpty();
   }
@@ -123,14 +144,19 @@ class ChunkInspectionServiceIntegrationTest {
 
     assertThat(chunks.documentTitle()).isEqualTo("satzung.pdf");
     assertThat(chunks.libraryName()).isEqualTo("Satzungen");
-    assertThat(chunks.chunkCount()).isEqualTo(4);
-    assertThat(chunks.chunks()).extracting(ChunkInspection::chunkIndex).containsExactly(0, 1, 2);
+    assertThat(chunks.chunkCount()).isEqualTo(7);
+    // Numeric and text-stored indexes sort together; a chunk without one comes last.
+    assertThat(chunks.chunks())
+        .extracting(ChunkInspection::chunkIndex)
+        .containsExactly(0, 1, 2, 3, null);
     assertThat(chunks.chunks())
         .extracting(ChunkInspection::content)
         .containsExactly(
             "Abschnitt 0\nmit Zeilenumbruch",
             "Abschnitt 1\nmit Zeilenumbruch",
-            "Abschnitt 2\nmit Zeilenumbruch");
+            "Abschnitt 2\nmit Zeilenumbruch",
+            "Abschnitt 3 mit Index als Text",
+            "Abschnitt ohne Index");
   }
 
   @Test
@@ -182,9 +208,16 @@ class ChunkInspectionServiceIntegrationTest {
   }
 
   private void insertChunk(UUID chunkId, UUID ownerDocumentId, int chunkIndex, String content) {
+    insertChunk(chunkId, ownerDocumentId, Integer.toString(chunkIndex), content);
+  }
+
+  /** {@code chunkIndexJson} is spliced in verbatim (number, quoted string) or omitted when null. */
+  private void insertChunk(
+      UUID chunkId, UUID ownerDocumentId, String chunkIndexJson, String content) {
+    String indexEntry = chunkIndexJson == null ? "" : ",\"chunk_index\":" + chunkIndexJson;
     String metadata =
-        "{\"document_id\":\"%s\",\"chunk_index\":%d,\"library_id\":\"%s\",\"file_name\":\"satzung.pdf\",\"location\":\"Seite 1\"}"
-            .formatted(ownerDocumentId, chunkIndex, libraryId);
+        "{\"document_id\":\"%s\"%s,\"library_id\":\"%s\",\"file_name\":\"satzung.pdf\",\"location\":\"Seite 1\"}"
+            .formatted(ownerDocumentId, indexEntry, libraryId);
     // No embedding: the read path must not depend on the column, and the row must still be found.
     jdbcTemplate.update(
         "INSERT INTO public.vector_store (id, content, metadata) VALUES (?, ?, ?::jsonb)",

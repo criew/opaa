@@ -14,6 +14,12 @@ import {
 } from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
+/**
+ * Sequence of the latest loadDocumentChunks call: an answer to an earlier call is dropped, so two
+ * quick clicks never leave the page showing the document that was asked for first.
+ */
+let latestDocumentChunksRequest = 0
+
 interface SearchAdminState {
   status: SearchStatusResponse | null
   profiles: SearchPermissionProfileResponse[]
@@ -92,13 +98,16 @@ export const useSearchAdminStore = create<SearchAdminState>((set) => ({
 
   loadDocumentChunks: async (documentId) => {
     const sessionEpoch = currentSessionEpoch()
+    const request = ++latestDocumentChunksRequest
+    const isSuperseded = () =>
+      isStaleSessionEpoch(sessionEpoch) || request !== latestDocumentChunksRequest
     set({ isLoadingDocumentChunks: true, documentChunks: null, documentChunksError: null })
     try {
       const documentChunks = await getDocumentChunks(documentId)
-      if (isStaleSessionEpoch(sessionEpoch)) return
+      if (isSuperseded()) return
       set({ documentChunks, isLoadingDocumentChunks: false })
     } catch (err) {
-      if (isStaleSessionEpoch(sessionEpoch)) return
+      if (isSuperseded()) return
       set({
         documentChunksError:
           err instanceof Error ? err.message : 'Chunks konnten nicht geladen werden',

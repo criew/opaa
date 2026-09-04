@@ -285,7 +285,8 @@ describe('SearchIndexingAdminPage', () => {
     const user = userEvent.setup()
     await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
 
-    await user.type(screen.getByRole('textbox', { name: 'Dokument-ID' }), MOCK_SATZUNG_DOCUMENT_ID)
+    await user.click(screen.getByRole('textbox', { name: 'Dokument-ID' }))
+    await user.paste(MOCK_SATZUNG_DOCUMENT_ID)
     await user.click(screen.getByRole('button', { name: 'Chunks laden' }))
 
     expect(await screen.findByText(/2 gespeicherte Chunks, laut Dokument 3/)).toBeInTheDocument()
@@ -311,10 +312,8 @@ describe('SearchIndexingAdminPage', () => {
     const user = userEvent.setup()
     await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
 
-    await user.type(
-      screen.getByRole('textbox', { name: 'Dokument-ID' }),
-      '99999999-9999-4999-8999-999999999999',
-    )
+    await user.click(screen.getByRole('textbox', { name: 'Dokument-ID' }))
+    await user.paste('99999999-9999-4999-8999-999999999999')
     await user.click(screen.getByRole('button', { name: 'Chunks laden' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Das Dokument wurde nicht gefunden.')

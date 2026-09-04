@@ -597,7 +597,7 @@ function ChunkPreviewDialog({ chunkId, onClose }: { chunkId: string | null; onCl
                 <IconButton
                   size="small"
                   aria-label="Chunk-ID kopieren"
-                  onClick={() => void navigator.clipboard?.writeText(chunk.chunkId)}
+                  onClick={() => void navigator.clipboard?.writeText(chunk.chunkId).catch(() => {})}
                 >
                   <ContentCopyIcon fontSize="inherit" />
                 </IconButton>

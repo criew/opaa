@@ -52,12 +52,19 @@ public class ChunkInspectionService {
   }
 
   /**
-   * The chunk with the given id, or empty when no such row exists, its {@code document_id} does not
-   * resolve to a document, or that document belongs to another organization.
+   * The chunk with the given id, or empty when the id is no UUID, no such row exists, its {@code
+   * document_id} does not resolve to a document, or that document belongs to another organization.
+   * The id is bound as a typed {@code uuid} so the primary-key index is used.
    */
   public Optional<ChunkInspection> findChunk(UUID organizationId, String chunkId) {
+    UUID id;
+    try {
+      id = UUID.fromString(chunkId);
+    } catch (IllegalArgumentException e) {
+      return Optional.empty();
+    }
     List<StoredChunk> rows =
-        jdbcTemplate.query(selectSql + " WHERE id::text = ?", this::toStoredChunk, chunkId);
+        jdbcTemplate.query(selectSql + " WHERE id = ?", this::toStoredChunk, id);
     if (rows.isEmpty()) {
       return Optional.empty();
     }
