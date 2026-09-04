@@ -96,7 +96,7 @@ class LibraryDocumentServiceIntegrationTest {
 
   // #742 review, finding 3: a base directory the FILESYSTEM loadContent tests below can use as a
   // library's sourcePath, alongside the shared suite's fixed "/data,/tmp" default (see
-  // application.yml's comment on filesystem-allowlist) rather than replacing it - the existing
+  // application.yml's comment on filesystem.allowlist) rather than replacing it - the existing
   // FILESYSTEM-flavoured tests elsewhere in this class (e.g.
   // uploadingIntoAConnectorLibraryIsRejectedWithConflict) still rely on "/data/documents" resolving
   // under that default.
@@ -107,7 +107,7 @@ class LibraryDocumentServiceIntegrationTest {
     registry.add("opaa.upload.storage-path", () -> uploadStorageDir.toAbsolutePath().toString());
     registry.add("opaa.upload.max-file-size", () -> 4096);
     registry.add(
-        "opaa.indexing.filesystem-allowlist",
+        "opaa.indexing.filesystem.allowlist",
         () -> "/data,/tmp," + filesystemAllowlistDir.toAbsolutePath());
     // #747: target validation stays enabled (application.yml's own default) - only 127.0.0.1 is
     // allowlisted, so this suite's own local HttpServer instances are reachable for the remote

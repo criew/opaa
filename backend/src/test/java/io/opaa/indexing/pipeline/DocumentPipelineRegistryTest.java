@@ -27,7 +27,7 @@ class DocumentPipelineRegistryTest {
       new TikaFallbackPipeline(new DocumentService(), new ChunkingService(properties()));
 
   private static IndexingProperties properties() {
-    return new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1);
+    return new IndexingProperties(1000, 100, 50, null, null, null, null, null, 1);
   }
 
   /** A stand-in for a future format pipeline - the whole point of the open-closed criterion. */

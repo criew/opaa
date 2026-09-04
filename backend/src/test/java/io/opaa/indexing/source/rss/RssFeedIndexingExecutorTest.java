@@ -117,8 +117,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   private RssFeedIndexingExecutor newExecutor(IndexingProperties.Rss rss) {
-    IndexingProperties properties =
-        new IndexingProperties(0, 0, 0, null, rss, null, null, null, null, 0);
+    IndexingProperties properties = new IndexingProperties(0, 0, 0, null, rss, null, null, null, 0);
     // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest,
     // RssFeedIndexingExecutorTargetValidationTest) - disabled here since every stub server this
     // class talks to is deliberately loopback (com.sun.net.httpserver.HttpServer, #467's own

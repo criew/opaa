@@ -5,6 +5,7 @@ import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.pipeline.mail.MailProperties;
 import io.opaa.indexing.pipeline.office.OdfProperties;
 import io.opaa.indexing.pipeline.tabular.TabularProperties;
+import io.opaa.indexing.source.filesystem.FilesystemProperties;
 import io.opaa.indexing.source.web.CrawlProperties;
 import io.opaa.library.AttachmentExtractionProperties;
 import io.opaa.library.RemoteContentProperties;
@@ -27,6 +28,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   AttachmentExtractionProperties.class,
   SettingsEncryptionProperties.class,
   CrawlProperties.class,
+  FilesystemProperties.class,
   TabularProperties.class,
   MailProperties.class,
   OdfProperties.class,

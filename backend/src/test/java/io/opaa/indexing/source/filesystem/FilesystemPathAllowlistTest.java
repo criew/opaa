@@ -2,7 +2,6 @@ package io.opaa.indexing.source.filesystem;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.IndexingProperties;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -20,8 +19,8 @@ class FilesystemPathAllowlistTest {
     return new FilesystemPathAllowlist(properties(Arrays.asList(baseDirectories)));
   }
 
-  private static IndexingProperties properties(List<String> filesystemAllowlist) {
-    return new IndexingProperties(0, 0, 0, null, null, filesystemAllowlist, null, null, null, 0);
+  private static FilesystemProperties properties(List<String> allowlist) {
+    return new FilesystemProperties(allowlist);
   }
 
   @Test
