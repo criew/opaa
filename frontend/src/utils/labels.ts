@@ -323,3 +323,12 @@ export function datePrecisionLabel(precision: DatePrecision | string | null | un
   if (!precision) return ''
   return datePrecisionLabels[precision as DatePrecision] ?? precision
 }
+
+/**
+ * A 0..1 share as a whole German percentage - the one rendering of the Füllgrad and the
+ * Pflege-Anker (#1069), so the same figure never appears as "64 %" in one place and "63,6 %" in
+ * another.
+ */
+export function formatShare(share: number): string {
+  return `${Math.round(share * 100)} %`
+}

@@ -78,6 +78,13 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long countByLibraryId(UUID libraryId);
 
   /**
+   * The bestand the Pflege-Anker (#1069) and the Füllgrad of #1067 measure against: a library's
+   * {@code INDEXED} documents, attachments included - a metadata value hangs at every document row,
+   * not only at the ones the document list pages over.
+   */
+  long countByLibraryIdAndStatus(UUID libraryId, DocumentStatus status);
+
+  /**
    * The parent-level counterpart of {@link #countByLibraryId} (#1184): top-level documents only,
    * matching what the document list pages over - shown as a library's {@code documentCount}. {@link
    * #countByLibraryId} keeps backing the delete guard, which must see every row.
@@ -116,6 +123,31 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   List<AttachmentParentRef>
       findByLibraryIdAndParentDocumentIdIsNotNullAndFileNameContainingIgnoreCase(
           UUID libraryId, String q);
+
+  /**
+   * The paged Pflege-Anker list (#1069): every indexed document row of the library - top-level and
+   * attachment alike - that has no row for {@code fieldKey}, optionally narrowed by {@code
+   * escapedQ} (empty matches every name). Deliberately not the top-level paging of {@link
+   * #searchTopLevelByFileNameOrAttachmentRoot}: this list must hold exactly the rows the anchor
+   * counts, so that every entry is genuinely open and a Sammelzuweisung over the whole page cannot
+   * overwrite a maintained value. Only {@code status} rows count - an anchor over documents that
+   * were never indexed would never reach zero. The gap is a correlated {@code NOT EXISTS}, so no
+   * unbounded id list travels between two queries.
+   */
+  @Query(
+      """
+      SELECT d FROM Document d
+      WHERE d.libraryId = :libraryId AND d.status = :status
+        AND LOWER(d.fileName) LIKE LOWER(CONCAT('%', :escapedQ, '%')) ESCAPE '\\'
+        AND NOT EXISTS (SELECT 1 FROM DocumentMetadataValue v
+                        WHERE v.documentId = d.id AND v.fieldKey = :fieldKey)
+      """)
+  Page<Document> searchWithoutMetadataValue(
+      @Param("libraryId") UUID libraryId,
+      @Param("escapedQ") String escapedQ,
+      @Param("fieldKey") String fieldKey,
+      @Param("status") DocumentStatus status,
+      Pageable pageable);
 
   /** The two ids the attachment-aware search prefilter needs (#1184) - see the finder above. */
   interface AttachmentParentRef {

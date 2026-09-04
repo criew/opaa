@@ -40,6 +40,9 @@ interface DocumentPageState {
   // #822: the folder currently being browsed (folder navigation, ADR-0020/#821) - null means the
   // library's root, mirroring the backend's own folderId semantics (GET/POST .../documents).
   folderId: string | null
+  // #1069: the Pflege-Anker's filter - a core field key whose empty documents are listed, or null
+  // for the unfiltered list. Like q, it makes the list bibliotheksweit.
+  missingMetadataField: string | null
 }
 
 const defaultPageState: DocumentPageState = {
@@ -48,6 +51,7 @@ const defaultPageState: DocumentPageState = {
   q: '',
   totalElements: 0,
   folderId: null,
+  missingMetadataField: null,
 }
 
 interface DocumentState {
@@ -78,7 +82,13 @@ interface DocumentState {
   reset: () => void
   loadDocuments: (
     libraryId: string,
-    options?: { page?: number; size?: number; q?: string; folderId?: string | null },
+    options?: {
+      page?: number
+      size?: number
+      q?: string
+      folderId?: string | null
+      missingMetadataField?: string | null
+    },
   ) => Promise<void>
   uploadNewDocument: (libraryId: string, file: File, folderPath?: string) => Promise<void>
   removeDocument: (libraryId: string, documentId: string) => Promise<void>
@@ -275,7 +285,15 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 // folderNotFoundMessage this call is in the middle of setting.
 async function runLoadDocuments(
   libraryId: string,
-  options: { page?: number; size?: number; q?: string; folderId?: string | null } | undefined,
+  options:
+    | {
+        page?: number
+        size?: number
+        q?: string
+        folderId?: string | null
+        missingMetadataField?: string | null
+      }
+    | undefined,
   set: (partial: Partial<DocumentState>) => void,
   get: () => DocumentState,
   isFolderFallbackRetry: boolean,
@@ -297,10 +315,21 @@ async function runLoadDocuments(
     options && Object.prototype.hasOwnProperty.call(options, 'folderId')
       ? (options.folderId ?? null)
       : previous.folderId
+  // Same "explicit key wins, even as null" rule as folderId above: null clears the filter.
+  const missingMetadataField =
+    options && Object.prototype.hasOwnProperty.call(options, 'missingMetadataField')
+      ? (options.missingMetadataField ?? null)
+      : previous.missingMetadataField
 
   set({ isLoading: true, error: null })
   try {
-    const response = await getLibraryDocuments(libraryId, { page, size, q, folderId })
+    const response = await getLibraryDocuments(libraryId, {
+      page,
+      size,
+      q,
+      folderId,
+      missingMetadataField,
+    })
     if (isStaleSessionEpoch(sessionEpoch)) return
     set({
       documentsByLibrary: { ...get().documentsByLibrary, [libraryId]: response.items },
@@ -312,6 +341,7 @@ async function runLoadDocuments(
           q,
           totalElements: response.totalElements,
           folderId,
+          missingMetadataField,
         },
       },
       foldersByLibrary: { ...get().foldersByLibrary, [libraryId]: response.folders },

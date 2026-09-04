@@ -19,12 +19,13 @@ Sie ist die dritte von drei zusammengehörigen Spezifikationen und die letzte in
 [Hybrides Retrieval](./hybrid-retrieval.md) baut die zwei Suchpfade, in denen ein Filter überhaupt
 wirken kann; [Ingestion-Pipelines](./ingestion-pipelines.md) baut die Aufnahmestrecke, in der
 Metadaten entstehen; dieses Dokument beschreibt, **welche** Metadaten das sind, **woher sie kommen**
-und **was sie im Retrieval bewirken**. **Gebaut sind bisher die Arbeitspakete 1, 2 und der
-Korrekturteil von 3** (Kernfelder, Herkunft, deterministische Extraktion, Beleg-Anzeige — #1066,
+und **was sie im Retrieval bewirken**. **Gebaut sind bisher die Arbeitspakete 1, 2 und
+3** (Kernfelder, Herkunft, deterministische Extraktion, Beleg-Anzeige — #1066,
 siehe [Umgesetzt (#1066)](#umgesetzt-1066) und
 [ADR-0024](../decisions/0024-metadatenschema-kernfelder.md); deterministischer Bestandslauf — #1067,
 siehe [Umgesetzt (#1067)](#umgesetzt-1067); manuelle Korrektur, Sammelzuweisung und Audit-Ereignis —
-#1068, siehe [Umgesetzt (#1068)](#umgesetzt-1068)); alles Weitere — Pflege-Anker, Filter,
+#1068, siehe [Umgesetzt (#1068)](#umgesetzt-1068); Pflege-Anker und der dritte Zustand „kein Wert
+ermittelbar" — #1069, siehe [Umgesetzt (#1069)](#umgesetzt-1069)); alles Weitere — Filter,
 Bibliotheksfelder, Modell-Extraktion — ist noch nicht gebaut.
 
 ---
@@ -604,8 +605,8 @@ Entscheidungen sinkt, nicht ihre Verbindlichkeit.
 ### Umgesetzt (#1068)
 
 Der Korrekturteil von Arbeitspaket 3 — Einzelkorrektur, Sammelzuweisung und die protokollpflichtige
-Setzung; der Pflege-Anker und der dritte Zustand folgen in #1069 und hängen sich an dieselbe
-Setz-Operation.
+Setzung; der Pflege-Anker und der dritte Zustand sind mit #1069 nachgezogen und hängen an derselben
+Setz-Operation (siehe [Umgesetzt (#1069)](#umgesetzt-1069)).
 
 **Rechte.** Die Korrektur läuft an der Schwelle, an der auch Hochladen und Löschen eines Dokuments
 liegen: `EDITOR` an der Bibliothek (`LibraryAccessService#requireRole`), dieselbe Prüfung wie
@@ -974,6 +975,66 @@ Die Zahl ist derselbe Datentyp wie der Füllstand des Volltext-Backfills: **abfr
 Logeintrag** — und gehört damit in dieselbe Zustandsübersicht wie dieser (siehe
 [Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)).
 
+### Umgesetzt (#1069)
+
+Der Rest von Arbeitspaket 3 — der Pflege-Anker und der dritte Zustand, beide an der vorhandenen
+Setz-Operation aus [Umgesetzt (#1068)](#umgesetzt-1068), nicht als eigener Mechanismus.
+
+**Der dritte Zustand ist dieselbe Operation ohne Wert.** `PUT
+/api/v1/libraries/{libraryId}/documents/{documentId}/metadata/{fieldKey}` nimmt statt eines Wertes
+`state: NOT_DETERMINABLE` entgegen — für jedes Kernfeld, zusammen mit einem Wert abgelehnt (400), und
+ebenso als Sammelzuweisung (`POST …/documents/metadata/bulk`). Gespeichert wird die vorhandene Zeile
+mit `value_state = 'NOT_DETERMINABLE'`, Herkunft `MANUAL` und Akteur (Migration 018 lässt sie nur so
+zu); es entsteht dasselbe Audit-Ereignis `DOCUMENT_METADATA_CHANGED` mit Alt- und Neuwert wie bei
+jeder anderen Setzung, und eine erneute identische Setzung schreibt nichts. Keine automatische
+Extraktion vergibt ihn und keine setzt ihn zurück: `DocumentMetadataService` lässt jede `MANUAL`-Zeile
+unangetastet — abgesichert über die Extraktion beim Aufnehmen **und** über einen Bestandslauf im
+Test. Zurücknehmen lässt er sich wie jeder Wert über `DELETE …/metadata/{fieldKey}`; das Dokument
+zählt dann wieder zum Anker.
+
+**Für Filter und Beleg verhält er sich wie leer.** `CoreMetadata` übernimmt nur `SET`-Zeilen, also
+enthält die generische Feld-Wert-Liste am `SourceReference` das Feld nicht, und die filterbaren
+Chunk-Schlüssel `doc_type`/`doc_date`/`doc_date_precision` werden bei der Setzung von den Chunks
+entfernt (JSON-Update, kein Neu-Einbetten) — das Dokument wird von einem künftigen Filter also nicht
+ausgeschlossen (#1070, [Leerwerte schließen nicht aus](#leerwerte-schließen-nicht-aus)). In der
+Metadatenansicht des Dokuments steht er dagegen ausdrücklich als „– (kein Wert ermittelbar)" mit
+seiner Herkunft.
+
+**Der Anker.** `GET /api/v1/libraries/{libraryId}/metadata/maintenance` liefert je Kernfeld die
+Dokumente ohne Wert — absolut **und** als Anteil, beide nebeneinander —, dazu die befüllten und die
+als „kein Wert ermittelbar" gekennzeichneten. Gezählt werden nur fehlende Zeilen; der dritte Zustand
+zählt nicht mit, weshalb der Wert 0 erreichbar ist. Bezugsmenge ist der **indizierte** Bestand der
+Bibliothek (Anhänge eingeschlossen — ein Metadatenwert hängt an jeder Dokumentzeile), dieselbe Menge,
+die der Füllgrad aus [Umgesetzt (#1067)](#umgesetzt-1067) misst. Die Zahlen werden **bei jeder
+Abfrage** gezählt, nichts wird vorberechnet oder zwischengespeichert, und die Abfrage läuft im
+Rechtekontext der fragenden Person: Leserecht an der Bibliothek genügt (die Person, die den Bestand
+kennt, sieht seine Lücken), eine Bibliothek ohne Leserecht ist abwesend (404) statt eine Zahl zu
+nennen; Bearbeiten bleibt beim Bearbeitungsrecht aus #1068.
+
+**Die Liste der N Dokumente.** `GET …/documents?missingMetadataField=<Feldschlüssel>` zeigt genau die
+gezählten Dokumente — bibliotheksweit wie eine Suche (der Anker zählt die ganze Bibliothek, eine
+Ordner-Einschränkung würde weniger zeigen als die genannte Zahl), mit `q` kombinierbar, ein
+unbekannter Feldschlüssel wird abgelehnt (400). Anders als jede andere Dokumentliste blättert sie
+**über Dokumentzeilen statt über Elterndokumente**: Ein Anhang ohne Wert ist ein eigener Eintrag,
+und kein Dokument mit Wert steht darin. Damit ist die Länge der Liste dieselbe Zahl wie der Anker,
+und „alle auf dieser Seite auswählen" plus Sammelzuweisung (#1068) kann keinen gepflegten Wert
+überschreiben — die Anhangsgruppierung aus ADR-0022 tritt in dieser einen Ansicht bewusst zurück,
+weil ein Elterndokument mit Wert sonst als Zeile erschiene, die niemand bearbeiten soll.
+
+**Anzeige.** In den Einstellungen der Bibliothek steht der Abschnitt „Metadaten-Pflege" über der
+Dokumentliste: je Feld „N Dokumente ohne Wert (x %)" (oder „vollständig gepflegt") mit einer
+Schaltfläche, die genau diese Dokumente in der Liste darunter öffnet — als URL-Zustand
+(`?missingField=…`), damit ein Neuladen dieselbe Arbeitsliste zeigt. Dieselben Zahlen erscheinen in
+der betrieblichen Zustandsübersicht „Suche & Indexierung" neben dem Füllgrad je Kernfeld; dort ist
+die Organisation der Rechtekontext (die eng begrenzte Ausnahme aus
+[Rechte-Invariante](#rechte-invariante-der-extraktion-und-aller-aggregate)).
+
+**Bewusst nicht gebaut.** Es gibt **keine** Erinnerungen (weder Mail noch Hinweis in der
+Oberfläche), **keine** Pflichtfeld-Erzwingung beim Hochladen, **keine** Qualitätsnote je Bibliothek
+und **keine** automatische Nachbefüllung eines leeren oder als „kein Wert ermittelbar"
+gekennzeichneten Feldes. Der Anker ist die vollständige Pflegemechanik; alles darüber hinaus erzeugt
+Arbeit, die niemand beauftragt hat.
+
 ## Spätere Ausbaustufe: der geführte Assistent
 
 Der im Diskussionspapier beschriebene Wizard ist **nicht Teil des ersten Umsetzungsschnitts**. Er
@@ -1071,7 +1132,7 @@ solange keine Füllstandsverteilung eines echten Bestands vorliegt.
 |---|---|---|---|
 | 1 | Kernfelder: Datenmodell, Herkunft/Konfidenz/Akteur, deterministische Extraktion beim Aufnehmen — **umgesetzt mit #1066**, siehe [Umgesetzt (#1066)](#umgesetzt-1066) | — | Beleg-Anzeige wird einordbar; Grundlage für alles Weitere |
 | 2 | **Deterministischer Bestandslauf** über den Altbestand, bibliotheksweise, mit den Nachlauf-Zusagen — **umgesetzt mit #1067**, siehe [Umgesetzt (#1067)](#umgesetzt-1067) | 1 | Die Kernfelder gelten für den vorhandenen Bestand, nicht nur für künftige Dokumente |
-| 3 | Manuelle Korrektur, Sammelzuweisung, Audit-Ereignis — **umgesetzt mit #1068**, siehe [Umgesetzt (#1068)](#umgesetzt-1068) — und Pflege-Anker („N ohne Wert", absolut und anteilig; #1069) | 1, 2 | Die Leerwert-Regel wird behebbar statt Dauerzustand |
+| 3 | Manuelle Korrektur, Sammelzuweisung, Audit-Ereignis — **umgesetzt mit #1068**, siehe [Umgesetzt (#1068)](#umgesetzt-1068) — und Pflege-Anker („N ohne Wert", absolut und anteilig) samt drittem Zustand — **umgesetzt mit #1069**, siehe [Umgesetzt (#1069)](#umgesetzt-1069) | 1, 2 | Die Leerwert-Regel wird behebbar statt Dauerzustand |
 | 4 | Metadatenfilter in beiden Suchpfaden, mit Füllstandsanzeige je Feld | 2, 3, Hybrid-Suche AP 3 | Löst Szenario 9; die `metadata_filter`-Fälle werden erstmals lösbar |
 | 5 | Bibliotheksfelder: Schemakonfiguration je Bibliothek, Wertelisten mit bestätigter Abbildung | 1, 4 | Fassung und Rechtsebene werden führbar |
 | 6 | Metadaten im Kontextpräfix, mit Folgekostenanzeige und selektivem Nachlauf | 5, Ingestion Regel (b)/(d) | Wirkung auch ohne gesetzten Filter |

@@ -79,6 +79,8 @@ import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../components/EditLibraryScheduleDialog'
 import DocumentTextPreviewDialog from '../components/DocumentTextPreviewDialog'
 import DocumentMetadataPanel from '../components/metadata/DocumentMetadataPanel'
+import MetadataMaintenanceAnchor from '../components/metadata/MetadataMaintenanceAnchor'
+import { coreMetadataFieldLabel } from '../components/metadata/metadataValues'
 import BulkMetadataDialog from '../components/metadata/BulkMetadataDialog'
 import PageHeading from '../components/a11y/PageHeading'
 import FieldLabel from '../components/wizard/FieldLabel'
@@ -496,6 +498,9 @@ function LibraryDocumentsSection({
   // lands back in the same folder instead of always resetting to the library's root.
   const [searchParams, setSearchParams] = useSearchParams()
   const folderIdParam = searchParams.get('folder')
+  // #1069: the Pflege-Anker's filter is URL state (?missingField=<core field key>) - the anchor's
+  // button navigates here, a reload keeps the same worklist open.
+  const missingFieldParam = searchParams.get('missingField')
 
   const [isDragActive, setIsDragActive] = useState(false)
   const [searchInput, setSearchInput] = useState('')
@@ -516,6 +521,9 @@ function LibraryDocumentsSection({
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
   const [bulkResultMessage, setBulkResultMessage] = useState<string | null>(null)
   const [metadataRefreshToken, setMetadataRefreshToken] = useState(0)
+  // #1069: bumped after every metadata change so the anchor recounts; separate from
+  // metadataRefreshToken, which reloads the open per-document panels.
+  const [anchorRefreshToken, setAnchorRefreshToken] = useState(0)
   const [folderMenu, setFolderMenu] = useState<{
     anchorEl: HTMLElement
     folder: LibraryFolderListItem
@@ -583,8 +591,9 @@ function LibraryDocumentsSection({
       size: DEFAULT_PAGE_SIZE,
       q: '',
       folderId: folderIdParam,
+      missingMetadataField: missingFieldParam,
     })
-  }, [libraryId, folderIdParam, loadDocuments])
+  }, [libraryId, folderIdParam, missingFieldParam, loadDocuments])
 
   useEffect(() => {
     // #822: an invalid/foreign folderId (stale bookmark, deleted folder) is caught by
@@ -629,9 +638,13 @@ function LibraryDocumentsSection({
     parent: LibraryDocumentResponse
     attachments: LibraryDocumentResponse[]
   }[] = []
+  // #1069: the Pflege-Anker's list holds exactly the rows without a value - an attachment is a row
+  // of its own there and its parent may be absent, so grouping would nest it under an unrelated
+  // document. Every row stands for itself while the filter is active.
+  const isMissingFilterActive = Boolean(pageState?.missingMetadataField)
   for (const doc of documents) {
     const lastGroup = documentGroups[documentGroups.length - 1]
-    if (doc.parentDocumentId && lastGroup) {
+    if (!isMissingFilterActive && doc.parentDocumentId && lastGroup) {
       lastGroup.attachments.push(doc)
     } else {
       documentGroups.push({ parent: doc, attachments: [] })
@@ -685,6 +698,34 @@ function LibraryDocumentsSection({
     setBulkResultMessage(`Feld gesetzt: ${parts.join(', ')}.`)
     setSelectedDocumentIds([])
     setMetadataRefreshToken((previous) => previous + 1)
+    setAnchorRefreshToken((previous) => previous + 1)
+    // A document that just got a value leaves the anchor's worklist - reload the same page.
+    void loadDocuments(libraryId, {})
+  }
+
+  // #1069: a corrected document leaves the anchor - and, while its worklist is open, the list
+  // below too, so the number and the rows keep telling the same story.
+  function handleMetadataValueChanged() {
+    setAnchorRefreshToken((previous) => previous + 1)
+    if (missingFieldParam) {
+      void loadDocuments(libraryId, {})
+    }
+  }
+
+  // #1069: opens (or leaves) the anchor's worklist - the list is bibliotheksweit, so an open
+  // folder and a running search are dropped with it, and the selection starts empty.
+  function setMissingFieldFilter(fieldKey: string | null) {
+    setSearchInput('')
+    setSelectedDocumentIds([])
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    const next = new URLSearchParams(searchParams)
+    next.delete('folder')
+    if (fieldKey) {
+      next.set('missingField', fieldKey)
+    } else {
+      next.delete('missingField')
+    }
+    setSearchParams(next)
   }
 
   // #822: navigates into a folder (or back to the root with null) by changing the URL's folder
@@ -700,7 +741,7 @@ function LibraryDocumentsSection({
     // not change, so the load effect above never fires and the stale, still-bibliotheksweit search
     // results would keep showing despite the now-empty search field. Reloading explicitly in that
     // case is the only way to still land on that folder's contents.
-    if (folderId === folderIdParam) {
+    if (folderId === folderIdParam && !missingFieldParam) {
       void loadDocuments(libraryId, { page: 0, size: DEFAULT_PAGE_SIZE, q: '', folderId })
       return
     }
@@ -710,6 +751,8 @@ function LibraryDocumentsSection({
     } else {
       next.delete('folder')
     }
+    // #1069: browsing a folder leaves the anchor's (bibliotheksweite) worklist.
+    next.delete('missingField')
     setSearchParams(next)
   }
 
@@ -1028,6 +1071,7 @@ function LibraryDocumentsSection({
             fileName={document.fileName}
             canEdit={canEditMetadata}
             refreshToken={metadataRefreshToken}
+            onValueChanged={handleMetadataValueChanged}
           />
         )}
       </Fragment>
@@ -1246,6 +1290,29 @@ function LibraryDocumentsSection({
             ),
           )}
         </Breadcrumbs>
+      )}
+
+      <MetadataMaintenanceAnchor
+        libraryId={libraryId}
+        activeFieldKey={missingFieldParam}
+        onShowMissing={(fieldKey) => setMissingFieldFilter(fieldKey)}
+        onClearFilter={() => setMissingFieldFilter(null)}
+        refreshToken={anchorRefreshToken}
+      />
+
+      {missingFieldParam && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => setMissingFieldFilter(null)}>
+              Filter aufheben
+            </Button>
+          }
+        >
+          Es werden nur Dokumente ohne Wert für „{coreMetadataFieldLabel(missingFieldParam)}"
+          angezeigt — bibliotheksweit, unabhängig vom Ordner.
+        </Alert>
       )}
 
       <TextField
