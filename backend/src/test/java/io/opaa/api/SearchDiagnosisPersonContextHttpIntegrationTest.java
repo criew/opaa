@@ -1,8 +1,10 @@
 package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -118,6 +120,8 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
   @AfterEach
   void tearDown() {
     jdbcTemplate.update(
+        "DELETE FROM documents WHERE library_id in (?, ?)", openLibraryId, lockedLibraryId);
+    jdbcTemplate.update(
         "DELETE FROM asset_grants WHERE library_id in (?, ?)", openLibraryId, lockedLibraryId);
     jdbcTemplate.update(
         "DELETE FROM knowledge_libraries WHERE id in (?, ?)", openLibraryId, lockedLibraryId);
@@ -174,6 +178,49 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
         .andExpect(jsonPath("$.personContextAvailable").value(true));
   }
 
+  /**
+   * A tracked document from a diagnosegesperrte library must be answered inside the same lock
+   * context the search ran in: no file name, no library name, and not as a Rechtefrage - the target
+   * person may well hold the right, the library was left out because of the lock (Leitplanke (e)).
+   */
+  @Test
+  void aTrackedDocumentFromALockedLibraryIsNeitherNamedNorCalledARightsProblem() throws Exception {
+    grantBefugnis();
+    UUID documentId = insertDocument(lockedLibraryId, "personalakte-klein.pdf");
+
+    mockMvc
+        .perform(personContextRequest(JUSTIFICATION, documentId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.trackedDocument.outcome").value("IN_LOCKED_AREA"))
+        .andExpect(jsonPath("$.trackedDocument.fileName").doesNotExist())
+        .andExpect(jsonPath("$.trackedDocument.libraryName").doesNotExist())
+        .andExpect(jsonPath("$.trackedDocument.libraryId").doesNotExist())
+        .andExpect(content().string(org.hamcrest.Matchers.not(containsString("personalakte"))))
+        .andExpect(content().string(org.hamcrest.Matchers.not(containsString("Personalvorgänge"))));
+  }
+
+  /**
+   * A document the target person genuinely may not read stays distinguishable from a locked one -
+   * but is still not named, because it lies outside the scope this run searched.
+   */
+  @Test
+  void aTrackedDocumentOutsideTheTargetsRightsIsReportedWithoutNamingIt() throws Exception {
+    grantBefugnis();
+    UUID foreignLibraryId = insertLibrary("Bauleitplanung");
+    UUID documentId = insertDocument(foreignLibraryId, "bebauungsplan.pdf");
+    try {
+      mockMvc
+          .perform(personContextRequest(JUSTIFICATION, documentId))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.trackedDocument.outcome").value("OUTSIDE_SEARCH_SCOPE"))
+          .andExpect(jsonPath("$.trackedDocument.fileName").doesNotExist())
+          .andExpect(jsonPath("$.trackedDocument.libraryName").doesNotExist());
+    } finally {
+      jdbcTemplate.update("DELETE FROM documents WHERE library_id = ?", foreignLibraryId);
+      jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", foreignLibraryId);
+    }
+  }
+
   @Test
   void aPersonContextWithoutAJustificationIsNotExecuted() throws Exception {
     grantBefugnis();
@@ -185,14 +232,41 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
 
   private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
       personContextRequest(String justification) {
+    return personContextRequest(justification, null);
+  }
+
+  private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
+      personContextRequest(String justification, UUID trackedDocumentId) {
     return post("/api/v1/admin/search/diagnosis")
         .contentType(MediaType.APPLICATION_JSON)
         .content(
             """
-            {"question":"%s","contextType":"USER","targetUserId":"%s","justification":"%s"}
+            {"question":"%s","contextType":"USER","targetUserId":"%s","justification":"%s"%s}
             """
-                .formatted(QUESTION, targetUserId, justification))
+                .formatted(
+                    QUESTION,
+                    targetUserId,
+                    justification,
+                    trackedDocumentId == null
+                        ? ""
+                        : ",\"trackedDocumentId\":\"" + trackedDocumentId + "\""))
         .with(devAdmin());
+  }
+
+  private UUID insertDocument(UUID libraryId, String fileName) {
+    UUID documentId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO documents (id, file_name, file_path, content_type, file_size, chunk_count,"
+            + " indexed_at, checksum, status, source_type, library_id, organization_id, created_at)"
+            + " VALUES (?, ?, ?, 'application/pdf', 1024, 1, now(), ?, 'INDEXED', 'UPLOAD', ?, ?,"
+            + " now())",
+        documentId,
+        fileName,
+        "person-context-it/" + documentId,
+        "checksum-" + documentId,
+        libraryId,
+        organizationId);
+    return documentId;
   }
 
   private List<DiagnosticContextLogEntry> protocolEntries() {

@@ -6706,10 +6706,13 @@ components:
       type: string
       description: >
         OUTSIDE_SEARCH_SCOPE - the context may not read this document's library, so no search could
-        have reached it. NOT_RETRIEVED - inside the scope, but no search stage found any of its
-        chunks: an indexing or chunking problem. DISPLACED - found and dropped at a named stage: a
-        ranking problem. IN_FINAL_SELECTION - it is in the Endauswahl.
-      enum: [OUTSIDE_SEARCH_SCOPE, NOT_RETRIEVED, DISPLACED, IN_FINAL_SELECTION]
+        have reached it. IN_LOCKED_AREA - its library is diagnosegesperrt and was left out of the
+        run, which says nothing about the target person's rights (#1150). NOT_RETRIEVED - inside the
+        scope, but no search stage found any of its chunks: an indexing or chunking problem.
+        DISPLACED - found and dropped at a named stage: a ranking problem. IN_FINAL_SELECTION - it
+        is in the Endauswahl.
+      enum:
+        [OUTSIDE_SEARCH_SCOPE, IN_LOCKED_AREA, NOT_RETRIEVED, DISPLACED, IN_FINAL_SELECTION]
       example: DISPLACED
 
     TrackedDocumentResponse:
@@ -6722,6 +6725,10 @@ components:
         fileName:
           type: string
           nullable: true
+          description: >
+            Null for a document outside the searched scope of a person context: naming it would
+            describe a library that run did not search, and for IN_LOCKED_AREA it would be exactly
+            the Dokumenttitel Berechtigungs-Leitplanke (e) rules out.
         libraryId:
           type: string
           format: uuid
@@ -6729,6 +6736,7 @@ components:
         libraryName:
           type: string
           nullable: true
+          description: Null under the same rule as fileName.
         outcome:
           $ref: "#/components/schemas/TrackedDocumentOutcome"
         displacedAtStage:

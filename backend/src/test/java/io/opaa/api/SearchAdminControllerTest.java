@@ -237,7 +237,7 @@ class SearchAdminControllerTest {
   }
 
   @Test
-  void permissionProfilesAreListedForTheCallersOwnOrganization() throws Exception {
+  void theDiagnosisContextListsTheProfilesAndTheOwnPersonContextPermission() throws Exception {
     UUID profileId = UUID.randomUUID();
     when(searchDiagnosisService.diagnosisContext(any()))
         .thenReturn(

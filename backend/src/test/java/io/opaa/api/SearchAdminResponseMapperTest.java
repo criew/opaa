@@ -372,6 +372,30 @@ class SearchAdminResponseMapperTest {
   }
 
   @Test
+  void aTrackedDocumentFromALockedAreaCarriesItsOutcomeAndNoNames() {
+    var tracked =
+        SearchAdminResponseMapper.toDiagnosisResponse(
+                diagnosis(
+                    new TrackedDocumentVerdict(
+                        DOCUMENT_ID,
+                        null,
+                        null,
+                        null,
+                        TrackedDocumentVerdict.Outcome.IN_LOCKED_AREA,
+                        null,
+                        null,
+                        0,
+                        0)))
+            .getTrackedDocument();
+
+    assertThat(tracked.getOutcome()).isEqualTo(TrackedDocumentOutcome.IN_LOCKED_AREA);
+    assertThat(tracked.getDocumentId()).isEqualTo(DOCUMENT_ID);
+    assertThat(tracked.getFileName()).isNull();
+    assertThat(tracked.getLibraryId()).isNull();
+    assertThat(tracked.getLibraryName()).isNull();
+  }
+
+  @Test
   void aDisplacedDocumentNamesTheStageAndReasonItWasLostAt() {
     var tracked =
         SearchAdminResponseMapper.toDiagnosisResponse(

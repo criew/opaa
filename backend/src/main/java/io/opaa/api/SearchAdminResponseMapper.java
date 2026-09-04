@@ -357,6 +357,7 @@ final class SearchAdminResponseMapper {
   private static TrackedDocumentOutcome toTrackedOutcome(TrackedDocumentVerdict.Outcome outcome) {
     return switch (outcome) {
       case OUTSIDE_SEARCH_SCOPE -> TrackedDocumentOutcome.OUTSIDE_SEARCH_SCOPE;
+      case IN_LOCKED_AREA -> TrackedDocumentOutcome.IN_LOCKED_AREA;
       case NOT_RETRIEVED -> TrackedDocumentOutcome.NOT_RETRIEVED;
       case DISPLACED -> TrackedDocumentOutcome.DISPLACED;
       case IN_FINAL_SELECTION -> TrackedDocumentOutcome.IN_FINAL_SELECTION;

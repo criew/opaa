@@ -165,13 +165,24 @@ function trackedDocumentMessage(tracked: TrackedDocumentResponse): {
         severity: 'success',
         text: `„${name}“ steht mit ${plural(tracked.selectedChunkCount, 'Abschnitt', 'Abschnitten')} in der Endauswahl.`,
       }
-    case 'OUTSIDE_SEARCH_SCOPE':
+    case 'IN_LOCKED_AREA':
       return {
         severity: 'info',
         text:
-          `„${name}“ liegt außerhalb des Suchbereichs dieses Rechtekontexts` +
-          `${tracked.libraryName ? ` (Bibliothek „${tracked.libraryName}“)` : ''}. ` +
-          'Keine Suchstufe konnte es erreichen - das ist eine Rechtefrage, keine Suchfrage.',
+          'Das verfolgte Dokument liegt in einem gesperrten Suchbereich. Die Diagnose trifft dazu ' +
+          'keine Aussage - weder zu seinem Titel noch dazu, ob die Person es lesen darf.',
+      }
+    case 'OUTSIDE_SEARCH_SCOPE':
+      // Without a name the run is a person context: it may then not say "Rechtefrage" either,
+      // because a locked area is excluded for its own reason (Leitplanke (e)).
+      return {
+        severity: 'info',
+        text: tracked.fileName
+          ? `„${name}“ liegt außerhalb des Suchbereichs dieses Rechtekontexts` +
+            `${tracked.libraryName ? ` (Bibliothek „${tracked.libraryName}“)` : ''}. ` +
+            'Keine Suchstufe konnte es erreichen - das ist eine Rechtefrage, keine Suchfrage.'
+          : 'Das verfolgte Dokument liegt außerhalb des durchsuchten Rechtekontexts. Keine ' +
+            'Suchstufe konnte es erreichen; aus dieser Bibliothek zeigt die Diagnose nichts.',
       }
     case 'NOT_RETRIEVED':
       return {
@@ -563,7 +574,7 @@ function DiagnosisResult({
       </Typography>
       {diagnosis.lockedLibraryCount > 0 && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          {`${plural(diagnosis.lockedLibraryCount, 'Bibliothek ist', 'Bibliotheken sind')} als gesperrter Suchbereich ausgenommen. Daraus zeigt die Diagnose nichts - weder Treffer noch Titel.`}
+          {`${plural(diagnosis.lockedLibraryCount, 'Bibliothek ist', 'Bibliotheken sind')} als gesperrter Suchbereich ausgenommen. Daraus zeigt die Diagnose nichts - weder Treffer noch Titel. Aufheben kann die Sperre nur die für die Bibliothek zuständige Stelle, nicht die Systemverwaltung.`}
         </Alert>
       )}
       {diagnosis.trackedDocument && (
@@ -861,8 +872,10 @@ export default function SearchIndexingAdminPage() {
   // (Berechtigungs-Leitplanke (d)).
   const contextValue = contextChoice ?? (profiles.length > 0 ? profiles[0].id : OWN_CONTEXT_VALUE)
   const isPersonContext = contextValue === PERSON_CONTEXT_VALUE
+  const targetUserIdInvalid = targetUserId.trim() !== '' && !UUID_PATTERN.test(targetUserId.trim())
   const personContextIncomplete =
-    isPersonContext && (targetUserId.trim() === '' || justification.trim() === '')
+    isPersonContext &&
+    (targetUserId.trim() === '' || targetUserIdInvalid || justification.trim() === '')
 
   useEffect(() => {
     if (isSystemAdmin) void loadStatus()
@@ -1015,11 +1028,16 @@ export default function SearchIndexingAdminPage() {
           {isPersonContext && (
             <>
               <TextField
-                label="Nutzer-ID der Person"
+                label="Nutzer-UUID der Person"
                 required
                 value={targetUserId}
                 onChange={(e) => setTargetUserId(e.target.value)}
-                helperText="Kennung der Person, deren Rechtekontext eingenommen wird. Die Diagnose liest keine Gespräche dieser Person - sie nutzt allein ihre Leserechte."
+                error={targetUserIdInvalid}
+                helperText={
+                  targetUserIdInvalid
+                    ? 'Erwartet wird die UUID der Person, nicht ihre Anmeldekennung - etwa 3f2b1c8e-0a4d-4c7b-9f61-2d8e5a7c4b10.'
+                    : 'UUID der Person, deren Rechtekontext eingenommen wird. Die Diagnose liest keine Gespräche dieser Person - sie nutzt allein ihre Leserechte.'
+                }
                 size="small"
                 fullWidth
               />

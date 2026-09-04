@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The one entry point for running a search diagnosis in a foreign rights context. Every rule of
@@ -76,7 +75,10 @@ public class ForeignDiagnosticContextService {
    *     target person's Organisationseinheit, or if a profile names a library the caller may not
    *     read themselves
    */
-  @Transactional
+  // Deliberately not @Transactional: every step reads through its own transactional boundary, and
+  // the protocol entry is written with Propagation.NOT_SUPPORTED anyway - an ambient transaction
+  // would add no atomicity, only a connection held for the whole execution, which since #1150 is a
+  // full retrieval run including embedding and rerank calls to external endpoints.
   public <T> ForeignDiagnosticOutcome<T> execute(
       CurrentUser actor,
       ForeignDiagnosticRequest request,

@@ -1155,6 +1155,30 @@ wird; die Oberfläche stellt den Personenkontext dann gar nicht erst zur Wahl un
 Personenkontext-Laufs wird nirgends gespeichert (Leitplanke (j)) — es lebt in der geöffneten Seite und
 sonst nirgends.
 
+**„Dokument verfolgen" gilt im selben Rechte- und Sperrkontext wie die Suche.** Liegt das verfolgte
+Dokument außerhalb des durchsuchten Bereichs, nennt die Antwort weder Dateinamen noch Bibliothek. Und
+sie unterscheidet die beiden Gründe: Eine **diagnosegesperrte** Bibliothek wird als „gesperrter
+Suchbereich" ausgewiesen, über den die Diagnose keine Aussage trifft — sie ist ausdrücklich **keine**
+Aussage darüber, ob die Zielperson das Dokument lesen darf. Die Sperre als „fehlendes Recht" zu melden
+wäre eine falsche Auskunft über einen Menschen, und der Dateiname aus einer gesperrten Bibliothek wäre
+genau der Dokumenttitel, den Leitplanke (e) ausschließt.
+
+**Der Profilkontext bleibt an der Diagnosesperre vorbei offen — bewusst, aber nicht folgenlos.** Für
+Rechteprofile und den eigenen Kontext gilt die Sperre nach der Klarstellung zu (e) nicht; wer statt der
+Person deren Gruppe als Rechteprofil wählt, sieht Titel aus einer gesperrten Bibliothek — ohne
+Befugnis, ohne Begründung, ohne Protokolleintrag. Gedeckt ist das dadurch, dass ein `SYSTEM_ADMIN`
+dieselben Titel ohnehin über die Bibliotheksverwaltung sieht. Seit es den Personenkontext gibt, steht
+die Umgehung allerdings **einen Eintrag weiter oben im selben Auswahlfeld**: Die Sperre ist damit eine
+Hürde für den geregelten Weg und keine für den ungeregelten. Ob daraus die Protokollpflicht für
+Profil-Läufe folgt (die Ruhensregel unter (f) endet laut diesem Dokument mit #1052, und #1052 ist
+gebaut), ist eine eigene Entscheidung und in #1150 bewusst nicht mitgetroffen worden.
+
+**Ohne gelöste Sperre durchsucht ein Personenkontext-Lauf nichts.** Jede Bibliothek ist im Grundzustand
+diagnosegesperrt; gelöst wird die Sperre allein von der zuständigen Stelle über
+`PUT /api/v1/libraries/{libraryId}/diagnostics-lock` — eine Bedienoberfläche dafür fehlt noch
+(siehe [#1257](https://github.com/criew/opaa/issues/1257)). Der Ergebnishinweis der Diagnose nennt
+deshalb ausdrücklich, wer die Sperre aufheben kann.
+
 **Leere Profilliste.** Ein Rechteprofil ist eine **Gruppe** samt der Bibliotheksmenge, die sie lesen
 darf. Installationen, die Lesbarkeit über einzelne Berechtigungen statt über Gruppen vergeben, haben
 deshalb keine Profile. Entschieden (Maintainer, 04.09.2026): **Es werden keine Profile aus
