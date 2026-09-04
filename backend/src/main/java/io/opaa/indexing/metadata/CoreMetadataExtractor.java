@@ -24,12 +24,13 @@ import java.util.regex.Pattern;
  *       humanized file name ({@link ChunkContextTitle}) - so a title is always found.
  *   <li><b>Dokumentart</b>: frontmatter {@code dokumentart} (an explicit declaration outside the
  *       vocabulary leaves the field empty, it never falls through), then the file name's tokens,
- *       then the Kopfbereich ({@link DocumentProperties#firstHeading()} plus {@link
- *       DocumentProperties#headText()}), then the file format (#1263). Within one of the two token
+ *       then the title line ({@link DocumentProperties#firstHeading()}, else {@link
+ *       DocumentProperties#titleLine()}), then the file format (#1263). Within one of the two token
  *       sources exactly one distinct code must result; two different codes at once yield nothing
  *       <em>from that source</em> - the next source is still asked, unlike for the frontmatter
- *       declaration. A file-name token may also carry a seeded Kompositum ending; the Kopfbereich
- *       is matched exactly, because running text names other documents than its own.
+ *       declaration. A file-name token may also carry a seeded Kompositum ending; the title line is
+ *       matched exactly. Nothing below the title line is read at all (#1289): a label line ({@code
+ *       Formular: RF-KFZ-001}) and a quotation name other documents, never the document itself.
  *   <li><b>A {@link DocumentProperties#syntheticName() synthetic name}</b> (an RSS entry's
  *       headline) is no naming convention: it yields neither a Dokumentart nor a Datum. It remains
  *       a title - that is what a headline is.
@@ -46,7 +47,7 @@ import java.util.regex.Pattern;
  */
 public final class CoreMetadataExtractor {
 
-  public static final int EXTRACTION_VERSION = 2;
+  public static final int EXTRACTION_VERSION = 3;
 
   static final String FRONTMATTER_TITLE = "titel";
   static final String FRONTMATTER_DOCUMENT_TYPE = "dokumentart";
@@ -150,9 +151,9 @@ public final class CoreMetadataExtractor {
         return fromFileName;
       }
     }
-    Optional<String> fromHead = singleCode(headTokens(props), vocabulary::resolve);
-    if (fromHead.isPresent()) {
-      return fromHead;
+    Optional<String> fromTitleLine = singleCode(titleLineTokens(props), vocabulary::resolve);
+    if (fromTitleLine.isPresent()) {
+      return fromTitleLine;
     }
     return fromFormat(props.formatExtension(), vocabulary);
   }
@@ -171,21 +172,15 @@ public final class CoreMetadataExtractor {
   }
 
   /**
-   * The words of the Kopfbereich: the first heading and the opening of the body text, which {@link
-   * DocumentProperties} has already cut to its head - a word further down the document is never
-   * seen here, and can never become a Dokumentart. Matched exactly against the vocabulary, never
-   * through a Kompositum ending: running text is full of compounds that are no Dokumentart
-   * ("Tagesordnung", "in dieser Größenordnung").
+   * The words of the document's title line: its first heading, else the first line of its text
+   * ({@link DocumentProperties} keeps only that line). Nothing else of the document is read for the
+   * Dokumentart - only the title line is a self-designation. Matched exactly against the
+   * vocabulary, never through a Kompositum ending: a title is full of compounds that are no
+   * Dokumentart ("Tagesordnung", "in dieser Größenordnung").
    */
-  private static List<String> headTokens(DocumentProperties props) {
-    StringBuilder head = new StringBuilder();
-    if (props.firstHeading() != null) {
-      head.append(props.firstHeading()).append('\n');
-    }
-    if (props.headText() != null) {
-      head.append(props.headText());
-    }
-    return textTokens(head.toString());
+  private static List<String> titleLineTokens(DocumentProperties props) {
+    String titleLine = props.firstHeading() != null ? props.firstHeading() : props.titleLine();
+    return titleLine == null ? List.of() : textTokens(titleLine);
   }
 
   private static Optional<String> fromFormat(

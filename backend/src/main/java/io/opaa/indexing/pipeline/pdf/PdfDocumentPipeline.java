@@ -1,11 +1,11 @@
 package io.opaa.indexing.pipeline.pdf;
 
 import io.opaa.indexing.ChunkingService;
-import io.opaa.indexing.pipeline.DocumentHeadText;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.indexing.pipeline.DocumentTitleLine;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -127,9 +127,9 @@ public class PdfDocumentPipeline implements DocumentPipeline {
             .map(OutlineEntry::title)
             .findFirst()
             .orElse(null);
-    String headText = DocumentHeadText.of(text);
+    String titleLine = DocumentTitleLine.of(text);
     if (info == null) {
-      return DocumentProperties.EMPTY.withFirstHeading(firstHeading).withHeadText(headText);
+      return DocumentProperties.EMPTY.withFirstHeading(firstHeading).withTitleLine(titleLine);
     }
     return new DocumentProperties(
         info.getTitle(),
@@ -137,7 +137,7 @@ public class PdfDocumentPipeline implements DocumentPipeline {
         DocumentProperties.toLocalDate(info.getModificationDate()),
         null,
         firstHeading,
-        headText,
+        titleLine,
         null,
         false,
         Map.of());

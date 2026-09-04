@@ -1,10 +1,10 @@
 package io.opaa.indexing.pipeline.office;
 
-import io.opaa.indexing.pipeline.DocumentHeadText;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.indexing.pipeline.DocumentTitleLine;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.RepeatingHeaderChunk;
 import java.io.IOException;
@@ -135,7 +135,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
         .withProperties(
             OdfMetaProperties.read(source, odfProperties)
                 .withFirstHeading(firstTopLevelHeading(events))
-                .withHeadText(DocumentHeadText.ofEvents(events)));
+                .withTitleLine(DocumentTitleLine.ofEvents(events)));
   }
 
   /**
@@ -156,7 +156,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
               odfProperties.maxTextCharacters());
       if (OdfContentXml.parse(source.file(), odfProperties.maxContentXmlBytes(), handler)) {
         return meta.withFirstHeading(firstTopLevelHeading(handler.events()))
-            .withHeadText(DocumentHeadText.ofEvents(handler.events()));
+            .withTitleLine(DocumentTitleLine.ofEvents(handler.events()));
       }
     } catch (IOException | RuntimeException e) {
       log.warn("Could not read headings of ODT document {}", source.fileName(), e);

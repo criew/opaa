@@ -244,6 +244,59 @@ class CoreMetadataIndexingIntegrationTest {
         .allSatisfy(metadata -> assertThat(metadata).containsEntry("doc_type", "DIENSTANWEISUNG"));
   }
 
+  /**
+   * #1289: the demo's Leistungsbeschreibungen carry the Formular they point to as a label line
+   * right below their title - a reference, never a self-designation.
+   */
+  @Test
+  void aLabelLineBelowTheTitleNeverNamesTheDokumentart() throws IOException {
+    Path file = classTempDir.resolve("13_fabrikneues-fahrzeug-anmelden.md");
+    Files.writeString(
+        file,
+        """
+        # Fabrikneues Fahrzeug anmelden
+
+        **Formular:** RF-KFZ-001
+
+        Die Zulassungsstelle nimmt den Antrag persoenlich entgegen.
+        """);
+
+    assertThat(fileProcessingService.processFile(file, targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isNull();
+    assertThat(chunkMetadata(document.getId()))
+        .isNotEmpty()
+        .allSatisfy(metadata -> assertThat(metadata).doesNotContainKey("doc_type"));
+  }
+
+  /**
+   * #1289: a FAQ that cites a Dienstanweisung in its opening text is none - below the title line
+   * the head is not read for the Dokumentart.
+   */
+  @Test
+  void aQuotationBelowTheTitleLineNeverNamesTheDokumentart() throws IOException {
+    Path file = classTempDir.resolve("15_faq-ausweisbeantragung.pdf");
+    writePdfPage(
+        file,
+        List.of(
+            "Haeufige Fragen zur Ausweisbeantragung",
+            "Termine werden nach der Dienstanweisung zur Terminvergabe vergeben.",
+            "Die Gebuehr ist bei Antragstellung faellig."));
+
+    assertThat(fileProcessingService.processFile(file, targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isNull();
+    // The backfill reads the file the same way, without chunking.
+    assertThat(documentMetadataService.reextractFromFile(document, file).documentTypeCode())
+        .isNull();
+  }
+
   /** #1263: a presentation is a Präsentation - the format is the last source, and a sure one. */
   @Test
   void aPresentationGetsItsDokumentartFromTheFormatAlone() throws IOException {
@@ -465,6 +518,26 @@ class CoreMetadataIndexingIntegrationTest {
   @SuppressWarnings("unchecked")
   private static Map<String, Object> parseJson(String json) {
     return new tools.jackson.databind.ObjectMapper().readValue(json, Map.class);
+  }
+
+  /** A PDF whose first page carries {@code lines} as separate text lines (#1289). */
+  private static void writePdfPage(Path file, List<String> lines) throws IOException {
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = new PDPage(PDRectangle.A4);
+      doc.addPage(page);
+      try (PDPageContentStream content = new PDPageContentStream(doc, page)) {
+        content.beginText();
+        content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+        content.setLeading(16);
+        content.newLineAtOffset(50, 700);
+        for (String line : lines) {
+          content.showText(line);
+          content.newLine();
+        }
+        content.endText();
+      }
+      doc.save(file.toFile());
+    }
   }
 
   private static void writePdf(Path file, String title, LocalDate creationDate) throws IOException {

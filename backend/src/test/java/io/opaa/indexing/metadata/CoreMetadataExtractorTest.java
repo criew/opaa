@@ -187,9 +187,12 @@ class CoreMetadataExtractorTest {
     }
   }
 
-  /** #1263: the Kopfbereich as the third source, and its boundary. */
+  /**
+   * #1263, #1289: the title line as the third source of the Dokumentart - the first heading, else
+   * the first line of the text, and nothing below it.
+   */
   @Nested
-  class DocumentHeadSource {
+  class TitleLineSource {
 
     @Test
     void theFirstHeadingNamesTheDokumentartWhenTheFileNameDoesNot() {
@@ -201,24 +204,24 @@ class CoreMetadataExtractorTest {
     }
 
     @Test
-    void theOpeningOfTheBodyTextCountsAsWell() {
+    void theTitleLineOfTheBodyTextCountsWhenThereIsNoHeading() {
       assertThat(
               extract(
                       "anlage.pdf",
-                      DocumentProperties.EMPTY.withHeadText(
+                      DocumentProperties.EMPTY.withTitleLine(
                           "Niederschrift ueber die Sitzung des Rates"))
                   .documentTypeCode())
           .contains("PROTOKOLL");
     }
 
     @Test
-    void aWordBeyondTheHeadAreaNeverBecomesADokumentart() {
+    void aWordBeyondTheTitleLineLimitNeverBecomesADokumentart() {
       String longLead = "Sehr geehrte Damen und Herren, ".repeat(20);
       DocumentProperties properties =
-          DocumentProperties.EMPTY.withHeadText(longLead + "Protokoll der Sitzung");
+          DocumentProperties.EMPTY.withTitleLine(longLead + "Protokoll der Sitzung");
 
-      assertThat(properties.headText())
-          .as("DocumentProperties cuts the head itself, so the word is no longer in it")
+      assertThat(properties.titleLine())
+          .as("DocumentProperties cuts the title line itself, so the word is no longer in it")
           .doesNotContain("Protokoll");
       assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
     }
@@ -234,30 +237,31 @@ class CoreMetadataExtractorTest {
               "Der Vorgang traegt einen Sperrvermerk.",
               "Diese Gebuehrensatzung wurde am 12.03.2026 beschlossen.")) {
         assertThat(
-                extract("anlage.pdf", DocumentProperties.EMPTY.withHeadText(head))
+                extract("anlage.pdf", DocumentProperties.EMPTY.withTitleLine(head))
                     .documentTypeCode())
             .as(head)
             .isEmpty();
       }
-      // An exact vocabulary term in the head still counts - that is the source's whole purpose.
+      // An exact vocabulary term in the title line still counts - that is the source's whole
+      // purpose.
       assertThat(
               extract(
                       "anlage.pdf",
-                      DocumentProperties.EMPTY.withHeadText(
+                      DocumentProperties.EMPTY.withTitleLine(
                           "Satzung ueber die Erhebung von" + " Gebuehren"))
                   .documentTypeCode())
           .contains("SATZUNG_ORDNUNG");
     }
 
     @Test
-    void theHeadIsCutAtAWordBoundarySoNoFragmentEverMatches() {
+    void theTitleLineIsCutAtAWordBoundarySoNoFragmentEverMatches() {
       // The limit falls exactly behind "Gebührensatzung" inside "Gebührensatzungsentwurf" - a hard
       // cut would turn the fragment into a seeded synonym and yield a DETERMINISTIC value.
-      String lead = "a".repeat(DocumentProperties.MAX_HEAD_TEXT_LENGTH - 16) + " ";
+      String lead = "a".repeat(DocumentProperties.MAX_TITLE_LINE_LENGTH - 16) + " ";
       DocumentProperties properties =
-          DocumentProperties.EMPTY.withHeadText(lead + "Gebührensatzungsentwurf liegt vor");
+          DocumentProperties.EMPTY.withTitleLine(lead + "Gebührensatzungsentwurf liegt vor");
 
-      assertThat(properties.headText()).doesNotContain("ebühren");
+      assertThat(properties.titleLine()).doesNotContain("ebühren");
       assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
     }
 
@@ -266,13 +270,13 @@ class CoreMetadataExtractorTest {
       assertThat(
               extract(
                       "anlage.pdf",
-                      DocumentProperties.EMPTY.withHeadText("Vermerkzettel und Protokollanten"))
+                      DocumentProperties.EMPTY.withTitleLine("Vermerkzettel und Protokollanten"))
                   .documentTypeCode())
           .isEmpty();
     }
 
     @Test
-    void theFileNameOutranksTheHeadArea() {
+    void theFileNameOutranksTheTitleLine() {
       DocumentProperties properties = DocumentProperties.EMPTY.withFirstHeading("Vermerk");
 
       assertThat(extract("Protokoll_Sitzung.pdf", properties).documentTypeCode())
@@ -280,7 +284,7 @@ class CoreMetadataExtractorTest {
     }
 
     @Test
-    void anAmbiguousFileNameStillLetsTheHeadAreaDecide() {
+    void anAmbiguousFileNameStillLetsTheTitleLineDecide() {
       // Unlike the frontmatter declaration, an ambiguous file name is no statement about the
       // document - it yields nothing, and the next source is still asked.
       DocumentProperties properties = DocumentProperties.EMPTY.withFirstHeading("Vermerk");
@@ -290,13 +294,58 @@ class CoreMetadataExtractorTest {
     }
 
     @Test
-    void twoDifferentDokumentartenInTheHeadAreaLeaveTheFieldEmpty() {
+    void twoDifferentDokumentartenInTheTitleLineLeaveTheFieldEmpty() {
       DocumentProperties properties =
-          DocumentProperties.EMPTY
-              .withFirstHeading("Protokoll")
-              .withHeadText("Anlage zur Dienstanweisung vom 12.03.2026");
+          DocumentProperties.EMPTY.withFirstHeading("Protokoll zur Dienstanweisung vom 12.03.2026");
 
       assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
+    }
+
+    @Test
+    void aLabelLineBelowTheTitleNeverNamesTheDokumentart() {
+      // The demo's Leistungsbeschreibungen: the head names the Formular the service needs.
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withFirstHeading("Fabrikneues Fahrzeug anmelden")
+              .withTitleLine(
+                  "Fabrikneues Fahrzeug anmelden\nFormular: RF-KFZ-001\nAktenzeichen: 12/2026");
+
+      assertThat(extract("13_fabrikneues-fahrzeug-anmelden.md", properties).documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void aQuotationBelowTheTitleLineNeverNamesTheDokumentart() {
+      // 15_faq-ausweisbeantragung.pdf: a FAQ that cites a Dienstanweisung is none.
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withTitleLine(
+              "Häufige Fragen zur Ausweisbeantragung\nTermine werden nach der Dienstanweisung"
+                  + " zur Terminvergabe vergeben.");
+
+      assertThat(properties.titleLine())
+          .as("DocumentProperties keeps the first line and nothing else")
+          .isEqualTo("Häufige Fragen zur Ausweisbeantragung");
+      assertThat(extract("15_faq-ausweisbeantragung.pdf", properties).documentTypeCode()).isEmpty();
+    }
+
+    @Test
+    void aTitleLineNamingTheDokumentartStillCounts() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withTitleLine(
+              "Dienstanweisung Nr. 3 – Terminvergabe\nGilt ab dem 01.04.2026.");
+
+      assertThat(extract("03_terminvergabe.pdf", properties).documentTypeCode())
+          .contains("DIENSTANWEISUNG");
+    }
+
+    @Test
+    void theFirstHeadingIsTheTitleLineAndTheTextBelowItIsNotRead() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withFirstHeading("Häufige Fragen zur Ausweisbeantragung")
+              .withTitleLine("Grundlage ist die Dienstanweisung zur Terminvergabe.");
+
+      assertThat(extract("faq.pdf", properties).documentTypeCode()).isEmpty();
     }
   }
 

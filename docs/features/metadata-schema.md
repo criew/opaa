@@ -26,7 +26,8 @@ siehe [Umgesetzt (#1066)](#umgesetzt-1066) und
 siehe [Umgesetzt (#1067)](#umgesetzt-1067); manuelle Korrektur, Sammelzuweisung und Audit-Ereignis —
 #1068, siehe [Umgesetzt (#1068)](#umgesetzt-1068); Pflege-Anker und der dritte Zustand „kein Wert
 ermittelbar" — #1069, siehe [Umgesetzt (#1069)](#umgesetzt-1069); Dokumentart auch aus Dokumentkopf
-und Dateiformat — #1263, siehe [Umgesetzt (#1263)](#umgesetzt-1263)); alles Weitere — Filter,
+und Dateiformat — #1263, siehe [Umgesetzt (#1263)](#umgesetzt-1263), mit der Kopfregel auf die
+Titelzeile verengt in #1289); alles Weitere — Filter,
 Bibliotheksfelder, Modell-Extraktion — ist noch nicht gebaut.
 
 ---
@@ -391,8 +392,8 @@ Rechtekontext" ist durch Beschluss 1 des Maintainers ersetzt (Systemprozess; die
 für Aggregate, Stichproben und Modell-Extraktion). Das Korpus-Frontmatter `dokumentart: formularhinweis`
 bleibt leer — es ist kein Vokabularwert, und die Regel verbietet die Abbildung auf `FORMULAR`.
 Tabellen-Pipelines (XLSX/CSV/ODS) liefern keine `DocumentProperties`; dort greifen nur Dateiname und
-Struktur. Der Tika-Fallback lieferte in diesem Schnitt ebenfalls keine — seit #1263 liefert er einen
-Kopftext.
+Struktur. Der Tika-Fallback lieferte in diesem Schnitt ebenfalls keine — seit #1263 liefert er eine
+Titelzeile (#1289).
 
 ### Umgesetzt (#1263)
 
@@ -402,9 +403,10 @@ Bestands entweder gar keinen Vokabular-Token tragen (`01_identitaetszweifel-ausw
 `21_onboarding-buergerbuero.pptx`) oder ihn als deutsches Kompositum
 (`01_verwaltungsgebuehrensatzung.pdf`), das ein exakter Token-Abgleich nicht sieht. Die
 Extraktionsversion steigt auf **2**; der Bestandslauf (#1067) wählt jedes Dokument der Version 1
-dadurch erneut aus.
+dadurch erneut aus. Die Kopfregel dieses Schnitts ist mit #1289 auf die Titelzeile verengt worden
+(siehe unten) — die Extraktionsversion steht seitdem auf **3**.
 
-**Quellenreihenfolge der Dokumentart:** Frontmatter → Dateiname → Dokumentkopf → Dateiformat. Erste
+**Quellenreihenfolge der Dokumentart:** Frontmatter → Dateiname → Titelzeile → Dateiformat. Erste
 Quelle mit genau einem eindeutigen Treffer gewinnt. Für die drei Token-Quellen gilt: mehrere
 verschiedene Treffer in **einer** Quelle liefern aus dieser Quelle nichts, die nächste Quelle wird
 aber noch gefragt — ein mehrdeutiger Dateiname ist keine Aussage über das Dokument, sondern nur eine
@@ -412,20 +414,30 @@ Quelle ohne Ergebnis. Die Frontmatter-Deklaration bleibt davon ausgenommen: Sie 
 Erklärung, und ein Wert außerhalb des Vokabulars lässt das Feld leer, statt auf den Dateinamen
 durchzufallen (unverändert seit #1066).
 
-**Dokumentkopf.** `DocumentProperties` trägt neben der ersten Überschrift einen **Kopftext**: den
-Anfang des Fließtextes, auf 300 Zeichen begrenzt — die Begrenzung sitzt im Record selbst, damit keine
-Pipeline versehentlich ein ganzes Dokument als Kopf übergeben kann. Befüllt von DOCX, ODT, Markdown,
-HTML, PDF (die erste Seite, auf beiden Wegen — `run` und `readProperties` — dieselbe) und dem
-Tika-Fallback (aus dem extrahierten Text; er liefert damit erstmals überhaupt Rohquellen). Der
-Abgleich läuft über Wortgrenzen, groß-/kleinschreibungs- und umlautunempfindlich, **exakt** gegen
-Code, Label und Synonyme — die Endungsregel unten gilt hier ausdrücklich **nicht**: Fließtext ist voll
-von Komposita, die keine Dokumentart sind („die Tagesordnung wird festgestellt", „in dieser
+**Titelzeile (korrigiert mit #1289).** Aus dem Dokument zählt für die Dokumentart genau **eine**
+Zeile: die erste Überschrift, ersatzweise die erste nicht-leere Zeile des Textes. `DocumentProperties`
+trägt sie als `titleLine` — das Record kürzt einen übergebenen Text selbst auf diese eine Zeile und
+begrenzt sie auf 300 Zeichen, damit keine Pipeline versehentlich mehr als eine Titelzeile übergeben
+kann. Befüllt von DOCX, ODT, Markdown, HTML (erster Textblock, weil eine Seite keine eigenen
+Zeilenumbrüche hat), PDF (die erste Seite, auf beiden Wegen — `run` und `readProperties` — dieselbe)
+und dem Tika-Fallback. Der Abgleich läuft über Wortgrenzen, groß-/kleinschreibungs- und
+umlautunempfindlich, **exakt** gegen Code, Label und Synonyme — die Endungsregel unten gilt hier
+ausdrücklich **nicht**: Auch eine Titelzeile trägt Komposita, die keine Dokumentart sind („in dieser
 Größenordnung"), und ein falscher Wert mit Herkunft `DETERMINISTIC` ist genau der unsichtbare
-Dauerschaden, den die Leitregel ausschließt. Ein Wort **jenseits** des Kopfbereichs kann ohnehin keine
-Dokumentart auslösen; der Schnitt bei 300 Zeichen läuft bis zur letzten Wortgrenze, damit kein
-Wortfragment zum Treffer wird. Ein Kopftext entsteht nur für eine echte Datei: Der Fließtext eines
-RSS-Beitrags ist kein Kopfbereich, weil eine Pressemitteilung *andere* Dokumente benennt als sich
-selbst.
+Dauerschaden, den die Leitregel ausschließt. Der Schnitt bei 300 Zeichen läuft bis zur letzten
+Wortgrenze, damit kein Wortfragment zum Treffer wird. Eine Titelzeile entsteht nur für eine echte
+Datei: Der Fließtext eines RSS-Beitrags ist keine Selbstbezeichnung, weil eine Pressemitteilung
+*andere* Dokumente benennt als sich selbst.
+
+**Warum nur die Titelzeile (#1289).** #1263 las den ganzen Kopfbereich (300 Zeichen Fließtext). Der
+zweite Füllstandsnachweis auf der Demo zeigte den Schaden: 83 Leistungsbeschreibungen trugen
+`FORMULAR`, weil unter ihrem Titel eine Beschriftungszeile `**Formular:** RF-KFZ-001` steht, und
+`15_faq-ausweisbeantragung.pdf` trug `DIENSTANWEISUNG` wegen des Satzes „… nach der Dienstanweisung
+zur Terminvergabe …". Eine Erwähnung unterhalb der Titelzeile ist eine **Referenz auf ein anderes
+Dokument**, keine Selbstbezeichnung — Beschriftungen (`Formular:`, `Aktenzeichen:`) und Zitate werden
+deshalb gar nicht mehr gelesen. Die Extraktionsversion steigt dafür auf **3**; der Bestandslauf wählt
+jedes Dokument der Version 2 erneut aus, ein falscher `DETERMINISTIC`-Wert wird bei leerem Ergebnis
+entfernt, ein manueller Wert bleibt unberührt.
 
 **Kompositum-Endungsregel (Migration 020).** Je Vokabularwert sind Endungen geseedet
 (`document_type_suffixes`: `satzung`, `ordnung`, `dienstanweisung`, `gebuehrenverzeichnis`,
