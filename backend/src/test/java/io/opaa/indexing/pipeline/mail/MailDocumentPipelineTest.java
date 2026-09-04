@@ -681,7 +681,7 @@ class MailDocumentPipelineTest {
         pipeline(new MailProperties(0, 0, 0, fileSize - 1))
             .run(DocumentPipelineSource.ofFile(file, "zu-gross.eml"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test

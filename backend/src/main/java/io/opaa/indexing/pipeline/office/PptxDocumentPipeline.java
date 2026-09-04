@@ -67,10 +67,14 @@ public class PptxDocumentPipeline implements DocumentPipeline {
   @Override
   public DocumentPipelineResult run(DocumentPipelineSource source) {
     if (source.file() == null) {
-      return DocumentPipelineResult.noContent();
+      return DocumentPipelineResult.parseFailed();
     }
     PptxContent content = readContent(source);
-    if (content == null || content.slides().isEmpty()) {
+    if (content == null) {
+      // The file could not be opened as a PPTX at all - see readContent.
+      return DocumentPipelineResult.parseFailed();
+    }
+    if (content.slides().isEmpty()) {
       return DocumentPipelineResult.noContent();
     }
     List<XSLFSlide> slides = content.slides();

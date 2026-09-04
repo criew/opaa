@@ -90,7 +90,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
       // An ODT pipeline is only ever reached through a genuine .odt file (never RSS-extracted
       // text, ADR-0017 decision 2) - defensive fallback, mirrors DocxDocumentPipeline/
       // PptxDocumentPipeline.
-      return DocumentPipelineResult.noContent();
+      return DocumentPipelineResult.parseFailed();
     }
     List<HeadingSectionSplitter.Event> events;
     try {
@@ -105,7 +105,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
         // Not a genuine ODF ZIP (no content.xml entry at all) - the same "could not be parsed"
         // case DocxDocumentPipeline reports for a corrupt .docx, distinct from a well-formed but
         // empty document below.
-        return DocumentPipelineResult.noContent();
+        return DocumentPipelineResult.parseFailed();
       }
       events = handler.events();
     } catch (IOException | RuntimeException e) {
@@ -113,7 +113,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
       // an IOException) is reported the same way as PDF/DOCX/PPTX/Tabular - see
       // DocumentPipelineResult's own Javadoc for the shared contract.
       log.warn("Could not read ODT document {}", source.fileName(), e);
-      return DocumentPipelineResult.noContent();
+      return DocumentPipelineResult.parseFailed();
     }
     List<Document> chunks = HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL);
     if (chunks.isEmpty()) {

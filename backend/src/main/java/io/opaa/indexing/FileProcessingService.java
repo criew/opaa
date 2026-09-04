@@ -188,7 +188,19 @@ public class FileProcessingService {
    * row's own id, and therefore every attachment's {@code parent_document_id}, survives unchanged.
    * The quota check compares the size delta against the already-in-place row, not the full new size
    * against a {@code usedBytes} that still includes the old size - see {@link #processRssEntry}'s
-   * own Javadoc for why a delete-first quota check does not apply here.
+   * own Javadoc for why a delete-first quota check does not apply here. The quota is measured on
+   * the document row, never on chunks, so the brief window below in which old and new chunks
+   * coexist does not enter it.
+   *
+   * <p><b>Nothing is destroyed before the replacement exists</b> (#1268, the ordering {@link
+   * #reindexStoredDocument} already followed): the previous chunks are deleted only once the new
+   * version has actually parsed and chunked, immediately before the new chunks are written. A
+   * version that cannot be parsed - {@code PARSE_FAILED}, or an exception out of the pipeline -
+   * leaves the previous, still-searchable chunks in place and only marks the row {@code FAILED}. A
+   * version that parsed and is empty ({@code NO_CONTENT}/{@code NO_EXTRACTABLE_TEXT}) does remove
+   * them: "empty" is then a statement about the new content. Attachment rows (ADR-0022) are
+   * untouched either way - a failed parse reports no attachments at all, so no attachment of the
+   * previous version is replaced or removed before its parent parsed successfully.
    */
   public FileProcessingResult processFile(
       Path file, KnowledgeLibrary targetLibrary, UUID folderId, AttachmentAccess attachmentAccess)
@@ -206,6 +218,7 @@ public class FileProcessingService {
     Optional<Document> existing =
         documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), filePath);
     Document doc = null;
+    boolean replacingExistingChunks = false;
     if (existing.isPresent()) {
       Document existingDoc = existing.get();
       if (checksum.equals(existingDoc.getChecksum())
@@ -229,7 +242,7 @@ public class FileProcessingService {
         metrics.recordSkipped();
         return FileProcessingResult.QUOTA_EXCEEDED;
       }
-      vectorChunkStore.deleteByDocumentId(existingDoc.getId());
+      replacingExistingChunks = true;
       existingDoc.setContentType(contentType);
       existingDoc.setFileSize(fileSize);
       existingDoc.setFolderId(folderId);
@@ -256,6 +269,7 @@ public class FileProcessingService {
 
     Document savedDoc = doc;
     UUID documentId = doc.getId();
+    boolean preservingPreviousChunks = replacingExistingChunks;
     try {
       DocumentPipelineRegistry.Routed routed = pipelineRegistry.routedPipelineFor(file, fileName);
       DocumentPipeline pipeline = routed.pipeline();
@@ -277,10 +291,16 @@ public class FileProcessingService {
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
           log.warn("No usable text extracted from {} by pipeline {}", file, pipeline.id());
+          deletePreviousChunks(replacingExistingChunks, documentId);
           return markConnectorRejected(doc.getId());
         }
         case NO_CONTENT -> {
           log.warn("No content extracted from: {}", file);
+          deletePreviousChunks(replacingExistingChunks, documentId);
+          return markConnectorFailed(doc.getId());
+        }
+        case PARSE_FAILED -> {
+          log.warn("Could not parse {} with pipeline {}", file, pipeline.id());
           return markConnectorFailed(doc.getId());
         }
         case CHUNKED ->
@@ -292,6 +312,11 @@ public class FileProcessingService {
       }
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
 
+      if (replacingExistingChunks) {
+        // Only now, with the new chunks in hand - see this method's own Javadoc (#1268).
+        vectorChunkStore.deleteByDocumentId(documentId);
+        preservingPreviousChunks = false;
+      }
       // Enrich chunks with metadata and store via VectorStore
       storeChunks(
           doc,
@@ -307,7 +332,7 @@ public class FileProcessingService {
         return result;
       }
     } catch (Exception e) {
-      markConnectorFailedAfterException(doc.getId());
+      markConnectorFailedAfterException(doc.getId(), preservingPreviousChunks);
       metrics.recordFailed();
       throw e;
     }
@@ -424,7 +449,8 @@ public class FileProcessingService {
    * old id. Only the chunks are exchanged; the row's own id survives. The quota check compares the
    * size <em>delta</em> against the already-replaced-in-place row, exactly like {@link
    * #processRssEntry}'s own reasoning - see that method's Javadoc for why a delete-first quota
-   * check does not apply here.
+   * check does not apply here. The previous chunks are exchanged in the same order {@link
+   * #processFile} describes (#1268): only once the new version has parsed and chunked.
    */
   public FileProcessingResult processUrlFile(
       Path localFile,
@@ -448,6 +474,7 @@ public class FileProcessingService {
     Optional<Document> existing =
         documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), remoteUrl);
     Document doc = null;
+    boolean replacingExistingChunks = false;
     if (existing.isPresent()) {
       Document existingDoc = existing.get();
       if (checksum.equals(existingDoc.getChecksum())
@@ -467,7 +494,7 @@ public class FileProcessingService {
         metrics.recordSkipped();
         return FileProcessingResult.QUOTA_EXCEEDED;
       }
-      vectorChunkStore.deleteByDocumentId(existingDoc.getId());
+      replacingExistingChunks = true;
       existingDoc.setFileName(fileName);
       existingDoc.setContentType(Files.probeContentType(localFile));
       existingDoc.setFileSize(remoteFileSize);
@@ -498,6 +525,7 @@ public class FileProcessingService {
 
     Document savedDoc = doc;
     UUID documentId = doc.getId();
+    boolean preservingPreviousChunks = replacingExistingChunks;
     try {
       DocumentPipelineRegistry.Routed routed =
           pipelineRegistry.routedPipelineFor(localFile, fileName);
@@ -522,10 +550,16 @@ public class FileProcessingService {
               "No usable text extracted from URL document {} by pipeline {}",
               remoteUrl,
               pipeline.id());
+          deletePreviousChunks(replacingExistingChunks, documentId);
           return markConnectorRejected(doc.getId());
         }
         case NO_CONTENT -> {
           log.warn("No content extracted from URL document: {}", remoteUrl);
+          deletePreviousChunks(replacingExistingChunks, documentId);
+          return markConnectorFailed(doc.getId());
+        }
+        case PARSE_FAILED -> {
+          log.warn("Could not parse URL document {} with pipeline {}", remoteUrl, pipeline.id());
           return markConnectorFailed(doc.getId());
         }
         case CHUNKED ->
@@ -542,6 +576,11 @@ public class FileProcessingService {
       // so ChunkContextTitle's filesystem-style-name assumption always applies; only
       // processRssEntry's own entry-body document (never routed through processUrlFile) uses a
       // headline instead - see storeChunks's Javadoc for why that distinction is call-site-bound.
+      if (replacingExistingChunks) {
+        // Only now, with the new chunks in hand - see this method's own Javadoc (#1268).
+        vectorChunkStore.deleteByDocumentId(documentId);
+        preservingPreviousChunks = false;
+      }
       storeChunks(
           doc,
           chunks,
@@ -556,7 +595,7 @@ public class FileProcessingService {
         return result;
       }
     } catch (Exception e) {
-      markConnectorFailedAfterException(doc.getId());
+      markConnectorFailedAfterException(doc.getId(), preservingPreviousChunks);
       metrics.recordFailed();
       throw e;
     }
@@ -578,7 +617,9 @@ public class FileProcessingService {
    * attachment via {@link #processUrlFile} - is routed there. Content-based deduplication/change
    * detection otherwise mirrors {@link #processUrlFile} exactly: identity by {@code entryUrl} in
    * {@code file_path}, SHA-256 checksum comparison, and {@code publishedAt}/{@code
-   * last_modified_remote} recorded for the executor's own change check on the next run.
+   * last_modified_remote} recorded for the executor's own change check on the next run. The
+   * previous chunks are exchanged in the same order {@link #processFile} describes (#1268): only
+   * once the new version has been chunked.
    */
   public FileProcessingResult processRssEntry(
       String mainText,
@@ -602,6 +643,7 @@ public class FileProcessingService {
     Optional<Document> existing =
         documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl);
     Document doc = null;
+    boolean replacingExistingChunks = false;
     if (existing.isPresent()) {
       Document existingDoc = existing.get();
       if (checksum.equals(existingDoc.getChecksum())
@@ -634,7 +676,7 @@ public class FileProcessingService {
         metrics.recordSkipped();
         return FileProcessingResult.QUOTA_EXCEEDED;
       }
-      vectorChunkStore.deleteByDocumentId(existingDoc.getId());
+      replacingExistingChunks = true;
       existingDoc.setFileName(fileName);
       existingDoc.setContentType("text/html");
       existingDoc.setFileSize((long) contentBytes.length);
@@ -666,6 +708,8 @@ public class FileProcessingService {
     }
     doc = documentRepository.save(doc);
 
+    UUID documentId = doc.getId();
+    boolean preservingPreviousChunks = replacingExistingChunks;
     try {
       // The entry body never was a file, so there is no content to detect a format from - it is
       // already extracted text and goes to the fallback pipeline directly (ADR-0017, decision 2).
@@ -679,10 +723,16 @@ public class FileProcessingService {
         // file paths already guard against, only reached through a feed instead of a file.
         case NO_EXTRACTABLE_TEXT -> {
           log.warn("No usable text in RSS entry {}", entryUrl);
+          deletePreviousChunks(replacingExistingChunks, documentId);
           return markConnectorRejected(doc.getId());
         }
         case NO_CONTENT -> {
           log.warn("No content extracted from RSS entry: {}", entryUrl);
+          deletePreviousChunks(replacingExistingChunks, documentId);
+          return markConnectorFailed(doc.getId());
+        }
+        case PARSE_FAILED -> {
+          log.warn("Could not parse RSS entry {}", entryUrl);
           return markConnectorFailed(doc.getId());
         }
         case CHUNKED ->
@@ -700,6 +750,11 @@ public class FileProcessingService {
                   .properties()
                   .withTitle(contextTitle)
                   .withDocumentDate(DocumentProperties.instantToLocalDate(publishedAt)));
+      if (replacingExistingChunks) {
+        // Only now, with the new chunks in hand - see this method's own Javadoc (#1268).
+        vectorChunkStore.deleteByDocumentId(documentId);
+        preservingPreviousChunks = false;
+      }
       storeChunks(
           doc,
           chunks,
@@ -714,7 +769,7 @@ public class FileProcessingService {
         return result;
       }
     } catch (Exception e) {
-      markConnectorFailedAfterException(doc.getId());
+      markConnectorFailedAfterException(doc.getId(), preservingPreviousChunks);
       metrics.recordFailed();
       throw e;
     }
@@ -889,6 +944,15 @@ public class FileProcessingService {
           metrics.recordFailed();
           return false;
         }
+        case PARSE_FAILED -> {
+          log.warn("Could not parse stored document {}", doc.getFileName());
+          if (replacingExistingChunks) {
+            return false;
+          }
+          markUploadFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
+          metrics.recordFailed();
+          return false;
+        }
         case CHUNKED ->
             log.debug(
                 "Stored file {} produced {} chunks via pipeline {}",
@@ -941,6 +1005,19 @@ public class FileProcessingService {
       markUploadFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
       metrics.recordFailed();
       return false;
+    }
+  }
+
+  /**
+   * Removes the chunks of a document being replaced, on the outcomes where the new version is
+   * legitimately without content (#1268): the connector paths keep the previous, still-working
+   * chunks until the new version has actually parsed - but "parsed and empty" ({@code
+   * NO_CONTENT}/{@code NO_EXTRACTABLE_TEXT}) is a statement about the new content, so the old
+   * chunks must not survive it. A no-op for a document that had no chunks to begin with.
+   */
+  private void deletePreviousChunks(boolean replacingExistingChunks, UUID documentId) {
+    if (replacingExistingChunks) {
+      vectorChunkStore.deleteByDocumentId(documentId);
     }
   }
 
@@ -1025,24 +1102,32 @@ public class FileProcessingService {
    * The catch-block counterpart to {@link #markConnectorFailed}, used when parsing, chunking or
    * embedding throws instead of returning empty. Unlike {@link #markConnectorFailed}, {@link
    * #storeChunks} may already have written chunks for {@code documentId} into the vector store by
-   * the time this runs, so this deletes unconditionally rather than tracking whether {@link
-   * #storeChunks} was actually reached - cheap, and a no-op if it was not.
+   * the time this runs, so this deletes rather than tracking whether {@link #storeChunks} was
+   * actually reached - cheap, and a no-op if it was not.
    *
-   * <p>The chunk delete is wrapped in its own {@code try/catch}: this runs from inside the outer
-   * catch block of {@code processFile}/{@code processUrlFile}/{@code processRssEntry}, which
-   * rethrows the original failure once this method returns. A pgvector outage on this cleanup
-   * delete must not swallow that original cause, nor skip {@link DocumentRepository#markFailed}
-   * below it.
+   * @param preservingPreviousChunks {@code true} while a document being replaced still has its
+   *     previous, working chunks and nothing new has been written yet (#1268) - the failure then
+   *     costs nothing but the attempt, and deleting here would destroy exactly the state the
+   *     ordering exists to protect. {@code false} once those chunks were deleted, and for every
+   *     first-time document, where any chunk carrying {@code documentId} is from this failed run.
+   *     <p>The chunk delete is wrapped in its own {@code try/catch}: this runs from inside the
+   *     outer catch block of {@code processFile}/{@code processUrlFile}/{@code processRssEntry},
+   *     which rethrows the original failure once this method returns. A pgvector outage on this
+   *     cleanup delete must not swallow that original cause, nor skip {@link
+   *     DocumentRepository#markFailed} below it.
    */
-  private void markConnectorFailedAfterException(UUID documentId) {
-    try {
-      vectorChunkStore.deleteByDocumentId(documentId);
-    } catch (RuntimeException e) {
-      log.error(
-          "Failed to remove vector store chunks for document {} after a processing error -"
-              + " orphaned chunks may remain",
-          documentId,
-          e);
+  private void markConnectorFailedAfterException(
+      UUID documentId, boolean preservingPreviousChunks) {
+    if (!preservingPreviousChunks) {
+      try {
+        vectorChunkStore.deleteByDocumentId(documentId);
+      } catch (RuntimeException e) {
+        log.error(
+            "Failed to remove vector store chunks for document {} after a processing error -"
+                + " orphaned chunks may remain",
+            documentId,
+            e);
+      }
     }
     int updated = documentRepository.markFailed(documentId, null);
     if (updated == 0) {

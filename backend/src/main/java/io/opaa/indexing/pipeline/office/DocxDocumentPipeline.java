@@ -103,11 +103,11 @@ public class DocxDocumentPipeline implements DocumentPipeline {
       // A DOCX pipeline is only ever reached through a genuine .docx file (never RSS-extracted
       // text, ADR-0017 decision 2) - defensive fallback, mirrors PdfDocumentPipeline/
       // PptxDocumentPipeline.
-      return DocumentPipelineResult.noContent();
+      return DocumentPipelineResult.parseFailed();
     }
     DocxContent content = readDocxContent(source);
     if (content == null) {
-      return DocumentPipelineResult.noContent();
+      return DocumentPipelineResult.parseFailed();
     }
     List<HeadingSectionSplitter.Event> events = toEvents(content.bodyElements());
     if (events.isEmpty()) {
@@ -150,7 +150,7 @@ public class DocxDocumentPipeline implements DocumentPipeline {
   private record DocxContent(
       List<IBodyElement> bodyElements, String headerFooterText, DocumentProperties properties) {}
 
-  /** {@code null} when the file could not be opened as a DOCX at all - reported as no content. */
+  /** {@code null} when the file could not be opened as a DOCX at all - a parse failure. */
   private static DocxContent readDocxContent(DocumentPipelineSource source) {
     try (InputStream in = Files.newInputStream(source.file())) {
       try (XWPFDocument document = new XWPFDocument(in)) {

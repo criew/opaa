@@ -153,7 +153,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
             source.fileName(),
             Files.size(source.file()),
             properties.maxMessageBytes());
-        return DocumentPipelineResult.noContent();
+        return DocumentPipelineResult.parseFailed();
       }
     } catch (IOException e) {
       throw new UncheckedIOException("Could not read mail document " + source.fileName(), e);
