@@ -72,7 +72,9 @@ class LlmModelConnectionTesterTest {
   void aBaseUrlWithCredentialsIsRejectedBeforeAnyProbe() {
     String secret = "benutzer:geheim";
     assertThatThrownBy(
-            () -> tester.test("https://" + secret + "@modellserver.example.internal/v1", "m", null, null))
+            () ->
+                tester.test(
+                    "https://" + secret + "@modellserver.example.internal/v1", "m", null, null))
         .isInstanceOf(ValidationException.class)
         .satisfies(e -> assertThat(e.getMessage()).doesNotContain(secret));
   }

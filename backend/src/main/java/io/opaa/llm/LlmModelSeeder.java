@@ -181,6 +181,19 @@ class LlmModelSeeder {
           e.getCause().getMessage());
       return;
     }
+    if (seeded != null && ModelEndpointUri.containsCredentials(seeded.getBaseUrl())) {
+      // #1147: this class writes to the repository directly, so LlmModelService's own rejection
+      // does not cover it. Skipped without a marker, like the missing-encryption-key case above -
+      // a corrected environment variable is taken over on the next start. The address itself is
+      // not logged; naming it would put the credentials into the very log this rule protects.
+      log.error(
+          "Initiales Chat-Modell konnte nicht aus der Umgebungskonfiguration übernommen werden:"
+              + " Die konfigurierte Basis-Adresse enthält Anmeldedaten (Form"
+              + " \"https://benutzer:passwort@host\"). Adresse ohne Anmeldedaten setzen und den"
+              + " Zugangsschlüssel über OPAA_OPENAI_CHAT_API_KEY hinterlegen, dann neu starten."
+              + " Es wurde kein Seed-Marker geschrieben.");
+      return;
+    }
     if (seeded != null) {
       seeded.activate();
       repository.save(seeded);

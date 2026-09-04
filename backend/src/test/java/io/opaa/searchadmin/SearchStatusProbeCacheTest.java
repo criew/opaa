@@ -178,6 +178,33 @@ class SearchStatusProbeCacheTest {
     assertThat(detail).doesNotContain("OPAA_RERANK_TIMEOUT");
   }
 
+  /**
+   * A base address refused for carrying credentials must read as such on the page (#1147), not as
+   * "nothing configured" - and the page must not reproduce the address to say it.
+   */
+  @Test
+  void aRejectedRerankBaseUrlIsNamedAsSuchWithoutShowingTheAddress() {
+    when(rerankRoleStatusProvider.currentStatus())
+        .thenReturn(
+            new RerankRoleStatus(
+                RerankRoleState.UNCONFIGURED,
+                null,
+                "bge-reranker",
+                "base URL carries credentials",
+                false,
+                true));
+
+    ModelRoleStatus rerank =
+        service.statusForOrganization(ORGANIZATION_ID).modelRoles().stream()
+            .filter(r -> r.role() == ModelRole.RERANK)
+            .findFirst()
+            .orElseThrow();
+
+    assertThat(rerank.detail()).contains("Anmeldedaten");
+    assertThat(rerank.detail()).doesNotContain("keine Rerank-Modellrolle hinterlegt");
+    assertThat(rerank.endpoint()).isNull();
+  }
+
   private static ModelRoleCondition conditionOf(SearchStatus status, ModelRole role) {
     return status.modelRoles().stream()
         .filter(r -> r.role() == role)

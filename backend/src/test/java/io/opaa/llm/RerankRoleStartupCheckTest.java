@@ -36,7 +36,8 @@ class RerankRoleStartupCheckTest {
             Duration.ofSeconds(5));
     // Would the address ever reach the probe, the endpoint answers as unreachable - the branch
     // that writes the endpoint into the log line at ERROR level.
-    when(client.probe(any())).thenReturn(new RerankClient.ProbeFailure("connection refused", false));
+    when(client.probe(any()))
+        .thenReturn(new RerankClient.ProbeFailure("connection refused", false));
     RerankRoleStartupCheck check =
         new RerankRoleStartupCheck(
             new RerankModelRole(properties, client), mock(TaskScheduler.class));

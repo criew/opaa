@@ -66,7 +66,8 @@ class LlmModelControllerBaseUrlCredentialsIntegrationTest {
   }
 
   @Test
-  void testingAConnectionWithCredentialsInTheBaseUrlIsRejectedWithoutEchoingThem() throws Exception {
+  void testingAConnectionWithCredentialsInTheBaseUrlIsRejectedWithoutEchoingThem()
+      throws Exception {
     String body =
         mockMvc
             .perform(

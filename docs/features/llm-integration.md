@@ -260,12 +260,33 @@ mit den Vorgaben-Ebenen eine Wirkung und wären vorher ein Formular ohne Folge.
 | Angabe | Bedeutung |
 |---|---|
 | Anzeigename | wie das Modell in der Verwaltung heißt, in Fachsprache |
-| Basis-Adresse | der Endpunkt der OpenAI-kompatiblen Schnittstelle |
+| Basis-Adresse | der Endpunkt der OpenAI-kompatiblen Schnittstelle — **ohne Anmeldedaten** (siehe unten) |
 | Modell-Kennung | welches Modell an diesem Endpunkt angesprochen wird |
 | Zugangsschlüssel | optional; verschlüsselt abgelegt, nie zurückgegeben |
 | Streuung der Erzeugung | Temperatur |
 | Längenbegrenzung | maximale Antwortlänge |
 | Aktiv | ob dieses Modell derzeit antwortet |
+
+### Keine Anmeldedaten in der Basis-Adresse
+
+Eine Basis-Adresse der Form `https://benutzer:geheim@host/v1` wird **abgelehnt** — für alle
+Modellrollen gleich, die verwaltete Chat-Rolle ebenso wie die über Umgebungsvariablen konfigurierte
+Rerank-Rolle ([#1147](https://github.com/criew/opaa/issues/1147)). Der Grund ist keine Formalie: Eine
+Basis-Adresse gilt an mehreren Stellen ausdrücklich als geheimnisfrei und wird deshalb wörtlich
+weitergereicht — in die Datenbank, in das Audit-Log, in die Schnittstellenantwort und damit in die
+Administrationsoberfläche, bei der Rerank-Rolle zusätzlich in die Startmeldung im Log und in die
+Statusanzeige „Suche & Indexierung". Anmeldedaten in der Adresse landen so in genau den Ausgaben, aus
+denen sie herausgehalten werden sollen.
+
+Abgelehnt statt stillschweigend entfernt: Wer Anmeldedaten einträgt, will, dass sie verwendet werden.
+Ein stilles Entfernen nähme diese Absicht wortlos zurück und hinterließe einen Endpunkt, der ohne
+erkennbaren Grund mit „nicht authentifiziert" antwortet. Die Ablehnung sagt es stattdessen — und
+wiederholt den beanstandeten Anteil dabei nicht, weil die Fehlermeldung selbst wieder in Antwort und
+Log wandert. Der Zugangsschlüssel gehört in das dafür vorgesehene Feld (Chat-Rolle) bzw. in
+`OPAA_RERANK_API_KEY` (Rerank-Rolle); er wird als `Authorization`-Kopfzeile gesendet.
+
+Die Einbettungs-Rolle führt heute keine eigene Basis-Adresse (`io.opaa.llm.EmbeddingInfoService`
+liest Anbieter, Modell-Kennung und Dimensionszahl) und ist deshalb nicht betroffen.
 
 ### Ein Anbindungsweg, nicht zwei
 

@@ -76,6 +76,7 @@ class RerankModelRoleTest {
 
     assertThat(status.state()).isEqualTo(RerankRoleState.UNCONFIGURED);
     assertThat(status.baseUrl()).isNull();
+    assertThat(status.baseUrlRejected()).isTrue();
     assertThat(status.diagnostic()).doesNotContain(SECRET_IN_BASE_URL);
     assertThat(role.usable()).isFalse();
     assertThat(role.refresh().baseUrl()).isNull();

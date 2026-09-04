@@ -21,7 +21,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     shows a gain without regression elsewhere (docs/features/hybrid-retrieval.md, "Die Lehre aus
  *     MMR").
  * @param baseUrl base address of the rerank endpoint, without the {@code /rerank} path segment
- *     ({@code http://localhost:8081/v1}). Blank means the role is unbound.
+ *     ({@code http://localhost:8081/v1}). Blank means the role is unbound. An address carrying
+ *     userinfo ({@code https://user:secret@host/v1}) is rejected by {@link RerankModelRole} and
+ *     leaves the role unusable; the access key belongs in {@link #apiKey} (#1147).
  * @param model the model identifier sent with every request; blank means the role is unbound.
  * @param apiKey optional bearer token. Write-only in every sense that matters: it is never logged
  *     and never part of {@link RerankRoleStatus}, not even truncated.
@@ -63,19 +65,34 @@ public record RerankProperties(
    * endpoint and model, never the key.
    */
   public String describeWithoutSecrets() {
-    return bound() ? model + " @ " + baseUrl : "(keine Endpunktangaben)";
+    if (!bound()) {
+      return "(keine Endpunktangaben)";
+    }
+    return model + " @ " + safeBaseUrl();
   }
 
   /**
-   * Overridden because a record's generated {@code toString} would print {@link #apiKey} verbatim -
-   * one accidental {@code log.debug(properties)} away from the key standing in a log file.
+   * The base address as far as it may be shown, stored or logged: an address carrying userinfo is
+   * replaced rather than reproduced (#1147). {@link RerankModelRole} rejects such an address
+   * outright; this is the second line, so that no accidental description ever prints one.
+   */
+  String safeBaseUrl() {
+    return ModelEndpointUri.containsCredentials(baseUrl)
+        ? "(Basis-Adresse mit Anmeldedaten - abgelehnt)"
+        : baseUrl;
+  }
+
+  /**
+   * Overridden because a record's generated {@code toString} would print {@link #apiKey} verbatim,
+   * and {@link #baseUrl} including any userinfo it carries - one accidental {@code
+   * log.debug(properties)} away from credentials standing in a log file.
    */
   @Override
   public String toString() {
     return "RerankProperties[enabled="
         + enabled
         + ", baseUrl="
-        + baseUrl
+        + safeBaseUrl()
         + ", model="
         + model
         + ", apiKey=***"
