@@ -19,11 +19,13 @@ Sie ist die dritte von drei zusammengehörigen Spezifikationen und die letzte in
 [Hybrides Retrieval](./hybrid-retrieval.md) baut die zwei Suchpfade, in denen ein Filter überhaupt
 wirken kann; [Ingestion-Pipelines](./ingestion-pipelines.md) baut die Aufnahmestrecke, in der
 Metadaten entstehen; dieses Dokument beschreibt, **welche** Metadaten das sind, **woher sie kommen**
-und **was sie im Retrieval bewirken**. **Gebaut sind bisher die Arbeitspakete 1 und 2** (Kernfelder,
-Herkunft, deterministische Extraktion, Beleg-Anzeige — #1066, siehe
-[Umgesetzt (#1066)](#umgesetzt-1066) und [ADR-0024](../decisions/0024-metadatenschema-kernfelder.md);
-deterministischer Bestandslauf — #1067, siehe [Umgesetzt (#1067)](#umgesetzt-1067)); alles Weitere —
-manuelle Korrektur, Filter, Bibliotheksfelder, Modell-Extraktion — ist noch nicht gebaut.
+und **was sie im Retrieval bewirken**. **Gebaut sind bisher die Arbeitspakete 1, 2 und der
+Korrekturteil von 3** (Kernfelder, Herkunft, deterministische Extraktion, Beleg-Anzeige — #1066,
+siehe [Umgesetzt (#1066)](#umgesetzt-1066) und
+[ADR-0024](../decisions/0024-metadatenschema-kernfelder.md); deterministischer Bestandslauf — #1067,
+siehe [Umgesetzt (#1067)](#umgesetzt-1067); manuelle Korrektur, Sammelzuweisung und Audit-Ereignis —
+#1068, siehe [Umgesetzt (#1068)](#umgesetzt-1068)); alles Weitere — Pflege-Anker, Filter,
+Bibliotheksfelder, Modell-Extraktion — ist noch nicht gebaut.
 
 ---
 
@@ -599,7 +601,92 @@ Das ist **kein** Widerspruch zu den ausgeschlossenen Pflege-Automatismen (siehe
 niemand entschieden hat. Hier entscheidet ein Mensch genau einmal statt dreihundertmal — die Zahl der
 Entscheidungen sinkt, nicht ihre Verbindlichkeit.
 
-## Rechte-Invariante der Extraktion und aller Aggregate
+### Umgesetzt (#1068)
+
+Der Korrekturteil von Arbeitspaket 3 — Einzelkorrektur, Sammelzuweisung und die protokollpflichtige
+Setzung; der Pflege-Anker und der dritte Zustand folgen in #1069 und hängen sich an dieselbe
+Setz-Operation.
+
+**Rechte.** Die Korrektur läuft an der Schwelle, an der auch Hochladen und Löschen eines Dokuments
+liegen: `EDITOR` an der Bibliothek (`LibraryAccessService#requireRole`), dieselbe Prüfung wie
+`LibraryDocumentService` — kein Verwaltungsrecht. Lesen der Metadatenansicht verlangt `VIEWER`. Eine
+Bibliothek einer fremden Organisation oder ohne jedes Recht ist abwesend (404), zu wenig Recht ist 403;
+ein Dokument einer anderen Bibliothek ist so abwesend wie ein nicht existierendes.
+
+**API.** `GET /api/v1/libraries/{libraryId}/documents/{documentId}/metadata` liefert alle drei
+Kernfelder — auch leere — mit Wert, Anzeigewert, Herkunft, Konfidenz, Modell, Extraktionsversion,
+Akteur (Kennung und Anzeigename) und Zeitpunkt. `PUT …/metadata/{fieldKey}` setzt oder ändert einen
+Wert (Textwert, Vokabularcode oder Datum mit Genauigkeit — genau eines, passend zum Feld; ein Wert
+außerhalb des Vokabulars, ein leerer Titel, ein Datum ohne Genauigkeit oder ein Wert falscher Art ist
+400, nichts wird auf den nächstähnlichen Wert abgebildet). `DELETE …/metadata/{fieldKey}` entfernt die
+Zeile. `POST /api/v1/libraries/{libraryId}/documents/metadata/bulk` setzt ein Feld auf einen Wert für
+eine Liste von Dokument-IDs (höchstens 1000). `GET /api/v1/metadata/document-types` liefert das
+Vokabular als Auswahlliste — Schema, kein Aggregat, deshalb für jede angemeldete Person sichtbar. Der
+Wertkörper ist so geschnitten, dass #1069 den Zustand „kein Wert ermittelbar" als weitere Alternative
+derselben Anfrage ergänzt.
+
+**Herkunft und Überschreibschutz.** Ein gesetzter Wert trägt `origin = MANUAL`, `actor_user_id` und
+Zeitpunkt; Konfidenz, Modell und Extraktionsversion sind leer — auch wenn die Zeile vorher
+deterministisch oder abgeleitet war (sie wird umetikettiert, nicht ersetzt). `DocumentMetadataService`
+lässt eine `MANUAL`-Zeile bei jeder Reconciliation unangetastet; abgesichert Ende-zu-Ende über den
+Bestandslauf (`DocumentMetadataCorrectionServiceIntegrationTest`). Ein identischer manueller Wert, der
+bereits steht, ist keine Änderung: nichts wird geschrieben, kein Ereignis entsteht.
+
+**Löschsemantik.** Löschen entfernt die Zeile unabhängig von ihrer Herkunft; das Feld ist danach
+**leer**, und die nächste automatische Extraktion darf es wieder befüllen — dafür setzt die Löschung
+in derselben Transaktion `documents.metadata_extraction_version` auf `NULL`, sodass der Bestandslauf
+das Dokument wieder auswählt und aus der unveränderten Datei neu extrahiert (abgesichert im
+Integrationstest; ein Konnektorlauf liest ein unverändertes Dokument sonst nie wieder). Eine
+`MANUAL`-Zeile eines anderen Feldes bleibt dabei unberührt. Eine Löschung ist keine
+Sperre — „hier gibt es dauerhaft keinen Wert" ist genau der dritte Zustand aus #1069 und wird dort als
+eigener Wert gesetzt, nicht als gelöschte Zeile nachgebildet. Die Regel „ein manuell gesetzter Wert
+wird nie überschrieben" gilt für gesetzte Werte; eine gelöschte Zeile ist kein gesetzter Wert.
+
+**Chunk-Nachzug.** Jede Setzung und Löschung von Dokumentart oder Datum/Stand schreibt `doc_type`,
+`doc_date` und `doc_date_precision` per JSON-Update auf die vorhandenen Chunks nach
+(`VectorChunkStore#updateDocumentMetadata`), in derselben Transaktion wie die Zeile — kein
+Neu-Zerlegen, kein Neu-Einbetten. Der Titel ist kein Chunk-Schlüssel (ADR-0024, Entscheidung 5) und
+löst keinen Nachzug aus.
+
+**Sammelzuweisung.** Ein Feld, ein Wert, eine Liste von Dokument-IDs aus derselben rechtegefilterten
+Dokumentliste. Eine ID, die kein Dokument dieser Bibliothek ist (gelöscht, fremde Bibliothek), wird
+**abgewiesen und in der Antwort benannt** (`rejectedDocumentIds`), nicht stillschweigend übersprungen;
+die übrigen Dokumente werden in derselben Transaktion verarbeitet. Die Antwort trägt Zähler
+(aktualisiert, unverändert) und die Korrelationsreferenz der Ereignisse. Bewusst kein
+Alles-oder-nichts: Der häufige Fall einer abgewiesenen ID ist ein Dokument, das zwischen Auswahl und
+Bestätigung gelöscht wurde — die Person soll die Zuweisung deswegen nicht wiederholen müssen.
+
+**Audit.** Jede wirksame Setzung, Änderung und Löschung schreibt ein Ereignis
+`DOCUMENT_METADATA_CHANGED` über den bestehenden `AuditEventRecorder` in die Protokollablage nach
+ADR-0015 — kein zweiter Mechanismus. **Objekt ist die Bibliothek** (`KNOWLEDGE_LIBRARY`), das Dokument
+steht mit Kennung und Dateiname im Ereignis: `before` und `after` tragen je `documentId`, `fileName`,
+`fieldKey` und entweder `state = EMPTY` oder `state = SET` mit `value`, `displayValue`, `origin`,
+`datePrecision`, `extractionVersion`, `confidence`, `modelId` — der Altwert vollständig, auch wenn er
+deterministisch war. Akteur (pseudonymisiert) und Zeitpunkt kommen aus der Ablage. Die Bibliothek als
+Objekt ist eine bewusste Entscheidung: Der Objektzugriffspfad des Protokolls
+(`GET /api/v1/audit/events/by-object`, Index `organization_id, object_type, object_id, recorded_at`)
+liefert damit alle Metadatenereignisse **einer Bibliothek** in Aufzeichnungsreihenfolge — genau die
+Abfrage, die die Wiederherstellung braucht — und die Ablage braucht keinen neuen Objekttyp (ihre
+`CHECK`-Constraint auf `object_type` liegt bei der Eigentümerrolle `opaa_audit_owner`, ADR-0015). Bei
+der Sammelzuweisung entsteht **ein Ereignis je Dokument**; alle Ereignisse eines Aufrufs teilen sich
+eine `correlationRef` (`metadata-bulk-<uuid>`), über den Korrelationspfad des Protokolls als ein
+Vorgang lesbar. Dafür nimmt `AuditEventRecorder#recordUserAction` seit #1068 eine
+Korrelationsreferenz an; die subjektbezogene Variante weist sie weiterhin zurück.
+
+**Wiederherstellbarkeit.** Aus der Ereignisfolge einer Bibliothek lässt sich ihr manueller Stand
+rekonstruieren (Test: Wiedereinspielen der `after`-Nutzlasten in Aufzeichnungsreihenfolge ergibt
+genau die `MANUAL`-Zeilen). Das Wiederherstellungs-Runbook in
+[Betrieb und Infrastruktur](./deployment-infrastructure.md#manuelle-metadatenwerte-nach-einem-restore-abgleichen)
+benennt den Abgleichschritt.
+
+**Oberfläche.** In der Dokumentliste der Bibliothek klappt „Metadaten von … anzeigen" je Dokument die
+drei Kernfelder auf: Wert, Herkunftskennzeichnung (`automatisch ermittelt` / `abgeleitet` /
+`manuell`; Akteur und Zeitpunkt bzw. Konfidenz und Modell im Tooltip) und — nur mit Bearbeitungsrecht
+— Bearbeiten (Dokumentart als Auswahl aus dem Vokabular, Datum mit Genauigkeit Tag/Monat/Jahr, Titel
+als Text) und Löschen. Mit Bearbeitungsrecht trägt jede Zeile ein Auswahlkästchen; „Feld setzen" auf
+der Auswahl öffnet die Sammelzuweisung: ein Feld, ein Wert, Bestätigung mit Anzahl, Ergebnis mit
+Zählern und abgewiesenen Dokumenten. Für Konnektorbibliotheken gilt dasselbe — der Wert hängt am
+Dokument, nicht an der Datei.
 
 Zwei Regeln, die aus dem Rechtemodell folgen und nicht verhandelbar sind (Grundsatz siehe
 [Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit)):
@@ -984,7 +1071,7 @@ solange keine Füllstandsverteilung eines echten Bestands vorliegt.
 |---|---|---|---|
 | 1 | Kernfelder: Datenmodell, Herkunft/Konfidenz/Akteur, deterministische Extraktion beim Aufnehmen — **umgesetzt mit #1066**, siehe [Umgesetzt (#1066)](#umgesetzt-1066) | — | Beleg-Anzeige wird einordbar; Grundlage für alles Weitere |
 | 2 | **Deterministischer Bestandslauf** über den Altbestand, bibliotheksweise, mit den Nachlauf-Zusagen — **umgesetzt mit #1067**, siehe [Umgesetzt (#1067)](#umgesetzt-1067) | 1 | Die Kernfelder gelten für den vorhandenen Bestand, nicht nur für künftige Dokumente |
-| 3 | Manuelle Korrektur, Sammelzuweisung, Audit-Ereignis und Pflege-Anker („N ohne Wert", absolut und anteilig) | 1, 2 | Die Leerwert-Regel wird behebbar statt Dauerzustand |
+| 3 | Manuelle Korrektur, Sammelzuweisung, Audit-Ereignis — **umgesetzt mit #1068**, siehe [Umgesetzt (#1068)](#umgesetzt-1068) — und Pflege-Anker („N ohne Wert", absolut und anteilig; #1069) | 1, 2 | Die Leerwert-Regel wird behebbar statt Dauerzustand |
 | 4 | Metadatenfilter in beiden Suchpfaden, mit Füllstandsanzeige je Feld | 2, 3, Hybrid-Suche AP 3 | Löst Szenario 9; die `metadata_filter`-Fälle werden erstmals lösbar |
 | 5 | Bibliotheksfelder: Schemakonfiguration je Bibliothek, Wertelisten mit bestätigter Abbildung | 1, 4 | Fassung und Rechtsebene werden führbar |
 | 6 | Metadaten im Kontextpräfix, mit Folgekostenanzeige und selektivem Nachlauf | 5, Ingestion Regel (b)/(d) | Wirkung auch ohne gesetzten Filter |

@@ -11,6 +11,16 @@ public enum CoreMetadataField {
   DOCUMENT_TYPE("document_type", "Dokumentart"),
   DOCUMENT_DATE("document_date", "Datum/Stand");
 
+  /** The core field behind {@code key}, or empty for anything else (a library field, a typo). */
+  public static java.util.Optional<CoreMetadataField> fromKey(String key) {
+    for (CoreMetadataField field : values()) {
+      if (field.key.equals(key)) {
+        return java.util.Optional.of(field);
+      }
+    }
+    return java.util.Optional.empty();
+  }
+
   private final String key;
   private final String label;
 

@@ -53,6 +53,12 @@ import type {
   SpaceVisibility,
   UserInfo,
   UserSummary,
+  BulkMetadataValueRequest,
+  BulkMetadataValueResponse,
+  DocumentMetadataFieldResponse,
+  DocumentMetadataResponse,
+  DocumentTypeVocabularyResponse,
+  MetadataValueRequest,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
 import { setupAuthInterceptors } from './apiInterceptors'
@@ -808,6 +814,74 @@ export async function getDocumentContent(documentId: string): Promise<DocumentCo
 export async function deleteLibraryDocument(libraryId: string, documentId: string): Promise<void> {
   try {
     await client.delete(`/v1/libraries/${libraryId}/documents/${documentId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+// #1068: manual metadata correction - every core field of a document with its provenance.
+export async function getDocumentMetadata(
+  libraryId: string,
+  documentId: string,
+): Promise<DocumentMetadataResponse> {
+  try {
+    const { data } = await client.get<DocumentMetadataResponse>(
+      `/v1/libraries/${libraryId}/documents/${documentId}/metadata`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function setDocumentMetadataValue(
+  libraryId: string,
+  documentId: string,
+  fieldKey: string,
+  value: MetadataValueRequest,
+): Promise<DocumentMetadataFieldResponse> {
+  try {
+    const { data } = await client.put<DocumentMetadataFieldResponse>(
+      `/v1/libraries/${libraryId}/documents/${documentId}/metadata/${fieldKey}`,
+      value,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function deleteDocumentMetadataValue(
+  libraryId: string,
+  documentId: string,
+  fieldKey: string,
+): Promise<void> {
+  try {
+    await client.delete(`/v1/libraries/${libraryId}/documents/${documentId}/metadata/${fieldKey}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function bulkSetDocumentMetadata(
+  libraryId: string,
+  request: BulkMetadataValueRequest,
+): Promise<BulkMetadataValueResponse> {
+  try {
+    const { data } = await client.post<BulkMetadataValueResponse>(
+      `/v1/libraries/${libraryId}/documents/metadata/bulk`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getDocumentTypeVocabulary(): Promise<DocumentTypeVocabularyResponse> {
+  try {
+    const { data } = await client.get<DocumentTypeVocabularyResponse>('/v1/metadata/document-types')
+    return data
   } catch (err) {
     normalizeError(err)
   }

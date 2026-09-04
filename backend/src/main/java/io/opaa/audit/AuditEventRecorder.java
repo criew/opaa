@@ -51,12 +51,13 @@ public class AuditEventRecorder {
    * Records an event caused by a person ({@link AuditEvent.Builder#actor}), with no affected rights
    * subject - e.g. a space or library being created. See {@link #recordUserActionOnSubject} for the
    * sibling that carries one. {@code event} must have been built with {@link
-   * AuditEvent.Builder#actor} and no {@link AuditEvent.Builder#subject}.
+   * AuditEvent.Builder#actor} and no {@link AuditEvent.Builder#subject}. An optional {@link
+   * AuditEvent.Builder#correlationRef} links the per-document entries one person's bulk operation
+   * writes together (metadata Sammelzuweisung, #1068).
    */
   public void recordUserAction(AuditEvent event) {
     UUID actorUserId = requireUserActor(event);
     requireNoSubject(event, "recordUserAction");
-    requireNoCorrelationRef(event, "recordUserAction");
     String actorRef = pseudonymService.pseudonymFor(actorUserId, event.organizationId()).toString();
     auditLogService.record(
         AuditLogEntry.withoutSubject(
@@ -71,7 +72,7 @@ public class AuditEventRecorder {
             toJson(event.after()),
             event.outcome(),
             event.reason(),
-            null));
+            event.correlationRef()));
   }
 
   /**
@@ -179,10 +180,9 @@ public class AuditEventRecorder {
   }
 
   /**
-   * {@code correlationRef} only ever reaches a column via {@link #recordSystemProcessAction} - a
-   * caller setting it on a user-action event has almost always mixed up which of the two builder
-   * paths it meant, and silently ignoring the field would hide that mistake instead of failing the
-   * call that made it.
+   * A subject-carrying user action is always a single rights change, never one entry of a batch - a
+   * caller setting a {@code correlationRef} on one has mixed up which builder path it meant, and
+   * silently ignoring the field would hide that mistake instead of failing the call that made it.
    */
   private static void requireNoCorrelationRef(AuditEvent event, String methodName) {
     if (event.correlationRef() != null) {
