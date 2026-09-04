@@ -1,12 +1,24 @@
 import { create } from 'zustand'
 import type {
+  DocumentChunksResponse,
   SearchDiagnosisRequest,
   SearchDiagnosisResponse,
   SearchPermissionProfileResponse,
   SearchStatusResponse,
 } from '../types/api'
-import { getSearchPermissionProfiles, getSearchStatus, runSearchDiagnosis } from '../services/api'
+import {
+  getDocumentChunks,
+  getSearchPermissionProfiles,
+  getSearchStatus,
+  runSearchDiagnosis,
+} from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
+
+/**
+ * Sequence of the latest loadDocumentChunks call: an answer to an earlier call is dropped, so two
+ * quick clicks never leave the page showing the document that was asked for first.
+ */
+let latestDocumentChunksRequest = 0
 
 interface SearchAdminState {
   status: SearchStatusResponse | null
@@ -15,18 +27,28 @@ interface SearchAdminState {
   diagnosis: SearchDiagnosisResponse | null
   diagnosisError: string | null
   isRunningDiagnosis: boolean
+  documentChunks: DocumentChunksResponse | null
+  documentChunksError: string | null
+  isLoadingDocumentChunks: boolean
   reset: () => void
   loadStatus: () => Promise<void>
   runDiagnosis: (request: SearchDiagnosisRequest) => Promise<void>
+  loadDocumentChunks: (documentId: string) => Promise<void>
 }
 
-const EMPTY: Omit<SearchAdminState, 'reset' | 'loadStatus' | 'runDiagnosis'> = {
+const EMPTY: Omit<
+  SearchAdminState,
+  'reset' | 'loadStatus' | 'runDiagnosis' | 'loadDocumentChunks'
+> = {
   status: null,
   profiles: [],
   statusError: null,
   diagnosis: null,
   diagnosisError: null,
   isRunningDiagnosis: false,
+  documentChunks: null,
+  documentChunksError: null,
+  isLoadingDocumentChunks: false,
 }
 
 /**
@@ -70,6 +92,26 @@ export const useSearchAdminStore = create<SearchAdminState>((set) => ({
       set({
         diagnosisError: err instanceof Error ? err.message : 'Diagnose fehlgeschlagen',
         isRunningDiagnosis: false,
+      })
+    }
+  },
+
+  loadDocumentChunks: async (documentId) => {
+    const sessionEpoch = currentSessionEpoch()
+    const request = ++latestDocumentChunksRequest
+    const isSuperseded = () =>
+      isStaleSessionEpoch(sessionEpoch) || request !== latestDocumentChunksRequest
+    set({ isLoadingDocumentChunks: true, documentChunks: null, documentChunksError: null })
+    try {
+      const documentChunks = await getDocumentChunks(documentId)
+      if (isSuperseded()) return
+      set({ documentChunks, isLoadingDocumentChunks: false })
+    } catch (err) {
+      if (isSuperseded()) return
+      set({
+        documentChunksError:
+          err instanceof Error ? err.message : 'Chunks konnten nicht geladen werden',
+        isLoadingDocumentChunks: false,
       })
     }
   },
