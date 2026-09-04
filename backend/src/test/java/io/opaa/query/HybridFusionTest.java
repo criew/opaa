@@ -8,6 +8,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankModelRole;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +47,7 @@ class HybridFusionTest {
     return new QueryConfiguration()
         .retrievalPipeline(
             new SearchScopeStage(),
+            new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
             new SubQueryDecompositionStage(queryDecompositionService),
             new VectorSearchStage(vectorStore),
             new FullTextSearchStage(fullTextChunkSearch, backfillGate),
@@ -71,6 +74,7 @@ class HybridFusionTest {
                 "Frage",
                 List.of(),
                 Set.of(LIBRARY_ID),
+                MetadataFilter.NONE,
                 properties,
                 RerankAvailability.SWITCHED_OFF))
         .chunks();
@@ -86,7 +90,7 @@ class HybridFusionTest {
     when(backfillGate.searchableLibraries(Set.of(LIBRARY_ID))).thenReturn(Set.of(LIBRARY_ID));
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-a", 0.8), chunk("vector-b", 0.7)));
-    when(fullTextChunkSearch.search(anyString(), any(), anyInt()))
+    when(fullTextChunkSearch.search(anyString(), any(), any(), anyInt()))
         .thenReturn(List.of(chunk("literal-term", 0.09)));
 
     assertThat(run(HYBRID)).extracting(Document::getId).contains("literal-term");
@@ -103,7 +107,7 @@ class HybridFusionTest {
     when(backfillGate.searchableLibraries(Set.of(LIBRARY_ID))).thenReturn(Set.of(LIBRARY_ID));
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-top", 0.8), chunk("both", 0.6)));
-    when(fullTextChunkSearch.search(anyString(), any(), anyInt()))
+    when(fullTextChunkSearch.search(anyString(), any(), any(), anyInt()))
         .thenReturn(List.of(chunk("lexical-top", 0.09), chunk("both", 0.05)));
 
     List<Document> selection = run(HYBRID);
@@ -125,7 +129,7 @@ class HybridFusionTest {
     when(backfillGate.searchableLibraries(Set.of(LIBRARY_ID))).thenReturn(Set.of(LIBRARY_ID));
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-a", 0.8), chunk("vector-b", 0.7)));
-    when(fullTextChunkSearch.search(anyString(), any(), anyInt()))
+    when(fullTextChunkSearch.search(anyString(), any(), any(), anyInt()))
         .thenThrow(new IllegalStateException("relation chunk_full_text does not exist"));
 
     assertThat(run(HYBRID)).extracting(Document::getId).containsExactly("vector-a", "vector-b");

@@ -39,7 +39,11 @@ class VectorSearchStage implements RetrievalStage {
 
   @Override
   public StageOutcome apply(RetrievalContext context, RetrievalState state) {
-    Filter.Expression filter = SearchScopeStage.requiredLibraryFilter(state);
+    // The permission filter is the outer condition; the metadata filter (#1070) can only ever
+    // remove from what it allows - see MetadataFilterExpressions#subordinateTo.
+    Filter.Expression filter =
+        MetadataFilterExpressions.subordinateTo(
+            SearchScopeStage.requiredLibraryFilter(state), state.metadataFilterExpression());
     QueryProperties properties = context.queryProperties();
     List<String> searchQueries =
         state.searchQueries().isEmpty() ? List.of(context.question()) : state.searchQueries();
@@ -76,17 +80,20 @@ class VectorSearchStage implements RetrievalStage {
     RetrievalState searched =
         state.searchQueries().isEmpty() ? state.withSearchQueries(searchQueries) : state;
     int retrieved = lists.stream().mapToInt(list -> list.documents().size()).sum();
+    List<String> notes = new ArrayList<>();
+    notes.add(RetrievalNote.VECTOR_SEARCH_LISTS.format(searchQueries.size()));
+    notes.add(RetrievalNote.FETCH_K.format(properties.fetchK()));
+    notes.add(RetrievalNote.SIMILARITY_THRESHOLD.format(properties.similarityThreshold()));
+    if (!state.metadataFilter().isEmpty()) {
+      List<Document> all = lists.stream().flatMap(list -> list.documents().stream()).toList();
+      notes.add(
+          RetrievalNote.METADATA_FILTER_NO_VALUE_CANDIDATES.format(
+              MetadataFilterExpressions.countKeptWithoutValue(state.metadataFilter(), all),
+              all.size()));
+    }
     return new StageOutcome(
         searched.withSearchResults(lists),
-        StageExplanation.executed(
-            name(),
-            0,
-            retrieved,
-            verdicts,
-            List.of(
-                RetrievalNote.VECTOR_SEARCH_LISTS.format(searchQueries.size()),
-                RetrievalNote.FETCH_K.format(properties.fetchK()),
-                RetrievalNote.SIMILARITY_THRESHOLD.format(properties.similarityThreshold()))));
+        StageExplanation.executed(name(), 0, retrieved, verdicts, notes));
   }
 
   static String listLabel(int searchQueryIndex) {

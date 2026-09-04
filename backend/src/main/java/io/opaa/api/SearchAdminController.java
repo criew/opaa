@@ -87,7 +87,8 @@ public class SearchAdminController {
                 request.getPermissionProfileId(),
                 request.getTargetUserId(),
                 request.getJustification(),
-                request.getTrackedDocumentId())));
+                request.getTrackedDocumentId(),
+                MetadataFilterMapper.toDomain(request.getMetadataFilter()))));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")

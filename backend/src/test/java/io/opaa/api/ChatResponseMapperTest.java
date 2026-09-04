@@ -10,6 +10,7 @@ import io.opaa.api.dto.SourceReference;
 import io.opaa.api.types.ChatRole;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
@@ -17,7 +18,9 @@ import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.chat.ChatTurn;
+import io.opaa.indexing.metadata.MetadataFilter;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
@@ -222,6 +225,42 @@ class ChatResponseMapperTest {
             ChatResponseMapper.toSourceReference(
                     new ChatSource("readme.md", 0.5, 1, false).metadata(List.of()))
                 .getMetadata())
+        .isNull();
+  }
+
+  /** #1070: the chat's sticky filter reaches summary and detail; an empty one maps to null. */
+  @Test
+  void toSummaryAndDetailCopyTheMetadataFilter() {
+    Chat chat =
+        new Chat(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, true, Set.of());
+    chat.applyMetadataFilter(
+        new MetadataFilter(
+            Set.of("VERMERK"), LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31)));
+
+    ChatSummary summary = ChatResponseMapper.toSummaryResponse(chat);
+    ChatDetail detail = ChatResponseMapper.toDetailResponse(new ChatConversation(chat, List.of()));
+
+    assertThat(summary.getMetadataFilter().getDocumentTypes()).containsExactly("VERMERK");
+    assertThat(summary.getMetadataFilter().getDocumentDateFrom()).isEqualTo("2024-01-01");
+    assertThat(summary.getMetadataFilter().getDocumentDateTo()).isEqualTo("2024-12-31");
+    assertThat(detail.getMetadataFilter().getDocumentTypes()).containsExactly("VERMERK");
+
+    chat.applyMetadataFilter(MetadataFilter.NONE);
+    assertThat(ChatResponseMapper.toSummaryResponse(chat).getMetadataFilter()).isNull();
+  }
+
+  /** #1070: a source's match state reaches the DTO, and stays null without a filter. */
+  @Test
+  void toSourceReferenceCopiesTheMetadataFilterMatch() {
+    assertThat(
+            ChatResponseMapper.toSourceReference(
+                    new ChatSource("readme.md", 0.5, 1, false)
+                        .metadataFilterMatch(MetadataFilterMatch.NO_VALUE))
+                .getMetadataFilterMatch())
+        .isEqualTo(MetadataFilterMatch.NO_VALUE);
+    assertThat(
+            ChatResponseMapper.toSourceReference(new ChatSource("readme.md", 0.5, 1, false))
+                .getMetadataFilterMatch())
         .isNull();
   }
 

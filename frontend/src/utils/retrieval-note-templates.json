@@ -53,6 +53,26 @@
       "template": "max-chunks-per-document %d"
     },
     {
+      "name": "METADATA_FILTER_DATE_WINDOW",
+      "template": "metadata filter: document date from %s to %s, a value counting for the whole span its precision leaves open"
+    },
+    {
+      "name": "METADATA_FILTER_DOCUMENT_TYPES",
+      "template": "metadata filter: document type in [%s]"
+    },
+    {
+      "name": "METADATA_FILTER_NONE",
+      "template": "no metadata filter set: every candidate of the search scope qualifies"
+    },
+    {
+      "name": "METADATA_FILTER_NO_VALUE_CANDIDATES",
+      "template": "metadata filter applied inside the query: %d of %d candidate(s) kept without a value for a filtered field"
+    },
+    {
+      "name": "METADATA_FILTER_SUBORDINATE",
+      "template": "metadata filter applied inside both search paths, AND-ed to the permission filter; a document without a value for a filtered field is kept"
+    },
+    {
       "name": "MMR_LAMBDA_ACTIVE",
       "template": "mmr-lambda %s (diversity term active, cosine similarity of real chunk embeddings)"
     },

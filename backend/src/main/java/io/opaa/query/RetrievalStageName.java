@@ -30,6 +30,19 @@ public enum RetrievalStageName {
   SEARCH_SCOPE,
 
   /**
+   * Carries the caller-supplied core-field filter (#1070, metadata-schema.md Wirkstelle 1) into the
+   * run: the Dokumentart set and the Datum/Stand window, in the vector-path form and the domain
+   * form the lexical path translates to SQL. Both search stages AND it to the permission filter
+   * from {@link #SEARCH_SCOPE} - inside the query, before ranking, never on a result - so the
+   * filter narrows the readable set and can never widen it. A document without a value for a
+   * filtered field is kept ("Leerwerte schließen nicht aus").
+   *
+   * <p>Switched off, the searches run unfiltered - the pipeline as it was before the filter
+   * existed, whatever the caller asked for; the protocol says so.
+   */
+  METADATA_FILTER,
+
+  /**
    * Produces the search queries the search stages run, one each: 1 to {@link
    * QueryProperties#maxSubQueries} sub-queries from {@link QueryDecompositionService#decompose}
    * (#923), or the single-query fallback whenever decomposition is off, fails, or returns nothing.

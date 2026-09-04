@@ -6,8 +6,10 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -17,10 +19,15 @@ import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.chat.ChatSource;
+import io.opaa.indexing.metadata.CoreMetadataField;
+import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.query.MetadataFilterOptions;
+import io.opaa.query.MetadataFilterOptionsService;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
 import io.opaa.query.QueryService;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +54,7 @@ class QueryControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private QueryService queryService;
+  @MockitoBean private MetadataFilterOptionsService metadataFilterOptionsService;
   @MockitoBean private UserService userService;
 
   @BeforeEach
@@ -70,7 +78,8 @@ class QueryControllerTest {
             List.of(sourceReference("doc.md", 0.9, 2, Instant.parse("2025-01-15T10:30:00Z"), true)),
             new QueryOutcome("gpt-4o", 500, 1200L),
             chatId);
-    when(queryService.query(anyString(), any(), any(), anyBoolean(), any())).thenReturn(response);
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
+        .thenReturn(response);
 
     mockMvc
         .perform(
@@ -96,7 +105,8 @@ class QueryControllerTest {
     UUID chatId = UUID.randomUUID();
     var response =
         new QueryResult("Answer", List.of(), new QueryOutcome("gpt-4o", 100, 500L), chatId);
-    when(queryService.query(anyString(), any(), any(), anyBoolean(), any())).thenReturn(response);
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
+        .thenReturn(response);
 
     mockMvc
         .perform(
@@ -113,7 +123,8 @@ class QueryControllerTest {
     var response =
         new QueryResult(
             "Answer", List.of(), new QueryOutcome("gpt-4o", 100, 500L), UUID.randomUUID());
-    when(queryService.query(anyString(), any(), any(), anyBoolean(), any())).thenReturn(response);
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
+        .thenReturn(response);
 
     mockMvc
         .perform(
@@ -124,7 +135,8 @@ class QueryControllerTest {
         .andExpect(status().isOk());
 
     ArgumentCaptor<Boolean> useKnowledgeCaptor = ArgumentCaptor.forClass(Boolean.class);
-    verify(queryService).query(anyString(), any(), any(), useKnowledgeCaptor.capture(), any());
+    verify(queryService)
+        .query(anyString(), any(), any(), useKnowledgeCaptor.capture(), any(), any());
     assertThat(useKnowledgeCaptor.getValue()).isTrue();
   }
 
@@ -136,7 +148,8 @@ class QueryControllerTest {
     var response =
         new QueryResult(
             "Answer", List.of(), new QueryOutcome("gpt-4o", 100, 500L), UUID.randomUUID());
-    when(queryService.query(anyString(), any(), any(), anyBoolean(), any())).thenReturn(response);
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
+        .thenReturn(response);
 
     mockMvc
         .perform(
@@ -155,7 +168,13 @@ class QueryControllerTest {
     ArgumentCaptor<Boolean> useKnowledgeCaptor = ArgumentCaptor.forClass(Boolean.class);
     ArgumentCaptor<List<UUID>> libraryIdsCaptor = ArgumentCaptor.forClass(List.class);
     verify(queryService)
-        .query(anyString(), any(), any(), useKnowledgeCaptor.capture(), libraryIdsCaptor.capture());
+        .query(
+            anyString(),
+            any(),
+            any(),
+            useKnowledgeCaptor.capture(),
+            libraryIdsCaptor.capture(),
+            any());
     assertThat(useKnowledgeCaptor.getValue()).isFalse();
     assertThat(libraryIdsCaptor.getValue()).containsExactly(libraryId1, libraryId2);
   }
@@ -197,7 +216,7 @@ class QueryControllerTest {
 
   @Test
   void queryWithTransientAiExceptionReturns503() throws Exception {
-    when(queryService.query(anyString(), any(), any(), anyBoolean(), any()))
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
         .thenThrow(new TransientAiException("Service unavailable"));
 
     mockMvc
@@ -213,7 +232,7 @@ class QueryControllerTest {
 
   @Test
   void queryWithNonTransientAiExceptionReturns502() throws Exception {
-    when(queryService.query(anyString(), any(), any(), anyBoolean(), any()))
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
         .thenThrow(new NonTransientAiException("Invalid API key"));
 
     mockMvc
@@ -225,6 +244,113 @@ class QueryControllerTest {
         .andExpect(status().isBadGateway())
         .andExpect(jsonPath("$.error").value("Fehler im KI-Dienst"))
         .andExpect(jsonPath("$.status").value(502));
+  }
+
+  /** #1070: the request's metadata filter reaches the service as the domain record. */
+  @Test
+  void queryPassesTheMetadataFilterThrough() throws Exception {
+    UUID chatId = UUID.randomUUID();
+    var response =
+        new QueryResult("Answer", List.of(), new QueryOutcome("gpt-4o", 100, 500L), chatId);
+    when(queryService.query(anyString(), any(), any(), anyBoolean(), any(), any()))
+        .thenReturn(response);
+
+    mockMvc
+        .perform(
+            post("/api/v1/query")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"question\": \"Was gilt?\", \"metadataFilter\": {\"documentTypes\":"
+                        + " [\"VERMERK\"], \"documentDateFrom\": \"2024-01-01\"}}"))
+        .andExpect(status().isOk());
+
+    ArgumentCaptor<MetadataFilter> filterCaptor = ArgumentCaptor.forClass(MetadataFilter.class);
+    verify(queryService)
+        .query(anyString(), any(), any(), anyBoolean(), any(), filterCaptor.capture());
+    assertThat(filterCaptor.getValue().documentTypes()).containsExactly("VERMERK");
+    assertThat(filterCaptor.getValue().documentDateFrom()).isEqualTo(LocalDate.of(2024, 1, 1));
+    assertThat(filterCaptor.getValue().documentDateTo()).isNull();
+  }
+
+  /**
+   * #1070, "nur Kernfelder filtern; freie Schlagworte nie": a filter naming any other field - a
+   * keyword, the title - is rejected outright, not silently ignored into a filter that does
+   * nothing.
+   */
+  @Test
+  void aMetadataFilterOnAnUnknownFieldIsRejectedWith400() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/query")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"question\": \"Was gilt?\", \"metadataFilter\": {\"keywords\":"
+                        + " [\"Gebühren\"]}}"))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(
+            post("/api/v1/query")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"question\": \"Was gilt?\", \"metadataFilter\": {\"title\":"
+                        + " \"Satzung\"}}"))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(queryService);
+  }
+
+  @Test
+  void anImpossibleFilterDateIsRejectedWith400() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/query")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"question\": \"Was gilt?\", \"metadataFilter\": {\"documentDateFrom\":"
+                        + " \"2024-02-30\"}}"))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(queryService);
+  }
+
+  /** #1070: the options endpoint resolves the scope with the query's own parameters. */
+  @Test
+  void metadataFilterOptionsAreServedForTheCallersScope() throws Exception {
+    UUID chatId = UUID.randomUUID();
+    UUID libraryId = UUID.randomUUID();
+    when(metadataFilterOptionsService.optionsFor(
+            any(), eq(chatId), eq(false), eq(List.of(libraryId))))
+        .thenReturn(
+            new MetadataFilterOptions(
+                4,
+                List.of(
+                    new MetadataFilterOptions.FieldOption(
+                        CoreMetadataField.DOCUMENT_TYPE, 4, 4, 0.9),
+                    new MetadataFilterOptions.FieldOption(
+                        CoreMetadataField.DOCUMENT_DATE, 2, 4, 0.75)),
+                List.of(new MetadataFilterOptions.DocumentTypeOption("VERMERK", "Vermerk", 4)),
+                LocalDate.of(2024, 1, 1),
+                LocalDate.of(2024, 12, 31)));
+
+    mockMvc
+        .perform(
+            get("/api/v1/search/metadata-filter-options")
+                .with(asTestUser())
+                .param("chatId", chatId.toString())
+                .param("useKnowledge", "false")
+                .param("libraryIds", libraryId.toString()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalDocuments").value(4))
+        .andExpect(jsonPath("$.fields[0].fieldKey").value("document_type"))
+        .andExpect(jsonPath("$.fields[0].offered").value(true))
+        .andExpect(jsonPath("$.fields[1].fieldKey").value("document_date"))
+        .andExpect(jsonPath("$.fields[1].fillShare").value(0.5))
+        .andExpect(jsonPath("$.fields[1].offered").value(false))
+        .andExpect(jsonPath("$.documentTypes[0].code").value("VERMERK"))
+        .andExpect(jsonPath("$.documentDateMin").value("2024-01-01"))
+        .andExpect(jsonPath("$.documentDateMax").value("2024-12-31"));
   }
 
   private static ChatSource sourceReference(

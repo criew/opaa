@@ -31,6 +31,7 @@ import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
+import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -106,6 +107,7 @@ class QueryServiceTest {
         new QueryConfiguration()
             .retrievalPipeline(
                 new SearchScopeStage(),
+                new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
                 new SubQueryDecompositionStage(queryDecompositionService),
                 new VectorSearchStage(vectorStore),
                 // The lexical path is switched off in every QueryProperties this class builds
@@ -133,7 +135,8 @@ class QueryServiceTest {
         queryProperties,
         knowledgeLibraryRepository,
         disabledRerankRole(),
-        documentMetadataService);
+        documentMetadataService,
+        mock(DocumentTypeVocabularyRepository.class));
   }
 
   /**
@@ -2353,6 +2356,7 @@ class QueryServiceTest {
           new QueryConfiguration()
               .retrievalPipeline(
                   new SearchScopeStage(),
+                  new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
                   new SubQueryDecompositionStage(queryDecompositionService),
                   new VectorSearchStage(vectorStore),
                   new FullTextSearchStage(fullTextChunkSearch, backfillGate),
@@ -2375,7 +2379,8 @@ class QueryServiceTest {
           new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, maxChunksPerDocument, true, 50),
           knowledgeLibraryRepository,
           disabledRerankRole(),
-          documentMetadataService);
+          documentMetadataService,
+          mock(DocumentTypeVocabularyRepository.class));
     }
 
     /**
@@ -2404,7 +2409,8 @@ class QueryServiceTest {
               .score(0.09)
               .build();
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(vectorChunk));
-      when(fullTextChunkSearch.search(any(), any(), anyInt())).thenReturn(List.of(lexicalChunk));
+      when(fullTextChunkSearch.search(any(), any(), any(), anyInt()))
+          .thenReturn(List.of(lexicalChunk));
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
       when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
@@ -2434,7 +2440,7 @@ class QueryServiceTest {
       var chunkOfB = chunkOf("b.md", "doc-b", "B, einziger Abschnitt", 0.8);
       when(vectorStore.similaritySearch(any(SearchRequest.class)))
           .thenReturn(List.of(firstChunkOfA, secondChunkOfA, chunkOfB));
-      when(fullTextChunkSearch.search(any(), any(), anyInt())).thenReturn(List.of());
+      when(fullTextChunkSearch.search(any(), any(), any(), anyInt())).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
       when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 

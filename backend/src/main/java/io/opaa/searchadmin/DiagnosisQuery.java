@@ -1,5 +1,6 @@
 package io.opaa.searchadmin;
 
+import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.UUID;
 
 /**
@@ -16,6 +17,8 @@ import java.util.UUID;
  * @param justification the free-text justification Leitplanke (d) demands for a person context;
  *     required for {@link DiagnosisContextType#USER}, ignored otherwise.
  * @param trackedDocumentId a document to follow through every stage, or {@code null}.
+ * @param metadataFilter the core-field filter to run with (#1070), applied exactly as a chat query
+ *     applies it; {@link MetadataFilter#NONE} or {@code null} for none.
  */
 public record DiagnosisQuery(
     String question,
@@ -23,4 +26,28 @@ public record DiagnosisQuery(
     UUID permissionProfileId,
     UUID targetUserId,
     String justification,
-    UUID trackedDocumentId) {}
+    UUID trackedDocumentId,
+    MetadataFilter metadataFilter) {
+
+  public DiagnosisQuery {
+    metadataFilter = metadataFilter == null ? MetadataFilter.NONE : metadataFilter;
+  }
+
+  /** A query without a metadata filter. */
+  public DiagnosisQuery(
+      String question,
+      DiagnosisContextType contextType,
+      UUID permissionProfileId,
+      UUID targetUserId,
+      String justification,
+      UUID trackedDocumentId) {
+    this(
+        question,
+        contextType,
+        permissionProfileId,
+        targetUserId,
+        justification,
+        trackedDocumentId,
+        MetadataFilter.NONE);
+  }
+}

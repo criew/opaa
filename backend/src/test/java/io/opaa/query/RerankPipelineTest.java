@@ -6,6 +6,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.llm.RerankClient.ScoredCandidate;
 import io.opaa.llm.RerankModelRole;
 import java.util.List;
@@ -53,6 +55,7 @@ class RerankPipelineTest {
     return new QueryConfiguration()
         .retrievalPipeline(
             new SearchScopeStage(),
+            new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
             new SubQueryDecompositionStage(queryDecompositionService),
             new VectorSearchStage(vectorStore),
             // The lexical path is switched off in every QueryProperties here: this class is about
@@ -84,7 +87,8 @@ class RerankPipelineTest {
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(IntStream.range(0, 25).mapToObj(RerankPipelineTest::chunk).toList());
     return pipeline.run(
-        new RetrievalContext("Frage", List.of(), Set.of(LIBRARY_ID), properties, availability));
+        new RetrievalContext(
+            "Frage", List.of(), Set.of(LIBRARY_ID), MetadataFilter.NONE, properties, availability));
   }
 
   private static StageExplanation stageOf(

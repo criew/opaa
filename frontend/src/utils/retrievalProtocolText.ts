@@ -45,6 +45,39 @@ const NOTE_RULES: NoteRule[] = [
       'Rechtefilter in jeder Suche dieses Laufs angewendet, nie erst nachträglich auf das Ergebnis.',
   },
 
+  // MetadataFilterStage (#1070)
+  {
+    name: 'METADATA_FILTER_NONE',
+    pattern: /^no metadata filter set: every candidate of the search scope qualifies$/,
+    german: () => 'Kein Metadatenfilter gesetzt: Jeder Kandidat des Suchbereichs kommt in Frage.',
+  },
+  {
+    name: 'METADATA_FILTER_DOCUMENT_TYPES',
+    pattern: /^metadata filter: document type in \[(.*)\]$/s,
+    german: (m) => `Metadatenfilter: Dokumentart in [${m[1]}].`,
+  },
+  {
+    name: 'METADATA_FILTER_DATE_WINDOW',
+    pattern:
+      /^metadata filter: document date from (.+?) to (.+?), a value counting for the whole span its precision leaves open$/,
+    german: (m) =>
+      `Metadatenfilter: Datum/Stand von ${m[1] === 'open start' ? 'offen' : m[1]} bis ${m[2] === 'open end' ? 'offen' : m[2]}; ein Wert gilt für den ganzen Zeitraum, den seine Genauigkeit offenlässt.`,
+  },
+  {
+    name: 'METADATA_FILTER_SUBORDINATE',
+    pattern:
+      /^metadata filter applied inside both search paths, AND-ed to the permission filter; a document without a value for a filtered field is kept$/,
+    german: () =>
+      'Metadatenfilter in beiden Suchpfaden innerhalb der Abfrage angewendet, mit UND unter dem Rechtefilter; ein Dokument ohne Wert im gefilterten Feld bleibt enthalten.',
+  },
+  {
+    name: 'METADATA_FILTER_NO_VALUE_CANDIDATES',
+    pattern:
+      /^metadata filter applied inside the query: (\d+) of (\d+) candidate\(s\) kept without a value for a filtered field$/,
+    german: (m) =>
+      `Metadatenfilter in der Suchanfrage angewendet: ${m[1]} von ${plural(m[2], 'Kandidat', 'Kandidaten')} ohne Angabe im gefilterten Feld behalten.`,
+  },
+
   // SubQueryDecompositionStage
   {
     name: 'DECOMPOSITION_PRODUCED',

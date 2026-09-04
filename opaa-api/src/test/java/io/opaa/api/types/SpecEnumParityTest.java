@@ -67,6 +67,7 @@ class SpecEnumParityTest {
         Arguments.of("PermissionSubjectType", PermissionSubjectType.values()),
         Arguments.of("MetadataOrigin", MetadataOrigin.values()),
         Arguments.of("DatePrecision", DatePrecision.values()),
+        Arguments.of("MetadataFilterMatch", MetadataFilterMatch.values()),
         Arguments.of("AuditActorKind", ActorKind.values()),
         Arguments.of("AuditSubjectKind", AuditSubjectKind.values()),
         Arguments.of("AuditOutcome", AuditOutcome.values()),

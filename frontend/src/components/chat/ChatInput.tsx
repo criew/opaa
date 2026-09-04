@@ -17,8 +17,14 @@ import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
 import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
+import {
+  metadataFilterScopeKey,
+  useMetadataFilterOptionsStore,
+} from '../../stores/metadataFilterOptionsStore'
 import { useSpaceStore } from '../../stores/spaceStore'
 import type { LibraryListResponse } from '../../types/api'
+import MetadataFilterPopover from './MetadataFilterPopover'
+import { dateChipLabel, withoutDateWindow, withoutDocumentTypes } from './metadataFilterText'
 
 interface ChatInputProps {
   onSend: (message: string) => void
@@ -83,6 +89,12 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
   const addReferencedLibrary = useChatStore((s) => s.addReferencedLibrary)
   const removeReferencedLibrary = useChatStore((s) => s.removeReferencedLibrary)
   const clearScope = useChatStore((s) => s.clearScope)
+  // #1070: the chat's sticky core-field filter, shown as removable chips next to the scope chips
+  // and set through the popover - never derived from the question.
+  const chatId = useChatStore((s) => s.chatId)
+  const metadataFilter = useChatStore((s) => s.metadataFilter)
+  const setMetadataFilter = useChatStore((s) => s.setMetadataFilter)
+  const filterOptions = useMetadataFilterOptionsStore((s) => s.options)
 
   const libraries = useLibraryStore((s) => s.libraries)
   const librariesLoading = useLibraryStore((s) => s.isLoading)
@@ -203,6 +215,47 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     referencedLibraryIds,
     scope,
   ])
+
+  // The scope the next question searches - the filter options are loaded for exactly this scope,
+  // resolved server-side with the query's own rules (chat first, otherwise useKnowledge/ids).
+  const filterScope = useMemo(
+    () => ({
+      chatId,
+      useKnowledge: scope === 'all',
+      libraryIds: scope === 'libraries' ? referencedLibraryIds : [],
+    }),
+    [chatId, referencedLibraryIds, scope],
+  )
+
+  // A chat loaded with a Dokumentart condition needs the labels before the popover was ever
+  // opened; loading the options for the current scope resolves them.
+  const filterOptionsScopeKey = useMetadataFilterOptionsStore((s) => s.optionsScopeKey)
+  const loadFilterOptions = useMetadataFilterOptionsStore((s) => s.loadOptions)
+  const filterScopeKey = metadataFilterScopeKey(filterScope)
+  const hasTypeFilter = (metadataFilter?.documentTypes ?? []).length > 0
+  useEffect(() => {
+    if (hasTypeFilter && filterOptionsScopeKey !== filterScopeKey) {
+      void loadFilterOptions(filterScope)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasTypeFilter, filterOptionsScopeKey, filterScopeKey])
+
+  const documentTypeChipLabel = useMemo(() => {
+    const codes = metadataFilter?.documentTypes ?? []
+    if (codes.length === 0) return undefined
+    const labels = codes.map(
+      (code) => filterOptions?.documentTypes.find((type) => type.code === code)?.label ?? code,
+    )
+    return `Dokumentart: ${labels.join(', ')}`
+  }, [filterOptions, metadataFilter])
+  const dateChip = metadataFilter ? dateChipLabel(metadataFilter) : undefined
+
+  const removeDocumentTypeFilter = () => {
+    if (metadataFilter) setMetadataFilter(withoutDocumentTypes(metadataFilter))
+  }
+  const removeDateFilter = () => {
+    if (metadataFilter) setMetadataFilter(withoutDateWindow(metadataFilter))
+  }
 
   const suggestions = useMemo((): MentionSuggestion[] => {
     if (mention === null) return []
@@ -400,6 +453,38 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
               onClick={disabled ? undefined : setScopeAll}
               disabled={disabled}
               aria-label="Wieder alles Wissen durchsuchen"
+            />
+          </>
+        )}
+        {scope !== 'none' && (
+          <>
+            {documentTypeChipLabel && (
+              <Chip
+                label={documentTypeChipLabel}
+                size="small"
+                variant="outlined"
+                color="secondary"
+                onDelete={disabled ? undefined : removeDocumentTypeFilter}
+                aria-label="Filter nach Dokumentart entfernen"
+                data-testid="metadata-filter-chip-document-type"
+              />
+            )}
+            {dateChip && (
+              <Chip
+                label={dateChip}
+                size="small"
+                variant="outlined"
+                color="secondary"
+                onDelete={disabled ? undefined : removeDateFilter}
+                aria-label="Filter nach Datum entfernen"
+                data-testid="metadata-filter-chip-document-date"
+              />
+            )}
+            <MetadataFilterPopover
+              scope={filterScope}
+              filter={metadataFilter}
+              onChange={setMetadataFilter}
+              disabled={disabled}
             />
           </>
         )}

@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
 /**
@@ -32,12 +33,16 @@ public class GroupMembershipResolver {
 
   private final GroupMembershipRepository membershipRepository;
   private final UserRepository userRepository;
+  private final ObjectProvider<GroupMembershipChangeListener> changeListeners;
   private final Cache<UUID, Set<UUID>> groupIdsByUser;
 
   public GroupMembershipResolver(
-      GroupMembershipRepository membershipRepository, UserRepository userRepository) {
+      GroupMembershipRepository membershipRepository,
+      UserRepository userRepository,
+      ObjectProvider<GroupMembershipChangeListener> changeListeners) {
     this.membershipRepository = membershipRepository;
     this.userRepository = userRepository;
+    this.changeListeners = changeListeners;
     // A stale entry only ever grants access a moment too long between a completed transaction's
     // invalidation and its next read, never too little - invalidateUser/invalidateUsers below,
     // called post-commit, are the primary correctness mechanism. The time-based expiry is a
@@ -85,11 +90,21 @@ public class GroupMembershipResolver {
     return belongsToOrganization ? Set.of(subject.id()) : Set.of();
   }
 
+  /**
+   * Evicts the user's cached groups and tells every {@link GroupMembershipChangeListener} - the one
+   * place a membership change reaches everything that depends on a person's rights.
+   */
   public void invalidateUser(UUID userId) {
     groupIdsByUser.invalidate(userId);
+    notifyListeners(Set.of(userId));
   }
 
   public void invalidateUsers(Collection<UUID> userIds) {
     groupIdsByUser.invalidateAll(userIds);
+    notifyListeners(userIds);
+  }
+
+  private void notifyListeners(Collection<UUID> userIds) {
+    changeListeners.orderedStream().forEach(listener -> listener.onMembershipChanged(userIds));
   }
 }

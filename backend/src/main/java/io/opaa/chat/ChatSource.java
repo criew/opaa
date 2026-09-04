@@ -1,6 +1,7 @@
 package io.opaa.chat;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
 import java.time.Instant;
 import java.util.List;
@@ -37,6 +38,7 @@ public final class ChatSource {
   private String mailSubject;
   private String mailDate;
   private List<ChatSourceMetadataEntry> metadata;
+  private MetadataFilterMatch metadataFilterMatch;
 
   public ChatSource() {}
 
@@ -115,6 +117,15 @@ public final class ChatSource {
    */
   public ChatSource metadata(List<ChatSourceMetadataEntry> metadata) {
     this.metadata = metadata;
+    return this;
+  }
+
+  /**
+   * #1070: how this document related to the active metadata filter - {@code NO_VALUE} marks a hit
+   * kept by the Leerwert rule ("ohne Angabe"); null without a filter or for a synthetic entry.
+   */
+  public ChatSource metadataFilterMatch(MetadataFilterMatch metadataFilterMatch) {
+    this.metadataFilterMatch = metadataFilterMatch;
     return this;
   }
 
@@ -249,5 +260,13 @@ public final class ChatSource {
 
   public void setMetadata(List<ChatSourceMetadataEntry> metadata) {
     this.metadata = metadata;
+  }
+
+  public MetadataFilterMatch getMetadataFilterMatch() {
+    return metadataFilterMatch;
+  }
+
+  public void setMetadataFilterMatch(MetadataFilterMatch metadataFilterMatch) {
+    this.metadataFilterMatch = metadataFilterMatch;
   }
 }
