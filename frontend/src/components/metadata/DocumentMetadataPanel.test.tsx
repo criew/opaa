@@ -37,6 +37,7 @@ const fields: DocumentMetadataFieldResponse[] = [
   {
     fieldKey: 'title',
     label: 'Titel',
+    state: 'SET',
     value: 'Dienstanweisung zur IT-Nutzung',
     displayValue: 'Dienstanweisung zur IT-Nutzung',
     origin: 'DETERMINISTIC',
@@ -45,13 +46,14 @@ const fields: DocumentMetadataFieldResponse[] = [
   {
     fieldKey: 'document_type',
     label: 'Dokumentart',
+    state: 'SET',
     value: 'DIENSTANWEISUNG',
     displayValue: 'Dienstanweisung',
     origin: 'DERIVED',
     confidence: 0.82,
     modelId: 'mock-model',
   },
-  { fieldKey: 'document_date', label: 'Datum/Stand' },
+  { fieldKey: 'document_date', label: 'Datum/Stand', state: 'EMPTY' },
 ]
 
 function metadataOf(items: DocumentMetadataFieldResponse[]): DocumentMetadataResponse {
@@ -90,6 +92,7 @@ describe('DocumentMetadataPanel', () => {
     mockSetDocumentMetadataValue.mockResolvedValue({
       fieldKey: 'document_type',
       label: 'Dokumentart',
+      state: 'SET',
       value: 'VERMERK',
       displayValue: 'Vermerk',
       origin: 'MANUAL',
@@ -185,5 +188,43 @@ describe('DocumentMetadataPanel', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
     expect(await within(dialog).findByText('Der Titel darf nicht leer sein')).toBeInTheDocument()
+  })
+
+  it('marks a field as "kein Wert ermittelbar" through the same dialog, without a value', async () => {
+    mockSetDocumentMetadataValue.mockResolvedValue({
+      fieldKey: 'document_date',
+      label: 'Datum/Stand',
+      state: 'NOT_DETERMINABLE',
+      origin: 'MANUAL',
+      actorDisplayName: 'Erika Muster',
+      updatedAt: '2026-09-04T10:00:00Z',
+    } satisfies DocumentMetadataFieldResponse)
+    renderWithProviders(
+      <DocumentMetadataPanel
+        libraryId="library-team"
+        documentId="doc-1"
+        fileName="dienstanweisung.pdf"
+        canEdit
+      />,
+    )
+    const user = userEvent.setup()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Datum/Stand von dienstanweisung.pdf bearbeiten' }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'Datum/Stand setzen' })
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Kein Wert ermittelbar' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() =>
+      expect(mockSetDocumentMetadataValue).toHaveBeenCalledWith(
+        'library-team',
+        'doc-1',
+        'document_date',
+        { state: 'NOT_DETERMINABLE' },
+      ),
+    )
+    const region = screen.getByRole('region', { name: 'Metadaten von dienstanweisung.pdf' })
+    expect(await within(region).findByText('– (kein Wert ermittelbar)')).toBeInTheDocument()
   })
 })

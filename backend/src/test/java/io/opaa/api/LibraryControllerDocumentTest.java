@@ -107,6 +107,7 @@ class LibraryControllerDocumentTest {
             eq(caller),
             eq("dienst"),
             any(),
+            isNull(),
             argThat(
                 (Pageable p) ->
                     p.getPageNumber() == 1
@@ -137,7 +138,8 @@ class LibraryControllerDocumentTest {
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
     var response = new LibraryDocumentPage(List.of(), 0, 20, 0L, List.of(), List.of(), folderId);
-    when(libraryService.listDocuments(eq(libraryId), eq(caller), isNull(), eq(folderId), any()))
+    when(libraryService.listDocuments(
+            eq(libraryId), eq(caller), isNull(), eq(folderId), isNull(), any()))
         .thenReturn(response);
 
     mockMvc
@@ -146,6 +148,23 @@ class LibraryControllerDocumentTest {
                 .param("folderId", folderId.toString())
                 .with(asTestUser()))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  void listingDocumentsPassesTheMaintenanceFilterToTheService() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    var response = new LibraryDocumentPage(List.of(), 0, 20, 3L, List.of(), List.of(), null);
+    when(libraryService.listDocuments(
+            eq(libraryId), eq(caller), isNull(), isNull(), eq("document_date"), any()))
+        .thenReturn(response);
+
+    mockMvc
+        .perform(
+            get("/api/v1/libraries/" + libraryId + "/documents")
+                .param("missingMetadataField", "document_date")
+                .with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements").value(3));
   }
 
   @Test

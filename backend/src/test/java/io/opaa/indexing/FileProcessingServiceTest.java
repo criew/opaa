@@ -25,8 +25,8 @@ import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryProperties;
 import io.opaa.library.LibraryStorageQuotaService;
-import io.opaa.library.UploadProperties;
 import io.opaa.observability.IndexingMetrics;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -328,8 +328,7 @@ class FileProcessingServiceTest {
     // regression that checked the full new size here would flip this test's result from
     // PROCESSED to QUOTA_EXCEEDED.
     LibraryStorageQuotaService realQuotaService =
-        new LibraryStorageQuotaService(
-            documentRepository, new UploadProperties(null, 0, null, 0, 1000));
+        new LibraryStorageQuotaService(documentRepository, new LibraryProperties(1000));
     FileProcessingService serviceWithRealQuota =
         new FileProcessingService(
             TestPipelineRegistries.fallbackOnly(documentService, chunkingService),

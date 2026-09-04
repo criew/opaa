@@ -34,7 +34,10 @@ final class MetadataBackfillResponseMapper {
               field.key(),
               field.label(),
               progress.filledDocumentsByField().get(field),
-              progress.filledShare(field)));
+              progress.filledShare(field),
+              progress.notDeterminableDocumentsByField().get(field),
+              progress.documentsWithoutValue(field),
+              progress.missingShare(field)));
     }
     return new MetadataBackfillStatusResponse(
         CoreMetadataExtractor.EXTRACTION_VERSION,

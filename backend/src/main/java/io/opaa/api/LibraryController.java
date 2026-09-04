@@ -151,6 +151,7 @@ public class LibraryController {
       @RequestParam(defaultValue = "20") int size,
       @RequestParam(required = false) String q,
       @RequestParam(required = false) UUID folderId,
+      @RequestParam(required = false) String missingMetadataField,
       @Caller CurrentUser caller) {
     // #517 code review, finding 2: the spec promises 1..100 - silently clamping an out-of-range
     // value would contradict that promise (size=500 quietly answering 100, size=0 quietly
@@ -170,7 +171,8 @@ public class LibraryController {
     Pageable pageable =
         PageRequest.of(page, size, Sort.by(Sort.Order.asc("fileName"), Sort.Order.asc("id")));
     return LibraryDocumentResponseMapper.toPageResponse(
-        libraryService.listDocuments(libraryId, caller, q, folderId, pageable));
+        libraryService.listDocuments(
+            libraryId, caller, q, folderId, missingMetadataField, pageable));
   }
 
   @PostMapping(value = "/{libraryId}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

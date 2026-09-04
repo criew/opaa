@@ -5,10 +5,12 @@ import io.opaa.api.dto.BulkMetadataValueResponse;
 import io.opaa.api.dto.DocumentMetadataFieldResponse;
 import io.opaa.api.dto.DocumentMetadataResponse;
 import io.opaa.api.dto.DocumentTypeVocabularyResponse;
+import io.opaa.api.dto.LibraryMetadataMaintenanceResponse;
 import io.opaa.api.dto.MetadataValueRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.metadata.DocumentMetadataCorrectionService;
+import io.opaa.indexing.metadata.LibraryMetadataMaintenanceService;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -23,17 +25,29 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Manual correction of a document's core metadata (#1068): read, set, delete and the
- * Sammelzuweisung, plus the Dokumentart vocabulary a client offers as choice list. Rights,
- * validation and audit live in {@link DocumentMetadataCorrectionService}.
+ * Sammelzuweisung, plus the Dokumentart vocabulary a client offers as choice list, and the
+ * Pflege-Anker of a library (#1069). Rights, validation and audit live in {@link
+ * DocumentMetadataCorrectionService} and {@link LibraryMetadataMaintenanceService}.
  */
 @RestController
 @RequestMapping("/api/v1")
 public class DocumentMetadataController {
 
   private final DocumentMetadataCorrectionService correctionService;
+  private final LibraryMetadataMaintenanceService maintenanceService;
 
-  public DocumentMetadataController(DocumentMetadataCorrectionService correctionService) {
+  public DocumentMetadataController(
+      DocumentMetadataCorrectionService correctionService,
+      LibraryMetadataMaintenanceService maintenanceService) {
     this.correctionService = correctionService;
+    this.maintenanceService = maintenanceService;
+  }
+
+  @GetMapping("/libraries/{libraryId}/metadata/maintenance")
+  public LibraryMetadataMaintenanceResponse getLibraryMetadataMaintenance(
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
+    return DocumentMetadataResponseMapper.toMaintenanceResponse(
+        maintenanceService.maintenanceOf(libraryId, caller));
   }
 
   @GetMapping("/libraries/{libraryId}/documents/{documentId}/metadata")
