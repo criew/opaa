@@ -167,6 +167,9 @@ public final class VariantReportWriter {
     if (overrides.fullTextSearchEnabled() != null) {
       parts.add("fullTextSearchEnabled=" + overrides.fullTextSearchEnabled());
     }
+    if (overrides.rerankCandidateCount() != null) {
+      parts.add("rerankCandidateCount=" + overrides.rerankCandidateCount());
+    }
     return parts.isEmpty() ? "keine Änderung" : String.join(", ", parts);
   }
 
