@@ -1,4 +1,7 @@
 import '@testing-library/jest-dom/vitest'
+// Must run before any request is made: it closes the jsdom gap that makes a `FormData` upload
+// carrying a `File` hang forever instead of completing (#1169).
+import './jsdom-blob-stream'
 import { beforeAll, afterEach, afterAll } from 'vitest'
 import { server } from '../mocks/server'
 import {
