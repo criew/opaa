@@ -1,5 +1,5 @@
 import { AxiosError } from 'axios'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,7 +9,7 @@ import LibraryDetailPage from './LibraryDetailPage'
 import { useAuthStore } from '../stores/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useDocumentStore } from '../stores/documentStore'
-import { useIndexingStore } from '../stores/indexingStore'
+import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import type {
   IndexingRunListResponse,
   IndexingStatusResponse,
@@ -273,6 +273,8 @@ describe('LibraryDetailPage', () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
     expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
   })
@@ -280,6 +282,8 @@ describe('LibraryDetailPage', () => {
   it('offers "Rechte verwalten" for a MANAGER but hides it for a VIEWER', async () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
     expect(await screen.findByRole('button', { name: /rechte verwalten/i })).toBeInTheDocument()
     unmount()
 
@@ -297,6 +301,8 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
     expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /bibliothek löschen/i })).toBeInTheDocument()
     expect(screen.getByText('administrativ')).toBeInTheDocument()
@@ -310,6 +316,7 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
+    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
     const nameField = await screen.findByLabelText(/name der bibliothek/i)
     await user.clear(nameField)
     await user.type(nameField, 'Rechtsquellen Soziales (neu)')
@@ -340,6 +347,7 @@ describe('LibraryDetailPage', () => {
     const user = userEvent.setup()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
 
+    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
     await user.click(await screen.findByRole('button', { name: /bibliothek löschen/i }))
 
     await waitFor(() => {
@@ -358,6 +366,7 @@ describe('LibraryDetailPage', () => {
     const user = userEvent.setup()
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
+    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
     await user.click(await screen.findByRole('button', { name: /bibliothek löschen/i }))
 
     await waitFor(() => {
@@ -531,17 +540,22 @@ describe('LibraryDetailPage', () => {
       detailsOf(ownerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
     expect(
       await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
     ).toBeInTheDocument()
     unmount()
 
+    // Since the tab layout, a VIEWER has no "Indizierung" area at all - no tab, no section, and
+    // therefore no edit affordance (#507 unchanged: the path never reaches the client).
     setLibraryState(
       viewerLibrary,
       detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    await screen.findByText(/quellkonfiguration/i)
+    await screen.findByText(/87 Dokumente/i)
+    expect(screen.queryByRole('tab', { name: 'Indizierung' })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
     ).not.toBeInTheDocument()
@@ -561,6 +575,8 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
     expect(
       await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
     ).toBeInTheDocument()
@@ -686,6 +702,8 @@ describe('LibraryDetailPage', () => {
       }),
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
     expect(await screen.findByTestId('confluence-webhook-section')).toHaveTextContent(
       /Webhook:.*eingerichtet/,
     )
@@ -739,24 +757,25 @@ describe('LibraryDetailPage', () => {
   // carries none of them. This test still passes sourcePath explicitly in the VIEWER case to
   // prove the frontend itself withholds the display rather than merely reflecting an already
   // absent field.
-  it('shows the source configuration detail for a MANAGER but hides it behind an info hint for a VIEWER', async () => {
+  it('shows the source configuration detail for a MANAGER but not at all for a VIEWER', async () => {
     setLibraryState(
       managerLibrary,
       detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     expect(await screen.findByText('/data/dokumente')).toBeInTheDocument()
-    expect(screen.queryByText(/verbindungsdaten sind nur für verwaltende/i)).not.toBeInTheDocument()
     unmount()
 
+    // Since the tab layout, a VIEWER has no source configuration area (and no hint about it) -
+    // #507 unchanged: the backend never serves the path to a VIEWER, and the page renders no
+    // placeholder for data that was never sent.
     setLibraryState(
       viewerLibrary,
       detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    expect(
-      await screen.findByText(/verbindungsdaten sind nur für verwaltende/i),
-    ).toBeInTheDocument()
+    await screen.findByText(/87 Dokumente/i)
+    expect(screen.queryByRole('tab', { name: 'Indizierung' })).not.toBeInTheDocument()
     expect(screen.queryByText('/data/dokumente')).not.toBeInTheDocument()
   })
 
@@ -769,6 +788,7 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
+    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
     await user.click(
       await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
     )
@@ -842,6 +862,7 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
+    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
     await user.click(await screen.findByRole('button', { name: /^zeitplan bearbeiten$/i }))
     await user.click(screen.getByRole('combobox', { name: /^zeitplan$/i }))
     await user.click(await screen.findByRole('option', { name: 'Stündlich' }))
@@ -887,6 +908,39 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByText(/feed-einträge/i)).not.toBeInTheDocument()
   })
 
+  it('reloads the document list once a run finishes, without a manual page reload', async () => {
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await screen.findByLabelText('Dokumente durchsuchen')
+    const initialLoads = mockGetLibraryDocuments.mock.calls.length
+
+    // The status polling flips the run to RUNNING and later to COMPLETED - the falling edge is
+    // what must re-fetch the currently shown view of the document list.
+    act(() => {
+      useIndexingStore.setState({
+        runsByLibrary: { [managerLibrary.id]: { ...IDLE_RUN_STATE, status: 'RUNNING' } },
+      })
+    })
+    act(() => {
+      useIndexingStore.setState({
+        runsByLibrary: {
+          [managerLibrary.id]: {
+            ...IDLE_RUN_STATE,
+            status: 'COMPLETED',
+            timestamp: '2026-09-04T10:00:00Z',
+          },
+        },
+      })
+    })
+
+    await waitFor(() => {
+      expect(mockGetLibraryDocuments.mock.calls.length).toBeGreaterThan(initialLoads)
+    })
+  })
+
   // #513: the run history section shows past runs' header data up front and reveals each run's
   // own protocol (category/message/reference per skipped or rejected item) only after expanding
   // it - collapsed by default, so a library with a long history does not dump every event onto
@@ -927,6 +981,7 @@ describe('LibraryDetailPage', () => {
       ),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await userEvent.setup().click(await screen.findByRole('tab', { name: 'Indizierung' }))
 
     expect(await screen.findByText(/letzte indizierungsläufe/i)).toBeInTheDocument()
     await screen.findByText(/10 verarbeitet, 2 übersprungen/i)
@@ -1136,7 +1191,7 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    await screen.findByText(/quellkonfiguration/i)
+    await screen.findByText(/87 Dokumente/i)
     expect(screen.queryByText(/letzte indizierungsläufe/i)).not.toBeInTheDocument()
   })
 
@@ -1147,7 +1202,7 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    expect(await screen.findByText(/quellkonfiguration/i)).toBeInTheDocument()
+    await screen.findByText(/87 Dokumente/i)
     expect(screen.queryByRole('button', { name: /jetzt indizieren/i })).not.toBeInTheDocument()
   })
 
@@ -1388,6 +1443,89 @@ describe('LibraryDetailPage', () => {
   // download endpoint is Bearer-authenticated - see utils/documentContent.test.ts for that piece's
   // own behaviour, mocked here (see the vi.mock above) to isolate which target this page picks.
   describe('"Original öffnen"', () => {
+    it('opens a Confluence document at its source URL instead of the content endpoint (ADR-0023)', async () => {
+      // The backend's content endpoint deliberately answers 404 for CONFLUENCE - a page has no
+      // original file of its own; its original IS the page in the instance.
+      setLibraryState(
+        managerLibrary,
+        detailsOf(managerLibrary, {
+          sourceType: 'CONFLUENCE',
+          sourceUrl: 'http://wiki.example',
+          confluenceEdition: 'DATA_CENTER',
+          confluenceSpaces: [{ key: 'IT', name: 'IT-Betrieb' }],
+        }),
+      )
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([
+          {
+            id: 'doc-conf',
+            fileName: 'Betriebshandbuch',
+            contentType: 'text/html',
+            fileSize: 512,
+            status: 'INDEXED',
+            sourceType: 'CONFLUENCE',
+            chunkCount: 2,
+            indexedAt: '2026-09-04T10:00:00Z',
+            uploadedByUserId: null,
+            sourceUrl: 'http://wiki.example/pages/viewpage.action?pageId=42',
+          },
+        ]),
+      )
+      const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await user.click(
+        await screen.findByRole('button', { name: 'Original von Betriebshandbuch öffnen' }),
+      )
+
+      expect(openSpy).toHaveBeenCalledWith(
+        'http://wiki.example/pages/viewpage.action?pageId=42',
+        '_blank',
+        'noopener,noreferrer',
+      )
+      expect(mockOpenDocumentContent).not.toHaveBeenCalled()
+      openSpy.mockRestore()
+    })
+
+    it("names a Confluence document's space and hierarchy path in its row (ADR-0023)", async () => {
+      setLibraryState(
+        managerLibrary,
+        detailsOf(managerLibrary, {
+          sourceType: 'CONFLUENCE',
+          sourceUrl: 'http://wiki.example',
+          confluenceEdition: 'DATA_CENTER',
+          confluenceSpaces: [{ key: 'IT', name: 'IT-Betrieb' }],
+        }),
+      )
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([
+          {
+            id: 'doc-conf-space',
+            fileName: 'Abschnitt 1.1 — Firewall-Regeln',
+            contentType: 'text/html',
+            fileSize: 512,
+            status: 'INDEXED',
+            sourceType: 'CONFLUENCE',
+            chunkCount: 2,
+            indexedAt: '2026-09-04T10:00:00Z',
+            uploadedByUserId: null,
+            sourceUrl: 'http://wiki.example/pages/viewpage.action?pageId=43',
+            sourceContainerKey: 'IT',
+            sourceHierarchyPath: 'Betriebshandbuch / Kapitel 1 — Netzwerkbetrieb',
+          },
+        ]),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      // The key resolves to the name the library's own selection carries.
+      expect(
+        await screen.findByText(
+          'Space: IT-Betrieb (IT) · Betriebshandbuch / Kapitel 1 — Netzwerkbetrieb',
+        ),
+      ).toBeInTheDocument()
+    })
+
     it('fetches and opens the file as a Blob for a local (UPLOAD/FILESYSTEM) document', async () => {
       mockGetLibraryDocuments.mockResolvedValueOnce(
         pageOf([
