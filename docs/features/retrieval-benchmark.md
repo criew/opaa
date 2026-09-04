@@ -564,6 +564,13 @@ Drei Milderungen, keine Lösungen:
 > 3 → 4. Reine Fixpunkt-Ergänzung ohne neuen Messlauf, weil der Eval-Korpus (Stand #1145)
 > ausschließlich aus Markdown besteht — nur `MarkdownDocumentPipeline` trägt zu den gemessenen Chunks
 > bei, der Abdruck listet aber alle registrierten Pipelines, nicht nur die vom Korpus genutzten.
+>
+> **Fortschreibung (Issue #1270, 09/2026):** Der Fixpunkt `fullTextBackfillComplete` heißt seither
+> `fullTextIndexComplete` (Pipeline-Messvertrag Version 6 → 7). Der Volltext-Nachzug und sein Tor
+> sind entfernt; gemessen wird weiterhin dasselbe: ob der Volltextindex der gemessenen Bibliothek
+> vollständig war — nur eben als Eigenschaft des Index, nicht als Zustand eines Nachzugs. Reine
+> Fixpunkt-Umbenennung ohne neuen Messlauf: Der Wert war und ist `true`, keine gemessene Zahl
+> verschiebt sich.
 
 
 Fünf Kategorien kommen hinzu. Jede hat ein benanntes Fehlerbild, eine überprüfbare Ground Truth und

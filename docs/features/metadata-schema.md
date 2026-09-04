@@ -1168,7 +1168,7 @@ Nachbefüllung. Jeder dieser Automatismen erzeugt Arbeit, die niemand beauftragt
 davon würde die Regel „lieber leer als geraten" untergraben, indem er zum Ausfüllen drängt, wo niemand
 den Wert kennt.
 
-Die Zahl ist derselbe Datentyp wie der Füllstand des Volltext-Backfills: **abfragbarer Zustand, kein
+Die Zahl ist derselbe Datentyp wie der Füllstand des Volltextindex: **abfragbarer Zustand, kein
 Logeintrag** — und gehört damit in dieselbe Zustandsübersicht wie dieser (siehe
 [Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)).
 

@@ -56,11 +56,10 @@ public record PipelineEvaluationReport(
    *
    * <p>Version 3 (issue #1049, ADR-0012 Nachtrag Volltextpfad): the lexical search path became an
    * input of the fusion and therefore moves the selection. Two new fixed points record it — {@code
-   * fullTextSearchEnabled} (the path's switch) and {@code fullTextBackfillComplete} (whether the
-   * measured library's full-text index was complete, i.e. whether the path could contribute at
-   * all). Without them a hybrid run and a vector-only run would carry the identical {@code
-   * runConfiguration} fingerprint and the difference between them would be booked against the
-   * committed baseline as a code change.
+   * fullTextSearchEnabled} (the path's switch) and the measured library's full-text index state
+   * (named {@code fullTextIndexComplete} since version 7). Without them a hybrid run and a
+   * vector-only run would carry the identical {@code runConfiguration} fingerprint and the
+   * difference between them would be booked against the committed baseline as a code change.
    *
    * <p>Version 4 (issue #1144, ADR-0012 Nachtrag): {@code ingestionPipelineFingerprint} became a
    * fixed point — see {@link IngestionPipelineFingerprint}'s Javadoc for what it records and why
@@ -75,8 +74,13 @@ public record PipelineEvaluationReport(
    * <p>Version 6 (issue #1183, ADR-0022): {@code MailDocumentPipeline#version()} moved 3 → 4 (an
    * attachment is now a separate, generalized-attachment-path {@code Document} instead of a chunk
    * nested under its Mail parent) - same collective-fingerprint reasoning as version 5 above.
+   *
+   * <p>Version 7 (issue #1270): the fixed point {@code fullTextBackfillComplete} is named {@code
+   * fullTextIndexComplete}. The full-text backfill and its per-library gate are gone; what is
+   * measured is unchanged - whether the measured library's full-text index was complete - so this
+   * is a pure fixed-point rename, no re-measurement (see eval/baseline/README.md).
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 6;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 7;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be
@@ -93,10 +97,10 @@ public record PipelineEvaluationReport(
    *     the fusion in this run (issue #1049). A measured dimension since that path moves the
    *     selection — a {@code vector-only} run would otherwise be indistinguishable from a hybrid
    *     one here and its numbers would be judged against the committed baseline as a code change.
-   * @param fullTextBackfillComplete whether the measured library's full-text backfill was complete,
-   *     i.e. whether the lexical path could contribute at all ({@code FullTextBackfillGate} keeps
-   *     an incomplete library out of it entirely). {@code true} with {@code fullTextSearchEnabled =
-   *     false} is not a contradiction: the index was ready, the path was switched off.
+   * @param fullTextIndexComplete whether every chunk of the measured library carried its full-text
+   *     row, i.e. whether the lexical path could contribute its full share - a chunk missing from
+   *     that index is invisible to it. {@code true} with {@code fullTextSearchEnabled = false} is
+   *     not a contradiction: the index was ready, the path was switched off.
    * @param searchScopeNote records that the harness measures a fixed, complete search scope and
    *     that permission filtering is not a measurement subject.
    * @param chatModel the chat model used for decomposition, or {@code null} when decomposition is
@@ -119,7 +123,7 @@ public record PipelineEvaluationReport(
       int maxChunksPerDocument,
       double mmrLambda,
       boolean fullTextSearchEnabled,
-      boolean fullTextBackfillComplete,
+      boolean fullTextIndexComplete,
       boolean queryDecompositionEnabled,
       int maxSubQueries,
       String chatModel,

@@ -632,7 +632,6 @@ export const mockSearchStatus: SearchStatusResponse = {
       fullTextIndexState: 'INCOMPLETE',
       fullTextIndexedChunks: 180,
       fullTextMissingChunks: 56,
-      fullTextSkippedChunks: 0,
       metadataBackfill: {
         extractionVersion: 1,
         totalDocuments: 11,
@@ -687,7 +686,6 @@ export const mockSearchStatus: SearchStatusResponse = {
       fullTextIndexState: 'INCOMPLETE',
       fullTextIndexedChunks: 29,
       fullTextMissingChunks: 1,
-      fullTextSkippedChunks: 0,
       metadataBackfill: {
         extractionVersion: 1,
         totalDocuments: 3,
@@ -739,10 +737,9 @@ export const mockSearchStatus: SearchStatusResponse = {
       vectorChunkCount: 48,
       lastIndexedAt: '2026-08-30T09:30:00Z',
       vectorIndexState: 'READY',
-      fullTextIndexState: 'INCOMPLETE',
-      fullTextIndexedChunks: 47,
+      fullTextIndexState: 'READY',
+      fullTextIndexedChunks: 48,
       fullTextMissingChunks: 0,
-      fullTextSkippedChunks: 1,
       metadataBackfill: {
         extractionVersion: 1,
         totalDocuments: 4,

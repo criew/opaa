@@ -115,7 +115,7 @@ class QueryServiceTest {
                 // the selection, not about how the selection is retrieved (see
                 // FullTextSearchStageTest).
                 new FullTextSearchStage(
-                    mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
+                    mock(FullTextChunkSearch.class), mock(FullTextIndexCompleteness.class)),
                 new MmrSelectionStage(chunkEmbeddingLookup),
                 new RankFusionStage(),
                 new RerankStage(disabledRerankRole()),
@@ -2343,15 +2343,12 @@ class QueryServiceTest {
   @Nested
   class RelevanceScoreAcrossSearchPaths {
 
-    private QueryService newHybridQueryService(
-        FullTextChunkSearch fullTextChunkSearch, FullTextBackfillGate backfillGate) {
-      return newHybridQueryService(fullTextChunkSearch, backfillGate, 1);
+    private QueryService newHybridQueryService(FullTextChunkSearch fullTextChunkSearch) {
+      return newHybridQueryService(fullTextChunkSearch, 1);
     }
 
     private QueryService newHybridQueryService(
-        FullTextChunkSearch fullTextChunkSearch,
-        FullTextBackfillGate backfillGate,
-        int maxChunksPerDocument) {
+        FullTextChunkSearch fullTextChunkSearch, int maxChunksPerDocument) {
       RetrievalPipeline pipeline =
           new QueryConfiguration()
               .retrievalPipeline(
@@ -2359,7 +2356,8 @@ class QueryServiceTest {
                   new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
                   new SubQueryDecompositionStage(queryDecompositionService),
                   new VectorSearchStage(vectorStore),
-                  new FullTextSearchStage(fullTextChunkSearch, backfillGate),
+                  new FullTextSearchStage(
+                      fullTextChunkSearch, mock(FullTextIndexCompleteness.class)),
                   new MmrSelectionStage(chunkEmbeddingLookup),
                   new RankFusionStage(),
                   new RerankStage(disabledRerankRole()),
@@ -2393,9 +2391,6 @@ class QueryServiceTest {
     void aLexicalOnlyChunkKeepsTheRelevanceScoreOfItsFusedRank() {
       when(chatMemory.get(any())).thenReturn(List.of());
       FullTextChunkSearch fullTextChunkSearch = mock(FullTextChunkSearch.class);
-      FullTextBackfillGate backfillGate = mock(FullTextBackfillGate.class);
-      when(backfillGate.searchableLibraries(Set.of(readableLibraryId)))
-          .thenReturn(Set.of(readableLibraryId));
       var vectorChunk =
           Document.builder()
               .text("vector hit")
@@ -2415,8 +2410,7 @@ class QueryServiceTest {
       when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
       QueryResult response =
-          newHybridQueryService(fullTextChunkSearch, backfillGate)
-              .query("Frage", null, caller, true, List.of());
+          newHybridQueryService(fullTextChunkSearch).query("Frage", null, caller, true, List.of());
 
       assertThat(response.getSources())
           .extracting(ChatSource::getFileName, ChatSource::getRelevanceScore)
@@ -2432,9 +2426,6 @@ class QueryServiceTest {
     void ranksSourcesByTheirOwnPositionWhenOneDocumentContributesSeveralChunks() {
       when(chatMemory.get(any())).thenReturn(List.of());
       FullTextChunkSearch fullTextChunkSearch = mock(FullTextChunkSearch.class);
-      FullTextBackfillGate backfillGate = mock(FullTextBackfillGate.class);
-      when(backfillGate.searchableLibraries(Set.of(readableLibraryId)))
-          .thenReturn(Set.of(readableLibraryId));
       var firstChunkOfA = chunkOf("a.md", "doc-a", "A, erster Abschnitt", 0.9);
       var secondChunkOfA = chunkOf("a.md", "doc-a", "A, zweiter Abschnitt", 0.85);
       var chunkOfB = chunkOf("b.md", "doc-b", "B, einziger Abschnitt", 0.8);
@@ -2445,7 +2436,7 @@ class QueryServiceTest {
       when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
       QueryResult response =
-          newHybridQueryService(fullTextChunkSearch, backfillGate, 2)
+          newHybridQueryService(fullTextChunkSearch, 2)
               .query("Frage", null, caller, true, List.of());
 
       assertThat(response.getSources())

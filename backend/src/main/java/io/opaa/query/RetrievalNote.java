@@ -39,14 +39,11 @@ enum RetrievalNote {
   SIMILARITY_THRESHOLD("similarity threshold %s, applied in-query"),
 
   LEXICAL_PATH_DISABLED("lexical search path switched off (%s)"),
-  NO_FULL_TEXT_BACKFILL("no library of the search scope has a completed full-text backfill"),
-  FULL_TEXT_BACKFILL_PENDING(
-      "the lexical path stays out of the fusion until a library's backfill is complete"),
   LEXICAL_SEARCH_FAILED("lexical search failed for %s: %s"),
   FULL_TEXT_SEARCH_LISTS("full-text search, %d list(s)"),
   FULL_TEXT_PERMISSION_FILTER(
-      "permission filter applied inside the query: %d of %d scoped libraries searched, the rest"
-          + " awaiting their backfill"),
+      "permission filter applied inside the query: %d scoped libraries searched, %d of them with an"
+          + " incomplete full-text index"),
 
   PER_LIST_BUDGET("per-list budget %d"),
   MMR_LAMBDA_INACTIVE("mmr-lambda %s (diversity term inactive: plain top-k by relevance)"),

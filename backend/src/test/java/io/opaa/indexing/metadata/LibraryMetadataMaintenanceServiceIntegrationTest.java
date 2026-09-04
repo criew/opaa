@@ -81,7 +81,7 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
 
   @BeforeEach
   void setUp() throws IOException {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text, chunk_full_text_skip");
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
     jdbcTemplate.update("DELETE FROM documents");
     jdbcTemplate.update("DELETE FROM asset_grants");
     jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE name LIKE 'Anker%'");

@@ -23,12 +23,10 @@ public class FullTextChunkStore {
   /**
    * The PostgreSQL text-search configuration every {@code content_tsv} value is built with (docs/
    * features/hybrid-retrieval.md, "Arbeitspaket 2: Der lexikalische Suchpfad" - German stemming and
-   * stopwords). {@link FullTextBackfillService} uses the same constant, so a backfilled chunk's
-   * {@code content_tsv} is byte-identical to one written on the ingest path. Public so the lexical
-   * search path ({@code io.opaa.query.FullTextChunkSearch}) builds a matching {@code
-   * to_tsquery(TEXT_SEARCH_CONFIGURATION, ...)} call instead of hardcoding {@code "german"}
-   * independently - a second, drifting copy of this value is exactly the kind of mismatch that
-   * would silently break matching.
+   * stopwords). Public so the lexical search path ({@code io.opaa.query.FullTextChunkSearch})
+   * builds a matching {@code to_tsquery(TEXT_SEARCH_CONFIGURATION, ...)} call instead of hardcoding
+   * {@code "german"} independently - a second, drifting copy of this value is exactly the kind of
+   * mismatch that would silently break matching.
    *
    * <p>No compound splitting is layered on top of it, deliberately: the specification makes that an
    * outcome of the benchmark's {@code compound_word} segment, not a precaution taken in advance.
@@ -47,20 +45,20 @@ public class FullTextChunkStore {
 
   /**
    * The {@code content_tsv_version} every row written by {@link #indexChunks} carries. <b>Raise it
-   * whenever the lexemes this class stores change</b> - version 2 added the undecomposed identifier
-   * lexemes of {@link FullTextIdentifiers} alongside the German analysis chain's output, version 3
-   * widened that class's pattern list (keyword-free file numbers, paragraph enumerations). A row
-   * written under an older version carries different lexemes and would silently miss the queries
-   * the new ones answer, so {@link FullTextBackfillService#backfillBatch} treats it exactly like a
-   * missing row - the version scaffolding #1047 put in place for this. Nothing else has to happen
-   * for existing rows to be brought up to date: {@link FullTextBackfillScheduler} re-checks the
-   * backlog after every process restart, which a deployment carrying a new value of this constant
-   * necessarily is. Version 4 (#1130 Befund 1) added the undecomposed email-address lexeme - the
-   * first bump to actually reach a running bestand, and therefore the first to also exercise a side
-   * effect of #1093's poison-chunk isolation: raising this constant does not just re-queue ordinary
-   * rows, it also makes an already-confirmed {@code chunk_full_text_skip} row retryable again,
-   * since that table's own {@code content_tsv_version} column no longer matches (see {@code
-   * recordOrIncrementSkip}'s own Javadoc, and docs/features/hybrid-retrieval.md, "Offene Punkte").
+   * whenever the lexemes this class stores change</b> - a row written under an older version
+   * carries different lexemes and would silently answer the new queries wrongly. Rows at an older
+   * version are consequently invisible to the lexical search path and counted as missing by {@link
+   * FullTextIndexFillStateService}, which is what makes the gap a visible operational state on the
+   * administration page.
+   *
+   * <p><b>Since #1270 a bump is not repaired by any background job.</b> The one path that brings
+   * existing rows up to the new version is the pipeline re-index ({@link
+   * PipelineReindexService#reindexBatch}, driven by the admin endpoint): it selects a chunk whose
+   * row is missing or below this version regardless of pipeline version. That path re-parses,
+   * re-chunks and re-embeds the document, which the removed backfill did not - the accepted price
+   * of having no second write path for {@code content_tsv} (docs/features/hybrid-retrieval.md,
+   * "Arbeitspaket 2a"). Until it has run, the affected chunks are invisible to the lexical search
+   * path and the library reads {@code INCOMPLETE} on the administration page.
    *
    * <p>Public for the same reason {@link #TEXT_SEARCH_CONFIGURATION} is: the lexical search path
    * ({@code io.opaa.query.FullTextChunkSearch}) must restrict its query to rows built under this
@@ -99,12 +97,9 @@ public class FullTextChunkStore {
    * idempotent while still updating a row that already exists at an older {@link
    * #CURRENT_TSV_VERSION}: a chunk id already present here at the current version is overwritten
    * with the same values (a genuine no-op), and one present at an older version is brought up to
-   * date. {@code DO NOTHING} would have been wrong here: {@link
-   * FullTextBackfillService#backfillBatch} selects rows whose {@code content_tsv_version} does not
-   * match {@link #CURRENT_TSV_VERSION} - and that constant does get raised, so {@code DO NOTHING}
-   * would make every such row permanently unreachable: selected again on every tick, written
-   * nowhere, forever reported as {@code processed}, and {@link FullTextBackfillScheduler} would
-   * never see an empty batch to go dormant on. Mirrors the vector upsert {@link
+   * date. {@code DO NOTHING} would have been wrong here: after a raised {@link
+   * #CURRENT_TSV_VERSION} it would leave a stale row in place while reporting success, so a reindex
+   * would never actually bring the row up to the current version. Mirrors the vector upsert {@link
    * VectorStoreWriter#writeEmbeddedChunks} already performs on an {@code id} conflict.
    */
   void indexChunks(List<org.springframework.ai.document.Document> chunks) {
@@ -140,107 +135,19 @@ public class FullTextChunkStore {
   }
 
   /**
-   * Deletes any {@code chunk_full_text_skip} row for {@code chunkIds} - called only by {@link
-   * FullTextBackfillService} after a successful {@link #indexChunks}, never from the regular ingest
-   * path ({@code VectorStoreWriter#writeEmbeddedChunks}): an ingest-path chunk id is freshly
-   * generated on every write, so a skip row for it can never exist, and the delete would be a
-   * guaranteed no-op there. On the backfill path, a chunk that just indexed successfully is - by
-   * definition - no longer a skip candidate: a stale row left over from an earlier, since-healed
-   * attempt would otherwise keep inflating {@link FullTextBackfillProgress#skippedChunks} forever
-   * for a chunk that is, in truth, fully indexed now.
-   */
-  void clearSkipRows(List<UUID> chunkIds) {
-    if (chunkIds.isEmpty()) {
-      return;
-    }
-    jdbcTemplate.update(
-        "DELETE FROM chunk_full_text_skip WHERE chunk_id = ANY (?)",
-        ps -> ps.setArray(1, ps.getConnection().createArrayOf("uuid", chunkIds.toArray())));
-  }
-
-  /**
-   * Records one more failed attempt at indexing {@code chunkId} at {@link #CURRENT_TSV_VERSION}
-   * after {@link FullTextBackfillService} isolated it as the one row a batch cannot get past, and
-   * returns the resulting attempt count. {@code ON CONFLICT (chunk_id) DO UPDATE} increments {@code
-   * attempts} when the previous row is at the same version (a repeated failure of the same chunk)
-   * and resets it to 1 when it is not (a version bump, or the row's first failure); {@link
-   * #clearSkipRows} resets it further by removing the row outright on a later success. The caller
-   * only excludes a chunk from further selection once {@code attempts} reaches its confirmation
-   * threshold, so a failure that heals within a couple of ticks is simply retried again.
-   */
-  int recordOrIncrementSkip(
-      UUID chunkId, UUID documentId, UUID libraryId, String errorMessage, String sqlState) {
-    return jdbcTemplate.queryForObject(
-        "INSERT INTO chunk_full_text_skip (chunk_id, document_id, library_id, "
-            + "content_tsv_version, error_message, sqlstate, attempts, skipped_at) "
-            + "VALUES (?, ?, ?, ?, ?, ?, 1, now()) "
-            + "ON CONFLICT (chunk_id) DO UPDATE SET "
-            + "attempts = CASE WHEN chunk_full_text_skip.content_tsv_version = EXCLUDED.content_tsv_version "
-            + "THEN chunk_full_text_skip.attempts + 1 ELSE 1 END, "
-            + "content_tsv_version = EXCLUDED.content_tsv_version, "
-            + "error_message = EXCLUDED.error_message, "
-            + "sqlstate = EXCLUDED.sqlstate, "
-            + "skipped_at = EXCLUDED.skipped_at "
-            + "RETURNING attempts",
-        Integer.class,
-        chunkId,
-        documentId,
-        libraryId,
-        CURRENT_TSV_VERSION,
-        errorMessage,
-        sqlState);
-  }
-
-  /**
-   * Records {@code chunkId} as an immediately, permanently skipped chunk - {@code attempts} is
-   * written as {@link FullTextBackfillService#SKIP_CONFIRMATION_ATTEMPTS} directly rather than
-   * incremented, since the caller ({@link FullTextBackfillService}, for a chunk whose {@code
-   * document_id} metadata is not a well-formed UUID) already knows the defect is structural and
-   * will not heal by retrying. {@code documentId} is nullable for exactly that case - the malformed
-   * value itself is not a {@link UUID} this column could hold.
-   */
-  void recordConfirmedSkip(
-      UUID chunkId, UUID documentId, UUID libraryId, String errorMessage, int attempts) {
-    jdbcTemplate.update(
-        "INSERT INTO chunk_full_text_skip (chunk_id, document_id, library_id, "
-            + "content_tsv_version, error_message, attempts, skipped_at) "
-            + "VALUES (?, ?, ?, ?, ?, ?, now()) "
-            + "ON CONFLICT (chunk_id) DO UPDATE SET "
-            + "document_id = EXCLUDED.document_id, "
-            + "content_tsv_version = EXCLUDED.content_tsv_version, "
-            + "error_message = EXCLUDED.error_message, "
-            + "attempts = EXCLUDED.attempts, "
-            + "skipped_at = EXCLUDED.skipped_at",
-        chunkId,
-        documentId,
-        libraryId,
-        CURRENT_TSV_VERSION,
-        errorMessage,
-        attempts);
-  }
-
-  /**
-   * Deletes every {@code chunk_full_text} and {@code chunk_full_text_skip} row for {@code
-   * documentId} - mirrors {@link VectorChunkStore#deleteByDocumentId}. Clearing {@code
-   * chunk_full_text_skip} too keeps the invariant {@code VectorChunkStore}'s own Javadoc already
-   * states for {@code chunk_full_text} - "a full-text row can never outlive the vector chunk it
-   * belongs to" - true for this table as well: without it, an operator who deletes and re-indexes a
-   * document to fix a poison chunk would find {@link
-   * io.opaa.indexing.FullTextBackfillProgress#skippedChunks} permanently stuck at its old count,
-   * since the replacement chunk gets a fresh id the skip row never matches.
+   * Deletes every {@code chunk_full_text} row for {@code documentId} - mirrors {@link
+   * VectorChunkStore#deleteByDocumentId}, which is what keeps that class's stated invariant true: a
+   * full-text row can never outlive the vector chunk it belongs to.
    */
   void deleteByDocumentId(UUID documentId) {
     jdbcTemplate.update("DELETE FROM chunk_full_text WHERE document_id = ?", documentId);
-    jdbcTemplate.update("DELETE FROM chunk_full_text_skip WHERE document_id = ?", documentId);
   }
 
   /**
-   * Deletes every {@code chunk_full_text} and {@code chunk_full_text_skip} row for {@code
-   * libraryId} - mirrors {@link VectorChunkStore#deleteByLibraryId}; see {@link
-   * #deleteByDocumentId} for why the skip table is cleared symmetrically here too.
+   * Deletes every {@code chunk_full_text} row for {@code libraryId} - mirrors {@link
+   * VectorChunkStore#deleteByLibraryId}.
    */
   void deleteByLibraryId(UUID libraryId) {
     jdbcTemplate.update("DELETE FROM chunk_full_text WHERE library_id = ?", libraryId);
-    jdbcTemplate.update("DELETE FROM chunk_full_text_skip WHERE library_id = ?", libraryId);
   }
 }

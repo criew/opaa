@@ -21,9 +21,8 @@ import org.springframework.ai.document.Document;
 
 /**
  * The lexical search stage's contract (#1048/#1049, docs/features/hybrid-retrieval.md, Arbeitspaket
- * 2 and 3): it searches only what the permission scope and the backfill gate allow, it records
- * everything it found in the explanation protocol, and it hands its lists on as further inputs of
- * the fusion.
+ * 2 and 3): it searches only what the permission scope allows, it records everything it found in
+ * the explanation protocol, and it hands its lists on as further inputs of the fusion.
  *
  * <p>The query itself is not mocked away here in the sense that matters: whether the permission
  * filter is part of the SQL rather than applied to its result is asserted against a real database
@@ -32,18 +31,18 @@ import org.springframework.ai.document.Document;
  */
 class FullTextSearchStageTest {
 
-  private static final UUID COMPLETE_LIBRARY = UUID.randomUUID();
-  private static final UUID BACKFILLING_LIBRARY = UUID.randomUUID();
+  private static final UUID SCOPED_LIBRARY = UUID.randomUUID();
+  private static final UUID SECOND_LIBRARY = UUID.randomUUID();
   private static final QueryProperties PROPERTIES =
       new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, true, 50);
   private static final QueryProperties LEXICAL_PATH_OFF =
       new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
 
   private final FullTextChunkSearch search = mock(FullTextChunkSearch.class);
-  private final FullTextBackfillGate gate = mock(FullTextBackfillGate.class);
+  private final FullTextIndexCompleteness indexCompleteness = mock(FullTextIndexCompleteness.class);
 
   private FullTextSearchStage stage() {
-    return new FullTextSearchStage(search, gate);
+    return new FullTextSearchStage(search, indexCompleteness);
   }
 
   private static RetrievalContext context(Set<UUID> searchScope) {
@@ -79,21 +78,20 @@ class FullTextSearchStageTest {
   @Test
   void refusesToRunWithoutAPermissionFilter() {
     assertThatThrownBy(
-            () -> stage().apply(context(Set.of(COMPLETE_LIBRARY)), RetrievalState.initial()))
+            () -> stage().apply(context(Set.of(SCOPED_LIBRARY)), RetrievalState.initial()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("ADR-0008");
-    verifyNoInteractions(search, gate);
+    verifyNoInteractions(search);
   }
 
   /**
-   * The gate narrows the searched libraries to those whose backfill finished - and it narrows the
-   * <em>permission</em> scope, never widens it: a library outside the scope can never reach the
-   * query, because the gate is only ever asked about libraries the scope already contains.
+   * Exactly the permission scope reaches the query - no library beyond it (ADR-0008 §5) and, since
+   * #1270, none of it held back either: the full-text row is written with the vector row, so there
+   * is no scoped library the lexical path has to leave out.
    */
   @Test
-  void searchesOnlyLibrariesWhoseBackfillIsComplete() {
-    Set<UUID> scope = Set.of(COMPLETE_LIBRARY, BACKFILLING_LIBRARY);
-    when(gate.searchableLibraries(scope)).thenReturn(Set.of(COMPLETE_LIBRARY));
+  void searchesExactlyThePermissionScope() {
+    Set<UUID> scope = Set.of(SCOPED_LIBRARY, SECOND_LIBRARY);
     when(search.search(anyString(), any(), any(), anyInt())).thenReturn(List.of(chunk("a")));
 
     StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
@@ -101,32 +99,41 @@ class FullTextSearchStageTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<UUID>> libraries = ArgumentCaptor.forClass(Set.class);
     verify(search).search(anyString(), libraries.capture(), any(), anyInt());
-    assertThat(libraries.getValue()).containsExactly(COMPLETE_LIBRARY);
+    assertThat(libraries.getValue()).containsExactlyInAnyOrder(SCOPED_LIBRARY, SECOND_LIBRARY);
     assertThat(outcome.explanation().notes())
-        .anySatisfy(note -> assertThat(note).contains("1 of 2 scoped libraries"));
+        .anySatisfy(note -> assertThat(note).contains("2 scoped libraries"));
   }
 
-  /** No completed library means no query at all, and a protocol entry saying exactly why. */
+  /**
+   * #1270: a library whose full-text index is incomplete is searched anyway - the completion gate
+   * is gone - but the run says so, so a partially filled list never reaches the fusion silently.
+   */
   @Test
-  void skipsTheQueryEntirelyWhileNoLibraryIsBackfilled() {
-    Set<UUID> scope = Set.of(BACKFILLING_LIBRARY);
-    when(gate.searchableLibraries(scope)).thenReturn(Set.of());
+  void searchesAnIncompletelyIndexedLibraryAndRecordsThatItIsIncomplete() {
+    Set<UUID> scope = Set.of(SCOPED_LIBRARY, SECOND_LIBRARY);
+    when(indexCompleteness.incompleteLibraryCount(scope)).thenReturn(1L);
+    when(search.search(anyString(), any(), any(), anyInt())).thenReturn(List.of(chunk("a")));
 
     StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
 
-    verifyNoInteractions(search);
-    assertThat(outcome.explanation().verdicts()).isEmpty();
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Set<UUID>> libraries = ArgumentCaptor.forClass(Set.class);
+    verify(search).search(anyString(), libraries.capture(), any(), anyInt());
+    assertThat(libraries.getValue()).containsExactlyInAnyOrder(SCOPED_LIBRARY, SECOND_LIBRARY);
     assertThat(outcome.explanation().notes())
-        .anySatisfy(note -> assertThat(note).contains("completed full-text backfill"));
+        .anySatisfy(
+            note ->
+                assertThat(note)
+                    .contains("2 scoped libraries searched, 1 of them with an incomplete"));
   }
 
   @Test
   void switchedOffPropertySkipsTheQueryAndSaysSoInTheProtocol() {
-    Set<UUID> scope = Set.of(COMPLETE_LIBRARY);
+    Set<UUID> scope = Set.of(SCOPED_LIBRARY);
 
     StageOutcome outcome = stage().apply(context(scope, LEXICAL_PATH_OFF), scopedState(scope));
 
-    verifyNoInteractions(search, gate);
+    verifyNoInteractions(search);
     assertThat(outcome.explanation().status()).isEqualTo(StageStatus.EXECUTED);
     assertThat(outcome.explanation().notes())
         .anySatisfy(note -> assertThat(note).contains("switched off"));
@@ -135,8 +142,7 @@ class FullTextSearchStageTest {
   /** One list per search query, each capped at {@code fetch-k}, each labelled as its own path. */
   @Test
   void runsOneQueryPerSearchQueryAndRecordsEveryCandidate() {
-    Set<UUID> scope = Set.of(COMPLETE_LIBRARY);
-    when(gate.searchableLibraries(scope)).thenReturn(scope);
+    Set<UUID> scope = Set.of(SCOPED_LIBRARY);
     when(search.search(anyString(), any(), any(), anyInt()))
         .thenReturn(List.of(chunk("a"), chunk("b")))
         .thenReturn(List.of(chunk("c")));
@@ -176,8 +182,7 @@ class FullTextSearchStageTest {
    */
   @Test
   void searchesTheBareQuestionWhenNoSearchQueriesWereBuiltAndRecordsIt() {
-    Set<UUID> scope = Set.of(COMPLETE_LIBRARY);
-    when(gate.searchableLibraries(scope)).thenReturn(scope);
+    Set<UUID> scope = Set.of(SCOPED_LIBRARY);
     when(search.search(anyString(), any(), any(), anyInt())).thenReturn(List.of());
     RetrievalState state =
         RetrievalState.initial().withLibraryFilter(SearchScopeStage.libraryFilter(scope));
@@ -192,8 +197,7 @@ class FullTextSearchStageTest {
   /** Queries an earlier stage built are the ones searched and are not overwritten. */
   @Test
   void keepsTheSearchQueriesAnEarlierStageBuilt() {
-    Set<UUID> scope = Set.of(COMPLETE_LIBRARY);
-    when(gate.searchableLibraries(scope)).thenReturn(scope);
+    Set<UUID> scope = Set.of(SCOPED_LIBRARY);
     when(search.search(anyString(), any(), any(), anyInt())).thenReturn(List.of());
 
     StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
@@ -208,8 +212,7 @@ class FullTextSearchStageTest {
    */
   @Test
   void handsItsListsOnNextToTheVectorPathsAndExtendsThePool() {
-    Set<UUID> scope = Set.of(COMPLETE_LIBRARY);
-    when(gate.searchableLibraries(scope)).thenReturn(scope);
+    Set<UUID> scope = Set.of(SCOPED_LIBRARY);
     when(search.search(anyString(), any(), any(), anyInt()))
         .thenReturn(List.of(chunk("lexical-only")));
     RetrievalState before =
@@ -239,7 +242,7 @@ class FullTextSearchStageTest {
    */
   @Test
   void switchedOffPathLeavesTheStateUntouched() {
-    Set<UUID> scope = Set.of(COMPLETE_LIBRARY);
+    Set<UUID> scope = Set.of(SCOPED_LIBRARY);
     RetrievalState before =
         scopedState(scope)
             .withSearchResults(
@@ -249,7 +252,7 @@ class FullTextSearchStageTest {
     StageOutcome outcome = stage().apply(context(scope, LEXICAL_PATH_OFF), before);
 
     assertThat(outcome.state()).isSameAs(before);
-    verifyNoInteractions(search, gate);
+    verifyNoInteractions(search);
   }
 
   /**
@@ -259,8 +262,7 @@ class FullTextSearchStageTest {
    */
   @Test
   void aFailedListIsOmittedWhileTheRemainingOnesStillReachTheFusion() {
-    Set<UUID> scope = Set.of(COMPLETE_LIBRARY);
-    when(gate.searchableLibraries(scope)).thenReturn(scope);
+    Set<UUID> scope = Set.of(SCOPED_LIBRARY);
     when(search.search(anyString(), any(), any(), anyInt()))
         .thenThrow(new IllegalStateException("relation chunk_full_text does not exist"))
         .thenReturn(List.of(chunk("second-list-hit")));
@@ -288,8 +290,7 @@ class FullTextSearchStageTest {
    */
   @Test
   void aFailingQueryDegradesThePathInsteadOfFailingTheRun() {
-    Set<UUID> scope = Set.of(COMPLETE_LIBRARY);
-    when(gate.searchableLibraries(scope)).thenReturn(scope);
+    Set<UUID> scope = Set.of(SCOPED_LIBRARY);
     when(search.search(anyString(), any(), any(), anyInt()))
         .thenThrow(new IllegalStateException("relation chunk_full_text does not exist"));
 

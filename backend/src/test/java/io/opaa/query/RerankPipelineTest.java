@@ -61,7 +61,7 @@ class RerankPipelineTest {
             // The lexical path is switched off in every QueryProperties here: this class is about
             // what happens to the fused list afterwards, not about how it was retrieved.
             new FullTextSearchStage(
-                mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
+                mock(FullTextChunkSearch.class), mock(FullTextIndexCompleteness.class)),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(rerankModelRole),

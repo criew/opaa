@@ -2,7 +2,7 @@ package io.opaa.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.FullTextBackfillService;
+import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.List;
@@ -12,8 +12,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The lexical search path against a real PostgreSQL (#1048, docs/features/hybrid-retrieval.md,
@@ -23,23 +23,16 @@ import org.springframework.beans.factory.annotation.Autowired;
  * einem Test abgesichert, der ihn tatsächlich ausführt. Ein Test, der den Volltextpfad mockt, prüft
  * den Filter nicht").
  *
- * <p>Chunks are written via {@link VectorStore#add} and then indexed by {@link
- * FullTextBackfillService}, which uses the same {@code FullTextChunkStore#indexChunks} the ingest
- * path uses - so what is searched here is byte-identical to what production stores.
- *
- * <p>{@link FullTextBackfillService#backfillBatch} selects its pending backlog across every
- * library, with no {@code library_id} filter - each call here relies on every sibling class in this
- * shared {@code @OpaaIndexingIntegrationTest} context cleaning up its own chunks (#1197), or a
- * leftover, unrelated chunk could consume this class's {@code backfillBatch(100)} budget before its
- * own seeded chunks are indexed.
+ * <p>Chunks are written through {@link VectorChunkStore#addChunks} - the production write path,
+ * which fills {@code vector_store} and {@code chunk_full_text} in one transaction - so what is
+ * searched here is byte-identical to what production stores.
  */
 @OpaaIndexingIntegrationTest
 class FullTextChunkSearchIntegrationTest {
 
-  @Autowired private VectorStore vectorStore;
   @Autowired private VectorChunkStore vectorChunkStore;
-  @Autowired private FullTextBackfillService backfillService;
   @Autowired private FullTextChunkSearch fullTextChunkSearch;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   private final UUID readableLibrary = UUID.randomUUID();
   private final UUID forbiddenLibrary = UUID.randomUUID();
@@ -49,6 +42,26 @@ class FullTextChunkSearchIntegrationTest {
   void tearDown() {
     vectorChunkStore.deleteByLibraryId(readableLibrary);
     vectorChunkStore.deleteByLibraryId(forbiddenLibrary);
+  }
+
+  /**
+   * A row built under an older {@link io.opaa.indexing.FullTextChunkStore#CURRENT_TSV_VERSION}
+   * carries lexemes of a different analysis chain and must not answer a query built with the
+   * current one - it is invisible to this path until a re-index rewrites it (#1270).
+   */
+  @Test
+  void aRowBelowTheCurrentTsvVersionIsNotFound() {
+    UUID current = seed(readableLibrary, "Die Gebührenbefreiung ist auf Antrag zu gewähren.");
+    UUID stale = seed(readableLibrary, "Gebührenbefreiung im Einzelfall nach Aktenlage.");
+    jdbcTemplate.update(
+        "UPDATE chunk_full_text SET content_tsv_version = ? WHERE chunk_id = ?",
+        (short) (FullTextChunkStore.CURRENT_TSV_VERSION - 1),
+        stale);
+
+    List<Document> hits =
+        fullTextChunkSearch.search("Gebührenbefreiung", Set.of(readableLibrary), 25);
+
+    assertThat(hits).extracting(Document::getId).containsExactly(current.toString());
   }
 
   /**
@@ -63,7 +76,6 @@ class FullTextChunkSearchIntegrationTest {
         forbiddenLibrary,
         "Gebührenbefreiung wegen Bedürftigkeit: Gebührenbefreiung nach Antrag, Gebührenbefreiung"
             + " im Einzelfall.");
-    backfillService.backfillBatch(100);
 
     List<Document> hits =
         fullTextChunkSearch.search("Gebührenbefreiung", Set.of(readableLibrary), 25);
@@ -75,7 +87,6 @@ class FullTextChunkSearchIntegrationTest {
   @Test
   void anEmptyReadableSetReturnsNothing() {
     seed(readableLibrary, "Die Gebührenbefreiung ist auf Antrag zu gewähren.");
-    backfillService.backfillBatch(100);
 
     assertThat(fullTextChunkSearch.search("Gebührenbefreiung", Set.of(), 25)).isEmpty();
   }
@@ -97,7 +108,6 @@ class FullTextChunkSearchIntegrationTest {
             "Vorhaben und wieder Vorhaben: das BauGB regelt Vorhaben im Außenbereich, Vorhaben im"
                 + " Außenbereich werden geprüft, und die Frist für Vorhaben beträgt 35 Werktage im"
                 + " Außenbereich.");
-    backfillService.backfillBatch(100);
 
     List<Document> hits =
         fullTextChunkSearch.search(
@@ -123,7 +133,6 @@ class FullTextChunkSearchIntegrationTest {
             readableLibrary,
             "Verfahren, Verfahren und nochmals Verfahren: im Verfahren 4 K 1024/24.NW und in"
                 + " weiteren Verfahren des Jahres 24 wurde im Verfahren entschieden.");
-    backfillService.backfillBatch(100);
 
     List<Document> hits =
         fullTextChunkSearch.search("Verfahren 4 K 1023/24.NW", Set.of(readableLibrary), 25);
@@ -137,7 +146,6 @@ class FullTextChunkSearchIntegrationTest {
   void aLiteralTermIsFoundWhereverItStands() {
     UUID chunkId =
         seed(readableLibrary, "Von der Gebühr befreit ist, wer seine Bedürftigkeit nachweist.");
-    backfillService.backfillBatch(100);
 
     List<Document> hits = fullTextChunkSearch.search("Bedürftigkeit", Set.of(readableLibrary), 25);
 
@@ -150,7 +158,6 @@ class FullTextChunkSearchIntegrationTest {
   @Test
   void germanStemmingStillApplies() {
     UUID chunkId = seed(readableLibrary, "Die Satzung regelt die Befreiungen von der Gebühr.");
-    backfillService.backfillBatch(100);
 
     assertThat(fullTextChunkSearch.search("Befreiung", Set.of(readableLibrary), 25))
         .extracting(Document::getId)
@@ -161,7 +168,6 @@ class FullTextChunkSearchIntegrationTest {
   @Test
   void aQuestionWithoutUsableTokensReturnsNothing() {
     seed(readableLibrary, "Die Satzung regelt die Befreiungen von der Gebühr.");
-    backfillService.backfillBatch(100);
 
     assertThat(fullTextChunkSearch.search("...", Set.of(readableLibrary), 25)).isEmpty();
     assertThat(fullTextChunkSearch.search("Gebühr", Set.of(readableLibrary), 0)).isEmpty();
@@ -186,7 +192,6 @@ class FullTextChunkSearchIntegrationTest {
             "Diese Dienstanweisung mit dem Aktenzeichen BAU-DA-1/2023 regelt die Bearbeitung;"
                 + " die Dienstanweisung regelt ferner die Vertretung, und diese Dienstanweisung"
                 + " regelt die Fristen.");
-    backfillService.backfillBatch(100);
 
     List<Document> hits =
         fullTextChunkSearch.search(
@@ -211,7 +216,6 @@ class FullTextChunkSearchIntegrationTest {
     // question into those four word tokens would match nothing without the identifier lexeme.
     UUID wanted =
         seed(readableLibrary, "Kontakt: <max.mustermann@example.org> bezueglich Ihrer Anfrage.");
-    backfillService.backfillBatch(100);
 
     List<Document> hits =
         fullTextChunkSearch.search("max.mustermann@example.org", Set.of(readableLibrary), 25);
@@ -227,7 +231,6 @@ class FullTextChunkSearchIntegrationTest {
   @Test
   void tsqueryOperatorCharactersInTheQuestionAreHarmless() {
     UUID chunkId = seed(readableLibrary, "Die Satzung regelt die Gebühr.");
-    backfillService.backfillBatch(100);
 
     List<Document> hits =
         fullTextChunkSearch.search(
@@ -250,7 +253,6 @@ class FullTextChunkSearchIntegrationTest {
     // insertion- or id-ordered result would show it.
     seed(readableLibrary, "Die Satzung regelt die Gebühr.", "z-satzung.md", 1);
     seed(readableLibrary, "Die Satzung regelt die Gebühr.", "a-satzung.md", 0);
-    backfillService.backfillBatch(100);
 
     List<Document> hits = fullTextChunkSearch.search("Satzung Gebühr", Set.of(readableLibrary), 25);
 
@@ -268,7 +270,6 @@ class FullTextChunkSearchIntegrationTest {
   void chunksOfOneDocumentWithTheSameRankAreOrderedNumericallyByTheirIndex() {
     seed(readableLibrary, "Die Satzung regelt die Gebühr.", "satzung.md", 10);
     seed(readableLibrary, "Die Satzung regelt die Gebühr.", "satzung.md", 2);
-    backfillService.backfillBatch(100);
 
     List<Document> hits = fullTextChunkSearch.search("Satzung Gebühr", Set.of(readableLibrary), 25);
 
@@ -282,12 +283,12 @@ class FullTextChunkSearchIntegrationTest {
             Map.of(
                 VectorChunkStore.DOCUMENT_ID_METADATA_KEY, documentId.toString(),
                 VectorChunkStore.LIBRARY_ID_METADATA_KEY, libraryId.toString()));
-    vectorStore.add(List.of(chunk));
+    vectorChunkStore.addChunks(List.of(chunk));
     return UUID.fromString(chunk.getId());
   }
 
   private void seed(UUID libraryId, String text, String fileName, int chunkIndex) {
-    vectorStore.add(
+    vectorChunkStore.addChunks(
         List.of(
             new Document(
                 text,

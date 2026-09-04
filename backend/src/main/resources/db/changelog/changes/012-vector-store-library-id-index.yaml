@@ -4,12 +4,12 @@ databaseChangeLog:
       author: opaa
       comment: >-
         #1119: expression index on vector_store's metadata->>'library_id', backing
-        FullTextBackfillProgressService#progressForLibrary/progressForLibraries - previously an
-        unindexed full scan, on the response path of search via
-        io.opaa.query.FullTextBackfillGate#searchableLibraries (cached only 60s while a library's
-        backfill is incomplete, see FullTextBackfillGate.RECHECK_INTERVAL) and on every load of the
+        FullTextIndexFillStateService#fillStateForLibrary/fillStateForLibraries (named
+        FullTextBackfillProgressService until #1270) - previously an unindexed full scan, on the
+        response path of search via io.opaa.query.FullTextIndexCompleteness (cached only 60s while a
+        library's full-text index is incomplete) and on every load of the
         "Suche & Indexierung" admin page via io.opaa.searchadmin.SearchStatusService#libraryStatus.
-        No index on the ::uuid cast progressForLibraries additionally groups by: EXPLAIN (ANALYZE,
+        No index on the ::uuid cast fillStateForLibraries additionally groups by: EXPLAIN (ANALYZE,
         BUFFERS) against ~1M rows (see PR description) shows the planner uses this text expression
         index to do the row-restricting work in every one of these queries' scans, then computes the
         cast only over the already-filtered rows - cheap regardless of an index on the cast. Built
@@ -29,7 +29,7 @@ databaseChangeLog:
         existing, already-populated vector_store hits none of this: the table already exists the
         first time this changeSet runs.
 
-        Hardcodes public.vector_store, unlike FullTextBackfillProgressService/ChunkEmbeddingLookup,
+        Hardcodes public.vector_store, unlike FullTextIndexFillStateService/ChunkEmbeddingLookup,
         which read schema/table from spring.ai.vectorstore.pgvector.schema-name/table-name. This
         changeSet only covers that default; an installation that overrides schema-name or
         table-name needs its own changeSet targeting the actual name - otherwise the precondition

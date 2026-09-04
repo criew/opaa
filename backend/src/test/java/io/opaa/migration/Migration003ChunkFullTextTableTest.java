@@ -16,9 +16,9 @@ import org.junit.jupiter.api.Test;
  * Delta test for {@code changes/003-chunk-full-text-table.yaml} (issue #1047, AP2a): applies the
  * baseline, then this one changeSet in isolation, and asserts the resulting {@code chunk_full_text}
  * table and its btree indexes - the schema the AP2a write path (VectorChunkStore /
- * FullTextChunkStore) and backfill (FullTextBackfillService) both depend on. The GIN index on
- * {@code content_tsv} is a separate changeset (004, {@link Migration004ChunkFullTextGinIndexTest})
- * - {@code CREATE INDEX CONCURRENTLY} cannot share a transaction with this one's table creation.
+ * FullTextChunkStore) depends on. The GIN index on {@code content_tsv} is a separate changeset
+ * (004, {@link Migration004ChunkFullTextGinIndexTest}) - {@code CREATE INDEX CONCURRENTLY} cannot
+ * share a transaction with this one's table creation.
  *
  * <p>Deliberately a table of its own rather than columns added to {@code vector_store}: {@code
  * vector_store} is created by Spring AI at application startup, never by Liquibase (see the

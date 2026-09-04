@@ -9,7 +9,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.FullTextBackfillProgressService;
+import io.opaa.indexing.FullTextIndexFillStateService;
 import io.opaa.indexing.metadata.MetadataBackfillService;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.EmbeddingInfo;
@@ -56,8 +56,8 @@ class SearchStatusProbeCacheTest {
       mock(KnowledgeLibraryRepository.class);
   private final LibraryDocumentStatsReader documentStatsReader =
       mock(LibraryDocumentStatsReader.class);
-  private final FullTextBackfillProgressService backfillProgressService =
-      mock(FullTextBackfillProgressService.class);
+  private final FullTextIndexFillStateService fullTextIndexFillStateService =
+      mock(FullTextIndexFillStateService.class);
   private final MetadataBackfillService metadataBackfillService =
       mock(MetadataBackfillService.class);
   private final AdvanceableClock clock =
@@ -81,7 +81,7 @@ class SearchStatusProbeCacheTest {
     when(rerankRoleStatusProvider.currentStatus()).thenReturn(RerankRoleStatus.disabled());
     when(libraryRepository.findByOrganizationId(ORGANIZATION_ID)).thenReturn(List.of());
     when(documentStatsReader.statsForOrganization(ORGANIZATION_ID)).thenReturn(Map.of());
-    when(backfillProgressService.progressForLibraries(any())).thenReturn(List.of());
+    when(fullTextIndexFillStateService.fillStateForLibraries(any())).thenReturn(List.of());
     when(metadataBackfillService.progressForLibraries(any())).thenReturn(Map.of());
 
     service =
@@ -93,7 +93,7 @@ class SearchStatusProbeCacheTest {
             rerankRoleStatusProvider,
             libraryRepository,
             documentStatsReader,
-            backfillProgressService,
+            fullTextIndexFillStateService,
             metadataBackfillService,
             new QueryProperties(8, 25, 1.0, 0.0, 1.0, true, 3, 2, true, 50),
             new RetrievalPipelineProperties(Set.of()),

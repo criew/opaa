@@ -53,7 +53,7 @@ class RetrievalPipelineParityTest {
             // which had no second search path. Its own behaviour is covered by
             // FullTextSearchStageTest and FullTextChunkSearchIntegrationTest.
             new FullTextSearchStage(
-                mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
+                mock(FullTextChunkSearch.class), mock(FullTextIndexCompleteness.class)),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(mock(RerankModelRole.class)),

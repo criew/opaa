@@ -3,8 +3,7 @@ package io.opaa.indexing;
 /**
  * What one {@link PipelineReindexService#reindexBatch} call did. A call that returns {@link
  * #isEmpty()} means the selective re-index has nothing left it can do for the requested pipeline
- * and version - the signal to stop calling, the same "0 means drained" contract {@code
- * FullTextBackfillService#backfillBatch} uses.
+ * and version - the signal to stop calling (a "0 means drained" contract).
  *
  * @param reindexedDocuments documents whose source file was readable within the directories this
  *     deployment is configured to read, and which were parsed, chunked and stored again on the spot

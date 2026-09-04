@@ -144,7 +144,6 @@ class SearchAdminResponseMapperTest {
             Instant.parse("2026-09-01T08:00:00Z"),
             200,
             30,
-            5,
             new MetadataBackfillProgress(
                 LIBRARY_ID,
                 10,
@@ -200,7 +199,6 @@ class SearchAdminResponseMapperTest {
     assertThat(response.getLastIndexedAt()).isEqualTo(Instant.parse("2026-09-01T08:00:00Z"));
     assertThat(response.getFullTextIndexedChunks()).isEqualTo(200);
     assertThat(response.getFullTextMissingChunks()).isEqualTo(30);
-    assertThat(response.getFullTextSkippedChunks()).isEqualTo(5);
     // Pending documents make the vector index incomplete; missing full-text rows do the same for
     // the lexical one - the condition the completion gate reads.
     assertThat(response.getVectorIndexState()).isEqualTo(LibraryIndexState.INCOMPLETE);
@@ -226,7 +224,6 @@ class SearchAdminResponseMapperTest {
                             0,
                             0,
                             null,
-                            0,
                             0,
                             0,
                             MetadataBackfillProgress.empty(LIBRARY_ID)))))
