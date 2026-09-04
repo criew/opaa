@@ -41,6 +41,13 @@ import org.slf4j.LoggerFactory;
  * in-memory parse itself - mime4j already holds the whole message in memory by the time a part is
  * classified as an attachment, so {@link MailProperties#maxMessageBytes()} is the actual memory
  * guard, checked by the caller before this class ever runs.
+ *
+ * <p><b>Selective extraction</b> (#1243): with a {@code wantedIndex}, every attachment is still
+ * read and classified in exactly the same order - a part skipped for its size or a decode failure
+ * included, so the extraction positions stay identical to an unfiltered run's - but only the one at
+ * that position is written to a temp file; every other one is streamed into a discarding sink under
+ * the same size bound. The returned {@link ParsedMailMessage} then carries that one attachment
+ * alone, or none.
  */
 final class EmlReader {
 
@@ -49,6 +56,12 @@ final class EmlReader {
   private EmlReader() {}
 
   static ParsedMailMessage read(Path file, MailProperties properties) throws IOException {
+    return read(file, properties, null);
+  }
+
+  /** {@code wantedIndex} restricts what is materialized - see this class' own Javadoc. */
+  static ParsedMailMessage read(Path file, MailProperties properties, Integer wantedIndex)
+      throws IOException {
     MimeConfig config = MimeConfig.custom().setMaxLineLen(-1).setMaxHeaderLen(-1).build();
     Message.Builder builder = Message.Builder.of();
     builder.use(config);
@@ -60,8 +73,9 @@ final class EmlReader {
     BodyCollector collector = new BodyCollector();
     List<ParsedMailAttachment> attachments = new ArrayList<>();
     AttachmentBudget budget = new AttachmentBudget(properties.maxAttachmentsPerMessage());
+    ExtractionPosition position = new ExtractionPosition(wantedIndex);
     try {
-      walk(message, collector, attachments, properties, budget);
+      walk(message, collector, attachments, properties, budget, position);
     } catch (IOException | RuntimeException e) {
       // Whatever this pass already extracted must not leak as an orphaned temp file just because a
       // later part in the same message failed to read (#1101 review, finding 4b) - the caller never
@@ -92,12 +106,41 @@ final class EmlReader {
     String body;
   }
 
+  /**
+   * Counts the extraction positions an unfiltered run would produce and decides which of them is
+   * materialized - a position is only consumed by an attachment that was actually read, exactly the
+   * numbering {@code FileProcessingService#attachmentFilePath} persists.
+   */
+  private static final class ExtractionPosition {
+    private final Integer wanted;
+    private int next;
+
+    ExtractionPosition(Integer wanted) {
+      this.wanted = wanted;
+    }
+
+    boolean materializeNext() {
+      return wanted == null || wanted == next;
+    }
+
+    void advance() {
+      next++;
+    }
+  }
+
+  /**
+   * One attachment part read successfully; {@code tempFile} is {@code null} when selective
+   * extraction only counted it instead of writing it to disk.
+   */
+  private record ReadAttachment(String fileName, Path tempFile) {}
+
   private static void walk(
       Entity entity,
       BodyCollector collector,
       List<ParsedMailAttachment> attachments,
       MailProperties properties,
-      AttachmentBudget budget)
+      AttachmentBudget budget,
+      ExtractionPosition position)
       throws IOException {
     Body body = entity.getBody();
     if (body instanceof Multipart multipart) {
@@ -111,7 +154,7 @@ final class EmlReader {
         return;
       }
       for (Entity child : multipart.getBodyParts()) {
-        walk(child, collector, attachments, properties, budget);
+        walk(child, collector, attachments, properties, budget, position);
       }
       return;
     }
@@ -122,9 +165,12 @@ final class EmlReader {
         return;
       }
       budget.reserve();
-      ParsedMailAttachment attachment = extractAttachment(entity, properties);
+      ReadAttachment attachment = extractAttachment(entity, properties, position.materializeNext());
       if (attachment != null) {
-        attachments.add(attachment);
+        position.advance();
+        if (attachment.tempFile() != null) {
+          attachments.add(new ParsedMailAttachment(attachment.fileName(), attachment.tempFile()));
+        }
       }
       return;
     }
@@ -182,14 +228,14 @@ final class EmlReader {
   }
 
   /**
-   * Extracts one attachment to its own temp file, or {@code null} when it could not be extracted at
-   * all - a malformed part (mime4j throwing while decoding it) must only cost this one attachment,
-   * never the whole message's extraction (#1101 review, finding 4a), the same "skip, do not fail
-   * the message" contract {@link MailDocumentPipeline#processAttachment} already applies one level
-   * up for a sub-pipeline failure.
+   * Extracts one attachment to its own temp file (or, with {@code materialize} {@code false},
+   * merely reads it under the same size bound without writing it anywhere), or {@code null} when it
+   * could not be read at all - a malformed part (mime4j throwing while decoding it) must only cost
+   * this one attachment, never the whole message's extraction (#1101 review, finding 4a). A {@code
+   * null} return also skips an extraction position, exactly as it did before selective extraction.
    */
-  private static ParsedMailAttachment extractAttachment(Entity entity, MailProperties properties)
-      throws IOException {
+  private static ReadAttachment extractAttachment(
+      Entity entity, MailProperties properties, boolean materialize) throws IOException {
     String fileName = resolveFilename(entity);
     Body body;
     try {
@@ -202,42 +248,46 @@ final class EmlReader {
     if (fileName == null || fileName.isBlank()) {
       fileName = nestedMessage ? "nachricht.eml" : "anhang";
     }
-    Path tempFile = MailAttachmentIo.createTempFile(fileName);
-    try {
+    if (!nestedMessage && !(body instanceof SingleBody)) {
+      return null;
+    }
+    Path tempFile = materialize ? MailAttachmentIo.createTempFile(fileName) : null;
+    try (OutputStream out =
+        tempFile != null ? Files.newOutputStream(tempFile) : OutputStream.nullOutputStream()) {
       if (nestedMessage) {
-        try (OutputStream out = Files.newOutputStream(tempFile)) {
-          new DefaultMessageWriter()
-              .writeMessage(
-                  (Message) body,
-                  MailAttachmentIo.boundedOutputStream(out, properties.maxAttachmentBytes()));
-        }
-      } else if (body instanceof SingleBody singleBody) {
-        try (InputStream in = singleBody.getInputStream();
-            OutputStream out = Files.newOutputStream(tempFile)) {
+        new DefaultMessageWriter()
+            .writeMessage(
+                (Message) body,
+                MailAttachmentIo.boundedOutputStream(out, properties.maxAttachmentBytes()));
+      } else {
+        try (InputStream in = ((SingleBody) body).getInputStream()) {
           MailAttachmentIo.copyBounded(in, out, properties.maxAttachmentBytes());
         }
-      } else {
-        Files.deleteIfExists(tempFile);
-        return null;
       }
     } catch (MailAttachmentIo.AttachmentTooLargeException e) {
       log.warn(
           "Skipping mail attachment {} exceeding the size limit of {} bytes",
           fileName,
           properties.maxAttachmentBytes());
-      Files.deleteIfExists(tempFile);
+      deleteIfCreated(tempFile);
       return null;
     } catch (IOException e) {
-      Files.deleteIfExists(tempFile);
+      deleteIfCreated(tempFile);
       throw e;
     } catch (RuntimeException e) {
       // A malformed part (e.g. mime4j failing mid-decode on a truncated or corrupt attachment)
       // costs only this attachment, not the whole message.
       log.warn("Skipping mail attachment {} that could not be read", fileName, e);
-      Files.deleteIfExists(tempFile);
+      deleteIfCreated(tempFile);
       return null;
     }
-    return new ParsedMailAttachment(fileName, tempFile);
+    return new ReadAttachment(fileName, tempFile);
+  }
+
+  private static void deleteIfCreated(Path tempFile) throws IOException {
+    if (tempFile != null) {
+      Files.deleteIfExists(tempFile);
+    }
   }
 
   /**

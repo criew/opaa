@@ -391,15 +391,20 @@ Confluence-Anforderung an unabhängiger Versionierung gar nicht erfüllen kann.
   Mail-Bibliotheken.
 - `Document#fileSize` bekommt für Mail-Elterndokumente eine neue Bedeutung (ohne Anhangsbytes) — ein
   Verhaltensunterschied gegenüber dem heutigen, undifferenzierten `Files.size(file)`.
-- Jeder Lesezugriff auf ein Anhangsoriginal kostet ein erneutes Parsen des Elterndokuments — und
-  zwar in vollem Umfang: Die Pipeline legt beim Parsen **alle** Anlagen der Nachricht als temporäre
-  Dateien an (bis `max-attachments-per-message`, Vorgabe 50, aus einer bis zu `max-message-bytes`
-  großen Nachricht, Vorgabe 100 MiB), bevor die angeforderte herauskopiert wird; bei
-  Konnektor-Beständen kommt ein vollständiger Abruf des Elternoriginals in eine weitere temporäre
-  Datei hinzu. Das geschieht im synchronen Anfragepfad, ohne Cache und ohne Serialisierung, und ist
-  von jedem VIEWER beliebig oft und parallel auslösbar — bewusst in Kauf genommener Aufwand an
-  Rechenzeit, temporärem Plattenplatz und Last auf der Quelle gegen doppelte Speicherung (#1239).
-  Ein Deckel oder Cache dafür ist offen und als Folge-Ticket erfasst (#1243).
+- Jeder Lesezugriff auf ein Anhangsoriginal kostet ein erneutes Parsen des Elterndokuments (aus
+  einer bis zu `max-message-bytes` großen Nachricht, Vorgabe 100 MiB); bei Konnektor-Beständen kommt
+  ein vollständiger Abruf des Elternoriginals in eine weitere temporäre Datei hinzu — bewusst in Kauf
+  genommener Aufwand an Rechenzeit, temporärem Plattenplatz und Last auf der Quelle gegen doppelte
+  Speicherung (#1239). **Seit #1243 ist dieser Aufwand gedeckelt statt unbegrenzt:** Die Pipeline
+  materialisiert nur noch die angeforderte Anlage als temporäre Datei statt alle (bis
+  `max-attachments-per-message`, Vorgabe 50) — die Extraktionsreihenfolge bleibt unverändert, weil
+  übersprungene Anlagen weiterhin mitgezählt werden und die gespeicherte Position sonst ihre
+  Bedeutung verlöre. Zusätzlich laufen Abrufe desselben Elterndokuments nacheinander, und ein
+  globaler Deckel (`opaa.documents.attachment-extraction.max-concurrent`, Vorgabe 4) begrenzt die
+  gleichzeitigen Nachextraktionen; wer nicht innerhalb der konfigurierten Wartezeit an die Reihe
+  kommt, erhält 503 mit deutscher Meldung statt einer unbegrenzten Wartezeit. Ein Bytes-Cache
+  wiederholter Abrufe bleibt bewusst ungebaut (Begründung in
+  `docs/features/ingestion-pipelines.md`).
 - Löschen eines Elterndokuments außerhalb von `StaleDocumentCleanupService` (z. B. eine selektive
   Neuindizierung über `PipelineReindexService`, eine künftige Einzeldokument-Löschfunktion für
   Konnektor-Bestände) muss seine Anhangszeilen ausdrücklich mitbehandeln — es gibt keinen impliziten

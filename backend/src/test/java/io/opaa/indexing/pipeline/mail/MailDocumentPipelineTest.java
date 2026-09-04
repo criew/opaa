@@ -757,6 +757,120 @@ class MailDocumentPipelineTest {
         .anySatisfy(attachment -> assertThat(attachment.fileName()).startsWith("smbprn"));
   }
 
+  // --- #1243: selective extraction materializes one attachment, not the whole message --------
+
+  /**
+   * #1243: an "Im Dokument oeffnen" click re-extracts one attachment, and used to pay for every
+   * attachment of the message in temporary files. With {@code attachmentIndex} set, exactly one
+   * temp file is written - proven by counting this reader's own {@code opaa-mail-} files while the
+   * result is still alive, before {@code DocumentPipelineRunner} deletes anything.
+   */
+  @Test
+  void aFilteredRunWritesATempFileForTheRequestedAttachmentOnly() throws Exception {
+    Path file =
+        writeEml(
+            DefaultMessageWriter.asBytes(
+                messageWithAttachments(
+                    List.of("eins.txt", "zwei.txt", "drei.txt"),
+                    List.of("Erster.", "Zweiter.", "Dritter."))));
+
+    Set<Path> before = readerTempFiles();
+    DocumentPipelineResult result =
+        pipeline(defaultProperties)
+            .run(DocumentPipelineSource.ofFile(file, "viele-anlagen.eml").withAttachmentIndex(1));
+    Set<Path> written = newReaderTempFiles(before);
+
+    try {
+      assertThat(written).hasSize(1);
+      assertThat(result.discoveredAttachments()).hasSize(1);
+      DiscoveredAttachment attachment = result.discoveredAttachments().getFirst();
+      assertThat(attachment.fileName()).isEqualTo("zwei.txt");
+      assertThat(Files.readAllBytes(attachment.tempFile()))
+          .isEqualTo("Zweiter.".getBytes(StandardCharsets.UTF_8));
+    } finally {
+      deleteAll(written);
+    }
+  }
+
+  /** An unfiltered run is unchanged: every attachment is still materialized and reported. */
+  @Test
+  void anUnfilteredRunStillWritesATempFileForEveryAttachment() throws Exception {
+    Path file =
+        writeEml(
+            DefaultMessageWriter.asBytes(
+                messageWithAttachments(
+                    List.of("eins.txt", "zwei.txt", "drei.txt"),
+                    List.of("Erster.", "Zweiter.", "Dritter."))));
+
+    Set<Path> before = readerTempFiles();
+    DocumentPipelineResult result =
+        pipeline(defaultProperties).run(DocumentPipelineSource.ofFile(file, "viele-anlagen.eml"));
+    Set<Path> written = newReaderTempFiles(before);
+
+    try {
+      assertThat(written).hasSize(3);
+      assertThat(result.discoveredAttachments()).hasSize(3);
+      assertThat(result.discoveredAttachments().stream().map(DiscoveredAttachment::fileName))
+          .containsExactly("eins.txt", "zwei.txt", "drei.txt");
+    } finally {
+      deleteAll(written);
+    }
+  }
+
+  /**
+   * #1243: the extraction position is what an attachment row's own {@code file_path} stores, so a
+   * filtered run must number attachments exactly as an unfiltered one does - including skipping an
+   * attachment that is never extracted at all because it exceeds {@code max-attachment-bytes}.
+   * Position 1 is therefore the third part here, not the second.
+   */
+  @Test
+  void aFilteredRunNumbersAttachmentsLikeAnUnfilteredOneIncludingSkippedOnes() throws Exception {
+    String oversized = "x".repeat(200);
+    Path file =
+        writeEml(
+            DefaultMessageWriter.asBytes(
+                messageWithAttachments(
+                    List.of("klein.txt", "zu-gross.txt", "auch-klein.txt"),
+                    List.of("Erster.", oversized, "Dritter."))));
+    MailProperties tightAttachmentLimit = new MailProperties(0, 0, 100, 0);
+
+    Set<Path> before = readerTempFiles();
+    DocumentPipelineResult result =
+        pipeline(tightAttachmentLimit)
+            .run(DocumentPipelineSource.ofFile(file, "mit-zu-grosser.eml").withAttachmentIndex(1));
+    Set<Path> written = newReaderTempFiles(before);
+
+    try {
+      assertThat(result.discoveredAttachments()).hasSize(1);
+      assertThat(result.discoveredAttachments().getFirst().fileName()).isEqualTo("auch-klein.txt");
+      assertThat(written).hasSize(1);
+    } finally {
+      deleteAll(written);
+    }
+  }
+
+  /** A position no attachment occupies reports nothing, rather than some other attachment. */
+  @Test
+  void aFilteredRunReportsNothingWhenNoAttachmentOccupiesThatPosition() throws Exception {
+    Path file =
+        writeEml(
+            DefaultMessageWriter.asBytes(
+                messageWithAttachments(List.of("eins.txt"), List.of("Erster."))));
+
+    Set<Path> before = readerTempFiles();
+    DocumentPipelineResult result =
+        pipeline(defaultProperties)
+            .run(DocumentPipelineSource.ofFile(file, "eine-anlage.eml").withAttachmentIndex(3));
+    Set<Path> written = newReaderTempFiles(before);
+
+    try {
+      assertThat(result.discoveredAttachments()).isEmpty();
+      assertThat(written).isEmpty();
+    } finally {
+      deleteAll(written);
+    }
+  }
+
   // --- helpers -----------------------------------------------------------------------------
 
   private static Message.Builder newMessageBuilder(String subject, String from, String to)
@@ -805,5 +919,45 @@ class MailDocumentPipelineTest {
       Files.copy(in, file);
     }
     return file;
+  }
+
+  private static Message messageWithAttachments(List<String> fileNames, List<String> contents)
+      throws Exception {
+    MultipartBuilder body =
+        MultipartBuilder.create("mixed").addTextPart("Anbei die Anlagen.", StandardCharsets.UTF_8);
+    for (int i = 0; i < fileNames.size(); i++) {
+      body.addBodyPart(
+          BodyPartBuilder.create()
+              .setBody(contents.get(i).getBytes(StandardCharsets.UTF_8), "text/plain")
+              .setContentDisposition("attachment", fileNames.get(i)));
+    }
+    return newMessageBuilder("Mit Anlagen", "max@example.org", "erika@example.org")
+        .setBody(body.build())
+        .build();
+  }
+
+  /**
+   * The temp files {@code MailAttachmentIo} creates live in the JVM's own temp directory, so a
+   * run's own files are identified by diffing that directory around the call rather than by
+   * counting it.
+   */
+  private static Set<Path> readerTempFiles() throws IOException {
+    try (var entries = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
+      return entries
+          .filter(path -> path.getFileName().toString().startsWith("opaa-mail-"))
+          .collect(java.util.stream.Collectors.toCollection(java.util.HashSet::new));
+    }
+  }
+
+  private static Set<Path> newReaderTempFiles(Set<Path> before) throws IOException {
+    Set<Path> after = readerTempFiles();
+    after.removeAll(before);
+    return after;
+  }
+
+  private static void deleteAll(Set<Path> files) throws IOException {
+    for (Path file : files) {
+      Files.deleteIfExists(file);
+    }
   }
 }

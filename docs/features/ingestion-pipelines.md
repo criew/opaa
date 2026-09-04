@@ -1066,14 +1066,31 @@ Temporäre Dateien dieses Wegs werden beim Schließen des Antwortstroms gelösch
 Ressource in jedem Fall, auch bei Abbruch durch den Client). Kein dauerhafter Zweitspeicher, keine
 doppelte Quotenzählung, gleiches Verhalten für alle Quelltypen.
 
-**Der Preis dieses Wegs, ausdrücklich benannt:** Ein Abruf parst die Elternnachricht vollständig,
-das heißt die Pipeline materialisiert dabei *alle* ihre Anlagen als temporäre Dateien (bis
-`max-attachments-per-message`, Vorgabe 50), nicht nur die angeforderte; bei Konnektor-Beständen
-kommt der vollständige Abruf des Elternoriginals in eine weitere temporäre Datei hinzu. Das läuft im
-synchronen Anfragepfad, ohne Cache und ohne Serialisierung, und ist von jedem VIEWER wiederholt und
-parallel auslösbar — spürbar als temporärer Plattenbedarf und als Last auf der Quelle. Ein Deckel
-oder Cache dafür ist bewusst offen und als eigenes Ticket erfasst (#1243), keine stillschweigende
-Annahme.
+**Der Preis dieses Wegs, ausdrücklich benannt und seit #1243 gedeckelt:** Ein Abruf parst die
+Elternnachricht weiterhin vollständig — das ist der unvermeidbare Teil. Materialisiert wird dabei
+aber nur noch die *angeforderte* Anlage: Der Anfragepfad reicht die gesuchte Position über
+`DocumentPipelineSource#attachmentIndex` bis in `EmlReader`/`MsgReader` durch, die jede Anlage
+weiterhin in derselben Reihenfolge lesen und zählen — auch eine wegen ihrer Größe übersprungene, denn
+sonst verschöbe sich die Position, die in der `file_path`-Syntax des Anhangs steht —, aber nur für
+diese eine eine temporäre Datei schreiben. Statt bis zu `max-attachments-per-message` (Vorgabe 50)
+temporären Dateien je Abruf entsteht damit genau eine je Kettenstufe. Bei Konnektor-Beständen kommt
+der vollständige Abruf des Elternoriginals in eine weitere temporäre Datei hinzu; das bleibt so.
+
+Zusätzlich begrenzt `AttachmentExtractionLimiter` den Anfragepfad (nicht den Hintergrundlauf von
+`PipelineReindexService`): Abrufe **desselben Elterndokuments** laufen nacheinander, und ein globaler
+Deckel (`opaa.documents.attachment-extraction.max-concurrent`, Vorgabe 4) begrenzt die Zahl
+gleichzeitiger Nachextraktionen überhaupt. Wer innerhalb von
+`opaa.documents.attachment-extraction.acquire-timeout` (Vorgabe 10 s) nicht an die Reihe kommt,
+erhält 503 mit einer deutschen Meldung statt einer unbegrenzten Wartezeit. Der temporäre
+Plattenbedarf dieses Pfades hat damit eine benennbare Obergrenze: höchstens `max-concurrent`
+gleichzeitige Nachextraktionen, jede mit einer temporären Datei je Kettenstufe plus, bei
+Konnektor-Beständen, dem Elternoriginal.
+
+Was bewusst **nicht** gebaut wurde: ein Bytes-Cache der zuletzt nachextrahierten Anhänge.
+Wiederholte Klicks auf denselben Anhang parsen weiterhin erneut. Das bleibt vertretbar, weil ein
+Abruf jetzt nur noch eine Anlage materialisiert und die Parallelität gedeckelt ist; ein Cache brächte
+zusätzlich die Frage nach Invalidierung bei geändertem Elterndokument mit sich, ohne die es Bytes
+unter dem falschen Namen ausliefern könnte.
 
 **Nur ein Anhang ohne eigene Quellidentität wird nachextrahiert:** Ein Anhang aus dem
 `AttachmentSource.Download`-Schnitt (RSS heute, Confluence künftig) trägt zwar ebenfalls

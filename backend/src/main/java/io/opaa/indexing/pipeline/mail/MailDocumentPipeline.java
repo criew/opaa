@@ -125,6 +125,12 @@ public class MailDocumentPipeline implements DocumentPipeline {
         ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
   }
 
+  /**
+   * Honours {@link DocumentPipelineSource#attachmentIndex()} (#1243) by handing it to the reader:
+   * the extraction order is unchanged, but only the requested attachment is written to a temp file
+   * and reported - the whole message's worth of temporary disk an "open this attachment" click used
+   * to cost collapses to that one file.
+   */
   @Override
   public DocumentPipelineResult run(DocumentPipelineSource source) {
     if (source.file() == null) {
@@ -157,8 +163,8 @@ public class MailDocumentPipeline implements DocumentPipeline {
     try {
       message =
           ".msg".equals(resolveExtension(source))
-              ? MsgReader.read(source.file(), properties)
-              : EmlReader.read(source.file(), properties);
+              ? MsgReader.read(source.file(), properties, source.attachmentIndex())
+              : EmlReader.read(source.file(), properties, source.attachmentIndex());
     } catch (IOException e) {
       throw new UncheckedIOException("Could not read mail document " + source.fileName(), e);
     }
