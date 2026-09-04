@@ -198,19 +198,28 @@ public class IndexingConfiguration {
   }
 
   /**
+   * The shared re-extraction of attachment bytes (ADR-0022) - attachments are never stored, so both
+   * the selective re-index and "Im Dokument öffnen" (#1239) re-derive them from their parent here.
+   */
+  @Bean
+  AttachmentExtractor attachmentExtractor(DocumentPipelineRegistry documentPipelineRegistry) {
+    return new AttachmentExtractor(documentPipelineRegistry);
+  }
+
+  /**
    * The one source-access instance both operator-triggered runs over the bestand share (pipeline
    * re-index, core-metadata backfill), so both read files under the same containment rules.
    */
   @Bean
   StoredDocumentSourceAccess storedDocumentSourceAccess(
-      DocumentPipelineRegistry documentPipelineRegistry,
+      AttachmentExtractor attachmentExtractor,
       DocumentRepository documentRepository,
       KnowledgeLibraryRepository libraryRepository,
       ChecksumService checksumService,
       FilesystemPathAllowlist filesystemPathAllowlist,
       UploadProperties uploadProperties) {
     return new StoredDocumentSourceAccess(
-        documentPipelineRegistry,
+        attachmentExtractor,
         documentRepository,
         libraryRepository,
         checksumService,

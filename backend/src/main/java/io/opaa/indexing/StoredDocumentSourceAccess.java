@@ -1,10 +1,6 @@
 package io.opaa.indexing;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.indexing.pipeline.DiscoveredAttachment;
-import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
-import io.opaa.indexing.pipeline.DocumentPipelineRunner;
-import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -14,11 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -39,7 +33,7 @@ public class StoredDocumentSourceAccess {
 
   private static final Logger log = LoggerFactory.getLogger(StoredDocumentSourceAccess.class);
 
-  private final DocumentPipelineRegistry pipelineRegistry;
+  private final AttachmentExtractor attachmentExtractor;
   private final DocumentRepository documentRepository;
   private final KnowledgeLibraryRepository libraryRepository;
   private final ChecksumService checksumService;
@@ -47,13 +41,13 @@ public class StoredDocumentSourceAccess {
   private final UploadProperties uploadProperties;
 
   public StoredDocumentSourceAccess(
-      DocumentPipelineRegistry pipelineRegistry,
+      AttachmentExtractor attachmentExtractor,
       DocumentRepository documentRepository,
       KnowledgeLibraryRepository libraryRepository,
       ChecksumService checksumService,
       FilesystemPathAllowlist filesystemAllowlist,
       UploadProperties uploadProperties) {
-    this.pipelineRegistry = pipelineRegistry;
+    this.attachmentExtractor = attachmentExtractor;
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
     this.checksumService = checksumService;
@@ -176,7 +170,8 @@ public class StoredDocumentSourceAccess {
       Path currentFile = rootFile;
       String currentName = root.getFileName();
       for (int i = 0; i < indices.size(); i++) {
-        Path extracted = extractAttachment(currentFile, currentName, indices.get(i));
+        AttachmentExtractor.Extracted extracted =
+            attachmentExtractor.extract(currentFile, currentName, indices.get(i));
         if (extracted == null) {
           log.info(
               "Skipping attachment document {}: attachment index {} no longer exists in {}",
@@ -185,8 +180,8 @@ public class StoredDocumentSourceAccess {
               currentName);
           return false;
         }
-        extractedFiles.add(extracted);
-        currentFile = extracted;
+        extractedFiles.add(extracted.file());
+        currentFile = extracted.file();
         currentName = chain.get(chain.size() - 1 - i).getFileName();
       }
       // Positional indices are only stable while the parent file is unchanged - a parent edited
@@ -255,51 +250,6 @@ public class StoredDocumentSourceAccess {
       documentRepository.markForReindexOnNextRun(id);
     }
     return true;
-  }
-
-  /**
-   * Runs {@code file}'s own routed pipeline solely for its {@code discoveredAttachments} and copies
-   * the attachment at {@code index} (0-based extraction order) to a temp file of its own before
-   * {@link DocumentPipelineRunner} deletes the originals, or {@code null} when there is no
-   * attachment at that index (the parent file changed since the attachment row was created).
-   */
-  private Path extractAttachment(Path file, String fileName, int index) {
-    Path[] extracted = new Path[1];
-    try {
-      DocumentPipelineRegistry.Routed routed = pipelineRegistry.routedPipelineFor(file, fileName);
-      DocumentPipelineRunner.run(
-          routed.pipeline(),
-          DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()),
-          result -> {
-            List<DiscoveredAttachment> attachments = result.discoveredAttachments();
-            if (index >= attachments.size()) {
-              return;
-            }
-            DiscoveredAttachment attachment = attachments.get(index);
-            try {
-              Path copy = Files.createTempFile("opaa-reindex-", suffixOf(attachment.fileName()));
-              Files.copy(attachment.tempFile(), copy, StandardCopyOption.REPLACE_EXISTING);
-              extracted[0] = copy;
-            } catch (IOException e) {
-              log.warn("Failed to copy re-extracted attachment {}", attachment.fileName(), e);
-            }
-          });
-    } catch (RuntimeException e) {
-      // A corrupt or unreadable parent must cost only this candidate (counted as skipped by the
-      // caller), never the whole batch - some pipelines still throw on a parse failure instead of
-      // reporting NO_CONTENT.
-      log.warn("Failed to re-extract attachment {} of {}", index, fileName, e);
-      return null;
-    }
-    return extracted[0];
-  }
-
-  private static String suffixOf(String fileName) {
-    if (fileName == null) {
-      return ".tmp";
-    }
-    int dot = fileName.lastIndexOf('.');
-    return dot >= 0 ? fileName.substring(dot).toLowerCase(Locale.ROOT) : ".tmp";
   }
 
   private Path filesystemFileWithinConfiguredDirectory(Document document, Path candidate) {

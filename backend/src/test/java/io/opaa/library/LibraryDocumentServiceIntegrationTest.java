@@ -1976,6 +1976,217 @@ class LibraryDocumentServiceIntegrationTest {
     assertThat(secondChildren.getFirst().getStatus()).isEqualTo(DocumentStatus.INDEXED);
   }
 
+  // --- #1239: an attachment's original is re-extracted from its parent on demand ---
+
+  @Test
+  void loadContentReturnsTheAttachmentBytesOfAnUploadedMail() throws Exception {
+    LibraryDocumentEntry response =
+        documentService.uploadDocument(
+            libraryId,
+            emlFile("oeffnen.eml", "Bitte pruefen.", "Anhangsinhalt fuer den Bauantrag."),
+            null,
+            currentUserOf(editor, false));
+    Document mail = awaitDocumentStatus(response.document().getId(), DocumentStatus.INDEXED);
+    Document attachment = documentRepository.findByParentDocumentId(mail.getId()).getFirst();
+
+    // VIEWER is the floor for opening any document's original - an attachment is no exception.
+    DocumentContent content =
+        documentService.loadContent(attachment.getId(), currentUserOf(viewer, false));
+    try {
+      assertThat(content.isStreamed()).isTrue();
+      assertThat(content.fileName()).isEqualTo("anlage.txt");
+      assertThat(content.contentType()).isEqualTo(attachment.getContentType());
+      assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
+          .isEqualTo("Anhangsinhalt fuer den Bauantrag.");
+    } finally {
+      content.stream().close();
+    }
+  }
+
+  @Test
+  void loadContentReturnsTheGrandchildAttachmentOfAnUploadedMailInMail() throws Exception {
+    LibraryDocumentEntry response =
+        documentService.uploadDocument(
+            libraryId,
+            nestedEmlFile("weiterleitung-oeffnen.eml"),
+            null,
+            currentUserOf(editor, false));
+    Document outerMail = awaitDocumentStatus(response.document().getId(), DocumentStatus.INDEXED);
+    Document innerMail = documentRepository.findByParentDocumentId(outerMail.getId()).getFirst();
+    Document grandchild = documentRepository.findByParentDocumentId(innerMail.getId()).getFirst();
+
+    DocumentContent content =
+        documentService.loadContent(grandchild.getId(), currentUserOf(editor, false));
+    try {
+      assertThat(content.fileName()).isEqualTo("enkel.txt");
+      assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
+          .isEqualTo("Enkel-Anhang.");
+    } finally {
+      content.stream().close();
+    }
+  }
+
+  @Test
+  void loadContentReExtractsTheAttachmentOfAMailFromAnHttpDirectorySource() throws Exception {
+    startRemoteServer();
+    byte[] mailBytes =
+        emlFile("bescheid.eml", "Bescheid im Anhang.", "Anhang aus dem entfernten Bestand.")
+            .getBytes();
+    remoteServer.createContext(
+        "/bescheid.eml",
+        exchange -> {
+          exchange.getResponseHeaders().set("Content-Type", "message/rfc822");
+          exchange.sendResponseHeaders(200, mailBytes.length);
+          exchange.getResponseBody().write(mailBytes);
+          exchange.close();
+        });
+    KnowledgeLibrary remoteLibrary = saveRemoteLibrary(DocumentSourceType.HTTP_DIRECTORY, null);
+    Document attachment = null;
+    Document mail = null;
+    try {
+      mail =
+          remoteDocumentRow(
+              remoteLibrary.getId(),
+              "bescheid.eml",
+              remoteBaseUrl + "/bescheid.eml",
+              "message/rfc822");
+      attachment =
+          remoteDocumentRow(
+              remoteLibrary.getId(), "anlage.txt", mail.getFilePath() + "/0/anlage.txt", null);
+      attachment.setParentDocumentId(mail.getId());
+      attachment = documentRepository.save(attachment);
+
+      DocumentContent content =
+          documentService.loadContent(attachment.getId(), currentUserOf(editor, false));
+      try {
+        // The synthetic file_path is never fetched as a URL (the #1239 Befund) - the parent mail
+        // is,
+        // and the attachment is extracted from it.
+        assertThat(content.fileName()).isEqualTo("anlage.txt");
+        assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
+            .isEqualTo("Anhang aus dem entfernten Bestand.");
+      } finally {
+        content.stream().close();
+      }
+    } finally {
+      documentRepository.delete(attachment);
+      documentRepository.delete(mail);
+      libraryRepository.deleteById(remoteLibrary.getId());
+    }
+  }
+
+  @Test
+  void loadContentReExtractsTheAttachmentOfAMailFromAFilesystemSource() throws Exception {
+    Path librarySourceDir =
+        Files.createDirectory(filesystemAllowlistDir.resolve(UUID.randomUUID().toString()));
+    Path mailFile = librarySourceDir.resolve("posteingang.eml");
+    Files.write(
+        mailFile,
+        emlFile("posteingang.eml", "Aus dem Dateisystem.", "Anhang aus dem Dateisystem.")
+            .getBytes());
+    KnowledgeLibrary connectorLibrary =
+        saveFilesystemLibrary(librarySourceDir.toAbsolutePath().toString());
+    Document attachment = null;
+    Document mail = null;
+    try {
+      mail =
+          filesystemDocumentRow(
+              connectorLibrary.getId(), "posteingang.eml", mailFile.toString(), "message/rfc822");
+      attachment =
+          filesystemDocumentRow(
+              connectorLibrary.getId(), "anlage.txt", mail.getFilePath() + "/0/anlage.txt", null);
+      attachment.setParentDocumentId(mail.getId());
+      attachment = documentRepository.save(attachment);
+
+      DocumentContent content =
+          documentService.loadContent(attachment.getId(), currentUserOf(editor, false));
+      try {
+        assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
+            .isEqualTo("Anhang aus dem Dateisystem.");
+      } finally {
+        content.stream().close();
+      }
+    } finally {
+      documentRepository.delete(attachment);
+      documentRepository.delete(mail);
+      libraryRepository.deleteById(connectorLibrary.getId());
+    }
+  }
+
+  @Test
+  void loadContentAnswers404WhenTheStoredAttachmentIndexNoLongerExists() throws Exception {
+    LibraryDocumentEntry response =
+        documentService.uploadDocument(
+            libraryId,
+            emlFile("verschoben.eml", "Bitte pruefen.", "Anhang der geaenderten Mail."),
+            null,
+            currentUserOf(editor, false));
+    Document mail = awaitDocumentStatus(response.document().getId(), DocumentStatus.INDEXED);
+    Document attachment = documentRepository.findByParentDocumentId(mail.getId()).getFirst();
+    // As if the mail had lost attachments since indexing: the stored index is out of range now.
+    jdbcTemplate.update(
+        "UPDATE documents SET file_path = ? WHERE id = ?",
+        mail.getFilePath() + "/7/anlage.txt",
+        attachment.getId());
+
+    UUID attachmentId = attachment.getId();
+    assertThatThrownBy(
+            () -> documentService.loadContent(attachmentId, currentUserOf(editor, false)))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
+  }
+
+  @Test
+  void loadContentAnswers404WhenTheAttachmentAtTheStoredIndexCarriesADifferentName()
+      throws Exception {
+    LibraryDocumentEntry response =
+        documentService.uploadDocument(
+            libraryId,
+            emlFile("umsortiert.eml", "Bitte pruefen.", "Anhang der umsortierten Mail."),
+            null,
+            currentUserOf(editor, false));
+    Document mail = awaitDocumentStatus(response.document().getId(), DocumentStatus.INDEXED);
+    Document attachment = documentRepository.findByParentDocumentId(mail.getId()).getFirst();
+    // As if the mail's attachments had been reordered since indexing: index 0 still exists, but
+    // holds a different attachment than this row claims - never stream it under this row's name.
+    jdbcTemplate.update(
+        "UPDATE documents SET file_name = ?, file_path = ? WHERE id = ?",
+        "umbenannt.txt",
+        mail.getFilePath() + "/0/umbenannt.txt",
+        attachment.getId());
+
+    UUID attachmentId = attachment.getId();
+    assertThatThrownBy(
+            () -> documentService.loadContent(attachmentId, currentUserOf(editor, false)))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
+  }
+
+  /** A saved connector document row, as an indexing run of {@code libraryId} would have left it. */
+  private Document remoteDocumentRow(
+      UUID targetLibraryId, String fileName, String filePath, String contentType) {
+    return connectorDocumentRow(
+        targetLibraryId, fileName, filePath, contentType, DocumentSourceType.HTTP_DIRECTORY);
+  }
+
+  private Document filesystemDocumentRow(
+      UUID targetLibraryId, String fileName, String filePath, String contentType) {
+    return connectorDocumentRow(
+        targetLibraryId, fileName, filePath, contentType, DocumentSourceType.FILESYSTEM);
+  }
+
+  private Document connectorDocumentRow(
+      UUID targetLibraryId,
+      String fileName,
+      String filePath,
+      String contentType,
+      DocumentSourceType sourceType) {
+    Document document = new Document(fileName, filePath, contentType, null, sourceType);
+    document.setLibraryId(targetLibraryId);
+    document.setOrganizationId(organizationId);
+    return documentRepository.save(document);
+  }
+
   private int lastEmlSize;
 
   private MultipartFile emlFile(String fileName, String bodyText, String attachmentText)

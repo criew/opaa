@@ -9,6 +9,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
@@ -22,6 +23,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.AttachmentExtractor;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
@@ -29,6 +31,7 @@ import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.VectorStoreWriter;
+import io.opaa.indexing.pipeline.mail.MailProperties;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
@@ -95,6 +98,7 @@ class LibraryDocumentServiceTest {
   // by LibraryFolderServiceTest/LibraryFolderServiceIntegrationTest, not by every pre-existing test
   // in this class that never passes a folderPath at all.
   private LibraryFolderService folderService;
+  private AttachmentExtractor attachmentExtractor;
   private LibraryDocumentService service;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -136,6 +140,7 @@ class LibraryDocumentServiceTest {
     remoteContentProperties = new RemoteContentProperties(10L * 1024 * 1024, 5);
     folderRepository = mock(LibraryFolderRepository.class);
     folderService = mock(LibraryFolderService.class);
+    attachmentExtractor = mock(AttachmentExtractor.class);
 
     service =
         new LibraryDocumentService(
@@ -152,7 +157,9 @@ class LibraryDocumentServiceTest {
             disabledTargetAddressValidator,
             remoteContentProperties,
             folderRepository,
-            folderService);
+            folderService,
+            attachmentExtractor,
+            new MailProperties(0, 0, 0, 0));
 
     KnowledgeLibrary library = mock(KnowledgeLibrary.class);
     when(library.getId()).thenReturn(libraryId);
@@ -1031,6 +1038,217 @@ class LibraryDocumentServiceTest {
     remoteBaseUrl = "http://127.0.0.1:" + remoteServer.getAddress().getPort();
   }
 
+  // --- #1239: attachment originals are re-extracted, but only where they have no source of their
+  // own ---
+
+  @Test
+  void loadContentStillProxiesAnRssAttachmentWithItsOwnDownloadUrl() throws IOException {
+    // Regression guard: an AttachmentSource.Download attachment (RSS today, Confluence later)
+    // carries parent_document_id just like a mail attachment, but its file_path is a real URL -
+    // it must keep being fetched from that URL instead of being re-extracted from its parent.
+    startRemoteServer();
+    remoteServer.createContext(
+        "/anlage.pdf",
+        exchange -> {
+          byte[] bytes = "Anlage der Detailseite".getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "application/pdf");
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
+        .thenReturn(AssetRole.VIEWER);
+    KnowledgeLibrary library = remoteLibrary(null);
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+
+    Document entry =
+        new Document(
+            "eintrag.html",
+            remoteBaseUrl + "/eintrag",
+            "text/html",
+            null,
+            DocumentSourceType.RSS_FEED);
+    entry.setLibraryId(libraryId);
+    Document attachment =
+        new Document(
+            "anlage.pdf",
+            remoteBaseUrl + "/anlage.pdf",
+            "application/pdf",
+            null,
+            DocumentSourceType.RSS_FEED);
+    attachment.setLibraryId(libraryId);
+    attachment.setParentDocumentId(entry.getId());
+    UUID documentId = UUID.randomUUID();
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(attachment));
+    when(documentRepository.findById(entry.getId())).thenReturn(Optional.of(entry));
+
+    DocumentContent content = service.loadContent(documentId, caller);
+    try {
+      assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
+          .isEqualTo("Anlage der Detailseite");
+    } finally {
+      content.stream().close();
+    }
+    verifyNoInteractions(attachmentExtractor);
+  }
+
+  @Test
+  void loadContentDeletesTheReExtractedTempFileWhenTheStreamIsClosed() throws IOException {
+    Document mail = uploadedMailRow("posteingang.eml");
+    Document attachment = mailAttachmentRow(mail, 0, "anlage.txt");
+    UUID documentId = stubAttachmentChain(mail, attachment);
+
+    Path extracted = Files.createTempFile("opaa-attachment-test-", ".txt");
+    Files.writeString(extracted, "Anhangsinhalt");
+    when(attachmentExtractor.extract(any(), eq("posteingang.eml"), eq(0)))
+        .thenReturn(new AttachmentExtractor.Extracted(extracted, "anlage.txt"));
+
+    DocumentContent content = service.loadContent(documentId, caller);
+    assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
+        .isEqualTo("Anhangsinhalt");
+    assertThat(extracted).exists();
+
+    content.stream().close();
+
+    assertThat(extracted).doesNotExist();
+  }
+
+  @Test
+  void loadContentAnswers404WhenAnAncestorBelongsToAnotherLibrary() throws IOException {
+    Document mail = uploadedMailRow("fremd.eml");
+    mail.setLibraryId(UUID.randomUUID());
+    Document attachment = mailAttachmentRow(mail, 0, "anlage.txt");
+    UUID documentId = stubAttachmentChain(mail, attachment);
+
+    assertThatThrownBy(() -> service.loadContent(documentId, caller))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
+    verifyNoInteractions(attachmentExtractor);
+  }
+
+  @Test
+  void loadContentExtractsAMailAttachmentOutOfAnEmlThatIsItselfADownloadedRssAttachment()
+      throws IOException {
+    // A downloaded .eml is an attachment of its RSS entry (real URL as file_path) AND the parent of
+    // its own mail attachments (synthetic paths). The chain must end at the .eml - it is fetched
+    // from its own URL - instead of climbing on to the entry, whose path it does not embed.
+    startRemoteServer();
+    AtomicInteger requestsForMail = new AtomicInteger();
+    remoteServer.createContext(
+        "/post.eml",
+        exchange -> {
+          requestsForMail.incrementAndGet();
+          byte[] bytes = "mail bytes".getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "message/rfc822");
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    KnowledgeLibrary library = remoteLibrary(null);
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    grantViewerOnUploadLibrary();
+
+    Document entry =
+        new Document(
+            "eintrag.html",
+            remoteBaseUrl + "/eintrag",
+            "text/html",
+            null,
+            DocumentSourceType.RSS_FEED);
+    entry.setLibraryId(libraryId);
+    Document mail =
+        new Document(
+            "post.eml",
+            remoteBaseUrl + "/post.eml",
+            "message/rfc822",
+            null,
+            DocumentSourceType.RSS_FEED);
+    mail.setLibraryId(libraryId);
+    mail.setParentDocumentId(entry.getId());
+    Document attachment = mailAttachmentRow(mail, 0, "anlage.txt");
+    attachment.setSourceType(DocumentSourceType.RSS_FEED);
+    when(documentRepository.findById(entry.getId())).thenReturn(Optional.of(entry));
+    when(documentRepository.findById(mail.getId())).thenReturn(Optional.of(mail));
+    when(documentRepository.findById(attachment.getId())).thenReturn(Optional.of(attachment));
+
+    Path extracted = Files.createTempFile("opaa-attachment-test-", ".txt");
+    Files.writeString(extracted, "Anhang der heruntergeladenen Mail");
+    when(attachmentExtractor.extract(any(), eq("post.eml"), eq(0)))
+        .thenReturn(new AttachmentExtractor.Extracted(extracted, "anlage.txt"));
+
+    DocumentContent content = service.loadContent(attachment.getId(), caller);
+    try {
+      assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
+          .isEqualTo("Anhang der heruntergeladenen Mail");
+    } finally {
+      content.stream().close();
+    }
+    assertThat(requestsForMail.get()).isEqualTo(1);
+  }
+
+  @Test
+  void loadContentAnswers404WhenTheChainIsDeeperThanTheConfiguredAttachmentDepth()
+      throws IOException {
+    // Default max-attachment-depth is 5, so a seven-level chain cannot have been indexed at all.
+    Document root = uploadedMailRow("tief.eml");
+    when(documentRepository.findById(root.getId())).thenReturn(Optional.of(root));
+    Document current = root;
+    for (int level = 0; level < 7; level++) {
+      Document next = mailAttachmentRow(current, 0, "ebene" + level + ".eml");
+      when(documentRepository.findById(next.getId())).thenReturn(Optional.of(next));
+      current = next;
+    }
+    grantViewerOnUploadLibrary();
+    UUID documentId = current.getId();
+
+    assertThatThrownBy(() -> service.loadContent(documentId, caller))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
+    verifyNoInteractions(attachmentExtractor);
+  }
+
+  /** An UPLOAD mail row whose stored file actually exists under this library's upload directory. */
+  private Document uploadedMailRow(String fileName) throws IOException {
+    Path libraryDir = Files.createDirectories(storageDir.resolve(libraryId.toString()));
+    Path storedFile = libraryDir.resolve(fileName);
+    Files.writeString(storedFile, "mail bytes");
+    Document mail =
+        new Document(
+            fileName,
+            storedFile.toString(),
+            "message/rfc822",
+            Files.size(storedFile),
+            DocumentSourceType.UPLOAD);
+    mail.setLibraryId(libraryId);
+    return mail;
+  }
+
+  /** An attachment row of {@code parent}, with the synthetic file_path of ADR-0022. */
+  private Document mailAttachmentRow(Document parent, int index, String fileName) {
+    Document attachment =
+        new Document(
+            fileName,
+            parent.getFilePath() + "/" + index + "/" + fileName,
+            "text/plain",
+            13L,
+            DocumentSourceType.UPLOAD);
+    attachment.setLibraryId(libraryId);
+    attachment.setParentDocumentId(parent.getId());
+    return attachment;
+  }
+
+  private UUID stubAttachmentChain(Document parent, Document attachment) {
+    when(documentRepository.findById(parent.getId())).thenReturn(Optional.of(parent));
+    when(documentRepository.findById(attachment.getId())).thenReturn(Optional.of(attachment));
+    grantViewerOnUploadLibrary();
+    return attachment.getId();
+  }
+
+  private void grantViewerOnUploadLibrary() {
+    when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
+        .thenReturn(AssetRole.VIEWER);
+  }
+
   private KnowledgeLibrary remoteLibrary(String sourceCredentials) {
     KnowledgeLibrary library = mock(KnowledgeLibrary.class);
     when(library.getId()).thenReturn(libraryId);
@@ -1181,7 +1399,9 @@ class LibraryDocumentServiceTest {
             enabledValidator,
             remoteContentProperties,
             folderRepository,
-            folderService);
+            folderService,
+            attachmentExtractor,
+            new MailProperties(0, 0, 0, 0));
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
         .thenReturn(AssetRole.VIEWER);
     KnowledgeLibrary library = remoteLibrary(null);
