@@ -2,6 +2,8 @@ package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.dto.ChunkInspectionResponse;
+import io.opaa.api.dto.DocumentChunksResponse;
 import io.opaa.api.dto.LibraryIndexState;
 import io.opaa.api.dto.RetrievalCandidateOutcome;
 import io.opaa.api.dto.RetrievalStage;
@@ -23,7 +25,9 @@ import io.opaa.query.SearchedLibraryRef;
 import io.opaa.query.StageExplanation;
 import io.opaa.query.StageStatus;
 import io.opaa.query.VerdictReason;
+import io.opaa.searchadmin.ChunkInspection;
 import io.opaa.searchadmin.DiagnosisContextType;
+import io.opaa.searchadmin.DocumentChunks;
 import io.opaa.searchadmin.DocumentDescriptor;
 import io.opaa.searchadmin.LibrarySearchStatus;
 import io.opaa.searchadmin.ModelRole;
@@ -397,5 +401,79 @@ class SearchAdminResponseMapperTest {
             DOCUMENT_ID.toString(),
             new DocumentDescriptor(DOCUMENT_ID.toString(), "satzung.pdf", LIBRARY_ID, "Satzungen")),
         tracked);
+  }
+
+  @Test
+  void chunkResponseCarriesEveryFieldAndNoEmbedding() {
+    ChunkInspection chunk =
+        new ChunkInspection(
+            "chunk-7",
+            DOCUMENT_ID,
+            "satzung.pdf",
+            LIBRARY_ID,
+            "Satzungen",
+            7,
+            "§ 4 Befreiung\nAuf Antrag ...",
+            Map.of("chunk_index", 7, "location", "Seite 2"));
+
+    ChunkInspectionResponse response = SearchAdminResponseMapper.toChunkResponse(chunk);
+
+    assertThat(response.getChunkId()).isEqualTo("chunk-7");
+    assertThat(response.getDocumentId()).isEqualTo(DOCUMENT_ID);
+    assertThat(response.getDocumentTitle()).isEqualTo("satzung.pdf");
+    assertThat(response.getLibraryId()).isEqualTo(LIBRARY_ID);
+    assertThat(response.getLibraryName()).isEqualTo("Satzungen");
+    assertThat(response.getChunkIndex()).isEqualTo(7);
+    assertThat(response.getContent()).isEqualTo("§ 4 Befreiung\nAuf Antrag ...");
+    assertThat(response.getMetadata())
+        .containsEntry("chunk_index", 7)
+        .containsEntry("location", "Seite 2")
+        .doesNotContainKey("embedding");
+    // The DTO has no field an embedding could travel in.
+    assertThat(
+            Arrays.stream(ChunkInspectionResponse.class.getDeclaredFields()).map(f -> f.getName()))
+        .noneMatch(name -> name.toLowerCase().contains("embedding"));
+  }
+
+  @Test
+  void chunkResponseToleratesAnUnresolvedLibraryAndAMissingChunkIndex() {
+    ChunkInspectionResponse response =
+        SearchAdminResponseMapper.toChunkResponse(
+            new ChunkInspection("c", DOCUMENT_ID, "x.pdf", null, null, null, "Text", Map.of()));
+
+    assertThat(response.getLibraryId()).isNull();
+    assertThat(response.getLibraryName()).isNull();
+    assertThat(response.getChunkIndex()).isNull();
+    assertThat(response.getMetadata()).isEmpty();
+  }
+
+  @Test
+  void documentChunksResponseCarriesTheEntitysCountAndTheChunksInOrder() {
+    DocumentChunks document =
+        new DocumentChunks(
+            DOCUMENT_ID,
+            "satzung.pdf",
+            LIBRARY_ID,
+            "Satzungen",
+            5,
+            List.of(
+                new ChunkInspection(
+                    "c0", DOCUMENT_ID, "satzung.pdf", LIBRARY_ID, "Satzungen", 0, "A", Map.of()),
+                new ChunkInspection(
+                    "c1", DOCUMENT_ID, "satzung.pdf", LIBRARY_ID, "Satzungen", 1, "B", Map.of())));
+
+    DocumentChunksResponse response = SearchAdminResponseMapper.toDocumentChunksResponse(document);
+
+    assertThat(response.getDocumentId()).isEqualTo(DOCUMENT_ID);
+    assertThat(response.getDocumentTitle()).isEqualTo("satzung.pdf");
+    assertThat(response.getLibraryId()).isEqualTo(LIBRARY_ID);
+    assertThat(response.getLibraryName()).isEqualTo("Satzungen");
+    assertThat(response.getChunkCount()).isEqualTo(5);
+    assertThat(response.getChunks())
+        .extracting(ChunkInspectionResponse::getChunkId)
+        .containsExactly("c0", "c1");
+    assertThat(response.getChunks())
+        .extracting(ChunkInspectionResponse::getContent)
+        .containsExactly("A", "B");
   }
 }
