@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -65,6 +65,9 @@ const NO_PROFILES_EXPLANATION =
   'Es gibt keine Rechteprofile, weil keine Gruppen angelegt sind: Ein Rechteprofil ist eine Gruppe zusammen mit den Bibliotheken, die sie lesen darf. Wo Lesbarkeit nur über einzelne Berechtigungen vergeben wird, entsteht keines. Bis dahin bleiben der eigene Rechtekontext und - mit Befugnis - der Rechtekontext einer Person.'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Stable identity across renders, so passing it as a prop never breaks a memoized child's equality check. */
+const EMPTY_LIBRARIES: LibrarySearchStatusResponse[] = []
 
 /** A document key is only a loadable document id when it is a UUID; other keys stay plain text. */
 function isUuid(value: string) {
@@ -322,7 +325,11 @@ function MetadataBackfillCell({
   )
 }
 
-function LibraryStatusTable({
+/**
+ * Memoized so a keystroke in the diagnosis form - which re-renders the whole page - does not
+ * also re-render this table; only a change in the library/backfill data or the callbacks does.
+ */
+export const LibraryStatusTable = memo(function LibraryStatusTable({
   libraries,
   backfillRuns,
   onStartBackfill,
@@ -426,7 +433,7 @@ function LibraryStatusTable({
       </Table>
     </TableContainer>
   )
-}
+})
 
 /** The document cell of a diagnosis row: a link into the document's chunk list where the key is an id. */
 function DocumentTitleCell({
@@ -858,6 +865,11 @@ export default function SearchIndexingAdminPage() {
   const startMetadataBackfill = useSearchAdminStore((s) => s.startMetadataBackfill)
   const pauseMetadataBackfill = useSearchAdminStore((s) => s.pauseMetadataBackfill)
 
+  const handleStartBackfill = useCallback(
+    (libraryId: string) => void startMetadataBackfill(libraryId),
+    [startMetadataBackfill],
+  )
+
   const [question, setQuestion] = useState('')
   const [contextChoice, setContextChoice] = useState<string | null>(null)
   const [targetUserId, setTargetUserId] = useState('')
@@ -974,9 +986,9 @@ export default function SearchIndexingAdminPage() {
           nächsten unverarbeiteten Dokument fort.
         </Typography>
         <LibraryStatusTable
-          libraries={status?.libraries ?? []}
+          libraries={status?.libraries ?? EMPTY_LIBRARIES}
           backfillRuns={backfillRuns}
-          onStartBackfill={(libraryId) => void startMetadataBackfill(libraryId)}
+          onStartBackfill={handleStartBackfill}
           onPauseBackfill={pauseMetadataBackfill}
         />
       </Box>
