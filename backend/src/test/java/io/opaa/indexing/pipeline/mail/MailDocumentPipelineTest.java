@@ -69,7 +69,7 @@ class MailDocumentPipelineTest {
 
   private static ChunkingService defaultChunkingService() {
     return new ChunkingService(
-        new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1));
+        new IndexingProperties(1000, 100, 50, null, null, null, null, null, 1));
   }
 
   private MailDocumentPipeline pipeline(MailProperties properties) {
@@ -360,8 +360,7 @@ class MailDocumentPipelineTest {
             .build();
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
     ChunkingService realisticChunking =
-        new ChunkingService(
-            new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1));
+        new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, null, null, 1));
 
     DocumentPipelineResult result =
         pipeline(defaultProperties, realisticChunking)
@@ -565,8 +564,7 @@ class MailDocumentPipelineTest {
             .build();
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
     ChunkingService realisticChunking =
-        new ChunkingService(
-            new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1));
+        new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, null, null, 1));
 
     DocumentPipelineResult result =
         pipeline(defaultProperties, realisticChunking)
@@ -629,8 +627,7 @@ class MailDocumentPipelineTest {
             .build();
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
     ChunkingService tinyChunking =
-        new ChunkingService(
-            new IndexingProperties(20, 5, 50, null, null, List.of(), null, null, null, 1));
+        new ChunkingService(new IndexingProperties(20, 5, 50, null, null, null, null, null, 1));
 
     DocumentPipelineResult result =
         pipeline(defaultProperties, tinyChunking)
