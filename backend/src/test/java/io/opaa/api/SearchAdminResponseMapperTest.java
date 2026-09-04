@@ -185,11 +185,13 @@ class SearchAdminResponseMapperTest {
 
   @Test
   void permissionProfilesCarryIdNameAndLibraryCount() {
-    var responses =
-        SearchAdminResponseMapper.toPermissionProfileResponses(
-            List.of(new SearchDiagnosisService.PermissionProfile(LIBRARY_ID, "Bürgerbüro", 4)));
+    var response =
+        SearchAdminResponseMapper.toDiagnosisContextResponse(
+            new SearchDiagnosisService.DiagnosisContextOptions(
+                List.of(new SearchDiagnosisService.PermissionProfile(LIBRARY_ID, "Bürgerbüro", 4)),
+                true));
 
-    assertThat(responses)
+    assertThat(response.getPermissionProfiles())
         .singleElement()
         .satisfies(
             profile -> {
@@ -197,6 +199,45 @@ class SearchAdminResponseMapperTest {
               assertThat(profile.getName()).isEqualTo("Bürgerbüro");
               assertThat(profile.getLibraryCount()).isEqualTo(4);
             });
+  }
+
+  @Test
+  void theDiagnosisContextExplainsBothStatesOfThePersonContextPermission() {
+    var withBefugnis =
+        SearchAdminResponseMapper.toDiagnosisContextResponse(
+            new SearchDiagnosisService.DiagnosisContextOptions(List.of(), true));
+    var withoutBefugnis =
+        SearchAdminResponseMapper.toDiagnosisContextResponse(
+            new SearchDiagnosisService.DiagnosisContextOptions(List.of(), false));
+
+    assertThat(withBefugnis.getPersonContextAvailable()).isTrue();
+    assertThat(withBefugnis.getPersonContextHint()).contains("Begründung", "protokolliert");
+    assertThat(withoutBefugnis.getPersonContextAvailable()).isFalse();
+    assertThat(withoutBefugnis.getPersonContextHint())
+        .contains("Sie halten keine", "Administratorrolle");
+  }
+
+  @Test
+  void aPersonContextRunIsLabelledAsSuchAndNamesItsLockedLibraries() {
+    SearchDiagnosis personContext =
+        new SearchDiagnosis(
+            "Frage",
+            DiagnosisContextType.USER,
+            null,
+            Instant.parse("2026-09-01T10:00:00Z"),
+            List.of(),
+            List.of(),
+            new RetrievalExplanation(List.of()),
+            List.of(),
+            Map.of(),
+            2,
+            null);
+
+    SearchDiagnosisResponse response = SearchAdminResponseMapper.toDiagnosisResponse(personContext);
+
+    assertThat(response.getContextType()).isEqualTo(SearchDiagnosisContextType.USER);
+    assertThat(response.getContextLabel()).isEqualTo("Rechtekontext einer Person");
+    assertThat(response.getLockedLibraryCount()).isEqualTo(2);
   }
 
   @Test
@@ -248,6 +289,7 @@ class SearchAdminResponseMapperTest {
               assertThat(entry.getLibraryName()).isEqualTo("Satzungen");
             });
     assertThat(response.getTrackedDocument()).isNull();
+    assertThat(response.getLockedLibraryCount()).isZero();
   }
 
   @Test
@@ -263,6 +305,7 @@ class SearchAdminResponseMapperTest {
             new RetrievalExplanation(List.of()),
             List.of(),
             Map.of(),
+            0,
             null);
 
     assertThat(SearchAdminResponseMapper.toDiagnosisResponse(ownContext).getContextLabel())
@@ -356,6 +399,7 @@ class SearchAdminResponseMapperTest {
         new RetrievalExplanation(stages),
         base.selection(),
         base.documentsByKey(),
+        base.lockedLibraryCount(),
         base.trackedDocument());
   }
 
@@ -400,6 +444,7 @@ class SearchAdminResponseMapperTest {
         Map.of(
             DOCUMENT_ID.toString(),
             new DocumentDescriptor(DOCUMENT_ID.toString(), "satzung.pdf", LIBRARY_ID, "Satzungen")),
+        0,
         tracked);
   }
 

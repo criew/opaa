@@ -54,6 +54,15 @@ import { useAuthStore } from '../stores/authStore'
 import { useSearchAdminStore } from '../stores/searchAdminStore'
 
 const OWN_CONTEXT_VALUE = 'SELF'
+const PERSON_CONTEXT_VALUE = 'USER'
+
+/**
+ * Why an installation without groups sees no profiles. A permission profile is a group with the
+ * libraries it may read; none is derived from grant patterns, so the list stays empty until groups
+ * exist (#1150).
+ */
+const NO_PROFILES_EXPLANATION =
+  'Es gibt keine Rechteprofile, weil keine Gruppen angelegt sind: Ein Rechteprofil ist eine Gruppe zusammen mit den Bibliotheken, die sie lesen darf. Wo Lesbarkeit nur über einzelne Berechtigungen vergeben wird, entsteht keines. Bis dahin bleiben der eigene Rechtekontext und - mit Befugnis - der Rechtekontext einer Person.'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -447,6 +456,11 @@ function DiagnosisResult({
         {diagnosis.searchQueries.length > 0 &&
           ` · Teilfragen: ${diagnosis.searchQueries.join(' · ')}`}
       </Typography>
+      {diagnosis.lockedLibraryCount > 0 && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          {`${plural(diagnosis.lockedLibraryCount, 'Bibliothek ist', 'Bibliotheken sind')} als gesperrter Suchbereich ausgenommen. Daraus zeigt die Diagnose nichts - weder Treffer noch Titel.`}
+        </Alert>
+      )}
       {diagnosis.trackedDocument && (
         <Alert severity={trackedDocumentMessage(diagnosis.trackedDocument).severity} sx={{ mb: 2 }}>
           {trackedDocumentMessage(diagnosis.trackedDocument).text}
@@ -712,6 +726,8 @@ export default function SearchIndexingAdminPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const status = useSearchAdminStore((s) => s.status)
   const profiles = useSearchAdminStore((s) => s.profiles)
+  const personContextAvailable = useSearchAdminStore((s) => s.personContextAvailable)
+  const personContextHint = useSearchAdminStore((s) => s.personContextHint)
   const statusError = useSearchAdminStore((s) => s.statusError)
   const diagnosis = useSearchAdminStore((s) => s.diagnosis)
   const diagnosisError = useSearchAdminStore((s) => s.diagnosisError)
@@ -725,15 +741,20 @@ export default function SearchIndexingAdminPage() {
 
   const [question, setQuestion] = useState('')
   const [contextChoice, setContextChoice] = useState<string | null>(null)
+  const [targetUserId, setTargetUserId] = useState('')
+  const [justification, setJustification] = useState('')
   const [trackedDocumentId, setTrackedDocumentId] = useState('')
   const [previewChunkId, setPreviewChunkId] = useState<string | null>(null)
   const [documentIdInput, setDocumentIdInput] = useState('')
   const documentChunksSectionRef = useRef<HTMLDivElement>(null)
 
   // Derived rather than set from an effect once the profiles arrive: the preselected context is a
-  // permission profile wherever one exists, the caller's own context otherwise - never a person,
-  // which is not offered at all until #1052 delivers the Befugnis- und Protokollmodell.
+  // permission profile wherever one exists, the caller's own context otherwise - never a person
+  // (Berechtigungs-Leitplanke (d)).
   const contextValue = contextChoice ?? (profiles.length > 0 ? profiles[0].id : OWN_CONTEXT_VALUE)
+  const isPersonContext = contextValue === PERSON_CONTEXT_VALUE
+  const personContextIncomplete =
+    isPersonContext && (targetUserId.trim() === '' || justification.trim() === '')
 
   useEffect(() => {
     if (isSystemAdmin) void loadStatus()
@@ -741,11 +762,13 @@ export default function SearchIndexingAdminPage() {
 
   async function handleDiagnosis() {
     const contextType: SearchDiagnosisContextType =
-      contextValue === OWN_CONTEXT_VALUE ? 'SELF' : 'PERMISSION_PROFILE'
+      contextValue === OWN_CONTEXT_VALUE ? 'SELF' : isPersonContext ? 'USER' : 'PERMISSION_PROFILE'
     await runDiagnosis({
       question: question.trim(),
       contextType,
       permissionProfileId: contextType === 'PERMISSION_PROFILE' ? contextValue : undefined,
+      targetUserId: contextType === 'USER' ? targetUserId.trim() : undefined,
+      justification: contextType === 'USER' ? justification.trim() : undefined,
       trackedDocumentId: trackedDocumentId.trim() === '' ? undefined : trackedDocumentId.trim(),
     })
   }
@@ -841,15 +864,16 @@ export default function SearchIndexingAdminPage() {
             size="small"
             fullWidth
           />
-          {/* Every library the chosen context may read is diagnosable; the per-library
-              diagnosis lock of Leitplanke (e) needs the Befugnismodell of #1052 and does not
-              exist yet. */}
           <TextField
             select
             label="Sicht als"
             value={contextValue}
             onChange={(e) => setContextChoice(e.target.value)}
-            helperText="Rechteprofile und der eigene Rechtekontext. Der Rechtekontext einer bestimmten Person steht hier nicht zur Wahl."
+            helperText={
+              profiles.length === 0
+                ? NO_PROFILES_EXPLANATION
+                : 'Voreingestellt ist ein Rechteprofil. Der Rechtekontext einer Person ist die Ausnahme: Er verlangt eine eigene Befugnis und eine Begründung und wird protokolliert.'
+            }
             size="small"
             fullWidth
           >
@@ -859,7 +883,39 @@ export default function SearchIndexingAdminPage() {
                 {`Rechteprofil „${profile.name}“ (${plural(profile.libraryCount, 'Bibliothek', 'Bibliotheken')})`}
               </MenuItem>
             ))}
+            <MenuItem value={PERSON_CONTEXT_VALUE} disabled={!personContextAvailable}>
+              Rechtekontext einer Person
+            </MenuItem>
           </TextField>
+          {personContextHint !== '' && (
+            <Typography variant="body2" color="text.secondary">
+              {personContextHint}
+            </Typography>
+          )}
+          {isPersonContext && (
+            <>
+              <TextField
+                label="Nutzer-ID der Person"
+                required
+                value={targetUserId}
+                onChange={(e) => setTargetUserId(e.target.value)}
+                helperText="Kennung der Person, deren Rechtekontext eingenommen wird. Die Diagnose liest keine Gespräche dieser Person - sie nutzt allein ihre Leserechte."
+                size="small"
+                fullWidth
+              />
+              <TextField
+                label="Begründung"
+                required
+                multiline
+                minRows={2}
+                value={justification}
+                onChange={(e) => setJustification(e.target.value)}
+                helperText="Pflichtangabe. Sie wird im Protokolleintrag dieses Laufs mitgeführt; ohne sie wird nicht ausgeführt."
+                size="small"
+                fullWidth
+              />
+            </>
+          )}
           <TextField
             label="Dokument verfolgen (optional)"
             value={trackedDocumentId}
@@ -873,7 +929,7 @@ export default function SearchIndexingAdminPage() {
               variant="contained"
               size="small"
               onClick={() => void handleDiagnosis()}
-              disabled={running || question.trim() === ''}
+              disabled={running || question.trim() === '' || personContextIncomplete}
             >
               {running ? 'Diagnose läuft …' : 'Diagnose ausführen'}
             </Button>

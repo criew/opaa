@@ -9,6 +9,7 @@ import {
   MOCK_SATZUNG_DOCUMENT_ID,
   mockDocumentChunks,
   mockSearchDiagnosis,
+  mockSearchDiagnosisContext,
   mockSearchStatus,
 } from '../mocks/fixtures'
 import SearchIndexingAdminPage from './SearchIndexingAdminPage'
@@ -120,7 +121,7 @@ describe('SearchIndexingAdminPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('offers permission profiles and the own context, never a person', async () => {
+  it('offers the person context only with the befugnis, and explains why it is unselectable', async () => {
     signInAs('SYSTEM_ADMIN')
 
     renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
@@ -134,8 +135,75 @@ describe('SearchIndexingAdminPage', () => {
       'Eigener Rechtekontext',
       'Rechteprofil „Sachbearbeitung Buergerbuero“ (2 Bibliotheken)',
       'Rechteprofil „Projektbeteiligte Phoenix“ (1 Bibliothek)',
+      'Rechtekontext einer Person',
     ])
-    expect(screen.getByText(/nicht zur Wahl/)).toBeInTheDocument()
+    expect(options[3]).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText(/Sie halten keine/)).toBeInTheDocument()
+  })
+
+  it('explains an empty profile list instead of showing a bare dropdown', async () => {
+    signInAs('SYSTEM_ADMIN')
+    server.use(
+      http.get('/api/v1/admin/search/diagnosis-context', () =>
+        HttpResponse.json({ ...mockSearchDiagnosisContext, permissionProfiles: [] }),
+      ),
+    )
+
+    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+
+    expect(
+      await screen.findByText(/Ein Rechteprofil ist eine Gruppe zusammen mit den Bibliotheken/),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/keine Gruppen angelegt sind/)).toBeInTheDocument()
+  })
+
+  it('runs a person context with a target and a mandatory justification', async () => {
+    signInAs('SYSTEM_ADMIN')
+    server.use(
+      http.get('/api/v1/admin/search/diagnosis-context', () =>
+        HttpResponse.json({
+          ...mockSearchDiagnosisContext,
+          personContextAvailable: true,
+          personContextHint: 'Sie halten eine gültige Befugnis „Sicht als“.',
+        }),
+      ),
+      http.post('/api/v1/admin/search/diagnosis', async ({ request }) => {
+        const body = (await request.json()) as { targetUserId?: string; justification?: string }
+        if (!body.justification || body.justification.trim() === '') {
+          return HttpResponse.json({ error: 'Begründung ist erforderlich' }, { status: 400 })
+        }
+        return HttpResponse.json({
+          ...mockSearchDiagnosis,
+          contextType: 'USER',
+          contextLabel: `Rechtekontext einer Person`,
+          lockedLibraryCount: 1,
+        })
+      }),
+    )
+
+    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const contextSelect = await screen.findByRole('combobox', { name: /Sicht als/ })
+    await user.click(contextSelect)
+    await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: /Person/ }))
+
+    await user.type(
+      screen.getByRole('textbox', { name: /Testfrage/ }),
+      'Was gilt bei Gebührenbefreiung?',
+    )
+    await user.type(screen.getByRole('textbox', { name: /Nutzer-ID/ }), 'user-thomas')
+    // Without the justification the run stays unavailable - it is not merely rejected later.
+    expect(screen.getByRole('button', { name: 'Diagnose ausführen' })).toBeDisabled()
+
+    await user.type(screen.getByRole('textbox', { name: /Begründung/ }), 'Vorgang 4711')
+    await user.click(screen.getByRole('button', { name: 'Diagnose ausführen' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Ergebnis' })).toBeInTheDocument()
+    })
+    expect(screen.getAllByText(/Rechtekontext einer Person/).length).toBeGreaterThan(1)
+    expect(screen.getByText(/gesperrter Suchbereich ausgenommen/)).toBeInTheDocument()
   })
 
   it('shows every pipeline stage of the run with its own candidate verdicts', async () => {

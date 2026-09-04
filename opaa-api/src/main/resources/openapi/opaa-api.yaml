@@ -703,25 +703,26 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/v1/admin/search/permission-profiles:
+  /api/v1/admin/search/diagnosis-context:
     get:
-      operationId: listSearchPermissionProfiles
+      operationId: getSearchDiagnosisContext
       tags: [admin, search]
-      summary: The permission profiles the diagnosis can be run in (system admin only, #1053)
+      summary: The rights contexts the diagnosis can be run in (system admin only, #1053, #1150)
       description: >
-        A permission profile is a group together with the library set it may read - the diagnosis
-        context hybrid-retrieval.md's Berechtigungs-Leitplanken (d) names as the default one. A
-        person is deliberately not offered here: the "Sicht als (Person)" context needs the
-        Befugnis- und Protokollmodell (#1052) and is not delivered without it.
+        The permission profiles - a group together with the library set it may read, the default
+        context of hybrid-retrieval.md's Berechtigungs-Leitplanken (d) - plus whether the calling
+        administrator may choose the person context at all. The person context needs the separately
+        granted "Sicht als" befugnis (#1052); holding SYSTEM_ADMIN confers nothing here, so the
+        answer is a property of the caller and not of their role. No person is listed: the target of
+        a person context is named by id, never picked from a directory this page would have to
+        expose.
       responses:
         "200":
-          description: The permission profiles of the caller's own organization, by name
+          description: The profiles of the caller's own organization and their own person-context permission
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SearchPermissionProfileResponse"
+                $ref: "#/components/schemas/SearchDiagnosisContextResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -741,6 +742,13 @@ paths:
         Zugriffshistorien-Nachweis, and it applies a permission filter like every other search - it
         sets that filter differently, it never omits it. No answer is generated; the run stops
         after retrieval.
+
+
+        The person context (contextType USER, #1150) runs through ForeignDiagnosticContextService
+        and through nothing else: befugnis, mandatory justification, subtraction of
+        diagnosegesperrte libraries and the protocol entry happen in that one call. Without the
+        befugnis the answer is 403, whatever the caller's role. The result of such a run is
+        returned once and stored nowhere (Leitplanke (j)).
       requestBody:
         required: true
         content:
@@ -6308,9 +6316,35 @@ components:
       type: string
       description: >
         SELF runs in the calling administrator's own rights context; PERMISSION_PROFILE runs in a
-        group's. A person context is deliberately not part of this enum - it needs #1052.
-      enum: [SELF, PERMISSION_PROFILE]
+        group's; USER runs in one named person's (#1150). USER is the exception of
+        Berechtigungs-Leitplanke (d): it needs the "Sicht als" befugnis and a free-text
+        justification, it is never the preselected context, and it runs only through
+        ForeignDiagnosticContextService - the one path that also subtracts diagnosegesperrte
+        libraries and writes the protocol entry.
+      enum: [SELF, PERMISSION_PROFILE, USER]
       example: PERMISSION_PROFILE
+
+    SearchDiagnosisContextResponse:
+      type: object
+      required: [permissionProfiles, personContextAvailable, personContextHint]
+      properties:
+        permissionProfiles:
+          type: array
+          description: >
+            The profiles of the caller's own organization, by name. Empty where the organization
+            has no groups - a permission profile is a group, and none are derived from grant
+            patterns.
+          items:
+            $ref: "#/components/schemas/SearchPermissionProfileResponse"
+        personContextAvailable:
+          type: boolean
+          description: >
+            Whether the caller currently holds a valid, unrevoked "Sicht als" befugnis. False makes
+            the person context unselectable in the user interface; the endpoint enforces the same
+            rule again and answers 403 regardless of what a client sends.
+        personContextHint:
+          type: string
+          description: The German explanation of that permission, shown next to the disabled choice.
 
     SearchDiagnosisRequest:
       type: object
@@ -6331,7 +6365,24 @@ components:
           format: uuid
           nullable: true
           description: >
-            Required for PERMISSION_PROFILE, rejected with 400 for SELF. An unknown id yields 404.
+            Required for PERMISSION_PROFILE, rejected with 400 for SELF and USER. An unknown id
+            yields 404.
+        targetUserId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The person whose rights context to assume. Required for USER, rejected with 400
+            otherwise, and rejected with 400 when it names the caller themselves - a run in one's
+            own rights context is not a "Sicht als".
+        justification:
+          type: string
+          maxLength: 1000
+          nullable: true
+          description: >
+            The free-text justification Berechtigungs-Leitplanke (d) requires for a person context.
+            Mandatory for USER - a person context without one is not executed - and carried into the
+            protocol entry. Ignored for the other context types, which write no entry.
         trackedDocumentId:
           type: string
           format: uuid
@@ -6531,6 +6582,7 @@ components:
           searchQueries,
           stages,
           finalSelection,
+          lockedLibraryCount,
         ]
       properties:
         question:
@@ -6566,6 +6618,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DiagnosisSelectionEntryResponse"
+        lockedLibraryCount:
+          type: integer
+          description: >
+            How many libraries of the target rights context were left out as diagnosegesperrt
+            (Berechtigungs-Leitplanke (e)). Their existence is named, nothing from inside them is:
+            no name, no hit, no count of documents. Always 0 outside the person context, where the
+            lock does not apply.
         trackedDocument:
           allOf:
             - $ref: "#/components/schemas/TrackedDocumentResponse"

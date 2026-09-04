@@ -160,7 +160,9 @@ class SearchDiagnosisIntegrationTest {
   @Test
   void anOwnContextRunSearchesEveryLibraryTheAdministratorMayRead() {
     SearchDiagnosis diagnosis =
-        diagnose(new DiagnosisQuery("Gebührenbefreiung", DiagnosisContextType.SELF, null, null));
+        diagnose(
+            new DiagnosisQuery(
+                "Gebührenbefreiung", DiagnosisContextType.SELF, null, null, null, null));
 
     assertThat(diagnosis.searchScope())
         .extracting(ref -> ref.getId())
@@ -248,7 +250,12 @@ class SearchDiagnosisIntegrationTest {
             () ->
                 diagnose(
                     new DiagnosisQuery(
-                        "Gebührenbefreiung", DiagnosisContextType.PERMISSION_PROFILE, null, null)))
+                        "Gebührenbefreiung",
+                        DiagnosisContextType.PERMISSION_PROFILE,
+                        null,
+                        null,
+                        null,
+                        null)))
         .isInstanceOf(ValidationException.class);
   }
 
@@ -268,7 +275,12 @@ class SearchDiagnosisIntegrationTest {
 
   private DiagnosisQuery profileQuery(String question, UUID trackedDocumentId) {
     return new DiagnosisQuery(
-        question, DiagnosisContextType.PERMISSION_PROFILE, profileGroupId, trackedDocumentId);
+        question,
+        DiagnosisContextType.PERMISSION_PROFILE,
+        profileGroupId,
+        null,
+        null,
+        trackedDocumentId);
   }
 
   /** Every document key any search stage brought into the run. */

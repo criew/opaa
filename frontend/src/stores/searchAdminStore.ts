@@ -8,7 +8,7 @@ import type {
 } from '../types/api'
 import {
   getDocumentChunks,
-  getSearchPermissionProfiles,
+  getSearchDiagnosisContext,
   getSearchStatus,
   runSearchDiagnosis,
 } from '../services/api'
@@ -23,6 +23,8 @@ let latestDocumentChunksRequest = 0
 interface SearchAdminState {
   status: SearchStatusResponse | null
   profiles: SearchPermissionProfileResponse[]
+  personContextAvailable: boolean
+  personContextHint: string
   statusError: string | null
   diagnosis: SearchDiagnosisResponse | null
   diagnosisError: string | null
@@ -42,6 +44,8 @@ const EMPTY: Omit<
 > = {
   status: null,
   profiles: [],
+  personContextAvailable: false,
+  personContextHint: '',
   statusError: null,
   diagnosis: null,
   diagnosisError: null,
@@ -66,12 +70,15 @@ export const useSearchAdminStore = create<SearchAdminState>((set) => ({
   loadStatus: async () => {
     const sessionEpoch = currentSessionEpoch()
     try {
-      const [status, profiles] = await Promise.all([
-        getSearchStatus(),
-        getSearchPermissionProfiles(),
-      ])
+      const [status, context] = await Promise.all([getSearchStatus(), getSearchDiagnosisContext()])
       if (isStaleSessionEpoch(sessionEpoch)) return
-      set({ status, profiles, statusError: null })
+      set({
+        status,
+        profiles: context.permissionProfiles,
+        personContextAvailable: context.personContextAvailable,
+        personContextHint: context.personContextHint,
+        statusError: null,
+      })
     } catch (err) {
       if (isStaleSessionEpoch(sessionEpoch)) return
       set({

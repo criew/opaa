@@ -119,6 +119,7 @@ export type SearchStatusResponse = components['schemas']['SearchStatusResponse']
 export type SearchPermissionProfileResponse =
   components['schemas']['SearchPermissionProfileResponse']
 export type SearchDiagnosisContextType = components['schemas']['SearchDiagnosisContextType']
+export type SearchDiagnosisContextResponse = components['schemas']['SearchDiagnosisContextResponse']
 export type SearchDiagnosisRequest = components['schemas']['SearchDiagnosisRequest']
 export type SearchDiagnosisResponse = components['schemas']['SearchDiagnosisResponse']
 export type RetrievalStage = components['schemas']['RetrievalStage']

@@ -2,6 +2,11 @@ package io.opaa.searchadmin;
 
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ValidationException;
+import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService;
+import io.opaa.diagnosticaccess.ForeignDiagnosticContext;
+import io.opaa.diagnosticaccess.ForeignDiagnosticContextService;
+import io.opaa.diagnosticaccess.ForeignDiagnosticFindings;
+import io.opaa.diagnosticaccess.ForeignDiagnosticRequest;
 import io.opaa.group.GroupDetail;
 import io.opaa.group.GroupService;
 import io.opaa.indexing.Document;
@@ -67,6 +72,8 @@ public class SearchDiagnosisService {
   private final GroupService groupService;
   private final DocumentRepository documentRepository;
   private final RerankModelRole rerankModelRole;
+  private final ForeignDiagnosticContextService foreignDiagnosticContextService;
+  private final DiagnosticImpersonationGrantService grantService;
   private final Clock clock;
 
   public SearchDiagnosisService(
@@ -77,6 +84,8 @@ public class SearchDiagnosisService {
       GroupService groupService,
       DocumentRepository documentRepository,
       RerankModelRole rerankModelRole,
+      ForeignDiagnosticContextService foreignDiagnosticContextService,
+      DiagnosticImpersonationGrantService grantService,
       Clock clock) {
     this.retrievalPipeline = retrievalPipeline;
     this.queryProperties = queryProperties;
@@ -85,6 +94,8 @@ public class SearchDiagnosisService {
     this.groupService = groupService;
     this.documentRepository = documentRepository;
     this.rerankModelRole = rerankModelRole;
+    this.foreignDiagnosticContextService = foreignDiagnosticContextService;
+    this.grantService = grantService;
     this.clock = clock;
   }
 
@@ -104,31 +115,90 @@ public class SearchDiagnosisService {
   }
 
   /**
+   * The contexts this caller can choose between: the organization's profiles, and whether they
+   * personally hold the "Sicht als" befugnis. That permission is read here only so the page can
+   * explain the choice; every run enforces it again inside {@link ForeignDiagnosticContextService},
+   * so a client ignoring this answer gains nothing.
+   */
+  public DiagnosisContextOptions diagnosisContext(CurrentUser caller) {
+    return new DiagnosisContextOptions(
+        permissionProfiles(caller), grantService.holdsImpersonationPermission(caller));
+  }
+
+  /**
    * Runs {@code query} and returns the protocol of what happened.
    *
    * @throws ValidationException when the context type and the profile id contradict each other
    */
   public SearchDiagnosis diagnose(CurrentUser caller, DiagnosisQuery query) {
-    String profileName = null;
-    Set<UUID> searchScope;
-    if (query.contextType() == DiagnosisContextType.PERMISSION_PROFILE) {
-      if (query.permissionProfileId() == null) {
-        throw new ValidationException(
-            "Für eine Diagnose als Rechteprofil ist ein Profil zu wählen.");
+    return switch (query.contextType()) {
+      case USER -> diagnoseAsPerson(caller, query);
+      case PERMISSION_PROFILE -> {
+        if (query.permissionProfileId() == null) {
+          throw new ValidationException(
+              "Für eine Diagnose als Rechteprofil ist ein Profil zu wählen.");
+        }
+        GroupDetail profile = groupService.getGroup(query.permissionProfileId(), caller);
+        yield run(
+            caller,
+            query,
+            libraryAccessService.readableLibraryIdsForGroup(
+                query.permissionProfileId(), caller.organizationId()),
+            profile.group().getName(),
+            0);
       }
-      GroupDetail profile = groupService.getGroup(query.permissionProfileId(), caller);
-      profileName = profile.group().getName();
-      searchScope =
-          libraryAccessService.readableLibraryIdsForGroup(
-              query.permissionProfileId(), caller.organizationId());
-    } else {
-      if (query.permissionProfileId() != null) {
-        throw new ValidationException(
-            "Eine Diagnose im eigenen Rechtekontext nimmt kein Rechteprofil entgegen.");
+      case SELF -> {
+        if (query.permissionProfileId() != null) {
+          throw new ValidationException(
+              "Eine Diagnose im eigenen Rechtekontext nimmt kein Rechteprofil entgegen.");
+        }
+        yield run(
+            caller,
+            query,
+            libraryAccessService.readableLibraryIds(caller.id(), caller.organizationId()),
+            null,
+            0);
       }
-      searchScope = libraryAccessService.readableLibraryIds(caller.id(), caller.organizationId());
-    }
+    };
+  }
 
+  /**
+   * The person context, and the only place it is produced: the search scope comes from {@link
+   * ForeignDiagnosticContextService#execute} instead of from this service's own resolution, so
+   * befugnis, mandatory justification, subtraction of diagnosegesperrte libraries and the protocol
+   * entry cannot be reached around (Leitplanken (c)-(f) and the Klarstellung zu (e) in
+   * docs/features/hybrid-retrieval.md). The result is handed back to the caller and stored nowhere
+   * (Leitplanke (j)).
+   */
+  private SearchDiagnosis diagnoseAsPerson(CurrentUser caller, DiagnosisQuery query) {
+    if (query.permissionProfileId() != null) {
+      throw new ValidationException(
+          "Eine Diagnose im Rechtekontext einer Person nimmt kein Rechteprofil entgegen.");
+    }
+    return foreignDiagnosticContextService
+        .execute(
+            caller,
+            ForeignDiagnosticRequest.forUser(
+                query.targetUserId(), query.question(), query.justification()),
+            context -> findings(caller, query, context))
+        .presentation();
+  }
+
+  private ForeignDiagnosticFindings<SearchDiagnosis> findings(
+      CurrentUser caller, DiagnosisQuery query, ForeignDiagnosticContext context) {
+    SearchDiagnosis diagnosis =
+        run(caller, query, context.searchableLibraryIds(), null, context.lockedLibraryIds().size());
+    return new ForeignDiagnosticFindings<>(
+        diagnosis.selection().stream().map(SearchDiagnosis.SelectedChunk::chunkId).toList(),
+        diagnosis);
+  }
+
+  private SearchDiagnosis run(
+      CurrentUser caller,
+      DiagnosisQuery query,
+      Set<UUID> searchScope,
+      String profileName,
+      int lockedLibraryCount) {
     // Empty history, deliberately: the diagnosis never reads a conversation (Leitplanke (a)).
     // The rerank role's state is read exactly as QueryService reads it, so this run reranks
     // whenever a chat query would.
@@ -161,6 +231,7 @@ public class SearchDiagnosisService {
         result.explanation(),
         selection,
         documentsByKey,
+        lockedLibraryCount,
         tracked);
   }
 
@@ -350,4 +421,11 @@ public class SearchDiagnosisService {
 
   /** A permission profile: a group and how many libraries it may read. Never a person. */
   public record PermissionProfile(UUID id, String name, int libraryCount) {}
+
+  /**
+   * What one caller may choose as a diagnosis context: the organization's profiles, and that
+   * caller's own "Sicht als" befugnis - which follows from no role.
+   */
+  public record DiagnosisContextOptions(
+      List<PermissionProfile> profiles, boolean personContextAvailable) {}
 }
