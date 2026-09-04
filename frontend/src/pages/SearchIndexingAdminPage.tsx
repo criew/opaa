@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -13,7 +13,6 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
-import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
@@ -22,7 +21,6 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
@@ -30,55 +28,31 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import PageHeading from '../components/a11y/PageHeading'
 import GlobalScopeNote from '../components/GlobalScopeNote'
 import SectionHead from '../components/SectionHead'
+import ChunkContent from '../components/searchadmin/ChunkContent'
+import DiagnosisForm from '../components/searchadmin/DiagnosisForm'
+import DocumentChunkSection, {
+  type DocumentChunkSectionHandle,
+} from '../components/searchadmin/DocumentChunkSection'
+import LibraryStatusTable from '../components/searchadmin/LibraryStatusTable'
+import { isUuid, plural } from '../components/searchadmin/format'
 
 import type {
   ChunkInspectionResponse,
-  DocumentChunksResponse,
-  LibraryIndexState,
-  LibrarySearchStatusResponse,
   RetrievalCandidateOutcome,
   RetrievalStage,
   RetrievalStageResponse,
   RetrievalStageStatus,
   RetrievalVerdictReason,
-  SearchDiagnosisContextType,
   SearchDiagnosisResponse,
   SearchModelRole,
   SearchModelRoleStatusResponse,
   SearchPathStatusResponse,
   TrackedDocumentResponse,
 } from '../types/api'
-import { formatShare } from '../utils/labels'
 import { translateListLabel, translateStageNote } from '../utils/retrievalProtocolText'
 import { getSearchChunk } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
-import { useSearchAdminStore, type MetadataBackfillRun } from '../stores/searchAdminStore'
-
-const OWN_CONTEXT_VALUE = 'SELF'
-const PERSON_CONTEXT_VALUE = 'USER'
-
-/**
- * Why an installation without groups sees no profiles. A permission profile is a group with the
- * libraries it may read; none is derived from grant patterns, so the list stays empty until groups
- * exist (#1150).
- */
-const NO_PROFILES_EXPLANATION =
-  'Es gibt keine Rechteprofile, weil keine Gruppen angelegt sind: Ein Rechteprofil ist eine Gruppe zusammen mit den Bibliotheken, die sie lesen darf. Wo Lesbarkeit nur über einzelne Berechtigungen vergeben wird, entsteht keines. Bis dahin bleiben der eigene Rechtekontext und - mit Befugnis - der Rechtekontext einer Person.'
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-/** Stable identity across renders, so passing it as a prop never breaks a memoized child's equality check. */
-const EMPTY_LIBRARIES: LibrarySearchStatusResponse[] = []
-
-/** A document key is only a loadable document id when it is a UUID; other keys stay plain text. */
-function isUuid(value: string) {
-  return UUID_PATTERN.test(value)
-}
-
-/** German singular/plural, so the page never says "1 Bibliotheken". */
-function plural(count: number, one: string, many: string) {
-  return `${count} ${count === 1 ? one : many}`
-}
+import { useSearchAdminStore } from '../stores/searchAdminStore'
 
 function formatMetadataValue(value: unknown): string {
   if (value == null) return '—'
@@ -108,12 +82,6 @@ const PATH_LABELS: Record<SearchPathStatusResponse['path'], string> = {
 const PATH_STATE_LABELS: Record<SearchPathStatusResponse['state'], string> = {
   ACTIVE: 'Aktiv',
   DISABLED: 'Abgeschaltet',
-  INCOMPLETE: 'Unvollständig',
-}
-
-const INDEX_STATE_LABELS: Record<LibraryIndexState, string> = {
-  EMPTY: 'Leer',
-  READY: 'Vollständig',
   INCOMPLETE: 'Unvollständig',
 }
 
@@ -245,213 +213,6 @@ function ModelRoleCard({ role }: { role: SearchModelRoleStatusResponse }) {
     </Paper>
   )
 }
-
-/**
- * The core-metadata extraction state of one library and the control that drives its backfill
- * (#1067). Start, Weiter and Anhalten are one button: the run is a loop of batch calls this page
- * repeats, so pausing is simply not calling again and resuming is calling again - the server
- * re-derives the remaining work on every call.
- */
-function MetadataBackfillCell({
-  library,
-  run,
-  onStart,
-  onPause,
-}: {
-  library: LibrarySearchStatusResponse
-  run: MetadataBackfillRun | undefined
-  onStart: (libraryId: string) => void
-  onPause: (libraryId: string) => void
-}) {
-  const backfill = library.metadataBackfill
-  const running = run?.running ?? false
-  const resumable = !running && run != null && !run.done && run.error == null
-  const buttonLabel = running ? 'Anhalten' : resumable ? 'Weiter' : 'Kernfelder nachrüsten'
-  return (
-    <TableCell>
-      <Typography variant="body2" component="div">
-        {backfill.currentDocuments} / {backfill.totalDocuments} aktuell
-      </Typography>
-      {backfill.pendingDocuments > 0 && (
-        <Typography variant="caption" color="warning.main" component="div">
-          {plural(backfill.pendingDocuments, 'Dokument ausstehend', 'Dokumente ausstehend')}
-        </Typography>
-      )}
-      {backfill.awaitingConnectorRunDocuments > 0 && (
-        <Typography variant="caption" color="text.secondary" component="div">
-          {backfill.awaitingConnectorRunDocuments === 1
-            ? 'davon 1 Dokument wartet auf den nächsten Konnektorlauf'
-            : `davon ${backfill.awaitingConnectorRunDocuments} Dokumente warten auf den nächsten Konnektorlauf`}
-        </Typography>
-      )}
-      {backfill.lastSkippedDocuments > 0 && (
-        <Typography variant="caption" color="warning.main" component="div">
-          {plural(
-            backfill.lastSkippedDocuments,
-            'Dokument zuletzt übersprungen',
-            'Dokumente zuletzt übersprungen',
-          )}
-        </Typography>
-      )}
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        component="div"
-        aria-label={`Füllgrad je Kernfeld: ${library.libraryName}`}
-      >
-        {backfill.fields
-          .map(
-            (field) =>
-              `${field.label} ${field.filledDocuments} (${formatShare(field.filledShare)})`,
-          )
-          .join(' · ')}
-      </Typography>
-      {/* #1069: the Pflege-Anker in the operational view - the same definition the library's own
-          settings show, counted over the organization here. */}
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        component="div"
-        aria-label={`Dokumente ohne Wert je Kernfeld: ${library.libraryName}`}
-      >
-        {backfill.fields
-          .map(
-            (field) =>
-              `${field.label} ${field.documentsWithoutValue} ohne Wert (${formatShare(
-                field.missingShare,
-              )})`,
-          )
-          .join(' · ')}
-      </Typography>
-      {run?.error && (
-        <Typography variant="caption" color="error.main" component="div" role="alert">
-          {run.error}
-        </Typography>
-      )}
-      {(backfill.pendingDocuments > 0 || running) && (
-        <Button
-          size="small"
-          variant={running ? 'outlined' : 'contained'}
-          sx={{ mt: 0.5 }}
-          aria-label={`${buttonLabel}: ${library.libraryName}`}
-          onClick={() => (running ? onPause(library.libraryId) : onStart(library.libraryId))}
-        >
-          {buttonLabel}
-        </Button>
-      )}
-    </TableCell>
-  )
-}
-
-/**
- * Memoized so a keystroke in the diagnosis form - which re-renders the whole page - does not
- * also re-render this table; only a change in the library/backfill data or the callbacks does.
- */
-export const LibraryStatusTable = memo(function LibraryStatusTable({
-  libraries,
-  backfillRuns,
-  onStartBackfill,
-  onPauseBackfill,
-}: {
-  libraries: LibrarySearchStatusResponse[]
-  backfillRuns: Record<string, MetadataBackfillRun>
-  onStartBackfill: (libraryId: string) => void
-  onPauseBackfill: (libraryId: string) => void
-}) {
-  if (libraries.length === 0) {
-    return (
-      <Typography variant="body2" color="text.secondary">
-        Es ist noch keine Wissensbibliothek angelegt.
-      </Typography>
-    )
-  }
-  return (
-    // Nine columns overflow narrower viewports into a horizontal scroll; a scrollable region must
-    // be reachable and scrollable by keyboard (axe scrollable-region-focusable), hence the tab stop.
-    <TableContainer
-      component={Paper}
-      variant="outlined"
-      tabIndex={0}
-      role="region"
-      aria-label="Tabelle Indexstatus je Bibliothek, horizontal scrollbar"
-    >
-      <Table size="small" aria-label="Indexstatus je Bibliothek">
-        <TableHead>
-          <TableRow>
-            <TableCell>Bibliothek</TableCell>
-            <TableCell align="right">Dokumente</TableCell>
-            <TableCell align="right">Rückstand</TableCell>
-            <TableCell align="right">Abschnitte (im Index / laut Dokumenten)</TableCell>
-            <TableCell align="right">Ohne oder mit auffällig wenigen Abschnitten</TableCell>
-            <TableCell>Letzter Lauf</TableCell>
-            <TableCell>Vektorindex</TableCell>
-            <TableCell>Volltextindex</TableCell>
-            <TableCell>Kernfelder</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {libraries.map((library) => (
-            <TableRow key={library.libraryId}>
-              <TableCell>{library.libraryName}</TableCell>
-              <TableCell align="right">
-                {library.indexedDocumentCount} / {library.documentCount}
-              </TableCell>
-              <TableCell align="right">{library.pendingDocumentCount}</TableCell>
-              <TableCell align="right">
-                {`${library.vectorChunkCount} / ${library.chunkCount}`}
-                {library.vectorChunkCount !== library.chunkCount && (
-                  <Typography variant="caption" color="text.secondary" component="div">
-                    Vektorindex und Dokumentzählung weichen ab
-                  </Typography>
-                )}
-              </TableCell>
-              <TableCell align="right">{library.lowChunkDocumentCount}</TableCell>
-              <TableCell>
-                {library.lastIndexedAt
-                  ? new Date(library.lastIndexedAt).toLocaleString('de-DE')
-                  : 'noch nie'}
-              </TableCell>
-              <TableCell>
-                <Chip
-                  size="small"
-                  label={INDEX_STATE_LABELS[library.vectorIndexState]}
-                  color={library.vectorIndexState === 'INCOMPLETE' ? 'warning' : 'default'}
-                />
-              </TableCell>
-              <TableCell>
-                <Chip
-                  size="small"
-                  label={INDEX_STATE_LABELS[library.fullTextIndexState]}
-                  color={library.fullTextIndexState === 'INCOMPLETE' ? 'warning' : 'default'}
-                />
-                {library.fullTextMissingChunks > 0 && (
-                  <Typography variant="caption" color="text.secondary" component="div">
-                    {plural(library.fullTextMissingChunks, 'Abschnitt fehlt', 'Abschnitte fehlen')}
-                  </Typography>
-                )}
-                {library.fullTextSkippedChunks > 0 && (
-                  <Typography variant="caption" color="warning.main" component="div">
-                    {plural(
-                      library.fullTextSkippedChunks,
-                      'Abschnitt dauerhaft übersprungen',
-                      'Abschnitte dauerhaft übersprungen',
-                    )}
-                  </Typography>
-                )}
-              </TableCell>
-              <MetadataBackfillCell
-                library={library}
-                run={backfillRuns[library.libraryId]}
-                onStart={onStartBackfill}
-                onPause={onPauseBackfill}
-              />
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  )
-})
 
 /** The document cell of a diagnosis row: a link into the document's chunk list where the key is an id. */
 function DocumentTitleCell({
@@ -651,29 +412,6 @@ function DiagnosisResult({
   )
 }
 
-/** Monospace, line breaks preserved: the chunk exactly as the index holds it, prefix included. */
-function ChunkContent({ content }: { content: string }) {
-  return (
-    <Box
-      component="pre"
-      sx={{
-        m: 0,
-        p: 1.5,
-        fontFamily: 'monospace',
-        fontSize: '0.8125rem',
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word',
-        bgcolor: 'action.hover',
-        borderRadius: 1,
-        maxHeight: 420,
-        overflow: 'auto',
-      }}
-    >
-      {content}
-    </Box>
-  )
-}
-
 const CHUNK_DIALOG_TITLE_ID = 'chunk-preview-title'
 
 /**
@@ -799,70 +537,6 @@ function ChunkPreviewDialog({ chunkId, onClose }: { chunkId: string | null; onCl
   )
 }
 
-function DocumentChunkList({ document }: { document: DocumentChunksResponse }) {
-  const stored = document.chunks.length
-  return (
-    <Box sx={{ mt: 2 }}>
-      <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>
-        {document.documentTitle ?? document.documentId}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        Bibliothek: {document.libraryName ?? '—'} ·{' '}
-        {plural(stored, 'gespeicherter Chunk', 'gespeicherte Chunks')}, laut Dokument{' '}
-        {document.chunkCount}
-      </Typography>
-      {stored !== document.chunkCount && (
-        <Alert severity="warning" sx={{ mb: 1.5 }}>
-          Die Zahl der gespeicherten Chunks ({stored}) weicht von der im Dokument vermerkten Anzahl
-          ({document.chunkCount}) ab - der Index ist veraltet oder unvollständig geschrieben.
-        </Alert>
-      )}
-      {stored === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          Für dieses Dokument ist kein Chunk gespeichert.
-        </Typography>
-      ) : (
-        <Stack spacing={1}>
-          {document.chunks.map((chunk) => {
-            const location = chunk.metadata.location
-            return (
-              <Accordion
-                key={chunk.chunkId}
-                variant="outlined"
-                disableGutters
-                slotProps={{ heading: { component: 'h4' } }}
-              >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Stack
-                    direction="row"
-                    spacing={1.5}
-                    sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}
-                  >
-                    <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
-                      Chunk {chunk.chunkIndex ?? '?'}
-                    </Typography>
-                    <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-                      {plural(chunk.content.length, 'Zeichen', 'Zeichen')}
-                    </Typography>
-                    {typeof location === 'string' && location !== '' && (
-                      <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-                        Fundort: {location}
-                      </Typography>
-                    )}
-                  </Stack>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <ChunkContent content={chunk.content} />
-                </AccordionDetails>
-              </Accordion>
-            )
-          })}
-        </Stack>
-      )}
-    </Box>
-  )
-}
-
 export default function SearchIndexingAdminPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const status = useSearchAdminStore((s) => s.status)
@@ -883,56 +557,16 @@ export default function SearchIndexingAdminPage() {
   const startMetadataBackfill = useSearchAdminStore((s) => s.startMetadataBackfill)
   const pauseMetadataBackfill = useSearchAdminStore((s) => s.pauseMetadataBackfill)
 
-  const handleStartBackfill = useCallback(
-    (libraryId: string) => void startMetadataBackfill(libraryId),
-    [startMetadataBackfill],
-  )
-
-  const [question, setQuestion] = useState('')
-  const [contextChoice, setContextChoice] = useState<string | null>(null)
-  const [targetUserId, setTargetUserId] = useState('')
-  const [justification, setJustification] = useState('')
-  const [trackedDocumentId, setTrackedDocumentId] = useState('')
   const [previewChunkId, setPreviewChunkId] = useState<string | null>(null)
-  const [documentIdInput, setDocumentIdInput] = useState('')
-  const documentChunksSectionRef = useRef<HTMLDivElement>(null)
-
-  // Derived rather than set from an effect once the profiles arrive: the preselected context is a
-  // permission profile wherever one exists, the caller's own context otherwise - never a person
-  // (Berechtigungs-Leitplanke (d)).
-  const contextValue = contextChoice ?? (profiles.length > 0 ? profiles[0].id : OWN_CONTEXT_VALUE)
-  const isPersonContext = contextValue === PERSON_CONTEXT_VALUE
-  const targetUserIdInvalid = targetUserId.trim() !== '' && !UUID_PATTERN.test(targetUserId.trim())
-  const personContextIncomplete =
-    isPersonContext &&
-    (targetUserId.trim() === '' || targetUserIdInvalid || justification.trim() === '')
+  const documentChunkSectionRef = useRef<DocumentChunkSectionHandle>(null)
 
   useEffect(() => {
     if (isSystemAdmin) void loadStatus()
   }, [isSystemAdmin, loadStatus])
 
-  async function handleDiagnosis() {
-    const contextType: SearchDiagnosisContextType =
-      contextValue === OWN_CONTEXT_VALUE ? 'SELF' : isPersonContext ? 'USER' : 'PERMISSION_PROFILE'
-    await runDiagnosis({
-      question: question.trim(),
-      contextType,
-      permissionProfileId: contextType === 'PERMISSION_PROFILE' ? contextValue : undefined,
-      targetUserId: contextType === 'USER' ? targetUserId.trim() : undefined,
-      justification: contextType === 'USER' ? justification.trim() : undefined,
-      trackedDocumentId: trackedDocumentId.trim() === '' ? undefined : trackedDocumentId.trim(),
-    })
-  }
-
-  function showDocumentChunks(documentId: string) {
-    setDocumentIdInput(documentId)
-    void loadDocumentChunks(documentId)
-    documentChunksSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
-  }
-
   const navigation: ChunkNavigation = {
     onShowChunk: setPreviewChunkId,
-    onShowDocument: showDocumentChunks,
+    onShowDocument: (documentId) => documentChunkSectionRef.current?.showDocument(documentId),
   }
 
   if (!isSystemAdmin) {
@@ -1006,9 +640,9 @@ export default function SearchIndexingAdminPage() {
           angehaltener Lauf setzt beim nächsten unverarbeiteten Dokument fort.
         </Typography>
         <LibraryStatusTable
-          libraries={status?.libraries ?? EMPTY_LIBRARIES}
+          libraries={status?.libraries ?? []}
           backfillRuns={backfillRuns}
-          onStartBackfill={handleStartBackfill}
+          onStartBackfill={(libraryId) => void startMetadataBackfill(libraryId)}
           onPauseBackfill={pauseMetadataBackfill}
         />
       </Box>
@@ -1020,91 +654,13 @@ export default function SearchIndexingAdminPage() {
           zeigt jede Stufe einzeln. Sie liest keine bestehenden Gespräche und beantwortet nur den
           jetzigen Zustand - sie ist kein Nachweis über zurückliegende Zugriffe.
         </Typography>
-        <Stack spacing={2} sx={{ maxWidth: 720 }}>
-          <TextField
-            label="Testfrage"
-            required
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            size="small"
-            fullWidth
-          />
-          <TextField
-            select
-            label="Sicht als"
-            value={contextValue}
-            onChange={(e) => setContextChoice(e.target.value)}
-            helperText={
-              profiles.length === 0
-                ? NO_PROFILES_EXPLANATION
-                : 'Voreingestellt ist ein Rechteprofil. Der Rechtekontext einer Person ist die Ausnahme: Er verlangt eine eigene Befugnis und eine Begründung und wird protokolliert.'
-            }
-            size="small"
-            fullWidth
-          >
-            <MenuItem value={OWN_CONTEXT_VALUE}>Eigener Rechtekontext</MenuItem>
-            {profiles.map((profile) => (
-              <MenuItem key={profile.id} value={profile.id}>
-                {`Rechteprofil „${profile.name}“ (${plural(profile.libraryCount, 'Bibliothek', 'Bibliotheken')})`}
-              </MenuItem>
-            ))}
-            <MenuItem value={PERSON_CONTEXT_VALUE} disabled={!personContextAvailable}>
-              Rechtekontext einer Person
-            </MenuItem>
-          </TextField>
-          {personContextHint !== '' && (
-            <Typography variant="body2" color="text.secondary">
-              {personContextHint}
-            </Typography>
-          )}
-          {isPersonContext && (
-            <>
-              <TextField
-                label="Nutzer-UUID der Person"
-                required
-                value={targetUserId}
-                onChange={(e) => setTargetUserId(e.target.value)}
-                error={targetUserIdInvalid}
-                helperText={
-                  targetUserIdInvalid
-                    ? 'Erwartet wird die UUID der Person, nicht ihre Anmeldekennung - etwa 3f2b1c8e-0a4d-4c7b-9f61-2d8e5a7c4b10.'
-                    : 'UUID der Person, deren Rechtekontext eingenommen wird. Die Diagnose liest keine Gespräche dieser Person - sie nutzt allein ihre Leserechte.'
-                }
-                size="small"
-                fullWidth
-              />
-              <TextField
-                label="Begründung"
-                required
-                multiline
-                minRows={2}
-                value={justification}
-                onChange={(e) => setJustification(e.target.value)}
-                helperText="Pflichtangabe. Sie wird im Protokolleintrag dieses Laufs mitgeführt; ohne sie wird nicht ausgeführt."
-                size="small"
-                fullWidth
-              />
-            </>
-          )}
-          <TextField
-            label="Dokument verfolgen (optional)"
-            value={trackedDocumentId}
-            onChange={(e) => setTrackedDocumentId(e.target.value)}
-            helperText="Kennung eines Dokuments aus der Dokumentliste einer Bibliothek. Die Diagnose sagt dann, ob es gar nicht gefunden oder in einer bestimmten Stufe verdrängt wurde."
-            size="small"
-            fullWidth
-          />
-          <Box>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => void handleDiagnosis()}
-              disabled={running || question.trim() === '' || personContextIncomplete}
-            >
-              {running ? 'Diagnose läuft …' : 'Diagnose ausführen'}
-            </Button>
-          </Box>
-        </Stack>
+        <DiagnosisForm
+          profiles={profiles}
+          personContextAvailable={personContextAvailable}
+          personContextHint={personContextHint}
+          running={running}
+          onRunDiagnosis={runDiagnosis}
+        />
         {diagnosisError && (
           <Alert severity="error" sx={{ mt: 2 }}>
             {diagnosisError}
@@ -1113,38 +669,13 @@ export default function SearchIndexingAdminPage() {
         {diagnosis && <DiagnosisResult diagnosis={diagnosis} navigation={navigation} />}
       </Box>
 
-      <Box ref={documentChunksSectionRef}>
-        <SectionHead>Chunks eines Dokuments</SectionHead>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Zeigt alle gespeicherten Chunks eines Dokuments in Reihenfolge - so, wie die
-          Indexierungs-Pipeline sie abgelegt hat, mit Zuschnitt, Kontextpräfix und Fundort. Ein
-          Klick auf einen Dokumenttitel in der Diagnose führt hierher.
-        </Typography>
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', maxWidth: 720 }}>
-          <TextField
-            label="Dokument-ID"
-            value={documentIdInput}
-            onChange={(e) => setDocumentIdInput(e.target.value)}
-            size="small"
-            fullWidth
-          />
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => showDocumentChunks(documentIdInput.trim())}
-            disabled={loadingDocumentChunks || documentIdInput.trim() === ''}
-            sx={{ flex: 'none', mt: 0.25 }}
-          >
-            {loadingDocumentChunks ? 'Lädt …' : 'Chunks laden'}
-          </Button>
-        </Stack>
-        {documentChunksError && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {documentChunksError}
-          </Alert>
-        )}
-        {documentChunks && <DocumentChunkList document={documentChunks} />}
-      </Box>
+      <DocumentChunkSection
+        ref={documentChunkSectionRef}
+        documentChunks={documentChunks}
+        documentChunksError={documentChunksError}
+        loading={loadingDocumentChunks}
+        onLoadDocumentChunks={(documentId) => void loadDocumentChunks(documentId)}
+      />
 
       <ChunkPreviewDialog chunkId={previewChunkId} onClose={() => setPreviewChunkId(null)} />
     </Box>
