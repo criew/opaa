@@ -899,11 +899,12 @@ Bearbeitenden vorbehalten (mindestens MANAGER-Rolle an der Bibliothek), nicht je
 Entscheidungen, die bereits getroffen sind. Sie stehen hier, damit sie nicht in einem Jahr als neue
 Idee wieder aufgemacht werden.
 
-- **Speicherkontingente — ja, für manuelle Uploads.** Es gibt eine Obergrenze je Person mit einem
-  hausweit konfigurierbaren Standardwert; einzelne Personen können davon abweichend gesetzt werden.
-  Ohne Kontingent wird der persönliche Bereich zur Ausweichablage für ganze Netzlaufwerke, und zwar an
-  der Kuratierung vorbei. Konnektorbestände sind davon nicht betroffen — sie werden über den Zuschnitt
-  der Quelle begrenzt, nicht über ein Kontingent. Erfasst als **Issue #119**.
+- **Speicherkontingente — ja, für jede Bibliothek.** Es gibt eine Obergrenze je Bibliothek mit einem
+  hausweit konfigurierbaren Standardwert (`opaa.library.quota-bytes`), durchgesetzt von
+  `LibraryStorageQuotaService` auf jedem Aufnahmeweg — manueller Upload ebenso wie die Konnektorpfade
+  FILESYSTEM, HTTP_DIRECTORY und RSS_FEED sowie Mail-Anhänge. Ohne Kontingent wird eine Bibliothek zur
+  Ausweichablage für ganze Netzlaufwerke oder unbegrenzt wachsende Konnektorquellen, und zwar an der
+  Kuratierung vorbei. Erfasst als **Issue #119**.
 - **Anzeige ähnlicher Dokumente beim Upload — ja**, beschränkt auf Bestände, die die hochladende Person
   sehen darf, und als Hinweis ohne Blockade (siehe [Duplikate erkennen](#duplikate-erkennen)). Ebenfalls
   **Issue #119**.
