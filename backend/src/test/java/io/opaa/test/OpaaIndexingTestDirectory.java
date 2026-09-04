@@ -10,7 +10,7 @@ import java.util.stream.Stream;
 
 /**
  * One process-wide base directory for every class carrying {@link OpaaIndexingIntegrationTest},
- * created exactly once so the {@code opaa.indexing.filesystem-allowlist} property {@link
+ * created exactly once so the {@code opaa.indexing.filesystem.allowlist} property {@link
  * OpaaIndexingFilesystemAllowlistInitializer} registers stays identical across classes (an
  * identical, static value keeps the Spring context cache key identical too - a fresh
  * {@code @TempDir} per class would not, see {@link OpaaIndexingIntegrationTest}'s Javadoc).

@@ -4,7 +4,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,8 +26,7 @@ class IndexingJobRecoverySchedulerTest {
   @BeforeEach
   void setUp() {
     var properties =
-        new IndexingProperties(
-            1000, 0, 50, null, null, List.of(), Duration.ofHours(4), null, null, 0);
+        new IndexingProperties(1000, 0, 50, null, null, Duration.ofHours(4), null, null, 0);
     scheduler = new IndexingJobRecoveryScheduler(indexingJobService, properties);
   }
 

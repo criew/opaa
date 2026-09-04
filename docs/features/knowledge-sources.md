@@ -339,21 +339,18 @@ Anstoß-Endpunkt gegen Überlastung — je aufrufender Netzadresse **und** je Bi
 höchstens ein Lauf gleichzeitig je Bibliothek. Der Fortschritt ist über
 `GET /api/v1/libraries/{libraryId}/indexing/status` abrufbar.
 
-**Was noch fehlt** — und zwar so, dass es benannt gehört:
+**Zielprüfung (gebaut, #267).** Jede ausgehende Adresse — Start-URL, jede Weiterleitung, der
+Proxy-Host und die Ziele des Verbindungstests im Erstellungsdialog — wird gegen private, lokale und
+nicht routbare Adressbereiche geprüft; zulässig sind nur die Schemata `http` und `https`, eine
+Weiterleitung von `https` auf `http` wird immer verweigert, und eine Weiterleitung auf einen fremden
+Ursprung verliert die Zugangsdaten. Konfigurierbar über `opaa.indexing.target-validation`
+(Abschaltung und Hostnamen-Allowlist). Die Pfad-Allowlist sichert den Dateisystem-Typ auf dieselbe
+Weise ab (**gebaut**, #484).
 
-- **Zielprüfung.** Die angegebene Adresse wird heute nicht gegen private, lokale und nicht routbare
-  Adressbereiche geprüft, und die zulässigen Schemata werden nicht ausdrücklich eingegrenzt.
-  Weiterleitungen werden gefolgt. Mit der Öffnung des Anstoßes auf jeden `EDITOR` (ADR-0018) und der
-  dauerhaft offenen Anlageberechtigung (ADR-0018, Entscheidung 6) ist diese Härtung dringlicher als
-  zuvor. Anders als beim Dateisystem-Typ, für den die Pfad-Allowlist die Anlage bereits absichert
-  (**gebaut**, #484), ist diese Zielprüfung für `HTTP_DIRECTORY`/`RSS_FEED` noch offen und der
-  verbleibende Blocker für den Mehrbenutzer-Produktivbetrieb. Erfasst als **Issue #267** — die
-  Lücke gilt seit #514 gleichermaßen für den Verbindungstest im Erstellungsdialog, der dieselben
-  ausgehenden Verbindungen aufbaut, nur synchron statt über einen Indizierungslauf.
-- **Zeitplan.** ~~Der Lauf wird angestoßen, nicht geplant.~~ **Gebaut (#485):** an- und abschaltbarer
-  Zeitplan je Bibliothek (stündlich / täglich / wöchentlich, feste Uhrzeit), zusätzlich zum
-  weiterhin möglichen manuellen Anstoß. Siehe ADR-0018, Nachtrag 2026-08-21, für die vollständige
-  Entscheidung (Zeitzone, verteilte Ausführung, Fehlerverhalten).
+**Zeitplan (gebaut, #485).** An- und abschaltbarer Zeitplan je Bibliothek (stündlich / täglich /
+wöchentlich, feste Uhrzeit), zusätzlich zum weiterhin möglichen manuellen Anstoß. Siehe ADR-0018,
+Nachtrag 2026-08-21, für die vollständige Entscheidung (Zeitzone, verteilte Ausführung,
+Fehlerverhalten).
 
 ### Feeds als Quelle (gebaut)
 
@@ -459,11 +456,9 @@ durch](#selbst-aktualisierende-wissensblöcke) unten und
 /api/v1/libraries/{libraryId}/indexing`. Die Bibliothek trägt den Typ `RSS_FEED` und die Feed-Adresse als
 gespeicherte Konfiguration (**gebaut**, [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md));
 Auslösen darf, wer an der Bibliothek mindestens `EDITOR` ist, wie bei jedem lauf-basierten Typ.
-
-**Was noch fehlt** — und zwar so, dass es benannt gehört:
-
-- **Zeitplan.** Der Lauf wird angestoßen, nicht geplant, wie bei der Verzeichnisliste. Erfasst als
-  **Issue #485**.
+Zeitplan (#485) und Zielprüfung (#267) gelten wie bei der Verzeichnisliste; die Zielprüfung greift
+hier zusätzlich auf jede Detailseite und jede Anlage, und für fremde Ursprünge werden weder
+Zugangsdaten noch eine ausgesetzte Zertifikatsprüfung angewendet.
 
 ---
 
@@ -823,8 +818,9 @@ weiterhin keine Ordner, da ein Feed keine Verzeichnisstruktur hat.
 
 ### Auslöser
 
-Ein Lauf beginnt auf vier Wegen: nach **Zeitplan je Bibliothek** (Zielbild, **Issue #485** — heute wird
-angestoßen, nicht geplant), durch eine **Meldung des Quellsystems** (Zielbild), durch **ausdrücklichen
+Ein Lauf beginnt auf vier Wegen: nach **Zeitplan je Bibliothek** (**gebaut**, #485: stündlich /
+täglich / wöchentlich, verpasste Termine werden nicht nachgeholt), durch eine **Meldung des
+Quellsystems** (Zielbild), durch **ausdrücklichen
 Anstoß** — `POST /api/v1/libraries/{libraryId}/indexing`, EDITOR an der Bibliothek genügt (**gebaut**,
 ADR-0018) — oder, beim Upload, **unmittelbar** mit der Übergabe.
 
