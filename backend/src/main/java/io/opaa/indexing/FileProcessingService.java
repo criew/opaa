@@ -691,10 +691,14 @@ public class FileProcessingService {
 
       // No routing decision was ever made for this text (see the pipeline selection above) - no
       // routing key is written at all, same as a failed detection (#routingExtensionFor).
-      // The entry's headline is its only declared property; the file name is never a convention
-      // here, so nothing but the headline reaches the core-field extraction.
+      // The entry's headline and its feed-declared publication instant are its declared
+      // properties (ADR-0024); the file name is never a naming convention here.
       DocumentPipelineResult withHeadline =
-          parsed.withProperties(parsed.properties().withTitle(contextTitle));
+          parsed.withProperties(
+              parsed
+                  .properties()
+                  .withTitle(contextTitle)
+                  .withDocumentDate(publishedDate(publishedAt)));
       storeChunks(
           doc,
           chunks,
@@ -1269,6 +1273,21 @@ public class FileProcessingService {
             .toList();
 
     addToVectorStore(enriched);
+  }
+
+  /**
+   * An RSS entry's {@code publishedAt} (an {@link Instant#toString()} rendering from {@code
+   * RssFeedIndexingExecutor}) as a UTC calendar date, or {@code null} when absent or unparseable.
+   */
+  private static java.time.LocalDate publishedDate(String publishedAt) {
+    if (publishedAt == null || publishedAt.isBlank()) {
+      return null;
+    }
+    try {
+      return Instant.parse(publishedAt).atZone(java.time.ZoneOffset.UTC).toLocalDate();
+    } catch (java.time.format.DateTimeParseException e) {
+      return null;
+    }
   }
 
   /**

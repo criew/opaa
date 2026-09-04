@@ -78,6 +78,15 @@ class Migration018DocumentMetadataCoreFieldsTest extends AbstractMigrationTest {
       assertThat(rs.next()).isTrue();
       assertThat(rs.getString("code")).isEqualTo("SATZUNG_ORDNUNG");
     }
+    // No synonym shorter than four letters: a lower-cased abbreviation collides with everyday
+    // words ("da") and would empty an otherwise unambiguous Dokumentart.
+    try (Statement statement = connection.createStatement();
+        ResultSet rs =
+            statement.executeQuery(
+                "SELECT count(*) FROM document_type_synonyms WHERE length(synonym) < 4")) {
+      assertThat(rs.next()).isTrue();
+      assertThat(rs.getLong(1)).isZero();
+    }
   }
 
   @Test
@@ -147,6 +156,80 @@ class Migration018DocumentMetadataCoreFieldsTest extends AbstractMigrationTest {
     insertTextValue(documentId, "title", "Titel", "MANUAL", null, null);
   }
 
+  /** The third state (#1069) is a row without a value that only a person may write. */
+  @Test
+  void notDeterminableIsOnlyStorableManuallyAndWithoutAValue() throws Exception {
+    UUID documentId = insertDocument(libraryId, "/uploads/a.pdf");
+
+    assertThatThrownBy(
+            () ->
+                insertRow(documentId, "title", "NOT_DETERMINABLE", null, null, "DETERMINISTIC", 1))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("chk_document_metadata_values_not_determinable_is_manual");
+    assertThatThrownBy(
+            () -> insertRow(documentId, "title", "NOT_DETERMINABLE", "Titel", null, "MANUAL", null))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("chk_document_metadata_values_one_value");
+    insertRow(documentId, "title", "NOT_DETERMINABLE", null, null, "MANUAL", null);
+  }
+
+  @Test
+  void aSetRowCarriesExactlyOneValue() throws Exception {
+    UUID documentId = insertDocument(libraryId, "/uploads/a.pdf");
+
+    assertThatThrownBy(() -> insertRow(documentId, "title", "SET", null, null, "MANUAL", null))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("chk_document_metadata_values_one_value");
+    assertThatThrownBy(() -> insertTextAndVocabularyValue(documentId, "custom", "Text", "VERMERK"))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("chk_document_metadata_values_one_value");
+  }
+
+  private void insertTextAndVocabularyValue(
+      UUID documentId, String fieldKey, String text, String code) throws SQLException {
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            "INSERT INTO document_metadata_values (id, document_id, field_key, text_value,"
+                + " vocabulary_code, origin, created_at, updated_at) VALUES (?, ?, ?, ?, ?,"
+                + " 'MANUAL', now(), now())")) {
+      statement.setObject(1, UUID.randomUUID());
+      statement.setObject(2, documentId);
+      statement.setString(3, fieldKey);
+      statement.setString(4, text);
+      statement.setString(5, code);
+      statement.executeUpdate();
+    }
+  }
+
+  @Test
+  void aDateAlwaysCarriesItsPrecision() throws Exception {
+    UUID documentId = insertDocument(libraryId, "/uploads/a.pdf");
+
+    assertThatThrownBy(
+            () -> insertRow(documentId, "document_date", "SET", null, "2026-03-12", "MANUAL", null))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("chk_document_metadata_values_date_has_precision");
+  }
+
+  @Test
+  void createsTheDocumentIdExpressionIndexOnVectorStoreOnceItExists() throws Exception {
+    try (Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE TABLE IF NOT EXISTS public.vector_store (id uuid PRIMARY KEY, content text,"
+              + " metadata json, embedding vector(3))");
+    }
+    applyChangelog(connection, CHANGELOG_PATH);
+
+    try (Statement statement = connection.createStatement();
+        ResultSet rs =
+            statement.executeQuery(
+                "SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' AND indexname ="
+                    + " 'idx_vector_store_document_id'")) {
+      assertThat(rs.next()).as("index must exist").isTrue();
+      assertThat(rs.getString("indexdef")).contains("(((metadata ->> 'document_id'::text))");
+    }
+  }
+
   @Test
   void valuesDieWithTheirDocument() throws Exception {
     UUID documentId = insertDocument(libraryId, "/uploads/a.pdf");
@@ -202,6 +285,32 @@ class Migration018DocumentMetadataCoreFieldsTest extends AbstractMigrationTest {
       statement.setString(5, origin);
       statement.setObject(6, extractionVersion);
       statement.setObject(7, confidence);
+      statement.executeUpdate();
+    }
+  }
+
+  private void insertRow(
+      UUID documentId,
+      String fieldKey,
+      String state,
+      String text,
+      String isoDate,
+      String origin,
+      Integer extractionVersion)
+      throws SQLException {
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            "INSERT INTO document_metadata_values (id, document_id, field_key, value_state,"
+                + " text_value, date_value, origin, extraction_version, created_at, updated_at)"
+                + " VALUES (?, ?, ?, ?, ?, ?::date, ?, ?, now(), now())")) {
+      statement.setObject(1, UUID.randomUUID());
+      statement.setObject(2, documentId);
+      statement.setString(3, fieldKey);
+      statement.setString(4, state);
+      statement.setString(5, text);
+      statement.setString(6, isoDate);
+      statement.setString(7, origin);
+      statement.setObject(8, extractionVersion);
       statement.executeUpdate();
     }
   }

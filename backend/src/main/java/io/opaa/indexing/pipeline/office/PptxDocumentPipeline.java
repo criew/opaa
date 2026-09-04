@@ -69,10 +69,11 @@ public class PptxDocumentPipeline implements DocumentPipeline {
     if (source.file() == null) {
       return DocumentPipelineResult.noContent();
     }
-    List<XSLFSlide> slides = readSlides(source);
-    if (slides == null || slides.isEmpty()) {
+    PptxContent content = readContent(source);
+    if (content == null || content.slides().isEmpty()) {
       return DocumentPipelineResult.noContent();
     }
+    List<XSLFSlide> slides = content.slides();
     List<Document> chunks = new ArrayList<>();
     boolean anySlideHasText = false;
     for (int i = 0; i < slides.size(); i++) {
@@ -83,41 +84,40 @@ public class PptxDocumentPipeline implements DocumentPipeline {
     if (!anySlideHasText) {
       return DocumentPipelineResult.noExtractableText();
     }
-    return DocumentPipelineResult.chunked(chunks).withProperties(readProperties(source));
+    return DocumentPipelineResult.chunked(chunks).withProperties(content.properties());
   }
 
   /**
    * The OOXML core properties (dc:title, created, modified) plus the first slide's title as the
-   * first heading (ADR-0024).
+   * first heading (ADR-0024) - one parse, the same read {@link #run} takes.
    */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
     if (source.file() == null) {
       return DocumentProperties.EMPTY;
     }
-    try (InputStream in = Files.newInputStream(source.file())) {
-      try (XMLSlideShow slideShow = new XMLSlideShow(in)) {
-        POIXMLProperties.CoreProperties core = slideShow.getProperties().getCoreProperties();
-        List<XSLFSlide> slides = slideShow.getSlides();
-        String firstHeading = slides.isEmpty() ? null : titleText(titleShape(slides.get(0)));
-        return new DocumentProperties(
-            core.getTitle(),
-            DocumentProperties.toLocalDate(core.getCreated()),
-            DocumentProperties.toLocalDate(core.getModified()),
-            null,
-            firstHeading,
-            Map.of());
-      }
-    } catch (IOException | RuntimeException e) {
-      log.warn("Could not read PPTX properties of {}", source.fileName(), e);
-      return DocumentProperties.EMPTY;
-    }
+    PptxContent content = readContent(source);
+    return content == null ? DocumentProperties.EMPTY : content.properties();
   }
 
-  private static List<XSLFSlide> readSlides(DocumentPipelineSource source) {
+  private record PptxContent(List<XSLFSlide> slides, DocumentProperties properties) {}
+
+  /** {@code null} when the file could not be opened as a PPTX at all - reported as no content. */
+  private static PptxContent readContent(DocumentPipelineSource source) {
     try (InputStream in = Files.newInputStream(source.file())) {
       try (XMLSlideShow slideShow = new XMLSlideShow(in)) {
-        return slideShow.getSlides();
+        List<XSLFSlide> slides = slideShow.getSlides();
+        POIXMLProperties.CoreProperties core = slideShow.getProperties().getCoreProperties();
+        String firstHeading = slides.isEmpty() ? null : titleText(titleShape(slides.get(0)));
+        return new PptxContent(
+            slides,
+            new DocumentProperties(
+                core.getTitle(),
+                DocumentProperties.toLocalDate(core.getCreated()),
+                DocumentProperties.toLocalDate(core.getModified()),
+                null,
+                firstHeading,
+                Map.of()));
       }
     } catch (IOException | RuntimeException e) {
       log.warn("Could not read PPTX document {}", source.fileName(), e);

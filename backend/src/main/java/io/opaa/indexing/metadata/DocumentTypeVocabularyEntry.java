@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import org.hibernate.annotations.BatchSize;
 
 /**
  * One delivered Dokumentart (migration 018 seed): a stable code that never changes once documents
@@ -32,6 +33,7 @@ public class DocumentTypeVocabularyEntry {
   private int sortOrder;
 
   @ElementCollection(fetch = FetchType.EAGER)
+  @BatchSize(size = 50)
   @CollectionTable(name = "document_type_synonyms", joinColumns = @JoinColumn(name = "code"))
   @Column(name = "synonym", nullable = false, length = 100)
   private Set<String> synonyms = new LinkedHashSet<>();

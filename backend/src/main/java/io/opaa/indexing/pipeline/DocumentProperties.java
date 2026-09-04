@@ -1,7 +1,7 @@
 package io.opaa.indexing.pipeline;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
@@ -88,12 +88,15 @@ public record DocumentProperties(
     return calendar.toInstant().atZone(calendar.getTimeZone().toZoneId()).toLocalDate();
   }
 
-  /** A format's zone-less {@link Date} property (POI) as a local date in the system zone. */
+  /**
+   * A format's {@link Date} property (POI) as a UTC calendar date - OOXML core properties are
+   * stored as W3CDTF in UTC, so UTC is the only zone that reproduces the day the file declares.
+   */
   public static LocalDate toLocalDate(Date date) {
     if (date == null) {
       return null;
     }
-    return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    return date.toInstant().atZone(ZoneOffset.UTC).toLocalDate();
   }
 
   private static String blankToNull(String value) {

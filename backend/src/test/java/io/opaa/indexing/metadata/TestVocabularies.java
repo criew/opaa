@@ -14,7 +14,7 @@ final class TestVocabularies {
     return DocumentTypeVocabulary.of(
         List.of(
             entry("SATZUNG_ORDNUNG", "Satzung/Ordnung", 10, "satzung", "gebuehrenordnung"),
-            entry("DIENSTANWEISUNG", "Dienstanweisung", 20, "dienstanweisung", "da"),
+            entry("DIENSTANWEISUNG", "Dienstanweisung", 20, "dienstanweisung", "dienstanordnung"),
             entry("VERMERK", "Vermerk", 30, "vermerk", "aktenvermerk"),
             entry("PROTOKOLL", "Protokoll", 40, "protokoll", "niederschrift"),
             entry("BESCHEID_VORLAGE", "Bescheid-Vorlage", 50, "bescheid", "bescheidvorlage"),

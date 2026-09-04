@@ -297,6 +297,16 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    *
    * @return the number of rows transitioned to {@code FAILED}
    */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.status = io.opaa.api.types.DocumentStatus.FAILED, d.errorMessage ="
+          + " :errorMessage where d.status = io.opaa.api.types.DocumentStatus.PENDING and"
+          + " d.sourceType = io.opaa.api.types.DocumentSourceType.UPLOAD and d.createdAt <"
+          + " :threshold")
+  int failStalePending(
+      @Param("errorMessage") String errorMessage, @Param("threshold") Instant threshold);
+
   /**
    * Records which core-metadata extraction version last ran over a document (ADR-0024, #1066). A
    * targeted {@code UPDATE} rather than an entity save: it runs from the ingest after the row's own
@@ -307,16 +317,6 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Transactional
   @Query("update Document d set d.metadataExtractionVersion = :version where d.id = :id")
   int updateMetadataExtractionVersion(@Param("id") UUID id, @Param("version") int version);
-
-  @Modifying
-  @Transactional
-  @Query(
-      "update Document d set d.status = io.opaa.api.types.DocumentStatus.FAILED, d.errorMessage ="
-          + " :errorMessage where d.status = io.opaa.api.types.DocumentStatus.PENDING and"
-          + " d.sourceType = io.opaa.api.types.DocumentSourceType.UPLOAD and d.createdAt <"
-          + " :threshold")
-  int failStalePending(
-      @Param("errorMessage") String errorMessage, @Param("threshold") Instant threshold);
 
   /**
    * The connector counterpart to {@link #markIndexed(UUID, int, Instant)}, generalized for {@code

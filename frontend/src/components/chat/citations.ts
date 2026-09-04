@@ -198,6 +198,21 @@ export function citationRowId(messageId: string, docIndex: number): string {
  * account for this mismatch explicitly rather than assume the displayed date and the filtered
  * range agree bit-for-bit.
  */
+export function formatMailSummary(source: SourceReference | undefined): string | undefined {
+  if (!source?.mailFrom && !source?.mailTo && !source?.mailDate && !source?.mailSubject) {
+    return undefined
+  }
+  const datePart = source.mailDate
+    ? new Date(source.mailDate).toLocaleDateString('de-DE', { dateStyle: 'medium' })
+    : undefined
+  const senderAndDate = [source.mailFrom, datePart].filter(Boolean).join(', ')
+  const segments = [
+    senderAndDate.length > 0 ? `von ${senderAndDate}` : undefined,
+    source.mailSubject,
+  ].filter((segment): segment is string => Boolean(segment))
+  return segments.length > 0 ? `Mail ${segments.join(' — ')}` : undefined
+}
+
 type CoreMetadata = NonNullable<SourceReference['coreMetadata']>
 
 /**
@@ -258,19 +273,4 @@ export function sourceLabel(source: SourceReference | undefined, fileName: strin
   const title = source?.coreMetadata?.title
   if (!title) return fileName
   return source?.coreMetadata?.titleOrigin === 'DERIVED' ? `${title} (abgeleitet)` : title
-}
-
-export function formatMailSummary(source: SourceReference | undefined): string | undefined {
-  if (!source?.mailFrom && !source?.mailTo && !source?.mailDate && !source?.mailSubject) {
-    return undefined
-  }
-  const datePart = source.mailDate
-    ? new Date(source.mailDate).toLocaleDateString('de-DE', { dateStyle: 'medium' })
-    : undefined
-  const senderAndDate = [source.mailFrom, datePart].filter(Boolean).join(', ')
-  const segments = [
-    senderAndDate.length > 0 ? `von ${senderAndDate}` : undefined,
-    source.mailSubject,
-  ].filter((segment): segment is string => Boolean(segment))
-  return segments.length > 0 ? `Mail ${segments.join(' — ')}` : undefined
 }

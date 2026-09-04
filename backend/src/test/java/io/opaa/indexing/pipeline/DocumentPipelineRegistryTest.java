@@ -93,6 +93,25 @@ class DocumentPipelineRegistryTest {
         .hasMessageContaining("broken");
   }
 
+  /**
+   * ADR-0024, Entscheidung 5: the core-field chunk keys hang on the document and are written by
+   * storeChunks alone - a pipeline that declares one as passthrough is rejected at startup.
+   */
+  @Test
+  void aPipelineDeclaringACoreMetadataKeyAsPassthroughFailsFastAtConstruction() {
+    DocumentPipeline overreaching =
+        new FakePipelineWithPassthroughKeys(
+            "overreaching",
+            (short) 1,
+            Set.of(".over"),
+            Set.of("location", io.opaa.indexing.metadata.CoreMetadataChunkKeys.DOCUMENT_TYPE));
+
+    assertThatThrownBy(() -> registryWith(overreaching))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("overreaching")
+        .hasMessageContaining("doc_type");
+  }
+
   private DocumentPipelineRegistry registryWith(DocumentPipeline... specialized) {
     return new DocumentPipelineRegistry(
         java.util.stream.Stream.concat(

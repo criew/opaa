@@ -26,8 +26,11 @@ import java.util.regex.Pattern;
  *       exactly one distinct vocabulary code among them; two different ones leave the field empty.
  *   <li><b>Datum/Stand</b>: frontmatter {@code stand_datum}/{@code fassung} and the format's own
  *       document date (a mail's Date header), then the first heading (Kopfbereich), then the file
- *       name, then the modified and finally the created property. A bare year counts only as a
- *       standalone four-digit token 1900-2099.
+ *       name, then the modified and finally the created property. Within one source every candidate
+ *       of a notation is tried, an impossible calendar date (an Aktenzeichen that looks like one)
+ *       is skipped. A bare year 1900-2099 counts only in a file name or frontmatter value; in
+ *       heading text it needs an anchor ({@code Stand 2026}, {@code Fassung 2024}) - an unanchored
+ *       number there is an amount or a paragraph, never a Stand.
  * </ul>
  *
  * {@link #EXTRACTION_VERSION} is raised whenever a rule here changes its output.
@@ -53,6 +56,18 @@ public final class CoreMetadataExtractor {
               + "|november|dezember)\\s+((?:19|20)\\d{2})\\b");
   private static final Pattern BARE_YEAR =
       Pattern.compile("(?<![\\d.\\-])((?:19|20)\\d{2})(?![\\d.\\-])");
+  private static final Pattern ANCHORED_YEAR =
+      Pattern.compile(
+          "(?i)\\b(?:stand|fassung|ausgabe|vom|version)\\s*:?\\s*((?:19|20)\\d{2})(?![\\d.\\-])");
+
+  /** Whether a bare four-digit year is a credible date in the text being scanned. */
+  private enum BareYearRule {
+    /** A file name or a frontmatter value: a standalone year is a naming convention. */
+    ALLOWED,
+    /** Free heading text: a year needs an anchor word, an unanchored number is not a date. */
+    ANCHORED_ONLY
+  }
+
   private static final Pattern FILE_NAME_TOKEN_SEPARATOR = Pattern.compile("[\\s_\\-.,;()\\[\\]]+");
   private static final Pattern EXTENSION = Pattern.compile("\\.[A-Za-z0-9]{1,5}$");
 
@@ -116,22 +131,24 @@ public final class CoreMetadataExtractor {
 
   private static Optional<ExtractedDate> extractDate(String fileName, DocumentProperties props) {
     Map<String, String> frontmatter = props.frontmatter();
-    Optional<ExtractedDate> declared = parseDate(unquote(frontmatter.get(FRONTMATTER_DATE)));
+    Optional<ExtractedDate> declared =
+        parseDate(unquote(frontmatter.get(FRONTMATTER_DATE)), BareYearRule.ALLOWED);
     if (declared.isPresent()) {
       return declared;
     }
-    Optional<ExtractedDate> version = parseDate(unquote(frontmatter.get(FRONTMATTER_VERSION_YEAR)));
+    Optional<ExtractedDate> version =
+        parseDate(unquote(frontmatter.get(FRONTMATTER_VERSION_YEAR)), BareYearRule.ALLOWED);
     if (version.isPresent()) {
       return version;
     }
     if (props.documentDate() != null) {
       return Optional.of(ExtractedDate.day(props.documentDate()));
     }
-    Optional<ExtractedDate> heading = parseDate(props.firstHeading());
+    Optional<ExtractedDate> heading = parseDate(props.firstHeading(), BareYearRule.ANCHORED_ONLY);
     if (heading.isPresent()) {
       return heading;
     }
-    Optional<ExtractedDate> fromName = parseDate(stripExtension(fileName));
+    Optional<ExtractedDate> fromName = parseDate(stripExtension(fileName), BareYearRule.ALLOWED);
     if (fromName.isPresent()) {
       return fromName;
     }
@@ -145,24 +162,31 @@ public final class CoreMetadataExtractor {
   }
 
   /**
-   * The first date in {@code text}, most specific notation first: ISO day, German day, ISO month,
-   * German month name plus year, bare year. Empty for {@code null}, blank or dateless text, and for
-   * a notation whose numbers do not form a valid calendar date.
+   * The first valid date in {@code text}, most specific notation first: ISO day, German day, ISO
+   * month, German month name plus year, then a year (bare or anchored, per {@code bareYearRule}).
+   * Every candidate of a notation is tried before the next notation; a candidate whose numbers do
+   * not form a calendar date is skipped, never the end of the search.
    */
-  static Optional<ExtractedDate> parseDate(String text) {
+  static Optional<ExtractedDate> parseDate(String text, BareYearRule bareYearRule) {
     if (text == null || text.isBlank()) {
       return Optional.empty();
     }
     Matcher iso = ISO_DATE.matcher(text);
-    if (iso.find()) {
-      return validDay(iso.group(1), iso.group(2), iso.group(3));
+    while (iso.find()) {
+      Optional<ExtractedDate> day = validDay(iso.group(1), iso.group(2), iso.group(3));
+      if (day.isPresent()) {
+        return day;
+      }
     }
     Matcher german = GERMAN_DATE.matcher(text);
-    if (german.find()) {
-      return validDay(german.group(3), german.group(2), german.group(1));
+    while (german.find()) {
+      Optional<ExtractedDate> day = validDay(german.group(3), german.group(2), german.group(1));
+      if (day.isPresent()) {
+        return day;
+      }
     }
     Matcher isoMonth = ISO_MONTH.matcher(text);
-    if (isoMonth.find()) {
+    while (isoMonth.find()) {
       int month = Integer.parseInt(isoMonth.group(2));
       if (month >= 1 && month <= 12) {
         return Optional.of(ExtractedDate.month(Integer.parseInt(isoMonth.group(1)), month));
@@ -174,7 +198,7 @@ public final class CoreMetadataExtractor {
       int month = MONTH_NAMES.indexOf(monthWord) + 1;
       return Optional.of(ExtractedDate.month(Integer.parseInt(monthName.group(2)), month));
     }
-    Matcher year = BARE_YEAR.matcher(text);
+    Matcher year = (bareYearRule == BareYearRule.ALLOWED ? BARE_YEAR : ANCHORED_YEAR).matcher(text);
     if (year.find()) {
       return Optional.of(ExtractedDate.year(Integer.parseInt(year.group(1))));
     }

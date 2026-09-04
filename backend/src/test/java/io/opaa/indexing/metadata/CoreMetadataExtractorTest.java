@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -64,6 +65,30 @@ class CoreMetadataExtractorTest {
       assertThat(extract("Protokoll_31.02.2026.pdf", DocumentProperties.EMPTY).date()).isEmpty();
     }
 
+    // Review S1: an invalid candidate (an Aktenzeichen that looks like a date, an impossible ISO
+    // month) must not end the search - the next candidate of the same notation still counts.
+    @Test
+    void anInvalidCandidateBeforeAValidDateIsSkipped() {
+      assertThat(
+              extract("Az_12.34.5678_Vermerk_vom_05.03.2026.pdf", DocumentProperties.EMPTY).date())
+          .contains(ExtractedDate.day(LocalDate.of(2026, 3, 5)));
+      assertThat(
+              extract("Bericht_2026-13-01_Stand_2026-03-05.pdf", DocumentProperties.EMPTY).date())
+          .contains(ExtractedDate.day(LocalDate.of(2026, 3, 5)));
+    }
+
+    // Review S5: no two-letter synonym - a lower-cased "DA" is indistinguishable from the German
+    // filler word, and a second code would empty an otherwise unambiguous Dokumentart.
+    @Test
+    void theFillerWordDaNeverCountsAsADokumentart() {
+      assertThat(
+              extract("Vermerk da Termin verschoben.pdf", DocumentProperties.EMPTY)
+                  .documentTypeCode())
+          .contains("VERMERK");
+      assertThat(extract("DA_Homeoffice.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .isEmpty();
+    }
+
     @Test
     void documentTypeMatchesCodeLabelAndSynonymCaseAndUmlautInsensitively() {
       assertThat(
@@ -73,8 +98,6 @@ class CoreMetadataExtractorTest {
           .contains("PROTOKOLL");
       assertThat(extract("Praesentation_Q1.pptx", DocumentProperties.EMPTY).documentTypeCode())
           .contains("PRAESENTATION");
-      assertThat(extract("DA_Homeoffice.pdf", DocumentProperties.EMPTY).documentTypeCode())
-          .contains("DIENSTANWEISUNG");
     }
 
     @Test
@@ -212,6 +235,51 @@ class CoreMetadataExtractorTest {
     @Test
     void nothingDeclaredMeansNoDate() {
       assertThat(extract("da.pdf", DocumentProperties.EMPTY).date()).isEmpty();
+    }
+
+    // Review B1: a bare four-digit number in free heading text is an amount, a paragraph number or
+    // a threshold - never a Stand. Only an anchored year ("Stand 2026", "Fassung 2024") counts.
+    @Test
+    void aBareNumberInTheHeadingIsNeverADate() {
+      for (String heading :
+          List.of(
+              "Gebührensatzung — Beträge bis 2000 Euro",
+              "Anlage 3 zu § 2000",
+              "Richtwert 1990 kWh",
+              "Zuwendungen ab 2019 Euro")) {
+        assertThat(
+                extract("anlage.docx", DocumentProperties.EMPTY.withFirstHeading(heading)).date())
+            .as(heading)
+            .isEmpty();
+      }
+    }
+
+    @Test
+    void anAnchoredYearInTheHeadingCountsAsAStand() {
+      assertThat(
+              extract(
+                      "satzung.docx",
+                      DocumentProperties.EMPTY.withFirstHeading("Gebührensatzung, Fassung 2024"))
+                  .date())
+          .contains(ExtractedDate.year(2024));
+      assertThat(
+              extract(
+                      "satzung.docx",
+                      DocumentProperties.EMPTY.withFirstHeading("Dienstanweisung Stand: 2026"))
+                  .date())
+          .contains(ExtractedDate.year(2026));
+    }
+
+    @Test
+    void aBareYearStillCountsFromTheFileNameAndTheFrontmatter() {
+      assertThat(extract("Haushaltsplan_2024.pdf", DocumentProperties.EMPTY).date())
+          .contains(ExtractedDate.year(2024));
+      assertThat(
+              extract(
+                      "satzung.md",
+                      DocumentProperties.EMPTY.withFrontmatter(Map.of("fassung", "2023")))
+                  .date())
+          .contains(ExtractedDate.year(2023));
     }
   }
 

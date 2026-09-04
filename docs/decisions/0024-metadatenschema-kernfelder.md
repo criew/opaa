@@ -43,7 +43,17 @@ Extraktionsversion ist nicht speicherbar.
 
 **Ein manueller Wert wird von keiner Extraktion überschrieben** — `DocumentMetadataService` lässt eine
 Zeile mit `origin = MANUAL` bei jeder Reconciliation unangetastet, auch wenn die Extraktion für dasselbe
-Feld einen anderen oder keinen Wert liefert (abgesichert im Integrationstest).
+Feld einen anderen oder keinen Wert liefert (abgesichert im Integrationstest). **Ein abgeleiteter Wert
+(`DERIVED`) weicht nur einem echten deterministischen Ergebnis:** Er füllt genau die Lücke, die Schritt 1
+lässt, und wird von einem leeren deterministischen Ergebnis nicht gelöscht — sonst müsste das Modell nach
+jeder Neuaufnahme derselben Datei erneut bezahlt werden. Gelöscht wird bei leerem Ergebnis nur eine
+`DETERMINISTIC`-Zeile.
+
+**Werte und Chunk-Nachzug sind eine Transaktion.** `DocumentMetadataService` schreibt über ein
+`TransactionTemplate` statt `@Transactional`: Das Parsen der Datei (PDFBox/POI) läuft außerhalb jeder
+Transaktion, damit keine Pool-Verbindung über die Parsedauer gehalten wird; Werte-Reconciliation,
+`metadata_extraction_version` und das JSON-Update der Chunks laufen danach gemeinsam — ein
+fehlgeschlagener Chunk-Nachzug lässt das Dokument unverändert (dokumentgranulare Idempotenz für #1067).
 
 ### 3. Dokumentart ist eine Seed-Tabelle mit stabilen Codes, kein Enum und keine Freitextspalte
 
@@ -54,7 +64,9 @@ wird dort erzwungen, wo sie nicht vergessen werden kann. Stabile Codes (`SATZUNG
 `DIENSTANWEISUNG`, …) statt eines Java-Enums, weil die Spezifikation die Liste „je Installation
 erweiterbar" verlangt: Eine Erweiterung ist ein `INSERT`, kein Release. Die Abbildung eines Tokens auf
 einen Code ist eine **exakte**, groß-/kleinschreibungs- und umlautunempfindliche Übereinstimmung mit
-Code, Label oder Synonym — keine Ähnlichkeitsabbildung.
+Code, Label oder Synonym — keine Ähnlichkeitsabbildung. Kein Synonym ist kürzer als vier Buchstaben: Eine
+kleingeschriebene Abkürzung wie „DA" ist vom Füllwort „da" nicht zu unterscheiden und würde als zweiter
+Code eine eindeutig benannte Dokumentart wieder leeren.
 
 ### 4. Datum/Stand ist ein Datum mit Genauigkeit
 
@@ -70,7 +82,10 @@ Chunk — zentral, nicht über `passthroughMetadataKeys()` der Pipelines, weil d
 und keine Pipeline sie kennt. Der Titel wird nicht dupliziert (nicht filterbar; der Beleg liest ihn vom
 Dokument). Damit können beide Suchpfade (#1070) dieselbe Bedingung tragen. Eine spätere Änderung
 (manuelle Korrektur, Bestandslauf) schreibt die Schlüssel per JSON-Update nach
-(`VectorChunkStore#updateDocumentMetadata`) — ohne Neu-Chunking und ohne Neu-Einbetten.
+(`VectorChunkStore#updateDocumentMetadata`) — ohne Neu-Chunking und ohne Neu-Einbetten; der
+Ausdrucksindex `idx_vector_store_document_id` (Migration 018, nach dem Muster von 012) trägt diesen
+Pfad je Dokument. Keine Pipeline darf einen dieser Schlüssel über `passthroughMetadataKeys()`
+deklarieren — die Registry weist das beim Start zurück.
 
 ### 6. Die Extraktion ist ein Systemprozess des Ingest; die Pipelines raten nichts
 
@@ -86,9 +101,14 @@ Quellenreihenfolge (Version 1, `CoreMetadataExtractor.EXTRACTION_VERSION`):
 - **Dokumentart:** Frontmatter `dokumentart` (eine Deklaration außerhalb des Vokabulars lässt das Feld
   leer und fällt nicht durch) → Dateinamens-Token (genau ein eindeutiger Code; zwei verschiedene lassen
   das Feld leer).
-- **Datum/Stand:** Frontmatter `stand_datum`/`fassung` und das formateigene Dokumentdatum (Mail-Header)
-  → erste Überschrift (Kopfbereich) → Dateiname → Änderungs- → Erstell-Eigenschaft. Ein nacktes Jahr zählt
-  nur als eigenständiges vierstelliges Token 1900–2099.
+- **Datum/Stand:** Frontmatter `stand_datum`/`fassung` und das formateigene Dokumentdatum (Mail-Header,
+  RSS-Veröffentlichungsdatum) → erste Überschrift (Kopfbereich) → Dateiname → Änderungs- →
+  Erstell-Eigenschaft. Je Quelle werden alle Kandidaten einer Schreibweise geprüft; ein unmöglicher
+  Kalendertag (ein Aktenzeichen wie `12.34.5678`) wird übersprungen, nicht zum Abbruch. Ein nacktes Jahr
+  1900–2099 zählt nur im Dateinamen und im Frontmatter; in der Überschrift braucht ein Jahr einen Anker
+  („Stand 2026", „Fassung 2024") — eine unverankerte Zahl dort ist ein Betrag oder ein Paragraf, nie ein
+  Stand. Ein falsch gelesenes Datum mit Herkunft `DETERMINISTIC` wäre genau der unsichtbare Dauerschaden,
+  den die Spezifikation ausschließt.
 
 Die Extraktion läuft ohne Personenrechtekontext (Beschluss 1 des Maintainers, Epic #1065): Sie zeigt
 niemandem Inhalte, sie liest, was der Ingest ohnehin liest. Die Rechte-Invariante der Spezifikation gilt

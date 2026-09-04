@@ -103,6 +103,24 @@ public class DocumentMetadataValue {
     return value;
   }
 
+  /**
+   * A model-derived row for {@code field} (metadata-schema.md, step 2); the value is set via {@code
+   * assign*}. Kept by the deterministic extraction unless it finds a real value for the field.
+   */
+  public static DocumentMetadataValue derived(
+      UUID documentId,
+      CoreMetadataField field,
+      String modelId,
+      double confidence,
+      int extractionVersion) {
+    DocumentMetadataValue value = new DocumentMetadataValue(documentId, field);
+    value.origin = MetadataOrigin.DERIVED;
+    value.modelId = modelId;
+    value.confidence = confidence;
+    value.extractionVersion = extractionVersion;
+    return value;
+  }
+
   /** Re-labels an existing (non-manual) row as the result of deterministic extraction. */
   void markDeterministic(int extractionVersion) {
     this.origin = MetadataOrigin.DETERMINISTIC;

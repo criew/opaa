@@ -351,15 +351,18 @@ Bestandslaufs (#1067).
 aus Eigenschaft → Frontmatter → Überschrift → Dateiname (humanisiert über `ChunkContextTitle`, daher
 immer befüllt); Dokumentart aus Frontmatter (eine Deklaration außerhalb des Vokabulars lässt das Feld
 leer, sie fällt nicht auf den Dateinamen durch) → Dateinamens-Token (genau ein eindeutiger Code);
-Datum aus Frontmatter/Mail-Datum → Überschrift → Dateiname (ISO, deutsche Schreibweise, `JJJJ-MM`,
-Monatsname + Jahr, nacktes Jahr nur als eigenständiges Token) → Änderungs- → Erstell-Eigenschaft. Ein
-Dateisystem-Änderungsdatum ist keine Quelle. Ein manueller Wert wird nie überschrieben; ein Feld, für
-das die Extraktion nichts mehr liefert, verliert seine deterministische Zeile. Die Extraktion läuft als
+Datum aus Frontmatter/Mail-Datum/RSS-Veröffentlichungsdatum → Überschrift → Dateiname (ISO, deutsche
+Schreibweise, `JJJJ-MM`, Monatsname + Jahr; ein nacktes Jahr nur als eigenständiges Token im Dateinamen
+oder Frontmatter, in der Überschrift nur mit Anker wie „Stand 2026"; ein unmöglicher Kalendertag wird
+übersprungen) → Änderungs- → Erstell-Eigenschaft. Ein Dateisystem-Änderungsdatum ist keine Quelle. Ein
+manueller Wert wird nie überschrieben; ein abgeleiteter Wert weicht nur einem echten deterministischen
+Ergebnis; nur eine deterministische Zeile entfällt, wenn die Extraktion nichts mehr liefert. Die
+Extraktion läuft als
 Systemprozess im Ingest ohne Personenrechtekontext (Beschluss 1 des Maintainers am Epic #1065) — sie
 zeigt niemandem Inhalte. `DocumentPipeline#readProperties` liefert dieselben Rohquellen ohne Chunking;
 `DocumentMetadataService#reextractFromFile` ist damit der Baustein je Dokument, den der Bestandslauf
-wiederholt: Datei parsen → Werte speichern → Chunk-Schlüssel per JSON-Update nachziehen, ohne
-Neu-Einbetten.
+wiederholt: Datei parsen (außerhalb jeder Transaktion) → Werte speichern und Chunk-Schlüssel per
+JSON-Update nachziehen (eine Transaktion, Index `idx_vector_store_document_id`), ohne Neu-Einbetten.
 
 **Chunk-Metadaten.** `storeChunks` schreibt `doc_type`, `doc_date` und `doc_date_precision` zentral auf
 jeden Chunk des Dokuments (nicht über `passthroughMetadataKeys()` — die Werte hängen am Dokument); der

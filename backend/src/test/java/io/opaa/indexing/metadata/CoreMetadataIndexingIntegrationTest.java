@@ -1,6 +1,7 @@
 package io.opaa.indexing.metadata;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.LibraryVisibility;
@@ -10,6 +11,8 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
@@ -26,6 +29,7 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
@@ -40,6 +44,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * The core fields end to end (#1066, ADR-0024): a PDF, a DOCX and a Markdown file with frontmatter
@@ -57,6 +62,9 @@ class CoreMetadataIndexingIntegrationTest {
   @Autowired private DocumentMetadataService documentMetadataService;
   @Autowired private DocumentMetadataValueRepository valueRepository;
   @Autowired private DocumentRepository documentRepository;
+  @Autowired private DocumentTypeVocabularyRepository vocabularyRepository;
+  @Autowired private DocumentPipelineRegistry pipelineRegistry;
+  @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
@@ -271,6 +279,81 @@ class CoreMetadataIndexingIntegrationTest {
         .allSatisfy(metadata -> assertThat(metadata).doesNotContainKey("doc_type"));
   }
 
+  /**
+   * Review B2: document values and the chunk-key propagation are one transaction - a failing chunk
+   * update leaves the document's rows and its extraction version exactly as they were.
+   */
+  @Test
+  void aFailingChunkUpdateLeavesTheDocumentValuesAndExtractionVersionUntouched()
+      throws IOException {
+    Path file = classTempDir.resolve("Protokoll_Sitzung.pdf");
+    writePdf(file, null, null);
+    fileProcessingService.processFile(file, targetLibrary);
+    Document document = documentRepository.findAll().getFirst();
+    jdbcTemplate.update(
+        "UPDATE documents SET file_name = 'Vermerk_2020-01-01.pdf', metadata_extraction_version ="
+            + " NULL WHERE id = ?",
+        document.getId());
+    Document renamed = documentRepository.findById(document.getId()).orElseThrow();
+    DocumentMetadataService withFailingChunkUpdate =
+        new DocumentMetadataService(
+            valueRepository,
+            vocabularyRepository,
+            documentRepository,
+            pipelineRegistry,
+            new VectorChunkStore(null, null, null, null, null) {
+              @Override
+              public int updateDocumentMetadata(
+                  UUID id, Map<String, Object> values, Set<String> keysToClear) {
+                throw new IllegalStateException("simulated chunk update failure");
+              }
+            },
+            transactionManager);
+
+    assertThatThrownBy(() -> withFailingChunkUpdate.reextractFromFile(renamed, file))
+        .isInstanceOf(IllegalStateException.class);
+
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isEqualTo("PROTOKOLL");
+    assertThat(core.documentDate()).isNull();
+    assertThat(
+            documentRepository
+                .findById(document.getId())
+                .orElseThrow()
+                .getMetadataExtractionVersion())
+        .isNull();
+    assertThat(chunkMetadata(document.getId()))
+        .allSatisfy(metadata -> assertThat(metadata).containsEntry("doc_type", "PROTOKOLL"));
+  }
+
+  /**
+   * Review S2: a model-derived value fills exactly the gap the deterministic step leaves - an empty
+   * deterministic result must not delete it, only a real result replaces it.
+   */
+  @Test
+  void aDerivedValueSurvivesAnEmptyDeterministicResultButYieldsToARealOne() throws IOException {
+    Path file = classTempDir.resolve("anlage.pdf");
+    writePdf(file, null, null);
+    fileProcessingService.processFile(file, targetLibrary);
+    Document document = documentRepository.findAll().getFirst();
+    valueRepository.save(
+        DocumentMetadataValue.derived(
+                document.getId(), CoreMetadataField.DOCUMENT_TYPE, "test-model", 0.8, 1)
+            .assignVocabularyCode("VERMERK"));
+    valueRepository.flush();
+
+    CoreMetadata afterEmptyResult = documentMetadataService.reextractFromFile(document, file);
+    assertThat(afterEmptyResult.documentTypeCode()).isEqualTo("VERMERK");
+    assertThat(afterEmptyResult.documentTypeOrigin()).isEqualTo(MetadataOrigin.DERIVED);
+
+    jdbcTemplate.update(
+        "UPDATE documents SET file_name = 'Protokoll_anlage.pdf' WHERE id = ?", document.getId());
+    Document renamed = documentRepository.findById(document.getId()).orElseThrow();
+    CoreMetadata afterRealResult = documentMetadataService.reextractFromFile(renamed, file);
+    assertThat(afterRealResult.documentTypeCode()).isEqualTo("PROTOKOLL");
+    assertThat(afterRealResult.documentTypeOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+  }
+
   private List<Map<String, Object>> chunkMetadata(UUID documentId) {
     return jdbcTemplate.query(
         "SELECT metadata::text AS metadata FROM vector_store WHERE metadata->>'document_id' = ?",
@@ -324,7 +407,8 @@ class CoreMetadataIndexingIntegrationTest {
   private static void writeDocx(Path file, String title, LocalDate modified) throws IOException {
     try (XWPFDocument doc = new XWPFDocument()) {
       doc.getProperties().getCoreProperties().setTitle(title);
-      Date date = Date.from(modified.atStartOfDay(ZoneId.systemDefault()).toInstant());
+      // OOXML core properties are W3CDTF in UTC; the reader resolves the day in UTC as well.
+      Date date = Date.from(modified.atStartOfDay(java.time.ZoneOffset.UTC).toInstant());
       doc.getProperties().getCoreProperties().setCreated(java.util.Optional.of(date));
       doc.getProperties().getCoreProperties().setModified(java.util.Optional.of(date));
       for (String text :

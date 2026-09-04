@@ -18,9 +18,12 @@ databaseChangeLog:
         which extraction version last ran over a document (NULL = never) - the selection key of
         the Bestandslauf (#1067). Seed: the delivered Dokumentart list with stable codes, German
         labels and a small synonym list for exact, case-insensitive matching (no similarity
-        mapping); an installation extends it by inserting rows, not by editing this changeset.
+        mapping; no abbreviation shorter than four letters, since a lower-cased "DA" is the German
+        filler word); an installation extends it by inserting rows, not by editing this changeset.
         ON DELETE CASCADE from the value rows onto documents is safe here, unlike for
         parent_document_id (migration 011): a value row owns nothing outside the database.
+        idx_document_metadata_values_vocabulary_code backs the RESTRICT check when a vocabulary
+        row is removed or renamed (#1071's confirmed remapping).
       changes:
         - sql:
             splitStatements: false
@@ -99,6 +102,9 @@ databaseChangeLog:
               CREATE UNIQUE INDEX uk_document_metadata_values_document_field
                   ON public.document_metadata_values USING btree (document_id, field_key);
 
+              CREATE INDEX idx_document_metadata_values_vocabulary_code
+                  ON public.document_metadata_values USING btree (vocabulary_code);
+
               ALTER TABLE public.documents ADD COLUMN metadata_extraction_version integer;
 
               INSERT INTO public.document_type_vocabulary (code, label, sort_order) VALUES
@@ -123,7 +129,6 @@ databaseChangeLog:
                   ('DIENSTANWEISUNG', 'dienstanweisung'),
                   ('DIENSTANWEISUNG', 'dienstanweisungen'),
                   ('DIENSTANWEISUNG', 'dienstanordnung'),
-                  ('DIENSTANWEISUNG', 'da'),
                   ('VERMERK', 'vermerk'),
                   ('VERMERK', 'aktenvermerk'),
                   ('PROTOKOLL', 'protokoll'),
@@ -155,3 +160,32 @@ databaseChangeLog:
               DROP TABLE IF EXISTS public.document_metadata_values;
               DROP TABLE IF EXISTS public.document_type_synonyms;
               DROP TABLE IF EXISTS public.document_type_vocabulary;
+  - changeSet:
+      id: 018-vector-store-document-id-index
+      author: opaa
+      comment: >-
+        #1066 (ADR-0024): expression index on vector_store's metadata->>'document_id', backing
+        VectorStoreWriter#updateDocumentMetadata - the per-document chunk-key rewrite the
+        Bestandslauf (#1067) and every manual correction (#1068) run - and
+        VectorChunkStore#deleteByDocumentId. Without it every one of those is a full scan of
+        vector_store. Same precondition/CONCURRENTLY/retry mechanics as migration 012, for the
+        same reasons (vector_store is created by Spring AI at startup, never by Liquibase; a
+        CONCURRENTLY build must not block writes into a populated table); hardcodes
+        public.vector_store like 012.
+      preConditions:
+        onFail: CONTINUE
+        onFailMessage: >-
+          public.vector_store does not exist yet (Spring AI creates it at application startup, not
+          Liquibase - see migration 012); retried on the next application start.
+        tableExists:
+          schemaName: public
+          tableName: vector_store
+      runInTransaction: false
+      changes:
+        - sql:
+            sql: |
+              DROP INDEX CONCURRENTLY IF EXISTS public.idx_vector_store_document_id;
+              CREATE INDEX CONCURRENTLY idx_vector_store_document_id ON public.vector_store ((metadata->>'document_id'));
+      rollback:
+        - sql:
+            sql: DROP INDEX CONCURRENTLY IF EXISTS public.idx_vector_store_document_id;

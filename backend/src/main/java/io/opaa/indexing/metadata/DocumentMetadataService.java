@@ -10,6 +10,7 @@ import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -21,15 +22,20 @@ import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Owns the core-field rows of a document (ADR-0024). {@link #applyDeterministicExtraction} runs
  * {@link CoreMetadataExtractor} and reconciles the result against the stored rows: a {@code MANUAL}
- * row is never touched, any other row is replaced by the fresh result or removed when the result is
- * empty, and the document's {@code metadata_extraction_version} is set to {@link
- * CoreMetadataExtractor#EXTRACTION_VERSION}. A system process within the ingest - no person's
- * rights context is consulted (Epic #1065, Beschluss 1).
+ * row is never touched, a {@code DERIVED} row only yields to a real result, a {@code DETERMINISTIC}
+ * row is replaced or removed, and the document's {@code metadata_extraction_version} is set to
+ * {@link CoreMetadataExtractor#EXTRACTION_VERSION}. Writes run through a {@link
+ * TransactionTemplate} rather than {@code @Transactional}, so {@link #reextractFromFile} can parse
+ * outside and then clamp values and chunk propagation into one transaction without a
+ * self-invocation. A system process within the ingest - no person's rights context is consulted
+ * (Epic #1065, Beschluss 1).
  */
 @Service
 public class DocumentMetadataService {
@@ -41,27 +47,63 @@ public class DocumentMetadataService {
   private final DocumentRepository documentRepository;
   private final DocumentPipelineRegistry pipelineRegistry;
   private final VectorChunkStore vectorChunkStore;
+  private final TransactionTemplate transactionTemplate;
 
   public DocumentMetadataService(
       DocumentMetadataValueRepository valueRepository,
       DocumentTypeVocabularyRepository vocabularyRepository,
       DocumentRepository documentRepository,
       DocumentPipelineRegistry pipelineRegistry,
-      VectorChunkStore vectorChunkStore) {
+      VectorChunkStore vectorChunkStore,
+      PlatformTransactionManager transactionManager) {
     this.valueRepository = valueRepository;
     this.vocabularyRepository = vocabularyRepository;
     this.documentRepository = documentRepository;
     this.pipelineRegistry = pipelineRegistry;
     this.vectorChunkStore = vectorChunkStore;
+    this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
   /**
    * Extracts the core fields of {@code documentId} from {@code fileName} and {@code properties} and
-   * stores them, honouring existing {@code MANUAL} rows. Returns the effective values afterwards -
-   * what {@code storeChunks} writes onto the document's chunks.
+   * stores them in one transaction, honouring existing {@code MANUAL} and {@code DERIVED} rows.
+   * Returns the effective values afterwards - what {@code storeChunks} writes onto the document's
+   * chunks.
    */
-  @Transactional
   public CoreMetadata applyDeterministicExtraction(
+      UUID documentId, String fileName, DocumentProperties properties) {
+    return transactionTemplate.execute(status -> reconcileAll(documentId, fileName, properties));
+  }
+
+  /**
+   * Re-reads the core fields of an already indexed document from its original file - routing to the
+   * same pipeline the ingest used, reading only its {@link
+   * io.opaa.indexing.pipeline.DocumentPipeline#readProperties} - then stores the values and
+   * rewrites the filterable keys on the document's existing chunks. Parsing happens outside any
+   * transaction (no pooled connection is held over PDFBox/POI); value rows and chunk propagation
+   * are one transaction, so a failed chunk update leaves the document exactly as it was. No
+   * chunking, no embedding: the unit of work the Bestandslauf (#1067) repeats per document.
+   */
+  public CoreMetadata reextractFromFile(Document document, Path file) {
+    DocumentPipelineRegistry.Routed routed =
+        pipelineRegistry.routedPipelineFor(file, document.getFileName());
+    DocumentProperties properties =
+        routed
+            .pipeline()
+            .readProperties(
+                DocumentPipelineSource.ofFile(
+                    file, document.getFileName(), routed.detectedExtension()));
+    return transactionTemplate.execute(
+        status -> {
+          CoreMetadata core = reconcileAll(document.getId(), document.getFileName(), properties);
+          vectorChunkStore.updateDocumentMetadata(
+              document.getId(), core.chunkMetadata(), CoreMetadataChunkKeys.ALL);
+          return core;
+        });
+  }
+
+  /** The transactional body shared by both entry points; callers hold the transaction. */
+  private CoreMetadata reconcileAll(
       UUID documentId, String fileName, DocumentProperties properties) {
     DocumentTypeVocabulary vocabulary = vocabularyRepository.snapshot();
     ExtractedCoreMetadata extracted =
@@ -100,8 +142,9 @@ public class DocumentMetadataService {
 
   /**
    * Applies {@code assign} to {@code field}'s row - reusing an existing non-manual row, creating
-   * one otherwise - or deletes the non-manual row when {@code assign} is empty. A {@code MANUAL}
-   * row is left untouched either way.
+   * one otherwise. An empty {@code assign} deletes only a {@code DETERMINISTIC} row: a {@code
+   * DERIVED} value fills exactly the gap the deterministic step leaves and survives it; a {@code
+   * MANUAL} row is left untouched either way.
    */
   private void reconcile(
       UUID documentId,
@@ -113,7 +156,7 @@ public class DocumentMetadataService {
       return;
     }
     if (assign.isEmpty()) {
-      if (current != null) {
+      if (current != null && current.getOrigin() == MetadataOrigin.DETERMINISTIC) {
         valueRepository.delete(current);
       }
       return;
@@ -129,29 +172,6 @@ public class DocumentMetadataService {
     }
     assign.get().accept(target);
     valueRepository.save(target);
-  }
-
-  /**
-   * Re-reads the core fields of an already indexed document from its original file - routing to the
-   * same pipeline the ingest used, reading only its {@link
-   * io.opaa.indexing.pipeline.DocumentPipeline#readProperties} - stores them and rewrites the
-   * filterable keys on the document's existing chunks in place. No chunking, no embedding: the unit
-   * of work the Bestandslauf (#1067) repeats per document.
-   */
-  public CoreMetadata reextractFromFile(Document document, Path file) {
-    DocumentPipelineRegistry.Routed routed =
-        pipelineRegistry.routedPipelineFor(file, document.getFileName());
-    DocumentProperties properties =
-        routed
-            .pipeline()
-            .readProperties(
-                DocumentPipelineSource.ofFile(
-                    file, document.getFileName(), routed.detectedExtension()));
-    CoreMetadata core =
-        applyDeterministicExtraction(document.getId(), document.getFileName(), properties);
-    vectorChunkStore.updateDocumentMetadata(
-        document.getId(), core.chunkMetadata(), CoreMetadataChunkKeys.ALL);
-    return core;
   }
 
   @Transactional(readOnly = true)
@@ -172,9 +192,7 @@ public class DocumentMetadataService {
     DocumentTypeVocabulary vocabulary = vocabularyRepository.snapshot();
     Map<UUID, List<DocumentMetadataValue>> byDocument = new LinkedHashMap<>();
     for (DocumentMetadataValue value : valueRepository.findByDocumentIdIn(documentIds)) {
-      byDocument
-          .computeIfAbsent(value.getDocumentId(), id -> new java.util.ArrayList<>())
-          .add(value);
+      byDocument.computeIfAbsent(value.getDocumentId(), id -> new ArrayList<>()).add(value);
     }
     Map<UUID, CoreMetadata> result = new LinkedHashMap<>();
     byDocument.forEach((id, values) -> result.put(id, toCoreMetadata(values, vocabulary)));
