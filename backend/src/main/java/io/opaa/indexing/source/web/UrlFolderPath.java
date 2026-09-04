@@ -65,10 +65,7 @@ public record UrlFolderPath(List<String> segments, String rejectedSegment) {
       // ("%2F", "%5C", "%00"), or that exceeds the column's own width cannot be represented as one
       // folder row - the whole entry falls back to the root.
       if (name.isBlank()
-          || name.equals(".")
-          || name.equals("..")
-          || name.contains("/")
-          || name.contains("\\")
+          || isPathTraversalName(name)
           || name.indexOf('\0') >= 0
           || name.length() > MAX_SEGMENT_LENGTH) {
         return new UrlFolderPath(List.of(), rawSegment);
@@ -79,12 +76,25 @@ public record UrlFolderPath(List<String> segments, String rejectedSegment) {
   }
 
   /**
+   * Whether a (already decoded) path segment name is a literal {@code .}/{@code ..} or otherwise
+   * carries a path separator - the same class of segment {@link #of} rejects, exposed for {@code
+   * AutoindexCrawlerService#staysUnderBase} so a link whose segment only turns into one of these
+   * after percent-decoding (e.g. {@code %2E%2E}, {@code %2F}) is never followed either.
+   */
+  static boolean isPathTraversalName(String decodedName) {
+    return decodedName.equals(".")
+        || decodedName.equals("..")
+        || decodedName.contains("/")
+        || decodedName.contains("\\");
+  }
+
+  /**
    * {@link URLDecoder} is built for {@code application/x-www-form-urlencoded}, where a literal
    * {@code '+'} means a space - a URL path segment has no such rule, so every {@code '+'} is
    * escaped first and round-trips back to itself (mirrors {@code
    * AutoindexCrawlerService#extractLastPathSegment}).
    */
-  private static String decodeSegment(String rawSegment) {
+  static String decodeSegment(String rawSegment) {
     try {
       return URLDecoder.decode(rawSegment.replace("+", "%2B"), StandardCharsets.UTF_8);
     } catch (IllegalArgumentException e) {

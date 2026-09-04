@@ -576,6 +576,46 @@ class UrlIndexingExecutorExecuteTest {
         .cleanupVanished(eq(library), eq(DocumentSourceType.HTTP_DIRECTORY), eq(Set.of()), any());
   }
 
+  @Test
+  void aLinkThatLeavesTheStartUrlIsRecordedAsARejectedEventWithItsOwnRawAddress()
+      throws IOException {
+    // A link the crawler refused to follow (AutoindexCrawlerService#staysUnderBase) must not be
+    // silently dropped - it becomes its own REJECTED event carrying the raw link, so an operator
+    // can see what the crawl left out, same as an oversized or unsupported entry.
+    serve(
+        "/files/",
+        "text/html",
+        ("<html><head><title>Index of /files/</title></head><body><ul>"
+                + "<li><a href=\"%2E%2E/intern/\">up</a></li>"
+                + "<li><a href=\"oeffentlich.txt\">oeffentlich.txt</a></li>"
+                + "</ul></body></html>")
+            .getBytes(StandardCharsets.UTF_8));
+    serve("/files/oeffentlich.txt", "text/plain", "Inhalt.".getBytes(StandardCharsets.UTF_8));
+    when(fileProcessingService.processUrlFile(
+            any(),
+            anyString(),
+            anyString(),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.HTTP_DIRECTORY),
+            isNull(),
+            isNull(),
+            any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute();
+
+    verify(indexingRunEventRepository, timeout(5000))
+        .save(
+            argThat(
+                event ->
+                    event != null
+                        && event.getCategory() == IndexingEventCategory.REJECTED
+                        && event.getMessage().contains("nicht verfolgt")
+                        && event.getReference().contains("%2E%2E")));
+  }
+
   private static org.mockito.ArgumentMatcher<IndexingRunEvent> categoryIs(
       IndexingEventCategory category) {
     return event -> event != null && event.getCategory() == category;

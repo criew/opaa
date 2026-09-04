@@ -171,6 +171,17 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                 + " Laufs ist unvollständig",
             url);
       }
+      // A link a directory page carried but the crawler refused to follow (fremder Ursprung oder
+      // Aufstieg über die Start-URL hinaus, siehe AutoindexCrawlerService#staysUnderBase) is
+      // otherwise only visible in the application log - recorded here, one event per link, so an
+      // operator can see what the crawler silently left out.
+      for (String rejectedLink : crawlResult.rejectedLinks()) {
+        events.record(
+            IndexingEventCategory.REJECTED,
+            "Link führt aus dem Verzeichnis der Quelle heraus (fremder Ursprung oder Pfad"
+                + " außerhalb der Start-URL) und wurde nicht verfolgt",
+            rejectedLink);
+      }
 
       progress.setTotal(allFiles.size());
       progress.report();
