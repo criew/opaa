@@ -10,6 +10,7 @@ import {
   getDocumentChunks,
   getSearchDiagnosisContext,
   getSearchStatus,
+  runMetadataBackfillBatch,
   runSearchDiagnosis,
 } from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
@@ -19,6 +20,44 @@ import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
  * quick clicks never leave the page showing the document that was asked for first.
  */
 let latestDocumentChunksRequest = 0
+
+/** Documents per backfill call; small enough that a pause takes effect within seconds. */
+const METADATA_BACKFILL_BATCH_SIZE = 50
+
+/**
+ * Consecutive batches that advanced nothing before the loop gives up regardless of `done` - a
+ * server that keeps answering "not done, nothing advanced" must not keep this page polling forever.
+ */
+const MAX_BATCHES_WITHOUT_PROGRESS = 3
+
+/** Hard ceiling on batch calls per start, so no defect on either side can turn into an endless loop. */
+const MAX_BATCHES_PER_START = 1000
+
+export const METADATA_BACKFILL_STALLED_MESSAGE =
+  'Der Lauf wurde angehalten: Mehrere Chargen nacheinander haben kein Dokument vorangebracht.'
+
+/**
+ * The state of one library's core-metadata backfill as this page drives it (#1067): the page loops
+ * batch calls while `running`; pausing clears the flag and the loop stops after the batch in
+ * flight - nothing server-side keeps running, the next start simply calls again.
+ */
+export interface MetadataBackfillRun {
+  running: boolean
+  done: boolean
+  processedDocuments: number
+  markedForNextRun: number
+  skippedDocuments: number
+  error: string | null
+}
+
+const NEW_RUN: MetadataBackfillRun = {
+  running: false,
+  done: false,
+  processedDocuments: 0,
+  markedForNextRun: 0,
+  skippedDocuments: 0,
+  error: null,
+}
 
 interface SearchAdminState {
   status: SearchStatusResponse | null
@@ -32,15 +71,23 @@ interface SearchAdminState {
   documentChunks: DocumentChunksResponse | null
   documentChunksError: string | null
   isLoadingDocumentChunks: boolean
+  metadataBackfillRuns: Record<string, MetadataBackfillRun>
   reset: () => void
   loadStatus: () => Promise<void>
   runDiagnosis: (request: SearchDiagnosisRequest) => Promise<void>
   loadDocumentChunks: (documentId: string) => Promise<void>
+  startMetadataBackfill: (libraryId: string) => Promise<void>
+  pauseMetadataBackfill: (libraryId: string) => void
 }
 
 const EMPTY: Omit<
   SearchAdminState,
-  'reset' | 'loadStatus' | 'runDiagnosis' | 'loadDocumentChunks'
+  | 'reset'
+  | 'loadStatus'
+  | 'runDiagnosis'
+  | 'loadDocumentChunks'
+  | 'startMetadataBackfill'
+  | 'pauseMetadataBackfill'
 > = {
   status: null,
   profiles: [],
@@ -53,73 +100,147 @@ const EMPTY: Omit<
   documentChunks: null,
   documentChunksError: null,
   isLoadingDocumentChunks: false,
+  metadataBackfillRuns: {},
 }
 
 /**
- * The read-only state of the "Suche & Indexierung" administration page (#1053).
+ * The state of the "Suche & Indexierung" administration page (#1053). Read-only except for the
+ * core-metadata backfill (#1067), which is an explicit, library-wise start on this page.
  *
  * A diagnosis result of a run in someone else's rights context is never persisted anywhere -
  * it lives in this store for as long as the page is open and is dropped on sign-out like every
  * other session-scoped cache.
  */
-export const useSearchAdminStore = create<SearchAdminState>((set) => ({
-  ...EMPTY,
+export const useSearchAdminStore = create<SearchAdminState>((set, get) => {
+  function updateRun(libraryId: string, patch: Partial<MetadataBackfillRun>) {
+    set((state) => ({
+      metadataBackfillRuns: {
+        ...state.metadataBackfillRuns,
+        [libraryId]: { ...(state.metadataBackfillRuns[libraryId] ?? NEW_RUN), ...patch },
+      },
+    }))
+  }
 
-  reset: () => set({ ...EMPTY }),
+  return {
+    ...EMPTY,
 
-  loadStatus: async () => {
-    const sessionEpoch = currentSessionEpoch()
-    try {
-      const [status, context] = await Promise.all([getSearchStatus(), getSearchDiagnosisContext()])
-      if (isStaleSessionEpoch(sessionEpoch)) return
-      set({
-        status,
-        profiles: context.permissionProfiles,
-        personContextAvailable: context.personContextAvailable,
-        personContextHint: context.personContextHint,
-        statusError: null,
-      })
-    } catch (err) {
-      if (isStaleSessionEpoch(sessionEpoch)) return
-      set({
-        statusError: err instanceof Error ? err.message : 'Status konnte nicht geladen werden',
-      })
-    }
-  },
+    reset: () => set({ ...EMPTY }),
 
-  runDiagnosis: async (request) => {
-    const sessionEpoch = currentSessionEpoch()
-    set({ isRunningDiagnosis: true, diagnosis: null, diagnosisError: null })
-    try {
-      const diagnosis = await runSearchDiagnosis(request)
-      if (isStaleSessionEpoch(sessionEpoch)) return
-      set({ diagnosis, isRunningDiagnosis: false })
-    } catch (err) {
-      if (isStaleSessionEpoch(sessionEpoch)) return
-      set({
-        diagnosisError: err instanceof Error ? err.message : 'Diagnose fehlgeschlagen',
-        isRunningDiagnosis: false,
-      })
-    }
-  },
+    loadStatus: async () => {
+      const sessionEpoch = currentSessionEpoch()
+      try {
+        const [status, context] = await Promise.all([
+          getSearchStatus(),
+          getSearchDiagnosisContext(),
+        ])
+        if (isStaleSessionEpoch(sessionEpoch)) return
+        set({
+          status,
+          profiles: context.permissionProfiles,
+          personContextAvailable: context.personContextAvailable,
+          personContextHint: context.personContextHint,
+          statusError: null,
+        })
+      } catch (err) {
+        if (isStaleSessionEpoch(sessionEpoch)) return
+        set({
+          statusError: err instanceof Error ? err.message : 'Status konnte nicht geladen werden',
+        })
+      }
+    },
 
-  loadDocumentChunks: async (documentId) => {
-    const sessionEpoch = currentSessionEpoch()
-    const request = ++latestDocumentChunksRequest
-    const isSuperseded = () =>
-      isStaleSessionEpoch(sessionEpoch) || request !== latestDocumentChunksRequest
-    set({ isLoadingDocumentChunks: true, documentChunks: null, documentChunksError: null })
-    try {
-      const documentChunks = await getDocumentChunks(documentId)
-      if (isSuperseded()) return
-      set({ documentChunks, isLoadingDocumentChunks: false })
-    } catch (err) {
-      if (isSuperseded()) return
-      set({
-        documentChunksError:
-          err instanceof Error ? err.message : 'Chunks konnten nicht geladen werden',
-        isLoadingDocumentChunks: false,
-      })
-    }
-  },
-}))
+    runDiagnosis: async (request) => {
+      const sessionEpoch = currentSessionEpoch()
+      set({ isRunningDiagnosis: true, diagnosis: null, diagnosisError: null })
+      try {
+        const diagnosis = await runSearchDiagnosis(request)
+        if (isStaleSessionEpoch(sessionEpoch)) return
+        set({ diagnosis, isRunningDiagnosis: false })
+      } catch (err) {
+        if (isStaleSessionEpoch(sessionEpoch)) return
+        set({
+          diagnosisError: err instanceof Error ? err.message : 'Diagnose fehlgeschlagen',
+          isRunningDiagnosis: false,
+        })
+      }
+    },
+
+    loadDocumentChunks: async (documentId) => {
+      const sessionEpoch = currentSessionEpoch()
+      const request = ++latestDocumentChunksRequest
+      const isSuperseded = () =>
+        isStaleSessionEpoch(sessionEpoch) || request !== latestDocumentChunksRequest
+      set({ isLoadingDocumentChunks: true, documentChunks: null, documentChunksError: null })
+      try {
+        const documentChunks = await getDocumentChunks(documentId)
+        if (isSuperseded()) return
+        set({ documentChunks, isLoadingDocumentChunks: false })
+      } catch (err) {
+        if (isSuperseded()) return
+        set({
+          documentChunksError:
+            err instanceof Error ? err.message : 'Chunks konnten nicht geladen werden',
+          isLoadingDocumentChunks: false,
+        })
+      }
+    },
+
+    /**
+     * Calls the batch endpoint until it reports done or the run is paused, refreshing the status
+     * table after every batch so the counters move while the run lasts. A second start while a run
+     * is in flight is ignored - one loop per library.
+     */
+    startMetadataBackfill: async (libraryId) => {
+      if (get().metadataBackfillRuns[libraryId]?.running) return
+      const sessionEpoch = currentSessionEpoch()
+      updateRun(libraryId, { running: true, done: false, error: null })
+      let batches = 0
+      let batchesWithoutProgress = 0
+      while (get().metadataBackfillRuns[libraryId]?.running) {
+        try {
+          const result = await runMetadataBackfillBatch({
+            libraryId,
+            batchSize: METADATA_BACKFILL_BATCH_SIZE,
+          })
+          if (isStaleSessionEpoch(sessionEpoch)) return
+          const previous = get().metadataBackfillRuns[libraryId] ?? NEW_RUN
+          updateRun(libraryId, {
+            processedDocuments: previous.processedDocuments + result.processedDocuments,
+            markedForNextRun: previous.markedForNextRun + result.markedForNextRun,
+            skippedDocuments: previous.skippedDocuments + result.skippedDocuments,
+            done: result.done,
+          })
+          const status = await getSearchStatus()
+          if (isStaleSessionEpoch(sessionEpoch)) return
+          set({ status, statusError: null })
+          if (result.done) {
+            updateRun(libraryId, { running: false })
+            return
+          }
+          batches += 1
+          batchesWithoutProgress =
+            result.processedDocuments + result.markedForNextRun > 0 ? 0 : batchesWithoutProgress + 1
+          if (
+            batchesWithoutProgress >= MAX_BATCHES_WITHOUT_PROGRESS ||
+            batches >= MAX_BATCHES_PER_START
+          ) {
+            updateRun(libraryId, { running: false, error: METADATA_BACKFILL_STALLED_MESSAGE })
+            return
+          }
+        } catch (err) {
+          if (isStaleSessionEpoch(sessionEpoch)) return
+          updateRun(libraryId, {
+            running: false,
+            error: err instanceof Error ? err.message : 'Nachrüsten fehlgeschlagen',
+          })
+          return
+        }
+      }
+    },
+
+    pauseMetadataBackfill: (libraryId) => {
+      if (!get().metadataBackfillRuns[libraryId]?.running) return
+      updateRun(libraryId, { running: false })
+    },
+  }
+})

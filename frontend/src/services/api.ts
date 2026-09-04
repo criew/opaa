@@ -9,6 +9,8 @@ import type {
   ChatSummary,
   ChatUpdateRequest,
   EmbeddingInfoResponse,
+  MetadataBackfillRequest,
+  MetadataBackfillResponse,
   SearchStatusResponse,
   SearchDiagnosisContextResponse,
   SearchDiagnosisRequest,
@@ -959,6 +961,25 @@ export async function getEmbeddingInfo(): Promise<EmbeddingInfoResponse> {
 export async function getSearchStatus(): Promise<SearchStatusResponse> {
   try {
     const { data } = await client.get<SearchStatusResponse>('/v1/admin/search/status')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * One batch of the deterministic core-metadata backfill of a library (#1067). Repeated until
+ * `done`; the remaining work is re-derived server-side on every call, so stopping the repetition
+ * is the pause and the next call the resumption.
+ */
+export async function runMetadataBackfillBatch(
+  request: MetadataBackfillRequest,
+): Promise<MetadataBackfillResponse> {
+  try {
+    const { data } = await client.post<MetadataBackfillResponse>(
+      '/v1/admin/indexing/metadata-backfill',
+      request,
+    )
     return data
   } catch (err) {
     normalizeError(err)

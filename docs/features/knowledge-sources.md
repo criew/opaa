@@ -102,7 +102,8 @@ Ablauf beim Hochladen:
    Aufnahmeläufe indizieren und melden ein `FORMAT_MISMATCH`-Ereignis (Begründung in
    `SupportedDocumentFormats`). Der URL-Weg entscheidet dafür zunächst nur an einer Leseprobe und
    lädt vollständig nach, wenn diese den Containertyp nicht auflösen konnte (#1229, siehe
-   [Aufnahme-Pipelines](./ingestion-pipelines.md)). **Die Schadsoftwareprüfung fehlt
+   [Aufnahme-Pipelines](./ingestion-pipelines.md)) — auch dieses Nachladen bleibt unter dem
+   Bytedeckel des Verzeichnis-Wegs (#1236). **Die Schadsoftwareprüfung fehlt
    noch bewusst** — sie braucht eine eigene Entscheidung über Prüfdienst und Betriebsweg und ist als
    eigenes Issue vorzuziehen, bevor ein Produktivbetrieb möglich ist.
 3. Ablage im Dokumentenspeicher der Installation, getrennt je Bibliothek. **Gebaut.**
@@ -279,14 +280,24 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
    `OPAA_INDEXING_CRAWL_MAX_ENTRIES`, siehe [Umgebungsvariablen](../handbuch/deployment.md#alle-umgebungsvariablen)),
    damit ein Zyklus auf dem Zielserver (z. B. eine Symlink-Schleife) nicht zu endloser Rekursion
    führt (#836). Ein durch eines dieser Limits abgeschnittener Lauf wird als solcher protokolliert,
-   nicht als Fehler behandelt.
+   nicht als Fehler behandelt. Die Verzeichnisseite selbst wird dabei nur bis zu einer festen
+   Obergrenze von 8 MiB gelesen — eine endlos streamende Antwort auf eine Verzeichnis-URL bringt
+   damit einen einzelnen Abruf zu Fall statt den ganzen Lauf (#1236).
 2. Die gefundenen Einträge werden auf die verarbeitbaren Dateitypen gefiltert (siehe
    [Welche Dateien OPAA verarbeitet](./data-indexing-rag.md#welche-dateien-opaa-verarbeitet)).
 3. Der **Änderungszeitpunkt aus der Liste** entscheidet, ob überhaupt geladen wird. Ein unverändertes
    Dokument wird übersprungen, bevor Bandbreite anfällt — sofern das Dokument bereits in derselben
    Bibliothek liegt; zeigt die Quelle neu auf eine andere Zielbibliothek, wird auch ein unverändertes
    Dokument neu geladen und wandert dorthin.
-4. Geladen wird in einen temporären Bereich; anschließend wird eine **Prüfsumme über den Inhalt**
+4. Geladen wird in einen temporären Bereich — **gedeckelt auf eine konfigurierbare Bytegrenze je
+   Eintrag** (`OPAA_INDEXING_CRAWL_MAX_FILE_SIZE_BYTES`, Vorgabe 100 MiB, siehe
+   [Umgebungsvariablen](../handbuch/deployment.md#alle-umgebungsvariablen)). Der Deckel greift
+   während des Übertragens, nicht danach: Ein Eintrag darüber wird abgebrochen, bevor die
+   überschüssigen Bytes auf der Platte landen, als Ablehnung im Protokoll des Laufs vermerkt und
+   als übersprungen gezählt; der Lauf selbst geht weiter (#1236). Das gilt auch für den
+   Nachlade-Weg unter Punkt 2, der einen unaufgelösten Containertyp erst an der vollständigen Datei
+   entscheidet — ein solcher Eintrag kostet also nie mehr als diesen Deckel, ob er am Ende indiziert
+   oder abgewiesen wird. Anschließend wird eine **Prüfsumme über den Inhalt**
    gebildet. Sie erkennt Umbenennungen und Verschiebungen und sichert gegen einen unzuverlässigen
    Änderungszeitpunkt ab.
 5. Die Datei durchläuft dieselbe Verarbeitungskette wie jedes andere Dokument. Meldet ihre

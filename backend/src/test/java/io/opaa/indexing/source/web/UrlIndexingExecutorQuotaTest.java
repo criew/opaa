@@ -89,7 +89,7 @@ class UrlIndexingExecutorQuotaTest {
 
     Path downloaded = tempDir.resolve("over-quota.txt");
     Files.writeString(downloaded, "content");
-    when(downloader.download(any(HttpClient.class), any(), anyString(), anyString()))
+    when(downloader.download(any(HttpClient.class), any(), anyString(), anyString(), anyLong()))
         .thenReturn(downloaded);
     // #404 review, finding 1: the executor now reads a bounded prefix to decide before ever
     // calling #download - this mock must answer it too, or the format decision sees a null
@@ -106,7 +106,8 @@ class UrlIndexingExecutorQuotaTest {
             documentRepository,
             indexingRunEventRepository,
             storageQuotaService,
-            mock(StaleDocumentCleanupService.class));
+            mock(StaleDocumentCleanupService.class),
+            new CrawlProperties(0, 0, 0));
   }
 
   @Test

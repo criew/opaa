@@ -2,6 +2,8 @@ package io.opaa.searchadmin;
 
 import io.opaa.indexing.FullTextBackfillProgress;
 import io.opaa.indexing.FullTextBackfillProgressService;
+import io.opaa.indexing.metadata.MetadataBackfillProgress;
+import io.opaa.indexing.metadata.MetadataBackfillService;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.EmbeddingInfo;
@@ -85,6 +87,7 @@ public class SearchStatusService {
   private final KnowledgeLibraryRepository libraryRepository;
   private final LibraryDocumentStatsReader documentStatsReader;
   private final FullTextBackfillProgressService fullTextBackfillProgressService;
+  private final MetadataBackfillService metadataBackfillService;
   private final QueryProperties queryProperties;
   private final RetrievalPipelineProperties pipelineProperties;
   private final Clock clock;
@@ -128,6 +131,7 @@ public class SearchStatusService {
       KnowledgeLibraryRepository libraryRepository,
       LibraryDocumentStatsReader documentStatsReader,
       FullTextBackfillProgressService fullTextBackfillProgressService,
+      MetadataBackfillService metadataBackfillService,
       QueryProperties queryProperties,
       RetrievalPipelineProperties pipelineProperties,
       Clock clock) {
@@ -139,6 +143,7 @@ public class SearchStatusService {
     this.libraryRepository = libraryRepository;
     this.documentStatsReader = documentStatsReader;
     this.fullTextBackfillProgressService = fullTextBackfillProgressService;
+    this.metadataBackfillService = metadataBackfillService;
     this.queryProperties = queryProperties;
     this.pipelineProperties = pipelineProperties;
     this.clock = clock;
@@ -396,6 +401,11 @@ public class SearchStatusService {
         fullTextBackfillProgressService.progressForLibraries(libraryIds)) {
       progressByLibrary.put(progress.libraryId(), progress);
     }
+    // Read from the same selection column the backfill drains (metadata_extraction_version);
+    // "pending" here is the superset of what a call selects - the part waiting for its connector
+    // run is reported separately, so the display can explain a remainder the run cannot reach.
+    Map<UUID, MetadataBackfillProgress> metadataByLibrary =
+        metadataBackfillService.progressForLibraries(libraryIds);
 
     List<LibrarySearchStatus> result = new ArrayList<>();
     for (KnowledgeLibrary library : libraries) {
@@ -404,6 +414,9 @@ public class SearchStatusService {
       FullTextBackfillProgress progress =
           progressByLibrary.getOrDefault(
               library.getId(), new FullTextBackfillProgress(library.getId(), 0, 0, 0, 0));
+      MetadataBackfillProgress metadataBackfill =
+          metadataByLibrary.getOrDefault(
+              library.getId(), MetadataBackfillProgress.empty(library.getId()));
       result.add(
           new LibrarySearchStatus(
               library.getId(),
@@ -418,7 +431,8 @@ public class SearchStatusService {
               stats.lastIndexedAt(),
               progress.indexedChunks(),
               progress.missingChunks(),
-              progress.skippedChunks()));
+              progress.skippedChunks(),
+              metadataBackfill));
     }
     result.sort(
         Comparator.comparing(LibrarySearchStatus::libraryName, String.CASE_INSENSITIVE_ORDER));

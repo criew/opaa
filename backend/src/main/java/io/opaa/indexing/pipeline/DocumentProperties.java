@@ -1,7 +1,9 @@
 package io.opaa.indexing.pipeline;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeParseException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
@@ -97,6 +99,22 @@ public record DocumentProperties(
       return null;
     }
     return date.toInstant().atZone(ZoneOffset.UTC).toLocalDate();
+  }
+
+  /**
+   * An ISO instant string ({@link Instant#toString()} rendering, e.g. an RSS entry's {@code
+   * publishedAt}) as a UTC calendar date, or {@code null} when absent or unparseable. The one
+   * conversion the ingest and the backfill share for this source, so both read the same day.
+   */
+  public static LocalDate instantToLocalDate(String isoInstant) {
+    if (isoInstant == null || isoInstant.isBlank()) {
+      return null;
+    }
+    try {
+      return Instant.parse(isoInstant).atZone(ZoneOffset.UTC).toLocalDate();
+    } catch (DateTimeParseException e) {
+      return null;
+    }
   }
 
   private static String blankToNull(String value) {

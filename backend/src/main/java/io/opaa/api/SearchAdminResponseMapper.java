@@ -203,7 +203,8 @@ final class SearchAdminResponseMapper {
             toIndexState(status.fullTextIndexCondition()),
             status.fullTextIndexedChunks(),
             status.fullTextMissingChunks(),
-            status.fullTextSkippedChunks())
+            status.fullTextSkippedChunks(),
+            MetadataBackfillResponseMapper.toStatusResponse(status.metadataBackfill()))
         .lastIndexedAt(status.lastIndexedAt());
   }
 

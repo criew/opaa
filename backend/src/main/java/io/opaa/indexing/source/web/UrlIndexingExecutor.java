@@ -72,6 +72,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   private final IndexingRunEventRepository indexingRunEventRepository;
   private final LibraryStorageQuotaService storageQuotaService;
   private final StaleDocumentCleanupService staleDocumentCleanupService;
+  private final CrawlProperties crawlProperties;
 
   public UrlIndexingExecutor(
       AutoindexCrawlerService crawlerService,
@@ -81,7 +82,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       DocumentRepository documentRepository,
       IndexingRunEventRepository indexingRunEventRepository,
       LibraryStorageQuotaService storageQuotaService,
-      StaleDocumentCleanupService staleDocumentCleanupService) {
+      StaleDocumentCleanupService staleDocumentCleanupService,
+      CrawlProperties crawlProperties) {
     this.crawlerService = crawlerService;
     this.downloader = downloader;
     this.fileProcessingService = fileProcessingService;
@@ -90,6 +92,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     this.indexingRunEventRepository = indexingRunEventRepository;
     this.storageQuotaService = storageQuotaService;
     this.staleDocumentCleanupService = staleDocumentCleanupService;
+    this.crawlProperties = crawlProperties;
   }
 
   @Override
@@ -182,7 +185,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       // never the whole file: a directory listing routinely sits next to files nobody meant for
       // indexing at all, and downloading each of those in full before rejecting them would fill
       // the temp partition. The one exception is a prefix that ended inside an unresolved
-      // container, which carries no verdict at all - see SupportedDocumentFormats#decideForPrefix.
+      // container, which carries no verdict at all - see SupportedDocumentFormats#decideForPrefix;
+      // that transfer, like every other one here, is capped at CrawlProperties#maxFileSizeBytes.
       for (AutoindexCrawlerService.CrawledFileEntry entry : allFiles) {
         // Check if document is unchanged before downloading (saves bandwidth)
         if (isUnchanged(entry.url(), entry.lastModified(), targetLibrary)) {
@@ -214,7 +218,12 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                     entry.name(),
                     () ->
                         downloadedForDecision[0] =
-                            downloader.download(httpClient, authHeader, entry.url(), entry.name()));
+                            downloader.download(
+                                httpClient,
+                                authHeader,
+                                entry.url(),
+                                entry.name(),
+                                crawlProperties.maxFileSizeBytes()));
           } finally {
             tempFile = downloadedForDecision[0];
           }
@@ -245,7 +254,13 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
           }
 
           if (tempFile == null) {
-            tempFile = downloader.download(httpClient, authHeader, entry.url(), entry.name());
+            tempFile =
+                downloader.download(
+                    httpClient,
+                    authHeader,
+                    entry.url(),
+                    entry.name(),
+                    crawlProperties.maxFileSizeBytes());
           }
           long fileSize = Files.size(tempFile);
           FileProcessingResult result =
@@ -286,6 +301,16 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
             progress.recordProcessed();
             log.info("Indexed URL document: {}", entry.name());
           }
+        } catch (BoundedDownloader.AttachmentTooLargeException e) {
+          // #1236: the transfer was cut off at the configured cap, so no bytes past it ever
+          // reached the temp partition. Skipped, not failed - an entry too large for this
+          // installation is a rejection like any other on this path, and the run continues.
+          log.warn(
+              "Rejecting URL document exceeding the size limit of {} bytes: {}",
+              crawlProperties.maxFileSizeBytes(),
+              entry.url());
+          events.record(IndexingEventCategory.REJECTED, tooLargeMessage(), entry.url());
+          progress.recordSkipped();
         } catch (TargetAddressValidator.TargetAddressBlockedException e) {
           // e.getMessage() is already German, user-facing (see TargetAddressValidator's Javadoc).
           // Treated as skipped, not failed - mirrors RssFeedIndexingExecutor's identical policy
@@ -364,6 +389,27 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       events.finalizeRun();
       progress.fail(e.getMessage());
     }
+  }
+
+  /**
+   * The German run-protocol message for an entry cut off at {@link #crawlProperties}' size cap. The
+   * limit is named in the largest unit that still states it exactly, so a configured value below
+   * one MiB is never reported as "0 MiB".
+   */
+  private String tooLargeMessage() {
+    return "Datei überschreitet die zulässige Größe von "
+        + formatByteLimit(crawlProperties.maxFileSizeBytes())
+        + " und wurde nicht indiziert";
+  }
+
+  private static String formatByteLimit(long bytes) {
+    if (bytes % (1024 * 1024) == 0) {
+      return (bytes / (1024 * 1024)) + " MiB";
+    }
+    if (bytes % 1024 == 0) {
+      return (bytes / 1024) + " KiB";
+    }
+    return bytes + " Byte";
   }
 
   /**
