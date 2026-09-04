@@ -34,8 +34,10 @@ import SectionHead from '../components/SectionHead'
 import type {
   ChunkInspectionResponse,
   DocumentChunksResponse,
+  DocumentTypeVocabularyEntryResponse,
   LibraryIndexState,
   LibrarySearchStatusResponse,
+  MetadataFilter,
   RetrievalCandidateOutcome,
   RetrievalStage,
   RetrievalStageResponse,
@@ -50,7 +52,7 @@ import type {
 } from '../types/api'
 import { formatShare } from '../utils/labels'
 import { translateListLabel, translateStageNote } from '../utils/retrievalProtocolText'
-import { getSearchChunk } from '../services/api'
+import { getDocumentTypeVocabulary, getSearchChunk } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useSearchAdminStore, type MetadataBackfillRun } from '../stores/searchAdminStore'
 
@@ -119,6 +121,7 @@ const INDEX_STATE_LABELS: Record<LibraryIndexState, string> = {
 
 const STAGE_LABELS: Record<RetrievalStage, string> = {
   SEARCH_SCOPE: 'Suchbereich',
+  METADATA_FILTER: 'Metadatenfilter',
   SUB_QUERY_DECOMPOSITION: 'Teilfragen',
   VECTOR_SEARCH: 'Vektorsuche',
   FULL_TEXT_SEARCH: 'Volltextsuche',
@@ -893,6 +896,14 @@ export default function SearchIndexingAdminPage() {
   const [targetUserId, setTargetUserId] = useState('')
   const [justification, setJustification] = useState('')
   const [trackedDocumentId, setTrackedDocumentId] = useState('')
+  // #1070: the core-field filter the diagnosis runs with - applied exactly as a chat query applies
+  // it, so "Sicht als" can check what a person's filtered question sees. The Dokumentart choices
+  // come from the vocabulary (schema, not an aggregate), since the diagnosis may run in a foreign
+  // rights context whose occurring values this page must not aggregate.
+  const [filterDocumentTypes, setFilterDocumentTypes] = useState<string[]>([])
+  const [filterDateFrom, setFilterDateFrom] = useState('')
+  const [filterDateTo, setFilterDateTo] = useState('')
+  const [vocabulary, setVocabulary] = useState<DocumentTypeVocabularyEntryResponse[]>([])
   const [previewChunkId, setPreviewChunkId] = useState<string | null>(null)
   const [documentIdInput, setDocumentIdInput] = useState('')
   const documentChunksSectionRef = useRef<HTMLDivElement>(null)
@@ -911,9 +922,32 @@ export default function SearchIndexingAdminPage() {
     if (isSystemAdmin) void loadStatus()
   }, [isSystemAdmin, loadStatus])
 
+  useEffect(() => {
+    if (!isSystemAdmin) return
+    let cancelled = false
+    getDocumentTypeVocabulary()
+      .then((response) => {
+        if (!cancelled) setVocabulary(response.items)
+      })
+      .catch(() => {
+        // The filter field then offers no Dokumentart; the diagnosis itself is unaffected.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isSystemAdmin])
+
+  const filterDateInvalid =
+    filterDateFrom !== '' && filterDateTo !== '' && filterDateTo < filterDateFrom
+
   async function handleDiagnosis() {
     const contextType: SearchDiagnosisContextType =
       contextValue === OWN_CONTEXT_VALUE ? 'SELF' : isPersonContext ? 'USER' : 'PERMISSION_PROFILE'
+    const metadataFilter: MetadataFilter = {
+      ...(filterDocumentTypes.length > 0 ? { documentTypes: filterDocumentTypes } : {}),
+      ...(filterDateFrom !== '' ? { documentDateFrom: filterDateFrom } : {}),
+      ...(filterDateTo !== '' ? { documentDateTo: filterDateTo } : {}),
+    }
     await runDiagnosis({
       question: question.trim(),
       contextType,
@@ -921,6 +955,7 @@ export default function SearchIndexingAdminPage() {
       targetUserId: contextType === 'USER' ? targetUserId.trim() : undefined,
       justification: contextType === 'USER' ? justification.trim() : undefined,
       trackedDocumentId: trackedDocumentId.trim() === '' ? undefined : trackedDocumentId.trim(),
+      ...(Object.keys(metadataFilter).length > 0 ? { metadataFilter } : {}),
     })
   }
 
@@ -1094,12 +1129,63 @@ export default function SearchIndexingAdminPage() {
             size="small"
             fullWidth
           />
+          <TextField
+            select
+            label="Metadatenfilter: Dokumentart (optional)"
+            value={filterDocumentTypes}
+            onChange={(e) => {
+              const value = e.target.value as unknown
+              setFilterDocumentTypes(Array.isArray(value) ? (value as string[]) : [])
+            }}
+            helperText="Der Filter wirkt wie im Chat: in beiden Suchpfaden, unter dem Rechtefilter; ein Dokument ohne Angabe bleibt enthalten."
+            size="small"
+            fullWidth
+            slotProps={{
+              select: {
+                multiple: true,
+                renderValue: (selected) =>
+                  (selected as string[])
+                    .map((code) => vocabulary.find((entry) => entry.code === code)?.label ?? code)
+                    .join(', '),
+              },
+            }}
+          >
+            {vocabulary.map((entry) => (
+              <MenuItem key={entry.code} value={entry.code}>
+                {entry.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <Stack direction="row" spacing={2}>
+            <TextField
+              label="Metadatenfilter: Datum von"
+              type="date"
+              value={filterDateFrom}
+              onChange={(e) => setFilterDateFrom(e.target.value)}
+              size="small"
+              fullWidth
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+            <TextField
+              label="Metadatenfilter: Datum bis"
+              type="date"
+              value={filterDateTo}
+              onChange={(e) => setFilterDateTo(e.target.value)}
+              error={filterDateInvalid}
+              helperText={filterDateInvalid ? 'Das Fenster endet vor seinem Beginn.' : undefined}
+              size="small"
+              fullWidth
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+          </Stack>
           <Box>
             <Button
               variant="contained"
               size="small"
               onClick={() => void handleDiagnosis()}
-              disabled={running || question.trim() === '' || personContextIncomplete}
+              disabled={
+                running || question.trim() === '' || personContextIncomplete || filterDateInvalid
+              }
             >
               {running ? 'Diagnose läuft …' : 'Diagnose ausführen'}
             </Button>

@@ -232,6 +232,16 @@ export function formatMetadataLine(source: SourceReference | undefined): string 
 }
 
 /**
+ * #1070: the mark of a hit the Leerwert rule kept - "ohne Angabe" - for a source whose document
+ * carried no value for a filtered field (metadata-schema.md, "Leerwerte schließen nicht aus").
+ * Undefined without an active filter and for a source that matched on every filtered field, so
+ * the mark only ever appears where it makes a statement.
+ */
+export function metadataFilterMatchLabel(source: SourceReference | undefined): string | undefined {
+  return source?.metadataFilterMatch === 'NO_VALUE' ? 'ohne Angabe' : undefined
+}
+
+/**
  * #1066: the accessible name of the metadata line - every entry as "Label: Wert", so a screen
  * reader hears what a sighted reader infers from the value alone.
  */

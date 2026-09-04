@@ -41,6 +41,7 @@ function resetChatStore() {
     error: null,
     scope: 'all',
     referencedLibraryIds: [],
+    metadataFilter: null,
     pendingSettingsUpdate: null,
   })
 }
@@ -806,6 +807,97 @@ describe('chatStore', () => {
       expect(useChatStore.getState().scope).toBe('all')
       expect(patchedBody?.useKnowledge).toBe(true)
       expect(patchedBody?.referencedLibraryIds).toEqual([])
+    })
+
+    // #1070: the chat's sticky core-field filter persists like the scope - through its own PATCH
+    // that leaves the scope fields untouched, an object without any condition clearing it - and is
+    // restored from the chat on load.
+    it('persists the metadata filter via PATCH and clears it with an empty object', async () => {
+      let patchedBody: Record<string, unknown> | undefined
+      server.use(
+        http.patch('/api/v1/chats/:chatId', async ({ request, params }) => {
+          patchedBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            metadataFilter: patchedBody.metadataFilter ?? null,
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          })
+        }),
+      )
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+
+      useChatStore.getState().setMetadataFilter({
+        documentTypes: ['VERMERK', 'DIENSTANWEISUNG'],
+        documentDateFrom: '2024-01-01',
+      })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(useChatStore.getState().metadataFilter).toEqual({
+        documentTypes: ['DIENSTANWEISUNG', 'VERMERK'],
+        documentDateFrom: '2024-01-01',
+      })
+      expect(patchedBody).toEqual({
+        metadataFilter: {
+          documentTypes: ['DIENSTANWEISUNG', 'VERMERK'],
+          documentDateFrom: '2024-01-01',
+        },
+      })
+      expect(getConfirmedSettingsForTesting(EMPTY_CHAT_ID)?.metadataFilter).toEqual({
+        documentTypes: ['DIENSTANWEISUNG', 'VERMERK'],
+        documentDateFrom: '2024-01-01',
+      })
+
+      useChatStore.getState().setMetadataFilter(null)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(useChatStore.getState().metadataFilter).toBeNull()
+      expect(patchedBody).toEqual({ metadataFilter: {} })
+    })
+
+    it('restores the chat-level metadata filter on load and sends it with the query', async () => {
+      server.use(
+        http.get('/api/v1/chats/:chatId', ({ params }) =>
+          HttpResponse.json({
+            id: params.chatId,
+            spaceId: SPACE_ID,
+            authorId: 'mock-user-id',
+            title: null,
+            useKnowledge: true,
+            referencedLibraryIds: [],
+            metadataFilter: { documentTypes: ['VERMERK'] },
+            status: 'PRIVATE',
+            messages: [],
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          }),
+        ),
+      )
+      let queryBody: Record<string, unknown> | undefined
+      server.use(
+        http.post('/api/v1/query', async ({ request }) => {
+          queryBody = (await request.json()) as Record<string, unknown>
+          return HttpResponse.json({
+            answer: 'Antwort',
+            sources: [],
+            metadata: { model: 'gpt-4o', tokenCount: 10, durationMs: 5 },
+            chatId: EMPTY_CHAT_ID,
+          })
+        }),
+      )
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+      expect(useChatStore.getState().metadataFilter).toEqual({ documentTypes: ['VERMERK'] })
+
+      await useChatStore.getState().sendMessage('Frage')
+
+      expect(queryBody?.metadataFilter).toEqual({ documentTypes: ['VERMERK'] })
     })
 
     it('persists referencedLibraryIds via PATCH once a chat is active', async () => {
