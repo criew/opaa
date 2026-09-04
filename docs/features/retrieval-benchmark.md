@@ -886,10 +886,14 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
    Abschnitt 2 ohnehin punktuelle Belege für Roadmap-Entscheidungen, keine laufende Prüfung.
    **Nachgeschärft mit Issue #1085 (09/2026):** Die Aufteilung bleibt genau so. Neu gemessen wurde
    nur, was der zerlegende Lauf kosten würde (Punkt 3 unten) — er bleibt deshalb ebenfalls
-   ausschließlich manuell. Der nächtliche Job zieht seither zusätzlich das Chat-Modell (~986 MB,
-   einmal je Cache-Schlüssel, siehe `.github/workflows/retrieval-regression.yml`), misst aber
-   unverändert die deterministische Konfiguration ohne Zerlegung; sein Zeitbudget ändert sich
-   dadurch nicht.
+   ausschließlich manuell. Der nächtliche Job misst unverändert die deterministische Konfiguration
+   ohne Zerlegung; die **Messzeit** ändert sich dadurch nicht. Was sich ändert, ist der Modell-Cache:
+   Der Cache-Schlüssel trägt jetzt beide Digests, der **erste** Lauf nach dieser Änderung ist deshalb
+   kalt und zieht zusätzlich ~986 MB, jeder folgende restauriert ~1,26 GB statt ~275 MB (siehe
+   `.github/workflows/retrieval-regression.yml`). Dafür ist `timeout_minutes` der langsamsten Domäne
+   (`city-landmarks`, im ungünstigsten beobachteten Fall ~133 von zuvor 180 Minuten) auf 195 Minuten
+   angehoben — der zusätzliche Puffer deckt den kalten Erstlauf, ohne die Grenze so weit zu öffnen,
+   dass eine hängende Indizierung darin verschwindet.
 3. **Chat-Modell für den Pipeline-Pfad mit aktiver Zerlegung — angebunden mit Issue #1085
    (09/2026).** Der Harness hat seither ein lokales, über den bestehenden Ollama-Mechanismus
    bereitgestelltes Instruct-Modell: `qwen2.5:1.5b-instruct`, per Tag **und** Content-Digest

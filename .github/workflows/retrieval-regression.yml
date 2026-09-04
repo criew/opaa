@@ -82,7 +82,11 @@ jobs:
             # Läufe lagen bei ~124 bzw. ~132 Minuten (GitHub-Actions-Runs 32524864494, 32550844537),
             # beide deutlich unter dem 170-Minuten-Budget.
             # 170 -> 180 mit #1039, siehe die Begründung beim comic-characters-Eintrag oben.
-            timeout_minutes: 180
+            # 180 -> 195 mit #1085: Der Cache-Schlüssel trägt jetzt beide Modell-Digests, der erste
+            # Lauf danach ist also kalt und zieht zusätzlich ~986 MB; danach kostet jeder Lauf ein
+            # Cache-Round-Trip über ~1,26 GB statt ~275 MB. Der Puffer über der langsamsten
+            # gemessenen Messzeit (~132 min) bleibt damit so groß wie zuvor.
+            timeout_minutes: 195
             exec_step_name: 'Retrieval-Regression (city-landmarks) ausführen'
             report_file: baseline-comparison-city-landmarks.md
             pipeline_report_file: pipeline-baseline-comparison-city-landmarks.md

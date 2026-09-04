@@ -140,8 +140,8 @@ gemessene Konfiguration überhaupt erst zerlegen lässt:
 
 Ohne `-Dopaa.eval.queryDecomposition=true` zerlegt auch die Referenzvariante nicht, und beide
 Varianten messen dieselbe Konfiguration. Kostenhinweis: Die Referenzvariante läuft dreimal, der
-direkte Vergleichslauf der Selbstprüfung ebenfalls — bei gemessenen ~10 s je Chat-Aufruf auf CPU ist
-das der mit Abstand teuerste Vergleich dieses Verzeichnisses.
+direkte Vergleichslauf der Selbstprüfung ebenfalls — bei gemessenen ~1,5 s je Chat-Aufruf auf CPU
+(unter hoher Last bis ~10 s) ist das der mit Abstand teuerste Vergleich dieses Verzeichnisses.
 
 ### Wirkungsnachweis des lexikalischen Pfads (Issue #1049)
 

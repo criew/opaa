@@ -154,7 +154,8 @@ Ein solcher Lauf ist eine bewusste Einzelmessung, **nicht** mit der committeten 
 vergleichbar: Seine Festpunkte (`queryDecompositionEnabled`, `chatModel`) unterscheiden sich, was
 `PipelineBaselineComparator` als unvergleichbare Baseline meldet und nicht als Regression. Er
 kostet außerdem einen Chat-Aufruf je Anfrage und läuft nach der Mehrfachlauf-Regel dreimal — auf
-CPU rund 10 s je Aufruf gemessen (siehe `docs/features/retrieval-benchmark.md`, „Offene Punkte" 3).
+CPU rund 1,5 s je Aufruf gemessen, unter hoher Last bis ~10 s (siehe
+`docs/features/retrieval-benchmark.md`, „Offene Punkte" 3).
 
 ### CPU statt GPU
 

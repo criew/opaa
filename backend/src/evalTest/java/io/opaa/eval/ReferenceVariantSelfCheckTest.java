@@ -73,9 +73,17 @@ class ReferenceVariantSelfCheckTest {
 
   private static VariantOutcome referenceOutcome(
       boolean decompositionEnabled, Supplier<PipelineEvaluationReport> measure) {
+    return referenceOutcome(
+        PipelineVariant.QueryOverrides.NONE, production(decompositionEnabled), measure);
+  }
+
+  private static VariantOutcome referenceOutcome(
+      PipelineVariant.QueryOverrides overrides,
+      QueryProperties production,
+      Supplier<PipelineEvaluationReport> measure) {
     return VariantRunner.run(
-        new PipelineVariant("reference", "desc", false, PipelineVariant.QueryOverrides.NONE),
-        production(decompositionEnabled),
+        new PipelineVariant("reference", "desc", false, overrides),
+        VariantQueryProperties.apply(production, overrides),
         measure,
         NO_RERANKING);
   }
@@ -86,7 +94,7 @@ class ReferenceVariantSelfCheckTest {
 
     var direct =
         ReferenceVariantSelfCheck.assertMatchesDirectMeasurement(
-            outcome, true, unstableMeasurement());
+            outcome, production(true), unstableMeasurement());
 
     assertThat(direct.multiRun()).isTrue();
     assertThat(direct.summary().runCount()).isEqualTo(MultiRunAggregator.DECOMPOSITION_RUN_COUNT);
@@ -108,7 +116,7 @@ class ReferenceVariantSelfCheckTest {
     assertThatThrownBy(
             () ->
                 ReferenceVariantSelfCheck.assertMatchesDirectMeasurement(
-                    outcome, false, single::get))
+                    outcome, production(false), single::get))
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining("Referenzvarianten-Selbstprüfung");
   }
@@ -122,7 +130,7 @@ class ReferenceVariantSelfCheckTest {
     var direct =
         ReferenceVariantSelfCheck.assertMatchesDirectMeasurement(
             outcome,
-            false,
+            production(false),
             () -> {
               directCalls.incrementAndGet();
               return report(true);
@@ -140,7 +148,32 @@ class ReferenceVariantSelfCheckTest {
     assertThatCode(
             () ->
                 ReferenceVariantSelfCheck.assertMatchesDirectMeasurement(
-                    outcome, true, () -> report(true)))
+                    outcome, production(true), () -> report(true)))
         .doesNotThrowAnyException();
+  }
+
+  /**
+   * The run count follows the reference variant's <b>effective</b> configuration, not the
+   * production value alone: a reference variant that switches decomposition on through an override
+   * runs three times on the variant side, so the direct measurement must too.
+   */
+  @Test
+  void aReferenceVariantThatEnablesDecompositionByOverrideAlsoGetsThreeDirectRuns() {
+    var overrides =
+        new PipelineVariant.QueryOverrides(null, null, null, true, null, null, null, null);
+    AtomicInteger directCalls = new AtomicInteger();
+    var outcome = referenceOutcome(overrides, production(false), () -> report(true));
+
+    var direct =
+        ReferenceVariantSelfCheck.assertMatchesDirectMeasurement(
+            outcome,
+            production(false),
+            () -> {
+              directCalls.incrementAndGet();
+              return report(true);
+            });
+
+    assertThat(directCalls.get()).isEqualTo(MultiRunAggregator.DECOMPOSITION_RUN_COUNT);
+    assertThat(direct.multiRun()).isTrue();
   }
 }

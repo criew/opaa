@@ -2,6 +2,7 @@ package io.opaa.eval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.query.QueryProperties;
 import java.util.function.Supplier;
 
 /**
@@ -28,8 +29,12 @@ final class ReferenceVariantSelfCheck {
 
   /**
    * @param referenceOutcome the reference variant's outcome as produced by the variant mechanism.
-   * @param decompositionEnabled the production configuration's effective decomposition setting —
-   *     the same trigger the variant side used, so both sides run the same number of times.
+   * @param productionQueryProperties the harness's own {@link QueryProperties}. The run count of
+   *     the direct measurement is derived from it <b>plus the reference variant's own
+   *     overrides</b>, exactly as {@link VariantRunner} derives it for the variant side — a
+   *     reference variant may carry overrides, and {@code queryDecompositionEnabled} is one of
+   *     them, so reading the production value alone could put three runs on one side and one on the
+   *     other.
    * @param directMeasure one direct measurement through the harness's own production-wired {@code
    *     QueryService} bean; invoked once or {@link MultiRunAggregator#DECOMPOSITION_RUN_COUNT}
    *     times.
@@ -37,8 +42,12 @@ final class ReferenceVariantSelfCheck {
    */
   static MehrfachlaufRule.Measurement assertMatchesDirectMeasurement(
       VariantOutcome referenceOutcome,
-      boolean decompositionEnabled,
+      QueryProperties productionQueryProperties,
       Supplier<PipelineEvaluationReport> directMeasure) {
+    boolean decompositionEnabled =
+        VariantQueryProperties.apply(
+                productionQueryProperties, referenceOutcome.variant().queryOverrides())
+            .queryDecompositionEnabled();
     MehrfachlaufRule.Measurement direct =
         MehrfachlaufRule.measure(decompositionEnabled, directMeasure);
     PipelineEvaluationReport referenceReport = referenceOutcome.report();

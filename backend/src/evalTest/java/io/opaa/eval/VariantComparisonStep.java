@@ -113,7 +113,7 @@ public final class VariantComparisonStep {
       MehrfachlaufRule.Measurement direct =
           ReferenceVariantSelfCheck.assertMatchesDirectMeasurement(
               referenceOutcome,
-              queryProperties.queryDecompositionEnabled(),
+              queryProperties,
               () ->
                   PipelineHarnessSupport.measure(
                       domain,

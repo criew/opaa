@@ -47,13 +47,6 @@ final class EvalChatModel {
   private EvalChatModel() {}
 
   /**
-   * Makes {@link #MODEL} at {@code ollamaEndpoint} the systemwide active chat model.
-   *
-   * @param ollamaEndpoint the endpoint without the {@code /v1} suffix — the same base URL the
-   *     embedding configuration uses; {@code llm_models} always stores the OpenAI-compatible
-   *     endpoint (docs/features/llm-integration.md, "Ein Anbindungsweg, nicht zwei").
-   */
-  /**
    * Proves the installed model actually answers before a decomposing run measures anything.
    *
    * <p>Not redundant with the prerequisite checks: {@code QueryDecompositionService#decompose}
@@ -84,6 +77,13 @@ final class EvalChatModel {
     }
   }
 
+  /**
+   * Makes {@link #MODEL} at {@code ollamaEndpoint} the systemwide active chat model.
+   *
+   * @param ollamaEndpoint the endpoint without the {@code /v1} suffix — the same base URL the
+   *     embedding configuration uses; {@code llm_models} always stores the OpenAI-compatible
+   *     endpoint (docs/features/llm-integration.md, "Ein Anbindungsweg, nicht zwei").
+   */
   static void installAsSystemwideActiveModel(JdbcTemplate jdbcTemplate, String ollamaEndpoint) {
     jdbcTemplate.update("DELETE FROM llm_models");
     jdbcTemplate.update(
