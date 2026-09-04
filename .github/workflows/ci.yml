@@ -36,6 +36,7 @@ jobs:
       pull-requests: read
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
+      backendCore: ${{ steps.filter.outputs.backendCore }}
       frontend: ${{ steps.filter.outputs.frontend }}
       scripts: ${{ steps.filter.outputs.scripts }}
     steps:
@@ -44,14 +45,27 @@ jobs:
         if: github.event_name == 'pull_request'
         with:
           filters: |
-            # eval/** belongs here because the Docker-free invariant tests that
-            # guard the corpora and golden datasets (chunk-size dry runs, golden
-            # case curation, manifest checks) run as part of the backend job's
-            # check task - a corpus-only PR would otherwise skip them (#1089).
+            # backendCore gates the paid OpenAI integration tests (job
+            # backend-integration): nothing under io.opaa.integration.* reads
+            # eval/, so a corpus-only PR must not trigger real API calls (#1123).
+            backendCore:
+              - 'backend/**'
+              - 'opaa-api/**'
+              - '.github/workflows/ci.yml'
+            # backend additionally covers eval/** because the Docker-free
+            # invariant tests that guard the corpora and golden datasets
+            # (chunk-size dry runs, golden case curation, manifest checks) run
+            # as part of the backend job's check task - a corpus-only PR would
+            # otherwise skip them (#1089). eval/README.md and eval/generator/**
+            # are excluded: no evalUnitTest-included test reads either at
+            # runtime, both are only referenced from Javadoc/error messages in
+            # the excluded *RetrievalEvaluationHarnessTest classes (#1123).
             backend:
               - 'backend/**'
               - 'opaa-api/**'
               - 'eval/**'
+              - '!eval/README.md'
+              - '!eval/generator/**'
               - '.github/workflows/ci.yml'
             # The frontend build regenerates its API types from the OpenAPI
             # spec under opaa-api/ on every pnpm run build/test (ADR-0006), so a
@@ -101,7 +115,7 @@ jobs:
 
   backend-integration:
     needs: changes
-    if: github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true'
+    if: github.event_name != 'pull_request' || needs.changes.outputs.backendCore == 'true'
     runs-on: ubuntu-latest
     env:
       OPAA_OPENAI_API_KEY: ${{ secrets.OPAA_OPENAI_API_KEY }}
