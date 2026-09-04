@@ -64,18 +64,20 @@ class DocumentFormatParityTest {
   private static final String PDF_MAGIC_BYTES = "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection";
 
   private static SupportedDocumentFormats.ContentDecision networkPathDecision(
-      Path file, String entryName) throws IOException {
+      Path file, String entryName) throws IOException, InterruptedException {
     byte[] fullContent = Files.readAllBytes(file);
     byte[] prefix =
         fullContent.length <= SupportedDocumentFormats.DETECTION_PREFIX_BYTES
             ? fullContent
             : Arrays.copyOf(fullContent, SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
-    return UrlIndexingExecutor.decideForEntry(prefix, entryName);
+    // The full download the executor performs when the prefix alone stays inconclusive - stands in
+    // for BoundedDownloader#download, whose result is likewise the complete file on disk.
+    return UrlIndexingExecutor.decideForEntry(prefix, entryName, () -> file);
   }
 
   @ParameterizedTest
   @ValueSource(strings = {"handbuch.md", "notiz.txt", "scan.png", "archiv.zip"})
-  void bothIndexingPathsDecideAlikeForTheSameContent(String fileName) throws IOException {
+  void bothIndexingPathsDecideAlikeForTheSameContent(String fileName) throws Exception {
     // Plain, human-readable text - accepted regardless of the (possibly misleading) name above,
     // except for the ones neither .md nor .txt (ambiguous text content only counts under one of
     // those two, see SupportedDocumentFormats#decideForFileName).
@@ -95,7 +97,7 @@ class DocumentFormatParityTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"bescheid.pdf", "DATEI-IN-GROSSBUCHSTABEN.PDF"})
-  void bothIndexingPathsAcceptAGenuinePdfUnderItsOwnExtension(String fileName) throws IOException {
+  void bothIndexingPathsAcceptAGenuinePdfUnderItsOwnExtension(String fileName) throws Exception {
     Path file = tempDir.resolve(fileName);
     Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
 
@@ -106,7 +108,7 @@ class DocumentFormatParityTest {
   }
 
   @Test
-  void bothIndexingPathsAcceptAGenuineDocxUnderItsOwnExtension() throws IOException {
+  void bothIndexingPathsAcceptAGenuineDocxUnderItsOwnExtension() throws Exception {
     // #404 review, finding 7: the strict Office types belong back in this test, not just the
     // mismatch/rejection cases - a genuine .docx accepted under its own, matching extension is the
     // baseline both other cases are contrasted against.
@@ -120,7 +122,7 @@ class DocumentFormatParityTest {
   }
 
   @Test
-  void bothIndexingPathsAcceptAGenuinePptxUnderItsOwnExtension() throws IOException {
+  void bothIndexingPathsAcceptAGenuinePptxUnderItsOwnExtension() throws Exception {
     Path file = tempDir.resolve("folien.pptx");
     Files.write(file, realPptxBytes());
 
@@ -131,7 +133,7 @@ class DocumentFormatParityTest {
   }
 
   @Test
-  void bothIndexingPathsAcceptAGenuineHtmlPageUnderItsOwnExtension() throws IOException {
+  void bothIndexingPathsAcceptAGenuineHtmlPageUnderItsOwnExtension() throws Exception {
     // #1059: HTML is admitted the same way DOCX/PPTX/XLSX are - both indexing paths must agree.
     Path file = tempDir.resolve("seite.html");
     Files.writeString(
@@ -146,7 +148,7 @@ class DocumentFormatParityTest {
   }
 
   @Test
-  void bothIndexingPathsAcceptAGenuineXlsxUnderItsOwnExtension() throws IOException {
+  void bothIndexingPathsAcceptAGenuineXlsxUnderItsOwnExtension() throws Exception {
     // #1096 review, optional item: a real POI-built XLSX (not merely a media-type string) through
     // both indexing paths - mirrors the DOCX/PPTX cases above.
     Path file = tempDir.resolve("gebuehren.xlsx");
@@ -166,7 +168,7 @@ class DocumentFormatParityTest {
   @ParameterizedTest
   @ValueSource(strings = {"odt", "ods", "odp"})
   void bothIndexingPathsAcceptAGenuineOdfFileUnderItsOwnExtension(String extension)
-      throws IOException {
+      throws Exception {
     String fileName = "dokument." + extension;
     Path file = tempDir.resolve(fileName);
     Files.write(file, realOdfBytes(extension));
@@ -179,7 +181,7 @@ class DocumentFormatParityTest {
 
   @Test
   void bothIndexingPathsAcceptReadableContentDespiteAWrongExtensionAndReportTheSameMismatch()
-      throws IOException {
+      throws Exception {
     // The core case #404 exists for: a real PDF mislabeled .csv used to be rejected outright on
     // both paths - now both accept it and both report the exact same detected extension.
     Path file = tempDir.resolve("bescheid.csv");
@@ -195,7 +197,7 @@ class DocumentFormatParityTest {
 
   @Test
   void bothIndexingPathsRejectUnsupportedContentEvenWithASupportedLookingExtension()
-      throws IOException {
+      throws Exception {
     Path file = tempDir.resolve("image.pdf");
     Files.write(file, new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a});
 
@@ -226,7 +228,7 @@ class DocumentFormatParityTest {
   }
 
   @Test
-  void bothIndexingPathsAcceptAGenuineMsgUnderItsOwnExtension() throws IOException {
+  void bothIndexingPathsAcceptAGenuineMsgUnderItsOwnExtension() throws Exception {
     Path file = tempDir.resolve("vorgang.msg");
     try (InputStream in =
         DocumentFormatParityTest.class
@@ -248,10 +250,35 @@ class DocumentFormatParityTest {
         .isEqualTo(".msg");
   }
 
+  @Test
+  void bothIndexingPathsAcceptAGenuineMsgLargerThanTheDetectionPrefix() throws Exception {
+    // Regression guard for #1229: an OLE2 file's directory sector may sit past the network path's
+    // bounded prefix, where the same bytes detect only as the generic application/x-tika-msoffice.
+    // A prefix decision alone therefore rejected every .msg (and .doc) larger than the sample,
+    // while the filesystem path - always deciding on the complete file - accepted it.
+    Path file = tempDir.resolve("outlook-mail-mit-pdf-anhang.msg");
+    try (InputStream in =
+        DocumentFormatParityTest.class
+            .getClassLoader()
+            .getResourceAsStream("test-documents/mail/attachment_msg_pdf.msg")) {
+      assertThat(in).as("Test resource must exist").isNotNull();
+      Files.copy(in, file);
+    }
+    assertThat(Files.size(file))
+        .as("the fixture must exceed the detection prefix for this guard to mean anything")
+        .isGreaterThan(SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
+
+    assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
+    var networkDecision = networkPathDecision(file, "outlook-mail-mit-pdf-anhang.msg");
+    assertThat(networkDecision.supported()).isTrue();
+    assertThat(networkDecision.extensionMismatch()).isFalse();
+    assertThat(networkDecision.detectedExtension()).isEqualTo(".msg");
+  }
+
   // --- #404 review, finding 2: the RSS attachment path decides alike too --------------------
 
   @Test
-  void theRssAttachmentPathAcceptsTheSameMislabeledPdfTheOtherTwoPathsDo() throws IOException {
+  void theRssAttachmentPathAcceptsTheSameMislabeledPdfTheOtherTwoPathsDo() throws Exception {
     // Two things had to change for this to hold (#404 review, finding 2): AttachmentProfile.GENERIC
     // used to exclude a link like this from ever becoming a candidate at all (its own extension is
     // not one of SupportedDocumentFormats's six), and RssFeedIndexingExecutor#processAttachment

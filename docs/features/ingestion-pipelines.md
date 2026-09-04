@@ -875,6 +875,29 @@ anhand der *eigenen* beanspruchten Endung der Datei, nie anhand dessen, welchem 
 der Inhalt bloß ähnelt), und eine echte `.eml` wird unabhängig davon angenommen, welche Kopfzeile
 zuerst kommt — es genügt, dass der Inhalt überhaupt wie Text aussieht.
 
+**Nachtrag (#1229): Der URL-Weg entscheidet zunächst über eine Leseprobe — und das reichte für MSG
+nicht.** `UrlIndexingExecutor` liest von jedem Verzeichniseintrag erst nur die ersten 64 KiB
+(`SupportedDocumentFormats.DETECTION_PREFIX_BYTES`) und entscheidet daran, ob der Eintrag überhaupt
+vollständig geladen wird; sonst füllte jede beliebige Datei neben dem Bestand die temporäre Partition.
+Bei OLE2-Dateien geht das nicht auf: Das Verzeichnis eines OLE2-Containers — der Teil, der die
+`__substg1.0_`-Ströme und damit das Format benennt — kann irgendwo in der Datei liegen. Eine echte
+`.msg` oberhalb der Leseprobe wird darin nur als generisches `application/x-tika-msoffice` erkannt,
+und genau dieser unaufgelöste Containertyp ist als `.msg`-Inhalt bewusst *nicht* zugelassen (er würde
+sonst jede nicht identifizierbare OLE2-Datei durchlassen). Ergebnis: Dieselbe Mail, die per Upload und
+über `FILESYSTEM` sauber indiziert wurde, wurde am `HTTP_DIRECTORY`-Weg als „Dateiformat wird nicht
+unterstützt" abgewiesen — für `.doc` galt dasselbe. Der Server-`Content-Type` war nie beteiligt; er
+fließt in die Zulassung des URL-Wegs überhaupt nicht ein.
+
+Die Auflösung führt keine zweite Zulassungsregel ein, sondern behandelt einen unaufgelösten
+Containertyp als das, was er ist — **kein Urteil, nur eine zu kurze Leseprobe**:
+`SupportedDocumentFormats.decideForPrefix` entscheidet weiterhin an der Leseprobe, holt aber genau
+dann die vollständige Datei nach und entscheidet an ihr, wenn die Probe `application/x-tika-msoffice`
+oder `application/x-tika-ooxml` ergab und daran gescheitert wäre. Jede andere Erkennung — ein
+aufgelöster Typ ebenso wie Inhalt, den Tika gar nicht einordnen kann — bleibt an der Leseprobe
+endgültig, der Schutz vor unnötigen Volltransfers bleibt also für alles außer OLE2-/ZIP-Containern
+erhalten. Die nachgeladene Datei wird für die anschließende Verarbeitung wiederverwendet, nicht ein
+zweites Mal übertragen.
+
 **Zwei eigene Leser statt eines gemeinsamen Tika-Parsers**, weil Kopfdaten, Text und Anhänge getrennt
 werden müssen, statt in einen Block zu fließen:
 

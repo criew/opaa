@@ -231,6 +231,58 @@ public final class SupportedDocumentFormats {
   }
 
   /**
+   * The generic container types Tika reports when it recognizes the container but not the format
+   * inside it. A detection over a bounded prefix ({@link #DETECTION_PREFIX_BYTES}) runs into this
+   * routinely: an OLE2 file's directory sector - the part naming the streams that identify a {@code
+   * .msg} or {@code .doc} - can sit anywhere in the file, so any OLE2 document larger than the
+   * sample detects as {@code application/x-tika-msoffice} there while its complete bytes detect as
+   * the specific type. {@code application/x-tika-ooxml} is the same situation for a ZIP container.
+   */
+  private static final Set<String> UNRESOLVED_CONTAINER_TYPES =
+      Set.of("application/x-tika-msoffice", "application/x-tika-ooxml");
+
+  /**
+   * Whether {@code detectedMimeType} is one of {@link #UNRESOLVED_CONTAINER_TYPES} - a detection
+   * that carries no verdict about the complete file. A caller holding only a prefix must therefore
+   * not turn it into a rejection; {@link #decideForPrefix} is where that is enforced.
+   */
+  public static boolean isUnresolvedContainerType(String detectedMimeType) {
+    if (detectedMimeType == null) {
+      return false;
+    }
+    return UNRESOLVED_CONTAINER_TYPES.contains(
+        detectedMimeType.split(";", 2)[0].strip().toLowerCase(Locale.ROOT));
+  }
+
+  /** Supplies a file's complete content on demand, for {@link #decideForPrefix}. */
+  @FunctionalInterface
+  public interface CompleteContent {
+    Path get() throws IOException, InterruptedException;
+  }
+
+  /**
+   * The decision for a file whose bytes are, at first, only available as a leading prefix - the
+   * network path's counterpart to calling {@link #decideForFileName} on a complete file.
+   *
+   * <p>The prefix decides on its own unless it detected one of {@link #UNRESOLVED_CONTAINER_TYPES}
+   * and was not accepted: that outcome says the sample ended before the container revealed which
+   * format it holds, not that the file is unsupported, so {@code completeContent} is fetched and
+   * decides instead. Every other detection - a resolved type, or content Tika could not place at
+   * all - is final on the prefix alone, so an entry this system does not want still costs a bounded
+   * read rather than a full transfer.
+   */
+  public static ContentDecision decideForPrefix(
+      String fileName, byte[] prefix, CompleteContent completeContent)
+      throws IOException, InterruptedException {
+    String detectedFromPrefix = detectMediaType(prefix);
+    ContentDecision decision = decideForFileName(fileName, detectedFromPrefix);
+    if (decision.supported() || !isUnresolvedContainerType(detectedFromPrefix)) {
+      return decision;
+    }
+    return decideForFileName(fileName, detectMediaType(completeContent.get()));
+  }
+
+  /**
    * The extension in {@link #STRICT_CONTENT_TYPES_BY_EXTENSION} whose specific media type Tika's
    * {@code detectedMimeType} matches, or {@code null} when the content is not one of those - the
    * content-only counterpart to {@link #extensionForContentType}, which instead resolves a
