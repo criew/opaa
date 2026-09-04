@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 019-documents-library-status-index
+      author: opaa
+      comment: >
+        #1067: backs MetadataBackfillService - the per-library backfill selection (library_id,
+        status = 'INDEXED', extraction version) and the per-library fill state that every load of
+        the "Suche & Indexierung" status page computes, joined to document_metadata_values - and
+        LibraryDocumentStatsReader's grouped aggregates by library. Without it both scan every
+        documents row of the organization on every status load. Not CONCURRENTLY, for the same
+        reason as 002-documents-indexed-chunk-count-index.yaml: documents is small enough that the
+        short exclusive lock is accepted.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE INDEX idx_documents_library_status ON public.documents USING btree (library_id, status);
+      rollback:
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_documents_library_status;

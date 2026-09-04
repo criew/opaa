@@ -161,9 +161,12 @@ opaa:
     # #836: bounds AutoindexCrawlerService's recursive HTTP_DIRECTORY crawl - see CrawlProperties.
     # A separate opaa.indexing.crawl.* property block, not nested fields of IndexingProperties
     # itself (own record, own binding prefix).
+    # #1236: max-file-size-bytes caps a single crawled entry's transfer while it streams to disk,
+    # so neither an oversized nor an afterwards-rejected entry can fill the temp partition.
     crawl:
       max-depth: ${OPAA_INDEXING_CRAWL_MAX_DEPTH:10}
       max-entries: ${OPAA_INDEXING_CRAWL_MAX_ENTRIES:5000}
+      max-file-size-bytes: ${OPAA_INDEXING_CRAWL_MAX_FILE_SIZE_BYTES:104857600}
     # #1058: DoS-hardening limits for TabularDocumentPipeline (XLSX/CSV/ODS) - own property block,
     # own binding prefix, see TabularProperties's own Javadoc for why.
     tabular:

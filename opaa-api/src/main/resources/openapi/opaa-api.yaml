@@ -681,6 +681,46 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/indexing/metadata-backfill:
+    post:
+      operationId: backfillMetadataBatch
+      tags: [admin, indexing]
+      summary: >
+        Re-extract the core metadata fields of one batch of a library's Altbestand from the
+        original files (system admin only, #1067, metadata-schema.md "Deterministischer
+        Bestandslauf")
+      description: >
+        Processes at most batchSize INDEXED documents of libraryId (which must belong to the
+        caller's own organization, otherwise 404) whose metadata_extraction_version is missing or
+        below the current CoreMetadataExtractor version: the original file is re-read for its
+        declared properties, the core fields are stored at the document and the filterable keys are
+        rewritten on its existing chunks - no re-chunking, no re-embedding, no model call. The
+        search stays available throughout; a document carries either its old or its new fields,
+        never a mixture. Repeat until done is true; the remaining work is re-derived from the
+        documents table on every call, so pausing is simply not calling again, and the next call
+        resumes at the next unprocessed document. A manually set value is never overwritten. A
+        system process without a person's rights context (Epic #1065, Beschluss 1). Nothing
+        triggers this automatically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MetadataBackfillRequest"
+      responses:
+        "200":
+          description: What this batch did
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataBackfillResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/admin/search/status:
     get:
       operationId: getSearchStatus
@@ -5058,6 +5098,139 @@ components:
             possible right now" state, and repeating it would retry the same unreachable documents
             forever.
 
+    MetadataBackfillRequest:
+      type: object
+      required: [libraryId]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+          description: >
+            The library whose Altbestand is to be nachgerüstet. Per library on purpose: starting the
+            run is the explicit, library-wise release the specification demands, never a side
+            effect of anything else.
+        batchSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: >
+            The maximum number of documents one call processes. Repeat until done is true; an
+            interrupted run loses at most one batch, and every finished document keeps its result.
+
+    MetadataBackfillResponse:
+      type: object
+      required: [processedDocuments, markedForNextRun, skippedDocuments, done]
+      properties:
+        processedDocuments:
+          type: integer
+          description: >
+            Documents whose original file (or, for an RSS entry, its stored headline and publication
+            date) was re-read on the spot: core fields stored at the document, filterable keys
+            rewritten on its chunks, extraction version recorded - one transaction per document.
+        markedForNextRun:
+          type: integer
+          description: >
+            Documents whose source is remote and can only be re-read by their own connector run;
+            marked so that run re-reads them, which re-extracts the core fields on every inflow. They
+            stay pending in the status figures until that run happens.
+        skippedDocuments:
+          type: integer
+          description: >
+            Documents this call could not advance: the file lies outside what this deployment may
+            read, has vanished, or its re-extraction failed this time. Nothing about such a document
+            changes - it keeps its old fields and chunks, stays pending, and is tried again on the
+            next call. Also reported per library as lastSkippedDocuments in the status display.
+        done:
+          type: boolean
+          description: >
+            True when this call advanced nothing - the signal to stop repeating it. Ignores
+            skippedDocuments for the same reason PipelineReindexResponse.done does.
+
+    CoreMetadataFieldFillResponse:
+      type: object
+      description: >
+        The Füllgrad of one core field in one library (#1067): how many of the library's indexed
+        documents carry a value for it. Computed at query time in the administrative context - the
+        organization is the rights context here - never precomputed.
+      required: [fieldKey, label, filledDocuments, filledShare]
+      properties:
+        fieldKey:
+          type: string
+          example: document_type
+        label:
+          type: string
+          description: The German field label, as the Beleg-Anzeige shows it.
+          example: Dokumentart
+        filledDocuments:
+          type: integer
+          format: int64
+        filledShare:
+          type: number
+          format: double
+          description: filledDocuments / totalDocuments, in 0..1; 0 for a library without documents.
+
+    MetadataBackfillStatusResponse:
+      type: object
+      description: >
+        The core-metadata extraction state of one library (#1067, metadata-schema.md "Nachlauf im
+        Betrieb"): how much of its indexed bestand carries the current extraction version, how much
+        is still pending, and the Füllgrad per core field. Pending documents are a defined,
+        permitted operating state - the search keeps running over them with their old fields.
+      required:
+        [
+          extractionVersion,
+          totalDocuments,
+          currentDocuments,
+          pendingDocuments,
+          awaitingConnectorRunDocuments,
+          lastSkippedDocuments,
+          complete,
+          fields,
+        ]
+      properties:
+        extractionVersion:
+          type: integer
+          description: The current CoreMetadataExtractor version every document is measured against.
+        totalDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents of the library - the base of every share below.
+        currentDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents already at the current extraction version.
+        pendingDocuments:
+          type: integer
+          format: int64
+          description: >
+            Indexed documents never extracted or extracted with an older version. A superset of
+            what a metadata-backfill call selects: it includes the documents in
+            awaitingConnectorRunDocuments, which no further call advances.
+        awaitingConnectorRunDocuments:
+          type: integer
+          format: int64
+          description: >
+            The subset of pendingDocuments whose bytes live on a remote (HTTP directory, remote
+            attachment) and whose change markers are cleared - marked for their next connector run,
+            which re-reads and re-extracts them. A backfill call reports done while these remain;
+            they are the reason pendingDocuments can stay above 0 after a completed run.
+        lastSkippedDocuments:
+          type: integer
+          format: int64
+          description: >
+            Documents the most recent metadata-backfill call for this library could not advance.
+            A process-lifetime figure (ADR-0021, single instance): it resets on restart and is 0
+            before the first call.
+        complete:
+          type: boolean
+          description: True when pendingDocuments is 0.
+        fields:
+          type: array
+          description: One entry per core field, in schema order (Titel, Dokumentart, Datum/Stand).
+          items:
+            $ref: "#/components/schemas/CoreMetadataFieldFillResponse"
+
     LibraryFolderRequest:
       type: object
       required: [name]
@@ -5450,6 +5623,7 @@ components:
           MODEL_POLICY_CHANGED,
           CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
           INDEXING_PIPELINE_REINDEX_TRIGGERED,
+          INDEXING_METADATA_BACKFILL_TRIGGERED,
           BRANDING_SETTINGS_CHANGED,
           LLM_MODEL_CREATED,
           LLM_MODEL_CHANGED,
@@ -6202,6 +6376,7 @@ components:
           fullTextIndexedChunks,
           fullTextMissingChunks,
           fullTextSkippedChunks,
+          metadataBackfill,
         ]
       properties:
         libraryId:
@@ -6271,6 +6446,8 @@ components:
             gave up indexing after repeated failures ("poison chunks", #1093) - visible here so a
             permanent gap in the full-text index is never silent, even though it does not keep the
             gate closed the way fullTextMissingChunks does (see that field's own description).
+        metadataBackfill:
+          $ref: "#/components/schemas/MetadataBackfillStatusResponse"
 
     SearchStatusResponse:
       type: object

@@ -104,6 +104,12 @@ public enum AuditEventType {
    */
   INDEXING_PIPELINE_REINDEX_TRIGGERED,
   /**
+   * A deterministic core-metadata backfill over a library's Altbestand was triggered
+   * (docs/features/metadata-schema.md, "Deterministischer Bestandslauf"). Recorded per triggering
+   * call, not per document, mirroring {@link #INDEXING_PIPELINE_REINDEX_TRIGGERED}.
+   */
+  INDEXING_METADATA_BACKFILL_TRIGGERED,
+  /**
    * A change to the operator's branding - product name, claim, logo, accent colour or default
    * colour scheme (docs/design/guidelines.md#7). Deliberately not folded into {@link
    * #GOVERNANCE_SETTINGS_CHANGED}: branding decides what every user sees on every page, which is

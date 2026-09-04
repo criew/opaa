@@ -5,19 +5,12 @@ import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
-import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.UploadProperties;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -75,11 +68,8 @@ public class PipelineReindexService {
   private final DocumentRepository documentRepository;
   private final KnowledgeLibraryRepository libraryRepository;
   private final FileProcessingService fileProcessingService;
-  private final ChecksumService checksumService;
   private final VectorChunkStore vectorChunkStore;
-  private final FilesystemPathAllowlist filesystemAllowlist;
-  private final UploadProperties uploadProperties;
-  private final AttachmentExtractor attachmentExtractor;
+  private final StoredDocumentSourceAccess sourceAccess;
   private final String vectorStoreTable;
 
   public PipelineReindexService(
@@ -88,11 +78,8 @@ public class PipelineReindexService {
       DocumentRepository documentRepository,
       KnowledgeLibraryRepository libraryRepository,
       FileProcessingService fileProcessingService,
-      ChecksumService checksumService,
       VectorChunkStore vectorChunkStore,
-      FilesystemPathAllowlist filesystemAllowlist,
-      UploadProperties uploadProperties,
-      AttachmentExtractor attachmentExtractor,
+      StoredDocumentSourceAccess sourceAccess,
       @Value("${spring.ai.vectorstore.pgvector.schema-name:public}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     this.jdbcTemplate = jdbcTemplate;
@@ -100,11 +87,8 @@ public class PipelineReindexService {
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
     this.fileProcessingService = fileProcessingService;
-    this.checksumService = checksumService;
     this.vectorChunkStore = vectorChunkStore;
-    this.filesystemAllowlist = filesystemAllowlist;
-    this.uploadProperties = uploadProperties;
-    this.attachmentExtractor = attachmentExtractor;
+    this.sourceAccess = sourceAccess;
     this.vectorStoreTable = schemaName + "." + tableName;
   }
 
@@ -226,11 +210,12 @@ public class PipelineReindexService {
    * PipelineReindexResult#isEmpty() is empty}.
    *
    * <p>A document whose source file is locally readable <em>and</em> passes the same runtime
-   * containment checks a download of that file would (see {@link #localSourceFile}) is re-read,
-   * re-chunked and stored again <b>under its own document id</b>, so citations and deep links into
-   * it survive. A document whose source is remote can only be re-read by its own connector run and
-   * is marked for it instead ({@link DocumentRepository#markForReindexOnNextRun}). Anything else is
-   * counted as skipped and scanned past.
+   * containment checks a download of that file would (see {@link
+   * StoredDocumentSourceAccess#localSourceFile}) is re-read, re-chunked and stored again <b>under
+   * its own document id</b>, so citations and deep links into it survive. A document whose source
+   * is remote can only be re-read by its own connector run and is marked for it instead ({@link
+   * DocumentRepository#markForReindexOnNextRun}). Anything else is counted as skipped and scanned
+   * past.
    *
    * <p>Deliberately not {@code @Transactional}: one batch re-indexes several documents, each of
    * which embeds (a network round trip) and writes through {@link VectorChunkStore}'s own
@@ -299,26 +284,29 @@ public class PipelineReindexService {
       return Advance.ORPHAN_REMOVED;
     }
     Document document = found.get();
-    DocumentSourceType sourceType = document.getSourceType();
-    if (sourceType == DocumentSourceType.HTTP_DIRECTORY
-        || sourceType == DocumentSourceType.RSS_FEED) {
-      // Never deletes the row itself (ADR-0022, Entscheidung 3): this only
-      // clears the change markers a future RssFeedIndexingExecutor run consults, which then
-      // re-processes the entry through FileProcessingService#processRssEntry's own update-in-place
-      // path if its content actually changed - no delete-and-recreate happens here, so an RSS
-      // entry's attachments (parent_document_id, ADR-0022 Entscheidung 4) are never at risk from
-      // this path itself.
-      if (document.getParentDocumentId() != null) {
-        return markRemoteAttachmentChainForNextRun(document);
-      }
-      documentRepository.markForReindexOnNextRun(documentId);
-      return Advance.MARKED_FOR_NEXT_RUN;
+    if (StoredDocumentSourceAccess.isRemote(document)) {
+      // Never deletes the row itself (ADR-0022, Entscheidung 3): this only clears the change
+      // markers a future connector run consults, which then re-processes the entry through the
+      // executor's own update-in-place path if its content actually changed - so an RSS entry's
+      // attachments (parent_document_id, ADR-0022 Entscheidung 4) are never at risk from this
+      // path itself.
+      return sourceAccess.markRemoteChainForNextRun(document)
+          ? Advance.MARKED_FOR_NEXT_RUN
+          : Advance.SKIPPED;
     }
     boolean advanced;
     if (document.getParentDocumentId() != null) {
-      advanced = reindexAttachmentDocument(document);
+      // Re-runs the current pipeline over an attachment re-extracted from its root ancestor, so a
+      // raised sub-pipeline version (e.g. PDF) reaches an attachment inside a Mail without waiting
+      // for the Mail file itself to change.
+      advanced =
+          sourceAccess.withReextractedAttachment(
+              document,
+              file ->
+                  fileProcessingService.reindexStoredDocument(
+                      document.getId(), file, attachmentAccessFor(document)));
     } else {
-      Path localFile = localSourceFile(document);
+      Path localFile = sourceAccess.localSourceFile(document);
       if (localFile == null) {
         log.info(
             "Skipping document {} in the pipeline re-index: its file is not readable within the"
@@ -350,168 +338,11 @@ public class PipelineReindexService {
   }
 
   /**
-   * Marks a remote (HTTP_DIRECTORY/RSS_FEED) attachment document for its next connector run
-   * (#1219): its bytes can only be re-extracted from its root ancestor, which only that run can
-   * re-download - so the <em>whole</em> chain has its change markers cleared, root included.
-   * Clearing only the attachment itself would never converge: the unchanged root would be skipped
-   * by the next run's own change check, its attachments never re-enumerated, and the attachment's
-   * chunks would stay below version forever. With every level cleared, the next run re-processes
-   * the root (no {@code last_modified_remote} to match), each intermediate attachment fails its
-   * checksum comparison (cleared) and is re-parsed, and the target attachment is rewritten at the
-   * current version. A broken or cyclic chain is a skip, mirroring {@link
-   * #reindexAttachmentDocument}'s own treatment.
-   */
-  private Advance markRemoteAttachmentChainForNextRun(Document document) {
-    List<UUID> chainIds = new ArrayList<>();
-    Set<UUID> seen = new HashSet<>();
-    Document current = document;
-    while (true) {
-      if (!seen.add(current.getId())) {
-        log.warn(
-            "Skipping attachment document {}: its parent_document_id chain contains a cycle",
-            document.getId());
-        return Advance.SKIPPED;
-      }
-      chainIds.add(current.getId());
-      if (current.getParentDocumentId() == null) {
-        break;
-      }
-      Document parent = documentRepository.findById(current.getParentDocumentId()).orElse(null);
-      if (parent == null) {
-        log.warn(
-            "Skipping attachment document {}: its parent chain is broken at {}",
-            document.getId(),
-            current.getParentDocumentId());
-        return Advance.SKIPPED;
-      }
-      current = parent;
-    }
-    for (UUID id : chainIds) {
-      documentRepository.markForReindexOnNextRun(id);
-    }
-    return Advance.MARKED_FOR_NEXT_RUN;
-  }
-
-  /**
-   * Re-runs the current pipeline over an attachment document (ADR-0022) - a row whose {@code
-   * file_path} is synthetic ({@code <parentPath>/<index>/<name>}, see {@code
-   * FileProcessingService#attachmentFilePath}) and therefore never resolves to a file of its own.
-   * The bytes are re-extracted from the root ancestor's still-readable source file by re-running
-   * the parent chain's pipelines and following the positional index encoded in each {@code
-   * file_path} segment - so a raised sub-pipeline version (e.g. PDF) reaches an attachment inside a
-   * Mail without waiting for the Mail file itself to change. Every non-recoverable mismatch (chain
-   * broken, root unreadable, index out of range because the parent file changed since) is a skip,
-   * never an error - the next full indexing run of the parent re-establishes consistency.
-   */
-  private boolean reindexAttachmentDocument(Document document) {
-    List<Document> chain = new ArrayList<>();
-    Set<UUID> seen = new HashSet<>();
-    Document current = document;
-    while (current.getParentDocumentId() != null) {
-      if (!seen.add(current.getId())) {
-        log.warn(
-            "Skipping attachment document {}: its parent_document_id chain contains a cycle",
-            document.getId());
-        return false;
-      }
-      Document parent = documentRepository.findById(current.getParentDocumentId()).orElse(null);
-      if (parent == null) {
-        log.warn(
-            "Skipping attachment document {}: its parent chain is broken at {}",
-            document.getId(),
-            current.getParentDocumentId());
-        return false;
-      }
-      chain.add(current);
-      current = parent;
-    }
-    Document root = current;
-    if (root.getSourceType() != DocumentSourceType.FILESYSTEM
-        && root.getSourceType() != DocumentSourceType.UPLOAD) {
-      log.info(
-          "Skipping attachment document {}: only FILESYSTEM and UPLOAD parents support"
-              + " re-extraction",
-          document.getId());
-      return false;
-    }
-    Path rootFile = localSourceFile(root);
-    if (rootFile == null) {
-      log.info(
-          "Skipping attachment document {}: its root ancestor's file is not readable within the"
-              + " directories this deployment is configured to read",
-          document.getId());
-      return false;
-    }
-    List<Integer> indices = new ArrayList<>(chain.size());
-    String parentPath = root.getFilePath();
-    for (int i = chain.size() - 1; i >= 0; i--) {
-      int index = FileProcessingService.attachmentIndexIn(parentPath, chain.get(i).getFilePath());
-      if (index < 0) {
-        log.warn(
-            "Skipping attachment document {}: file_path {} does not embed its parent's path {}",
-            document.getId(),
-            chain.get(i).getFilePath(),
-            parentPath);
-        return false;
-      }
-      indices.add(index);
-      parentPath = chain.get(i).getFilePath();
-    }
-    List<Path> extractedFiles = new ArrayList<>(indices.size());
-    try {
-      Path currentFile = rootFile;
-      String currentName = root.getFileName();
-      for (int i = 0; i < indices.size(); i++) {
-        AttachmentExtractor.Extracted extracted =
-            attachmentExtractor.extract(currentFile, currentName, indices.get(i));
-        if (extracted == null) {
-          log.info(
-              "Skipping attachment document {}: attachment index {} no longer exists in {}",
-              document.getId(),
-              indices.get(i),
-              currentName);
-          return false;
-        }
-        extractedFiles.add(extracted.file());
-        currentFile = extracted.file();
-        currentName = chain.get(chain.size() - 1 - i).getFileName();
-      }
-      // Positional indices are only stable while the parent file is unchanged - a parent edited
-      // since the row was created (an attachment removed, order shifted) can leave a DIFFERENT
-      // attachment at this row's index. Extraction is deterministic, so for an unchanged parent
-      // the re-extracted bytes match the row's own stored checksum exactly; a mismatch means the
-      // bytes belong to some other attachment and must never be written under this row.
-      String extractedChecksum = checksumService.computeSha256(currentFile);
-      if (document.getChecksum() != null && !extractedChecksum.equals(document.getChecksum())) {
-        log.info(
-            "Skipping attachment document {}: the re-extracted bytes no longer match its checksum"
-                + " (parent file changed since indexing) - the next indexing run of the parent"
-                + " re-establishes consistency",
-            document.getId());
-        return false;
-      }
-      return fileProcessingService.reindexStoredDocument(
-          document.getId(), currentFile, attachmentAccessFor(document));
-    } catch (IOException e) {
-      log.warn("Skipping attachment document {}: re-extraction failed", document.getId(), e);
-      return false;
-    } finally {
-      for (Path extracted : extractedFiles) {
-        try {
-          Files.deleteIfExists(extracted);
-        } catch (IOException e) {
-          log.warn("Failed to delete re-extracted attachment temp file: {}", extracted, e);
-        }
-      }
-    }
-  }
-
-  /**
    * The {@link AttachmentAccess} a re-index hands to {@code
    * FileProcessingService#reindexStoredDocument} so attachments a re-run pipeline discovers reach
    * the generalized attachment path - FILESYSTEM and, since #1218, UPLOAD (the two source types
-   * whose files this machine can re-read, see {@link #localSourceFile}). There is no job or run
-   * here, so events are only logged and no progress is counted ({@link
+   * whose files this machine can re-read, see {@link StoredDocumentSourceAccess#localSourceFile}).
+   * There is no job or run here, so events are only logged and no progress is counted ({@link
    * StandaloneAttachmentAccess}).
    */
   private AttachmentAccess attachmentAccessFor(Document document) {
@@ -552,85 +383,6 @@ public class PipelineReindexService {
             ChunkPipelineMetadata.LEGACY_PIPELINE_ID,
             documentId.toString());
     return pipelineIds.contains(fallbackId);
-  }
-
-  /**
-   * The document's own file on this machine, or {@code null} when this deployment may not read it
-   * again. Applies the same runtime containment discipline {@code
-   * LibraryDocumentService#filesystemFileIfWithinConfiguredDirectory}/{@code
-   * #uploadedFileIfManagedByThisService} apply before serving an original, and for the same reason
-   * (ADR-0018, Entscheidung 6): {@code file_path} was validated when the document was indexed, but
-   * the allowlist can be narrowed - or emptied, which disables the {@code FILESYSTEM} source type
-   * entirely - afterwards, and a re-index must not be the one path that silently keeps reading from
-   * a directory an operator has since withdrawn.
-   *
-   * <ul>
-   *   <li>{@code FILESYSTEM}: the library's own {@code sourcePath} must still pass {@link
-   *       FilesystemPathAllowlist}, and the file must resolve underneath it - both via {@link
-   *       Path#toRealPath}, so a symlink out of the configured directory cannot pass the lexical
-   *       prefix check.
-   *   <li>{@code UPLOAD}: the file must lie inside this library's own subdirectory of the managed
-   *       upload storage - the only files this system wrote itself.
-   * </ul>
-   */
-  private Path localSourceFile(Document document) {
-    if (document.getFilePath() == null || document.getLibraryId() == null) {
-      return null;
-    }
-    Path candidate;
-    try {
-      candidate = Path.of(document.getFilePath());
-    } catch (InvalidPathException e) {
-      log.warn("Document {} has a file path that is not a local path", document.getId(), e);
-      return null;
-    }
-    return switch (document.getSourceType()) {
-      case FILESYSTEM -> filesystemFileWithinConfiguredDirectory(document, candidate);
-      case UPLOAD -> uploadedFileWithinManagedStorage(document, candidate);
-      case HTTP_DIRECTORY, RSS_FEED -> null;
-    };
-  }
-
-  private Path filesystemFileWithinConfiguredDirectory(Document document, Path candidate) {
-    KnowledgeLibrary library = libraryRepository.findById(document.getLibraryId()).orElse(null);
-    if (library == null || library.getSourcePath() == null) {
-      return null;
-    }
-    if (!filesystemAllowlist.isAllowed(library.getSourcePath())) {
-      return null;
-    }
-    Path real = resolveReal(candidate);
-    Path configuredDirectory = resolveReal(Path.of(library.getSourcePath()));
-    if (real == null || configuredDirectory == null) {
-      return null;
-    }
-    return real.startsWith(configuredDirectory) ? real : null;
-  }
-
-  private Path uploadedFileWithinManagedStorage(Document document, Path candidate) {
-    Path libraryUploadDirectory =
-        Paths.get(uploadProperties.storagePath())
-            .resolve(document.getLibraryId().toString())
-            .toAbsolutePath()
-            .normalize();
-    Path real = resolveReal(candidate);
-    Path managedDirectory = resolveReal(libraryUploadDirectory);
-    if (real == null || managedDirectory == null) {
-      return null;
-    }
-    return real.startsWith(managedDirectory) ? real : null;
-  }
-
-  /**
-   * {@link Path#toRealPath()}, or {@code null} if the path does not (or no longer) exist - a file
-   * that has since disappeared is skipped, not an error.
-   */
-  private Path resolveReal(Path path) {
-    try {
-      return path.toRealPath();
-    } catch (IOException e) {
-      return null;
-    }
   }
 
   private List<UUID> selectStaleDocuments(
