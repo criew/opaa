@@ -399,7 +399,7 @@ Confluence-Anforderung an unabhängiger Versionierung gar nicht erfüllen kann.
   Datei hinzu. Das geschieht im synchronen Anfragepfad, ohne Cache und ohne Serialisierung, und ist
   von jedem VIEWER beliebig oft und parallel auslösbar — bewusst in Kauf genommener Aufwand an
   Rechenzeit, temporärem Plattenplatz und Last auf der Quelle gegen doppelte Speicherung (#1239).
-  Ein Deckel oder Cache dafür ist offen und gehört in ein Folge-Issue.
+  Ein Deckel oder Cache dafür ist offen und als Folge-Ticket erfasst (#1243).
 - Löschen eines Elterndokuments außerhalb von `StaleDocumentCleanupService` (z. B. eine selektive
   Neuindizierung über `PipelineReindexService`, eine künftige Einzeldokument-Löschfunktion für
   Konnektor-Bestände) muss seine Anhangszeilen ausdrücklich mitbehandeln — es gibt keinen impliziten

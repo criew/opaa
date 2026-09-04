@@ -1127,17 +1127,63 @@ class LibraryDocumentServiceTest {
   }
 
   @Test
-  void loadContentAnswers404WhenTheParentChainLoops() throws IOException {
-    Document mail = uploadedMailRow("zyklus.eml");
-    Document attachment = mailAttachmentRow(mail, 0, "anlage.txt");
-    // Only reachable through a corrupt row: the attachment is made its own grandparent.
-    mail.setParentDocumentId(attachment.getId());
-    UUID documentId = stubAttachmentChain(mail, attachment);
+  void loadContentExtractsAMailAttachmentOutOfAnEmlThatIsItselfADownloadedRssAttachment()
+      throws IOException {
+    // A downloaded .eml is an attachment of its RSS entry (real URL as file_path) AND the parent of
+    // its own mail attachments (synthetic paths). The chain must end at the .eml - it is fetched
+    // from its own URL - instead of climbing on to the entry, whose path it does not embed.
+    startRemoteServer();
+    AtomicInteger requestsForMail = new AtomicInteger();
+    remoteServer.createContext(
+        "/post.eml",
+        exchange -> {
+          requestsForMail.incrementAndGet();
+          byte[] bytes = "mail bytes".getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "message/rfc822");
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    KnowledgeLibrary library = remoteLibrary(null);
+    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
+    grantViewerOnUploadLibrary();
 
-    assertThatThrownBy(() -> service.loadContent(documentId, caller))
-        .isInstanceOf(NotFoundException.class)
-        .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
-    verifyNoInteractions(attachmentExtractor);
+    Document entry =
+        new Document(
+            "eintrag.html",
+            remoteBaseUrl + "/eintrag",
+            "text/html",
+            null,
+            DocumentSourceType.RSS_FEED);
+    entry.setLibraryId(libraryId);
+    Document mail =
+        new Document(
+            "post.eml",
+            remoteBaseUrl + "/post.eml",
+            "message/rfc822",
+            null,
+            DocumentSourceType.RSS_FEED);
+    mail.setLibraryId(libraryId);
+    mail.setParentDocumentId(entry.getId());
+    Document attachment = mailAttachmentRow(mail, 0, "anlage.txt");
+    attachment.setSourceType(DocumentSourceType.RSS_FEED);
+    when(documentRepository.findById(entry.getId())).thenReturn(Optional.of(entry));
+    when(documentRepository.findById(mail.getId())).thenReturn(Optional.of(mail));
+    when(documentRepository.findById(attachment.getId())).thenReturn(Optional.of(attachment));
+
+    Path extracted = Files.createTempFile("opaa-attachment-test-", ".txt");
+    Files.writeString(extracted, "Anhang der heruntergeladenen Mail");
+    when(attachmentExtractor.extract(any(), eq("post.eml"), eq(0)))
+        .thenReturn(new AttachmentExtractor.Extracted(extracted, "anlage.txt"));
+
+    DocumentContent content = service.loadContent(attachment.getId(), caller);
+    try {
+      assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
+          .isEqualTo("Anhang der heruntergeladenen Mail");
+    } finally {
+      content.stream().close();
+    }
+    assertThat(requestsForMail.get()).isEqualTo(1);
   }
 
   @Test

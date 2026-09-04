@@ -33,10 +33,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -544,29 +542,45 @@ public class LibraryDocumentService {
    * (an attachment removed or reordered since indexing) answers the same German 404 as "no original
    * available" rather than streaming a different attachment's bytes under this row's name.
    *
+   * <p>The chain ends at the first document that is not itself re-extractable ({@link
+   * #isReExtractableAttachment}): a downloaded {@code .eml} that is an RSS attachment of its own
+   * entry is the root to fetch, not a step to extract from its entry.
+   *
    * <p>Authorization is unchanged: it is decided in {@link #loadContent} against the attachment's
-   * own library, and every ancestor must belong to that same library - a broken chain, a foreign
-   * library, or a chain looping or deeper than {@link #maxAttachmentChainDepth()} is a 404.
+   * own library, and every ancestor the extraction uses must belong to that same library - a broken
+   * chain, a foreign library, or a chain deeper than {@link #maxAttachmentChainDepth()} (which also
+   * bounds a corrupt, cyclic chain) is a 404.
    *
    * <p>Every temp file this method creates is deleted when the returned stream is closed, or before
    * it throws.
    */
   private DocumentContent loadAttachmentContent(Document document, KnowledgeLibrary library) {
     List<Document> chain = new ArrayList<>();
-    Set<UUID> seen = new HashSet<>();
     Document current = document;
     while (current.getParentDocumentId() != null) {
-      if (!seen.add(current.getId()) || chain.size() >= maxAttachmentChainDepth()) {
-        log.warn(
-            "Attachment document {} has a looping or over-deep parent chain", document.getId());
+      if (chain.size() >= maxAttachmentChainDepth()) {
+        log.warn("Attachment document {} has an over-deep parent chain", document.getId());
         throw attachmentUnavailable();
       }
       Document parent = documentRepository.findById(current.getParentDocumentId()).orElse(null);
-      if (parent == null || !library.getId().equals(parent.getLibraryId())) {
+      if (parent == null) {
         log.warn(
             "Attachment document {} has a broken parent chain at {}",
             document.getId(),
             current.getParentDocumentId());
+        throw attachmentUnavailable();
+      }
+      if (FileProcessingService.attachmentIndexIn(parent.getFilePath(), current.getFilePath())
+          < 0) {
+        // current has a source identity of its own (a downloaded .eml, itself an attachment of an
+        // RSS entry) - it is the root to fetch, its own parent is not part of the extraction.
+        break;
+      }
+      if (!library.getId().equals(parent.getLibraryId())) {
+        log.warn(
+            "Attachment document {} has an ancestor in another library ({})",
+            document.getId(),
+            parent.getId());
         throw attachmentUnavailable();
       }
       chain.add(current);
@@ -645,7 +659,7 @@ public class LibraryDocumentService {
    * The chain length {@link #loadAttachmentContent} still follows: the nesting depth the indexing
    * path itself may produce ({@code opaa.indexing.mail.max-attachment-depth}) plus one level of
    * headroom, so raising that property never makes an indexable attachment unopenable, while a
-   * cyclic or corrupt chain is still cut off.
+   * corrupt or cyclic chain is still cut off after a bounded number of steps.
    */
   private int maxAttachmentChainDepth() {
     return mailProperties.maxAttachmentDepth() + 1;

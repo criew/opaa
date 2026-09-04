@@ -1072,13 +1072,17 @@ das heißt die Pipeline materialisiert dabei *alle* ihre Anlagen als temporäre 
 kommt der vollständige Abruf des Elternoriginals in eine weitere temporäre Datei hinzu. Das läuft im
 synchronen Anfragepfad, ohne Cache und ohne Serialisierung, und ist von jedem VIEWER wiederholt und
 parallel auslösbar — spürbar als temporärer Plattenbedarf und als Last auf der Quelle. Ein Deckel
-oder Cache dafür ist bewusst offen (Folge-Issue), keine stillschweigende Annahme.
+oder Cache dafür ist bewusst offen und als eigenes Ticket erfasst (#1243), keine stillschweigende
+Annahme.
 
 **Nur ein Anhang ohne eigene Quellidentität wird nachextrahiert:** Ein Anhang aus dem
 `AttachmentSource.Download`-Schnitt (RSS heute, Confluence künftig) trägt zwar ebenfalls
 `parent_document_id`, hat als `file_path` aber seine echte Download-URL — er wird unverändert über
 den Proxy-Weg geliefert. Unterschieden wird deshalb an der Pfadform (`attachmentIndexIn` erkennt den
-eingebetteten Elternpfad), nicht am Vorhandensein eines Elterndokuments.
+eingebetteten Elternpfad), nicht am Vorhandensein eines Elterndokuments. Aus demselben Grund endet
+auch die Kettenwanderung an der ersten Stufe mit eigener Quellidentität: Eine per RSS
+heruntergeladene `.eml` ist Anlage ihres Eintrags **und** Elterndokument ihrer eigenen Mail-Anlagen —
+sie wird von ihrer URL geholt, statt aus dem Eintrag extrahiert zu werden.
 
 **Die Rekursionstiefe (Mail-in-Mail) lebt auf dem verallgemeinerten Anhangsweg, nicht mehr in dieser
 Pipeline** (ADR-0022, Entscheidung 6): `AttachmentIndexer` zählt die Verschachtelungstiefe über einen
