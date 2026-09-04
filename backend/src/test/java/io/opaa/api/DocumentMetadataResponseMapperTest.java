@@ -2,11 +2,15 @@ package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.api.dto.BulkMetadataValueResponse;
 import io.opaa.api.dto.DocumentMetadataFieldResponse;
 import io.opaa.api.dto.DocumentMetadataResponse;
 import io.opaa.api.dto.DocumentTypeVocabularyResponse;
+import io.opaa.api.dto.LibraryMetadataMaintenanceResponse;
+import io.opaa.api.dto.MetadataFieldMaintenanceResponse;
+import io.opaa.api.dto.MetadataFieldState;
 import io.opaa.api.dto.MetadataValueRequest;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.MetadataOrigin;
@@ -15,6 +19,8 @@ import io.opaa.indexing.metadata.BulkMetadataResult;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.DocumentMetadataFieldView;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
+import io.opaa.indexing.metadata.LibraryMetadataMaintenance;
+import io.opaa.indexing.metadata.MetadataFieldMaintenance;
 import io.opaa.indexing.metadata.MetadataValueInput;
 import io.opaa.indexing.metadata.MetadataValueSnapshot;
 import io.opaa.indexing.metadata.MetadataValueState;
@@ -81,6 +87,84 @@ class DocumentMetadataResponseMapperTest {
     assertThat(field.getOrigin()).isNull();
     assertThat(field.getActorUserId()).isNull();
     assertThat(field.getUpdatedAt()).isNull();
+    assertThat(field.getState()).isEqualTo(MetadataFieldState.EMPTY);
+  }
+
+  @Test
+  void aNotDeterminableFieldCarriesItsStateAndProvenanceButNoValue() {
+    UUID actor = UUID.randomUUID();
+    Instant updatedAt = Instant.parse("2026-09-04T10:00:00Z");
+    MetadataValueSnapshot snapshot =
+        new MetadataValueSnapshot(
+            "document_date",
+            MetadataValueState.NOT_DETERMINABLE,
+            null,
+            null,
+            null,
+            null,
+            MetadataOrigin.MANUAL,
+            null,
+            null,
+            null,
+            actor,
+            updatedAt);
+
+    DocumentMetadataFieldResponse response =
+        DocumentMetadataResponseMapper.toFieldResponse(
+            new DocumentMetadataFieldView(
+                CoreMetadataField.DOCUMENT_DATE, snapshot, null, "Erika"));
+
+    assertThat(response.getState()).isEqualTo(MetadataFieldState.NOT_DETERMINABLE);
+    assertThat(response.getValue()).isNull();
+    assertThat(response.getDisplayValue()).isNull();
+    assertThat(response.getOrigin()).isEqualTo(MetadataOrigin.MANUAL);
+    assertThat(response.getActorUserId()).isEqualTo(actor);
+    assertThat(response.getActorDisplayName()).isEqualTo("Erika");
+    assertThat(response.getUpdatedAt()).isEqualTo(updatedAt);
+  }
+
+  @Test
+  void theThirdStateTravelsFromTheRequestIntoDomainInput() {
+    MetadataValueRequest request = new MetadataValueRequest();
+    request.setState(MetadataValueRequest.StateEnum.NOT_DETERMINABLE);
+    assertThat(DocumentMetadataResponseMapper.toInput(request))
+        .isEqualTo(MetadataValueInput.notDeterminable());
+
+    // A request without a state is the pre-#1069 body and still means "set this value".
+    MetadataValueRequest withoutState = new MetadataValueRequest();
+    withoutState.setTextValue("Titel");
+    assertThat(DocumentMetadataResponseMapper.toInput(withoutState))
+        .isEqualTo(MetadataValueInput.text("Titel"));
+  }
+
+  @Test
+  void theAnchorResponseCarriesAbsoluteAndRelativeFiguresPerField() {
+    UUID libraryId = UUID.randomUUID();
+    LibraryMetadataMaintenanceResponse response =
+        DocumentMetadataResponseMapper.toMaintenanceResponse(
+            new LibraryMetadataMaintenance(
+                libraryId,
+                10,
+                List.of(
+                    new MetadataFieldMaintenance(CoreMetadataField.TITLE, 10, 10, 0),
+                    new MetadataFieldMaintenance(CoreMetadataField.DOCUMENT_TYPE, 10, 4, 2),
+                    new MetadataFieldMaintenance(CoreMetadataField.DOCUMENT_DATE, 10, 0, 0))));
+
+    assertThat(response.getLibraryId()).isEqualTo(libraryId);
+    assertThat(response.getTotalDocuments()).isEqualTo(10);
+    assertThat(response.getFields())
+        .extracting(
+            MetadataFieldMaintenanceResponse::getFieldKey,
+            MetadataFieldMaintenanceResponse::getLabel,
+            MetadataFieldMaintenanceResponse::getTotalDocuments,
+            MetadataFieldMaintenanceResponse::getFilledDocuments,
+            MetadataFieldMaintenanceResponse::getNotDeterminableDocuments,
+            MetadataFieldMaintenanceResponse::getDocumentsWithoutValue,
+            MetadataFieldMaintenanceResponse::getMissingShare)
+        .containsExactly(
+            tuple("title", "Titel", 10L, 10L, 0L, 0L, 0.0d),
+            tuple("document_type", "Dokumentart", 10L, 4L, 2L, 4L, 0.4d),
+            tuple("document_date", "Datum/Stand", 10L, 0L, 0L, 10L, 1.0d));
   }
 
   @Test

@@ -64,9 +64,9 @@ public record MetadataValueSnapshot(
     return textValue;
   }
 
-  /** Whether this row already carries exactly {@code input}'s value. */
+  /** Whether this row already carries exactly {@code input}'s state and value. */
   boolean holds(MetadataValueInput input) {
-    return state == MetadataValueState.SET
+    return state == input.state()
         && Objects.equals(textValue, input.textValue())
         && Objects.equals(vocabularyCode, input.vocabularyCode())
         && Objects.equals(dateValue, input.dateValue())

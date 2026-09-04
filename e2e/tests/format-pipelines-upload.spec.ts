@@ -67,6 +67,8 @@ test.describe('Formatabdeckung Upload', () => {
     await expect(toggle).toHaveText(/1 Anhang/)
     await toggle.click()
     await expect(page.getByText('formatdokument-anhang.txt', { exact: true })).toBeVisible()
-    await expect(page.getByText('indiziert')).toHaveCount(4)
+    // exact: the Pflege-Anker (#1069) above the list names the number of indizierte Dokumente of
+    // the library, which a substring match would count as a fourth status chip.
+    await expect(page.getByText('indiziert', { exact: true })).toHaveCount(4)
   })
 })

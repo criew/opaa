@@ -158,7 +158,8 @@ class SearchAdminControllerTest {
                             3,
                             1,
                             1,
-                            Map.of(CoreMetadataField.TITLE, 2L))))));
+                            Map.of(CoreMetadataField.TITLE, 2L),
+                            Map.of(CoreMetadataField.DOCUMENT_TYPE, 1L))))));
 
     mockMvc
         .perform(get("/api/v1/admin/search/status").with(asAdmin()))
