@@ -407,9 +407,12 @@ Fließtext einer Regel mitführte. Zwei Konsequenzen:
 greift die Alles-oder-nichts-Regel und es wird zurückgefallen, was sicher, aber nicht kostenlos ist.
 Umgekehrt übersieht er eine degenerierte Ausgabe, sobald die Frage oder der Gesprächsverlauf zufällig
 eines ihrer Wörter enthält; im Mehrturn-Fall ist er deshalb am schwächsten, weil auch
-Assistenzantworten Anker liefern. Bei einer Frage, die nur ein einziges Wort ab vier Zeichen ergibt —
-auch bei Schriften ohne Wortgrenzen wie Chinesisch, Japanisch oder Thai — prüft er gar nicht, statt
-alles zu verwerfen. **Die eigentliche Behebung ist der Prompt; der Wächter ist das Netz darunter.**
+Assistenzantworten Anker liefern. Ganz aus schaltet er sich nur in zwei Fällen: wenn Frage **und**
+Verlauf zusammen höchstens ein Wort ab vier Zeichen ergeben — dann gibt es nichts, worauf sich
+beziehen ließe —, und bei einer Schrift ohne Wortgrenzen (Chinesisch, Japanisch, Thai), erkannt
+daran, dass die Frage zu einem einzigen Wort über ihre gesamte Länge zerfällt. Eine kurze Folgefrage
+wird also am Gesprächsverlauf geprüft, nicht ungeprüft durchgelassen. **Die eigentliche Behebung ist
+der Prompt; der Wächter ist das Netz darunter.**
 
 Gemessene Wirkung (Domäne Verwaltung, 46 Golden-Fälle): mit `qwen2.5:1.5b-instruct` 8 degenerierte
 Fälle vor, 0 nach der Prompt-Änderung, nDCG@8 0,642 → 0,727 gegenüber 0,740 ohne Zerlegung; mit dem

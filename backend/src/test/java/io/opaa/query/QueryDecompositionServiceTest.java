@@ -266,6 +266,25 @@ class QueryDecompositionServiceTest {
     assertThat(subQueries).containsExactly("Was kostet ein Personalausweis?");
   }
 
+  /**
+   * Regression guard for #1254: the skip rule reads question <b>and</b> history. A short follow-up
+   * carries almost no anchor of its own, so judging it on the question alone would switch the check
+   * off in exactly the multi-turn case - the conversation it resolves into supplies the anchors.
+   */
+  @Test
+  void aShortFollowUpIsStillCheckedAgainstTheConversationHistory() {
+    stubChatModelResponse("Öffnungszeiten der Stadtbibliothek");
+    List<Message> history =
+        List.of(
+            new UserMessage("Wo beantrage ich einen Personalausweis?"),
+            new AssistantMessage("Der Personalausweis wird im Bürgeramt beantragt."));
+
+    List<String> subQueries = service.decompose("Und was kostet das?", history, 3);
+
+    assertThat(subQueries).isEmpty();
+    verify(metrics).recordDegenerateDecomposition();
+  }
+
   /** A question made up entirely of short function words offers nothing to relate against. */
   @Test
   void aQuestionWithoutAnchorWordsSkipsTheRelatednessCheck() {

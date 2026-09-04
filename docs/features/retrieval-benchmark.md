@@ -953,9 +953,20 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
    und uncommittet umgepinnt) — es litt unter dem alten Prompt deutlich weniger als das
    1,5-B-Modell und gewinnt durch den neuen ebenfalls. Der Einbruch war ein Produktionsfehler, kein
    Modellbefund: Auf dieser Hardware fiel bereits der alte Prompt milder aus als im
-   CPU-Testcontainer des ursprünglichen Befunds (8 statt 23 degenerierte Fälle), der neue Prompt
-   beseitigt sie vollständig, und die Zerlegung liegt danach im Rahmen der Messstreuung gleichauf
-   mit der Konfiguration ohne sie.
+   CPU-Testcontainer des ursprünglichen Befunds (8 statt 23 degenerierte Fälle), und der neue
+   Prompt beseitigt sie vollständig.
+
+   Als Delta gegen die Konfiguration ohne Zerlegung (Abschnitt 3 verlangt Deltas, keine
+   Streuungsbehauptung — der Pipeline-Pfad ist mit Zerlegung nicht deterministisch, aber alle vier
+   Metriken hatten in jedem der Läufe min = median = max, es liegt also keine gemessene Streuung
+   vor, hinter der ein Delta verschwinden könnte): Mit `qwen2.5:1.5b-instruct` liegen drei der vier
+   Metriken **unter** der Konfiguration ohne Zerlegung — nDCG@8 0,727 gegen 0,740 (−0,013), MRR@8
+   0,770 gegen 0,779 (−0,009), Recall@8 0,826 gegen 0,837 (−0,011) —, Hit Rate@5 ist mit 0,957
+   gleich. Mit `phi3:mini` liegen zwei darüber — nDCG@8 0,745 gegen 0,740 (+0,005), MRR@8 0,785
+   gegen 0,779 (+0,006) — und zwei darunter: Hit Rate@5 0,935 gegen 0,957 (−0,022), Recall@8 0,819
+   gegen 0,837 (−0,018). Die Zerlegung kauft auf dieser Domäne also keinen Gewinn; sie kostet nach
+   der Prompt-Korrektur aber auch nichts mehr in der Größenordnung des ursprünglichen Einbruchs
+   (nDCG@8 −0,098).
 
    **Ungemessen bleibt der Folgefragen-Pfad.** Der Harness fährt ohne Gesprächsverlauf (ein
    Golden-Fall ist eine eigenständige Frage), die 46 Fälle enthalten also keine einzige Folgefrage;

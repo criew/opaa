@@ -185,19 +185,30 @@ class QueryDecompositionService {
    * decomposition loses a whole topic of the question, which is strictly worse than the
    * undecomposed question that {@code SubQueryDecompositionStage#buildSearchQuery} falls back to.
    *
-   * <p>Returns zero - the check is skipped - when the question yields at most one token: a question
-   * of nothing but short function words offers no anchor, and a script without word separators
-   * (Chinese, Japanese, Thai) collapses into a single token, where every sub-query would look
-   * unrelated.
+   * <p>Returns zero - the check is skipped - in two cases only. First, when question and history
+   * together yield at most one anchor: there is nothing to relate against. The history counts here,
+   * so a short follow-up ("Und was kostet das?") is judged against the conversation it resolves
+   * into, not left unchecked. Second, for a script without word separators (Chinese, Japanese,
+   * Thai), recognised by the question collapsing into a single token that spans all of its word
+   * characters - there, every sub-query would look unrelated.
    */
   private static long countUnrelated(
       List<String> subQueries, String question, List<Message> conversationHistory) {
-    if (tokenize(question).size() <= 1) {
-      return 0;
-    }
     Set<String> anchors = new HashSet<>(tokenize(question));
     conversationHistory.forEach(message -> anchors.addAll(tokenize(message.getText())));
+    if (anchors.size() <= 1 || lacksWordBoundaries(question)) {
+      return 0;
+    }
     return subQueries.stream().filter(subQuery -> !isRelated(subQuery, anchors)).count();
+  }
+
+  private static boolean lacksWordBoundaries(String question) {
+    Set<String> tokens = tokenize(question);
+    if (tokens.size() != 1) {
+      return false;
+    }
+    long wordCharacters = question.codePoints().filter(Character::isLetterOrDigit).count();
+    return tokens.iterator().next().length() == wordCharacters;
   }
 
   /**
