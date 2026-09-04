@@ -86,7 +86,7 @@ function DocumentChunkList({ document }: { document: DocumentChunksResponse }) {
 
 /**
  * The chunk list of one document, with the document id it is looked up by. The input lives here so
- * typing it never re-renders the rest of the page (#1267).
+ * typing it never re-renders the rest of the page.
  */
 export default function DocumentChunkSection({
   ref,

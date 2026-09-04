@@ -26,7 +26,7 @@ const NO_PROFILES_EXPLANATION =
 
 /**
  * The diagnosis form owns every keyboard input of the page, so a keystroke re-renders this subtree
- * alone and no other part of the page needs memoization to stay still (#1267).
+ * alone and no other part of the page needs memoization to stay still.
  */
 export default function DiagnosisForm({
   profiles,

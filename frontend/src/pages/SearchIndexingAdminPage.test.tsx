@@ -27,7 +27,7 @@ vi.mock('../components/searchadmin/LibraryStatusTable', async (importOriginal) =
     ...actual,
     default: (props: Parameters<typeof actual.default>[0]) => {
       libraryStatusTableRenderSpy()
-      return actual.default(props)
+      return <actual.default {...props} />
     },
   }
 })
