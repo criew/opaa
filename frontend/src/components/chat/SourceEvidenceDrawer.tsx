@@ -74,7 +74,8 @@ function formatAnsweredAt(answeredAt: Date): string {
 
 /**
  * Mockup 1i's Belegfenster (#592): the side panel with every source of one answer - searchable,
- * filterable to cited ones, in the order the retrieval pipeline selected the chunks (#1102). The
+ * filterable to cited ones, cited documents first in citation-number order, then the checked but
+ * uncited ones in the order the retrieval pipeline selected the chunks (#1102, #1238). The
  * per-passage verbatim quotes and locations the mockup shows wait on the backend's chunk metadata
  * (#667); until then each document row carries what the API can already vouch for.
  */
@@ -133,12 +134,18 @@ export default function SourceEvidenceDrawer({
       metadataLine: formatMetadataLine(source),
       metadataDescription: describeMetadata(source),
     }))
-    // #1102: order by the position the retrieval pipeline settled on, never by relevanceScore -
-    // a persisted message's snapshot may still carry the pre-#1102 path-dependent raw score, and
-    // sorting by that would drop a lexical-only source to the bottom. `citations.uncited` already
-    // arrives in that order; the cited rows arrive in first-appearance order instead.
+    // #1102: never order by relevanceScore - a persisted message's snapshot may still carry the
+    // pre-#1102 path-dependent raw score, and sorting by that would drop a lexical-only source to
+    // the bottom.
+    //
+    // #1238: the cited rows stay in `cited`'s existing order (`citations.docs`), which is
+    // ascending by citation number - a doc's row is created on its first marker, so the doc list
+    // is already sorted by first-appearance number; a doc cited but never referenced in the text
+    // (empty `numbers`) is appended afterwards in `sources` order, i.e. by pipeline position. Only
+    // the uncited group is explicitly ordered by pipeline position, since `citations.uncited`
+    // already arrives in that order.
     const byPipelineOrder = (a: EvidenceDoc, b: EvidenceDoc) => a.sourceIndex - b.sourceIndex
-    const rows = [...cited.sort(byPipelineOrder), ...uncited]
+    const rows = [...cited, ...uncited]
     // The rank is the row's position in `sources`, never `1 / relevanceScore` and never its
     // position in `rows`: the score in a message persisted before #1102 is still a raw,
     // path-dependent one that would label a lexical-only source "Rang 11", while `rows` groups the
@@ -200,7 +207,7 @@ export default function SourceEvidenceDrawer({
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ fontSize: 16, fontWeight: 600 }}>Belege dieser Antwort</Typography>
           <Typography sx={{ fontSize: 11, color: 'text.secondary', mt: 0.25 }}>
-            {stellen} in {dokumente} · nach Relevanzrang sortiert
+            {stellen} in {dokumente} · zitierte nach Zitatnummer, übrige nach Relevanzrang sortiert
           </Typography>
         </Box>
         <IconButton size="small" onClick={onClose} aria-label="Belegfenster schließen">

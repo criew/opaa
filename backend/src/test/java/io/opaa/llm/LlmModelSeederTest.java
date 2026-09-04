@@ -191,6 +191,24 @@ class LlmModelSeederTest {
   }
 
   @Test
+  void skipsTheTakeoverWithoutWritingAMarkerWhenTheConfiguredBaseUrlCarriesCredentials() {
+    // #1147: this class writes to the repository directly, past LlmModelService's own rejection -
+    // a seeded row would carry the credentials into every API response and the audit log.
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty(
+                "spring.ai.openai.chat.base-url",
+                "https://benutzer:geheim@modellserver.example.internal/v1")
+            .withProperty("spring.ai.openai.chat.model", "gpt-4o");
+
+    seederWith(environment).seedIfNeeded();
+
+    verify(repository, never()).save(any());
+    verify(markerRepository, never()).save(any());
+  }
+
+  @Test
   void seedsFromTheOpenAiConfigurationIncludingTheEncryptedApiKeyWhenNoLegacyProviderIsSet() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
     when(settingsEncryptor.encrypt("sk-configured-key")).thenReturn("enc:v1:ciphertext");

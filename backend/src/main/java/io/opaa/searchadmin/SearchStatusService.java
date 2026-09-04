@@ -319,8 +319,14 @@ public class SearchStatusService {
               + " die Voreinstellung, kein Fehler.";
       case READY -> "Reranking ist eingeschaltet und der Endpunkt antwortet.";
       case UNCONFIGURED ->
-          "Reranking ist eingeschaltet, aber es ist keine Rerank-Modellrolle hinterlegt. Die Suche"
-              + " läuft weiter - ohne diese Stufe.";
+          status.baseUrlRejected()
+              ? "Reranking ist eingeschaltet, aber die hinterlegte Basis-Adresse enthält"
+                  + " Anmeldedaten (Form \"https://benutzer:passwort@host\") und wird deshalb"
+                  + " abgelehnt. Tragen Sie die Adresse ohne Anmeldedaten ein und hinterlegen Sie"
+                  + " den Zugangsschlüssel in OPAA_RERANK_API_KEY. Die Suche läuft weiter - ohne"
+                  + " diese Stufe."
+              : "Reranking ist eingeschaltet, aber es ist keine Rerank-Modellrolle hinterlegt. Die"
+                  + " Suche läuft weiter - ohne diese Stufe.";
       case UNREACHABLE ->
           status.timedOut()
               ? "Reranking ist eingeschaltet, aber der hinterlegte Endpunkt hat nicht innerhalb"
