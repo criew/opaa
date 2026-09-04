@@ -61,6 +61,8 @@ pnpm run format && pnpm run lint && pnpm run test && pnpm run build
 
 **Angeordneter Parallelbetrieb:** Weist der Koordinator im Auftrag auf parallele Agenten-Sessions hin, gilt die verkürzte Prüfung bereits für den ersten Push — den vollen Durchlauf übernimmt die CI des PRs, deren Ergebnis nach dem Push zu prüfen ist.
 
+**PR-Nummer sofort melden.** Sobald der PR eröffnet ist, wird die Nummer dem Koordinator unmittelbar gemeldet — nicht erst zusammen mit dem CI-Ergebnis. Das Review beginnt auf dem Diff, während die CI läuft; das CI-Ergebnis folgt als zweite Meldung.
+
 **Nachbesserungsrunden** (Folge-Pushes auf einen bestehenden PR, etwa nach Review-Befunden): verkürzte
 Prüfung — Formatierung, Kompilieren und die berührten Testklassen (`./gradlew test --tests <Klasse>`).
 Den vollen Durchlauf übernimmt die CI des PRs; deren Ergebnis nach dem Push prüfen und im Bericht nennen.
