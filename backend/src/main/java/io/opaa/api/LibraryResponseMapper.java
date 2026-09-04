@@ -82,7 +82,8 @@ final class LibraryResponseMapper {
                 library.getUpdatedAt())
             .description(library.getDescription())
             .documentCount(detail.documentCount())
-            .diagnosticsLocked(library.isDiagnosticsLocked());
+            .diagnosticsLocked(library.isDiagnosticsLocked())
+            .diagnosticsLockToggleable(detail.diagnosticsLockToggleable());
     LibraryManagementDetail managementDetail = detail.managementDetail();
     response
         .sourcePath(managementDetail.sourcePath())

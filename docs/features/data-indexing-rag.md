@@ -384,6 +384,41 @@ unparsebare Antwort), fällt die Suche auf das Verhalten vor #923 zurück — ei
 heutigen `buildSearchQuery`-Logik (Frage, ggf. um die erste Chat-Nachricht ergänzt) — nie auf einen
 Fehler für den Nutzer, höchstens die alte Suchqualität.
 
+**Degenerierte Zerlegung (#1254):** Ein Fehlschlag ist nicht der einzige schlechte Ausgang. Ein
+kleines Chat-Modell kann formal „erfolgreich" zerlegen und dabei etwas zurückgeben, das mit der
+Nutzerfrage nichts zu tun hat — im gemessenen Fall den Beispielsatz, den der Systemprompt selbst im
+Fließtext einer Regel mitführte. Zwei Konsequenzen:
+
+- **Der Prompt beschreibt die Ausgabeform, statt sie vorzuführen.** Kein Beispielsatz, auch nicht
+  als abgegrenzter Few-Shot-Block. Die Auflösung von Folgefragen bleibt als Regel erhalten — sie ist
+  der Kern von #923 —, nur ihre Illustration ist entfallen.
+- **`QueryDecompositionService` prüft den Wortbezug** jeder Teilfrage zu Frage und
+  Gesprächsverlauf und fällt auf die unzerlegte Frage zurück, sobald auch nur **eine** Teilfrage
+  ohne Bezug ist. Alles-oder-nichts, nicht Beschneiden: Eine Teilfrage aus einer korrekten Zerlegung
+  zu streichen verliert ein ganzes Thema der Frage und ist damit schlechter als die unzerlegte
+  Frage, die beide Themen trägt. Sichtbar über ein WARN-Log **mit Zählwerten statt Inhalten**
+  (die Frage und ihre Umformulierungen gehören nach
+  [`security-and-compliance.md`](./security-and-compliance.md) nicht ins Anwendungslog) und den
+  Zähler `opaa.query.decomposition.fallback` mit `reason` = `degenerate` (keine Teilfrage bezogen),
+  `pruned` (einzelne unbezogen) oder `failed` (keine verwertbare Antwort).
+
+**Grenzen des Wächters.** Er ist eine Teilstring-Prüfung über Wörter ab vier Zeichen, kein Stemmer:
+`Gebühr`/`Gebührenbefreiung` erkennt er, `Buch`/`Bücher` und `Mahnung`/`Mahngebühr` nicht — dort
+greift die Alles-oder-nichts-Regel und es wird zurückgefallen, was sicher, aber nicht kostenlos ist.
+Umgekehrt übersieht er eine degenerierte Ausgabe, sobald die Frage oder der Gesprächsverlauf zufällig
+eines ihrer Wörter enthält; im Mehrturn-Fall ist er deshalb am schwächsten, weil auch
+Assistenzantworten Anker liefern. Ganz aus schaltet er sich nur in zwei Fällen: wenn Frage **und**
+Verlauf zusammen höchstens ein Wort ab vier Zeichen ergeben — dann gibt es nichts, worauf sich
+beziehen ließe —, und bei einer Schrift ohne Wortgrenzen (Chinesisch, Japanisch, Thai), erkannt
+daran, dass die Frage zu einem einzigen Wort über ihre gesamte Länge zerfällt. Eine kurze Folgefrage
+wird also am Gesprächsverlauf geprüft, nicht ungeprüft durchgelassen. **Die eigentliche Behebung ist
+der Prompt; der Wächter ist das Netz darunter.**
+
+Gemessene Wirkung (Domäne Verwaltung, 46 Golden-Fälle): mit `qwen2.5:1.5b-instruct` 8 degenerierte
+Fälle vor, 0 nach der Prompt-Änderung, nDCG@8 0,642 → 0,727 gegenüber 0,740 ohne Zerlegung; mit dem
+Standardmodell `phi3:mini` 1 → 0 und nDCG@8 0,701 → 0,745. Zahlen und Messbedingungen:
+[`retrieval-benchmark.md`](./retrieval-benchmark.md), „Offene Punkte" 3.
+
 **Vorher/Nachher-Messung** (lokal, nicht committet, über den produktionsnahen `QueryService`-Pfad
 mit echten lokalen Embeddings statt des Harness-eigenen, dokumentbezogenen Fensters — der
 committete Harness misst `VectorStore.similaritySearch` direkt und läuft an diesem Feature vorbei,

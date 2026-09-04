@@ -55,6 +55,7 @@ class UrlAttachmentIndexingIntegrationTest {
   @Autowired private IndexingRunEventRepository indexingRunEventRepository;
   @Autowired private LibraryStorageQuotaService storageQuotaService;
   @Autowired private StaleDocumentCleanupService staleDocumentCleanupService;
+  @Autowired private io.opaa.library.LibraryFolderService folderService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private io.opaa.indexing.VectorChunkStore vectorChunkStore;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -144,7 +145,8 @@ class UrlAttachmentIndexingIntegrationTest {
             indexingRunEventRepository,
             storageQuotaService,
             staleDocumentCleanupService,
-            new CrawlProperties(0, 0, 0));
+            new CrawlProperties(0, 0, 0),
+            folderService);
   }
 
   @AfterEach

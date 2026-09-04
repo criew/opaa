@@ -392,7 +392,8 @@ public class IndexingConfiguration {
       IndexingRunEventRepository indexingRunEventRepository,
       LibraryStorageQuotaService libraryStorageQuotaService,
       StaleDocumentCleanupService staleDocumentCleanupService,
-      CrawlProperties crawlProperties) {
+      CrawlProperties crawlProperties,
+      LibraryFolderService libraryFolderService) {
     return new UrlIndexingExecutor(
         autoindexCrawlerService,
         boundedDownloader,
@@ -402,7 +403,8 @@ public class IndexingConfiguration {
         indexingRunEventRepository,
         libraryStorageQuotaService,
         staleDocumentCleanupService,
-        crawlProperties);
+        crawlProperties,
+        libraryFolderService);
   }
 
   @Bean
