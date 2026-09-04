@@ -1095,6 +1095,13 @@ Arbeitspaket 1 die Erklärbarkeit jeder Stufe verlangt.
   von Vektor- und Volltextindex — einschließlich des **Füllstands des Volltext-Backfills** aus
   [Arbeitspaket 2a](#arbeitspaket-2a-backfill-des-bestands), aus derselben Datenquelle, die auch den
   Alarm „Volltextpfad inaktiv oder unvollständig" auslöst.
+- der **Stand der Kernfelder** je Bibliothek (seit #1067): wie viele indizierte Dokumente die aktuelle
+  Extraktionsversion tragen, wie viele ausstehen, wie viele der letzte Bestandslauf übersprungen hat,
+  und der Füllgrad je Kernfeld (absolut und anteilig) — aus derselben Auswahl, die der Bestandslauf
+  selbst abarbeitet. Der Bestandslauf wird auf dieser Seite je Bibliothek gestartet, angehalten und
+  wieder aufgenommen (siehe
+  [Metadatenschema, Umgesetzt (#1067)](./metadata-schema.md#umgesetzt-1067)); er ist der einzige
+  Eingriff, den die Seite erlaubt.
 
 ### Das Diagnosewerkzeug
 

@@ -19,11 +19,11 @@ Sie ist die dritte von drei zusammengehörigen Spezifikationen und die letzte in
 [Hybrides Retrieval](./hybrid-retrieval.md) baut die zwei Suchpfade, in denen ein Filter überhaupt
 wirken kann; [Ingestion-Pipelines](./ingestion-pipelines.md) baut die Aufnahmestrecke, in der
 Metadaten entstehen; dieses Dokument beschreibt, **welche** Metadaten das sind, **woher sie kommen**
-und **was sie im Retrieval bewirken**. **Gebaut ist bisher Arbeitspaket 1** (Kernfelder,
+und **was sie im Retrieval bewirken**. **Gebaut sind bisher die Arbeitspakete 1 und 2** (Kernfelder,
 Herkunft, deterministische Extraktion, Beleg-Anzeige — #1066, siehe
-[Umgesetzt (#1066)](#umgesetzt-1066) und [ADR-0024](../decisions/0024-metadatenschema-kernfelder.md));
-alles Weitere — Bestandslauf, manuelle Korrektur, Filter, Bibliotheksfelder, Modell-Extraktion — ist
-noch nicht gebaut.
+[Umgesetzt (#1066)](#umgesetzt-1066) und [ADR-0024](../decisions/0024-metadatenschema-kernfelder.md);
+deterministischer Bestandslauf — #1067, siehe [Umgesetzt (#1067)](#umgesetzt-1067)); alles Weitere —
+manuelle Korrektur, Filter, Bibliotheksfelder, Modell-Extraktion — ist noch nicht gebaut.
 
 ---
 
@@ -417,6 +417,71 @@ Wer nach `Fassung` filtert, sieht am Feld, für wie viele Dokumente der Biblioth
 vorliegt. Ein Filter auf ein zu 12 % befülltes Feld ist eine andere Handlung als ein Filter auf ein zu
 97 % befülltes — und der Unterschied ist an der Trefferliste allein nicht erkennbar, weil die
 Leerwert-Regel beide Fälle gleich aussehen lässt.
+
+### Umgesetzt (#1067)
+
+Arbeitspaket 2 — der Bestandslauf über den Altbestand, gebaut als **zweiter Anwender derselben
+Mechanik wie der Pipeline-Reindex** ([Ingestion-Pipelines, Umgesetzt (#1056)](./ingestion-pipelines.md#umgesetzt-1056)),
+nicht als zweiter Nachlauf-Mechanismus.
+
+**Ein Chargen-Endpunkt, kein Hintergrundprozess.** `POST /api/v1/admin/indexing/metadata-backfill`
+(`SYSTEM_ADMIN`, auf die eigene Organisation begrenzt; eine fremde Bibliothek ist abwesend, 404)
+verarbeitet **eine Charge** einer Bibliothek (`libraryId`, `batchSize` 1–100) und wird wiederholt
+aufgerufen, bis `done` gemeldet wird. Der Reststand wird bei jedem Aufruf neu aus
+`documents.metadata_extraction_version` abgeleitet (`NULL` oder kleiner als
+`CoreMetadataExtractor.EXTRACTION_VERSION`, nur `INDEXED`-Dokumente) — es gibt keine Cursor-Tabelle
+und keinen Lauf-Datensatz. Damit sind die vier Zusagen aus
+[Nachlauf im Betrieb](#nachlauf-im-betrieb) so erfüllt:
+
+- **Suche verfügbar, Mischzustand definiert:** Es wird kein Chunk gelöscht, neu zerlegt oder neu
+  eingebettet. Je Dokument liest der Lauf die Originaldatei über `DocumentPipeline#readProperties`
+  (Dateiname, Dokumenteigenschaften, Frontmatter, erste Überschrift — nicht die Chunk-Texte), speichert
+  die Werte und zieht `doc_type`/`doc_date`/`doc_date_precision` per JSON-Update auf die vorhandenen
+  Chunks nach (`DocumentMetadataService#reextractFromFile`). Der Mischzustand ist je Bibliothek
+  abfragbar (siehe unten).
+- **Dokumentgranular und idempotent:** Werte, Chunk-Nachzug und Extraktionsversion sind **eine
+  Transaktion je Dokument**; ein Fehler bei einem Dokument kostet nur dieses (übersprungen, geloggt,
+  beim nächsten Aufruf erneut versucht; eine Charge scannt höchstens das Zehnfache ihrer Größe an
+  Übersprungenen, dann endet der Aufruf). Ein verarbeitetes Dokument trägt die aktuelle Version und
+  fällt aus der Auswahl; ein zweiter Lauf über verarbeitete Dokumente ändert nichts und meldet `done`.
+  Ein manueller Wert wird nie überschrieben (`DocumentMetadataService`).
+- **Bewusste, eigene Freigabe:** Der Lauf startet nur über den Endpunkt, **bibliotheksweise** — die
+  Bibliothek ist Pflichtparameter, nicht Filter. Nichts löst ihn von selbst aus, auch keine
+  Erhöhung der Extraktionsversion; der auslösende Aufruf wird protokolliert
+  (`INDEXING_METADATA_BACKFILL_TRIGGERED`, Objekt ist die Bibliothek, mit Extraktionsversion und
+  Chargenzählern — ein Eintrag je Aufruf, nicht je Dokument).
+- **Anhaltbar und wieder aufnehmbar:** Der Chargenaufruf **ist** die Wiederaufnahme; Anhalten ist das
+  Ausbleiben des nächsten Aufrufs. Die Seite „Suche & Indexierung" treibt den Lauf als Schleife von
+  Chargenaufrufen und bietet je Bibliothek „Kernfelder nachrüsten" / „Anhalten" / „Weiter" — „Anhalten"
+  beendet die Schleife nach der laufenden Charge, „Weiter" ruft erneut auf. Es gibt keinen serverseitigen
+  Zustand, der weiterliefe.
+
+**Entfernte Quellen.** Ein RSS-Eintrag hat nie eine Datei gehabt; seine deklarierten Quellen —
+Headline und Veröffentlichungsdatum des Feeds — stehen in der Zeile (`file_name`,
+`last_modified_remote`) und werden **ohne Download** erneut durch die Extraktion geführt. Alles andere
+Entfernte (Datei eines HTTP-Verzeichnisses, jeder entfernte Anhang samt Elternkette) kann nur der
+eigene Konnektorlauf neu lesen und wird dafür vorgemerkt — derselbe Mechanismus wie beim
+Pipeline-Reindex (beide Änderungsmarker geleert); der Konnektorlauf führt die Extraktion seit #1066
+bei jedem Zufluss ohnehin aus. Bis dahin bleibt das Dokument als ausstehend ausgewiesen und fällt aus
+der Auswahl, damit der Lauf abschließt. Anhangsdokumente lokaler Quellen werden über ihre Elternkette
+neu gewonnen (ADR-0022) — dieselbe Prüfsummen- und Kettenlogik wie beim Reindex.
+
+**Geteilte Infrastruktur.** Dateiauflösung mit Laufzeitprüfung (Allowlist, Lage unterhalb des
+konfigurierten Quell- bzw. Upload-Verzeichnisses über `toRealPath`; ADR-0018, Entscheidung 6),
+Anhangs-Elternkette und Vormerkung für den nächsten Konnektorlauf sind aus dem Reindex-Dienst nach
+`StoredDocumentSourceAccess` herausgelöst und von beiden Läufen benutzt. Die Auswahl bleibt je Lauf
+eigen (Chunk-Metadaten nach Pipeline-Version dort, `documents`-Tabelle nach Extraktionsversion hier),
+ebenso die Verarbeitungseinheit (Neu-Zerlegen dort, `reextractFromFile` hier).
+
+**Zustand je Bibliothek.** `GET /api/v1/admin/search/status` trägt je Bibliothek
+`metadataBackfill`: Dokumente insgesamt (`INDEXED`), auf aktueller Extraktionsversion, ausstehend,
+zuletzt übersprungen (Zähler des letzten Aufrufs, prozesslebenslang — ADR-0021, Single-Instance),
+`complete` und den **Füllgrad je Kernfeld** (Dokumente mit Wert, absolut und anteilig, deutsches
+Label). Der Füllgrad wird bei jeder Abfrage aus `document_metadata_values` gebildet, nie
+vorberechnet; im Verwaltungskontext ist die Organisation der Rechtekontext (Beschluss 1 des
+Maintainers am Epic #1065). Die Seite „Suche & Indexierung" zeigt das in derselben Tabelle wie
+Vektor- und Volltextindex ([Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)).
+Die Füllgrad-Anzeige in der **Filter-Oberfläche** (oben) gehört zu Arbeitspaket 4 (#1070).
 
 ## Die modellgestützte Extraktion im Betrieb
 
@@ -900,7 +965,7 @@ solange keine Füllstandsverteilung eines echten Bestands vorliegt.
 | # | Paket | Abhängig von | Nutzen allein |
 |---|---|---|---|
 | 1 | Kernfelder: Datenmodell, Herkunft/Konfidenz/Akteur, deterministische Extraktion beim Aufnehmen — **umgesetzt mit #1066**, siehe [Umgesetzt (#1066)](#umgesetzt-1066) | — | Beleg-Anzeige wird einordbar; Grundlage für alles Weitere |
-| 2 | **Deterministischer Bestandslauf** über den Altbestand, bibliotheksweise, mit den Nachlauf-Zusagen | 1 | Die Kernfelder gelten für den vorhandenen Bestand, nicht nur für künftige Dokumente |
+| 2 | **Deterministischer Bestandslauf** über den Altbestand, bibliotheksweise, mit den Nachlauf-Zusagen — **umgesetzt mit #1067**, siehe [Umgesetzt (#1067)](#umgesetzt-1067) | 1 | Die Kernfelder gelten für den vorhandenen Bestand, nicht nur für künftige Dokumente |
 | 3 | Manuelle Korrektur, Sammelzuweisung, Audit-Ereignis und Pflege-Anker („N ohne Wert", absolut und anteilig) | 1, 2 | Die Leerwert-Regel wird behebbar statt Dauerzustand |
 | 4 | Metadatenfilter in beiden Suchpfaden, mit Füllstandsanzeige je Feld | 2, 3, Hybrid-Suche AP 3 | Löst Szenario 9; die `metadata_filter`-Fälle werden erstmals lösbar |
 | 5 | Bibliotheksfelder: Schemakonfiguration je Bibliothek, Wertelisten mit bestätigter Abbildung | 1, 4 | Fassung und Rechtsebene werden führbar |
