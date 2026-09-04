@@ -302,6 +302,16 @@ class CoreMetadataExtractorTest {
     }
 
     @Test
+    void aFirstHeadingContradictingTheTitleLineLeavesTheFieldEmpty() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withFirstHeading("Protokoll")
+              .withTitleLine("Anlage zur Dienstanweisung vom 12.03.2026");
+
+      assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
+    }
+
+    @Test
     void aLabelLineBelowTheTitleNeverNamesTheDokumentart() {
       // The demo's Leistungsbeschreibungen: the head names the Formular the service needs.
       DocumentProperties properties =
@@ -339,13 +349,39 @@ class CoreMetadataExtractorTest {
     }
 
     @Test
-    void theFirstHeadingIsTheTitleLineAndTheTextBelowItIsNotRead() {
+    void aSectionHeadingFromInsideTheDocumentNeverNamesTheDokumentart() {
+      // A Markdown Leistungsbeschreibung opening with a level-2 title and carrying a level-1
+      // section "Benötigtes Formular" further down: the section names the Formular the service
+      // needs, exactly the reference the label line was.
       DocumentProperties properties =
           DocumentProperties.EMPTY
-              .withFirstHeading("Häufige Fragen zur Ausweisbeantragung")
-              .withTitleLine("Grundlage ist die Dienstanweisung zur Terminvergabe.");
+              .withTitleLine("Fabrikneues Fahrzeug anmelden")
+              .withFirstHeading("Benötigtes Formular");
 
-      assertThat(extract("faq.pdf", properties).documentTypeCode()).isEmpty();
+      assertThat(extract("13_fabrikneues-fahrzeug-anmelden.md", properties).documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void aPdfOutlineEntryNeverOutranksTheFirstTextLine() {
+      // firstHeading of a PDF is an outline entry from anywhere in the document, not its first
+      // line - two different codes are an ambiguity, and the field stays empty.
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withFirstHeading("Benötigtes Formular")
+              .withTitleLine("Protokoll der Sitzung des Rates");
+
+      assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
+    }
+
+    @Test
+    void aFirstHeadingWithoutADokumentartLeavesTheTitleLineItsOwn() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withFirstHeading("Anlagen und Fristen")
+              .withTitleLine("Protokoll der Sitzung des Rates");
+
+      assertThat(extract("anlage.pdf", properties).documentTypeCode()).contains("PROTOKOLL");
     }
   }
 

@@ -273,6 +273,33 @@ class CoreMetadataIndexingIntegrationTest {
   }
 
   /**
+   * #1289: a level-1 heading from inside the document is no title line - a section naming the
+   * Formular a service needs is the same reference as the label line above.
+   */
+  @Test
+  void aSectionHeadingFromInsideTheDocumentNeverNamesTheDokumentart() throws IOException {
+    Path file = classTempDir.resolve("14_gebrauchtfahrzeug-umschreiben.md");
+    Files.writeString(
+        file,
+        """
+        ## Gebrauchtfahrzeug umschreiben
+
+        Die Umschreibung erfolgt in der Zulassungsstelle.
+
+        # Benoetigtes Formular
+
+        RF-KFZ-002 liegt vor Ort aus.
+        """);
+
+    assertThat(fileProcessingService.processFile(file, targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isNull();
+  }
+
+  /**
    * #1289: a FAQ that cites a Dienstanweisung in its opening text is none - below the title line
    * the head is not read for the Dokumentart.
    */

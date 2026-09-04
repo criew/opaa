@@ -192,7 +192,7 @@ Drei Felder, fest eingebaut, für jedes Dokument in jeder Bibliothek:
 | Feld | Typ | Zweck | Herkunft |
 |---|---|---|---|
 | **Titel** | Text | Beleg-Anzeige, Kontextpräfix | Dokumenteigenschaften, Überschrift erster Ebene, Dateiname — in dieser Reihenfolge |
-| **Dokumentart** | kontrolliertes Vokabular | Filter („nur Dienstanweisungen"), Beleg-Einordnung | Dateinamenskonvention, Dokumentkopf; sonst — sofern für die Bibliothek eingeschaltet — Sprachmodell mit Konfidenz |
+| **Dokumentart** | kontrolliertes Vokabular | Filter („nur Dienstanweisungen"), Beleg-Einordnung | Dateinamenskonvention, Titelzeile des Dokuments, Dateiformat; sonst — sofern für die Bibliothek eingeschaltet — Sprachmodell mit Konfidenz |
 | **Datum/Stand** | Datum oder Jahr | Filter („nach dem Stand 2024"), Beleg-Anzeige, Aktualitätsfragen | Datumsangaben im Kopfbereich, Dateiname, Dokumenteigenschaften |
 
 Drei Festlegungen dazu:
@@ -415,7 +415,13 @@ Erklärung, und ein Wert außerhalb des Vokabulars lässt das Feld leer, statt a
 durchzufallen (unverändert seit #1066).
 
 **Titelzeile (korrigiert mit #1289).** Aus dem Dokument zählt für die Dokumentart genau **eine**
-Zeile: die erste Überschrift, ersatzweise die erste nicht-leere Zeile des Textes. `DocumentProperties`
+Zeile: die erste nicht-leere Zeile des Textes — bei Markdown die erste Überschrift oder Zeile ohne
+`#`-Präfix, bei DOCX/ODT der erste Absatz, bei PDF die erste Textzeile der ersten Seite, bei HTML der
+erste Textblock. Eine **Überschrift der ersten Ebene, die nicht diese Zeile ist** (ein
+Markdown-Abschnitt „# Benötigtes Formular", ein PDF-Lesezeichen), liefert selbst keine Dokumentart —
+sie ist dieselbe Referenz wie eine Beschriftungszeile. Sie wirkt nur als Veto: Trägt sie einen
+anderen Vokabularwert als die Titelzeile, bleibt das Feld leer („lieber leer als geraten"). Nur wenn
+ein Format überhaupt keine Textzeile liefert, tritt die erste Überschrift an ihre Stelle. `DocumentProperties`
 trägt sie als `titleLine` — das Record kürzt einen übergebenen Text selbst auf diese eine Zeile und
 begrenzt sie auf 300 Zeichen, damit keine Pipeline versehentlich mehr als eine Titelzeile übergeben
 kann. Befüllt von DOCX, ODT, Markdown, HTML (erster Textblock, weil eine Seite keine eigenen
