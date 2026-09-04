@@ -186,7 +186,18 @@ diesen Weg bewusst **nicht** möglich — dafür bleibt nur das Löschen und Neu
 testen"-Knopf die eingegebene Quellkonfiguration serverseitig, bevor die Bibliothek überhaupt
 angelegt wird — `FILESYSTEM` meldet die Anzahl gefundener, unterstützter Dokumente (unter derselben
 Pfad-Allowlist wie die Anlage selbst, siehe unten), `HTTP_DIRECTORY` die Anzahl verlinkter Dokumente
-auf der obersten Verzeichnisebene, `RSS_FEED` die Anzahl der Feed-Einträge. Der Test ist optional und
+auf der obersten Verzeichnisebene, `RSS_FEED` die Anzahl der Feed-Einträge, `CONFLUENCE` in zwei Stufen (#1134,
+[ADR-0023](../decisions/0023-confluence-konnektor.md)): Ohne Zugangsdaten **erkennt** er die Edition
+(Cloud oder Data Center) aus der Antwortsignatur der Instanz — nie aus dem Hostnamen — und nennt die
+dazu passende Art von Zugangsdaten; mit Zugangsdaten prüft er sie und zählt die lesbaren Spaces. Für
+Confluence ist der Test nicht optional: Die Anlage bestätigt die Edition erneut gegen die Instanz und
+lehnt eine Edition ab, die die Instanz nicht ist (eine spätere Adressänderung prüft die gespeicherte
+Edition nicht erneut — die Edition ist unveränderlich, die Adresse muss dieselbe Instanz nennen), und
+die Space-Auswahl kommt aus einer eigenen Auflistung (`POST /api/v1/libraries/confluence/spaces`),
+die nur mit gültigen Zugangsdaten antwortet. Beide Sonden unterliegen wie jeder Lauf der Zielprüfung
+(#267) — ein selbst betriebenes Confluence Data Center im privaten Adressbereich braucht deshalb den
+Eintrag in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, und die Fehlermeldung nennt ihn. Für die
+übrigen Typen ist der Test optional und
 ersetzt weder die Ziel- noch die Formatprüfung des eigentlichen Laufs. Er nutzt für `HTTP_DIRECTORY`
 und `RSS_FEED` dieselben ausgehenden Verbindungen wie ein Lauf und unterliegt deshalb **derselben
 Zielprüfung (gebaut, #267)** — konfigurierbar über `opaa.indexing.target-validation`, siehe
@@ -219,7 +230,114 @@ Vorgangs- und Ticketsysteme sowie einfache Webinhalte einschließlich offener Ve
 RSS-Feeds — für beide Web-Wege ist die Erschließung bereits gebaut (vier gebaute Quellentypen insgesamt:
 `UPLOAD`, `FILESYSTEM`, `HTTP_DIRECTORY`, `RSS_FEED`), siehe
 [Webverzeichnis](#webverzeichnis-gebaut) und
-[Feeds als Quelle](#feeds-als-quelle-gebaut). Weitere Quellklassen kommen bedarfsgetrieben hinzu, jede
+[Feeds als Quelle](#feeds-als-quelle-gebaut). Als fünfter Typ entsteht **`CONFLUENCE`**
+(Epic #1129, [ADR-0023](../decisions/0023-confluence-konnektor.md)): eine Bibliothek trägt
+Adresse, Edition (Cloud oder Data Center), Zugangsdaten und eine Auswahl von Spaces; Datenmodell und
+Konfiguration sind gebaut (#1133), ebenso der Anlagepfad im Wizard (#1135): Adresse eingeben, Edition
+**erkennen lassen** (nie wählen), Zugangsdaten in der Form der erkannten Edition erfassen, Verbindung
+testen — und erst dann, hinter dem ausdrücklichen Hinweis auf die Freigabefolge der gemeinsamen
+Bibliothek, die Spaces aus der Auflistung der Instanz auswählen. Nach der Anlage sind Typ und Edition
+unveränderlich sichtbar; Adresse, Zugangsdaten und Space-Auswahl bleiben über die Quellkonfiguration
+bearbeitbar. **Der Vollabgleich ist gebaut (#1136):** Ein Lauf prüft zuerst die Zugangsdaten (Data
+Center bedient ein widerrufenes Token anonym mit leerer Auflistung — sie darf nie als vollständig
+gelten), listet dann jeden ausgewählten Space vollständig auf — Kennungen, Titel und Versionen, nie
+den Inhalt —, holt jede Seite einzeln, deren Version sich geändert hat, und nimmt ihre Anhänge über
+den quellentyp-übergreifenden Anhangsweg (`AttachmentIndexer`, ADR-0022) als eigene Dokumente mit
+`parent_document_id` auf die Seite auf — Format-Zulassung, Prüfsumme, verschachtelte Anhänge (eine
+`.eml` an einer Seite) und die Buchhaltung für den Abgleich sind dieselben wie bei RSS und Mail; nur
+der Download selbst bleibt beim editionsbewussten Client, weil dort Zugangsdaten, Anfragebudget und
+die Weiterleitungsregel der Cloud-Medienablage liegen. Ein unveränderter Anhang (Versionsnummer) wird
+vor jedem Download übersprungen. Jedes Dokument trägt Space-Schlüssel, Gliederungspfad
+(Titel der Vorfahren), Seitentitel, Versionsnummer und die titelfreie Confluence-URL, über die der
+Beleg es öffnet. Erst wenn **alle** ausgewählten Spaces vollständig aufgelistet wurden, verschwindet
+aus dem Index, was der Lauf nicht wieder angetroffen hat: gelöschte und in den Papierkorb
+verschobene Seiten, Seiten aus abgewählten Spaces, ihre Anhänge. Ein Space, den das Token nicht
+lesen darf, macht die Auflistung unvollständig — der Lauf meldet ihn sichtbar im Laufprotokoll und
+entfernt nichts; eine einzelne nicht lesbare Seite wird sichtbar übersprungen und bleibt stehen
+(Rechteentzug ist kein Löschbefund). Ein Abbruch verliert nichts: Bereits aufgenommene Seiten
+werden im nächsten Lauf per Versionsvergleich übersprungen, und die noch nicht abgeschlossenen
+Spaces kommen zuerst an die Reihe. Drosselt Confluence den Lauf (429, `Retry-After`), wartet er und
+meldet die Summe der Wartezeit als eigenes Ereignis (`RATE_LIMITED`), statt zu scheitern. Jeder
+Lauf trägt seine **Betriebsart** (`FULL`, `INCREMENTAL`; ADR-0023, Entscheidung 4) im
+Laufprotokoll und in der API; der manuelle Anstoß nimmt sie als Parameter `runMode` entgegen.
+**Der inkrementelle Abgleich (#1139)** ist die Regelbetriebsart zwischen zwei Vollabgleichen: Er
+fragt per CQL nur die Kennungen der seit dem Anker geänderten Seiten der ausgewählten Spaces ab
+(mit Überlappung nach hinten, `OPAA_INDEXING_CONFLUENCE_INCREMENTAL_OVERLAP`, Standard 10 Minuten),
+holt nur die Seiten mit geänderter Version einzeln (die Version kommt mit der Suche), nimmt Neues,
+Geändertes und Verschobenes auf und **löscht nie wegen Abwesenheit**. Löschungen und der Papierkorb
+erreichen den Index erst mit dem nächsten Vollabgleich — die Änderungssuche listet nur aktuelle
+Seiten; nur eine Seite, die zwischen Suche und Abruf in den Papierkorb wandert, entfernt der
+inkrementelle Lauf als positiven Befund. Ebenso erscheinen **neue oder geänderte Anhänge einer
+sonst unveränderten Seite** erst mit dem nächsten Vollabgleich: Ein Anhang bewegt die Änderungszeit
+der Seite nicht. Das Zeitfenster wird der Instanz relativ zu ihrer eigenen Uhr übergeben
+(`lastmodified >= now("-Nm")`), damit ihre Zeitzone keine Rolle spielt. Der Anker rückt nach einem
+fehlerfreien Lauf auf dessen Startzeit vor; ein Abbruch lässt ihn stehen, sodass kein
+Änderungsfenster verloren geht. Ohne ausdrückliche Betriebsart entscheidet der
+Zustand der Bibliothek: Der erste Lauf, jeder Lauf nach einer Änderung der Space-Auswahl, nach einem
+unterbrochenen Vollabgleich und jeder Lauf, sobald der letzte Vollabgleich älter als
+`OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL` (Standard: eine Woche, instanzweit; je Bibliothek
+einstellbar ist #1200) ist, läuft voll — der Vollabgleich bleibt nötig, weil nur er Löschungen
+nachvollzieht, und ist deshalb verlängerbar, nicht abschaltbar.
+Der manuelle Anstoß bietet für Confluence beide Betriebsarten an („Jetzt indizieren“ folgt dem Zustand,
+„Vollabgleich starten“ erzwingt ihn). **Webhooks (#1140)** verkürzen die Wartezeit auf den nächsten
+Lauf: Eine Verwalterin erzeugt in der Quellkonfiguration ein Webhook-Geheimnis je Bibliothek (einmal
+angezeigt, verschlüsselt abgelegt wie das Token, jederzeit neu erzeugbar oder entfernbar; im
+Audit-Protokoll als `LIBRARY_SOURCE_UPDATED` mit dem Feldnamen, nie mit dem Wert) und hinterlegt es in
+Confluence — Data Center signiert jede Nachricht damit (`X-Hub-Signature`, HMAC-SHA256 über den
+Rohkörper), eine Cloud-Automation-Regel „Web-Anfrage senden“ schickt es als Header
+`X-OPAA-Webhook-Secret` mit. Der Eingang `POST /api/v1/libraries/{id}/confluence-webhook` ist der
+einzige Pfad unter `/api/v1`, der ohne Sitzung erreichbar ist; er antwortet auf jede nicht
+authentifizierte Anfrage gleichförmig mit `401`, ist je Bibliothek ratenbegrenzt
+(`OPAA_RATE_LIMIT_WEBHOOK_*`) und liest aus dem Körper nur die genannten Seiten-IDs — **nicht die
+Ereignisart**. Die gemeldeten Seiten werden je Bibliothek gesammelt
+(`OPAA_INDEXING_CONFLUENCE_WEBHOOK_DEBOUNCE`, Standard fünf Sekunden) und dann in einem kurzen Lauf
+mit Auslöser `WEBHOOK` gezielt geholt: Was die Instanz als geändert liefert, wird neu indiziert; was
+sie **selbst als im Papierkorb ausweist**, wird mitsamt Anhängen entfernt (der positive Befund aus
+ADR-0023, Entscheidung 4); ein `404` oder `403` ändert nichts. Der Anker des inkrementellen
+Abgleichs bleibt unberührt. Läuft für die Bibliothek gerade ein anderer Lauf, wartet der Stapel und
+wird nach `OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_DEFERRALS` Verschiebungen verworfen — der nächste
+Lauf deckt dieselben Seiten ab, ein Verwerfen kostet Aktualität, nie Korrektheit; ein Stapel mit
+mehr als `OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_PENDING_PAGES` Seiten läuft als gewöhnlicher
+inkrementeller Abgleich. Der Webhook ersetzt weder Zeitplan noch Vollabgleich: Ohne ihn ist
+nichts falsch, nur später. Bewusste Grenze: **kein Replay-Schutz** — eine mitgeschnittene, gültig
+signierte Nachricht (oder der Cloud-Header) lässt sich wieder einspielen und kostet dann je einen
+gezielten Lauf, gedeckelt durch die Ratenbegrenzung; für den Index ist das folgenlos, weil erst der
+Abruf entscheidet.
+
+**Betriebsgrenzen (#1141):** Jeder Lauf hat ein Anfragebudget
+(`OPAA_INDEXING_CONFLUENCE_REQUEST_BUDGET_PER_RUN`, Standard 50 000 Aufrufe; Wiederholungen nach
+`429` und Anhangs-Downloads zählen mit; es gilt nur für Läufe, nicht für Verbindungstest und
+Editionserkennung). Ist es erschöpft, endet der Lauf **geordnet als „unvollständig, wird
+fortgesetzt“** — im Laufprotokoll als eigenes Ereignis mit der Stelle, an der der nächste Lauf
+ansetzt, im Zustand und in der API als `incomplete`, nicht als Fehler. Der Vollabgleich hält seinen
+Fortschritt je Space fest (auch über einen Prozessneustart hinweg); ein Wiederaufnahmelauf listet die
+offenen Spaces erneut auf, gibt aber für eine bereits in der aufgelisteten Version gespeicherte Seite
+**keinen Aufruf** aus — auch nicht für ihre Anhangsliste; neue Anhänge an solchen Seiten erreichen
+den Index mit dem nächsten vollständigen Vollabgleich. So konvergiert die Kette der
+Wiederaufnahmeläufe, solange das Budget die Auflistung eines Spaces plus eine Handvoll Seiten
+übersteigt; ein Lauf, der trotz erschöpftem Budget keine Seite neu aufgenommen hat, meldet das als
+Fehler („reicht für diese Bibliothek nicht aus“). Der inkrementelle Abgleich lässt seinen Anker
+stehen und durchsucht dasselbe Fenster erneut; ein Webhook-Lauf überlässt die übrigen gemeldeten
+Seiten dem nächsten Lauf. Jeder Lauf trägt seine **Kennzahlen** (gesendete Aufrufe, Drosselungen und
+Wartezeit, indizierte/übersprungene/fehlgeschlagene Anhänge, Dauer aus Start- und Endzeit) in der
+Laufübersicht; zusammen mit den Dokumentzählern liest der Betrieb daran Durchsatz und
+Budgetverbrauch ab. Der Standardwert ist gemessen (Container-Suite gegen ein echtes Confluence Data
+Center, Zahlen in PR #1205): zwei Aufrufe je Seite plus ein Download je Anhang plus ein
+Auflistungsaufruf je 100 Seiten — 50 000 Aufrufe decken rund 20 000 neue oder geänderte Seiten je
+Lauf.
+
+**Die Aufbereitung (#1137)** übernimmt
+`ConfluenceDocumentPipeline`: Makro-Regelwerk (statischer Inhalt bleibt, zur Laufzeit erzeugter
+entfällt), Überschriften, Tabellen, Listen, Code und Hinweiskästen als lesbarer Text, der
+Gliederungspfad der Seite am Dokument und im Chunk-Kontext — Einzelheiten in
+[ingestion-pipelines.md](./ingestion-pipelines.md), Teil 3, Punkt 6. Abgenommen wird der Konnektor auf
+zwei Ebenen: Das gemeinsame Testdoppel beider Editionen läuft mit jedem PR; zusätzlich startet
+`./gradlew confluenceIntegrationTest` (#1171) ein echtes Confluence Data Center im Container —
+Einrichtungsassistent, 3-Stunden-Testlizenz, Administrator, zwei Token mit unterschiedlichen
+Space-Rechten und ein definierter Testinhalt vollautomatisch — und prüft Editionserkennung,
+Space-Auflistung, Seiten- und Anhangsabruf und das sichtbare Überspringen nicht lesbarer Inhalte
+dagegen; in CI nächtlich und je PR per Label `confluence-suite`, nie im regulären Build. Cloud lässt
+sich nicht containerisieren und bleibt Sache des Testdoppels. Weitere Quellklassen kommen bedarfsgetrieben hinzu, jede
 als neuer Bibliothekstyp (Template); die Anbindung an Dokumentenmanagement und elektronische Akte
 gehört in den Ausblick der Produktvision.
 
@@ -538,7 +656,7 @@ Entscheidung, kein Rollenkonstrukt tritt an ihre Stelle (ADR-0018, Entscheidung 
 
 | Wer | Entscheidet |
 |---|---|
-| Wer die Bibliothek anlegt | Quellentyp und Konfiguration — jeder mit Anlageberechtigung; für `FILESYSTEM` sichert die Pfad-Allowlist ab (**gebaut**, #484), für `HTTP_DIRECTORY`/`RSS_FEED` sichert die Zielprüfung ab (**gebaut**, #267) |
+| Wer die Bibliothek anlegt | Quellentyp und Konfiguration — jeder mit Anlageberechtigung; für `FILESYSTEM` sichert die Pfad-Allowlist ab (**gebaut**, #484), für `HTTP_DIRECTORY`/`RSS_FEED`/`CONFLUENCE` sichert die Zielprüfung ab (**gebaut**, #267) |
 | Eigentümer der Bibliothek | wer den Bestand lesen darf, bis zur **Obergrenze der Freigabe** bei lauf-basierten Bibliotheken |
 
 Ohne die Obergrenze könnte ein Bibliothekseigentümer einen lauf-basierten Bestand organisationsweit

@@ -1,17 +1,21 @@
 package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
+import io.opaa.api.dto.ConfluenceSpaceRef;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibraryScheduleRequest;
 import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.api.types.ScheduleWeekday;
+import io.opaa.library.ConfluenceSpaceSelection;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryDetail;
@@ -74,6 +78,7 @@ class LibraryResponseMapperTest {
     assertThat(response.getSourceUrl()).isNull();
     assertThat(response.getSourceProxy()).isNull();
     assertThat(response.getSourceCredentialsSet()).isNull();
+    assertThat(response.getConfluenceWebhookSecretSet()).isNull();
     assertThat(response.getSchedule()).isNull();
     assertThat(response.getLastScheduledRunsFailed()).isNull();
     assertThat(response.getStorageQuotaBytes()).isNull();
@@ -126,6 +131,7 @@ class LibraryResponseMapperTest {
             "proxy.example.com:8080",
             true,
             true,
+            true,
             schedule,
             false,
             1_000_000L,
@@ -136,6 +142,7 @@ class LibraryResponseMapperTest {
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);
 
     assertThat(response.getSourcePath()).isEqualTo("/data/documents");
+    assertThat(response.getConfluenceWebhookSecretSet()).isTrue();
     assertThat(response.getSourceUrl()).isEqualTo(URI.create("https://example.com/documents/"));
     assertThat(response.getSourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(response.getSourceInsecureSsl()).isTrue();
@@ -163,7 +170,7 @@ class LibraryResponseMapperTest {
             LibraryVisibility.PRIVATE,
             false);
     LibraryManagementDetail managementDetail =
-        new LibraryManagementDetail(null, null, null, false, false, null, null, 0L, 0L);
+        new LibraryManagementDetail(null, null, null, false, false, null, null, null, 0L, 0L);
     LibraryDetail detail = new LibraryDetail(library, AssetRole.OWNER, 0L, managementDetail, true);
 
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);
@@ -281,6 +288,83 @@ class LibraryResponseMapperTest {
     assertThat(update.schedule().hour()).isEqualTo(6);
     assertThat(update.schedule().minute()).isEqualTo(0);
     assertThat(update.schedule().weekday()).isEqualTo(ScheduleWeekday.FRIDAY);
+  }
+
+  @Test
+  void toCreationAndToUpdateCarryEditionAndSpaces() {
+    LibraryRequest request =
+        new LibraryRequest("Wiki", DocumentSourceType.CONFLUENCE)
+            .sourceUrl(URI.create("https://wiki.example.org"))
+            .sourceCredentials("pat")
+            .confluenceEdition(ConfluenceEdition.DATA_CENTER)
+            .confluenceSpaces(
+                List.of(
+                    new ConfluenceSpaceRef("ENG").name("Engineering"),
+                    new ConfluenceSpaceRef("HR")));
+
+    LibraryCreation creation = LibraryResponseMapper.toCreation(request);
+
+    assertThat(creation.confluenceEdition()).isEqualTo(ConfluenceEdition.DATA_CENTER);
+    assertThat(creation.confluenceSpaces())
+        .extracting(ConfluenceSpaceSelection::getSpaceKey, ConfluenceSpaceSelection::getSpaceName)
+        .containsExactly(tuple("ENG", "Engineering"), tuple("HR", null));
+
+    LibraryUpdateRequest update =
+        new LibraryUpdateRequest("Wiki")
+            .confluenceEdition(ConfluenceEdition.DATA_CENTER)
+            .confluenceSpaces(List.of(new ConfluenceSpaceRef("OPS")));
+    LibraryUpdate mapped = LibraryResponseMapper.toUpdate(update);
+    assertThat(mapped.confluenceEdition()).isEqualTo(ConfluenceEdition.DATA_CENTER);
+    assertThat(mapped.confluenceSpaces())
+        .extracting(ConfluenceSpaceSelection::getSpaceKey)
+        .containsExactly("OPS");
+
+    // absent means "leave the selection alone", not "clear it"
+    assertThat(LibraryResponseMapper.toUpdate(new LibraryUpdateRequest("Wiki")).confluenceSpaces())
+        .isNull();
+  }
+
+  @Test
+  void toResponseCarriesEditionAndSpacesForConfluenceAndNothingForOtherTypes() {
+    KnowledgeLibrary confluence =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Wiki",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false,
+            DocumentSourceType.CONFLUENCE,
+            null,
+            "https://wiki.example.org",
+            null,
+            "pat-geheim",
+            false);
+    confluence.configureConfluence(
+        ConfluenceEdition.CLOUD,
+        List.of(
+            new ConfluenceSpaceSelection("HR", "Personal"),
+            new ConfluenceSpaceSelection("ENG", null)));
+
+    LibraryResponse response =
+        LibraryResponseMapper.toResponse(
+            new LibraryDetail(
+                confluence, AssetRole.VIEWER, 0, LibraryManagementDetail.EMPTY, false));
+
+    assertThat(response.getConfluenceEdition()).isEqualTo(ConfluenceEdition.CLOUD);
+    assertThat(response.getConfluenceSpaces())
+        .extracting(ConfluenceSpaceRef::getKey, ConfluenceSpaceRef::getName)
+        .containsExactly(tuple("ENG", null), tuple("HR", "Personal"));
+    assertThat(response.toString()).doesNotContain("pat-geheim");
+
+    KnowledgeLibrary upload =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(), "Upload", null, UUID.randomUUID(), LibraryVisibility.PRIVATE, false);
+    LibraryResponse plain =
+        LibraryResponseMapper.toResponse(
+            new LibraryDetail(upload, AssetRole.OWNER, 0, LibraryManagementDetail.EMPTY, false));
+    assertThat(plain.getConfluenceEdition()).isNull();
+    assertThat(plain.getConfluenceSpaces()).isNull();
   }
 
   @Test

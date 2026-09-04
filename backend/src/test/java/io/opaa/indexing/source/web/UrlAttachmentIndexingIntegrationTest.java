@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
@@ -12,6 +13,7 @@ import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunEventRepository;
+import io.opaa.indexing.JobTriggerSource;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -176,8 +178,13 @@ class UrlAttachmentIndexingIntegrationTest {
 
   /** Runs one full executor pass - synchronous, since the executor is called directly here. */
   private void run() {
-    IndexingJob job = indexingJobService.startJob(library.getId(), Organization.DEFAULT_ID);
-    executor.execute(job.getId(), library);
+    IndexingJob job =
+        indexingJobService.startJob(
+            library.getId(),
+            Organization.DEFAULT_ID,
+            JobTriggerSource.MANUAL,
+            IndexingRunMode.FULL);
+    executor.execute(job.getId(), library, IndexingRunMode.FULL);
   }
 
   @Test

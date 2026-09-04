@@ -323,9 +323,9 @@ class LibraryAccessServiceTest {
             LibraryVisibility.ORGANIZATION,
             false);
     setId(orgWide, orgLibrary);
-    when(libraryRepository.findByOrganizationIdAndVisibility(
+    when(libraryRepository.findIdsByOrganizationIdAndVisibility(
             organizationId, LibraryVisibility.ORGANIZATION))
-        .thenReturn(List.of(orgWide));
+        .thenReturn(List.of(orgWide.getId()));
 
     Set<UUID> readable = accessService.readableLibraryIds(userId, organizationId);
 
@@ -336,7 +336,7 @@ class LibraryAccessServiceTest {
   void readableLibraryIdsIsEmptyForAUserWithNoGrantsNoGroupsAndNoOrganizationWideLibrary() {
     when(grantRepository.findReadableLibraryIdsByDirectGrant(eq(userId), eq(organizationId), any()))
         .thenReturn(Set.of());
-    when(libraryRepository.findByOrganizationIdAndVisibility(
+    when(libraryRepository.findIdsByOrganizationIdAndVisibility(
             organizationId, LibraryVisibility.ORGANIZATION))
         .thenReturn(List.of());
 

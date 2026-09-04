@@ -55,11 +55,17 @@ public class StoredDocumentSourceAccess {
     this.uploadProperties = uploadProperties;
   }
 
-  /** Whether {@code document}'s bytes live on a remote the connector run alone can re-read. */
+  /**
+   * Whether {@code document}'s bytes live on a remote the connector run alone can re-read.
+   * Confluence included (#1137): clearing checksum and version marker makes the next run fetch and
+   * process the page again - the executor's pre-fetch version check and the processing checksum
+   * check both see "changed".
+   */
   public static boolean isRemote(Document document) {
     DocumentSourceType sourceType = document.getSourceType();
     return sourceType == DocumentSourceType.HTTP_DIRECTORY
-        || sourceType == DocumentSourceType.RSS_FEED;
+        || sourceType == DocumentSourceType.RSS_FEED
+        || sourceType == DocumentSourceType.CONFLUENCE;
   }
 
   /**
@@ -95,7 +101,7 @@ public class StoredDocumentSourceAccess {
     return switch (document.getSourceType()) {
       case FILESYSTEM -> filesystemFileWithinConfiguredDirectory(document, candidate);
       case UPLOAD -> uploadedFileWithinManagedStorage(document, candidate);
-      case HTTP_DIRECTORY, RSS_FEED -> null;
+      case HTTP_DIRECTORY, RSS_FEED, CONFLUENCE -> null;
     };
   }
 

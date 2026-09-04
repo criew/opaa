@@ -12,5 +12,6 @@ import io.opaa.api.types.DocumentSourceType;
 public enum IndexingSourceType {
   FILESYSTEM,
   HTTP_DIRECTORY,
-  RSS_FEED
+  RSS_FEED,
+  CONFLUENCE
 }

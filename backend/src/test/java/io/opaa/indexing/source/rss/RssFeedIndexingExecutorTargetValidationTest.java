@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
@@ -130,7 +131,7 @@ class RssFeedIndexingExecutorTargetValidationTest {
         });
     library.updateSourceConfiguration(null, baseUrl + "/feed.xml", null, null, false);
 
-    executor.execute(UUID.randomUUID(), library);
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
 
     verify(indexingJobService, timeout(2000))
         .failJob(

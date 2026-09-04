@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
@@ -17,6 +18,7 @@ import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunEventRepository;
+import io.opaa.indexing.JobTriggerSource;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.library.KnowledgeLibrary;
@@ -246,8 +248,13 @@ class UrlFolderMappingIntegrationTest {
   }
 
   private IndexingJob run(CrawlProperties crawlProperties) {
-    IndexingJob job = indexingJobService.startJob(library.getId(), Organization.DEFAULT_ID);
-    executor(crawlProperties).execute(job.getId(), library);
+    IndexingJob job =
+        indexingJobService.startJob(
+            library.getId(),
+            Organization.DEFAULT_ID,
+            JobTriggerSource.MANUAL,
+            IndexingRunMode.FULL);
+    executor(crawlProperties).execute(job.getId(), library, IndexingRunMode.FULL);
     return job;
   }
 

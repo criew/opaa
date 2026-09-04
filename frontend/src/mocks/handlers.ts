@@ -45,6 +45,7 @@ import {
   resetMockLibraryFolders,
   resetMockLibraryGrants,
   resetMockChats,
+  mockConfluenceSpaces,
 } from './fixtures'
 import type { MockLibraryFolder } from './fixtures'
 import type {
@@ -70,6 +71,9 @@ import type {
   LlmModelRequest,
   LlmModelTestRequest,
   QueryRequest,
+  ConfluenceEdition,
+  ConfluenceSpaceRef,
+  ConfluenceWebhookSecretResponse,
 } from '../types/api'
 
 // Mirrors SupportedDocumentFormats#EXTENSIONS (backend/src/main/java/io/opaa/indexing) - kept as a
@@ -495,6 +499,56 @@ export const handlers = [
       } satisfies IndexingStatusResponse,
       { status: 202 },
     )
+  }),
+
+  // #1140: the webhook secret is shown once; the mock keeps the yes/no on the library detail.
+  http.post('/api/v1/libraries/:libraryId/confluence-webhook-secret', ({ params }) => {
+    const libraryId = params.libraryId as string
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json(
+        { error: 'Bibliothek nicht gefunden', status: 404, timestamp: new Date().toISOString() },
+        { status: 404 },
+      )
+    }
+    if (library.sourceType !== 'CONFLUENCE') {
+      return HttpResponse.json(
+        {
+          error: 'Ein Webhook-Geheimnis gibt es nur für Bibliotheken vom Typ CONFLUENCE',
+          status: 400,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 },
+      )
+    }
+    mockLibraryDetails[libraryId] = { ...library, confluenceWebhookSecretSet: true }
+    return HttpResponse.json({
+      secret: 'mock-webhook-secret-' + libraryId.slice(0, 8),
+      path: `/api/v1/libraries/${libraryId}/confluence-webhook`,
+    } satisfies ConfluenceWebhookSecretResponse)
+  }),
+
+  http.delete('/api/v1/libraries/:libraryId/confluence-webhook-secret', ({ params }) => {
+    const libraryId = params.libraryId as string
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json(
+        { error: 'Bibliothek nicht gefunden', status: 404, timestamp: new Date().toISOString() },
+        { status: 404 },
+      )
+    }
+    if (library.sourceType !== 'CONFLUENCE') {
+      return HttpResponse.json(
+        {
+          error: 'Ein Webhook-Geheimnis gibt es nur für Bibliotheken vom Typ CONFLUENCE',
+          status: 400,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 },
+      )
+    }
+    mockLibraryDetails[libraryId] = { ...library, confluenceWebhookSecretSet: false }
+    return new HttpResponse(null, { status: 204 })
   }),
 
   http.get('/api/v1/libraries/:libraryId/indexing/status', ({ params }) => {
@@ -1181,6 +1235,8 @@ export const handlers = [
       sourceProxy?: string | null
       sourceCredentials?: string | null
       sourceInsecureSsl?: boolean | null
+      confluenceEdition?: ConfluenceEdition | null
+      confluenceSpaces?: ConfluenceSpaceRef[] | null
     }
     if (!body.name || body.name.trim() === '') {
       return HttpResponse.json(
@@ -1242,6 +1298,37 @@ export const handlers = [
         )
       }
     }
+    if (body.sourceType === 'CONFLUENCE') {
+      // Mirrors KnowledgeLibraryService#validateConfluenceConfiguration just enough for the
+      // wizard tests; the full flow arrives with #1135.
+      if (!body.sourceUrl) {
+        return HttpResponse.json(
+          { error: 'sourceUrl ist erforderlich, wenn sourceType CONFLUENCE ist' },
+          { status: 400 },
+        )
+      }
+      if (!body.confluenceEdition) {
+        return HttpResponse.json(
+          { error: 'confluenceEdition ist erforderlich, wenn sourceType CONFLUENCE ist' },
+          { status: 400 },
+        )
+      }
+      if (!body.sourceCredentials) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind erforderlich, wenn sourceType CONFLUENCE ist' },
+          { status: 400 },
+        )
+      }
+      if (!body.confluenceSpaces || body.confluenceSpaces.length === 0) {
+        return HttpResponse.json(
+          {
+            error:
+              'confluenceSpaces: mindestens ein Space ist erforderlich, wenn sourceType CONFLUENCE ist',
+          },
+          { status: 400 },
+        )
+      }
+    }
     if (body.sourceType === 'HTTP_DIRECTORY' || body.sourceType === 'RSS_FEED') {
       if (!body.sourceUrl) {
         return HttpResponse.json(
@@ -1287,21 +1374,52 @@ export const handlers = [
       sourceType: body.sourceType,
       sourcePath: body.sourceType === 'FILESYSTEM' ? (body.sourcePath ?? null) : null,
       sourceUrl:
-        body.sourceType === 'HTTP_DIRECTORY' || body.sourceType === 'RSS_FEED'
+        body.sourceType === 'HTTP_DIRECTORY' ||
+        body.sourceType === 'RSS_FEED' ||
+        body.sourceType === 'CONFLUENCE'
           ? (body.sourceUrl ?? null)
           : null,
       sourceProxy:
-        body.sourceType === 'HTTP_DIRECTORY' || body.sourceType === 'RSS_FEED'
+        body.sourceType === 'HTTP_DIRECTORY' ||
+        body.sourceType === 'RSS_FEED' ||
+        body.sourceType === 'CONFLUENCE'
           ? (body.sourceProxy ?? null)
           : null,
+      confluenceEdition: body.sourceType === 'CONFLUENCE' ? (body.confluenceEdition ?? null) : null,
+      confluenceSpaces: body.sourceType === 'CONFLUENCE' ? (body.confluenceSpaces ?? null) : null,
       // sourceCredentials ist Nur-Schreiben (ADR-0018) - bewusst nicht in der Detailantwort.
       sourceInsecureSsl:
-        body.sourceType === 'HTTP_DIRECTORY' || body.sourceType === 'RSS_FEED'
+        body.sourceType === 'HTTP_DIRECTORY' ||
+        body.sourceType === 'RSS_FEED' ||
+        body.sourceType === 'CONFLUENCE'
           ? Boolean(body.sourceInsecureSsl)
           : null,
     }
     mockLibraryDetails[id] = detail
     return HttpResponse.json(detail, { status: 201 })
+  }),
+
+  // #1134: the Confluence spaces the mock token may read - a fixed, searchable set for the wizard.
+  http.post('/api/v1/libraries/confluence/spaces', async ({ request }) => {
+    const body = (await request.json()) as {
+      sourceUrl?: string
+      confluenceEdition?: ConfluenceEdition
+      sourceCredentials?: string | null
+      libraryId?: string | null
+    }
+    if (!body.sourceUrl || !body.confluenceEdition) {
+      return HttpResponse.json(
+        { error: 'sourceUrl und confluenceEdition sind erforderlich' },
+        { status: 400 },
+      )
+    }
+    if (!body.sourceCredentials && !body.libraryId) {
+      return HttpResponse.json(
+        { error: 'sourceCredentials sind für die Space-Auflistung erforderlich' },
+        { status: 400 },
+      )
+    }
+    return HttpResponse.json({ spaces: mockConfluenceSpaces })
   }),
 
   // #514: mirrors SourceConnectionTestService's per-type validation just enough that the mock
@@ -1312,6 +1430,58 @@ export const handlers = [
       sourceType: DocumentSourceType
       sourcePath?: string | null
       sourceUrl?: string | null
+      sourceCredentials?: string | null
+      confluenceEdition?: ConfluenceEdition | null
+    }
+    if (body.sourceType === 'CONFLUENCE') {
+      // Mirrors ConfluenceConnectionService#probe: the mock treats *.atlassian.net as Cloud and
+      // everything else as Data Center (the real detector reads the instance's signature, never
+      // the host name); credentials are verified only when given.
+      if (!body.sourceUrl) {
+        return HttpResponse.json(
+          { error: 'sourceUrl ist erforderlich, wenn sourceType CONFLUENCE ist' },
+          { status: 400 },
+        )
+      }
+      const detected: ConfluenceEdition = /atlassian\.net/i.test(body.sourceUrl)
+        ? 'CLOUD'
+        : 'DATA_CENTER'
+      const label = (edition: ConfluenceEdition) => (edition === 'CLOUD' ? 'Cloud' : 'Data Center')
+      if (body.confluenceEdition && body.confluenceEdition !== detected) {
+        return HttpResponse.json({
+          reachable: false,
+          confluenceEdition: detected,
+          credentialsVerified: false,
+          message: `Unter dieser Adresse antwortet Confluence ${label(detected)}, nicht ${label(body.confluenceEdition)}.`,
+        })
+      }
+      if (!body.sourceCredentials) {
+        return HttpResponse.json({
+          reachable: true,
+          confluenceEdition: detected,
+          credentialsVerified: false,
+          message:
+            detected === 'CLOUD'
+              ? 'Confluence Cloud erkannt. Geben Sie E-Mail-Adresse und API-Token des Dienstkontos ein.'
+              : 'Confluence Data Center erkannt. Geben Sie das Personal Access Token des Dienstkontos ein.',
+        })
+      }
+      if (detected === 'CLOUD' && !body.sourceCredentials.includes(':')) {
+        return HttpResponse.json({
+          reachable: false,
+          confluenceEdition: detected,
+          credentialsVerified: false,
+          message:
+            'Confluence Cloud erwartet E-Mail-Adresse und API-Token, getrennt durch einen Doppelpunkt (E-Mail:Token).',
+        })
+      }
+      return HttpResponse.json({
+        reachable: true,
+        confluenceEdition: detected,
+        credentialsVerified: true,
+        documentCount: mockConfluenceSpaces.length,
+        message: `Confluence ${label(detected)} erreichbar, Zugangsdaten gültig, ${mockConfluenceSpaces.length} lesbare Spaces.`,
+      })
     }
     if (body.sourceType === 'UPLOAD') {
       return HttpResponse.json(

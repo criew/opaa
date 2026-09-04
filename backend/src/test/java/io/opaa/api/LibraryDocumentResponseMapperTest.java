@@ -6,6 +6,7 @@ import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.library.LibraryDocumentEntry;
 import io.opaa.library.LibraryDocumentPage;
 import io.opaa.library.LibraryFolder;
@@ -39,6 +40,43 @@ class LibraryDocumentResponseMapperTest {
 
     assertThat(response.getSourceEntryUrl())
         .isEqualTo("https://example.gov/aktuelles/dienstanweisung-2024");
+  }
+
+  // ADR-0023 (#1136): the space key and hierarchy path a Confluence run stamps on every document
+  // must reach the document list - without them a reader cannot tell which space a row belongs to.
+  @Test
+  void carriesSourceContainerKeyAndHierarchyPathForAConfluenceDocument() {
+    Document document =
+        new Document(
+            "Abschnitt 1.1 — Firewall-Regeln",
+            "https://wiki.example/pages/viewpage.action?pageId=42",
+            "text/html",
+            2048L,
+            DocumentSourceType.CONFLUENCE);
+    document.applySourceContext(
+        new SourceDocumentContext("IT", "Betriebshandbuch / Kapitel 1 — Netzwerkbetrieb"));
+
+    LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(document);
+
+    assertThat(response.getSourceContainerKey()).isEqualTo("IT");
+    assertThat(response.getSourceHierarchyPath())
+        .isEqualTo("Betriebshandbuch / Kapitel 1 — Netzwerkbetrieb");
+  }
+
+  @Test
+  void leavesContainerKeyAndHierarchyPathNullForAnUploadedDocument() {
+    Document document =
+        new Document(
+            "dienstanweisung-2024.pdf",
+            "/data/dienstanweisung-2024.pdf",
+            "application/pdf",
+            2048L,
+            DocumentSourceType.UPLOAD);
+
+    LibraryDocumentResponse response = LibraryDocumentResponseMapper.toResponse(document);
+
+    assertThat(response.getSourceContainerKey()).isNull();
+    assertThat(response.getSourceHierarchyPath()).isNull();
   }
 
   @Test

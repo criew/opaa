@@ -1,4 +1,9 @@
-import type { DocumentSourceType } from '../types/api'
+import type { ConfluenceEdition, ConfluenceSpaceRef, DocumentSourceType } from '../types/api'
+import {
+  confluenceCredentialsOf,
+  validateConfluenceValues,
+  type ConfluenceSourceValues,
+} from './confluenceSource'
 import { documentSourceTypeConfigKind } from './labels'
 
 /** Raw, untyped field state as entered in LibraryCreatePage/EditLibrarySourceDialog. */
@@ -8,15 +13,23 @@ export interface LibrarySourceFieldValues {
   sourceProxy: string
   sourceCredentials: string
   sourceInsecureSsl: boolean
+  /** Only read for configKind 'confluence' (ADR-0023). */
+  confluence?: ConfluenceSourceValues
 }
 
-/** The five source configuration fields shared by LibraryRequest and LibraryUpdateRequest. */
+/**
+ * The source configuration fields shared by LibraryRequest and LibraryUpdateRequest: the five
+ * generic ones plus the two Confluence-only ones (ADR-0023), which stay undefined for every other
+ * source type.
+ */
 export interface LibrarySourceConfigPayload {
   sourcePath?: string
   sourceUrl?: string
   sourceProxy?: string
   sourceCredentials?: string
   sourceInsecureSsl: boolean
+  confluenceEdition?: ConfluenceEdition
+  confluenceSpaces?: ConfluenceSpaceRef[]
 }
 
 /**
@@ -30,9 +43,12 @@ export interface LibrarySourceConfigPayload {
  */
 export function validateLibrarySourceFields(
   sourceType: DocumentSourceType,
-  values: Pick<LibrarySourceFieldValues, 'sourcePath' | 'sourceUrl'>,
+  values: Pick<LibrarySourceFieldValues, 'sourcePath' | 'sourceUrl' | 'confluence'>,
 ): string | null {
   const configKind = documentSourceTypeConfigKind[sourceType]
+  if (configKind === 'confluence') {
+    return validateConfluenceValues(values.confluence)
+  }
   const trimmedPath = values.sourcePath.trim()
   if (configKind === 'path' && !trimmedPath) {
     return 'Verzeichnispfad ist erforderlich'
@@ -63,6 +79,17 @@ export function deriveLibrarySourceConfigPayload(
   values: LibrarySourceFieldValues,
 ): LibrarySourceConfigPayload {
   const configKind = documentSourceTypeConfigKind[sourceType]
+  if (configKind === 'confluence' && values.confluence) {
+    const c = values.confluence
+    return {
+      sourceUrl: c.sourceUrl.trim(),
+      sourceProxy: c.sourceProxy.trim() || undefined,
+      sourceCredentials: confluenceCredentialsOf(c),
+      sourceInsecureSsl: c.sourceInsecureSsl,
+      confluenceEdition: c.edition ?? undefined,
+      confluenceSpaces: c.spaces.map((space) => ({ key: space.key, name: space.name ?? null })),
+    }
+  }
   return {
     sourcePath: configKind === 'path' ? values.sourcePath.trim() : undefined,
     sourceUrl: configKind === 'url' ? values.sourceUrl.trim() : undefined,

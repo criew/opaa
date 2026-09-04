@@ -1,8 +1,10 @@
 package io.opaa.library;
 
+import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
 import java.net.URI;
+import java.util.List;
 
 /**
  * Parameters for {@link KnowledgeLibraryService#updateLibrary} - replaces the generated {@code
@@ -26,4 +28,6 @@ public record LibraryUpdate(
     String sourceProxy,
     String sourceCredentials,
     Boolean sourceInsecureSsl,
-    LibraryScheduleUpdate schedule) {}
+    LibraryScheduleUpdate schedule,
+    ConfluenceEdition confluenceEdition,
+    List<ConfluenceSpaceSelection> confluenceSpaces) {}

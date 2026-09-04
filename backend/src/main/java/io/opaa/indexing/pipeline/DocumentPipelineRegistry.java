@@ -174,6 +174,14 @@ public class DocumentPipelineRegistry {
   }
 
   /**
+   * The registered pipeline with {@code id}, for a caller that invokes a pipeline directly instead
+   * of routing by format - the Confluence page pipeline claims no format at all (#1137).
+   */
+  public java.util.Optional<DocumentPipeline> pipelineById(String id) {
+    return all.stream().filter(pipeline -> pipeline.id().equals(id)).findFirst();
+  }
+
+  /**
    * The id of the pipeline that claims {@code routingExtension} today - the exact counterpart of
    * {@link #pipelineFor(String, String)} for a chunk's own {@link
    * ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} instead of a freshly detected media type

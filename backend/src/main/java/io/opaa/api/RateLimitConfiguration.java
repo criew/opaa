@@ -29,16 +29,22 @@ public class RateLimitConfiguration {
     // per-IP limiter by library, so triggering indexing for one library doesn't block a different
     // library from the same client.
     String indexingTriggerPattern = "^/api/v1/libraries/([^/]+)/indexing$";
-    // #514/PR #537 review, finding 3: a plain literal, not a regex capture group like the
-    // indexing trigger above - source-test carries no library (there is none yet), so there is
-    // nothing to key a per-library limiter by.
-    String sourceTestPattern = "^/api/v1/libraries/source-test$";
+    // No capture group here (unlike the indexing trigger above): these probes carry no library -
+    // there is none yet - so the per-IP limiter is keyed by the client alone. The alternation is
+    // non-capturing on purpose: a capturing group would give each path its own bucket and double
+    // the outbound probe budget. The Confluence space listing (ADR-0023) is the same kind of
+    // synchronous outbound probe as the connection test and shares its limit.
+    String sourceTestPattern = "^/api/v1/libraries/(?:source-test|confluence/spaces)$";
     // #748 review, finding 1: a flat pattern, mirroring source-test above rather than the
     // per-library indexing trigger's capture group - unlike triggering an indexing run, "Im
     // Dokument öffnen" is a routine per-document click any VIEWER can make on any document, so
     // keying the limiter by document id would let the same caller bypass the limit simply by
     // clicking a different document each time.
     String documentContentPattern = "^/api/v1/documents/[^/]+/content$";
+    // #1140: the webhook intake is the only POST under /api/v1 reachable without a session. The
+    // capture group keys the per-IP limiter by library, like the indexing trigger: one instance
+    // notifying several libraries is several senders, not one.
+    String webhookPattern = "^/api/v1/libraries/([^/]+)/confluence-webhook$";
 
     Map<String, RateLimitService> perIpLimiters = new LinkedHashMap<>();
     perIpLimiters.put(
@@ -57,6 +63,10 @@ public class RateLimitConfiguration {
         new RateLimitService(
             properties.documentContent().maxRequests(),
             properties.documentContent().windowSeconds()));
+    perIpLimiters.put(
+        webhookPattern,
+        new RateLimitService(
+            properties.webhook().maxRequests(), properties.webhook().windowSeconds()));
 
     Map<String, RateLimitService> globalLimiters = new LinkedHashMap<>();
     globalLimiters.put(
@@ -76,6 +86,10 @@ public class RateLimitConfiguration {
         new RateLimitService(
             properties.documentContent().globalMaxRequests(),
             properties.documentContent().windowSeconds()));
+    globalLimiters.put(
+        webhookPattern,
+        new RateLimitService(
+            properties.webhook().globalMaxRequests(), properties.webhook().windowSeconds()));
 
     var registration =
         new FilterRegistrationBean<>(

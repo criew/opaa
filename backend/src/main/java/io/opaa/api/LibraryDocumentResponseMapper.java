@@ -46,6 +46,8 @@ final class LibraryDocumentResponseMapper {
         .uploadedByUserId(document.getUploadedByUserId())
         .sourceEntryUrl(document.getSourceEntryUrl())
         .sourceUrl(document.getDeepLinkSourceUrl())
+        .sourceContainerKey(document.getSourceContainerKey())
+        .sourceHierarchyPath(document.getSourceHierarchyPath())
         .errorMessage(document.getErrorMessage())
         .folderId(document.getFolderId())
         .folderPath(folderPath)

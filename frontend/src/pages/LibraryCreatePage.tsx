@@ -20,9 +20,12 @@ import { useNavigate } from 'react-router'
 import PageHeading from '../components/a11y/PageHeading'
 import { blue } from '../theme/tokens'
 import FieldLabel from '../components/wizard/FieldLabel'
+import ConfluenceSourceForm from '../components/library/ConfluenceSourceForm'
+import { EMPTY_CONFLUENCE_VALUES, type ConfluenceSourceValues } from '../utils/confluenceSource'
 import WizardStepBar from '../components/wizard/WizardStepBar'
 import { getMyGroups, testLibrarySource, upsertLibraryGrant } from '../services/api'
 import { useLibraryStore } from '../stores/libraryStore'
+import { useIndexingStore } from '../stores/indexingStore'
 import { useUserSearch } from '../hooks/useUserSearch'
 import {
   allDocumentSourceTypes,
@@ -70,6 +73,7 @@ interface PendingGrant {
 export default function LibraryCreatePage() {
   const navigate = useNavigate()
   const createNewLibrary = useLibraryStore((s) => s.createNewLibrary)
+  const triggerIndexing = useIndexingStore((s) => s.triggerIndexing)
 
   const [activeStep, setActiveStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -89,6 +93,10 @@ export default function LibraryCreatePage() {
   const [sourceProxy, setSourceProxy] = useState('')
   const [sourceCredentials, setSourceCredentials] = useState('')
   const [sourceInsecureSsl, setSourceInsecureSsl] = useState(false)
+  const [confluence, setConfluence] = useState<ConfluenceSourceValues>(EMPTY_CONFLUENCE_VALUES)
+  // Opt-out, not opt-in: whoever just configured a source expects content - the first run (a full
+  // reconciliation over the selected spaces) starts right after creation unless switched off.
+  const [startFirstRun, setStartFirstRun] = useState(true)
   const [testResult, setTestResult] = useState<SourceConnectionTestResponse | null>(null)
   const [testErrorMessage, setTestErrorMessage] = useState<string | null>(null)
   const [testing, setTesting] = useState(false)
@@ -155,6 +163,9 @@ export default function LibraryCreatePage() {
     description.trim() !== '' ||
     sourcePath !== '' ||
     sourceUrl !== '' ||
+    confluence.sourceUrl !== '' ||
+    confluence.sourceProxy !== '' ||
+    confluence.sourceInsecureSsl ||
     pendingGrants.length > 0
 
   const handleCancel = () => {
@@ -170,7 +181,11 @@ export default function LibraryCreatePage() {
       return
     }
     if (activeStep === 1) {
-      const validationError = validateLibrarySourceFields(sourceType, { sourcePath, sourceUrl })
+      const validationError = validateLibrarySourceFields(sourceType, {
+        sourcePath,
+        sourceUrl,
+        confluence,
+      })
       if (validationError) {
         setError(validationError)
         return
@@ -181,7 +196,11 @@ export default function LibraryCreatePage() {
   }
 
   const handleTest = async () => {
-    const validationError = validateLibrarySourceFields(sourceType, { sourcePath, sourceUrl })
+    const validationError = validateLibrarySourceFields(sourceType, {
+      sourcePath,
+      sourceUrl,
+      confluence,
+    })
     if (validationError) {
       setError(validationError)
       return
@@ -255,6 +274,7 @@ export default function LibraryCreatePage() {
           sourceProxy,
           sourceCredentials,
           sourceInsecureSsl,
+          confluence,
         }),
         visibility,
       })
@@ -276,6 +296,12 @@ export default function LibraryCreatePage() {
         )
         setSubmitting(false)
         return
+      }
+      if (configKind === 'confluence' && startFirstRun) {
+        // Awaited so the run is already in the indexing store when the detail page mounts and its
+        // progress strip picks it up. triggerIndexing never throws - a failure surfaces through
+        // the global indexing snackbar, and the detail page still offers "Jetzt indizieren".
+        await triggerIndexing(libraryId, sourceType)
       }
       navigate(`/libraries/${libraryId}`)
     } catch (err) {
@@ -436,6 +462,35 @@ export default function LibraryCreatePage() {
               </Typography>
             )}
 
+            {configKind === 'confluence' && (
+              <Box sx={{ maxWidth: 640 }}>
+                <ConfluenceSourceForm
+                  mode="create"
+                  idPrefix="library-create-confluence"
+                  values={confluence}
+                  onChange={(patch) => {
+                    setConfluence((prev) => ({ ...prev, ...patch }))
+                    setError(null)
+                  }}
+                />
+                <FormControlLabel
+                  sx={{ mt: 2 }}
+                  control={
+                    <Switch
+                      checked={startFirstRun}
+                      onChange={(e) => setStartFirstRun(e.target.checked)}
+                    />
+                  }
+                  label="Erste Indizierung sofort nach dem Anlegen starten"
+                />
+                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+                  {startFirstRun
+                    ? 'Der erste Lauf ist ein Vollabgleich über alle ausgewählten Spaces; sein Stand bleibt auf der Detailseite sichtbar.'
+                    : 'Ohne Sofortstart beginnt die Indizierung erst über „Jetzt indizieren“ auf der Detailseite oder über den Zeitplan.'}
+                </Typography>
+              </Box>
+            )}
+
             {configKind === 'path' && (
               <Box sx={{ maxWidth: 640 }}>
                 <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
@@ -547,7 +602,7 @@ export default function LibraryCreatePage() {
               </Box>
             )}
 
-            {configKind !== 'none' && (
+            {(configKind === 'path' || configKind === 'url') && (
               <Box sx={{ maxWidth: 640 }}>
                 <Button onClick={() => void handleTest()} disabled={testing} variant="outlined">
                   {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}

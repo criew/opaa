@@ -1,5 +1,5 @@
 import { AxiosError } from 'axios'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,7 +9,7 @@ import LibraryDetailPage from './LibraryDetailPage'
 import { useAuthStore } from '../stores/authStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useDocumentStore } from '../stores/documentStore'
-import { useIndexingStore } from '../stores/indexingStore'
+import { IDLE_RUN_STATE, useIndexingStore } from '../stores/indexingStore'
 import type {
   IndexingRunListResponse,
   IndexingStatusResponse,
@@ -348,6 +348,8 @@ describe('LibraryDetailPage', () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
     expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /bibliothek löschen/i })).not.toBeInTheDocument()
   })
@@ -355,6 +357,8 @@ describe('LibraryDetailPage', () => {
   it('offers "Rechte verwalten" for a MANAGER but hides it for a VIEWER', async () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
     expect(await screen.findByRole('button', { name: /rechte verwalten/i })).toBeInTheDocument()
     unmount()
 
@@ -372,6 +376,8 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
     expect(await screen.findByRole('button', { name: /speichern/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /bibliothek löschen/i })).toBeInTheDocument()
     expect(screen.getByText('administrativ')).toBeInTheDocument()
@@ -385,6 +391,7 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
+    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
     const nameField = await screen.findByLabelText(/name der bibliothek/i)
     await user.clear(nameField)
     await user.type(nameField, 'Rechtsquellen Soziales (neu)')
@@ -415,6 +422,7 @@ describe('LibraryDetailPage', () => {
     const user = userEvent.setup()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
 
+    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
     await user.click(await screen.findByRole('button', { name: /bibliothek löschen/i }))
 
     await waitFor(() => {
@@ -433,6 +441,7 @@ describe('LibraryDetailPage', () => {
     const user = userEvent.setup()
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
+    await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
     await user.click(await screen.findByRole('button', { name: /bibliothek löschen/i }))
 
     await waitFor(() => {
@@ -498,6 +507,8 @@ describe('LibraryDetailPage', () => {
       const user = userEvent.setup()
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
+      // Since the tab layout, the Diagnosesperre control lives in the "Verwaltung" area.
+      await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
       await user.click(await screen.findByRole('button', { name: /diagnosesperre lösen/i }))
 
       expect(await screen.findByText('Diagnose freigegeben')).toBeInTheDocument()
@@ -524,6 +535,8 @@ describe('LibraryDetailPage', () => {
       const user = userEvent.setup()
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
+      // Since the tab layout, the Diagnosesperre control lives in the "Verwaltung" area.
+      await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
       await user.click(await screen.findByRole('button', { name: /diagnosesperre lösen/i }))
 
       expect(
@@ -701,20 +714,216 @@ describe('LibraryDetailPage', () => {
       detailsOf(ownerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
     expect(
       await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
     ).toBeInTheDocument()
     unmount()
 
+    // Since the tab layout, a VIEWER has no "Indizierung" area at all - no tab, no section, and
+    // therefore no edit affordance (#507 unchanged: the path never reaches the client).
     setLibraryState(
       viewerLibrary,
       detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    await screen.findByText(/quellkonfiguration/i)
+    await screen.findByText(/87 Dokumente/i)
+    expect(screen.queryByRole('tab', { name: 'Indizierung' })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
     ).not.toBeInTheDocument()
+  })
+
+  it('shows a Confluence library read-only with edition and spaces, and still offers "Bearbeiten" (#1135)', async () => {
+    const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, {
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        sourceCredentialsSet: true,
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'BAU', name: 'Bauamt' }],
+      }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
+    expect(
+      await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('https://wiki.behoerde.example/confluence')).toBeInTheDocument()
+    expect(screen.getByText(/Data Center/)).toBeInTheDocument()
+    expect(screen.getByText(/nach der Anlage nicht änderbar/)).toBeInTheDocument()
+    expect(screen.getByText('Bauamt (BAU)')).toBeInTheDocument()
+    expect(screen.getByText(/gilt für alle Leseberechtigten der Bibliothek/)).toBeInTheDocument()
+    // the edition is never an input here
+    expect(screen.queryByRole('button', { name: 'Edition erkennen' })).not.toBeInTheDocument()
+    // #1138: the sharing consequence is stated permanently, above the fold
+    expect(screen.getByTestId('confluence-sharing-consequence')).toHaveTextContent(
+      /für alle Leseberechtigten dieser Bibliothek sichtbar/,
+    )
+  })
+
+  it('offers a forced full reconciliation only for a Confluence library (#1139)', async () => {
+    const mockTrigger = vi.fn().mockResolvedValue(undefined)
+    useIndexingStore.setState({ triggerIndexing: mockTrigger })
+    const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, {
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+      }),
+    )
+    const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Vollabgleich starten' }))
+    expect(mockTrigger).toHaveBeenCalledWith(ownerLibrary.id, 'CONFLUENCE', 'FULL')
+    await user.click(screen.getByRole('button', { name: 'Jetzt indizieren' }))
+    expect(mockTrigger).toHaveBeenLastCalledWith(ownerLibrary.id, 'CONFLUENCE')
+    expect(
+      screen.getByText(/in der Regel nur Änderungen seit dem letzten Lauf/),
+    ).toBeInTheDocument()
+    unmount()
+
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await screen.findByRole('button', { name: 'Jetzt indizieren' })
+    expect(screen.queryByRole('button', { name: 'Vollabgleich starten' })).not.toBeInTheDocument()
+  })
+
+  it('marks an incomplete run and shows its cost figures (#1141)', async () => {
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, {
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+      }),
+    )
+    server.use(
+      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
+        HttpResponse.json({
+          runs: [
+            {
+              id: 'run-budget',
+              status: 'COMPLETED',
+              triggeredBy: 'SCHEDULED',
+              runMode: 'FULL',
+              documentCount: 400,
+              totalDocuments: 900,
+              documentsSkipped: 20,
+              documentsFailed: 0,
+              documentsIndexedTotal: 430,
+              message:
+                'Indizierung abgeschlossen: 400 verarbeitet, 20 übersprungen, 0 fehlgeschlagen — unvollständig (Anfragebudget erschöpft), der nächste Lauf setzt fort',
+              startedAt: '2026-09-03T09:00:00Z',
+              completedAt: '2026-09-03T09:12:30Z',
+              incomplete: true,
+              metrics: {
+                requestsSent: 1000,
+                throttleCount: 2,
+                throttleWaitSeconds: 45,
+                attachmentsProcessed: 30,
+                attachmentsSkipped: 5,
+                attachmentsFailed: 1,
+              },
+              events: [
+                {
+                  category: 'BUDGET_EXHAUSTED',
+                  message:
+                    'Anfragebudget von 1000 Anfragen erschöpft; der Lauf endet unvollständig, der nächste Lauf setzt bei Space HR fort',
+                  reference: null,
+                },
+              ],
+              eventsTruncatedCount: 0,
+            },
+          ],
+        } satisfies IndexingRunListResponse),
+      ),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(await screen.findByTestId('run-incomplete-run-budget')).toHaveTextContent(
+      'unvollständig, wird fortgesetzt',
+    )
+    expect(screen.getByText('per Zeitplan')).toBeInTheDocument()
+    expect(screen.getByTestId('run-metrics-run-budget')).toHaveTextContent(
+      '1000 Anfragen an die Quelle · 2-mal gedrosselt (45 s gewartet) · Anhänge: 30 indiziert, 5 übersprungen, 1 fehlgeschlagen · Dauer 12 min 30 s',
+    )
+    expect(screen.getByText('Anfragebudget erschöpft')).toBeInTheDocument()
+  })
+
+  it('shows the webhook row to a manager of a Confluence library only (#1140)', async () => {
+    const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, {
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+        confluenceWebhookSecretSet: true,
+      }),
+    )
+    const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
+    expect(await screen.findByTestId('confluence-webhook-section')).toHaveTextContent(
+      /Webhook:.*eingerichtet/,
+    )
+    expect(screen.getByRole('button', { name: 'Geheimnis neu erzeugen' })).toBeInTheDocument()
+    unmount()
+
+    // a VIEWER sees edition and spaces (#1138), but no webhook affordance
+    setLibraryState(
+      viewerLibrary,
+      detailsOf(viewerLibrary, {
+        sourceType: 'CONFLUENCE',
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+      }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await screen.findByText('Engineering (ENG)')
+    expect(screen.queryByTestId('confluence-webhook-section')).not.toBeInTheDocument()
+  })
+
+  it('states the Confluence sharing consequence to a VIEWER as well, and never for other types (#1138)', async () => {
+    setLibraryState(
+      viewerLibrary,
+      detailsOf(viewerLibrary, {
+        sourceType: 'CONFLUENCE',
+        confluenceEdition: 'CLOUD',
+        confluenceSpaces: [{ key: 'BAU', name: 'Bauamt' }],
+      }),
+    )
+    const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    expect(await screen.findByTestId('confluence-sharing-consequence')).toHaveTextContent(
+      /weist das Laufprotokoll das aus/,
+    )
+    // the scope itself - edition and spaces - is visible to the VIEWER, address and proxy are not
+    expect(screen.getByText('Bauamt (BAU)')).toBeInTheDocument()
+    expect(screen.getByText(/Cloud/)).toBeInTheDocument()
+    expect(screen.queryByText(/Proxy/)).not.toBeInTheDocument()
+    unmount()
+
+    setLibraryState(
+      viewerLibrary,
+      detailsOf(viewerLibrary, { sourceType: 'RSS_FEED', sourceUrl: 'https://example.org/feed' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await screen.findByText(/Sie können diese Bibliothek einsehen/)
+    expect(screen.queryByTestId('confluence-sharing-consequence')).not.toBeInTheDocument()
   })
 
   // #507: the backend now only serves sourcePath/sourceUrl/sourceProxy/sourceInsecureSsl/
@@ -722,24 +931,25 @@ describe('LibraryDetailPage', () => {
   // carries none of them. This test still passes sourcePath explicitly in the VIEWER case to
   // prove the frontend itself withholds the display rather than merely reflecting an already
   // absent field.
-  it('shows the source configuration detail for a MANAGER but hides it behind an info hint for a VIEWER', async () => {
+  it('shows the source configuration detail for a MANAGER but not at all for a VIEWER', async () => {
     setLibraryState(
       managerLibrary,
       detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     expect(await screen.findByText('/data/dokumente')).toBeInTheDocument()
-    expect(screen.queryByText(/verbindungsdaten sind nur für verwaltende/i)).not.toBeInTheDocument()
     unmount()
 
+    // Since the tab layout, a VIEWER has no source configuration area (and no hint about it) -
+    // #507 unchanged: the backend never serves the path to a VIEWER, and the page renders no
+    // placeholder for data that was never sent.
     setLibraryState(
       viewerLibrary,
       detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
-    expect(
-      await screen.findByText(/verbindungsdaten sind nur für verwaltende/i),
-    ).toBeInTheDocument()
+    await screen.findByText(/87 Dokumente/i)
+    expect(screen.queryByRole('tab', { name: 'Indizierung' })).not.toBeInTheDocument()
     expect(screen.queryByText('/data/dokumente')).not.toBeInTheDocument()
   })
 
@@ -752,6 +962,7 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
+    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
     await user.click(
       await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
     )
@@ -825,6 +1036,7 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     const user = userEvent.setup()
 
+    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
     await user.click(await screen.findByRole('button', { name: /^zeitplan bearbeiten$/i }))
     await user.click(screen.getByRole('combobox', { name: /^zeitplan$/i }))
     await user.click(await screen.findByRole('option', { name: 'Stündlich' }))
@@ -870,6 +1082,39 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByText(/feed-einträge/i)).not.toBeInTheDocument()
   })
 
+  it('reloads the document list once a run finishes, without a manual page reload', async () => {
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await screen.findByLabelText('Dokumente durchsuchen')
+    const initialLoads = mockGetLibraryDocuments.mock.calls.length
+
+    // The status polling flips the run to RUNNING and later to COMPLETED - the falling edge is
+    // what must re-fetch the currently shown view of the document list.
+    act(() => {
+      useIndexingStore.setState({
+        runsByLibrary: { [managerLibrary.id]: { ...IDLE_RUN_STATE, status: 'RUNNING' } },
+      })
+    })
+    act(() => {
+      useIndexingStore.setState({
+        runsByLibrary: {
+          [managerLibrary.id]: {
+            ...IDLE_RUN_STATE,
+            status: 'COMPLETED',
+            timestamp: '2026-09-04T10:00:00Z',
+          },
+        },
+      })
+    })
+
+    await waitFor(() => {
+      expect(mockGetLibraryDocuments.mock.calls.length).toBeGreaterThan(initialLoads)
+    })
+  })
+
   // #513: the run history section shows past runs' header data up front and reveals each run's
   // own protocol (category/message/reference per skipped or rejected item) only after expanding
   // it - collapsed by default, so a library with a long history does not dump every event onto
@@ -887,6 +1132,7 @@ describe('LibraryDetailPage', () => {
               id: 'run-1',
               status: 'COMPLETED',
               triggeredBy: 'MANUAL',
+              runMode: 'FULL',
               documentCount: 10,
               totalDocuments: 12,
               documentsSkipped: 2,
@@ -909,6 +1155,7 @@ describe('LibraryDetailPage', () => {
       ),
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await userEvent.setup().click(await screen.findByRole('tab', { name: 'Indizierung' }))
 
     expect(await screen.findByText(/letzte indizierungsläufe/i)).toBeInTheDocument()
     await screen.findByText(/10 verarbeitet, 2 übersprungen/i)
@@ -929,6 +1176,69 @@ describe('LibraryDetailPage', () => {
     ).toBeVisible()
   })
 
+  // ADR-0023, Entscheidung 4 (#1136): a Confluence library's runs name their Betriebsart; for
+  // every other type the mode is implied by the source type and no chip is shown.
+  it("names the run mode on a Confluence library's runs and only there", async () => {
+    const run = {
+      id: 'run-voll',
+      status: 'COMPLETED',
+      triggeredBy: 'MANUAL',
+      runMode: 'FULL',
+      documentCount: 4,
+      totalDocuments: 4,
+      documentsSkipped: 0,
+      documentsFailed: 0,
+      documentsIndexedTotal: 5,
+      message: null,
+      startedAt: '2026-09-03T09:00:00Z',
+      completedAt: '2026-09-03T09:01:00Z',
+      events: [
+        {
+          category: 'RATE_LIMITED',
+          message: 'Confluence hat den Lauf 2-mal gedrosselt',
+          reference: null,
+        },
+        {
+          category: 'REJECTED',
+          message: 'Space SEC ist für das hinterlegte Dienstkonto nicht lesbar',
+          reference: 'SEC',
+        },
+      ],
+      eventsTruncatedCount: 0,
+    }
+    server.use(
+      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
+        HttpResponse.json({ runs: [run] }),
+      ),
+    )
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, {
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+      }),
+    )
+    const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    expect(await screen.findByTestId('run-mode-run-voll')).toHaveTextContent('Vollabgleich')
+    // #1138: a run that could not read something says so in its header, not only when expanded
+    expect(screen.getByText('2 Ereignisse, davon 1 nicht lesbar')).toBeInTheDocument()
+    const user = userEvent.setup()
+    // expanding the run through its own header (the mode chip sits inside the accordion summary)
+    await user.click(screen.getByTestId('run-mode-run-voll'))
+    expect(await screen.findByText('Ratenbegrenzung')).toBeInTheDocument()
+    unmount()
+
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    await screen.findByText(/4 verarbeitet/)
+    expect(screen.queryByTestId('run-mode-run-voll')).not.toBeInTheDocument()
+  })
+
   it('names how many further events a run recorded beyond the protocol cap', async () => {
     setLibraryState(
       managerLibrary,
@@ -942,6 +1252,7 @@ describe('LibraryDetailPage', () => {
               id: 'run-1',
               status: 'COMPLETED',
               triggeredBy: 'MANUAL',
+              runMode: 'FULL',
               documentCount: 1,
               totalDocuments: 600,
               documentsSkipped: 599,
@@ -1054,7 +1365,7 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    await screen.findByText(/quellkonfiguration/i)
+    await screen.findByText(/87 Dokumente/i)
     expect(screen.queryByText(/letzte indizierungsläufe/i)).not.toBeInTheDocument()
   })
 
@@ -1065,7 +1376,7 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    expect(await screen.findByText(/quellkonfiguration/i)).toBeInTheDocument()
+    await screen.findByText(/87 Dokumente/i)
     expect(screen.queryByRole('button', { name: /jetzt indizieren/i })).not.toBeInTheDocument()
   })
 
@@ -1462,6 +1773,89 @@ describe('LibraryDetailPage', () => {
   })
 
   describe('"Original öffnen"', () => {
+    it('opens a Confluence document at its source URL instead of the content endpoint (ADR-0023)', async () => {
+      // The backend's content endpoint deliberately answers 404 for CONFLUENCE - a page has no
+      // original file of its own; its original IS the page in the instance.
+      setLibraryState(
+        managerLibrary,
+        detailsOf(managerLibrary, {
+          sourceType: 'CONFLUENCE',
+          sourceUrl: 'http://wiki.example',
+          confluenceEdition: 'DATA_CENTER',
+          confluenceSpaces: [{ key: 'IT', name: 'IT-Betrieb' }],
+        }),
+      )
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([
+          {
+            id: 'doc-conf',
+            fileName: 'Betriebshandbuch',
+            contentType: 'text/html',
+            fileSize: 512,
+            status: 'INDEXED',
+            sourceType: 'CONFLUENCE',
+            chunkCount: 2,
+            indexedAt: '2026-09-04T10:00:00Z',
+            uploadedByUserId: null,
+            sourceUrl: 'http://wiki.example/pages/viewpage.action?pageId=42',
+          },
+        ]),
+      )
+      const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await user.click(
+        await screen.findByRole('button', { name: 'Original von Betriebshandbuch öffnen' }),
+      )
+
+      expect(openSpy).toHaveBeenCalledWith(
+        'http://wiki.example/pages/viewpage.action?pageId=42',
+        '_blank',
+        'noopener,noreferrer',
+      )
+      expect(mockOpenDocumentContent).not.toHaveBeenCalled()
+      openSpy.mockRestore()
+    })
+
+    it("names a Confluence document's space and hierarchy path in its row (ADR-0023)", async () => {
+      setLibraryState(
+        managerLibrary,
+        detailsOf(managerLibrary, {
+          sourceType: 'CONFLUENCE',
+          sourceUrl: 'http://wiki.example',
+          confluenceEdition: 'DATA_CENTER',
+          confluenceSpaces: [{ key: 'IT', name: 'IT-Betrieb' }],
+        }),
+      )
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([
+          {
+            id: 'doc-conf-space',
+            fileName: 'Abschnitt 1.1 — Firewall-Regeln',
+            contentType: 'text/html',
+            fileSize: 512,
+            status: 'INDEXED',
+            sourceType: 'CONFLUENCE',
+            chunkCount: 2,
+            indexedAt: '2026-09-04T10:00:00Z',
+            uploadedByUserId: null,
+            sourceUrl: 'http://wiki.example/pages/viewpage.action?pageId=43',
+            sourceContainerKey: 'IT',
+            sourceHierarchyPath: 'Betriebshandbuch / Kapitel 1 — Netzwerkbetrieb',
+          },
+        ]),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      // The key resolves to the name the library's own selection carries.
+      expect(
+        await screen.findByText(
+          'Space: IT-Betrieb (IT) · Betriebshandbuch / Kapitel 1 — Netzwerkbetrieb',
+        ),
+      ).toBeInTheDocument()
+    })
+
     it('fetches and opens the file as a Blob for a local (UPLOAD/FILESYSTEM) document', async () => {
       mockGetLibraryDocuments.mockResolvedValueOnce(
         pageOf([

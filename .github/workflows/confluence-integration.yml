@@ -1,0 +1,58 @@
+name: Confluence-Integration
+
+# Bewusst NICHT bei jedem Pull Request (ADR-0023, #1171): der Lauf startet ein echtes Confluence
+# Data Center samt Postgres in Docker, durchläuft dessen Einrichtungsassistenten und holt eine
+# öffentliche 3-Stunden-Testlizenz von der Atlassian-Entwicklerseite - mehrere Minuten je Lauf und
+# ein Internet-Roundtrip. Das gemeinsame Testdoppel beider Editionen läuft dagegen mit jedem PR im
+# regulären Backend-Job; diese Suite ist die zusätzliche Abnahme gegen die echte Data-Center-API.
+on:
+  schedule:
+    # Nach den anderen nächtlichen Docker-Läufen (E2E 3:17, Demo-Smoke 3:42, Retrieval 2:11 UTC),
+    # damit nicht mehrere speicherhungrige Container um denselben Runner konkurrieren.
+    - cron: '25 4 * * *'
+  workflow_dispatch: {}
+  # Kein branches-Filter: die Suite muss auch auf gestapelten PRs (Basis = anderer Feature-Branch)
+  # per Label startbar sein; das Opt-in regelt die if-Bedingung des Jobs.
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: confluence-integration-${{ github.event_name }}-${{ github.event.pull_request.number || 'none' }}-${{ github.event.label.name || 'none' }}
+  cancel-in-progress: false
+
+jobs:
+  confluence:
+    name: Confluence Data Center im Container
+    # Bei pull_request nur, wenn das Label "confluence-suite" gesetzt wurde - ein Opt-in je PR für
+    # Änderungen an der Zugriffsschicht oder den Läufen, ohne jeden PR zu belasten.
+    if: github.event_name != 'pull_request' || github.event.label.name == 'confluence-suite'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: backend/
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Confluence-Integrationstests ausführen
+        env:
+          OPAA_CONFLUENCE_IT: 'true'
+        run: ./gradlew confluenceIntegrationTest
+
+      - name: Testberichte hochladen
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: confluence-integration-test-reports
+          path: backend/build/reports/tests/
+          retention-days: 14

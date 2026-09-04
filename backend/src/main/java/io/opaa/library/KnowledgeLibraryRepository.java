@@ -3,9 +3,22 @@ package io.opaa.library;
 import io.opaa.api.types.LibraryVisibility;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibrary, UUID> {
+
+  /**
+   * The list loader used by {@code KnowledgeLibraryService#listLibraries}: joins the eager
+   * Confluence space selection into the one query instead of letting Hibernate load it with a
+   * subsequent select per row (ADR-0023) - the flat-query-count guard in {@code
+   * KnowledgeLibraryServiceIntegrationTest} pins this.
+   */
+  @Override
+  @EntityGraph(attributePaths = "confluenceSpaces")
+  List<KnowledgeLibrary> findAllById(Iterable<UUID> ids);
 
   /**
    * Whether any library is still owned by the given group - group ids are unique across the whole
@@ -24,8 +37,18 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
    */
   List<KnowledgeLibrary> findByOrganizationIdAndOwnerUserId(UUID organizationId, UUID ownerUserId);
 
-  List<KnowledgeLibrary> findByOrganizationIdAndVisibility(
-      UUID organizationId, LibraryVisibility visibility);
+  /**
+   * Ids only - the readable-set computation in {@code LibraryAccessService} needs nothing else, and
+   * loading the entities would drag their eager Confluence space selection along, one query per
+   * organization-wide library (the flat-query-count guard in {@code
+   * KnowledgeLibraryServiceIntegrationTest}).
+   */
+  @Query(
+      "select l.id from KnowledgeLibrary l where l.organizationId = :organizationId"
+          + " and l.visibility = :visibility")
+  List<UUID> findIdsByOrganizationIdAndVisibility(
+      @Param("organizationId") UUID organizationId,
+      @Param("visibility") LibraryVisibility visibility);
 
   /**
    * Every library of one organization, regardless of visibility or grants - for the administrative

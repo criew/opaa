@@ -7,9 +7,11 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.ConflictException;
 import java.time.Duration;
 import java.time.Instant;
@@ -38,10 +40,33 @@ class IndexingJobServiceTest {
     var job = new IndexingJob(JobStatus.RUNNING);
     when(indexingJobRepository.saveAndFlush(any(IndexingJob.class))).thenReturn(job);
 
-    IndexingJob result = service.startJob(UUID.randomUUID(), UUID.randomUUID());
+    IndexingJob result =
+        service.startJob(
+            UUID.randomUUID(), UUID.randomUUID(), JobTriggerSource.MANUAL, IndexingRunMode.FULL);
 
     assertThat(result.getStatus()).isEqualTo(JobStatus.RUNNING);
     assertThat(result.getStartedAt()).isNotNull();
+  }
+
+  @Test
+  void recordRunMetricsWritesTheCostFiguresOntoARunningJobOnly() {
+    // #1141: the figures land on the row while it is RUNNING; a job the stale sweep already failed
+    // keeps its state - the same conditional guard updateProgress has.
+    var running = new IndexingJob(JobStatus.RUNNING);
+    var failed = new IndexingJob(JobStatus.FAILED);
+    when(indexingJobRepository.findById(running.getId())).thenReturn(Optional.of(running));
+    when(indexingJobRepository.findById(failed.getId())).thenReturn(Optional.of(failed));
+    IndexingRunCost cost = new IndexingRunCost(1842, 3, 95_000L, 120, 800, 2, true);
+
+    service.recordRunMetrics(running.getId(), cost);
+    service.recordRunMetrics(failed.getId(), cost);
+
+    assertThat(running.getMetrics()).isEqualTo(cost);
+    assertThat(running.isIncomplete()).isTrue();
+    assertThat(failed.getMetrics()).isNull();
+    assertThat(failed.isIncomplete()).isFalse();
+    verify(indexingJobRepository, times(1)).save(running);
+    verify(indexingJobRepository, never()).save(failed);
   }
 
   @Test
@@ -51,7 +76,9 @@ class IndexingJobServiceTest {
     when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
         .thenAnswer(inv -> inv.getArgument(0));
 
-    IndexingJob result = service.startJob(libraryId, UUID.randomUUID());
+    IndexingJob result =
+        service.startJob(
+            libraryId, UUID.randomUUID(), JobTriggerSource.MANUAL, IndexingRunMode.FULL);
 
     assertThat(result.getLibraryId()).isEqualTo(libraryId);
   }
@@ -63,7 +90,9 @@ class IndexingJobServiceTest {
     when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
         .thenAnswer(inv -> inv.getArgument(0));
 
-    IndexingJob result = service.startJob(UUID.randomUUID(), organizationId);
+    IndexingJob result =
+        service.startJob(
+            UUID.randomUUID(), organizationId, JobTriggerSource.MANUAL, IndexingRunMode.FULL);
 
     assertThat(result.getOrganizationId()).isEqualTo(organizationId);
   }
@@ -78,7 +107,10 @@ class IndexingJobServiceTest {
     when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
         .thenThrow(new DataIntegrityViolationException("duplicate key"));
 
-    assertThatThrownBy(() -> service.startJob(libraryId, UUID.randomUUID()))
+    assertThatThrownBy(
+            () ->
+                service.startJob(
+                    libraryId, UUID.randomUUID(), JobTriggerSource.MANUAL, IndexingRunMode.FULL))
         .isInstanceOf(ConflictException.class)
         .hasMessageContaining("Für diese Bibliothek läuft bereits ein Indizierungslauf");
   }

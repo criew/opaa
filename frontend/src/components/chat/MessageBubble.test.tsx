@@ -2,6 +2,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, expect, it } from 'vitest'
 import MessageBubble from './MessageBubble'
+import NotificationHost from '../NotificationHost'
+import { useNotificationStore } from '../../stores/notificationStore'
 import type { ChatMessage } from '../../types/chat'
 import type { OpenDocumentContentResult } from '../../utils/documentContent'
 
@@ -371,7 +373,15 @@ describe('MessageBubble', () => {
       const msg = messageWithMdSource()
       msg.sources = [{ ...mdSource, fileName: 'bescheid.docx' }]
       msg.content = 'Beleg【source: doc-1#0 | bescheid.docx】.'
-      render(<MessageBubble message={msg} />)
+      // Guidelines 5.9: download feedback is a global popup notification, rendered by
+      // NotificationHost (mounted app-wide in AppShell; mirrored here).
+      useNotificationStore.getState().reset()
+      render(
+        <>
+          <MessageBubble message={msg} />
+          <NotificationHost />
+        </>,
+      )
 
       await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
 
@@ -383,7 +393,13 @@ describe('MessageBubble', () => {
         new Error('Das Originaldokument wurde nicht gefunden.'),
       )
       const user = userEvent.setup()
-      render(<MessageBubble message={messageWithMdSource()} />)
+      useNotificationStore.getState().reset()
+      render(
+        <>
+          <MessageBubble message={messageWithMdSource()} />
+          <NotificationHost />
+        </>,
+      )
 
       await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
 

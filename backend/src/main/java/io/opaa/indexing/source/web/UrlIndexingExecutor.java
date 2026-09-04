@@ -2,6 +2,7 @@ package io.opaa.indexing.source.web;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentService;
@@ -17,6 +18,7 @@ import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.SourceFolderMirror;
 import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -30,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -113,12 +116,22 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   @Override
+  public Map<IndexingRunMode, VanishedDocumentPolicy> runModes() {
+    // ADR-0023, Entscheidung 4: one mode only, "vollständig auflistend".
+    return Map.of(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE);
+  }
+
+  @Override
   @Async("indexingTaskExecutor")
-  public void execute(UUID jobId, KnowledgeLibrary targetLibrary) {
+  public void execute(UUID jobId, KnowledgeLibrary targetLibrary, IndexingRunMode runMode) {
     UrlIndexingRequest request = toUrlIndexingRequest(targetLibrary);
     var progress = new IndexingRunProgress(indexingJobService, jobId);
     var events =
         new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId);
+    if (!runModes().containsKey(runMode)) {
+      progress.fail("Betriebsart " + runMode + " wird für diesen Quellentyp nicht unterstützt");
+      return;
+    }
 
     try {
       // Parsing goes through the shared ProxyAndCredentials rather than an inline copy, mirroring
@@ -402,7 +415,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
           StaleDocumentCleanupService.foldInPreservedAttachmentPaths(
               existingHttpDocuments, currentUrls, reprocessedPaths);
           staleDocumentCleanupService.cleanupVanished(
-              targetLibrary, DocumentSourceType.HTTP_DIRECTORY, currentUrls, events);
+              targetLibrary, DocumentSourceType.HTTP_DIRECTORY, currentUrls, events, this, runMode);
         } catch (Exception e) {
           log.warn(
               "Failed to clean up vanished HTTP_DIRECTORY documents for library {}",

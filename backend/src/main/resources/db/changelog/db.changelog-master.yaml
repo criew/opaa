@@ -28,9 +28,17 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/009-chunk-full-text-skip-table.yaml
   - include:
+      file: db/changelog/changes/010-confluence-source-type.yaml
+  - include:
       file: db/changelog/changes/011-documents-parent-document-id.yaml
   - include:
       file: db/changelog/changes/012-vector-store-library-id-index.yaml
+  - include:
+      file: db/changelog/changes/013-confluence-full-sync.yaml
+  - include:
+      file: db/changelog/changes/014-confluence-webhooks.yaml
+  - include:
+      file: db/changelog/changes/015-confluence-run-metrics.yaml
   - include:
       file: db/changelog/changes/016-documents-parent-document-id-backfill.yaml
   - include:

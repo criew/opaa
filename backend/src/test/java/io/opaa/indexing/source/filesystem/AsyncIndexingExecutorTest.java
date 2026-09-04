@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.ChunkingService;
@@ -125,7 +126,7 @@ class AsyncIndexingExecutorTest {
     when(storageQuotaService.quotaExceededMessage(library.getId()))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
 
-    executor.execute(UUID.randomUUID(), library);
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
     String expectedMessage =
         "Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)";
@@ -149,7 +150,7 @@ class AsyncIndexingExecutorTest {
     when(fileProcessingService.processFile(eq(file), eq(library), isNull(), any()))
         .thenReturn(FileProcessingResult.NO_EXTRACTABLE_TEXT);
 
-    executor.execute(UUID.randomUUID(), library);
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), anyInt());
     verify(indexingRunEventRepository, timeout(2000))
@@ -173,7 +174,7 @@ class AsyncIndexingExecutorTest {
     when(fileProcessingService.processFile(eq(file), eq(library), isNull(), any()))
         .thenReturn(FileProcessingResult.FAILED);
 
-    executor.execute(UUID.randomUUID(), library);
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
     // eq(0) on documentsIndexedTotal, not anyInt(): the claim under test is that a document the
     // pipeline could not parse at all must not inflate the run's indexed-total either.
@@ -258,7 +259,7 @@ class AsyncIndexingExecutorTest {
             staleDocumentCleanupService,
             realFlowDocumentRepository);
 
-    realFlowExecutor.execute(UUID.randomUUID(), library);
+    realFlowExecutor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), anyInt());
     verify(indexingRunEventRepository, timeout(2000))
@@ -278,7 +279,7 @@ class AsyncIndexingExecutorTest {
     when(fileProcessingService.processFile(eq(file), eq(library), isNull(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
-    executor.execute(UUID.randomUUID(), library);
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), anyInt());
     verify(indexingRunEventRepository, timeout(2000).times(0)).save(any());
@@ -311,7 +312,7 @@ class AsyncIndexingExecutorTest {
               return FileProcessingResult.PROCESSED;
             });
 
-    executor.execute(UUID.randomUUID(), library);
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
     Set<String> currentFilePaths = capturedCurrentFilePaths();
     assertThat(currentFilePaths).contains(mailPath, keptPath);
@@ -342,7 +343,7 @@ class AsyncIndexingExecutorTest {
     when(fileProcessingService.processFile(eq(mailFile), eq(library), isNull(), any()))
         .thenReturn(FileProcessingResult.SKIPPED);
 
-    executor.execute(UUID.randomUUID(), library);
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
     assertThat(capturedCurrentFilePaths()).contains(mailPath, innerMailPath, grandchildPath);
   }
@@ -376,7 +377,7 @@ class AsyncIndexingExecutorTest {
               return FileProcessingResult.PROCESSED;
             });
 
-    executor.execute(UUID.randomUUID(), library);
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
     assertThat(capturedCurrentFilePaths()).contains(mailPath, innerMailPath, grandchildPath);
   }
@@ -393,7 +394,12 @@ class AsyncIndexingExecutorTest {
     ArgumentCaptor<Set<String>> pathsCaptor = ArgumentCaptor.forClass(Set.class);
     verify(staleDocumentCleanupService, timeout(2000))
         .cleanupVanished(
-            eq(library), eq(DocumentSourceType.FILESYSTEM), pathsCaptor.capture(), any());
+            eq(library),
+            eq(DocumentSourceType.FILESYSTEM),
+            pathsCaptor.capture(),
+            any(),
+            any(),
+            any());
     return pathsCaptor.getValue();
   }
 }

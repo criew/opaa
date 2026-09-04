@@ -282,6 +282,30 @@ tasks.named<Test>("test") {
     }
 }
 
+// ADR-0023/#1171: the Confluence Data Center container suite (io.opaa.integration.confluence.*)
+// starts a real Confluence in Docker, walks its setup wizard and needs a time-bomb licence from
+// the Atlassian developer site - minutes per run and an internet round-trip, so it is neither part
+// of build/check nor of openAiIntegrationTest. CI runs it nightly and on demand
+// (.github/workflows/confluence-integration.yml).
+tasks.register<Test>("confluenceIntegrationTest") {
+    description = "Integration tests against a real Confluence Data Center in Docker " +
+        "(io.opaa.integration.confluence.*). Needs Docker and internet access; not part of build/check."
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter {
+        includeTestsMatching("io.opaa.integration.confluence.*")
+    }
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+        // the fixture's failure message names the rejected call and the instance's answer
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
+}
+
 tasks.register<Test>("openAiIntegrationTest") {
     description = "End-to-end tests against the real OpenAI API (io.opaa.integration.*). " +
         "Needs OPAA_OPENAI_API_KEY and Docker; not part of build/check."
@@ -291,6 +315,7 @@ tasks.register<Test>("openAiIntegrationTest") {
     useJUnitPlatform()
     filter {
         includeTestsMatching("io.opaa.integration.*")
+        excludeTestsMatching("io.opaa.integration.confluence.*")
     }
     // Never cache or skip: whether the tests actually run depends on OPAA_OPENAI_API_KEY (a
     // JUnit @EnabledIfEnvironmentVariable condition, invisible to Gradle's input tracking) and

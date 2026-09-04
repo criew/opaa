@@ -144,6 +144,9 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 
 - **[`handbuch/deployment.md`](./handbuch/deployment.md)** — Installation und Betrieb der vorhandenen
   Software: Docker Compose, Umgebungsvariablen, Härtung
+- **[`handbuch/confluence.md`](./handbuch/confluence.md)** — Betriebshandbuch des Confluence-Konnektors:
+  Einrichtung je Edition, Zielprüfung, Betriebsarten und Löschsemantik, Webhooks, Ratenbegrenzung und
+  Anfragebudget, Kennzahlen, Grenzen, Fehlerbehebung
 - **[`sbom.md`](./sbom.md)** — Software Bill of Materials: Image-Attestierungen und
   CycloneDX-CI-Artefakte für Backend und Frontend
 - **[`cve-scanning.md`](./cve-scanning.md)** — CVE-Erkennung: Dependency Graph, Dependabot-Alerts

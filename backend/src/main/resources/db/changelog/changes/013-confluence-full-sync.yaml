@@ -1,0 +1,85 @@
+databaseChangeLog:
+  # ADR-0023, Entscheidung 4 (#1136): the run mode as an attribute of every indexing run, the two
+  # Confluence context columns on documents, and the per-library Confluence sync state. Each
+  # changeset is one schema change with its own delta test
+  # (io.opaa.migration.Migration013ConfluenceFullSyncTest).
+  - changeSet:
+      id: 013-indexing-jobs-run-mode
+      author: opaa
+      comment: >-
+        ADR-0023, Entscheidung 4: every run declares whether it listed its source completely (FULL)
+        or only picked up changes (INCREMENTAL) - the attribute the deletion semantics hang on.
+        Existing rows are backfilled from their library's source type: RSS_FEED runs were always
+        incremental, every other run a full listing; a run whose library is gone keeps the FULL
+        default (nothing depends on it any more).
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.indexing_jobs
+                  ADD COLUMN run_mode character varying(20) DEFAULT 'FULL'::character varying NOT NULL;
+              ALTER TABLE public.indexing_jobs ADD CONSTRAINT chk_indexing_jobs_run_mode
+                  CHECK (run_mode IN ('FULL', 'INCREMENTAL'));
+              UPDATE public.indexing_jobs j SET run_mode = 'INCREMENTAL'
+                  FROM public.knowledge_libraries l
+                  WHERE j.library_id = l.id AND l.source_type = 'RSS_FEED';
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.indexing_jobs DROP CONSTRAINT chk_indexing_jobs_run_mode;
+              ALTER TABLE public.indexing_jobs DROP COLUMN run_mode;
+
+  - changeSet:
+      id: 013-documents-source-context
+      author: opaa
+      comment: >-
+        ADR-0023 ("Identität und Metadaten"): the container a document came from (a Confluence
+        space key) and its hierarchy path (the ancestor titles, root first, joined with " / ") so the
+        run protocol, the citation and the chunk context can name them without asking the instance.
+        NULL for every other source type.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.documents ADD COLUMN source_container_key character varying(255);
+              ALTER TABLE public.documents ADD COLUMN source_hierarchy_path character varying(2000);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.documents DROP COLUMN source_hierarchy_path;
+              ALTER TABLE public.documents DROP COLUMN source_container_key;
+
+  - changeSet:
+      id: 013-confluence-sync-state
+      author: opaa
+      comment: >-
+        ADR-0023, Entscheidung 4 ("Anker und Wiederaufnahme"): one row per CONFLUENCE library (the
+        rss_feed_state pattern, keyed by library alone because a library carries exactly one
+        instance). A full run records which spaces it has completed so an aborted run is resumed
+        space by space, and - once complete - the anchor the next incremental run searches from.
+        Deleted with the library (cascade) and by KnowledgeLibraryService whenever the address or the
+        space selection changes, so the next run starts as a full one.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.confluence_sync_state (
+                  id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  full_sync_job_id uuid,
+                  completed_space_keys text,
+                  full_sync_completed_at timestamp with time zone,
+                  incremental_anchor timestamp with time zone,
+                  updated_at timestamp with time zone NOT NULL,
+                  CONSTRAINT confluence_sync_state_pkey PRIMARY KEY (id),
+                  CONSTRAINT uk_confluence_sync_state_library UNIQUE (library_id),
+                  CONSTRAINT fk_confluence_sync_state_library FOREIGN KEY (library_id)
+                      REFERENCES public.knowledge_libraries(id) ON DELETE CASCADE
+              );
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE public.confluence_sync_state;

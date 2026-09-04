@@ -5,6 +5,7 @@ import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
+import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
 import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
 import io.opaa.indexing.pipeline.mail.MailDocumentPipeline;
 import io.opaa.indexing.pipeline.mail.MailProperties;
@@ -22,6 +23,10 @@ import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.attachment.AttachmentProperties;
+import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
+import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
+import io.opaa.indexing.source.confluence.ConfluenceProperties;
+import io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository;
 import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.filesystem.FilesystemProperties;
@@ -107,6 +112,15 @@ public class IndexingConfiguration {
   @Bean
   HtmlDocumentPipeline htmlDocumentPipeline() {
     return new HtmlDocumentPipeline();
+  }
+
+  /**
+   * Confluence page pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 6; #1137) -
+   * claims no format, {@link FileProcessingService#processConfluencePage} looks it up by id.
+   */
+  @Bean
+  ConfluenceDocumentPipeline confluenceDocumentPipeline() {
+    return new ConfluenceDocumentPipeline();
   }
 
   /**
@@ -334,6 +348,16 @@ public class IndexingConfiguration {
   }
 
   /**
+   * Builds per-library Confluence clients (ADR-0023); shares the target validation every other
+   * outbound source fetch uses.
+   */
+  @Bean
+  ConfluenceClientFactory confluenceClientFactory(
+      ConfluenceProperties confluenceProperties, TargetAddressValidator targetAddressValidator) {
+    return new ConfluenceClientFactory(confluenceProperties, targetAddressValidator);
+  }
+
+  /**
    * Shared by every {@link SourceIndexingExecutor} bean below that runs a full, "vollständig
    * auflistend" crawl (FILESYSTEM, HTTP_DIRECTORY) - {@code RssFeedIndexingExecutor} deliberately
    * does not depend on this (#886, ADR-0017 decision 5).
@@ -435,6 +459,40 @@ public class IndexingConfiguration {
         indexingRunEventRepository,
         targetAddressValidator,
         libraryStorageQuotaService);
+  }
+
+  /**
+   * Declared as the concrete type, not as {@link SourceIndexingExecutor} like its siblings: {@code
+   * ConfluenceWebhookService} injects the executor directly for its targeted webhook run (#1140),
+   * and Spring resolves an injection point by the bean method's declared type - the registry still
+   * collects it through the interface it implements.
+   */
+  @Bean
+  ConfluenceIndexingExecutor confluenceIndexingExecutor(
+      ConfluenceClientFactory confluenceClientFactory,
+      ConfluenceProperties confluenceProperties,
+      FileProcessingService fileProcessingService,
+      AttachmentIndexer attachmentIndexer,
+      IndexingJobService indexingJobService,
+      DocumentRepository documentRepository,
+      IndexingRunEventRepository indexingRunEventRepository,
+      LibraryStorageQuotaService libraryStorageQuotaService,
+      StaleDocumentCleanupService staleDocumentCleanupService,
+      ConfluenceSyncStateRepository confluenceSyncStateRepository,
+      VectorChunkStore vectorChunkStore) {
+    return new ConfluenceIndexingExecutor(
+        confluenceClientFactory,
+        confluenceProperties,
+        fileProcessingService,
+        attachmentIndexer,
+        indexingJobService,
+        documentRepository,
+        indexingRunEventRepository,
+        libraryStorageQuotaService,
+        staleDocumentCleanupService,
+        confluenceSyncStateRepository,
+        vectorChunkStore,
+        Clock.systemUTC());
   }
 
   /**

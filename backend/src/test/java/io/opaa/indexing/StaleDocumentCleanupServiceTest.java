@@ -6,9 +6,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -64,6 +68,9 @@ class StaleDocumentCleanupServiceTest {
         .thenReturn(List.of(parent, child));
     IndexingRunEventRecorder events =
         new IndexingRunEventRecorder(mock(IndexingRunEventRepository.class), null, null);
+    SourceIndexingExecutor executor = mock(SourceIndexingExecutor.class);
+    when(executor.runModes())
+        .thenReturn(Map.of(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE));
 
     int removed =
         service.cleanupVanished(
@@ -71,7 +78,9 @@ class StaleDocumentCleanupServiceTest {
             DocumentSourceType.RSS_FEED,
             // Neither path is in currentFilePaths - both vanished this run.
             Set.of("https://unrelated.example/still-there"),
-            events);
+            events,
+            executor,
+            IndexingRunMode.FULL);
 
     assertThat(removed).isEqualTo(2);
     InOrder order = inOrder(documentRepository, vectorChunkStore);
@@ -115,13 +124,18 @@ class StaleDocumentCleanupServiceTest {
         .thenReturn(List.of(grandchildAttachment, outerMail, innerMail));
     IndexingRunEventRecorder events =
         new IndexingRunEventRecorder(mock(IndexingRunEventRepository.class), null, null);
+    SourceIndexingExecutor executor = mock(SourceIndexingExecutor.class);
+    when(executor.runModes())
+        .thenReturn(Map.of(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE));
 
     int removed =
         service.cleanupVanished(
             library,
             DocumentSourceType.RSS_FEED,
             Set.of("https://unrelated.example/still-there"),
-            events);
+            events,
+            executor,
+            IndexingRunMode.FULL);
 
     assertThat(removed).isEqualTo(3);
     InOrder order = inOrder(documentRepository, vectorChunkStore);

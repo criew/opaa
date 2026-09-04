@@ -2,6 +2,7 @@ package io.opaa.indexing.source.rss;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentService;
@@ -15,6 +16,7 @@ import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.IndexingRunProgress;
 import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.indexing.source.attachment.AttachmentCandidate;
 import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
@@ -32,6 +34,7 @@ import java.net.http.HttpClient;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -126,11 +129,21 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   @Override
+  public Map<IndexingRunMode, VanishedDocumentPolicy> runModes() {
+    // ADR-0023, Entscheidung 4: one mode only, "ergänzend" - never deletes by absence.
+    return Map.of(IndexingRunMode.INCREMENTAL, VanishedDocumentPolicy.KEEP_ON_ABSENCE);
+  }
+
+  @Override
   @Async("indexingTaskExecutor")
-  public void execute(UUID jobId, KnowledgeLibrary targetLibrary) {
+  public void execute(UUID jobId, KnowledgeLibrary targetLibrary, IndexingRunMode runMode) {
     var progress = new IndexingRunProgress(indexingJobService, jobId);
     var events =
         new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId);
+    if (!runModes().containsKey(runMode)) {
+      progress.fail("Betriebsart " + runMode + " wird für diesen Quellentyp nicht unterstützt");
+      return;
+    }
     // ADR-0018: the feed's address is the library's own sourceUrl, not a per-request field.
     String feedUrl = targetLibrary.getSourceUrl();
 

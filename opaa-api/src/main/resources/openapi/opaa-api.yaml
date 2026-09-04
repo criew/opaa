@@ -1473,6 +1473,45 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/confluence/spaces:
+    post:
+      operationId: listConfluenceSpaces
+      tags: [library]
+      summary: >
+        List the spaces a Confluence token may read, for the space selection of a CONFLUENCE
+        library (ADR-0023, #1134).
+      description: >
+        Authenticates against the instance with the given credentials (Cloud: e-mail + API
+        token as HTTP Basic against /wiki/api/v2; Data Center: personal access token as Bearer
+        against /rest/api) and returns every readable space, following the instance's own
+        pagination to the end. A POST because the credentials travel in the body and no library
+        needs to exist yet. Permission bar like the connection test: any authenticated user
+        without libraryId, AssetRole.MANAGER on that library with it. Rate-limited like the
+        connection test (opaa.rate-limit.source-test) and subject to the same outbound target
+        validation - a private on-premises address needs its allowlist entry and the error
+        message says so. Credentials appear in no response and no error message.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfluenceSpaceListRequest"
+      responses:
+        "200":
+          description: The readable spaces.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfluenceSpaceListResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries/{libraryId}:
     parameters:
       - name: libraryId
@@ -2232,6 +2271,105 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/{libraryId}/confluence-webhook-secret:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: generateConfluenceWebhookSecret
+      tags: [library, indexing]
+      summary: Generate or rotate the webhook secret of a CONFLUENCE library
+      description: >
+        #1140: generates a fresh random secret, stores it encrypted (like sourceCredentials) and
+        returns it exactly once, together with the path the Confluence instance or Automation rule
+        has to call. Calling again rotates: the previous secret stops authenticating immediately.
+        MANAGER or above, the same threshold as every other change of the source configuration.
+        Rejected with 400 for every other sourceType. Recorded in the audit log as
+        LIBRARY_SOURCE_UPDATED with changedFields [confluenceWebhookSecret], never with the value.
+      responses:
+        "200":
+          description: The new secret, shown once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfluenceWebhookSecretResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: removeConfluenceWebhookSecret
+      tags: [library, indexing]
+      summary: Remove the webhook secret of a CONFLUENCE library
+      description: >
+        #1140: from the commit on, the library's webhook endpoint answers every call with 401.
+        Idempotent - removing an absent secret succeeds without an audit entry. MANAGER or above.
+      responses:
+        "204":
+          description: Secret removed (or none was stored)
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/confluence-webhook:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: receiveConfluenceWebhook
+      tags: [indexing]
+      summary: Receive a change notification from a Confluence instance or Automation rule
+      description: >
+        #1140: the only endpoint under /api/v1 a caller reaches without a session - the sender
+        has none. The request authenticates itself with the library's webhook secret instead,
+        either as Confluence Data Center signs it (header X-Hub-Signature: sha256=<hex HMAC-SHA256
+        of the raw body>) or as a Confluence Cloud Automation rule sends it (header
+        X-OPAA-Webhook-Secret carrying the secret itself). An unknown library, a library without
+        a secret or of another sourceType, and a wrong or missing signature are all answered with
+        the same 401; no other information leaves this endpoint. Once authenticated, the page ids
+        the body names (page.id, content.id, attachment.pageId, pageId, pageIds) are queued and,
+        a few seconds later (opaa.indexing.confluence.webhook.debounce), one WEBHOOK run fetches
+        exactly those pages: a page the instance reports as trashed is removed with its
+        attachments, a changed page is re-indexed, a 404 or 403 changes nothing (ADR-0023,
+        Entscheidung 4 - deletion needs the instance's own positive finding, the notification is
+        not one). The event type is deliberately not interpreted. A body naming no page is
+        accepted and ignored. Rate-limited per library (opaa.rate-limit.webhook).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: The sender's own payload; only the page ids named in it are read.
+      responses:
+        "202":
+          description: Accepted and queued (or nothing to queue)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/v1/libraries/{libraryId}/indexing:
     parameters:
       - name: libraryId
@@ -2245,6 +2383,20 @@ paths:
       operationId: triggerLibraryIndexing
       tags: [library, indexing]
       summary: Trigger an indexing run for a library, using its own stored quellkonfiguration
+      parameters:
+        - name: runMode
+          in: query
+          required: false
+          description: >
+            The Betriebsart to run in (ADR-0023, Entscheidung 4). Optional: without it the
+            executor's own default applies - the only mode a one-mode source type knows
+            (FILESYSTEM/HTTP_DIRECTORY: FULL, RSS_FEED: INCREMENTAL); for CONFLUENCE the mode
+            its sync state calls for: FULL until a full run completed, after a change of the
+            space selection and once the configured full-sync interval passed, INCREMENTAL in
+            between (#1139). A
+            mode the source type does not support is rejected with 400, naming the supported ones.
+          schema:
+            $ref: "#/components/schemas/IndexingRunMode"
       description: >
         ADR-0018: a library carries at most one quellentyp and quellkonfiguration, so the
         trigger no longer takes any request body - it reads sourceType/sourcePath/sourceUrl/
@@ -2263,6 +2415,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/IndexingStatusResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -3296,6 +3450,12 @@ components:
             migration 019 added the column, or once the run's target library has since been
             deleted (indexing_jobs.library_id is ON DELETE SET NULL - a run's history is not the
             same thing as its right to still write there, see IndexingJob#getLibraryId's Javadoc).
+        incomplete:
+          type: boolean
+          nullable: true
+          description: >
+            #1141: true when the most recent run completed as incomplete (request budget spent,
+            continued by the next run) - see IndexingRunResponse.incomplete.
         timestamp:
           type: string
           format: date-time
@@ -3308,9 +3468,23 @@ components:
     IndexingTriggerSource:
       type: string
       description: >
-        Who started a run (#485): a person via "Jetzt indizieren", or the library's own schedule.
-      enum: [MANUAL, SCHEDULED]
+        Who started a run (#485): a person via "Jetzt indizieren", the library's own schedule, or
+        an authenticated Confluence webhook notification (#1140) - a WEBHOOK run fetches only the
+        pages the notification named and never removes anything the instance does not itself
+        report as trashed.
+      enum: [MANUAL, SCHEDULED, WEBHOOK]
       example: MANUAL
+
+    IndexingRunMode:
+      type: string
+      description: >
+        The Betriebsart of a run (ADR-0023, Entscheidung 4): FULL listed the source completely,
+        so a previously indexed document missing from the listing was removed at the end of the
+        run; INCREMENTAL only picked up what changed since the last anchor and never removes
+        anything for being absent. FILESYSTEM and HTTP_DIRECTORY only know FULL, RSS_FEED only
+        INCREMENTAL; CONFLUENCE knows both (#1136, #1139).
+      enum: [FULL, INCREMENTAL]
+      example: FULL
 
     IndexingRunEventCategory:
       type: string
@@ -3340,6 +3514,10 @@ components:
             at the end of a successful, complete run (#886, ADR-0017 Entscheidung 5) - like
             FORMAT_MISMATCH/SCHEDULE_SKIPPED, this does not count among documentsSkipped/
             documentsFailed either.
+          * RATE_LIMITED - the source throttled the run (HTTP 429, Retry-After) and the run slowed
+            down instead of failing (#1136); one summary note per run, not an item outcome.
+          * BUDGET_EXHAUSTED - the run spent its request budget (#1141) and ended in an orderly
+            way as incomplete; the next run continues where this one left off.
       enum:
         [
           REJECTED,
@@ -3350,6 +3528,8 @@ components:
           FORMAT_MISMATCH,
           SCHEDULE_SKIPPED,
           REMOVED,
+          RATE_LIMITED,
+          BUDGET_EXHAUSTED,
         ]
       example: REJECTED
 
@@ -3393,6 +3573,7 @@ components:
           events,
           eventsTruncatedCount,
           triggeredBy,
+          runMode,
         ]
       properties:
         id:
@@ -3402,6 +3583,8 @@ components:
           $ref: "#/components/schemas/IndexingStatus"
         triggeredBy:
           $ref: "#/components/schemas/IndexingTriggerSource"
+        runMode:
+          $ref: "#/components/schemas/IndexingRunMode"
         documentCount:
           type: integer
           example: 42
@@ -3442,6 +3625,60 @@ components:
             list above (#513) - 0 when every event fit. The UI renders this as "… und N weitere".
           example: 0
 
+        incomplete:
+          type: boolean
+          nullable: true
+          description: >
+            #1141: true for a COMPLETED run that stopped in an orderly way before covering
+            everything - its request budget (opaa.indexing.confluence.request-budget-per-run) ran
+            out - and is continued by the next run: a full sync resumes with the spaces it did not
+            finish, an incremental run searches the same window again (its anchor did not move).
+            Distinct from FAILED, which means the run itself broke. Absent or false otherwise.
+        metrics:
+          $ref: "#/components/schemas/IndexingRunMetrics"
+    IndexingRunMetrics:
+      type: object
+      nullable: true
+      required:
+        [
+          requestsSent,
+          throttleCount,
+          throttleWaitSeconds,
+          attachmentsProcessed,
+          attachmentsSkipped,
+          attachmentsFailed,
+        ]
+      description: >
+        #1141: what a run cost - recorded by executors that can measure it (Confluence); absent
+        for other source types and for runs from before the figures were recorded. Together with
+        startedAt/completedAt (the duration) and the document counters this is what an operator
+        reads throughput and the request budget against.
+      properties:
+        requestsSent:
+          type: integer
+          description: Requests the run sent to its source, retries after a 429 included.
+          example: 1842
+        throttleCount:
+          type: integer
+          description: How often the source answered 429 and the run waited instead of failing.
+          example: 3
+        throttleWaitSeconds:
+          type: integer
+          format: int64
+          description: The total time the run spent waiting on those throttles, in seconds.
+          example: 95
+        attachmentsProcessed:
+          type: integer
+          description: Attachment documents indexed - a subset of documentsIndexedTotal.
+          example: 120
+        attachmentsSkipped:
+          type: integer
+          description: Attachments met but not indexed (unchanged, unsupported format, rejected).
+          example: 800
+        attachmentsFailed:
+          type: integer
+          description: Attachments whose download or processing failed.
+          example: 2
     IndexingRunListResponse:
       type: object
       required: [runs]
@@ -4490,8 +4727,11 @@ components:
         never changed afterwards (see LibraryUpdateRequest). Which of sourcePath/sourceUrl/
         sourceProxy/sourceCredentials/sourceInsecureSsl may be set depends on sourceType - UPLOAD
         accepts none of them, FILESYSTEM accepts sourcePath only, HTTP_DIRECTORY and RSS_FEED
-        both accept sourceUrl (sourceProxy/sourceCredentials/sourceInsecureSsl optional). A
-        combination that contradicts sourceType is rejected with 400.
+        both accept sourceUrl (sourceProxy/sourceCredentials/sourceInsecureSsl optional).
+        CONFLUENCE (ADR-0023) requires sourceUrl (the instance's base address), sourceCredentials
+        (format depends on confluenceEdition), confluenceEdition and a non-empty confluenceSpaces
+        selection; sourceProxy/sourceInsecureSsl stay optional. A combination that contradicts
+        sourceType is rejected with 400.
       properties:
         name:
           type: string
@@ -4537,31 +4777,75 @@ components:
           format: uri
           nullable: true
           description: >
-            URL of an Apache mod_autoindex directory listing (HTTP_DIRECTORY) or an RSS-2.0 feed
-            (RSS_FEED) to crawl. http/https only.
+            URL of an Apache mod_autoindex directory listing (HTTP_DIRECTORY), an RSS-2.0 feed
+            (RSS_FEED) or the base address of a Confluence instance (CONFLUENCE: the site root
+            without /wiki for Cloud, including any context path for Data Center - a trailing
+            /wiki or slash is normalised away, ADR-0023). http/https only.
           example: https://files.example.com/documents/
         sourceProxy:
           type: string
           maxLength: 255
           nullable: true
           description: >
-            Proxy server in host:port format - only for sourceType HTTP_DIRECTORY or RSS_FEED.
+            Proxy server in host:port format - only for sourceType HTTP_DIRECTORY, RSS_FEED or
+            CONFLUENCE.
           example: proxy.example.com:8080
         sourceCredentials:
           type: string
           maxLength: 500
           nullable: true
           description: >
-            Basic auth credentials in user:password format - only for sourceType
-            HTTP_DIRECTORY or RSS_FEED. Write-only: never returned by any API response
-            (ADR-0018).
+            Credentials, write-only: never returned by any API response (ADR-0018). For
+            HTTP_DIRECTORY/RSS_FEED optional Basic auth in user:password format. For CONFLUENCE
+            required, in the edition's format (ADR-0023, Entscheidung 3): CLOUD as
+            e-mail:api-token (HTTP Basic with the e-mail as user name), DATA_CENTER as the bare
+            personal access token (Bearer).
           example: admin:secret
         sourceInsecureSsl:
           type: boolean
           nullable: true
           description: >
-            Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY or RSS_FEED.
+            Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY, RSS_FEED or
+            CONFLUENCE.
           default: false
+        confluenceEdition:
+          description: >
+            Required for sourceType CONFLUENCE, rejected for every other type. Take the value the
+            connection test detected; the edition cannot be changed after creation.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConfluenceEdition"
+        confluenceSpaces:
+          type: array
+          nullable: true
+          minItems: 1
+          maxItems: 500
+          description: >
+            The spaces this library indexes - required and non-empty for sourceType CONFLUENCE
+            (a library without spaces would index nothing and report an empty success), rejected
+            for every other type. Keys must be unique. Changeable after creation via
+            LibraryUpdateRequest; every change forces the next run to be a full sync (ADR-0023).
+            Note the consequence stated before the selection in the UI: everything indexed from
+            every selected space is readable by everyone who may read this library.
+          items:
+            $ref: "#/components/schemas/ConfluenceSpaceRef"
+
+    ConfluenceWebhookSecretResponse:
+      type: object
+      required: [secret, path]
+      description: >
+        The webhook secret of a CONFLUENCE library, returned exactly once at generation (#1140),
+        and the path the instance has to notify. The client composes the absolute URL from its
+        own origin - the backend does not know the address the instance reaches it under.
+      properties:
+        secret:
+          type: string
+          description: 32 random bytes, Base64url without padding.
+          example: 3q2-7wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        path:
+          type: string
+          description: The endpoint path, relative to the deployment's origin.
+          example: /api/v1/libraries/7f9c2b3e-1d4a-4c8b-9e2f-0a1b2c3d4e5f/confluence-webhook
 
     SourceConnectionTestRequest:
       type: object
@@ -4572,7 +4856,11 @@ components:
         visibility/... have no meaning before a library exists and would only invite a client
         to pass a half-filled LibraryRequest by mistake. Which fields are accepted depends on
         sourceType exactly like LibraryRequest; UPLOAD accepts none and is rejected outright
-        (there is nothing to test).
+        (there is nothing to test). CONFLUENCE (ADR-0023) works in two stages with the same
+        endpoint: with sourceUrl alone the instance's edition is detected without credentials
+        (response.confluenceEdition, credentialsVerified false); with sourceCredentials in the
+        detected edition's format the credentials are verified with a single request
+        (credentialsVerified true; the readable spaces come from the listing endpoint).
       properties:
         sourceType:
           $ref: "#/components/schemas/DocumentSourceType"
@@ -4628,6 +4916,14 @@ components:
             not-found/forbidden split every other library endpoint uses). The library's own
             sourceType must match this request's sourceType, otherwise 400. Absent, this behaves
             exactly like before #544 - a standalone test with no stored library to fall back to.
+        confluenceEdition:
+          description: >
+            Only for sourceType CONFLUENCE, optional: the edition the caller expects (normally the
+            one an earlier detection returned). The test always detects the edition itself and
+            reports a mismatch as not reachable rather than authenticating against the wrong API.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConfluenceEdition"
 
     SourceConnectionTestResponse:
       type: object
@@ -4650,11 +4946,75 @@ components:
             own SupportedDocumentFormats filter; HTTP_DIRECTORY: only the top-level listing,
             filtered the same way, not a recursive crawl of the whole tree; RSS_FEED: entries,
             capped at opaa.indexing.rss.max-entries like the run itself) - null when reachable
-            is false, since nothing could be counted.
+            is false, since nothing could be counted, and always null for CONFLUENCE, whose test
+            verifies the credentials with a single request and leaves counting to the space
+            listing endpoint.
         message:
           type: string
           description: German, user-facing summary of the result.
           example: Verzeichnis erreichbar, 42 Dokumente gefunden
+        confluenceEdition:
+          description: >
+            Only for sourceType CONFLUENCE: the edition detected from the instance's own response
+            signature (ADR-0023, Entscheidung 2) - the value a client passes on to LibraryRequest.
+            Absent when no Confluence was recognised or for other source types.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConfluenceEdition"
+        credentialsVerified:
+          type: boolean
+          nullable: true
+          description: >
+            Only for sourceType CONFLUENCE: whether the credentials were accepted by the instance.
+            false after a detection-only test (no credentials given) or when the instance rejected
+            them; absent for other source types.
+
+    ConfluenceSpaceListRequest:
+      type: object
+      required: [sourceUrl, confluenceEdition]
+      description: >
+        Connection data for listing the spaces a Confluence token may read (ADR-0023; the basis
+        of the wizard's space selection). Credentials are used for this one request only, never
+        persisted or echoed. With libraryId (an existing CONFLUENCE library the caller manages),
+        omitted credentials fall back to the stored ones when sourceUrl names the same origin -
+        the same rule the connection test applies.
+      properties:
+        sourceUrl:
+          type: string
+          format: uri
+          description: The instance's base address, normalised like LibraryRequest.sourceUrl.
+        confluenceEdition:
+          $ref: "#/components/schemas/ConfluenceEdition"
+        sourceCredentials:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: Credentials in the edition's format (see LibraryRequest.sourceCredentials).
+        sourceProxy:
+          type: string
+          maxLength: 255
+          nullable: true
+        sourceInsecureSsl:
+          type: boolean
+          nullable: true
+          default: false
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+
+    ConfluenceSpaceListResponse:
+      type: object
+      required: [spaces]
+      description: >
+        Every space the credentials may read, fully paginated over both editions, in the
+        instance's order. An empty list is a valid answer (a token without any readable space),
+        distinct from an error.
+      properties:
+        spaces:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConfluenceSpaceRef"
 
     ScheduleFrequency:
       type: string
@@ -4795,24 +5155,28 @@ components:
           format: uri
           nullable: true
           description: >
-            URL of an Apache mod_autoindex directory listing (HTTP_DIRECTORY) or an RSS-2.0 feed
-            (RSS_FEED) to crawl. http/https only.
+            URL of an Apache mod_autoindex directory listing (HTTP_DIRECTORY), an RSS-2.0 feed
+            (RSS_FEED) or the base address of a Confluence instance (CONFLUENCE, normalised like
+            LibraryRequest.sourceUrl). http/https only.
           example: https://files.example.com/documents/
         sourceProxy:
           type: string
           maxLength: 255
           nullable: true
           description: >
-            Proxy server in host:port format - only for sourceType HTTP_DIRECTORY or RSS_FEED.
+            Proxy server in host:port format - only for sourceType HTTP_DIRECTORY, RSS_FEED or
+            CONFLUENCE.
           example: proxy.example.com:8080
         sourceCredentials:
           type: string
           maxLength: 500
           nullable: true
           description: >
-            Basic auth credentials in user:password format - only for sourceType
-            HTTP_DIRECTORY or RSS_FEED. Write-only: never returned by any API response
-            (ADR-0018). Omitting this field while replacing the rest of the configuration (e.g.
+            Credentials, write-only: never returned by any API response (ADR-0018). For
+            HTTP_DIRECTORY/RSS_FEED optional Basic auth in user:password format; for CONFLUENCE
+            in the edition's format (CLOUD e-mail:api-token, DATA_CENTER the bare personal access
+            token, ADR-0023). Omitted while sourceUrl keeps the same origin, the stored value is
+            kept. Omitting this field while replacing the rest of the configuration (e.g.
             only sourceUrl changes) leaves the currently stored credentials untouched - there is
             no way to read them back to resend, and no way to explicitly clear them via this
             request.
@@ -4821,8 +5185,28 @@ components:
           type: boolean
           nullable: true
           description: >
-            Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY or RSS_FEED.
+            Skip SSL certificate verification - only for sourceType HTTP_DIRECTORY, RSS_FEED or
+            CONFLUENCE.
           default: false
+        confluenceEdition:
+          description: >
+            Accepted only when it equals the library's stored edition (like sourceType, ADR-0023:
+            immutable after creation); any other value is rejected with 400.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConfluenceEdition"
+        confluenceSpaces:
+          type: array
+          nullable: true
+          minItems: 1
+          maxItems: 500
+          description: >
+            Replaces the space selection of a CONFLUENCE library as a whole when present; absent
+            leaves the stored selection untouched. Must stay non-empty. Removing a space takes
+            effect with the next full sync, which any change to the selection forces (ADR-0023).
+            Rejected for every other sourceType.
+          items:
+            $ref: "#/components/schemas/ConfluenceSpaceRef"
         schedule:
           $ref: "#/components/schemas/LibraryScheduleRequest"
 
@@ -4990,6 +5374,33 @@ components:
             accurate "leave blank to keep the current credential" hint only when one actually
             exists, instead of implying one is configured when none is. Set only if myRole is at
             least MANAGER (#507) - see sourcePath above for why.
+        confluenceEdition:
+          description: >
+            The edition of a CONFLUENCE library (ADR-0023) - present for every reader, absent for
+            other source types. Not configuration detail in the #507 sense: it says which kind of
+            Confluence the library mirrors, not where.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/ConfluenceEdition"
+        confluenceSpaces:
+          type: array
+          nullable: true
+          description: >
+            The selected spaces of a CONFLUENCE library, present for every reader (not only
+            MANAGER): the selection is exactly the scope every reader of this library can see, and
+            naming it is part of making that consequence visible (ADR-0023, #1138). Absent for
+            other source types.
+          items:
+            $ref: "#/components/schemas/ConfluenceSpaceRef"
+        confluenceWebhookSecretSet:
+          type: boolean
+          nullable: true
+          description: >
+            Whether a webhook secret is currently stored for this CONFLUENCE library (#1140) -
+            never the secret itself, which is returned exactly once by POST
+            /api/v1/libraries/{libraryId}/confluence-webhook-secret. Only present for sourceType
+            CONFLUENCE and only if myRole is at least MANAGER (the same gate as
+            sourceCredentialsSet); absent otherwise.
         schedule:
           description: >
             The library's indexing schedule (#485) - present only for a connector library
@@ -5060,8 +5471,38 @@ components:
 
     DocumentSourceType:
       type: string
-      enum: [FILESYSTEM, HTTP_DIRECTORY, UPLOAD, RSS_FEED]
+      enum: [FILESYSTEM, HTTP_DIRECTORY, UPLOAD, RSS_FEED, CONFLUENCE]
       example: FILESYSTEM
+
+    ConfluenceEdition:
+      type: string
+      description: >
+        The Confluence edition a CONFLUENCE library points at (ADR-0023, Entscheidung 2).
+        Detected by the connection test from the instance's own response signature - never
+        guessed from the host name - stored at creation and immutable afterwards, like
+        sourceType itself. CLOUD authenticates with e-mail + API token (HTTP Basic) against
+        /wiki/api/v2, DATA_CENTER with a personal access token (Bearer) against /rest/api.
+      enum: [CLOUD, DATA_CENTER]
+      example: DATA_CENTER
+
+    ConfluenceSpaceRef:
+      type: object
+      required: [key]
+      description: >
+        One space of a CONFLUENCE library's selection (ADR-0023, Entscheidung 1). key is the
+        stable Confluence space key the run lists; name is the display name at the time of
+        selection so the UI can show the selection without asking Confluence again.
+      properties:
+        key:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: ENG
+        name:
+          type: string
+          maxLength: 255
+          nullable: true
+          example: Engineering
 
     MetadataOrigin:
       type: string
@@ -5180,6 +5621,23 @@ components:
             link that is the entire point of #738/#740, not the library's crawl configuration (host,
             proxy, credentials) that #507 protects. Maintainer decision on PR #743 (Epic #740).
           example: https://example.gov/verzeichnis/dienstanweisung-2024.pdf
+        sourceContainerKey:
+          type: string
+          nullable: true
+          description: >
+            The container within the source system the document came from - a Confluence space key
+            (ADR-0023, #1136). Visible to every VIEWER, like the library's selected spaces
+            themselves (#1138): the key names one document's origin, not the library's crawl
+            configuration. Null for every other source type.
+          example: IT
+        sourceHierarchyPath:
+          type: string
+          nullable: true
+          description: >
+            The document's position within its source container - a Confluence page's ancestor
+            titles, root first, joined with " / " (ADR-0023, "Identität und Metadaten"). Null for
+            a top-level page and for every other source type.
+          example: Betriebshandbuch / Kapitel 1 — Netzwerkbetrieb
         errorMessage:
           type: string
           nullable: true

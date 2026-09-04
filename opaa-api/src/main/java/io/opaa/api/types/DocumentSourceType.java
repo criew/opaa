@@ -4,5 +4,6 @@ public enum DocumentSourceType {
   FILESYSTEM,
   HTTP_DIRECTORY,
   UPLOAD,
-  RSS_FEED
+  RSS_FEED,
+  CONFLUENCE
 }

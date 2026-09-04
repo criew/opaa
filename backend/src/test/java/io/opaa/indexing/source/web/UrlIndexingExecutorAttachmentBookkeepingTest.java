@@ -14,6 +14,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
@@ -149,7 +150,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
           return FileProcessingResult.PROCESSED;
         });
 
-    executor.execute(UUID.randomUUID(), library);
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
     Set<String> currentUrls = capturedCurrentUrls();
     assertThat(currentUrls).contains(MAIL_URL, keptPath);
@@ -173,7 +174,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
 
     stubProcessUrlFile(invocation -> FileProcessingResult.SKIPPED);
 
-    executor.execute(UUID.randomUUID(), library);
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
     assertThat(capturedCurrentUrls()).contains(MAIL_URL, innerMailPath, grandchildPath);
   }
@@ -201,7 +202,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
           return FileProcessingResult.PROCESSED;
         });
 
-    executor.execute(UUID.randomUUID(), library);
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
     assertThat(capturedCurrentUrls()).contains(MAIL_URL, failedPath, childOfFailedPath);
   }
@@ -219,7 +220,12 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
     ArgumentCaptor<Set<String>> urlsCaptor = ArgumentCaptor.forClass(Set.class);
     verify(staleDocumentCleanupService, timeout(2000))
         .cleanupVanished(
-            eq(library), eq(DocumentSourceType.HTTP_DIRECTORY), urlsCaptor.capture(), any());
+            eq(library),
+            eq(DocumentSourceType.HTTP_DIRECTORY),
+            urlsCaptor.capture(),
+            any(),
+            any(),
+            any());
     return urlsCaptor.getValue();
   }
 }

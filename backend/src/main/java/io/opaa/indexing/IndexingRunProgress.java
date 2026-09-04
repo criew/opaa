@@ -24,6 +24,12 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
    */
   private int documentsIndexedTotal;
 
+  /** The attachment share of the counters above (#1141) - see {@link #recordAttachment}. */
+  private int attachmentsProcessed;
+
+  private int attachmentsSkipped;
+  private int attachmentsFailed;
+
   public IndexingRunProgress(IndexingJobService indexingJobService, UUID jobId) {
     this.indexingJobService = indexingJobService;
     this.jobId = jobId;
@@ -66,8 +72,49 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
     return failed;
   }
 
+  /** Source items this run processed so far - the executor's "did this run make progress" check. */
+  public int processedCount() {
+    return processed;
+  }
+
   public void recordSkipped() {
     skipped++;
+  }
+
+  /** The outcome of one attachment (#1141). */
+  public enum AttachmentOutcome {
+    PROCESSED,
+    SKIPPED,
+    FAILED
+  }
+
+  /**
+   * Records an attachment's outcome for the run's metrics. Only {@code PROCESSED} also counts
+   * towards {@code documentsIndexedTotal} (the attachment became a document of its own); skipped
+   * and failed attachments leave the document counters alone, as before.
+   */
+  public void recordAttachment(AttachmentOutcome outcome) {
+    switch (outcome) {
+      case PROCESSED -> {
+        attachmentsProcessed++;
+        documentsIndexedTotal++;
+      }
+      case SKIPPED -> attachmentsSkipped++;
+      case FAILED -> attachmentsFailed++;
+    }
+  }
+
+  /** The attachment counters, for the executor's {@link IndexingRunCost}. */
+  public int attachmentsProcessed() {
+    return attachmentsProcessed;
+  }
+
+  public int attachmentsSkipped() {
+    return attachmentsSkipped;
+  }
+
+  public int attachmentsFailed() {
+    return attachmentsFailed;
   }
 
   /** Reports the current counters. Callers decide when a report is due, exactly as before. */

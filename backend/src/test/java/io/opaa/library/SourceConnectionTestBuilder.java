@@ -1,5 +1,6 @@
 package io.opaa.library;
 
+import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import java.net.URI;
 import java.util.UUID;
@@ -18,6 +19,7 @@ public final class SourceConnectionTestBuilder {
   private String sourceCredentials;
   private Boolean sourceInsecureSsl;
   private UUID libraryId;
+  private ConfluenceEdition confluenceEdition;
 
   private SourceConnectionTestBuilder() {}
 
@@ -60,6 +62,11 @@ public final class SourceConnectionTestBuilder {
     return this;
   }
 
+  public SourceConnectionTestBuilder confluenceEdition(ConfluenceEdition confluenceEdition) {
+    this.confluenceEdition = confluenceEdition;
+    return this;
+  }
+
   public SourceConnectionTest build() {
     return new SourceConnectionTest(
         sourceType,
@@ -68,6 +75,7 @@ public final class SourceConnectionTestBuilder {
         sourceProxy,
         sourceCredentials,
         sourceInsecureSsl,
-        libraryId);
+        libraryId,
+        confluenceEdition);
   }
 }

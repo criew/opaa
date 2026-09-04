@@ -251,6 +251,8 @@ export async function shareLibraryWithPerson(
 ): Promise<void> {
   await gotoLibraries(adminPage)
   await gotoLibraryDetail(adminPage, libraryName)
+  // Seit dem Reiter-Umbau der Detailseite liegt "Rechte verwalten" im Bereich "Verwaltung".
+  await adminPage.getByRole('tab', { name: 'Verwaltung' }).click()
   await adminPage.getByRole('button', { name: 'Rechte verwalten' }).click()
   await adminPage.getByRole('button', { name: 'Freigeben' }).click()
   // Not getByLabel: once the Autocomplete's listbox is open, its aria-labelledby also points back

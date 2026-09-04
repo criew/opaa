@@ -288,6 +288,11 @@ Radius sm, Gewicht 500, 13,5 px, Höhe 34 px (kompakt 28 px), Beschriftung als V
 Dunkel-Spalte der Rollen. Zerstörende Aktionen: Sekundär-Variante mit Gefahr-Text, niemals eine
 rote Primärfläche als Standardaktion.
 
+**Nur-Icon-Schaltflächen** tragen immer beides: ein deutsches `aria-label` mit konkretem Bezug
+(„Original von bescheid.pdf öffnen") **und** einen `Tooltip`, der die Funktion beim Zeigen mit
+der Maus erklärt („Original öffnen"). Ein Icon allein ist keine Beschriftung — weder für
+Sehende, die das Symbol nicht kennen, noch für Screenreader.
+
 ### 5.2 Formularfelder
 
 Beschriftung oberhalb als eigenständiges Label (12 px, `fg-2`, 5 px Abstand — kein
@@ -322,7 +327,7 @@ Tintfläche (`bg-3`), **keine Signalfarben**. Feste Wortlisten:
 
 - **Rollen:** Leser · Bearbeiter · Verwalter · Eigentümer
 - **Verteilungsstufen:** privat · geteilt · organisationsweit
-- **Herkunft:** Upload · Dateisystem · Webverzeichnis · RSS-Feed
+- **Herkunft:** Upload · Dateisystem · Webverzeichnis · RSS-Feed · Confluence
 - **Space-Art:** Persönlich · Team
 
 Ein laufender Vorgang („Lauf läuft · 62 %") ist Text mit Fortschrittsangabe in `fg-2`, kein
@@ -351,6 +356,22 @@ m Dokumenten", je Dokument Ziffern + Titel (Gewicht 500) + Fundort und Stand in 
 Die Verweigerung im Zitierzwang ist eine vollwertige Auskunft in normaler Antwort-Typografie —
 kein Banner, keine Signalfarbe (Ausgestaltung: Issues #590/#592, Mockups 1a/1i).
 
+### 5.9 Popup-Benachrichtigungen
+
+Rückmeldungen auf einmalige Aktionen — ein fehlgeschlagener oder gestarteter Download, ein
+abgeschlossener Hintergrundschritt — erscheinen als **Popup-Benachrichtigung** unten mittig
+(Ebene 2: Rahmen plus Schatten auf `bg-1`), nach sechs Sekunden automatisch ausgeblendet und
+jederzeit per Schließen-Knopf verwerfbar. Sie laufen über den globalen Mechanismus
+(`frontend/src/stores/notificationStore.ts` → `notify(message, severity)`, gerendert genau
+einmal durch `NotificationHost` in der AppShell) — nie über eine komponenteneigene Snackbar und
+**nie als Inline-Alert, der über einer Tabelle oder Liste eingeschoben wird** und dabei fremden
+Inhalt verdrängt.
+
+Inline-`Alert`s bleiben Zuständen vorbehalten, die an ihren Ort gebunden sind und dort bestehen
+bleiben: der Validierungsfehler am Formular, der Ladefehler des Bereichs, ein dauerhafter
+Zustandshinweis („nur Leserechte"). Faustregel: Was nach einem Seitenwechsel noch gilt, ist ein
+Inline-Zustand — was einen Klick quittiert, ist eine Benachrichtigung.
+
 ---
 
 ## 6 · Sprache und Begriffe
@@ -363,7 +384,7 @@ UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch. Verbindliche Begri
 | **Chat**                  | in sich geschlossene Unterhaltung in einem Space; benennbar                                  |
 | **Wissensbibliothek**     | benannter Wissensbestand; kurz „Bibliothek", im Fließtext auch „Bestand"                     |
 | **Datenquellen**          | die einem Space zugeordneten Bibliotheken                                                    |
-| **Herkunft**              | woher eine Bibliothek ihre Dokumente bezieht (Upload, Dateisystem, Webverzeichnis, RSS-Feed) |
+| **Herkunft**              | woher eine Bibliothek ihre Dokumente bezieht (Upload, Dateisystem, Webverzeichnis, RSS-Feed, Confluence) |
 | **Verteilungsstufe**      | privat · geteilt · organisationsweit                                                         |
 | **Rolle**                 | Leser · Bearbeiter · Verwalter · Eigentümer                                                  |
 | **Fundstellen**           | Belegblock unter einer Antwort                                                               |

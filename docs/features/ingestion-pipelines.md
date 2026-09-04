@@ -386,6 +386,7 @@ Token-Chunking wie heute. Der Fallback verschwindet nicht, er wird nur zur Ausna
 |---|---|---|
 | Satzungen, Ordnungen, Rechtstexte (aus PDF/DOCX) | § und Absatz, aus der erkannten Gliederung | Gliederungspfad (§, Absatz), Dokumenttitel |
 | Markdown, DOCX, HTML | Überschriftenabschnitt (Ebene 1–3) | Überschriftenpfad |
+| Confluence-Seiten (Storage-Format) | Überschriftenabschnitt (Ebene 1–3), Makros nach Regelwerk | Überschriftenpfad, Space, Gliederungspfad der Seite |
 | PPTX | Eine Folie = ein Chunk | Foliennummer, Folientitel, Notizen als Kontext |
 | XLSX/CSV | Logische Tabelle bzw. Zeilengruppe | Blattname, Tabellenname, **Spaltenköpfe in jedem Chunk wiederholt** |
 | EML/MSG | Eine Nachricht = ein Chunk; lange Threads je Nachricht im Thread | Betreff, Absender, Datum |
@@ -906,7 +907,7 @@ Die Pipeline trennt drei Dinge:
 - **Ein Anhang ist ein eigenes Dokument, das durch die Pipeline seines eigenen Typs läuft** (ADR-0022,
   #1183). Ein PDF-Anhang einer Mail wird von der PDF-Pipeline verarbeitet und als eigene
   `Document`-Zeile mit eigener Prüfsumme, eigener Quote und `parent_document_id` auf die Mail
-  gespeichert — derselbe verallgemeinerte Anhangsweg, den RSS und (künftig) Confluence auch nutzen,
+  gespeichert — derselbe verallgemeinerte Anhangsweg, den RSS und Confluence (#1137) auch nutzen,
   nicht ein mail-spezifischer Sonderpfad. `MailDocumentPipeline` selbst routet dafür nichts mehr
   rekursiv; sie meldet jeden Anhang nur noch über `DocumentPipelineResult#discoveredAttachments()`.
 
@@ -1229,6 +1230,71 @@ die Pipeline einen Wert meldet — ein reines Mail-spezifisches Detail, jede and
 diesen Kanal leer und behält die Dateigröße auf der Platte.
 
 **Baseline unberührt** — der bestehende Evaluierungskorpus enthält keine EML- oder MSG-Dokumente.
+
+### 6. Confluence-Seiten (Storage-Format)
+
+Kein Dateiformat, sondern der Körper einer Confluence-Seite, wie ihn beide Editionen liefern
+(ADR-0023, #1129): XHTML mit den Makro-Elementen `ac:*`/`ri:*`. Eine naive Konvertierung erzeugt
+Chunks aus Navigationsresten (Inhaltsverzeichnis, Kindseitenliste) und leeren Makro-Hüllen; das
+Kernproblem ist deshalb nicht Boilerplate im Sinne von HTML, sondern die Frage, **welcher
+Makro-Inhalt Seiteninhalt ist** und welcher zur Laufzeit aus anderen Quellen zusammengesetzt wird.
+
+#### Umgesetzt (#1137)
+
+`ConfluenceDocumentPipeline` (`id` `confluence`, Version 1) beansprucht **kein** Format in der
+`DocumentPipelineRegistry` — `FileProcessingService#processConfluencePage` ruft sie über
+`pipelineById` direkt auf, so wie ein Feed-Eintrag den Fallback direkt erhält; ohne registrierte
+Pipeline (reduzierte Testregistry) nimmt der Fallback den Körper als Text. Der Vollabgleich (#1136)
+übergibt den Storage-Körper unverändert; die Pipeline liest ihn mit dem XML-Parser von Jsoup, damit
+die Makro-Elemente erhalten bleiben (der HTML-Parser verwirft namensraum-präfigierte Elemente).
+
+**Regelwerk je Makro-Klasse** (`ConfluenceMacroRules`). Die Trennlinie ist, wo der Inhalt lebt:
+
+| Klasse | Beispiele | Regel |
+|---|---|---|
+| Statischer Inhalt mit Rich-Text-Körper | `info`, `note`, `warning`, `tip`, `panel`, `expand`, `details` (Seiteneigenschaften), `excerpt`, `section`/`column`, unbekannte Makros | Titel-Parameter (falls vorhanden) als eigene Zeile, Körper als Seitentext; alle anderen Parameter entfallen |
+| Wörtlicher Text | `code`, `noformat` | Klartextkörper mit Zeilenumbrüchen, Sprachangabe als vorangestellte Zeile |
+| Parameter *ist* der Inhalt | `status` (Lozenge) | Titel-Parameter als Inline-Text |
+| Zur Laufzeit erzeugt | `toc`, `children`, `pagetree`, `recently-updated`, `contentbylabel`, `livesearch`, `create-from-template`, `attachments`, `gallery`, `tasks-report`, `page-properties-report`, `chart`, `calendar`, `roadmap`, `profile`, `userlister`, `contributors`, `widget`, `iframe`, `html`, `rss`, `jira`, `jiraissues`, `sql`, `include`, `excerpt-include`, … | Entfällt vollständig — Navigationshilfe oder Kopie von Daten, die in einem anderen System liegen (laut Epic außerhalb des Umfangs) |
+
+Ein unbekanntes Makro gilt als statisch: ein Rich-Text-Körper ist vom Autor geschriebener Text; alles
+andere daran nicht. Bilder, Emoticons, Platzhalter und Ressourcenverweise (`ri:*`) werden nie Text;
+der **Anzeigetext eines Links** bleibt, sein Ziel nicht.
+
+**Struktur:** h1–h3 schneiden einen Chunk, h4–h6 falten in den Text (wie HTML und Markdown);
+Tabellen werden eine Zeile je Tabellenzeile mit „ | " zwischen den Zellen; Listen eine Zeile je
+Eintrag mit Marker (•, ◦, ▪ nach Verschachtelungstiefe bzw. verschachtelte Nummer wie „2.1.“ —
+Einrückung überlebt den Schnitt nicht, der Marker trägt die Tiefe); Aufgabenlisten behalten ihren
+Zustand (`[x]`/`[ ]`);
+Code behält seine Zeilenumbrüche. Der Überschriftenpfad steht als erste Zeile im Chunk und als
+`location` („Abschn. …") in den Metadaten — geteilt mit den anderen Pipelines über
+`HeadingSectionSplitter`, Schnittbudget 4000/20000 Zeichen wie dort (gesetzt, nicht gemessen: der
+Evaluierungskorpus enthält keine Confluence-Seiten, Baseline unberührt).
+
+**Gliederungspfad der Seite** (Querschnittsregel (b)): Space-Schlüssel und Vorfahrentitel liegen
+nicht im Körper; der Aufruf schreibt sie an das Dokument (`source_container_key`,
+`source_hierarchy_path`, #1136) **und** an jeden Chunk als Durchreiche-Metadaten
+(`source_container_key`, `source_hierarchy_path` — derselbe Vorfahrenpfad wie an der Spalte des
+Dokuments; der Seitentitel steht am Chunk als `file_name`), die die Pipeline als
+`passthroughMetadataKeys` deklariert. Der Chunk-Kontext-Präfix (Embedding und Volltext, nie im
+zitierten Rohtext) ist der Ort der Seite im Space — `[Handbuch / Kapitel 1 / Abschnitt 1.1]` —, nicht
+nur ihr Titel. Die Zitatanzeige liest diese Metadaten noch nicht (siehe Offene Punkte).
+
+**Anhänge** laufen weiter über den bestehenden Anhangsweg (`processUrlFile`, Routing nach Inhalt):
+ein `.html`-Anhang trifft `HtmlDocumentPipeline`, ein PDF den PDF-Weg; ein nicht unterstützter Typ
+wird als `UNSUPPORTED_FORMAT` sichtbar übersprungen und bleibt Teil der Abgleichsmenge.
+
+**Beide Editionen, ein Ergebnis:** Der Vollabgleich übergibt für Cloud und Data Center denselben
+Storage-Körper (Vertragstest gegen das Testdoppel); die Aufbereitung kennt die Edition nicht.
+`atlas_doc_format` (nur Cloud) wird bewusst nicht verwendet — das Storage-Format ist das
+gemeinsame Zwischenformat. Elemente des neuen Cloud-Editors (`ac:adf-extension`) werden über
+ihren `ac:adf-content` genommen; die wiederholte Altkopie (`ac:adf-fallback`) und die
+ADF-Attribute bleiben unsichtbar, damit kein Inhalt doppelt erscheint.
+
+**Beantwortbarkeit als Testfall:** `ConfluencePageIndexingIntegrationTest` indiziert eine
+repräsentative Seite (Inhaltsverzeichnis, Tabelle, Hinweiskasten, Jira-Makro, Hierarchie) über den
+echten Verarbeitungsweg und prüft, dass die Frage nach der Frist die Tabellenzeile trifft — mit
+Pipeline-Kennung, Fundort, Space und Gliederungspfad am Chunk; das Jira-Makro hinterlässt nichts.
 
 ### Ausblick: Scan-PDF und OCR (eigenes Epic)
 

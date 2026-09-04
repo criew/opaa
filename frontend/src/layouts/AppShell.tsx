@@ -12,6 +12,7 @@ import AppFooter from './AppFooter'
 import SkipLink from '../components/a11y/SkipLink'
 import { MAIN_CONTENT_ID } from '../components/a11y/PageHeading'
 import IndexingSnackbar from '../components/admin/IndexingSnackbar'
+import NotificationHost from '../components/NotificationHost'
 import { useUiStore } from '../stores/uiStore'
 
 export default function AppShell() {
@@ -99,6 +100,7 @@ export default function AppShell() {
       </Box>
 
       <IndexingSnackbar />
+      <NotificationHost />
     </Box>
   )
 }

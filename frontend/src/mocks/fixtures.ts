@@ -23,6 +23,7 @@ import type {
   SearchPermissionProfileResponse,
   SearchDiagnosisContextResponse,
   SearchDiagnosisResponse,
+  ConfluenceSpaceRef,
   ChunkInspectionResponse,
   DocumentChunksResponse,
 } from '../types/api'
@@ -81,6 +82,7 @@ export const mockIndexingRuns: IndexingRunListResponse = {
       id: '11111111-1111-1111-1111-111111111111',
       status: 'COMPLETED',
       triggeredBy: 'MANUAL',
+      runMode: 'FULL',
       documentCount: 37,
       totalDocuments: 42,
       documentsSkipped: 5,
@@ -1577,6 +1579,15 @@ export const mockUsers: UserInfo[] = [
   { id: 'owner-2', email: 'chris@opaa.local', displayName: 'Chris', systemRole: 'USER' },
   { id: 'curator-1', email: 'bob@opaa.local', displayName: 'Bob', systemRole: 'USER' },
   { id: 'demo-user', email: 'demo@opaa.local', displayName: 'Demo-Benutzer', systemRole: 'USER' },
+]
+
+/** #1134: spaces the mock Confluence token may read (source of the wizard's space selection). */
+export const mockConfluenceSpaces: ConfluenceSpaceRef[] = [
+  { key: 'BAU', name: 'Bauamt' },
+  { key: 'HR', name: 'Personal und Organisation' },
+  { key: 'IT', name: 'IT-Betrieb' },
+  { key: 'KAEM', name: 'Kämmerei' },
+  { key: 'RECHT', name: 'Rechtsamt' },
 ]
 
 export const mockChunkInspections: Record<string, ChunkInspectionResponse> = {

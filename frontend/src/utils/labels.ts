@@ -12,6 +12,9 @@ import type {
   ScheduleWeekday,
   SpaceRole,
   SpaceVisibility,
+  ConfluenceEdition,
+  IndexingRunMode,
+  IndexingTriggerSource,
 } from '../types/api'
 import type { AccessLevel } from '../types/chat'
 
@@ -167,6 +170,7 @@ const documentSourceTypeLabels: Record<DocumentSourceType, string> = {
   FILESYSTEM: 'Dateisystem',
   HTTP_DIRECTORY: 'Webverzeichnis',
   RSS_FEED: 'RSS-Feed',
+  CONFLUENCE: 'Confluence',
 }
 
 export function documentSourceTypeLabel(
@@ -182,6 +186,7 @@ const documentSourceTypeDescriptions: Record<DocumentSourceType, string> = {
   FILESYSTEM: 'Ein Pfad im Hausnetz wird regelmäßig eingelesen.',
   HTTP_DIRECTORY: 'Eine interne Webadresse wird durchlaufen und indiziert.',
   RSS_FEED: 'Neue Beiträge werden laufend übernommen, Anhänge wahlweise.',
+  CONFLUENCE: 'Ausgewählte Spaces eines Confluence (Cloud oder Data Center) werden eingelesen.',
 }
 
 export function documentSourceTypeDescription(
@@ -207,16 +212,21 @@ export const allDocumentSourceTypes = Object.keys(documentSourceTypeLabels) as D
  * - 'path': a required, server-absolute directory path (FILESYSTEM).
  * - 'url': a required http(s) URL plus optional proxy/credentials/insecure-SSL (HTTP_DIRECTORY,
  *   RSS_FEED - both run-based, URL-fetched source types with the identical configuration shape).
+ * - 'confluence': base address, edition-dependent credentials and a space selection (CONFLUENCE,
+ *   ADR-0023) - its own multi-stage flow, see LibraryCreatePage.
  *
  * Just like documentSourceTypeLabels, this is a Record over the full DocumentSourceType union, so
  * a future enum value forces a compile error here instead of silently rendering as a template with
  * no configuration fields at all.
  */
-export const documentSourceTypeConfigKind: Record<DocumentSourceType, 'none' | 'path' | 'url'> = {
+export type DocumentSourceConfigKind = 'none' | 'path' | 'url' | 'confluence'
+
+export const documentSourceTypeConfigKind: Record<DocumentSourceType, DocumentSourceConfigKind> = {
   UPLOAD: 'none',
   FILESYSTEM: 'path',
   HTTP_DIRECTORY: 'url',
   RSS_FEED: 'url',
+  CONFLUENCE: 'confluence',
 }
 
 // #513: German, understandable categories for a skipped/rejected item or error in a run's
@@ -234,6 +244,35 @@ const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> =
   // #886: the document no longer exists at its source and was removed at the end of a
   // successful, complete run - a note about the removal, not a skip/reject/error of this run.
   REMOVED: 'In der Quelle entfernt',
+  // #1136: the source throttled the run and it slowed down instead of failing - one summary note.
+  RATE_LIMITED: 'Ratenbegrenzung',
+  BUDGET_EXHAUSTED: 'Anfragebudget erschöpft',
+}
+
+// ADR-0023, Entscheidung 4 (#1136): the Betriebsart of a run - whether its listing was complete
+// (and could remove what it did not meet again) or only picked up changes.
+const indexingRunModeLabels: Record<IndexingRunMode, string> = {
+  FULL: 'Vollabgleich',
+  INCREMENTAL: 'Inkrementell',
+}
+
+export function indexingRunModeLabel(mode: IndexingRunMode | string | undefined): string {
+  if (!mode) return ''
+  return indexingRunModeLabels[mode as IndexingRunMode] ?? mode
+}
+
+const indexingTriggerSourceLabels: Record<IndexingTriggerSource, string> = {
+  MANUAL: 'manuell gestartet',
+  SCHEDULED: 'per Zeitplan',
+  WEBHOOK: 'per Webhook',
+}
+
+/** Who started a run (#485, #1140) - shown in the run history beside the run mode. */
+export function indexingTriggerSourceLabel(
+  source: IndexingTriggerSource | string | undefined,
+): string {
+  if (!source) return ''
+  return indexingTriggerSourceLabels[source as IndexingTriggerSource] ?? source
 }
 
 export function indexingRunEventCategoryLabel(
@@ -296,6 +335,16 @@ export function formatFileSize(bytes: number | null | undefined): string {
     unitIndex += 1
   }
   return `${value.toLocaleString('de-DE', { maximumFractionDigits: 1 })} ${units[unitIndex]}`
+}
+
+const confluenceEditionLabels: Record<ConfluenceEdition, string> = {
+  CLOUD: 'Cloud',
+  DATA_CENTER: 'Data Center',
+}
+
+export function confluenceEditionLabel(edition: ConfluenceEdition | string | undefined): string {
+  if (!edition) return ''
+  return confluenceEditionLabels[edition as ConfluenceEdition] ?? edition
 }
 
 // #1068: provenance of a document metadata value (metadata-schema.md, "Jeder Wert trägt seine

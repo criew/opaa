@@ -57,6 +57,9 @@ class FilesystemFolderMappingIntegrationTest {
   @BeforeEach
   void setUp() throws IOException {
     jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
+    // Children first: another class in this shared context may leave attachment rows behind, and
+    // deleteAll()'s row order would otherwise trip fk_documents_parent (ADR-0022).
+    jdbcTemplate.update("DELETE FROM documents WHERE parent_document_id IS NOT NULL");
     documentRepository.deleteAll();
     indexingJobRepository.deleteAll();
     jdbcTemplate.update("DELETE FROM library_folders");

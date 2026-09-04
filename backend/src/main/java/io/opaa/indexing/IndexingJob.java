@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.api.types.IndexingRunMode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -92,14 +93,50 @@ public class IndexingJob {
 
   /**
    * Who started this run - {@link JobTriggerSource#MANUAL} unless {@link
-   * io.opaa.indexing.IndexingJobService#startJob(java.util.UUID, java.util.UUID, JobTriggerSource)}
-   * was called with {@link JobTriggerSource#SCHEDULED}. {@code KnowledgeLibraryService} uses this
-   * to compute {@code LibraryResponse.lastScheduledRunsFailed} without conflating a manual retry
-   * with the scheduled runs it retried after.
+   * io.opaa.indexing.IndexingJobService#startJob(java.util.UUID, java.util.UUID, JobTriggerSource,
+   * io.opaa.api.types.IndexingRunMode)} was called with {@link JobTriggerSource#SCHEDULED}. {@code
+   * KnowledgeLibraryService} uses this to compute {@code LibraryResponse.lastScheduledRunsFailed}
+   * without conflating a manual retry with the scheduled runs it retried after.
    */
   @Enumerated(EnumType.STRING)
   @Column(name = "triggered_by", nullable = false, length = 20)
   private JobTriggerSource triggeredBy = JobTriggerSource.MANUAL;
+
+  /**
+   * ADR-0023, Entscheidung 4: whether this run listed its source completely (FULL) or only picked
+   * up changes (INCREMENTAL) - the attribute the deletion semantics hang on, visible in the run
+   * protocol and the API. Chosen by DocumentIndexingService from the executor's declaration.
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "run_mode", nullable = false, length = 20)
+  private IndexingRunMode runMode = IndexingRunMode.FULL;
+
+  /**
+   * #1141: a COMPLETED run that stopped in an orderly way before covering everything (its request
+   * budget ran out) and is continued by the next run - distinct from FAILED, which means the run
+   * itself broke. Never {@code true} on a FAILED or RUNNING row.
+   */
+  @Column(name = "incomplete", nullable = false)
+  private boolean incomplete;
+
+  /** #1141: the run's own cost figures; {@code null} until the executor records them at the end. */
+  @Column(name = "requests_sent")
+  private Integer requestsSent;
+
+  @Column(name = "throttle_count")
+  private Integer throttleCount;
+
+  @Column(name = "throttle_wait_millis")
+  private Long throttleWaitMillis;
+
+  @Column(name = "attachments_processed")
+  private Integer attachmentsProcessed;
+
+  @Column(name = "attachments_skipped")
+  private Integer attachmentsSkipped;
+
+  @Column(name = "attachments_failed")
+  private Integer attachmentsFailed;
 
   protected IndexingJob() {}
 
@@ -216,6 +253,43 @@ public class IndexingJob {
 
   public JobTriggerSource getTriggeredBy() {
     return triggeredBy;
+  }
+
+  public IndexingRunMode getRunMode() {
+    return runMode;
+  }
+
+  public void setRunMode(IndexingRunMode runMode) {
+    this.runMode = runMode;
+  }
+
+  public boolean isIncomplete() {
+    return incomplete;
+  }
+
+  /** The metrics the run recorded, or {@code null} when it recorded none (#1141). */
+  public IndexingRunCost getMetrics() {
+    if (requestsSent == null) {
+      return null;
+    }
+    return new IndexingRunCost(
+        requestsSent,
+        throttleCount == null ? 0 : throttleCount,
+        throttleWaitMillis == null ? 0L : throttleWaitMillis,
+        attachmentsProcessed == null ? 0 : attachmentsProcessed,
+        attachmentsSkipped == null ? 0 : attachmentsSkipped,
+        attachmentsFailed == null ? 0 : attachmentsFailed,
+        incomplete);
+  }
+
+  public void applyMetrics(IndexingRunCost metrics) {
+    this.requestsSent = metrics.requestsSent();
+    this.throttleCount = metrics.throttleCount();
+    this.throttleWaitMillis = metrics.throttleWaitMillis();
+    this.attachmentsProcessed = metrics.attachmentsProcessed();
+    this.attachmentsSkipped = metrics.attachmentsSkipped();
+    this.attachmentsFailed = metrics.attachmentsFailed();
+    this.incomplete = metrics.incomplete();
   }
 
   public void setTriggeredBy(JobTriggerSource triggeredBy) {

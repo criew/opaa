@@ -2,9 +2,13 @@ package io.opaa.api;
 
 import io.opaa.api.dto.AssetGrantRequest;
 import io.opaa.api.dto.AssetGrantResponse;
+import io.opaa.api.dto.ConfluenceSpaceListRequest;
+import io.opaa.api.dto.ConfluenceSpaceListResponse;
+import io.opaa.api.dto.ConfluenceWebhookSecretResponse;
 import io.opaa.api.dto.IndexingRunEvent;
 import io.opaa.api.dto.IndexingRunEventCategory;
 import io.opaa.api.dto.IndexingRunListResponse;
+import io.opaa.api.dto.IndexingRunMetrics;
 import io.opaa.api.dto.IndexingRunResponse;
 import io.opaa.api.dto.IndexingStatus;
 import io.opaa.api.dto.IndexingStatusResponse;
@@ -21,11 +25,13 @@ import io.opaa.api.dto.LibrarySpaceAssociationResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJob;
+import io.opaa.indexing.IndexingRunCost;
 import io.opaa.indexing.IndexingRunDetail;
 import io.opaa.indexing.IndexingStatusView;
 import io.opaa.indexing.JobStatus;
@@ -118,6 +124,19 @@ public class LibraryController {
             SourceConnectionTestResponseMapper.toDomain(request), caller));
   }
 
+  /**
+   * Space selection source for a CONFLUENCE library (ADR-0023, #1134) - same permission bar and
+   * rate limit as the connection test above; credentials travel in the body and never come back.
+   */
+  @PostMapping("/confluence/spaces")
+  public ConfluenceSpaceListResponse listConfluenceSpaces(
+      @Valid @RequestBody ConfluenceSpaceListRequest request, @Caller CurrentUser caller) {
+    return SourceConnectionTestResponseMapper.toResponse(
+        SourceConnectionTestResponseMapper.toRefs(
+            sourceConnectionTestService.listConfluenceSpaces(
+                SourceConnectionTestResponseMapper.toDomain(request), caller)));
+  }
+
   @GetMapping
   public List<LibraryListResponse> listLibraries(@Caller CurrentUser caller) {
     return LibraryResponseMapper.toListResponses(libraryService.listLibraries(caller));
@@ -135,6 +154,26 @@ public class LibraryController {
       @Caller CurrentUser caller) {
     return LibraryResponseMapper.toResponse(
         libraryService.updateLibrary(libraryId, LibraryResponseMapper.toUpdate(request), caller));
+  }
+
+  /**
+   * Generates (or rotates) the library's Confluence webhook secret (#1140) and returns it exactly
+   * once, together with the path the instance has to call - the secret is never readable again,
+   * only {@code LibraryResponse.confluenceWebhookSecretSet} tells that one exists.
+   */
+  @PostMapping("/{libraryId}/confluence-webhook-secret")
+  public ConfluenceWebhookSecretResponse generateConfluenceWebhookSecret(
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
+    String secret = libraryService.generateConfluenceWebhookSecret(libraryId, caller);
+    return new ConfluenceWebhookSecretResponse(
+        secret, "/api/v1/libraries/" + libraryId + "/confluence-webhook");
+  }
+
+  @DeleteMapping("/{libraryId}/confluence-webhook-secret")
+  public ResponseEntity<Void> removeConfluenceWebhookSecret(
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
+    libraryService.removeConfluenceWebhookSecret(libraryId, caller);
+    return ResponseEntity.noContent().build();
   }
 
   @DeleteMapping("/{libraryId}")
@@ -255,8 +294,10 @@ public class LibraryController {
 
   @PostMapping("/{libraryId}/indexing")
   public ResponseEntity<IndexingStatusResponse> triggerIndexing(
-      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    IndexingJob job = indexingService.triggerIndexing(libraryId, caller);
+      @PathVariable UUID libraryId,
+      @RequestParam(name = "runMode", required = false) IndexingRunMode runMode,
+      @Caller CurrentUser caller) {
+    IndexingJob job = indexingService.triggerIndexing(libraryId, caller, runMode);
     return ResponseEntity.status(HttpStatus.ACCEPTED).body(toIndexingStatusResponse(job));
   }
 
@@ -285,20 +326,14 @@ public class LibraryController {
     String message =
         switch (job.getStatus()) {
           case RUNNING -> "Indizierung läuft";
-          case COMPLETED ->
-              "Indizierung abgeschlossen: "
-                  + job.getDocumentsProcessed()
-                  + " verarbeitet, "
-                  + job.getDocumentsSkipped()
-                  + " übersprungen, "
-                  + job.getDocumentsFailed()
-                  + " fehlgeschlagen";
+          case COMPLETED -> completedMessage(job);
           case FAILED -> "Indizierung fehlgeschlagen: " + job.getErrorMessage();
         };
     return new IndexingRunResponse(
             job.getId(),
             status,
             mapIndexingTriggerSource(job.getTriggeredBy()),
+            job.getRunMode(),
             job.getDocumentsProcessed(),
             job.getDocumentsTotal(),
             job.getDocumentsSkipped(),
@@ -308,7 +343,37 @@ public class LibraryController {
             detail.events().stream().map(this::toIndexingRunEventResponse).toList(),
             job.getEventsTruncatedCount())
         .message(message)
-        .completedAt(job.getCompletedAt());
+        .completedAt(job.getCompletedAt())
+        .incomplete(job.isIncomplete())
+        .metrics(toIndexingRunMetrics(job.getMetrics()));
+  }
+
+  /** #1141: "unvollständig, wird fortgesetzt" is part of the sentence, not only a flag. */
+  private static String completedMessage(IndexingJob job) {
+    String base =
+        "Indizierung abgeschlossen: "
+            + job.getDocumentsProcessed()
+            + " verarbeitet, "
+            + job.getDocumentsSkipped()
+            + " übersprungen, "
+            + job.getDocumentsFailed()
+            + " fehlgeschlagen";
+    return job.isIncomplete()
+        ? base + " — unvollständig (Anfragebudget erschöpft), der nächste Lauf setzt fort"
+        : base;
+  }
+
+  private static IndexingRunMetrics toIndexingRunMetrics(IndexingRunCost metrics) {
+    if (metrics == null) {
+      return null;
+    }
+    return new IndexingRunMetrics(
+        metrics.requestsSent(),
+        metrics.throttleCount(),
+        Math.round(metrics.throttleWaitMillis() / 1000.0),
+        metrics.attachmentsProcessed(),
+        metrics.attachmentsSkipped(),
+        metrics.attachmentsFailed());
   }
 
   private IndexingTriggerSource mapIndexingTriggerSource(
@@ -316,6 +381,7 @@ public class LibraryController {
     return switch (triggeredBy) {
       case MANUAL -> IndexingTriggerSource.MANUAL;
       case SCHEDULED -> IndexingTriggerSource.SCHEDULED;
+      case WEBHOOK -> IndexingTriggerSource.WEBHOOK;
     };
   }
 
@@ -334,6 +400,8 @@ public class LibraryController {
       case ERROR -> IndexingRunEventCategory.ERROR;
       case FORMAT_MISMATCH -> IndexingRunEventCategory.FORMAT_MISMATCH;
       case REMOVED -> IndexingRunEventCategory.REMOVED;
+      case RATE_LIMITED -> IndexingRunEventCategory.RATE_LIMITED;
+      case BUDGET_EXHAUSTED -> IndexingRunEventCategory.BUDGET_EXHAUSTED;
     };
   }
 
@@ -357,14 +425,7 @@ public class LibraryController {
     String message =
         switch (job.getStatus()) {
           case RUNNING -> "Indizierung läuft";
-          case COMPLETED ->
-              "Indizierung abgeschlossen: "
-                  + job.getDocumentsProcessed()
-                  + " verarbeitet, "
-                  + job.getDocumentsSkipped()
-                  + " übersprungen, "
-                  + job.getDocumentsFailed()
-                  + " fehlgeschlagen";
+          case COMPLETED -> completedMessage(job);
           case FAILED ->
               canSeeErrorDetail
                   ? "Indizierung fehlgeschlagen: " + job.getErrorMessage()
@@ -379,7 +440,8 @@ public class LibraryController {
             job.getDocumentsIndexedTotal(),
             job.getCompletedAt() != null ? job.getCompletedAt() : job.getStartedAt())
         .message(message)
-        .libraryId(job.getLibraryId());
+        .libraryId(job.getLibraryId())
+        .incomplete(job.isIncomplete());
   }
 
   private IndexingStatus mapIndexingStatus(JobStatus jobStatus) {

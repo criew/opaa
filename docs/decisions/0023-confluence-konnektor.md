@@ -200,7 +200,12 @@ die gespeicherte Edition. Der Port liefert ein gemeinsames Zwischenmodell (Space
 Kennung/Titel/Version/Vorfahren/Storage-Body, Anhang), an dem alle nachgelagerten Schritte —
 Aufbereitung (#1137), Vollabgleich (#1136), inkrementeller Abgleich (#1139) — editionsunabhängig
 arbeiten. Kein nachgelagerter Schritt unterscheidet die Edition; wo eine Unterscheidung nötig wird,
-gehört sie in den Adapter. Beide Adapter werden gegen **dasselbe Testdoppel** abgenommen; ein Test,
+gehört sie in den Adapter. Eine solche Unterscheidung ist die Prüfung der Zugangsdaten: Data Center
+weist ein unbekanntes oder widerrufenes Token **nicht** ab, sondern bedient die Anfrage anonym mit
+HTTP 200 (Befund der Container-Suite, #1171) — der Adapter liest deshalb das angemeldete
+Benutzerkonto und wertet einen anonymen Benutzer als abgelehntes Token; jeder auflistende Pfad,
+auch jeder Lauf, prüft die Zugangsdaten *vor* der ersten Auflistung, weil eine anonyme, leere
+Auflistung von einer vollständigen sonst nicht zu unterscheiden wäre (Entscheidung 4). Beide Adapter werden gegen **dasselbe Testdoppel** abgenommen; ein Test,
 der nur eine Edition abdeckt, gilt als unvollständig. Die Container-Suite gegen eine echte
 Data-Center-Instanz (#1171) ist eine *zusätzliche* Ebene, die das Testdoppel nicht ersetzt — Cloud
 lässt sich nicht containerisieren.
@@ -281,9 +286,13 @@ Entscheidung 5; umgesetzt mit #877 in `cleanupVanished`) und ist für Confluence
 dieser Bibliothek gehören, (b) aus Confluence stammen und (c) in der Auflistung der aktuell
 ausgewählten Spaces nicht mehr vorkommen. Ein Dokument eines abgewählten Spaces erfüllt (c) und
 verschwindet; ein Dokument einer *anderen* Confluence-Bibliothek gegen dieselbe Instanz erfüllt (a)
-nicht und bleibt unberührt. Anhänge folgen ADR-0022: Der Lauf meldet die Pfade aller angetroffenen
-Anhänge — auch die bereits vorhandener Anhänge einer unverändert übersprungenen Seite — in dieselbe
-Menge. Ein Vollabgleich, der **null** Dokumente antrifft, löscht bewusst nichts (bestehender
+nicht und bleibt unberührt. Anhänge folgen ADR-0022: Sie laufen über den verallgemeinerten Anhangsweg
+(`AttachmentIndexer`) und hängen per `parent_document_id` an ihrer Seite; nur der Download bleibt beim
+editionsbewussten Client (Zugangsdaten, Anfragebudget, Weiterleitungsregel). Der Lauf meldet die Pfade
+aller angetroffenen Anhänge in dieselbe Menge; die Anhänge einer Seite, deren Anhangsliste er nicht
+erneut geholt hat (übersprungen im fortgesetzten Lauf, nicht lesbar, fehlgeschlagen), und die
+Kind-Anhänge eines nicht erneut verarbeiteten Anhangs werden vor dem Abgleich aus der Datenbank
+ergänzt (ADR-0022, Entscheidung 3, Nachtragsfall). Ein Vollabgleich, der **null** Dokumente antrifft, löscht bewusst nichts (bestehender
 Failsafe in `StaleDocumentCleanupService`, weil ein leerer Bestand von einer nicht erreichbaren
 Quelle nicht zu unterscheiden ist); der Bestand einer vollständig geleerten Auswahl verschwindet über
 das Löschen der Bibliothek, nicht über einen Lauf.
@@ -337,6 +346,29 @@ nachzuvollziehen) und deshalb nicht abschaltbar, nur seltener stellbar ist. Weil
 fälliger Vollabgleich, der auf einen laufenden inkrementellen Lauf trifft, wird **vorgemerkt** und
 mit dem nächsten Tick nachgeholt, nicht verworfen — ohne diese Vormerkung wäre der Vollabgleich
 faktisch abschaltbar, durch Timing statt durch Konfiguration.
+
+> **Nachtrag (2026-09-03, #1139):** Umgesetzt ist der Rhythmus des Vollabgleichs zunächst als
+> **instanzweite** Einstellung (`opaa.indexing.confluence.full-sync-interval`, Standard sieben
+> Tage), nicht je Bibliothek — die Vormerkung ist dabei kein eigenes Feld, sondern folgt aus dem
+> Zustand: Solange kein Vollabgleich abgeschlossen ist oder der letzte älter als der Abstand ist,
+> wählt jeder Lauf ohne ausdrückliche Betriebsart den Vollabgleich. Der je Bibliothek einstellbare
+> Rhythmus, den dieser Absatz vorsieht, ist als #1200 ausgegliedert; die instanzweite Einstellung
+> bleibt dann seine Vorgabe.
+
+> **Nachtrag (2026-09-03, #1140):** Der Webhook ist wie hier beschrieben umgesetzt — als Anlass zum
+> gezielten Einzelabruf, nie als Befund. Zwei Wege der Authentisierung, weil die Editionen sie
+> vorgeben: Data Center signiert den Rohkörper mit dem je Bibliothek erzeugten Geheimnis
+> (`X-Hub-Signature`, HMAC-SHA256), eine Cloud-Automation-Regel kann nicht signieren und sendet das
+> Geheimnis als Header `X-OPAA-Webhook-Secret`. Beide Vergleiche sind zeitkonstant; jede nicht
+> authentifizierte Anfrage erhält dieselbe `401`. Die Ereignisart im Körper wird bewusst nicht
+> ausgewertet — nur die genannten Seiten-IDs; was mit der Seite geschah, sagt der Abruf. Gemeldete
+> Seiten werden je Bibliothek gesammelt (Standard fünf Sekunden) und in einem kurzen Lauf mit
+> Auslöser `WEBHOOK` und Betriebsart `INCREMENTAL` geholt, der den Anker nicht bewegt; ein Stapel
+> jenseits einer Obergrenze läuft als gewöhnlicher inkrementeller Abgleich, ein Stapel, der auf
+> einen laufenden Lauf trifft, wartet begrenzt und wird dann verworfen — der nächste Lauf deckt
+> dieselben Seiten ab. Bewusst ohne Replay-Schutz: Eine wiedereingespielte Nachricht kostet einen
+> gezielten Lauf innerhalb der Ratenbegrenzung und ändert am Index nichts, was der Abruf nicht
+> bestätigt.
 
 **Anker und Wiederaufnahme.** Der Laufzustand einer Confluence-Bibliothek lebt in einer eigenen
 Zustandstabelle je Bibliothek (Vorbild `rss_feed_state`, dort bereits je `(library_id, feed_url)`

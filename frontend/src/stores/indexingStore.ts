@@ -1,5 +1,10 @@
 import { create } from 'zustand'
-import type { DocumentSourceType, IndexingRunResponse, IndexingStatus } from '../types/api'
+import type {
+  DocumentSourceType,
+  IndexingRunMode,
+  IndexingRunResponse,
+  IndexingStatus,
+} from '../types/api'
 import { triggerIndexing, getIndexingStatus, getIndexingRuns } from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
@@ -68,7 +73,11 @@ interface IndexingState {
   runHistoryByLibrary: Record<string, IndexingRunResponse[]>
   snackbar: Snackbar
 
-  triggerIndexing: (libraryId: string, sourceType: DocumentSourceType) => Promise<void>
+  triggerIndexing: (
+    libraryId: string,
+    sourceType: DocumentSourceType,
+    runMode?: IndexingRunMode,
+  ) => Promise<void>
   loadStatus: (libraryId: string, sourceType: DocumentSourceType) => Promise<void>
   loadRunHistory: (libraryId: string) => Promise<void>
   stopPolling: (libraryId: string) => void
@@ -141,13 +150,19 @@ export const useIndexingStore = create<IndexingState>((set, get) => ({
     }
   },
 
-  triggerIndexing: async (libraryId: string, sourceType: DocumentSourceType) => {
+  triggerIndexing: async (
+    libraryId: string,
+    sourceType: DocumentSourceType,
+    runMode?: IndexingRunMode,
+  ) => {
     const sessionEpoch = currentSessionEpoch()
     try {
       // #478: sourceType and every typed configuration field come from the library itself
       // (ADR-0018) - the trigger only ever names the library. sourceType is passed in purely for
       // this store's own wording decisions (#518 review, finding 1), not sent to the backend.
-      const response = await triggerIndexing(libraryId)
+      const response = runMode
+        ? await triggerIndexing(libraryId, runMode)
+        : await triggerIndexing(libraryId)
       // #575: a response arriving after a logout must not write into the now-emptied store, nor
       // start a poll interval whose ticks would keep writing into it afterwards.
       if (isStaleSessionEpoch(sessionEpoch)) return

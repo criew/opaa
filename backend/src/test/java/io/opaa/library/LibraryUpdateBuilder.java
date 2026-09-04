@@ -1,8 +1,10 @@
 package io.opaa.library;
 
+import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
 import java.net.URI;
+import java.util.List;
 
 /**
  * Test-only fluent builder for {@link LibraryUpdate} - production code (in particular {@code
@@ -22,6 +24,8 @@ public final class LibraryUpdateBuilder {
   private String sourceCredentials;
   private Boolean sourceInsecureSsl;
   private LibraryScheduleUpdate schedule;
+  private ConfluenceEdition confluenceEdition;
+  private List<ConfluenceSpaceSelection> confluenceSpaces;
 
   private LibraryUpdateBuilder(String name) {
     this.name = name;
@@ -81,6 +85,16 @@ public final class LibraryUpdateBuilder {
     return this;
   }
 
+  public LibraryUpdateBuilder confluenceEdition(ConfluenceEdition confluenceEdition) {
+    this.confluenceEdition = confluenceEdition;
+    return this;
+  }
+
+  public LibraryUpdateBuilder confluenceSpaces(List<ConfluenceSpaceSelection> confluenceSpaces) {
+    this.confluenceSpaces = confluenceSpaces;
+    return this;
+  }
+
   public LibraryUpdate build() {
     return new LibraryUpdate(
         name,
@@ -93,6 +107,8 @@ public final class LibraryUpdateBuilder {
         sourceProxy,
         sourceCredentials,
         sourceInsecureSsl,
-        schedule);
+        schedule,
+        confluenceEdition,
+        confluenceSpaces);
   }
 }

@@ -26,6 +26,7 @@ import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunEventRecorder;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.IndexingRunProgress;
+import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.source.rss.RssFeedRunContext;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -342,5 +343,66 @@ class AttachmentIndexerTest {
     assertThat(indexer.existingAttachmentPaths(parentDocumentId))
         .containsExactlyInAnyOrder(
             "https://example.org/erste.pdf", "https://example.org/zweite.pdf");
+  }
+
+  @Test
+  void aLocalFileCarriesItsSourcesVersionAndTheAccessCarriesTheParentsContext() throws IOException {
+    // #1137: a Confluence attachment reaches this path as a LocalFile (the edition-aware client
+    // downloaded it) - its version must land in last_modified_remote so the executor's
+    // pre-download check can skip it next run, and the page's context travels via the access.
+    KnowledgeLibrary confluenceLibrary =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Wiki",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false,
+            DocumentSourceType.CONFLUENCE,
+            null,
+            "https://wiki.example",
+            null,
+            null,
+            false);
+    SourceDocumentContext pageContext = new SourceDocumentContext("ENG", "Handbuch / Kapitel 1");
+    AttachmentAccess access = mock(AttachmentAccess.class);
+    when(access.targetLibrary()).thenReturn(confluenceLibrary);
+    when(access.events()).thenReturn((category, message, reference) -> {});
+    when(access.progress()).thenReturn(() -> {});
+    when(access.sourceContext()).thenReturn(pageContext);
+    Path downloaded = tempDir.resolve("notizen.txt");
+    Files.writeString(downloaded, "Notizen");
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    List<String> indexed =
+        indexer.indexAll(
+            access,
+            List.of(
+                new AttachmentSource.LocalFile(
+                    downloaded,
+                    "notizen.txt",
+                    "https://wiki.example/download/900/notizen.txt",
+                    "3")),
+            parentDocumentId,
+            "https://wiki.example/pages/102",
+            DocumentSourceType.CONFLUENCE,
+            limits);
+
+    assertThat(indexed).containsExactly("https://wiki.example/download/900/notizen.txt");
+    verify(fileProcessingService)
+        .processUrlFile(
+            eq(downloaded),
+            eq("notizen.txt"),
+            eq("https://wiki.example/download/900/notizen.txt"),
+            eq("3"),
+            eq(7L),
+            eq(confluenceLibrary),
+            eq(DocumentSourceType.CONFLUENCE),
+            eq("https://wiki.example/pages/102"),
+            eq(parentDocumentId),
+            eq(access));
+    verify(access).recordIndexedAttachment("https://wiki.example/download/900/notizen.txt", true);
   }
 }

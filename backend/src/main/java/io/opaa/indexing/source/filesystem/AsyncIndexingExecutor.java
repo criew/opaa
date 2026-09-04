@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.filesystem;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentService;
@@ -16,6 +17,7 @@ import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.SourceFolderMirror;
 import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -24,6 +26,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -100,11 +103,21 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   }
 
   @Override
+  public Map<IndexingRunMode, VanishedDocumentPolicy> runModes() {
+    // ADR-0023, Entscheidung 4: one mode only, "vollständig auflistend".
+    return Map.of(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE);
+  }
+
+  @Override
   @Async("indexingTaskExecutor")
-  public void execute(UUID jobId, KnowledgeLibrary targetLibrary) {
+  public void execute(UUID jobId, KnowledgeLibrary targetLibrary, IndexingRunMode runMode) {
     var progress = new IndexingRunProgress(indexingJobService, jobId);
     var events =
         new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId);
+    if (!runModes().containsKey(runMode)) {
+      progress.fail("Betriebsart " + runMode + " wird für diesen Quellentyp nicht unterstützt");
+      return;
+    }
 
     // ADR-0018 Entscheidung 6: re-checked at run time, not only at library creation/update time -
     // the operator-configured allowlist can be narrowed after a FILESYSTEM library was created. The
@@ -262,7 +275,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
         StaleDocumentCleanupService.foldInPreservedAttachmentPaths(
             existingFilesystemDocuments, currentFilePaths, reprocessedPaths);
         staleDocumentCleanupService.cleanupVanished(
-            targetLibrary, DocumentSourceType.FILESYSTEM, currentFilePaths, events);
+            targetLibrary, DocumentSourceType.FILESYSTEM, currentFilePaths, events, this, runMode);
       } catch (Exception e) {
         log.warn(
             "Failed to clean up vanished FILESYSTEM documents for library {}",

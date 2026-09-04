@@ -93,10 +93,13 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             indexingJobRepository,
             indexingJobService,
             rssFeedStateRepository,
+            org.mockito.Mockito.mock(
+                io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository.class),
             Clock.systemDefaultZone(),
             storageQuotaService,
             folderRepository,
-            eventPublisher);
+            eventPublisher,
+            org.mockito.Mockito.mock(ConfluenceConnectionService.class));
 
     ownerId = UUID.randomUUID();
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");

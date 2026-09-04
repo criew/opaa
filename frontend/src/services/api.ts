@@ -54,6 +54,10 @@ import type {
   SpaceVisibility,
   UserInfo,
   UserSummary,
+  ConfluenceSpaceListRequest,
+  ConfluenceSpaceListResponse,
+  IndexingRunMode,
+  ConfluenceWebhookSecretResponse,
   BulkMetadataValueRequest,
   BulkMetadataValueResponse,
   DocumentMetadataFieldResponse,
@@ -444,12 +448,48 @@ export async function archiveSpace(spaceId: string): Promise<SpaceResponse> {
 // #478: the trigger reduces to "index this library" - sourceType and every typed configuration
 // field (url/proxy/credentials/insecureSsl) now live on the library itself (ADR-0018) and are no
 // longer sent from the frontend.
-export async function triggerIndexing(libraryId: string): Promise<IndexingStatusResponse> {
+/**
+ * Starts a run; `runMode` (ADR-0023, Entscheidung 4) is optional - without it the backend picks
+ * the library's own default (the only mode of a one-mode source type, or for Confluence the mode
+ * its sync state calls for).
+ */
+export async function triggerIndexing(
+  libraryId: string,
+  runMode?: IndexingRunMode,
+): Promise<IndexingStatusResponse> {
   try {
     const { data } = await client.post<IndexingStatusResponse>(
       `/v1/libraries/${libraryId}/indexing`,
+      undefined,
+      runMode ? { params: { runMode } } : undefined,
     )
     return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * #1140: generates or rotates the Confluence webhook secret of a library. The secret is returned
+ * exactly once - the caller shows it, the API never returns it again.
+ */
+export async function generateConfluenceWebhookSecret(
+  libraryId: string,
+): Promise<ConfluenceWebhookSecretResponse> {
+  try {
+    const { data } = await client.post<ConfluenceWebhookSecretResponse>(
+      `/v1/libraries/${libraryId}/confluence-webhook-secret`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** #1140: removes the webhook secret - the library's webhook endpoint rejects every call from now on. */
+export async function removeConfluenceWebhookSecret(libraryId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/libraries/${libraryId}/confluence-webhook-secret`)
   } catch (err) {
     normalizeError(err)
   }
@@ -622,6 +662,21 @@ export async function testLibrarySource(
   try {
     const { data } = await client.post<SourceConnectionTestResponse>(
       '/v1/libraries/source-test',
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** #1134: the spaces a Confluence token may read - basis of the wizard's space selection. */
+export async function listConfluenceSpaces(
+  request: ConfluenceSpaceListRequest,
+): Promise<ConfluenceSpaceListResponse> {
+  try {
+    const { data } = await client.post<ConfluenceSpaceListResponse>(
+      '/v1/libraries/confluence/spaces',
       request,
     )
     return data

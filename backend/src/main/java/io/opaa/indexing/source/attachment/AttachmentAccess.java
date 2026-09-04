@@ -2,6 +2,7 @@ package io.opaa.indexing.source.attachment;
 
 import io.opaa.indexing.AttachmentProgressSink;
 import io.opaa.indexing.IndexingEventSink;
+import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.library.KnowledgeLibrary;
 
 /**
@@ -43,4 +44,15 @@ public interface AttachmentAccess {
    * instead). Default no-op for a caller that never cleans up by path (RSS).
    */
   default void recordIndexedAttachment(String filePath, boolean reprocessed) {}
+
+  /**
+   * Where inside its source the parent document sits (ADR-0023) - inherited by every attachment
+   * {@link AttachmentIndexer} stores through this access, at any nesting depth: a Confluence
+   * attachment carries its page's space and hierarchy path, so the run protocol, the citation and
+   * the chunk context can name them. Default {@link SourceDocumentContext#NONE} for every source
+   * without such a notion (RSS, Mail, HTTP_DIRECTORY, an upload).
+   */
+  default SourceDocumentContext sourceContext() {
+    return SourceDocumentContext.NONE;
+  }
 }

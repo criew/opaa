@@ -13,7 +13,6 @@ import type { SourceReference } from '../../types/api'
 // useDocumentPreview.test.ts for the hook's own preview/download-branching behaviour). This file
 // tests SourceFootnotes as the presentational component it now is.
 const mockOpenDocument = vi.fn(async () => undefined)
-const mockClearError = vi.fn()
 
 function source(
   fileName: string,
@@ -45,7 +44,6 @@ function renderFootnotes(
   citations: CitationIndex,
   overrides: Partial<{
     messageId: string
-    error: string | null
   }> = {},
 ) {
   return renderWithProviders(
@@ -53,8 +51,6 @@ function renderFootnotes(
       messageId={overrides.messageId ?? 'm1'}
       citations={citations}
       openDocument={mockOpenDocument}
-      error={overrides.error ?? null}
-      clearError={mockClearError}
     />,
   )
 }
@@ -257,7 +253,13 @@ describe('SourceFootnotes', () => {
 
       await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
 
-      expect(mockOpenDocument).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
+      expect(mockOpenDocument).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'doc-1',
+          fileName: 'dienstanweisung.pdf',
+          sourceType: 'UPLOAD',
+        }),
+      )
     })
 
     it('calls openDocument for an HTTP_DIRECTORY document too, keeping sourceUrl as a secondary "Quelle" link (#747)', async () => {
@@ -276,7 +278,14 @@ describe('SourceFootnotes', () => {
 
       await user.click(screen.getByRole('button', { name: 'Im Dokument öffnen' }))
 
-      expect(mockOpenDocument).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
+      expect(mockOpenDocument).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'doc-1',
+          fileName: 'dienstanweisung.pdf',
+          sourceType: 'HTTP_DIRECTORY',
+          sourceUrl: 'https://example.gov/verzeichnis/dienstanweisung.pdf',
+        }),
+      )
 
       const sourceLink = screen.getByRole('link', {
         name: 'Quelle: https://example.gov/verzeichnis/dienstanweisung.pdf',
@@ -306,34 +315,6 @@ describe('SourceFootnotes', () => {
       renderFootnotes(citations)
 
       expect(mockOpenDocument).not.toHaveBeenCalled()
-    })
-
-    it('shows the German error message passed in via the error prop', () => {
-      const citations = buildCitationIndex('Satz【source: doc-1#0 | dienstanweisung.pdf】', [
-        source('dienstanweisung.pdf', true, {
-          documentId: 'doc-1',
-          sourceType: 'UPLOAD',
-        }),
-      ])
-      renderFootnotes(citations, { error: 'Das Originaldokument wurde nicht gefunden.' })
-
-      expect(screen.getByText('Das Originaldokument wurde nicht gefunden.')).toBeInTheDocument()
-    })
-
-    it('calls clearError when the error alert is dismissed', async () => {
-      const citations = buildCitationIndex('Satz【source: doc-1#0 | dienstanweisung.pdf】', [
-        source('dienstanweisung.pdf', true, {
-          documentId: 'doc-1',
-          sourceType: 'UPLOAD',
-        }),
-      ])
-      renderFootnotes(citations, { error: 'Das Originaldokument wurde nicht gefunden.' })
-      const user = userEvent.setup()
-
-      // #784: the deDE MUI locale translates Alert's default close button label.
-      await user.click(screen.getByRole('button', { name: 'Schließen' }))
-
-      expect(mockClearError).toHaveBeenCalledTimes(1)
     })
   })
 })

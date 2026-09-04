@@ -28,10 +28,10 @@ import org.slf4j.LoggerFactory;
 /**
  * Indexes the attachments of a parent document into their own {@link io.opaa.indexing.Document}
  * rows (ADR-0022) - generalized (#1182) from an RSS-only implementation detail into the shared
- * attachment path every connector uses: RSS today ({@code RssFeedIndexingExecutor}), Mail and
- * Confluence once their own umstellung tickets (#1183, #1137) wire them in. Carries no dependency
- * on any single connector's package - a caller supplies an {@link AttachmentAccess} (library, event
- * log, progress, deferred-marking) and a list of {@link AttachmentSource} (a download job or an
+ * attachment path every connector uses: RSS ({@code RssFeedIndexingExecutor}), Mail (#1183) and
+ * Confluence (#1137, {@code ConfluenceIndexingExecutor}). Carries no dependency on any single
+ * connector's package - a caller supplies an {@link AttachmentAccess} (library, event log,
+ * progress, deferred-marking) and a list of {@link AttachmentSource} (a download job or an
  * already-extracted local file) instead.
  *
  * <p>Never lets an attachment failure propagate to the caller: a lost attachment (too large,
@@ -283,6 +283,7 @@ public class AttachmentIndexer {
           indexedFile,
           fileName,
           download.url(),
+          null,
           size,
           parentDocumentId,
           parentPath,
@@ -355,9 +356,10 @@ public class AttachmentIndexer {
   }
 
   /**
-   * Indexes an attachment whose bytes are already on disk - the case Mail (#1183) needs, no
-   * download step involved. {@code localFile.filePathIdentity()} is this attachment's {@code
-   * file_path} (ADR-0022, Entscheidung 2); {@code localFile.fileName()} is only its display name.
+   * Indexes an attachment whose bytes are already on disk - the case Mail (#1183) and Confluence
+   * (#1137) need, no download step involved here. {@code localFile.filePathIdentity()} is this
+   * attachment's {@code file_path} (ADR-0022, Entscheidung 2); {@code localFile.fileName()} is only
+   * its display name.
    */
   private Optional<String> indexLocalFile(
       AttachmentAccess access,
@@ -398,6 +400,7 @@ public class AttachmentIndexer {
           localFile.file(),
           localFile.fileName(),
           localFile.filePathIdentity(),
+          localFile.remoteVersion(),
           size,
           parentDocumentId,
           parentPath,
@@ -422,12 +425,16 @@ public class AttachmentIndexer {
 
   /**
    * The {@link FileProcessingService#processUrlFile} call and outcome handling both branches share.
+   * {@code remoteVersion} is the source's change marker for the attachment ({@link
+   * AttachmentSource.LocalFile#remoteVersion()}), {@code null} for a download; {@code access}
+   * carries the parent's {@link AttachmentAccess#sourceContext()} to the attachment.
    */
   private Optional<String> storeAttachment(
       AttachmentAccess access,
       Path localFile,
       String fileName,
       String filePathIdentity,
+      String remoteVersion,
       long size,
       UUID parentDocumentId,
       String parentPath,
@@ -438,7 +445,7 @@ public class AttachmentIndexer {
               localFile,
               fileName,
               filePathIdentity,
-              null,
+              remoteVersion,
               size,
               access.targetLibrary(),
               sourceType,

@@ -1,0 +1,50 @@
+databaseChangeLog:
+  # #1141: operational figures of an indexing run and its "incomplete, continued by the next run"
+  # outcome. Each changeset is one schema change with its own delta test
+  # (io.opaa.migration.Migration015ConfluenceRunMetricsTest).
+  - changeSet:
+      id: 015-indexing-jobs-run-metrics
+      author: opaa
+      comment: >-
+        #1141: what a run cost - requests sent to the source, how often and how long the source
+        throttled it, and the attachment share of its processed/skipped/failed counters. NULL for
+        runs recorded before this change and for source types that do not report them.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.indexing_jobs ADD COLUMN requests_sent integer;
+              ALTER TABLE public.indexing_jobs ADD COLUMN throttle_count integer;
+              ALTER TABLE public.indexing_jobs ADD COLUMN throttle_wait_millis bigint;
+              ALTER TABLE public.indexing_jobs ADD COLUMN attachments_processed integer;
+              ALTER TABLE public.indexing_jobs ADD COLUMN attachments_skipped integer;
+              ALTER TABLE public.indexing_jobs ADD COLUMN attachments_failed integer;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.indexing_jobs DROP COLUMN attachments_failed;
+              ALTER TABLE public.indexing_jobs DROP COLUMN attachments_skipped;
+              ALTER TABLE public.indexing_jobs DROP COLUMN attachments_processed;
+              ALTER TABLE public.indexing_jobs DROP COLUMN throttle_wait_millis;
+              ALTER TABLE public.indexing_jobs DROP COLUMN throttle_count;
+              ALTER TABLE public.indexing_jobs DROP COLUMN requests_sent;
+
+  - changeSet:
+      id: 015-indexing-jobs-incomplete
+      author: opaa
+      comment: >-
+        #1141: a COMPLETED run that stopped in an orderly way before covering everything (the
+        request budget ran out) and is continued by the next run - distinct from FAILED, which
+        means the run itself broke. Existing rows were complete.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.indexing_jobs
+                  ADD COLUMN incomplete boolean DEFAULT false NOT NULL;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.indexing_jobs DROP COLUMN incomplete;

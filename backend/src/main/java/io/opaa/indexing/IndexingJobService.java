@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.ConflictException;
 import java.time.Duration;
 import java.time.Instant;
@@ -39,31 +40,15 @@ public class IndexingJobService {
   }
 
   /**
-   * Starts a new {@link JobStatus#RUNNING} run for {@code libraryId}, recording {@code
-   * organizationId} on the job itself - the caller has already resolved and authorized {@code
-   * libraryId} within that organization, so this simply carries the fact forward onto the row.
-   *
-   * <p>{@code DocumentIndexingService#triggerIndexing}'s own {@link #isJobRunning(UUID, UUID)}
-   * check and this insert are two separate statements with no lock between them (TOCTOU). The
-   * database closes that gap: {@code uk_indexing_jobs_library_running} is a partial unique index on
-   * {@code (library_id) WHERE status = 'RUNNING'}, so at most one RUNNING row per library can ever
-   * exist. {@link IndexingJobRepository#saveAndFlush} - not plain {@code save} - forces the insert
-   * (and therefore the constraint check) to happen synchronously here rather than being deferred to
-   * a later flush the caller could not catch.
+   * Starts a run for {@code libraryId} in an explicit {@link IndexingRunMode} (ADR-0023,
+   * Entscheidung 4) - there is no default mode, the caller resolves it from the executor's own
+   * declaration. Only one running job is allowed per library ({@code
+   * uk_indexing_jobs_library_running}): a concurrent second start fails with a 409 here.
    */
   @Transactional
-  public IndexingJob startJob(UUID libraryId, UUID organizationId) {
-    return doStartJob(libraryId, organizationId, JobTriggerSource.MANUAL);
-  }
-
-  /**
-   * Same as {@link #startJob(UUID, UUID)}, additionally recording {@code triggeredBy} - {@link
-   * io.opaa.indexing.LibraryIndexingScheduler} is the only caller that passes {@link
-   * JobTriggerSource#SCHEDULED}.
-   */
-  @Transactional
-  public IndexingJob startJob(UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy) {
-    return doStartJob(libraryId, organizationId, triggeredBy);
+  public IndexingJob startJob(
+      UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy, IndexingRunMode runMode) {
+    return doStartJob(libraryId, organizationId, triggeredBy, runMode);
   }
 
   /**
@@ -74,11 +59,12 @@ public class IndexingJobService {
    * arriving from outside the bean.
    */
   private IndexingJob doStartJob(
-      UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy) {
+      UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy, IndexingRunMode runMode) {
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setLibraryId(libraryId);
     job.setOrganizationId(organizationId);
     job.setTriggeredBy(triggeredBy);
+    job.setRunMode(runMode);
     IndexingJob saved;
     try {
       saved = indexingJobRepository.saveAndFlush(job);
@@ -193,6 +179,24 @@ public class IndexingJobService {
     job.setDocumentsSkipped(documentsSkipped);
     job.setDocumentsIndexedTotal(documentsIndexedTotal);
     job.setLastProgressAt(Instant.now());
+    indexingJobRepository.save(job);
+  }
+
+  /**
+   * Records the run's cost figures and its incomplete flag (#1141) - called once by an executor
+   * right before {@link #completeJob}, so a COMPLETED row either carries them or never will. A
+   * no-op once the job is no longer {@link JobStatus#RUNNING}, like {@link #updateProgress}.
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void recordRunMetrics(UUID jobId, IndexingRunCost metrics) {
+    var job =
+        indexingJobRepository
+            .findById(jobId)
+            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+    if (job.getStatus() != JobStatus.RUNNING) {
+      return;
+    }
+    job.applyMetrics(metrics);
     indexingJobRepository.save(job);
   }
 

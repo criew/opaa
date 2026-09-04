@@ -168,6 +168,31 @@ public class BoundedDownloader {
       String userAgent,
       String authHeader)
       throws IOException, InterruptedException {
+    return downloadBounded(
+        httpClient,
+        fileUrl,
+        fileName,
+        maxBytes,
+        userAgent,
+        authHeader,
+        RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN);
+  }
+
+  /**
+   * {@link #downloadBounded(HttpClient, String, String, long, String, String)} with an explicit
+   * redirect policy - {@link RedirectFollowingFetcher.RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN}
+   * for sources that hand out content from a second, pre-signed host (Confluence Cloud's media
+   * service), where refusing the hop would refuse every attachment.
+   */
+  public DownloadedFile downloadBounded(
+      HttpClient httpClient,
+      String fileUrl,
+      String fileName,
+      long maxBytes,
+      String userAgent,
+      String authHeader,
+      RedirectFollowingFetcher.RedirectPolicy redirectPolicy)
+      throws IOException, InterruptedException {
     log.debug("Downloading (bounded to {} bytes): {}", maxBytes, fileUrl);
 
     Map<String, String> headers = new LinkedHashMap<>();
@@ -185,11 +210,11 @@ public class BoundedDownloader {
             Duration.ofSeconds(120),
             headers,
             targetAddressValidator,
-            RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN);
+            redirectPolicy);
 
     try (InputStream body = response.body()) {
       if (response.statusCode() != 200) {
-        throw new IOException("HTTP " + response.statusCode() + " downloading: " + fileUrl);
+        throw new HttpStatusException(response.statusCode(), fileUrl);
       }
 
       byte[] bytes = readBounded(body, maxBytes);
@@ -391,5 +416,23 @@ public class BoundedDownloader {
    * Thrown by {@link #download}/{@link #downloadBounded}/{@link #downloadStreaming} when the
    * configured byte limit is exceeded while streaming.
    */
+  /**
+   * A non-{@code 200} answer to a bounded download - carries the status so a caller can tell a
+   * refused ({@code 403}) or vanished ({@code 404}) attachment from an unreachable host. Message
+   * shape unchanged from the plain {@code IOException} it replaces.
+   */
+  public static final class HttpStatusException extends IOException {
+    private final int statusCode;
+
+    public HttpStatusException(int statusCode, String fileUrl) {
+      super("HTTP " + statusCode + " downloading: " + fileUrl);
+      this.statusCode = statusCode;
+    }
+
+    public int statusCode() {
+      return statusCode;
+    }
+  }
+
   public static final class AttachmentTooLargeException extends RuntimeException {}
 }

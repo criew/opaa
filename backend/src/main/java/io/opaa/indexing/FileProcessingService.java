@@ -13,6 +13,7 @@ import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineRunner;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
@@ -403,7 +404,7 @@ public class FileProcessingService {
         targetLibrary,
         sourceType,
         sourceEntryUrl,
-        null);
+        (UUID) null);
   }
 
   /**
@@ -447,7 +448,11 @@ public class FileProcessingService {
    * nested Mail-in-Mail attachment - this document is itself already an attachment, reached via
    * {@link io.opaa.indexing.source.attachment.AttachmentIndexer}) is indexed as its own child of
    * <em>this</em> document, chaining {@code parent_document_id} naturally rather than as a special
-   * case. {@code null} keeps the nine-argument overload's behaviour of discarding one.
+   * case, and the document records where inside its source it sits ({@link
+   * AttachmentAccess#sourceContext()}, ADR-0023 - a Confluence attachment's space and page
+   * hierarchy), refreshed on every re-index so a renamed ancestor reaches the attachment too.
+   * {@code null} keeps the nine-argument overload's behaviour of discarding a discovered attachment
+   * and records {@link SourceDocumentContext#NONE}.
    *
    * <p><b>Update-in-place, not delete-and-recreate, for a changed existing document</b> (mirrors
    * {@link #processRssEntry}'s own contract, needed the moment an attachment can itself have
@@ -474,6 +479,8 @@ public class FileProcessingService {
       throws IOException {
 
     String fileName = originalFileName;
+    SourceDocumentContext context =
+        attachmentAccess == null ? SourceDocumentContext.NONE : attachmentAccess.sourceContext();
 
     // Compute SHA-256 on the downloaded file for content-based deduplication
     String checksum = checksumService.computeSha256(localFile);
@@ -508,6 +515,7 @@ public class FileProcessingService {
       existingDoc.setFileSize(remoteFileSize);
       existingDoc.setSourceEntryUrl(sourceEntryUrl);
       existingDoc.setParentDocumentId(parentDocumentId);
+      existingDoc.applySourceContext(context);
       doc = existingDoc;
     } else {
       // See processFile's own comment on why this runs after the existing-document handling above.
@@ -528,6 +536,7 @@ public class FileProcessingService {
       doc.setOrganizationId(targetLibrary.getOrganizationId());
       doc.setSourceEntryUrl(sourceEntryUrl);
       doc.setParentDocumentId(parentDocumentId);
+      doc.applySourceContext(context);
     }
     doc = documentRepository.save(doc);
 
@@ -1050,6 +1059,194 @@ public class FileProcessingService {
     if (updated == 0) {
       log.warn("Uploaded document {} was deleted before it could be marked FAILED", documentId);
     }
+  }
+
+  /**
+   * Processes one Confluence page's storage-format body (ADR-0023, #1136/#1137) the way {@link
+   * #processRssEntry} processes an RSS entry's text: identity by the title-free page URL in {@code
+   * file_path}, SHA-256 checksum over the body as the content-based change layer behind the
+   * executor's own version check, the version number in {@code last_modified_remote}, the space key
+   * and ancestor titles in the two context columns and as passthrough metadata on every chunk, the
+   * page's own place (hierarchy path plus title) as the chunk-context prefix
+   * (ingestion-pipelines.md, Querschnittsregel (b)). The body goes to {@code
+   * ConfluenceDocumentPipeline} directly - there is no file to route by format; a registry without
+   * that pipeline is a wiring error, not a fallback case.
+   *
+   * @param storageBody the page body in Confluence storage format (XHTML with macro elements)
+   * @param version the page's Confluence version number, the executor's pre-fetch change marker
+   */
+  public FileProcessingResult processConfluencePage(
+      String storageBody,
+      String title,
+      String pageUrl,
+      String version,
+      SourceDocumentContext context,
+      KnowledgeLibrary targetLibrary) {
+    boolean hasTitle = title != null && !title.isBlank();
+    String fileName = hasTitle ? title : pageUrl;
+    String contextTitle = confluenceContextTitle(title, context);
+    byte[] contentBytes = storageBody.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    String checksum = checksumService.computeSha256(contentBytes);
+    Optional<Document> existing =
+        documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), pageUrl);
+    Document doc = null;
+    boolean replacingExistingChunks = false;
+    if (existing.isPresent()) {
+      Document existingDoc = existing.get();
+      if (checksum.equals(existingDoc.getChecksum())
+          && existingDoc.getStatus() == DocumentStatus.INDEXED) {
+        // Same content under a new version (a title-only edit, a move, a renamed ancestor): the
+        // chunks stay, but title, context and the version marker move - the next run's pre-fetch
+        // check skips the page again, and the document list, the citation and the run protocol
+        // show the current title and place.
+        documentRepository.markIndexedFromSource(
+            existingDoc.getId(),
+            existingDoc.getChunkCount(),
+            existingDoc.getIndexedAt(),
+            checksum,
+            version);
+        documentRepository.refreshConnectorTitleAndContext(
+            existingDoc.getId(),
+            fileName,
+            context == null ? null : context.containerKey(),
+            context == null ? null : context.hierarchyPath());
+        log.info("Skipping unchanged Confluence page (same checksum): {}", pageUrl);
+        metrics.recordSkipped();
+        return FileProcessingResult.SKIPPED;
+      }
+      // Updated in place under the same id, never deleted-and-recreated (ADR-0022, Entscheidung
+      // 4): the page's attachments point at this row via parent_document_id, and deleting it would
+      // fail fk_documents_parent while they exist. Only the chunks are exchanged; the quota check
+      // measures the size delta for the same reason as in processRssEntry (see there).
+      long previousSize = existingDoc.getFileSize() == null ? 0L : existingDoc.getFileSize();
+      long delta = contentBytes.length - previousSize;
+      if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), delta)) {
+        log.warn(
+            "Skipping Confluence page {}: library {} storage quota would be exceeded",
+            pageUrl,
+            targetLibrary.getId());
+        metrics.recordSkipped();
+        return FileProcessingResult.QUOTA_EXCEEDED;
+      }
+      replacingExistingChunks = true;
+      existingDoc.setFileName(fileName);
+      existingDoc.setContentType("text/html");
+      existingDoc.setFileSize((long) contentBytes.length);
+      existingDoc.applySourceContext(context);
+      doc = existingDoc;
+    } else if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), contentBytes.length)) {
+      log.warn(
+          "Skipping Confluence page {}: library {} storage quota would be exceeded",
+          pageUrl,
+          targetLibrary.getId());
+      metrics.recordSkipped();
+      return FileProcessingResult.QUOTA_EXCEEDED;
+    }
+    if (doc == null) {
+      doc =
+          new Document(
+              fileName,
+              pageUrl,
+              "text/html",
+              (long) contentBytes.length,
+              DocumentSourceType.CONFLUENCE);
+      doc.setLibraryId(targetLibrary.getId());
+      doc.setOrganizationId(targetLibrary.getOrganizationId());
+      doc.applySourceContext(context);
+    }
+    doc = documentRepository.save(doc);
+    boolean preservingPreviousChunks = replacingExistingChunks;
+    try {
+      DocumentPipeline pipeline =
+          pipelineRegistry
+              .pipelineById(ConfluenceDocumentPipeline.ID)
+              .orElseThrow(
+                  () ->
+                      new IllegalStateException(
+                          "Document pipeline "
+                              + ConfluenceDocumentPipeline.ID
+                              + " is not registered"));
+      DocumentPipelineResult parsed =
+          pipeline.run(DocumentPipelineSource.ofExtractedText(storageBody, fileName));
+      switch (parsed.outcome()) {
+        case NO_EXTRACTABLE_TEXT -> {
+          log.warn("No usable text in Confluence page {}", pageUrl);
+          deletePreviousChunks(replacingExistingChunks, doc.getId());
+          return markConnectorRejected(doc.getId());
+        }
+        case NO_CONTENT -> {
+          log.warn("No content extracted from Confluence page: {}", pageUrl);
+          deletePreviousChunks(replacingExistingChunks, doc.getId());
+          return markConnectorFailed(doc.getId(), true);
+        }
+        case PARSE_FAILED -> {
+          log.warn("Could not parse Confluence page {}", pageUrl);
+          return markConnectorFailed(doc.getId(), false);
+        }
+        case CHUNKED ->
+            log.debug("Confluence page {} produced {} chunks", pageUrl, parsed.chunks().size());
+      }
+      List<org.springframework.ai.document.Document> chunks = parsed.chunks();
+      // The space and the hierarchy path are not in the body; declared as passthrough keys by the
+      // Confluence pipeline, so storeChunks keeps them on every chunk (#1137).
+      if (context != null) {
+        for (org.springframework.ai.document.Document chunk : chunks) {
+          if (context.containerKey() != null) {
+            chunk
+                .getMetadata()
+                .put(ConfluenceDocumentPipeline.SPACE_METADATA_KEY, context.containerKey());
+          }
+          if (context.hierarchyPath() != null) {
+            chunk
+                .getMetadata()
+                .put(ConfluenceDocumentPipeline.HIERARCHY_METADATA_KEY, context.hierarchyPath());
+          }
+        }
+      }
+      // The page title is the document's declared title (ADR-0024); the version number is no
+      // date, and a Confluence title follows no file-naming convention.
+      DocumentPipelineResult withTitle =
+          hasTitle ? parsed.withProperties(parsed.properties().withTitle(title)) : parsed;
+      if (replacingExistingChunks) {
+        // Only now, with the new chunks in hand - see storeChunks' callers (#1268).
+        vectorChunkStore.deleteByDocumentId(doc.getId());
+        preservingPreviousChunks = false;
+      }
+      storeChunks(
+          doc,
+          chunks,
+          contextTitle,
+          pipeline,
+          Optional.empty(),
+          extractCoreMetadata(doc, fileName, withTitle));
+      FileProcessingResult result =
+          markConnectorIndexed(doc.getId(), chunks.size(), checksum, version);
+      if (result == FileProcessingResult.SKIPPED) {
+        return result;
+      }
+    } catch (Exception e) {
+      markConnectorFailedAfterException(doc.getId(), preservingPreviousChunks);
+      metrics.recordFailed();
+      throw e;
+    }
+    metrics.recordProcessed();
+    return FileProcessingResult.PROCESSED;
+  }
+
+  /**
+   * The chunk-context prefix of a Confluence page: its place in the space - ancestor titles root
+   * first, then the page title - so a chunk embeds and full-text-indexes with the outline it sits
+   * in, not just its own heading (ingestion-pipelines.md, Querschnittsregel (b); #1137). {@code
+   * null} without a title.
+   */
+  static String confluenceContextTitle(String title, SourceDocumentContext context) {
+    if (title == null || title.isBlank()) {
+      return null;
+    }
+    if (context == null || context.hierarchyPath() == null || context.hierarchyPath().isBlank()) {
+      return title;
+    }
+    return context.hierarchyPath() + SourceDocumentContext.HIERARCHY_SEPARATOR + title;
   }
 
   /**

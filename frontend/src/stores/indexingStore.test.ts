@@ -308,4 +308,21 @@ describe('indexingStore', () => {
       'Indizierung abgeschlossen: 8 verarbeitet, 1 übersprungen, davon 1 fehlgeschlagen',
     )
   })
+
+  it('hands an explicitly requested run mode through to the API and omits it otherwise (#1139)', async () => {
+    mockTriggerIndexing.mockResolvedValue({
+      status: 'RUNNING',
+      documentCount: 0,
+      totalDocuments: 0,
+      documentsSkipped: 0,
+      documentsFailed: 0,
+      documentsIndexedTotal: 0,
+      message: null,
+      timestamp: '2026-09-03T10:00:00Z',
+    })
+    await useIndexingStore.getState().triggerIndexing('library-a', 'CONFLUENCE', 'FULL')
+    expect(mockTriggerIndexing).toHaveBeenLastCalledWith('library-a', 'FULL')
+    await useIndexingStore.getState().triggerIndexing('library-a', 'CONFLUENCE')
+    expect(mockTriggerIndexing).toHaveBeenLastCalledWith('library-a')
+  })
 })

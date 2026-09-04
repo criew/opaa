@@ -1,11 +1,14 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.ConfluenceSpaceRef;
 import io.opaa.api.dto.LibraryListResponse;
 import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibrarySchedule;
 import io.opaa.api.dto.LibraryScheduleRequest;
 import io.opaa.api.dto.LibraryUpdateRequest;
+import io.opaa.api.types.DocumentSourceType;
+import io.opaa.library.ConfluenceSpaceSelection;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryCreation;
 import io.opaa.library.LibraryDetail;
@@ -40,7 +43,9 @@ final class LibraryResponseMapper {
         request.getSourceUrl(),
         request.getSourceProxy(),
         request.getSourceCredentials(),
-        request.getSourceInsecureSsl());
+        request.getSourceInsecureSsl(),
+        request.getConfluenceEdition(),
+        toSelections(request.getConfluenceSpaces()));
   }
 
   static LibraryUpdate toUpdate(LibraryUpdateRequest request) {
@@ -55,7 +60,25 @@ final class LibraryResponseMapper {
         request.getSourceProxy(),
         request.getSourceCredentials(),
         request.getSourceInsecureSsl(),
-        toScheduleUpdate(request.getSchedule()));
+        toScheduleUpdate(request.getSchedule()),
+        request.getConfluenceEdition(),
+        toSelections(request.getConfluenceSpaces()));
+  }
+
+  /** {@code null} stays {@code null} ("leave the selection alone"), an empty list stays empty. */
+  private static List<ConfluenceSpaceSelection> toSelections(List<ConfluenceSpaceRef> refs) {
+    if (refs == null) {
+      return null;
+    }
+    return refs.stream()
+        .map(ref -> new ConfluenceSpaceSelection(ref.getKey(), ref.getName()))
+        .toList();
+  }
+
+  private static List<ConfluenceSpaceRef> toRefs(List<ConfluenceSpaceSelection> selection) {
+    return selection.stream()
+        .map(space -> new ConfluenceSpaceRef(space.getSpaceKey()).name(space.getSpaceName()))
+        .toList();
   }
 
   private static LibraryScheduleUpdate toScheduleUpdate(LibraryScheduleRequest request) {
@@ -84,6 +107,14 @@ final class LibraryResponseMapper {
             .documentCount(detail.documentCount())
             .diagnosticsLocked(library.isDiagnosticsLocked())
             .diagnosticsLockToggleable(detail.diagnosticsLockToggleable());
+    if (library.getSourceType() == DocumentSourceType.CONFLUENCE) {
+      // ADR-0023: edition and selection are visible to every reader - the selection is exactly
+      // the scope every reader of this library can see, so naming it is not configuration detail
+      // in the sense of the MANAGER-gated fields above.
+      response
+          .confluenceEdition(library.getSourceConfluenceEdition())
+          .confluenceSpaces(toRefs(library.getConfluenceSpaces()));
+    }
     LibraryManagementDetail managementDetail = detail.managementDetail();
     response
         .sourcePath(managementDetail.sourcePath())
@@ -92,6 +123,7 @@ final class LibraryResponseMapper {
         .sourceProxy(managementDetail.sourceProxy())
         .sourceInsecureSsl(managementDetail.sourceInsecureSsl())
         .sourceCredentialsSet(managementDetail.sourceCredentialsSet())
+        .confluenceWebhookSecretSet(managementDetail.confluenceWebhookSecretSet())
         .storageQuotaBytes(managementDetail.storageQuotaBytes())
         .storageUsedBytes(managementDetail.storageUsedBytes());
     LibraryScheduleDetail schedule = managementDetail.schedule();

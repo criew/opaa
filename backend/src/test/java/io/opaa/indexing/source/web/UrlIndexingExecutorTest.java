@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
@@ -190,7 +191,7 @@ class UrlIndexingExecutorTest {
             null,
             false);
 
-    executorWithRealCrawler.execute(jobId, library);
+    executorWithRealCrawler.execute(jobId, library, IndexingRunMode.FULL);
 
     verify(jobService, timeout(2000))
         .failJob(

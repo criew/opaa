@@ -36,6 +36,21 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   boolean existsBySourceEntryUrlAndLibraryId(String sourceEntryUrl, UUID libraryId);
 
   /**
+   * Moves a connector document's title and source context without touching its chunks - a
+   * Confluence page renamed or moved without a body change (ADR-0023, #1136 review).
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.fileName = :fileName, d.sourceContainerKey = :containerKey,"
+          + " d.sourceHierarchyPath = :hierarchyPath where d.id = :id")
+  int refreshConnectorTitleAndContext(
+      @Param("id") UUID id,
+      @Param("fileName") String fileName,
+      @Param("containerKey") String containerKey,
+      @Param("hierarchyPath") String hierarchyPath);
+
+  /**
    * Every attachment of {@code parentDocumentId} (ADR-0022, Entscheidung 4) - the FK-backed
    * generalization of {@link #existsBySourceEntryUrlAndLibraryId}'s RSS-only path lookup. No writer
    * sets {@link Document#getParentDocumentId()} yet (#1180 is schema-only); this backs the lookup
