@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Collapse from '@mui/material/Collapse'
 import Link from '@mui/material/Link'
@@ -8,6 +7,7 @@ import { alpha } from '@mui/material/styles'
 import type { CitationIndex } from './citations'
 import { citationRowId, describeMetadata, formatMailSummary, formatMetadataLine } from './citations'
 import type { SourceReference } from '../../types/api'
+import type { OpenableDocument } from '../../hooks/useDocumentPreview'
 import { fontFamily } from '../../theme/tokens'
 
 interface SourceFootnotesProps {
@@ -22,9 +22,7 @@ interface SourceFootnotesProps {
    *  snackbar it also renders survive this component or the Belegfenster unmounting (#781
    *  review, Nit 5), rather than each row wiring its own call to `openDocumentContent` and
    *  discarding the result (#781 review, Wichtig 1). */
-  openDocument: (documentId: string, fileName: string) => Promise<void>
-  error: string | null
-  clearError: () => void
+  openDocument: (document: OpenableDocument) => Promise<void>
 }
 
 function formatIndexedAt(indexedAt: string | null | undefined): string | null {
@@ -205,17 +203,23 @@ export default function SourceFootnotes({
   highlightedDocIndexes = [],
   onOpenEvidence,
   openDocument,
-  error: openOriginalError,
-  clearError: clearOpenOriginalError,
 }: SourceFootnotesProps) {
   const [uncitedOpen, setUncitedOpen] = useState(false)
   const [foldedOpen, setFoldedOpen] = useState(false)
   // #739/#780: openDocument is MessageBubble's single `useDocumentPreview()` instance (#781
-  // review, Wichtig 1/Nit 5) - it already catches its own failure into `error`, so this only has
-  // to guard against a synthetic entry with no documentId (see canOpenOriginal) before firing it.
+  // review, Wichtig 1/Nit 5) - it surfaces its own failure as a popup notification (guidelines
+  // 5.9), so this only has to guard against a synthetic entry with no documentId (see
+  // canOpenOriginal) before firing it. The source fields let a CONFLUENCE document open at its
+  // source URL instead of the content endpoint.
   const handleOpenLocalOriginal = (source: SourceReference, fileName: string) => {
     if (!source.documentId) return
-    void openDocument(source.documentId, fileName)
+    void openDocument({
+      id: source.documentId,
+      fileName,
+      sourceType: source.sourceType,
+      sourceUrl: source.sourceUrl,
+      sourceEntryUrl: source.sourceEntryUrl,
+    })
   }
   const { docs, uncited, markerCount } = citations
 
@@ -296,12 +300,6 @@ export default function SourceFootnotes({
           </Typography>
         )}
       </Box>
-
-      {openOriginalError && (
-        <Alert severity="error" sx={{ mb: 0.75 }} onClose={clearOpenOriginalError}>
-          {openOriginalError}
-        </Alert>
-      )}
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
         {visibleDocs.map((doc, docIndex) =>

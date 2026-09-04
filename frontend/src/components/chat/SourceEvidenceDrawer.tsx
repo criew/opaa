@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
@@ -14,6 +13,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import type { CitationIndex } from './citations'
 import { describeMetadata, formatMailSummary, formatMetadataLine } from './citations'
 import type { DocumentSourceType } from '../../types/api'
+import type { OpenableDocument } from '../../hooks/useDocumentPreview'
 import { fontFamily } from '../../theme/tokens'
 
 interface SourceEvidenceDrawerProps {
@@ -26,9 +26,7 @@ interface SourceEvidenceDrawerProps {
    *  useDocumentPreview), shared with SourceFootnotes - the preview dialog/download snackbar it
    *  drives are rendered by MessageBubble as siblings of this Drawer, not inside it, so they
    *  survive the Drawer unmounting its children on close (#781 review, Nit 5; Wichtig 1). */
-  openDocument: (documentId: string, fallbackFileName: string) => Promise<void>
-  error: string | null
-  clearError: () => void
+  openDocument: (document: OpenableDocument) => Promise<void>
 }
 
 interface EvidenceDoc {
@@ -84,20 +82,24 @@ export default function SourceEvidenceDrawer({
   citations,
   answeredAt,
   openDocument,
-  error: openOriginalError,
-  clearError: clearOpenOriginalError,
 }: SourceEvidenceDrawerProps) {
   const [query, setQuery] = useState('')
   const [citedOnly, setCitedOnly] = useState(false)
 
-  // #739/#747: every sourceType with a documentId opens through the Bearer-authenticated content
-  // endpoint (a plain <a href> cannot carry the token, ADR-0005) - since #747 that endpoint proxies
-  // HTTP_DIRECTORY/RSS_FEED server-side from their own stored source URL instead of answering 404,
-  // so this no longer branches on sourceType at all; sourceEntryUrl/sourceUrl are shown as
-  // secondary information alongside the button instead (see the render code below).
+  // #739/#747: a document with a documentId opens through the Bearer-authenticated content
+  // endpoint (a plain <a href> cannot carry the token, ADR-0005), which proxies
+  // HTTP_DIRECTORY/RSS_FEED server-side; a CONFLUENCE document opens at its own source URL
+  // instead (useDocumentPreview, ADR-0023 - the endpoint deliberately has no original there).
+  // sourceEntryUrl/sourceUrl stay visible as secondary information alongside the button.
   async function handleOpenLocalOriginal(doc: EvidenceDoc) {
     if (!doc.documentId) return
-    await openDocument(doc.documentId, doc.fileName)
+    await openDocument({
+      id: doc.documentId,
+      fileName: doc.fileName,
+      sourceType: doc.sourceType,
+      sourceUrl: doc.sourceUrl,
+      sourceEntryUrl: doc.sourceEntryUrl,
+    })
   }
 
   const docs = useMemo((): EvidenceDoc[] => {
@@ -207,12 +209,6 @@ export default function SourceEvidenceDrawer({
           <CloseIcon sx={{ fontSize: 18 }} />
         </IconButton>
       </Box>
-
-      {openOriginalError && (
-        <Alert severity="error" sx={{ mx: 2.5, mt: 1.5 }} onClose={clearOpenOriginalError}>
-          {openOriginalError}
-        </Alert>
-      )}
 
       <Box sx={{ display: 'flex', gap: 1, px: 2.5, py: 1.5 }}>
         <TextField

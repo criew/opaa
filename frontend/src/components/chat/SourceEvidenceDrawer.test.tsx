@@ -458,8 +458,10 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
 
       await user.click(within(drawer).getByRole('button', { name: 'Im Dokument öffnen' }))
 
+      // Guidelines 5.9: the failure surfaces as a global popup notification (NotificationHost,
+      // mounted by renderWithProviders), not as an inline alert inside the Belegfenster.
       expect(
-        await within(drawer).findByText('Das Originaldokument wurde nicht gefunden.'),
+        await screen.findByText('Das Originaldokument wurde nicht gefunden.'),
       ).toBeInTheDocument()
     })
 

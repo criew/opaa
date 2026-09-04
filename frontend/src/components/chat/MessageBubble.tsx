@@ -2,7 +2,6 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import { alpha } from '@mui/material/styles'
 import Box from '@mui/material/Box'
-import Snackbar from '@mui/material/Snackbar'
 import Typography from '@mui/material/Typography'
 import type { ChatMessage } from '../../types/chat'
 import { blue } from '../../theme/tokens'
@@ -151,8 +150,6 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                   : undefined
               }
               openDocument={documentPreview.openDocument}
-              error={documentPreview.error}
-              clearError={documentPreview.clearError}
             />
           )}
           {!isUser && (
@@ -162,8 +159,6 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               citations={citations}
               answeredAt={message.timestamp}
               openDocument={documentPreview.openDocument}
-              error={documentPreview.error}
-              clearError={documentPreview.clearError}
             />
           )}
 
@@ -174,19 +169,10 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           )}
 
           {!isUser && (
-            <>
-              <DocumentTextPreviewDialog
-                previewDocument={documentPreview.previewDocument}
-                onClose={documentPreview.closePreview}
-              />
-              <Snackbar
-                open={documentPreview.downloadMessage != null}
-                autoHideDuration={6000}
-                onClose={documentPreview.clearDownloadMessage}
-                message={documentPreview.downloadMessage}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-              />
-            </>
+            <DocumentTextPreviewDialog
+              previewDocument={documentPreview.previewDocument}
+              onClose={documentPreview.closePreview}
+            />
           )}
         </Box>
       </Box>
