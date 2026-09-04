@@ -134,6 +134,13 @@ describe('SearchIndexingAdminPage', () => {
     const row = within(table).getByText('Satzungen & Gebuehrenordnungen').closest('tr')
     expect(within(row as HTMLElement).getByText('9 / 11 aktuell')).toBeInTheDocument()
     expect(within(row as HTMLElement).getByText('2 Dokumente ausstehend')).toBeInTheDocument()
+    // Pending can stay above 0 after a completed run: the part waiting for its connector run is
+    // named, so nobody keeps clicking "Weiter" against it.
+    expect(
+      within(row as HTMLElement).getByText(
+        'davon 1 Dokument wartet auf den nächsten Konnektorlauf',
+      ),
+    ).toBeInTheDocument()
     expect(
       within(row as HTMLElement).getByText('1 Dokument zuletzt übersprungen'),
     ).toBeInTheDocument()
@@ -187,6 +194,7 @@ describe('SearchIndexingAdminPage', () => {
                 ...satzungen.metadataBackfill,
                 currentDocuments: caughtUp ? 11 : 9,
                 pendingDocuments: caughtUp ? 0 : 2,
+                awaitingConnectorRunDocuments: 0,
                 lastSkippedDocuments: 0,
                 complete: caughtUp,
               },
@@ -209,7 +217,7 @@ describe('SearchIndexingAdminPage', () => {
       expect(screen.getByText('11 / 11 aktuell')).toBeInTheDocument()
     })
     // Two batch calls (the second reported done), and the status was re-read after each of them.
-    expect(batchCalls).toEqual([10, 10])
+    expect(batchCalls).toEqual([50, 50])
     expect(statusLoads).toBeGreaterThanOrEqual(3)
     expect(
       screen.queryByRole('button', { name: /Satzungen & Gebuehrenordnungen$/ }),

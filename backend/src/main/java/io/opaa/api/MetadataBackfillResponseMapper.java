@@ -41,6 +41,7 @@ final class MetadataBackfillResponseMapper {
         progress.totalDocuments(),
         progress.currentDocuments(),
         progress.pendingDocuments(),
+        progress.awaitingConnectorRunDocuments(),
         progress.lastSkippedDocuments(),
         progress.isComplete(),
         fields);

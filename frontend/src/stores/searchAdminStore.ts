@@ -22,7 +22,19 @@ import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 let latestDocumentChunksRequest = 0
 
 /** Documents per backfill call; small enough that a pause takes effect within seconds. */
-const METADATA_BACKFILL_BATCH_SIZE = 10
+const METADATA_BACKFILL_BATCH_SIZE = 50
+
+/**
+ * Consecutive batches that advanced nothing before the loop gives up regardless of `done` - a
+ * server that keeps answering "not done, nothing advanced" must not keep this page polling forever.
+ */
+const MAX_BATCHES_WITHOUT_PROGRESS = 3
+
+/** Hard ceiling on batch calls per start, so no defect on either side can turn into an endless loop. */
+const MAX_BATCHES_PER_START = 1000
+
+export const METADATA_BACKFILL_STALLED_MESSAGE =
+  'Der Lauf wurde angehalten: Mehrere Chargen nacheinander haben kein Dokument vorangebracht.'
 
 /**
  * The state of one library's core-metadata backfill as this page drives it (#1067): the page loops
@@ -172,6 +184,8 @@ export const useSearchAdminStore = create<SearchAdminState>((set, get) => {
       if (get().metadataBackfillRuns[libraryId]?.running) return
       const sessionEpoch = currentSessionEpoch()
       updateRun(libraryId, { running: true, done: false, error: null })
+      let batches = 0
+      let batchesWithoutProgress = 0
       while (get().metadataBackfillRuns[libraryId]?.running) {
         try {
           const result = await runMetadataBackfillBatch({
@@ -191,6 +205,16 @@ export const useSearchAdminStore = create<SearchAdminState>((set, get) => {
           set({ status, statusError: null })
           if (result.done) {
             updateRun(libraryId, { running: false })
+            return
+          }
+          batches += 1
+          batchesWithoutProgress =
+            result.processedDocuments + result.markedForNextRun > 0 ? 0 : batchesWithoutProgress + 1
+          if (
+            batchesWithoutProgress >= MAX_BATCHES_WITHOUT_PROGRESS ||
+            batches >= MAX_BATCHES_PER_START
+          ) {
+            updateRun(libraryId, { running: false, error: METADATA_BACKFILL_STALLED_MESSAGE })
             return
           }
         } catch (err) {

@@ -444,7 +444,11 @@ und keinen Lauf-Datensatz. Damit sind die vier Zusagen aus
   beim nächsten Aufruf erneut versucht; eine Charge scannt höchstens das Zehnfache ihrer Größe an
   Übersprungenen, dann endet der Aufruf). Ein verarbeitetes Dokument trägt die aktuelle Version und
   fällt aus der Auswahl; ein zweiter Lauf über verarbeitete Dokumente ändert nichts und meldet `done`.
-  Ein manueller Wert wird nie überschrieben (`DocumentMetadataService`).
+  Ein manueller Wert wird nie überschrieben (`DocumentMetadataService`). **Eine seit dem Indexlauf
+  geänderte Datei wird übersprungen** (Prüfsumme der Zeile gegen die Datei, dieselbe Regel wie im
+  Anhangspfad): Ihre Chunks stammen aus dem alten Inhalt, und Kernfelder eines anderen Textes auf
+  diese Chunks zu schreiben, hieße, Filter und Beleg beschreiben etwas, das so nicht im Index steht;
+  der nächste Konnektorlauf indiziert sie neu und extrahiert dabei.
 - **Bewusste, eigene Freigabe:** Der Lauf startet nur über den Endpunkt, **bibliotheksweise** — die
   Bibliothek ist Pflichtparameter, nicht Filter. Nichts löst ihn von selbst aus, auch keine
   Erhöhung der Extraktionsversion; der auslösende Aufruf wird protokolliert
@@ -474,7 +478,10 @@ eigen (Chunk-Metadaten nach Pipeline-Version dort, `documents`-Tabelle nach Extr
 ebenso die Verarbeitungseinheit (Neu-Zerlegen dort, `reextractFromFile` hier).
 
 **Zustand je Bibliothek.** `GET /api/v1/admin/search/status` trägt je Bibliothek
-`metadataBackfill`: Dokumente insgesamt (`INDEXED`), auf aktueller Extraktionsversion, ausstehend,
+`metadataBackfill`: Dokumente insgesamt (`INDEXED`), auf aktueller Extraktionsversion, ausstehend
+(die Obermenge der Laufauswahl), davon **wartend auf den nächsten Konnektorlauf** (entfernte
+Dokumente mit geleerten Änderungsmarkern — der Grund, warum „ausstehend" nach einem vollständigen
+Lauf über 0 bleiben kann, ohne dass ein weiterer Aufruf etwas daran ändert),
 zuletzt übersprungen (Zähler des letzten Aufrufs, prozesslebenslang — ADR-0021, Single-Instance),
 `complete` und den **Füllgrad je Kernfeld** (Dokumente mit Wert, absolut und anteilig, deutsches
 Label). Der Füllgrad wird bei jeder Abfrage aus `document_metadata_values` gebildet, nie
@@ -482,6 +489,10 @@ vorberechnet; im Verwaltungskontext ist die Organisation der Rechtekontext (Besc
 Maintainers am Epic #1065). Die Seite „Suche & Indexierung" zeigt das in derselben Tabelle wie
 Vektor- und Volltextindex ([Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)).
 Die Füllgrad-Anzeige in der **Filter-Oberfläche** (oben) gehört zu Arbeitspaket 4 (#1070).
+Auswahl und Füllgrad-Abfrage laufen über den Index `documents (library_id, status)` (Migration 019);
+die Seite ruft Chargen zu 50 Dokumenten ab und lädt den Status nach jeder Charge neu, bricht aber nach
+drei Chargen ohne Fortschritt oder 1000 Chargen je Start von sich aus ab, damit kein Defekt auf einer
+Seite zur Endlosschleife wird.
 
 ## Die modellgestützte Extraktion im Betrieb
 
@@ -604,6 +615,13 @@ Zwei Regeln, die aus dem Rechtemodell folgen und nicht verhandelbar sind (Grunds
   Projektnamen zeigt, ist eine Aufzählung von Vorhaben, deren Unterlagen die fragende Person nicht
   lesen darf; eine Zahl „412 Dokumente ohne Fassungsangabe" verrät den Umfang eines Bestands, den
   dieselbe Person mit 30 Dokumenten sieht. Kein Aggregat wird global vorberechnet und dann angezeigt.
+  **Eine eng begrenzte Ausnahme** ist der `SYSTEM_ADMIN`-Verwaltungspfad des Bestandslaufs
+  ([Umgesetzt (#1067)](#umgesetzt-1067)): Dort ist die Organisation der Rechtekontext — der
+  Extraktionsstand und der Füllgrad je Kernfeld auf der Seite „Suche & Indexierung" zählen über alle
+  Bibliotheken der eigenen Organisation, weil der Lauf ein Systemprozess ist (Beschluss 1 des
+  Maintainers am Epic #1065) und diese Zahlen keine Feldwerte, nur Anzahlen zeigen. Die Ausnahme gilt
+  ausschließlich für diese Verwaltungsansicht; die Füllgrad-Anzeige in der Filter-Oberfläche (#1070)
+  und jede Werteliste bleiben an die Regel gebunden.
 
 **Die konfigurierte Werteliste eines Bibliotheksfeldes ist von dieser Regel ausgenommen** — sie ist
 Schemabestandteil, kein Aggregat: Ihre Werte hat ein Mensch beim Anlegen des Feldes festgelegt, sie

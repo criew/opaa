@@ -5183,6 +5183,7 @@ components:
           totalDocuments,
           currentDocuments,
           pendingDocuments,
+          awaitingConnectorRunDocuments,
           lastSkippedDocuments,
           complete,
           fields,
@@ -5203,9 +5204,17 @@ components:
           type: integer
           format: int64
           description: >
-            Indexed documents never extracted or extracted with an older version - what a
-            metadata-backfill call selects from. Includes remote documents marked for their next
-            connector run until that run happens.
+            Indexed documents never extracted or extracted with an older version. A superset of
+            what a metadata-backfill call selects: it includes the documents in
+            awaitingConnectorRunDocuments, which no further call advances.
+        awaitingConnectorRunDocuments:
+          type: integer
+          format: int64
+          description: >
+            The subset of pendingDocuments whose bytes live on a remote (HTTP directory, remote
+            attachment) and whose change markers are cleared - marked for their next connector run,
+            which re-reads and re-extracts them. A backfill call reports done while these remain;
+            they are the reason pendingDocuments can stay above 0 after a completed run.
         lastSkippedDocuments:
           type: integer
           format: int64

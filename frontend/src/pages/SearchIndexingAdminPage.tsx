@@ -253,6 +253,13 @@ function MetadataBackfillCell({
           {plural(backfill.pendingDocuments, 'Dokument ausstehend', 'Dokumente ausstehend')}
         </Typography>
       )}
+      {backfill.awaitingConnectorRunDocuments > 0 && (
+        <Typography variant="caption" color="text.secondary" component="div">
+          {backfill.awaitingConnectorRunDocuments === 1
+            ? 'davon 1 Dokument wartet auf den nächsten Konnektorlauf'
+            : `davon ${backfill.awaitingConnectorRunDocuments} Dokumente warten auf den nächsten Konnektorlauf`}
+        </Typography>
+      )}
       {backfill.lastSkippedDocuments > 0 && (
         <Typography variant="caption" color="warning.main" component="div">
           {plural(
@@ -880,7 +887,7 @@ export default function SearchIndexingAdminPage() {
       <GlobalScopeNote>
         Diese Seite zeigt die aktive Konfiguration an und ändert sie nicht. Sie beantwortet, warum
         ein Dokument in einer Antwort steht oder fehlt. Der einzige Eingriff ist das Nachrüsten der
-        Kernfelder je Bibliothek - ein bewusster Start, kein Automatismus.
+        Kernfelder je Bibliothek — ein bewusster Start, kein Automatismus.
       </GlobalScopeNote>
 
       {statusError && (
@@ -925,10 +932,10 @@ export default function SearchIndexingAdminPage() {
       <Box sx={{ mb: 4 }}>
         <SectionHead>Indexstatus je Bibliothek</SectionHead>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion der Kernfelder (Titel,
-          Dokumentart, Datum/Stand) tragen und wie gut jedes Feld befüllt ist. Das Nachrüsten liest
-          die Originaldateien in Chargen erneut; die Suche bleibt währenddessen verfügbar, ein
-          angehaltener Lauf setzt beim nächsten unverarbeiteten Dokument fort.
+          „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion der Kernfelder tragen und
+          wie gut jedes Feld befüllt ist. Das Nachrüsten liest die Originaldateien in Chargen
+          erneut; die Suche bleibt währenddessen verfügbar, ein angehaltener Lauf setzt beim
+          nächsten unverarbeiteten Dokument fort.
         </Typography>
         <LibraryStatusTable
           libraries={status?.libraries ?? []}

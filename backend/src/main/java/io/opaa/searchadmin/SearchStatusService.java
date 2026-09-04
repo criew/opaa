@@ -401,8 +401,9 @@ public class SearchStatusService {
         fullTextBackfillProgressService.progressForLibraries(libraryIds)) {
       progressByLibrary.put(progress.libraryId(), progress);
     }
-    // Same source the backfill itself selects from, so display and run cannot disagree on what
-    // is still pending.
+    // Read from the same selection column the backfill drains (metadata_extraction_version);
+    // "pending" here is the superset of what a call selects - the part waiting for its connector
+    // run is reported separately, so the display can explain a remainder the run cannot reach.
     Map<UUID, MetadataBackfillProgress> metadataByLibrary =
         metadataBackfillService.progressForLibraries(libraryIds);
 

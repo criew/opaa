@@ -152,7 +152,13 @@ class SearchAdminControllerTest {
                         20,
                         0,
                         new MetadataBackfillProgress(
-                            UUID.randomUUID(), 5, 2, 3, 1, Map.of(CoreMetadataField.TITLE, 2L))))));
+                            UUID.randomUUID(),
+                            5,
+                            2,
+                            3,
+                            1,
+                            1,
+                            Map.of(CoreMetadataField.TITLE, 2L))))));
 
     mockMvc
         .perform(get("/api/v1/admin/search/status").with(asAdmin()))
@@ -164,6 +170,8 @@ class SearchAdminControllerTest {
         .andExpect(jsonPath("$.libraries[0].fullTextMissingChunks").value(20))
         .andExpect(jsonPath("$.libraries[0].fullTextIndexState").value("INCOMPLETE"))
         .andExpect(jsonPath("$.libraries[0].metadataBackfill.pendingDocuments").value(3))
+        .andExpect(
+            jsonPath("$.libraries[0].metadataBackfill.awaitingConnectorRunDocuments").value(1))
         .andExpect(jsonPath("$.libraries[0].metadataBackfill.lastSkippedDocuments").value(1))
         .andExpect(jsonPath("$.libraries[0].metadataBackfill.complete").value(false))
         .andExpect(jsonPath("$.libraries[0].metadataBackfill.fields[0].fieldKey").value("title"))

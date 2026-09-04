@@ -150,6 +150,7 @@ class SearchAdminResponseMapperTest {
                 10,
                 6,
                 4,
+                1,
                 2,
                 Map.of(
                     CoreMetadataField.TITLE, 10L,
@@ -170,6 +171,7 @@ class SearchAdminResponseMapperTest {
     assertThat(backfill.getTotalDocuments()).isEqualTo(10);
     assertThat(backfill.getCurrentDocuments()).isEqualTo(6);
     assertThat(backfill.getPendingDocuments()).isEqualTo(4);
+    assertThat(backfill.getAwaitingConnectorRunDocuments()).isEqualTo(1);
     assertThat(backfill.getLastSkippedDocuments()).isEqualTo(2);
     assertThat(backfill.getComplete()).isFalse();
     assertThat(backfill.getFields())

@@ -1096,9 +1096,11 @@ Arbeitspaket 1 die Erklärbarkeit jeder Stufe verlangt.
   [Arbeitspaket 2a](#arbeitspaket-2a-backfill-des-bestands), aus derselben Datenquelle, die auch den
   Alarm „Volltextpfad inaktiv oder unvollständig" auslöst.
 - der **Stand der Kernfelder** je Bibliothek (seit #1067): wie viele indizierte Dokumente die aktuelle
-  Extraktionsversion tragen, wie viele ausstehen, wie viele der letzte Bestandslauf übersprungen hat,
-  und der Füllgrad je Kernfeld (absolut und anteilig) — aus derselben Auswahl, die der Bestandslauf
-  selbst abarbeitet. Der Bestandslauf wird auf dieser Seite je Bibliothek gestartet, angehalten und
+  Extraktionsversion tragen, wie viele ausstehen (davon: wie viele auf ihren nächsten Konnektorlauf
+  warten und von keinem weiteren Bestandslauf-Aufruf erreicht werden), wie viele der letzte
+  Bestandslauf übersprungen hat, und der Füllgrad je Kernfeld (absolut und anteilig) — aus derselben
+  `documents`-Selektionsspalte, aus der der Bestandslauf seine Auswahl bildet; „ausstehend" ist die
+  Obermenge dieser Auswahl. Der Bestandslauf wird auf dieser Seite je Bibliothek gestartet, angehalten und
   wieder aufgenommen (siehe
   [Metadatenschema, Umgesetzt (#1067)](./metadata-schema.md#umgesetzt-1067)); er ist der einzige
   Eingriff, den die Seite erlaubt.

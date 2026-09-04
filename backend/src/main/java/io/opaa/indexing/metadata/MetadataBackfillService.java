@@ -3,16 +3,15 @@ package io.opaa.indexing.metadata;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.common.NotFoundException;
+import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.StoredDocumentSourceAccess;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
+import java.io.IOException;
 import java.nio.file.Path;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
@@ -56,6 +55,7 @@ public class MetadataBackfillService {
   private final KnowledgeLibraryRepository libraryRepository;
   private final DocumentMetadataService documentMetadataService;
   private final StoredDocumentSourceAccess sourceAccess;
+  private final ChecksumService checksumService;
 
   /** Skipped count of the most recent call per library; process lifetime only (ADR-0021). */
   private final Map<UUID, Integer> lastSkippedByLibrary = new ConcurrentHashMap<>();
@@ -65,12 +65,14 @@ public class MetadataBackfillService {
       DocumentRepository documentRepository,
       KnowledgeLibraryRepository libraryRepository,
       DocumentMetadataService documentMetadataService,
-      StoredDocumentSourceAccess sourceAccess) {
+      StoredDocumentSourceAccess sourceAccess,
+      ChecksumService checksumService) {
     this.jdbcTemplate = jdbcTemplate;
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
     this.documentMetadataService = documentMetadataService;
     this.sourceAccess = sourceAccess;
+    this.checksumService = checksumService;
   }
 
   /**
@@ -161,9 +163,19 @@ public class MetadataBackfillService {
             documentId);
         return Advance.SKIPPED;
       }
+      // The chunks were cut from the bytes read at indexing time. A file replaced since then would
+      // put the core fields of a different text onto those chunks - the same rule the attachment
+      // path applies; the next connector run re-indexes it and extracts along the way.
+      if (document.getChecksum() != null
+          && !checksumService.computeSha256(localFile).equals(document.getChecksum())) {
+        log.info(
+            "Skipping document {} in the metadata backfill: its file changed since indexing",
+            documentId);
+        return Advance.SKIPPED;
+      }
       documentMetadataService.reextractFromFile(document, localFile);
       return Advance.PROCESSED;
-    } catch (RuntimeException e) {
+    } catch (RuntimeException | IOException e) {
       log.warn(
           "Skipping document {} in the metadata backfill: re-extraction failed", documentId, e);
       return Advance.SKIPPED;
@@ -174,8 +186,10 @@ public class MetadataBackfillService {
    * An RSS entry's own body was never a file: its declared properties are the stored headline
    * ({@code file_name}, unless that is only the URL) and the feed's publication instant ({@code
    * last_modified_remote}) - exactly what {@code FileProcessingService#processRssEntry} hands the
-   * extraction, so it is re-run from the row without a download. Everything else remote (an HTTP
-   * directory file, any remote attachment) can only be re-read by its own connector run, which
+   * extraction, so it is re-run from the row without a download. "Has a headline" is approximated
+   * as {@code file_name != file_path}: an entry whose title is literally its own URL loses that
+   * title here, accepted as too exotic to carry a marker column for. Everything else remote (an
+   * HTTP directory file, any remote attachment) can only be re-read by its own connector run, which
    * re-extracts on every inflow, and is marked for it.
    */
   private Advance advanceRemote(Document document) {
@@ -186,7 +200,8 @@ public class MetadataBackfillService {
       DocumentProperties properties =
           DocumentProperties.EMPTY
               .withTitle(hasHeadline ? document.getFileName() : null)
-              .withDocumentDate(publishedDate(document.getLastModifiedRemote()));
+              .withDocumentDate(
+                  DocumentProperties.instantToLocalDate(document.getLastModifiedRemote()));
       documentMetadataService.reextractFromProperties(document, properties);
       return Advance.PROCESSED;
     }
@@ -195,28 +210,46 @@ public class MetadataBackfillService {
         : Advance.SKIPPED;
   }
 
-  private static java.time.LocalDate publishedDate(String publishedAt) {
-    if (publishedAt == null || publishedAt.isBlank()) {
-      return null;
-    }
-    try {
-      return Instant.parse(publishedAt).atZone(ZoneOffset.UTC).toLocalDate();
-    } catch (DateTimeParseException e) {
-      return null;
-    }
+  /** A document below the current extraction version. */
+  private static String pendingSql(String alias) {
+    return "("
+        + alias
+        + "metadata_extraction_version IS NULL OR "
+        + alias
+        + "metadata_extraction_version < ?)";
   }
 
   /**
-   * Pending documents in stable id order, so the offset scans past what this call already found
-   * unadvanceable. A remote document already marked for its next run (both change markers cleared)
-   * has had everything done to it this run can do and is excluded, so the run drains.
+   * A pending document a backfill call can still advance: a local file, an RSS entry body (row-only
+   * extraction), or a remote document not yet marked for its next connector run. The last leg
+   * relies on {@link DocumentRepository#markForReindexOnNextRun} clearing {@code checksum}: a
+   * marked remote document has had everything done to it this run can do, and excluding it is what
+   * lets the run drain instead of marking the same rows on every call. Its complement is what the
+   * status shows as "waiting for the next connector run".
+   */
+  private static String advanceableSql(String alias) {
+    return "("
+        + alias
+        + "source_type IN ('FILESYSTEM', 'UPLOAD') OR ("
+        + alias
+        + "source_type = 'RSS_FEED' AND "
+        + alias
+        + "parent_document_id IS NULL) OR "
+        + alias
+        + "checksum IS NOT NULL)";
+  }
+
+  /**
+   * Advanceable pending documents in stable id order, so the offset scans past what this call
+   * already found unadvanceable.
    */
   private List<UUID> selectPendingDocuments(UUID libraryId, int limit, int offset) {
     return jdbcTemplate.query(
-        "SELECT id FROM documents WHERE library_id = ? AND status = ? AND ("
-            + "metadata_extraction_version IS NULL OR metadata_extraction_version < ?) AND ("
-            + "source_type IN ('FILESYSTEM', 'UPLOAD') OR (source_type = 'RSS_FEED' AND"
-            + " parent_document_id IS NULL) OR checksum IS NOT NULL) ORDER BY id OFFSET ? LIMIT ?",
+        "SELECT id FROM documents WHERE library_id = ? AND status = ? AND "
+            + pendingSql("")
+            + " AND "
+            + advanceableSql("")
+            + " ORDER BY id OFFSET ? LIMIT ?",
         (rs, i) -> (UUID) rs.getObject("id"),
         libraryId,
         DocumentStatus.INDEXED.name(),
@@ -238,10 +271,15 @@ public class MetadataBackfillService {
     StringBuilder sql =
         new StringBuilder(
             "SELECT d.library_id, count(*) AS total, count(*) FILTER (WHERE"
-                + " d.metadata_extraction_version >= ?) AS current_count, count(*) FILTER (WHERE"
-                + " d.metadata_extraction_version IS NULL OR d.metadata_extraction_version < ?)"
-                + " AS pending_count");
+                + " d.metadata_extraction_version >= ?) AS current_count, count(*) FILTER (WHERE "
+                + pendingSql("d.")
+                + ") AS pending_count, count(*) FILTER (WHERE "
+                + pendingSql("d.")
+                + " AND NOT "
+                + advanceableSql("d.")
+                + ") AS awaiting_count");
     List<Object> params = new ArrayList<>();
+    params.add(CoreMetadataExtractor.EXTRACTION_VERSION);
     params.add(CoreMetadataExtractor.EXTRACTION_VERSION);
     params.add(CoreMetadataExtractor.EXTRACTION_VERSION);
     for (int i = 0; i < fields.length; i++) {
@@ -282,6 +320,7 @@ public class MetadataBackfillService {
                   rs.getLong("total"),
                   rs.getLong("current_count"),
                   rs.getLong("pending_count"),
+                  rs.getLong("awaiting_count"),
                   lastSkippedByLibrary.getOrDefault(libraryId, 0),
                   filled));
         },

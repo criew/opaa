@@ -632,6 +632,7 @@ export const mockSearchStatus: SearchStatusResponse = {
         totalDocuments: 11,
         currentDocuments: 9,
         pendingDocuments: 2,
+        awaitingConnectorRunDocuments: 1,
         lastSkippedDocuments: 1,
         complete: false,
         fields: [
@@ -672,6 +673,7 @@ export const mockSearchStatus: SearchStatusResponse = {
         totalDocuments: 3,
         currentDocuments: 3,
         pendingDocuments: 0,
+        awaitingConnectorRunDocuments: 0,
         lastSkippedDocuments: 0,
         complete: true,
         fields: [
@@ -712,6 +714,7 @@ export const mockSearchStatus: SearchStatusResponse = {
         totalDocuments: 4,
         currentDocuments: 4,
         pendingDocuments: 0,
+        awaitingConnectorRunDocuments: 0,
         lastSkippedDocuments: 0,
         complete: true,
         fields: [

@@ -11,6 +11,11 @@ import java.util.UUID;
  * field. A pending document is a defined, permitted state - the search keeps running over it with
  * its old fields.
  *
+ * @param pendingDocuments every indexed document below the current version - including the ones a
+ *     backfill call no longer selects because they wait for their connector run
+ * @param awaitingConnectorRunDocuments the subset of {@code pendingDocuments} whose bytes live on a
+ *     remote and whose change markers are cleared: only the next connector run can advance them, no
+ *     further backfill call will
  * @param lastSkippedDocuments what the most recent backfill call for this library could not advance
  *     - a process-lifetime figure (ADR-0021), 0 before the first call
  * @param filledDocumentsByField indexed documents carrying a {@code SET} value, per core field
@@ -20,6 +25,7 @@ public record MetadataBackfillProgress(
     long totalDocuments,
     long currentDocuments,
     long pendingDocuments,
+    long awaitingConnectorRunDocuments,
     long lastSkippedDocuments,
     Map<CoreMetadataField, Long> filledDocumentsByField) {
 
@@ -32,7 +38,7 @@ public record MetadataBackfillProgress(
   }
 
   public static MetadataBackfillProgress empty(UUID libraryId) {
-    return new MetadataBackfillProgress(libraryId, 0, 0, 0, 0, Map.of());
+    return new MetadataBackfillProgress(libraryId, 0, 0, 0, 0, 0, Map.of());
   }
 
   public boolean isComplete() {
