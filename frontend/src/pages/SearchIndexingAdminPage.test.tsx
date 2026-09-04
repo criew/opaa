@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
 import { renderWithProviders } from '../test/test-utils'
@@ -13,7 +13,7 @@ import {
   mockSearchDiagnosisContext,
   mockSearchStatus,
 } from '../mocks/fixtures'
-import SearchIndexingAdminPage from './SearchIndexingAdminPage'
+import SearchIndexingAdminPage, { LibraryStatusTable } from './SearchIndexingAdminPage'
 
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
   useAuthStore.setState({
@@ -124,6 +124,32 @@ describe('SearchIndexingAdminPage', () => {
     expect(
       within(skippedRow as HTMLElement).getByText('1 Abschnitt dauerhaft übersprungen'),
     ).toBeInTheDocument()
+  })
+
+  it('does not re-render the library status table while typing in the diagnosis form', async () => {
+    signInAs('SYSTEM_ADMIN')
+
+    // `LibraryStatusTable` is `React.memo`-wrapped; its inner render function lives on `.type`.
+    // Swapping it for a spy - and restoring the original afterwards - counts renders without
+    // touching production code, and without relying on DOM node identity, which reconciliation
+    // preserves whether or not the component actually re-rendered.
+    const mutableTable = LibraryStatusTable as unknown as { type: typeof LibraryStatusTable.type }
+    const originalRender = mutableTable.type
+    const renderSpy = vi.fn(originalRender)
+    mutableTable.type = renderSpy
+    try {
+      const user = userEvent.setup()
+      renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+
+      await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+      const rendersAfterMount = renderSpy.mock.calls.length
+
+      await user.type(screen.getByRole('textbox', { name: /Testfrage/ }), 'Wer')
+
+      expect(renderSpy.mock.calls.length).toBe(rendersAfterMount)
+    } finally {
+      mutableTable.type = originalRender
+    }
   })
 
   it('shows the core-field extraction state and the fill per field in the library row', async () => {
