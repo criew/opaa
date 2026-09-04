@@ -27,6 +27,8 @@ test.describe('Rauchtest', () => {
 
     await gotoLibraryDetail(page, 'E2E Wissensbibliothek')
     await expect(page.getByText('e2e-basisdokument.txt', { exact: true })).toBeVisible()
-    await expect(page.getByText('indiziert')).toBeVisible()
+    // exact: only the document's status chip, not the Pflege-Anker's sentence above the list,
+    // which names the number of indizierte Dokumente (#1069).
+    await expect(page.getByText('indiziert', { exact: true })).toBeVisible()
   })
 })
