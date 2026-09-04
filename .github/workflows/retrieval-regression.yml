@@ -82,7 +82,11 @@ jobs:
             # Läufe lagen bei ~124 bzw. ~132 Minuten (GitHub-Actions-Runs 32524864494, 32550844537),
             # beide deutlich unter dem 170-Minuten-Budget.
             # 170 -> 180 mit #1039, siehe die Begründung beim comic-characters-Eintrag oben.
-            timeout_minutes: 180
+            # 180 -> 195 mit #1085: Der Cache-Schlüssel trägt jetzt beide Modell-Digests, der erste
+            # Lauf danach ist also kalt und zieht zusätzlich ~986 MB; danach kostet jeder Lauf ein
+            # Cache-Round-Trip über ~1,26 GB statt ~275 MB. Der Puffer über der langsamsten
+            # gemessenen Messzeit (~132 min) bleibt damit so groß wie zuvor.
+            timeout_minutes: 195
             exec_step_name: 'Retrieval-Regression (city-landmarks) ausführen'
             report_file: baseline-comparison-city-landmarks.md
             pipeline_report_file: pipeline-baseline-comparison-city-landmarks.md
@@ -154,22 +158,26 @@ jobs:
       # Named Docker volume that RetrievalEvaluationHarnessTest bind-mounts into the Ollama
       # container (see its OLLAMA_MODEL_VOLUME javadoc). On a developer machine this volume
       # survives across runs; on GitHub's ephemeral runners it does not, so every scheduled run
-      # would otherwise re-pull the ~275 MB model. actions/cache round-trips the volume's content
-      # as a tar file instead: the pull only happens once per model digest (see the cache key
-      # below), and every subsequent run restores it from GitHub's cache. Combined with
-      # RetrievalEvaluationHarnessTest now skipping 'ollama pull' entirely once the expected digest
-      # is already present locally (see its pullEmbeddingModel() javadoc), a warm cache run does not
-      # need to download the ~275 MB embedding model again. Narrower claim than "no third-party
-      # network access at all" (PR #301 review, second round): the pgvector/pgvector and
-      # ollama/ollama *base images* are still pulled from Docker Hub by Testcontainers regardless of
-      # this cache, independent of the embedding model.
+      # would otherwise re-pull both models (~1,26 GB). actions/cache round-trips the volume's
+      # content as a tar file instead: the pull only happens once per model digest (see the cache
+      # key below), and every subsequent run restores it from GitHub's cache. Combined with
+      # EvalOllamaModel#ensurePresent skipping 'ollama pull' entirely once the expected digest is
+      # already present locally, a warm cache run does not need to download either model again.
+      # Narrower claim than "no third-party network access at all" (PR #301 review, second round):
+      # the pgvector/pgvector and ollama/ollama *base images* are still pulled from Docker Hub by
+      # Testcontainers regardless of this cache, independent of the models.
       #
-      # The cache key is pinned to the exact expected digest
-      # (RetrievalEvaluationHarnessTest.EXPECTED_EMBEDDING_MODEL_DIGEST), not just the tag: a
-      # deliberate model re-pin changes the digest constant, which changes this key, which means a
-      # stale cache for the old model is never silently reused. Both matrix entries pin the same
-      # embedding model (nomic-embed-text:v1.5, same digest) and therefore share this exact key —
-      # the Docker volume is reusable across domains, no per-domain cache entry needed.
+      # The cache key is pinned to the exact expected digests
+      # (RetrievalEvaluationHarnessTest.EXPECTED_EMBEDDING_MODEL_DIGEST and, since #1085,
+      # EvalChatModel.EXPECTED_DIGEST), not just the tags: a deliberate model re-pin changes a digest
+      # constant, which changes this key, which means a stale cache for the old model is never
+      # silently reused. Every matrix entry pins the same two models and therefore shares this exact
+      # key — the Docker volume is reusable across domains, no per-domain cache entry needed.
+      #
+      # Two models since #1085: the embedding model (~275 MB) and the chat model the
+      # Teilfragen-Zerlegung uses (qwen2.5:1.5b-instruct, ~986 MB). The chat model is pulled by every
+      # run, including the nightly one that measures the decomposition-off configuration, so a broken
+      # model pin surfaces here rather than only in a rare manual measurement run.
       # actions/cache/restore + actions/cache/save (issue #311), not the combined actions/cache
       # action: actions/cache's own save step only runs as a *post*-job step, and GitHub Actions
       # skips post-job steps entirely when the job's own status is 'cancelled' — which is exactly
@@ -185,7 +193,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ollama-model-cache.tar
-          key: ollama-model-nomic-embed-text-v1.5-0a109f42
+          key: ollama-models-nomic-embed-text-v1.5-0a109f42-qwen2.5-1.5b-instruct-65ec0654
 
       - name: Seed Docker volume from cache
         if: steps.ollama-cache.outputs.cache-hit == 'true'
@@ -207,9 +215,11 @@ jobs:
       # unconditionally (always()) mit fixem Cache-Schlüssel und rein größenbasierter Prüfung.
       # actions/cache-Schlüssel sind unveränderlich — ein unvollständig gespeicherter Export bliebe
       # sonst für immer als vermeintlicher Treffer bestehen, ohne dass es auffällt. Die Prüfung
-      # unten kombiniert deshalb zwei Signale: Größe (>150 MB, fängt den leeren/sehr kleinen Fall)
-      # UND Vollständigkeit (kein '*partial*'-Blob, das fertige Modell-Manifest liegt unter dem für
-      # 'nomic-embed-text:v1.5' erwarteten Pfad). Nur wenn beides zutrifft, wird exportiert; sonst
+      # unten kombiniert deshalb zwei Signale: Größe (>1 GB, fängt den leeren, sehr kleinen und den
+      # nur teilweise befüllten Fall — beide Modelle zusammen belegen rund 1,26 GB) UND
+      # Vollständigkeit (kein '*partial*'-Blob, beide Modell-Manifeste liegen unter den für
+      # 'nomic-embed-text:v1.5' und 'qwen2.5:1.5b-instruct' erwarteten Pfaden). Nur wenn beides
+      # zutrifft, wird exportiert; sonst
       # bleibt der Cache-Pfad leer und der nächste Lauf zieht das Modell einfach erneut aus dem
       # Netz — kein dauerhafter Schaden, nur ein Retry.
       - name: Docker-Volume für den Cache exportieren
@@ -221,9 +231,9 @@ jobs:
             partial=$(docker run --rm -v opaa-eval-ollama-models:/root/.ollama alpine \
               find /root/.ollama -iname '*partial*' 2>/dev/null | head -1)
             manifest_present=$(docker run --rm -v opaa-eval-ollama-models:/root/.ollama alpine \
-              sh -c "test -f /root/.ollama/models/manifests/registry.ollama.ai/library/nomic-embed-text/v1.5 && echo yes || echo no")
-            echo "Ollama-Volume-Größe: ${size:-0} Bytes, unvollständige Blobs: '${partial:-keine}', Manifest vorhanden: ${manifest_present}"
-            if [ "${size:-0}" -gt 150000000 ] && [ -z "$partial" ] && [ "$manifest_present" = "yes" ]; then
+              sh -c "test -f /root/.ollama/models/manifests/registry.ollama.ai/library/nomic-embed-text/v1.5 && test -f /root/.ollama/models/manifests/registry.ollama.ai/library/qwen2.5/1.5b-instruct && echo yes || echo no")
+            echo "Ollama-Volume-Größe: ${size:-0} Bytes, unvollständige Blobs: '${partial:-keine}', Manifeste vorhanden: ${manifest_present}"
+            if [ "${size:-0}" -gt 1000000000 ] && [ -z "$partial" ] && [ "$manifest_present" = "yes" ]; then
               docker run --rm \
                 -v opaa-eval-ollama-models:/root/.ollama \
                 -v "${{ github.workspace }}":/backup \
@@ -248,7 +258,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ollama-model-cache.tar
-          key: ollama-model-nomic-embed-text-v1.5-0a109f42
+          key: ollama-models-nomic-embed-text-v1.5-0a109f42-qwen2.5-1.5b-instruct-65ec0654
 
       # Baseline-Absenkung gegenüber main (ADR-0013, Entscheidung 6) läuft NICHT hier: Sie hängt an
       # dieses Label-gated Docker-lastige Verfahren zu koppeln hieße, dass ein PR, der die Baseline

@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 
 /**
@@ -81,7 +82,12 @@ public final class PipelineHarnessSupport {
       // Issue #1144: under which ingestion pipeline versions (all registered, not just the ones
       // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
       // Javadoc.
-      String ingestionPipelineFingerprint) {}
+      String ingestionPipelineFingerprint,
+      // Issue #1085: the systemwide active chat model of this run (EvalChatModel.MODEL), or null
+      // if there is none. Reported as a fixed point only for a configuration that actually
+      // decomposes — see buildRunConfiguration — but carried here for every run, because the
+      // prerequisite checks need to know whether decomposition could work at all.
+      String chatModel) {}
 
   /**
    * Runs the pipeline measurement path and writes its report — <b>without ever failing the harness
@@ -121,19 +127,37 @@ public final class PipelineHarnessSupport {
       List<GoldenCase> goldenCases,
       Instant pipelineRunStart,
       Logger log) {
-    requireMeasurableConfiguration(queryProperties, pipelineProperties, rerankRoleUsable);
+    requireMeasurableConfiguration(
+        queryProperties, pipelineProperties, rerankRoleUsable, identity.chatModel());
     try {
-      PipelineEvaluationReport report =
-          measure(
-              domain,
-              identity,
-              queryService,
-              queryProperties,
-              indexingProperties,
-              evalLibraryId,
-              goldenCases,
-              pipelineRunStart);
+      // Mehrfachlauf-Regel (issue #1044/#1085): with decomposition active this path is
+      // nondeterministic and is measured three times; the median run is what the report — and
+      // therefore the baseline comparison — is built from.
+      // Each run reports its own duration; the first one starts at the phase start the caller
+      // passed, so a single-run measurement is unchanged from before the rule applied here.
+      AtomicReference<Instant> firstRunStart = new AtomicReference<>(pipelineRunStart);
+      MehrfachlaufRule.Measurement measurement =
+          MehrfachlaufRule.measure(
+              queryProperties.queryDecompositionEnabled(),
+              () ->
+                  measure(
+                      domain,
+                      identity,
+                      queryService,
+                      queryProperties,
+                      indexingProperties,
+                      evalLibraryId,
+                      goldenCases,
+                      startOfNextRun(firstRunStart)));
+      PipelineEvaluationReport report = measurement.report();
       PipelineReportWriter.writeJson(report, reportFile(domain));
+      if (measurement.multiRun()) {
+        // Both outputs, like every other summary this path writes: the logger reaches the test
+        // report, System.out reaches Gradle's console via showStandardStreams.
+        String multiRunSummary = MehrfachlaufRule.render(measurement.summary());
+        log.info(multiRunSummary);
+        System.out.println(multiRunSummary);
+      }
       log.info(PipelineReportWriter.renderSummary(report));
       System.out.println("Pipeline report written to " + reportFile(domain).toAbsolutePath());
     } catch (RuntimeException | IOException e) {
@@ -199,6 +223,12 @@ public final class PipelineHarnessSupport {
             pipelineRunStart));
   }
 
+  /** The caller's phase start for the first run, the current instant for every later one. */
+  private static Instant startOfNextRun(AtomicReference<Instant> firstRunStart) {
+    Instant reserved = firstRunStart.getAndSet(null);
+    return reserved != null ? reserved : Instant.now();
+  }
+
   /** Where a domain's pipeline report is written — never the raw-vector path's report file. */
   public static Path reportFile(EvalDomainConfig domain) {
     return Path.of("build", "eval-reports", "pipeline-metrics-" + domain.name() + ".json");
@@ -220,12 +250,13 @@ public final class PipelineHarnessSupport {
    *       report's metric names state that window literally. A changed production default is a
    *       deliberate measurement-contract change (new window, new names, new pipeline contract
    *       version), not something to absorb silently.
-   *   <li><b>Query decomposition must be switched off</b> for now. Left on, the harness's context
-   *       has no active chat model, {@code QueryDecompositionService#decompose} would fail per
-   *       query and fall back to single-query retrieval — a run that reports "with decomposition"
-   *       while measuring without it. The specification forbids exactly that silent degradation,
-   *       and which chat model the pipeline path should use is still an open decision
-   *       (docs/features/retrieval-benchmark.md, "Offene Punkte" 3).
+   *   <li><b>Query decomposition may only run with an active chat model</b> (issue #1085). Left on
+   *       without one, {@code QueryDecompositionService#decompose} fails per query and falls back
+   *       to single-query retrieval — a run that reports "with decomposition" while measuring
+   *       without it, exactly the silent degradation the specification forbids. Which of the two
+   *       settings a run measures is not prescribed here: it is a fixed point of every report and
+   *       of every committed baseline, so a mismatch is caught as an incomparable baseline rather
+   *       than as a regression.
    *   <li><b>No pipeline stage may be switched off.</b> This path measures the complete pipeline,
    *       and which stages it consists of is not part of a report's fixed points: a run with a
    *       stage switched off would carry a {@code runConfiguration} fingerprint identical to a full
@@ -251,7 +282,8 @@ public final class PipelineHarnessSupport {
   public static void requireMeasurableConfiguration(
       QueryProperties queryProperties,
       RetrievalPipelineProperties pipelineProperties,
-      boolean rerankRoleUsable) {
+      boolean rerankRoleUsable,
+      String chatModel) {
     if (queryProperties.topK() != PipelineMetricsAggregate.RANKING_K) {
       throw new IllegalStateException(
           "opaa.query.top-k is "
@@ -267,14 +299,13 @@ public final class PipelineHarnessSupport {
               + "PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION, and re-measure "
               + "deliberately.");
     }
-    if (queryProperties.queryDecompositionEnabled()) {
+    if (queryProperties.queryDecompositionEnabled() && chatModel == null) {
       throw new IllegalStateException(
-          "opaa.query.query-decomposition-enabled is true, but this harness's context has no "
-              + "active chat model — decomposition would fail per query and silently fall back to "
+          "opaa.query.query-decomposition-enabled is true, but this run has no systemwide active "
+              + "chat model — decomposition would fail per query and silently fall back to "
               + "single-query retrieval, producing a run labelled 'with decomposition' that "
-              + "measured without it. Set the property to false for the run (the decomposition-off "
-              + "variant), or supply a chat model once that open decision is settled "
-              + "(docs/features/retrieval-benchmark.md, 'Offene Punkte' 3).");
+              + "measured without it. Install one (io.opaa.eval.EvalChatModel, issue #1085) or "
+              + "measure the decomposition-off configuration.");
     }
     if (!pipelineProperties.disabledStages().isEmpty()) {
       throw new IllegalStateException(
@@ -343,9 +374,10 @@ public final class PipelineHarnessSupport {
         identity.fullTextBackfillComplete(),
         queryProperties.queryDecompositionEnabled(),
         queryProperties.maxSubQueries(),
-        // Null rather than a placeholder string: no chat model took part in this run at all, and
-        // requireMeasurableConfiguration above guarantees none silently could.
-        null,
+        // Only the configuration that actually decomposes reports a chat model: a run with
+        // decomposition off never sends a single prompt, so naming a model there would claim a
+        // fixed point that took no part in the measurement.
+        queryProperties.queryDecompositionEnabled() ? identity.chatModel() : null,
         PipelineMetricsAggregate.HIT_RATE_K,
         PipelineMetricsAggregate.RANKING_K,
         identity.pgvectorIndexType(),

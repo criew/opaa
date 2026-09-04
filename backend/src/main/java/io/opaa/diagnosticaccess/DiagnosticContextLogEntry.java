@@ -26,8 +26,14 @@ import org.springframework.data.domain.Persistable;
  * <p>{@code actorRef} and - for a {@link DiagnosticTargetKind#USER} target - {@code targetRef} are
  * pseudonym ids from {@code AuditActorPseudonym}, not user ids, sharing the audit trail's
  * separately deletable re-identification table. For a {@link
- * DiagnosticTargetKind#PERMISSION_PROFILE} target, {@code targetRef} is the profile's label: a
- * profile belongs to nobody and needs no protection.
+ * DiagnosticTargetKind#PERMISSION_PROFILE} target, {@code targetRef} is the id of the group the
+ * profile is: a profile belongs to nobody and needs no protection, and an id cannot carry a
+ * personal reference the way a free-text label could.
+ *
+ * <p>{@code hitCount} is the number of hits displayed, {@code hitRefs} their identifiers. An
+ * oversized identifier list is truncated between identifiers and ends in {@code …(+N)} naming how
+ * many were left out, so the two never diverge unnoticed ({@code
+ * ForeignDiagnosticContextService#joinHitRefs}).
  *
  * <p>What is deliberately <b>not</b> here: the diagnosis result. Leitplanke (j) forbids storing it;
  * {@code hitRefs} are the identifiers of what was shown, not the titles, snippets or scores.

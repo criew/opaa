@@ -1,5 +1,6 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.DiagnosticContextEventDetailResponse;
 import io.opaa.api.dto.DiagnosticContextEventPage;
 import io.opaa.api.dto.DiagnosticContextEventResponse;
 import io.opaa.api.dto.DiagnosticContextRetentionResponse;
@@ -91,8 +92,9 @@ final class DiagnosticAccessResponseMapper {
    *   <li>{@code permissionSnapshot} is not passed on at all: it is the rights fingerprint of one
    *       person and stays byte-identical across every entry about them until their rights change,
    *       so it is the same grouping key under another name. Hashing it would not help, for the
-   *       same reason. It remains in the stored entry, which is where Leitplanke (f) requires it;
-   *       the anlassbezogene single-entry view that may show it is issue #1124.
+   *       same reason. It remains in the stored entry, which is where Leitplanke (f) requires it,
+   *       and {@link #toDetailResponse} shows it for one entry at a time - which is the
+   *       anlassbezogene Auswertung Leitplanke (g) allows, not a grouping key.
    * </ul>
    *
    * <p>This is not a claim that individual rows cannot be correlated: {@code recordedAt}, {@code
@@ -110,6 +112,30 @@ final class DiagnosticAccessResponseMapper {
             entry.getTestQuestion(),
             entry.getHitCount(),
             entry.getHitRefs())
+        .targetRef(
+            entry.getTargetKind() == DiagnosticTargetKind.PERMISSION_PROFILE
+                ? entry.getTargetRef()
+                : null)
+        .justification(entry.getJustification());
+  }
+
+  /**
+   * The single-entry view, which additionally carries {@code permissionSnapshot}. What that costs,
+   * stated plainly: an AUDITOR holding a page of event ids can fetch them one by one and group the
+   * result by snapshot - the barrier here is not that the evaluation is inexpressible (as it is for
+   * the list), it is that every single fetch carries its own Anlass and its own audit_log entry.
+   * {@code targetRef} follows the same rule as the list above.
+   */
+  static DiagnosticContextEventDetailResponse toDetailResponse(DiagnosticContextLogEntry entry) {
+    return new DiagnosticContextEventDetailResponse(
+            entry.getEventId(),
+            entry.getRecordedAt(),
+            entry.getActorRef(),
+            entry.getTargetKind(),
+            entry.getTestQuestion(),
+            entry.getHitCount(),
+            entry.getHitRefs(),
+            entry.getPermissionSnapshot())
         .targetRef(
             entry.getTargetKind() == DiagnosticTargetKind.PERMISSION_PROFILE
                 ? entry.getTargetRef()

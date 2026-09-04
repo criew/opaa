@@ -32,7 +32,7 @@ public final class VariantComparisonRunner {
     // 3), but this method has its own callers (VariantComparisonRunnerTest exercises #delta
     // directly, not this method, so this is not redundant with that) and must not silently produce
     // a reference-less report if invoked without that earlier check.
-    comparison.requireExecutableReference(productionQueryProperties);
+    comparison.requireExecutableReference(productionQueryProperties, identity.chatModel() != null);
 
     List<VariantOutcome> outcomes = new ArrayList<>(comparison.variants().size());
     for (PipelineVariant variant : comparison.variants()) {

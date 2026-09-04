@@ -23,9 +23,13 @@ final class VariantPrerequisites {
    * @param effective the variant's {@link QueryProperties} after {@link
    *     VariantQueryProperties#apply} — prerequisites are checked against what would actually run,
    *     not against the declared overrides alone.
+   * @param chatModelAvailable whether this run has a systemwide active chat model at all (issue
+   *     #1085, {@link EvalChatModel}) — without one, {@code QueryDecompositionService#decompose}
+   *     fails per query and falls back to single-query retrieval.
    * @return the skip reason, or empty if the variant can be measured.
    */
-  static Optional<String> unmetReason(PipelineVariant variant, QueryProperties effective) {
+  static Optional<String> unmetReason(
+      PipelineVariant variant, QueryProperties effective, boolean chatModelAvailable) {
     if (variant.requiresReindex()) {
       return Optional.of(
           "Diese Variante deklariert requiresReindex=true (Embedding-Modell- oder "
@@ -34,13 +38,12 @@ final class VariantPrerequisites {
               + "sie misst ausschließlich Query-Parameter-Varianten auf dem bereits indizierten "
               + "Korpus.");
     }
-    if (effective.queryDecompositionEnabled()) {
+    if (effective.queryDecompositionEnabled() && !chatModelAvailable) {
       return Optional.of(
-          "Diese Variante aktiviert query-decomposition-enabled, aber der Harness-Kontext hat kein "
-              + "Chat-Modell (siehe PipelineHarnessSupport#requireMeasurableConfiguration) — eine "
-              + "Zerlegung würde je Anfrage fehlschlagen und still auf Einzelanfragen-Retrieval "
-              + "zurückfallen. Welches Modell der Pipeline-Pfad künftig dafür nutzen soll, ist offen "
-              + "(docs/features/retrieval-benchmark.md, \"Offene Punkte\" 3).");
+          "Diese Variante aktiviert query-decomposition-enabled, aber dieser Lauf hat kein aktives "
+              + "Chat-Modell (siehe EvalChatModel und "
+              + "PipelineHarnessSupport#requireMeasurableConfiguration) — eine Zerlegung würde je "
+              + "Anfrage fehlschlagen und still auf Einzelanfragen-Retrieval zurückfallen.");
     }
     return Optional.empty();
   }
@@ -63,9 +66,10 @@ final class VariantPrerequisites {
   static Optional<String> unmetReason(
       PipelineVariant variant,
       QueryProperties effective,
+      boolean chatModelAvailable,
       boolean fullTextBackfillComplete,
       boolean rerankRoleUsable) {
-    Optional<String> earlier = unmetReason(variant, effective);
+    Optional<String> earlier = unmetReason(variant, effective, chatModelAvailable);
     if (earlier.isPresent()) {
       return earlier;
     }

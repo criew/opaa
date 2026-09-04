@@ -13,16 +13,7 @@ import {
 } from '../fixtures/chat'
 import type { Page, TestInfo } from '@playwright/test'
 
-// This file (space-chats.spec.ts) is named, and sorts alphabetically, to run *after*
-// knowledge-libraries.spec.ts and knowledge-library-nacharbeiten.spec.ts (`s` > `k`) - the same
-// pattern the nacharbeiten spec already uses relative to knowledge-libraries.spec.ts, for the same
-// reason: #424's own scenarios run an *unscoped* topK search over the whole readable corpus, and
-// need a small, unpolluted one for their "the right document was cited" assertions to be
-// meaningful rather than incidentally true. This file, in turn, uploads several of its own
-// libraries - if it ran first, it would be #424's pollution problem instead of the other way
-// round (that was in fact CI-red on an earlier version of this file - see git history).
-//
-// For the same reason, own fixture files here too, deliberately never uploaded by any other spec
+// Own fixture files here, deliberately never uploaded by any other spec
 // in this suite: io.opaa.query.QueryService merges source references by file name
 // (`toMap(SourceReference::getFileName, ...)`), and the KI stub gives every chunk the exact same
 // embedding (see e2e/ai-stub/server.mjs) - reusing wissensdokument.txt/eigenesdokument.txt here
@@ -130,9 +121,8 @@ test.describe.serial('Chats im Space, @-Referenzen und Suchbereich-Chip-Leiste (
     // Deliberately not expectCitedSource(page, DOCUMENT_A_NAME): this scenario is about the chat
     // mechanism (an answer with sources exists, and both it and the chat list entry survive a
     // reload), not about which library the default @Alles-Wissen scope (left untouched here) ends
-    // up citing - that search is an unscoped topK over the entire readable corpus, and this file
-    // deliberately runs after several other specs that keep adding to it (see the module doc
-    // comment on sort order above). Asserting on this scenario's own document specifically would
+    // up citing - that search is an unscoped topK over the entire readable corpus, which keeps
+    // growing as earlier specs run. Asserting on this scenario's own document specifically would
     // make the test fragile to how large that corpus has grown by the time it runs, not to
     // anything this scenario is meant to catch - scenarios 2 and 5 below cover "the right library
     // was searched" deterministically via an explicit @-reference, which replaces @Alles-Wissen.

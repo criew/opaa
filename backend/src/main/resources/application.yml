@@ -224,6 +224,12 @@ opaa:
     remote-content:
       max-bytes: ${OPAA_DOCUMENTS_REMOTE_CONTENT_MAX_BYTES:20971520}
       timeout-seconds: ${OPAA_DOCUMENTS_REMOTE_CONTENT_TIMEOUT_SECONDS:20}
+    # #1243: opening an attachment re-extracts its bytes from the parent original, which every
+    # VIEWER can trigger repeatedly and in parallel - see AttachmentExtractionLimiter. Bounds the
+    # extractions running at once, not the responses still streaming out (that is the rate limit).
+    attachment-extraction:
+      max-concurrent: ${OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_MAX_CONCURRENT:4}
+      acquire-timeout: ${OPAA_DOCUMENTS_ATTACHMENT_EXTRACTION_ACQUIRE_TIMEOUT:10s}
   rate-limit:
     enabled: ${OPAA_RATE_LIMIT_ENABLED:true}
     query:

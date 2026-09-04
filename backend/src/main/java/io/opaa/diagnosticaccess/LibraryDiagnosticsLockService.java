@@ -39,8 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
  *       add <em>themselves</em> to that owning group ({@code GroupController#addMember}, open to
  *       {@code SYSTEM_ADMIN}, with no self-exclusion), thereby becoming the library's named
  *       responsible body, and lift the lock alone - see {@link
- *       LibraryAccessService#holdsIndependentOwnerRole}. Closing this is a change to group
- *       administration, tracked as issue #1124.
+ *       LibraryAccessService#holdsIndependentOwnerRole}. This path stays open by decision, not by
+ *       omission: docs/features/hybrid-retrieval.md, Berechtigungs-Leitplanken (e).
  * </ul>
  */
 @Service

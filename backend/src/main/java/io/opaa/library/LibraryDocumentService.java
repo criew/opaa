@@ -128,6 +128,7 @@ public class LibraryDocumentService {
   private final LibraryFolderService folderService;
   private final AttachmentExtractor attachmentExtractor;
   private final MailProperties mailProperties;
+  private final AttachmentExtractionLimiter attachmentExtractionLimiter;
 
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
@@ -145,7 +146,8 @@ public class LibraryDocumentService {
       LibraryFolderRepository folderRepository,
       LibraryFolderService folderService,
       AttachmentExtractor attachmentExtractor,
-      MailProperties mailProperties) {
+      MailProperties mailProperties,
+      AttachmentExtractionLimiter attachmentExtractionLimiter) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
     this.documentRepository = documentRepository;
@@ -162,6 +164,7 @@ public class LibraryDocumentService {
     this.folderService = folderService;
     this.attachmentExtractor = attachmentExtractor;
     this.mailProperties = mailProperties;
+    this.attachmentExtractionLimiter = attachmentExtractionLimiter;
   }
 
   /**
@@ -553,6 +556,10 @@ public class LibraryDocumentService {
    *
    * <p>Every temp file this method creates is deleted when the returned stream is closed, or before
    * it throws.
+   *
+   * <p>The extraction itself runs under {@link AttachmentExtractionLimiter} (#1243): serialized per
+   * parent document and capped instance-wide, with a 429 rather than an unbounded wait once the cap
+   * is reached.
    */
   private DocumentContent loadAttachmentContent(Document document, KnowledgeLibrary library) {
     List<Document> chain = new ArrayList<>();
@@ -604,6 +611,22 @@ public class LibraryDocumentService {
       parentPath = chain.get(i).getFilePath();
     }
 
+    return attachmentExtractionLimiter.runExtraction(
+        root.getId(), () -> extractFromRoot(document, library, root, chain, indices));
+  }
+
+  /**
+   * The actual re-extraction of {@code document} out of {@code root}'s original, following {@code
+   * indices} down {@code chain}. Runs under {@link AttachmentExtractionLimiter} (#1243) - it is the
+   * part that parses (and, for a connector Bestand, downloads) the parent original and writes temp
+   * files, everything before it is repository lookups.
+   */
+  private DocumentContent extractFromRoot(
+      Document document,
+      KnowledgeLibrary library,
+      Document root,
+      List<Document> chain,
+      List<Integer> indices) {
     DocumentContent rootContent = loadOriginal(root, library);
     List<Path> tempFiles = new ArrayList<>();
     boolean streaming = false;
