@@ -6,6 +6,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditAccessOutcome;
 import io.opaa.audit.AuditActorPseudonymService;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditQueryService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
@@ -54,9 +55,6 @@ public class DiagnosticContextLogQueryService {
 
   /** An anlassbezogene Einzelfallauswertung, not a standing report - hence a bounded window. */
   public static final int MAX_RANGE_DAYS = 31;
-
-  /** Matches {@code audit_log.reason varchar(1000)}, same bound as {@code AuditQueryService}. */
-  private static final int MAX_REASON_LENGTH = 1000;
 
   private static final int MAX_PAGE_SIZE = 100;
 
@@ -221,9 +219,9 @@ public class DiagnosticContextLogQueryService {
     if (reason == null || reason.isBlank()) {
       throw new ValidationException("Für die Einsicht ist ein Anlass anzugeben");
     }
-    if (reason.length() > MAX_REASON_LENGTH) {
+    if (reason.length() > AuditQueryService.MAX_REASON_LENGTH) {
       throw new ValidationException(
-          "Der Anlass ist zu lang - maximal " + MAX_REASON_LENGTH + " Zeichen");
+          "Der Anlass ist zu lang - maximal " + AuditQueryService.MAX_REASON_LENGTH + " Zeichen");
     }
   }
 
@@ -249,15 +247,16 @@ public class DiagnosticContextLogQueryService {
 
   /**
    * Bounds what an over-length {@code reason} can put into the entry - {@code audit_log.reason} is
-   * {@code varchar(1000)}, so a raw reason exceeding {@link #MAX_REASON_LENGTH} would make even the
-   * rejected-attempt entry itself fail to write, defeating {@link #requireValidReason}'s point.
+   * {@code varchar(1000)}, so a raw reason exceeding {@link AuditQueryService#MAX_REASON_LENGTH}
+   * would make even the rejected-attempt entry itself fail to write, defeating {@link
+   * #requireValidReason}'s point.
    */
   private void recordProtocolAccess(
       CurrentUser caller, Map<String, Object> scope, String reason, AuditOutcome outcome) {
     String bounded =
-        reason == null || reason.length() <= MAX_REASON_LENGTH
+        reason == null || reason.length() <= AuditQueryService.MAX_REASON_LENGTH
             ? reason
-            : reason.substring(0, MAX_REASON_LENGTH);
+            : reason.substring(0, AuditQueryService.MAX_REASON_LENGTH);
     auditEventRecorder.recordAuditLogAccess(
         caller.organizationId(), caller.id(), scope, outcome, bounded);
   }

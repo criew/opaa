@@ -132,15 +132,18 @@ public class ForeignDiagnosticContextService {
 
   /**
    * A profile is exempt from befugnis and Begründung only because Leitplanke (c) assumes it "zeigt
-   * nichts, was die ausführende Person nicht ohnehin sehen darf". That assumption is enforced here
-   * rather than assumed of the caller: the library set is checked against the executing person's
-   * own readable libraries, which are organization-scoped, so neither a foreign nor an
-   * organization-foreign library can enter a profile context. A {@code SYSTEM_ADMIN} caller skips
-   * that containment check, mirroring {@link LibraryAccessService#effectiveRole}'s administrative
-   * fail-open - {@link LibraryAccessService#readableLibraryIds} itself never bypasses (search stays
-   * scoped to actually granted libraries), so without this the same administrator {@code
-   * SearchDiagnosisService#diagnose} lets run directly would be refused here for any profile
-   * touching a library they administer but hold no grant on.
+   * nichts, was die ausführende Person nicht ohnehin sehen darf". For a non-administrative caller
+   * that assumption is enforced here rather than assumed: the library set is checked against the
+   * executing person's own readable libraries, which are organization-scoped, so neither a foreign
+   * nor an organization-foreign library can enter a profile context. A {@code SYSTEM_ADMIN} caller
+   * skips that containment check entirely, mirroring {@link LibraryAccessService#effectiveRole}'s
+   * administrative fail-open - {@link LibraryAccessService#readableLibraryIds} itself never
+   * bypasses (search stays scoped to actually granted libraries), so without this the same
+   * administrator {@code SearchDiagnosisService#diagnose} lets run directly would be refused here
+   * for any profile touching a library they administer but hold no grant on. Today the only
+   * reachable caller is {@code SearchAdminController#runDiagnosis}, which itself requires {@code
+   * SYSTEM_ADMIN} - the containment check below is therefore currently unreachable in production
+   * and stands as defense in depth for a future, less privileged entry point.
    *
    * <p>The target is the profile's group id, and its library set is resolved from that same group -
    * a caller can neither put a person's name into {@code target_ref} nor record one profile while
