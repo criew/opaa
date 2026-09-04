@@ -929,6 +929,33 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
    Modell- bzw. Promptfrage: ein größeres lokales Modell, ein für kleine Modelle robusterer
    Zerlegungsprompt (der heutige führt sein Beispiel im Fließtext) oder ein gehostetes Modell
    (Secret, Kosten, Driftrisiko). Das ist Gegenstand von Issue #1254, nicht dieser Anbindung.
+
+   **Nachgemessen mit Issue #1254 (09/2026) — Promptfrage beantwortet, Baselinefrage weiterhin
+   offen.** Der Zerlegungsprompt führt sein Beispiel nicht mehr im Fließtext einer Regel mit; er
+   beschreibt die Ausgabeform nur noch. Zusätzlich verwirft `QueryDecompositionService` Teilfragen
+   ohne Wortbezug zu Frage und Gesprächsverlauf und fällt dann sichtbar (WARN,
+   `opaa.query.decomposition_fallback`) auf die unzerlegte Frage zurück. Gemessen auf der Domäne
+   Verwaltung (46 Golden-Fälle, `qwen2.5:1.5b-instruct`, Temperatur 0, `-Dopaa.eval.ollamaBaseUrl`
+   gegen ein Host-Ollama statt des Testcontainers, `-Dopaa.eval.queryDecomposition=true`,
+   Median aus je drei Läufen):
+
+   | Metrik | Zerlegung aus | Zerlegung an, alter Prompt | Zerlegung an, neuer Prompt |
+   |---|---|---|---|
+   | Hit Rate@5 | 0,957 | 0,804 | 0,935 |
+   | MRR@8 | 0,779 | 0,690 | 0,795 |
+   | nDCG@8 | 0,740 | 0,642 | 0,742 |
+   | Recall@8 | 0,837 | 0,714 | 0,812 |
+   | Fälle mit degenerierter Ausgabe | — | 8 von 46 | 0 von 46 |
+
+   Die Zahlen der Spalte „Zerlegung aus" sind auf diesem Endpunkt bitgleich zur committeten
+   Baseline; die drei Spalten sind also untereinander vergleichbar. Der Einbruch war ein
+   Produktionsfehler, kein Modellbefund: Auf dieser Hardware fiel bereits der alte Prompt milder
+   aus als im CPU-Testcontainer des ursprünglichen Befunds (8 statt 23 degenerierte Fälle), der
+   neue Prompt beseitigt sie vollständig, und die Zerlegung liegt danach im Rahmen der
+   Messstreuung gleichauf mit der Konfiguration ohne sie. **Nicht entschieden** ist damit, ob die
+   committete Pipeline-Baseline auf `queryDecompositionEnabled=true` umgestellt wird — dagegen
+   spricht unverändert das Laufzeitargument oben (drei Läufe je Domäne), und der Festpunktwechsel
+   ist eine bewusste Neuziehung. Der Punkt bleibt offen.
 4. **Umgang mit `answer_span` bei Fallklassen mit mehreren Zieldokumenten — entschieden mit Issue
    #1043 (08/2026).** Die Chunkebenen-Metrik wird **je Fall** gebildet, und ein `answer_span` ist
    nur bei Fällen mit **genau einem** erwarteten Dokument zulässig; mehrdokumentige Fälle

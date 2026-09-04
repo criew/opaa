@@ -384,6 +384,18 @@ unparsebare Antwort), fällt die Suche auf das Verhalten vor #923 zurück — ei
 heutigen `buildSearchQuery`-Logik (Frage, ggf. um die erste Chat-Nachricht ergänzt) — nie auf einen
 Fehler für den Nutzer, höchstens die alte Suchqualität.
 
+**Degenerierte Zerlegung (#1254):** Ein Fehlschlag ist nicht der einzige schlechte Ausgang. Ein
+kleines Chat-Modell kann formal „erfolgreich" zerlegen und dabei etwas zurückgeben, das mit der
+Nutzerfrage nichts zu tun hat — im gemessenen Fall den Beispielsatz, den der Systemprompt selbst im
+Fließtext einer Regel mitführte. Der Prompt enthält deshalb kein Beispiel mehr, sondern beschreibt
+die Ausgabeform nur; und `QueryDecompositionService` verwirft jede Teilfrage, die zu Frage und
+Gesprächsverlauf keinen Wortbezug hat. Bleibt keine übrig, greift dieselbe Rückfallebene wie beim
+Fehlschlag, sichtbar über ein WARN-Log und den Zähler `opaa.query.decomposition_fallback` — der Fall
+ist damit messbar statt still. Gemessene Wirkung (Domäne Verwaltung, 46 Golden-Fälle,
+`qwen2.5:1.5b-instruct`): 8 degenerierte Fälle vor, 0 nach der Prompt-Änderung; nDCG@8 0,642 → 0,742
+gegenüber 0,740 ohne Zerlegung. Zahlen und Messbedingungen:
+[`retrieval-benchmark.md`](./retrieval-benchmark.md), „Offene Punkte" 3.
+
 **Vorher/Nachher-Messung** (lokal, nicht committet, über den produktionsnahen `QueryService`-Pfad
 mit echten lokalen Embeddings statt des Harness-eigenen, dokumentbezogenen Fensters — der
 committete Harness misst `VectorStore.similaritySearch` direkt und läuft an diesem Feature vorbei,

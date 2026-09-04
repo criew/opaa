@@ -100,7 +100,11 @@ Suchanfragen zurückgibt und dabei Folgefragen kontextuell auflöst sowie Tippfe
 der Aufruf (Zeitüberschreitung, kein aktives Modell, unparsebare oder leere Antwort), liefert `decompose`
 eine leere Liste, und `SubQueryDecompositionStage#buildSearchQuery` übernimmt als Rückfallebene das Verhalten von vor
 #923: die reine Frage, oder — bei laufender Konversation — die erste Nutzernachricht der Historie,
-vorangestellt. Details, Diagramm und die Vorher/Nachher-Messung stehen in
+vorangestellt. Dasselbe gilt seit #1254 für eine **degenerierte** Ausgabe: Eine Teilfrage, die zu
+Frage und Gesprächsverlauf keinen Wortbezug hat, hat die Nutzerfrage ersetzt statt sie
+umzuformulieren und wird verworfen; bleibt danach keine übrig, greift dieselbe Rückfallebene — mit
+WARN-Log und dem Zähler `opaa.query.decomposition_fallback`, nie stillschweigend.
+Details, Diagramm und die Vorher/Nachher-Messung stehen in
 [Teilfragen-Zerlegung und Query-Reformulierung](./data-indexing-rag.md#teilfragen-zerlegung-und-query-reformulierung-multi-query-retrieval-923).
 
 ### 3. Vektorsuche je Teilfrage
