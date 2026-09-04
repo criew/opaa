@@ -118,6 +118,185 @@ class CoreMetadataExtractorTest {
     }
   }
 
+  /** #1263: the Kompositum ending rule seeded per vocabulary value in migration 020. */
+  @Nested
+  class KompositumEndings {
+
+    @Test
+    void aTokenEndingOnASeededSuffixDenotesThatDokumentart() {
+      assertThat(
+              extract("01_verwaltungsgebuehrensatzung.pdf", DocumentProperties.EMPTY)
+                  .documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+      assertThat(
+              extract("Friedhofsgebuehrenordnung.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+      assertThat(
+              extract("Verwaltungsgebührenverzeichnis.pdf", DocumentProperties.EMPTY)
+                  .documentTypeCode())
+          .contains("GEBUEHRENVERZEICHNIS");
+      assertThat(extract("Rahmendienstanweisung.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .contains("DIENSTANWEISUNG");
+    }
+
+    @Test
+    void aTooShortPrefixInFrontOfTheEndingNeverCounts() {
+      // "Anordnung" is an Anordnung, not an Ordnung: two characters in front of the ending are
+      // below the seeded minimum, and the seed lists the token as an exclusion on top of that.
+      assertThat(extract("Anordnung_Streugut.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .isEmpty();
+      assertThat(extract("Zuordnung_Aktenzeichen.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void aSeededExclusionIsNeverClaimedByItsEnding() {
+      assertThat(extract("Einordnung_Rechtslage.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .isEmpty();
+      assertThat(extract("Neuordnung_Aemter.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void anEndingNeverBeatsAnExactVocabularyTerm() {
+      // "dienstanordnung" is a seeded synonym of DIENSTANWEISUNG; the ending "-ordnung" would
+      // otherwise make it a Satzung/Ordnung.
+      assertThat(extract("Dienstanordnung_IT.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .contains("DIENSTANWEISUNG");
+    }
+  }
+
+  /** #1263: the Kopfbereich as the third source, and its boundary. */
+  @Nested
+  class DocumentHeadSource {
+
+    @Test
+    void theFirstHeadingNamesTheDokumentartWhenTheFileNameDoesNot() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withFirstHeading("Dienstanweisung Nr. 1 - Identitaetszweifel");
+
+      assertThat(extract("01_identitaetszweifel-ausweisantrag.docx", properties).documentTypeCode())
+          .contains("DIENSTANWEISUNG");
+    }
+
+    @Test
+    void theOpeningOfTheBodyTextCountsAsWell() {
+      assertThat(
+              extract(
+                      "anlage.pdf",
+                      DocumentProperties.EMPTY.withHeadText(
+                          "Niederschrift ueber die Sitzung des Rates"))
+                  .documentTypeCode())
+          .contains("PROTOKOLL");
+    }
+
+    @Test
+    void aWordBeyondTheHeadAreaNeverBecomesADokumentart() {
+      String longLead = "Sehr geehrte Damen und Herren, ".repeat(20);
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withHeadText(longLead + "Protokoll der Sitzung");
+
+      assertThat(properties.headText())
+          .as("DocumentProperties cuts the head itself, so the word is no longer in it")
+          .doesNotContain("Protokoll");
+      assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
+    }
+
+    @Test
+    void onlyWholeWordsMatch() {
+      assertThat(
+              extract(
+                      "anlage.pdf",
+                      DocumentProperties.EMPTY.withHeadText("Vermerkzettel und Protokollanten"))
+                  .documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void theFileNameOutranksTheHeadArea() {
+      DocumentProperties properties = DocumentProperties.EMPTY.withFirstHeading("Vermerk");
+
+      assertThat(extract("Protokoll_Sitzung.pdf", properties).documentTypeCode())
+          .contains("PROTOKOLL");
+    }
+
+    @Test
+    void anAmbiguousFileNameStillLetsTheHeadAreaDecide() {
+      // Unlike the frontmatter declaration, an ambiguous file name is no statement about the
+      // document - it yields nothing, and the next source is still asked.
+      DocumentProperties properties = DocumentProperties.EMPTY.withFirstHeading("Vermerk");
+
+      assertThat(extract("Protokoll_zur_Dienstanweisung.pdf", properties).documentTypeCode())
+          .contains("VERMERK");
+    }
+
+    @Test
+    void twoDifferentDokumentartenInTheHeadAreaLeaveTheFieldEmpty() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withFirstHeading("Protokoll")
+              .withHeadText("Anlage zur Dienstanweisung vom 12.03.2026");
+
+      assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
+    }
+  }
+
+  /** #1263: the file format as the last source. */
+  @Nested
+  class FileFormatSource {
+
+    @Test
+    void aPresentationFormatYieldsPraesentationWhenNoTextSourceDoes() {
+      assertThat(
+              extract(
+                      "21_onboarding-buergerbuero.pptx",
+                      DocumentProperties.EMPTY.withFormatExtension(".pptx"))
+                  .documentTypeCode())
+          .contains("PRAESENTATION");
+      assertThat(
+              extract("folien.odp", DocumentProperties.EMPTY.withFormatExtension(".odp"))
+                  .documentTypeCode())
+          .contains("PRAESENTATION");
+    }
+
+    @Test
+    void everyTextSourceOutranksTheFormat() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withFormatExtension(".pptx").withFirstHeading("Vermerk");
+
+      assertThat(extract("anlage.pptx", properties).documentTypeCode()).contains("VERMERK");
+      assertThat(
+              extract(
+                      "Protokoll_Sitzung.pptx",
+                      DocumentProperties.EMPTY.withFormatExtension(".pptx"))
+                  .documentTypeCode())
+          .contains("PROTOKOLL");
+    }
+
+    @Test
+    void aFormatThatCarriesEveryDokumentartYieldsNone() {
+      assertThat(
+              extract("anlage.pdf", DocumentProperties.EMPTY.withFormatExtension(".pdf"))
+                  .documentTypeCode())
+          .isEmpty();
+      assertThat(
+              extract("anlage.docx", DocumentProperties.EMPTY.withFormatExtension(".docx"))
+                  .documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void aVocabularyWithoutThePresentationCodeYieldsNothingForTheFormat() {
+      ExtractedCoreMetadata result =
+          CoreMetadataExtractor.extract(
+              "folien.pptx",
+              DocumentProperties.EMPTY.withFormatExtension(".pptx"),
+              DocumentTypeVocabulary.empty());
+
+      assertThat(result.documentTypeCode()).isEmpty();
+    }
+  }
+
   @Nested
   class TitleSourceOrder {
 

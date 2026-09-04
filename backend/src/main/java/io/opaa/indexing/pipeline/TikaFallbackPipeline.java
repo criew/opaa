@@ -84,7 +84,40 @@ public class TikaFallbackPipeline implements DocumentPipeline {
       // end up INDEXED with zero chunks regardless of why chunking produced none.
       return DocumentPipelineResult.noExtractableText();
     }
-    return DocumentPipelineResult.chunked(chunks);
+    return DocumentPipelineResult.chunked(chunks)
+        .withProperties(DocumentProperties.EMPTY.withHeadText(headText(parsed)));
+  }
+
+  /**
+   * The opening of the extracted text (#1263) - the only metadata source this pipeline has, since
+   * Tika's own document properties are not read here. Costs one Tika parse, the same order as every
+   * other pipeline's {@code readProperties}.
+   */
+  @Override
+  public DocumentProperties readProperties(DocumentPipelineSource source) {
+    try {
+      List<Document> parsed =
+          source.file() != null
+              ? documentService.parseDocument(source.file())
+              : List.of(new Document(source.extractedText()));
+      return DocumentProperties.EMPTY.withHeadText(headText(parsed));
+    } catch (RuntimeException e) {
+      log.warn("Could not read properties of {} via Tika", source.fileName(), e);
+      return DocumentProperties.EMPTY;
+    }
+  }
+
+  private static String headText(List<Document> parsed) {
+    StringBuilder head = new StringBuilder();
+    for (Document document : parsed) {
+      if (head.length() >= DocumentProperties.MAX_HEAD_TEXT_LENGTH) {
+        break;
+      }
+      if (document.getText() != null) {
+        head.append(document.getText()).append('\n');
+      }
+    }
+    return DocumentHeadText.of(head.toString());
   }
 
   /**

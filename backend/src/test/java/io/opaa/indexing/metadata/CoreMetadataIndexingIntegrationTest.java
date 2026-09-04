@@ -38,6 +38,9 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xslf.usermodel.XSLFSlide;
+import org.apache.poi.xslf.usermodel.XSLFTextBox;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +53,9 @@ import org.springframework.transaction.PlatformTransactionManager;
  * The core fields end to end (#1066, ADR-0024): a PDF, a DOCX and a Markdown file with frontmatter
  * go through {@link FileProcessingService#processFile}; their values land at the document with
  * origin and extraction version, their filterable keys on every chunk, and a manual value survives
- * a re-extraction that rewrites the chunk metadata without touching the chunks.
+ * a re-extraction that rewrites the chunk metadata without touching the chunks. Since #1263 also
+ * the three further Dokumentart sources against the seeded vocabulary of the database: the
+ * Kompositum ending in a file name, the document head, and the file format.
  */
 @OpaaIndexingIntegrationTest
 class CoreMetadataIndexingIntegrationTest {
@@ -195,6 +200,67 @@ class CoreMetadataIndexingIntegrationTest {
     assertThat(core.documentTypeLabel()).isEqualTo("Satzung/Ordnung");
     assertThat(core.documentDate()).isEqualTo(LocalDate.of(2024, 1, 1));
     assertThat(core.documentDatePrecision()).isEqualTo(DatePrecision.DAY);
+  }
+
+  /**
+   * #1263: the demo's Satzungen carry the Dokumentart as a Kompositum in the file name - the exact
+   * token match of #1066 does not see it, the seeded ending of migration 020 does.
+   */
+  @Test
+  void aKompositumInTheFileNameNamesTheDokumentart() throws IOException {
+    Path file = classTempDir.resolve("01_verwaltungsgebuehrensatzung.pdf");
+    writePdf(file, null, null);
+
+    assertThat(fileProcessingService.processFile(file, targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isEqualTo("SATZUNG_ORDNUNG");
+    assertThat(core.documentTypeOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+  }
+
+  /**
+   * #1263: the demo's Dienstanweisungen are named after their subject, not their Dokumentart - the
+   * document head is the source that carries it.
+   */
+  @Test
+  void theDocumentHeadNamesTheDokumentartWhenTheFileNameDoesNot() throws IOException {
+    Path file = classTempDir.resolve("01_identitaetszweifel-ausweisantrag.docx");
+    writeDocxWithHead(
+        file,
+        "Dienstanweisung Nr. 1 - Identitätszweifel beim Ausweisantrag",
+        "Diese Regelung gilt fuer alle Mitarbeitenden des Buergerbueros.");
+
+    assertThat(fileProcessingService.processFile(file, targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isEqualTo("DIENSTANWEISUNG");
+    assertThat(core.documentTypeOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+    assertThat(chunkMetadata(document.getId()))
+        .isNotEmpty()
+        .allSatisfy(metadata -> assertThat(metadata).containsEntry("doc_type", "DIENSTANWEISUNG"));
+  }
+
+  /** #1263: a presentation is a Präsentation - the format is the last source, and a sure one. */
+  @Test
+  void aPresentationGetsItsDokumentartFromTheFormatAlone() throws IOException {
+    Path file = classTempDir.resolve("21_onboarding-buergerbuero.pptx");
+    writePptx(file, "Onboarding Buergerbuero", "Ablauf der ersten Woche im Buergerbuero.");
+
+    assertThat(fileProcessingService.processFile(file, targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isEqualTo("PRAESENTATION");
+    assertThat(core.documentTypeLabel()).isEqualTo("Präsentation");
+    assertThat(core.documentTypeOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+    // The backfill reads the same three sources from the file alone, without chunking.
+    assertThat(documentMetadataService.reextractFromFile(document, file).documentTypeCode())
+        .isEqualTo("PRAESENTATION");
   }
 
   @Test
@@ -401,6 +467,32 @@ class CoreMetadataIndexingIntegrationTest {
         info.setModificationDate(calendar);
       }
       doc.save(file.toFile());
+    }
+  }
+
+  /** A DOCX whose Dokumentart stands in its first lines and nowhere else (#1263). */
+  private static void writeDocxWithHead(Path file, String head, String body) throws IOException {
+    try (XWPFDocument doc = new XWPFDocument()) {
+      for (String text : List.of(head, body)) {
+        XWPFParagraph paragraph = doc.createParagraph();
+        paragraph.createRun().setText(text);
+      }
+      try (OutputStream out = Files.newOutputStream(file)) {
+        doc.write(out);
+      }
+    }
+  }
+
+  private static void writePptx(Path file, String title, String body) throws IOException {
+    try (XMLSlideShow show = new XMLSlideShow()) {
+      XSLFSlide slide = show.createSlide();
+      for (String text : List.of(title, body)) {
+        XSLFTextBox box = slide.createTextBox();
+        box.setText(text);
+      }
+      try (OutputStream out = Files.newOutputStream(file)) {
+        show.write(out);
+      }
     }
   }
 

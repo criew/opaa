@@ -40,6 +40,8 @@ final class OdfMetaProperties {
         parseDate(handler.modified),
         null,
         null,
+        null,
+        null,
         Map.of());
   }
 

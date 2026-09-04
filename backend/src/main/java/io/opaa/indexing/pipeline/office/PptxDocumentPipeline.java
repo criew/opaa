@@ -117,6 +117,8 @@ public class PptxDocumentPipeline implements DocumentPipeline {
                 DocumentProperties.toLocalDate(core.getModified()),
                 null,
                 firstHeading,
+                null,
+                null,
                 Map.of()));
       }
     } catch (IOException | RuntimeException e) {
