@@ -503,9 +503,9 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void decideForPrefixDecidesOnThePrefixAloneWheneverTheDetectionResolved() throws Exception {
-    // The bandwidth guard the prefix decision exists for: content Tika could place - here binary
-    // garbage it places as nothing supported - is final on the sample, so an entry this system
-    // does not want is never transferred in full.
+    // The bandwidth guard the prefix decision exists for: a detection that resolved - here a PNG
+    // signature, resolved to image/png and simply not among the accepted formats - is final on the
+    // sample, so an entry this system does not want is never transferred in full.
     byte[] prefix = new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
 
     var decision =

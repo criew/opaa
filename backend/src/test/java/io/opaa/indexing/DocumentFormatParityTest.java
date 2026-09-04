@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.message.DefaultMessageWriter;
 import org.apache.poi.ss.usermodel.Row;
@@ -275,6 +276,33 @@ class DocumentFormatParityTest {
     assertThat(networkDecision.detectedExtension()).isEqualTo(".msg");
   }
 
+  @Test
+  void aDocxLargerThanTheDetectionPrefixIsAlreadyResolvedFromThePrefixAlone() throws Exception {
+    // The ZIP-container counterpart of #1229's OLE2 case, pinned rather than assumed: a written
+    // OOXML archive carries [Content_Types].xml as its first entry, so Tika resolves the specific
+    // media type from the sample no matter how large the file is - the fallback in
+    // SupportedDocumentFormats#decideForPrefix is not what carries DOCX/ODF, and a future
+    // reordering that broke this would show up here instead of as a silent rejection.
+    Path file = tempDir.resolve("umfangreicher-bericht.docx");
+    Files.write(file, largeIncompressibleDocxBytes());
+    assertThat(Files.size(file)).isGreaterThan(SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
+    byte[] prefix =
+        Arrays.copyOf(Files.readAllBytes(file), SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
+    assertThat(SupportedDocumentFormats.detectMediaType(prefix))
+        .isEqualTo("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+
+    assertThat(new DocumentService().isSupportedFormat(file)).isTrue();
+    var networkDecision =
+        UrlIndexingExecutor.decideForEntry(
+            prefix,
+            "umfangreicher-bericht.docx",
+            () -> {
+              throw new AssertionError("a resolved OOXML prefix must not trigger a full download");
+            });
+    assertThat(networkDecision.supported()).isTrue();
+    assertThat(networkDecision.extensionMismatch()).isFalse();
+  }
+
   // --- #404 review, finding 2: the RSS attachment path decides alike too --------------------
 
   @Test
@@ -315,6 +343,18 @@ class DocumentFormatParityTest {
     assertThat(filesystemDecision).isEqualTo(rssDecision.supported());
     assertThat(networkDecision.supported()).isEqualTo(rssDecision.supported());
     assertThat(networkDecision.extensionMismatch()).isEqualTo(rssDecision.extensionMismatch());
+  }
+
+  /** A DOCX whose body is random enough not to compress below the detection prefix. */
+  private static byte[] largeIncompressibleDocxBytes() throws IOException {
+    try (XWPFDocument document = new XWPFDocument()) {
+      for (int i = 0; i < 4_000; i++) {
+        document.createParagraph().createRun().setText(UUID.randomUUID().toString());
+      }
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      document.write(out);
+      return out.toByteArray();
+    }
   }
 
   private static byte[] realDocxBytes() throws IOException {

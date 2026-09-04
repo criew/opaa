@@ -894,9 +894,22 @@ Containertyp als das, was er ist — **kein Urteil, nur eine zu kurze Leseprobe*
 dann die vollständige Datei nach und entscheidet an ihr, wenn die Probe `application/x-tika-msoffice`
 oder `application/x-tika-ooxml` ergab und daran gescheitert wäre. Jede andere Erkennung — ein
 aufgelöster Typ ebenso wie Inhalt, den Tika gar nicht einordnen kann — bleibt an der Leseprobe
-endgültig, der Schutz vor unnötigen Volltransfers bleibt also für alles außer OLE2-/ZIP-Containern
-erhalten. Die nachgeladene Datei wird für die anschließende Verarbeitung wiederverwendet, nicht ein
+endgültig. Die nachgeladene Datei wird für die anschließende Verarbeitung wiederverwendet, nicht ein
 zweites Mal übertragen.
+
+Zwei Grenzen dieser Auflösung gehören dazu:
+
+- **Der Nachlade-Weg trifft mehr als nur MSG.** Ein unaufgelöster OLE2-Container ist jede
+  Legacy-Office-Datei — `.xls`, `.ppt`, `.vsd`, `.pub`, `.mpp` —, die neben dem Bestand im
+  Verzeichnis liegt. Solche Einträge werden jetzt vollständig geladen und danach verworfen; der
+  `HTTP_DIRECTORY`-Download ist dabei bis heute ungedeckelt (Issue #1236). Für ZIP-basierte Formate
+  entsteht der Fall dagegen praktisch nicht: OOXML trägt `[Content_Types].xml`, ODF sein
+  `mimetype` als erste Archiv-Eintragung, beide werden also schon aus der Leseprobe aufgelöst —
+  belegt in `DocumentFormatParityTest` an einer DOCX oberhalb der Probe.
+- **Auch die vollständige Datei löst nicht unbegrenzt auf.** Tikas `POIFSContainerDetector` liest
+  höchstens sein `markLimit` (voreingestellt 128 MiB) und meldet darüber hinaus wieder den
+  unaufgelösten Containertyp. Eine `.msg` jenseits dieser Grenze bleibt also abgewiesen, trotz
+  vollständigem Download.
 
 **Zwei eigene Leser statt eines gemeinsamen Tika-Parsers**, weil Kopfdaten, Text und Anhänge getrennt
 werden müssen, statt in einen Block zu fließen:

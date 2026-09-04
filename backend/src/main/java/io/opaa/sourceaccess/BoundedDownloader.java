@@ -86,6 +86,11 @@ public class BoundedDownloader {
    * <p>Costs a second request for every entry this system ends up indexing (one bounded read here,
    * one full transfer via {@link #download} once accepted) - accepted deliberately in favour of the
    * simpler two-step shape over streaming a single connection through both phases.
+   *
+   * <p>A rejected entry costs only this bounded read, with one exception: content whose leading
+   * bytes identify a container Tika cannot resolve from the sample carries no verdict, so {@code
+   * SupportedDocumentFormats#decideForPrefix} fetches it in full via {@link #download} before
+   * deciding - and may still reject it afterwards.
    */
   public byte[] downloadPrefix(
       HttpClient httpClient, String authHeader, String fileUrl, int maxBytes)

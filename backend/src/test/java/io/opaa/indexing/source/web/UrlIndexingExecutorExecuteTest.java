@@ -8,8 +8,10 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -36,9 +38,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -105,6 +113,13 @@ class UrlIndexingExecutorExecuteTest {
   }
 
   private TargetAddressValidator targetAddressValidator;
+  private BoundedDownloader downloader;
+
+  /** Every temp file {@link BoundedDownloader#download} handed out during the run, in order. */
+  private final List<Path> fullDownloads = new CopyOnWriteArrayList<>();
+
+  /** How often each served path was actually requested - one entry per {@link #serve} context. */
+  private final Map<String, AtomicInteger> requestCounts = new ConcurrentHashMap<>();
 
   /**
    * Builds an executor sharing every mocked collaborator, only {@code crawlProperties} varying -
@@ -113,9 +128,24 @@ class UrlIndexingExecutorExecuteTest {
    * #setUp}'s generous default.
    */
   private UrlIndexingExecutor buildExecutor(CrawlProperties crawlProperties) {
+    // A spy over the real downloader, not a mock: every test still performs genuine transfers, but
+    // the temp files handed back can be checked for deletion after the run.
+    downloader = spy(new BoundedDownloader(targetAddressValidator));
+    try {
+      doAnswer(
+              invocation -> {
+                Path downloaded = (Path) invocation.callRealMethod();
+                fullDownloads.add(downloaded);
+                return downloaded;
+              })
+          .when(downloader)
+          .download(any(), any(), anyString(), anyString());
+    } catch (IOException | InterruptedException e) {
+      throw new IllegalStateException(e);
+    }
     return new UrlIndexingExecutor(
         new AutoindexCrawlerService(targetAddressValidator, crawlProperties),
-        new BoundedDownloader(targetAddressValidator),
+        downloader,
         fileProcessingService,
         indexingJobService,
         documentRepository,
@@ -130,9 +160,11 @@ class UrlIndexingExecutorExecuteTest {
   }
 
   private void serve(String path, String contentType, byte[] body) {
+    AtomicInteger requests = requestCounts.computeIfAbsent(path, ignored -> new AtomicInteger());
     server.createContext(
         path,
         exchange -> {
+          requests.incrementAndGet();
           exchange.getResponseHeaders().set("Content-Type", contentType);
           exchange.sendResponseHeaders(200, body.length);
           exchange.getResponseBody().write(body);
@@ -276,6 +308,49 @@ class UrlIndexingExecutorExecuteTest {
         .save(argThat(categoryIs(IndexingEventCategory.UNSUPPORTED_FORMAT)));
     verify(indexingRunEventRepository, never())
         .save(argThat(categoryIs(IndexingEventCategory.FORMAT_MISMATCH)));
+    assertThat(requestCounts.get("/files/outlook-mail-mit-pdf-anhang.msg"))
+        .as(
+            "the file the fallback had to fetch is reused for processing, so the entry costs one"
+                + " bounded read plus exactly one full transfer - never a second one")
+        .hasValue(2);
+    assertThat(fullDownloads).hasSize(1);
+  }
+
+  @Test
+  void deletesTheFallbackDownloadAndReportsOneRejectionWhenTheCompleteFileIsUnsupported()
+      throws IOException {
+    // The other half of #1229's new lifecycle: an OLE2 container that is neither .msg nor .doc
+    // (an .xls, .ppt or any other legacy Office file next to the bestand) also detects as the
+    // generic application/x-tika-msoffice, so it takes the same fallback download - and is then
+    // rejected on its complete bytes. The temp file must not survive that, and the entry must
+    // produce exactly one UNSUPPORTED_FORMAT event, not one per decision step.
+    byte[] ole2Header = {
+      (byte) 0xd0, (byte) 0xcf, 0x11, (byte) 0xe0, (byte) 0xa1, (byte) 0xb1, 0x1a, (byte) 0xe1
+    };
+    byte[] body = new byte[SupportedDocumentFormats.DETECTION_PREFIX_BYTES + 4_096];
+    System.arraycopy(ole2Header, 0, body, 0, ole2Header.length);
+    serve(
+        "/files/",
+        "text/html",
+        ("<html><head><title>Index of /files/</title></head><body><ul>"
+                + "<li><a href=\"haushalt.xls\">haushalt.xls</a></li>"
+                + "</ul></body></html>")
+            .getBytes(StandardCharsets.UTF_8));
+    serve("/files/haushalt.xls", "application/octet-stream", body);
+
+    execute();
+
+    verify(fileProcessingService, never())
+        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
+    verify(indexingRunEventRepository, timeout(5000).times(1))
+        .save(argThat(categoryIs(IndexingEventCategory.UNSUPPORTED_FORMAT)));
+    verify(indexingJobService, timeout(5000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
+    assertThat(fullDownloads)
+        .as("the fallback must have downloaded the entry in full to reach its verdict")
+        .hasSize(1);
+    assertThat(fullDownloads.getFirst())
+        .as("a rejected fallback download must not survive the run")
+        .doesNotExist();
   }
 
   private static byte[] resourceBytes(String name) throws IOException {

@@ -207,9 +207,11 @@ public final class SupportedDocumentFormats {
   }
 
   /**
-   * The number of leading bytes {@link #detectMediaType(byte[])} needs to reliably identify every
-   * type {@link #EXTENSIONS} accepts - mirrors the 64 KiB default buffer Tika's own {@code
-   * MimeTypes} magic detection reads from a stream ({@code MimeTypes#getMinLength()}).
+   * The number of leading bytes {@link #detectMediaType(byte[])} needs to identify every type
+   * {@link #EXTENSIONS} accepts by its own signature - mirrors the 64 KiB default buffer Tika's own
+   * {@code MimeTypes} magic detection reads from a stream ({@code MimeTypes#getMinLength()}). Not
+   * enough for a container whose identifying part may sit past the sample; {@link #decideForPrefix}
+   * is where that case is resolved.
    */
   public static final int DETECTION_PREFIX_BYTES = 65_536;
 
@@ -218,7 +220,9 @@ public final class SupportedDocumentFormats {
    * {@link #detectMediaType(Path)}, used before a file behind a listing is downloaded in full:
    * {@code UrlIndexingExecutor} reads at most {@link #DETECTION_PREFIX_BYTES} to decide whether an
    * entry is worth downloading at all, so an arbitrarily large file linked from a directory listing
-   * never has to be written to disk in full only to be rejected afterwards.
+   * never has to be written to disk in full only to be rejected afterwards - except when the sample
+   * yields an {@link #isUnresolvedContainerType unresolved container type}, which is no verdict at
+   * all and makes {@link #decideForPrefix} fetch the complete file to decide.
    */
   public static String detectMediaType(byte[] contentPrefix) {
     try {
@@ -270,6 +274,11 @@ public final class SupportedDocumentFormats {
    * decides instead. Every other detection - a resolved type, or content Tika could not place at
    * all - is final on the prefix alone, so an entry this system does not want still costs a bounded
    * read rather than a full transfer.
+   *
+   * <p>The fallback does not resolve every container either: Tika's own {@code
+   * POIFSContainerDetector} reads at most its {@code markLimit} (128 MiB by default) before
+   * reporting the unresolved type again, so an OLE2 document larger than that stays rejected even
+   * with its complete bytes at hand.
    */
   public static ContentDecision decideForPrefix(
       String fileName, byte[] prefix, CompleteContent completeContent)
