@@ -93,6 +93,15 @@ public class DocumentMetadataService {
             .readProperties(
                 DocumentPipelineSource.ofFile(
                     file, document.getFileName(), routed.detectedExtension()));
+    return reextractFromProperties(document, properties);
+  }
+
+  /**
+   * The transactional half of {@link #reextractFromFile} for a document whose declared properties
+   * are already at hand without a file - an RSS entry's stored headline and publication date:
+   * stores the values and rewrites the filterable keys on the existing chunks in one transaction.
+   */
+  public CoreMetadata reextractFromProperties(Document document, DocumentProperties properties) {
     return transactionTemplate.execute(
         status -> {
           CoreMetadata core = reconcileAll(document.getId(), document.getFileName(), properties);

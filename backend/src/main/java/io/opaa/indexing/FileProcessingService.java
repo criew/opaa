@@ -12,6 +12,7 @@ import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineRunner;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
@@ -698,7 +699,7 @@ public class FileProcessingService {
               parsed
                   .properties()
                   .withTitle(contextTitle)
-                  .withDocumentDate(publishedDate(publishedAt)));
+                  .withDocumentDate(DocumentProperties.instantToLocalDate(publishedAt)));
       storeChunks(
           doc,
           chunks,
@@ -1273,21 +1274,6 @@ public class FileProcessingService {
             .toList();
 
     addToVectorStore(enriched);
-  }
-
-  /**
-   * An RSS entry's {@code publishedAt} (an {@link Instant#toString()} rendering from {@code
-   * RssFeedIndexingExecutor}) as a UTC calendar date, or {@code null} when absent or unparseable.
-   */
-  private static java.time.LocalDate publishedDate(String publishedAt) {
-    if (publishedAt == null || publishedAt.isBlank()) {
-      return null;
-    }
-    try {
-      return Instant.parse(publishedAt).atZone(java.time.ZoneOffset.UTC).toLocalDate();
-    } catch (java.time.format.DateTimeParseException e) {
-      return null;
-    }
   }
 
   /**

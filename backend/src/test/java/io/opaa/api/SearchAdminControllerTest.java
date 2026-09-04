@@ -16,6 +16,8 @@ import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.NotFoundException;
+import io.opaa.indexing.metadata.CoreMetadataField;
+import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.query.RetrievalExplanation;
 import io.opaa.searchadmin.ChunkInspection;
 import io.opaa.searchadmin.ChunkInspectionService;
@@ -148,7 +150,15 @@ class SearchAdminControllerTest {
                         Instant.EPOCH,
                         80,
                         20,
-                        0))));
+                        0,
+                        new MetadataBackfillProgress(
+                            UUID.randomUUID(),
+                            5,
+                            2,
+                            3,
+                            1,
+                            1,
+                            Map.of(CoreMetadataField.TITLE, 2L))))));
 
     mockMvc
         .perform(get("/api/v1/admin/search/status").with(asAdmin()))
@@ -158,7 +168,14 @@ class SearchAdminControllerTest {
         .andExpect(jsonPath("$.modelRoles[0].faulted").value(true))
         .andExpect(jsonPath("$.libraries[0].lowChunkDocumentCount").value(2))
         .andExpect(jsonPath("$.libraries[0].fullTextMissingChunks").value(20))
-        .andExpect(jsonPath("$.libraries[0].fullTextIndexState").value("INCOMPLETE"));
+        .andExpect(jsonPath("$.libraries[0].fullTextIndexState").value("INCOMPLETE"))
+        .andExpect(jsonPath("$.libraries[0].metadataBackfill.pendingDocuments").value(3))
+        .andExpect(
+            jsonPath("$.libraries[0].metadataBackfill.awaitingConnectorRunDocuments").value(1))
+        .andExpect(jsonPath("$.libraries[0].metadataBackfill.lastSkippedDocuments").value(1))
+        .andExpect(jsonPath("$.libraries[0].metadataBackfill.complete").value(false))
+        .andExpect(jsonPath("$.libraries[0].metadataBackfill.fields[0].fieldKey").value("title"))
+        .andExpect(jsonPath("$.libraries[0].metadataBackfill.fields[0].filledDocuments").value(2));
 
     verify(searchStatusService).statusForOrganization(actingAdminOrganizationId);
   }
