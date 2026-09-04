@@ -37,9 +37,10 @@ public record TrackedDocumentVerdict(
     OUTSIDE_SEARCH_SCOPE,
 
     /**
-     * The document's library is diagnosegesperrt and was therefore left out of the run. Says
-     * nothing about the target person's rights - the diagnosis makes no statement about a locked
-     * area at all (Leitplanke (e)).
+     * The document's library is diagnosegesperrt and was therefore left out of the run. Follows
+     * from the library's lock state alone and is therefore the same verdict whether or not the
+     * target person may read that library - the diagnosis makes no statement about a locked area at
+     * all (Leitplanke (e)).
      */
     IN_LOCKED_AREA,
 

@@ -35,6 +35,8 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * {@code POST /api/v1/admin/search/diagnosis} with {@code contextType=USER} against the real
@@ -64,6 +66,7 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
   private User devAdmin;
   private UUID organizationId;
   private UUID targetUserId;
+  private UUID targetWithoutLockedRightId;
   private UUID orgUnitId;
   private UUID openLibraryId;
   private UUID lockedLibraryId;
@@ -96,6 +99,11 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
     target.setOrganizationId(organizationId);
     targetUserId = userRepository.save(target).getId();
 
+    User withoutLockedRight =
+        new User("person-1259", "test-issuer", "person-1259@example.com", "Rita Vogel");
+    withoutLockedRight.setOrganizationId(organizationId);
+    targetWithoutLockedRightId = userRepository.save(withoutLockedRight).getId();
+
     orgUnitId =
         groupRepository
             .save(new Group(organizationId, GroupKind.ORG_UNIT, "Bürgerbüro", null, null, null))
@@ -107,14 +115,23 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
         targetUserId,
         orgUnitId,
         organizationId);
+    jdbcTemplate.update(
+        "INSERT INTO group_memberships (id, user_id, group_id, organization_id, created_at)"
+            + " VALUES (?, ?, ?, ?, now())",
+        UUID.randomUUID(),
+        targetWithoutLockedRightId,
+        orgUnitId,
+        organizationId);
 
     openLibraryId = insertLibrary("Satzungen & Gebührenordnungen");
     lockedLibraryId = insertLibrary("Personalvorgänge");
     // Every library starts diagnosegesperrt (changeset 006); only the open one is unlocked here.
     jdbcTemplate.update(
         "UPDATE knowledge_libraries SET diagnostics_locked = false WHERE id = ?", openLibraryId);
-    grantLibraryToTarget(openLibraryId);
-    grantLibraryToTarget(lockedLibraryId);
+    grantLibraryToTarget(openLibraryId, targetUserId);
+    grantLibraryToTarget(lockedLibraryId, targetUserId);
+    // Deliberately not granted the locked library: the second person may not read it at all.
+    grantLibraryToTarget(openLibraryId, targetWithoutLockedRightId);
   }
 
   @AfterEach
@@ -130,6 +147,7 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
     jdbcTemplate.update("DELETE FROM group_memberships WHERE group_id = ?", orgUnitId);
     jdbcTemplate.update("DELETE FROM groups WHERE id = ?", orgUnitId);
     jdbcTemplate.update("DELETE FROM users WHERE id = ?", targetUserId);
+    jdbcTemplate.update("DELETE FROM users WHERE id = ?", targetWithoutLockedRightId);
   }
 
   @Test
@@ -158,7 +176,7 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
         .andExpect(jsonPath("$.contextType").value("USER"))
         .andExpect(jsonPath("$.searchScope.length()").value(1))
         .andExpect(jsonPath("$.searchScope[0].id").value(openLibraryId.toString()))
-        .andExpect(jsonPath("$.lockedLibraryCount").value(1));
+        .andExpect(jsonPath("$.lockedLibraryCount").value((int) lockedLibrariesInOrganization()));
 
     assertThat(protocolEntries())
         .singleElement()
@@ -207,6 +225,9 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
   void aTrackedDocumentOutsideTheTargetsRightsIsReportedWithoutNamingIt() throws Exception {
     grantBefugnis();
     UUID foreignLibraryId = insertLibrary("Bauleitplanung");
+    // Unlocked on purpose: only then is "outside the scope" a rights matter and not the lock.
+    jdbcTemplate.update(
+        "UPDATE knowledge_libraries SET diagnostics_locked = false WHERE id = ?", foreignLibraryId);
     UUID documentId = insertDocument(foreignLibraryId, "bebauungsplan.pdf");
     try {
       mockMvc
@@ -219,6 +240,46 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
       jdbcTemplate.update("DELETE FROM documents WHERE library_id = ?", foreignLibraryId);
       jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE id = ?", foreignLibraryId);
     }
+  }
+
+  /**
+   * The verdict on a document in a diagnosegesperrte library, and the reported number of locked
+   * libraries, follow from the lock alone. Were either intersected with the target person's read
+   * rights, the two answers below would differ - and "may this person read a locked library?" would
+   * be answerable with any test question (Leitplanke (e), #1259).
+   */
+  @Test
+  void theAnswerDoesNotDependOnWhetherTheTargetMayReadTheLockedLibrary() throws Exception {
+    grantBefugnis();
+    UUID documentId = insertDocument(lockedLibraryId, "personalakte-klein.pdf");
+
+    String withReadRight = lockRelevantAnswer(targetUserId, documentId);
+    String withoutReadRight = lockRelevantAnswer(targetWithoutLockedRightId, documentId);
+
+    assertThat(withoutReadRight).isEqualTo(withReadRight);
+  }
+
+  /**
+   * Every part of the answer that could carry a statement about the locked library: the searched
+   * scope, the number of locked libraries and the whole tracked-document verdict. The remaining
+   * fields are left out because they vary between runs for reasons unrelated to the lock - the
+   * sub-queries come from a model call.
+   */
+  private String lockRelevantAnswer(UUID target, UUID trackedDocumentId) throws Exception {
+    String body =
+        mockMvc
+            .perform(personContextRequest(target, JUSTIFICATION, trackedDocumentId))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    JsonNode answer = new ObjectMapper().readTree(body);
+    return "searchScope="
+        + answer.get("searchScope")
+        + ";lockedLibraryCount="
+        + answer.get("lockedLibraryCount")
+        + ";trackedDocument="
+        + answer.get("trackedDocument");
   }
 
   @Test
@@ -237,6 +298,11 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
 
   private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
       personContextRequest(String justification, UUID trackedDocumentId) {
+    return personContextRequest(targetUserId, justification, trackedDocumentId);
+  }
+
+  private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
+      personContextRequest(UUID target, String justification, UUID trackedDocumentId) {
     return post("/api/v1/admin/search/diagnosis")
         .contentType(MediaType.APPLICATION_JSON)
         .content(
@@ -245,7 +311,7 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
             """
                 .formatted(
                     QUESTION,
-                    targetUserId,
+                    target,
                     justification,
                     trackedDocumentId == null
                         ? ""
@@ -305,13 +371,25 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
     return libraryId;
   }
 
-  private void grantLibraryToTarget(UUID libraryId) {
+  private void grantLibraryToTarget(UUID libraryId, UUID userId) {
     jdbcTemplate.update(
         "INSERT INTO asset_grants (id, library_id, organization_id, subject_type, subject_user_id,"
             + " role, created_at, updated_at) VALUES (?, ?, ?, 'USER', ?, 'VIEWER', now(), now())",
         UUID.randomUUID(),
         libraryId,
         organizationId,
-        targetUserId);
+        userId);
+  }
+
+  /**
+   * The whole bestand, not the target person's readable share - the number the answer reports must
+   * not depend on anybody's rights.
+   */
+  private long lockedLibrariesInOrganization() {
+    return jdbcTemplate.queryForObject(
+        "SELECT count(*) FROM knowledge_libraries WHERE organization_id = ?"
+            + " AND diagnostics_locked = true",
+        Long.class,
+        organizationId);
   }
 }

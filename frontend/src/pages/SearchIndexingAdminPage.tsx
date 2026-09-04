@@ -581,7 +581,7 @@ function DiagnosisResult({
       </Typography>
       {diagnosis.lockedLibraryCount > 0 && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          {`${plural(diagnosis.lockedLibraryCount, 'Bibliothek ist', 'Bibliotheken sind')} als gesperrter Suchbereich ausgenommen. Daraus zeigt die Diagnose nichts - weder Treffer noch Titel. Aufheben kann die Sperre nur die für die Bibliothek zuständige Stelle, nicht die Systemverwaltung.`}
+          {`${plural(diagnosis.lockedLibraryCount, 'Bibliothek ist', 'Bibliotheken sind')} diagnosegesperrt und als gesperrter Suchbereich ausgenommen. Daraus zeigt die Diagnose nichts - weder Treffer noch Titel. Die Zahl gilt für die gesamte Organisation und sagt nichts darüber, was die betrachtete Person lesen darf. Aufheben kann die Sperre nur die für die Bibliothek zuständige Stelle, nicht die Systemverwaltung.`}
         </Alert>
       )}
       {diagnosis.trackedDocument && (
