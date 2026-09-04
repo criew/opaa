@@ -161,8 +161,10 @@ class ChunkReplacementOrderIntegrationTest {
     assertThat(fileProcessingService.processFile(file, targetLibrary))
         .isEqualTo(FileProcessingResult.FAILED);
 
-    assertThat(documentRepository.findById(documentId).orElseThrow().getStatus())
-        .isEqualTo(DocumentStatus.FAILED);
+    Document doc = documentRepository.findById(documentId).orElseThrow();
+    assertThat(doc.getStatus()).isEqualTo(DocumentStatus.FAILED);
+    // The count is what tells a chunkless FAILED row apart from one that kept its previous chunks.
+    assertThat(doc.getChunkCount()).isZero();
     assertThat(vectorChunks(documentId)).isZero();
     assertThat(fullTextChunks(documentId)).isZero();
   }
@@ -184,6 +186,7 @@ class ChunkReplacementOrderIntegrationTest {
     Document doc = documentRepository.findById(documentId).orElseThrow();
     assertThat(doc.getStatus()).isEqualTo(DocumentStatus.FAILED);
     assertThat(doc.getErrorMessage()).isEqualTo(DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+    assertThat(doc.getChunkCount()).isZero();
     assertThat(vectorChunks(documentId)).isZero();
     assertThat(fullTextChunks(documentId)).isZero();
   }
@@ -250,6 +253,7 @@ class ChunkReplacementOrderIntegrationTest {
 
     assertThat(processUrl(file, "url-geleert.txt")).isEqualTo(FileProcessingResult.FAILED);
 
+    assertThat(documentRepository.findById(documentId).orElseThrow().getChunkCount()).isZero();
     assertThat(vectorChunks(documentId)).isZero();
     assertThat(fullTextChunks(documentId)).isZero();
   }
@@ -290,6 +294,7 @@ class ChunkReplacementOrderIntegrationTest {
                 "x", "Meldung", "https://example.test/1", null, targetLibrary))
         .isEqualTo(FileProcessingResult.NO_EXTRACTABLE_TEXT);
 
+    assertThat(documentRepository.findById(documentId).orElseThrow().getChunkCount()).isZero();
     assertThat(vectorChunks(documentId)).isZero();
     assertThat(fullTextChunks(documentId)).isZero();
   }

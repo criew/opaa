@@ -189,8 +189,7 @@ public class FileProcessingService {
    * The quota check compares the size delta against the already-in-place row, not the full new size
    * against a {@code usedBytes} that still includes the old size - see {@link #processRssEntry}'s
    * own Javadoc for why a delete-first quota check does not apply here. The quota is measured on
-   * the document row, never on chunks, so the brief window below in which old and new chunks
-   * coexist does not enter it.
+   * the document row, never on chunks, so nothing below changes what it sees.
    *
    * <p><b>Nothing is destroyed before the replacement exists</b> (#1268, the ordering {@link
    * #reindexStoredDocument} already followed): the previous chunks are deleted only once the new
@@ -201,6 +200,15 @@ public class FileProcessingService {
    * them: "empty" is then a statement about the new content. Attachment rows (ADR-0022) are
    * untouched either way - a failed parse reports no attachments at all, so no attachment of the
    * previous version is replaced or removed before its parent parsed successfully.
+   *
+   * <p><b>Delete and write are not one transaction.</b> {@link #storeChunks} embeds before it
+   * writes (an HTTP round trip, deliberately outside any transaction - see {@link
+   * VectorStoreWriter}), and this method is not {@code @Transactional} either, so between the
+   * delete and the write the document has <em>no</em> chunks while its row still reads {@code
+   * INDEXED} with the previous {@code chunk_count}. A crash inside that window leaves exactly the
+   * chunkless state this ordering exists to prevent; what changed is its size - it used to span
+   * parsing <em>and</em> embedding, and now spans embedding alone. Old and new chunks never coexist
+   * at any point, so no search can ever cite the same document twice from two versions.
    */
   public FileProcessingResult processFile(
       Path file, KnowledgeLibrary targetLibrary, UUID folderId, AttachmentAccess attachmentAccess)
@@ -297,11 +305,11 @@ public class FileProcessingService {
         case NO_CONTENT -> {
           log.warn("No content extracted from: {}", file);
           deletePreviousChunks(replacingExistingChunks, documentId);
-          return markConnectorFailed(doc.getId());
+          return markConnectorFailed(doc.getId(), true);
         }
         case PARSE_FAILED -> {
           log.warn("Could not parse {} with pipeline {}", file, pipeline.id());
-          return markConnectorFailed(doc.getId());
+          return markConnectorFailed(doc.getId(), false);
         }
         case CHUNKED ->
             log.debug(
@@ -556,11 +564,11 @@ public class FileProcessingService {
         case NO_CONTENT -> {
           log.warn("No content extracted from URL document: {}", remoteUrl);
           deletePreviousChunks(replacingExistingChunks, documentId);
-          return markConnectorFailed(doc.getId());
+          return markConnectorFailed(doc.getId(), true);
         }
         case PARSE_FAILED -> {
           log.warn("Could not parse URL document {} with pipeline {}", remoteUrl, pipeline.id());
-          return markConnectorFailed(doc.getId());
+          return markConnectorFailed(doc.getId(), false);
         }
         case CHUNKED ->
             log.debug(
@@ -682,8 +690,8 @@ public class FileProcessingService {
       existingDoc.setFileSize((long) contentBytes.length);
       doc = existingDoc;
     } else {
-      // See processFile's own comment on why this runs after the existing-document deletion there -
-      // there is no existing row to remove on this branch, so the check simply runs before creating
+      // See processFile's own comment on why this runs after the existing-document handling
+      // there - there is no existing row on this branch, so the check simply runs before creating
       // the new one.
       if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), contentBytes.length)) {
         log.warn(
@@ -729,11 +737,11 @@ public class FileProcessingService {
         case NO_CONTENT -> {
           log.warn("No content extracted from RSS entry: {}", entryUrl);
           deletePreviousChunks(replacingExistingChunks, documentId);
-          return markConnectorFailed(doc.getId());
+          return markConnectorFailed(doc.getId(), true);
         }
         case PARSE_FAILED -> {
           log.warn("Could not parse RSS entry {}", entryUrl);
-          return markConnectorFailed(doc.getId());
+          return markConnectorFailed(doc.getId(), false);
         }
         case CHUNKED ->
             log.debug("RSS entry {} produced {} chunks", entryUrl, parsed.chunks().size());
@@ -1066,9 +1074,17 @@ public class FileProcessingService {
    * #markConnectorFailedAfterException} gives an uncaught pipeline exception - a document row can
    * be marked {@code FAILED} without ever throwing here, and the caller-facing outcome must not
    * depend on which of the two paths reached it.
+   *
+   * @param chunksRemoved {@code true} for the {@code NO_CONTENT} outcome, whose previous chunks
+   *     were just deleted - {@code chunk_count} then has to become {@code 0} to match. {@code
+   *     false} for {@code PARSE_FAILED}, where the previous chunks, and therefore the previous
+   *     count, both stand.
    */
-  private FileProcessingResult markConnectorFailed(UUID documentId) {
-    int updated = documentRepository.markFailed(documentId, null);
+  private FileProcessingResult markConnectorFailed(UUID documentId, boolean chunksRemoved) {
+    int updated =
+        chunksRemoved
+            ? documentRepository.markFailedWithoutChunks(documentId, null)
+            : documentRepository.markFailed(documentId, null);
     if (updated == 0) {
       log.warn("Document {} was deleted before it could be marked FAILED", documentId);
       metrics.recordSkipped();
@@ -1084,11 +1100,14 @@ public class FileProcessingService {
    * or by an empty {@code chunkDocuments} result. Marks {@code FAILED} with {@link
    * DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE} and reports {@link
    * FileProcessingResult#NO_EXTRACTABLE_TEXT}, the same rejection contract {@link
-   * FileProcessingResult#QUOTA_EXCEEDED} already has.
+   * FileProcessingResult#QUOTA_EXCEEDED} already has. Always with {@code chunk_count = 0}: this
+   * outcome removes whatever chunks the document had (#1268), so the count must not keep claiming
+   * them.
    */
   private FileProcessingResult markConnectorRejected(UUID documentId) {
     int updated =
-        documentRepository.markFailed(documentId, DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
+        documentRepository.markFailedWithoutChunks(
+            documentId, DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
     if (updated == 0) {
       log.warn("Document {} was deleted before it could be marked as rejected", documentId);
       metrics.recordSkipped();

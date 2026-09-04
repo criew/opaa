@@ -235,25 +235,37 @@ das Dokument bis zum nächsten erfolgreichen Lauf ohne Chunks im Bestand — der
 durchsuchbare Stand war verloren, obwohl er fachlich weiterhin der beste verfügbare war. Der
 Pipeline-Nachzug (`PipelineReindexService`) verfuhr schon vorher nach der jetzt allgemeinen Regel.
 
-Welcher Ausgang was bedeutet:
+Welcher Ausgang was bedeutet — für die Konnektorwege (`processFile`, `processUrlFile`,
+`processRssEntry`), die eine geänderte Quelle verarbeiten:
 
 | Ausgang | Alte Chunks | Dokumentzustand |
 |---|---|---|
 | `CHUNKED` | werden unmittelbar vor dem Schreiben der neuen ersetzt | `INDEXED` |
-| `NO_CONTENT` (geparst, leer) | werden entfernt — „leer" ist eine Aussage über die neue Fassung | `FAILED` |
-| `NO_EXTRACTABLE_TEXT` (z. B. Scan-PDF ohne Textebene) | werden entfernt — dieselbe Begründung | `FAILED`, mit Hinweis auf fehlenden extrahierbaren Text |
-| `PARSE_FAILED` oder Ausnahme aus der Pipeline | **bleiben unverändert** | `FAILED`, Ereignis protokolliert |
+| `NO_CONTENT` (geparst, leer) | werden entfernt — „leer" ist eine Aussage über die neue Fassung | `FAILED`, `chunk_count = 0` |
+| `NO_EXTRACTABLE_TEXT` (z. B. Scan-PDF ohne Textebene) | werden entfernt — dieselbe Begründung | `FAILED`, `chunk_count = 0`, mit Hinweis auf fehlenden extrahierbaren Text |
+| `PARSE_FAILED` oder Ausnahme aus der Pipeline | **bleiben unverändert** | `FAILED`, `chunk_count` unverändert, Ereignis protokolliert |
 
-Zwei Nebenwirkungen sind bewusst in Kauf genommen:
+`chunk_count` ist damit auch die Auskunft darüber, welcher der beiden `FAILED`-Fälle vorliegt: ein
+Wert größer null heißt „noch mit dem alten Stand durchsuchbar", null heißt „leer".
 
-- **Alte und neue Chunks existieren kurz nebeneinander**, zwischen dem Löschen und dem Abschluss des
-  Schreibvorgangs. Das ist dasselbe Fenster, das der Nachzug seit jeher hat. Ein Suchtreffer darin
-  ist unkritisch: Chunk-Kennungen werden je Schreibvorgang neu vergeben, ein doppeltes Zitat
-  desselben Chunks kann daraus nicht entstehen.
-- **Das Speicherkontingent bleibt unberührt.** Es wird über die Dokumentzeile (`file_size`)
-  gemessen, nie über Chunks — das Fenster taucht in der Delta-Prüfung also gar nicht auf.
+Auf dem **Nachzugsweg** (`PipelineReindexService` → `reindexStoredDocument`) bleiben auch die leeren
+Ausgänge folgenlos: Dort ist die Datei unverändert und nur die Pipeline-Version neu, ein leeres
+Ergebnis sagt also nichts über eine neue Fassung aus. Das Dokument behält seine Chunks und seine
+`INDEXED`-Zeile und wird als nicht nachgezogen zurückgemeldet.
 
-Anhänge (ADR-0022) sind vom Fenster ebenfalls nicht betroffen: Eine gescheiterte Elternmail meldet
+**Löschen und Schreiben liegen nicht in einer Transaktion.** Zwischen beiden liegt der
+Embedding-Aufruf (ein HTTP-Rundlauf, bewusst außerhalb jeder Transaktion, siehe
+`VectorStoreWriter`), und die Konnektorwege sind selbst nicht `@Transactional`. In diesem Fenster
+hat das Dokument **keine** Chunks, während seine Zeile noch `INDEXED` mit dem alten `chunk_count`
+zeigt; ein Absturz genau darin hinterlässt den chunklosen Zustand, den diese Reihenfolge verhindern
+soll. Das ist der verbleibende Restfall — das Fenster ist aber deutlich kleiner als vor #1268, wo es
+Parsen **und** Embedding umspannte. Alte und neue Chunks existieren zu keinem Zeitpunkt
+nebeneinander; eine Fundstelle kann dasselbe Dokument also nie aus zwei Fassungen zugleich belegen.
+
+**Das Speicherkontingent bleibt unberührt.** Es wird über die Dokumentzeile (`file_size`) gemessen,
+nie über Chunks — die Reihenfolge des Chunk-Austauschs taucht in der Delta-Prüfung gar nicht auf.
+
+Anhänge (ADR-0022) sind ebenfalls nicht betroffen: Eine Elternmail, deren Parsen scheitert, meldet
 überhaupt keine Anhänge, der verallgemeinerte Anhangsweg läuft dann nicht an, und die vorhandenen
 Anhangsdokumente bleiben mitsamt ihrem `parent_document_id` unverändert stehen.
 
