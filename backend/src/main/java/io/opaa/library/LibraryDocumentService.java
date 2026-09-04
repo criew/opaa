@@ -558,7 +558,7 @@ public class LibraryDocumentService {
    * it throws.
    *
    * <p>The extraction itself runs under {@link AttachmentExtractionLimiter} (#1243): serialized per
-   * parent document and capped instance-wide, with a 503 rather than an unbounded wait once the cap
+   * parent document and capped instance-wide, with a 429 rather than an unbounded wait once the cap
    * is reached.
    */
   private DocumentContent loadAttachmentContent(Document document, KnowledgeLibrary library) {

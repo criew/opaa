@@ -23,7 +23,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
-import io.opaa.common.ServiceUnavailableException;
+import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.AttachmentExtractor;
 import io.opaa.indexing.ChecksumService;
@@ -44,7 +44,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -1439,8 +1438,10 @@ class LibraryDocumentServiceTest {
 
   /**
    * #1243: re-extracting an attachment parses the whole parent original, so two clicks on two
-   * attachments of the same mail must not parse it twice at the same time. The stubbed extractor
-   * records how many extractions overlap; serialized means never more than one.
+   * attachments of the same mail must not parse it twice at the same time. The first extraction
+   * blocks until the second request has provably had its chance to start (its thread is inside
+   * {@code loadContent} and waiting), so a green run cannot mean "the second thread was simply
+   * slower" - it means it was actually held back.
    */
   @Test
   void loadContentSerializesConcurrentReExtractionsOfTheSameParent() throws Exception {
@@ -1454,13 +1455,18 @@ class LibraryDocumentServiceTest {
 
     AtomicInteger inFlight = new AtomicInteger();
     AtomicInteger maxInFlight = new AtomicInteger();
+    CountDownLatch firstExtractionStarted = new CountDownLatch(1);
+    CountDownLatch secondRequestIsWaiting = new CountDownLatch(1);
     when(attachmentExtractor.extract(any(), eq("gleichzeitig.eml"), anyInt()))
         .thenAnswer(
             invocation -> {
               int concurrent = inFlight.incrementAndGet();
               maxInFlight.accumulateAndGet(concurrent, Math::max);
               try {
-                Thread.sleep(200);
+                firstExtractionStarted.countDown();
+                // Only the first extraction waits: it holds the parent until the other request's
+                // thread is demonstrably blocked inside loadContent, so an overlap would be seen.
+                assertThat(secondRequestIsWaiting.await(30, TimeUnit.SECONDS)).isTrue();
               } finally {
                 inFlight.decrementAndGet();
               }
@@ -1470,22 +1476,58 @@ class LibraryDocumentServiceTest {
               return new AttachmentExtractor.Extracted(extracted, "anlage-" + index + ".txt");
             });
 
-    List<DocumentContent> contents =
-        loadConcurrently(service, List.of(first.getId(), second.getId()));
+    ExecutorService executor = Executors.newFixedThreadPool(2);
     try {
-      assertThat(contents).hasSize(2);
+      Future<DocumentContent> firstLoad =
+          executor.submit(() -> service.loadContent(first.getId(), caller));
+      assertThat(firstExtractionStarted.await(30, TimeUnit.SECONDS)).isTrue();
+
+      Thread secondThread =
+          new Thread(() -> secondContent.set(service.loadContent(second.getId(), caller)));
+      secondThread.start();
+      awaitBlocked(secondThread);
+      secondRequestIsWaiting.countDown();
+
+      DocumentContent firstResult = firstLoad.get(30, TimeUnit.SECONDS);
+      secondThread.join(30_000);
+      assertThat(secondContent.get()).isNotNull();
       assertThat(maxInFlight.get()).isEqualTo(1);
+      firstResult.stream().close();
+      secondContent.get().stream().close();
     } finally {
-      closeAll(contents);
+      secondRequestIsWaiting.countDown();
+      executor.shutdownNow();
     }
   }
 
+  private final AtomicReference<DocumentContent> secondContent = new AtomicReference<>();
+
   /**
-   * #1243: once the instance-wide ceiling is reached, a further re-extraction is refused with a
-   * German 503 instead of waiting without limit or piling further parses onto the instance.
+   * Waits until {@code thread} is parked rather than merely started - {@code loadContent} blocks on
+   * the limiter's own lock, so {@code WAITING}/{@code TIMED_WAITING} is what "has had its chance to
+   * overlap and did not get it" looks like from the outside.
+   */
+  private static void awaitBlocked(Thread thread) throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+    while (System.nanoTime() < deadline) {
+      Thread.State state = thread.getState();
+      if (state == Thread.State.WAITING
+          || state == Thread.State.TIMED_WAITING
+          || state == Thread.State.BLOCKED) {
+        return;
+      }
+      Thread.sleep(10);
+    }
+    throw new AssertionError("The second request never blocked on the extraction limiter");
+  }
+
+  /**
+   * #1243: once the instance-wide ceiling is reached, a further re-extraction is refused with the
+   * same German 429 this endpoint's rate limit already uses, instead of waiting without limit or
+   * piling further parses onto the instance.
    */
   @Test
-  void loadContentAnswers503WhenTheConcurrentExtractionCeilingIsReached() throws Exception {
+  void loadContentAnswers429WhenTheConcurrentExtractionCeilingIsReached() throws Exception {
     LibraryDocumentService cappedService =
         serviceWith(new AttachmentExtractionProperties(1, Duration.ofMillis(50)));
     Document firstMail = uploadedMailRow("erste.eml");
@@ -1519,7 +1561,7 @@ class LibraryDocumentServiceTest {
       assertThat(firstExtractionStarted.await(10, TimeUnit.SECONDS)).isTrue();
 
       assertThatThrownBy(() -> cappedService.loadContent(secondAttachment.getId(), caller))
-          .isInstanceOf(ServiceUnavailableException.class)
+          .isInstanceOf(TooManyRequestsException.class)
           .hasMessage(
               "Es werden gerade zu viele Anhänge geöffnet."
                   + " Bitte versuchen Sie es in einem Moment erneut.");
@@ -1532,30 +1574,6 @@ class LibraryDocumentServiceTest {
     } finally {
       releaseFirstExtraction.countDown();
       executor.shutdownNow();
-    }
-  }
-
-  private List<DocumentContent> loadConcurrently(
-      LibraryDocumentService target, List<UUID> documentIds) throws Exception {
-    ExecutorService executor = Executors.newFixedThreadPool(documentIds.size());
-    try {
-      List<Future<DocumentContent>> futures =
-          documentIds.stream()
-              .map(id -> executor.submit(() -> target.loadContent(id, caller)))
-              .toList();
-      List<DocumentContent> contents = new ArrayList<>(futures.size());
-      for (Future<DocumentContent> future : futures) {
-        contents.add(future.get(30, TimeUnit.SECONDS));
-      }
-      return contents;
-    } finally {
-      executor.shutdownNow();
-    }
-  }
-
-  private static void closeAll(List<DocumentContent> contents) throws IOException {
-    for (DocumentContent content : contents) {
-      content.stream().close();
     }
   }
 }

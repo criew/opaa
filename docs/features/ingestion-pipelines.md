@@ -1070,21 +1070,34 @@ doppelte Quotenzählung, gleiches Verhalten für alle Quelltypen.
 Elternnachricht weiterhin vollständig — das ist der unvermeidbare Teil. Materialisiert wird dabei
 aber nur noch die *angeforderte* Anlage: Der Anfragepfad reicht die gesuchte Position über
 `DocumentPipelineSource#attachmentIndex` bis in `EmlReader`/`MsgReader` durch, die jede Anlage
-weiterhin in derselben Reihenfolge lesen und zählen — auch eine wegen ihrer Größe übersprungene, denn
-sonst verschöbe sich die Position, die in der `file_path`-Syntax des Anhangs steht —, aber nur für
-diese eine eine temporäre Datei schreiben. Statt bis zu `max-attachments-per-message` (Vorgabe 50)
-temporären Dateien je Abruf entsteht damit genau eine je Kettenstufe. Bei Konnektor-Beständen kommt
-der vollständige Abruf des Elternoriginals in eine weitere temporäre Datei hinzu; das bleibt so.
+weiterhin in derselben Reihenfolge lesen, aber nur für diese eine eine temporäre Datei schreiben.
+Statt bis zu `max-attachments-per-message` (Vorgabe 50) temporären Dateien je Abruf entsteht damit
+genau eine je Kettenstufe. Bei Konnektor-Beständen kommt der vollständige Abruf des Elternoriginals
+in eine weitere temporäre Datei hinzu; das bleibt so.
+
+**Die Positionszählung bleibt dabei exakt die des unfilterten Laufs**, denn der gespeicherte Index
+ist die Listenposition in `discoveredAttachments` (`FileProcessingService#processDiscoveredAttachments`).
+Eine Anlage, die der unfilterte Lauf gar nicht erst meldet — weil sie `max-attachment-bytes`
+überschreitet, sich nicht dekodieren lässt oder (bei MSG) ein eingebettetes Outlook-Objekt ist —,
+**verbraucht deshalb auch im filternden Lauf keine Position**. Würde sie mitgezählt, verschöbe sich
+die Position gegenüber der gespeicherten.
 
 Zusätzlich begrenzt `AttachmentExtractionLimiter` den Anfragepfad (nicht den Hintergrundlauf von
 `PipelineReindexService`): Abrufe **desselben Elterndokuments** laufen nacheinander, und ein globaler
 Deckel (`opaa.documents.attachment-extraction.max-concurrent`, Vorgabe 4) begrenzt die Zahl
-gleichzeitiger Nachextraktionen überhaupt. Wer innerhalb von
-`opaa.documents.attachment-extraction.acquire-timeout` (Vorgabe 10 s) nicht an die Reihe kommt,
-erhält 503 mit einer deutschen Meldung statt einer unbegrenzten Wartezeit. Der temporäre
-Plattenbedarf dieses Pfades hat damit eine benennbare Obergrenze: höchstens `max-concurrent`
-gleichzeitige Nachextraktionen, jede mit einer temporären Datei je Kettenstufe plus, bei
-Konnektor-Beständen, dem Elternoriginal.
+**gleichzeitig laufender** Nachextraktionen. Jede der beiden Schranken wird mit
+`opaa.documents.attachment-extraction.acquire-timeout` (Vorgabe 10 s) versucht — im ungünstigsten
+Fall wartet ein Abruf also das Doppelte —, danach antwortet er mit **429** und einer deutschen
+Meldung statt unbegrenzt zu warten; denselben Status verwendet das Rate-Limit dieses Endpunkts
+bereits.
+
+**Was der Deckel deckelt, und was nicht:** Er begrenzt die gleichzeitig laufende Extraktion — also
+Parsen, Herunterladen und Schreiben —, nicht die Lebensdauer der geschriebenen Datei. Der Platz wird
+freigegeben, sobald die Extraktion zurückkehrt; gelöscht wird die temporäre Datei erst beim Schließen
+des Antwortstroms. Wer langsam lädt oder den Tab offen lässt, hält seine Datei also über den Deckel
+hinaus. Die Zahl gleichzeitig offener Antworten begrenzt nicht dieser Deckel, sondern das Rate-Limit
+auf `GET /api/v1/documents/{documentId}/content` (`RateLimitProperties`). Die eigentliche Entlastung
+dieses Wegs ist der Faktor: eine statt bis zu 50 temporären Dateien je Abruf.
 
 Was bewusst **nicht** gebaut wurde: ein Bytes-Cache der zuletzt nachextrahierten Anhänge.
 Wiederholte Klicks auf denselben Anhang parsen weiterhin erneut. Das bleibt vertretbar, weil ein

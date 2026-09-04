@@ -24,12 +24,13 @@ import java.nio.file.Path;
  *     {@code .csv} routes here on content, but would mis-parse as CSV if this field were ignored).
  * @param attachmentIndex the 0-based extraction position of the single attachment this run is
  *     interested in, or {@code null} for an ordinary run that wants all of them (#1243). A pipeline
- *     that reports {@link DocumentPipelineResult#discoveredAttachments()} must honour it: it still
- *     counts every attachment in the same order an unfiltered run would - a skipped one included,
- *     so the position stays the one indexing stored - but materializes a temporary file for that
- *     one alone, and reports it as the result's <b>only</b> discovered attachment (an empty list
- *     when there is none at that position). Bounds the temporary disk a single re-extraction costs
- *     to one attachment instead of a whole message's worth.
+ *     that reports {@link DocumentPipelineResult#discoveredAttachments()} must honour it: it
+ *     numbers attachments exactly as an unfiltered run would - so an attachment that run would not
+ *     have reported at all (skipped for its size, or unreadable) consumes no position here either -
+ *     but materializes a temporary file for the wanted one alone, and reports it as the result's
+ *     <b>only</b> discovered attachment (an empty list when there is none at that position). Bounds
+ *     the temporary disk a single re-extraction costs to one attachment instead of a whole
+ *     message's worth.
  */
 public record DocumentPipelineSource(
     String fileName,

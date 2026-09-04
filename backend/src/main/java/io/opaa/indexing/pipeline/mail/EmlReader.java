@@ -43,11 +43,12 @@ import org.slf4j.LoggerFactory;
  * guard, checked by the caller before this class ever runs.
  *
  * <p><b>Selective extraction</b> (#1243): with a {@code wantedIndex}, every attachment is still
- * read and classified in exactly the same order - a part skipped for its size or a decode failure
- * included, so the extraction positions stay identical to an unfiltered run's - but only the one at
- * that position is written to a temp file; every other one is streamed into a discarding sink under
- * the same size bound. The returned {@link ParsedMailMessage} then carries that one attachment
- * alone, or none.
+ * read in exactly the same order, but only the one at that position is written to a temp file;
+ * every other one is streamed into a discarding sink under the same size bound. Positions are
+ * counted exactly as an unfiltered run does: an attachment that could not be read at all - too
+ * large, or a decode failure - consumes no position, because it would not appear in the unfiltered
+ * run's attachment list either. The returned {@link ParsedMailMessage} then carries the wanted
+ * attachment alone, or none; a negative {@code wantedIndex} materializes nothing at all.
  */
 final class EmlReader {
 
@@ -59,7 +60,10 @@ final class EmlReader {
     return read(file, properties, null);
   }
 
-  /** {@code wantedIndex} restricts what is materialized - see this class' own Javadoc. */
+  /**
+   * {@code wantedIndex} restricts what is materialized: {@code null} means every attachment, a
+   * negative value none at all - see this class' own Javadoc.
+   */
   static ParsedMailMessage read(Path file, MailProperties properties, Integer wantedIndex)
       throws IOException {
     MimeConfig config = MimeConfig.custom().setMaxLineLen(-1).setMaxHeaderLen(-1).build();

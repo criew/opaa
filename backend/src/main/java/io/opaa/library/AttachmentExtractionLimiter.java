@@ -1,6 +1,6 @@
 package io.opaa.library;
 
-import io.opaa.common.ServiceUnavailableException;
+import io.opaa.common.TooManyRequestsException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -22,14 +22,18 @@ import org.springframework.stereotype.Component;
  *       document run one after the other, so a burst of clicks on one mail's attachments costs one
  *       parse at a time instead of one per request.
  *   <li><b>A global ceiling</b> ({@link AttachmentExtractionProperties#maxConcurrent()}) on how
- *       many re-extractions run at all, so the temporary disk and source load this path can occupy
- *       has an upper bound independent of the number of callers.
+ *       many re-extractions <em>run</em> at the same time. It bounds the parsing and downloading,
+ *       not how long the extracted file then lives: the permit is released when the extraction
+ *       returns, while its temp file is deleted only when the caller closes the response stream.
+ *       The number of responses open at once is bounded by the rate limit on this endpoint, not
+ *       here.
  * </ul>
  *
- * <p>Neither guard waits without limit: a request that has not got its turn within {@link
- * AttachmentExtractionProperties#acquireTimeout()} is answered with 503 and a German message rather
- * than holding a request thread. The parent lock is taken before the global permit, so requests
- * queued behind the same parent do not occupy permits while they wait.
+ * <p>Neither guard waits without limit: both are tried with {@link
+ * AttachmentExtractionProperties#acquireTimeout()} each, so a request waits at most twice that
+ * value before it is answered with 429 and a German message rather than holding a request thread.
+ * The parent lock is taken before the global permit, so requests queued behind the same parent do
+ * not occupy permits while they wait.
  *
  * <p>Only the request path uses this. The background re-index ({@code PipelineReindexService}) runs
  * on its own bounded executor and is deliberately not limited here.
@@ -58,18 +62,19 @@ public class AttachmentExtractionLimiter {
 
   /**
    * Runs {@code extraction} under both guards and returns its result. Throws {@link
-   * ServiceUnavailableException} - never a 5xx of its own - when the request did not get its turn
-   * in time; {@code extraction} has then not run at all.
+   * TooManyRequestsException} - never a 5xx - when the request did not get its turn within twice
+   * {@link AttachmentExtractionProperties#acquireTimeout()}; {@code extraction} has then not run at
+   * all.
    */
   public <T> T runExtraction(UUID parentDocumentId, Supplier<T> extraction) {
     ParentLock parentLock = arrive(parentDocumentId);
     try {
       if (!tryLock(parentLock.lock)) {
-        throw new ServiceUnavailableException(BUSY_MESSAGE);
+        throw new TooManyRequestsException(BUSY_MESSAGE);
       }
       try {
         if (!tryAcquire()) {
-          throw new ServiceUnavailableException(BUSY_MESSAGE);
+          throw new TooManyRequestsException(BUSY_MESSAGE);
         }
         try {
           return extraction.get();
@@ -105,7 +110,7 @@ public class AttachmentExtractionLimiter {
       return lock.tryLock(timeoutMillis, TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new ServiceUnavailableException(BUSY_MESSAGE, e);
+      throw new TooManyRequestsException(BUSY_MESSAGE, e);
     }
   }
 
@@ -114,7 +119,7 @@ public class AttachmentExtractionLimiter {
       return permits.tryAcquire(timeoutMillis, TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new ServiceUnavailableException(BUSY_MESSAGE, e);
+      throw new TooManyRequestsException(BUSY_MESSAGE, e);
     }
   }
 

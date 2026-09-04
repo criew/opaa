@@ -31,10 +31,12 @@ import org.slf4j.LoggerFactory;
  * .msg} from it.
  *
  * <p><b>Selective extraction</b> (#1243): with a {@code wantedIndex}, every attachment is still
- * classified in the same order - one skipped for its size or an unreadable chunk included, so the
- * extraction positions stay identical to an unfiltered run's - but only the one at that position is
- * written to a temp file. The returned {@link ParsedMailMessage} then carries that one attachment
- * alone, or none.
+ * classified in the same order, but only the one at that position is written to a temp file.
+ * Positions are counted exactly as an unfiltered run does: an attachment that is skipped entirely -
+ * an embedded Outlook item, an unreadable chunk, one over the size limit - consumes no position,
+ * because it would not appear in the unfiltered run's attachment list either. The returned {@link
+ * ParsedMailMessage} then carries the wanted attachment alone, or none; a negative {@code
+ * wantedIndex} materializes nothing at all.
  */
 final class MsgReader {
 
@@ -46,7 +48,10 @@ final class MsgReader {
     return read(file, properties, null);
   }
 
-  /** {@code wantedIndex} restricts what is materialized - see this class' own Javadoc. */
+  /**
+   * {@code wantedIndex} restricts what is materialized: {@code null} means every attachment, a
+   * negative value none at all - see this class' own Javadoc.
+   */
   static ParsedMailMessage read(Path file, MailProperties properties, Integer wantedIndex)
       throws IOException {
     try (InputStream in = Files.newInputStream(file);
