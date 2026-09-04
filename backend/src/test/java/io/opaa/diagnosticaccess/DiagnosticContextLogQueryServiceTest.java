@@ -17,6 +17,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -172,6 +173,75 @@ class DiagnosticContextLogQueryServiceTest {
         .isInstanceOf(AccessDeniedException.class);
 
     verify(auditEventRecorder, never()).recordUserAction(any());
+  }
+
+  @Test
+  void aFachvorgesetzterReachesNoSingleEntryEither() {
+    assertThatThrownBy(
+            () ->
+                service.findSingleEvent(
+                    caller(SystemRole.SYSTEM_ADMIN), UUID.randomUUID(), "Beschwerde"))
+        .isInstanceOf(AccessDeniedException.class);
+
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID), eq(callerId), any(), eq(AuditOutcome.DENIED), eq("Beschwerde"));
+    verify(logRepository, never()).findSingleEntry(any(), any());
+  }
+
+  @Test
+  void aSingleEntryNeedsItsOwnReason() {
+    assertThatThrownBy(
+            () -> service.findSingleEvent(caller(SystemRole.AUDITOR), UUID.randomUUID(), "  "))
+        .isInstanceOf(ValidationException.class);
+
+    verify(logRepository, never()).findSingleEntry(any(), any());
+  }
+
+  @Test
+  void anUnknownEntryIsNotFoundAndTheAttemptIsStillRecorded() {
+    UUID eventId = UUID.randomUUID();
+    when(logRepository.findSingleEntry(ORGANIZATION_ID, eventId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () -> service.findSingleEvent(caller(SystemRole.AUDITOR), eventId, "Beschwerde 4711"))
+        .isInstanceOf(NotFoundException.class);
+
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID),
+            eq(callerId),
+            any(),
+            eq(AuditOutcome.DENIED),
+            eq("Beschwerde 4711"));
+  }
+
+  /**
+   * The einzelfall- und anlassbezogene Auswertung of Leitplanke (g): one already-known entry, the
+   * same AUDITOR bar as the Gesamtprotokoll, and its own audit_log record naming the entry.
+   */
+  @Test
+  void anAuditorReadsOneKnownEntryUnderItsOwnAnlassAndTheReadIsRecorded() {
+    UUID ownPseudonym = UUID.randomUUID();
+    DiagnosticContextLogEntry stored = entry(UUID.randomUUID(), ownPseudonym.toString());
+    when(logRepository.findSingleEntry(ORGANIZATION_ID, stored.getEventId()))
+        .thenReturn(Optional.of(stored));
+
+    DiagnosticContextLogEntry found =
+        service.findSingleEvent(caller(SystemRole.AUDITOR), stored.getEventId(), "Beschwerde 4711");
+
+    assertThat(found).isSameAs(stored);
+    ArgumentCaptor<Map<String, Object>> scope = ArgumentCaptor.captor();
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID),
+            eq(callerId),
+            scope.capture(),
+            eq(AuditOutcome.SUCCESS),
+            eq("Beschwerde 4711"));
+    assertThat(scope.getValue())
+        .containsEntry("accessPath", "diagnostic-context-events/{eventId}")
+        .containsEntry("eventId", stored.getEventId().toString());
   }
 
   private DiagnosticContextLogEntry entry(UUID actorPseudonym, String targetRef) {

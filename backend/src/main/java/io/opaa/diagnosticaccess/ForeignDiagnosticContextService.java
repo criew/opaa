@@ -7,6 +7,8 @@ import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.group.Group;
+import io.opaa.group.GroupRepository;
 import io.opaa.library.LibraryAccessService;
 import java.util.Comparator;
 import java.util.List;
@@ -49,6 +51,7 @@ public class ForeignDiagnosticContextService {
   private final LibraryDiagnosticsLockService lockService;
   private final LibraryAccessService libraryAccessService;
   private final UserRepository userRepository;
+  private final GroupRepository groupRepository;
   private final AuditActorPseudonymService pseudonymService;
   private final DiagnosticContextLogWriter logWriter;
 
@@ -57,12 +60,14 @@ public class ForeignDiagnosticContextService {
       LibraryDiagnosticsLockService lockService,
       LibraryAccessService libraryAccessService,
       UserRepository userRepository,
+      GroupRepository groupRepository,
       AuditActorPseudonymService pseudonymService,
       DiagnosticContextLogWriter logWriter) {
     this.grantService = grantService;
     this.lockService = lockService;
     this.libraryAccessService = libraryAccessService;
     this.userRepository = userRepository;
+    this.groupRepository = groupRepository;
     this.pseudonymService = pseudonymService;
     this.logWriter = logWriter;
   }
@@ -129,6 +134,10 @@ public class ForeignDiagnosticContextService {
    * rather than assumed of the caller: the library set is checked against the executing person's
    * own readable libraries, which are organization-scoped, so neither a foreign nor an
    * organization-foreign library can enter a profile context.
+   *
+   * <p>The target is the profile's group id, and its library set is resolved from that same group -
+   * a caller can neither put a person's name into {@code target_ref} nor record one profile while
+   * searching another one's libraries.
    */
   private <T> ForeignDiagnosticOutcome<T> executeForProfile(
       CurrentUser actor,
@@ -138,21 +147,26 @@ public class ForeignDiagnosticContextService {
     if (request.targetUserId() != null) {
       throw new ValidationException("Ein Rechteprofil trägt keine Zielperson");
     }
-    String label = requireText(request.profileLabel(), "Bezeichnung des Rechteprofils", 255);
+    if (request.profileGroupId() == null) {
+      throw new ValidationException("Für „Sicht als (Rechteprofil)“ fehlt das Rechteprofil");
+    }
+    Group profile =
+        groupRepository
+            .findById(request.profileGroupId())
+            .filter(group -> actor.organizationId().equals(group.getOrganizationId()))
+            .orElseThrow(() -> new NotFoundException("Rechteprofil nicht gefunden"));
     Set<UUID> candidates =
-        request.profileLibraryIds() == null ? Set.of() : Set.copyOf(request.profileLibraryIds());
-    if (!candidates.isEmpty()) {
-      Set<UUID> ownReadable =
-          libraryAccessService.readableLibraryIds(actor.id(), actor.organizationId());
-      if (!ownReadable.containsAll(candidates)) {
-        throw new AccessDeniedException(
-            "Ein Rechteprofil darf nur Bibliotheken umfassen, die Sie selbst einsehen dürfen");
-      }
+        libraryAccessService.readableLibraryIdsForGroup(profile.getId(), actor.organizationId());
+    Set<UUID> ownReadable =
+        libraryAccessService.readableLibraryIds(actor.id(), actor.organizationId());
+    if (!ownReadable.containsAll(candidates)) {
+      throw new AccessDeniedException(
+          "Ein Rechteprofil darf nur Bibliotheken umfassen, die Sie selbst einsehen dürfen");
     }
     return run(
         actor,
         DiagnosticTargetKind.PERMISSION_PROFILE,
-        label,
+        profile.getId().toString(),
         candidates,
         question,
         null,
@@ -243,14 +257,33 @@ public class ForeignDiagnosticContextService {
   /**
    * Truncated rather than rejected: an oversized hit list must not turn a completed, already
    * displayed diagnosis into a failed one - the entry would then be missing for an execution that
-   * happened. The marker makes the truncation visible instead of silent.
+   * happened.
+   *
+   * <p>Truncation cuts between identifiers, never inside one, and appends {@code …(+N)} naming how
+   * many were left out. {@code hit_count} therefore stays the number of hits actually displayed and
+   * equals the identifiers present plus N - the two fields cannot diverge unnoticed, which a bare
+   * truncation marker did not guarantee. {@link #MAX_HIT_REFS_LENGTH} bounds the identifiers; the
+   * marker is added on top of it.
    */
   private static String joinHitRefs(List<String> hitRefs) {
     String joined = String.join(",", hitRefs);
     if (joined.length() <= MAX_HIT_REFS_LENGTH) {
       return joined;
     }
-    return joined.substring(0, MAX_HIT_REFS_LENGTH) + ",…";
+    int kept = 0;
+    int length = 0;
+    for (String ref : hitRefs) {
+      int lengthWithRef = kept == 0 ? ref.length() : length + 1 + ref.length();
+      if (lengthWithRef > MAX_HIT_REFS_LENGTH) {
+        break;
+      }
+      length = lengthWithRef;
+      kept++;
+    }
+    String truncationMarker = "…(+" + (hitRefs.size() - kept) + ")";
+    return kept == 0
+        ? truncationMarker
+        : String.join(",", hitRefs.subList(0, kept)) + "," + truncationMarker;
   }
 
   private static String requireText(String value, String label, int maxLength) {

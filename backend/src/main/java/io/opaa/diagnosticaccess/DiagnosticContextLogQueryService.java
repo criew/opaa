@@ -8,6 +8,7 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import java.time.Duration;
 import java.time.Instant;
@@ -24,7 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The only two read paths into the diagnostic context protocol, and the shape of both is what
+ * The only three read paths into the diagnostic context protocol, and the shape of each is what
  * enforces Leitplanke (g):
  *
  * <ul>
@@ -36,9 +37,14 @@ import org.springframework.transaction.annotation.Transactional;
  *       {@link #MAX_RANGE_DAYS} days. <b>It takes no target-person parameter at all</b>, so
  *       "Diagnosen zu Person X" cannot be asked - not restricted, not aggregated away, simply not
  *       expressible.
+ *   <li>{@link #findSingleEvent} - one already-known entry, under the same AUDITOR bar, the same
+ *       mandatory reason and its own audit_log record. It is the einzelfall- und anlassbezogene
+ *       Auswertung Leitplanke (g) provides for, and the only path that publishes an entry's {@code
+ *       permissionSnapshot}: as a list field it would be a per-person grouping key, one entry at a
+ *       time it is not.
  * </ul>
  *
- * <p>There is deliberately no third method. No counting, grouping, sorting-by-target or export
+ * <p>There is deliberately no fourth method. No counting, grouping, sorting-by-target or export
  * variant exists in this class, and {@link DiagnosticContextLogRepository} offers nothing one could
  * be built on.
  */
@@ -134,6 +140,50 @@ public class DiagnosticContextLogQueryService {
             "Failed to write the DENIED entry for a rejected Gesamtprotokoll access - the"
                 + " rejection is still reported correctly, but this attempt is missing its"
                 + " audit_log entry",
+            loggingFailure);
+        rejected.addSuppressed(loggingFailure);
+      }
+      throw rejected;
+    }
+  }
+
+  /**
+   * One entry by its own id, for an evaluation that already knows which entry it is about. Same
+   * bar, same recording and the same best-effort DENIED entry as {@link #findByTimeRange}, and it
+   * holds no transaction of its own for the same reason.
+   *
+   * @throws io.opaa.common.NotFoundException if no entry of the caller's organization carries this
+   *     id - an entry of a foreign organization is not distinguishable from an unknown one here
+   */
+  public DiagnosticContextLogEntry findSingleEvent(
+      CurrentUser caller, UUID eventId, String reason) {
+    Map<String, Object> scope = new LinkedHashMap<>();
+    scope.put("accessPath", "diagnostic-context-events/{eventId}");
+    scope.put("eventId", eventId == null ? null : eventId.toString());
+    try {
+      if (caller.systemRole() != SystemRole.AUDITOR) {
+        throw new AccessDeniedException(
+            "Das Gesamtprotokoll steht nur den benannten Stellen offen");
+      }
+      if (reason == null || reason.isBlank()) {
+        throw new ValidationException("Für die Einsicht ist ein Anlass anzugeben");
+      }
+      if (eventId == null) {
+        throw new ValidationException("Der Protokolleintrag ist nicht benannt");
+      }
+      DiagnosticContextLogEntry entry =
+          logRepository
+              .findSingleEntry(caller.organizationId(), eventId)
+              .orElseThrow(() -> new NotFoundException("Protokolleintrag nicht gefunden"));
+      recordProtocolAccess(caller, scope, reason, AuditOutcome.SUCCESS);
+      return entry;
+    } catch (RuntimeException rejected) {
+      try {
+        recordProtocolAccess(caller, scope, reason, AuditOutcome.DENIED);
+      } catch (RuntimeException loggingFailure) {
+        log.error(
+            "Failed to write the DENIED entry for a rejected single-entry access - the rejection"
+                + " is still reported correctly, but this attempt is missing its audit_log entry",
             loggingFailure);
         rejected.addSuppressed(loggingFailure);
       }

@@ -62,6 +62,9 @@ class LibraryResponseMapperTest {
     assertThat(response.getMyRole()).isEqualTo(AssetRole.VIEWER);
     assertThat(response.getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
     assertThat(response.getDocumentCount()).isEqualTo(7L);
+    // Leitplanke (e): every library starts diagnosegesperrt, and the state is readable by anyone
+    // who may read the library - not only by whoever just set it through the lock endpoint.
+    assertThat(response.getDiagnosticsLocked()).isTrue();
     // #507: a caller below MANAGER never sees sourcePath/sourceUrl/schedule/storage quota - every
     // LibraryManagementDetail field stays null even though the record itself is always present.
     assertThat(response.getSourcePath()).isNull();

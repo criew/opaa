@@ -32,8 +32,9 @@ import org.yaml.snakeyaml.Yaml;
  *       at all, only by the parameter check below via its calling service method.
  *   <li>Every {@code public} method of {@link DiagnosticContextLogQueryService} and {@code
  *       DiagnosticContextLogController} takes only the caller's own identity, a time bound, a
- *       paging number or {@code reason}. A package-private or protected method is not covered - the
- *       filter is on {@code public} - so a read path built as one would slip through.
+ *       paging number, {@code reason}, or an {@code eventId} naming one already-known entry. A
+ *       package-private or protected method is not covered - the filter is on {@code public} - so a
+ *       read path built as one would slip through.
  *   <li>The published schemas of the two protocol responses and their pages carry no
  *       aggregate-looking field and no {@code permissionSnapshot}. {@code targetRef} is not checked
  *       here - it is a declared property of the schema, and only the mapper suppresses it for a
@@ -122,6 +123,11 @@ class DiagnosticContextPurposeLimitationTest {
     if (type == CurrentUser.class) {
       return true;
     }
+    // An event id names one entry the caller already knows of, not a person and no selection
+    // criterion about one - the only UUID a read path may take, and only under this name.
+    if (type == UUID.class) {
+      return "eventId".equals(name);
+    }
     if (type == Instant.class) {
       return Set.of("from", "to").contains(name);
     }
@@ -170,6 +176,22 @@ class DiagnosticContextPurposeLimitationTest {
         .doesNotContainKey("permissionSnapshot");
   }
 
+  /**
+   * The rights snapshot is published for one entry at a time and nowhere else: the single-entry
+   * schema carries it, and it is not reachable as a list item - {@code DiagnosticContextEventPage}
+   * refers to the list schema above, which the sibling assertion keeps free of it.
+   */
+  @Test
+  void onlyTheSingleEntryViewPublishesTheRightsSnapshot() {
+    assertThat(propertiesOf("DiagnosticContextEventDetailResponse"))
+        .containsKey("permissionSnapshot");
+    assertThat(propertiesOf("DiagnosticContextEventPage").get("events"))
+        .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+        .extracting("items")
+        .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+        .containsEntry("$ref", "#/components/schemas/DiagnosticContextEventResponse");
+  }
+
   @Test
   @SuppressWarnings("unchecked")
   void theProtocolEndpointOffersNoParameterNamingAPersonOrAGrouping() {
@@ -182,6 +204,20 @@ class DiagnosticContextPurposeLimitationTest {
 
     assertThat(parameters.stream().map(parameter -> (String) parameter.get("name")))
         .containsExactlyInAnyOrder("from", "to", "reason", "page", "size");
+
+    Map<String, Object> singleEntry =
+        (Map<String, Object>) paths.get("/api/v1/audit/diagnostic-context-events/{eventId}");
+    List<Map<String, Object>> singleEntryParameters =
+        Stream.concat(
+                ((List<Map<String, Object>>) singleEntry.getOrDefault("parameters", List.of()))
+                    .stream(),
+                ((List<Map<String, Object>>)
+                        ((Map<String, Object>) singleEntry.get("get"))
+                            .getOrDefault("parameters", List.of()))
+                    .stream())
+            .toList();
+    assertThat(singleEntryParameters.stream().map(parameter -> (String) parameter.get("name")))
+        .containsExactlyInAnyOrder("eventId", "reason");
 
     Map<String, Object> ownOperation =
         (Map<String, Object>)
