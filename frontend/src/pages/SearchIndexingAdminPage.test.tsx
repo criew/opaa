@@ -329,22 +329,19 @@ describe('SearchIndexingAdminPage', () => {
     await user.click(contextSelect)
     await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: /Person/ }))
 
-    await user.type(
-      screen.getByRole('textbox', { name: /Testfrage/ }),
-      'Was gilt bei Gebührenbefreiung?',
-    )
+    await user.click(screen.getByRole('textbox', { name: /Testfrage/ }))
+    await user.paste('Was gilt bei Gebührenbefreiung?')
     // An Anmeldekennung is not a user id: the run stays unavailable and the field says why,
     // instead of the request failing on a malformed body.
-    await user.type(screen.getByRole('textbox', { name: /Nutzer-UUID/ }), 'thomas.klein')
-    await user.type(screen.getByRole('textbox', { name: /Begründung/ }), 'Vorgang 4711')
+    await user.click(screen.getByRole('textbox', { name: /Nutzer-UUID/ }))
+    await user.paste('thomas.klein')
+    await user.click(screen.getByRole('textbox', { name: /Begründung/ }))
+    await user.paste('Vorgang 4711')
     expect(screen.getByRole('button', { name: 'Diagnose ausführen' })).toBeDisabled()
     expect(screen.getByText(/Erwartet wird die UUID der Person/)).toBeInTheDocument()
 
     await user.clear(screen.getByRole('textbox', { name: /Nutzer-UUID/ }))
-    await user.type(
-      screen.getByRole('textbox', { name: /Nutzer-UUID/ }),
-      '3f2b1c8e-0a4d-4c7b-9f61-2d8e5a7c4b10',
-    )
+    await user.paste('3f2b1c8e-0a4d-4c7b-9f61-2d8e5a7c4b10')
     await user.click(screen.getByRole('button', { name: 'Diagnose ausführen' }))
 
     await waitFor(() => {
@@ -380,12 +377,12 @@ describe('SearchIndexingAdminPage', () => {
     const contextSelect = await screen.findByRole('combobox', { name: /Sicht als/ })
     await user.click(contextSelect)
     await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: /Person/ }))
-    await user.type(screen.getByRole('textbox', { name: /Testfrage/ }), 'Warum fehlt die Satzung?')
-    await user.type(
-      screen.getByRole('textbox', { name: /Nutzer-UUID/ }),
-      '3f2b1c8e-0a4d-4c7b-9f61-2d8e5a7c4b10',
-    )
-    await user.type(screen.getByRole('textbox', { name: /Begründung/ }), 'Vorgang 4711')
+    await user.click(screen.getByRole('textbox', { name: /Testfrage/ }))
+    await user.paste('Warum fehlt die Satzung?')
+    await user.click(screen.getByRole('textbox', { name: /Nutzer-UUID/ }))
+    await user.paste('3f2b1c8e-0a4d-4c7b-9f61-2d8e5a7c4b10')
+    await user.click(screen.getByRole('textbox', { name: /Begründung/ }))
+    await user.paste('Vorgang 4711')
     await user.click(screen.getByRole('button', { name: 'Diagnose ausführen' }))
 
     await waitFor(() => {
