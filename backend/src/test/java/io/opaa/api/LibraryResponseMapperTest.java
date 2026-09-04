@@ -48,7 +48,7 @@ class LibraryResponseMapperTest {
             LibraryVisibility.ORGANIZATION,
             true);
     LibraryDetail detail =
-        new LibraryDetail(library, AssetRole.VIEWER, 7L, LibraryManagementDetail.EMPTY);
+        new LibraryDetail(library, AssetRole.VIEWER, 7L, LibraryManagementDetail.EMPTY, false);
 
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);
 
@@ -80,6 +80,31 @@ class LibraryResponseMapperTest {
     assertThat(response.getStorageUsedBytes()).isNull();
   }
 
+  // #1278 review: myRole alone (bypassed to OWNER for a system admin) must not be mistaken for
+  // this field - a mapper reading myRole instead of LibraryDetail#diagnosticsLockToggleable would
+  // still pass every other assertion in this file, since every existing detail's myRole already
+  // matches the intended toggleable value.
+  @Test
+  void toResponseCopiesDiagnosticsLockToggleableIndependentlyOfMyRole() {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Rechtsquellen",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false);
+    LibraryDetail toggleable =
+        new LibraryDetail(library, AssetRole.OWNER, 0L, LibraryManagementDetail.EMPTY, true);
+    LibraryDetail notToggleable =
+        new LibraryDetail(library, AssetRole.OWNER, 0L, LibraryManagementDetail.EMPTY, false);
+
+    assertThat(LibraryResponseMapper.toResponse(toggleable).getDiagnosticsLockToggleable())
+        .isTrue();
+    assertThat(LibraryResponseMapper.toResponse(notToggleable).getDiagnosticsLockToggleable())
+        .isFalse();
+  }
+
   @Test
   void toResponseCarriesManagementDetailFieldsForAManager() {
     KnowledgeLibrary library =
@@ -105,7 +130,8 @@ class LibraryResponseMapperTest {
             false,
             1_000_000L,
             250_000L);
-    LibraryDetail detail = new LibraryDetail(library, AssetRole.MANAGER, 3L, managementDetail);
+    LibraryDetail detail =
+        new LibraryDetail(library, AssetRole.MANAGER, 3L, managementDetail, true);
 
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);
 
@@ -138,7 +164,7 @@ class LibraryResponseMapperTest {
             false);
     LibraryManagementDetail managementDetail =
         new LibraryManagementDetail(null, null, null, false, false, null, null, 0L, 0L);
-    LibraryDetail detail = new LibraryDetail(library, AssetRole.OWNER, 0L, managementDetail);
+    LibraryDetail detail = new LibraryDetail(library, AssetRole.OWNER, 0L, managementDetail, true);
 
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);
 
