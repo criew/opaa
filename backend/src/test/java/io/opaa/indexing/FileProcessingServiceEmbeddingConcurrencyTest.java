@@ -114,7 +114,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
       VectorStoreWriter vectorStoreWriter, int embeddingConcurrency, int batchSize) {
     IndexingProperties properties =
         new IndexingProperties(
-            1000, 0, batchSize, null, null, null, null, null, null, embeddingConcurrency);
+            1000, 0, batchSize, null, null, null, null, null, embeddingConcurrency);
     // Mirrors IndexingConfiguration#embeddingTaskExecutor exactly (#734): the concurrency bound
     // is the executor's own pool size, not anything FileProcessingService enforces itself - a
     // test executor sized differently from embeddingConcurrency would not actually exercise the

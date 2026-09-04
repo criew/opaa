@@ -4446,7 +4446,7 @@ components:
           description: >
             Filesystem directory to crawl - only for sourceType FILESYSTEM. Must be an absolute
             path, and must resolve underneath one of the operator-configured allowlist base
-            directories (opaa.indexing.filesystem-allowlist, #484/ADR-0018 Entscheidung 6) -
+            directories (opaa.indexing.filesystem.allowlist, #484/ADR-0018 Entscheidung 6) -
             otherwise rejected with 400. An empty allowlist disables sourceType FILESYSTEM
             entirely.
           example: /data/documents/rechtsquellen
@@ -4501,7 +4501,7 @@ components:
           description: >
             Only for sourceType FILESYSTEM. Must be an absolute path, and must resolve
             underneath one of the operator-configured allowlist base directories
-            (opaa.indexing.filesystem-allowlist, #484/ADR-0018 Entscheidung 6) - otherwise
+            (opaa.indexing.filesystem.allowlist, #484/ADR-0018 Entscheidung 6) - otherwise
             rejected with 400, without touching the filesystem at all. An empty allowlist
             disables sourceType FILESYSTEM entirely, identical to LibraryRequest.sourcePath.
           example: /data/documents/rechtsquellen
@@ -4704,7 +4704,7 @@ components:
           description: >
             Filesystem directory to crawl - only for sourceType FILESYSTEM. Must be an absolute
             path, and must resolve underneath one of the operator-configured allowlist base
-            directories (opaa.indexing.filesystem-allowlist, #484/ADR-0018 Entscheidung 6) -
+            directories (opaa.indexing.filesystem.allowlist, #484/ADR-0018 Entscheidung 6) -
             otherwise rejected with 400. An empty allowlist disables sourceType FILESYSTEM
             entirely.
           example: /data/documents/rechtsquellen

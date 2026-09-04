@@ -22,13 +22,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param rss settings governing {@code IndexingSourceType#RSS_FEED} runs - obergrenzen and
  *     politeness settings the executor must apply against feed operators it does not control (see
  *     {@link Rss}'s own Javadoc).
- * @param filesystemAllowlist absolute base directories a {@code FILESYSTEM} library's {@code
- *     sourcePath} must resolve underneath (ADR-0018 Entscheidung 6) - the actual security boundary:
- *     a caller-chosen path outside every configured base directory is rejected, and an <b>empty
- *     allowlist (the default) disables the FILESYSTEM quellentyp entirely</b> rather than
- *     defaulting to "everything allowed". Checked by {@code FilesystemPathAllowlist}, both at
- *     library creation/update time ({@code KnowledgeLibraryService}) and again at run time ({@link
- *     AsyncIndexingExecutor}), because the allowlist can be narrowed after a library was created.
  * @param staleJobTimeout how long a run may stay {@link JobStatus#RUNNING} before {@code
  *     IndexingJobRecoveryScheduler} treats it as orphaned and fails it, even without an application
  *     restart - see {@code IndexingJobService#recoverStaleJobs}. Default 4 hours: generous enough
@@ -67,7 +60,6 @@ public record IndexingProperties(
     int batchSize,
     ThreadPool threadPool,
     Rss rss,
-    List<String> filesystemAllowlist,
     Duration staleJobTimeout,
     TargetValidation targetValidation,
     FullTextBackfill fullTextBackfill,
@@ -104,9 +96,6 @@ public record IndexingProperties(
     }
     if (rss == null) {
       rss = new Rss(200, 10_485_760L, 5_242_880L, 1000L, null, null, null, 0, 0L);
-    }
-    if (filesystemAllowlist == null) {
-      filesystemAllowlist = List.of();
     }
     if (staleJobTimeout == null) {
       staleJobTimeout = Duration.ofHours(4);
