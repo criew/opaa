@@ -64,6 +64,19 @@ class LlmModelConnectionTesterTest {
     server.stop(0);
   }
 
+  /**
+   * #1147: the probe URI is logged on every connection failure, so a base address carrying userinfo
+   * would put the credentials into a log line. The request is rejected before any probe happens.
+   */
+  @Test
+  void aBaseUrlWithCredentialsIsRejectedBeforeAnyProbe() {
+    String secret = "benutzer:geheim";
+    assertThatThrownBy(
+            () -> tester.test("https://" + secret + "@modellserver.example.internal/v1", "m", null, null))
+        .isInstanceOf(ValidationException.class)
+        .satisfies(e -> assertThat(e.getMessage()).doesNotContain(secret));
+  }
+
   @Test
   void aSuccessfulProbeReportsSuccess() {
     server.createContext(
