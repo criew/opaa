@@ -102,9 +102,10 @@ eine leere Liste, und `SubQueryDecompositionStage#buildSearchQuery` übernimmt a
 #923: die reine Frage, oder — bei laufender Konversation — die erste Nutzernachricht der Historie,
 vorangestellt. Dasselbe gilt seit #1254 für eine **degenerierte** Ausgabe: Eine Teilfrage, die zu
 Frage und Gesprächsverlauf keinen Wortbezug hat, hat die Nutzerfrage ersetzt statt sie
-umzuformulieren und wird verworfen; bleibt danach keine übrig, greift dieselbe Rückfallebene — mit
-WARN-Log und dem Zähler `opaa.query.decomposition_fallback`, nie stillschweigend.
-Details, Diagramm und die Vorher/Nachher-Messung stehen in
+umzuformulieren. Ist auch nur eine Teilfrage ohne Bezug, greift dieselbe Rückfallebene für die ganze
+Zerlegung — mit WARN-Log (Zählwerte, keine Inhalte) und dem Zähler
+`opaa.query.decomposition.fallback` (`reason` = `degenerate`/`pruned`/`failed`), nie stillschweigend.
+Details, Grenzen des Wächters, Diagramm und die Vorher/Nachher-Messung stehen in
 [Teilfragen-Zerlegung und Query-Reformulierung](./data-indexing-rag.md#teilfragen-zerlegung-und-query-reformulierung-multi-query-retrieval-923).
 
 ### 3. Vektorsuche je Teilfrage

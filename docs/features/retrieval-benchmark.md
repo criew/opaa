@@ -932,30 +932,42 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
 
    **Nachgemessen mit Issue #1254 (09/2026) — Promptfrage beantwortet, Baselinefrage weiterhin
    offen.** Der Zerlegungsprompt führt sein Beispiel nicht mehr im Fließtext einer Regel mit; er
-   beschreibt die Ausgabeform nur noch. Zusätzlich verwirft `QueryDecompositionService` Teilfragen
-   ohne Wortbezug zu Frage und Gesprächsverlauf und fällt dann sichtbar (WARN,
-   `opaa.query.decomposition_fallback`) auf die unzerlegte Frage zurück. Gemessen auf der Domäne
-   Verwaltung (46 Golden-Fälle, `qwen2.5:1.5b-instruct`, Temperatur 0, `-Dopaa.eval.ollamaBaseUrl`
-   gegen ein Host-Ollama statt des Testcontainers, `-Dopaa.eval.queryDecomposition=true`,
-   Median aus je drei Läufen):
+   beschreibt die Ausgabeform nur noch, die Folgefragen-Auflösung bleibt als Regel erhalten.
+   Zusätzlich fällt `QueryDecompositionService` auf die unzerlegte Frage zurück, sobald auch nur
+   eine Teilfrage keinen Wortbezug zu Frage und Gesprächsverlauf hat — sichtbar über WARN
+   (Zählwerte, keine Inhalte) und `opaa.query.decomposition.fallback`. Gemessen auf der Domäne
+   Verwaltung (46 Golden-Fälle, Temperatur 0, `-Dopaa.eval.ollamaBaseUrl` gegen ein Host-Ollama
+   statt des Testcontainers, `-Dopaa.eval.queryDecomposition=true`, Median aus je drei Läufen):
 
-   | Metrik | Zerlegung aus | Zerlegung an, alter Prompt | Zerlegung an, neuer Prompt |
-   |---|---|---|---|
-   | Hit Rate@5 | 0,957 | 0,804 | 0,935 |
-   | MRR@8 | 0,779 | 0,690 | 0,795 |
-   | nDCG@8 | 0,740 | 0,642 | 0,742 |
-   | Recall@8 | 0,837 | 0,714 | 0,812 |
-   | Fälle mit degenerierter Ausgabe | — | 8 von 46 | 0 von 46 |
+   | Metrik | Zerlegung aus | qwen2.5:1.5b, alter Prompt | qwen2.5:1.5b, neuer Prompt | phi3:mini, alter Prompt | phi3:mini, neuer Prompt |
+   |---|---|---|---|---|---|
+   | Hit Rate@5 | 0,957 | 0,804 | 0,957 | 0,913 | 0,935 |
+   | MRR@8 | 0,779 | 0,690 | 0,770 | 0,741 | 0,785 |
+   | nDCG@8 | 0,740 | 0,642 | 0,727 | 0,701 | 0,745 |
+   | Recall@8 | 0,837 | 0,714 | 0,826 | 0,786 | 0,819 |
+   | Fälle mit degenerierter Ausgabe | — | 8 von 46 | 0 von 46 | 1 von 46 | 0 von 46 |
 
    Die Zahlen der Spalte „Zerlegung aus" sind auf diesem Endpunkt bitgleich zur committeten
-   Baseline; die drei Spalten sind also untereinander vergleichbar. Der Einbruch war ein
-   Produktionsfehler, kein Modellbefund: Auf dieser Hardware fiel bereits der alte Prompt milder
-   aus als im CPU-Testcontainer des ursprünglichen Befunds (8 statt 23 degenerierte Fälle), der
-   neue Prompt beseitigt sie vollständig, und die Zerlegung liegt danach im Rahmen der
-   Messstreuung gleichauf mit der Konfiguration ohne sie. **Nicht entschieden** ist damit, ob die
-   committete Pipeline-Baseline auf `queryDecompositionEnabled=true` umgestellt wird — dagegen
-   spricht unverändert das Laufzeitargument oben (drei Läufe je Domäne), und der Festpunktwechsel
-   ist eine bewusste Neuziehung. Der Punkt bleibt offen.
+   Baseline; die Spalten sind also untereinander vergleichbar. `phi3:mini` ist das Standardmodell
+   aus `.env.example` und wurde durch dieselbe Messung geschickt (dafür wurde `EvalChatModel` lokal
+   und uncommittet umgepinnt) — es litt unter dem alten Prompt deutlich weniger als das
+   1,5-B-Modell und gewinnt durch den neuen ebenfalls. Der Einbruch war ein Produktionsfehler, kein
+   Modellbefund: Auf dieser Hardware fiel bereits der alte Prompt milder aus als im
+   CPU-Testcontainer des ursprünglichen Befunds (8 statt 23 degenerierte Fälle), der neue Prompt
+   beseitigt sie vollständig, und die Zerlegung liegt danach im Rahmen der Messstreuung gleichauf
+   mit der Konfiguration ohne sie.
+
+   **Ungemessen bleibt der Folgefragen-Pfad.** Der Harness fährt ohne Gesprächsverlauf (ein
+   Golden-Fall ist eine eigenständige Frage), die 46 Fälle enthalten also keine einzige Folgefrage;
+   die obige Parität gilt ausdrücklich nur für eigenständige Fragen. Für den Folgefragen-Pfad gibt
+   es bislang nur eine manuelle Stichprobe über fünf Fälle (PR #1281) und einen Unit-Test mit
+   gestubbtem Modell — nichts davon ist eine Messung im Sinne dieses Dokuments.
+
+   **Nicht entschieden** ist, ob die committete Pipeline-Baseline auf
+   `queryDecompositionEnabled=true` umgestellt wird — dagegen spricht unverändert das
+   Laufzeitargument oben (drei Läufe je Domäne), und der Festpunktwechsel ist eine bewusste
+   Neuziehung. Der Punkt bleibt offen und wird zusammen mit der zweiten Domäne in einem
+   Folge-Issue geführt.
 4. **Umgang mit `answer_span` bei Fallklassen mit mehreren Zieldokumenten — entschieden mit Issue
    #1043 (08/2026).** Die Chunkebenen-Metrik wird **je Fall** gebildet, und ein `answer_span` ist
    nur bei Fällen mit **genau einem** erwarteten Dokument zulässig; mehrdokumentige Fälle

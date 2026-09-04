@@ -387,13 +387,33 @@ Fehler für den Nutzer, höchstens die alte Suchqualität.
 **Degenerierte Zerlegung (#1254):** Ein Fehlschlag ist nicht der einzige schlechte Ausgang. Ein
 kleines Chat-Modell kann formal „erfolgreich" zerlegen und dabei etwas zurückgeben, das mit der
 Nutzerfrage nichts zu tun hat — im gemessenen Fall den Beispielsatz, den der Systemprompt selbst im
-Fließtext einer Regel mitführte. Der Prompt enthält deshalb kein Beispiel mehr, sondern beschreibt
-die Ausgabeform nur; und `QueryDecompositionService` verwirft jede Teilfrage, die zu Frage und
-Gesprächsverlauf keinen Wortbezug hat. Bleibt keine übrig, greift dieselbe Rückfallebene wie beim
-Fehlschlag, sichtbar über ein WARN-Log und den Zähler `opaa.query.decomposition_fallback` — der Fall
-ist damit messbar statt still. Gemessene Wirkung (Domäne Verwaltung, 46 Golden-Fälle,
-`qwen2.5:1.5b-instruct`): 8 degenerierte Fälle vor, 0 nach der Prompt-Änderung; nDCG@8 0,642 → 0,742
-gegenüber 0,740 ohne Zerlegung. Zahlen und Messbedingungen:
+Fließtext einer Regel mitführte. Zwei Konsequenzen:
+
+- **Der Prompt beschreibt die Ausgabeform, statt sie vorzuführen.** Kein Beispielsatz, auch nicht
+  als abgegrenzter Few-Shot-Block. Die Auflösung von Folgefragen bleibt als Regel erhalten — sie ist
+  der Kern von #923 —, nur ihre Illustration ist entfallen.
+- **`QueryDecompositionService` prüft den Wortbezug** jeder Teilfrage zu Frage und
+  Gesprächsverlauf und fällt auf die unzerlegte Frage zurück, sobald auch nur **eine** Teilfrage
+  ohne Bezug ist. Alles-oder-nichts, nicht Beschneiden: Eine Teilfrage aus einer korrekten Zerlegung
+  zu streichen verliert ein ganzes Thema der Frage und ist damit schlechter als die unzerlegte
+  Frage, die beide Themen trägt. Sichtbar über ein WARN-Log **mit Zählwerten statt Inhalten**
+  (die Frage und ihre Umformulierungen gehören nach
+  [`security-and-compliance.md`](./security-and-compliance.md) nicht ins Anwendungslog) und den
+  Zähler `opaa.query.decomposition.fallback` mit `reason` = `degenerate` (keine Teilfrage bezogen),
+  `pruned` (einzelne unbezogen) oder `failed` (keine verwertbare Antwort).
+
+**Grenzen des Wächters.** Er ist eine Teilstring-Prüfung über Wörter ab vier Zeichen, kein Stemmer:
+`Gebühr`/`Gebührenbefreiung` erkennt er, `Buch`/`Bücher` und `Mahnung`/`Mahngebühr` nicht — dort
+greift die Alles-oder-nichts-Regel und es wird zurückgefallen, was sicher, aber nicht kostenlos ist.
+Umgekehrt übersieht er eine degenerierte Ausgabe, sobald die Frage oder der Gesprächsverlauf zufällig
+eines ihrer Wörter enthält; im Mehrturn-Fall ist er deshalb am schwächsten, weil auch
+Assistenzantworten Anker liefern. Bei einer Frage, die nur ein einziges Wort ab vier Zeichen ergibt —
+auch bei Schriften ohne Wortgrenzen wie Chinesisch, Japanisch oder Thai — prüft er gar nicht, statt
+alles zu verwerfen. **Die eigentliche Behebung ist der Prompt; der Wächter ist das Netz darunter.**
+
+Gemessene Wirkung (Domäne Verwaltung, 46 Golden-Fälle): mit `qwen2.5:1.5b-instruct` 8 degenerierte
+Fälle vor, 0 nach der Prompt-Änderung, nDCG@8 0,642 → 0,727 gegenüber 0,740 ohne Zerlegung; mit dem
+Standardmodell `phi3:mini` 1 → 0 und nDCG@8 0,701 → 0,745. Zahlen und Messbedingungen:
 [`retrieval-benchmark.md`](./retrieval-benchmark.md), „Offene Punkte" 3.
 
 **Vorher/Nachher-Messung** (lokal, nicht committet, über den produktionsnahen `QueryService`-Pfad

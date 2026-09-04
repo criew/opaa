@@ -8,11 +8,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.observability.QueryMetrics;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
@@ -47,10 +50,14 @@ class QueryDecompositionServiceTest {
     when(chatModel.call(any(Prompt.class))).thenReturn(response);
   }
 
-  private String capturedSystemPrompt() {
+  private Prompt capturedPrompt() {
     ArgumentCaptor<Prompt> prompt = ArgumentCaptor.forClass(Prompt.class);
     verify(chatModel).call(prompt.capture());
-    return prompt.getValue().getInstructions().stream()
+    return prompt.getValue();
+  }
+
+  private String capturedSystemPrompt() {
+    return capturedPrompt().getInstructions().stream()
         .filter(message -> message.getMessageType() == MessageType.SYSTEM)
         .map(Message::getText)
         .findFirst()
@@ -121,7 +128,7 @@ class QueryDecompositionServiceTest {
     List<String> subQueries = service.decompose("Frage", List.of(), 3);
 
     assertThat(subQueries).isEmpty();
-    verify(metrics).recordDegenerateDecomposition();
+    verify(metrics).recordFailedDecomposition();
   }
 
   @Test
@@ -149,18 +156,42 @@ class QueryDecompositionServiceTest {
   }
 
   /**
-   * Regression guard for #1254: the system prompt must not demonstrate a search query, only
-   * describe the output format - a small instruct model returns a demonstrated sentence verbatim. A
-   * demonstrated German question would carry a question mark or quotation marks; the prompt carries
-   * neither.
+   * Regression guard for #1254: the system prompt describes the output format, it never
+   * demonstrates a search query - a small instruct model returns a demonstrated sentence verbatim.
+   * The prompt is purely instructional, so both markers of a demonstrated sentence are forbidden
+   * outright: a quoted string and a question mark. A deliberate approximation - it also rules out a
+   * legitimate question mark, and an example without punctuation would slip past it, which is what
+   * the "Beispiel" check covers.
    */
   @Test
-  void theSystemPromptContainsNoExampleSentence() {
+  void theSystemPromptDemonstratesNoSearchQuery() {
     stubChatModelResponse("Was kostet ein Personalausweis?");
 
     service.decompose("Was kostet ein Personalausweis?", List.of(), 3);
 
-    assertThat(capturedSystemPrompt()).doesNotContain("?").doesNotContain("\"").contains("1 bis 3");
+    assertThat(capturedSystemPrompt())
+        .doesNotContain("?")
+        .doesNotContain("\"")
+        .doesNotContain("Beispiel")
+        .contains("1 bis 3");
+  }
+
+  /**
+   * Regression guard for #923/#1254: the rule that resolves a conversation-relative question
+   * survived the removal of its example, and the conversation history still reaches the model.
+   */
+  @Test
+  void theSystemPromptKeepsTheFollowUpRuleAndTheHistoryReachesTheModel() {
+    stubChatModelResponse("Was kostet ein Personalausweis?");
+    List<Message> history = List.of(new UserMessage("Wo beantrage ich einen Personalausweis?"));
+
+    List<String> subQueries = service.decompose("Und was kostet das dann?", history, 3);
+
+    assertThat(capturedSystemPrompt()).contains("rückverweisende").contains("Gesprächsverlauf");
+    assertThat(capturedPrompt().getInstructions())
+        .extracting(Message::getText)
+        .contains("Wo beantrage ich einen Personalausweis?", "Und was kostet das dann?");
+    assertThat(subQueries).containsExactly("Was kostet ein Personalausweis?");
   }
 
   /**
@@ -179,15 +210,49 @@ class QueryDecompositionServiceTest {
     verify(metrics).recordDegenerateDecomposition();
   }
 
+  /**
+   * Regression guard for #1254: all or nothing. Keeping the related remainder would search for one
+   * topic of a two-topic question and drop the other - worse than the undecomposed question, which
+   * carries both. The two dropped lines are the substring check's known blind spots (umlaut,
+   * composition), which is exactly why the remainder must not be trusted.
+   */
   @Test
-  void onlyTheUnrelatedSubQueriesAreDroppedWhenOthersRemain() {
-    stubChatModelResponse("Gebührenbefreiung bei Bedürftigkeit\nund was kostet das?");
+  void oneUnrelatedSubQueryDiscardsTheWholeDecomposition() {
+    stubChatModelResponse("Ausleihfrist für Bücher\nMahngebühr Bibliothek\nAusleihfrist Buch");
 
     List<String> subQueries =
-        service.decompose("Wer wird von der Gebühr befreit, wenn er bedürftig ist?", List.of(), 3);
+        service.decompose(
+            "Wie lange darf ich Bücher ausleihen und was kostet eine Mahnung?", List.of(), 3);
 
-    assertThat(subQueries).containsExactly("Gebührenbefreiung bei Bedürftigkeit");
-    verifyNoInteractions(metrics);
+    assertThat(subQueries).isEmpty();
+    verify(metrics).recordPrunedDecomposition();
+  }
+
+  /**
+   * Regression guard for #1254: docs/features/security-and-compliance.md keeps questions and search
+   * terms out of the application log. The fallback must therefore be countable, not readable.
+   */
+  @Test
+  void theFallbackLogsCountsButNoUserContent() {
+    stubChatModelResponse("und was kostet das?");
+
+    List<ILoggingEvent> events =
+        captureWhile(
+            () ->
+                service.decompose(
+                    "Wer wird von der Gebühr befreit, wenn er bedürftig ist?", List.of(), 3));
+
+    assertThat(events).isNotEmpty();
+    assertThat(events)
+        .allSatisfy(
+            event ->
+                assertThat(event.getFormattedMessage())
+                    .doesNotContain("Gebühr")
+                    .doesNotContain("bedürftig")
+                    .doesNotContain("kostet"));
+    assertThat(events)
+        .anySatisfy(
+            event -> assertThat(event.getFormattedMessage()).contains("1 of 1 sub-queries"));
   }
 
   /** A follow-up is related to the conversation it resolves against, not to its own wording. */
@@ -196,7 +261,7 @@ class QueryDecompositionServiceTest {
     stubChatModelResponse("Was kostet ein Personalausweis?");
     List<Message> history = List.of(new UserMessage("Wo beantrage ich einen Personalausweis?"));
 
-    List<String> subQueries = service.decompose("Und was kostet das?", history, 3);
+    List<String> subQueries = service.decompose("Und was kostet das dann insgesamt?", history, 3);
 
     assertThat(subQueries).containsExactly("Was kostet ein Personalausweis?");
   }
@@ -209,5 +274,35 @@ class QueryDecompositionServiceTest {
     List<String> subQueries = service.decompose("Wer tut das?", List.of(), 3);
 
     assertThat(subQueries).containsExactly("Zuständige Stelle für die Anmeldung");
+    verifyNoInteractions(metrics);
+  }
+
+  /**
+   * A script without word separators collapses into a single token, so nothing could ever look
+   * related - the check steps aside instead of discarding every decomposition.
+   */
+  @Test
+  void aQuestionInAScriptWithoutWordBoundariesSkipsTheRelatednessCheck() {
+    stubChatModelResponse("护照申请材料\n护照办理地点");
+
+    List<String> subQueries = service.decompose("我想知道办理护照需要哪些材料", List.of(), 3);
+
+    assertThat(subQueries).containsExactly("护照申请材料", "护照办理地点");
+    verifyNoInteractions(metrics);
+  }
+
+  private static List<ILoggingEvent> captureWhile(Runnable action) {
+    ch.qos.logback.classic.Logger logger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(QueryDecompositionService.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    try {
+      action.run();
+      return List.copyOf(appender.list);
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
   }
 }
