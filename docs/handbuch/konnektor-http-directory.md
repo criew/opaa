@@ -100,7 +100,8 @@ andere Adresse wechselt, ist mit dem verwendeten HTTP-Client nicht abzufangen.
 
 - Absolute Links auf fremde Server werden nicht verfolgt.
 - Links, die per `../` über die Start-URL hinaus führen würden, werden normalisiert und
-  verworfen.
+  verworfen. Das gilt auch für ein Segment, das erst nach der Prozentdekodierung zu `.`, `..`
+  oder einem Pfadtrenner wird (z. B. `%2E%2E/`) — ein solcher Link wird nie angefragt.
 - Jede URL wird nur einmal besucht (Zyklusschutz).
 - Sortier-Links (`?C=`), „Parent Directory", Anker, `mailto:` und `javascript:` werden
   ignoriert.

@@ -470,6 +470,91 @@ class AutoindexCrawlerServiceTest {
     assertThat(entries.getFirst().name()).isEqualTo("readme.txt");
   }
 
+  // --- #1287: percent-encoded ".." segments must not bypass staysUnderBase -------------------
+
+  @Test
+  void tableLayoutDoesNotFollowAPercentEncodedParentSegment() {
+    // A raw "%2E%2E/" href never contains a literal ".." segment, so URI#normalize() (which only
+    // collapses literal "."/".." segments) leaves it untouched and the pre-#1287 prefix check on
+    // the normalized string passed - even though a web server decodes the path before resolving it
+    // and would actually serve the parent directory's contents.
+    String html =
+        """
+        <table>
+        <tr><td><img alt="[DIR]"></td><td><a href="%2E%2E/">..</a></td><td>2025-01-01</td><td>-</td></tr>
+        <tr><td><img alt="[TXT]"></td><td><a href="file.txt">file.txt</a></td><td>2025-01-01</td><td>1</td></tr>
+        </table>
+        """;
+
+    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+        service.parseDirectory(html, "https://example.com/files/sub/", 0);
+
+    assertThat(entries).hasSize(1);
+    assertThat(entries.getFirst().name()).isEqualTo("file.txt");
+  }
+
+  @Test
+  void linkBasedLayoutDoesNotFollowAPercentEncodedParentSegmentEncodedAsASlash() {
+    // "%2E%2E%2F" decodes to "../" as a whole - not just the ".." segment but the separator itself
+    // is encoded - a server still resolves it as a parent-directory escape. Link text is
+    // deliberately
+    // not ".."/"../" so isParentDirectoryLink's own name-based filter cannot be the reason this
+    // link
+    // is skipped - staysUnderBase must reject it on its own.
+    String html =
+        """
+        <html><head><title>Index of /files/sub/</title></head><body>
+        <pre><a href="%2E%2E%2F">up</a>\
+                  10-Jun-2025 14:22  -
+        <a href="readme.txt">readme.txt</a>\
+                  10-Jun-2025 14:22  1K
+        </pre></body></html>
+        """;
+
+    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+        service.parseDirectory(html, "https://example.com/files/sub", 0);
+
+    assertThat(entries).hasSize(1);
+    assertThat(entries.getFirst().name()).isEqualTo("readme.txt");
+  }
+
+  @Test
+  void doesNotFollowASegmentThatOnlyContainsAPathSeparatorAfterDecoding() {
+    // "%2F" decodes to a bare "/" - a segment that is not itself "." or ".." but would still let a
+    // link address a path outside the segment it appears to be within once decoded.
+    String html =
+        """
+        <table>
+        <tr><td><img alt="[DIR]"></td><td><a href="escape%2Fup/">escape</a></td><td>2025-01-01</td><td>-</td></tr>
+        <tr><td><img alt="[TXT]"></td><td><a href="file.txt">file.txt</a></td><td>2025-01-01</td><td>1</td></tr>
+        </table>
+        """;
+
+    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+        service.parseDirectory(html, "https://example.com/files/sub/", 0);
+
+    assertThat(entries).hasSize(1);
+    assertThat(entries.getFirst().name()).isEqualTo("file.txt");
+  }
+
+  @Test
+  void regularlyEncodedSegmentsAreStillFollowed() {
+    // A genuinely encoded, non-traversal name (e.g. a German umlaut) must remain followable - the
+    // decode-and-check only rejects segments that decode to "."/".."  or carry a separator.
+    String html =
+        """
+        <table>
+        <tr><td><img alt="[DIR]"></td><td><a href="Verg%C3%BCtung/">Verg&uuml;tung</a></td><td>2025-01-01</td><td>-</td></tr>
+        </table>
+        """;
+
+    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+        service.parseDirectory(html, "https://example.com/files/", 0);
+
+    assertThat(entries).hasSize(1);
+    assertThat(entries.getFirst().url()).isEqualTo("https://example.com/files/Verg%C3%BCtung/");
+  }
+
   @Test
   void derivesNameFromHrefWhenTheDisplayedNameIsTruncated() {
     // #550 review, finding 4: Apache's "IndexOptions NameWidth" truncates only the *displayed*

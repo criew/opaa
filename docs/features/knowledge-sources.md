@@ -802,7 +802,11 @@ zur normalisierten Start-URL, segmentweise prozentdekodiert (`Verg%C3%BCtung` �
 Query-Parameter gehören nicht zum Pfad. Ein Segment, das nach der Dekodierung leer ist, `.` oder `..`
 lautet, einen Pfadtrenner oder ein NUL-Byte (`%00`) enthält oder länger als 255 Zeichen ist (die
 Breite von `library_folders.name`), wird abgewiesen — die Datei liegt dann in der Wurzel der
-Bibliothek, mit einer Warnung im Anwendungsprotokoll, statt unter einem erfundenen Ordnernamen. Auch
+Bibliothek, mit einer Warnung im Anwendungsprotokoll, statt unter einem erfundenen Ordnernamen. Ein
+Link, dessen Segment erst nach der Dekodierung `.`, `..` oder einen Pfadtrenner ergibt (z. B.
+`%2E%2E/`), erreicht diese Abweisung beim Crawlen einer `HTTP_DIRECTORY`-Quelle in der Praxis nie —
+er wird bereits von der Unterbaum-Prüfung des Crawlers verworfen und deshalb nie angefragt (#1287,
+siehe [Konnektor-Handbuch](../handbuch/konnektor-http-directory.md#43-bleiben-im-verzeichnis)). Auch
 hier entstehen Ordner nur entlang tatsächlich gefundener Dateien, antworten die Folder-CRUD-Endpoints
 mit `409` und bekommt ein bereits vor #1277 indiziertes Dokument seine `folder_id` beim nächsten Lauf
 nachgetragen, ohne neu indiziert zu werden. Aufgeräumt wird nur am Ende eines **vollständigen** Laufs:

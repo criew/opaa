@@ -220,13 +220,42 @@ public class AutoindexCrawlerService {
    * via {@link #normalizeUrl} before comparing, not compared as raw strings: a relative href like
    * {@code "../"} resolves, via {@link #resolveUrl}'s naive string-concatenation, to a URL whose
    * raw string still starts with {@code baseUrl} even though it climbs back out of it once the
-   * {@code ".."} segment is actually collapsed. Used by both {@link #parseHtmlTableLayout} and
-   * {@link #parseLinkBasedLayout} so a page's own links can never walk a crawl outside the
-   * directory it was asked to start at.
+   * {@code ".."} segment is actually collapsed. {@link URI#normalize()} only collapses literal
+   * {@code .}/{@code ..} segments, so {@link #hasEncodedPathTraversalSegment} additionally rejects
+   * any segment that only turns into one after percent-decoding (e.g. {@code %2E%2E/}), the same
+   * way a real web server resolves the path before serving it. Used by both {@link
+   * #parseHtmlTableLayout} and {@link #parseLinkBasedLayout} so a page's own links can never walk a
+   * crawl outside the directory it was asked to start at.
    */
   private static boolean staysUnderBase(String baseUrl, String fullUrl) {
     String normalizedBase = normalizeUrl(baseUrl.endsWith("/") ? baseUrl : baseUrl + "/");
-    return normalizeUrl(fullUrl).startsWith(normalizedBase);
+    return normalizeUrl(fullUrl).startsWith(normalizedBase)
+        && !hasEncodedPathTraversalSegment(fullUrl);
+  }
+
+  /**
+   * Whether any raw path segment of {@code url} decodes (per {@link UrlFolderPath#decodeSegment})
+   * to a literal {@code .}/{@code ..} or a segment carrying a path separator - the same check
+   * {@link UrlFolderPath#of} applies when mapping an entry to a folder, reused here so {@link
+   * #staysUnderBase} rejects a link a web server would resolve outside the crawled subtree even
+   * though its raw, undecoded string still looks like it stays under {@code baseUrl}.
+   */
+  private static boolean hasEncodedPathTraversalSegment(String url) {
+    String rawPath;
+    try {
+      rawPath = URI.create(url).getRawPath();
+    } catch (IllegalArgumentException e) {
+      rawPath = null;
+    }
+    if (rawPath == null) {
+      return false;
+    }
+    for (String rawSegment : rawPath.split("/", -1)) {
+      if (UrlFolderPath.isPathTraversalName(UrlFolderPath.decodeSegment(rawSegment))) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
