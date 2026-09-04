@@ -719,8 +719,8 @@ ordner-bewusste Dokumentliste und der Upload in einen Ordner mit #821, die Navig
 in der Bibliotheks-Detailansicht (Breadcrumb, Ordnerzeilen, Anlegen/Umbenennen/Löschen, Upload in den
 geöffneten Ordner, Ordnerpfad bei Suchtreffern) mit #822, der Ordner-Upload per Drag & Drop mit
 Strukturübernahme mit #823, die read-only Abbildung der Verzeichnisstruktur für
-FILESYSTEM-Bibliotheken mit #824 — die darunterstehende Liste beschreibt durchgängig gebaute
-Funktionalität, kein Zielbild mehr.
+FILESYSTEM-Bibliotheken mit #824 und für HTTP_DIRECTORY-Bibliotheken mit #1277 — die darunterstehende
+Liste beschreibt durchgängig gebaute Funktionalität, kein Zielbild mehr.
 
 ### Ordner in UPLOAD-Bibliotheken
 
@@ -774,7 +774,7 @@ Funktionalität, kein Zielbild mehr.
   Retrieval); ein Treffer trägt zusätzlich `folderId`/`folderPath` seines Dokuments und zeigt diesen
   Pfad an — ein Klick darauf öffnet den betreffenden Ordner.
 
-### Ordner in FILESYSTEM-Bibliotheken (#824, gebaut)
+### Ordner in Konnektorbibliotheken (#824/#1277, gebaut)
 
 Eine `FILESYSTEM`-Bibliothek bildet die tatsächliche Verzeichnisstruktur der Quelle als **read-only
 Ordner** ab — angelegt und nachgeführt bei jedem Indizierungslauf, nicht manuell editierbar (die
@@ -800,6 +800,22 @@ mindestens einer indexierbaren Datei erscheint mit dem nächsten Lauf als neuer 
 nebenbei, dass gleichnamige Dateien aus verschiedenen Unterverzeichnissen heute in
 einer flachen Liste ununterscheidbar sind — jede Datei bekommt über ihren Ordner einen eindeutigen
 Platz.
+
+**Eine `HTTP_DIRECTORY`-Bibliothek spiegelt ihr gecrawltes Webverzeichnis nach denselben Regeln
+(#1277).** An die Stelle des zu `sourcePath` relativen Verzeichnisanteils tritt der URL-Pfad relativ
+zur normalisierten Start-URL, segmentweise prozentdekodiert (`Verg%C3%BCtung` → `Vergütung`);
+Query-Parameter gehören nicht zum Pfad. Ein Segment, das nach der Dekodierung leer ist, `.` oder `..`
+lautet oder einen Pfadtrenner enthält, wird abgewiesen — die Datei liegt dann in der Wurzel der
+Bibliothek, mit einer Warnung im Anwendungsprotokoll, statt unter einem erfundenen Ordnernamen. Auch
+hier entstehen Ordner nur entlang tatsächlich gefundener Dateien, antworten die Folder-CRUD-Endpoints
+mit `409` und bekommt ein bereits vor #1277 indiziertes Dokument seine `folder_id` beim nächsten Lauf
+nachgetragen, ohne neu indiziert zu werden. Aufgeräumt wird nur am Ende eines **vollständigen** Laufs:
+Wurde der Crawl durch ein Limit abgeschnitten (`truncated`) oder konnte er ein Unterverzeichnis gar
+nicht abrufen (`incomplete`), bleiben Dokumente wie Ordner unangetastet — der Bestand dieses Laufs
+taugt dann nicht als Maßstab dafür, was an der Quelle noch existiert. Ein Mail-Anhang aus einem
+Webverzeichnis liegt im Ordner seiner Elternmail
+([ADR-0022](../decisions/0022-anhang-als-eigenes-dokument.md)); `RSS_FEED`-Bibliotheken haben
+weiterhin keine Ordner, da ein Feed keine Verzeichnisstruktur hat.
 
 ---
 

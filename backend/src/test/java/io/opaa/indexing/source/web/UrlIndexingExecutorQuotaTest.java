@@ -107,7 +107,8 @@ class UrlIndexingExecutorQuotaTest {
             indexingRunEventRepository,
             storageQuotaService,
             mock(StaleDocumentCleanupService.class),
-            new CrawlProperties(0, 0, 0));
+            new CrawlProperties(0, 0, 0),
+            mock(io.opaa.library.LibraryFolderService.class));
   }
 
   @Test

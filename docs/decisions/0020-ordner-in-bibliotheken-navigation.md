@@ -133,6 +133,43 @@ sind. Die Verzeichnisabbildung für `FILESYSTEM`-Bibliotheken (siehe Epic #520 P
 darf solche Dateien deshalb nicht als Duplikat zurückweisen; jede landet unverändert in ihrem jeweiligen
 Ordner.
 
+## Nachtrag (04.09.2026, #1277): Spiegelung auch für `HTTP_DIRECTORY`
+
+Entscheidung 2 und die daraus folgende Spiegelung waren zunächst nur für `FILESYSTEM` umgesetzt
+(#824). Ein gecrawltes Webverzeichnis hat dieselbe Eigenschaft, die die Spiegelung dort rechtfertigt:
+Es ist ein Verzeichnisbaum, dessen Gliederung (Jahr, Referat, Vorgangstyp) fachlich gemeint ist und in
+einer flachen Dokumentliste verloren geht — gleichnamige Dateien aus verschiedenen Unterverzeichnissen
+sind dort nicht unterscheidbar. Die Spiegelung gilt deshalb ab #1277 auch für `HTTP_DIRECTORY`, mit
+denselben Regeln und derselben Umsetzung (`materializeFolderPath`/`pruneOrphanedFolders`, ein
+gemeinsamer Lauf-Helfer für beide Konnektoren statt einer zweiten Kopie).
+
+**Der Ordnerpfad ist der URL-Pfad relativ zur normalisierten Start-URL**, segmentweise
+prozentdekodiert (`Verg%C3%BCtung` → `Vergütung`). Query-Parameter und Fragment gehören nicht zum
+Pfad. Ein Segment wird abgewiesen, wenn es nach der Dekodierung leer ist, `.` oder `..` lautet oder
+einen Pfadtrenner (`/`, `\`) enthält — ein solcher Name lässt sich nicht als eine Ordnerzeile
+darstellen, und `%2E%2E`/`%2F` überstehen die URL-Normalisierung des Crawlers, werden also erst hier
+sichtbar. Die betroffene Datei landet dann in der Wurzel der Bibliothek, mit einer Warnung im
+Anwendungsprotokoll — dieselbe Behandlung wie beim Dateisystem-Sonderfall einer Datei, die nach der
+Normalisierung nicht unter `sourcePath` liegt. Sie wird nicht verworfen und nicht unter einem
+erfundenen Namen abgelegt.
+
+**Aufgeräumt wird nur nach einem vollständigen Lauf.** Ein durch ein Limit abgeschnittener
+(`truncated`) oder ein Lauf, der ein Unterverzeichnis gar nicht abrufen konnte (`incomplete`), kennt
+den Bestand der Quelle nicht vollständig; er darf so wenig einen Ordner entfernen wie ein Dokument.
+Die Reihenfolge bleibt die von `FILESYSTEM`: erst die Bereinigung verschwundener Dokumente, dann die
+der leeren Ordner, damit ein Ordner, dessen letztes Dokument gerade verschwunden ist, noch im selben
+Lauf entfällt.
+
+**Zuordnung ohne Neuindizierung.** Die Ordnerzuordnung geschieht im Konnektor, nachdem ein Eintrag
+verarbeitet wurde — auch dann, wenn der Lauf ihn wegen unveränderter `Last-Modified`-Angabe gar nicht
+erst heruntergeladen hat. Nur so bekommt ein vor #1277 indiziertes Dokument seine `folder_id`
+nachgetragen, ohne erneut zerlegt und eingebettet zu werden.
+
+**Anhänge folgen ihrer Elternmail** ([ADR-0022](0022-anhang-als-eigenes-dokument.md)): Der
+Anhangsweg selbst bleibt unverändert, ein Anhang erbt lediglich die `folder_id` seines
+Elterndokuments — sein eigener Pfad ist der Elternpfad plus Index, kein Verzeichnis. `RSS_FEED`
+bleibt weiterhin ohne Ordner; ein Feed hat keine Struktur, die sich spiegeln ließe.
+
 ## Konsequenzen
 
 ### Einfacher
