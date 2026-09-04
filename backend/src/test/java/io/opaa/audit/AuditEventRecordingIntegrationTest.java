@@ -775,7 +775,7 @@ class AuditEventRecordingIntegrationTest {
     libraryService.listLibraries(currentUserOf(owner, false));
     libraryService.getLibrary(libraryId, currentUserOf(owner, false));
     libraryService.listDocuments(
-        libraryId, currentUserOf(owner), null, null, PageRequest.of(0, 20));
+        libraryId, currentUserOf(owner), null, null, null, PageRequest.of(0, 20));
     grantService.listGrants(libraryId, currentUserOf(owner, false));
 
     long after = auditLogRepository.count();

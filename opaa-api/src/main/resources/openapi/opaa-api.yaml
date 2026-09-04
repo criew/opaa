@@ -1591,6 +1591,21 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: missingMetadataField
+          in: query
+          required: false
+          description: >
+            The Pflege-Anker's list (#1069): a core field key (title, document_type, document_date)
+            narrowing the response to exactly the indexed documents that have no value for it - the
+            documents GET /api/v1/libraries/{libraryId}/metadata/maintenance counts. A field marked
+            "kein Wert ermittelbar" is not listed, which is what lets the list be emptied. Like q,
+            the filter is bibliotheksweit (folders and breadcrumb are empty, folderId does not
+            scope it) and combines with q; an attachment without a value surfaces its top-level
+            parent and stays individually selectable inside the group. An unknown field key is
+            rejected with 400.
+          schema:
+            type: string
+            example: document_date
       responses:
         "200":
           description: Page of documents
@@ -1704,6 +1719,41 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/{libraryId}/metadata/maintenance:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLibraryMetadataMaintenance
+      tags: [library]
+      summary: >
+        The Pflege-Anker of a library (#1069, metadata-schema.md "Der Pflege-Anker"): per core
+        field, how many of the library's indexed documents have no value - absolute and as a share
+        of the bestand. Only the empty state counts; a field marked "kein Wert ermittelbar" is
+        done, which is what lets the number reach zero. The figures are counted on every request in
+        the rights context of the asking person and never precomputed or cached
+        (metadata-schema.md, Rechte-Invariante) - reading needs VIEWER on the library, correcting a
+        value keeps the EDITOR right of #1068. GET
+        /api/v1/libraries/{libraryId}/documents?missingMetadataField=... lists exactly the counted
+        documents. A library of another organization or one the caller holds no right on is absent
+        (404).
+      responses:
+        "200":
+          description: The anchor per core field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataMaintenanceResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries/{libraryId}/documents/{documentId}/metadata:
     parameters:
       - name: libraryId
@@ -1773,9 +1823,9 @@ paths:
         writes one audit event (DOCUMENT_METADATA_CHANGED) with the old and the new value; an
         identical manual value already in place changes nothing and writes no event. Validation:
         a Dokumentart outside the vocabulary, a title that is blank, a date without precision or a
-        value of the wrong kind for the field are rejected with 400. The value body is designed so
-        that #1069 adds the third state "kein Wert ermittelbar" as one more alternative of the same
-        request, not as a separate operation.
+        value of the wrong kind for the field are rejected with 400. The third state "kein Wert
+        ermittelbar" (#1069) is set through this same operation, with state NOT_DETERMINABLE and no
+        value.
       requestBody:
         required: true
         content:
@@ -1804,7 +1854,8 @@ paths:
         the field is empty again and the next automatic extraction may fill it: the document's
         extraction version is cleared in the same transaction, which hands it back to the
         Bestandslauf (POST /api/v1/admin/indexing/metadata-backfill) - a lasting "there is no
-        value" is the third state of #1069, not a deletion. Same right as setting a value (EDITOR
+        value" is the third state (PUT with state NOT_DETERMINABLE), not a deletion. Deleting a
+        NOT_DETERMINABLE mark works the same way and puts the document back into the Pflege-Anker. Same right as setting a value (EDITOR
         or above); writes one audit event carrying the removed value. Deleting an already empty
         field is a no-op that writes no event.
       responses:
@@ -5153,9 +5204,18 @@ components:
       description: >-
         The value a person sets for one core field (#1068): exactly one of textValue (title),
         vocabularyCode (document_type) or dateValue plus datePrecision (document_date), matching the
-        field addressed. #1069 extends this object by the state "kein Wert ermittelbar" as one more
-        alternative of the same operation.
+        field addressed - or, with state NOT_DETERMINABLE and no value at all, the third state
+        "kein Wert ermittelbar" (#1069).
       properties:
+        state:
+          type: string
+          enum: [SET, NOT_DETERMINABLE]
+          description: >-
+            SET - also the meaning of an absent state - stores the value given below. NOT_DETERMINABLE records that a person
+            established there is no value to find: valid for every core field, rejected with 400
+            together with any value, stored with origin MANUAL and the calling person as actor, and
+            never written or cleared by an automatic extraction. For filters and the Beleg it
+            behaves like an empty field; the Pflege-Anker does not count it.
         textValue:
           type: string
           nullable: true
@@ -5181,17 +5241,29 @@ components:
             - $ref: "#/components/schemas/DatePrecision"
           description: Required together with dateValue.
 
+    MetadataFieldState:
+      type: string
+      description: >-
+        The three states a core field of a document can be in (#1069, metadata-schema.md "Kein Wert
+        ermittelbar ist ein dritter Zustand"): EMPTY (not yet established - the open rest the
+        Pflege-Anker counts), SET (a value is present) and NOT_DETERMINABLE (a person established
+        there is none). NOT_DETERMINABLE behaves like EMPTY for filters and the Beleg-Anzeige, but
+        is done, not open.
+      enum: [EMPTY, SET, NOT_DETERMINABLE]
+
     DocumentMetadataFieldResponse:
       type: object
-      required: [fieldKey, label]
+      required: [fieldKey, label, state]
       description: >-
         One core field of a document with everything metadata-schema.md demands a value to carry
         ("Jeder Wert trägt seine Herkunft"). An empty field has value, displayValue and origin
-        null.
+        null; so does a NOT_DETERMINABLE one, which state tells apart from it.
       properties:
         fieldKey:
           type: string
           example: document_type
+        state:
+          $ref: "#/components/schemas/MetadataFieldState"
         label:
           type: string
           description: The German field label.
@@ -5301,6 +5373,72 @@ components:
           description: >-
             The correlationRef every audit event of this call carries, so the whole bulk
             assignment can be read back from the audit log as one operation.
+
+    MetadataFieldMaintenanceResponse:
+      type: object
+      description: >-
+        The Pflege-Anker of one core field in one library (#1069, metadata-schema.md "Der
+        Pflege-Anker"): how many of the library's indexed documents still have no value for it -
+        absolute and as a share, both side by side, because "120 ohne Wert" means something
+        different at 130 than at 12.000 documents. documentsWithoutValue counts only the empty
+        state: a field marked "kein Wert ermittelbar" is done, which is what lets the number reach
+        zero.
+      required:
+        [
+          fieldKey,
+          label,
+          totalDocuments,
+          documentsWithoutValue,
+          missingShare,
+          filledDocuments,
+          notDeterminableDocuments,
+        ]
+      properties:
+        fieldKey:
+          type: string
+          example: document_date
+        label:
+          type: string
+          description: The German field label.
+          example: Datum/Stand
+        totalDocuments:
+          type: integer
+          format: int64
+          description: The library's indexed documents - the base of missingShare.
+        documentsWithoutValue:
+          type: integer
+          format: int64
+          description: Documents with neither a value nor a "kein Wert ermittelbar" mark.
+        missingShare:
+          type: number
+          format: double
+          description: documentsWithoutValue / totalDocuments, in 0..1; 0 for an empty library.
+        filledDocuments:
+          type: integer
+          format: int64
+        notDeterminableDocuments:
+          type: integer
+          format: int64
+          description: Documents a person marked as having no value to find.
+
+    LibraryMetadataMaintenanceResponse:
+      type: object
+      description: >-
+        The Pflege-Anker of one library (#1069), one entry per core field in schema order. Built at
+        query time in the rights context of the asking person and never precomputed or cached
+        (metadata-schema.md, Rechte-Invariante).
+      required: [libraryId, totalDocuments, fields]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        totalDocuments:
+          type: integer
+          format: int64
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataFieldMaintenanceResponse"
 
     DocumentTypeVocabularyEntryResponse:
       type: object
@@ -5565,7 +5703,16 @@ components:
         The Füllgrad of one core field in one library (#1067): how many of the library's indexed
         documents carry a value for it. Computed at query time in the administrative context - the
         organization is the rights context here - never precomputed.
-      required: [fieldKey, label, filledDocuments, filledShare]
+      required:
+        [
+          fieldKey,
+          label,
+          filledDocuments,
+          filledShare,
+          notDeterminableDocuments,
+          documentsWithoutValue,
+          missingShare,
+        ]
       properties:
         fieldKey:
           type: string
@@ -5581,6 +5728,27 @@ components:
           type: number
           format: double
           description: filledDocuments / totalDocuments, in 0..1; 0 for a library without documents.
+        notDeterminableDocuments:
+          type: integer
+          format: int64
+          description: >-
+            Documents a person marked as "kein Wert ermittelbar" for this field (#1069). Neither
+            filled nor open - the reason documentsWithoutValue below is not totalDocuments minus
+            filledDocuments.
+        documentsWithoutValue:
+          type: integer
+          format: int64
+          description: >-
+            The Pflege-Anker of this library and field (#1069): documents with neither a value nor
+            a "kein Wert ermittelbar" mark. The same figure GET
+            /api/v1/libraries/{libraryId}/metadata/maintenance shows in the library's own settings,
+            counted here over the organization instead (the administrative exception of the
+            Rechte-Invariante, Beschluss 1 am Epic #1065).
+          example: 12
+        missingShare:
+          type: number
+          format: double
+          description: documentsWithoutValue / totalDocuments, in 0..1.
 
     MetadataBackfillStatusResponse:
       type: object

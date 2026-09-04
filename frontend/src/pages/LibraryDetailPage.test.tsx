@@ -77,7 +77,41 @@ const {
   mockGetDocumentMetadata,
   mockBulkSetDocumentMetadata,
   mockGetDocumentTypeVocabulary,
+  mockGetLibraryMetadataMaintenance,
 } = vi.hoisted(() => ({
+  mockGetLibraryMetadataMaintenance: vi.fn(async (libraryId: string) => ({
+    libraryId,
+    totalDocuments: 4,
+    fields: [
+      {
+        fieldKey: 'title',
+        label: 'Titel',
+        totalDocuments: 4,
+        documentsWithoutValue: 0,
+        missingShare: 0,
+        filledDocuments: 4,
+        notDeterminableDocuments: 0,
+      },
+      {
+        fieldKey: 'document_type',
+        label: 'Dokumentart',
+        totalDocuments: 4,
+        documentsWithoutValue: 3,
+        missingShare: 0.75,
+        filledDocuments: 1,
+        notDeterminableDocuments: 0,
+      },
+      {
+        fieldKey: 'document_date',
+        label: 'Datum/Stand',
+        totalDocuments: 4,
+        documentsWithoutValue: 0,
+        missingShare: 0,
+        filledDocuments: 3,
+        notDeterminableDocuments: 1,
+      },
+    ],
+  })),
   mockGetDocumentMetadata: vi.fn(async (_libraryId: string, documentId: string) => ({
     documentId,
     fields: [
@@ -157,6 +191,7 @@ vi.mock('../services/api', async () => {
     getDocumentMetadata: mockGetDocumentMetadata,
     bulkSetDocumentMetadata: mockBulkSetDocumentMetadata,
     getDocumentTypeVocabulary: mockGetDocumentTypeVocabulary,
+    getLibraryMetadataMaintenance: mockGetLibraryMetadataMaintenance,
   }
 })
 
@@ -1550,6 +1585,7 @@ describe('LibraryDetailPage', () => {
           size: 20,
           q: 'sozial',
           folderId: null,
+          missingMetadataField: null,
         })
       },
       { timeout: 2000 },
@@ -1599,7 +1635,8 @@ describe('LibraryDetailPage', () => {
       const folderRow = await screen.findByRole('button', {
         name: /ordner protokolle öffnen/i,
       })
-      expect(screen.getByText(/3 dokumente/i)).toBeInTheDocument()
+      // Scoped to the folder row: the Pflege-Anker (#1069) above can carry the same wording.
+      expect(within(folderRow).getByText(/3 dokumente/i)).toBeInTheDocument()
 
       mockGetLibraryDocuments.mockResolvedValueOnce(
         pageOf([], {
@@ -1616,6 +1653,7 @@ describe('LibraryDetailPage', () => {
         size: 20,
         q: '',
         folderId: 'folder-protokolle',
+        missingMetadataField: null,
       })
     })
 
@@ -1640,6 +1678,7 @@ describe('LibraryDetailPage', () => {
         size: 20,
         q: '',
         folderId: 'folder-protokolle',
+        missingMetadataField: null,
       })
     })
 
@@ -2316,6 +2355,7 @@ describe('LibraryDetailPage', () => {
           size: 20,
           q: '',
           folderId: 'folder-protokolle',
+          missingMetadataField: null,
         })
       })
       expect(screen.queryByText('protokoll-2026-01.pdf')).not.toBeInTheDocument()
@@ -2434,5 +2474,34 @@ describe('LibraryDetailPage', () => {
       )
       await initialLoad
     })
+  })
+
+  // #1069 (metadata-schema.md, "Der Pflege-Anker")
+  it('shows the Pflege-Anker per field and opens exactly those documents from it', async () => {
+    setLibraryState(personalLibrary, detailsOf(personalLibrary))
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const anchor = await screen.findByRole('region', { name: 'Metadaten-Pflege' })
+    expect(within(anchor).getByText('3 Dokumente ohne Wert (75 %)')).toBeInTheDocument()
+    expect(within(anchor).getByText('1 × kein Wert ermittelbar')).toBeInTheDocument()
+
+    mockGetLibraryDocuments.mockClear()
+    await user.click(
+      within(anchor).getByRole('button', { name: 'Dokumente ohne Wert für Dokumentart anzeigen' }),
+    )
+
+    await waitFor(() =>
+      expect(mockGetLibraryDocuments).toHaveBeenLastCalledWith('library-mine', {
+        page: 0,
+        size: 20,
+        q: '',
+        folderId: null,
+        missingMetadataField: 'document_type',
+      }),
+    )
+    expect(
+      await screen.findByText(/Es werden nur Dokumente ohne Wert für „Dokumentart" angezeigt/),
+    ).toBeInTheDocument()
   })
 })

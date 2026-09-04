@@ -78,6 +78,13 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long countByLibraryId(UUID libraryId);
 
   /**
+   * The bestand the Pflege-Anker (#1069) and the Füllgrad of #1067 measure against: a library's
+   * {@code INDEXED} documents, attachments included - a metadata value hangs at every document row,
+   * not only at the ones the document list pages over.
+   */
+  long countByLibraryIdAndStatus(UUID libraryId, DocumentStatus status);
+
+  /**
    * The parent-level counterpart of {@link #countByLibraryId} (#1184): top-level documents only,
    * matching what the document list pages over - shown as a library's {@code documentCount}. {@link
    * #countByLibraryId} keeps backing the delete guard, which must see every row.
@@ -116,6 +123,52 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   List<AttachmentParentRef>
       findByLibraryIdAndParentDocumentIdIsNotNullAndFileNameContainingIgnoreCase(
           UUID libraryId, String q);
+
+  /**
+   * The paged Pflege-Anker list (#1069): the same top-level page as {@link
+   * #searchTopLevelByFileNameOrAttachmentRoot} - an empty {@code escapedQ} matches every name -
+   * narrowed to documents that still have no row for {@code fieldKey}. Either the top-level
+   * document itself lacks it, or one of its attachments does ({@code missingRootIds}, resolved by
+   * the caller the same way {@code attachmentRootIds} is), so an attachment's gap surfaces its
+   * parent and stays selectable inside the group. Only {@code status} documents count: an anchor
+   * over documents that were never indexed would never reach zero.
+   */
+  @Query(
+      """
+      SELECT d FROM Document d
+      WHERE d.libraryId = :libraryId AND d.parentDocumentId IS NULL
+        AND (LOWER(d.fileName) LIKE LOWER(CONCAT('%', :escapedQ, '%')) ESCAPE '\\'
+             OR d.id IN :attachmentRootIds)
+        AND (d.id IN :missingRootIds
+             OR (d.status = :status
+                 AND NOT EXISTS (SELECT 1 FROM DocumentMetadataValue v
+                                 WHERE v.documentId = d.id AND v.fieldKey = :fieldKey)))
+      """)
+  Page<Document> searchTopLevelWithoutMetadataValue(
+      @Param("libraryId") UUID libraryId,
+      @Param("escapedQ") String escapedQ,
+      @Param("attachmentRootIds") Collection<UUID> attachmentRootIds,
+      @Param("missingRootIds") Collection<UUID> missingRootIds,
+      @Param("fieldKey") String fieldKey,
+      @Param("status") DocumentStatus status,
+      Pageable pageable);
+
+  /**
+   * The attachment rows of {@code libraryId} without a value for {@code fieldKey} - the prefilter
+   * of {@link #searchTopLevelWithoutMetadataValue}, walked up to their top-level parents by the
+   * caller.
+   */
+  @Query(
+      """
+      SELECT d.id AS id, d.parentDocumentId AS parentDocumentId FROM Document d
+      WHERE d.libraryId = :libraryId AND d.parentDocumentId IS NOT NULL AND d.status = :status
+        AND NOT EXISTS (SELECT 1 FROM DocumentMetadataValue v
+                        WHERE v.documentId = d.id AND v.fieldKey = :fieldKey)
+      """)
+  List<AttachmentParentRef> findAttachmentsWithoutMetadataValue(
+      @Param("libraryId") UUID libraryId,
+      @Param("fieldKey") String fieldKey,
+      @Param("status") DocumentStatus status);
 
   /** The two ids the attachment-aware search prefilter needs (#1184) - see the finder above. */
   interface AttachmentParentRef {

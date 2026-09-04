@@ -152,6 +152,15 @@ describe('SearchIndexingAdminPage', () => {
         'Füllgrad je Kernfeld: Satzungen & Gebuehrenordnungen',
       ),
     ).toHaveTextContent('Titel 11 (100 %) · Dokumentart 4 (36 %) · Datum/Stand 7 (64 %)')
+    // #1069: the same Pflege-Anker the library's own settings show - a field marked "kein Wert
+    // ermittelbar" is neither filled nor missing (Datum/Stand: 7 filled, 1 marked, 3 open).
+    expect(
+      within(row as HTMLElement).getByLabelText(
+        'Dokumente ohne Wert je Kernfeld: Satzungen & Gebuehrenordnungen',
+      ),
+    ).toHaveTextContent(
+      'Titel 0 ohne Wert (0 %) · Dokumentart 7 ohne Wert (64 %) · Datum/Stand 3 ohne Wert (27 %)',
+    )
     expect(
       within(row as HTMLElement).getByRole('button', {
         name: 'Kernfelder nachrüsten: Satzungen & Gebuehrenordnungen',

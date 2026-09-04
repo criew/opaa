@@ -116,7 +116,11 @@ function mockMetadataFieldsOf(documentId: string): DocumentMetadataFieldResponse
   const stored = mockDocumentMetadata[documentId] ?? []
   return Object.entries(CORE_METADATA_LABELS).map(
     ([fieldKey, label]) =>
-      stored.find((field) => field.fieldKey === fieldKey) ?? { fieldKey, label },
+      stored.find((field) => field.fieldKey === fieldKey) ?? {
+        fieldKey,
+        label,
+        state: 'EMPTY' as const,
+      },
   )
 }
 
@@ -137,10 +141,18 @@ function mockManualField(
   const base = {
     fieldKey,
     label,
+    state: 'SET' as const,
     origin: 'MANUAL' as const,
     actorUserId: mockUser.id,
     actorDisplayName: mockUser.displayName,
     updatedAt: new Date().toISOString(),
+  }
+  // #1069: the third state is the same operation without a value, for every core field.
+  if (value.state === 'NOT_DETERMINABLE') {
+    if (value.textValue || value.vocabularyCode || value.dateValue) {
+      return `„Kein Wert ermittelbar“ wird ohne Wert gesetzt (Feld ${label})`
+    }
+    return { ...base, state: 'NOT_DETERMINABLE' as const }
   }
   if (fieldKey === 'title') {
     const text = value.textValue?.trim()
@@ -1418,6 +1430,7 @@ export const handlers = [
     const page = Number(url.searchParams.get('page') ?? '0')
     const size = Number(url.searchParams.get('size') ?? '20')
     const folderIdParam = url.searchParams.get('folderId')
+    const missingMetadataField = url.searchParams.get('missingMetadataField')
 
     // #822: folderId is validated with or without q, mirroring GET .../folders/{folderId}'s own
     // unknown/foreign-folder 404 (ADR-0020).
@@ -1442,7 +1455,25 @@ export const handlers = [
     let breadcrumb: LibraryFolderBreadcrumbItem[]
     let responseFolderId: string | null
 
-    if (q) {
+    if (missingMetadataField) {
+      // #1069: the Pflege-Anker's list - bibliotheksweit like a search, narrowed to documents
+      // without a value for the field (a "kein Wert ermittelbar" mark is not empty), and
+      // combinable with q. An attachment without a value surfaces its top-level parent.
+      const isEmptyFor = (doc: LibraryDocumentResponse) =>
+        ((mockDocumentMetadata[doc.id] ?? []).find(
+          (field) => field.fieldKey === missingMetadataField,
+        )?.state ?? 'EMPTY') === 'EMPTY'
+      const matchesQ = (doc: LibraryDocumentResponse) =>
+        !q || doc.fileName.toLowerCase().includes(q.toLowerCase())
+      filtered = topLevelDocuments.filter(
+        (doc) =>
+          (matchesQ(doc) || descendantsOf(doc.id).some(matchesQ)) &&
+          (isEmptyFor(doc) || descendantsOf(doc.id).some(isEmptyFor)),
+      )
+      folders = []
+      breadcrumb = []
+      responseFolderId = null
+    } else if (q) {
       // Search is always bibliotheksweit, regardless of folderId (ADR-0020, Entscheidung 4) -
       // folders/breadcrumb stay empty, folderId is echoed back as null. A hit on an attachment's
       // file name surfaces its top-level parent with the whole group (#1184).
@@ -1587,6 +1618,37 @@ export const handlers = [
     return HttpResponse.json(document, { status: 201 })
   }),
 
+  // #1069: the Pflege-Anker of a library - counted over its mock documents on every call.
+  http.get('/api/v1/libraries/:libraryId/metadata/maintenance', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const documents = mockLibraryDocuments[libraryId] ?? []
+    const totalDocuments = documents.length
+    return HttpResponse.json({
+      libraryId,
+      totalDocuments,
+      fields: Object.entries(CORE_METADATA_LABELS).map(([fieldKey, label]) => {
+        const states = documents.map(
+          (doc) =>
+            (mockDocumentMetadata[doc.id] ?? []).find((field) => field.fieldKey === fieldKey)
+              ?.state ?? 'EMPTY',
+        )
+        const documentsWithoutValue = states.filter((state) => state === 'EMPTY').length
+        return {
+          fieldKey,
+          label,
+          totalDocuments,
+          documentsWithoutValue,
+          missingShare: totalDocuments === 0 ? 0 : documentsWithoutValue / totalDocuments,
+          filledDocuments: states.filter((state) => state === 'SET').length,
+          notDeterminableDocuments: states.filter((state) => state === 'NOT_DETERMINABLE').length,
+        }
+      }),
+    })
+  }),
+
   // #1068: manual metadata correction - read, set, delete, bulk, plus the vocabulary.
   http.get('/api/v1/metadata/document-types', () =>
     HttpResponse.json({ items: mockDocumentTypeVocabulary }),
@@ -1671,7 +1733,11 @@ export const handlers = [
       const current = (mockDocumentMetadata[documentId] ?? []).find(
         (item) => item.fieldKey === field.fieldKey,
       )
-      if (current?.origin === 'MANUAL' && current.value === field.value) {
+      if (
+        current?.origin === 'MANUAL' &&
+        current.state === field.state &&
+        current.value === field.value
+      ) {
         unchangedCount += 1
         continue
       }

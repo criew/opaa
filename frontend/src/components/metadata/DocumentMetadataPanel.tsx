@@ -20,6 +20,8 @@ interface DocumentMetadataPanelProps {
   canEdit: boolean
   // Bumped by the parent after a bulk assignment so an open panel reloads its values.
   refreshToken?: number
+  // Called after this panel changed a value, so the Pflege-Anker (#1069) can recount.
+  onValueChanged?: () => void
 }
 
 function formatTimestamp(value: string | null | undefined): string {
@@ -31,7 +33,7 @@ function formatTimestamp(value: string | null | undefined): string {
 function originTooltip(field: DocumentMetadataFieldResponse): string {
   switch (field.origin) {
     case 'MANUAL':
-      return `Von Hand gesetzt${field.actorDisplayName ? ` von ${field.actorDisplayName}` : ''}${
+      return `${field.state === 'NOT_DETERMINABLE' ? 'Von Hand als „kein Wert ermittelbar“ gekennzeichnet' : 'Von Hand gesetzt'}${field.actorDisplayName ? ` von ${field.actorDisplayName}` : ''}${
         field.updatedAt ? ` am ${formatTimestamp(field.updatedAt)}` : ''
       }`
     case 'DERIVED':
@@ -48,7 +50,8 @@ function originTooltip(field: DocumentMetadataFieldResponse): string {
 }
 
 // #1068: the core fields of one document with the provenance of every value. An empty field is
-// shown as such; a DERIVED value is always marked "abgeleitet". Editing and deleting are only
+// shown as such, a field marked "kein Wert ermittelbar" (#1069) as its own state; a DERIVED value
+// is always marked "abgeleitet". Editing and deleting are only
 // offered to a person who may edit the library's documents.
 export default function DocumentMetadataPanel({
   libraryId,
@@ -56,6 +59,7 @@ export default function DocumentMetadataPanel({
   fileName,
   canEdit,
   refreshToken = 0,
+  onValueChanged,
 }: DocumentMetadataPanelProps) {
   const [fields, setFields] = useState<DocumentMetadataFieldResponse[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -82,6 +86,7 @@ export default function DocumentMetadataPanel({
     setFields((previous) =>
       (previous ?? []).map((field) => (field.fieldKey === saved.fieldKey ? saved : field)),
     )
+    onValueChanged?.()
   }
 
   async function handleDelete(field: DocumentMetadataFieldResponse) {
@@ -94,7 +99,7 @@ export default function DocumentMetadataPanel({
     }
     try {
       await deleteDocumentMetadataValue(libraryId, documentId, field.fieldKey)
-      replaceField({ fieldKey: field.fieldKey, label: field.label })
+      replaceField({ fieldKey: field.fieldKey, label: field.label, state: 'EMPTY' })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Wert konnte nicht gelöscht werden')
     }
@@ -128,7 +133,11 @@ export default function DocumentMetadataPanel({
                 {field.label}
               </Typography>
               <Typography variant="body2" sx={{ flexGrow: 1, wordBreak: 'break-word' }}>
-                {field.value != null ? (field.displayValue ?? field.value) : '– (leer)'}
+                {field.state === 'NOT_DETERMINABLE'
+                  ? '– (kein Wert ermittelbar)'
+                  : field.value != null
+                    ? (field.displayValue ?? field.value)
+                    : '– (leer)'}
               </Typography>
               {field.origin && (
                 <Tooltip title={originTooltip(field)} describeChild>
@@ -149,7 +158,7 @@ export default function DocumentMetadataPanel({
                   <EditIcon fontSize="small" />
                 </IconButton>
               )}
-              {canEdit && field.value != null && (
+              {canEdit && field.state !== 'EMPTY' && (
                 <IconButton
                   size="small"
                   aria-label={`${field.label} von ${fileName} löschen`}
