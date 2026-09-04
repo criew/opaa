@@ -99,6 +99,9 @@ andere Adresse wechselt, ist mit dem verwendeten HTTP-Client nicht abzufangen.
 ### 4.3 Bleiben im Verzeichnis
 
 - Absolute Links auf fremde Server werden nicht verfolgt.
+- Ein absoluter, gleichursprünglicher Link außerhalb des gerade gecrawlten Verzeichnisses wird
+  ebenfalls nicht verfolgt — dieselbe Regel wie für relative Links, unabhängig davon, ob der Link
+  als `../`-Pfad oder bereits als vollständige URL in der Verzeichnisseite steht.
 - Links, die per `../` über die Start-URL hinaus führen würden, werden normalisiert und
   verworfen. Das gilt auch für ein Segment, das erst nach der Prozentdekodierung zu `.`, `..`
   oder einem Pfadtrenner wird (z. B. `%2E%2E/`) — ein solcher Link wird nie angefragt.

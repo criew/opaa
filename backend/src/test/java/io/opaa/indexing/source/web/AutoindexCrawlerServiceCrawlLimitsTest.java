@@ -125,11 +125,10 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
   void aSelfReferencingDirectoryTerminatesAndIsVisitedOnce()
       throws IOException, InterruptedException {
     // /a/ links (absolute, same-origin) back to itself - without a visited-URL guard,
-    // crawlRecursive would recurse into it forever. #1300 review, blocker: staysUnderBase now
-    // requires every link, relative or absolute, to resolve at or below the directory page it
-    // appears on rather than merely somewhere under the overall crawl root - a genuine mutual
-    // cycle between two sibling directories (this test's pre-#1300 shape: /a/ linking to /b/ and
-    // back) can therefore no longer arise at all, since neither sibling is "under" the other.
+    // crawlRecursive would recurse into it forever. staysUnderBase requires every link, relative
+    // or absolute, to resolve at or below the directory page it appears on rather than merely
+    // somewhere under the overall crawl root, so a mutual cycle between two sibling directories
+    // cannot arise: neither sibling is ever "under" the other.
     AtomicInteger requestCount = new AtomicInteger();
     server.createContext(
         "/a/",

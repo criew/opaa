@@ -69,13 +69,18 @@ public class AutoindexCrawlerService {
    * then missing everything under that subtree, exactly the way a limit-truncated crawl is missing
    * everything past its cut. {@link #truncated()} intentionally does not fold this in: callers that
    * only care about the UI-visible "capped by a configured limit" event (as opposed to the "safe to
-   * delete by absence" decision) must keep telling the two apart.
+   * delete by absence" decision) must keep telling the two apart. {@code rejectedLinks} carries the
+   * raw (best-effort resolved) address of every link a directory page contained but {@link
+   * #resolveFollowableUrl} refused to follow - a foreign origin or an escape from the directory
+   * page's own subtree - so a caller can surface what the crawler silently left out instead of only
+   * logging it internally.
    */
   public record CrawlResult(
       List<CrawledFileEntry> entries,
       boolean depthLimitReached,
       boolean entryLimitReached,
-      boolean incomplete) {
+      boolean incomplete,
+      List<String> rejectedLinks) {
 
     boolean truncated() {
       return depthLimitReached || entryLimitReached;
@@ -100,10 +105,16 @@ public class AutoindexCrawlerService {
     String authHeader = SourceHttpClientFactory.buildAuthHeader(username, password);
 
     List<CrawledFileEntry> results = new ArrayList<>();
+    List<String> rejectedLinks = new ArrayList<>();
     TruncationTracker truncation = new TruncationTracker();
-    crawlRecursive(httpClient, authHeader, baseUrl, 0, results, new HashSet<>(), truncation);
+    crawlRecursive(
+        httpClient, authHeader, baseUrl, 0, results, new HashSet<>(), truncation, rejectedLinks);
     return new CrawlResult(
-        results, truncation.depthLimitReached, truncation.entryLimitReached, truncation.incomplete);
+        results,
+        truncation.depthLimitReached,
+        truncation.entryLimitReached,
+        truncation.incomplete,
+        rejectedLinks);
   }
 
   /** One log message per truncation reason, not per occurrence. */
@@ -163,7 +174,8 @@ public class AutoindexCrawlerService {
       int depth,
       List<CrawledFileEntry> results,
       Set<String> visited,
-      TruncationTracker truncation)
+      TruncationTracker truncation,
+      List<String> rejectedLinks)
       throws IOException, InterruptedException {
 
     if (depth > crawlProperties.maxDepth()) {
@@ -181,7 +193,7 @@ public class AutoindexCrawlerService {
 
     log.debug("Crawling directory: {}", url);
     String html = fetchPage(httpClient, authHeader, url);
-    List<CrawledFileEntry> entries = parseDirectory(html, url, depth);
+    List<CrawledFileEntry> entries = parseDirectory(html, url, depth, rejectedLinks);
 
     for (CrawledFileEntry entry : entries) {
       if (results.size() >= crawlProperties.maxEntries()) {
@@ -191,7 +203,14 @@ public class AutoindexCrawlerService {
       if (entry.isDirectory()) {
         try {
           crawlRecursive(
-              httpClient, authHeader, entry.url(), depth + 1, results, visited, truncation);
+              httpClient,
+              authHeader,
+              entry.url(),
+              depth + 1,
+              results,
+              visited,
+              truncation,
+              rejectedLinks);
         } catch (IOException e) {
           truncation.markIncomplete(entry.url(), e);
         }
@@ -220,20 +239,31 @@ public class AutoindexCrawlerService {
    * null} if the link must not be followed at all - shared by {@link #parseHtmlTableLayout} and
    * {@link #parseLinkBasedLayout} so both layouts apply exactly the same rule to an absolute,
    * already-resolved {@code http(s)://} href as to a relative one, rather than a layout-specific
-   * subset of it (a foreign-origin absolute href was previously only rejected in one of the two).
+   * subset of it (a foreign-origin absolute href was previously only rejected in one of the two). A
+   * rejected link's best-effort resolved address is appended to {@code rejectedLinks} so a caller
+   * can report what was silently left out of the crawl.
    */
-  private static String resolveFollowableUrl(String baseUrl, String href) {
+  private static String resolveFollowableUrl(
+      String baseUrl, String href, List<String> rejectedLinks) {
     if (href.startsWith("http://") || href.startsWith("https://")) {
       // An absolute href pointing at a foreign origin, or one that resolves outside baseUrl's own
       // subtree, must never be followed - the caller's Authorization header (built from this
       // source configuration's own credentials) would otherwise be sent to a host or path that
       // configuration was never meant for.
-      return isSameOriginAsBase(baseUrl, href) && staysUnderBase(baseUrl, href) ? href : null;
+      if (isSameOriginAsBase(baseUrl, href) && staysUnderBase(baseUrl, href)) {
+        return href;
+      }
+      rejectedLinks.add(href);
+      return null;
     }
     // A relative href like "../" resolves (via the naive baseUrl+relative concatenation
     // resolveUrl does) to a URL that, once normalized, may escape above baseUrl's own subtree.
     String fullUrl = resolveUrl(baseUrl, href);
-    return staysUnderBase(baseUrl, fullUrl) ? fullUrl : null;
+    if (staysUnderBase(baseUrl, fullUrl)) {
+      return fullUrl;
+    }
+    rejectedLinks.add(fullUrl);
+    return null;
   }
 
   /**
@@ -356,19 +386,31 @@ public class AutoindexCrawlerService {
    * into.
    */
   List<CrawledFileEntry> parseDirectory(String html, String baseUrl, int depth) {
+    return parseDirectory(html, baseUrl, depth, new ArrayList<>());
+  }
+
+  /**
+   * Same as {@link #parseDirectory(String, String, int)}, but also appends the raw address of every
+   * link this page contained that {@link #resolveFollowableUrl} refused to follow to {@code
+   * rejectedLinks} - used by {@link #crawlRecursive} so a full crawl can report what it silently
+   * left out; {@link #parseDirectory(String, String, int)} itself discards that list, since neither
+   * it nor {@link #parseTopLevelEntries} run as part of a logged indexing job.
+   */
+  private List<CrawledFileEntry> parseDirectory(
+      String html, String baseUrl, int depth, List<String> rejectedLinks) {
     if (html == null) {
       return List.of();
     }
 
     Document doc = Jsoup.parse(html);
-    List<CrawledFileEntry> tableEntries = parseHtmlTableLayout(doc, baseUrl, depth);
+    List<CrawledFileEntry> tableEntries = parseHtmlTableLayout(doc, baseUrl, depth, rejectedLinks);
     if (!tableEntries.isEmpty()) {
       return tableEntries;
     }
     if (!looksLikeDirectoryListing(doc)) {
       return List.of();
     }
-    return parseLinkBasedLayout(doc, baseUrl, depth);
+    return parseLinkBasedLayout(doc, baseUrl, depth, rejectedLinks);
   }
 
   /**
@@ -416,7 +458,8 @@ public class AutoindexCrawlerService {
    * Parses the Apache {@code IndexOptions HTMLTable} layout: {@code <tr>} rows of {@code <td>}
    * cells.
    */
-  private List<CrawledFileEntry> parseHtmlTableLayout(Document doc, String baseUrl, int depth) {
+  private List<CrawledFileEntry> parseHtmlTableLayout(
+      Document doc, String baseUrl, int depth, List<String> rejectedLinks) {
     List<CrawledFileEntry> entries = new ArrayList<>();
     Elements rows = doc.select("tr");
 
@@ -458,7 +501,7 @@ public class AutoindexCrawlerService {
         continue;
       }
 
-      String fullUrl = resolveFollowableUrl(baseUrl, href);
+      String fullUrl = resolveFollowableUrl(baseUrl, href, rejectedLinks);
       if (fullUrl == null) {
         continue;
       }
@@ -484,7 +527,8 @@ public class AutoindexCrawlerService {
    * whatever surrounds it - robust against layout variance because it never assumes a specific
    * markup shape, only that a real file/subdirectory is, in every one of these layouts, a link.
    */
-  private List<CrawledFileEntry> parseLinkBasedLayout(Document doc, String baseUrl, int depth) {
+  private List<CrawledFileEntry> parseLinkBasedLayout(
+      Document doc, String baseUrl, int depth, List<String> rejectedLinks) {
     List<CrawledFileEntry> entries = new ArrayList<>();
     Elements links = doc.select("a[href]");
 
@@ -508,7 +552,7 @@ public class AutoindexCrawlerService {
         continue;
       }
 
-      String fullUrl = resolveFollowableUrl(baseUrl, href);
+      String fullUrl = resolveFollowableUrl(baseUrl, href, rejectedLinks);
       if (fullUrl == null) {
         continue;
       }

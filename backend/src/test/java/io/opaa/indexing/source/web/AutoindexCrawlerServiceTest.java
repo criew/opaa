@@ -158,13 +158,13 @@ class AutoindexCrawlerServiceTest {
     assertThat(entries).isEmpty();
   }
 
-  // --- PR #1300 review: HTMLTable layout must apply staysUnderBase to absolute links too --------
+  // --- HTMLTable layout applies staysUnderBase to absolute links too -------------------------
 
   @Test
   void tableLayoutSkipsASameOriginAbsoluteUrlOutsideBaseUrl() {
-    // #1300 review, blocker: parseHtmlTableLayout checked only isSameOriginAsBase for an absolute
-    // href, never staysUnderBase - a same-origin href pointing above/outside baseUrl's own subtree
-    // was accepted and crawled into, sending the Authorization header built for baseUrl to it.
+    // A same-origin href pointing outside baseUrl's own subtree must never be followed - it would
+    // send the Authorization header built for baseUrl to a path that configuration was never meant
+    // for, same as a foreign-origin href.
     String html =
         """
         <table>
@@ -184,8 +184,8 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void tableLayoutSkipsAPercentEncodedParentSegmentInAnAbsoluteUrl() {
-    // #1300 review, blocker: the same escape as #1287, but via an already-absolute href in the
-    // HTMLTable layout rather than a relative one.
+    // The same percent-encoded traversal segment #1287 blocks for a relative href must also be
+    // blocked when it arrives via an already-absolute, same-origin href.
     String html =
         """
         <table>
@@ -206,9 +206,9 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void aTraversalCheckOnlyAppliesToTheLinkPathBeyondBaseUrlItself() {
-    // #1300 review, Nit 3: staysUnderBase must only decode-check the part of a link's path beyond
-    // baseUrl's own path - a start URL whose own configured path happens to contain a sequence like
-    // "a%2Fb" must not make every link underneath it look like a traversal too.
+    // staysUnderBase's decode-and-check only applies to the part of a link's path beyond baseUrl's
+    // own path - a start URL whose own configured path happens to contain a sequence like "a%2Fb"
+    // must not make every link underneath it look like a traversal too.
     String html =
         """
         <table>
@@ -623,9 +623,9 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void doesNotFollowALinkWhoseResolvedUrlCannotBeParsedAsAUri() {
-    // #1300 review, Nit 2: staysUnderBase must fail closed (reject) on a URL URI cannot parse -
-    // mirroring isSameOriginAsBase's own catch-and-reject - rather than passing it through, which
-    // normalizeUrl's own lenient fallback (returning the raw string unchanged) would otherwise do.
+    // staysUnderBase fails closed (rejects) on a URL URI cannot parse, mirroring
+    // isSameOriginAsBase's own catch-and-reject, rather than passing it through the way
+    // normalizeUrl's own lenient fallback (returning the raw string unchanged) otherwise would.
     String html =
         """
         <table>

@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
  * hit by a request the crawler sends as {@code /dokumente/%2E%2E/intern/} - {@link
  * #decodedNormalizedPath} decodes and normalizes every request the single {@code /dokumente/}
  * context actually receives, so the assertion is on the real target the request addresses, not on
- * which context happened to answer it (#1300 review, Nit 1).
+ * which context happened to answer it.
  */
 class AutoindexCrawlerServiceEncodedTraversalTest {
 
@@ -121,9 +121,8 @@ class AutoindexCrawlerServiceEncodedTraversalTest {
   @Test
   void anAbsoluteSameOriginLinkOutsideBaseUrlInTheHtmlTableLayoutIsNeverRequested()
       throws IOException, InterruptedException {
-    // #1300 review, blocker: parseHtmlTableLayout previously only checked isSameOriginAsBase for
-    // an absolute href, never staysUnderBase - an already-absolute, same-origin link pointing
-    // outside baseUrl's own subtree was accepted and crawled into.
+    // An already-absolute, same-origin link pointing outside baseUrl's own subtree must never be
+    // followed in the HTMLTable layout either - the same rule a relative href is held to.
     AtomicInteger dokumenteRequests = new AtomicInteger();
     AtomicInteger escapedRequests = new AtomicInteger();
     server.createContext(
