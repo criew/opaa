@@ -241,7 +241,7 @@ class LibraryControllerCredentialsIntegrationTest {
   void sourceTestFilesystemOutsideTheAllowlistIsRejectedWithA400JustLikeLibraryCreation()
       throws Exception {
     // Mirrors this class's own dev-profile allowlist expectations (application.yml:
-    // opaa.indexing.filesystem-allowlist=/data,/tmp for the "dev" profile) - path enumeration
+    // opaa.indexing.filesystem.allowlist=/data,/tmp for the "dev" profile) - path enumeration
     // outside it must be rejected exactly like POST /api/v1/libraries itself.
     String body =
         """

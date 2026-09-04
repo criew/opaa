@@ -50,7 +50,7 @@ class MailDocumentPipelineTest {
 
   @TempDir Path tempDir;
 
-  private final MailProperties defaultProperties = new MailProperties(0, 0, 0, 0);
+  private final MailProperties defaultProperties = new MailProperties(0, 0, 0);
 
   /**
    * A fixed non-UTC zone (winter CET, UTC+1) - #1130 Befund 1 review, finding 2: the leading
@@ -69,7 +69,7 @@ class MailDocumentPipelineTest {
 
   private static ChunkingService defaultChunkingService() {
     return new ChunkingService(
-        new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1));
+        new IndexingProperties(1000, 100, 50, null, null, null, null, null, 1));
   }
 
   private MailDocumentPipeline pipeline(MailProperties properties) {
@@ -158,7 +158,7 @@ class MailDocumentPipelineTest {
     long fileSize = Files.size(file);
 
     assertThat(
-            pipeline(new MailProperties(0, 0, 0, fileSize - 1))
+            pipeline(new MailProperties(0, 0, fileSize - 1))
                 .readProperties(DocumentPipelineSource.ofFile(file, "zu-gross.eml")))
         .isEqualTo(io.opaa.indexing.pipeline.DocumentProperties.EMPTY);
     assertThat(
@@ -360,8 +360,7 @@ class MailDocumentPipelineTest {
             .build();
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
     ChunkingService realisticChunking =
-        new ChunkingService(
-            new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1));
+        new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, null, null, 1));
 
     DocumentPipelineResult result =
         pipeline(defaultProperties, realisticChunking)
@@ -466,7 +465,7 @@ class MailDocumentPipelineTest {
     Path file = writeEml(DefaultMessageWriter.asBytes(outer));
 
     DocumentPipelineResult result =
-        pipeline(new MailProperties(5, 0, 0, 0))
+        pipeline(new MailProperties(0, 0, 0))
             .run(DocumentPipelineSource.ofFile(file, "weiterleitung.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
@@ -479,7 +478,7 @@ class MailDocumentPipelineTest {
     DiscoveredAttachment nested = result.discoveredAttachments().getFirst();
     assertThat(nested.fileName()).isEqualTo("weitergeleitet.eml");
     DocumentPipelineResult nestedResult =
-        pipeline(new MailProperties(5, 0, 0, 0))
+        pipeline(new MailProperties(0, 0, 0))
             .run(DocumentPipelineSource.ofFile(nested.tempFile(), nested.fileName()));
     assertThat(nestedResult.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(nestedResult.chunks().getFirst().getText())
@@ -507,8 +506,7 @@ class MailDocumentPipelineTest {
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
 
     DocumentPipelineResult result =
-        pipeline(new MailProperties(0, 2, 0, 0))
-            .run(DocumentPipelineSource.ofFile(file, "viele.eml"));
+        pipeline(new MailProperties(2, 0, 0)).run(DocumentPipelineSource.ofFile(file, "viele.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(1);
@@ -532,7 +530,7 @@ class MailDocumentPipelineTest {
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
 
     DocumentPipelineResult result =
-        pipeline(new MailProperties(0, 0, 10, 0)) // 10 bytes - smaller than the PDF fixture
+        pipeline(new MailProperties(0, 10, 0)) // 10 bytes - smaller than the PDF fixture
             .run(DocumentPipelineSource.ofFile(file, "gross.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
@@ -565,8 +563,7 @@ class MailDocumentPipelineTest {
             .build();
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
     ChunkingService realisticChunking =
-        new ChunkingService(
-            new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1));
+        new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, null, null, 1));
 
     DocumentPipelineResult result =
         pipeline(defaultProperties, realisticChunking)
@@ -629,8 +626,7 @@ class MailDocumentPipelineTest {
             .build();
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
     ChunkingService tinyChunking =
-        new ChunkingService(
-            new IndexingProperties(20, 5, 50, null, null, List.of(), null, null, null, 1));
+        new ChunkingService(new IndexingProperties(20, 5, 50, null, null, null, null, null, 1));
 
     DocumentPipelineResult result =
         pipeline(defaultProperties, tinyChunking)
@@ -678,7 +674,7 @@ class MailDocumentPipelineTest {
     long fileSize = Files.size(file);
 
     DocumentPipelineResult result =
-        pipeline(new MailProperties(0, 0, 0, fileSize - 1))
+        pipeline(new MailProperties(0, 0, fileSize - 1))
             .run(DocumentPipelineSource.ofFile(file, "zu-gross.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
@@ -690,7 +686,7 @@ class MailDocumentPipelineTest {
     long fileSize = Files.size(file);
 
     DocumentPipelineResult result =
-        pipeline(new MailProperties(0, 0, 0, fileSize + 1))
+        pipeline(new MailProperties(0, 0, fileSize + 1))
             .run(DocumentPipelineSource.ofFile(file, "passt.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
@@ -835,7 +831,7 @@ class MailDocumentPipelineTest {
                 messageWithAttachments(
                     List.of("klein.txt", "zu-gross.txt", "auch-klein.txt"),
                     List.of("Erster.", oversized, "Dritter."))));
-    MailProperties tightAttachmentLimit = new MailProperties(0, 0, 100, 0);
+    MailProperties tightAttachmentLimit = new MailProperties(0, 100, 0);
 
     Set<Path> before = readerTempFiles();
     DocumentPipelineResult result =

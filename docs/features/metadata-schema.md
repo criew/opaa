@@ -25,7 +25,8 @@ siehe [Umgesetzt (#1066)](#umgesetzt-1066) und
 [ADR-0024](../decisions/0024-metadatenschema-kernfelder.md); deterministischer Bestandslauf — #1067,
 siehe [Umgesetzt (#1067)](#umgesetzt-1067); manuelle Korrektur, Sammelzuweisung und Audit-Ereignis —
 #1068, siehe [Umgesetzt (#1068)](#umgesetzt-1068); Pflege-Anker und der dritte Zustand „kein Wert
-ermittelbar" — #1069, siehe [Umgesetzt (#1069)](#umgesetzt-1069)); alles Weitere — Filter,
+ermittelbar" — #1069, siehe [Umgesetzt (#1069)](#umgesetzt-1069); Dokumentart auch aus Dokumentkopf
+und Dateiformat — #1263, siehe [Umgesetzt (#1263)](#umgesetzt-1263)); alles Weitere — Filter,
 Bibliotheksfelder, Modell-Extraktion — ist noch nicht gebaut.
 
 ---
@@ -389,8 +390,78 @@ gekennzeichnet; `location` bleibt die Fundstelle. Die vier Mail-Sonderfelder
 Rechtekontext" ist durch Beschluss 1 des Maintainers ersetzt (Systemprozess; die Rechte-Invariante gilt
 für Aggregate, Stichproben und Modell-Extraktion). Das Korpus-Frontmatter `dokumentart: formularhinweis`
 bleibt leer — es ist kein Vokabularwert, und die Regel verbietet die Abbildung auf `FORMULAR`.
-Tabellen-Pipelines (XLSX/CSV/ODS) und der Tika-Fallback liefern keine `DocumentProperties`; dort
-greifen nur Dateiname und Struktur.
+Tabellen-Pipelines (XLSX/CSV/ODS) liefern keine `DocumentProperties`; dort greifen nur Dateiname und
+Struktur. Der Tika-Fallback lieferte in diesem Schnitt ebenfalls keine — seit #1263 liefert er einen
+Kopftext.
+
+### Umgesetzt (#1263)
+
+Die Dokumentart aus **Dokumentkopf und Dateiformat**, nachgezogen nach dem ersten Füllstandsnachweis
+auf der Demo-Instanz (04.09.2026): Dort lag die Dokumentart bei 0–5 %, weil die Dateinamen des
+Bestands entweder gar keinen Vokabular-Token tragen (`01_identitaetszweifel-ausweisantrag.docx`,
+`21_onboarding-buergerbuero.pptx`) oder ihn als deutsches Kompositum
+(`01_verwaltungsgebuehrensatzung.pdf`), das ein exakter Token-Abgleich nicht sieht. Die
+Extraktionsversion steigt auf **2**; der Bestandslauf (#1067) wählt jedes Dokument der Version 1
+dadurch erneut aus.
+
+**Quellenreihenfolge der Dokumentart:** Frontmatter → Dateiname → Dokumentkopf → Dateiformat. Erste
+Quelle mit genau einem eindeutigen Treffer gewinnt. Für die drei Token-Quellen gilt: mehrere
+verschiedene Treffer in **einer** Quelle liefern aus dieser Quelle nichts, die nächste Quelle wird
+aber noch gefragt — ein mehrdeutiger Dateiname ist keine Aussage über das Dokument, sondern nur eine
+Quelle ohne Ergebnis. Die Frontmatter-Deklaration bleibt davon ausgenommen: Sie ist eine ausdrückliche
+Erklärung, und ein Wert außerhalb des Vokabulars lässt das Feld leer, statt auf den Dateinamen
+durchzufallen (unverändert seit #1066).
+
+**Dokumentkopf.** `DocumentProperties` trägt neben der ersten Überschrift einen **Kopftext**: den
+Anfang des Fließtextes, auf 300 Zeichen begrenzt — die Begrenzung sitzt im Record selbst, damit keine
+Pipeline versehentlich ein ganzes Dokument als Kopf übergeben kann. Befüllt von DOCX, ODT, Markdown,
+HTML, PDF (die erste Seite, auf beiden Wegen — `run` und `readProperties` — dieselbe) und dem
+Tika-Fallback (aus dem extrahierten Text; er liefert damit erstmals überhaupt Rohquellen). Der
+Abgleich läuft über Wortgrenzen, groß-/kleinschreibungs- und umlautunempfindlich, **exakt** gegen
+Code, Label und Synonyme — die Endungsregel unten gilt hier ausdrücklich **nicht**: Fließtext ist voll
+von Komposita, die keine Dokumentart sind („die Tagesordnung wird festgestellt", „in dieser
+Größenordnung"), und ein falscher Wert mit Herkunft `DETERMINISTIC` ist genau der unsichtbare
+Dauerschaden, den die Leitregel ausschließt. Ein Wort **jenseits** des Kopfbereichs kann ohnehin keine
+Dokumentart auslösen; der Schnitt bei 300 Zeichen läuft bis zur letzten Wortgrenze, damit kein
+Wortfragment zum Treffer wird. Ein Kopftext entsteht nur für eine echte Datei: Der Fließtext eines
+RSS-Beitrags ist kein Kopfbereich, weil eine Pressemitteilung *andere* Dokumente benennt als sich
+selbst.
+
+**Kompositum-Endungsregel (Migration 020).** Je Vokabularwert sind Endungen geseedet
+(`document_type_suffixes`: `satzung`, `ordnung`, `dienstanweisung`, `gebuehrenverzeichnis`,
+`protokoll`, `formular`, `vermerk`) mit einer Mindestlänge des Vorderteils (3). Sie gilt **nur für
+Dateinamen-Token**. Ein Token, das auf eine Endung endet und genug davor trägt, denotiert diese
+Dokumentart:
+`verwaltungsgebuehrensatzung` → `SATZUNG_ORDNUNG`, `verordnung` (eine Rechtsnorm) ebenso,
+`anordnung` dagegen nicht. `document_type_suffix_exclusions` führt die Komposita, die eine Endung
+sonst zu Unrecht beanspruchen würde — `Tagesordnung`, `Größenordnung`, `Sitzordnung`, `Rangordnung`,
+`Ein-/Neu-/Um-/Unter-/Zu-/Neuzuordnung` sowie `Sperr-`, `Sicht-` und `Eingangsvermerk`; `anordnung`
+und `zuordnung` stehen dort zusätzlich, damit ein späteres Nachjustieren der Mindestlänge sie nicht
+stillschweigend zu Satzungen macht. Die Liste ist bewusst konkret statt schlau: Keine Längenregel
+trennt `Tagesordnung` von `Verordnung` oder `Hausordnung`, die Rechtsnormen sind und zugelassen
+bleiben. Deterministischer Zeichenvergleich, kein Distanzmaß — ein exakter Vokabularbegriff
+schlägt jede Endung (`dienstanordnung` ist eine Dienstanweisung), und ein Token, auf das zwei
+verschiedene Dokumentarten passen, liefert nichts. Die Endungsregel gilt nur für Token aus Dateiname
+und Kopf; ein **deklarierter oder manuell gesetzter** Wert wird weiterhin ausschließlich exakt gegen
+das Vokabular geprüft.
+
+**Ein Name, der kein Dateiname ist.** `DocumentProperties` trägt ein Kennzeichen dafür, ob der Name
+eines Dokuments überhaupt ein Dateiname ist. Für einen RSS-Beitrag ist er es nicht: Dort steht die
+Überschrift des Eintrags (ersatzweise seine URL) im `file_name`. Eine Überschrift benennt, *worum es
+geht*, nicht *was das Dokument ist* — „Rat beschließt neue Hundesteuersatzung" ist keine Satzung, und
+„Haushalt 2024 beschlossen" trägt keinen Stand. Für einen solchen synthetischen Namen entfallen
+deshalb **beide** Namensquellen: der Token-Abgleich der Dokumentart (samt Endungsregel) und die
+Datumsangabe aus dem Namen. Als **Titel** bleibt die Überschrift, denn genau das ist sie. Gesetzt wird
+das Kennzeichen an den zwei Stellen, an denen ein RSS-Eintragskörper in die Extraktion geht —
+`FileProcessingService#processRssEntry` im Ingest und `MetadataBackfillService` im Bestandslauf —,
+damit beide Wege dieselben Felder aus derselben Zeile lesen.
+
+**Dateiformat.** PPTX/ODP → `PRAESENTATION` (die beiden Präsentationsformate, die
+`SupportedDocumentFormats` überhaupt zulässt), als letzte Quelle: Jede Textquelle geht vor, und ein
+Vokabular ohne diesen Code liefert nichts. Keine Ableitung für PDF/DOCX — diese Formate tragen jede
+Dokumentart. Die geroutete Formatkennung hängt zentral an den Rohquellen
+(`DocumentPipelineRunner` im Ingest, `DocumentMetadataService#reextractFromFile` im Bestandslauf),
+nicht in den einzelnen Pipelines — sie ist ein Befund des Routings, nicht des Formats.
 
 ## Deterministischer Bestandslauf über den Altbestand
 

@@ -6,6 +6,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditAccessOutcome;
 import io.opaa.audit.AuditActorPseudonymService;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditQueryService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
@@ -122,9 +123,7 @@ public class DiagnosticContextLogQueryService {
         throw new AccessDeniedException(
             "Das Gesamtprotokoll steht nur den benannten Stellen offen");
       }
-      if (reason == null || reason.isBlank()) {
-        throw new ValidationException("Für die Einsicht ist ein Anlass anzugeben");
-      }
+      requireValidReason(reason);
       if (from == null || to == null || !to.isAfter(from)) {
         throw new ValidationException("Der Zeitraum ist unvollständig oder leer");
       }
@@ -173,9 +172,7 @@ public class DiagnosticContextLogQueryService {
         throw new AccessDeniedException(
             "Das Gesamtprotokoll steht nur den benannten Stellen offen");
       }
-      if (reason == null || reason.isBlank()) {
-        throw new ValidationException("Für die Einsicht ist ein Anlass anzugeben");
-      }
+      requireValidReason(reason);
       UUID requested = requireEventId(eventId);
       DiagnosticContextLogEntry entry =
           logRepository
@@ -213,6 +210,21 @@ public class DiagnosticContextLogQueryService {
         entry.getRecordedAt(), actorDisplayName, entry.getJustification());
   }
 
+  /**
+   * A missing or too-long reason is a rejected attempt, not a malfunction - an overlong one would
+   * otherwise reach {@link AuditEventRecorder#recordAuditLogAccess} and fail the write of {@code
+   * audit_log.reason varchar(1000)} itself, leaving the attempt unrecorded.
+   */
+  private static void requireValidReason(String reason) {
+    if (reason == null || reason.isBlank()) {
+      throw new ValidationException("Für die Einsicht ist ein Anlass anzugeben");
+    }
+    if (reason.length() > AuditQueryService.MAX_REASON_LENGTH) {
+      throw new ValidationException(
+          "Der Anlass ist zu lang - maximal " + AuditQueryService.MAX_REASON_LENGTH + " Zeichen");
+    }
+  }
+
   /** Parsed here, not bound by Spring MVC - see {@link #findSingleEvent}. */
   private static UUID requireEventId(String eventId) {
     if (eventId == null || eventId.isBlank()) {
@@ -233,10 +245,20 @@ public class DiagnosticContextLogQueryService {
         : eventId.substring(0, MAX_EVENT_ID_LENGTH);
   }
 
+  /**
+   * Bounds what an over-length {@code reason} can put into the entry - {@code audit_log.reason} is
+   * {@code varchar(1000)}, so a raw reason exceeding {@link AuditQueryService#MAX_REASON_LENGTH}
+   * would make even the rejected-attempt entry itself fail to write, defeating {@link
+   * #requireValidReason}'s point.
+   */
   private void recordProtocolAccess(
       CurrentUser caller, Map<String, Object> scope, String reason, AuditOutcome outcome) {
+    String bounded =
+        reason == null || reason.length() <= AuditQueryService.MAX_REASON_LENGTH
+            ? reason
+            : reason.substring(0, AuditQueryService.MAX_REASON_LENGTH);
     auditEventRecorder.recordAuditLogAccess(
-        caller.organizationId(), caller.id(), scope, outcome, reason);
+        caller.organizationId(), caller.id(), scope, outcome, bounded);
   }
 
   private static Optional<UUID> parseUuid(String value) {

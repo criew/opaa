@@ -114,7 +114,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
       VectorStoreWriter vectorStoreWriter, int embeddingConcurrency, int batchSize) {
     IndexingProperties properties =
         new IndexingProperties(
-            1000, 0, batchSize, null, null, null, null, null, null, embeddingConcurrency);
+            1000, 0, batchSize, null, null, null, null, null, embeddingConcurrency);
     // Mirrors IndexingConfiguration#embeddingTaskExecutor exactly (#734): the concurrency bound
     // is the executor's own pool size, not anything FileProcessingService enforces itself - a
     // test executor sized differently from embeddingConcurrency would not actually exercise the
@@ -138,7 +138,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
         properties,
         executor,
         org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-        new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+        new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, ""),
         org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
         TestDocumentMetadataServices.returningEmpty());
   }

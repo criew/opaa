@@ -12,9 +12,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * #maxMessageBytes} - checked against the message file's own size before either reader runs - is
  * the actual memory guard.
  *
- * @param maxAttachmentDepth how many levels of nested mail-in-mail attachments {@link
- *     MailDocumentPipeline} descends into before it stops recursing and skips the remainder.
- *     Default 5.
  * @param maxAttachmentsPerMessage the maximum number of attachments a single message's own reader
  *     extracts at all. Default 50.
  * @param maxAttachmentBytes the maximum size, in bytes, streamed into a single attachment's temp
@@ -24,15 +21,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  */
 @ConfigurationProperties(prefix = "opaa.indexing.mail")
 public record MailProperties(
-    int maxAttachmentDepth,
-    int maxAttachmentsPerMessage,
-    long maxAttachmentBytes,
-    long maxMessageBytes) {
+    int maxAttachmentsPerMessage, long maxAttachmentBytes, long maxMessageBytes) {
 
   public MailProperties {
-    if (maxAttachmentDepth <= 0) {
-      maxAttachmentDepth = 5;
-    }
     if (maxAttachmentsPerMessage <= 0) {
       maxAttachmentsPerMessage = 50;
     }

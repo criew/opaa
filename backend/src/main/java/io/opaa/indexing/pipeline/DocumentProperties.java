@@ -24,6 +24,17 @@ import java.util.TreeMap;
  * @param documentDate a date the format declares as the document's own date (a mail's Date header);
  *     ranks above every other date source
  * @param firstHeading the first level-1 heading of the text, if the format has headings
+ * @param headText the opening of the body text, truncated to {@link #MAX_HEAD_TEXT_LENGTH}
+ *     characters here rather than by the pipeline (#1263) - the Kopfbereich the Dokumentart may be
+ *     read from, and the reason a word further down the document can never become one
+ * @param formatExtension the routed format extension of the document ({@code ".pptx"}), lower-cased
+ *     - attached centrally by {@code DocumentPipelineRunner} and {@code
+ *     DocumentMetadataService#reextractFromFile} from {@link
+ *     DocumentPipelineSource#detectedExtension()}, never by a pipeline; {@code null} when routing
+ *     resolved none
+ * @param syntheticName whether the document's name is <em>not</em> a file name but free text an
+ *     upstream source declared - an RSS entry's headline or its URL (#1263). A naming convention
+ *     can only be read out of a real file name; a headline names what an article is <em>about</em>.
  * @param frontmatter a Markdown YAML frontmatter's scalar entries, verbatim, keys lower-cased
  */
 public record DocumentProperties(
@@ -32,14 +43,22 @@ public record DocumentProperties(
     LocalDate modifiedAt,
     LocalDate documentDate,
     String firstHeading,
+    String headText,
+    String formatExtension,
+    boolean syntheticName,
     Map<String, String> frontmatter) {
 
+  /** Upper bound of {@link #headText}, in characters. */
+  public static final int MAX_HEAD_TEXT_LENGTH = 300;
+
   public static final DocumentProperties EMPTY =
-      new DocumentProperties(null, null, null, null, null, Map.of());
+      new DocumentProperties(null, null, null, null, null, null, null, false, Map.of());
 
   public DocumentProperties {
     title = blankToNull(title);
     firstHeading = blankToNull(firstHeading);
+    headText = truncate(blankToNull(headText));
+    formatExtension = lowerCase(blankToNull(formatExtension));
     Map<String, String> normalized = new TreeMap<>();
     if (frontmatter != null) {
       frontmatter.forEach(
@@ -54,32 +73,120 @@ public record DocumentProperties(
 
   public DocumentProperties withTitle(String title) {
     return new DocumentProperties(
-        title, createdAt, modifiedAt, documentDate, firstHeading, frontmatter);
+        title,
+        createdAt,
+        modifiedAt,
+        documentDate,
+        firstHeading,
+        headText,
+        formatExtension,
+        syntheticName,
+        frontmatter);
   }
 
   public DocumentProperties withCreatedAt(LocalDate createdAt) {
     return new DocumentProperties(
-        title, createdAt, modifiedAt, documentDate, firstHeading, frontmatter);
+        title,
+        createdAt,
+        modifiedAt,
+        documentDate,
+        firstHeading,
+        headText,
+        formatExtension,
+        syntheticName,
+        frontmatter);
   }
 
   public DocumentProperties withModifiedAt(LocalDate modifiedAt) {
     return new DocumentProperties(
-        title, createdAt, modifiedAt, documentDate, firstHeading, frontmatter);
+        title,
+        createdAt,
+        modifiedAt,
+        documentDate,
+        firstHeading,
+        headText,
+        formatExtension,
+        syntheticName,
+        frontmatter);
   }
 
   public DocumentProperties withDocumentDate(LocalDate documentDate) {
     return new DocumentProperties(
-        title, createdAt, modifiedAt, documentDate, firstHeading, frontmatter);
+        title,
+        createdAt,
+        modifiedAt,
+        documentDate,
+        firstHeading,
+        headText,
+        formatExtension,
+        syntheticName,
+        frontmatter);
   }
 
   public DocumentProperties withFirstHeading(String firstHeading) {
     return new DocumentProperties(
-        title, createdAt, modifiedAt, documentDate, firstHeading, frontmatter);
+        title,
+        createdAt,
+        modifiedAt,
+        documentDate,
+        firstHeading,
+        headText,
+        formatExtension,
+        syntheticName,
+        frontmatter);
+  }
+
+  public DocumentProperties withHeadText(String headText) {
+    return new DocumentProperties(
+        title,
+        createdAt,
+        modifiedAt,
+        documentDate,
+        firstHeading,
+        headText,
+        formatExtension,
+        syntheticName,
+        frontmatter);
+  }
+
+  /** Marks the document's name as free text rather than a file name (#1263). */
+  public DocumentProperties withSyntheticName(boolean syntheticName) {
+    return new DocumentProperties(
+        title,
+        createdAt,
+        modifiedAt,
+        documentDate,
+        firstHeading,
+        headText,
+        formatExtension,
+        syntheticName,
+        frontmatter);
+  }
+
+  public DocumentProperties withFormatExtension(String formatExtension) {
+    return new DocumentProperties(
+        title,
+        createdAt,
+        modifiedAt,
+        documentDate,
+        firstHeading,
+        headText,
+        formatExtension,
+        syntheticName,
+        frontmatter);
   }
 
   public DocumentProperties withFrontmatter(Map<String, String> frontmatter) {
     return new DocumentProperties(
-        title, createdAt, modifiedAt, documentDate, firstHeading, frontmatter);
+        title,
+        createdAt,
+        modifiedAt,
+        documentDate,
+        firstHeading,
+        headText,
+        formatExtension,
+        syntheticName,
+        frontmatter);
   }
 
   /** A format's {@link Calendar} property (PDFBox) as the calendar's own local date. */
@@ -119,5 +226,26 @@ public record DocumentProperties(
 
   private static String blankToNull(String value) {
     return value == null || value.isBlank() ? null : value.strip();
+  }
+
+  /**
+   * Cut back to the last word boundary at or before {@link #MAX_HEAD_TEXT_LENGTH}, never through a
+   * word: a cut behind a seeded Kompositum ending would turn a fragment into a match. A head whose
+   * limit falls inside a single unbroken token has no trustworthy boundary at all and is dropped.
+   */
+  private static String truncate(String value) {
+    if (value == null || value.length() <= MAX_HEAD_TEXT_LENGTH) {
+      return value;
+    }
+    int end = MAX_HEAD_TEXT_LENGTH;
+    while (end > 0 && Character.isLetterOrDigit(value.charAt(end))) {
+      end--;
+    }
+    String cut = value.substring(0, end).stripTrailing();
+    return cut.isEmpty() ? null : cut;
+  }
+
+  private static String lowerCase(String value) {
+    return value == null ? null : value.toLowerCase(Locale.ROOT);
   }
 }

@@ -322,7 +322,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
     // AsyncIndexingExecutor refuses the run outright (empty allowlist disables FILESYSTEM
     // entirely, see FilesystemPathAllowlist).
     registry.add(
-        "opaa.indexing.filesystem-allowlist", () -> corpusWorkingDir.toAbsolutePath().toString());
+        "opaa.indexing.filesystem.allowlist", () -> corpusWorkingDir.toAbsolutePath().toString());
     // Deliberately NOT overriding opaa.indexing.chunk-size here — see
     // EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE javadoc and ADR-0010: the harness measures whatever
     // chunk-size production is actually configured with (application.yml's own default).

@@ -109,7 +109,7 @@ Neue Backend-Integrationstests verwenden eine der kanonischen Meta-Annotationen 
 - `@OpaaIndexingIntegrationTest` — dieselbe Basis wie `@OpaaIntegrationTest`, ergänzt um die feste
   Chunking-Konfiguration (`opaa.indexing.chunk-size`/`-overlap`/`-batch-size` als `properties`) und
   den kanonischen Mock-/Fake-LLM-Satz (`ChatModel`, `ActiveChatModelResolver`, `EmbeddingModel`) der
-  Indexing-Pipeline-Tests. `opaa.indexing.filesystem-allowlist` zeigt auf ein einziges,
+  Indexing-Pipeline-Tests. `opaa.indexing.filesystem.allowlist` zeigt auf ein einziges,
   prozessweites Basisverzeichnis (`OpaaIndexingTestDirectory.BASE_DIR`), einmalig über einen
   `ApplicationContextInitializer` registriert statt über eine klassenlokale
   `@DynamicPropertySource` — eine Testklasse legt sich darunter mit

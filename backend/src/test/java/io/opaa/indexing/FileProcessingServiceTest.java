@@ -89,7 +89,7 @@ class FileProcessingServiceTest {
             defaultIndexingProperties(),
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, ""),
             org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
             TestDocumentMetadataServices.returningEmpty());
     targetLibrary = library();
@@ -117,7 +117,7 @@ class FileProcessingServiceTest {
   // storeChunks path (a single vectorStore.add call) unless it opts into concurrency itself (see
   // EmbeddingConcurrencyTest) - Runnable::run above is therefore never actually invoked here.
   private static IndexingProperties defaultIndexingProperties() {
-    return new IndexingProperties(1000, 0, 50, null, null, null, null, null, null, 1);
+    return new IndexingProperties(1000, 0, 50, null, null, null, null, null, 1);
   }
 
   // Mirrors VectorChunkStore#deleteByDocumentId's own filter construction, so assertions here
@@ -197,7 +197,7 @@ class FileProcessingServiceTest {
             defaultIndexingProperties(),
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, ""),
             org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
             TestDocumentMetadataServices.returningEmpty());
 
@@ -340,7 +340,7 @@ class FileProcessingServiceTest {
             defaultIndexingProperties(),
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, ""),
             org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
             TestDocumentMetadataServices.returningEmpty());
 
@@ -530,7 +530,7 @@ class FileProcessingServiceTest {
             defaultIndexingProperties(),
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, ""),
             org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
             TestDocumentMetadataServices.returningEmpty());
 
@@ -580,7 +580,7 @@ class FileProcessingServiceTest {
             defaultIndexingProperties(),
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, ""),
             org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
             TestDocumentMetadataServices.returningEmpty());
 
@@ -2090,7 +2090,7 @@ class FileProcessingServiceTest {
             defaultIndexingProperties(),
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, ""),
             org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
             TestDocumentMetadataServices.returningEmpty());
 

@@ -221,7 +221,7 @@ class AsyncIndexingExecutorTest {
         .parseDocument(file);
 
     IndexingProperties indexingProperties =
-        new IndexingProperties(1000, 0, 50, null, null, null, null, null, null, 1);
+        new IndexingProperties(1000, 0, 50, null, null, null, null, null, 1);
     FileProcessingService realFileProcessingService =
         new FileProcessingService(
             TestPipelineRegistries.fallbackOnly(
@@ -239,7 +239,7 @@ class AsyncIndexingExecutorTest {
             indexingProperties,
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, ""),
             org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
             io.opaa.indexing.TestDocumentMetadataServices.returningEmpty());
 

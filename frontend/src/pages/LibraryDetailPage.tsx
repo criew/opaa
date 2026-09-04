@@ -142,6 +142,7 @@ export default function LibraryDetailPage() {
   const loadLibraryDetails = useLibraryStore((s) => s.loadLibraryDetails)
   const updateExistingLibrary = useLibraryStore((s) => s.updateExistingLibrary)
   const deleteExistingLibrary = useLibraryStore((s) => s.deleteExistingLibrary)
+  const setLibraryDiagnosticsLock = useLibraryStore((s) => s.setLibraryDiagnosticsLock)
   const storeError = useLibraryStore((s) => s.error)
 
   const [grantsDialogOpen, setGrantsDialogOpen] = useState(false)
@@ -153,6 +154,8 @@ export default function LibraryDetailPage() {
   } | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [diagnosticsLockError, setDiagnosticsLockError] = useState<string | null>(null)
+  const [diagnosticsLockSaving, setDiagnosticsLockSaving] = useState(false)
 
   useEffect(() => {
     // The list entry (myRole, documentCount, sourceType) may not be loaded yet if this page was
@@ -220,6 +223,24 @@ export default function LibraryDetailPage() {
       navigate('/libraries')
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen')
+    }
+  }
+
+  // #1257: PUT .../diagnostics-lock takes the desired end state, not a toggle - this always
+  // requests the opposite of the currently rendered state, so a stale double-click cannot request
+  // the same state twice.
+  async function handleToggleDiagnosticsLock() {
+    if (!libraryId || !details) return
+    setDiagnosticsLockError(null)
+    setDiagnosticsLockSaving(true)
+    try {
+      await setLibraryDiagnosticsLock(libraryId, !details.diagnosticsLocked)
+    } catch (err) {
+      setDiagnosticsLockError(
+        err instanceof Error ? err.message : 'Diagnosesperre konnte nicht geändert werden',
+      )
+    } finally {
+      setDiagnosticsLockSaving(false)
     }
   }
 
@@ -404,6 +425,21 @@ export default function LibraryDetailPage() {
               )}
             </Stack>
           )}
+
+          {details && (
+            <DiagnosticsLockControl
+              locked={details.diagnosticsLocked ?? true}
+              // #1278 review: myRole bypasses to OWNER for a system admin unconditionally
+              // (LibraryResponse#myRole) - this dedicated field mirrors the backend's stricter
+              // holdsIndependentOwnerRole instead, so an admin without an independent OWNER grant
+              // never sees a button that is guaranteed to fail with 403.
+              canToggle={details.diagnosticsLockToggleable ?? false}
+              saving={diagnosticsLockSaving}
+              error={diagnosticsLockError}
+              onToggle={() => void handleToggleDiagnosticsLock()}
+              onDismissError={() => setDiagnosticsLockError(null)}
+            />
+          )}
         </Stack>
       </Box>
 
@@ -451,6 +487,65 @@ export default function LibraryDetailPage() {
           library={{ id: libraryId, name: library.name }}
           onClose={() => setGrantsDialogOpen(false)}
         />
+      )}
+    </Box>
+  )
+}
+
+interface DiagnosticsLockControlProps {
+  locked: boolean
+  canToggle: boolean
+  saving: boolean
+  error: string | null
+  onToggle: () => void
+  onDismissError: () => void
+}
+
+// #1257: renders the Diagnosesperre state (docs/features/hybrid-retrieval.md, Leitplanke (e)) -
+// visible to everyone who may read the library (see LibraryResponse#diagnosticsLocked), but only
+// togglable by the responsible body itself. The 403 a caller without that standing gets back from
+// PUT .../diagnostics-lock is shown verbatim (see normalizeError) - it already names, in German,
+// who may act instead.
+function DiagnosticsLockControl({
+  locked,
+  canToggle,
+  saving,
+  error,
+  onToggle,
+  onDismissError,
+}: DiagnosticsLockControlProps) {
+  return (
+    <Box sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        <Chip
+          label={locked ? 'Diagnose gesperrt' : 'Diagnose freigegeben'}
+          size="small"
+          color={locked ? 'default' : 'warning'}
+          variant="outlined"
+        />
+        {canToggle && (
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={onToggle}
+            disabled={saving}
+            aria-label={locked ? 'Diagnosesperre lösen' : 'Diagnosesperre setzen'}
+          >
+            {saving ? 'Wird gespeichert …' : locked ? 'Sperre lösen' : 'Sperre setzen'}
+          </Button>
+        )}
+      </Stack>
+      <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.5 }}>
+        Solange gesperrt, bleibt diese Bibliothek von einer Suchdiagnose im Rechtekontext einer
+        anderen Person ausgeschlossen — dort ist dann weder ein Treffer noch ein Titel aus ihr zu
+        sehen.
+        {!canToggle &&
+          ' Setzen und lösen kann die Sperre nur die für die Bibliothek zuständige Stelle (Eigentümer), nicht die Systemverwaltung als solche.'}
+      </Typography>
+      {error && (
+        <Alert severity="error" sx={{ mt: 1 }} onClose={onDismissError}>
+          {error}
+        </Alert>
       )}
     </Box>
   )
