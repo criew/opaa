@@ -1010,7 +1010,7 @@ public class FileProcessingService {
       // deleting them here mirrors processFile/processUrlFile's own re-index cleanup, so a FAILED
       // row never leaves orphaned chunks still returned by search.
       vectorChunkStore.deleteByDocumentId(doc.getId());
-      markUploadFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
+      markUploadFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden", true);
       metrics.recordFailed();
       return false;
     }
@@ -1030,7 +1030,20 @@ public class FileProcessingService {
   }
 
   private void markUploadFailed(UUID documentId, String errorMessage) {
-    int updated = documentRepository.markFailed(documentId, errorMessage);
+    markUploadFailed(documentId, errorMessage, false);
+  }
+
+  /**
+   * @param chunksRemoved whether this document's chunks were just deleted - {@code chunk_count}
+   *     then has to become {@code 0} to match (#1268, see {@link
+   *     DocumentRepository#markFailedWithoutChunks}). {@code false} on every outcome that reached
+   *     this before {@link #storeChunks} ever ran, where the column is already correct.
+   */
+  private void markUploadFailed(UUID documentId, String errorMessage, boolean chunksRemoved) {
+    int updated =
+        chunksRemoved
+            ? documentRepository.markFailedWithoutChunks(documentId, errorMessage)
+            : documentRepository.markFailed(documentId, errorMessage);
     if (updated == 0) {
       log.warn("Uploaded document {} was deleted before it could be marked FAILED", documentId);
     }
@@ -1129,6 +1142,8 @@ public class FileProcessingService {
    *     costs nothing but the attempt, and deleting here would destroy exactly the state the
    *     ordering exists to protect. {@code false} once those chunks were deleted, and for every
    *     first-time document, where any chunk carrying {@code documentId} is from this failed run.
+   *     It also decides {@code chunk_count}: preserved chunks keep the count that describes them,
+   *     removed ones leave the row at {@code 0}.
    *     <p>The chunk delete is wrapped in its own {@code try/catch}: this runs from inside the
    *     outer catch block of {@code processFile}/{@code processUrlFile}/{@code processRssEntry},
    *     which rethrows the original failure once this method returns. A pgvector outage on this
@@ -1148,7 +1163,10 @@ public class FileProcessingService {
             e);
       }
     }
-    int updated = documentRepository.markFailed(documentId, null);
+    int updated =
+        preservingPreviousChunks
+            ? documentRepository.markFailed(documentId, null)
+            : documentRepository.markFailedWithoutChunks(documentId, null);
     if (updated == 0) {
       log.warn("Document {} was deleted before it could be marked FAILED", documentId);
     }

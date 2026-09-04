@@ -983,7 +983,8 @@ class FileProcessingServiceTest {
 
     // Twice: once to make room for the new chunks, once to remove whatever the failed write left.
     verify(vectorStore, times(2)).delete(documentIdFilter(existingDoc.getId()));
-    verify(documentRepository).markFailed(existingDoc.getId(), null);
+    // ... and the row must say so: the chunks are gone, so the count cannot keep claiming them.
+    verify(documentRepository).markFailedWithoutChunks(existingDoc.getId(), null);
   }
 
   @Test
@@ -1793,7 +1794,7 @@ class FileProcessingServiceTest {
         .thenReturn(chunks);
     when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), anyString(), any()))
         .thenThrow(new RuntimeException("final update blew up"));
-    when(documentRepository.markFailed(any(), any())).thenReturn(1);
+    when(documentRepository.markFailedWithoutChunks(any(), any())).thenReturn(1);
 
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () -> service.processFile(file, targetLibrary))
@@ -1809,7 +1810,8 @@ class FileProcessingServiceTest {
     verify(documentRepository).save(docCaptor.capture());
     verify(vectorStore).delete(documentIdFilter(docCaptor.getValue().getId()));
     verify(documentRepository)
-        .markFailed(eq(docCaptor.getValue().getId()), org.mockito.ArgumentMatchers.isNull());
+        .markFailedWithoutChunks(
+            eq(docCaptor.getValue().getId()), org.mockito.ArgumentMatchers.isNull());
   }
 
   // #434/#589: processUploadedFile is now processUploadedFileAsync - it no longer creates or
@@ -1932,12 +1934,14 @@ class FileProcessingServiceTest {
     when(documentService.parseDocument(file)).thenReturn(parsed);
     when(chunkingService.chunkDocuments(eq("upload-that-fails-later.pdf"), eq(parsed)))
         .thenThrow(new RuntimeException("chunking blew up"));
-    when(documentRepository.markFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden"))
+    when(documentRepository.markFailedWithoutChunks(
+            doc.getId(), "Die Datei konnte nicht verarbeitet werden"))
         .thenReturn(1);
 
     service.processUploadedFileAsync(doc.getId(), file);
 
-    verify(documentRepository).markFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
+    verify(documentRepository)
+        .markFailedWithoutChunks(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
     // The catch block's vectorStore.delete call is made unconditionally, the same way
     // processFile/processUrlFile's own re-index paths always do regardless of whether there was
     // anything to remove (chunkDocuments itself threw here, before storeChunks could run).
@@ -2017,7 +2021,8 @@ class FileProcessingServiceTest {
         .thenReturn(chunks);
     when(documentRepository.markIndexed(eq(doc.getId()), eq(1), any()))
         .thenThrow(new RuntimeException("final update blew up"));
-    when(documentRepository.markFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden"))
+    when(documentRepository.markFailedWithoutChunks(
+            doc.getId(), "Die Datei konnte nicht verarbeitet werden"))
         .thenReturn(1);
 
     service.processUploadedFileAsync(doc.getId(), file);
@@ -2028,7 +2033,8 @@ class FileProcessingServiceTest {
     // else points at them.
     verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
     verify(vectorStore).delete(documentIdFilter(doc.getId()));
-    verify(documentRepository).markFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
+    verify(documentRepository)
+        .markFailedWithoutChunks(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
     verify(documentRepository, never()).delete(any(Document.class));
   }
 

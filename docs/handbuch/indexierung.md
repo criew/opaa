@@ -234,9 +234,9 @@ flowchart TB
     R -- gelesen, aber leer --> FA[fehlgeschlagen,<br/>alte Chunks entfernt]
     R -- kein Text<br/>z. B. Scan-PDF --> NT[abgewiesen: kein extrahierbarer<br/>Text, alte Chunks entfernt]
     R -- Chunks --> S5[5 Metadaten anreichern]
-    S5 --> S6[6 Embedden]
-    S6 --> S6b[6a alte Chunks entfernen<br/>bei geändertem Dokument]
-    S6b --> S7[7 Vektor + Volltext schreiben<br/>eine Transaktion]
+    S5 --> S6b[6a alte Chunks entfernen<br/>bei geändertem Dokument]
+    S6b --> S6[6 Embedden]
+    S6 --> S7[7 Vektor + Volltext schreiben<br/>eine Transaktion]
     S7 --> S8[8 Dokument als indiziert markieren]
     S4 -. gefundene Anhänge .-> AT[Anhänge als eigene<br/>Dokumente durch dieselbe Strecke]
 ```
@@ -263,7 +263,9 @@ Dokument steht auf „fehlgeschlagen", behält aber seine Chunks und seine bishe
 Nur eine neue Fassung, die gelesen werden konnte und leer oder ohne extrahierbaren Text ist,
 entfernt die alten Chunks — dann ist „leer" eine Aussage über den neuen Inhalt, und die
 Chunk-Anzahl der Dokumentzeile steht auf 0. An der Chunk-Anzahl einer fehlgeschlagenen
-Dokumentzeile ist damit ablesbar, welcher der beiden Fälle vorliegt.
+Dokumentzeile ist damit ablesbar, ob sie noch Chunks hat oder nicht — maßgeblich ist, ob gelöscht
+wurde, nicht der Grund des Fehlschlags: Auch ein Fehler beim Embedden oder Schreiben, also nach dem
+Löschen, hinterlässt eine 0.
 
 ### Schritt 2: Speicherkontingent
 

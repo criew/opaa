@@ -243,10 +243,13 @@ Welcher Ausgang was bedeutet — für die Konnektorwege (`processFile`, `process
 | `CHUNKED` | werden unmittelbar vor dem Schreiben der neuen ersetzt | `INDEXED` |
 | `NO_CONTENT` (geparst, leer) | werden entfernt — „leer" ist eine Aussage über die neue Fassung | `FAILED`, `chunk_count = 0` |
 | `NO_EXTRACTABLE_TEXT` (z. B. Scan-PDF ohne Textebene) | werden entfernt — dieselbe Begründung | `FAILED`, `chunk_count = 0`, mit Hinweis auf fehlenden extrahierbaren Text |
-| `PARSE_FAILED` oder Ausnahme aus der Pipeline | **bleiben unverändert** | `FAILED`, `chunk_count` unverändert, Ereignis protokolliert |
+| `PARSE_FAILED` oder Ausnahme **vor** dem Löschen | **bleiben unverändert** | `FAILED`, `chunk_count` unverändert, Ereignis protokolliert |
+| Ausnahme **nach** dem Löschen (Embedding, Schreibvorgang) | sind bereits weg; angefangene neue werden mit entfernt | `FAILED`, `chunk_count = 0`, Ereignis protokolliert |
 
-`chunk_count` ist damit auch die Auskunft darüber, welcher der beiden `FAILED`-Fälle vorliegt: ein
-Wert größer null heißt „noch mit dem alten Stand durchsuchbar", null heißt „leer".
+`chunk_count` ist damit auch die Auskunft darüber, welcher `FAILED`-Fall vorliegt: ein Wert größer
+null heißt „noch mit dem alten Stand durchsuchbar", null heißt „ohne Chunks". Maßgeblich ist dabei
+nicht der Ausgang, sondern ob gelöscht wurde — eine Ausnahme, die erst nach dem Löschen auftritt,
+hinterlässt ebenfalls eine Null.
 
 Auf dem **Nachzugsweg** (`PipelineReindexService` → `reindexStoredDocument`) bleiben auch die leeren
 Ausgänge folgenlos: Dort ist die Datei unverändert und nur die Pipeline-Version neu, ein leeres
