@@ -689,3 +689,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+# throwaway verification comment for PR #1247, remove before merge
