@@ -5196,6 +5196,23 @@ components:
             link that is the entire point of #738/#740, not the library's crawl configuration (host,
             proxy, credentials) that #507 protects. Maintainer decision on PR #743 (Epic #740).
           example: https://example.gov/verzeichnis/dienstanweisung-2024.pdf
+        sourceContainerKey:
+          type: string
+          nullable: true
+          description: >
+            The container within the source system the document came from - a Confluence space key
+            (ADR-0023, #1136). Visible to every VIEWER, like the library's selected spaces
+            themselves (#1138): the key names one document's origin, not the library's crawl
+            configuration. Null for every other source type.
+          example: IT
+        sourceHierarchyPath:
+          type: string
+          nullable: true
+          description: >
+            The document's position within its source container - a Confluence page's ancestor
+            titles, root first, joined with " / " (ADR-0023, "Identität und Metadaten"). Null for
+            a top-level page and for every other source type.
+          example: Betriebshandbuch / Kapitel 1 — Netzwerkbetrieb
         errorMessage:
           type: string
           nullable: true
