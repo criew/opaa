@@ -169,8 +169,24 @@ es nur beim Feed-Konnektor.
 
 ## 8. Ordner
 
-Heute keine Ordnerspiegelung; die Verzeichnisstruktur der Quelle bleibt nur in der URL des
-Dokuments sichtbar. Ticket #1277 spiegelt sie wie beim Dateisystem als schreibgeschützte Ordner.
+Der Lauf spiegelt die Verzeichnisstruktur der Quelle als schreibgeschützte Ordner, wie beim
+Dateisystem. Der Ordnerpfad ist der Teil des URL-Pfads unterhalb der Start-URL, ohne den Dateinamen
+und ohne Abfrageparameter; jedes Segment wird prozentdekodiert, `Verg%C3%BCtung` wird also zum
+Ordner `Vergütung`.
+
+Ordner entstehen nur entlang gefundener Dateien — ein Verzeichnis, in dem nichts Indexierbares
+liegt, erscheint nicht. Angelegt oder umbenannt werden können sie nicht: Die Ordner-Endpunkte
+antworten für diesen Quellentyp mit `409`, die Quelle ist führend.
+
+Ein Segment, das nach der Dekodierung leer ist, `.` oder `..` lautet oder einen Pfadtrenner
+enthält, lässt sich nicht als Ordnername darstellen. Die betroffene Datei landet dann in der Wurzel
+der Bibliothek, und im Anwendungsprotokoll steht eine Warnung mit der betroffenen URL.
+
+Ein Verzeichnis, das keine Dokumente mehr hält, verschwindet am Ende eines Laufs — allerdings nur
+unter derselben Bedingung wie die Löscherkennung im nächsten Abschnitt: Ein abgeschnittener oder
+unvollständiger Crawl räumt weder Dokumente noch Ordner auf. Dokumente, die vor Einführung der
+Spiegelung indiziert wurden, bekommen ihren Ordner beim nächsten Lauf zugewiesen, ohne dass sie neu
+eingelesen werden. Ein Anhang liegt im Ordner seiner Mail.
 
 ## 9. Löscherkennung
 
@@ -235,6 +251,5 @@ Thread-Pool, Kontingent, Mail-Grenzen und Chunking wie im Kapitel [Indexierung](
   Feed-Konnektor
 - Wiederholungsversuche und Backoff
 - Bedingte Anfragen mit ETag
-- Ordnerspiegelung
 - Schonzeitraum, Rechteübernahme, ereignisgesteuerte Aktualisierung, Drosselung nach
   wiederholtem Scheitern
