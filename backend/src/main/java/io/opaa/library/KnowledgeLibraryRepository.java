@@ -42,4 +42,10 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
    * {@code sourceType} filter.
    */
   List<KnowledgeLibrary> findByScheduleEnabledTrue();
+
+  /**
+   * How many libraries of one organization are diagnosegesperrt - counted over the whole bestand,
+   * never intersected with anyone's read rights.
+   */
+  long countByOrganizationIdAndDiagnosticsLockedTrue(UUID organizationId);
 }

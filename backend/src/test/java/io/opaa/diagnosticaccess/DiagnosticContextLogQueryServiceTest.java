@@ -121,6 +121,38 @@ class DiagnosticContextLogQueryServiceTest {
         .isInstanceOf(ValidationException.class);
   }
 
+  /**
+   * Regression guard for #1256: an over-length reason must be rejected with a 400-mapped {@link
+   * ValidationException} and recorded as {@code DENIED} - not left to fail the {@code audit_log}
+   * write of {@code varchar(1000)} and surface as an unrecorded 500.
+   */
+  @Test
+  void anOverlongReasonIsRejectedAndTheAttemptIsRecorded() {
+    String overlong = "x".repeat(1001);
+
+    assertThatThrownBy(
+            () ->
+                service.findByTimeRange(
+                    caller(SystemRole.AUDITOR),
+                    FROM,
+                    FROM.plus(1, ChronoUnit.DAYS),
+                    overlong,
+                    0,
+                    50))
+        .isInstanceOf(ValidationException.class);
+
+    ArgumentCaptor<String> recordedReason = ArgumentCaptor.captor();
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID),
+            eq(callerId),
+            any(),
+            eq(AuditOutcome.DENIED),
+            recordedReason.capture());
+    assertThat(recordedReason.getValue()).hasSize(1000);
+    verify(logRepository, never()).findByTimeRange(any(), any(), any(), any());
+  }
+
   @Test
   void anAuditorCannotRequestAnUnboundedWindow() {
     assertThatThrownBy(
@@ -198,6 +230,31 @@ class DiagnosticContextLogQueryServiceTest {
                     caller(SystemRole.AUDITOR), UUID.randomUUID().toString(), "  "))
         .isInstanceOf(ValidationException.class);
 
+    verify(logRepository, never()).findSingleEntry(any(), any());
+  }
+
+  /**
+   * Same bound as {@link #anOverlongReasonIsRejectedAndTheAttemptIsRecorded}, single-entry path.
+   */
+  @Test
+  void aSingleEntryReasonThatIsTooLongIsRejectedAndTheAttemptIsRecorded() {
+    String overlong = "x".repeat(1001);
+
+    assertThatThrownBy(
+            () ->
+                service.findSingleEvent(
+                    caller(SystemRole.AUDITOR), UUID.randomUUID().toString(), overlong))
+        .isInstanceOf(ValidationException.class);
+
+    ArgumentCaptor<String> recordedReason = ArgumentCaptor.captor();
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID),
+            eq(callerId),
+            any(),
+            eq(AuditOutcome.DENIED),
+            recordedReason.capture());
+    assertThat(recordedReason.getValue()).hasSize(1000);
     verify(logRepository, never()).findSingleEntry(any(), any());
   }
 
