@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -25,12 +26,14 @@ import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunEvent;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.StaleDocumentCleanupService;
+import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
@@ -218,6 +221,69 @@ class UrlIndexingExecutorExecuteTest {
     verify(indexingJobService, timeout(5000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
     verify(indexingRunEventRepository, timeout(5000))
         .save(argThat(categoryIs(IndexingEventCategory.UNSUPPORTED_FORMAT)));
+  }
+
+  @Test
+  void acceptsAnOutlookMsgLargerThanTheDetectionPrefixServedAsOctetStream() throws IOException {
+    // Regression guard for #1229: an OLE2 file's directory sector may sit past the bounded
+    // detection prefix, so a genuine .msg larger than SupportedDocumentFormats
+    // #DETECTION_PREFIX_BYTES detects only as the generic application/x-tika-msoffice there. That
+    // generic type is deliberately not an accepted .msg content, so the entry used to be rejected
+    // as an unsupported format - while the very same file is indexed fine via upload/FILESYSTEM,
+    // which always detect on the complete file. The server's own Content-Type never enters the
+    // decision; application/octet-stream (Apache's default for .msg) is served here to prove it.
+    byte[] msg = resourceBytes("test-documents/mail/attachment_msg_pdf.msg");
+    assertThat(msg.length)
+        .as("the fixture must be larger than the detection prefix for this to reproduce at all")
+        .isGreaterThan(SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
+    serve(
+        "/files/",
+        "text/html",
+        ("<html><head><title>Index of /files/</title></head><body><ul>"
+                + "<li><a href=\"outlook-mail-mit-pdf-anhang.msg\">"
+                + "outlook-mail-mit-pdf-anhang.msg</a></li>"
+                + "</ul></body></html>")
+            .getBytes(StandardCharsets.UTF_8));
+    serve("/files/outlook-mail-mit-pdf-anhang.msg", "application/octet-stream", msg);
+    when(fileProcessingService.processUrlFile(
+            any(),
+            anyString(),
+            anyString(),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.HTTP_DIRECTORY),
+            isNull(),
+            isNull(),
+            any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute();
+
+    verify(fileProcessingService, timeout(5000))
+        .processUrlFile(
+            any(),
+            eq("outlook-mail-mit-pdf-anhang.msg"),
+            anyString(),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.HTTP_DIRECTORY),
+            isNull(),
+            isNull(),
+            any());
+    verify(indexingRunEventRepository, never())
+        .save(argThat(categoryIs(IndexingEventCategory.UNSUPPORTED_FORMAT)));
+    verify(indexingRunEventRepository, never())
+        .save(argThat(categoryIs(IndexingEventCategory.FORMAT_MISMATCH)));
+  }
+
+  private static byte[] resourceBytes(String name) throws IOException {
+    try (InputStream in =
+        UrlIndexingExecutorExecuteTest.class.getClassLoader().getResourceAsStream(name)) {
+      assertThat(in).as("Test resource %s must exist", name).isNotNull();
+      return in.readAllBytes();
+    }
   }
 
   @Test
