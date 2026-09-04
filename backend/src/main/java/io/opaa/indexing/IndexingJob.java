@@ -8,6 +8,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -118,6 +119,23 @@ public class IndexingJob {
    */
   @Column(name = "incomplete", nullable = false)
   private boolean incomplete;
+
+  /**
+   * #1191 (ADR-0023, Entscheidung 4): whether this run assessed its source listing. {@code null}
+   * for every run that did not - incremental, webhook, failed or budget-truncated runs, other
+   * source types - so the library view can hold on to the most recent actual assessment instead of
+   * the most recent run. Only a successful Confluence full sync writes {@code true}/{@code false}.
+   */
+  @Column(name = "listing_complete")
+  private Boolean listingComplete;
+
+  /**
+   * #1191: the comma-separated Confluence space keys behind {@code listingComplete == false} - the
+   * spaces this run could not read or list completely, named so the warning at the library can say
+   * which bestand may be stale. {@code null} whenever the assessment is absent or complete.
+   */
+  @Column(name = "unreadable_space_keys")
+  private String unreadableSpaceKeys;
 
   /** #1141: the run's own cost figures; {@code null} until the executor records them at the end. */
   @Column(name = "requests_sent")
@@ -265,6 +283,26 @@ public class IndexingJob {
 
   public boolean isIncomplete() {
     return incomplete;
+  }
+
+  public Boolean getListingComplete() {
+    return listingComplete;
+  }
+
+  /** The space keys behind an incomplete listing assessment, in run order; empty otherwise. */
+  public List<String> getUnreadableSpaceKeys() {
+    if (unreadableSpaceKeys == null || unreadableSpaceKeys.isBlank()) {
+      return List.of();
+    }
+    return List.of(unreadableSpaceKeys.split(","));
+  }
+
+  /**
+   * Records this run's listing assessment (#1191); {@code keys} must be empty for a complete one.
+   */
+  public void recordListingAssessment(boolean complete, List<String> keys) {
+    this.listingComplete = complete;
+    this.unreadableSpaceKeys = complete || keys.isEmpty() ? null : String.join(",", keys);
   }
 
   /** The metrics the run recorded, or {@code null} when it recorded none (#1141). */

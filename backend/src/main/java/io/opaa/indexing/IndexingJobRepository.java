@@ -25,6 +25,18 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
       UUID libraryId, UUID organizationId);
 
   /**
+   * The most recent run for {@code libraryId} that assessed its source listing (#1191) - {@code
+   * listing_complete IS NOT NULL}, written only by a successful, non-budget-truncated full sync.
+   * Deliberately not the most recent run overall: an incremental or webhook run in between never
+   * assesses the listing, and the warning at the library must survive it. {@code organizationId} is
+   * the same second guard {@link #findTopByLibraryIdAndOrganizationIdOrderByStartedAtDesc}
+   * documents.
+   */
+  Optional<IndexingJob>
+      findTopByLibraryIdAndOrganizationIdAndListingCompleteIsNotNullOrderByStartedAtDesc(
+          UUID libraryId, UUID organizationId);
+
+  /**
    * Whether a run for {@code libraryId} within {@code organizationId} is currently {@link
    * JobStatus#RUNNING}: runs of different libraries never block each other, so this is scoped to
    * one library rather than the whole {@code indexing_jobs} table. {@code organizationId} is the

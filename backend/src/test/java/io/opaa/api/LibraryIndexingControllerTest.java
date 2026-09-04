@@ -253,7 +253,7 @@ class LibraryIndexingControllerTest {
   void getStatusReturnsIdleWhenTheLibraryNeverRan() throws Exception {
     UUID libraryId = UUID.randomUUID();
     when(indexingService.getStatus(eq(libraryId), eq(caller)))
-        .thenReturn(new IndexingStatusView(Optional.empty(), false));
+        .thenReturn(new IndexingStatusView(Optional.empty(), false, List.of()));
 
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
@@ -271,13 +271,48 @@ class LibraryIndexingControllerTest {
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setLibraryId(libraryId);
     when(indexingService.getStatus(eq(libraryId), eq(caller)))
-        .thenReturn(new IndexingStatusView(Optional.of(job), false));
+        .thenReturn(new IndexingStatusView(Optional.of(job), false, List.of()));
 
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("RUNNING"))
         .andExpect(jsonPath("$.libraryId").value(libraryId.toString()));
+  }
+
+  @Test
+  void getStatusCarriesTheUnreadableSpacesOfTheLatestListingAssessment() throws Exception {
+    // #1191: the warning hangs on the most recent assessing run - here the latest job is a
+    // webhook-triggered one that never assessed, yet the status still names the spaces.
+    UUID libraryId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    job.setStatus(JobStatus.COMPLETED);
+    job.setLibraryId(libraryId);
+    job.setCompletedAt(Instant.now());
+    when(indexingService.getStatus(eq(libraryId), eq(caller)))
+        .thenReturn(new IndexingStatusView(Optional.of(job), false, List.of("SEC", "IT")));
+
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.unreadableSpaceKeys[0]").value("SEC"))
+        .andExpect(jsonPath("$.unreadableSpaceKeys[1]").value("IT"));
+  }
+
+  @Test
+  void getStatusOmitsTheUnreadableSpacesWhileTheListingIsComplete() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    job.setStatus(JobStatus.COMPLETED);
+    job.setLibraryId(libraryId);
+    job.setCompletedAt(Instant.now());
+    when(indexingService.getStatus(eq(libraryId), eq(caller)))
+        .thenReturn(new IndexingStatusView(Optional.of(job), false, List.of()));
+
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.unreadableSpaceKeys").doesNotExist());
   }
 
   @Test
@@ -295,7 +330,7 @@ class LibraryIndexingControllerTest {
     job.setDocumentsIndexedTotal(23);
     job.setCompletedAt(Instant.now());
     when(indexingService.getStatus(eq(libraryId), eq(caller)))
-        .thenReturn(new IndexingStatusView(Optional.of(job), false));
+        .thenReturn(new IndexingStatusView(Optional.of(job), false, List.of()));
 
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
@@ -323,7 +358,7 @@ class LibraryIndexingControllerTest {
     job.setErrorMessage("/data/dokumente/geheim: No such file or directory");
 
     when(indexingService.getStatus(eq(libraryId), eq(caller)))
-        .thenReturn(new IndexingStatusView(Optional.of(job), false));
+        .thenReturn(new IndexingStatusView(Optional.of(job), false, List.of()));
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
         .andExpect(status().isOk())
@@ -334,7 +369,7 @@ class LibraryIndexingControllerTest {
         .andExpect(jsonPath("$.message", org.hamcrest.Matchers.not(containsString("/data"))));
 
     when(indexingService.getStatus(eq(libraryId), eq(caller)))
-        .thenReturn(new IndexingStatusView(Optional.of(job), true));
+        .thenReturn(new IndexingStatusView(Optional.of(job), true, List.of()));
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
         .andExpect(status().isOk())

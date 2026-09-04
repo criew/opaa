@@ -34,6 +34,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -220,13 +221,26 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       log.error("Confluence run for library {} failed unexpectedly", targetLibrary.getId(), e);
       failure = e.getMessage();
     }
-    finish(jobId, targetLibrary, client, run, progress, events, startedAt, failure);
+    finish(
+        jobId,
+        targetLibrary,
+        client,
+        run,
+        progress,
+        events,
+        startedAt,
+        failure,
+        runMode == IndexingRunMode.FULL);
   }
 
   /**
    * The common end of every run: throttling is reported whether the run succeeded or not - a run
    * that the instance slowed down forty times before it failed is exactly what an operator wants to
    * see in the protocol - the cost figures (#1141) are recorded, and one log line names them.
+   *
+   * <p>{@code assessesListing} (#1191): only a full sync attempts to list everything, so only it
+   * may judge its listing - and only when it neither failed nor ran out of budget, because an
+   * aborted run has not seen every space and must not overwrite the previous verdict.
    */
   private void finish(
       UUID jobId,
@@ -236,7 +250,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       IndexingRunProgress progress,
       IndexingRunEventRecorder events,
       Instant startedAt,
-      String failure) {
+      String failure,
+      boolean assessesListing) {
     if (client != null) {
       reportThrottling(client, events);
       ConfluenceRequestMeter meter = client.meter();
@@ -251,6 +266,10 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
               progress.attachmentsSkipped(),
               progress.attachmentsFailed(),
               incomplete));
+      if (assessesListing && run != null && failure == null && !run.incomplete) {
+        indexingJobService.recordListingAssessment(
+            jobId, run.listingComplete, List.copyOf(run.unreadableSpaceKeys));
+      }
       log.info(
           "Confluence run {} for library {}: {} requests, {} throttles ({} s waited), {} attachments"
               + " indexed, {} s elapsed, incomplete={}, failure={}",
@@ -320,6 +339,13 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     boolean listingComplete = true;
 
     /**
+     * The space keys behind {@code listingComplete == false} (#1191), in the order the run met
+     * them: a space that could not be listed at all, or the space of a page whose attachments could
+     * not be. Persisted by a successful full sync so the library view can name them.
+     */
+    final Set<String> unreadableSpaceKeys = new LinkedHashSet<>();
+
+    /**
      * True once the request budget ran out (#1141): the run ends in an orderly way, covers what it
      * covered, and the next run continues - a full sync with the unfinished spaces, an incremental
      * run with the same window.
@@ -378,6 +404,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
         run.events.record(
             IndexingEventCategory.REJECTED, "Space " + key + " " + UNREADABLE_SPACE_SUFFIX, key);
         run.listingComplete = false;
+        run.unreadableSpaceKeys.add(key);
         continue;
       }
       run.total += pages.size();
@@ -642,7 +669,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
           "Confluence webhook run for library {} failed unexpectedly", targetLibrary.getId(), e);
       failure = e.getMessage();
     }
-    finish(jobId, targetLibrary, client, run, progress, events, startedAt, failure);
+    finish(jobId, targetLibrary, client, run, progress, events, startedAt, failure, false);
   }
 
   private void refreshPage(Run run, String pageId, Set<String> selectedKeys)
@@ -963,6 +990,9 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
           "Anhänge nicht auflistbar: " + e.getMessage(),
           pagePath);
       run.listingComplete = false;
+      if (context.containerKey() != null) {
+        run.unreadableSpaceKeys.add(context.containerKey());
+      }
       return;
     }
     run.reprocessedPaths.add(pagePath);

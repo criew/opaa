@@ -926,6 +926,54 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByTestId('confluence-sharing-consequence')).not.toBeInTheDocument()
   })
 
+  it('warns every reader while the last full sync could not read a space (#1191)', async () => {
+    setLibraryState(
+      viewerLibrary,
+      detailsOf(viewerLibrary, {
+        sourceType: 'CONFLUENCE',
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [
+          { key: 'SEC', name: 'Sicherheit' },
+          { key: 'ENG', name: 'Engineering' },
+        ],
+      }),
+    )
+    mockGetIndexingStatus.mockResolvedValueOnce({
+      status: 'COMPLETED',
+      documentCount: 3,
+      totalDocuments: 4,
+      documentsSkipped: 0,
+      documentsFailed: 0,
+      documentsIndexedTotal: 3,
+      message: null,
+      timestamp: '2026-03-01T10:00:00Z',
+      unreadableSpaceKeys: ['SEC'],
+    } as IndexingStatusResponse)
+
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(await screen.findByTestId('confluence-incomplete-listing-warning')).toHaveTextContent(
+      'Der letzte Vollabgleich konnte den Space Sicherheit (SEC) nicht vollständig lesen; sein' +
+        ' Bestand ist möglicherweise veraltet.',
+    )
+  })
+
+  it('shows no incomplete-listing warning while the assessment is clean (#1191)', async () => {
+    setLibraryState(
+      viewerLibrary,
+      detailsOf(viewerLibrary, {
+        sourceType: 'CONFLUENCE',
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+      }),
+    )
+
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    await screen.findByTestId('confluence-sharing-consequence')
+    expect(screen.queryByTestId('confluence-incomplete-listing-warning')).not.toBeInTheDocument()
+  })
+
   // #507: the backend now only serves sourcePath/sourceUrl/sourceProxy/sourceInsecureSsl/
   // sourceCredentialsSet to a caller with at least MANAGER - a VIEWER's library object simply
   // carries none of them. This test still passes sourcePath explicitly in the VIEWER case to

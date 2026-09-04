@@ -80,16 +80,29 @@ public class IndexingJobService {
    * deleting every older one - {@code fk_indexing_run_events_job}'s {@code ON DELETE CASCADE}
    * removes each pruned run's own {@link IndexingRunEvent}s along with it. Called from {@link
    * #startJob} so the newly started run is always counted among the retained ones.
+   *
+   * <p>The most recent run that assessed its listing (#1191) is always kept, even beyond the cap:
+   * the library's incomplete-listing warning hangs on that row, and a burst of webhook runs (which
+   * never assess) must not prune it away before the next full sync replaces the verdict.
    */
   private void pruneOldRuns(UUID libraryId) {
     List<IndexingJob> runs = indexingJobRepository.findByLibraryIdOrderByStartedAtDesc(libraryId);
     if (runs.size() <= MAX_RETAINED_RUNS_PER_LIBRARY) {
       return;
     }
+    Optional<UUID> latestAssessmentId =
+        runs.stream()
+            .filter(run -> run.getListingComplete() != null)
+            .findFirst()
+            .map(IndexingJob::getId);
     List<UUID> staleIds =
         runs.subList(MAX_RETAINED_RUNS_PER_LIBRARY, runs.size()).stream()
             .map(IndexingJob::getId)
+            .filter(id -> latestAssessmentId.map(kept -> !kept.equals(id)).orElse(true))
             .toList();
+    if (staleIds.isEmpty()) {
+      return;
+    }
     indexingJobRepository.deleteAllByIdInBatch(staleIds);
   }
 
@@ -198,6 +211,38 @@ public class IndexingJobService {
     }
     job.applyMetrics(metrics);
     indexingJobRepository.save(job);
+  }
+
+  /**
+   * Records whether {@code jobId}'s run assessed its source listing as complete and, if not, which
+   * spaces it could not read (#1191) - called at most once per run, by a successful Confluence full
+   * sync that was not cut short by its budget. A no-op once the job is no longer {@link
+   * JobStatus#RUNNING}, like {@link #recordRunMetrics}.
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void recordListingAssessment(UUID jobId, boolean complete, List<String> unreadableKeys) {
+    var job =
+        indexingJobRepository
+            .findById(jobId)
+            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+    if (job.getStatus() != JobStatus.RUNNING) {
+      return;
+    }
+    job.recordListingAssessment(complete, unreadableKeys);
+    indexingJobRepository.save(job);
+  }
+
+  /**
+   * The most recent run for {@code libraryId} that assessed its source listing (#1191), or empty
+   * while none has. This - not the most recent run overall - is what the library's warning about an
+   * incomplete listing hangs on; see {@link
+   * IndexingJobRepository#findTopByLibraryIdAndOrganizationIdAndListingCompleteIsNotNullOrderByStartedAtDesc}.
+   */
+  @Transactional(readOnly = true)
+  public Optional<IndexingJob> getLatestListingAssessment(UUID libraryId, UUID organizationId) {
+    return indexingJobRepository
+        .findTopByLibraryIdAndOrganizationIdAndListingCompleteIsNotNullOrderByStartedAtDesc(
+            libraryId, organizationId);
   }
 
   /**

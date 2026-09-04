@@ -3456,6 +3456,19 @@ components:
           description: >
             #1141: true when the most recent run completed as incomplete (request budget spent,
             continued by the next run) - see IndexingRunResponse.incomplete.
+        unreadableSpaceKeys:
+          type: array
+          nullable: true
+          description: >
+            #1191 (ADR-0023, Entscheidung 4): the Confluence space keys the most recent
+            listing-assessing run - a successful full sync that was not cut short by its request
+            budget - could not read or list completely; their bestand may be stale. Deliberately
+            not tied to the most recent run: an incremental or webhook run never assesses the
+            listing, so the warning survives such runs and clears only once a full sync lists
+            everything again. Absent for other source types and while no run has assessed the
+            listing yet.
+          items:
+            type: string
         timestamp:
           type: string
           format: date-time
@@ -3634,6 +3647,17 @@ components:
             out - and is continued by the next run: a full sync resumes with the spaces it did not
             finish, an incremental run searches the same window again (its anchor did not move).
             Distinct from FAILED, which means the run itself broke. Absent or false otherwise.
+        unreadableSpaceKeys:
+          type: array
+          nullable: true
+          description: >
+            #1191: the Confluence space keys this run could not read or list completely (space not
+            readable, attachments of one of its pages not listable). Only a successful full sync
+            that was not cut short by its budget assesses its listing and carries this field -
+            absent (not an empty array) on every other run, and on an assessing run that listed
+            everything.
+          items:
+            type: string
         metrics:
           $ref: "#/components/schemas/IndexingRunMetrics"
     IndexingRunMetrics:

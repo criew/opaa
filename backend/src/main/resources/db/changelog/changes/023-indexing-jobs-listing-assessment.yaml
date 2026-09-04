@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: 023-indexing-jobs-listing-assessment
+      author: opaa
+      comment: >-
+        #1191 (ADR-0023, Entscheidung 4): whether one run assessed its source listing and what it
+        could not read. listing_complete stays NULL for every run that did not assess the listing
+        (incremental, webhook, failed or budget-truncated runs, other source types) - only a
+        successful Confluence full sync writes true/false. unreadable_space_keys carries the
+        comma-separated space keys behind a false assessment, so the library view can name the
+        affected spaces until the next full sync lists everything again.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.indexing_jobs
+                ADD COLUMN listing_complete boolean,
+                ADD COLUMN unreadable_space_keys text;
+      rollback:
+        - sql:
+            sql: >-
+              ALTER TABLE public.indexing_jobs
+                DROP COLUMN IF EXISTS listing_complete,
+                DROP COLUMN IF EXISTS unreadable_space_keys;
