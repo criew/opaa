@@ -1117,10 +1117,10 @@ public class FileProcessingService {
    * The inverse of {@link #attachmentFilePath}: the 0-based extraction-order index encoded in
    * {@code attachmentPath}, given the known {@code parentFilePath} it was built from, or {@code -1}
    * when {@code attachmentPath} does not have that shape (a parent path that changed since, a
-   * malformed row). Used by {@code PipelineReindexService} to re-extract an attachment from its
-   * parent's source file.
+   * malformed row). Used by every path that re-extracts an attachment from its parent's original
+   * ({@code PipelineReindexService}, {@code LibraryDocumentService#loadContent}).
    */
-  static int attachmentIndexIn(String parentFilePath, String attachmentPath) {
+  public static int attachmentIndexIn(String parentFilePath, String attachmentPath) {
     String prefix = parentFilePath + "/";
     if (attachmentPath == null || !attachmentPath.startsWith(prefix)) {
       return -1;

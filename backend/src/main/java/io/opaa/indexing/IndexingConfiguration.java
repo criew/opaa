@@ -197,6 +197,15 @@ public class IndexingConfiguration {
     return new DocumentPipelineRegistry(pipelines, fallback);
   }
 
+  /**
+   * The shared re-extraction of attachment bytes (ADR-0022) - attachments are never stored, so both
+   * the selective re-index and "Im Dokument öffnen" (#1239) re-derive them from their parent here.
+   */
+  @Bean
+  AttachmentExtractor attachmentExtractor(DocumentPipelineRegistry documentPipelineRegistry) {
+    return new AttachmentExtractor(documentPipelineRegistry);
+  }
+
   @Bean
   PipelineReindexService pipelineReindexService(
       JdbcTemplate jdbcTemplate,
@@ -208,6 +217,7 @@ public class IndexingConfiguration {
       VectorChunkStore vectorChunkStore,
       FilesystemPathAllowlist filesystemPathAllowlist,
       UploadProperties uploadProperties,
+      AttachmentExtractor attachmentExtractor,
       @Value("${spring.ai.vectorstore.pgvector.schema-name:public}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     return new PipelineReindexService(
@@ -220,6 +230,7 @@ public class IndexingConfiguration {
         vectorChunkStore,
         filesystemPathAllowlist,
         uploadProperties,
+        attachmentExtractor,
         schemaName,
         tableName);
   }

@@ -371,6 +371,10 @@ Confluence-Anforderung an unabhängiger Versionierung gar nicht erfüllen kann.
 - #1130 Befund 2 braucht keinen eigenen, gezielten Fix mehr — er verschwindet mit der Umstellung.
 - Die Beleg-/Zitat-Anzeige wird für jeden Anhangsweg einheitlich (eigenes Dokument, eigener Deep Link,
   Elternbezug über `parent_document_id`), statt mail-spezifisch textbasiert zu sein.
+- Das Original eines Anhangs bleibt öffenbar, ohne dass seine Bytes gespeichert werden: Der
+  Content-Endpunkt extrahiert den Anhang beim Zugriff aus dem Original seines Elterndokuments nach
+  (#1239, siehe `docs/features/ingestion-pipelines.md`) — dieselbe Extraktion wie beim Indizieren,
+  daher kein zweiter Speicherort und keine doppelte Quotenzählung.
 - Änderungserkennung wird für Anhänge granular — Voraussetzung für #1139, sonst nicht erreichbar.
 
 ### Schwieriger
@@ -387,6 +391,15 @@ Confluence-Anforderung an unabhängiger Versionierung gar nicht erfüllen kann.
   Mail-Bibliotheken.
 - `Document#fileSize` bekommt für Mail-Elterndokumente eine neue Bedeutung (ohne Anhangsbytes) — ein
   Verhaltensunterschied gegenüber dem heutigen, undifferenzierten `Files.size(file)`.
+- Jeder Lesezugriff auf ein Anhangsoriginal kostet ein erneutes Parsen des Elterndokuments — und
+  zwar in vollem Umfang: Die Pipeline legt beim Parsen **alle** Anlagen der Nachricht als temporäre
+  Dateien an (bis `max-attachments-per-message`, Vorgabe 50, aus einer bis zu `max-message-bytes`
+  großen Nachricht, Vorgabe 100 MiB), bevor die angeforderte herauskopiert wird; bei
+  Konnektor-Beständen kommt ein vollständiger Abruf des Elternoriginals in eine weitere temporäre
+  Datei hinzu. Das geschieht im synchronen Anfragepfad, ohne Cache und ohne Serialisierung, und ist
+  von jedem VIEWER beliebig oft und parallel auslösbar — bewusst in Kauf genommener Aufwand an
+  Rechenzeit, temporärem Plattenplatz und Last auf der Quelle gegen doppelte Speicherung (#1239).
+  Ein Deckel oder Cache dafür ist offen und als Folge-Ticket erfasst (#1243).
 - Löschen eines Elterndokuments außerhalb von `StaleDocumentCleanupService` (z. B. eine selektive
   Neuindizierung über `PipelineReindexService`, eine künftige Einzeldokument-Löschfunktion für
   Konnektor-Bestände) muss seine Anhangszeilen ausdrücklich mitbehandeln — es gibt keinen impliziten

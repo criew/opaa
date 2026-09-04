@@ -8,12 +8,14 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.AttachmentExtractor;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.pipeline.mail.MailProperties;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
@@ -124,6 +126,8 @@ public class LibraryDocumentService {
   private final RemoteContentProperties remoteContentProperties;
   private final LibraryFolderRepository folderRepository;
   private final LibraryFolderService folderService;
+  private final AttachmentExtractor attachmentExtractor;
+  private final MailProperties mailProperties;
 
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
@@ -139,7 +143,9 @@ public class LibraryDocumentService {
       TargetAddressValidator targetAddressValidator,
       RemoteContentProperties remoteContentProperties,
       LibraryFolderRepository folderRepository,
-      LibraryFolderService folderService) {
+      LibraryFolderService folderService,
+      AttachmentExtractor attachmentExtractor,
+      MailProperties mailProperties) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
     this.documentRepository = documentRepository;
@@ -154,6 +160,8 @@ public class LibraryDocumentService {
     this.remoteContentProperties = remoteContentProperties;
     this.folderRepository = folderRepository;
     this.folderService = folderService;
+    this.attachmentExtractor = attachmentExtractor;
+    this.mailProperties = mailProperties;
   }
 
   /**
@@ -430,6 +438,10 @@ public class LibraryDocumentService {
    * - {@link #loadRemoteContent} proxies the original from the source URL stored at indexing time
    * instead, applying the library's own quellkonfiguration (proxy, credentials, insecure TLS) the
    * same way {@code UrlIndexingExecutor}/{@code RssFeedIndexingExecutor} already do.
+   *
+   * <p>An attachment document (ADR-0022, #1239) has no original of its own at all - neither on disk
+   * nor behind its synthetic {@code file_path} - and is served by {@link #loadAttachmentContent},
+   * which re-extracts it from its parent chain'''s own original.
    */
   public DocumentContent loadContent(UUID documentId, CurrentUser caller) {
     Document document =
@@ -444,6 +456,43 @@ public class LibraryDocumentService {
             .orElseThrow(() -> new NotFoundException("Dokument nicht gefunden"));
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
 
+    if (isReExtractableAttachment(document)) {
+      return loadAttachmentContent(document, library);
+    }
+    return loadOriginal(document, library);
+  }
+
+  /**
+   * Whether {@code document}'s bytes only exist inside its parent's original and must be
+   * re-extracted (ADR-0022, #1239) - recognized at its {@code file_path}, which then embeds the
+   * parent's own path plus an extraction index ({@code FileProcessingService#attachmentFilePath},
+   * an {@code AttachmentSource.LocalFile} attachment: Mail). An attachment with a source identity
+   * of its own - an RSS/Confluence download URL ({@code AttachmentSource.Download}) - carries
+   * {@code parent_document_id} just the same but names a real, fetchable original, and is therefore
+   * served by {@link #loadOriginal} unchanged.
+   */
+  private boolean isReExtractableAttachment(Document document) {
+    if (document.getParentDocumentId() == null) {
+      return false;
+    }
+    return documentRepository
+        .findById(document.getParentDocumentId())
+        .map(
+            parent ->
+                FileProcessingService.attachmentIndexIn(
+                        parent.getFilePath(), document.getFilePath())
+                    >= 0)
+        .orElse(false);
+  }
+
+  /**
+   * The original of a document that is not itself an attachment - resolved from local disk ({@code
+   * UPLOAD}/{@code FILESYSTEM}) or proxied from its source URL ({@code HTTP_DIRECTORY}/{@code
+   * RSS_FEED}). Access has already been checked by {@link #loadContent}; {@link
+   * #loadAttachmentContent} calls this for an attachment's root ancestor, which always lives in the
+   * same library as the attachment itself.
+   */
+  private DocumentContent loadOriginal(Document document, KnowledgeLibrary library) {
     if (document.getSourceType() == DocumentSourceType.HTTP_DIRECTORY
         || document.getSourceType() == DocumentSourceType.RSS_FEED) {
       return loadRemoteContent(document, library);
@@ -478,6 +527,207 @@ public class LibraryDocumentService {
       contentType = "application/octet-stream";
     }
     return new DocumentContent(resolvedFile, document.getFileName(), contentType);
+  }
+
+  /**
+   * The original of an attachment document (ADR-0022, #1239). Attachment bytes are never stored:
+   * they are re-extracted on demand from the root ancestor's own original - loaded through the very
+   * path {@link #loadOriginal} uses for any other document, so every sourceType behaves the same -
+   * by re-running the parent chain's pipelines and following the 0-based extraction index each
+   * synthetic {@code file_path} segment carries ({@code FileProcessingService#attachmentFilePath}).
+   * Mail-in-Mail is not a special case: each level of the chain is one more extraction step.
+   *
+   * <p>The index alone is only meaningful while the parent is unchanged, so the name the pipeline
+   * reports for the extracted attachment must equal the row's own {@code file_name} - a mismatch
+   * (an attachment removed or reordered since indexing) answers the same German 404 as "no original
+   * available" rather than streaming a different attachment's bytes under this row's name.
+   *
+   * <p>The chain ends at the first document that is not itself re-extractable ({@link
+   * #isReExtractableAttachment}): a downloaded {@code .eml} that is an RSS attachment of its own
+   * entry is the root to fetch, not a step to extract from its entry.
+   *
+   * <p>Authorization is unchanged: it is decided in {@link #loadContent} against the attachment's
+   * own library, and every ancestor the extraction uses must belong to that same library - a broken
+   * chain, a foreign library, or a chain deeper than {@link #maxAttachmentChainDepth()} (which also
+   * bounds a corrupt, cyclic chain) is a 404.
+   *
+   * <p>Every temp file this method creates is deleted when the returned stream is closed, or before
+   * it throws.
+   */
+  private DocumentContent loadAttachmentContent(Document document, KnowledgeLibrary library) {
+    List<Document> chain = new ArrayList<>();
+    Document current = document;
+    while (current.getParentDocumentId() != null) {
+      if (chain.size() >= maxAttachmentChainDepth()) {
+        log.warn("Attachment document {} has an over-deep parent chain", document.getId());
+        throw attachmentUnavailable();
+      }
+      Document parent = documentRepository.findById(current.getParentDocumentId()).orElse(null);
+      if (parent == null) {
+        log.warn(
+            "Attachment document {} has a broken parent chain at {}",
+            document.getId(),
+            current.getParentDocumentId());
+        throw attachmentUnavailable();
+      }
+      if (FileProcessingService.attachmentIndexIn(parent.getFilePath(), current.getFilePath())
+          < 0) {
+        // current has a source identity of its own (a downloaded .eml, itself an attachment of an
+        // RSS entry) - it is the root to fetch, its own parent is not part of the extraction.
+        break;
+      }
+      if (!library.getId().equals(parent.getLibraryId())) {
+        log.warn(
+            "Attachment document {} has an ancestor in another library ({})",
+            document.getId(),
+            parent.getId());
+        throw attachmentUnavailable();
+      }
+      chain.add(current);
+      current = parent;
+    }
+    Document root = current;
+
+    // Root-first extraction indices: chain is attachment-first, so it is walked backwards here.
+    List<Integer> indices = new ArrayList<>(chain.size());
+    String parentPath = root.getFilePath();
+    for (int i = chain.size() - 1; i >= 0; i--) {
+      int index = FileProcessingService.attachmentIndexIn(parentPath, chain.get(i).getFilePath());
+      if (index < 0) {
+        log.warn(
+            "Attachment document {} has a file_path that does not embed its parent's path {}",
+            document.getId(),
+            parentPath);
+        throw attachmentUnavailable();
+      }
+      indices.add(index);
+      parentPath = chain.get(i).getFilePath();
+    }
+
+    DocumentContent rootContent = loadOriginal(root, library);
+    List<Path> tempFiles = new ArrayList<>();
+    boolean streaming = false;
+    try {
+      Path currentFile =
+          rootContent.isStreamed() ? bufferToTempFile(rootContent) : rootContent.path();
+      if (rootContent.isStreamed()) {
+        tempFiles.add(currentFile);
+      }
+      String currentName = root.getFileName();
+      for (int i = 0; i < indices.size(); i++) {
+        Document expected = chain.get(chain.size() - 1 - i);
+        AttachmentExtractor.Extracted extracted =
+            attachmentExtractor.extract(currentFile, currentName, indices.get(i));
+        if (extracted == null) {
+          log.info(
+              "Attachment document {}: no attachment at index {} of {} anymore",
+              document.getId(),
+              indices.get(i),
+              currentName);
+          throw attachmentUnavailable();
+        }
+        tempFiles.add(extracted.file());
+        if (!expected.getFileName().equals(extracted.fileName())) {
+          log.info(
+              "Attachment document {}: index {} of {} now holds a different attachment ({})",
+              document.getId(),
+              indices.get(i),
+              currentName,
+              extracted.fileName());
+          throw attachmentUnavailable();
+        }
+        currentFile = extracted.file();
+        currentName = extracted.fileName();
+      }
+
+      InputStream stream = deletingOnClose(Files.newInputStream(currentFile), tempFiles);
+      streaming = true;
+      return DocumentContent.ofStream(
+          stream, document.getFileName(), contentTypeOf(document, currentFile));
+    } catch (IOException e) {
+      log.warn("Attachment document {} could not be re-extracted", document.getId(), e);
+      throw attachmentUnavailable();
+    } finally {
+      closeQuietly(rootContent);
+      if (!streaming) {
+        tempFiles.forEach(this::deleteQuietly);
+      }
+    }
+  }
+
+  /**
+   * The chain length {@link #loadAttachmentContent} still follows: the nesting depth the indexing
+   * path itself may produce ({@code opaa.indexing.mail.max-attachment-depth}) plus one level of
+   * headroom, so raising that property never makes an indexable attachment unopenable, while a
+   * corrupt or cyclic chain is still cut off after a bounded number of steps.
+   */
+  private int maxAttachmentChainDepth() {
+    return mailProperties.maxAttachmentDepth() + 1;
+  }
+
+  /**
+   * Copies a proxied remote original into a temp file so the pipeline can re-read it - bounded
+   * while copying by {@link RemoteContentProperties#maxBytes()}, which the underlying stream
+   * enforces by throwing before an oversized body is fully written.
+   */
+  private Path bufferToTempFile(DocumentContent content) throws IOException {
+    Path temp = Files.createTempFile("opaa-attachment-parent-", ".tmp");
+    try (InputStream in = content.stream()) {
+      Files.copy(in, temp, StandardCopyOption.REPLACE_EXISTING);
+    } catch (IOException | RuntimeException e) {
+      deleteQuietly(temp);
+      throw e;
+    }
+    return temp;
+  }
+
+  /**
+   * {@code stream}, with every temp file in {@code tempFiles} deleted once it is closed - the
+   * counterpart to {@link DocumentContent}'s "the caller closes the stream" contract for content
+   * that, unlike a proxied remote body, does live in files this request created.
+   */
+  private InputStream deletingOnClose(InputStream stream, List<Path> tempFiles) {
+    List<Path> toDelete = List.copyOf(tempFiles);
+    return new FilterInputStream(stream) {
+      @Override
+      public void close() throws IOException {
+        try {
+          super.close();
+        } finally {
+          toDelete.forEach(LibraryDocumentService.this::deleteQuietly);
+        }
+      }
+    };
+  }
+
+  /**
+   * The document's own stored {@code contentType} where present, the file's probed type otherwise -
+   * the same order {@link #loadOriginal} uses for a local original.
+   */
+  private String contentTypeOf(Document document, Path file) {
+    String contentType = document.getContentType();
+    if (contentType == null || contentType.isBlank()) {
+      try {
+        contentType = Files.probeContentType(file);
+      } catch (IOException e) {
+        contentType = null;
+      }
+    }
+    return contentType == null || contentType.isBlank() ? "application/octet-stream" : contentType;
+  }
+
+  private void closeQuietly(DocumentContent content) {
+    if (content.isStreamed()) {
+      try {
+        content.stream().close();
+      } catch (IOException e) {
+        log.debug("Failed to close the proxied parent stream", e);
+      }
+    }
+  }
+
+  private NotFoundException attachmentUnavailable() {
+    return new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");
   }
 
   /**
