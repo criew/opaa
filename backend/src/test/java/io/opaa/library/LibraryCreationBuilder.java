@@ -29,6 +29,7 @@ public final class LibraryCreationBuilder {
   private Boolean sourceInsecureSsl;
   private ConfluenceEdition confluenceEdition;
   private List<ConfluenceSpaceSelection> confluenceSpaces;
+  private Integer confluenceFullSyncIntervalDays;
 
   private LibraryCreationBuilder(String name, DocumentSourceType sourceType) {
     this.name = name;
@@ -99,6 +100,11 @@ public final class LibraryCreationBuilder {
     return this;
   }
 
+  public LibraryCreationBuilder confluenceFullSyncIntervalDays(Integer days) {
+    this.confluenceFullSyncIntervalDays = days;
+    return this;
+  }
+
   public LibraryCreation build() {
     return new LibraryCreation(
         name,
@@ -114,6 +120,7 @@ public final class LibraryCreationBuilder {
         sourceCredentials,
         sourceInsecureSsl,
         confluenceEdition,
-        confluenceSpaces);
+        confluenceSpaces,
+        confluenceFullSyncIntervalDays);
   }
 }

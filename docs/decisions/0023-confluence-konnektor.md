@@ -354,6 +354,11 @@ faktisch abschaltbar, durch Timing statt durch Konfiguration.
 > wählt jeder Lauf ohne ausdrückliche Betriebsart den Vollabgleich. Der je Bibliothek einstellbare
 > Rhythmus, den dieser Absatz vorsieht, ist als #1200 ausgegliedert; die instanzweite Einstellung
 > bleibt dann seine Vorgabe.
+>
+> **Nachtrag (2026-09-05, #1200):** Der je Bibliothek einstellbare Rhythmus ist umgesetzt
+> (`confluenceFullSyncIntervalDays`, 1–365 Tage, gepflegt im Zeitplan-Dialog); ohne eigenen Wert
+> gilt weiterhin die instanzweite Vorgabe. Die Abweichung aus dem Nachtrag zu #1139 ist damit
+> behoben.
 
 > **Nachtrag (2026-09-03, #1140):** Der Webhook ist wie hier beschrieben umgesetzt — als Anlass zum
 > gezielten Einzelabruf, nie als Befund. Zwei Wege der Authentisierung, weil die Editionen sie

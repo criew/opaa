@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 024-library-confluence-full-sync-interval
+      author: opaa
+      comment: >-
+        #1200 (ADR-0023, Entscheidung 4): a CONFLUENCE library's own full-sync rhythm in days,
+        NULL while the library follows the instance-wide default
+        (opaa.indexing.confluence.full-sync-interval). Always positive - the rhythm can be
+        lengthened per library but never switched off, the full sync is what notices deletions.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries
+                ADD COLUMN source_confluence_full_sync_interval_days integer,
+                ADD CONSTRAINT chk_knowledge_libraries_confluence_full_sync_interval
+                  CHECK (source_confluence_full_sync_interval_days IS NULL
+                         OR source_confluence_full_sync_interval_days > 0);
+      rollback:
+        - sql:
+            sql: >-
+              ALTER TABLE public.knowledge_libraries
+                DROP COLUMN IF EXISTS source_confluence_full_sync_interval_days;

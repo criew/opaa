@@ -31,4 +31,5 @@ public record LibraryCreation(
     String sourceCredentials,
     Boolean sourceInsecureSsl,
     ConfluenceEdition confluenceEdition,
-    List<ConfluenceSpaceSelection> confluenceSpaces) {}
+    List<ConfluenceSpaceSelection> confluenceSpaces,
+    Integer confluenceFullSyncIntervalDays) {}

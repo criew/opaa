@@ -4853,6 +4853,19 @@ components:
             every selected space is readable by everyone who may read this library.
           items:
             $ref: "#/components/schemas/ConfluenceSpaceRef"
+        confluenceFullSyncIntervalDays:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 365
+          description: >
+            #1200 (ADR-0023, Entscheidung 4): this library's own full-sync rhythm in days -
+            only for sourceType CONFLUENCE, rejected for every other type. Absent or null, the
+            instance-wide default applies (opaa.indexing.confluence.full-sync-interval, default
+            7 days). The rhythm can be lengthened per library but never switched off - a value
+            is always at least one day, and there is no "never" (the full sync is what notices
+            deletions).
+          example: 14
 
     ConfluenceWebhookSecretResponse:
       type: object
@@ -5231,6 +5244,17 @@ components:
             Rejected for every other sourceType.
           items:
             $ref: "#/components/schemas/ConfluenceSpaceRef"
+        confluenceFullSyncIntervalDays:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 365
+          description: >
+            #1200: replaces this library's own full-sync rhythm when present - a value of 1-365
+            days sets it, 0 returns the library to the instance-wide default, absent leaves the
+            stored value untouched. Only for sourceType CONFLUENCE, rejected for every other
+            type. The rhythm is never switchable off (ADR-0023, Entscheidung 4).
+          example: 14
         schedule:
           $ref: "#/components/schemas/LibraryScheduleRequest"
 
@@ -5425,6 +5449,23 @@ components:
             /api/v1/libraries/{libraryId}/confluence-webhook-secret. Only present for sourceType
             CONFLUENCE and only if myRole is at least MANAGER (the same gate as
             sourceCredentialsSet); absent otherwise.
+        confluenceFullSyncIntervalDays:
+          type: integer
+          nullable: true
+          description: >
+            #1200: this library's own full-sync rhythm in days; null while the library follows
+            the instance-wide default (see confluenceFullSyncIntervalDefaultDays). Only present
+            for sourceType CONFLUENCE and only if myRole is at least MANAGER (the schedule
+            dialog's gate); absent otherwise.
+        confluenceFullSyncIntervalDefaultDays:
+          type: integer
+          nullable: true
+          description: >
+            #1200: the instance-wide full-sync rhythm in days
+            (opaa.indexing.confluence.full-sync-interval, rounded up to whole days) - what
+            applies while confluenceFullSyncIntervalDays is null, so the schedule dialog can
+            name the default instead of hard-coding it. Same presence gate as
+            confluenceFullSyncIntervalDays.
         schedule:
           description: >
             The library's indexing schedule (#485) - present only for a connector library

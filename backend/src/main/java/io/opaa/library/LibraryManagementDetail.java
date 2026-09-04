@@ -22,11 +22,14 @@ public record LibraryManagementDetail(
     Boolean sourceInsecureSsl,
     Boolean sourceCredentialsSet,
     Boolean confluenceWebhookSecretSet,
+    Integer confluenceFullSyncIntervalDays,
+    Integer confluenceFullSyncIntervalDefaultDays,
     LibraryScheduleDetail schedule,
     Boolean lastScheduledRunsFailed,
     Long storageQuotaBytes,
     Long storageUsedBytes) {
 
   public static final LibraryManagementDetail EMPTY =
-      new LibraryManagementDetail(null, null, null, null, null, null, null, null, null, null);
+      new LibraryManagementDetail(
+          null, null, null, null, null, null, null, null, null, null, null, null);
 }
