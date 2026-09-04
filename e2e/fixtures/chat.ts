@@ -91,10 +91,31 @@ export async function expectTopSidebarChatToBeNamed(page: Page): Promise<void> {
   expect(ariaLabel).not.toContain('Unbenannter Chat')
 }
 
-/** Waits for fileName's source card to appear in the current answer, cited. */
+/**
+ * Waits for fileName's source card to appear in the current answer, cited - unfolding
+ * SourceFootnotes' own "N weitere Dokumente anzeigen" toggle first if the card is not among the
+ * first three cited documents (SourceFootnotes.tsx's VISIBLE_DOCS, #590): those extra rows are
+ * genuinely cited but stay out of the DOM entirely until that toggle is clicked, a frontend UX
+ * decision independent of retrieval - a scenario whose expected document ends up beyond the third
+ * citation (an unscoped @Alles-Wissen search over a corpus #1152 deliberately widened the
+ * retrieval window for) would otherwise see the same "element(s) not found" failure the
+ * unraised retrieval window itself used to cause, for an unrelated reason.
+ */
 export async function expectCitedSource(page: Page, fileName: string): Promise<void> {
   const card = page.getByTestId('source-card').filter({ hasText: fileName })
+  await unfoldSourcesIfNeeded(page, card)
   await expect(card).toHaveAttribute('data-cited', 'true', { timeout: 15_000 })
+}
+
+async function unfoldSourcesIfNeeded(page: Page, card: Locator): Promise<void> {
+  const foldToggle = page.getByRole('button', { name: /weitere Dokumente? .* anzeigen$/ })
+  await expect(async () => {
+    if ((await card.count()) > 0) return
+    if ((await foldToggle.count()) > 0) {
+      await foldToggle.first().click()
+    }
+    expect(await card.count()).toBeGreaterThan(0)
+  }).toPass({ timeout: 15_000 })
 }
 
 /**
