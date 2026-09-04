@@ -1151,8 +1151,9 @@ Suchbereich selbst auf. In dieser einen Aufrufkette liegen:
   nicht aus `SYSTEM_ADMIN`,
 - die **Pflichtbegründung** aus Leitplanke (d): ohne sie wird nicht ausgeführt, und geprüft wird sie,
   bevor irgendein Recht der Zielperson gelesen wird,
-- der Abzug **diagnosegesperrter** Bibliotheken nach Leitplanke (e) — die Antwort nennt nur ihre Zahl
-  als „gesperrter Suchbereich", nie einen Namen, Titel oder Treffer daraus,
+- der Abzug **diagnosegesperrter** Bibliotheken nach Leitplanke (e) — die Antwort nennt daraus nie
+  einen Namen, Titel oder Treffer, sondern nur, wie viele Bibliotheken der Organisation
+  diagnosegesperrt sind (ohne Schnitt mit den Leserechten der Zielperson, siehe unten),
 - der **Protokolleintrag** nach Leitplanke (f), geschrieben aus demselben Aufruf.
 
 Ohne Befugnis antwortet der Endpunkt mit 403 und der Begründung, dass die Befugnis einzeln vergeben
@@ -1169,6 +1170,24 @@ Aussage darüber, ob die Zielperson das Dokument lesen darf. Die Sperre als „f
 wäre eine falsche Auskunft über einen Menschen, und der Dateiname aus einer gesperrten Bibliothek wäre
 genau der Dokumenttitel, den Leitplanke (e) ausschließt.
 
+**Die Sperrauskunft hängt am Bestand, nicht an den Rechten der Zielperson**
+([#1259](https://github.com/criew/opaa/issues/1259)). Beides, was die Antwort über die Sperre sagt,
+folgt allein aus dem Sperrzustand der Bibliothek:
+
+- Das Ergebnis `IN_LOCKED_AREA` beim „Dokument verfolgen" wird am Sperrzustand der Bibliothek des
+  Dokuments festgemacht — unabhängig davon, ob die Zielperson dort lesen darf.
+- `lockedLibraryCount` ist die Zahl der diagnosegesperrten Bibliotheken **der Organisation**, ohne
+  Schnitt mit den Leserechten der Zielperson. Die Oberfläche sagt das im Ergebnishinweis mit.
+
+Grund: Eine Schnittmenge „gesperrt ∩ Leserechte der Zielperson" trüge genau das Rechtebit, dessen
+Auskunft die Oberfläche bestreitet — „darf diese Person gesperrte Bestände lesen?" wäre mit einer
+beliebigen Testfrage als Zahl oder Ergebniswert abfragbar. Die Prüfgröße dafür: **Der Lauf für eine
+Person ohne Leserecht auf eine gesperrte Bibliothek liefert dieselbe Antwort wie der Lauf für eine
+Person mit diesem Leserecht** — abgesichert durch einen Integrationstest, der genau diese beiden
+Antworten vergleicht. Der personenbezogene Schnitt existiert weiterhin, aber nur dort, wo er hingehört:
+im **Rechte-Abbild des Protokolleintrags** nach Leitplanke (f), das ohnehin befugnisgebunden gelesen
+wird, und beim **Abzug** der gesperrten Bibliotheken aus dem tatsächlich durchsuchten Bereich.
+
 **Der Profilkontext bleibt an der Diagnosesperre vorbei offen — bewusst, aber nicht folgenlos.** Für
 Rechteprofile und den eigenen Kontext gilt die Sperre nach der Klarstellung zu (e) nicht; wer statt der
 Person deren Gruppe als Rechteprofil wählt, sieht Titel aus einer gesperrten Bibliothek — ohne
@@ -1181,9 +1200,18 @@ gebaut), ist eine eigene Entscheidung und in #1150 bewusst nicht mitgetroffen wo
 
 **Ohne gelöste Sperre durchsucht ein Personenkontext-Lauf nichts.** Jede Bibliothek ist im Grundzustand
 diagnosegesperrt; gelöst wird die Sperre allein von der zuständigen Stelle über
-`PUT /api/v1/libraries/{libraryId}/diagnostics-lock` — eine Bedienoberfläche dafür fehlt noch
-(siehe [#1257](https://github.com/criew/opaa/issues/1257)). Der Ergebnishinweis der Diagnose nennt
-deshalb ausdrücklich, wer die Sperre aufheben kann.
+`PUT /api/v1/libraries/{libraryId}/diagnostics-lock`. Die Bedienoberfläche dafür sitzt auf der
+Bibliotheks-Detailseite (Stammdaten-Abschnitt, dort wo die zuständige Stelle bereits andere
+Einstellungen ändert): Zustand („Diagnose gesperrt"/„Diagnose freigegeben") und Erklärwortlaut sind für
+jeden sichtbar, der die Bibliothek lesen darf; der Umschalter selbst nur, wenn
+`LibraryResponse.diagnosticsLockToggleable` das zusichert — ein eigenes, aus
+`LibraryAccessService#holdsIndependentOwnerRole` befülltes Feld, bewusst **nicht** aus `myRole`
+abgeleitet, da `myRole` für einen `SYSTEM_ADMIN` unbedingt auf `OWNER` bypasst (siehe die Leitplanke
+unten) und ein daraus abgeleiteter Umschalter jedem Admin auf jeder Bibliothek einen Button zeigen
+würde, der garantiert mit 403 scheitert. Die 403-Ablehnung des Endpunkts selbst (etwa bei einer
+administrativen `OWNER`-Rolle ohne eigenständigen Grant, falls der Aufruf dennoch versucht wird)
+erscheint als deutsche Fehlermeldung ([#1257](https://github.com/criew/opaa/issues/1257), gebaut).
+Der Ergebnishinweis der Diagnose nennt deshalb ausdrücklich, wer die Sperre aufheben kann.
 
 **Leere Profilliste.** Ein Rechteprofil ist eine **Gruppe** samt der Bibliotheksmenge, die sie lesen
 darf. Installationen, die Lesbarkeit über einzelne Berechtigungen statt über Gruppen vergeben, haben
@@ -1371,6 +1399,10 @@ die Diagnose weist sie als „gesperrter Suchbereich" aus und liefert daraus nic
   sowie **Personalvorgänge** sind standardmäßig gesperrt.
 - Die Sperre setzt und löst die **jeweils zuständige Stelle selbst**, nicht die Administration. Eine
   Administratorbefugnis, die eine fremde Sperre aufheben kann, hebt den Schutz auf.
+- Was die Antwort über die Sperre sagt, folgt **allein aus dem Sperrzustand des Bestands**, nie aus
+  seiner Schnittmenge mit den Leserechten der Zielperson — sonst wäre der Sperrhinweis selbst eine
+  Auskunft über diese Person (siehe „Die Sperrauskunft hängt am Bestand" im Abschnitt
+  Personenkontext).
 
 > **Klarstellung zur Reichweite (Koordinator mit Maintainer-Freigabe, 02.09.2026).** Der Wortlaut oben
 > sagt „für sie ist **‚Sicht als'** ausgeschlossen". Aufgefallen im Architektur-Review zum Abschluss

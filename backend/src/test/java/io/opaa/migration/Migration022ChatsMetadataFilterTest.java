@@ -12,14 +12,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Delta test for {@code changes/021-chats-metadata-filter.yaml} (#1070): the nullable {@code jsonb}
+ * Delta test for {@code changes/022-chats-metadata-filter.yaml} (#1070): the nullable {@code jsonb}
  * column carrying a chat's sticky core-field filter, absent before the changeSet and holding either
  * {@code NULL} or a JSON object after it.
  */
-class Migration021ChatsMetadataFilterTest extends AbstractMigrationTest {
+class Migration022ChatsMetadataFilterTest extends AbstractMigrationTest {
 
   private static final String CHANGELOG_PATH =
-      "db/changelog/changes/021-chats-metadata-filter.yaml";
+      "db/changelog/changes/022-chats-metadata-filter.yaml";
   private static final UUID ORGANIZATION_ID =
       UUID.fromString("00000000-0000-0000-0000-000000000001");
 

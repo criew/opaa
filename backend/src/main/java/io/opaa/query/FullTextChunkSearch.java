@@ -2,6 +2,8 @@ package io.opaa.query;
 
 import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.FullTextIdentifiers;
+import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
+import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -71,16 +73,19 @@ class FullTextChunkSearch {
 
   private final JdbcTemplate jdbcTemplate;
   private final ObjectMapper objectMapper;
+  private final DocumentTypeVocabularyRepository vocabularyRepository;
   private final String schemaName;
   private final String tableName;
 
   FullTextChunkSearch(
       JdbcTemplate jdbcTemplate,
       ObjectMapper objectMapper,
+      DocumentTypeVocabularyRepository vocabularyRepository,
       @Value("${spring.ai.vectorstore.pgvector.schema-name:public}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     this.jdbcTemplate = jdbcTemplate;
     this.objectMapper = objectMapper;
+    this.vocabularyRepository = vocabularyRepository;
     this.schemaName = schemaName;
     this.tableName = tableName;
   }
@@ -118,7 +123,8 @@ class FullTextChunkSearch {
     String tsQueryExpression = tsQueryExpression(wordTokens, identifierLexemes, tsQueryParameters);
     List<Object> metadataParameters = new ArrayList<>();
     String metadataPredicate =
-        MetadataFilterExpressions.sqlPredicate(metadataFilter, "v.metadata", metadataParameters);
+        MetadataFilterExpressions.sqlPredicate(
+            metadataFilter, "v.metadata", vocabularyCodesFor(metadataFilter), metadataParameters);
     String sql =
         "WITH q AS (SELECT "
             + tsQueryExpression
@@ -182,6 +188,20 @@ class FullTextChunkSearch {
                 .metadata(readMetadata(rs.getString("metadata")))
                 .score((double) rs.getFloat("rank"))
                 .build());
+  }
+
+  /**
+   * The complete Dokumentart value set the "no value" condition is built over - read only when the
+   * filter constrains the Dokumentart, the same snapshot {@link MetadataFilterStage} reads for the
+   * vector form.
+   */
+  private List<String> vocabularyCodesFor(MetadataFilter metadataFilter) {
+    if (!metadataFilter.filtersDocumentType()) {
+      return List.of();
+    }
+    return vocabularyRepository.findAllByOrderBySortOrderAsc().stream()
+        .map(DocumentTypeVocabularyEntry::getCode)
+        .toList();
   }
 
   /**

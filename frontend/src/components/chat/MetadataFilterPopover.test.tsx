@@ -88,6 +88,44 @@ describe('MetadataFilterPopover (#1070)', () => {
     })
   })
 
+  // Koordinator-Festlegung an #1070: a field below the threshold is not offered, but a condition
+  // already set on it stays in force - applying a change to the other field must not drop it.
+  it('carries a set condition of a field below the threshold through untouched', async () => {
+    server.use(
+      http.get('/api/v1/search/metadata-filter-options', () =>
+        HttpResponse.json({
+          ...mockMetadataFilterOptions,
+          fields: mockMetadataFilterOptions.fields.map((field) =>
+            field.fieldKey === 'document_type'
+              ? { ...field, filledDocuments: 4, fillShare: 0.1, offered: false }
+              : { ...field, filledDocuments: 36, fillShare: 0.9, offered: true },
+          ),
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    renderWithProviders(
+      <MetadataFilterPopover
+        scope={SCOPE}
+        filter={{ documentTypes: ['DIENSTANWEISUNG'] }}
+        onChange={onChange}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    expect(await screen.findByTestId('filter-field-not-offered')).toHaveTextContent(
+      'Die bereits gesetzte Bedingung bleibt wirksam',
+    )
+    await user.type(screen.getByLabelText('Von'), '2024-01-01')
+    await user.click(screen.getByRole('button', { name: 'Anwenden' }))
+
+    expect(onChange).toHaveBeenCalledWith({
+      documentTypes: ['DIENSTANWEISUNG'],
+      documentDateFrom: '2024-01-01',
+    })
+  })
+
   it('cannot apply anything when no field is offered', async () => {
     server.use(
       http.get('/api/v1/search/metadata-filter-options', () =>

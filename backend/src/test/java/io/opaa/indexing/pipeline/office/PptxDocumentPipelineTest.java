@@ -234,25 +234,25 @@ class PptxDocumentPipelineTest {
   }
 
   @Test
-  void aFileThatIsNotAValidPptxHasNoContent() throws IOException {
+  void aFileThatIsNotAValidPptxIsAParseFailure() throws IOException {
     Path file = tempDir.resolve("kaputt.pptx");
     Files.writeString(file, "das ist kein pptx");
 
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.pptx", ".pptx"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
-  void aFilelessSourceHasNoContent() {
+  void aFilelessSourceIsAParseFailure() {
     // A PPTX pipeline is only ever reached through a genuine .pptx file (never RSS-extracted
     // text, ADR-0017 decision 2) - defensive fallback, mirrors PdfDocumentPipeline/
     // DocxDocumentPipeline.
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofExtractedText("irrelevanter Text", "quelle.pptx"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
     assertThat(result.chunks()).isEmpty();
   }
 

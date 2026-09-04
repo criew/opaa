@@ -40,4 +40,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/019-documents-library-status-index.yaml
   - include:
-      file: db/changelog/changes/021-chats-metadata-filter.yaml
+      file: db/changelog/changes/020-document-type-suffixes.yaml
+  - include:
+      file: db/changelog/changes/022-chats-metadata-filter.yaml

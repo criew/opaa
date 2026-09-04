@@ -18,9 +18,11 @@ import org.springframework.stereotype.Component;
  * filter stays the outer condition, this stage only supplies what the searches AND to it. A run
  * without a filter passes through unchanged and says so.
  *
- * <p>The Dokumentart vocabulary is read per run because the vector form needs the complete value
- * set to express "no value" (see {@link MetadataFilterExpressions}); a code the vocabulary does not
- * know constrains nothing beyond what a real code would - it matches no document either way.
+ * <p>The Dokumentart vocabulary is read per run because both forms express "no value" as NOT IN
+ * over the complete value set (see {@link MetadataFilterExpressions}). A code outside the
+ * vocabulary is therefore rejected at the API and at the chat (400) before it reaches this stage:
+ * selecting only unknown codes would exclude every code the vocabulary knows and keep exactly the
+ * documents without a Dokumentart.
  */
 @Component
 class MetadataFilterStage implements RetrievalStage {

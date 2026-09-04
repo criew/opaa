@@ -97,6 +97,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
         .when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), any(), any()))
         .thenReturn(1);
     lenient().when(documentRepository.markFailed(any(), any())).thenReturn(1);
+    lenient().when(documentRepository.markFailedWithoutChunks(any(), any())).thenReturn(1);
     lenient()
         .when(documentRepository.save(any(Document.class)))
         .thenAnswer(inv -> inv.getArgument(0));
@@ -114,7 +115,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
       VectorStoreWriter vectorStoreWriter, int embeddingConcurrency, int batchSize) {
     IndexingProperties properties =
         new IndexingProperties(
-            1000, 0, batchSize, null, null, null, null, null, null, embeddingConcurrency);
+            1000, 0, batchSize, null, null, null, null, null, embeddingConcurrency);
     // Mirrors IndexingConfiguration#embeddingTaskExecutor exactly (#734): the concurrency bound
     // is the executor's own pool size, not anything FileProcessingService enforces itself - a
     // test executor sized differently from embeddingConcurrency would not actually exercise the
@@ -138,7 +139,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
         properties,
         executor,
         org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-        new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+        new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, ""),
         org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
         TestDocumentMetadataServices.returningEmpty());
   }
@@ -272,7 +273,8 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
         .isInstanceOf(RuntimeException.class)
         .hasMessage("embedding call blew up");
 
-    verify(documentRepository).markFailed(any(), org.mockito.ArgumentMatchers.isNull());
+    verify(documentRepository)
+        .markFailedWithoutChunks(any(), org.mockito.ArgumentMatchers.isNull());
   }
 
   /**

@@ -193,6 +193,38 @@ class MetadataBackfillServiceIntegrationTest {
     assertThat(allChunkMetadata()).isEqualTo(chunksBefore);
   }
 
+  /**
+   * A raised {@link CoreMetadataExtractor#EXTRACTION_VERSION} (#1263 lifted it to 2) is what draws
+   * an already extracted bestand back into the selection - the mechanism the new Dokumentart
+   * sources rely on to reach documents extracted by an older version.
+   */
+  @Test
+  void aDocumentBelowTheCurrentExtractionVersionIsSelectedAgain() throws IOException {
+    indexAltbestand();
+    backfillService.backfillBatch(Organization.DEFAULT_ID, library.getId(), 10);
+    assertThat(progress().isComplete()).isTrue();
+
+    jdbcTemplate.update(
+        "UPDATE documents SET metadata_extraction_version = ?",
+        CoreMetadataExtractor.EXTRACTION_VERSION - 1);
+
+    MetadataBackfillProgress outdated = progress();
+    assertThat(outdated.pendingDocuments()).isEqualTo(3);
+    assertThat(outdated.currentDocuments()).isZero();
+    assertThat(outdated.isComplete()).isFalse();
+
+    MetadataBackfillResult rerun =
+        backfillService.backfillBatch(Organization.DEFAULT_ID, library.getId(), 10);
+
+    assertThat(rerun.processedDocuments()).isEqualTo(3);
+    assertThat(progress().isComplete()).isTrue();
+    assertThat(documentRepository.findAll())
+        .allSatisfy(
+            document ->
+                assertThat(document.getMetadataExtractionVersion())
+                    .isEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION));
+  }
+
   @Test
   void aManuallySetValueIsNeverOverwrittenByTheBackfill() throws IOException {
     indexAltbestand();
@@ -262,6 +294,9 @@ class MetadataBackfillServiceIntegrationTest {
     assertThat(result.markedForNextRun()).isZero();
     CoreMetadata core = documentMetadataService.coreMetadataFor(entryId);
     assertThat(core.title()).isEqualTo("Gebührensatzung tritt in Kraft");
+    // The stored file_name is the headline, not a file name (#1263): the backfill must read no
+    // naming convention out of it, exactly as the ingest does not.
+    assertThat(core.documentTypeCode()).isNull();
     assertThat(core.documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
     assertThat(core.documentDatePrecision()).isEqualTo(DatePrecision.DAY);
     assertThat(documentRepository.findById(entryId).orElseThrow().getMetadataExtractionVersion())

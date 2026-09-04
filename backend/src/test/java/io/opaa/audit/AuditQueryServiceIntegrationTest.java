@@ -510,6 +510,36 @@ class AuditQueryServiceIntegrationTest {
   }
 
   /**
+   * Regression guard for the #1275 review: {@code requireReason}'s length check runs only after
+   * {@code requireAuditor} has already passed, so a non-AUDITOR caller with an over-length reason
+   * used to reach {@code loggedAccess}'s {@code catch} with the raw, uncapped reason still to
+   * record - failing the {@code audit_log.reason varchar(1000)} write itself and leaving the denied
+   * attempt unrecorded. {@code capReason} bounds what actually gets written, independent of which
+   * check rejected the call.
+   */
+  @Test
+  void aNonAuditorCallerWithAnOverlongReasonIsDeniedAndTheDenialIsStillLogged() {
+    String overlong = "x".repeat(1001);
+
+    assertThatThrownBy(
+            () ->
+                queryService.byTimeRange(
+                    organizationId,
+                    regularUserId,
+                    overlong,
+                    base.minus(1, ChronoUnit.HOURS),
+                    base.plus(1, ChronoUnit.HOURS),
+                    0,
+                    50))
+        .isInstanceOf(AccessDeniedException.class);
+
+    List<AuditLogEntry> selfLogEntries = findAuditLogAccessedEntries();
+    assertThat(selfLogEntries).hasSize(1);
+    assertThat(selfLogEntries.get(0).getOutcome()).isEqualTo(AuditOutcome.DENIED);
+    assertThat(selfLogEntries.get(0).getReason()).hasSize(1000);
+  }
+
+  /**
    * "Der Anlass ist bei diesen Einträgen ein Pflichtfeld; eine Abfrage ohne Anlass wird abgewiesen"
    * (docs/features/security-and-compliance.md#zugriffswege-was-es-gibt-und-was-es-nicht-gibt) - and
    * the rejection is itself logged, exactly like every other denied attempt.

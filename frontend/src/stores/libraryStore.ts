@@ -11,6 +11,7 @@ import {
   getLibrary,
   getLibraries,
   updateLibrary,
+  updateLibraryDiagnosticsLock,
 } from '../services/api'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
@@ -25,6 +26,7 @@ interface LibraryState {
   createNewLibrary: (request: LibraryRequest) => Promise<string>
   updateExistingLibrary: (libraryId: string, request: LibraryUpdateRequest) => Promise<void>
   deleteExistingLibrary: (libraryId: string) => Promise<void>
+  setLibraryDiagnosticsLock: (libraryId: string, locked: boolean) => Promise<void>
 }
 
 function sortLibraries(list: LibraryListResponse[]): LibraryListResponse[] {
@@ -100,5 +102,20 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     delete rest[libraryId]
     set({ libraryDetails: rest })
     await get().loadLibraries()
+  },
+
+  // #1257: the endpoint's response only carries {libraryId, locked} (LibraryDiagnosticsLockResponse),
+  // not the full library - merged into the cached detail rather than re-fetching it, mirroring how
+  // createNewLibrary already caches its own full response without a round trip.
+  setLibraryDiagnosticsLock: async (libraryId, locked) => {
+    const response = await updateLibraryDiagnosticsLock(libraryId, locked)
+    const current = get().libraryDetails[libraryId]
+    if (!current) return
+    set({
+      libraryDetails: {
+        ...get().libraryDetails,
+        [libraryId]: { ...current, diagnosticsLocked: response.locked },
+      },
+    })
   },
 }))

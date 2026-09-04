@@ -17,7 +17,10 @@ import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
 import { useChatStore } from '../../stores/chatStore'
 import { useLibraryStore } from '../../stores/libraryStore'
-import { useMetadataFilterOptionsStore } from '../../stores/metadataFilterOptionsStore'
+import {
+  metadataFilterScopeKey,
+  useMetadataFilterOptionsStore,
+} from '../../stores/metadataFilterOptionsStore'
 import { useSpaceStore } from '../../stores/spaceStore'
 import type { LibraryListResponse } from '../../types/api'
 import MetadataFilterPopover from './MetadataFilterPopover'
@@ -223,6 +226,19 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     }),
     [chatId, referencedLibraryIds, scope],
   )
+
+  // A chat loaded with a Dokumentart condition needs the labels before the popover was ever
+  // opened; loading the options for the current scope resolves them.
+  const filterOptionsScopeKey = useMetadataFilterOptionsStore((s) => s.optionsScopeKey)
+  const loadFilterOptions = useMetadataFilterOptionsStore((s) => s.loadOptions)
+  const filterScopeKey = metadataFilterScopeKey(filterScope)
+  const hasTypeFilter = (metadataFilter?.documentTypes ?? []).length > 0
+  useEffect(() => {
+    if (hasTypeFilter && filterOptionsScopeKey !== filterScopeKey) {
+      void loadFilterOptions(filterScope)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasTypeFilter, filterOptionsScopeKey, filterScopeKey])
 
   const documentTypeChipLabel = useMemo(() => {
     const codes = metadataFilter?.documentTypes ?? []

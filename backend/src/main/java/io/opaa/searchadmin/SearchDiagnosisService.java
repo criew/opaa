@@ -7,6 +7,7 @@ import io.opaa.diagnosticaccess.ForeignDiagnosticContext;
 import io.opaa.diagnosticaccess.ForeignDiagnosticContextService;
 import io.opaa.diagnosticaccess.ForeignDiagnosticFindings;
 import io.opaa.diagnosticaccess.ForeignDiagnosticRequest;
+import io.opaa.diagnosticaccess.LibraryDiagnosticsLockService;
 import io.opaa.group.GroupDetail;
 import io.opaa.group.GroupService;
 import io.opaa.indexing.Document;
@@ -74,6 +75,7 @@ public class SearchDiagnosisService {
   private final RerankModelRole rerankModelRole;
   private final ForeignDiagnosticContextService foreignDiagnosticContextService;
   private final DiagnosticImpersonationGrantService grantService;
+  private final LibraryDiagnosticsLockService lockService;
   private final Clock clock;
 
   public SearchDiagnosisService(
@@ -86,6 +88,7 @@ public class SearchDiagnosisService {
       RerankModelRole rerankModelRole,
       ForeignDiagnosticContextService foreignDiagnosticContextService,
       DiagnosticImpersonationGrantService grantService,
+      LibraryDiagnosticsLockService lockService,
       Clock clock) {
     this.retrievalPipeline = retrievalPipeline;
     this.queryProperties = queryProperties;
@@ -96,6 +99,7 @@ public class SearchDiagnosisService {
     this.rerankModelRole = rerankModelRole;
     this.foreignDiagnosticContextService = foreignDiagnosticContextService;
     this.grantService = grantService;
+    this.lockService = lockService;
     this.clock = clock;
   }
 
@@ -146,7 +150,6 @@ public class SearchDiagnosisService {
             libraryAccessService.readableLibraryIdsForGroup(
                 query.permissionProfileId(), caller.organizationId()),
             profile.group().getName(),
-            Set.of(),
             false);
       }
       case SELF -> {
@@ -160,7 +163,6 @@ public class SearchDiagnosisService {
             query,
             libraryAccessService.readableLibraryIds(caller.id(), caller.organizationId()),
             null,
-            Set.of(),
             false);
       }
     };
@@ -202,8 +204,7 @@ public class SearchDiagnosisService {
 
   private ForeignDiagnosticFindings<SearchDiagnosis> findings(
       CurrentUser caller, DiagnosisQuery query, ForeignDiagnosticContext context) {
-    SearchDiagnosis diagnosis =
-        run(caller, query, context.searchableLibraryIds(), null, context.lockedLibraryIds(), true);
+    SearchDiagnosis diagnosis = run(caller, query, context.searchableLibraryIds(), null, true);
     return new ForeignDiagnosticFindings<>(displayedChunkIds(diagnosis), diagnosis);
   }
 
@@ -227,8 +228,7 @@ public class SearchDiagnosisService {
       DiagnosisQuery query,
       Set<UUID> searchScope,
       String profileName,
-      Set<UUID> lockedLibraryIds,
-      boolean redactOutsideScope) {
+      boolean personContext) {
     // Empty history, deliberately: the diagnosis never reads a conversation (Leitplanke (a)).
     // The rerank role's state is read exactly as QueryService reads it, so this run reranks
     // whenever a chat query would.
@@ -251,13 +251,7 @@ public class SearchDiagnosisService {
         query.trackedDocumentId() == null
             ? null
             : trackDocument(
-                caller,
-                query.trackedDocumentId(),
-                searchScope,
-                lockedLibraryIds,
-                redactOutsideScope,
-                result,
-                selection);
+                caller, query.trackedDocumentId(), searchScope, personContext, result, selection);
 
     return new SearchDiagnosis(
         query.question(),
@@ -269,7 +263,7 @@ public class SearchDiagnosisService {
         result.explanation(),
         selection,
         documentsByKey,
-        lockedLibraryIds.size(),
+        personContext ? (int) lockService.countLocked(caller.organizationId()) : 0,
         tracked);
   }
 
@@ -357,13 +351,17 @@ public class SearchDiagnosisService {
    * searchScope} is answered without its name and without its library, and a document in a
    * diagnosegesperrte library is told apart from one the rights context may not read - calling the
    * lock a Rechtefrage would be a wrong statement about a person (Leitplanke (e)).
+   *
+   * <p>{@link TrackedDocumentVerdict.Outcome#IN_LOCKED_AREA} follows from the library's lock state
+   * alone, never from the intersection of lock and target rights: an intersection would make the
+   * verdict differ between a person who may read the locked library and one who may not, and thus
+   * answer a question about that person the diagnosis refuses to answer.
    */
   private TrackedDocumentVerdict trackDocument(
       CurrentUser caller,
       UUID documentId,
       Set<UUID> searchScope,
-      Set<UUID> lockedLibraryIds,
-      boolean redactOutsideScope,
+      boolean personContext,
       RetrievalPipelineResult result,
       List<SearchDiagnosis.SelectedChunk> selection) {
     Document document =
@@ -376,14 +374,14 @@ public class SearchDiagnosisService {
 
     if (libraryId == null || !searchScope.contains(libraryId)) {
       TrackedDocumentVerdict.Outcome outcome =
-          libraryId != null && lockedLibraryIds.contains(libraryId)
+          personContext && lockService.isLocked(libraryId)
               ? TrackedDocumentVerdict.Outcome.IN_LOCKED_AREA
               : TrackedDocumentVerdict.Outcome.OUTSIDE_SEARCH_SCOPE;
       return new TrackedDocumentVerdict(
           documentId,
-          redactOutsideScope ? null : document.getFileName(),
-          redactOutsideScope ? null : libraryId,
-          redactOutsideScope ? null : libraryName(libraryId),
+          personContext ? null : document.getFileName(),
+          personContext ? null : libraryId,
+          personContext ? null : libraryName(libraryId),
           outcome,
           null,
           null,

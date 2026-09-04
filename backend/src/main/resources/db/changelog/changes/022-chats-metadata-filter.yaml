@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: 021-chats-metadata-filter
+      id: 022-chats-metadata-filter
       author: opaa
       comment: >-
         #1070: the chat's sticky core-field filter (documentTypes, documentDateFrom, documentDateTo)

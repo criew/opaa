@@ -16,7 +16,6 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
-import io.opaa.indexing.FullTextBackfillService;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataCorrectionService;
@@ -78,7 +77,6 @@ class MetadataFilterSearchIntegrationTest {
   @Autowired private QueryProperties queryProperties;
   @Autowired private QueryService queryService;
   @Autowired private FullTextChunkSearch fullTextChunkSearch;
-  @Autowired private FullTextBackfillService backfillService;
   @Autowired private VectorStore vectorStore;
   @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private FileProcessingService fileProcessingService;
@@ -99,7 +97,7 @@ class MetadataFilterSearchIntegrationTest {
 
   @BeforeEach
   void setUp() throws IOException {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text, chunk_full_text_skip");
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
     jdbcTemplate.update("DELETE FROM documents");
     jdbcTemplate.update("DELETE FROM asset_grants");
     // Users and libraries of earlier runs stay: the audit rows a manual correction writes
@@ -255,6 +253,63 @@ class MetadataFilterSearchIntegrationTest {
   }
 
   /**
+   * The permission filter must stay the outer operand of the whole metadata condition, not of its
+   * first OR-branch only: a date window is an OR over the three precisions plus the Leerwert
+   * branch, and an unbracketed AND would bind the permission filter to the DAY branch alone -
+   * letting MONTH/YEAR-dated and undated chunks of a forbidden library through the vector path.
+   * Both paths must drop them.
+   */
+  @Test
+  void aDateWindowNeverLetsForbiddenChunksThroughViaTheOtherPrecisionBranches() throws IOException {
+    Document readable = indexed(library, "2024-03-12_Vermerk_Nutzung.pdf");
+    Document forbiddenYear = indexed(forbiddenLibrary, "Vermerk_Nutzung_2024.pdf");
+    Document forbiddenMonth = indexed(forbiddenLibrary, "Vermerk_Nutzung_2024-03.pdf");
+    Document forbiddenUndated = indexed(forbiddenLibrary, "Vermerk_Nutzung.pdf");
+    assertThat(core(forbiddenYear).documentDatePrecision()).isEqualTo(DatePrecision.YEAR);
+    assertThat(core(forbiddenMonth).documentDatePrecision()).isEqualTo(DatePrecision.MONTH);
+    assertThat(core(forbiddenUndated).documentDate()).isNull();
+
+    for (MetadataFilter filter :
+        List.of(
+            MetadataFilter.ofDateWindow(LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31)),
+            new MetadataFilter(
+                Set.of("VERMERK"), LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31)))) {
+      RetrievalPipelineResult result = run(filter, Set.of(library.getId()));
+      for (RetrievalStageName path :
+          List.of(RetrievalStageName.VECTOR_SEARCH, RetrievalStageName.FULL_TEXT_SEARCH)) {
+        assertThat(documentKeys(result, path))
+            .as("filter %s, path %s", filter, path)
+            .containsExactly(readable.getId().toString());
+      }
+    }
+  }
+
+  /**
+   * The same bracket rule inside the metadata condition: with Dokumentart and date combined, the
+   * Dokumentart must constrain every date branch, so a document of the wrong Dokumentart with a
+   * YEAR date or no date is out of both paths.
+   */
+  @Test
+  void aCombinedFilterAppliesTheDocumentTypeToEveryDateBranch() throws IOException {
+    Document wanted = indexed(library, "2024-03-12_Vermerk_Nutzung.pdf");
+    Document wrongTypeYear = indexed(library, "Dienstanweisung_Nutzung_2024.pdf");
+    Document wrongTypeUndated = indexed(library, "Dienstanweisung_Nutzung.pdf");
+    assertThat(core(wrongTypeYear).documentDatePrecision()).isEqualTo(DatePrecision.YEAR);
+    assertThat(core(wrongTypeUndated).documentDate()).isNull();
+
+    RetrievalPipelineResult result =
+        run(
+            new MetadataFilter(
+                Set.of("VERMERK"), LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31)),
+            Set.of(library.getId()));
+
+    assertThat(documentKeys(result, RetrievalStageName.VECTOR_SEARCH))
+        .containsExactly(wanted.getId().toString());
+    assertThat(documentKeys(result, RetrievalStageName.FULL_TEXT_SEARCH))
+        .containsExactly(wanted.getId().toString());
+  }
+
+  /**
    * Why the filter must be part of the query: {@code fetch-k} matching documents of the wrong
    * Dokumentart rank ahead of the one wanted document. A post-filter over the {@code fetch-k}
    * window finds nothing; the in-query filter finds it.
@@ -268,8 +323,8 @@ class MetadataFilterSearchIntegrationTest {
     }
     String wanted = UUID.randomUUID().toString();
     chunks.add(chunk("zzz-vermerk", "VERMERK", wanted));
-    vectorStore.add(chunks);
-    backfillService.backfillBatch(fetchK + 10);
+    // The production write path: vector and full-text row of every chunk in one transaction.
+    vectorChunkStore.addChunks(chunks);
     MetadataFilter filter = MetadataFilter.ofDocumentTypes(List.of("VERMERK"));
 
     // Lexical path, deterministic order (ties broken by file name): the post-filter finds nothing.
@@ -289,6 +344,28 @@ class MetadataFilterSearchIntegrationTest {
     RetrievalPipelineResult result = run(filter, Set.of(library.getId()));
     assertThat(documentKeys(result, RetrievalStageName.VECTOR_SEARCH)).containsExactly(wanted);
     assertThat(documentKeys(result, RetrievalStageName.FULL_TEXT_SEARCH)).containsExactly(wanted);
+  }
+
+  /**
+   * The parity assumption made visible: a Dokumentart the vocabulary does not know (a code removed
+   * while chunks still carry it) reads as "no value" in both paths and is kept by both - never kept
+   * by one and dropped by the other.
+   */
+  @Test
+  void aChunkWithACodeOutsideTheVocabularyIsTreatedAlikeByBothPaths() {
+    String foreign = UUID.randomUUID().toString();
+    String selected = UUID.randomUUID().toString();
+    vectorChunkStore.addChunks(
+        List.of(
+            chunk("altcode.pdf", "ALTCODE", foreign), chunk("vermerk.pdf", "VERMERK", selected)));
+
+    RetrievalPipelineResult result =
+        run(MetadataFilter.ofDocumentTypes(List.of("VERMERK")), Set.of(library.getId()));
+
+    assertThat(documentKeys(result, RetrievalStageName.VECTOR_SEARCH))
+        .containsExactlyInAnyOrder(foreign, selected);
+    assertThat(documentKeys(result, RetrievalStageName.FULL_TEXT_SEARCH))
+        .containsExactlyInAnyOrder(foreign, selected);
   }
 
   private RetrievalPipelineResult run(MetadataFilter filter, Set<UUID> scope) {

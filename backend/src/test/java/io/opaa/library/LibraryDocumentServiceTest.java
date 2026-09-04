@@ -33,7 +33,7 @@ import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.VectorStoreWriter;
-import io.opaa.indexing.pipeline.mail.MailProperties;
+import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
@@ -222,7 +222,7 @@ class LibraryDocumentServiceTest {
         folderRepository,
         folderService,
         attachmentExtractor,
-        new MailProperties(0, 0, 0, 0),
+        new AttachmentProperties(0),
         new AttachmentExtractionLimiter(limits));
   }
 
@@ -1417,7 +1417,7 @@ class LibraryDocumentServiceTest {
             folderRepository,
             folderService,
             attachmentExtractor,
-            new MailProperties(0, 0, 0, 0),
+            new AttachmentProperties(0),
             new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)));
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
         .thenReturn(AssetRole.VIEWER);

@@ -82,6 +82,7 @@ class SearchDiagnosisRerankParityTest {
             rerankModelRole,
             mock(ForeignDiagnosticContextService.class),
             mock(DiagnosticImpersonationGrantService.class),
+            mock(io.opaa.diagnosticaccess.LibraryDiagnosticsLockService.class),
             java.time.Clock.systemUTC());
 
     return service.diagnose(

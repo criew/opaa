@@ -36,7 +36,8 @@ class MetadataFilterExpressionsTest {
         .isSameAs(LIBRARY_FILTER);
     List<Object> parameters = new ArrayList<>();
     assertThat(
-            MetadataFilterExpressions.sqlPredicate(MetadataFilter.NONE, "v.metadata", parameters))
+            MetadataFilterExpressions.sqlPredicate(
+                MetadataFilter.NONE, "v.metadata", VOCABULARY, parameters))
         .isEmpty();
     assertThat(parameters).isEmpty();
   }
@@ -58,12 +59,56 @@ class MetadataFilterExpressionsTest {
   }
 
   /**
-   * "No value" cannot be said as IS NULL in the vector path; it is said as NOT IN over every other
-   * vocabulary code - true exactly for a chunk without the key - so the vector form reads "not one
-   * of the unselected codes" while the SQL form reads "IS NULL OR one of the selected".
+   * The rendered jsonpath must bracket the whole metadata condition under the permission filter:
+   * jsonpath binds {@code &&} tighter than {@code ||}, so an unbracketed date window would tie the
+   * permission filter to its first precision branch only. Asserted on the rendered string, because
+   * the expression tree alone cannot show whether the converter emitted the brackets.
    */
   @Test
-  void theDocumentTypeConditionKeepsTheSelectedCodesAndTheMissingKey() {
+  void theRenderedVectorFilterBracketsTheMetadataConditionUnderThePermissionFilter() {
+    MetadataFilter filter =
+        new MetadataFilter(Set.of("VERMERK"), LocalDate.of(2024, 6, 15), LocalDate.of(2024, 8, 31));
+    String rendered =
+        jsonPath(
+            MetadataFilterExpressions.subordinateTo(
+                LIBRARY_FILTER, MetadataFilterExpressions.vectorExpression(filter, VOCABULARY)));
+
+    String permission = jsonPath(LIBRARY_FILTER).replace("'::jsonpath", "");
+    assertThat(rendered).startsWith(permission + " && (");
+    // No "||" may sit at bracket depth zero of the metadata part: every OR is inside a group.
+    String metadataPart = rendered.substring(permission.length());
+    assertThat(topLevelOrCount(metadataPart)).isZero();
+    // Inside: the Dokumentart condition AND the (bracketed) date condition.
+    assertThat(metadataPart).contains(") && (");
+  }
+
+  private static int topLevelOrCount(String jsonPath) {
+    int depth = 0;
+    int count = 0;
+    for (int i = 0; i < jsonPath.length(); i++) {
+      char c = jsonPath.charAt(i);
+      if (c == '(') {
+        depth++;
+      } else if (c == ')') {
+        depth--;
+      } else if (c == '|'
+          && depth == 0
+          && i + 1 < jsonPath.length()
+          && jsonPath.charAt(i + 1) == '|') {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /**
+   * "No value" cannot be said as IS NULL in the vector path; both forms say NOT IN over every other
+   * vocabulary code - true for a chunk without the key - so a value the closed set does not know (a
+   * removed vocabulary code still on old chunks) is read as "no value" by both paths alike: the
+   * paths cannot drift apart on it.
+   */
+  @Test
+  void bothFormsSayNoValueAsNotInOverTheClosedValueSet() {
     MetadataFilter filter = MetadataFilter.ofDocumentTypes(List.of("VERMERK"));
 
     String vector = jsonPath(MetadataFilterExpressions.vectorExpression(filter, VOCABULARY));
@@ -71,11 +116,14 @@ class MetadataFilterExpressionsTest {
     assertThat(vector).doesNotContain("\"VERMERK\"");
 
     List<Object> parameters = new ArrayList<>();
-    String sql = MetadataFilterExpressions.sqlPredicate(filter, "v.metadata", parameters);
+    String sql =
+        MetadataFilterExpressions.sqlPredicate(filter, "v.metadata", VOCABULARY, parameters);
     assertThat(sql)
-        .isEqualTo(" AND (v.metadata->>'doc_type' IS NULL OR v.metadata->>'doc_type' = ANY(?))");
+        .isEqualTo(" AND (v.metadata->>'doc_type' IS NULL OR v.metadata->>'doc_type' <> ALL(?))");
     assertThat(parameters).hasSize(1);
-    assertThat((String[]) parameters.get(0)).containsExactly("VERMERK");
+    assertThat((String[]) parameters.get(0))
+        .containsExactly("SATZUNG_ORDNUNG", "DIENSTANWEISUNG")
+        .doesNotContain("ALTCODE");
   }
 
   /** Selecting every code constrains nothing: every document carries one of them or none. */
@@ -104,9 +152,14 @@ class MetadataFilterExpressionsTest {
         .contains("!($.\"doc_date_precision\" == \"DAY\"");
 
     List<Object> parameters = new ArrayList<>();
-    String sql = MetadataFilterExpressions.sqlPredicate(filter, "v.metadata", parameters);
-    assertThat(sql).startsWith(" AND (v.metadata->>'doc_date' IS NULL OR (");
-    assertThat(parameters)
+    String sql =
+        MetadataFilterExpressions.sqlPredicate(filter, "v.metadata", VOCABULARY, parameters);
+    assertThat(sql)
+        .startsWith(
+            " AND (v.metadata->>'doc_date_precision' IS NULL OR"
+                + " v.metadata->>'doc_date_precision' <> ALL(?) OR (");
+    assertThat((String[]) parameters.get(0)).containsExactly("DAY", "MONTH", "YEAR");
+    assertThat(parameters.subList(1, parameters.size()))
         .containsExactly(
             "DAY",
             "2024-06-15",
@@ -123,9 +176,9 @@ class MetadataFilterExpressionsTest {
   void anOpenEndedWindowOmitsTheMissingBound() {
     MetadataFilter from = MetadataFilter.ofDateWindow(LocalDate.of(2024, 1, 1), null);
     List<Object> parameters = new ArrayList<>();
-    String sql = MetadataFilterExpressions.sqlPredicate(from, "v.metadata", parameters);
+    String sql = MetadataFilterExpressions.sqlPredicate(from, "v.metadata", VOCABULARY, parameters);
     assertThat(sql).contains(">= ?").doesNotContain("<= ?");
-    assertThat(parameters)
+    assertThat(parameters.subList(1, parameters.size()))
         .containsExactly("DAY", "2024-01-01", "MONTH", "2024-01-01", "YEAR", "2024-01-01");
     assertThat(jsonPath(MetadataFilterExpressions.vectorExpression(from, VOCABULARY)))
         .doesNotContain("<=");

@@ -304,6 +304,20 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   int markFailed(@Param("id") UUID id, @Param("errorMessage") String errorMessage);
 
   /**
+   * Like {@link #markFailed}, plus {@code chunk_count = 0}: for a document whose chunks were just
+   * removed because its new version is legitimately empty (#1268). {@link #markFailed} deliberately
+   * leaves {@code chunk_count} alone, which is right for a document that kept its previous chunks
+   * and wrong for one that has none left - since #1268 those two cases are distinguishable, so the
+   * column must say which of them a {@code FAILED} row is.
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.status = io.opaa.api.types.DocumentStatus.FAILED, d.errorMessage ="
+          + " :errorMessage, d.chunkCount = 0 where d.id = :id")
+  int markFailedWithoutChunks(@Param("id") UUID id, @Param("errorMessage") String errorMessage);
+
+  /**
    * The successful counterpart to {@link #markFailed} - same reasoning, same
    * zero-rows-means-the-row-is-gone contract.
    */

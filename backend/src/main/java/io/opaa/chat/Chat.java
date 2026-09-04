@@ -107,7 +107,7 @@ public class Chat {
   private Set<UUID> referencedLibraryIds = new LinkedHashSet<>();
 
   /**
-   * The chat's sticky core-field filter (#1070, migration 021) as {@link MetadataFilterJson} writes
+   * The chat's sticky core-field filter (#1070, migration 022) as {@link MetadataFilterJson} writes
    * it; {@code null} for no filter. Applied to every question of this chat next to the search scope
    * above - the Kontext der Unterhaltung the specification names as one of the two sources of a
    * filter (metadata-schema.md, Wirkstelle 1).

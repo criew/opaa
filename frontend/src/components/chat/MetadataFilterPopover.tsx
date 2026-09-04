@@ -75,13 +75,19 @@ export default function MetadataFilterPopover({
 
   const anyOffered = (typeField?.offered ?? false) || (dateField?.offered ?? false)
 
+  // A field below the threshold is not offered, but a condition already set on it stays in force
+  // (Koordinator-Festlegung an #1070): its existing value is carried through untouched, and only
+  // its chip removes it.
   const draftFilter = useMemo((): MetadataFilter | null => {
     const next: MetadataFilter = {}
-    if (typeField?.offered && draftTypes.length > 0) next.documentTypes = [...draftTypes].sort()
-    if (dateField?.offered && draftFrom !== '') next.documentDateFrom = draftFrom
-    if (dateField?.offered && draftTo !== '') next.documentDateTo = draftTo
+    const types = typeField?.offered ? draftTypes : (filter?.documentTypes ?? [])
+    if (types.length > 0) next.documentTypes = [...types].sort()
+    const from = dateField?.offered ? draftFrom : (filter?.documentDateFrom ?? '')
+    const to = dateField?.offered ? draftTo : (filter?.documentDateTo ?? '')
+    if (from !== '') next.documentDateFrom = from
+    if (to !== '') next.documentDateTo = to
     return Object.keys(next).length === 0 ? null : next
-  }, [dateField?.offered, draftFrom, draftTo, draftTypes, typeField?.offered])
+  }, [dateField?.offered, draftFrom, draftTo, draftTypes, filter, typeField?.offered])
 
   const handleOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     setDraftTypes(filter?.documentTypes ?? [])
@@ -189,6 +195,8 @@ export default function MetadataFilterPopover({
                     data-testid="filter-field-not-offered"
                   >
                     {notOfferedText(typeField)}
+                    {(filter?.documentTypes ?? []).length > 0 &&
+                      ' Die bereits gesetzte Bedingung bleibt wirksam; der Chip entfernt sie.'}
                   </Typography>
                 )
               )}
@@ -235,6 +243,8 @@ export default function MetadataFilterPopover({
                     data-testid="filter-field-not-offered"
                   >
                     {notOfferedText(dateField)}
+                    {(filter?.documentDateFrom || filter?.documentDateTo) &&
+                      ' Die bereits gesetzte Bedingung bleibt wirksam; der Chip entfernt sie.'}
                   </Typography>
                 )
               )}

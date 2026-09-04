@@ -214,24 +214,24 @@ class PdfDocumentPipelineTest {
   }
 
   @Test
-  void aFileThatIsNotAValidPdfHasNoContent() throws IOException {
+  void aFileThatIsNotAValidPdfIsAParseFailure() throws IOException {
     Path file = tempDir.resolve("kaputt.pdf");
     Files.writeString(file, "das ist kein pdf");
 
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.pdf", ".pdf"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
-  void aFilelessSourceHasNoContent() {
+  void aFilelessSourceIsAParseFailure() {
     // A PDF pipeline is only ever reached through a genuine .pdf file (never RSS-extracted text,
     // ADR-0017 decision 2) - defensive fallback, mirrors DocxDocumentPipeline/PptxDocumentPipeline.
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofExtractedText("irrelevanter Text", "quelle.pdf"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
     assertThat(result.chunks()).isEmpty();
   }
 
