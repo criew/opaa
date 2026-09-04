@@ -93,9 +93,33 @@ public class LibraryDiagnosticsLockService {
   }
 
   /**
+   * Whether this one library is diagnosegesperrt. The answer follows from the library alone; it is
+   * never intersected with anybody's read rights, so no answer derived from it can carry a
+   * statement about a person.
+   */
+  @Transactional(readOnly = true)
+  public boolean isLocked(UUID libraryId) {
+    return libraryId != null
+        && libraryRepository
+            .findById(libraryId)
+            .map(KnowledgeLibrary::isDiagnosticsLocked)
+            .orElse(false);
+  }
+
+  /**
+   * How many libraries of one organization are diagnosegesperrt - the whole bestand, deliberately
+   * without a rights intersection, so the number a diagnosis reports is the same for every target
+   * person.
+   */
+  @Transactional(readOnly = true)
+  public long countLocked(UUID organizationId) {
+    return libraryRepository.countByOrganizationIdAndDiagnosticsLockedTrue(organizationId);
+  }
+
+  /**
    * Of {@code candidateLibraryIds}, those that are diagnosegesperrt. Used to subtract them from a
-   * foreign context's searchable set and to name them as "gesperrter Suchbereich" - the caller
-   * learns that a locked area exists, never what is in it.
+   * foreign context's searchable set and to record them in the rights snapshot of the protocol
+   * entry. Because it is a rights intersection, it must not be surfaced in a diagnosis answer.
    */
   @Transactional(readOnly = true)
   public Set<UUID> lockedAmong(Set<UUID> candidateLibraryIds) {

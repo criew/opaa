@@ -600,7 +600,7 @@ function DiagnosisResult({
       </Typography>
       {diagnosis.lockedLibraryCount > 0 && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          {`${plural(diagnosis.lockedLibraryCount, 'Bibliothek ist', 'Bibliotheken sind')} als gesperrter Suchbereich ausgenommen. Daraus zeigt die Diagnose nichts - weder Treffer noch Titel. Aufheben kann die Sperre nur die für die Bibliothek zuständige Stelle, nicht die Systemverwaltung.`}{' '}
+          {`In dieser Organisation ${diagnosis.lockedLibraryCount === 1 ? 'ist' : 'sind'} ${plural(diagnosis.lockedLibraryCount, 'Bibliothek', 'Bibliotheken')} für die Diagnose gesperrt; daraus zeigt die Diagnose nichts - weder Treffer noch Titel. Die Zahl gilt für den gesamten Bestand und sagt nichts darüber, was die betrachtete Person lesen darf. Aufheben kann die Sperre nur die für die Bibliothek zuständige Stelle, nicht die Systemverwaltung.`}{' '}
           {/* #1257/#1278 review: die Sperre selbst wird auf der Detailseite der jeweiligen
               Bibliothek bedient, nicht hier - der Link führt bewusst nur zur Bibliotheksliste,
               ohne eine der gesperrten Bibliotheken selbst zu nennen (Leitplanke (e): kein Titel
