@@ -135,7 +135,12 @@ public class ForeignDiagnosticContextService {
    * nichts, was die ausführende Person nicht ohnehin sehen darf". That assumption is enforced here
    * rather than assumed of the caller: the library set is checked against the executing person's
    * own readable libraries, which are organization-scoped, so neither a foreign nor an
-   * organization-foreign library can enter a profile context.
+   * organization-foreign library can enter a profile context. A {@code SYSTEM_ADMIN} caller skips
+   * that containment check, mirroring {@link LibraryAccessService#effectiveRole}'s administrative
+   * fail-open - {@link LibraryAccessService#readableLibraryIds} itself never bypasses (search stays
+   * scoped to actually granted libraries), so without this the same administrator {@code
+   * SearchDiagnosisService#diagnose} lets run directly would be refused here for any profile
+   * touching a library they administer but hold no grant on.
    *
    * <p>The target is the profile's group id, and its library set is resolved from that same group -
    * a caller can neither put a person's name into {@code target_ref} nor record one profile while
@@ -159,11 +164,13 @@ public class ForeignDiagnosticContextService {
             .orElseThrow(() -> new NotFoundException("Rechteprofil nicht gefunden"));
     Set<UUID> candidates =
         libraryAccessService.readableLibraryIdsForGroup(profile.getId(), actor.organizationId());
-    Set<UUID> ownReadable =
-        libraryAccessService.readableLibraryIds(actor.id(), actor.organizationId());
-    if (!ownReadable.containsAll(candidates)) {
-      throw new AccessDeniedException(
-          "Ein Rechteprofil darf nur Bibliotheken umfassen, die Sie selbst einsehen dürfen");
+    if (!actor.isSystemAdmin()) {
+      Set<UUID> ownReadable =
+          libraryAccessService.readableLibraryIds(actor.id(), actor.organizationId());
+      if (!ownReadable.containsAll(candidates)) {
+        throw new AccessDeniedException(
+            "Ein Rechteprofil darf nur Bibliotheken umfassen, die Sie selbst einsehen dürfen");
+      }
     }
     return run(
         actor,
