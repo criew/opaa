@@ -48,6 +48,7 @@ import type {
   SearchPathStatusResponse,
   TrackedDocumentResponse,
 } from '../types/api'
+import { formatShare } from '../utils/labels'
 import { translateListLabel, translateStageNote } from '../utils/retrievalProtocolText'
 import { getSearchChunk } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
@@ -301,7 +302,24 @@ function MetadataBackfillCell({
         {backfill.fields
           .map(
             (field) =>
-              `${field.label} ${field.filledDocuments} (${Math.round(field.filledShare * 100)} %)`,
+              `${field.label} ${field.filledDocuments} (${formatShare(field.filledShare)})`,
+          )
+          .join(' · ')}
+      </Typography>
+      {/* #1069: the Pflege-Anker in the operational view - the same definition the library's own
+          settings show, counted over the organization here. */}
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        component="div"
+        aria-label={`Dokumente ohne Wert je Kernfeld: ${library.libraryName}`}
+      >
+        {backfill.fields
+          .map(
+            (field) =>
+              `${field.label} ${field.documentsWithoutValue} ohne Wert (${formatShare(
+                field.missingShare,
+              )})`,
           )
           .join(' · ')}
       </Typography>
@@ -980,10 +998,12 @@ export default function SearchIndexingAdminPage() {
       <Box sx={{ mb: 4 }}>
         <SectionHead>Indexstatus je Bibliothek</SectionHead>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion der Kernfelder tragen und
-          wie gut jedes Feld befüllt ist. Das Nachrüsten liest die Originaldateien in Chargen
-          erneut; die Suche bleibt währenddessen verfügbar, ein angehaltener Lauf setzt beim
-          nächsten unverarbeiteten Dokument fort.
+          „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion der Kernfelder tragen, wie
+          gut jedes Feld befüllt ist und wie viele Dokumente je Feld noch ohne Wert sind — derselbe
+          Pflege-Anker, den die Einstellungen der Bibliothek zeigen; von Hand als „kein Wert
+          ermittelbar" gekennzeichnete Felder zählen nicht mit. Das Nachrüsten liest die
+          Originaldateien in Chargen erneut; die Suche bleibt währenddessen verfügbar, ein
+          angehaltener Lauf setzt beim nächsten unverarbeiteten Dokument fort.
         </Typography>
         <LibraryStatusTable
           libraries={status?.libraries ?? EMPTY_LIBRARIES}

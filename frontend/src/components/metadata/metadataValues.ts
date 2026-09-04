@@ -13,8 +13,16 @@ export function coreMetadataFieldLabel(fieldKey: string): string {
   return CORE_METADATA_FIELDS.find((field) => field.key === fieldKey)?.label ?? fieldKey
 }
 
+/** #1069: the third state carries no value and is valid for every core field. */
+export function isNotDeterminable(value: MetadataValueRequest): boolean {
+  return value.state === 'NOT_DETERMINABLE'
+}
+
+export const NOT_DETERMINABLE_LABEL = 'kein Wert ermittelbar'
+
 /** Whether `value` carries everything the backend needs for `fieldKey`. */
 export function isMetadataValueComplete(fieldKey: string, value: MetadataValueRequest): boolean {
+  if (isNotDeterminable(value)) return true
   switch (fieldKey) {
     case 'title':
       return Boolean(value.textValue?.trim())
@@ -32,6 +40,7 @@ export function metadataValueRequestFor(
   fieldKey: string,
   value: MetadataValueRequest,
 ): MetadataValueRequest {
+  if (isNotDeterminable(value)) return { state: 'NOT_DETERMINABLE' }
   switch (fieldKey) {
     case 'title':
       return { textValue: value.textValue?.trim() ?? '' }
@@ -48,6 +57,7 @@ export function describeMetadataValue(
   value: MetadataValueRequest,
   vocabulary: DocumentTypeVocabularyEntryResponse[],
 ): string {
+  if (isNotDeterminable(value)) return NOT_DETERMINABLE_LABEL
   switch (fieldKey) {
     case 'title':
       return value.textValue?.trim() ?? ''

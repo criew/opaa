@@ -5,37 +5,60 @@ import io.opaa.common.ValidationException;
 import java.time.LocalDate;
 
 /**
- * The value a person sets for one core field (#1068): exactly one of {@code textValue}, {@code
- * vocabularyCode} or {@code dateValue}+{@code datePrecision}. {@link #validatedFor} checks the
- * value against the field's type and the vocabulary and normalises the date to the first day of
- * what its precision leaves unknown. #1069 adds the third state "kein Wert ermittelbar" as one more
- * alternative here, not as a separate operation.
+ * The value a person sets for one core field (#1068): either a value - exactly one of {@code
+ * textValue}, {@code vocabularyCode} or {@code dateValue}+{@code datePrecision} - or the third
+ * state "kein Wert ermittelbar" ({@link MetadataValueState#NOT_DETERMINABLE}, #1069), which carries
+ * no value at all. {@link #validatedFor} checks the input against the field's type and the
+ * vocabulary and normalises the date to the first day of what its precision leaves unknown.
  */
 public record MetadataValueInput(
-    String textValue, String vocabularyCode, LocalDate dateValue, DatePrecision datePrecision) {
+    MetadataValueState state,
+    String textValue,
+    String vocabularyCode,
+    LocalDate dateValue,
+    DatePrecision datePrecision) {
 
   private static final int MAX_TEXT_LENGTH = 1000;
 
+  public MetadataValueInput {
+    state = state == null ? MetadataValueState.SET : state;
+  }
+
   public static MetadataValueInput text(String textValue) {
-    return new MetadataValueInput(textValue, null, null, null);
+    return new MetadataValueInput(MetadataValueState.SET, textValue, null, null, null);
   }
 
   public static MetadataValueInput vocabulary(String code) {
-    return new MetadataValueInput(null, code, null, null);
+    return new MetadataValueInput(MetadataValueState.SET, null, code, null, null);
   }
 
   public static MetadataValueInput date(LocalDate date, DatePrecision precision) {
-    return new MetadataValueInput(null, null, date, precision);
+    return new MetadataValueInput(MetadataValueState.SET, null, null, date, precision);
+  }
+
+  /**
+   * "Eine Person hat festgestellt, dass es keinen gibt" - set by hand for any core field, without a
+   * value (metadata-schema.md, "Kein Wert ermittelbar ist ein dritter Zustand").
+   */
+  public static MetadataValueInput notDeterminable() {
+    return new MetadataValueInput(MetadataValueState.NOT_DETERMINABLE, null, null, null, null);
   }
 
   /**
    * The same input, checked and normalised for {@code field}: a blank title, a Dokumentart outside
    * {@code vocabulary}, a date without precision or a value of the wrong kind for the field is a
    * {@link ValidationException} ("lieber leer als geraten" - nothing is mapped to the nearest
-   * value).
+   * value). "Kein Wert ermittelbar" is valid for every field and must come without a value.
    */
   public MetadataValueInput validatedFor(
       CoreMetadataField field, DocumentTypeVocabulary vocabulary) {
+    if (state == MetadataValueState.NOT_DETERMINABLE) {
+      if (textValue != null || vocabularyCode != null || dateValue != null) {
+        throw new ValidationException(
+            "„Kein Wert ermittelbar“ wird ohne Wert gesetzt (Feld " + field.label() + ")");
+      }
+      return notDeterminable();
+    }
     return switch (field) {
       case TITLE -> {
         requireOnly(field, textValue != null, vocabularyCode == null && dateValue == null);
@@ -69,7 +92,9 @@ public record MetadataValueInput(
 
   /** Applies this (validated) value to {@code target}. */
   void applyTo(DocumentMetadataValue target) {
-    if (textValue != null) {
+    if (state == MetadataValueState.NOT_DETERMINABLE) {
+      target.assignNotDeterminable();
+    } else if (textValue != null) {
       target.assignText(textValue);
     } else if (vocabularyCode != null) {
       target.assignVocabularyCode(vocabularyCode);
