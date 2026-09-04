@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { Link as RouterLink } from 'react-router'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -581,7 +582,15 @@ function DiagnosisResult({
       </Typography>
       {diagnosis.lockedLibraryCount > 0 && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          {`${plural(diagnosis.lockedLibraryCount, 'Bibliothek ist', 'Bibliotheken sind')} als gesperrter Suchbereich ausgenommen. Daraus zeigt die Diagnose nichts - weder Treffer noch Titel. Aufheben kann die Sperre nur die für die Bibliothek zuständige Stelle, nicht die Systemverwaltung.`}
+          {`${plural(diagnosis.lockedLibraryCount, 'Bibliothek ist', 'Bibliotheken sind')} als gesperrter Suchbereich ausgenommen. Daraus zeigt die Diagnose nichts - weder Treffer noch Titel. Aufheben kann die Sperre nur die für die Bibliothek zuständige Stelle, nicht die Systemverwaltung.`}{' '}
+          {/* #1257: die Sperre selbst wird auf der Detailseite jeder Bibliothek bedient, nicht
+              hier - dieser Hinweis verlinkt nur dorthin, ohne die Bibliotheken selbst zu nennen
+              (Leitplanke (e): kein Titel aus einem gesperrten Bereich). */}
+          Bedient wird sie auf der jeweiligen{' '}
+          <Link component={RouterLink} to="/libraries">
+            Bibliotheks-Detailseite
+          </Link>
+          .
         </Alert>
       )}
       {diagnosis.trackedDocument && (

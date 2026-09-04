@@ -23,6 +23,7 @@ import type {
   HealthResponse,
   IndexingRunListResponse,
   IndexingStatusResponse,
+  LibraryDiagnosticsLockResponse,
   LibraryDocumentPageResponse,
   LibraryDocumentResponse,
   LibraryFolderRenameRequest,
@@ -595,6 +596,21 @@ export async function updateLibrary(
 ): Promise<LibraryResponse> {
   try {
     const { data } = await client.put<LibraryResponse>(`/v1/libraries/${libraryId}`, request)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateLibraryDiagnosticsLock(
+  libraryId: string,
+  locked: boolean,
+): Promise<LibraryDiagnosticsLockResponse> {
+  try {
+    const { data } = await client.put<LibraryDiagnosticsLockResponse>(
+      `/v1/libraries/${libraryId}/diagnostics-lock`,
+      { locked },
+    )
     return data
   } catch (err) {
     normalizeError(err)

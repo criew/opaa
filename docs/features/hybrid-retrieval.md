@@ -1175,9 +1175,13 @@ gebaut), ist eine eigene Entscheidung und in #1150 bewusst nicht mitgetroffen wo
 
 **Ohne gelöste Sperre durchsucht ein Personenkontext-Lauf nichts.** Jede Bibliothek ist im Grundzustand
 diagnosegesperrt; gelöst wird die Sperre allein von der zuständigen Stelle über
-`PUT /api/v1/libraries/{libraryId}/diagnostics-lock` — eine Bedienoberfläche dafür fehlt noch
-(siehe [#1257](https://github.com/criew/opaa/issues/1257)). Der Ergebnishinweis der Diagnose nennt
-deshalb ausdrücklich, wer die Sperre aufheben kann.
+`PUT /api/v1/libraries/{libraryId}/diagnostics-lock`. Die Bedienoberfläche dafür sitzt auf der
+Bibliotheks-Detailseite (Stammdaten-Abschnitt, dort wo die zuständige Stelle bereits andere
+Einstellungen ändert): Zustand („Diagnose gesperrt"/„Diagnose freigegeben") und Erklärwortlaut sind für
+jeden sichtbar, der die Bibliothek lesen darf; der Umschalter selbst nur für eine Rolle `OWNER`, die
+403-Ablehnung des Endpunkts (etwa bei einer administrativen `OWNER`-Rolle ohne eigenständigen Grant,
+siehe die Leitplanke unten) erscheint als deutsche Fehlermeldung ([#1257](https://github.com/criew/opaa/issues/1257),
+gebaut). Der Ergebnishinweis der Diagnose nennt deshalb ausdrücklich, wer die Sperre aufheben kann.
 
 **Leere Profilliste.** Ein Rechteprofil ist eine **Gruppe** samt der Bibliotheksmenge, die sie lesen
 darf. Installationen, die Lesbarkeit über einzelne Berechtigungen statt über Gruppen vergeben, haben
