@@ -120,6 +120,28 @@ class VariantReportWriterTest {
   }
 
   /**
+   * Issue #1222: a variant whose sole override is the rerank window (e.g.
+   * eval/variants/verwaltung-reranking.json) must not render as "keine Änderung" — the same
+   * indistinguishability the two tests above already guard for the other override fields.
+   */
+  @Test
+  void rendersTheRerankCandidateCountOverride() {
+    var reference = VariantOutcome.executed(variant("rerank-50"), report());
+    var rerank25 = new PipelineVariant.QueryOverrides(null, null, null, null, null, null, null, 25);
+    var changed = VariantOutcome.executed(variantWithOverrides("rerank-25", rerank25), report());
+    var report =
+        new VariantReport(
+            "c",
+            "desc",
+            "verwaltung",
+            "rerank-50",
+            List.of(reference, changed),
+            List.of(VariantComparisonRunner.delta(changed, reference)));
+
+    assertThat(VariantReportWriter.renderSummary(report)).contains("rerankCandidateCount=25");
+  }
+
+  /**
    * Issue #1044 review, Befund 1(c): a multi-run variant's summary must show the min/median/max
    * lines and the deviation line, and the deviation count must reflect a fixture where only the
    * third of three runs actually differs — not "any pair differs" or an off-by-one over the runs.
