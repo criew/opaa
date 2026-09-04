@@ -217,10 +217,30 @@ describe('SourceFootnotes', () => {
       expect(screen.queryByText(/ohne Angabe/)).not.toBeInTheDocument()
     })
 
+    // #1070: a hit the Leerwert rule kept under an active filter is marked "ohne Angabe" - and
+    // only such a hit; a matched source and a source of an unfiltered answer carry no mark.
+    it('marks a hit kept without a value for the filtered field as "ohne Angabe"', () => {
+      const citations = buildCitationIndex(
+        'Satz【source: doc-1#0 | ohne-art.pdf】 und 【source: doc-2#0 | vermerk.pdf】',
+        [
+          source('ohne-art.pdf', true, { documentId: 'doc-1', metadataFilterMatch: 'NO_VALUE' }),
+          source('vermerk.pdf', true, { documentId: 'doc-2', metadataFilterMatch: 'MATCHED' }),
+        ],
+      )
+
+      renderFootnotes(citations)
+
+      const marks = screen.getAllByTestId('source-filter-match')
+      expect(marks).toHaveLength(1)
+      expect(marks[0]).toHaveTextContent('ohne Angabe')
+      expect(marks[0]).toHaveAccessibleName('Metadatenfilter: ohne Angabe im gefilterten Feld')
+    })
+
     it('shows no line at all for a document without metadata', () => {
       renderFootnotes(indexWithDocs(1))
 
       expect(screen.queryByTestId('source-metadata')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('source-filter-match')).not.toBeInTheDocument()
     })
   })
 

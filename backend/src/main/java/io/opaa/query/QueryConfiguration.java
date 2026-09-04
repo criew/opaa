@@ -22,7 +22,11 @@ import org.springframework.context.annotation.Configuration;
  * cross-cutting convention this issue did not change.
  */
 @Configuration
-@EnableConfigurationProperties({QueryProperties.class, RetrievalPipelineProperties.class})
+@EnableConfigurationProperties({
+  QueryProperties.class,
+  RetrievalPipelineProperties.class,
+  MetadataFilterProperties.class
+})
 public class QueryConfiguration {
 
   /**
@@ -40,6 +44,7 @@ public class QueryConfiguration {
   @Bean
   RetrievalPipeline retrievalPipeline(
       SearchScopeStage searchScopeStage,
+      MetadataFilterStage metadataFilterStage,
       SubQueryDecompositionStage subQueryDecompositionStage,
       VectorSearchStage vectorSearchStage,
       FullTextSearchStage fullTextSearchStage,
@@ -51,6 +56,7 @@ public class QueryConfiguration {
     return new RetrievalPipeline(
         List.of(
             searchScopeStage,
+            metadataFilterStage,
             subQueryDecompositionStage,
             vectorSearchStage,
             fullTextSearchStage,

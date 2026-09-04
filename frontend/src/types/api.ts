@@ -90,6 +90,12 @@ export type BulkMetadataValueResponse = components['schemas']['BulkMetadataValue
 export type DocumentTypeVocabularyEntryResponse =
   components['schemas']['DocumentTypeVocabularyEntryResponse']
 export type DocumentTypeVocabularyResponse = components['schemas']['DocumentTypeVocabularyResponse']
+export type MetadataFilter = components['schemas']['MetadataFilter']
+export type MetadataFilterMatch = components['schemas']['MetadataFilterMatch']
+export type MetadataFilterFieldOption = components['schemas']['MetadataFilterFieldOption']
+export type MetadataFilterDocumentTypeOption =
+  components['schemas']['MetadataFilterDocumentTypeOption']
+export type MetadataFilterOptionsResponse = components['schemas']['MetadataFilterOptionsResponse']
 export type MetadataFieldState = components['schemas']['MetadataFieldState']
 export type MetadataFieldMaintenanceResponse =
   components['schemas']['MetadataFieldMaintenanceResponse']

@@ -3,6 +3,7 @@ package io.opaa.query;
 import io.opaa.chat.ChatService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.metadata.DocumentMetadataService;
+import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
@@ -45,7 +46,8 @@ public record QueryServiceDependencies(
     QueryMetrics metrics,
     KnowledgeLibraryRepository knowledgeLibraryRepository,
     RerankModelRole rerankModelRole,
-    DocumentMetadataService documentMetadataService) {
+    DocumentMetadataService documentMetadataService,
+    DocumentTypeVocabularyRepository vocabularyRepository) {
 
   public static QueryServiceDependencies fromContext(ApplicationContext context) {
     return new QueryServiceDependencies(
@@ -61,7 +63,8 @@ public record QueryServiceDependencies(
         context.getBean(QueryMetrics.class),
         context.getBean(KnowledgeLibraryRepository.class),
         context.getBean(RerankModelRole.class),
-        context.getBean(DocumentMetadataService.class));
+        context.getBean(DocumentMetadataService.class),
+        context.getBean(DocumentTypeVocabularyRepository.class));
   }
 
   public QueryService buildQueryService(QueryProperties queryProperties) {
@@ -79,6 +82,7 @@ public record QueryServiceDependencies(
         queryProperties,
         knowledgeLibraryRepository,
         rerankModelRole,
-        documentMetadataService);
+        documentMetadataService,
+        vocabularyRepository);
   }
 }

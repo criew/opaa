@@ -1,5 +1,6 @@
 package io.opaa.query;
 
+import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -9,8 +10,8 @@ import org.springframework.ai.vectorstore.filter.Filter;
 
 /**
  * What one stage hands the next: the search queries, the permission filter every search must apply,
- * the candidate lists currently in flight, and the pool of everything a search stage ever returned
- * in this run.
+ * the metadata filter a search AND-s to it, the candidate lists currently in flight, and the pool
+ * of everything a search stage ever returned in this run.
  *
  * <p><b>{@code candidatePool} is the ceiling of the whole run.</b> Only a search stage may extend
  * it; every other stage draws from it and can therefore never see more candidates than it was
@@ -24,6 +25,12 @@ import org.springframework.ai.vectorstore.filter.Filter;
  *     RetrievalStageName#SUB_QUERY_DECOMPOSITION} ran or when that stage is switched off.
  * @param libraryFilter the {@code library_id IN (...)} filter {@link
  *     RetrievalStageName#SEARCH_SCOPE} built; {@code null} only before that stage ran.
+ * @param metadataFilter the core-field filter {@link RetrievalStageName#METADATA_FILTER} carried
+ *     into the run (#1070); {@link MetadataFilter#NONE} before that stage ran, when it is switched
+ *     off, or when the caller set none. Never a widening of the permission filter: every search
+ *     stage AND-s it to {@link #libraryFilter}.
+ * @param metadataFilterExpression the vector-path form of {@link #metadataFilter}; {@code null}
+ *     exactly when that filter is empty.
  * @param candidateLists the lists currently in flight - one per search query and search path until
  *     fusion collapses them to one.
  * @param candidatePool every candidate any search stage returned in this run, in the order the
@@ -34,27 +41,54 @@ import org.springframework.ai.vectorstore.filter.Filter;
 public record RetrievalState(
     List<String> searchQueries,
     Filter.Expression libraryFilter,
+    MetadataFilter metadataFilter,
+    Filter.Expression metadataFilterExpression,
     List<CandidateList> candidateLists,
     List<Document> candidatePool,
     boolean halted) {
 
   public RetrievalState {
     searchQueries = List.copyOf(searchQueries);
+    metadataFilter = metadataFilter == null ? MetadataFilter.NONE : metadataFilter;
     candidateLists = List.copyOf(candidateLists);
     candidatePool = List.copyOf(candidatePool);
   }
 
   /** The state a run starts in: no queries, no filter, no candidates. */
   public static RetrievalState initial() {
-    return new RetrievalState(List.of(), null, List.of(), List.of(), false);
+    return new RetrievalState(
+        List.of(), null, MetadataFilter.NONE, null, List.of(), List.of(), false);
   }
 
   public RetrievalState withSearchQueries(List<String> queries) {
-    return new RetrievalState(queries, libraryFilter, candidateLists, candidatePool, halted);
+    return new RetrievalState(
+        queries,
+        libraryFilter,
+        metadataFilter,
+        metadataFilterExpression,
+        candidateLists,
+        candidatePool,
+        halted);
   }
 
   public RetrievalState withLibraryFilter(Filter.Expression filter) {
-    return new RetrievalState(searchQueries, filter, candidateLists, candidatePool, halted);
+    return new RetrievalState(
+        searchQueries,
+        filter,
+        metadataFilter,
+        metadataFilterExpression,
+        candidateLists,
+        candidatePool,
+        halted);
+  }
+
+  /**
+   * Carries the metadata filter into the run, in both forms the two search paths need - what {@link
+   * RetrievalStageName#METADATA_FILTER} does. The permission filter is untouched.
+   */
+  public RetrievalState withMetadataFilter(MetadataFilter filter, Filter.Expression expression) {
+    return new RetrievalState(
+        searchQueries, libraryFilter, filter, expression, candidateLists, candidatePool, halted);
   }
 
   /**
@@ -62,7 +96,14 @@ public record RetrievalState(
    * the search stages does.
    */
   public RetrievalState withCandidateLists(List<CandidateList> lists) {
-    return new RetrievalState(searchQueries, libraryFilter, lists, candidatePool, halted);
+    return new RetrievalState(
+        searchQueries,
+        libraryFilter,
+        metadataFilter,
+        metadataFilterExpression,
+        lists,
+        candidatePool,
+        halted);
   }
 
   /**
@@ -75,12 +116,26 @@ public record RetrievalState(
     mergedLists.addAll(lists);
     List<Document> extendedPool = new ArrayList<>(candidatePool);
     lists.forEach(list -> extendedPool.addAll(list.documents()));
-    return new RetrievalState(searchQueries, libraryFilter, mergedLists, extendedPool, halted);
+    return new RetrievalState(
+        searchQueries,
+        libraryFilter,
+        metadataFilter,
+        metadataFilterExpression,
+        mergedLists,
+        extendedPool,
+        halted);
   }
 
   /** Marks the run as finished early; every remaining stage is recorded as not reached. */
   public RetrievalState haltRun() {
-    return new RetrievalState(searchQueries, libraryFilter, candidateLists, candidatePool, true);
+    return new RetrievalState(
+        searchQueries,
+        libraryFilter,
+        metadataFilter,
+        metadataFilterExpression,
+        candidateLists,
+        candidatePool,
+        true);
   }
 
   /**

@@ -2,6 +2,9 @@ package io.opaa.query;
 
 import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.FullTextIdentifiers;
+import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
+import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -70,16 +73,19 @@ class FullTextChunkSearch {
 
   private final JdbcTemplate jdbcTemplate;
   private final ObjectMapper objectMapper;
+  private final DocumentTypeVocabularyRepository vocabularyRepository;
   private final String schemaName;
   private final String tableName;
 
   FullTextChunkSearch(
       JdbcTemplate jdbcTemplate,
       ObjectMapper objectMapper,
+      DocumentTypeVocabularyRepository vocabularyRepository,
       @Value("${spring.ai.vectorstore.pgvector.schema-name:public}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     this.jdbcTemplate = jdbcTemplate;
     this.objectMapper = objectMapper;
+    this.vocabularyRepository = vocabularyRepository;
     this.schemaName = schemaName;
     this.tableName = tableName;
   }
@@ -93,6 +99,17 @@ class FullTextChunkSearch {
    * means the caller resolved no readable library at all.
    */
   List<Document> search(String question, Collection<UUID> libraryIds, int limit) {
+    return search(question, libraryIds, MetadataFilter.NONE, limit);
+  }
+
+  /**
+   * The same search with the core-field filter (#1070) as further {@code WHERE} conditions over the
+   * chunk's {@code metadata} - the lexical twin of the vector path's filter expression, built by
+   * {@link MetadataFilterExpressions#sqlPredicate} from the same rule, and placed after the
+   * permission filter in the same clause: it narrows, it never widens.
+   */
+  List<Document> search(
+      String question, Collection<UUID> libraryIds, MetadataFilter metadataFilter, int limit) {
     if (libraryIds.isEmpty() || limit <= 0) {
       return List.of();
     }
@@ -104,6 +121,10 @@ class FullTextChunkSearch {
 
     List<String> tsQueryParameters = new ArrayList<>();
     String tsQueryExpression = tsQueryExpression(wordTokens, identifierLexemes, tsQueryParameters);
+    List<Object> metadataParameters = new ArrayList<>();
+    String metadataPredicate =
+        MetadataFilterExpressions.sqlPredicate(
+            metadataFilter, "v.metadata", vocabularyCodesFor(metadataFilter), metadataParameters);
     String sql =
         "WITH q AS (SELECT "
             + tsQueryExpression
@@ -119,6 +140,7 @@ class FullTextChunkSearch {
             + "WHERE f.library_id = ANY(?) "
             + "  AND f.content_tsv_version = ? "
             + "  AND f.content_tsv @@ q.tsq "
+            + metadataPredicate
             // Ties in ts_rank are common - identically structured documents of one office score the
             // same for a question naming none of them. The tie-break is therefore derived from the
             // chunk's content, not from its identity: a chunk id and a document id are fresh UUIDs
@@ -149,6 +171,13 @@ class FullTextChunkSearch {
           }
           statement.setArray(index++, connection.createArrayOf("uuid", libraries));
           statement.setShort(index++, FullTextChunkStore.CURRENT_TSV_VERSION);
+          for (Object parameter : metadataParameters) {
+            if (parameter instanceof String[] codes) {
+              statement.setArray(index++, connection.createArrayOf("text", codes));
+            } else {
+              statement.setString(index++, parameter.toString());
+            }
+          }
           statement.setInt(index, limit);
           return statement;
         },
@@ -159,6 +188,20 @@ class FullTextChunkSearch {
                 .metadata(readMetadata(rs.getString("metadata")))
                 .score((double) rs.getFloat("rank"))
                 .build());
+  }
+
+  /**
+   * The complete Dokumentart value set the "no value" condition is built over - read only when the
+   * filter constrains the Dokumentart, the same snapshot {@link MetadataFilterStage} reads for the
+   * vector form.
+   */
+  private List<String> vocabularyCodesFor(MetadataFilter metadataFilter) {
+    if (!metadataFilter.filtersDocumentType()) {
+      return List.of();
+    }
+    return vocabularyRepository.findAllByOrderBySortOrderAsc().stream()
+        .map(DocumentTypeVocabularyEntry::getCode)
+        .toList();
   }
 
   /**

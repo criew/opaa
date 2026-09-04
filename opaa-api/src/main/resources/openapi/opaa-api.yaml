@@ -49,6 +49,46 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/v1/search/metadata-filter-options:
+    get:
+      operationId: getMetadataFilterOptions
+      tags: [query]
+      summary: >
+        The Füllstand and the offered values of the filterable core fields in the caller's search
+        scope (#1070). The scope is resolved exactly as POST /api/v1/query resolves it: from the
+        named chat's own settings when chatId names a chat the caller authored, otherwise from
+        useKnowledge/libraryIds - always narrowed to what the caller may read.
+      parameters:
+        - name: chatId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: useKnowledge
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - name: libraryIds
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+      responses:
+        "200":
+          description: The filter options for this person and scope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataFilterOptionsResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/v1/auth/config:
     get:
       operationId: getAuthConfig
@@ -3456,6 +3496,16 @@ components:
             Ignored when chatId names a chat the caller authored - that chat's own sticky
             @-references apply instead (#525). Otherwise (#526): knowledge libraries explicitly
             referenced for the query. Only consulted when useKnowledge is false.
+        metadataFilter:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilter"
+          description: >
+            The core-field filter for this query (#1070, docs/features/metadata-schema.md,
+            Wirkstelle 1), applied inside both search paths before ranking and always subordinate
+            to the permission filter. Ignored when chatId names a chat the caller authored - that
+            chat's own persisted metadataFilter applies instead, exactly like its search scope.
+            Absent or empty: no metadata filter.
 
     QueryResponse:
       type: object
@@ -3635,6 +3685,14 @@ components:
             itself - not from the chunk - so every chunk of a document reports the same values. A
             field without a value is simply absent, and a client renders the list without knowing
             any field. Null for a synthetic entry (#386) and for a document without any value.
+        metadataFilterMatch:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilterMatch"
+          description: >-
+            Set only when a metadata filter was active for this answer (#1070): whether this
+            document matched on every filtered field or was kept as "ohne Angabe". Null without a
+            filter and for a synthetic entry.
 
     ChunkLocation:
       type: object
@@ -4143,6 +4201,13 @@ components:
           description: >
             Sticky @-references (epic #523). Used as the search scope when useKnowledge is false;
             ignored when it is true.
+        metadataFilter:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilter"
+          description: >
+            The chat's sticky core-field filter (#1070) - the Kontext der Unterhaltung every
+            question of this chat is searched with, next to its search scope. Null: no filter.
         status:
           $ref: "#/components/schemas/ChatStatus"
         createdAt:
@@ -4178,6 +4243,11 @@ components:
           items:
             type: string
             format: uuid
+        metadataFilter:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilter"
+          description: The chat's sticky core-field filter (#1070), null without one.
         status:
           $ref: "#/components/schemas/ChatStatus"
         messages:
@@ -4231,6 +4301,11 @@ components:
           items:
             type: string
             format: uuid
+        metadataFilter:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilter"
+          description: The chat's initial core-field filter (#1070); absent or empty means none.
 
     ChatUpdateRequest:
       type: object
@@ -4251,6 +4326,13 @@ components:
           items:
             type: string
             format: uuid
+        metadataFilter:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilter"
+          description: >
+            Replaces the chat's core-field filter (#1070). Omitted or null leaves it unchanged; an
+            object without any condition clears it.
 
     GroupKind:
       type: string
@@ -5464,6 +5546,146 @@ components:
         label:
           type: string
           example: Dienstanweisung
+
+    MetadataFilter:
+      type: object
+      additionalProperties: false
+      description: >-
+        A filter on the filterable core fields (#1070, docs/features/metadata-schema.md, Wirkstelle
+        1). Only Dokumentart and Datum/Stand are filterable - the title is not, and free keywords
+        never are; a request naming any other field is rejected with 400. Every condition is
+        applied inside both search paths, AND-ed to the permission filter, so a filter can narrow
+        the readable set but never widen it. A document without a value for a filtered field is
+        not excluded ("Leerwerte schließen nicht aus"); its source entry carries
+        metadataFilterMatch = NO_VALUE instead. An object without any condition is no filter.
+      properties:
+        documentTypes:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: >-
+            Vocabulary codes (GET /api/v1/metadata/document-types); a document matches when its
+            Dokumentart is one of them or it has none. Empty or absent: no condition on the
+            Dokumentart. A code outside the vocabulary is rejected with 400.
+          example: [DIENSTANWEISUNG, VERMERK]
+        documentDateFrom:
+          type: string
+          nullable: true
+          pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          description: >-
+            Inclusive start of the Datum/Stand window as an ISO-8601 calendar date. A stored value
+            covers the whole span its precision leaves open (YEAR 2024 = 2024-01-01..2024-12-31,
+            MONTH 2024-03 = the month) and matches when that span overlaps the window. Absent:
+            open start. An impossible date is rejected with 400.
+          example: "2024-01-01"
+        documentDateTo:
+          type: string
+          nullable: true
+          pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          description: >-
+            Inclusive end of the window, same overlap rule. Must not precede documentDateFrom
+            (400).
+          example: "2024-12-31"
+
+    MetadataFilterMatch:
+      type: string
+      description: >-
+        How a retrieved document related to the active metadata filter (#1070): MATCHED - every
+        filtered field carried a matching value; NO_VALUE - at least one filtered field had no
+        value on this document (empty or "kein Wert ermittelbar"), and the document was kept by the
+        Leerwert rule. A client marks NO_VALUE hits as "ohne Angabe" in the result list.
+      enum: [MATCHED, NO_VALUE]
+      example: NO_VALUE
+
+    MetadataFilterFieldOption:
+      type: object
+      required: [fieldKey, label, filledDocuments, totalDocuments, fillShare, threshold, offered]
+      description: >-
+        The Füllstand of one filterable core field in the caller's search scope, and whether the
+        filter interface offers the field (metadata-schema.md, "Eintrittsbedingung für den
+        Kernfeld-Filter").
+      properties:
+        fieldKey:
+          type: string
+          example: document_type
+        label:
+          type: string
+          example: Dokumentart
+        filledDocuments:
+          type: integer
+          format: int64
+          description: >-
+            Indexed documents of the scope with a value or the mark "kein Wert ermittelbar" - both
+            count as answered for the Füllstand.
+        totalDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents of the scope.
+        fillShare:
+          type: number
+          format: double
+          description: filledDocuments / totalDocuments in 0..1; 0 for an empty scope.
+        threshold:
+          type: number
+          format: double
+          description: >-
+            The committed Füllstand a field must reach to be offered (ADR-0012; Dokumentart 0.90,
+            Datum/Stand 0.75 as of 04.09.2026).
+        offered:
+          type: boolean
+          description: >-
+            fillShare >= threshold on a non-empty scope. A field below is not offered, with the
+            reason visible.
+
+    MetadataFilterDocumentTypeOption:
+      type: object
+      required: [code, label, documentCount]
+      description: One Dokumentart that actually occurs in the caller's search scope.
+      properties:
+        code:
+          type: string
+          example: DIENSTANWEISUNG
+        label:
+          type: string
+          example: Dienstanweisung
+        documentCount:
+          type: integer
+          format: int64
+
+    MetadataFilterOptionsResponse:
+      type: object
+      required: [totalDocuments, fields, documentTypes]
+      description: >-
+        What the filter interface needs for one person and one search scope (#1070): the
+        Füllstand per field with the entry condition, the Dokumentart values occurring in that
+        scope and the span of the Datum/Stand values. Built in the rights context of the caller
+        over the libraries the next question would search; never a global aggregate
+        (metadata-schema.md, Rechte-Invariante). May be served from a per-person cache keyed by
+        person and scope, discarded on every rights change of that person.
+      properties:
+        totalDocuments:
+          type: integer
+          format: int64
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataFilterFieldOption"
+        documentTypes:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataFilterDocumentTypeOption"
+        documentDateMin:
+          type: string
+          nullable: true
+          description: >-
+            Earliest Datum/Stand value in the scope as an ISO-8601 calendar date (padded to its
+            precision's first day), null without any.
+          example: "2019-01-01"
+        documentDateMax:
+          type: string
+          nullable: true
+          example: "2026-03-12"
 
     DocumentTypeVocabularyResponse:
       type: object
@@ -7211,6 +7433,13 @@ components:
             whether that document was outside the search scope, never retrieved, displaced at a
             named stage, or in the final selection - the distinction between an indexing problem
             and a ranking problem.
+        metadataFilter:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataFilter"
+          description: >
+            The core-field filter to run the diagnosis with (#1070) - applied exactly as a chat
+            query applies it, so "Sicht als" can check what a person's filtered question sees.
 
     RetrievalStage:
       type: string
@@ -7218,6 +7447,7 @@ components:
       enum:
         [
           SEARCH_SCOPE,
+          METADATA_FILTER,
           SUB_QUERY_DECOMPOSITION,
           VECTOR_SEARCH,
           FULL_TEXT_SEARCH,

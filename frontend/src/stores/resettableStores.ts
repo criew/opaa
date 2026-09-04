@@ -8,6 +8,7 @@ import { useIndexingStore } from './indexingStore'
 import { useGrantStore } from './grantStore'
 import { useLlmModelStore } from './llmModelStore'
 import { useSearchAdminStore } from './searchAdminStore'
+import { useMetadataFilterOptionsStore } from './metadataFilterOptionsStore'
 import { bumpSessionEpoch } from './sessionEpoch'
 
 /**
@@ -45,6 +46,7 @@ function resettableStores() {
     useGrantStore,
     useLlmModelStore,
     useSearchAdminStore,
+    useMetadataFilterOptionsStore,
   ]
 }
 
