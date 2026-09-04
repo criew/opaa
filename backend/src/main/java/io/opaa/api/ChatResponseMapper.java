@@ -4,10 +4,12 @@ import io.opaa.api.dto.ChatDetail;
 import io.opaa.api.dto.ChatMessageResponse;
 import io.opaa.api.dto.ChatSummary;
 import io.opaa.api.dto.ChunkLocation;
+import io.opaa.api.dto.SourceCoreMetadata;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
 import io.opaa.chat.ChatSource;
+import io.opaa.chat.ChatSourceCoreMetadata;
 import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatTurn;
 import java.util.List;
@@ -83,7 +85,23 @@ final class ChatResponseMapper {
         .mailFrom(source.getMailFrom())
         .mailTo(source.getMailTo())
         .mailSubject(source.getMailSubject())
-        .mailDate(source.getMailDate());
+        .mailDate(source.getMailDate())
+        .coreMetadata(toCoreMetadata(source.getCoreMetadata()));
+  }
+
+  private static SourceCoreMetadata toCoreMetadata(ChatSourceCoreMetadata core) {
+    if (core == null) {
+      return null;
+    }
+    return new SourceCoreMetadata()
+        .title(core.title())
+        .titleOrigin(core.titleOrigin())
+        .documentType(core.documentType())
+        .documentTypeLabel(core.documentTypeLabel())
+        .documentTypeOrigin(core.documentTypeOrigin())
+        .documentDate(core.documentDate() == null ? null : core.documentDate().toString())
+        .documentDatePrecision(core.documentDatePrecision())
+        .documentDateOrigin(core.documentDateOrigin());
   }
 
   private static List<ChunkLocation> toChunkLocations(List<ChatSourceLocation> locations) {

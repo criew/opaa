@@ -3,6 +3,7 @@ package io.opaa.indexing.pipeline.office;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.RepeatingHeaderChunk;
 import java.io.IOException;
@@ -129,7 +130,43 @@ public class OdtDocumentPipeline implements DocumentPipeline {
     if (headerFooterChunk != null) {
       allChunks.add(0, headerFooterChunk);
     }
-    return DocumentPipelineResult.chunked(allChunks);
+    return DocumentPipelineResult.chunked(allChunks)
+        .withProperties(
+            OdfMetaProperties.read(source, odfProperties)
+                .withFirstHeading(firstTopLevelHeading(events)));
+  }
+
+  /** {@code meta.xml}'s title/dates plus the first level-1 {@code text:h} (ADR-0024). */
+  @Override
+  public DocumentProperties readProperties(DocumentPipelineSource source) {
+    if (source.file() == null) {
+      return DocumentProperties.EMPTY;
+    }
+    DocumentProperties meta = OdfMetaProperties.read(source, odfProperties);
+    try {
+      OdtContentHandler handler =
+          new OdtContentHandler(
+              odfProperties.maxOdtParagraphs(),
+              odfProperties.maxSpaceRepeat(),
+              odfProperties.maxTextCharacters());
+      if (OdfContentXml.parse(source.file(), odfProperties.maxContentXmlBytes(), handler)) {
+        return meta.withFirstHeading(firstTopLevelHeading(handler.events()));
+      }
+    } catch (IOException | RuntimeException e) {
+      log.warn("Could not read headings of ODT document {}", source.fileName(), e);
+    }
+    return meta;
+  }
+
+  private static String firstTopLevelHeading(List<HeadingSectionSplitter.Event> events) {
+    for (HeadingSectionSplitter.Event event : events) {
+      if (event instanceof HeadingSectionSplitter.Heading heading
+          && heading.level() == 1
+          && !heading.title().isBlank()) {
+        return heading.title();
+      }
+    }
+    return null;
   }
 
   /**

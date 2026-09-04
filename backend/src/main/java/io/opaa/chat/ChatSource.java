@@ -36,6 +36,7 @@ public final class ChatSource {
   private String mailTo;
   private String mailSubject;
   private String mailDate;
+  private ChatSourceCoreMetadata coreMetadata;
 
   public ChatSource() {}
 
@@ -105,6 +106,12 @@ public final class ChatSource {
    */
   public ChatSource mailDate(String mailDate) {
     this.mailDate = mailDate;
+    return this;
+  }
+
+  /** ADR-0024: the document's core fields, null when it carries none (or for a synthetic entry). */
+  public ChatSource coreMetadata(ChatSourceCoreMetadata coreMetadata) {
+    this.coreMetadata = coreMetadata;
     return this;
   }
 
@@ -231,5 +238,13 @@ public final class ChatSource {
 
   public void setMailDate(String mailDate) {
     this.mailDate = mailDate;
+  }
+
+  public ChatSourceCoreMetadata getCoreMetadata() {
+    return coreMetadata;
+  }
+
+  public void setCoreMetadata(ChatSourceCoreMetadata coreMetadata) {
+    this.coreMetadata = coreMetadata;
   }
 }

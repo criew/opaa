@@ -4,6 +4,7 @@ import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.poi.ooxml.POIXMLProperties;
 import org.apache.poi.sl.usermodel.Placeholder;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFGroupShape;
@@ -81,7 +83,35 @@ public class PptxDocumentPipeline implements DocumentPipeline {
     if (!anySlideHasText) {
       return DocumentPipelineResult.noExtractableText();
     }
-    return DocumentPipelineResult.chunked(chunks);
+    return DocumentPipelineResult.chunked(chunks).withProperties(readProperties(source));
+  }
+
+  /**
+   * The OOXML core properties (dc:title, created, modified) plus the first slide's title as the
+   * first heading (ADR-0024).
+   */
+  @Override
+  public DocumentProperties readProperties(DocumentPipelineSource source) {
+    if (source.file() == null) {
+      return DocumentProperties.EMPTY;
+    }
+    try (InputStream in = Files.newInputStream(source.file())) {
+      try (XMLSlideShow slideShow = new XMLSlideShow(in)) {
+        POIXMLProperties.CoreProperties core = slideShow.getProperties().getCoreProperties();
+        List<XSLFSlide> slides = slideShow.getSlides();
+        String firstHeading = slides.isEmpty() ? null : titleText(titleShape(slides.get(0)));
+        return new DocumentProperties(
+            core.getTitle(),
+            DocumentProperties.toLocalDate(core.getCreated()),
+            DocumentProperties.toLocalDate(core.getModified()),
+            null,
+            firstHeading,
+            Map.of());
+      }
+    } catch (IOException | RuntimeException e) {
+      log.warn("Could not read PPTX properties of {}", source.fileName(), e);
+      return DocumentProperties.EMPTY;
+    }
   }
 
   private static List<XSLFSlide> readSlides(DocumentPipelineSource source) {

@@ -17,6 +17,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.api.types.DatePrecision;
+import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.Chat;
@@ -26,6 +28,8 @@ import io.opaa.chat.ChatSourceLocation;
 import io.opaa.common.ConflictException;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.metadata.CoreMetadata;
+import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -35,6 +39,7 @@ import io.opaa.llm.RerankRoleStatus;
 import io.opaa.observability.QueryMetrics;
 import java.lang.reflect.Method;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +80,7 @@ class QueryServiceTest {
   @Mock private PermissionHistoryService permissionHistoryService;
   @Mock private ChatService chatService;
   @Mock private KnowledgeLibraryRepository knowledgeLibraryRepository;
+  @Mock private DocumentMetadataService documentMetadataService;
   @Mock private ChunkEmbeddingLookup chunkEmbeddingLookup;
   // Unstubbed by default: Mockito returns an empty List for #decompose, which QueryService treats
   // as a decomposition failure and falls back to the pre-#923 single-query path (see
@@ -125,7 +131,8 @@ class QueryServiceTest {
         new QueryMetrics(new SimpleMeterRegistry()),
         queryProperties,
         knowledgeLibraryRepository,
-        disabledRerankRole());
+        disabledRerankRole(),
+        documentMetadataService);
   }
 
   /**
@@ -341,6 +348,90 @@ class QueryServiceTest {
     assertThat(locations)
         .extracting(ChatSourceLocation::getLocation)
         .containsExactly(null, "Abschn. 4.2 Fristsetzung");
+  }
+
+  /**
+   * #1066 (ADR-0024): a document's core fields ride along on its ChatSource, read from the document
+   * (via {@link DocumentMetadataService}) rather than from the chunk, so every chunk of the same
+   * document reports the same values; a document without any stays without a snapshot.
+   */
+  @Test
+  void queryCarriesTheCoreMetadataOfARetrievedDocument() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    UUID documentId = UUID.randomUUID();
+    UUID plainDocumentId = UUID.randomUUID();
+    var chunk =
+        Document.builder()
+            .text("Die Nutzung privater Geraete ist untersagt.")
+            .metadata(
+                Map.of(
+                    "file_name",
+                    "dienstanweisung.pdf",
+                    "document_id",
+                    documentId.toString(),
+                    "chunk_index",
+                    0))
+            .score(0.9)
+            .build();
+    var plainChunk =
+        Document.builder()
+            .text("Ein normales Dokument.")
+            .metadata(
+                Map.of(
+                    "file_name",
+                    "anweisung.md",
+                    "document_id",
+                    plainDocumentId.toString(),
+                    "chunk_index",
+                    0))
+            .score(0.5)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+        .thenReturn(List.of(chunk, plainChunk));
+    io.opaa.indexing.Document document =
+        new io.opaa.indexing.Document("dienstanweisung.pdf", "/d.pdf", "application/pdf", 1L);
+    io.opaa.indexing.Document plainDocument =
+        new io.opaa.indexing.Document("anweisung.md", "/a.md", "text/markdown", 1L);
+    when(documentRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
+    when(documentRepository.findById(documentId)).thenReturn(Optional.of(document));
+    when(documentRepository.findById(plainDocumentId)).thenReturn(Optional.of(plainDocument));
+    when(documentMetadataService.coreMetadataFor(Set.of(document.getId(), plainDocument.getId())))
+        .thenReturn(
+            Map.of(
+                document.getId(),
+                new CoreMetadata(
+                    "Dienstanweisung IT-Nutzung",
+                    MetadataOrigin.DETERMINISTIC,
+                    "DIENSTANWEISUNG",
+                    "Dienstanweisung",
+                    MetadataOrigin.DETERMINISTIC,
+                    LocalDate.of(2026, 3, 12),
+                    DatePrecision.DAY,
+                    MetadataOrigin.DETERMINISTIC)));
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
+
+    QueryResult response = queryService.query("Question", null, caller, true, List.of());
+
+    ChatSource withCore =
+        response.getSources().stream()
+            .filter(source -> source.getFileName().equals("dienstanweisung.pdf"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(withCore.getCoreMetadata()).isNotNull();
+    assertThat(withCore.getCoreMetadata().title()).isEqualTo("Dienstanweisung IT-Nutzung");
+    assertThat(withCore.getCoreMetadata().documentType()).isEqualTo("DIENSTANWEISUNG");
+    assertThat(withCore.getCoreMetadata().documentTypeLabel()).isEqualTo("Dienstanweisung");
+    assertThat(withCore.getCoreMetadata().documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
+    assertThat(withCore.getCoreMetadata().documentDatePrecision()).isEqualTo(DatePrecision.DAY);
+    assertThat(withCore.getCoreMetadata().documentDateOrigin())
+        .isEqualTo(MetadataOrigin.DETERMINISTIC);
+    ChatSource plainSource =
+        response.getSources().stream()
+            .filter(source -> source.getFileName().equals("anweisung.md"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(plainSource.getCoreMetadata()).isNull();
   }
 
   /**
@@ -2260,7 +2351,8 @@ class QueryServiceTest {
           new QueryMetrics(new SimpleMeterRegistry()),
           new QueryProperties(8, 25, 1.0, 0.3, 1.0, true, 3, maxChunksPerDocument, true, 50),
           knowledgeLibraryRepository,
-          disabledRerankRole());
+          disabledRerankRole(),
+          documentMetadataService);
     }
 
     /**

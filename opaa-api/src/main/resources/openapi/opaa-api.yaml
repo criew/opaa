@@ -3237,6 +3237,14 @@ components:
             lexicographically sortable). Null for a source that is not an EML/MSG message's own body
             chunk.
           example: "2026-03-14T09:15:00Z"
+        coreMetadata:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/SourceCoreMetadata"
+          description: >-
+            The cited document's core metadata fields (#1066), read from the document itself - not
+            from the chunk - so every chunk of a document reports the same values. Null for a
+            synthetic entry (#386) and for a document that carries no core field at all.
 
     ChunkLocation:
       type: object
@@ -4562,6 +4570,74 @@ components:
       type: string
       enum: [FILESYSTEM, HTTP_DIRECTORY, UPLOAD, RSS_FEED]
       example: FILESYSTEM
+
+    MetadataOrigin:
+      type: string
+      description: >-
+        Where a document metadata value came from (docs/features/metadata-schema.md, "Jeder Wert
+        trägt seine Herkunft"): DETERMINISTIC from a parser/regex rule, DERIVED from a model call,
+        MANUAL set by a person. A client marks DERIVED values as such wherever the value orders an
+        answer's evidence.
+      enum: [DETERMINISTIC, DERIVED, MANUAL]
+      example: DETERMINISTIC
+
+    DatePrecision:
+      type: string
+      description: >-
+        How much of a document date is actually known - a full day, only the month, or only the
+        year ("Fassung 2024"). The date itself is padded to the first day of the unknown part, so a
+        client renders YEAR as "2024", never as "01.01.2024".
+      enum: [DAY, MONTH, YEAR]
+      example: DAY
+
+    SourceCoreMetadata:
+      type: object
+      description: >-
+        The three core metadata fields of a cited document (docs/features/metadata-schema.md, Teil
+        II (a), #1066), each with its origin. A field the extraction could not fill is absent
+        (null) - a client shows nothing for it, never "ohne Angabe" (Wirkstelle 3 of the schema
+        specification).
+      properties:
+        title:
+          type: string
+          nullable: true
+          description: The document's title; from its properties, its first heading or its file name.
+          example: Dienstanweisung IT-Nutzung
+        titleOrigin:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataOrigin"
+        documentType:
+          type: string
+          nullable: true
+          description: >-
+            The Dokumentart's stable vocabulary code (e.g. DIENSTANWEISUNG); a value outside the
+            vocabulary is never stored.
+          example: DIENSTANWEISUNG
+        documentTypeLabel:
+          type: string
+          nullable: true
+          description: The German display label of documentType.
+          example: Dienstanweisung
+        documentTypeOrigin:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataOrigin"
+        documentDate:
+          type: string
+          nullable: true
+          description: >-
+            The document's Datum/Stand as an ISO-8601 calendar date (YYYY-MM-DD), padded to the
+            first day of whatever documentDatePrecision leaves unknown.
+          example: "2026-03-12"
+        documentDatePrecision:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/DatePrecision"
+        documentDateOrigin:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataOrigin"
 
     LibraryDocumentResponse:
       type: object

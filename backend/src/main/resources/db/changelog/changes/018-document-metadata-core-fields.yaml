@@ -1,0 +1,157 @@
+databaseChangeLog:
+  - changeSet:
+      id: 018-document-metadata-core-fields
+      author: opaa
+      comment: >-
+        #1066 (ADR-0024, docs/features/metadata-schema.md Teil II (a)/Teil III): the core metadata
+        fields Titel, Dokumentart and Datum/Stand, stored per document (never per chunk) with the
+        origin of every value. One changeset, because the three objects are one change: a value
+        row without the vocabulary has nothing to reference, and the vocabulary without a value
+        table has no purpose. document_metadata_values holds one row per (document, field);
+        an empty field is the absence of the row, and value_state prepares the third state
+        "kein Wert ermittelbar" (#1069) as a row without a value that only a person may write.
+        vocabulary_code is a real FK onto document_type_vocabulary, so a Dokumentart outside the
+        vocabulary is not storable at the database level - the "lieber leer als geraten" rule
+        enforced where it cannot be forgotten. The typing CHECK pins each core field to exactly
+        one value column; a later library field (#1071) attaches through its own field key and
+        is deliberately left unconstrained here. documents.metadata_extraction_version records
+        which extraction version last ran over a document (NULL = never) - the selection key of
+        the Bestandslauf (#1067). Seed: the delivered Dokumentart list with stable codes, German
+        labels and a small synonym list for exact, case-insensitive matching (no similarity
+        mapping); an installation extends it by inserting rows, not by editing this changeset.
+        ON DELETE CASCADE from the value rows onto documents is safe here, unlike for
+        parent_document_id (migration 011): a value row owns nothing outside the database.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.document_type_vocabulary (
+                  code character varying(50) NOT NULL,
+                  label character varying(100) NOT NULL,
+                  sort_order integer NOT NULL,
+                  CONSTRAINT document_type_vocabulary_pkey PRIMARY KEY (code),
+                  CONSTRAINT chk_document_type_vocabulary_code CHECK ((code ~ '^[A-Z][A-Z0-9_]*$'))
+              );
+
+              CREATE TABLE public.document_type_synonyms (
+                  code character varying(50) NOT NULL,
+                  synonym character varying(100) NOT NULL,
+                  CONSTRAINT document_type_synonyms_pkey PRIMARY KEY (code, synonym),
+                  CONSTRAINT fk_document_type_synonyms_code FOREIGN KEY (code)
+                      REFERENCES public.document_type_vocabulary(code) ON DELETE CASCADE
+              );
+
+              CREATE TABLE public.document_metadata_values (
+                  id uuid NOT NULL,
+                  document_id uuid NOT NULL,
+                  field_key character varying(100) NOT NULL,
+                  value_state character varying(20) NOT NULL DEFAULT 'SET',
+                  text_value character varying(1000),
+                  vocabulary_code character varying(50),
+                  date_value date,
+                  date_precision character varying(10),
+                  origin character varying(20) NOT NULL,
+                  confidence double precision,
+                  actor_user_id uuid,
+                  model_id character varying(255),
+                  extraction_version integer,
+                  created_at timestamp with time zone NOT NULL,
+                  updated_at timestamp with time zone NOT NULL,
+                  CONSTRAINT document_metadata_values_pkey PRIMARY KEY (id),
+                  CONSTRAINT fk_document_metadata_values_document FOREIGN KEY (document_id)
+                      REFERENCES public.documents(id) ON DELETE CASCADE,
+                  CONSTRAINT fk_document_metadata_values_vocabulary FOREIGN KEY (vocabulary_code)
+                      REFERENCES public.document_type_vocabulary(code) ON DELETE RESTRICT,
+                  CONSTRAINT fk_document_metadata_values_actor FOREIGN KEY (actor_user_id)
+                      REFERENCES public.users(id) ON DELETE SET NULL,
+                  CONSTRAINT chk_document_metadata_values_state
+                      CHECK ((value_state IN ('SET', 'NOT_DETERMINABLE'))),
+                  CONSTRAINT chk_document_metadata_values_origin
+                      CHECK ((origin IN ('DETERMINISTIC', 'DERIVED', 'MANUAL'))),
+                  CONSTRAINT chk_document_metadata_values_precision
+                      CHECK (((date_precision IS NULL) OR (date_precision IN ('DAY', 'MONTH', 'YEAR')))),
+                  CONSTRAINT chk_document_metadata_values_date_has_precision
+                      CHECK (((date_value IS NULL) = (date_precision IS NULL))),
+                  CONSTRAINT chk_document_metadata_values_confidence_only_derived
+                      CHECK (((confidence IS NULL) OR (origin = 'DERIVED'))),
+                  CONSTRAINT chk_document_metadata_values_extraction_version
+                      CHECK (((origin = 'MANUAL') OR (extraction_version IS NOT NULL))),
+                  CONSTRAINT chk_document_metadata_values_not_determinable_is_manual
+                      CHECK (((value_state <> 'NOT_DETERMINABLE') OR (origin = 'MANUAL'))),
+                  CONSTRAINT chk_document_metadata_values_one_value
+                      CHECK ((
+                          ((value_state = 'NOT_DETERMINABLE')
+                              AND (text_value IS NULL) AND (vocabulary_code IS NULL) AND (date_value IS NULL))
+                          OR ((value_state = 'SET')
+                              AND (((text_value IS NOT NULL)::integer
+                                    + (vocabulary_code IS NOT NULL)::integer
+                                    + (date_value IS NOT NULL)::integer) = 1))
+                      )),
+                  CONSTRAINT chk_document_metadata_values_core_field_type
+                      CHECK ((
+                          ((field_key = 'title') AND (vocabulary_code IS NULL) AND (date_value IS NULL))
+                          OR ((field_key = 'document_type') AND (text_value IS NULL) AND (date_value IS NULL))
+                          OR ((field_key = 'document_date') AND (text_value IS NULL) AND (vocabulary_code IS NULL))
+                          OR (field_key NOT IN ('title', 'document_type', 'document_date'))
+                      ))
+              );
+
+              CREATE UNIQUE INDEX uk_document_metadata_values_document_field
+                  ON public.document_metadata_values USING btree (document_id, field_key);
+
+              ALTER TABLE public.documents ADD COLUMN metadata_extraction_version integer;
+
+              INSERT INTO public.document_type_vocabulary (code, label, sort_order) VALUES
+                  ('SATZUNG_ORDNUNG', 'Satzung/Ordnung', 10),
+                  ('DIENSTANWEISUNG', 'Dienstanweisung', 20),
+                  ('VERMERK', 'Vermerk', 30),
+                  ('PROTOKOLL', 'Protokoll', 40),
+                  ('BESCHEID_VORLAGE', 'Bescheid-Vorlage', 50),
+                  ('FORMULAR', 'Formular', 60),
+                  ('GEBUEHRENVERZEICHNIS', 'Gebührenverzeichnis', 70),
+                  ('PRAESENTATION', 'Präsentation', 80),
+                  ('SONSTIGES', 'Sonstiges', 90);
+
+              INSERT INTO public.document_type_synonyms (code, synonym) VALUES
+                  ('SATZUNG_ORDNUNG', 'satzung'),
+                  ('SATZUNG_ORDNUNG', 'satzungen'),
+                  ('SATZUNG_ORDNUNG', 'ordnung'),
+                  ('SATZUNG_ORDNUNG', 'hauptsatzung'),
+                  ('SATZUNG_ORDNUNG', 'gebuehrensatzung'),
+                  ('SATZUNG_ORDNUNG', 'gebuehrenordnung'),
+                  ('SATZUNG_ORDNUNG', 'benutzungsordnung'),
+                  ('DIENSTANWEISUNG', 'dienstanweisung'),
+                  ('DIENSTANWEISUNG', 'dienstanweisungen'),
+                  ('DIENSTANWEISUNG', 'dienstanordnung'),
+                  ('DIENSTANWEISUNG', 'da'),
+                  ('VERMERK', 'vermerk'),
+                  ('VERMERK', 'aktenvermerk'),
+                  ('PROTOKOLL', 'protokoll'),
+                  ('PROTOKOLL', 'niederschrift'),
+                  ('PROTOKOLL', 'sitzungsprotokoll'),
+                  ('PROTOKOLL', 'ergebnisprotokoll'),
+                  ('BESCHEID_VORLAGE', 'bescheid'),
+                  ('BESCHEID_VORLAGE', 'bescheidvorlage'),
+                  ('BESCHEID_VORLAGE', 'bescheidmuster'),
+                  ('BESCHEID_VORLAGE', 'musterbescheid'),
+                  ('FORMULAR', 'formular'),
+                  ('FORMULAR', 'formulare'),
+                  ('FORMULAR', 'antragsformular'),
+                  ('FORMULAR', 'formblatt'),
+                  ('FORMULAR', 'vordruck'),
+                  ('GEBUEHRENVERZEICHNIS', 'gebuehrenverzeichnis'),
+                  ('GEBUEHRENVERZEICHNIS', 'gebuehrentabelle'),
+                  ('GEBUEHRENVERZEICHNIS', 'gebuehrentarif'),
+                  ('GEBUEHRENVERZEICHNIS', 'kostenverzeichnis'),
+                  ('PRAESENTATION', 'praesentation'),
+                  ('PRAESENTATION', 'vortrag'),
+                  ('PRAESENTATION', 'folien'),
+                  ('SONSTIGES', 'sonstiges'),
+                  ('SONSTIGES', 'sonstige');
+      rollback:
+        - sql:
+            sql: |
+              ALTER TABLE public.documents DROP COLUMN IF EXISTS metadata_extraction_version;
+              DROP TABLE IF EXISTS public.document_metadata_values;
+              DROP TABLE IF EXISTS public.document_type_synonyms;
+              DROP TABLE IF EXISTS public.document_type_vocabulary;

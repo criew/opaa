@@ -65,6 +65,8 @@ class SpecEnumParityTest {
         Arguments.of("DocumentSourceType", DocumentSourceType.values()),
         Arguments.of("AssetRole", AssetRole.values()),
         Arguments.of("PermissionSubjectType", PermissionSubjectType.values()),
+        Arguments.of("MetadataOrigin", MetadataOrigin.values()),
+        Arguments.of("DatePrecision", DatePrecision.values()),
         Arguments.of("AuditActorKind", ActorKind.values()),
         Arguments.of("AuditSubjectKind", AuditSubjectKind.values()),
         Arguments.of("AuditOutcome", AuditOutcome.values()),

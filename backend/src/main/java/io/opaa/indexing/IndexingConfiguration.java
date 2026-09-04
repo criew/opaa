@@ -1,6 +1,7 @@
 package io.opaa.indexing;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
@@ -268,7 +269,8 @@ public class IndexingConfiguration {
       TaskExecutor embeddingTaskExecutor,
       ObjectProvider<AttachmentIndexer> attachmentIndexer,
       AttachmentDownloadLimits mailAttachmentDownloadLimits,
-      KnowledgeLibraryRepository knowledgeLibraryRepository) {
+      KnowledgeLibraryRepository knowledgeLibraryRepository,
+      DocumentMetadataService documentMetadataService) {
     return new FileProcessingService(
         documentPipelineRegistry,
         documentRepository,
@@ -280,7 +282,8 @@ public class IndexingConfiguration {
         embeddingTaskExecutor,
         attachmentIndexer,
         mailAttachmentDownloadLimits,
-        knowledgeLibraryRepository);
+        knowledgeLibraryRepository,
+        documentMetadataService);
   }
 
   @Bean
