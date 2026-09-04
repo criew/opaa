@@ -249,10 +249,10 @@ class LibraryFolderServiceTest {
 
   @Test
   void materializeFolderPathCreatesTheFullChainForANewNestedDirectory() {
-    // #824: the FILESYSTEM mirroring entry point - deliberately bypasses requireUploadLibrary/
+    // #824: the connector mirroring entry point - deliberately bypasses requireUploadLibrary/
     // requireEditable (see this class's own Javadoc), so no grantEditor() stubbing is needed here,
-    // unlike every CRUD test above. requireFilesystemLibrary is a real guard though (#824 review,
-    // Befund 4a), hence the explicit FILESYSTEM stub.
+    // unlike every CRUD test above. requireMirroredSourceLibrary is a real guard though, hence the
+    // explicit FILESYSTEM stub.
     when(library.getSourceType()).thenReturn(DocumentSourceType.FILESYSTEM);
     when(folderRepository.findByLibraryIdAndParentFolderIdIsNullAndName(libraryId, "Rechtsquellen"))
         .thenReturn(Optional.empty());
@@ -291,9 +291,9 @@ class LibraryFolderServiceTest {
   }
 
   @Test
-  void materializeFolderPathRejectsANonFilesystemLibrary() {
-    // #824 review, Befund 4a: this internal entry point must never be called for anything but a
-    // FILESYSTEM library - library defaults to UPLOAD in setUp, so no extra stubbing is needed to
+  void materializeFolderPathRejectsAnUploadLibrary() {
+    // This internal entry point is open to exactly the source types whose folders mirror a source
+    // directory structure - library defaults to UPLOAD in setUp, so no extra stubbing is needed to
     // exercise the guard.
     assertThatThrownBy(() -> service.materializeFolderPath(library, List.of("Ordner")))
         .isInstanceOf(IllegalArgumentException.class);
@@ -301,10 +301,51 @@ class LibraryFolderServiceTest {
   }
 
   @Test
-  void pruneOrphanedFoldersRejectsANonFilesystemLibrary() {
+  void materializeFolderPathRejectsAnRssFeedLibrary() {
+    // #1277 widened the guard to HTTP_DIRECTORY; RSS_FEED stays outside it - a feed has no
+    // directory structure to mirror.
+    when(library.getSourceType()).thenReturn(DocumentSourceType.RSS_FEED);
+
+    assertThatThrownBy(() -> service.materializeFolderPath(library, List.of("Ordner")))
+        .isInstanceOf(IllegalArgumentException.class);
+    verify(folderRepository, never()).saveAndFlush(any(LibraryFolder.class));
+  }
+
+  @Test
+  void materializeFolderPathAcceptsAnHttpDirectoryLibrary() {
+    // #1277: a crawled URL path below the start URL is mirrored exactly like a filesystem path.
+    when(library.getSourceType()).thenReturn(DocumentSourceType.HTTP_DIRECTORY);
+    when(folderRepository.findByLibraryIdAndParentFolderIdIsNullAndName(libraryId, "2026"))
+        .thenReturn(Optional.empty());
+
+    assertThat(service.materializeFolderPath(library, List.of("2026"))).isNotNull();
+    verify(folderRepository).saveAndFlush(any(LibraryFolder.class));
+  }
+
+  @Test
+  void pruneOrphanedFoldersRejectsAnUploadLibrary() {
     assertThatThrownBy(() -> service.pruneOrphanedFolders(library, Set.of()))
         .isInstanceOf(IllegalArgumentException.class);
     verify(folderRepository, never()).findByLibraryId(any());
+  }
+
+  @Test
+  void pruneOrphanedFoldersRejectsAnRssFeedLibrary() {
+    when(library.getSourceType()).thenReturn(DocumentSourceType.RSS_FEED);
+
+    assertThatThrownBy(() -> service.pruneOrphanedFolders(library, Set.of()))
+        .isInstanceOf(IllegalArgumentException.class);
+    verify(folderRepository, never()).findByLibraryId(any());
+  }
+
+  @Test
+  void pruneOrphanedFoldersAcceptsAnHttpDirectoryLibrary() {
+    when(library.getSourceType()).thenReturn(DocumentSourceType.HTTP_DIRECTORY);
+    when(folderRepository.findByLibraryId(libraryId)).thenReturn(List.of());
+
+    service.pruneOrphanedFolders(library, Set.of());
+
+    verify(folderRepository).findByLibraryId(libraryId);
   }
 
   @Test

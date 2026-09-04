@@ -77,7 +77,7 @@ Ordnerpfad an. Wer Ordner anlegt, hängt vom Quellentyp ab:
 |---|---|---|
 | `UPLOAD` | Nutzende legen sie an, auch leer, benennen sie um und löschen sie. Ein per Drag & Drop hochgeladener Ordner bringt seine Unterstruktur mit. | ja |
 | `FILESYSTEM` | Der Lauf spiegelt die Verzeichnisstruktur der Quelle. Ordner entstehen nur entlang gefundener Dateien; ein Verzeichnis, das keine Dokumente mehr hält, verschwindet am Ende des Laufs. | nein, die Quelle ist führend |
-| `HTTP_DIRECTORY` | heute keine Ordner, die Struktur bleibt nur in der URL sichtbar; Ticket #1277 spiegelt sie wie beim Dateisystem | nein, die Quelle ist führend |
+| `HTTP_DIRECTORY` | Der Lauf spiegelt den gecrawlten Verzeichnisbaum: der URL-Pfad unterhalb der Start-URL, je Segment prozentdekodiert. Wie beim Dateisystem entstehen Ordner nur entlang gefundener Dateien; aufgeräumt wird nur nach einem vollständigen Crawl. | nein, die Quelle ist führend |
 | `RSS_FEED` | keine Ordner; ein Feed hat keine Struktur | entfällt |
 
 Das Löschen eines Ordners in einer Upload-Bibliothek löscht die enthaltenen Dokumente samt
