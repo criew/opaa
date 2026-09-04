@@ -1145,8 +1145,9 @@ Suchbereich selbst auf. In dieser einen Aufrufkette liegen:
   nicht aus `SYSTEM_ADMIN`,
 - die **Pflichtbegründung** aus Leitplanke (d): ohne sie wird nicht ausgeführt, und geprüft wird sie,
   bevor irgendein Recht der Zielperson gelesen wird,
-- der Abzug **diagnosegesperrter** Bibliotheken nach Leitplanke (e) — die Antwort nennt nur ihre Zahl
-  als „gesperrter Suchbereich", nie einen Namen, Titel oder Treffer daraus,
+- der Abzug **diagnosegesperrter** Bibliotheken nach Leitplanke (e) — die Antwort nennt daraus nie
+  einen Namen, Titel oder Treffer, sondern nur, wie viele Bibliotheken der Organisation
+  diagnosegesperrt sind (ohne Schnitt mit den Leserechten der Zielperson, siehe unten),
 - der **Protokolleintrag** nach Leitplanke (f), geschrieben aus demselben Aufruf.
 
 Ohne Befugnis antwortet der Endpunkt mit 403 und der Begründung, dass die Befugnis einzeln vergeben

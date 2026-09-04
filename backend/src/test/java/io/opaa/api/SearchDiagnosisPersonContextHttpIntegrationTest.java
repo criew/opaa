@@ -35,8 +35,9 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 /**
  * {@code POST /api/v1/admin/search/diagnosis} with {@code contextType=USER} against the real
@@ -70,6 +71,7 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
   private UUID orgUnitId;
   private UUID openLibraryId;
   private UUID lockedLibraryId;
+  private UUID ungrantedLockedLibraryId;
   private Instant startedAt;
 
   private RequestPostProcessor devAdmin() {
@@ -125,6 +127,9 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
 
     openLibraryId = insertLibrary("Satzungen & Gebührenordnungen");
     lockedLibraryId = insertLibrary("Personalvorgänge");
+    // Granted to nobody: it counts towards lockedLibraryCount all the same, which is what makes
+    // the count a statement about the bestand rather than about the target person.
+    ungrantedLockedLibraryId = insertLibrary("Personalrat");
     // Every library starts diagnosegesperrt (changeset 006); only the open one is unlocked here.
     jdbcTemplate.update(
         "UPDATE knowledge_libraries SET diagnostics_locked = false WHERE id = ?", openLibraryId);
@@ -137,11 +142,20 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
   @AfterEach
   void tearDown() {
     jdbcTemplate.update(
-        "DELETE FROM documents WHERE library_id in (?, ?)", openLibraryId, lockedLibraryId);
+        "DELETE FROM documents WHERE library_id in (?, ?, ?)",
+        openLibraryId,
+        lockedLibraryId,
+        ungrantedLockedLibraryId);
     jdbcTemplate.update(
-        "DELETE FROM asset_grants WHERE library_id in (?, ?)", openLibraryId, lockedLibraryId);
+        "DELETE FROM asset_grants WHERE library_id in (?, ?, ?)",
+        openLibraryId,
+        lockedLibraryId,
+        ungrantedLockedLibraryId);
     jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE id in (?, ?)", openLibraryId, lockedLibraryId);
+        "DELETE FROM knowledge_libraries WHERE id in (?, ?, ?)",
+        openLibraryId,
+        lockedLibraryId,
+        ungrantedLockedLibraryId);
     jdbcTemplate.update(
         "DELETE FROM diagnostic_impersonation_grants WHERE organization_id = ?", organizationId);
     jdbcTemplate.update("DELETE FROM group_memberships WHERE group_id = ?", orgUnitId);
@@ -176,7 +190,9 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
         .andExpect(jsonPath("$.contextType").value("USER"))
         .andExpect(jsonPath("$.searchScope.length()").value(1))
         .andExpect(jsonPath("$.searchScope[0].id").value(openLibraryId.toString()))
-        .andExpect(jsonPath("$.lockedLibraryCount").value((int) lockedLibrariesInOrganization()));
+        // Two, not one: the target person may read only one of the two locked libraries, and
+        // the reported number must not depend on that.
+        .andExpect(jsonPath("$.lockedLibraryCount").value(2));
 
     assertThat(protocolEntries())
         .singleElement()
@@ -260,10 +276,11 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
   }
 
   /**
-   * Every part of the answer that could carry a statement about the locked library: the searched
-   * scope, the number of locked libraries and the whole tracked-document verdict. The remaining
-   * fields are left out because they vary between runs for reasons unrelated to the lock - the
-   * sub-queries come from a model call.
+   * The whole answer, minus the three things that differ between two runs for reasons that have
+   * nothing to do with the lock: the timestamp, the sub-queries (a model call decides them) and the
+   * stage notes (they quote those sub-queries and their number). What remains covers the searched
+   * scope, the locked-library count, every stage with its status, counts and verdicts, the
+   * Endauswahl, the resolved document titles and the tracked-document verdict.
    */
   private String lockRelevantAnswer(UUID target, UUID trackedDocumentId) throws Exception {
     String body =
@@ -273,13 +290,14 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
             .andReturn()
             .getResponse()
             .getContentAsString();
-    JsonNode answer = new ObjectMapper().readTree(body);
-    return "searchScope="
-        + answer.get("searchScope")
-        + ";lockedLibraryCount="
-        + answer.get("lockedLibraryCount")
-        + ";trackedDocument="
-        + answer.get("trackedDocument");
+    ObjectNode answer = (ObjectNode) new ObjectMapper().readTree(body);
+    answer.remove("executedAt");
+    answer.remove("searchQueries");
+    ArrayNode stages = (ArrayNode) answer.get("stages");
+    for (int i = 0; i < stages.size(); i++) {
+      ((ObjectNode) stages.get(i)).remove("notes");
+    }
+    return answer.toString();
   }
 
   @Test
@@ -379,17 +397,5 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
         libraryId,
         organizationId,
         userId);
-  }
-
-  /**
-   * The whole bestand, not the target person's readable share - the number the answer reports must
-   * not depend on anybody's rights.
-   */
-  private long lockedLibrariesInOrganization() {
-    return jdbcTemplate.queryForObject(
-        "SELECT count(*) FROM knowledge_libraries WHERE organization_id = ?"
-            + " AND diagnostics_locked = true",
-        Long.class,
-        organizationId);
   }
 }
