@@ -2917,10 +2917,11 @@ paths:
           in: query
           required: true
           description: >
-            Mandatory Anlass; a missing one is rejected, and the rejected attempt is itself recorded
-            in audit_log.
+            Mandatory Anlass; a missing or over-length one is rejected, and the rejected attempt is
+            itself recorded in audit_log.
           schema:
             type: string
+            maxLength: 1000
         - name: page
           in: query
           required: false
@@ -2973,10 +2974,11 @@ paths:
           in: query
           required: true
           description: >
-            Mandatory Anlass for this single entry; a missing one is rejected, and the rejected
-            attempt is itself recorded in audit_log.
+            Mandatory Anlass for this single entry; a missing or over-length one is rejected, and
+            the rejected attempt is itself recorded in audit_log.
           schema:
             type: string
+            maxLength: 1000
       responses:
         "200":
           description: The single protocol entry, including its rights snapshot
@@ -7336,7 +7338,8 @@ components:
       description: >
         OUTSIDE_SEARCH_SCOPE - the context may not read this document's library, so no search could
         have reached it. IN_LOCKED_AREA - its library is diagnosegesperrt and was left out of the
-        run, which says nothing about the target person's rights (#1150). NOT_RETRIEVED - inside the
+        run; this follows from the library's lock state alone and says nothing about the target
+        person's rights. NOT_RETRIEVED - inside the
         scope, but no search stage found any of its chunks: an indexing or chunking problem.
         DISPLACED - found and dropped at a named stage: a ranking problem. IN_FINAL_SELECTION - it
         is in the Endauswahl.
@@ -7435,10 +7438,12 @@ components:
         lockedLibraryCount:
           type: integer
           description: >
-            How many libraries of the target rights context were left out as diagnosegesperrt
-            (Berechtigungs-Leitplanke (e)). Their existence is named, nothing from inside them is:
-            no name, no hit, no count of documents. Always 0 outside the person context, where the
-            lock does not apply.
+            How many libraries of the organization are diagnosegesperrt (Berechtigungs-Leitplanke
+            (e)). Deliberately not intersected with the target person's read rights: an
+            intersection would make "may this person read a locked library?" readable off the
+            answer, which the diagnosis explicitly does not state. Their existence is named,
+            nothing from inside them is: no name, no hit, no count of documents. Always 0 outside
+            the person context, where the lock does not apply.
         trackedDocument:
           allOf:
             - $ref: "#/components/schemas/TrackedDocumentResponse"
