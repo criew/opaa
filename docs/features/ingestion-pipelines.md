@@ -901,15 +901,21 @@ Zwei Grenzen dieser Auflösung gehören dazu:
 
 - **Der Nachlade-Weg trifft mehr als nur MSG.** Ein unaufgelöster OLE2-Container ist jede
   Legacy-Office-Datei — `.xls`, `.ppt`, `.vsd`, `.pub`, `.mpp` —, die neben dem Bestand im
-  Verzeichnis liegt. Solche Einträge werden jetzt vollständig geladen und danach verworfen; der
-  `HTTP_DIRECTORY`-Download ist dabei bis heute ungedeckelt (Issue #1236). Für ZIP-basierte Formate
+  Verzeichnis liegt. Solche Einträge werden jetzt vollständig geladen und danach verworfen — seit
+  #1236 aber nur bis zum Bytedeckel des Verzeichnis-Wegs
+  (`opaa.indexing.crawl.max-file-size-bytes`, Vorgabe 100 MiB): Wird er überschritten, bricht die
+  Übertragung ab, bevor die überschüssigen Bytes geschrieben sind, der Eintrag wird als Ablehnung
+  protokolliert und übersprungen, und der Lauf geht weiter. Für ZIP-basierte Formate
   entsteht der Fall dagegen praktisch nicht: OOXML trägt `[Content_Types].xml`, ODF sein
   `mimetype` als erste Archiv-Eintragung, beide werden also schon aus der Leseprobe aufgelöst —
   belegt in `DocumentFormatParityTest` an einer DOCX oberhalb der Probe.
 - **Auch die vollständige Datei löst nicht unbegrenzt auf.** Tikas `POIFSContainerDetector` liest
   höchstens sein `markLimit` (voreingestellt 128 MiB) und meldet darüber hinaus wieder den
   unaufgelösten Containertyp. Eine `.msg` jenseits dieser Grenze bleibt also abgewiesen, trotz
-  vollständigem Download.
+  vollständigem Download. Auf dem Verzeichnis-Weg ist dieser Fall seit #1236 praktisch unerreichbar:
+  Der Bytedeckel (Vorgabe 100 MiB) liegt bewusst unterhalb des `markLimit`, ein so großer Eintrag
+  wird also schon beim Übertragen abgewiesen. Für Upload und Dateisystem, die die vollständige Datei
+  ohnehin lokal vorliegen haben, gilt die `markLimit`-Grenze unverändert.
 
 **Zwei eigene Leser statt eines gemeinsamen Tika-Parsers**, weil Kopfdaten, Text und Anhänge getrennt
 werden müssen, statt in einen Block zu fließen:

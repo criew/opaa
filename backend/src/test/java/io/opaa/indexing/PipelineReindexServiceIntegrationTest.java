@@ -800,7 +800,8 @@ class PipelineReindexServiceIntegrationTest {
         documentRepository,
         org.mockito.Mockito.mock(IndexingRunEventRepository.class),
         org.mockito.Mockito.mock(io.opaa.library.LibraryStorageQuotaService.class),
-        org.mockito.Mockito.mock(StaleDocumentCleanupService.class));
+        org.mockito.Mockito.mock(StaleDocumentCleanupService.class),
+        new io.opaa.indexing.source.web.CrawlProperties(0, 0, 0));
   }
 
   @Test
