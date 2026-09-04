@@ -4,6 +4,7 @@ import com.pgvector.PGvector;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.BatchingStrategy;
@@ -104,9 +105,37 @@ public class VectorStoreWriter {
     fullTextChunkStore.indexChunks(chunks);
   }
 
+  /**
+   * Rewrites document-level keys on every chunk of {@code documentId} in place (ADR-0024): first
+   * removes every key in {@code keysToClear}, then merges {@code values} - so a key absent from
+   * {@code values} but present in {@code keysToClear} disappears. Touches neither content nor
+   * embedding nor {@code chunk_full_text}, which is what lets a metadata correction skip
+   * re-embedding entirely.
+   *
+   * @return the number of chunks updated
+   */
+  @Transactional
+  public int updateDocumentMetadata(
+      UUID documentId, Map<String, Object> values, Set<String> keysToClear) {
+    String sql =
+        "UPDATE "
+            + schemaName
+            + "."
+            + tableName
+            // metadata is a json column (PgVectorStore's own DDL); the jsonb operators need the
+            // cast, and the assignment cast back to json is implicit.
+            + " SET metadata = (metadata::jsonb"
+            + " - ARRAY(SELECT jsonb_array_elements_text(?::jsonb))) || ?::jsonb"
+            + " WHERE metadata->>'"
+            + VectorChunkStore.DOCUMENT_ID_METADATA_KEY
+            + "' = ?";
+    return jdbcTemplate.update(
+        sql, toJson(List.copyOf(keysToClear)), toJson(values), documentId.toString());
+  }
+
   private record ChunkWithEmbedding(Document chunk, float[] embedding) {}
 
-  private String toJson(Map<String, Object> metadata) {
+  private String toJson(Object metadata) {
     try {
       return objectMapper.writeValueAsString(metadata);
     } catch (tools.jackson.core.JacksonException e) {

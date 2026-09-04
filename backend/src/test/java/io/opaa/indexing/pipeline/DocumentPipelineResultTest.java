@@ -35,11 +35,13 @@ class DocumentPipelineResultTest {
   @Test
   void aNullDiscoveredAttachmentsListIsNormalizedToEmptyLikeChunksAlreadyIsForOlderCallers() {
     var result =
-        new DocumentPipelineResult(DocumentPipelineResult.Outcome.NO_CONTENT, null, null, null);
+        new DocumentPipelineResult(
+            DocumentPipelineResult.Outcome.NO_CONTENT, null, null, null, null);
 
     assertThat(result.chunks()).isEmpty();
     assertThat(result.discoveredAttachments()).isEmpty();
     assertThat(result.contentByteSizeOverride()).isEmpty();
+    assertThat(result.properties()).isEqualTo(DocumentProperties.EMPTY);
   }
 
   @Test

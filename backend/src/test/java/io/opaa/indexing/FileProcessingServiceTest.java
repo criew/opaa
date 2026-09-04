@@ -90,7 +90,8 @@ class FileProcessingServiceTest {
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
             new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
-            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
+            TestDocumentMetadataServices.returningEmpty());
     targetLibrary = library();
     // Default: plenty of headroom, so existing tests never trip the quota check unless they
     // explicitly stub it otherwise (see the quota-specific tests below). lenient() because most
@@ -197,7 +198,8 @@ class FileProcessingServiceTest {
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
             new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
-            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
+            TestDocumentMetadataServices.returningEmpty());
 
     when(checksumService.computeSha256(file)).thenReturn("sha256-of-scan");
     when(documentRepository.findByLibraryIdAndFilePath(
@@ -340,7 +342,8 @@ class FileProcessingServiceTest {
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
             new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
-            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
+            TestDocumentMetadataServices.returningEmpty());
 
     Path file = tempDir.resolve("replace-under-quota.txt");
     String newContent = "x".repeat(950);
@@ -529,7 +532,8 @@ class FileProcessingServiceTest {
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
             new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
-            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
+            TestDocumentMetadataServices.returningEmpty());
 
     when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
     when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
@@ -578,7 +582,8 @@ class FileProcessingServiceTest {
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
             new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
-            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
+            TestDocumentMetadataServices.returningEmpty());
 
     when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
     when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
@@ -2087,7 +2092,8 @@ class FileProcessingServiceTest {
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
             new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
-            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
+            TestDocumentMetadataServices.returningEmpty());
 
     when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
     when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))

@@ -308,6 +308,17 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       @Param("errorMessage") String errorMessage, @Param("threshold") Instant threshold);
 
   /**
+   * Records which core-metadata extraction version last ran over a document (ADR-0024, #1066). A
+   * targeted {@code UPDATE} rather than an entity save: it runs from the ingest after the row's own
+   * insert has committed, and must not resurrect a row a concurrent delete already removed - the
+   * same zero-rows-means-the-row-is-gone contract as {@link #markIndexed(UUID, int, Instant)}.
+   */
+  @Modifying
+  @Transactional
+  @Query("update Document d set d.metadataExtractionVersion = :version where d.id = :id")
+  int updateMetadataExtractionVersion(@Param("id") UUID id, @Param("version") int version);
+
+  /**
    * The connector counterpart to {@link #markIndexed(UUID, int, Instant)}, generalized for {@code
    * FileProcessingService#processFile}/{@code #processUrlFile}/{@code #processRssEntry}. Those
    * three paths only learn the checksum - and for URL/RSS sources, the remote's own {@code

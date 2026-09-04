@@ -4,6 +4,7 @@ import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
@@ -70,14 +72,52 @@ public class PdfDocumentPipeline implements DocumentPipeline {
         return DocumentPipelineResult.noExtractableText();
       }
       List<OutlineEntry> entries = flattenOutline(doc);
+      DocumentProperties properties = properties(doc, entries);
       if (!entries.isEmpty()) {
-        return chunkByOutline(doc, entries);
+        return chunkByOutline(doc, entries).withProperties(properties);
       }
-      return chunkByPage(doc);
+      return chunkByPage(doc).withProperties(properties);
     } catch (IOException | RuntimeException e) {
       log.warn("Could not read PDF document {} via PDFBox", source.fileName(), e);
       return DocumentPipelineResult.noContent();
     }
+  }
+
+  /**
+   * The Info dictionary's Title/CreationDate/ModDate plus the first top-level outline entry as the
+   * first heading (ADR-0024) - read without extracting any page text.
+   */
+  @Override
+  public DocumentProperties readProperties(DocumentPipelineSource source) {
+    if (source.file() == null) {
+      return DocumentProperties.EMPTY;
+    }
+    try (PDDocument doc = Loader.loadPDF(source.file().toFile())) {
+      return properties(doc, flattenOutline(doc));
+    } catch (IOException | RuntimeException e) {
+      log.warn("Could not read PDF properties of {} via PDFBox", source.fileName(), e);
+      return DocumentProperties.EMPTY;
+    }
+  }
+
+  private static DocumentProperties properties(PDDocument doc, List<OutlineEntry> entries) {
+    PDDocumentInformation info = doc.getDocumentInformation();
+    String firstHeading =
+        entries.stream()
+            .filter(entry -> entry.level() == 1)
+            .map(OutlineEntry::title)
+            .findFirst()
+            .orElse(null);
+    if (info == null) {
+      return DocumentProperties.EMPTY.withFirstHeading(firstHeading);
+    }
+    return new DocumentProperties(
+        info.getTitle(),
+        DocumentProperties.toLocalDate(info.getCreationDate()),
+        DocumentProperties.toLocalDate(info.getModificationDate()),
+        null,
+        firstHeading,
+        Map.of());
   }
 
   private record OutlineEntry(int level, String title, int pageIndex) {}

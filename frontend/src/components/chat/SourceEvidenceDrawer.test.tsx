@@ -309,6 +309,56 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     )
   })
 
+  // #1066: the Belegfenster row carries the same generic metadata line as the Fundstellen block.
+  it('shows the metadata line of a source, rendered from the generic list', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <MessageBubble
+        message={{
+          id: 'ev-core',
+          role: 'assistant',
+          content: 'Beleg【source: a#0 | 2026-03-12_da.pdf】.',
+          sources: [
+            source('2026-03-12_da.pdf', true, 1, true, {
+              metadata: [
+                {
+                  fieldKey: 'document_type',
+                  label: 'Dokumentart',
+                  value: 'DIENSTANWEISUNG',
+                  displayValue: 'Dienstanweisung',
+                  origin: 'DETERMINISTIC',
+                },
+                {
+                  fieldKey: 'document_date',
+                  label: 'Datum/Stand',
+                  value: '2026-03-01',
+                  displayValue: '03/2026',
+                  origin: 'MANUAL',
+                  datePrecision: 'MONTH',
+                },
+              ],
+            }),
+          ],
+          timestamp: new Date('2026-08-21T09:00:00'),
+        }}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
+    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+
+    const doc = within(drawer).getByTestId('evidence-doc')
+    expect(within(doc).getByText('2026-03-12_da.pdf')).toBeVisible()
+    expect(within(doc).getByTestId('source-metadata')).toHaveTextContent(
+      'Dienstanweisung · 03/2026',
+    )
+  })
+
+  it('shows no metadata line for a source without metadata', async () => {
+    const { drawer } = await openDrawer()
+
+    expect(within(drawer).queryByTestId('source-metadata')).not.toBeInTheDocument()
+  })
+
   it('shows no mail summary for a source without mail metadata', async () => {
     const { drawer } = await openDrawer()
 

@@ -29,12 +29,17 @@ import org.springframework.ai.document.Document;
  *     which - once an attachment is its own {@code Document} row with its own {@code fileSize} -
  *     would otherwise count twice against a library's storage quota. {@code MailDocumentPipeline}
  *     reports only its Kopfdaten/body text bytes here, excluding every attachment.
+ * @param properties the raw metadata sources the format declares (ADR-0024) - never {@code null},
+ *     {@link DocumentProperties#EMPTY} by default. Attached via {@link #withProperties} by every
+ *     pipeline that has them cheaply at hand; the interpretation into core fields happens
+ *     centrally, never here.
  */
 public record DocumentPipelineResult(
     Outcome outcome,
     List<Document> chunks,
     List<DiscoveredAttachment> discoveredAttachments,
-    OptionalLong contentByteSizeOverride) {
+    OptionalLong contentByteSizeOverride,
+    DocumentProperties properties) {
 
   public enum Outcome {
     /** At least one chunk was produced. */
@@ -68,10 +73,12 @@ public record DocumentPipelineResult(
         discoveredAttachments == null ? List.of() : List.copyOf(discoveredAttachments);
     contentByteSizeOverride =
         contentByteSizeOverride == null ? OptionalLong.empty() : contentByteSizeOverride;
+    properties = properties == null ? DocumentProperties.EMPTY : properties;
   }
 
   public static DocumentPipelineResult chunked(List<Document> chunks) {
-    return new DocumentPipelineResult(Outcome.CHUNKED, chunks, List.of(), OptionalLong.empty());
+    return new DocumentPipelineResult(
+        Outcome.CHUNKED, chunks, List.of(), OptionalLong.empty(), DocumentProperties.EMPTY);
   }
 
   /**
@@ -82,7 +89,11 @@ public record DocumentPipelineResult(
   public static DocumentPipelineResult chunked(
       List<Document> chunks, List<DiscoveredAttachment> discoveredAttachments) {
     return new DocumentPipelineResult(
-        Outcome.CHUNKED, chunks, discoveredAttachments, OptionalLong.empty());
+        Outcome.CHUNKED,
+        chunks,
+        discoveredAttachments,
+        OptionalLong.empty(),
+        DocumentProperties.EMPTY);
   }
 
   /**
@@ -94,17 +105,25 @@ public record DocumentPipelineResult(
       List<DiscoveredAttachment> discoveredAttachments,
       long contentByteSizeOverride) {
     return new DocumentPipelineResult(
-        Outcome.CHUNKED, chunks, discoveredAttachments, OptionalLong.of(contentByteSizeOverride));
+        Outcome.CHUNKED,
+        chunks,
+        discoveredAttachments,
+        OptionalLong.of(contentByteSizeOverride),
+        DocumentProperties.EMPTY);
   }
 
   public static DocumentPipelineResult noContent() {
     return new DocumentPipelineResult(
-        Outcome.NO_CONTENT, List.of(), List.of(), OptionalLong.empty());
+        Outcome.NO_CONTENT, List.of(), List.of(), OptionalLong.empty(), DocumentProperties.EMPTY);
   }
 
   public static DocumentPipelineResult noExtractableText() {
     return new DocumentPipelineResult(
-        Outcome.NO_EXTRACTABLE_TEXT, List.of(), List.of(), OptionalLong.empty());
+        Outcome.NO_EXTRACTABLE_TEXT,
+        List.of(),
+        List.of(),
+        OptionalLong.empty(),
+        DocumentProperties.EMPTY);
   }
 
   /**
@@ -117,6 +136,16 @@ public record DocumentPipelineResult(
   public static DocumentPipelineResult noExtractableText(
       List<DiscoveredAttachment> discoveredAttachments) {
     return new DocumentPipelineResult(
-        Outcome.NO_EXTRACTABLE_TEXT, List.of(), discoveredAttachments, OptionalLong.empty());
+        Outcome.NO_EXTRACTABLE_TEXT,
+        List.of(),
+        discoveredAttachments,
+        OptionalLong.empty(),
+        DocumentProperties.EMPTY);
+  }
+
+  /** The same result with {@code properties} attached (ADR-0024). */
+  public DocumentPipelineResult withProperties(DocumentProperties properties) {
+    return new DocumentPipelineResult(
+        outcome, chunks, discoveredAttachments, contentByteSizeOverride, properties);
   }
 }

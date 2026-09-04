@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -184,6 +185,61 @@ class MarkdownDocumentPipelineTest {
         .doesNotContain("title:")
         .doesNotContain("id:")
         .contains("Text nach dem Frontmatter");
+  }
+
+  // --- Frontmatter as document properties (ADR-0024) -------------------------------------------
+
+  @Test
+  void frontmatterEntriesAreHandedOverVerbatimWithLowerCasedKeysAndTheFirstH1() throws IOException {
+    String text =
+        """
+        ---
+        Titel: "Sozialgebührenbefreiungssatzung"
+        dokumentart: "satzung"
+        fassung: 2024
+        tags:
+          - eins
+          - zwei
+        leer:
+        ---
+
+        # Sozialgebührenbefreiungssatzung
+
+        ## § 1
+
+        Text.
+        """;
+
+    io.opaa.indexing.pipeline.DocumentProperties properties =
+        pipeline.readProperties(sourceFor(text));
+
+    assertThat(properties.frontmatter())
+        .containsEntry("titel", "\"Sozialgebührenbefreiungssatzung\"")
+        .containsEntry("dokumentart", "\"satzung\"")
+        .containsEntry("fassung", "2024")
+        .doesNotContainKeys("tags", "leer", "- eins");
+    assertThat(properties.firstHeading()).isEqualTo("Sozialgebührenbefreiungssatzung");
+    assertThat(pipeline.run(sourceFor(text)).properties()).isEqualTo(properties);
+  }
+
+  @Test
+  void frontmatterEntriesToleratesCrLfAndIgnoresAnUnterminatedBlock() {
+    assertThat(
+            MarkdownDocumentPipeline.frontmatterEntries(
+                "---\r\nfassung: 2023\r\ndokumentart: vermerk\r\n---\r\n# Titel\r\n"))
+        .containsExactly(Map.entry("fassung", "2023"), Map.entry("dokumentart", "vermerk"));
+    assertThat(MarkdownDocumentPipeline.frontmatterEntries("---\nfassung: 2023\n# Titel\n"))
+        .isEmpty();
+    assertThat(MarkdownDocumentPipeline.frontmatterEntries("# Titel\nfassung: 2023\n")).isEmpty();
+    assertThat(MarkdownDocumentPipeline.frontmatterEntries("")).isEmpty();
+  }
+
+  @Test
+  void readPropertiesOfAnUnreadableFileIsEmpty() {
+    assertThat(
+            pipeline.readProperties(
+                DocumentPipelineSource.ofFile(tempDir.resolve("fehlt.md"), "fehlt.md", ".md")))
+        .isEqualTo(io.opaa.indexing.pipeline.DocumentProperties.EMPTY);
   }
 
   @Test

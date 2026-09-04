@@ -2,6 +2,9 @@ package io.opaa.indexing;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.indexing.metadata.CoreMetadata;
+import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
+import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
 import io.opaa.indexing.pipeline.DiscoveredAttachment;
 import io.opaa.indexing.pipeline.DocumentPipeline;
@@ -110,6 +113,12 @@ public class FileProcessingService {
    */
   private final KnowledgeLibraryRepository libraryRepository;
 
+  /**
+   * Runs the deterministic core-field extraction between parsing and {@link #storeChunks} on every
+   * path that writes chunks (ADR-0024) - a system process of the ingest, no rights context.
+   */
+  private final DocumentMetadataService documentMetadataService;
+
   public FileProcessingService(
       DocumentPipelineRegistry pipelineRegistry,
       DocumentRepository documentRepository,
@@ -121,7 +130,8 @@ public class FileProcessingService {
       Executor embeddingExecutor,
       ObjectProvider<AttachmentIndexer> attachmentIndexerProvider,
       AttachmentDownloadLimits mailAttachmentLimits,
-      KnowledgeLibraryRepository libraryRepository) {
+      KnowledgeLibraryRepository libraryRepository,
+      DocumentMetadataService documentMetadataService) {
     this.pipelineRegistry = pipelineRegistry;
     this.documentRepository = documentRepository;
     this.vectorChunkStore = vectorChunkStore;
@@ -134,6 +144,7 @@ public class FileProcessingService {
     this.attachmentIndexerProvider = attachmentIndexerProvider;
     this.mailAttachmentLimits = mailAttachmentLimits;
     this.libraryRepository = libraryRepository;
+    this.documentMetadataService = documentMetadataService;
   }
 
   public FileProcessingResult processFile(Path file, KnowledgeLibrary targetLibrary)
@@ -286,7 +297,8 @@ public class FileProcessingService {
           chunks,
           ChunkContextTitle.deriveTitle(fileName),
           pipeline,
-          routingExtensionFor(routed));
+          routingExtensionFor(routed),
+          extractCoreMetadata(doc, fileName, parsed));
 
       FileProcessingResult result =
           markConnectorIndexed(doc.getId(), chunks.size(), checksum, null);
@@ -534,7 +546,8 @@ public class FileProcessingService {
           chunks,
           ChunkContextTitle.deriveTitle(fileName),
           pipeline,
-          routingExtensionFor(routed));
+          routingExtensionFor(routed),
+          extractCoreMetadata(doc, fileName, parsed));
 
       FileProcessingResult result =
           markConnectorIndexed(doc.getId(), chunks.size(), checksum, lastModified);
@@ -678,7 +691,21 @@ public class FileProcessingService {
 
       // No routing decision was ever made for this text (see the pipeline selection above) - no
       // routing key is written at all, same as a failed detection (#routingExtensionFor).
-      storeChunks(doc, chunks, contextTitle, pipeline, Optional.empty());
+      // The entry's headline and its feed-declared publication instant are its declared
+      // properties (ADR-0024); the file name is never a naming convention here.
+      DocumentPipelineResult withHeadline =
+          parsed.withProperties(
+              parsed
+                  .properties()
+                  .withTitle(contextTitle)
+                  .withDocumentDate(publishedDate(publishedAt)));
+      storeChunks(
+          doc,
+          chunks,
+          contextTitle,
+          pipeline,
+          Optional.empty(),
+          extractCoreMetadata(doc, fileName, withHeadline));
 
       FileProcessingResult result =
           markConnectorIndexed(doc.getId(), chunks.size(), checksum, publishedAt);
@@ -870,6 +897,7 @@ public class FileProcessingService {
       }
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
 
+      CoreMetadata coreMetadata = extractCoreMetadata(doc, doc.getFileName(), parsed);
       if (replacingExistingChunks) {
         vectorChunkStore.deleteByDocumentId(doc.getId());
         previousChunksDeleted = true;
@@ -879,7 +907,8 @@ public class FileProcessingService {
           chunks,
           ChunkContextTitle.deriveTitle(doc.getFileName()),
           pipeline,
-          routingExtensionFor(routed));
+          routingExtensionFor(routed),
+          coreMetadata);
 
       int updated = documentRepository.markIndexed(doc.getId(), chunks.size(), Instant.now());
       if (updated == 0) {
@@ -1176,13 +1205,17 @@ public class FileProcessingService {
    * @param routingExtension see {@link #routingExtensionFor}: written onto every chunk as {@link
    *     ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} when present, omitted entirely when
    *     empty (#1126)
+   * @param coreMetadata the document's effective core fields (ADR-0024), whose filterable keys
+   *     ({@link CoreMetadataChunkKeys}) are written onto every chunk before any pipeline
+   *     passthrough - they hang on the document, so no pipeline may set them
    */
   private void storeChunks(
       Document document,
       List<org.springframework.ai.document.Document> chunks,
       String contextTitle,
       DocumentPipeline pipeline,
-      Optional<String> routingExtension) {
+      Optional<String> routingExtension,
+      CoreMetadata coreMetadata) {
     boolean documentWasSplit = chunks.size() >= 2;
     ContentFormatter embedFormatter =
         documentWasSplit && contextTitle != null
@@ -1217,6 +1250,9 @@ public class FileProcessingService {
                       extension ->
                           metadata.put(
                               ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY, extension));
+                  // The document's filterable core fields (ADR-0024): inherited by every chunk,
+                  // written here so both search paths can carry the same condition.
+                  metadata.putAll(coreMetadata.chunkMetadata());
                   // The registry-wide declared passthrough keys (DocumentPipeline#
                   // passthroughMetadataKeys) - e.g. the chunk's Fundort, or a message's Kopfdaten
                   // (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5) - copied only when this
@@ -1237,6 +1273,38 @@ public class FileProcessingService {
             .toList();
 
     addToVectorStore(enriched);
+  }
+
+  /**
+   * An RSS entry's {@code publishedAt} (an {@link Instant#toString()} rendering from {@code
+   * RssFeedIndexingExecutor}) as a UTC calendar date, or {@code null} when absent or unparseable.
+   */
+  private static java.time.LocalDate publishedDate(String publishedAt) {
+    if (publishedAt == null || publishedAt.isBlank()) {
+      return null;
+    }
+    try {
+      return Instant.parse(publishedAt).atZone(java.time.ZoneOffset.UTC).toLocalDate();
+    } catch (java.time.format.DateTimeParseException e) {
+      return null;
+    }
+  }
+
+  /**
+   * The deterministic core-field extraction (ADR-0024) for a document that is about to get chunks:
+   * runs over {@code fileName} and what {@code parsed} declares, stores the values at the document
+   * and returns the effective fields for {@link #storeChunks}. Never fails the ingest - a failure
+   * here is logged and the chunks are written without core fields, exactly as an empty result.
+   */
+  private CoreMetadata extractCoreMetadata(
+      Document document, String fileName, DocumentPipelineResult parsed) {
+    try {
+      return documentMetadataService.applyDeterministicExtraction(
+          document.getId(), fileName, parsed.properties());
+    } catch (RuntimeException e) {
+      log.warn("Core metadata extraction failed for {}; indexing without it", fileName, e);
+      return CoreMetadata.EMPTY;
+    }
   }
 
   /** Copies {@code key} from {@code chunk}'s own metadata into {@code target}, if present. */

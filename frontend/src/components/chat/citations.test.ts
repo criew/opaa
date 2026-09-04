@@ -1,6 +1,52 @@
 import { describe, expect, test } from 'vitest'
-import { buildCitationIndex } from './citations'
+import { buildCitationIndex, describeMetadata, formatMetadataLine } from './citations'
 import type { SourceReference } from '../../types/api'
+
+// #1066 (metadata-schema.md, Wirkstelle 3): the generic metadata line shared by the Fundstellen
+// block and the Belegfenster - rendered from the backend's list without field knowledge.
+describe('formatMetadataLine', () => {
+  const base: SourceReference = {
+    fileName: 'da.pdf',
+    relevanceScore: 1,
+    matchCount: 1,
+    cited: true,
+    indexedAt: null,
+    citationValid: true,
+  }
+
+  test('is undefined without a list or with an empty one', () => {
+    expect(formatMetadataLine(undefined)).toBeUndefined()
+    expect(formatMetadataLine({ ...base, metadata: null })).toBeUndefined()
+    expect(formatMetadataLine({ ...base, metadata: [] })).toBeUndefined()
+    expect(describeMetadata({ ...base, metadata: [] })).toBeUndefined()
+  })
+
+  test('joins the display values in list order and marks derived ones', () => {
+    const withMetadata: SourceReference = {
+      ...base,
+      metadata: [
+        {
+          fieldKey: 'document_type',
+          label: 'Dokumentart',
+          value: 'VERMERK',
+          displayValue: 'Vermerk',
+          origin: 'DERIVED',
+        },
+        {
+          fieldKey: 'document_date',
+          label: 'Datum/Stand',
+          value: '2024-01-01',
+          displayValue: '2024',
+          origin: 'MANUAL',
+          datePrecision: 'YEAR',
+        },
+      ],
+    }
+
+    expect(formatMetadataLine(withMetadata)).toBe('Vermerk (abgeleitet) · 2024')
+    expect(describeMetadata(withMetadata)).toBe('Dokumentart: Vermerk, Datum/Stand: 2024')
+  })
+})
 
 function source(
   fileName: string,

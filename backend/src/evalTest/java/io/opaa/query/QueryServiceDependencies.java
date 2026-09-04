@@ -2,6 +2,7 @@ package io.opaa.query;
 
 import io.opaa.chat.ChatService;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
@@ -43,7 +44,8 @@ public record QueryServiceDependencies(
     ChatService chatService,
     QueryMetrics metrics,
     KnowledgeLibraryRepository knowledgeLibraryRepository,
-    RerankModelRole rerankModelRole) {
+    RerankModelRole rerankModelRole,
+    DocumentMetadataService documentMetadataService) {
 
   public static QueryServiceDependencies fromContext(ApplicationContext context) {
     return new QueryServiceDependencies(
@@ -58,7 +60,8 @@ public record QueryServiceDependencies(
         context.getBean(ChatService.class),
         context.getBean(QueryMetrics.class),
         context.getBean(KnowledgeLibraryRepository.class),
-        context.getBean(RerankModelRole.class));
+        context.getBean(RerankModelRole.class),
+        context.getBean(DocumentMetadataService.class));
   }
 
   public QueryService buildQueryService(QueryProperties queryProperties) {
@@ -75,6 +78,7 @@ public record QueryServiceDependencies(
         metrics,
         queryProperties,
         knowledgeLibraryRepository,
-        rerankModelRole);
+        rerankModelRole,
+        documentMetadataService);
   }
 }

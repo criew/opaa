@@ -240,7 +240,8 @@ class AsyncIndexingExecutorTest {
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
             new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
-            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
+            io.opaa.indexing.TestDocumentMetadataServices.returningEmpty());
 
     FilesystemPathAllowlist realFlowAllowlist = mock(FilesystemPathAllowlist.class);
     when(realFlowAllowlist.isAllowed(any())).thenReturn(true);

@@ -256,6 +256,34 @@ class PptxDocumentPipelineTest {
     assertThat(result.chunks()).isEmpty();
   }
 
+  /**
+   * ADR-0024: the core properties and the first slide's title reach the extractor from the same
+   * single parse {@code run} takes; {@code readProperties} is the chunk-free path of #1067.
+   */
+  @Test
+  void readsCorePropertiesAndTheFirstSlideTitleAsDocumentProperties() throws IOException {
+    Path file = tempDir.resolve("vortrag.pptx");
+    try (XMLSlideShow show = new XMLSlideShow()) {
+      show.getProperties().getCoreProperties().setTitle("Haushalt 2026");
+      show.getProperties()
+          .getCoreProperties()
+          .setModified(
+              java.util.Optional.of(
+                  java.util.Date.from(java.time.Instant.parse("2026-02-10T23:30:00Z"))));
+      addSlide(show, "Einfuehrung", "Willkommen zur Buergerversammlung.", null);
+      write(show, file);
+    }
+    DocumentPipelineSource source = DocumentPipelineSource.ofFile(file, "vortrag.pptx", ".pptx");
+
+    io.opaa.indexing.pipeline.DocumentProperties properties = pipeline.readProperties(source);
+
+    assertThat(properties.title()).isEqualTo("Haushalt 2026");
+    // UTC day of the stored W3CDTF instant, regardless of the JVM's zone.
+    assertThat(properties.modifiedAt()).isEqualTo(java.time.LocalDate.of(2026, 2, 10));
+    assertThat(properties.firstHeading()).isEqualTo("Einfuehrung");
+    assertThat(pipeline.run(source).properties()).isEqualTo(properties);
+  }
+
   private static void addSlide(XMLSlideShow show, String title, String body, String notes) {
     // The "Title Only" master layout carries a title placeholder and nothing else; createSlide
     // (layout) copies that placeholder shape onto the new slide, which the default no-arg

@@ -148,6 +148,82 @@ describe('SourceFootnotes', () => {
     })
   })
 
+  // #1066 (metadata-schema.md, Wirkstelle 3; Maintainer-Beschluss 04.09.2026): the Beleg renders
+  // the generic metadata list without field knowledge; an empty field is not in the list and so
+  // never renders, a derived value is marked, a year-only date arrives already as "2024".
+  describe('metadata line', () => {
+    it('renders every entry by its display value, in list order, with an accessible description', () => {
+      const citations = buildCitationIndex('Satz【source: doc-1#0 | 2026-03-12_da.pdf】', [
+        source('2026-03-12_da.pdf', true, {
+          documentId: 'doc-1',
+          metadata: [
+            {
+              fieldKey: 'title',
+              label: 'Titel',
+              value: 'Dienstanweisung IT-Nutzung',
+              displayValue: 'Dienstanweisung IT-Nutzung',
+              origin: 'DETERMINISTIC',
+            },
+            {
+              fieldKey: 'document_type',
+              label: 'Dokumentart',
+              value: 'DIENSTANWEISUNG',
+              displayValue: 'Dienstanweisung',
+              origin: 'DETERMINISTIC',
+            },
+            {
+              fieldKey: 'document_date',
+              label: 'Datum/Stand',
+              value: '2026-03-12',
+              displayValue: '12.03.2026',
+              origin: 'DETERMINISTIC',
+              datePrecision: 'DAY',
+            },
+          ],
+        }),
+      ])
+
+      renderFootnotes(citations)
+
+      expect(screen.getByText('2026-03-12_da.pdf')).toBeVisible()
+      const line = screen.getByTestId('source-metadata')
+      expect(line).toHaveTextContent('Dienstanweisung IT-Nutzung · Dienstanweisung · 12.03.2026')
+      expect(line).toHaveAccessibleName(
+        'Titel: Dienstanweisung IT-Nutzung, Dokumentart: Dienstanweisung, Datum/Stand: 12.03.2026',
+      )
+    })
+
+    it('renders only the entries the backend sent and marks a derived value', () => {
+      const citations = buildCitationIndex('Satz【source: doc-1#0 | satzung.md】', [
+        source('satzung.md', true, {
+          documentId: 'doc-1',
+          metadata: [
+            {
+              fieldKey: 'document_date',
+              label: 'Datum/Stand',
+              value: '2024-01-01',
+              displayValue: '2024',
+              origin: 'DERIVED',
+              datePrecision: 'YEAR',
+            },
+          ],
+        }),
+      ])
+
+      renderFootnotes(citations)
+
+      expect(screen.getByTestId('source-metadata')).toHaveTextContent('2024 (abgeleitet)')
+      expect(screen.getByTestId('source-metadata')).not.toHaveTextContent('01.01.2024')
+      expect(screen.queryByText(/ohne Angabe/)).not.toBeInTheDocument()
+    })
+
+    it('shows no line at all for a document without metadata', () => {
+      renderFootnotes(indexWithDocs(1))
+
+      expect(screen.queryByTestId('source-metadata')).not.toBeInTheDocument()
+    })
+  })
+
   describe('"Im Dokument öffnen"', () => {
     it('calls openDocument with the documentId and file name for a local (UPLOAD/FILESYSTEM) original', async () => {
       const citations = buildCitationIndex('Satz【source: doc-1#0 | dienstanweisung.pdf】', [

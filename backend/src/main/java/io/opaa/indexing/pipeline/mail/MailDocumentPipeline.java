@@ -5,6 +5,7 @@ import io.opaa.indexing.pipeline.DiscoveredAttachment;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.DocumentProperties;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -178,7 +179,36 @@ public class MailDocumentPipeline implements DocumentPipeline {
     long contentByteSize =
         headerContext.getBytes(StandardCharsets.UTF_8).length
             + message.bodyText().getBytes(StandardCharsets.UTF_8).length;
-    return DocumentPipelineResult.chunked(chunks, discovered, contentByteSize);
+    return DocumentPipelineResult.chunked(chunks, discovered, contentByteSize)
+        .withProperties(properties(message));
+  }
+
+  /** Betreff as the title and the Date header as the document's own date (ADR-0024). */
+  @Override
+  public DocumentProperties readProperties(DocumentPipelineSource source) {
+    if (source.file() == null) {
+      return DocumentProperties.EMPTY;
+    }
+    try {
+      if (Files.size(source.file()) > properties.maxMessageBytes()) {
+        return DocumentProperties.EMPTY;
+      }
+      ParsedMailMessage message =
+          ".msg".equals(resolveExtension(source))
+              ? MsgReader.read(source.file(), properties)
+              : EmlReader.read(source.file(), properties);
+      return properties(message);
+    } catch (IOException | RuntimeException e) {
+      log.warn("Could not read mail properties of {}", source.fileName(), e);
+      return DocumentProperties.EMPTY;
+    }
+  }
+
+  private DocumentProperties properties(ParsedMailMessage message) {
+    return DocumentProperties.EMPTY
+        .withTitle(message.subject())
+        .withDocumentDate(
+            message.date() == null ? null : message.date().atZone(clock.getZone()).toLocalDate());
   }
 
   private static String resolveExtension(DocumentPipelineSource source) {

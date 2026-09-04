@@ -123,6 +123,49 @@ class MailDocumentPipelineTest {
     assertThat(renderedEarlier.compareTo(renderedLater)).isEqualTo(0);
   }
 
+  /**
+   * ADR-0024: Betreff is the title, the Date header the document's own date - as a calendar day in
+   * the pipeline's clock zone (a 23:30 UTC mail is the next day in Europe/Berlin), the same zone
+   * the context line renders in.
+   */
+  @Test
+  void readsBetreffAndDateHeaderAsDocumentPropertiesInTheClockZone() throws Exception {
+    Message message =
+        newMessageBuilder(
+                "Anfrage Bauantrag",
+                "Max Mustermann <max@example.org>",
+                "Erika Musterfrau <erika@example.org>")
+            .setDate(Date.from(Instant.parse("2024-01-03T23:30:00Z")))
+            .setBody("Bitte pruefen Sie den Antrag.", StandardCharsets.UTF_8)
+            .build();
+    Path file = writeEml(DefaultMessageWriter.asBytes(message));
+    DocumentPipelineSource source = DocumentPipelineSource.ofFile(file, "anfrage.eml");
+
+    io.opaa.indexing.pipeline.DocumentProperties properties =
+        pipeline(defaultProperties).readProperties(source);
+
+    assertThat(properties.title()).isEqualTo("Anfrage Bauantrag");
+    assertThat(properties.documentDate()).isEqualTo(java.time.LocalDate.of(2024, 1, 4));
+    assertThat(properties.firstHeading()).isNull();
+    assertThat(pipeline(defaultProperties).run(source).properties()).isEqualTo(properties);
+  }
+
+  @Test
+  void readPropertiesRespectsTheMessageSizeLimitAndSurvivesAnUnreadableFile() throws Exception {
+    Path file = writeEml(simpleEmlBytes());
+    long fileSize = Files.size(file);
+
+    assertThat(
+            pipeline(new MailProperties(0, 0, 0, fileSize - 1))
+                .readProperties(DocumentPipelineSource.ofFile(file, "zu-gross.eml")))
+        .isEqualTo(io.opaa.indexing.pipeline.DocumentProperties.EMPTY);
+    assertThat(
+            pipeline(defaultProperties)
+                .readProperties(
+                    DocumentPipelineSource.ofFile(tempDir.resolve("fehlt.eml"), "fehlt.eml")))
+        .isEqualTo(io.opaa.indexing.pipeline.DocumentProperties.EMPTY);
+  }
+
   // --- EML: headers as metadata AND as context lines in the chunk text (#1130 Befund 1) --------
 
   @Test
