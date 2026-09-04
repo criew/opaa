@@ -7,6 +7,7 @@ import { useDocumentStore } from './documentStore'
 import { useIndexingStore } from './indexingStore'
 import { useGrantStore } from './grantStore'
 import { useLlmModelStore } from './llmModelStore'
+import { useNotificationStore } from './notificationStore'
 import { useSearchAdminStore } from './searchAdminStore'
 import { bumpSessionEpoch } from './sessionEpoch'
 
@@ -44,6 +45,7 @@ function resettableStores() {
     useIndexingStore,
     useGrantStore,
     useLlmModelStore,
+    useNotificationStore,
     useSearchAdminStore,
   ]
 }
