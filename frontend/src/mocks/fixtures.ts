@@ -21,6 +21,7 @@ import type {
   SpaceLibraryAssociationListResponse,
   SearchStatusResponse,
   SearchPermissionProfileResponse,
+  SearchDiagnosisContextResponse,
   SearchDiagnosisResponse,
   ChunkInspectionResponse,
   DocumentChunksResponse,
@@ -742,12 +743,20 @@ export const mockSearchPermissionProfiles: SearchPermissionProfileResponse[] = [
   { id: 'group-phoenix', name: 'Projektbeteiligte Phoenix', libraryCount: 1 },
 ]
 
+export const mockSearchDiagnosisContext: SearchDiagnosisContextResponse = {
+  permissionProfiles: mockSearchPermissionProfiles,
+  personContextAvailable: false,
+  personContextHint:
+    'Fuer den Rechtekontext einer Person ist die eigene, befristete Befugnis „Sicht als“ noetig; Sie halten keine. Sie wird einzeln vergeben und folgt nicht aus der Administratorrolle.',
+}
+
 export const MOCK_SATZUNG_DOCUMENT_ID = '11111111-1111-4111-8111-111111111111'
 export const MOCK_FORMULAR_DOCUMENT_ID = '22222222-2222-4222-8222-222222222222'
 
 export const mockSearchDiagnosis: SearchDiagnosisResponse = {
   question: 'Was gilt bei Gebuehrenbefreiung wegen Beduerftigkeit?',
   contextType: 'PERMISSION_PROFILE',
+  lockedLibraryCount: 0,
   contextLabel: 'Rechteprofil „Sachbearbeitung Buergerbuero“',
   executedAt: '2026-09-01T10:00:00Z',
   searchScope: [

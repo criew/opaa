@@ -2,9 +2,9 @@ package io.opaa.api;
 
 import io.opaa.api.dto.ChunkInspectionResponse;
 import io.opaa.api.dto.DocumentChunksResponse;
+import io.opaa.api.dto.SearchDiagnosisContextResponse;
 import io.opaa.api.dto.SearchDiagnosisRequest;
 import io.opaa.api.dto.SearchDiagnosisResponse;
-import io.opaa.api.dto.SearchPermissionProfileResponse;
 import io.opaa.api.dto.SearchStatusResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
@@ -16,7 +16,6 @@ import io.opaa.searchadmin.DiagnosisQuery;
 import io.opaa.searchadmin.SearchDiagnosisService;
 import io.opaa.searchadmin.SearchStatusService;
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,9 +33,12 @@ import org.springframework.web.bind.annotation.RestController;
  * <p><b>Read-only by design, in both senses.</b> There is no endpoint here that changes a setting:
  * the page shows the active configuration, it is not a Reglerwand. And the diagnosis, though it is
  * a {@code POST}, writes nothing either - it is a {@code POST} because a test question does not
- * belong in a URL, not because it has an effect. The chunk endpoints (#1230) show what the index
- * actually stores - text and metadata, never the embedding - and answer a foreign or unknown id
- * with 404 rather than 403, so they never confirm an id outside the caller's organization.
+ * belong in a URL, not because it has an effect. The one write a person-context run does cause is
+ * its protocol entry, which {@code ForeignDiagnosticContextService} owns and this controller cannot
+ * skip: nothing here resolves a person's search scope on its own (#1150). The chunk endpoints
+ * (#1230) show what the index actually stores - text and metadata, never the embedding - and answer
+ * a foreign or unknown id with 404 rather than 403, so they never confirm an id outside the
+ * caller's organization.
  */
 @RestController
 @RequestMapping("/api/v1/admin/search")
@@ -63,10 +65,10 @@ public class SearchAdminController {
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-  @GetMapping("/permission-profiles")
-  public List<SearchPermissionProfileResponse> listPermissionProfiles(@Caller CurrentUser caller) {
-    return SearchAdminResponseMapper.toPermissionProfileResponses(
-        searchDiagnosisService.permissionProfiles(caller));
+  @GetMapping("/diagnosis-context")
+  public SearchDiagnosisContextResponse getDiagnosisContext(@Caller CurrentUser caller) {
+    return SearchAdminResponseMapper.toDiagnosisContextResponse(
+        searchDiagnosisService.diagnosisContext(caller));
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -83,6 +85,8 @@ public class SearchAdminController {
                 request.getQuestion().trim(),
                 toContextType(request.getContextType()),
                 request.getPermissionProfileId(),
+                request.getTargetUserId(),
+                request.getJustification(),
                 request.getTrackedDocumentId())));
   }
 
@@ -109,6 +113,7 @@ public class SearchAdminController {
     return switch (contextType) {
       case SELF -> DiagnosisContextType.SELF;
       case PERMISSION_PROFILE -> DiagnosisContextType.PERMISSION_PROFILE;
+      case USER -> DiagnosisContextType.USER;
     };
   }
 }

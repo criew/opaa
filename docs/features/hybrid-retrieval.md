@@ -1131,6 +1131,61 @@ gefunden und in einer bestimmten Stufe verdrängt (dann ist es ein Ranking-Probl
 Unterschied zwischen zwei völlig verschiedenen Abhilfen, und heute lässt er sich nur mit Codezugriff
 feststellen.
 
+#### Personenkontext („Sicht als (Person)")
+
+> **Stand: gebaut** ([#1150](https://github.com/criew/opaa/issues/1150)).
+
+Neben dem eigenen Rechtekontext und einem Rechteprofil lässt sich die Diagnose im Rechtekontext **einer
+benannten Person** ausführen — der Fall, für den das Werkzeug bei einer Beschwerde („warum sieht diese
+Person das Dokument nicht?") eigentlich gebaut ist. Der Lauf geht ausschließlich über
+`ForeignDiagnosticContextService#execute`; die Administrationsseite löst für eine Person keinen
+Suchbereich selbst auf. In dieser einen Aufrufkette liegen:
+
+- die Prüfung der Befugnis „Sicht als" mit Geltungsbereich und Frist — sie folgt aus keiner Rolle, auch
+  nicht aus `SYSTEM_ADMIN`,
+- die **Pflichtbegründung** aus Leitplanke (d): ohne sie wird nicht ausgeführt, und geprüft wird sie,
+  bevor irgendein Recht der Zielperson gelesen wird,
+- der Abzug **diagnosegesperrter** Bibliotheken nach Leitplanke (e) — die Antwort nennt nur ihre Zahl
+  als „gesperrter Suchbereich", nie einen Namen, Titel oder Treffer daraus,
+- der **Protokolleintrag** nach Leitplanke (f), geschrieben aus demselben Aufruf.
+
+Ohne Befugnis antwortet der Endpunkt mit 403 und der Begründung, dass die Befugnis einzeln vergeben
+wird; die Oberfläche stellt den Personenkontext dann gar nicht erst zur Wahl und sagt, warum. Der
+**voreingestellte** Kontext bleibt ein Rechteprofil, nie eine Person. Das Ergebnis eines
+Personenkontext-Laufs wird nirgends gespeichert (Leitplanke (j)) — es lebt in der geöffneten Seite und
+sonst nirgends.
+
+**„Dokument verfolgen" gilt im selben Rechte- und Sperrkontext wie die Suche.** Liegt das verfolgte
+Dokument außerhalb des durchsuchten Bereichs, nennt die Antwort weder Dateinamen noch Bibliothek. Und
+sie unterscheidet die beiden Gründe: Eine **diagnosegesperrte** Bibliothek wird als „gesperrter
+Suchbereich" ausgewiesen, über den die Diagnose keine Aussage trifft — sie ist ausdrücklich **keine**
+Aussage darüber, ob die Zielperson das Dokument lesen darf. Die Sperre als „fehlendes Recht" zu melden
+wäre eine falsche Auskunft über einen Menschen, und der Dateiname aus einer gesperrten Bibliothek wäre
+genau der Dokumenttitel, den Leitplanke (e) ausschließt.
+
+**Der Profilkontext bleibt an der Diagnosesperre vorbei offen — bewusst, aber nicht folgenlos.** Für
+Rechteprofile und den eigenen Kontext gilt die Sperre nach der Klarstellung zu (e) nicht; wer statt der
+Person deren Gruppe als Rechteprofil wählt, sieht Titel aus einer gesperrten Bibliothek — ohne
+Befugnis, ohne Begründung, ohne Protokolleintrag. Gedeckt ist das dadurch, dass ein `SYSTEM_ADMIN`
+dieselben Titel ohnehin über die Bibliotheksverwaltung sieht. Seit es den Personenkontext gibt, steht
+die Umgehung allerdings **einen Eintrag weiter oben im selben Auswahlfeld**: Die Sperre ist damit eine
+Hürde für den geregelten Weg und keine für den ungeregelten. Ob daraus die Protokollpflicht für
+Profil-Läufe folgt (die Ruhensregel unter (f) endet laut diesem Dokument mit #1052, und #1052 ist
+gebaut), ist eine eigene Entscheidung und in #1150 bewusst nicht mitgetroffen worden.
+
+**Ohne gelöste Sperre durchsucht ein Personenkontext-Lauf nichts.** Jede Bibliothek ist im Grundzustand
+diagnosegesperrt; gelöst wird die Sperre allein von der zuständigen Stelle über
+`PUT /api/v1/libraries/{libraryId}/diagnostics-lock` — eine Bedienoberfläche dafür fehlt noch
+(siehe [#1257](https://github.com/criew/opaa/issues/1257)). Der Ergebnishinweis der Diagnose nennt
+deshalb ausdrücklich, wer die Sperre aufheben kann.
+
+**Leere Profilliste.** Ein Rechteprofil ist eine **Gruppe** samt der Bibliotheksmenge, die sie lesen
+darf. Installationen, die Lesbarkeit über einzelne Berechtigungen statt über Gruppen vergeben, haben
+deshalb keine Profile. Entschieden (Maintainer, 04.09.2026): **Es werden keine Profile aus
+Berechtigungsmustern abgeleitet**; stattdessen erklärt die Oberfläche die leere Liste und benennt den
+Zusammenhang zu Gruppen. Wählbar bleiben dort der eigene Rechtekontext und — mit Befugnis — der
+Personenkontext.
+
 **Chunk-Vorschau und Dokument-Chunk-Ansicht** ([#1230](https://github.com/criew/opaa/issues/1230)).
 Die Stufentabellen und die Endauswahl nennen nicht nur, *welcher* Chunk betrachtet, verdrängt oder
 ausgewählt wurde, sondern öffnen ihn auf Klick („Chunk anzeigen") in einem Dialog: Dokumenttitel,
@@ -1326,15 +1381,17 @@ die Diagnose weist sie als „gesperrter Suchbereich" aus und liefert daraus nic
 > die Chunk-Ansicht heraus (#1230), und die ist auf die eigene Organisation des Systemadministrators
 > beschränkt — siehe die Anmerkung zur Chunk-Ansicht unter (c).
 >
-> **Damit ist die Sperre heute wirkungslos, und das ist gewollt** — sie wirkt erst, wenn „Sicht als
-> (Person)" ausgeliefert wird. Der Grundzustand `diagnostics_locked = true` bleibt bestehen, damit
-> zu diesem Zeitpunkt keine Bibliothek versehentlich offen ist; der Schutz greift also ab dem ersten
-> Tag des Personenkontexts, nicht erst nach einer Nachpflege.
+> **Bis zum Personenkontext war die Sperre wirkungslos, und das war gewollt.** Der Grundzustand
+> `diagnostics_locked = true` bestand von Anfang an, damit zu diesem Zeitpunkt keine Bibliothek
+> versehentlich offen ist; der Schutz greift damit seit dem ersten Tag des Personenkontexts, ohne
+> Nachpflege.
 >
-> **Wer „Sicht als (Person)" anschließt** (siehe [#1150](https://github.com/criew/opaa/issues/1150)),
-> **führt den Pfad zwingend über `ForeignDiagnosticContextService#execute`** — dort und nur dort
-> laufen Befugnisprüfung, Sperrenabzug, Pflichtbegründung und Protokolleintrag zusammen. Ein zweiter
-> Auflösungsweg für den Suchbereich wäre genau die Lücke, die dieser Abschnitt schließen soll.
+> **Mit [#1150](https://github.com/criew/opaa/issues/1150) ist der Personenkontext angeschlossen** —
+> zwingend über `ForeignDiagnosticContextService#execute`: dort und nur dort laufen Befugnisprüfung,
+> Sperrenabzug, Pflichtbegründung und Protokolleintrag zusammen. Ein zweiter Auflösungsweg für den
+> Suchbereich einer Person existiert nicht; `SearchDiagnosisService` löst ihn ausschließlich für den
+> eigenen Kontext und für Rechteprofile selbst auf, für die die Sperre nach dem Vorstehenden nicht
+> gilt.
 
 **(f) Protokollinhalt.** Jede Ausführung in einem fremden Rechtekontext MUSS einen Protokolleintrag
 nach den Regeln der [Protokollablage](../decisions/0015-eigentuemertrennung-protokollablage.md)
@@ -1369,6 +1426,10 @@ erzeugen. Er enthält verbindlich:
 >
 > **Diese Ruhensregel endet mit #1052.** Sobald das Protokollmodell steht, ist erneut zu entscheiden,
 > ob Profil-Läufe mitprotokolliert werden; die Kosten dafür sind dann gering, weil die Ablage existiert.
+>
+> **Stand nach [#1150](https://github.com/criew/opaa/issues/1150):** Der Personenkontext protokolliert
+> jede Ausführung. Für Profil-Läufe bleibt es bei der Ruhensregel — sie schreiben weiterhin keinen
+> Eintrag, weil die Begründung aus (c) unverändert trägt; eine Umkehr wäre eine eigene Entscheidung.
 
 **(g) Zweckbindung des Protokolls.** Das Protokoll ist unveränderlich und dient ausschließlich der
 Nachvollziehbarkeit einzelner Befugnisausübungen. Daraus folgt:
@@ -1424,6 +1485,10 @@ des Pakets:
 > Protokoll, Einsichtsrecht und Löschfrist nicht umgesetzt sind.** Die Admin-Seite ist ohne diesen Teil
 > vollständig nutzbar — im eigenen Rechtekontext und für Rechteprofile — und liefert dort bereits den
 > überwiegenden Diagnosenutzen.
+
+> **Stand: erfüllt und angeschlossen** ([#1052](https://github.com/criew/opaa/issues/1052) und
+> [#1150](https://github.com/criew/opaa/issues/1150)). Der Lieferschnitt ist damit aufgehoben; was
+> unten unter [Personenkontext](#personenkontext-sicht-als-person) steht, ist der gebaute Stand.
 
 ---
 

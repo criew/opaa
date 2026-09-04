@@ -12,7 +12,7 @@ import type {
   MetadataBackfillRequest,
   MetadataBackfillResponse,
   SearchStatusResponse,
-  SearchPermissionProfileResponse,
+  SearchDiagnosisContextResponse,
   SearchDiagnosisRequest,
   SearchDiagnosisResponse,
   ChunkInspectionResponse,
@@ -986,10 +986,15 @@ export async function runMetadataBackfillBatch(
   }
 }
 
-export async function getSearchPermissionProfiles(): Promise<SearchPermissionProfileResponse[]> {
+/**
+ * The rights contexts this administrator may choose between - the profiles, and whether they hold
+ * the "Sicht als" befugnis for the person context. The answer only shapes the form; the diagnosis
+ * endpoint checks the befugnis again on every run.
+ */
+export async function getSearchDiagnosisContext(): Promise<SearchDiagnosisContextResponse> {
   try {
-    const { data } = await client.get<SearchPermissionProfileResponse[]>(
-      '/v1/admin/search/permission-profiles',
+    const { data } = await client.get<SearchDiagnosisContextResponse>(
+      '/v1/admin/search/diagnosis-context',
     )
     return data
   } catch (err) {

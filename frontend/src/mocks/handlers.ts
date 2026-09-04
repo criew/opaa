@@ -15,7 +15,7 @@ import {
   setMockBranding,
   mockEmbeddingInfo,
   mockSearchStatus,
-  mockSearchPermissionProfiles,
+  mockSearchDiagnosisContext,
   mockSearchDiagnosis,
   mockChunkInspections,
   mockDocumentChunks,
@@ -961,8 +961,8 @@ export const handlers = [
     return HttpResponse.json(mockSearchStatus)
   }),
 
-  http.get('/api/v1/admin/search/permission-profiles', () => {
-    return HttpResponse.json(mockSearchPermissionProfiles)
+  http.get('/api/v1/admin/search/diagnosis-context', () => {
+    return HttpResponse.json(mockSearchDiagnosisContext)
   }),
 
   // The fixture is static, so the remaining work is counted down here: every call processes one
@@ -993,10 +993,35 @@ export const handlers = [
       question?: string
       contextType?: string
       permissionProfileId?: string
+      targetUserId?: string
+      justification?: string
       trackedDocumentId?: string
     }
     if (!body.question || body.question.trim() === '') {
       return HttpResponse.json({ error: 'Die Testfrage darf nicht leer sein.' }, { status: 400 })
+    }
+    // Mirrors the endpoint: the person context is refused without the befugnis, whatever the
+    // client sends, and it is never executed without a justification.
+    if (body.contextType === 'USER') {
+      if (!mockSearchDiagnosisContext.personContextAvailable) {
+        return HttpResponse.json(
+          {
+            error:
+              'Fuer „Sicht als“ ist eine eigene, befristete Befugnis noetig; Sie halten keine.',
+          },
+          { status: 403 },
+        )
+      }
+      if (!body.justification || body.justification.trim() === '') {
+        return HttpResponse.json({ error: 'Begruendung ist erforderlich' }, { status: 400 })
+      }
+      return HttpResponse.json({
+        ...mockSearchDiagnosis,
+        question: body.question,
+        contextType: 'USER',
+        contextLabel: 'Rechtekontext einer Person',
+        lockedLibraryCount: 1,
+      })
     }
     return HttpResponse.json({
       ...mockSearchDiagnosis,
