@@ -18,9 +18,11 @@ import java.util.Map;
  *     rights context. Data, not a label: the German wording is the API mapper's business.
  * @param executedAt when the run happened. The diagnosis answers the Jetzt-Zustand; this dates the
  *     answer rather than making the tool a Zugriffshistorien-Nachweis.
- * @param lockedLibraryCount how many libraries of the target rights context were left out as
- *     diagnosegesperrt (Leitplanke (e)); their existence is named, nothing from inside them is.
- *     Always 0 outside the person context, where the lock does not apply.
+ * @param lockedLibraryCount how many libraries of the organization are diagnosegesperrt (Leitplanke
+ *     (e)); their existence is named, nothing from inside them is. Deliberately not intersected
+ *     with the target person's read rights - an intersection would let a reader tell whether that
+ *     person may read a locked library. Always 0 outside the person context, where the lock does
+ *     not apply.
  * @param trackedDocument present only when the query named a document to follow.
  */
 public record SearchDiagnosis(
