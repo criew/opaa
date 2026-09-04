@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../test/test-utils'
 import LibraryCreatePage from './LibraryCreatePage'
 import { useLibraryStore } from '../stores/libraryStore'
+import { useIndexingStore } from '../stores/indexingStore'
 
 const mockNavigate = vi.fn()
 
@@ -30,6 +31,7 @@ vi.mock('../services/api', async () => {
 })
 
 const mockCreateNewLibrary = vi.fn().mockResolvedValue('lib-neu')
+const mockTriggerIndexing = vi.fn().mockResolvedValue(undefined)
 
 function renderPage() {
   return renderWithProviders(<LibraryCreatePage />, { withRouter: true })
@@ -39,8 +41,10 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
   beforeEach(() => {
     mockNavigate.mockReset()
     mockCreateNewLibrary.mockClear()
+    mockTriggerIndexing.mockClear()
     mockGetMyGroups.mockResolvedValue([])
     useLibraryStore.setState({ createNewLibrary: mockCreateNewLibrary })
+    useIndexingStore.setState({ triggerIndexing: mockTriggerIndexing })
   })
 
   it('shows the three steps and blocks Weiter without a name', async () => {
@@ -194,7 +198,47 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
           }),
         ),
       )
+      // The "Erste Indizierung sofort ..." switch defaults to on - the first run starts right
+      // after creation, before the navigation to the detail page.
+      expect(mockTriggerIndexing).toHaveBeenCalledWith('lib-neu', 'CONFLUENCE')
       expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu')
+    }, 15000)
+
+    it('skips the first run when the immediate-indexing switch is turned off', async () => {
+      mockTestLibrarySource
+        .mockResolvedValueOnce({
+          reachable: true,
+          confluenceEdition: 'DATA_CENTER',
+          credentialsVerified: false,
+          message: 'Confluence Data Center erkannt.',
+        })
+        .mockResolvedValueOnce({
+          reachable: true,
+          confluenceEdition: 'DATA_CENTER',
+          credentialsVerified: true,
+          message: 'Confluence Data Center erreichbar, Zugangsdaten gültig.',
+        })
+      const user = await openConfluenceStep()
+      await user.type(
+        screen.getByLabelText(/Adresse der Confluence-Instanz/),
+        'https://wiki.behoerde.example/confluence',
+      )
+      await user.click(screen.getByRole('button', { name: 'Edition erkennen' }))
+      await user.type(await screen.findByLabelText(/^Personal Access Token/), 'pat-geheim')
+      await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
+      const picker = await screen.findByLabelText(/Spaces suchen und auswählen/)
+      await user.click(picker)
+      await user.type(picker, 'Bau')
+      await user.click(await screen.findByRole('option', { name: /Bauamt \(BAU\)/ }))
+
+      await user.click(
+        screen.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' }),
+      )
+      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu'))
+      expect(mockTriggerIndexing).not.toHaveBeenCalled()
     }, 15000)
 
     it('joins e-mail and token for Cloud and drops verification when the address changes', async () => {

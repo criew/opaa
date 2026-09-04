@@ -25,6 +25,7 @@ import { EMPTY_CONFLUENCE_VALUES, type ConfluenceSourceValues } from '../utils/c
 import WizardStepBar from '../components/wizard/WizardStepBar'
 import { getMyGroups, testLibrarySource, upsertLibraryGrant } from '../services/api'
 import { useLibraryStore } from '../stores/libraryStore'
+import { useIndexingStore } from '../stores/indexingStore'
 import { useUserSearch } from '../hooks/useUserSearch'
 import {
   allDocumentSourceTypes,
@@ -72,6 +73,7 @@ interface PendingGrant {
 export default function LibraryCreatePage() {
   const navigate = useNavigate()
   const createNewLibrary = useLibraryStore((s) => s.createNewLibrary)
+  const triggerIndexing = useIndexingStore((s) => s.triggerIndexing)
 
   const [activeStep, setActiveStep] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -92,6 +94,9 @@ export default function LibraryCreatePage() {
   const [sourceCredentials, setSourceCredentials] = useState('')
   const [sourceInsecureSsl, setSourceInsecureSsl] = useState(false)
   const [confluence, setConfluence] = useState<ConfluenceSourceValues>(EMPTY_CONFLUENCE_VALUES)
+  // Opt-out, not opt-in: whoever just configured a source expects content - the first run (a full
+  // reconciliation over the selected spaces) starts right after creation unless switched off.
+  const [startFirstRun, setStartFirstRun] = useState(true)
   const [testResult, setTestResult] = useState<SourceConnectionTestResponse | null>(null)
   const [testErrorMessage, setTestErrorMessage] = useState<string | null>(null)
   const [testing, setTesting] = useState(false)
@@ -292,6 +297,12 @@ export default function LibraryCreatePage() {
         setSubmitting(false)
         return
       }
+      if (configKind === 'confluence' && startFirstRun) {
+        // Awaited so the run is already in the indexing store when the detail page mounts and its
+        // progress strip picks it up. triggerIndexing never throws - a failure surfaces through
+        // the global indexing snackbar, and the detail page still offers "Jetzt indizieren".
+        await triggerIndexing(libraryId, sourceType)
+      }
       navigate(`/libraries/${libraryId}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Bibliothek konnte nicht erstellt werden')
@@ -462,9 +473,20 @@ export default function LibraryCreatePage() {
                     setError(null)
                   }}
                 />
-                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 2 }}>
-                  Der erste Lauf startet nach dem Anlegen; sein Stand bleibt auf der Detailseite
-                  sichtbar.
+                <FormControlLabel
+                  sx={{ mt: 2 }}
+                  control={
+                    <Switch
+                      checked={startFirstRun}
+                      onChange={(e) => setStartFirstRun(e.target.checked)}
+                    />
+                  }
+                  label="Erste Indizierung sofort nach dem Anlegen starten"
+                />
+                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
+                  {startFirstRun
+                    ? 'Der erste Lauf ist ein Vollabgleich über alle ausgewählten Spaces; sein Stand bleibt auf der Detailseite sichtbar.'
+                    : 'Ohne Sofortstart beginnt die Indizierung erst über „Jetzt indizieren“ auf der Detailseite oder über den Zeitplan.'}
                 </Typography>
               </Box>
             )}
