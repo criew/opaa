@@ -1122,6 +1122,21 @@ gefunden und in einer bestimmten Stufe verdrängt (dann ist es ein Ranking-Probl
 Unterschied zwischen zwei völlig verschiedenen Abhilfen, und heute lässt er sich nur mit Codezugriff
 feststellen.
 
+**Chunk-Vorschau und Dokument-Chunk-Ansicht** ([#1230](https://github.com/criew/opaa/issues/1230)).
+Die Stufentabellen und die Endauswahl nennen nicht nur, *welcher* Chunk betrachtet, verdrängt oder
+ausgewählt wurde, sondern öffnen ihn auf Klick („Chunk anzeigen") in einem Dialog: Dokumenttitel,
+Bibliothek, Chunk-Index, kopierbare Chunk-ID, der gespeicherte Text mit erhaltenen Zeilenumbrüchen und
+Kontextpräfix, und die Metadaten als Schlüssel-Wert-Liste. Der Abschnitt „Chunks eines Dokuments"
+zeigt zu einer Dokument-ID alle gespeicherten Chunks in `chunk_index`-Reihenfolge — je Chunk Index,
+Länge in Zeichen, Fundort (Metadatum `location`, falls die Pipeline eines geschrieben hat) und Inhalt —
+und stellt die gespeicherte Anzahl der im Dokument vermerkten (`chunkCount`) gegenüber; weichen beide
+ab, ist das selbst der Befund (veralteter oder unvollständig geschriebener Index). Ein Klick auf einen
+Dokumenttitel in der Diagnose führt in diesen Abschnitt und lädt das Dokument, sofern der
+Dokumentschlüssel eine Dokument-ID ist. Damit lassen sich Zuschnittsgrenzen, Kontextpräfix und
+Metadaten der Indexierungs-Pipeline ohne Datenbankzugriff prüfen. Die beiden Endpunkte
+(`GET /api/v1/admin/search/chunks/{chunkId}`, `GET /api/v1/admin/search/documents/{documentId}/chunks`)
+liefern nie ein Embedding — die Spalte wird gar nicht erst gelesen.
+
 ### Berechtigungs-Leitplanken
 
 > **Stand: gebaut** ([#1052](https://github.com/criew/opaa/issues/1052)). Das Befugnis- und
@@ -1222,6 +1237,16 @@ gilt:
   ausführende Person nicht ohnehin sehen darf. Dasselbe gilt für Rechteprofile, die keiner Person
   zugeordnet sind.
 
+> **Chunk-Ansicht** ([#1230](https://github.com/criew/opaa/issues/1230)). Die Chunk-Vorschau aus der
+> Diagnose und die Dokument-Chunk-Ansicht sind `SYSTEM_ADMIN` vorbehalten und auf die **eigene
+> Organisation** beschränkt: Die Zugehörigkeit wird über die `documents`-Zeile des Chunks geprüft,
+> nicht über das Chunk-Metadatum `organization_id` (Altbestand ohne dieses Metadatum rutscht so nicht
+> durch); ein fremder, unbekannter oder verwaister Chunk wird als „nicht gefunden" beantwortet, nie
+> als „verboten". Sie zeigen damit nichts, was Systemadministratoren nicht ohnehin über die
+> Bibliotheksverwaltung ihrer Organisation lesen dürfen — dieselbe Begründung wie für den
+> Profilkontext. Ein Personenkontext ändert daran nichts: Die Chunk-Ansicht nimmt keinen
+> Rechtekontext ein, sie liest den Bestand der eigenen Organisation.
+
 **(d) Der Personenkontext ist die Ausnahme.** Die Voreinstellung von „Sicht als" ist ein Rechteprofil
 (Rolle und Bibliotheksmenge). Wird ausnahmsweise der Rechtekontext einer **konkreten Person**
 eingenommen, MUSS beim Aufruf eine **Freitextbegründung** angegeben werden, die im Protokolleintrag
@@ -1247,8 +1272,9 @@ die Diagnose weist sie als „gesperrter Suchbereich" aus und liefert daraus nic
 > (c) — sie zeigen nichts, was die ausführende Person nicht ohnehin sehen darf: Die
 > Administrationsseite ist Systemadministratoren vorbehalten, und `LibraryAccessService#effectiveRole`
 > lässt diese Rolle auf jede Bibliothek ihrer Organisation als `OWNER` durch; dieselben Dokumenttitel
-> stehen ihnen bereits in der Bibliotheksverwaltung offen. Chunk-Inhalte gibt die Diagnose überhaupt
-> nicht heraus.
+> stehen ihnen bereits in der Bibliotheksverwaltung offen. Chunk-Inhalte gibt die Diagnose nur über
+> die Chunk-Ansicht heraus (#1230), und die ist auf die eigene Organisation des Systemadministrators
+> beschränkt — siehe die Anmerkung zur Chunk-Ansicht unter (c).
 >
 > **Damit ist die Sperre heute wirkungslos, und das ist gewollt** — sie wirkt erst, wenn „Sicht als
 > (Person)" ausgeliefert wird. Der Grundzustand `diagnostics_locked = true` bleibt bestehen, damit
@@ -1286,7 +1312,8 @@ erzeugen. Er enthält verbindlich:
 > er nicht ohnehin sehen darf: Die Seite ist Systemadministratoren vorbehalten, und
 > `LibraryAccessService` lässt diese Rolle auf jede Bibliothek ihrer Organisation als `OWNER` durch —
 > dieselben Dokumenttitel stehen ihnen bereits in der Bibliotheksverwaltung offen. Chunk-Inhalte gibt
-> die Diagnose überhaupt nicht heraus. Der Zweck von (f) ist hier also die Nachvollziehbarkeit der
+> die Diagnose nur über die auf die eigene Organisation beschränkte Chunk-Ansicht heraus (#1230, siehe
+> die Anmerkung unter (c)). Der Zweck von (f) ist hier also die Nachvollziehbarkeit der
 > Befugnisausübung, nicht der Geheimnisschutz — und eine Befugnis, die über das Bestandsrecht des
 > Systemadministrators nicht hinausgeht, trägt diese Pflicht noch nicht.
 >

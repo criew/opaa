@@ -1,6 +1,8 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.ChunkInspectionResponse;
 import io.opaa.api.dto.DiagnosisSelectionEntryResponse;
+import io.opaa.api.dto.DocumentChunksResponse;
 import io.opaa.api.dto.LibraryIndexState;
 import io.opaa.api.dto.LibrarySearchStatusResponse;
 import io.opaa.api.dto.RetrievalCandidateOutcome;
@@ -29,7 +31,9 @@ import io.opaa.query.SearchedLibraryRef;
 import io.opaa.query.StageExplanation;
 import io.opaa.query.StageStatus;
 import io.opaa.query.VerdictReason;
+import io.opaa.searchadmin.ChunkInspection;
 import io.opaa.searchadmin.DiagnosisContextType;
+import io.opaa.searchadmin.DocumentChunks;
 import io.opaa.searchadmin.DocumentDescriptor;
 import io.opaa.searchadmin.LibrarySearchStatus;
 import io.opaa.searchadmin.ModelRole;
@@ -91,6 +95,28 @@ final class SearchAdminResponseMapper {
       response.setTrackedDocument(toTrackedDocument(diagnosis.trackedDocument()));
     }
     return response;
+  }
+
+  static ChunkInspectionResponse toChunkResponse(ChunkInspection chunk) {
+    return new ChunkInspectionResponse(
+            chunk.chunkId(),
+            chunk.documentId(),
+            chunk.libraryId(),
+            chunk.content(),
+            new java.util.HashMap<>(chunk.metadata()))
+        .documentTitle(chunk.documentTitle())
+        .libraryName(chunk.libraryName())
+        .chunkIndex(chunk.chunkIndex());
+  }
+
+  static DocumentChunksResponse toDocumentChunksResponse(DocumentChunks document) {
+    return new DocumentChunksResponse(
+            document.documentId(),
+            document.libraryId(),
+            document.chunkCount(),
+            document.chunks().stream().map(SearchAdminResponseMapper::toChunkResponse).toList())
+        .documentTitle(document.documentTitle())
+        .libraryName(document.libraryName());
   }
 
   /**
