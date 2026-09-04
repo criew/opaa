@@ -8,6 +8,7 @@ import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -16,11 +17,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Covers #1287 end to end against a real {@link HttpServer}: a directory page carrying an
- * ascend-by-percent-encoding link must never cause a request to the path that link resolves to once
- * decoded, so this asserts on the request count itself rather than just the parsed result.
+ * Covers #1287/#1300 end to end against a real {@link HttpServer}: a directory page carrying a link
+ * that only resolves outside the start URL once percent-decoded must never cause a request for the
+ * path it decodes to - for both the HTMLTable and the link-based layout, and for both a relative
+ * and an already-absolute href. {@code com.sun.net.httpserver.HttpServer} itself routes purely on
+ * the raw (still-encoded) request path prefix, so a plain {@code /intern/} context would never be
+ * hit by a request the crawler sends as {@code /dokumente/%2E%2E/intern/} - {@link
+ * #decodedNormalizedPath} decodes and normalizes every request the single {@code /dokumente/}
+ * context actually receives, so the assertion is on the real target the request addresses, not on
+ * which context happened to answer it (#1300 review, Nit 1).
  */
 class AutoindexCrawlerServiceEncodedTraversalTest {
+
+  private static final String BASE_PATH = "/dokumente/";
 
   private HttpServer server;
   private String baseUrl;
@@ -47,32 +56,107 @@ class AutoindexCrawlerServiceEncodedTraversalTest {
     }
   }
 
+  /**
+   * Decodes every percent-escape in {@code rawPath} and then collapses {@code .}/{@code ..}
+   * segments - in that order, since a segment like {@code %2E%2E} only becomes a literal {@code ..}
+   * ripe for collapsing once decoded. Mirrors what a real autoindex server does before resolving
+   * the path, independently of {@code AutoindexCrawlerService}'s own decode-and-check so this test
+   * does not simply assert its own production logic back at itself.
+   */
+  private static String decodedNormalizedPath(String rawPath) {
+    String decoded = URI.create("http://placeholder" + rawPath).getPath();
+    return URI.create("http://placeholder" + decoded).normalize().getPath();
+  }
+
   @Test
   void aPercentEncodedParentLinkOnADirectoryPageIsNeverRequested()
       throws IOException, InterruptedException {
     AtomicInteger dokumenteRequests = new AtomicInteger();
-    AtomicInteger internRequests = new AtomicInteger();
+    AtomicInteger escapedRequests = new AtomicInteger();
     server.createContext(
-        "/dokumente/",
+        BASE_PATH,
         exchange -> {
+          String rawPath = exchange.getRequestURI().getRawPath();
+          if (!decodedNormalizedPath(rawPath).startsWith(BASE_PATH)) {
+            escapedRequests.incrementAndGet();
+            respond(exchange, "<table></table>");
+            return;
+          }
           dokumenteRequests.incrementAndGet();
-          respond(
-              exchange,
-              """
-              <table>
-              <tr><td><img alt="[DIR]"></td><td><a href="%2E%2E/intern/">up</a></td>\
-              <td>2025-01-01</td><td>-</td></tr>
-              <tr><td><img alt="[TXT]"></td><td><a href="oeffentlich.txt">oeffentlich.txt</a></td>\
-              <td>2025-01-01</td><td>1</td></tr>
-              </table>
-              """);
+          if (rawPath.equals(BASE_PATH)) {
+            respond(
+                exchange,
+                """
+                <table>
+                <tr><td><img alt="[DIR]"></td><td><a href="%2E%2E/intern/">up</a></td>\
+                <td>2025-01-01</td><td>-</td></tr>
+                <tr><td><img alt="[TXT]"></td>\
+                <td><a href="oeffentlich.txt">oeffentlich.txt</a></td>\
+                <td>2025-01-01</td><td>1</td></tr>
+                </table>
+                """);
+          } else {
+            respond(exchange, "Oeffentlicher Inhalt.");
+          }
         });
-    // A directory outside /dokumente/ the encoded link would resolve to - if the crawler ever
-    // requests it, the traversal was not blocked.
+
+    AutoindexCrawlerService service =
+        new AutoindexCrawlerService(
+            TargetAddressValidator.disabled(), new CrawlProperties(10, 100, 0));
+
+    AutoindexCrawlerService.CrawlResult result =
+        assertTimeoutPreemptively(
+            Duration.ofSeconds(10),
+            () -> service.crawl(baseUrl + BASE_PATH, null, -1, null, null, false));
+
+    assertThat(result.entries())
+        .extracting(AutoindexCrawlerService.CrawledFileEntry::name)
+        .containsExactly("oeffentlich.txt");
+    assertThat(dokumenteRequests.get()).isEqualTo(1);
+    assertThat(escapedRequests.get())
+        .as("no request may ever decode-and-normalize to a path outside " + BASE_PATH)
+        .isZero();
+  }
+
+  @Test
+  void anAbsoluteSameOriginLinkOutsideBaseUrlInTheHtmlTableLayoutIsNeverRequested()
+      throws IOException, InterruptedException {
+    // #1300 review, blocker: parseHtmlTableLayout previously only checked isSameOriginAsBase for
+    // an absolute href, never staysUnderBase - an already-absolute, same-origin link pointing
+    // outside baseUrl's own subtree was accepted and crawled into.
+    AtomicInteger dokumenteRequests = new AtomicInteger();
+    AtomicInteger escapedRequests = new AtomicInteger();
+    server.createContext(
+        BASE_PATH,
+        exchange -> {
+          String rawPath = exchange.getRequestURI().getRawPath();
+          if (!decodedNormalizedPath(rawPath).startsWith(BASE_PATH)) {
+            escapedRequests.incrementAndGet();
+            respond(exchange, "<table></table>");
+            return;
+          }
+          dokumenteRequests.incrementAndGet();
+          if (rawPath.equals(BASE_PATH)) {
+            respond(
+                exchange,
+                """
+                <table>
+                <tr><td><img alt="[DIR]"></td>\
+                <td><a href="%s/intern/">intern</a></td><td>2025-01-01</td><td>-</td></tr>
+                <tr><td><img alt="[TXT]"></td>\
+                <td><a href="oeffentlich.txt">oeffentlich.txt</a></td>\
+                <td>2025-01-01</td><td>1</td></tr>
+                </table>
+                """
+                    .formatted(baseUrl));
+          } else {
+            respond(exchange, "Oeffentlicher Inhalt.");
+          }
+        });
     server.createContext(
         "/intern/",
         exchange -> {
-          internRequests.incrementAndGet();
+          escapedRequests.incrementAndGet();
           respond(exchange, "<table></table>");
         });
 
@@ -83,14 +167,14 @@ class AutoindexCrawlerServiceEncodedTraversalTest {
     AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(
             Duration.ofSeconds(10),
-            () -> service.crawl(baseUrl + "/dokumente/", null, -1, null, null, false));
+            () -> service.crawl(baseUrl + BASE_PATH, null, -1, null, null, false));
 
     assertThat(result.entries())
         .extracting(AutoindexCrawlerService.CrawledFileEntry::name)
         .containsExactly("oeffentlich.txt");
     assertThat(dokumenteRequests.get()).isEqualTo(1);
-    assertThat(internRequests.get())
-        .as("the encoded parent-directory link must never be followed")
+    assertThat(escapedRequests.get())
+        .as("the absolute, same-origin link outside baseUrl must never be followed")
         .isZero();
   }
 }

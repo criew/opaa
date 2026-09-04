@@ -158,6 +158,72 @@ class AutoindexCrawlerServiceTest {
     assertThat(entries).isEmpty();
   }
 
+  // --- PR #1300 review: HTMLTable layout must apply staysUnderBase to absolute links too --------
+
+  @Test
+  void tableLayoutSkipsASameOriginAbsoluteUrlOutsideBaseUrl() {
+    // #1300 review, blocker: parseHtmlTableLayout checked only isSameOriginAsBase for an absolute
+    // href, never staysUnderBase - a same-origin href pointing above/outside baseUrl's own subtree
+    // was accepted and crawled into, sending the Authorization header built for baseUrl to it.
+    String html =
+        """
+        <table>
+        <tr><td><img alt="[DIR]"></td>\
+        <td><a href="https://host/intern/">intern</a></td><td>2025-01-01</td><td>-</td></tr>
+        <tr><td><img alt="[TXT]"></td>\
+        <td><a href="ok.txt">ok.txt</a></td><td>2025-01-01</td><td>1</td></tr>
+        </table>
+        """;
+
+    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+        service.parseDirectory(html, "https://host/dokumente/", 0);
+
+    assertThat(entries).hasSize(1);
+    assertThat(entries.getFirst().name()).isEqualTo("ok.txt");
+  }
+
+  @Test
+  void tableLayoutSkipsAPercentEncodedParentSegmentInAnAbsoluteUrl() {
+    // #1300 review, blocker: the same escape as #1287, but via an already-absolute href in the
+    // HTMLTable layout rather than a relative one.
+    String html =
+        """
+        <table>
+        <tr><td><img alt="[DIR]"></td>\
+        <td><a href="https://host/dokumente/%2E%2E/intern/">intern</a></td>\
+        <td>2025-01-01</td><td>-</td></tr>
+        <tr><td><img alt="[TXT]"></td>\
+        <td><a href="ok.txt">ok.txt</a></td><td>2025-01-01</td><td>1</td></tr>
+        </table>
+        """;
+
+    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+        service.parseDirectory(html, "https://host/dokumente/", 0);
+
+    assertThat(entries).hasSize(1);
+    assertThat(entries.getFirst().name()).isEqualTo("ok.txt");
+  }
+
+  @Test
+  void aTraversalCheckOnlyAppliesToTheLinkPathBeyondBaseUrlItself() {
+    // #1300 review, Nit 3: staysUnderBase must only decode-check the part of a link's path beyond
+    // baseUrl's own path - a start URL whose own configured path happens to contain a sequence like
+    // "a%2Fb" must not make every link underneath it look like a traversal too.
+    String html =
+        """
+        <table>
+        <tr><td><img alt="[TXT]"></td>\
+        <td><a href="datei.txt">datei.txt</a></td><td>2025-01-01</td><td>1</td></tr>
+        </table>
+        """;
+
+    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+        service.parseDirectory(html, "https://host/a%2Fb/", 0);
+
+    assertThat(entries).hasSize(1);
+    assertThat(entries.getFirst().url()).isEqualTo("https://host/a%2Fb/datei.txt");
+  }
+
   @Test
   void resolvesRelativeUrlWithTrailingSlash() {
     assertThat(AutoindexCrawlerService.resolveUrl("https://host/dir", "file.txt"))
@@ -553,6 +619,25 @@ class AutoindexCrawlerServiceTest {
 
     assertThat(entries).hasSize(1);
     assertThat(entries.getFirst().url()).isEqualTo("https://example.com/files/Verg%C3%BCtung/");
+  }
+
+  @Test
+  void doesNotFollowALinkWhoseResolvedUrlCannotBeParsedAsAUri() {
+    // #1300 review, Nit 2: staysUnderBase must fail closed (reject) on a URL URI cannot parse -
+    // mirroring isSameOriginAsBase's own catch-and-reject - rather than passing it through, which
+    // normalizeUrl's own lenient fallback (returning the raw string unchanged) would otherwise do.
+    String html =
+        """
+        <table>
+        <tr><td><img alt="[TXT]"></td><td><a href="datei mit leerzeichen.txt">x</a></td>\
+        <td>2025-01-01</td><td>1</td></tr>
+        </table>
+        """;
+
+    List<AutoindexCrawlerService.CrawledFileEntry> entries =
+        service.parseDirectory(html, "https://host/dokumente/", 0);
+
+    assertThat(entries).isEmpty();
   }
 
   @Test

@@ -216,41 +216,71 @@ public class AutoindexCrawlerService {
   }
 
   /**
+   * Resolves {@code href} against {@code baseUrl} and returns the resulting absolute URL, or {@code
+   * null} if the link must not be followed at all - shared by {@link #parseHtmlTableLayout} and
+   * {@link #parseLinkBasedLayout} so both layouts apply exactly the same rule to an absolute,
+   * already-resolved {@code http(s)://} href as to a relative one, rather than a layout-specific
+   * subset of it (a foreign-origin absolute href was previously only rejected in one of the two).
+   */
+  private static String resolveFollowableUrl(String baseUrl, String href) {
+    if (href.startsWith("http://") || href.startsWith("https://")) {
+      // An absolute href pointing at a foreign origin, or one that resolves outside baseUrl's own
+      // subtree, must never be followed - the caller's Authorization header (built from this
+      // source configuration's own credentials) would otherwise be sent to a host or path that
+      // configuration was never meant for.
+      return isSameOriginAsBase(baseUrl, href) && staysUnderBase(baseUrl, href) ? href : null;
+    }
+    // A relative href like "../" resolves (via the naive baseUrl+relative concatenation
+    // resolveUrl does) to a URL that, once normalized, may escape above baseUrl's own subtree.
+    String fullUrl = resolveUrl(baseUrl, href);
+    return staysUnderBase(baseUrl, fullUrl) ? fullUrl : null;
+  }
+
+  /**
    * Whether {@code fullUrl} stays inside {@code baseUrl}'s own subtree - both sides are normalized
    * via {@link #normalizeUrl} before comparing, not compared as raw strings: a relative href like
    * {@code "../"} resolves, via {@link #resolveUrl}'s naive string-concatenation, to a URL whose
    * raw string still starts with {@code baseUrl} even though it climbs back out of it once the
    * {@code ".."} segment is actually collapsed. {@link URI#normalize()} only collapses literal
    * {@code .}/{@code ..} segments, so {@link #hasEncodedPathTraversalSegment} additionally rejects
-   * any segment that only turns into one after percent-decoding (e.g. {@code %2E%2E/}), the same
-   * way a real web server resolves the path before serving it. Used by both {@link
-   * #parseHtmlTableLayout} and {@link #parseLinkBasedLayout} so a page's own links can never walk a
-   * crawl outside the directory it was asked to start at.
+   * a segment that only turns into one of those (or a path separator) after percent-decoding (e.g.
+   * {@code %2E%2E/}), the same way a real web server resolves the path before serving it - applied
+   * only to the part of the path beyond {@code baseUrl}'s own, so a start URL whose own path
+   * happens to contain such a sequence never blocks every link beneath it. A URL {@link URI} cannot
+   * parse is rejected rather than passed through, mirroring {@link #isSameOriginAsBase}'s own
+   * fail-closed behavior.
    */
   private static boolean staysUnderBase(String baseUrl, String fullUrl) {
+    try {
+      URI.create(fullUrl);
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
     String normalizedBase = normalizeUrl(baseUrl.endsWith("/") ? baseUrl : baseUrl + "/");
-    return normalizeUrl(fullUrl).startsWith(normalizedBase)
-        && !hasEncodedPathTraversalSegment(fullUrl);
+    String normalizedFull = normalizeUrl(fullUrl);
+    if (!normalizedFull.startsWith(normalizedBase)) {
+      return false;
+    }
+    return !hasEncodedPathTraversalSegment(normalizedFull.substring(normalizedBase.length()));
   }
 
   /**
-   * Whether any raw path segment of {@code url} decodes (per {@link UrlFolderPath#decodeSegment})
-   * to a literal {@code .}/{@code ..} or a segment carrying a path separator - the same check
-   * {@link UrlFolderPath#of} applies when mapping an entry to a folder, reused here so {@link
-   * #staysUnderBase} rejects a link a web server would resolve outside the crawled subtree even
-   * though its raw, undecoded string still looks like it stays under {@code baseUrl}.
+   * Whether any raw, query/fragment-stripped path segment of {@code relativePath} decodes (per
+   * {@link UrlFolderPath#decodeSegment}) to a literal {@code .}/{@code ..} or a segment carrying a
+   * path separator - the same check {@link UrlFolderPath#of} applies when mapping an entry to a
+   * folder, reused here so {@link #staysUnderBase} rejects a link a web server would resolve
+   * outside the crawled subtree even though its raw, undecoded string still looks like it stays
+   * under {@code baseUrl}. {@code relativePath} is plain text (the suffix of an already-normalized
+   * URL string), never a full URL to parse, so this cannot itself fail to determine an answer.
    */
-  private static boolean hasEncodedPathTraversalSegment(String url) {
-    String rawPath;
-    try {
-      rawPath = URI.create(url).getRawPath();
-    } catch (IllegalArgumentException e) {
-      rawPath = null;
+  private static boolean hasEncodedPathTraversalSegment(String relativePath) {
+    int query = relativePath.indexOf('?');
+    String path = query >= 0 ? relativePath.substring(0, query) : relativePath;
+    int fragment = path.indexOf('#');
+    if (fragment >= 0) {
+      path = path.substring(0, fragment);
     }
-    if (rawPath == null) {
-      return false;
-    }
-    for (String rawSegment : rawPath.split("/", -1)) {
+    for (String rawSegment : path.split("/", -1)) {
       if (UrlFolderPath.isPathTraversalName(UrlFolderPath.decodeSegment(rawSegment))) {
         return true;
       }
@@ -428,22 +458,9 @@ public class AutoindexCrawlerService {
         continue;
       }
 
-      String fullUrl;
-      if (href.startsWith("http://") || href.startsWith("https://")) {
-        // An absolute href pointing at a foreign origin must never be followed - the caller's
-        // Authorization header (built from this source configuration's own credentials) would
-        // otherwise be sent to a host that configuration was never meant for.
-        if (!isSameOriginAsBase(baseUrl, href)) {
-          continue;
-        }
-        fullUrl = href;
-      } else {
-        // A relative href like "../" resolves (via the naive baseUrl+relative concatenation
-        // resolveUrl does) to a URL that, once normalized, may escape above baseUrl's own subtree.
-        fullUrl = resolveUrl(baseUrl, href);
-        if (!staysUnderBase(baseUrl, fullUrl)) {
-          continue;
-        }
+      String fullUrl = resolveFollowableUrl(baseUrl, href);
+      if (fullUrl == null) {
+        continue;
       }
 
       // Derived from href, not linkText: Apache's "IndexOptions NameWidth" truncates only the
@@ -491,21 +508,9 @@ public class AutoindexCrawlerService {
         continue;
       }
 
-      String fullUrl;
-      if (href.startsWith("http://") || href.startsWith("https://")) {
-        // Same reasoning as parseHtmlTableLayout - never leak credentials to a foreign origin. Also
-        // requires the resolved URL to stay underneath baseUrl (not just same-origin): this is the
-        // layout guessed purely from the presence of links, so it must not wander off into
-        // unrelated same-origin pages a listing happens to link to (a "back to homepage" link).
-        if (!isSameOriginAsBase(baseUrl, href) || !staysUnderBase(baseUrl, href)) {
-          continue;
-        }
-        fullUrl = href;
-      } else {
-        fullUrl = resolveUrl(baseUrl, href);
-        if (!staysUnderBase(baseUrl, fullUrl)) {
-          continue;
-        }
+      String fullUrl = resolveFollowableUrl(baseUrl, href);
+      if (fullUrl == null) {
+        continue;
       }
 
       String type = href.endsWith("/") ? "DIR" : "";
