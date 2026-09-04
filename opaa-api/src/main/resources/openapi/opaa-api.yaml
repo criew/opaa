@@ -2917,10 +2917,11 @@ paths:
           in: query
           required: true
           description: >
-            Mandatory Anlass; a missing one is rejected, and the rejected attempt is itself recorded
-            in audit_log.
+            Mandatory Anlass; a missing or over-length one is rejected, and the rejected attempt is
+            itself recorded in audit_log.
           schema:
             type: string
+            maxLength: 1000
         - name: page
           in: query
           required: false
@@ -2973,10 +2974,11 @@ paths:
           in: query
           required: true
           description: >
-            Mandatory Anlass for this single entry; a missing one is rejected, and the rejected
-            attempt is itself recorded in audit_log.
+            Mandatory Anlass for this single entry; a missing or over-length one is rejected, and
+            the rejected attempt is itself recorded in audit_log.
           schema:
             type: string
+            maxLength: 1000
       responses:
         "200":
           description: The single protocol entry, including its rights snapshot

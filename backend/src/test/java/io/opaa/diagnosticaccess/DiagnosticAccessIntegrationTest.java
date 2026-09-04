@@ -13,6 +13,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ValidationException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
 import io.opaa.library.AssetGrant;
@@ -26,6 +27,7 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,6 +50,7 @@ class DiagnosticAccessIntegrationTest {
   @Autowired private DiagnosticContextRetentionSettingsRepository retentionRepository;
   @Autowired private DiagnosticContextLogRepository logRepository;
   @Autowired private DiagnosticContextLogQueryService logQueryService;
+  @Autowired private ForeignDiagnosticContextService foreignDiagnosticContextService;
   @Autowired private LibraryDiagnosticsLockService lockService;
   @Autowired private AssetGrantService assetGrantService;
   @Autowired private AssetGrantRepository assetGrantRepository;
@@ -218,6 +221,68 @@ class DiagnosticAccessIntegrationTest {
                 organizationId,
                 "Beschwerde 4711"))
         .isEqualTo(1);
+  }
+
+  /**
+   * Regression guard for #1256: an over-length reason must not reach {@code
+   * DiagnosticContextLogWriter}'s underlying {@code varchar(1000)} column unrejected - previously
+   * that write itself failed, surfacing as a 500 with no protocol entry at all. Against the real
+   * schema so the bound the service checks and the column's actual bound cannot drift apart.
+   */
+  @Test
+  void anOverlongReasonToTheGesamtprotokollIsRejectedAndTheAttemptIsRecorded() {
+    User auditorUser = persistUser("auditor");
+    auditorUser.setSystemRole(SystemRole.AUDITOR);
+    userRepository.save(auditorUser);
+    CurrentUser auditor =
+        CurrentUser.of(auditorUser.getId(), organizationId, SystemRole.AUDITOR, "Auditorin");
+    Instant from = Instant.now().minus(1, ChronoUnit.DAYS);
+    String overlong = "x".repeat(1001);
+
+    assertThatThrownBy(
+            () ->
+                transactionTemplate.execute(
+                    status ->
+                        logQueryService.findByTimeRange(
+                            auditor, from, Instant.now(), overlong, 0, 50)))
+        .isInstanceOf(ValidationException.class);
+
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM audit_log WHERE organization_id = ? AND event_type ="
+                    + " 'AUDIT_LOG_ACCESSED' AND outcome = 'DENIED' AND length(reason) = 1000",
+                Integer.class,
+                organizationId))
+        .isEqualTo(1);
+  }
+
+  /**
+   * Regression guard for #1256: {@code LibraryAccessService#readableLibraryIds} carries no
+   * system-admin bypass by design, so without one in {@code
+   * ForeignDiagnosticContextService#executeForProfile} a SYSTEM_ADMIN caller was refused the entire
+   * profile diagnosis for any library they administer but hold no grant on. Against real grants and
+   * groups so the bypass is proven against the actual containment check, not a mocked one.
+   */
+  @Test
+  void aSystemAdminRunsAProfileDiagnosisEvenOverALibraryTheyCannotReadThemselves() {
+    KnowledgeLibrary library = persistLibraryOwnedBy(holderId);
+    CurrentUser owner = CurrentUser.of(holderId, organizationId, SystemRole.USER, "Zustaendige");
+    lockService.setLocked(owner, library.getId(), false);
+    Group profile =
+        groupRepository.save(
+            new Group(organizationId, GroupKind.AD_HOC, "Sachbearbeitung", null, null, null));
+    assetGrantService.upsertGrant(
+        library.getId(),
+        new AssetGrantUpsert(PermissionSubjectType.GROUP, profile.getId(), AssetRole.VIEWER),
+        owner);
+
+    ForeignDiagnosticOutcome<String> outcome =
+        foreignDiagnosticContextService.execute(
+            admin,
+            ForeignDiagnosticRequest.forProfile(profile.getId(), "Wo steht das?"),
+            context -> new ForeignDiagnosticFindings<>(List.of(), "Anzeige"));
+
+    assertThat(outcome.context().searchableLibraryIds()).contains(library.getId());
   }
 
   /**
