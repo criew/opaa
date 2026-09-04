@@ -119,6 +119,18 @@ obwohl sie neue Rohquellen liefert — die erzeugten Chunks ändern sich nicht. 
 Bestands läuft über `documents.metadata_extraction_version` (NULL = nie extrahiert), nicht über die
 Pipeline-Version; das ist die Selektionsspalte von #1067.
 
+### 7. Der Beleg trägt Metadaten als generische Feld-Wert-Liste
+
+Maintainer-Beschluss vom 04.09.2026 (Kommentar am Epic #1065): `SourceReference.metadata` ist eine
+Liste selbstbeschreibender Einträge (`fieldKey`, deutsches `label`, maschinenlesbarer `value`,
+`displayValue`, `origin`, optional `datePrecision`), schemagetrieben gerendert — das Frontend kennt kein
+Feld. Die Kernfelder sind die ersten Einträge; #1071 hängt Bibliotheksfelder an dieselbe Liste. Ein
+leeres Feld ist nicht in der Liste, ein abgeleiteter Wert ist als solcher markiert. Die Anzeigeform
+(deutsches Vokabular-Label, Datum je Genauigkeit) entsteht im Backend (`ChatSourceMetadataEntry`), damit
+jeder Client dieselbe Darstellung zeigt. Keine weiteren formatspezifischen Felder am `SourceReference`;
+die vier Mail-Sonderfelder aus #1164 bleiben vorerst bestehen und werden in einem eigenen Sub-Issue nach
+#1071 durch Schemafelder abgelöst — kein Parallelbetrieb danach.
+
 ## Konsequenzen
 
 - **Einfacher:** #1068 setzt eine `MANUAL`-Zeile und ruft `updateDocumentMetadata`; #1067 ruft je Dokument

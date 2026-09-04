@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.api.dto.ChatDetail;
 import io.opaa.api.dto.ChatMessageResponse;
 import io.opaa.api.dto.ChatSummary;
-import io.opaa.api.dto.SourceCoreMetadata;
+import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.api.types.ChatRole;
 import io.opaa.api.types.DatePrecision;
@@ -14,11 +14,10 @@ import io.opaa.api.types.MetadataOrigin;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
 import io.opaa.chat.ChatSource;
-import io.opaa.chat.ChatSourceCoreMetadata;
 import io.opaa.chat.ChatSourceLocation;
+import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.chat.ChatTurn;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
@@ -173,40 +172,57 @@ class ChatResponseMapperTest {
     assertThat(response.getChunkLocations()).isNull();
   }
 
-  /** #1066: every core field and its origin reaches the generated DTO; the date as ISO text. */
+  /** #1066: every field of every metadata entry reaches the generated DTO, in list order. */
   @Test
-  void toSourceReferenceCopiesEveryCoreMetadataField() {
+  void toSourceReferenceCopiesEveryMetadataEntryField() {
     ChatSource source =
         new ChatSource("dienstanweisung.pdf", 0.5, 1, true)
-            .coreMetadata(
-                new ChatSourceCoreMetadata(
-                    "Dienstanweisung IT-Nutzung",
-                    MetadataOrigin.DETERMINISTIC,
-                    "DIENSTANWEISUNG",
-                    "Dienstanweisung",
-                    MetadataOrigin.MANUAL,
-                    LocalDate.of(2024, 1, 1),
-                    DatePrecision.YEAR,
-                    MetadataOrigin.DERIVED));
+            .metadata(
+                List.of(
+                    new ChatSourceMetadataEntry(
+                        "title",
+                        "Titel",
+                        "Dienstanweisung IT-Nutzung",
+                        "Dienstanweisung IT-Nutzung",
+                        MetadataOrigin.DETERMINISTIC,
+                        null),
+                    new ChatSourceMetadataEntry(
+                        "document_date",
+                        "Datum/Stand",
+                        "2024-01-01",
+                        "2024",
+                        MetadataOrigin.DERIVED,
+                        DatePrecision.YEAR)));
 
-    SourceCoreMetadata response = ChatResponseMapper.toSourceReference(source).getCoreMetadata();
+    List<SourceMetadataEntry> response = ChatResponseMapper.toSourceReference(source).getMetadata();
 
-    assertThat(response.getTitle()).isEqualTo("Dienstanweisung IT-Nutzung");
-    assertThat(response.getTitleOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
-    assertThat(response.getDocumentType()).isEqualTo("DIENSTANWEISUNG");
-    assertThat(response.getDocumentTypeLabel()).isEqualTo("Dienstanweisung");
-    assertThat(response.getDocumentTypeOrigin()).isEqualTo(MetadataOrigin.MANUAL);
-    assertThat(response.getDocumentDate()).isEqualTo("2024-01-01");
-    assertThat(response.getDocumentDatePrecision()).isEqualTo(DatePrecision.YEAR);
-    assertThat(response.getDocumentDateOrigin()).isEqualTo(MetadataOrigin.DERIVED);
+    assertThat(response).hasSize(2);
+    assertThat(response.get(0).getFieldKey()).isEqualTo("title");
+    assertThat(response.get(0).getLabel()).isEqualTo("Titel");
+    assertThat(response.get(0).getValue()).isEqualTo("Dienstanweisung IT-Nutzung");
+    assertThat(response.get(0).getDisplayValue()).isEqualTo("Dienstanweisung IT-Nutzung");
+    assertThat(response.get(0).getOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+    assertThat(response.get(0).getDatePrecision()).isNull();
+    assertThat(response.get(1).getFieldKey()).isEqualTo("document_date");
+    assertThat(response.get(1).getLabel()).isEqualTo("Datum/Stand");
+    assertThat(response.get(1).getValue()).isEqualTo("2024-01-01");
+    assertThat(response.get(1).getDisplayValue()).isEqualTo("2024");
+    assertThat(response.get(1).getOrigin()).isEqualTo(MetadataOrigin.DERIVED);
+    assertThat(response.get(1).getDatePrecision()).isEqualTo(DatePrecision.YEAR);
   }
 
-  /** #1066: a document without core fields maps to an absent object, never an all-null one. */
+  /** #1066: a document without metadata maps to an absent list, never an empty one. */
   @Test
-  void toSourceReferenceLeavesCoreMetadataNullWhenAbsent() {
-    ChatSource source = new ChatSource("readme.md", 0.5, 1, false);
-
-    assertThat(ChatResponseMapper.toSourceReference(source).getCoreMetadata()).isNull();
+  void toSourceReferenceLeavesMetadataNullWhenAbsentOrEmpty() {
+    assertThat(
+            ChatResponseMapper.toSourceReference(new ChatSource("readme.md", 0.5, 1, false))
+                .getMetadata())
+        .isNull();
+    assertThat(
+            ChatResponseMapper.toSourceReference(
+                    new ChatSource("readme.md", 0.5, 1, false).metadata(List.of()))
+                .getMetadata())
+        .isNull();
   }
 
   /** #1164: a non-mail source (no ChatSource#mailFrom etc. ever set) maps to null, not "". */

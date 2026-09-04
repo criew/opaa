@@ -6,8 +6,8 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
-import io.opaa.chat.ChatSourceCoreMetadata;
 import io.opaa.chat.ChatSourceLocation;
+import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.metadata.CoreMetadata;
@@ -629,11 +629,11 @@ public class QueryService {
                   Instant indexedAt = sourceDocument != null ? sourceDocument.getIndexedAt() : null;
                   String sourceEntryUrl =
                       sourceDocument != null ? sourceDocument.getSourceEntryUrl() : null;
-                  ChatSourceCoreMetadata coreMetadata =
+                  List<ChatSourceMetadataEntry> metadataEntries =
                       sourceDocument != null
-                          ? ChatSourceCoreMetadata.fromOrNull(
+                          ? ChatSourceMetadataEntry.fromCore(
                               coreMetadataByDocId.get(sourceDocument.getId()))
-                          : null;
+                          : List.of();
                   ChatSource reference =
                       new ChatSource(fileName, score, matches, cited)
                           .indexedAt(indexedAt)
@@ -652,7 +652,7 @@ public class QueryService {
                               mailMetadataValue(chunk, ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
                           .mailDate(
                               mailMetadataValue(chunk, ChunkMailMetadata.MAIL_DATE_METADATA_KEY))
-                          .coreMetadata(coreMetadata);
+                          .metadata(metadataEntries.isEmpty() ? null : metadataEntries);
                   return Map.entry(groupKey, reference);
                 })
             .collect(
@@ -787,11 +787,11 @@ public class QueryService {
         preferMailField(preferred.getMailSubject(), a.getMailSubject(), b.getMailSubject());
     String mergedMailDate =
         preferMailField(preferred.getMailDate(), a.getMailDate(), b.getMailDate());
-    // ADR-0024: core fields hang on the document, so both sides carry the same snapshot or none.
-    ChatSourceCoreMetadata mergedCoreMetadata =
-        preferred.getCoreMetadata() != null
-            ? preferred.getCoreMetadata()
-            : a.getCoreMetadata() != null ? a.getCoreMetadata() : b.getCoreMetadata();
+    // ADR-0024: schema metadata hangs on the document, so both sides carry the same list or none.
+    List<ChatSourceMetadataEntry> mergedMetadata =
+        preferred.getMetadata() != null
+            ? preferred.getMetadata()
+            : a.getMetadata() != null ? a.getMetadata() : b.getMetadata();
 
     if (shouldBeCited && !preferred.getCited()) {
       return new ChatSource(
@@ -810,7 +810,7 @@ public class QueryService {
           .mailTo(mergedMailTo)
           .mailSubject(mergedMailSubject)
           .mailDate(mergedMailDate)
-          .coreMetadata(mergedCoreMetadata);
+          .metadata(mergedMetadata);
     }
 
     preferred.setSourceEntryUrl(mergedSourceEntryUrl);
@@ -820,7 +820,7 @@ public class QueryService {
     preferred.setMailTo(mergedMailTo);
     preferred.setMailSubject(mergedMailSubject);
     preferred.setMailDate(mergedMailDate);
-    preferred.setCoreMetadata(mergedCoreMetadata);
+    preferred.setMetadata(mergedMetadata);
     return preferred;
   }
 

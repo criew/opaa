@@ -370,11 +370,17 @@ Titel wird nicht dupliziert. Keine `version()` einer Pipeline ist gestiegen: Die
 ändern sich nicht (Regel (d) der Ingestion-Spezifikation), die Nachrüstung läuft über
 `metadata_extraction_version`.
 
-**Beleg-Anzeige.** `SourceReference.coreMetadata` trägt Titel, Dokumentart (Code + Label) und
-Datum (+ Genauigkeit), je Wert mit Herkunft; `location` bleibt die Fundstelle. Die Fundstellenzeile
-und das Belegfenster zeigen den Titel als Beschriftung (Dateiname als Zweitzeile) und eine Zeile
-„Dokumentart · Stand …" nur aus den befüllten Feldern — ein leeres Feld erscheint gar nicht, ein
-`DERIVED`-Wert ist mit „(abgeleitet)" gekennzeichnet, Jahresgenauigkeit erscheint als „2024".
+**Beleg-Anzeige.** `SourceReference.metadata` trägt die Metadaten eines Belegs als **generische
+Feld-Wert-Liste** (`SourceMetadataEntry`: `fieldKey`, deutsches `label`, maschinenlesbarer `value`,
+`displayValue`, `origin`, bei Datumswerten `datePrecision`) — Maintainer-Beschluss vom 04.09.2026 am
+Epic #1065: keine formatspezifischen Felder mehr am `SourceReference`. Die Kernfelder sind die ersten
+Einträge (Titel, Dokumentart mit deutschem Label, Datum/Stand als „12.03.2026"/„03/2026"/„2024"),
+Bibliotheksfelder (#1071) hängen sich an dieselbe Liste. Fundstellenzeile und Belegfenster rendern die
+Liste ohne Feldwissen (Anzeigewerte mit „ · " verbunden, Label als barrierefreie Beschreibung) — ein
+leeres Feld ist nicht in der Liste und erscheint gar nicht, ein `DERIVED`-Wert ist mit „(abgeleitet)"
+gekennzeichnet; `location` bleibt die Fundstelle. Die vier Mail-Sonderfelder
+`mailFrom`/`mailTo`/`mailSubject`/`mailDate` bleiben in diesem Schnitt unverändert; ihre Ablösung
+über Schemafelder ist ein eigenes Sub-Issue nach #1071.
 
 **Abweichungen und bewusst nicht Gebautes.** Das Abnahmekriterium „Die Extraktion läuft im
 Rechtekontext" ist durch Beschluss 1 des Maintainers ersetzt (Systemprozess; die Rechte-Invariante gilt

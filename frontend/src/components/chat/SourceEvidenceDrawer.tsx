@@ -12,7 +12,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import type { CitationIndex } from './citations'
-import { formatCoreMetadataLine, formatMailSummary, sourceLabel } from './citations'
+import { describeMetadata, formatMailSummary, formatMetadataLine } from './citations'
 import type { DocumentSourceType } from '../../types/api'
 import { fontFamily } from '../../theme/tokens'
 
@@ -62,10 +62,10 @@ interface EvidenceDoc {
   sourceUrl?: string | null
   /** #1164: "Mail von …, TT.MM.JJJJ — Betreff", undefined for a non-mail source. */
   mailSummary?: string
-  /** #1066: the core-field title when the document carries one, otherwise the file name. */
-  label: string
-  /** #1066: "Dienstanweisung · Stand 12.03.2026", undefined when no core field is set. */
-  coreMetadataLine?: string
+  /** #1066: the schema metadata line, undefined when the document carries no value. */
+  metadataLine?: string
+  /** #1066: "Label: Wert, …" - the accessible name of {@link metadataLine}. */
+  metadataDescription?: string
 }
 
 function formatAnsweredAt(answeredAt: Date): string {
@@ -114,8 +114,8 @@ export default function SourceEvidenceDrawer({
       sourceType: doc.source?.sourceType,
       sourceUrl: doc.source?.sourceUrl,
       mailSummary: formatMailSummary(doc.source),
-      label: sourceLabel(doc.source, doc.fileName),
-      coreMetadataLine: formatCoreMetadataLine(doc.source),
+      metadataLine: formatMetadataLine(doc.source),
+      metadataDescription: describeMetadata(doc.source),
     }))
     const uncited: EvidenceDoc[] = citations.uncited.map((source) => ({
       fileName: source.fileName,
@@ -130,8 +130,8 @@ export default function SourceEvidenceDrawer({
       sourceType: source.sourceType,
       sourceUrl: source.sourceUrl,
       mailSummary: formatMailSummary(source),
-      label: sourceLabel(source, source.fileName),
-      coreMetadataLine: formatCoreMetadataLine(source),
+      metadataLine: formatMetadataLine(source),
+      metadataDescription: describeMetadata(source),
     }))
     // #1102: order by the position the retrieval pipeline settled on, never by relevanceScore -
     // a persisted message's snapshot may still carry the pre-#1102 path-dependent raw score, and
@@ -164,7 +164,7 @@ export default function SourceEvidenceDrawer({
         (doc) =>
           needle.length === 0 ||
           doc.fileName.toLowerCase().includes(needle) ||
-          doc.label.toLowerCase().includes(needle),
+          (doc.metadataLine?.toLowerCase().includes(needle) ?? false),
       )
   }, [citedOnly, docs, query])
 
@@ -281,7 +281,7 @@ export default function SourceEvidenceDrawer({
                   </Typography>
                 )}
                 <Typography component="span" noWrap sx={{ fontSize: 13, fontWeight: 500 }}>
-                  {doc.label}
+                  {doc.fileName}
                 </Typography>
                 {!doc.cited && (
                   <Typography component="span" sx={{ fontSize: 10.5, color: 'text.secondary' }}>
@@ -305,24 +305,16 @@ export default function SourceEvidenceDrawer({
                   </Box>
                 )}
               </Box>
-              {/* #1066: file name as secondary text once the title took over the label, plus the
-                  core-field line - only for a document that actually carries a field. */}
-              {doc.label !== doc.fileName && (
+              {/* #1066: the schema metadata line, rendered from the generic list without field
+                  knowledge - only for a document that actually carries a value. */}
+              {doc.metadataLine && (
                 <Typography
                   component="span"
-                  data-testid="source-file-name"
+                  data-testid="source-metadata"
+                  aria-label={doc.metadataDescription}
                   sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
                 >
-                  {doc.fileName}
-                </Typography>
-              )}
-              {doc.coreMetadataLine && (
-                <Typography
-                  component="span"
-                  data-testid="source-core-metadata"
-                  sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
-                >
-                  {doc.coreMetadataLine}
+                  {doc.metadataLine}
                 </Typography>
               )}
               {/* #1164: the mail Kopfdaten summary ("Mail von …, TT.MM.JJJJ — Betreff"), only for a

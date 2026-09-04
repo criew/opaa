@@ -213,64 +213,30 @@ export function formatMailSummary(source: SourceReference | undefined): string |
   return segments.length > 0 ? `Mail ${segments.join(' — ')}` : undefined
 }
 
-type CoreMetadata = NonNullable<SourceReference['coreMetadata']>
-
 /**
- * #1066 (ADR-0024): a document date rendered at the precision it was read at - "12.03.2026",
- * "März 2026" or just "2024" - never a padded "01.01.2024" for a year-only Fassung. The ISO date
- * is split by hand rather than parsed through `Date`, so no time-zone shift can move the day.
+ * #1066 (ADR-0024; Maintainer-Beschluss vom 04.09.2026 am Epic #1065): the Beleg's metadata line
+ * ("Dienstanweisung IT-Nutzung · Dienstanweisung · 12.03.2026"), rendered from the generic
+ * field-value list without any field knowledge - the backend supplies label, display text and
+ * origin per entry, and a library's own fields (#1071) simply appear as further entries. An
+ * empty field is not in the list, so it never renders (metadata-schema.md, Wirkstelle 3); a value
+ * a model derived is marked as such, so it never looks like a read one. `undefined` when the list
+ * is absent or empty, so callers omit the line entirely. Shared between {@code SourceFootnotes}
+ * and {@code SourceEvidenceDrawer}.
  */
-export function formatDocumentDate(
-  isoDate: string,
-  precision: CoreMetadata['documentDatePrecision'] | undefined,
-): string {
-  const [year, month, day] = isoDate.split('-').map(Number)
-  if (precision === 'YEAR' || !month) {
-    return String(year)
-  }
-  if (precision === 'MONTH' || !day) {
-    return new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString('de-DE', {
-      month: 'long',
-      year: 'numeric',
-      timeZone: 'UTC',
-    })
-  }
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('de-DE', {
-    dateStyle: 'medium',
-    timeZone: 'UTC',
-  })
+export function formatMetadataLine(source: SourceReference | undefined): string | undefined {
+  const entries = source?.metadata
+  if (!entries || entries.length === 0) return undefined
+  return entries
+    .map((entry) => `${entry.displayValue}${entry.origin === 'DERIVED' ? ' (abgeleitet)' : ''}`)
+    .join(' · ')
 }
 
 /**
- * #1066: the Beleg's core-field line ("Dienstanweisung · Stand 12.03.2026") next to the Fundort,
- * shared between {@code SourceFootnotes} and {@code SourceEvidenceDrawer}. An empty field is
- * simply absent - never "ohne Angabe" (metadata-schema.md, Wirkstelle 3) - and a value a model
- * derived is marked as such, so it never looks like a read one. `undefined` when no field is set,
- * so callers omit the line entirely. The title is not part of this line: it replaces the file name
- * as the row's label (see {@link sourceLabel}).
+ * #1066: the accessible name of the metadata line - every entry as "Label: Wert", so a screen
+ * reader hears what a sighted reader infers from the value alone.
  */
-export function formatCoreMetadataLine(source: SourceReference | undefined): string | undefined {
-  const core = source?.coreMetadata
-  if (!core) return undefined
-  const derived = (origin: CoreMetadata['titleOrigin'] | undefined) =>
-    origin === 'DERIVED' ? ' (abgeleitet)' : ''
-  const segments = [
-    core.documentTypeLabel
-      ? `${core.documentTypeLabel}${derived(core.documentTypeOrigin)}`
-      : undefined,
-    core.documentDate
-      ? `Stand ${formatDocumentDate(core.documentDate, core.documentDatePrecision)}${derived(core.documentDateOrigin)}`
-      : undefined,
-  ].filter((segment): segment is string => Boolean(segment))
-  return segments.length > 0 ? segments.join(' · ') : undefined
-}
-
-/**
- * #1066: the readable label of a source row - its core-field title when the document carries one,
- * otherwise its file name. A derived title is marked as such.
- */
-export function sourceLabel(source: SourceReference | undefined, fileName: string): string {
-  const title = source?.coreMetadata?.title
-  if (!title) return fileName
-  return source?.coreMetadata?.titleOrigin === 'DERIVED' ? `${title} (abgeleitet)` : title
+export function describeMetadata(source: SourceReference | undefined): string | undefined {
+  const entries = source?.metadata
+  if (!entries || entries.length === 0) return undefined
+  return entries.map((entry) => `${entry.label}: ${entry.displayValue}`).join(', ')
 }

@@ -309,9 +309,8 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     )
   })
 
-  // #1066: the Belegfenster row carries the same core-field line as the Fundstellen block, with
-  // the title as the label and the file name as secondary text.
-  it('shows the core metadata of a source and labels the row by its title', async () => {
+  // #1066: the Belegfenster row carries the same generic metadata line as the Fundstellen block.
+  it('shows the metadata line of a source, rendered from the generic list', async () => {
     const user = userEvent.setup()
     renderWithProviders(
       <MessageBubble
@@ -321,16 +320,23 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
           content: 'Beleg【source: a#0 | 2026-03-12_da.pdf】.',
           sources: [
             source('2026-03-12_da.pdf', true, 1, true, {
-              coreMetadata: {
-                title: 'Dienstanweisung IT-Nutzung',
-                titleOrigin: 'DETERMINISTIC',
-                documentType: 'DIENSTANWEISUNG',
-                documentTypeLabel: 'Dienstanweisung',
-                documentTypeOrigin: 'DETERMINISTIC',
-                documentDate: '2026-03-01',
-                documentDatePrecision: 'MONTH',
-                documentDateOrigin: 'DETERMINISTIC',
-              },
+              metadata: [
+                {
+                  fieldKey: 'document_type',
+                  label: 'Dokumentart',
+                  value: 'DIENSTANWEISUNG',
+                  displayValue: 'Dienstanweisung',
+                  origin: 'DETERMINISTIC',
+                },
+                {
+                  fieldKey: 'document_date',
+                  label: 'Datum/Stand',
+                  value: '2026-03-01',
+                  displayValue: '03/2026',
+                  origin: 'MANUAL',
+                  datePrecision: 'MONTH',
+                },
+              ],
             }),
           ],
           timestamp: new Date('2026-08-21T09:00:00'),
@@ -341,17 +347,16 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
 
     const doc = within(drawer).getByTestId('evidence-doc')
-    expect(within(doc).getByText('Dienstanweisung IT-Nutzung')).toBeVisible()
-    expect(within(doc).getByTestId('source-file-name')).toHaveTextContent('2026-03-12_da.pdf')
-    expect(within(doc).getByTestId('source-core-metadata')).toHaveTextContent(
-      'Dienstanweisung · Stand März 2026',
+    expect(within(doc).getByText('2026-03-12_da.pdf')).toBeVisible()
+    expect(within(doc).getByTestId('source-metadata')).toHaveTextContent(
+      'Dienstanweisung · 03/2026',
     )
   })
 
-  it('shows no core metadata line for a source without core fields', async () => {
+  it('shows no metadata line for a source without metadata', async () => {
     const { drawer } = await openDrawer()
 
-    expect(within(drawer).queryByTestId('source-core-metadata')).not.toBeInTheDocument()
+    expect(within(drawer).queryByTestId('source-metadata')).not.toBeInTheDocument()
   })
 
   it('shows no mail summary for a source without mail metadata', async () => {

@@ -3300,14 +3300,18 @@ components:
             lexicographically sortable). Null for a source that is not an EML/MSG message's own body
             chunk.
           example: "2026-03-14T09:15:00Z"
-        coreMetadata:
+        metadata:
+          type: array
           nullable: true
-          allOf:
-            - $ref: "#/components/schemas/SourceCoreMetadata"
+          items:
+            $ref: "#/components/schemas/SourceMetadataEntry"
           description: >-
-            The cited document's core metadata fields (#1066), read from the document itself - not
-            from the chunk - so every chunk of a document reports the same values. Null for a
-            synthetic entry (#386) and for a document that carries no core field at all.
+            The cited document's schema metadata as a generic field-value list (#1066; Maintainer-
+            Beschluss vom 04.09.2026 am Epic #1065): the core fields first (Titel, Dokumentart,
+            Datum/Stand), later a library's own fields appended (#1071). Read from the document
+            itself - not from the chunk - so every chunk of a document reports the same values. A
+            field without a value is simply absent, and a client renders the list without knowing
+            any field. Null for a synthetic entry (#386) and for a document without any value.
 
     ChunkLocation:
       type: object
@@ -4653,54 +4657,44 @@ components:
       enum: [DAY, MONTH, YEAR]
       example: DAY
 
-    SourceCoreMetadata:
+    SourceMetadataEntry:
       type: object
+      required: [fieldKey, label, value, displayValue, origin]
       description: >-
-        The three core metadata fields of a cited document (docs/features/metadata-schema.md, Teil
-        II (a), #1066), each with its origin. A field the extraction could not fill is absent
-        (null) - a client shows nothing for it, never "ohne Angabe" (Wirkstelle 3 of the schema
-        specification).
+        One metadata value of a cited document (docs/features/metadata-schema.md, Wirkstelle 3),
+        self-describing so a client renders it without field knowledge: the German label, the
+        display text, the machine-readable value and the value's origin.
       properties:
-        title:
+        fieldKey:
           type: string
-          nullable: true
-          description: The document's title; from its properties, its first heading or its file name.
-          example: Dienstanweisung IT-Nutzung
-        titleOrigin:
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/MetadataOrigin"
-        documentType:
-          type: string
-          nullable: true
           description: >-
-            The Dokumentart's stable vocabulary code (e.g. DIENSTANWEISUNG); a value outside the
-            vocabulary is never stored.
+            The stable field key - title, document_type or document_date for the core fields; a
+            library field's own key later (#1071).
+          example: document_type
+        label:
+          type: string
+          description: The German field label ("Titel", "Dokumentart", "Datum/Stand").
+          example: Dokumentart
+        value:
+          type: string
+          description: >-
+            The machine-readable value - the vocabulary code for a controlled field, the ISO-8601
+            calendar date (padded to the first day of what datePrecision leaves unknown) for a
+            date, the text itself otherwise.
           example: DIENSTANWEISUNG
-        documentTypeLabel:
+        displayValue:
           type: string
-          nullable: true
-          description: The German display label of documentType.
-          example: Dienstanweisung
-        documentTypeOrigin:
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/MetadataOrigin"
-        documentDate:
-          type: string
-          nullable: true
           description: >-
-            The document's Datum/Stand as an ISO-8601 calendar date (YYYY-MM-DD), padded to the
-            first day of whatever documentDatePrecision leaves unknown.
-          example: "2026-03-12"
-        documentDatePrecision:
+            What a client shows - the German vocabulary label, or a date at its own precision
+            ("12.03.2026", "03/2026", "2024" - never a padded "01.01.2024").
+          example: Dienstanweisung
+        origin:
+          $ref: "#/components/schemas/MetadataOrigin"
+        datePrecision:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/DatePrecision"
-        documentDateOrigin:
-          nullable: true
-          allOf:
-            - $ref: "#/components/schemas/MetadataOrigin"
+          description: Set for a date value only.
 
     LibraryDocumentResponse:
       type: object

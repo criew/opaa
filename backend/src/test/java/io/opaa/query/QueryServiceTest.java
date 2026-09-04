@@ -25,6 +25,7 @@ import io.opaa.chat.Chat;
 import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
+import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.common.ConflictException;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
@@ -418,20 +419,42 @@ class QueryServiceTest {
             .filter(source -> source.getFileName().equals("dienstanweisung.pdf"))
             .findFirst()
             .orElseThrow();
-    assertThat(withCore.getCoreMetadata()).isNotNull();
-    assertThat(withCore.getCoreMetadata().title()).isEqualTo("Dienstanweisung IT-Nutzung");
-    assertThat(withCore.getCoreMetadata().documentType()).isEqualTo("DIENSTANWEISUNG");
-    assertThat(withCore.getCoreMetadata().documentTypeLabel()).isEqualTo("Dienstanweisung");
-    assertThat(withCore.getCoreMetadata().documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
-    assertThat(withCore.getCoreMetadata().documentDatePrecision()).isEqualTo(DatePrecision.DAY);
-    assertThat(withCore.getCoreMetadata().documentDateOrigin())
-        .isEqualTo(MetadataOrigin.DETERMINISTIC);
+    assertThat(withCore.getMetadata())
+        .extracting(
+            ChatSourceMetadataEntry::fieldKey,
+            ChatSourceMetadataEntry::label,
+            ChatSourceMetadataEntry::value,
+            ChatSourceMetadataEntry::displayValue,
+            ChatSourceMetadataEntry::origin,
+            ChatSourceMetadataEntry::datePrecision)
+        .containsExactly(
+            tuple(
+                "title",
+                "Titel",
+                "Dienstanweisung IT-Nutzung",
+                "Dienstanweisung IT-Nutzung",
+                MetadataOrigin.DETERMINISTIC,
+                null),
+            tuple(
+                "document_type",
+                "Dokumentart",
+                "DIENSTANWEISUNG",
+                "Dienstanweisung",
+                MetadataOrigin.DETERMINISTIC,
+                null),
+            tuple(
+                "document_date",
+                "Datum/Stand",
+                "2026-03-12",
+                "12.03.2026",
+                MetadataOrigin.DETERMINISTIC,
+                DatePrecision.DAY));
     ChatSource plainSource =
         response.getSources().stream()
             .filter(source -> source.getFileName().equals("anweisung.md"))
             .findFirst()
             .orElseThrow();
-    assertThat(plainSource.getCoreMetadata()).isNull();
+    assertThat(plainSource.getMetadata()).isNull();
   }
 
   /**

@@ -148,81 +148,79 @@ describe('SourceFootnotes', () => {
     })
   })
 
-  // #1066 (metadata-schema.md, Wirkstelle 3): the Beleg shows the core fields; an empty field is
-  // absent - never "ohne Angabe" - and a year-only date reads as "2024", not "01.01.2024".
-  describe('core metadata line', () => {
-    it('shows the title as the label, the file name secondary, and Dokumentart plus Stand', () => {
+  // #1066 (metadata-schema.md, Wirkstelle 3; Maintainer-Beschluss 04.09.2026): the Beleg renders
+  // the generic metadata list without field knowledge; an empty field is not in the list and so
+  // never renders, a derived value is marked, a year-only date arrives already as "2024".
+  describe('metadata line', () => {
+    it('renders every entry by its display value, in list order, with an accessible description', () => {
       const citations = buildCitationIndex('Satz【source: doc-1#0 | 2026-03-12_da.pdf】', [
         source('2026-03-12_da.pdf', true, {
           documentId: 'doc-1',
-          coreMetadata: {
-            title: 'Dienstanweisung IT-Nutzung',
-            titleOrigin: 'DETERMINISTIC',
-            documentType: 'DIENSTANWEISUNG',
-            documentTypeLabel: 'Dienstanweisung',
-            documentTypeOrigin: 'DETERMINISTIC',
-            documentDate: '2026-03-12',
-            documentDatePrecision: 'DAY',
-            documentDateOrigin: 'DETERMINISTIC',
-          },
+          metadata: [
+            {
+              fieldKey: 'title',
+              label: 'Titel',
+              value: 'Dienstanweisung IT-Nutzung',
+              displayValue: 'Dienstanweisung IT-Nutzung',
+              origin: 'DETERMINISTIC',
+            },
+            {
+              fieldKey: 'document_type',
+              label: 'Dokumentart',
+              value: 'DIENSTANWEISUNG',
+              displayValue: 'Dienstanweisung',
+              origin: 'DETERMINISTIC',
+            },
+            {
+              fieldKey: 'document_date',
+              label: 'Datum/Stand',
+              value: '2026-03-12',
+              displayValue: '12.03.2026',
+              origin: 'DETERMINISTIC',
+              datePrecision: 'DAY',
+            },
+          ],
         }),
       ])
 
       renderFootnotes(citations)
 
-      expect(screen.getByText('Dienstanweisung IT-Nutzung')).toBeVisible()
-      expect(screen.getByTestId('source-file-name')).toHaveTextContent('2026-03-12_da.pdf')
-      expect(screen.getByTestId('source-core-metadata')).toHaveTextContent(
-        'Dienstanweisung · Stand 12.03.2026',
+      expect(screen.getByText('2026-03-12_da.pdf')).toBeVisible()
+      const line = screen.getByTestId('source-metadata')
+      expect(line).toHaveTextContent('Dienstanweisung IT-Nutzung · Dienstanweisung · 12.03.2026')
+      expect(line).toHaveAccessibleName(
+        'Titel: Dienstanweisung IT-Nutzung, Dokumentart: Dienstanweisung, Datum/Stand: 12.03.2026',
       )
     })
 
-    it('omits every empty field and renders a year-only Stand as the bare year', () => {
+    it('renders only the entries the backend sent and marks a derived value', () => {
       const citations = buildCitationIndex('Satz【source: doc-1#0 | satzung.md】', [
         source('satzung.md', true, {
           documentId: 'doc-1',
-          coreMetadata: {
-            title: null,
-            documentType: null,
-            documentTypeLabel: null,
-            documentDate: '2024-01-01',
-            documentDatePrecision: 'YEAR',
-            documentDateOrigin: 'DETERMINISTIC',
-          },
+          metadata: [
+            {
+              fieldKey: 'document_date',
+              label: 'Datum/Stand',
+              value: '2024-01-01',
+              displayValue: '2024',
+              origin: 'DERIVED',
+              datePrecision: 'YEAR',
+            },
+          ],
         }),
       ])
 
       renderFootnotes(citations)
 
-      expect(screen.getByText('satzung.md')).toBeVisible()
-      expect(screen.queryByTestId('source-file-name')).not.toBeInTheDocument()
-      expect(screen.getByTestId('source-core-metadata')).toHaveTextContent('Stand 2024')
-      expect(screen.getByTestId('source-core-metadata')).not.toHaveTextContent('01.01.2024')
+      expect(screen.getByTestId('source-metadata')).toHaveTextContent('2024 (abgeleitet)')
+      expect(screen.getByTestId('source-metadata')).not.toHaveTextContent('01.01.2024')
       expect(screen.queryByText(/ohne Angabe/)).not.toBeInTheDocument()
     })
 
-    it('marks a derived value as such', () => {
-      const citations = buildCitationIndex('Satz【source: doc-1#0 | vermerk.pdf】', [
-        source('vermerk.pdf', true, {
-          documentId: 'doc-1',
-          coreMetadata: {
-            documentType: 'VERMERK',
-            documentTypeLabel: 'Vermerk',
-            documentTypeOrigin: 'DERIVED',
-          },
-        }),
-      ])
-
-      renderFootnotes(citations)
-
-      expect(screen.getByTestId('source-core-metadata')).toHaveTextContent('Vermerk (abgeleitet)')
-    })
-
-    it('shows no line at all for a document without core fields', () => {
+    it('shows no line at all for a document without metadata', () => {
       renderFootnotes(indexWithDocs(1))
 
-      expect(screen.queryByTestId('source-core-metadata')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('source-file-name')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('source-metadata')).not.toBeInTheDocument()
     })
   })
 
