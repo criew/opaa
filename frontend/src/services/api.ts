@@ -59,6 +59,7 @@ import type {
   DocumentMetadataFieldResponse,
   DocumentMetadataResponse,
   DocumentTypeVocabularyResponse,
+  LibraryMetadataMaintenanceResponse,
   MetadataValueRequest,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
@@ -627,7 +628,13 @@ export async function deleteLibrary(libraryId: string): Promise<void> {
 
 export async function getLibraryDocuments(
   libraryId: string,
-  options?: { page?: number; size?: number; q?: string; folderId?: string | null },
+  options?: {
+    page?: number
+    size?: number
+    q?: string
+    folderId?: string | null
+    missingMetadataField?: string | null
+  },
 ): Promise<LibraryDocumentPageResponse> {
   try {
     const { data } = await client.get<LibraryDocumentPageResponse>(
@@ -645,6 +652,8 @@ export async function getLibraryDocuments(
           // folderId param) - dropped here the same way q is above, rather than sent as the string
           // "null".
           folderId: options?.folderId || undefined,
+          // #1069: the Pflege-Anker's list - dropped when absent, like q above.
+          missingMetadataField: options?.missingMetadataField || undefined,
         },
       },
     )
@@ -887,6 +896,20 @@ export async function bulkSetDocumentMetadata(
     const { data } = await client.post<BulkMetadataValueResponse>(
       `/v1/libraries/${libraryId}/documents/metadata/bulk`,
       request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** #1069: the Pflege-Anker of a library - "N Dokumente ohne Wert" per core field. */
+export async function getLibraryMetadataMaintenance(
+  libraryId: string,
+): Promise<LibraryMetadataMaintenanceResponse> {
+  try {
+    const { data } = await client.get<LibraryMetadataMaintenanceResponse>(
+      `/v1/libraries/${libraryId}/metadata/maintenance`,
     )
     return data
   } catch (err) {

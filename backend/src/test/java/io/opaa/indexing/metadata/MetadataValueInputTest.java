@@ -79,13 +79,28 @@ class MetadataValueInputTest {
         .isInstanceOf(ValidationException.class);
     assertThatThrownBy(
             () ->
-                new MetadataValueInput("Titel", "VERMERK", null, null)
+                new MetadataValueInput(MetadataValueState.SET, "Titel", "VERMERK", null, null)
                     .validatedFor(CoreMetadataField.TITLE, VOCABULARY))
         .isInstanceOf(ValidationException.class);
     assertThatThrownBy(
             () ->
-                new MetadataValueInput(null, null, null, null)
+                new MetadataValueInput(MetadataValueState.SET, null, null, null, null)
                     .validatedFor(CoreMetadataField.DOCUMENT_TYPE, VOCABULARY))
         .isInstanceOf(ValidationException.class);
+  }
+
+  @Test
+  void theThirdStateIsValidForEveryFieldAndOnlyWithoutAValue() {
+    for (CoreMetadataField field : CoreMetadataField.values()) {
+      assertThat(MetadataValueInput.notDeterminable().validatedFor(field, VOCABULARY))
+          .isEqualTo(MetadataValueInput.notDeterminable());
+    }
+    assertThatThrownBy(
+            () ->
+                new MetadataValueInput(
+                        MetadataValueState.NOT_DETERMINABLE, "Titel", null, null, null)
+                    .validatedFor(CoreMetadataField.TITLE, VOCABULARY))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("ohne Wert");
   }
 }

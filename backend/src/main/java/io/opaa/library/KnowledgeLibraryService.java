@@ -5,6 +5,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.ScheduleFrequency;
@@ -27,6 +28,7 @@ import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
 import io.opaa.indexing.LibraryScheduleCodec;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import java.net.URI;
@@ -743,9 +745,18 @@ public class KnowledgeLibraryService {
    * folder is actually created and something is uploaded into it - seeing that content requires
    * navigating into the folder, which is exactly what {@code folderId} is for (frontend follows in
    * #822).
+   *
+   * <p><b>Pflege-Anker seit #1069.</b> {@code missingMetadataField} narrows the list to exactly the
+   * documents the Pflege-Anker counts for that core field - see {@link
+   * #listDocumentsWithoutMetadataValue}, which then owns the whole request.
    */
   public LibraryDocumentPage listDocuments(
-      UUID libraryId, CurrentUser caller, String q, UUID folderId, Pageable pageable) {
+      UUID libraryId,
+      CurrentUser caller,
+      String q,
+      UUID folderId,
+      String missingMetadataField,
+      Pageable pageable) {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
 
@@ -757,6 +768,10 @@ public class KnowledgeLibraryService {
     }
 
     boolean searching = q != null && !q.isBlank();
+    if (missingMetadataField != null && !missingMetadataField.isBlank()) {
+      return listDocumentsWithoutMetadataValue(
+          libraryId, searching ? q : null, missingMetadataField.strip(), pageable);
+    }
     if (searching) {
       // #1184 (ADR-0022, Entscheidung 5): a hit on an attachment's file name must surface its
       // top-level parent - resolve every matching attachment row up its parentDocumentId chain
@@ -797,6 +812,35 @@ public class KnowledgeLibraryService {
         foldersOf(libraryId, folderId),
         breadcrumbOf(folderId, foldersById),
         folderId);
+  }
+
+  /**
+   * The Pflege-Anker's list (#1069): exactly the document rows the anchor counts as "ohne Wert" for
+   * {@code fieldKey} - one entry per row, attachments included and listed in their own right, so
+   * the number in the anchor and the length of this list are the same figure and every entry a
+   * Sammelzuweisung touches is genuinely open. Bibliotheksweit like a search (the anchor counts the
+   * whole library) and combinable with {@code q}; folders and breadcrumb stay empty.
+   */
+  private LibraryDocumentPage listDocumentsWithoutMetadataValue(
+      UUID libraryId, String q, String fieldKey, Pageable pageable) {
+    if (CoreMetadataField.fromKey(fieldKey).isEmpty()) {
+      throw new ValidationException("Unbekanntes Metadatenfeld: " + fieldKey);
+    }
+    Page<Document> page =
+        documentRepository.searchWithoutMetadataValue(
+            libraryId, q == null ? "" : escapeLike(q), fieldKey, DocumentStatus.INDEXED, pageable);
+    Map<UUID, LibraryFolder> foldersById =
+        LibraryFolderPaths.loadFoldersById(folderRepository, libraryId);
+    return new LibraryDocumentPage(
+        page.getContent().stream()
+            .map(document -> toLibraryDocumentEntry(document, foldersById))
+            .toList(),
+        pageable.getPageNumber(),
+        pageable.getPageSize(),
+        page.getTotalElements(),
+        List.of(),
+        List.of(),
+        null);
   }
 
   /**

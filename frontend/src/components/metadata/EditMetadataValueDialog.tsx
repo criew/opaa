@@ -27,6 +27,7 @@ interface EditMetadataValueDialogProps {
 }
 
 function initialValueOf(field: DocumentMetadataFieldResponse): MetadataValueRequest {
+  if (field.state === 'NOT_DETERMINABLE') return { state: 'NOT_DETERMINABLE' }
   switch (field.fieldKey) {
     case 'title':
       return { textValue: field.value ?? '' }
@@ -103,7 +104,7 @@ export default function EditMetadataValueDialog({
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>
-        {field.value != null ? `${field.label} ändern` : `${field.label} setzen`}
+        {field.state !== 'EMPTY' ? `${field.label} ändern` : `${field.label} setzen`}
       </DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>

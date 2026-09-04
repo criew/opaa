@@ -283,7 +283,18 @@ public class MetadataBackfillService {
     params.add(CoreMetadataExtractor.EXTRACTION_VERSION);
     params.add(CoreMetadataExtractor.EXTRACTION_VERSION);
     for (int i = 0; i < fields.length; i++) {
-      sql.append(", count(f").append(i).append(".document_id) AS filled_").append(i);
+      sql.append(", count(f")
+          .append(i)
+          .append(".document_id) FILTER (WHERE f")
+          .append(i)
+          .append(".value_state = 'SET') AS filled_")
+          .append(i)
+          .append(", count(f")
+          .append(i)
+          .append(".document_id) FILTER (WHERE f")
+          .append(i)
+          .append(".value_state = 'NOT_DETERMINABLE') AS undeterminable_")
+          .append(i);
     }
     sql.append(" FROM documents d");
     for (int i = 0; i < fields.length; i++) {
@@ -293,9 +304,7 @@ public class MetadataBackfillService {
           .append(i)
           .append(".document_id = d.id AND f")
           .append(i)
-          .append(".field_key = ? AND f")
-          .append(i)
-          .append(".value_state = 'SET'");
+          .append(".field_key = ?");
       params.add(fields[i].key());
     }
     sql.append(" WHERE d.status = ? AND d.library_id IN (")
@@ -310,8 +319,10 @@ public class MetadataBackfillService {
         rs -> {
           UUID libraryId = (UUID) rs.getObject("library_id");
           Map<CoreMetadataField, Long> filled = new EnumMap<>(CoreMetadataField.class);
+          Map<CoreMetadataField, Long> notDeterminable = new EnumMap<>(CoreMetadataField.class);
           for (int i = 0; i < fields.length; i++) {
             filled.put(fields[i], rs.getLong("filled_" + i));
+            notDeterminable.put(fields[i], rs.getLong("undeterminable_" + i));
           }
           byLibrary.put(
               libraryId,
@@ -322,7 +333,8 @@ public class MetadataBackfillService {
                   rs.getLong("pending_count"),
                   rs.getLong("awaiting_count"),
                   lastSkippedByLibrary.getOrDefault(libraryId, 0),
-                  filled));
+                  filled,
+                  notDeterminable));
         },
         params.toArray());
     return byLibrary;

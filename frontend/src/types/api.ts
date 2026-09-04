@@ -90,6 +90,11 @@ export type BulkMetadataValueResponse = components['schemas']['BulkMetadataValue
 export type DocumentTypeVocabularyEntryResponse =
   components['schemas']['DocumentTypeVocabularyEntryResponse']
 export type DocumentTypeVocabularyResponse = components['schemas']['DocumentTypeVocabularyResponse']
+export type MetadataFieldState = components['schemas']['MetadataFieldState']
+export type MetadataFieldMaintenanceResponse =
+  components['schemas']['MetadataFieldMaintenanceResponse']
+export type LibraryMetadataMaintenanceResponse =
+  components['schemas']['LibraryMetadataMaintenanceResponse']
 
 export type LibraryFolderListItem = components['schemas']['LibraryFolderListItem']
 export type LibraryFolderBreadcrumbItem = components['schemas']['LibraryFolderBreadcrumbItem']

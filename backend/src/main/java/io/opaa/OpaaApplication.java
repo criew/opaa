@@ -7,6 +7,7 @@ import io.opaa.indexing.pipeline.office.OdfProperties;
 import io.opaa.indexing.pipeline.tabular.TabularProperties;
 import io.opaa.indexing.source.web.CrawlProperties;
 import io.opaa.library.AttachmentExtractionProperties;
+import io.opaa.library.LibraryProperties;
 import io.opaa.library.RemoteContentProperties;
 import io.opaa.library.UploadProperties;
 import io.opaa.llm.RerankProperties;
@@ -22,6 +23,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   IndexingProperties.class,
   AuthProperties.class,
   UploadProperties.class,
+  LibraryProperties.class,
   CredentialsEncryptionProperties.class,
   RemoteContentProperties.class,
   AttachmentExtractionProperties.class,
