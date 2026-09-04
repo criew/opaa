@@ -20,7 +20,11 @@ databaseChangeLog:
         aendern oder loeschen; die einzige Loeschung ist der Partitionsabwurf durch die
         SECURITY-DEFINER-Funktion unten. chk_diagnostic_context_log_justification setzt Leitplanke
         (d) auf Datenbankebene durch: ein Personenkontext ohne Freitextbegruendung ist nicht
-        speicherbar. Kein DEFAULT-Partitionsziel: eine Schreiboperation ausserhalb des Horizonts
+        speicherbar. Der Eigentuemerwechsel unten nimmt den in ADR-0015 unter "Offene Punkte"
+        beschriebenen Restweg (GRANT opaa_audit_owner TO current_user WITH SET TRUE); dieses
+        Changeset ist nach audit_log der zweite Nutzer dieses Wegs und ist mit umzustellen, wenn
+        der Restweg abgeloest wird. Kein
+        DEFAULT-Partitionsziel: eine Schreiboperation ausserhalb des Horizonts
         scheitert laut, statt in einer Partition zu landen, die die Loeschung nie erreicht.
       changes:
         - sql:

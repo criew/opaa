@@ -2606,8 +2606,9 @@ paths:
         audited in turn - and, where the library is owned by a group that is not an ORG_UNIT, an
         admin can add themselves to that owning group via POST /api/v1/groups/{groupId}/members,
         which makes them the library's named responsible body and lets them lift the lock alone.
-        Group administration has no self-exclusion today; closing that path is tracked separately
-        (issue #1124). The library's named owner user, in contrast, is immutable.
+        Group administration has no self-exclusion, and that stays so by decision rather than by
+        omission (docs/features/hybrid-retrieval.md, Berechtigungs-Leitplanken (e)): both steps are
+        audited. The library's named owner user, in contrast, is immutable.
       requestBody:
         required: true
         content:
@@ -2714,6 +2715,50 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
+
+  /api/v1/audit/diagnostic-context-events/{eventId}:
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getDiagnosticContextEvent
+      tags: [audit]
+      summary: >
+        One already-known protocol entry, named by its own event id - the einzelfall- und
+        anlassbezogene Auswertung of Leitplanke (g), and the only place the rights snapshot of an
+        entry is published. Same bar as the Gesamtprotokoll: AUDITOR role and a mandatory reason,
+        and every call - accepted or rejected, including one naming an unreadable id - is itself
+        recorded in audit_log with that reason. This path names no person either: an event id has
+        to be known from the list before it can be asked for. What it does not do is make a
+        per-person evaluation impossible - an auditor can fetch a page's entries one by one and
+        group them by their rights snapshot; it makes every one of those fetches carry its own
+        Anlass and its own audit_log entry.
+      parameters:
+        - name: reason
+          in: query
+          required: true
+          description: >
+            Mandatory Anlass for this single entry; a missing one is rejected, and the rejected
+            attempt is itself recorded in audit_log.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The single protocol entry, including its rights snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticContextEventDetailResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/branding:
     get:
@@ -4666,6 +4711,16 @@ components:
             document regardless of who uploaded or indexed it - never broken down per user (#216,
             "kein personenbezogener Auswertungspfad"). Set only if myRole is at least MANAGER
             (#507) - see sourcePath above for why.
+        diagnosticsLocked:
+          type: boolean
+          description: >
+            Whether this library is diagnosegesperrt (Leitplanke (e) of
+            docs/features/hybrid-retrieval.md) - the read path for the state that
+            PUT /api/v1/libraries/{libraryId}/diagnostics-lock sets, which until now was visible
+            only in that endpoint's own response, immediately after setting it. Every library
+            starts locked, including every pre-existing one, so a client renders this value rather
+            than assuming an unlocked default. Visible to everyone who may read the library: it
+            says that a locked area exists, never anything from inside it.
         createdAt:
           type: string
           format: date-time
@@ -5882,8 +5937,10 @@ components:
         per-person pseudonym; it is present only for a PERMISSION_PROFILE target, where it is the
         profile's label and belongs to nobody), and permissionSnapshot (the rights fingerprint of
         one person, identical across every entry about them until their rights change). Both stay
-        in the stored entry, where Leitplanke (f) requires them; the anlassbezogene single-entry
-        view that may show the rights snapshot is not part of this endpoint (issue #1124).
+        in the stored entry, where Leitplanke (f) requires them, and the rights snapshot is
+        readable one entry at a time through
+        GET /api/v1/audit/diagnostic-context-events/{eventId}, which is the anlassbezogene
+        Auswertung Leitplanke (g) allows.
 
         What this does not claim: that correlating individual rows is impossible. recordedAt,
         actorRef and hitRefs remain, and two entries produced by the same test question against the
@@ -5911,6 +5968,10 @@ components:
           type: string
         hitCount:
           type: integer
+          description: >
+            The number of hits the diagnosis actually displayed. hitRefs may name fewer of them: an
+            oversized identifier list is truncated and then ends in a marker naming how many
+            identifiers were left out, so the two fields never diverge silently.
         hitRefs:
           type: string
         justification:
@@ -5934,6 +5995,54 @@ components:
           type: integer
         hasMore:
           type: boolean
+
+    DiagnosticContextEventDetailResponse:
+      type: object
+      description: >
+        One protocol entry as the single-entry view shows it: every field of the list response plus
+        permissionSnapshot, the rights snapshot Leitplanke (f) requires in the stored entry. It is
+        published here and only here: in a list it is a stable per-person key a client can GROUP BY
+        in one step, whereas one entry fetched under its own reason and its own audit_log record is
+        the einzelfall- und anlassbezogene Auswertung Leitplanke (g) provides for. That is a
+        difference in cost and traceability, not in possibility - N fetches rebuild the grouping,
+        and each of them is separately justified and recorded. targetRef follows the same rule as
+        in the list: a profile's identifier is shown, a person's pseudonym is not.
+      required:
+        [
+          eventId,
+          recordedAt,
+          actorRef,
+          targetKind,
+          testQuestion,
+          hitCount,
+          hitRefs,
+          permissionSnapshot,
+        ]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        recordedAt:
+          type: string
+          format: date-time
+        actorRef:
+          type: string
+        targetKind:
+          $ref: "#/components/schemas/DiagnosticTargetKind"
+        targetRef:
+          type: string
+          nullable: true
+        testQuestion:
+          type: string
+        hitCount:
+          type: integer
+        hitRefs:
+          type: string
+        permissionSnapshot:
+          type: string
+        justification:
+          type: string
+          nullable: true
 
     AuditIncidentScopePurpose:
       type: string

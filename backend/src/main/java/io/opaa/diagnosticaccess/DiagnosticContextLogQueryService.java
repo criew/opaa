@@ -3,11 +3,13 @@ package io.opaa.diagnosticaccess;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.DiagnosticTargetKind;
 import io.opaa.api.types.SystemRole;
+import io.opaa.audit.AuditAccessOutcome;
 import io.opaa.audit.AuditActorPseudonymService;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import java.time.Duration;
 import java.time.Instant;
@@ -24,7 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The only two read paths into the diagnostic context protocol, and the shape of both is what
+ * The only three read paths into the diagnostic context protocol, and the shape of each is what
  * enforces Leitplanke (g):
  *
  * <ul>
@@ -36,9 +38,14 @@ import org.springframework.transaction.annotation.Transactional;
  *       {@link #MAX_RANGE_DAYS} days. <b>It takes no target-person parameter at all</b>, so
  *       "Diagnosen zu Person X" cannot be asked - not restricted, not aggregated away, simply not
  *       expressible.
+ *   <li>{@link #findSingleEvent} - one already-known entry, under the same AUDITOR bar, the same
+ *       mandatory reason and its own audit_log record. It is the einzelfall- und anlassbezogene
+ *       Auswertung Leitplanke (g) provides for, and the only path that publishes an entry's {@code
+ *       permissionSnapshot}: as a list field it would be a per-person grouping key, one entry at a
+ *       time it is not.
  * </ul>
  *
- * <p>There is deliberately no third method. No counting, grouping, sorting-by-target or export
+ * <p>There is deliberately no fourth method. No counting, grouping, sorting-by-target or export
  * variant exists in this class, and {@link DiagnosticContextLogRepository} offers nothing one could
  * be built on.
  */
@@ -49,6 +56,9 @@ public class DiagnosticContextLogQueryService {
   public static final int MAX_RANGE_DAYS = 31;
 
   private static final int MAX_PAGE_SIZE = 100;
+
+  /** A UUID is 36 characters; anything longer is not one and is recorded only as far as this. */
+  private static final int MAX_EVENT_ID_LENGTH = 64;
 
   private static final Logger log = LoggerFactory.getLogger(DiagnosticContextLogQueryService.class);
 
@@ -96,8 +106,10 @@ public class DiagnosticContextLogQueryService {
    * including a rejected one - the role check happens here rather than as an annotation exactly so
    * a denial is recordable, and it is recorded through {@link
    * AuditEventRecorder#recordAuditLogAccess}, whose {@code Propagation.NOT_SUPPORTED} keeps the
-   * entry from being rolled back by the very exception that rejects the call. This method holds no
-   * transaction of its own: it issues one query and needs none.
+   * entry from being rolled back by the very exception that rejects the call. A rejected attempt is
+   * recorded as {@code DENIED}, a query that fails after the checks passed as {@code FAILURE} -
+   * {@link AuditAccessOutcome} draws the line for both classes. This method holds no transaction of
+   * its own: it issues one query and needs none.
    */
   public Page<DiagnosticContextLogEntry> findByTimeRange(
       CurrentUser caller, Instant from, Instant to, String reason, int page, int size) {
@@ -124,20 +136,64 @@ public class DiagnosticContextLogQueryService {
           logRepository.findByTimeRange(caller.organizationId(), from, to, pageRequest(page, size));
       recordProtocolAccess(caller, scope, reason, AuditOutcome.SUCCESS);
       return result;
-    } catch (RuntimeException rejected) {
-      // Mirrors AuditQueryService#loggedAccess: the DENIED entry is best-effort on top of the
-      // rejection, never a precondition for reporting it correctly.
+    } catch (RuntimeException failed) {
+      // Mirrors AuditQueryService#loggedAccess: the entry is best-effort on top of the failure,
+      // never a precondition for reporting it correctly.
       try {
-        recordProtocolAccess(caller, scope, reason, AuditOutcome.DENIED);
+        recordProtocolAccess(caller, scope, reason, AuditAccessOutcome.of(failed));
       } catch (RuntimeException loggingFailure) {
         log.error(
-            "Failed to write the DENIED entry for a rejected Gesamtprotokoll access - the"
-                + " rejection is still reported correctly, but this attempt is missing its"
-                + " audit_log entry",
+            "Failed to write the entry for a failed Gesamtprotokoll access - the failure is"
+                + " still reported correctly, but this attempt is missing its audit_log entry",
             loggingFailure);
-        rejected.addSuppressed(loggingFailure);
+        failed.addSuppressed(loggingFailure);
       }
-      throw rejected;
+      throw failed;
+    }
+  }
+
+  /**
+   * One entry by its own id, for an evaluation that already knows which entry it is about. Same
+   * bar, same recording and the same best-effort entry as {@link #findByTimeRange}, and it holds no
+   * transaction of its own for the same reason. An unknown, unreadable or organization-foreign id
+   * is a rejected attempt, not a malfunction, and is therefore recorded as {@code DENIED} - the id
+   * is taken as text and parsed here so that a malformed one reaches this method at all, the same
+   * reason {@code DiagnosticContextLogController} binds {@code reason} as optional.
+   *
+   * @throws io.opaa.common.NotFoundException if no entry of the caller's organization carries this
+   *     id - an entry of a foreign organization is not distinguishable from an unknown one here
+   */
+  public DiagnosticContextLogEntry findSingleEvent(
+      CurrentUser caller, String eventId, String reason) {
+    Map<String, Object> scope = new LinkedHashMap<>();
+    scope.put("accessPath", "diagnostic-context-events/{eventId}");
+    scope.put("eventId", abbreviated(eventId));
+    try {
+      if (caller.systemRole() != SystemRole.AUDITOR) {
+        throw new AccessDeniedException(
+            "Das Gesamtprotokoll steht nur den benannten Stellen offen");
+      }
+      if (reason == null || reason.isBlank()) {
+        throw new ValidationException("Für die Einsicht ist ein Anlass anzugeben");
+      }
+      UUID requested = requireEventId(eventId);
+      DiagnosticContextLogEntry entry =
+          logRepository
+              .findSingleEntry(caller.organizationId(), requested)
+              .orElseThrow(() -> new NotFoundException("Protokolleintrag nicht gefunden"));
+      recordProtocolAccess(caller, scope, reason, AuditOutcome.SUCCESS);
+      return entry;
+    } catch (RuntimeException failed) {
+      try {
+        recordProtocolAccess(caller, scope, reason, AuditAccessOutcome.of(failed));
+      } catch (RuntimeException loggingFailure) {
+        log.error(
+            "Failed to write the entry for a failed single-entry access - the failure is still"
+                + " reported correctly, but this attempt is missing its audit_log entry",
+            loggingFailure);
+        failed.addSuppressed(loggingFailure);
+      }
+      throw failed;
     }
   }
 
@@ -155,6 +211,26 @@ public class DiagnosticContextLogQueryService {
             .orElse(null);
     return new OwnDiagnosticContextEvent(
         entry.getRecordedAt(), actorDisplayName, entry.getJustification());
+  }
+
+  /** Parsed here, not bound by Spring MVC - see {@link #findSingleEvent}. */
+  private static UUID requireEventId(String eventId) {
+    if (eventId == null || eventId.isBlank()) {
+      throw new ValidationException("Der Protokolleintrag ist nicht benannt");
+    }
+    return parseUuid(eventId)
+        .orElseThrow(
+            () -> new ValidationException("Die Kennung des Protokolleintrags ist unlesbar"));
+  }
+
+  /** Bounds what an unparsed, caller-supplied id can put into the audit entry's scope. */
+  private static String abbreviated(String eventId) {
+    if (eventId == null) {
+      return null;
+    }
+    return eventId.length() <= MAX_EVENT_ID_LENGTH
+        ? eventId
+        : eventId.substring(0, MAX_EVENT_ID_LENGTH);
   }
 
   private void recordProtocolAccess(

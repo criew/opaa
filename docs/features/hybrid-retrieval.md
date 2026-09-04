@@ -1200,10 +1200,51 @@ liefern nie ein Embedding — die Spalte wird gar nicht erst gelesen.
 >   Sperre. Die Eigentümerperson (`ownerUserId`) ist von diesem Weg nicht betroffen: sie ist
 >   unveränderlich. Ebenfalls nicht ausgeschlossen bleibt, dass die Administration einem anderen,
 >   benannten Konto `OWNER` gibt, das die Sperre dann löst. Beide Wege stehen vollständig im
->   Protokoll, keiner ist verhindert; der Selbstausschluss bei der Gruppenmitgliedschaft ist ein
->   eigener Eingriff mit eigener Abwägung und als Folgearbeit in
->   [#1124](https://github.com/criew/opaa/issues/1124) vorgemerkt. Solange er fehlt, gilt das
->   Abnahmekriterium „nicht die Administration" aus #1052 als **nicht erfüllt**.
+>   Protokoll, keiner ist verhindert.
+>
+>   **Entschieden (Maintainer, 04.09.2026, [#1124](https://github.com/criew/opaa/issues/1124)):
+>   Das bleibt so.** Kein Selbstausschluss in der Gruppenverwaltung, keine engere Regel für
+>   Eigentümergruppen. Ein `SYSTEM_ADMIN` darf sich in die Eigentümergruppe einer Bibliothek
+>   eintragen und die Diagnosesperre danach allein lösen. Tragend ist die Nachvollziehbarkeit,
+>   nicht das Vier-Augen-Prinzip: Beide Schritte — die Aufnahme in die Gruppe und das Lösen der
+>   Sperre — stehen je als eigene Zeile im Protokoll, und ein Selbstausschluss in der
+>   Gruppenverwaltung wäre ein Eingriff in eine allgemeine Verwaltungsfunktion, der weit über
+>   diesen Fall hinaus wirkt. Das Abnahmekriterium „nicht die Administration" aus #1052 gilt
+>   damit als **entschieden, nicht als erfüllt** — die Zusage aus (e) reicht so weit wie oben
+>   beschrieben und nicht weiter.
+>
+> - **Verlängerungskette der Befugnis** (Maintainer, 04.09.2026,
+>   [#1124](https://github.com/criew/opaa/issues/1124)). Die Zwölf-Monats-Grenze gilt je Vergabe,
+>   nicht als Lebenszeitgrenze: Lückenlos anschließende Befugnisse sind zulässig und werden weder
+>   verhindert noch gewarnt. `DiagnosticImpersonationGrantService#validateWindow` prüft deshalb
+>   bewusst nur die Länge des Fensters und dass es nicht in der Vergangenheit endet, nicht die Lage
+>   von `validFrom`. Begründung: Eine Anschlussvergabe ist eine eigene Entscheidung einer
+>   Administratorin, sie erzeugt eine eigene, vollständig protokollierte Zeile mit eigenem Vergeber
+>   und eigenem Zeitpunkt, und genau diese Nachvollziehbarkeit ist der Zweck der Befristung. Eine
+>   technische Sperre gegen Anschlussvergaben würde den legitimen Fall (eine weiterhin zuständige
+>   Person) treffen, ohne den unerwünschten (ein faktisches Dauerrecht) unsichtbar zu machen — er
+>   ist im Bestand der Befugnisse als Kette von Zeilen ablesbar.
+> - **Lesepfad der Diagnosesperre.** `LibraryResponse.diagnosticsLocked` führt den Zustand mit,
+>   damit die Administrationsseite ihn anzeigen kann, ohne ihn vorher zu setzen; `PUT
+>   /api/v1/libraries/{libraryId}/diagnostics-lock` bleibt der einzige Schreibweg mit der engen
+>   Regel aus (e). Sichtbar ist der Zustand für jeden, der die Bibliothek lesen darf — er sagt,
+>   *dass* ein gesperrter Bereich existiert, nie etwas aus ihm.
+> - **Zielkennung eines Rechteprofils.** `target_ref` trägt für einen Profilkontext die
+>   **Gruppen-Id** des Profils, nicht mehr eine Freitextbezeichnung: Rechteprofile sind heute
+>   Gruppen (`SearchDiagnosisService.PermissionProfile`), also gibt es eine Kennung, und damit ist
+>   „kein Personenbezug im Protokoll" eine Struktureigenschaft statt einer Konvention des
+>   Aufrufers. Die Bibliotheksmenge wird aus derselben Gruppe aufgelöst, damit protokolliertes Ziel
+>   und durchsuchter Bereich nicht auseinanderfallen können.
+> - **Gekappte Trefferliste.** Übersteigt die Kennungsliste eines Eintrags die Speichergrenze, wird
+>   zwischen zwei Kennungen gekappt und mit `…(+N)` abgeschlossen, das die Zahl der weggelassenen
+>   Kennungen nennt. `hit_count` bleibt die Zahl der **angezeigten** Treffer — beide Felder laufen
+>   damit nicht mehr stillschweigend auseinander.
+> - **Einzelsatzansicht.** `GET /api/v1/audit/diagnostic-context-events/{eventId}` liefert einen
+>   bereits bekannten Eintrag samt `permissionSnapshot` — unter derselben Regel wie das
+>   Gesamtprotokoll (Rolle `AUDITOR`, Pflicht-Anlass, eigener `audit_log`-Eintrag je Abruf,
+>   abgelehnte Abrufe eingeschlossen). Der Snapshot bleibt aus der **Listen**-Antwort heraus, weil
+>   er dort ein stabiler Gruppierungsschlüssel je Person wäre; einzeln, mit eigenem Anlass, ist er
+>   genau die einzelfall- und anlassbezogene Auswertung, die (g) vorsieht.
 >
 > Das Protokoll liegt in einer eigenen Tabelle (`diagnostic_context_log`) unter derselben
 > Eigentümertrennung wie `audit_log` (ADR-0015), nicht als weiterer Ereignistyp darin: seine

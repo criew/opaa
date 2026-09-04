@@ -2,6 +2,7 @@ package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.dto.DiagnosticContextEventDetailResponse;
 import io.opaa.api.dto.DiagnosticContextEventPage;
 import io.opaa.api.dto.DiagnosticContextEventResponse;
 import io.opaa.api.dto.DiagnosticContextRetentionResponse;
@@ -28,6 +29,7 @@ class DiagnosticAccessResponseMapperTest {
 
   private static final Instant NOW = Instant.parse("2026-09-01T10:00:00Z");
   private static final UUID ORGANIZATION_ID = UUID.randomUUID();
+  private static final UUID PROFILE_GROUP_ID = UUID.randomUUID();
 
   @Test
   void mapsEveryGrantField() {
@@ -112,13 +114,13 @@ class DiagnosticAccessResponseMapperTest {
   }
 
   @Test
-  void keepsTheProfileLabelAsTargetRefBecauseAProfileBelongsToNobody() {
+  void keepsTheProfileIdentifierAsTargetRefBecauseAProfileBelongsToNobody() {
     DiagnosticContextLogEntry entry =
         new DiagnosticContextLogEntry(
             ORGANIZATION_ID,
             "actor-pseudonym",
             DiagnosticTargetKind.PERMISSION_PROFILE,
-            "Sachbearbeitung Bauamt",
+            PROFILE_GROUP_ID.toString(),
             "Wo steht die Dienstanweisung?",
             0,
             "",
@@ -126,7 +128,60 @@ class DiagnosticAccessResponseMapperTest {
             null);
 
     assertThat(DiagnosticAccessResponseMapper.toResponse(entry).getTargetRef())
-        .isEqualTo("Sachbearbeitung Bauamt");
+        .isEqualTo(PROFILE_GROUP_ID.toString());
+  }
+
+  /**
+   * The single-entry view carries every field of the list view plus the rights snapshot, which is
+   * exactly the field the list must not publish - the difference between the two mappings is the
+   * whole point of the einzelfall- und anlassbezogene Auswertung.
+   */
+  @Test
+  void mapsEveryProtocolEntryFieldIncludingTheRightsSnapshotForTheSingleEntryView() {
+    DiagnosticContextLogEntry entry =
+        new DiagnosticContextLogEntry(
+            ORGANIZATION_ID,
+            "actor-pseudonym",
+            DiagnosticTargetKind.USER,
+            "target-pseudonym",
+            "Wo steht die Dienstanweisung?",
+            2,
+            "chunk-1,chunk-2",
+            "libraries=[a];lockedLibraries=[b]",
+            "Beschwerde 4711");
+
+    DiagnosticContextEventDetailResponse response =
+        DiagnosticAccessResponseMapper.toDetailResponse(entry);
+
+    assertThat(response.getEventId()).isEqualTo(entry.getEventId());
+    assertThat(response.getRecordedAt()).isEqualTo(entry.getRecordedAt());
+    assertThat(response.getActorRef()).isEqualTo("actor-pseudonym");
+    assertThat(response.getTargetKind()).isEqualTo(DiagnosticTargetKind.USER);
+    assertThat(response.getTargetRef()).isNull();
+    assertThat(response.getTestQuestion()).isEqualTo("Wo steht die Dienstanweisung?");
+    assertThat(response.getHitCount()).isEqualTo(2);
+    assertThat(response.getHitRefs()).isEqualTo("chunk-1,chunk-2");
+    assertThat(response.getPermissionSnapshot()).isEqualTo("libraries=[a];lockedLibraries=[b]");
+    assertThat(response.getJustification()).isEqualTo("Beschwerde 4711");
+  }
+
+  @Test
+  void theSingleEntryViewShowsAProfileTargetJustLikeTheList() {
+    UUID profileGroupId = UUID.randomUUID();
+    DiagnosticContextLogEntry entry =
+        new DiagnosticContextLogEntry(
+            ORGANIZATION_ID,
+            "actor-pseudonym",
+            DiagnosticTargetKind.PERMISSION_PROFILE,
+            profileGroupId.toString(),
+            "Wo steht die Dienstanweisung?",
+            0,
+            "",
+            "libraries=[];lockedLibraries=[]",
+            null);
+
+    assertThat(DiagnosticAccessResponseMapper.toDetailResponse(entry).getTargetRef())
+        .isEqualTo(profileGroupId.toString());
   }
 
   @Test
