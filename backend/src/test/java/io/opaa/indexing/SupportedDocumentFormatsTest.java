@@ -498,4 +498,59 @@ class SupportedDocumentFormatsTest {
     assertThat(decision.detectedExtension()).isEqualTo(".eml");
     assertThat(decision.extensionMismatch()).isFalse();
   }
+
+  // --- #1229: a bounded prefix that ends inside an unresolved container is not a rejection ----
+
+  @Test
+  void decideForPrefixDecidesOnThePrefixAloneWheneverTheDetectionResolved() throws Exception {
+    // The bandwidth guard the prefix decision exists for: a detection that resolved - here a PNG
+    // signature, resolved to image/png and simply not among the accepted formats - is final on the
+    // sample, so an entry this system does not want is never transferred in full.
+    byte[] prefix = new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
+
+    var decision =
+        SupportedDocumentFormats.decideForPrefix(
+            "scan.pdf",
+            prefix,
+            () -> {
+              throw new AssertionError("the complete file must not be fetched for a PNG prefix");
+            });
+
+    assertThat(decision.supported()).isFalse();
+  }
+
+  @Test
+  void decideForPrefixFallsBackToTheCompleteFileForAnUnresolvedContainerPrefix() throws Exception {
+    // An OLE2 container whose directory sector sits past the sample detects only as the generic
+    // application/x-tika-msoffice - the complete file decides instead of the entry being rejected.
+    assertThat(SupportedDocumentFormats.isUnresolvedContainerType("application/x-tika-msoffice"))
+        .isTrue();
+    byte[] msg = Files.readAllBytes(msgFixture());
+    byte[] prefix = java.util.Arrays.copyOf(msg, SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
+    assertThat(SupportedDocumentFormats.detectMediaType(prefix))
+        .as("the fixture must actually reproduce the unresolved-container detection")
+        .isEqualTo("application/x-tika-msoffice");
+
+    var decision =
+        SupportedDocumentFormats.decideForPrefix("vorgang.msg", prefix, this::msgFixture);
+
+    assertThat(decision.supported()).isTrue();
+    assertThat(decision.detectedExtension()).isEqualTo(".msg");
+    assertThat(decision.extensionMismatch()).isFalse();
+  }
+
+  private Path msgFixture() throws IOException {
+    Path file = tempDir.resolve("vorgang.msg");
+    if (Files.exists(file)) {
+      return file;
+    }
+    try (var in =
+        SupportedDocumentFormatsTest.class
+            .getClassLoader()
+            .getResourceAsStream("test-documents/mail/attachment_msg_pdf.msg")) {
+      assertThat(in).as("Test resource must exist").isNotNull();
+      Files.copy(in, file);
+    }
+    return file;
+  }
 }

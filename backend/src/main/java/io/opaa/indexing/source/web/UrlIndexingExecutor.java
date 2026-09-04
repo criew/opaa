@@ -181,8 +181,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       // content, not from its name in the listing - but only a bounded prefix is read to decide,
       // never the whole file: a directory listing routinely sits next to files nobody meant for
       // indexing at all, and downloading each of those in full before rejecting them would fill
-      // the temp partition. Only an entry the prefix decision already accepts is downloaded in
-      // full via #download below.
+      // the temp partition. The one exception is a prefix that ended inside an unresolved
+      // container, which carries no verdict at all - see SupportedDocumentFormats#decideForPrefix.
       for (AutoindexCrawlerService.CrawledFileEntry entry : allFiles) {
         // Check if document is unchanged before downloading (saves bandwidth)
         if (isUnchanged(entry.url(), entry.lastModified(), targetLibrary)) {
@@ -202,11 +202,26 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                   authHeader,
                   entry.url(),
                   SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
-          SupportedDocumentFormats.ContentDecision decision = decideForEntry(prefix, entry.name());
+          // Holds whatever the decision below had to download in full to reach a verdict, so the
+          // finally block deletes it even when detection on it fails - and so an accepted entry is
+          // not transferred a second time.
+          Path[] downloadedForDecision = new Path[1];
+          SupportedDocumentFormats.ContentDecision decision;
+          try {
+            decision =
+                decideForEntry(
+                    prefix,
+                    entry.name(),
+                    () ->
+                        downloadedForDecision[0] =
+                            downloader.download(httpClient, authHeader, entry.url(), entry.name()));
+          } finally {
+            tempFile = downloadedForDecision[0];
+          }
           if (!decision.supported()) {
             // Rejected documents are part of the job, not invisible - each one becomes its own
-            // UNSUPPORTED_FORMAT event. Rejected here, before #download ever runs - the full file
-            // behind this entry is never transferred.
+            // UNSUPPORTED_FORMAT event. Reached before the full transfer for every entry the
+            // prefix alone could decide, which is all but the unresolved-container case above.
             log.info(
                 "Rejecting URL document with an unsupported format: {} ({})",
                 entry.name(),
@@ -229,7 +244,9 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                 entry.url());
           }
 
-          tempFile = downloader.download(httpClient, authHeader, entry.url(), entry.name());
+          if (tempFile == null) {
+            tempFile = downloader.download(httpClient, authHeader, entry.url(), entry.name());
+          }
           long fileSize = Files.size(tempFile);
           FileProcessingResult result =
               fileProcessingService.processUrlFile(
@@ -399,15 +416,17 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Decides whether a crawled entry is supported from a leading byte sample of its content, never
-   * from {@code entryName} alone - the same decision {@link #execute} makes before downloading an
-   * entry in full. Public so the cross-package parity test exercises this exact call instead of a
-   * reimplementation that could silently drift from it.
+   * Decides whether a crawled entry is supported from its content, never from {@code entryName}
+   * alone - the same decision {@link #execute} makes before an entry enters the pipeline. Normally
+   * a leading byte sample settles it; only a prefix that ended inside an unresolved container makes
+   * {@code completeContent} download the entry in full to decide (see {@link
+   * SupportedDocumentFormats#decideForPrefix}). Public so the cross-package parity test exercises
+   * this exact call instead of a reimplementation that could silently drift from it.
    */
   public static SupportedDocumentFormats.ContentDecision decideForEntry(
-      byte[] prefix, String entryName) {
-    return SupportedDocumentFormats.decideForFileName(
-        entryName, SupportedDocumentFormats.detectMediaType(prefix));
+      byte[] prefix, String entryName, SupportedDocumentFormats.CompleteContent completeContent)
+      throws IOException, InterruptedException {
+    return SupportedDocumentFormats.decideForPrefix(entryName, prefix, completeContent);
   }
 
   /**
