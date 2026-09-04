@@ -202,10 +202,21 @@ public record DocumentProperties(
     return value == null || value.isBlank() ? null : value.strip();
   }
 
+  /**
+   * Cut back to the last word boundary at or before {@link #MAX_HEAD_TEXT_LENGTH}, never through a
+   * word: a cut behind a seeded Kompositum ending would turn a fragment into a match. A head whose
+   * limit falls inside a single unbroken token has no trustworthy boundary at all and is dropped.
+   */
   private static String truncate(String value) {
-    return value == null || value.length() <= MAX_HEAD_TEXT_LENGTH
-        ? value
-        : value.substring(0, MAX_HEAD_TEXT_LENGTH);
+    if (value == null || value.length() <= MAX_HEAD_TEXT_LENGTH) {
+      return value;
+    }
+    int end = MAX_HEAD_TEXT_LENGTH;
+    while (end > 0 && Character.isLetterOrDigit(value.charAt(end))) {
+      end--;
+    }
+    String cut = value.substring(0, end).stripTrailing();
+    return cut.isEmpty() ? null : cut;
   }
 
   private static String lowerCase(String value) {

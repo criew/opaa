@@ -263,6 +263,32 @@ class CoreMetadataIndexingIntegrationTest {
         .isEqualTo("PRAESENTATION");
   }
 
+  /**
+   * #1263: an RSS entry's body is text extracted upstream, not a document that names itself - a
+   * press release names the Satzung it reports about, and must not inherit its Dokumentart.
+   */
+  @Test
+  void anRssEntryBodyIsNeverAKopfbereich() {
+    assertThat(
+            fileProcessingService.processRssEntry(
+                // Two traps in one lead: the Kompositum "Hundesteuersatzung" (which the exact
+                // head match alone already ignores) and "Vortrag", a seeded synonym of
+                // PRAESENTATION that would otherwise hit.
+                "Der Rat hat in seiner Sitzung die neue Hundesteuersatzung beschlossen. Der"
+                    + " Vortrag dazu findet am Montag statt.",
+                "Rat beschliesst hoehere Abgaben fuer Vierbeiner",
+                "https://feed.example/rat-beschluss",
+                "2026-03-12T10:00:00Z",
+                targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isNull();
+    assertThat(core.title()).isEqualTo("Rat beschliesst hoehere Abgaben fuer Vierbeiner");
+    assertThat(core.documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
+  }
+
   @Test
   void aDocumentTypeOutsideTheVocabularyLeavesTheFieldEmpty() throws IOException {
     Path file = classTempDir.resolve("Rundschreiben_2024.md");

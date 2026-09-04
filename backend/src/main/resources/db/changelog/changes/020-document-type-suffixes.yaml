@@ -19,7 +19,13 @@ databaseChangeLog:
         tuning of that minimum cannot silently turn it into a Satzung. Both tables are seed data an
         installation extends by inserting rows, exactly like document_type_synonyms of migration
         018, which stays untouched. One changeset, because the two tables are one rule: the
-        exclusions have no meaning without the endings they restrict.
+        exclusions have no meaning without the endings they restrict. The exclusion list is
+        deliberately concrete rather than clever: "Tagesordnung", "Groessenordnung", "Sitzordnung",
+        "Rangordnung", "Sperrvermerk" and their siblings are frequent administrative words that are
+        no Dokumentart, and no length rule separates them from "Verordnung" or "Hausordnung", which
+        are Rechtsnormen and therefore stay admitted. Tokens are stored transcribed
+        ("groessenordnung"), because DocumentTypeVocabulary normalizes every term it compares the
+        same way - the spelling with an umlaut is covered by that one entry.
       changes:
         - sql:
             splitStatements: false
@@ -54,9 +60,19 @@ databaseChangeLog:
 
               INSERT INTO public.document_type_suffix_exclusions (code, token) VALUES
                   ('SATZUNG_ORDNUNG', 'anordnung'),
+                  ('SATZUNG_ORDNUNG', 'zuordnung'),
+                  ('SATZUNG_ORDNUNG', 'neuzuordnung'),
                   ('SATZUNG_ORDNUNG', 'einordnung'),
                   ('SATZUNG_ORDNUNG', 'neuordnung'),
-                  ('SATZUNG_ORDNUNG', 'unterordnung');
+                  ('SATZUNG_ORDNUNG', 'umordnung'),
+                  ('SATZUNG_ORDNUNG', 'unterordnung'),
+                  ('SATZUNG_ORDNUNG', 'rangordnung'),
+                  ('SATZUNG_ORDNUNG', 'sitzordnung'),
+                  ('SATZUNG_ORDNUNG', 'tagesordnung'),
+                  ('SATZUNG_ORDNUNG', 'groessenordnung'),
+                  ('VERMERK', 'sperrvermerk'),
+                  ('VERMERK', 'sichtvermerk'),
+                  ('VERMERK', 'eingangsvermerk');
       rollback:
         - sql:
             sql: |

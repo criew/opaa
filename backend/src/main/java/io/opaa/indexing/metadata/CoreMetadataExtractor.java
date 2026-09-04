@@ -10,6 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,11 +25,11 @@ import java.util.regex.Pattern;
  *   <li><b>Dokumentart</b>: frontmatter {@code dokumentart} (an explicit declaration outside the
  *       vocabulary leaves the field empty, it never falls through), then the file name's tokens,
  *       then the Kopfbereich ({@link DocumentProperties#firstHeading()} plus {@link
- *       DocumentProperties#headText()}), then the file format (#1263). Within one of the three
- *       token sources exactly one distinct code must result: a token matches a vocabulary term
- *       exactly or carries one of its seeded Kompositum endings, and two different codes at once
- *       yield nothing <em>from that source</em> - the next source is still asked, unlike for the
- *       frontmatter declaration.
+ *       DocumentProperties#headText()}), then the file format (#1263). Within one of the two token
+ *       sources exactly one distinct code must result; two different codes at once yield nothing
+ *       <em>from that source</em> - the next source is still asked, unlike for the frontmatter
+ *       declaration. A file-name token may also carry a seeded Kompositum ending; the Kopfbereich
+ *       is matched exactly, because running text names other documents than its own.
  *   <li><b>Datum/Stand</b>: frontmatter {@code stand_datum}/{@code fassung} and the format's own
  *       document date (a mail's Date header), then the first heading (Kopfbereich), then the file
  *       name, then the modified and finally the created property. Within one source every candidate
@@ -84,10 +85,7 @@ public final class CoreMetadataExtractor {
    * outranks it. No entry for PDF/DOCX: those carry every Dokumentart there is.
    */
   private static final Map<String, String> DOCUMENT_TYPE_BY_EXTENSION =
-      Map.of(
-          ".pptx", "PRAESENTATION",
-          ".ppt", "PRAESENTATION",
-          ".odp", "PRAESENTATION");
+      Map.of(".pptx", "PRAESENTATION", ".odp", "PRAESENTATION");
 
   private static final Pattern EXTENSION = Pattern.compile("\\.[A-Za-z0-9]{1,5}$");
 
@@ -142,11 +140,11 @@ public final class CoreMetadataExtractor {
     if (declared != null) {
       return vocabulary.resolve(unquote(declared));
     }
-    Optional<String> fromFileName = singleCode(fileNameTokens(fileName), vocabulary);
+    Optional<String> fromFileName = singleCode(fileNameTokens(fileName), vocabulary::resolveToken);
     if (fromFileName.isPresent()) {
       return fromFileName;
     }
-    Optional<String> fromHead = singleCode(headTokens(props), vocabulary);
+    Optional<String> fromHead = singleCode(headTokens(props), vocabulary::resolve);
     if (fromHead.isPresent()) {
       return fromHead;
     }
@@ -154,14 +152,14 @@ public final class CoreMetadataExtractor {
   }
 
   /**
-   * The one code {@code tokens} agree on, or empty when none matches or two different ones do -
-   * "lieber leer als geraten" applied per source, not across sources.
+   * The one code {@code tokens} agree on under {@code match}, or empty when none matches or two
+   * different ones do - "lieber leer als geraten" applied per source, not across sources.
    */
   private static Optional<String> singleCode(
-      List<String> tokens, DocumentTypeVocabulary vocabulary) {
+      List<String> tokens, Function<String, Optional<String>> match) {
     Set<String> codes = new LinkedHashSet<>();
     for (String token : tokens) {
-      vocabulary.resolveToken(token).ifPresent(codes::add);
+      match.apply(token).ifPresent(codes::add);
     }
     return codes.size() == 1 ? Optional.of(codes.iterator().next()) : Optional.empty();
   }
@@ -169,7 +167,9 @@ public final class CoreMetadataExtractor {
   /**
    * The words of the Kopfbereich: the first heading and the opening of the body text, which {@link
    * DocumentProperties} has already cut to its head - a word further down the document is never
-   * seen here, and can never become a Dokumentart.
+   * seen here, and can never become a Dokumentart. Matched exactly against the vocabulary, never
+   * through a Kompositum ending: running text is full of compounds that are no Dokumentart
+   * ("Tagesordnung", "in dieser Größenordnung").
    */
   private static List<String> headTokens(DocumentProperties props) {
     StringBuilder head = new StringBuilder();

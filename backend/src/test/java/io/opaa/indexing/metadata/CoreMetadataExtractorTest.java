@@ -151,10 +151,31 @@ class CoreMetadataExtractorTest {
 
     @Test
     void aSeededExclusionIsNeverClaimedByItsEnding() {
-      assertThat(extract("Einordnung_Rechtslage.pdf", DocumentProperties.EMPTY).documentTypeCode())
-          .isEmpty();
-      assertThat(extract("Neuordnung_Aemter.pdf", DocumentProperties.EMPTY).documentTypeCode())
-          .isEmpty();
+      // Frequent administrative compounds that are no Dokumentart; no length rule separates them
+      // from "Verordnung" or "Hausordnung", so the seed names them one by one.
+      for (String fileName :
+          List.of(
+              "Einordnung_Rechtslage.pdf",
+              "Neuordnung_Aemter.pdf",
+              "Tagesordnung_Ratssitzung.pdf",
+              "Groessenordnung_Beschaffung.pdf",
+              "Größenordnung_Beschaffung.pdf",
+              "Sitzordnung_Ratssaal.pdf",
+              "Rangordnung.pdf",
+              "Sperrvermerk_Haushalt.pdf",
+              "Eingangsvermerk.pdf")) {
+        assertThat(extract(fileName, DocumentProperties.EMPTY).documentTypeCode())
+            .as(fileName)
+            .isEmpty();
+      }
+    }
+
+    @Test
+    void aCompoundThatIsGenuinelyARechtsnormStaysAdmitted() {
+      assertThat(extract("Hausordnung_Rathaus.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+      assertThat(extract("Hundesteuerverordnung.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
     }
 
     @Test
@@ -199,6 +220,44 @@ class CoreMetadataExtractorTest {
       assertThat(properties.headText())
           .as("DocumentProperties cuts the head itself, so the word is no longer in it")
           .doesNotContain("Protokoll");
+      assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
+    }
+
+    @Test
+    void theKompositumEndingNeverAppliesToRunningText() {
+      // The ending rule is for file names; running text is full of compounds that are no
+      // Dokumentart, and a wrong DETERMINISTIC value is the damage the Leitregel excludes.
+      for (String head :
+          List.of(
+              "Beschaffungen in dieser Größenordnung beduerfen der Zustimmung des Rates.",
+              "Die Tagesordnung wird zu Beginn der Sitzung festgestellt.",
+              "Der Vorgang traegt einen Sperrvermerk.",
+              "Diese Gebuehrensatzung wurde am 12.03.2026 beschlossen.")) {
+        assertThat(
+                extract("anlage.pdf", DocumentProperties.EMPTY.withHeadText(head))
+                    .documentTypeCode())
+            .as(head)
+            .isEmpty();
+      }
+      // An exact vocabulary term in the head still counts - that is the source's whole purpose.
+      assertThat(
+              extract(
+                      "anlage.pdf",
+                      DocumentProperties.EMPTY.withHeadText(
+                          "Satzung ueber die Erhebung von" + " Gebuehren"))
+                  .documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+    }
+
+    @Test
+    void theHeadIsCutAtAWordBoundarySoNoFragmentEverMatches() {
+      // The limit falls exactly behind "Gebührensatzung" inside "Gebührensatzungsentwurf" - a hard
+      // cut would turn the fragment into a seeded synonym and yield a DETERMINISTIC value.
+      String lead = "a".repeat(DocumentProperties.MAX_HEAD_TEXT_LENGTH - 16) + " ";
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withHeadText(lead + "Gebührensatzungsentwurf liegt vor");
+
+      assertThat(properties.headText()).doesNotContain("ebühren");
       assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
     }
 
@@ -257,6 +316,11 @@ class CoreMetadataExtractorTest {
               extract("folien.odp", DocumentProperties.EMPTY.withFormatExtension(".odp"))
                   .documentTypeCode())
           .contains("PRAESENTATION");
+      // Only the two formats SupportedDocumentFormats admits as presentations.
+      assertThat(
+              extract("folien.ppt", DocumentProperties.EMPTY.withFormatExtension(".ppt"))
+                  .documentTypeCode())
+          .isEmpty();
     }
 
     @Test

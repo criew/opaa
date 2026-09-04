@@ -4,9 +4,10 @@ import java.util.List;
 
 /**
  * Builds the {@link DocumentProperties#headText()} of a document: its opening body text, joined
- * from whatever blocks a pipeline has at hand and cut off at {@link
- * DocumentProperties#MAX_HEAD_TEXT_LENGTH} (#1263). Collecting stops as soon as that budget is
- * reached, so a pipeline never materializes a whole document's text just to hand over its head.
+ * from whatever blocks a pipeline has at hand (#1263). Collecting stops as soon as {@link
+ * DocumentProperties#MAX_HEAD_TEXT_LENGTH} is reached, so no more blocks are appended than needed -
+ * a single block can still be larger than the budget. The cut itself belongs to {@link
+ * DocumentProperties}, which enforces the limit for every source.
  */
 public final class DocumentHeadText {
 
@@ -14,13 +15,7 @@ public final class DocumentHeadText {
 
   /** The opening of {@code text}; {@code null} for no usable text. */
   public static String of(String text) {
-    if (text == null || text.isBlank()) {
-      return null;
-    }
-    String normalized = text.strip();
-    return normalized.length() <= DocumentProperties.MAX_HEAD_TEXT_LENGTH
-        ? normalized
-        : normalized.substring(0, DocumentProperties.MAX_HEAD_TEXT_LENGTH);
+    return text == null || text.isBlank() ? null : text.strip();
   }
 
   /** The opening of a {@link HeadingSectionSplitter} event stream, headings included. */

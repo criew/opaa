@@ -77,7 +77,7 @@ class Migration020DocumentTypeSuffixesTest extends AbstractMigrationTest {
   }
 
   @Test
-  void seedsTheExcludedCompoundsOfTheOrdnungEnding() throws Exception {
+  void seedsTheExcludedCompoundsOfTheOrdnungAndVermerkEndings() throws Exception {
     applyChangelog(connection, CHANGELOG_PATH);
 
     List<String> tokens = new ArrayList<>();
@@ -93,8 +93,18 @@ class Migration020DocumentTypeSuffixesTest extends AbstractMigrationTest {
         .containsExactly(
             "SATZUNG_ORDNUNG=anordnung",
             "SATZUNG_ORDNUNG=einordnung",
+            "SATZUNG_ORDNUNG=groessenordnung",
             "SATZUNG_ORDNUNG=neuordnung",
-            "SATZUNG_ORDNUNG=unterordnung");
+            "SATZUNG_ORDNUNG=neuzuordnung",
+            "SATZUNG_ORDNUNG=rangordnung",
+            "SATZUNG_ORDNUNG=sitzordnung",
+            "SATZUNG_ORDNUNG=tagesordnung",
+            "SATZUNG_ORDNUNG=umordnung",
+            "SATZUNG_ORDNUNG=unterordnung",
+            "SATZUNG_ORDNUNG=zuordnung",
+            "VERMERK=eingangsvermerk",
+            "VERMERK=sichtvermerk",
+            "VERMERK=sperrvermerk");
   }
 
   @Test
