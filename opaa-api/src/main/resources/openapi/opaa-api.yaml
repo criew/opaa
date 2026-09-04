@@ -761,6 +761,69 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/admin/search/chunks/{chunkId}:
+    get:
+      operationId: getSearchChunk
+      tags: [admin, search]
+      summary: >
+        Text and metadata of one stored chunk, as the retrieval pipeline sees it (system admin
+        only, #1230, hybrid-retrieval.md "Das Diagnosewerkzeug")
+      description: >
+        The content behind a chunkId of a diagnosis verdict or final-selection entry - the
+        chunking boundaries, context prefix and pass-through metadata the indexing pipeline
+        actually persisted. Scoped to the caller's own organization via the documents table, not
+        via the chunk's own organization_id metadatum (older chunks may lack it); a chunk of another
+        organization, a chunk whose document no longer exists, and an unknown id are all 404. The
+        embedding is never part of this response.
+      parameters:
+        - name: chunkId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The stored chunk
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChunkInspectionResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/search/documents/{documentId}/chunks:
+    get:
+      operationId: listDocumentChunks
+      tags: [admin, search]
+      summary: >
+        Every stored chunk of one document in chunk order (system admin only, #1230,
+        hybrid-retrieval.md "Das Diagnosewerkzeug")
+      description: >
+        The document must exist and belong to the caller's own organization, otherwise 404. The
+        list is what the vector store holds right now, ordered by chunk_index; chunkCount is the
+        number the document entity recorded at indexing time, so a gap between the two is itself a
+        finding. Embeddings are never part of this response.
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The document's chunks in order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentChunksResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/admin/directory-sync/dry-run:
     post:
       operationId: runDirectorySyncDryRun
@@ -6507,6 +6570,70 @@ components:
             - $ref: "#/components/schemas/TrackedDocumentResponse"
           nullable: true
           description: Present only when the request named a trackedDocumentId.
+
+    ChunkInspectionResponse:
+      type: object
+      required: [chunkId, documentId, libraryId, content, metadata]
+      properties:
+        chunkId:
+          type: string
+        documentId:
+          type: string
+          format: uuid
+        documentTitle:
+          type: string
+          nullable: true
+          description: File name of the document.
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+        libraryName:
+          type: string
+          nullable: true
+        chunkIndex:
+          type: integer
+          nullable: true
+          description: >
+            The chunk's 0-based position within its document as the pipeline recorded it; null for
+            a chunk stored without a chunk_index metadatum.
+        content:
+          type: string
+          description: The stored chunk text, including any context prefix the pipeline prepended.
+        metadata:
+          type: object
+          additionalProperties: true
+          description: >
+            Every metadata key the vector store holds for this chunk (document_id, chunk_index,
+            library_id, file_name, pipeline keys such as location). Never the embedding.
+
+    DocumentChunksResponse:
+      type: object
+      required: [documentId, libraryId, chunkCount, chunks]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        documentTitle:
+          type: string
+          nullable: true
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+        libraryName:
+          type: string
+          nullable: true
+        chunkCount:
+          type: integer
+          description: >
+            The chunk count the document entity recorded when it was last indexed - compare with
+            the length of chunks to spot a stale or partially written index.
+        chunks:
+          type: array
+          description: The stored chunks ordered by chunkIndex.
+          items:
+            $ref: "#/components/schemas/ChunkInspectionResponse"
 
   parameters:
     AuditFrom:

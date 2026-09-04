@@ -96,9 +96,13 @@ Ablauf beim Hochladen:
    Verzeichnis- und URL-Aufnahme, eine konfigurierbare Größenobergrenze. **Seit #435 prüft der
    Upload zusätzlich den tatsächlichen Dateiinhalt** per Tika-Erkennung anhand der Magic Bytes gegen
    die behauptete Dateiendung — eine Binärdatei als `.pdf` oder eine Office-Datei als `.txt` wird
-   abgelehnt; bei Textformaten (`.md`, `.txt`) genügt es, dass der Inhalt überhaupt Text ist. Diese
-   Inhaltsprüfung gilt nur für den Upload-Pfad; Verzeichnis- und URL-Aufnahme bleiben bei der reinen
-   Endungsentscheidung (Begründung in `SupportedDocumentFormats`). **Die Schadsoftwareprüfung fehlt
+   abgelehnt; bei Textformaten (`.md`, `.txt`) genügt es, dass der Inhalt überhaupt Text ist. Seit
+   #404 entscheiden auch Verzeichnis- und URL-Aufnahme über den erkannten Inhalt statt über die
+   Endung — nur die Folge eines Widerspruchs unterscheidet sich: Der Upload lehnt ab, die
+   Aufnahmeläufe indizieren und melden ein `FORMAT_MISMATCH`-Ereignis (Begründung in
+   `SupportedDocumentFormats`). Der URL-Weg entscheidet dafür zunächst nur an einer Leseprobe und
+   lädt vollständig nach, wenn diese den Containertyp nicht auflösen konnte (#1229, siehe
+   [Aufnahme-Pipelines](./ingestion-pipelines.md)). **Die Schadsoftwareprüfung fehlt
    noch bewusst** — sie braucht eine eigene Entscheidung über Prüfdienst und Betriebsweg und ist als
    eigenes Issue vorzuziehen, bevor ein Produktivbetrieb möglich ist.
 3. Ablage im Dokumentenspeicher der Installation, getrennt je Bibliothek. **Gebaut.**

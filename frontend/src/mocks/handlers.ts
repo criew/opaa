@@ -14,6 +14,8 @@ import {
   mockSearchStatus,
   mockSearchPermissionProfiles,
   mockSearchDiagnosis,
+  mockChunkInspections,
+  mockDocumentChunks,
   mockLlmModels,
   resetMockLlmModels,
   mockUser,
@@ -990,6 +992,21 @@ export const handlers = [
           }
         : null,
     })
+  }),
+
+  http.get('/api/v1/admin/search/chunks/:chunkId', ({ params }) => {
+    const chunk = mockChunkInspections[params.chunkId as string]
+    if (!chunk) {
+      return HttpResponse.json({ error: 'Der Chunk wurde nicht gefunden.' }, { status: 404 })
+    }
+    return HttpResponse.json(chunk)
+  }),
+
+  http.get('/api/v1/admin/search/documents/:documentId/chunks', ({ params }) => {
+    if (params.documentId !== mockDocumentChunks.documentId) {
+      return HttpResponse.json({ error: 'Das Dokument wurde nicht gefunden.' }, { status: 404 })
+    }
+    return HttpResponse.json(mockDocumentChunks)
   }),
 
   http.get('/api/v1/libraries', () => {

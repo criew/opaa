@@ -15,9 +15,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.common.NotFoundException;
 import io.opaa.query.RetrievalExplanation;
+import io.opaa.searchadmin.ChunkInspection;
+import io.opaa.searchadmin.ChunkInspectionService;
 import io.opaa.searchadmin.DiagnosisContextType;
 import io.opaa.searchadmin.DiagnosisQuery;
+import io.opaa.searchadmin.DocumentChunks;
 import io.opaa.searchadmin.LibrarySearchStatus;
 import io.opaa.searchadmin.ModelRole;
 import io.opaa.searchadmin.ModelRoleCondition;
@@ -29,6 +33,7 @@ import io.opaa.searchadmin.SearchStatusService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,6 +64,7 @@ class SearchAdminControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private SearchStatusService searchStatusService;
   @MockitoBean private SearchDiagnosisService searchDiagnosisService;
+  @MockitoBean private ChunkInspectionService chunkInspectionService;
   @MockitoBean private UserService userService;
 
   private final UUID actingAdminId = UUID.randomUUID();
@@ -225,5 +231,114 @@ class SearchAdminControllerTest {
         .andExpect(jsonPath("$[0].id").value(profileId.toString()))
         .andExpect(jsonPath("$[0].name").value("Bürgerbüro"))
         .andExpect(jsonPath("$[0].libraryCount").value(4));
+  }
+
+  @Test
+  void chunkEndpointsAreNotReachableForARegularUser() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/admin/search/chunks/abc").with(asRegularUser()))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            get("/api/v1/admin/search/documents/" + UUID.randomUUID() + "/chunks")
+                .with(asRegularUser()))
+        .andExpect(status().isForbidden());
+    verifyNoInteractions(chunkInspectionService);
+  }
+
+  @Test
+  void chunkIsReadInTheCallersOrganizationAndCarriesNoEmbedding() throws Exception {
+    UUID documentId = UUID.randomUUID();
+    UUID libraryId = UUID.randomUUID();
+    when(chunkInspectionService.findChunk(actingAdminOrganizationId, "chunk-1"))
+        .thenReturn(
+            Optional.of(
+                new ChunkInspection(
+                    "chunk-1",
+                    documentId,
+                    "satzung.pdf",
+                    libraryId,
+                    "Satzungen",
+                    3,
+                    "§ 4 Befreiung\nAuf Antrag ...",
+                    Map.of("chunk_index", 3, "location", "Seite 2"))));
+
+    mockMvc
+        .perform(get("/api/v1/admin/search/chunks/chunk-1").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.chunkId").value("chunk-1"))
+        .andExpect(jsonPath("$.documentId").value(documentId.toString()))
+        .andExpect(jsonPath("$.documentTitle").value("satzung.pdf"))
+        .andExpect(jsonPath("$.libraryName").value("Satzungen"))
+        .andExpect(jsonPath("$.chunkIndex").value(3))
+        .andExpect(jsonPath("$.content").value("§ 4 Befreiung\nAuf Antrag ..."))
+        .andExpect(jsonPath("$.metadata.location").value("Seite 2"))
+        .andExpect(jsonPath("$.embedding").doesNotExist())
+        .andExpect(jsonPath("$.metadata.embedding").doesNotExist());
+
+    verify(chunkInspectionService).findChunk(actingAdminOrganizationId, "chunk-1");
+  }
+
+  @Test
+  void anUnknownOrForeignChunkIs404() throws Exception {
+    when(chunkInspectionService.findChunk(any(), any())).thenReturn(Optional.empty());
+
+    mockMvc
+        .perform(get("/api/v1/admin/search/chunks/fremd").with(asAdmin()))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void documentChunksAreListedInOrderWithTheEntitysChunkCount() throws Exception {
+    UUID documentId = UUID.randomUUID();
+    UUID libraryId = UUID.randomUUID();
+    when(chunkInspectionService.listDocumentChunks(actingAdminOrganizationId, documentId))
+        .thenReturn(
+            new DocumentChunks(
+                documentId,
+                "satzung.pdf",
+                libraryId,
+                "Satzungen",
+                3,
+                List.of(
+                    new ChunkInspection(
+                        "c0",
+                        documentId,
+                        "satzung.pdf",
+                        libraryId,
+                        "Satzungen",
+                        0,
+                        "Erster",
+                        Map.of()),
+                    new ChunkInspection(
+                        "c1",
+                        documentId,
+                        "satzung.pdf",
+                        libraryId,
+                        "Satzungen",
+                        1,
+                        "Zweiter",
+                        Map.of()))));
+
+    mockMvc
+        .perform(get("/api/v1/admin/search/documents/" + documentId + "/chunks").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.documentTitle").value("satzung.pdf"))
+        .andExpect(jsonPath("$.chunkCount").value(3))
+        .andExpect(jsonPath("$.chunks.length()").value(2))
+        .andExpect(jsonPath("$.chunks[0].chunkId").value("c0"))
+        .andExpect(jsonPath("$.chunks[1].content").value("Zweiter"))
+        .andExpect(jsonPath("$.chunks[0].embedding").doesNotExist());
+  }
+
+  @Test
+  void anUnknownOrForeignDocumentIs404() throws Exception {
+    when(chunkInspectionService.listDocumentChunks(any(), any()))
+        .thenThrow(new NotFoundException("Das Dokument wurde nicht gefunden."));
+
+    mockMvc
+        .perform(
+            get("/api/v1/admin/search/documents/" + UUID.randomUUID() + "/chunks").with(asAdmin()))
+        .andExpect(status().isNotFound());
   }
 }
