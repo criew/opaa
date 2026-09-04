@@ -91,7 +91,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
 
     Path downloaded = tempDir.resolve("mail.eml");
     Files.writeString(downloaded, "From: a@example.org\r\n\r\nInhalt");
-    when(downloader.download(any(HttpClient.class), any(), anyString(), anyString()))
+    when(downloader.download(any(HttpClient.class), any(), anyString(), anyString(), anyLong()))
         .thenReturn(downloaded);
     when(downloader.downloadPrefix(any(HttpClient.class), any(), anyString(), anyInt()))
         .thenReturn("From: a@example.org\r\n\r\nInhalt".getBytes(StandardCharsets.UTF_8));
@@ -105,7 +105,8 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
             documentRepository,
             mock(IndexingRunEventRepository.class),
             mock(LibraryStorageQuotaService.class),
-            staleDocumentCleanupService);
+            staleDocumentCleanupService,
+            new CrawlProperties(0, 0, 0));
   }
 
   private void stubProcessUrlFile(org.mockito.stubbing.Answer<FileProcessingResult> answer)
