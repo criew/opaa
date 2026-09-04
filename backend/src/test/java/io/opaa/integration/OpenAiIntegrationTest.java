@@ -54,7 +54,7 @@ class OpenAiIntegrationTest {
   static void configureProperties(DynamicPropertyRegistry registry) {
     // #484: overrides the dev profile's /data,/tmp default so this suite's own @TempDir stays
     // inside the allowlist.
-    registry.add("opaa.indexing.filesystem-allowlist", () -> tempDir.toAbsolutePath().toString());
+    registry.add("opaa.indexing.filesystem.allowlist", () -> tempDir.toAbsolutePath().toString());
     registry.add("opaa.indexing.chunk-size", () -> 200);
     registry.add("opaa.indexing.batch-size", () -> 10);
   }

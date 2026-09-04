@@ -1,5 +1,6 @@
 package io.opaa.indexing.pipeline.html;
 
+import io.opaa.indexing.pipeline.DocumentHeadText;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
@@ -143,24 +144,38 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
       // reports for content that reduces to nothing (see TabularDocumentPipeline#run).
       return DocumentPipelineResult.noExtractableText();
     }
-    return DocumentPipelineResult.chunked(chunks).withProperties(properties(htmlDoc));
+    return DocumentPipelineResult.chunked(chunks).withProperties(properties(htmlDoc, contentRoots));
   }
 
-  /** The {@code <title>} and the first {@code <h1>} (ADR-0024). */
+  /**
+   * The {@code <title>}, the first {@code <h1>} (ADR-0024) and the opening of the content text
+   * (#1263). {@link #selectContentRoots} runs here too, so the head text is read from the same
+   * boilerplate-stripped view {@link #run} sees - a navigation label must not become a Dokumentart.
+   */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
     try {
-      return properties(parse(source));
+      org.jsoup.nodes.Document htmlDoc = parse(source);
+      return properties(htmlDoc, selectContentRoots(htmlDoc));
     } catch (UncheckedIOException e) {
       return DocumentProperties.EMPTY;
     }
   }
 
-  private static DocumentProperties properties(org.jsoup.nodes.Document htmlDoc) {
+  private static DocumentProperties properties(
+      org.jsoup.nodes.Document htmlDoc, List<Element> contentRoots) {
     Element h1 = htmlDoc.selectFirst("h1");
+    StringBuilder head = new StringBuilder();
+    for (Element root : contentRoots) {
+      if (head.length() >= DocumentProperties.MAX_HEAD_TEXT_LENGTH) {
+        break;
+      }
+      head.append(root.text()).append('\n');
+    }
     return DocumentProperties.EMPTY
         .withTitle(htmlDoc.title())
-        .withFirstHeading(h1 == null ? null : h1.text());
+        .withFirstHeading(h1 == null ? null : h1.text())
+        .withHeadText(DocumentHeadText.of(head.toString()));
   }
 
   private static org.jsoup.nodes.Document parse(DocumentPipelineSource source) {

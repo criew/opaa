@@ -84,7 +84,49 @@ public class TikaFallbackPipeline implements DocumentPipeline {
       // end up INDEXED with zero chunks regardless of why chunking produced none.
       return DocumentPipelineResult.noExtractableText();
     }
-    return DocumentPipelineResult.chunked(chunks);
+    return DocumentPipelineResult.chunked(chunks)
+        .withProperties(DocumentProperties.EMPTY.withHeadText(headText(source, parsed)));
+  }
+
+  /**
+   * The opening of the extracted text (#1263) - the only metadata source this pipeline has, since
+   * Tika's own document properties are not read here. Unlike PDF (one page) or DOCX/ODT (core
+   * properties only) this parses the whole document for its first 300 characters; Tika has no
+   * cheaper entry point, and the formats reaching this pipeline are small.
+   */
+  @Override
+  public DocumentProperties readProperties(DocumentPipelineSource source) {
+    if (source.file() == null) {
+      return DocumentProperties.EMPTY;
+    }
+    try {
+      return DocumentProperties.EMPTY.withHeadText(
+          headText(source, documentService.parseDocument(source.file())));
+    } catch (RuntimeException e) {
+      log.warn("Could not read properties of {} via Tika", source.fileName(), e);
+      return DocumentProperties.EMPTY;
+    }
+  }
+
+  /**
+   * {@code null} for a source without a file: that is text extracted upstream, today an RSS entry's
+   * body (#1263). A Kopfbereich only names a Dokumentart if the document names <em>itself</em> - a
+   * press release names the Satzung it reports about, and would inherit its Dokumentart.
+   */
+  private static String headText(DocumentPipelineSource source, List<Document> parsed) {
+    if (source.file() == null) {
+      return null;
+    }
+    StringBuilder head = new StringBuilder();
+    for (Document document : parsed) {
+      if (head.length() >= DocumentProperties.MAX_HEAD_TEXT_LENGTH) {
+        break;
+      }
+      if (document.getText() != null) {
+        head.append(document.getText()).append('\n');
+      }
+    }
+    return DocumentHeadText.of(head.toString());
   }
 
   /**

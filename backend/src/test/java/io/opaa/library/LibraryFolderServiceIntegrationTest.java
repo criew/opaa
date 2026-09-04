@@ -332,7 +332,7 @@ class LibraryFolderServiceIntegrationTest {
 
   @Test
   void creatingAFolderInAConnectorLibraryIsRejectedWithConflict() {
-    // "/tmp" matches application.yml's default opaa.indexing.filesystem-allowlist ("/data,/tmp") -
+    // "/tmp" matches application.yml's default opaa.indexing.filesystem.allowlist ("/data,/tmp") -
     // the source content of this library is never read, only its sourceType matters here.
     var connectorLibraryRequest =
         libraryCreation("Verzeichnis", DocumentSourceType.FILESYSTEM).sourcePath("/tmp").build();

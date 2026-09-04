@@ -130,7 +130,10 @@ class ForeignDiagnosticContextServiceTest {
             context -> new ForeignDiagnosticFindings<>(List.of("chunk-1"), "Anzeige"));
 
     assertThat(outcome.context().searchableLibraryIds()).containsExactly(openLibrary);
-    assertThat(outcome.context().lockedLibraryIds()).containsExactly(lockedLibrary);
+    // Named in the rights snapshot and nowhere else: the answer the caller builds from this
+    // context cannot reach the locked set at all.
+    assertThat(outcome.context().permissionSnapshot())
+        .isEqualTo("libraries=[" + openLibrary + "];lockedLibraries=[" + lockedLibrary + "]");
     assertThat(outcome.presentation()).isEqualTo("Anzeige");
   }
 
@@ -202,7 +205,7 @@ class ForeignDiagnosticContextServiceTest {
     assertThatThrownBy(
             () ->
                 service.execute(
-                    actor(),
+                    nonAdminActor(),
                     ForeignDiagnosticRequest.forProfile(profileGroup.getId(), "Wo steht das?"),
                     context -> {
                       executed.set(true);
@@ -212,6 +215,29 @@ class ForeignDiagnosticContextServiceTest {
 
     assertThat(executed).isFalse();
     verify(logWriter, never()).record(any());
+  }
+
+  /**
+   * Regression guard for #1256: {@code readableLibraryIds} carries no system-admin bypass (see its
+   * own Javadoc), so without one here a SYSTEM_ADMIN caller was refused the entire profile
+   * diagnosis for any library they administer but hold no grant on - even though {@code
+   * SearchDiagnosisService#diagnose} runs the same profile for them directly. The bypass mirrors
+   * {@code LibraryAccessService#effectiveRole}'s administrative fail-open.
+   */
+  @Test
+  void aSystemAdminRunsAProfileEvenOverALibraryTheyCannotReadThemselves() {
+    UUID foreignLibrary = UUID.randomUUID();
+    when(libraryAccessService.readableLibraryIdsForGroup(profileGroup.getId(), ORGANIZATION_ID))
+        .thenReturn(Set.of(openLibrary, foreignLibrary));
+
+    ForeignDiagnosticOutcome<String> outcome =
+        service.execute(
+            actor(),
+            ForeignDiagnosticRequest.forProfile(profileGroup.getId(), "Wo steht das?"),
+            context -> new ForeignDiagnosticFindings<>(List.of("chunk-1"), "Anzeige"));
+
+    assertThat(outcome.context().searchableLibraryIds()).contains(foreignLibrary);
+    verify(libraryAccessService, never()).readableLibraryIds(actorId, ORGANIZATION_ID);
   }
 
   /**
@@ -295,5 +321,9 @@ class ForeignDiagnosticContextServiceTest {
 
   private CurrentUser actor() {
     return CurrentUser.of(actorId, ORGANIZATION_ID, SystemRole.SYSTEM_ADMIN, "Diagnostizierende");
+  }
+
+  private CurrentUser nonAdminActor() {
+    return CurrentUser.of(actorId, ORGANIZATION_ID, SystemRole.USER, "Diagnostizierende");
   }
 }

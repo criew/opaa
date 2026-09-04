@@ -165,7 +165,7 @@ opaa:
     # so neither an oversized nor an afterwards-rejected entry can fill the temp partition.
     crawl:
       max-depth: ${OPAA_INDEXING_CRAWL_MAX_DEPTH:10}
-      max-entries: ${OPAA_INDEXING_CRAWL_MAX_ENTRIES:5000}
+      max-entries: ${OPAA_INDEXING_CRAWL_MAX_ENTRIES:50000}
       max-file-size-bytes: ${OPAA_INDEXING_CRAWL_MAX_FILE_SIZE_BYTES:104857600}
     # #1058: DoS-hardening limits for TabularDocumentPipeline (XLSX/CSV/ODS) - own property block,
     # own binding prefix, see TabularProperties's own Javadoc for why.
@@ -177,7 +177,6 @@ opaa:
     # #1060: DoS-hardening limits for MailDocumentPipeline (EML/MSG) - own property block, own
     # binding prefix, see MailProperties's own Javadoc for why.
     mail:
-      max-attachment-depth: ${OPAA_INDEXING_MAIL_MAX_ATTACHMENT_DEPTH:5}
       max-attachments-per-message: ${OPAA_INDEXING_MAIL_MAX_ATTACHMENTS_PER_MESSAGE:50}
       max-attachment-bytes: ${OPAA_INDEXING_MAIL_MAX_ATTACHMENT_BYTES:52428800}
       max-message-bytes: ${OPAA_INDEXING_MAIL_MAX_MESSAGE_BYTES:104857600}
@@ -189,10 +188,18 @@ opaa:
       max-odp-slides: ${OPAA_INDEXING_ODF_MAX_ODP_SLIDES:5000}
       max-space-repeat: ${OPAA_INDEXING_ODF_MAX_SPACE_REPEAT:1000}
       max-text-characters: ${OPAA_INDEXING_ODF_MAX_TEXT_CHARACTERS:10000000}
-    # #484/ADR-0018 Entscheidung 6: absolute base directories a FILESYSTEM library's sourcePath
-    # must resolve underneath. No default on purpose - an empty allowlist disables the FILESYSTEM
-    # quellentyp entirely, the safe default for a fresh installation.
-    filesystem-allowlist: ${OPAA_INDEXING_FILESYSTEM_ALLOWLIST:}
+    # #484/ADR-0018 Entscheidung 6, #1271: own opaa.indexing.filesystem.* property block, own
+    # binding prefix (FilesystemProperties), mirroring crawl/tabular/mail/odf above. allowlist:
+    # absolute base directories a FILESYSTEM library's sourcePath must resolve underneath. No
+    # default on purpose - an empty allowlist disables the FILESYSTEM quellentyp entirely, the
+    # safe default for a fresh installation.
+    filesystem:
+      allowlist: ${OPAA_INDEXING_FILESYSTEM_ALLOWLIST:}
+    # #1269: the attachment-nesting depth (Mail-in-Mail, Feed-Anlage) is one general value, not a
+    # per-connector one - own opaa.indexing.attachments.* property block (AttachmentProperties),
+    # applied by AttachmentIndexer regardless of which connector discovered the attachment.
+    attachments:
+      max-depth: ${OPAA_INDEXING_ATTACHMENTS_MAX_DEPTH:5}
     # #267: SSRF hardening for HTTP_DIRECTORY/RSS_FEED fetches - see
     # io.opaa.sourceaccess.TargetAddressValidator.
     target-validation:
@@ -368,8 +375,9 @@ opaa:
     # KnowledgeLibraryServiceIntegrationTest et al.) keep working without every test wiring its own
     # allowlist. Tests that need a genuinely different allowlist (e.g. an empty one, to exercise the
     # "FILESYSTEM disabled" path, or a @TempDir outside /tmp) override
-    # opaa.indexing.filesystem-allowlist via @DynamicPropertySource.
-    filesystem-allowlist: ${OPAA_INDEXING_FILESYSTEM_ALLOWLIST:/data,/tmp}
+    # opaa.indexing.filesystem.allowlist via @DynamicPropertySource.
+    filesystem:
+      allowlist: ${OPAA_INDEXING_FILESYSTEM_ALLOWLIST:/data,/tmp}
   security:
     credentials:
       # NICHT FUER DEN PRODUKTIVBETRIEB - a fixed, publicly-known 32-byte AES key so bootRun and

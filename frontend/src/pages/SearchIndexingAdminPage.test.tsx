@@ -383,7 +383,9 @@ describe('SearchIndexingAdminPage', () => {
       expect(screen.getByRole('heading', { name: 'Ergebnis' })).toBeInTheDocument()
     })
     expect(screen.getAllByText(/Rechtekontext einer Person/).length).toBeGreaterThan(1)
-    expect(screen.getByText(/gesperrter Suchbereich ausgenommen/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/In dieser Organisation ist 1 Bibliothek für die Diagnose gesperrt/),
+    ).toBeInTheDocument()
   })
 
   it('shows the refusal when the befugnis is gone by the time the run is started', async () => {

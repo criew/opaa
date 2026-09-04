@@ -23,7 +23,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * {@code properties} attribute this signature also needs (mirrors {@link OpaaMockMvcTest}, which is
  * independent of {@link OpaaIntegrationTest} for the same reason).
  *
- * <p>{@code opaa.indexing.filesystem-allowlist} points at one process-wide base directory ({@link
+ * <p>{@code opaa.indexing.filesystem.allowlist} points at one process-wide base directory ({@link
  * OpaaIndexingTestDirectory#BASE_DIR}), registered once by {@link
  * OpaaIndexingFilesystemAllowlistInitializer} - not a per-class
  * {@code @TempDir}/{@code @DynamicPropertySource}, which would key each class to its own context

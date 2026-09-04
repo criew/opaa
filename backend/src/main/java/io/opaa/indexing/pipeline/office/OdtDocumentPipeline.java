@@ -1,5 +1,6 @@
 package io.opaa.indexing.pipeline.office;
 
+import io.opaa.indexing.pipeline.DocumentHeadText;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
@@ -133,10 +134,14 @@ public class OdtDocumentPipeline implements DocumentPipeline {
     return DocumentPipelineResult.chunked(allChunks)
         .withProperties(
             OdfMetaProperties.read(source, odfProperties)
-                .withFirstHeading(firstTopLevelHeading(events)));
+                .withFirstHeading(firstTopLevelHeading(events))
+                .withHeadText(DocumentHeadText.ofEvents(events)));
   }
 
-  /** {@code meta.xml}'s title/dates plus the first level-1 {@code text:h} (ADR-0024). */
+  /**
+   * {@code meta.xml}'s title/dates, the first level-1 {@code text:h} (ADR-0024) and the opening of
+   * the body text (#1263).
+   */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
     if (source.file() == null) {
@@ -150,7 +155,8 @@ public class OdtDocumentPipeline implements DocumentPipeline {
               odfProperties.maxSpaceRepeat(),
               odfProperties.maxTextCharacters());
       if (OdfContentXml.parse(source.file(), odfProperties.maxContentXmlBytes(), handler)) {
-        return meta.withFirstHeading(firstTopLevelHeading(handler.events()));
+        return meta.withFirstHeading(firstTopLevelHeading(handler.events()))
+            .withHeadText(DocumentHeadText.ofEvents(handler.events()));
       }
     } catch (IOException | RuntimeException e) {
       log.warn("Could not read headings of ODT document {}", source.fileName(), e);
