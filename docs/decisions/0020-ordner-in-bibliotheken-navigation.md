@@ -145,10 +145,12 @@ gemeinsamer Lauf-Helfer für beide Konnektoren statt einer zweiten Kopie).
 
 **Der Ordnerpfad ist der URL-Pfad relativ zur normalisierten Start-URL**, segmentweise
 prozentdekodiert (`Verg%C3%BCtung` → `Vergütung`). Query-Parameter und Fragment gehören nicht zum
-Pfad. Ein Segment wird abgewiesen, wenn es nach der Dekodierung leer ist, `.` oder `..` lautet oder
-einen Pfadtrenner (`/`, `\`) enthält — ein solcher Name lässt sich nicht als eine Ordnerzeile
-darstellen, und `%2E%2E`/`%2F` überstehen die URL-Normalisierung des Crawlers, werden also erst hier
-sichtbar. Die betroffene Datei landet dann in der Wurzel der Bibliothek, mit einer Warnung im
+Pfad. Ein Segment wird abgewiesen, wenn es nach der Dekodierung leer ist, `.` oder `..` lautet,
+einen Pfadtrenner (`/`, `\`) oder ein NUL-Byte (`%00`) enthält oder länger als 255 Zeichen ist — die
+ersten Fälle lassen sich nicht als eine Ordnerzeile darstellen, und `%2E%2E`/`%2F`/`%00` überstehen
+die URL-Normalisierung des Crawlers, werden also erst hier sichtbar; die Längengrenze ist die Breite
+von `library_folders.name`, ein längeres Segment würde sonst am Insert scheitern und den ganzen
+Eintrag statt nur seine Ordnerzuordnung verlieren. Die betroffene Datei landet dann in der Wurzel der Bibliothek, mit einer Warnung im
 Anwendungsprotokoll — dieselbe Behandlung wie beim Dateisystem-Sonderfall einer Datei, die nach der
 Normalisierung nicht unter `sourcePath` liegt. Sie wird nicht verworfen und nicht unter einem
 erfundenen Namen abgelegt.

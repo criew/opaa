@@ -178,9 +178,10 @@ Ordner entstehen nur entlang gefundener Dateien — ein Verzeichnis, in dem nich
 liegt, erscheint nicht. Angelegt oder umbenannt werden können sie nicht: Die Ordner-Endpunkte
 antworten für diesen Quellentyp mit `409`, die Quelle ist führend.
 
-Ein Segment, das nach der Dekodierung leer ist, `.` oder `..` lautet oder einen Pfadtrenner
-enthält, lässt sich nicht als Ordnername darstellen. Die betroffene Datei landet dann in der Wurzel
-der Bibliothek, und im Anwendungsprotokoll steht eine Warnung mit der betroffenen URL.
+Ein Segment, das nach der Dekodierung leer ist, `.` oder `..` lautet, einen Pfadtrenner oder ein
+NUL-Byte (`%00`) enthält oder länger als 255 Zeichen ist, lässt sich nicht als Ordnername
+darstellen. Die betroffene Datei landet dann in der Wurzel der Bibliothek, und im
+Anwendungsprotokoll steht eine Warnung mit der betroffenen URL.
 
 Ein Verzeichnis, das keine Dokumente mehr hält, verschwindet am Ende eines Laufs — allerdings nur
 unter derselben Bedingung wie die Löscherkennung im nächsten Abschnitt: Ein abgeschnittener oder

@@ -800,7 +800,8 @@ Platz.
 (#1277).** An die Stelle des zu `sourcePath` relativen Verzeichnisanteils tritt der URL-Pfad relativ
 zur normalisierten Start-URL, segmentweise prozentdekodiert (`Verg%C3%BCtung` → `Vergütung`);
 Query-Parameter gehören nicht zum Pfad. Ein Segment, das nach der Dekodierung leer ist, `.` oder `..`
-lautet oder einen Pfadtrenner enthält, wird abgewiesen — die Datei liegt dann in der Wurzel der
+lautet, einen Pfadtrenner oder ein NUL-Byte (`%00`) enthält oder länger als 255 Zeichen ist (die
+Breite von `library_folders.name`), wird abgewiesen — die Datei liegt dann in der Wurzel der
 Bibliothek, mit einer Warnung im Anwendungsprotokoll, statt unter einem erfundenen Ordnernamen. Auch
 hier entstehen Ordner nur entlang tatsächlich gefundener Dateien, antworten die Folder-CRUD-Endpoints
 mit `409` und bekommt ein bereits vor #1277 indiziertes Dokument seine `folder_id` beim nächsten Lauf
