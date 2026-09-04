@@ -238,6 +238,7 @@ public class SearchDiagnosisService {
                 query.question(),
                 List.of(),
                 searchScope,
+                query.metadataFilter(),
                 queryProperties,
                 RerankAvailability.of(rerankModelRole.currentStatus().state())));
 

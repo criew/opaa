@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 021-chats-metadata-filter
+      author: opaa
+      comment: >-
+        #1070: the chat's sticky core-field filter (documentTypes, documentDateFrom, documentDateTo)
+        as one jsonb object, NULL for no filter - the Kontext der Unterhaltung next to
+        use_knowledge/chat_library_references, applied to every question of the chat in both
+        search paths (metadata-schema.md, Wirkstelle 1). One nullable column rather than a join
+        table per field: the filter is read and written as a whole, and #1071's library fields
+        extend the same object without a further migration.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.chats ADD COLUMN metadata_filter jsonb;
+      rollback:
+        - sql:
+            sql: ALTER TABLE public.chats DROP COLUMN IF EXISTS metadata_filter;

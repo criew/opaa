@@ -26,7 +26,12 @@ class GroupMembershipResolverTest {
 
   @BeforeEach
   void setUp() {
-    resolver = new GroupMembershipResolver(membershipRepository, userRepository);
+    resolver =
+        new GroupMembershipResolver(
+            membershipRepository,
+            userRepository,
+            new org.springframework.beans.factory.support.StaticListableBeanFactory()
+                .getBeanProvider(io.opaa.group.GroupMembershipChangeListener.class));
   }
 
   @Test
