@@ -1062,8 +1062,23 @@ Verschachtelung ist kein Sonderfall: Jede Kettenstufe ist ein weiterer Extraktio
 Positionsindex ist nur bei unveränderter Elterndatei aussagekräftig, deshalb muss der Dateiname des
 extrahierten Anhangs zum `file_name` der Zeile passen — sonst antwortet der Endpunkt mit demselben
 404 wie bei „kein Originaldokument verfügbar", statt fremde Bytes unter diesem Namen auszuliefern.
-Temporäre Dateien dieses Wegs werden beim Schließen des Antwortstroms gelöscht. Kein zusätzlicher
-Speicherbedarf, keine doppelte Quotenzählung, gleiches Verhalten für alle Quelltypen.
+Temporäre Dateien dieses Wegs werden beim Schließen des Antwortstroms gelöscht (Spring schließt die
+Ressource in jedem Fall, auch bei Abbruch durch den Client). Kein dauerhafter Zweitspeicher, keine
+doppelte Quotenzählung, gleiches Verhalten für alle Quelltypen.
+
+**Der Preis dieses Wegs, ausdrücklich benannt:** Ein Abruf parst die Elternnachricht vollständig,
+das heißt die Pipeline materialisiert dabei *alle* ihre Anlagen als temporäre Dateien (bis
+`max-attachments-per-message`, Vorgabe 50), nicht nur die angeforderte; bei Konnektor-Beständen
+kommt der vollständige Abruf des Elternoriginals in eine weitere temporäre Datei hinzu. Das läuft im
+synchronen Anfragepfad, ohne Cache und ohne Serialisierung, und ist von jedem VIEWER wiederholt und
+parallel auslösbar — spürbar als temporärer Plattenbedarf und als Last auf der Quelle. Ein Deckel
+oder Cache dafür ist bewusst offen (Folge-Issue), keine stillschweigende Annahme.
+
+**Nur ein Anhang ohne eigene Quellidentität wird nachextrahiert:** Ein Anhang aus dem
+`AttachmentSource.Download`-Schnitt (RSS heute, Confluence künftig) trägt zwar ebenfalls
+`parent_document_id`, hat als `file_path` aber seine echte Download-URL — er wird unverändert über
+den Proxy-Weg geliefert. Unterschieden wird deshalb an der Pfadform (`attachmentIndexIn` erkennt den
+eingebetteten Elternpfad), nicht am Vorhandensein eines Elterndokuments.
 
 **Die Rekursionstiefe (Mail-in-Mail) lebt auf dem verallgemeinerten Anhangsweg, nicht mehr in dieser
 Pipeline** (ADR-0022, Entscheidung 6): `AttachmentIndexer` zählt die Verschachtelungstiefe über einen

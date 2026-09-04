@@ -15,6 +15,7 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.pipeline.mail.MailProperties;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
@@ -113,14 +114,6 @@ public class LibraryDocumentService {
 
   private static final Logger log = LoggerFactory.getLogger(LibraryDocumentService.class);
 
-  /**
-   * How many attachment levels {@link #loadAttachmentContent} follows before it treats a chain as
-   * broken - comfortably above any depth the indexing path itself produces ({@code
-   * MailProperties#maxAttachmentDepth}, {@code AttachmentIndexer#DEFAULT_MAX_ATTACHMENT_DEPTH}), so
-   * only a corrupt or looping chain is ever cut off here.
-   */
-  private static final int MAX_ATTACHMENT_CHAIN_DEPTH = 20;
-
   private final KnowledgeLibraryRepository libraryRepository;
   private final LibraryAccessService accessService;
   private final DocumentRepository documentRepository;
@@ -136,6 +129,7 @@ public class LibraryDocumentService {
   private final LibraryFolderRepository folderRepository;
   private final LibraryFolderService folderService;
   private final AttachmentExtractor attachmentExtractor;
+  private final MailProperties mailProperties;
 
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
@@ -152,7 +146,8 @@ public class LibraryDocumentService {
       RemoteContentProperties remoteContentProperties,
       LibraryFolderRepository folderRepository,
       LibraryFolderService folderService,
-      AttachmentExtractor attachmentExtractor) {
+      AttachmentExtractor attachmentExtractor,
+      MailProperties mailProperties) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
     this.documentRepository = documentRepository;
@@ -168,6 +163,7 @@ public class LibraryDocumentService {
     this.folderRepository = folderRepository;
     this.folderService = folderService;
     this.attachmentExtractor = attachmentExtractor;
+    this.mailProperties = mailProperties;
   }
 
   /**
@@ -462,10 +458,33 @@ public class LibraryDocumentService {
             .orElseThrow(() -> new NotFoundException("Dokument nicht gefunden"));
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
 
-    if (document.getParentDocumentId() != null) {
+    if (isReExtractableAttachment(document)) {
       return loadAttachmentContent(document, library);
     }
     return loadOriginal(document, library);
+  }
+
+  /**
+   * Whether {@code document}'s bytes only exist inside its parent's original and must be
+   * re-extracted (ADR-0022, #1239) - recognized at its {@code file_path}, which then embeds the
+   * parent's own path plus an extraction index ({@code FileProcessingService#attachmentFilePath},
+   * an {@code AttachmentSource.LocalFile} attachment: Mail). An attachment with a source identity
+   * of its own - an RSS/Confluence download URL ({@code AttachmentSource.Download}) - carries
+   * {@code parent_document_id} just the same but names a real, fetchable original, and is therefore
+   * served by {@link #loadOriginal} unchanged.
+   */
+  private boolean isReExtractableAttachment(Document document) {
+    if (document.getParentDocumentId() == null) {
+      return false;
+    }
+    return documentRepository
+        .findById(document.getParentDocumentId())
+        .map(
+            parent ->
+                FileProcessingService.attachmentIndexIn(
+                        parent.getFilePath(), document.getFilePath())
+                    >= 0)
+        .orElse(false);
   }
 
   /**
@@ -527,7 +546,7 @@ public class LibraryDocumentService {
    *
    * <p>Authorization is unchanged: it is decided in {@link #loadContent} against the attachment's
    * own library, and every ancestor must belong to that same library - a broken chain, a foreign
-   * library, or a chain deeper or looping beyond {@link #MAX_ATTACHMENT_CHAIN_DEPTH} is a 404.
+   * library, or a chain looping or deeper than {@link #maxAttachmentChainDepth()} is a 404.
    *
    * <p>Every temp file this method creates is deleted when the returned stream is closed, or before
    * it throws.
@@ -537,7 +556,7 @@ public class LibraryDocumentService {
     Set<UUID> seen = new HashSet<>();
     Document current = document;
     while (current.getParentDocumentId() != null) {
-      if (!seen.add(current.getId()) || chain.size() >= MAX_ATTACHMENT_CHAIN_DEPTH) {
+      if (!seen.add(current.getId()) || chain.size() >= maxAttachmentChainDepth()) {
         log.warn(
             "Attachment document {} has a looping or over-deep parent chain", document.getId());
         throw attachmentUnavailable();
@@ -620,6 +639,16 @@ public class LibraryDocumentService {
         tempFiles.forEach(this::deleteQuietly);
       }
     }
+  }
+
+  /**
+   * The chain length {@link #loadAttachmentContent} still follows: the nesting depth the indexing
+   * path itself may produce ({@code opaa.indexing.mail.max-attachment-depth}) plus one level of
+   * headroom, so raising that property never makes an indexable attachment unopenable, while a
+   * cyclic or corrupt chain is still cut off.
+   */
+  private int maxAttachmentChainDepth() {
+    return mailProperties.maxAttachmentDepth() + 1;
   }
 
   /**

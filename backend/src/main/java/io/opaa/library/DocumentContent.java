@@ -14,14 +14,17 @@ import java.nio.file.Path;
  * <p>Exactly one of {@code path}/{@code stream} is set. {@code path} names an operator-managed file
  * on local disk ({@code UPLOAD}/{@code FILESYSTEM}) the controller reads via {@link
  * org.springframework.core.io.FileSystemResource} - unowned by this request, left untouched once
- * served. {@code stream} (#747/#748 review, finding 3) is the still-open body of a {@code
- * HTTP_DIRECTORY}/{@code RSS_FEED} document proxied live from its remote source (see {@code
- * LibraryDocumentService#loadRemoteContent}) - streamed straight to the caller via {@link
- * org.springframework.core.io.InputStreamResource} instead of first being buffered into a temp file
- * this class or the controller would then have to remember to delete. This closes the concrete leak
- * paths a temp-file-plus-delete-on-close approach had (an exception before the stream is ever
- * opened, a Range request that never calls {@code getInputStream()}) simply by never creating a
- * file in the first place - there is nothing left over to sweep.
+ * served. {@code stream} is served via {@link org.springframework.core.io.InputStreamResource} and
+ * is either the still-open body of a {@code HTTP_DIRECTORY}/{@code RSS_FEED} document proxied live
+ * from its remote source (#747/#748, {@code LibraryDocumentService#loadRemoteContent}) or the
+ * re-extracted bytes of an attachment (ADR-0022/#1239, {@code
+ * LibraryDocumentService#loadAttachmentContent}).
+ *
+ * <p><b>The caller closes {@code stream}, and closing it is what releases everything behind it</b>
+ * - the remote connection for a proxied body, and the temp files an attachment's re-extraction
+ * created, which its stream deletes on close. {@code ResourceHttpMessageConverter} closes the
+ * stream in a {@code finally} block once the body has been written or the request aborted, so that
+ * happens exactly once on every outcome, including a client that disconnects mid-transfer.
  */
 public record DocumentContent(Path path, InputStream stream, String fileName, String contentType) {
 
@@ -37,9 +40,9 @@ public record DocumentContent(Path path, InputStream stream, String fileName, St
   }
 
   /**
-   * A live, still-open remote body streamed directly to the caller (#747/#748) - the caller (here:
-   * {@code DocumentController}) is responsible for closing {@code stream} once it has been written
-   * to the response, or the request is aborted.
+   * A still-open stream served directly to the caller - the caller (here: {@code
+   * DocumentController}) is responsible for closing {@code stream} once it has been written to the
+   * response, or the request is aborted.
    */
   public static DocumentContent ofStream(InputStream stream, String fileName, String contentType) {
     return new DocumentContent(null, stream, fileName, contentType);

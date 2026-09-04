@@ -391,9 +391,15 @@ Confluence-Anforderung an unabhängiger Versionierung gar nicht erfüllen kann.
   Mail-Bibliotheken.
 - `Document#fileSize` bekommt für Mail-Elterndokumente eine neue Bedeutung (ohne Anhangsbytes) — ein
   Verhaltensunterschied gegenüber dem heutigen, undifferenzierten `Files.size(file)`.
-- Jeder Lesezugriff auf ein Anhangsoriginal kostet ein erneutes Parsen des Elterndokuments (und bei
-  Konnektor-Beständen einen erneuten Abruf des Elternoriginals) — bewusst in Kauf genommener
-  Rechenaufwand gegen doppelte Speicherung (#1239).
+- Jeder Lesezugriff auf ein Anhangsoriginal kostet ein erneutes Parsen des Elterndokuments — und
+  zwar in vollem Umfang: Die Pipeline legt beim Parsen **alle** Anlagen der Nachricht als temporäre
+  Dateien an (bis `max-attachments-per-message`, Vorgabe 50, aus einer bis zu `max-message-bytes`
+  großen Nachricht, Vorgabe 100 MiB), bevor die angeforderte herauskopiert wird; bei
+  Konnektor-Beständen kommt ein vollständiger Abruf des Elternoriginals in eine weitere temporäre
+  Datei hinzu. Das geschieht im synchronen Anfragepfad, ohne Cache und ohne Serialisierung, und ist
+  von jedem VIEWER beliebig oft und parallel auslösbar — bewusst in Kauf genommener Aufwand an
+  Rechenzeit, temporärem Plattenplatz und Last auf der Quelle gegen doppelte Speicherung (#1239).
+  Ein Deckel oder Cache dafür ist offen und gehört in ein Folge-Issue.
 - Löschen eines Elterndokuments außerhalb von `StaleDocumentCleanupService` (z. B. eine selektive
   Neuindizierung über `PipelineReindexService`, eine künftige Einzeldokument-Löschfunktion für
   Konnektor-Bestände) muss seine Anhangszeilen ausdrücklich mitbehandeln — es gibt keinen impliziten
