@@ -177,7 +177,6 @@ opaa:
     # #1060: DoS-hardening limits for MailDocumentPipeline (EML/MSG) - own property block, own
     # binding prefix, see MailProperties's own Javadoc for why.
     mail:
-      max-attachment-depth: ${OPAA_INDEXING_MAIL_MAX_ATTACHMENT_DEPTH:5}
       max-attachments-per-message: ${OPAA_INDEXING_MAIL_MAX_ATTACHMENTS_PER_MESSAGE:50}
       max-attachment-bytes: ${OPAA_INDEXING_MAIL_MAX_ATTACHMENT_BYTES:52428800}
       max-message-bytes: ${OPAA_INDEXING_MAIL_MAX_MESSAGE_BYTES:104857600}
@@ -196,6 +195,11 @@ opaa:
     # safe default for a fresh installation.
     filesystem:
       allowlist: ${OPAA_INDEXING_FILESYSTEM_ALLOWLIST:}
+    # #1269: the attachment-nesting depth (Mail-in-Mail, Feed-Anlage) is one general value, not a
+    # per-connector one - own opaa.indexing.attachments.* property block (AttachmentProperties),
+    # applied by AttachmentIndexer regardless of which connector discovered the attachment.
+    attachments:
+      max-depth: ${OPAA_INDEXING_ATTACHMENTS_MAX_DEPTH:5}
     # #267: SSRF hardening for HTTP_DIRECTORY/RSS_FEED fetches - see
     # io.opaa.sourceaccess.TargetAddressValidator.
     target-validation:
