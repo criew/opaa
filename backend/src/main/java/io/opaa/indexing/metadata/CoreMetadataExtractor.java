@@ -10,6 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,8 +23,16 @@ import java.util.regex.Pattern;
  *   <li><b>Titel</b>: format title property, frontmatter {@code titel}, first level-1 heading, the
  *       humanized file name ({@link ChunkContextTitle}) - so a title is always found.
  *   <li><b>Dokumentart</b>: frontmatter {@code dokumentart} (an explicit declaration outside the
- *       vocabulary leaves the field empty, it never falls through), then the file name's tokens -
- *       exactly one distinct vocabulary code among them; two different ones leave the field empty.
+ *       vocabulary leaves the field empty, it never falls through), then the file name's tokens,
+ *       then the Kopfbereich ({@link DocumentProperties#firstHeading()} plus {@link
+ *       DocumentProperties#headText()}), then the file format (#1263). Within one of the two token
+ *       sources exactly one distinct code must result; two different codes at once yield nothing
+ *       <em>from that source</em> - the next source is still asked, unlike for the frontmatter
+ *       declaration. A file-name token may also carry a seeded Kompositum ending; the Kopfbereich
+ *       is matched exactly, because running text names other documents than its own.
+ *   <li><b>A {@link DocumentProperties#syntheticName() synthetic name}</b> (an RSS entry's
+ *       headline) is no naming convention: it yields neither a Dokumentart nor a Datum. It remains
+ *       a title - that is what a headline is.
  *   <li><b>Datum/Stand</b>: frontmatter {@code stand_datum}/{@code fassung} and the format's own
  *       document date (a mail's Date header), then the first heading (Kopfbereich), then the file
  *       name, then the modified and finally the created property. Within one source every candidate
@@ -37,7 +46,7 @@ import java.util.regex.Pattern;
  */
 public final class CoreMetadataExtractor {
 
-  public static final int EXTRACTION_VERSION = 1;
+  public static final int EXTRACTION_VERSION = 2;
 
   static final String FRONTMATTER_TITLE = "titel";
   static final String FRONTMATTER_DOCUMENT_TYPE = "dokumentart";
@@ -69,6 +78,18 @@ public final class CoreMetadataExtractor {
   }
 
   private static final Pattern FILE_NAME_TOKEN_SEPARATOR = Pattern.compile("[\\s_\\-.,;()\\[\\]]+");
+
+  /** Word boundaries in running text: everything that is not a letter or a digit separates. */
+  private static final Pattern TEXT_TOKEN_SEPARATOR = Pattern.compile("[^\\p{L}\\p{N}]+");
+
+  /**
+   * Formats whose Dokumentart follows from the format alone (#1263) - a presentation file is a
+   * Praesentation, there is nothing else it could be. Consulted last, so every text source still
+   * outranks it. No entry for PDF/DOCX: those carry every Dokumentart there is.
+   */
+  private static final Map<String, String> DOCUMENT_TYPE_BY_EXTENSION =
+      Map.of(".pptx", "PRAESENTATION", ".odp", "PRAESENTATION");
+
   private static final Pattern EXTENSION = Pattern.compile("\\.[A-Za-z0-9]{1,5}$");
 
   private static final List<String> MONTH_NAMES =
@@ -122,11 +143,58 @@ public final class CoreMetadataExtractor {
     if (declared != null) {
       return vocabulary.resolve(unquote(declared));
     }
+    if (!props.syntheticName()) {
+      Optional<String> fromFileName =
+          singleCode(fileNameTokens(fileName), vocabulary::resolveToken);
+      if (fromFileName.isPresent()) {
+        return fromFileName;
+      }
+    }
+    Optional<String> fromHead = singleCode(headTokens(props), vocabulary::resolve);
+    if (fromHead.isPresent()) {
+      return fromHead;
+    }
+    return fromFormat(props.formatExtension(), vocabulary);
+  }
+
+  /**
+   * The one code {@code tokens} agree on under {@code match}, or empty when none matches or two
+   * different ones do - "lieber leer als geraten" applied per source, not across sources.
+   */
+  private static Optional<String> singleCode(
+      List<String> tokens, Function<String, Optional<String>> match) {
     Set<String> codes = new LinkedHashSet<>();
-    for (String token : fileNameTokens(fileName)) {
-      vocabulary.resolve(token).ifPresent(codes::add);
+    for (String token : tokens) {
+      match.apply(token).ifPresent(codes::add);
     }
     return codes.size() == 1 ? Optional.of(codes.iterator().next()) : Optional.empty();
+  }
+
+  /**
+   * The words of the Kopfbereich: the first heading and the opening of the body text, which {@link
+   * DocumentProperties} has already cut to its head - a word further down the document is never
+   * seen here, and can never become a Dokumentart. Matched exactly against the vocabulary, never
+   * through a Kompositum ending: running text is full of compounds that are no Dokumentart
+   * ("Tagesordnung", "in dieser Größenordnung").
+   */
+  private static List<String> headTokens(DocumentProperties props) {
+    StringBuilder head = new StringBuilder();
+    if (props.firstHeading() != null) {
+      head.append(props.firstHeading()).append('\n');
+    }
+    if (props.headText() != null) {
+      head.append(props.headText());
+    }
+    return textTokens(head.toString());
+  }
+
+  private static Optional<String> fromFormat(
+      String formatExtension, DocumentTypeVocabulary vocabulary) {
+    if (formatExtension == null) {
+      return Optional.empty();
+    }
+    String code = DOCUMENT_TYPE_BY_EXTENSION.get(formatExtension);
+    return code != null && vocabulary.containsCode(code) ? Optional.of(code) : Optional.empty();
   }
 
   private static Optional<ExtractedDate> extractDate(String fileName, DocumentProperties props) {
@@ -148,9 +216,11 @@ public final class CoreMetadataExtractor {
     if (heading.isPresent()) {
       return heading;
     }
-    Optional<ExtractedDate> fromName = parseDate(stripExtension(fileName), BareYearRule.ALLOWED);
-    if (fromName.isPresent()) {
-      return fromName;
+    if (!props.syntheticName()) {
+      Optional<ExtractedDate> fromName = parseDate(stripExtension(fileName), BareYearRule.ALLOWED);
+      if (fromName.isPresent()) {
+        return fromName;
+      }
     }
     if (props.modifiedAt() != null) {
       return Optional.of(ExtractedDate.day(props.modifiedAt()));
@@ -219,6 +289,15 @@ public final class CoreMetadataExtractor {
   private static List<String> fileNameTokens(String fileName) {
     String base = stripExtension(fileName);
     return List.of(FILE_NAME_TOKEN_SEPARATOR.split(base)).stream()
+        .filter(token -> !token.isBlank())
+        .toList();
+  }
+
+  private static List<String> textTokens(String text) {
+    if (text.isBlank()) {
+      return List.of();
+    }
+    return List.of(TEXT_TOKEN_SEPARATOR.split(text)).stream()
         .filter(token -> !token.isBlank())
         .toList();
   }
