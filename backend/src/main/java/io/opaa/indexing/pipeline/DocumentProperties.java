@@ -23,10 +23,13 @@ import java.util.TreeMap;
  * @param modifiedAt the format's last-modified property - never the filesystem timestamp
  * @param documentDate a date the format declares as the document's own date (a mail's Date header);
  *     ranks above every other date source
- * @param firstHeading the first level-1 heading of the text, if the format has headings
- * @param headText the opening of the body text, truncated to {@link #MAX_HEAD_TEXT_LENGTH}
- *     characters here rather than by the pipeline (#1263) - the Kopfbereich the Dokumentart may be
- *     read from, and the reason a word further down the document can never become one
+ * @param firstHeading the first level-1 heading of the text, if the format has headings - it may
+ *     sit anywhere in the document (a Markdown section, a PDF outline entry) and is therefore not
+ *     the title line
+ * @param titleLine the first non-blank line of the body text, reduced to that line and truncated to
+ *     {@link #MAX_TITLE_LINE_LENGTH} characters here rather than by the pipeline (#1289) - the only
+ *     line of the text a Dokumentart may be read from, and the reason a label line or a quotation
+ *     below it can never become one
  * @param formatExtension the routed format extension of the document ({@code ".pptx"}), lower-cased
  *     - attached centrally by {@code DocumentPipelineRunner} and {@code
  *     DocumentMetadataService#reextractFromFile} from {@link
@@ -43,13 +46,16 @@ public record DocumentProperties(
     LocalDate modifiedAt,
     LocalDate documentDate,
     String firstHeading,
-    String headText,
+    String titleLine,
     String formatExtension,
     boolean syntheticName,
     Map<String, String> frontmatter) {
 
-  /** Upper bound of {@link #headText}, in characters. */
-  public static final int MAX_HEAD_TEXT_LENGTH = 300;
+  /**
+   * Upper bound of {@link #titleLine}, in characters - a "line" a format hands over without any
+   * line break in it (a PDF page of running text) is no title beyond this length.
+   */
+  public static final int MAX_TITLE_LINE_LENGTH = 300;
 
   public static final DocumentProperties EMPTY =
       new DocumentProperties(null, null, null, null, null, null, null, false, Map.of());
@@ -57,7 +63,7 @@ public record DocumentProperties(
   public DocumentProperties {
     title = blankToNull(title);
     firstHeading = blankToNull(firstHeading);
-    headText = truncate(blankToNull(headText));
+    titleLine = truncate(DocumentTitleLine.of(titleLine));
     formatExtension = lowerCase(blankToNull(formatExtension));
     Map<String, String> normalized = new TreeMap<>();
     if (frontmatter != null) {
@@ -78,7 +84,7 @@ public record DocumentProperties(
         modifiedAt,
         documentDate,
         firstHeading,
-        headText,
+        titleLine,
         formatExtension,
         syntheticName,
         frontmatter);
@@ -91,7 +97,7 @@ public record DocumentProperties(
         modifiedAt,
         documentDate,
         firstHeading,
-        headText,
+        titleLine,
         formatExtension,
         syntheticName,
         frontmatter);
@@ -104,7 +110,7 @@ public record DocumentProperties(
         modifiedAt,
         documentDate,
         firstHeading,
-        headText,
+        titleLine,
         formatExtension,
         syntheticName,
         frontmatter);
@@ -117,7 +123,7 @@ public record DocumentProperties(
         modifiedAt,
         documentDate,
         firstHeading,
-        headText,
+        titleLine,
         formatExtension,
         syntheticName,
         frontmatter);
@@ -130,20 +136,20 @@ public record DocumentProperties(
         modifiedAt,
         documentDate,
         firstHeading,
-        headText,
+        titleLine,
         formatExtension,
         syntheticName,
         frontmatter);
   }
 
-  public DocumentProperties withHeadText(String headText) {
+  public DocumentProperties withTitleLine(String titleLine) {
     return new DocumentProperties(
         title,
         createdAt,
         modifiedAt,
         documentDate,
         firstHeading,
-        headText,
+        titleLine,
         formatExtension,
         syntheticName,
         frontmatter);
@@ -157,7 +163,7 @@ public record DocumentProperties(
         modifiedAt,
         documentDate,
         firstHeading,
-        headText,
+        titleLine,
         formatExtension,
         syntheticName,
         frontmatter);
@@ -170,7 +176,7 @@ public record DocumentProperties(
         modifiedAt,
         documentDate,
         firstHeading,
-        headText,
+        titleLine,
         formatExtension,
         syntheticName,
         frontmatter);
@@ -183,7 +189,7 @@ public record DocumentProperties(
         modifiedAt,
         documentDate,
         firstHeading,
-        headText,
+        titleLine,
         formatExtension,
         syntheticName,
         frontmatter);
@@ -229,15 +235,16 @@ public record DocumentProperties(
   }
 
   /**
-   * Cut back to the last word boundary at or before {@link #MAX_HEAD_TEXT_LENGTH}, never through a
-   * word: a cut behind a seeded Kompositum ending would turn a fragment into a match. A head whose
-   * limit falls inside a single unbroken token has no trustworthy boundary at all and is dropped.
+   * Cut back to the last word boundary at or before {@link #MAX_TITLE_LINE_LENGTH}, never through a
+   * word: a cut behind a seeded Kompositum ending would turn a fragment into a match. A title line
+   * whose limit falls inside a single unbroken token has no trustworthy boundary at all and is
+   * dropped.
    */
   private static String truncate(String value) {
-    if (value == null || value.length() <= MAX_HEAD_TEXT_LENGTH) {
+    if (value == null || value.length() <= MAX_TITLE_LINE_LENGTH) {
       return value;
     }
-    int end = MAX_HEAD_TEXT_LENGTH;
+    int end = MAX_TITLE_LINE_LENGTH;
     while (end > 0 && Character.isLetterOrDigit(value.charAt(end))) {
       end--;
     }

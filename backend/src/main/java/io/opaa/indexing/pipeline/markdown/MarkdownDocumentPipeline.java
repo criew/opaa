@@ -1,10 +1,10 @@
 package io.opaa.indexing.pipeline.markdown;
 
-import io.opaa.indexing.pipeline.DocumentHeadText;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.indexing.pipeline.DocumentTitleLine;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
 import java.io.IOException;
@@ -123,7 +123,7 @@ public class MarkdownDocumentPipeline implements DocumentPipeline {
         null,
         null,
         firstHeading,
-        DocumentHeadText.ofEvents(events),
+        DocumentTitleLine.ofEvents(events),
         null,
         false,
         frontmatterEntries(raw));

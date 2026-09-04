@@ -85,7 +85,7 @@ public class TikaFallbackPipeline implements DocumentPipeline {
       return DocumentPipelineResult.noExtractableText();
     }
     return DocumentPipelineResult.chunked(chunks)
-        .withProperties(DocumentProperties.EMPTY.withHeadText(headText(source, parsed)));
+        .withProperties(DocumentProperties.EMPTY.withTitleLine(titleLine(source, parsed)));
   }
 
   /**
@@ -100,8 +100,8 @@ public class TikaFallbackPipeline implements DocumentPipeline {
       return DocumentProperties.EMPTY;
     }
     try {
-      return DocumentProperties.EMPTY.withHeadText(
-          headText(source, documentService.parseDocument(source.file())));
+      return DocumentProperties.EMPTY.withTitleLine(
+          titleLine(source, documentService.parseDocument(source.file())));
     } catch (RuntimeException e) {
       log.warn("Could not read properties of {} via Tika", source.fileName(), e);
       return DocumentProperties.EMPTY;
@@ -110,23 +110,20 @@ public class TikaFallbackPipeline implements DocumentPipeline {
 
   /**
    * {@code null} for a source without a file: that is text extracted upstream, today an RSS entry's
-   * body (#1263). A Kopfbereich only names a Dokumentart if the document names <em>itself</em> - a
+   * body (#1263). A title line only names a Dokumentart if the document names <em>itself</em> - a
    * press release names the Satzung it reports about, and would inherit its Dokumentart.
    */
-  private static String headText(DocumentPipelineSource source, List<Document> parsed) {
+  private static String titleLine(DocumentPipelineSource source, List<Document> parsed) {
     if (source.file() == null) {
       return null;
     }
-    StringBuilder head = new StringBuilder();
     for (Document document : parsed) {
-      if (head.length() >= DocumentProperties.MAX_HEAD_TEXT_LENGTH) {
-        break;
-      }
-      if (document.getText() != null) {
-        head.append(document.getText()).append('\n');
+      String line = DocumentTitleLine.of(document.getText());
+      if (line != null) {
+        return line;
       }
     }
-    return DocumentHeadText.of(head.toString());
+    return null;
   }
 
   /**
