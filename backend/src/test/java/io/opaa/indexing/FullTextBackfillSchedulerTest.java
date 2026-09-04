@@ -25,7 +25,7 @@ class FullTextBackfillSchedulerTest {
 
   @BeforeEach
   void setUp() {
-    var properties = new IndexingProperties(1000, 0, 50, null, null, null, null, null, null, 0);
+    var properties = new IndexingProperties(1000, 0, 50, null, null, null, null, null, 0);
     scheduler = new FullTextBackfillScheduler(backfillService, properties);
   }
 

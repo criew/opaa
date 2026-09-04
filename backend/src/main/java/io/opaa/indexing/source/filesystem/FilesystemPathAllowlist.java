@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.filesystem;
 
-import io.opaa.indexing.IndexingProperties;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -8,9 +7,9 @@ import java.util.List;
  * Enforces the {@code FILESYSTEM} quellentyp's path allowlist (ADR-0018 Entscheidung 6): every
  * anlage-berechtigte caller may still choose {@code FILESYSTEM} as a quellentyp - no new role gates
  * that choice - but the {@code sourcePath} it configures must resolve underneath one of the
- * operator-configured base directories in {@link IndexingProperties#filesystemAllowlist()}. An
- * empty allowlist disables the FILESYSTEM quellentyp entirely - the safe default - rather than
- * falling back to "everything allowed".
+ * operator-configured base directories in {@link FilesystemProperties#allowlist()}. An empty
+ * allowlist disables the FILESYSTEM quellentyp entirely - the safe default - rather than falling
+ * back to "everything allowed".
  *
  * <p>Checked twice, deliberately: {@code io.opaa.library.KnowledgeLibraryService} enforces this at
  * creation and update time (a fast 400 for an operator who has not opened the directory), and
@@ -22,9 +21,9 @@ public class FilesystemPathAllowlist {
 
   private final List<Path> baseDirectories;
 
-  public FilesystemPathAllowlist(IndexingProperties properties) {
+  public FilesystemPathAllowlist(FilesystemProperties properties) {
     this.baseDirectories =
-        properties.filesystemAllowlist().stream().map(base -> Path.of(base).normalize()).toList();
+        properties.allowlist().stream().map(base -> Path.of(base).normalize()).toList();
   }
 
   /** Whether the operator has configured at least one base directory. */
