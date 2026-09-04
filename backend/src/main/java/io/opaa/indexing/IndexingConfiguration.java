@@ -23,6 +23,7 @@ import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
+import io.opaa.indexing.source.filesystem.FilesystemProperties;
 import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
 import io.opaa.indexing.source.rss.RssFeedParser;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
@@ -313,7 +314,7 @@ public class IndexingConfiguration {
   }
 
   @Bean
-  FilesystemPathAllowlist filesystemPathAllowlist(IndexingProperties properties) {
+  FilesystemPathAllowlist filesystemPathAllowlist(FilesystemProperties properties) {
     return new FilesystemPathAllowlist(properties);
   }
 

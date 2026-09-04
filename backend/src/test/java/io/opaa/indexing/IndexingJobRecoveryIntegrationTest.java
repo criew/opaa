@@ -52,7 +52,7 @@ class IndexingJobRecoveryIntegrationTest {
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
     registry.add(
-        "opaa.indexing.filesystem-allowlist", () -> documentDir.toAbsolutePath().toString());
+        "opaa.indexing.filesystem.allowlist", () -> documentDir.toAbsolutePath().toString());
   }
 
   @Autowired private MockMvc mockMvc;

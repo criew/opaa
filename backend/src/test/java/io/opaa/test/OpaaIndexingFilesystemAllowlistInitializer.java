@@ -6,7 +6,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.MapPropertySource;
 
 /**
- * Registers {@code opaa.indexing.filesystem-allowlist} for every class carrying {@link
+ * Registers {@code opaa.indexing.filesystem.allowlist} for every class carrying {@link
  * OpaaIndexingIntegrationTest}, pointing at the single, process-wide {@link
  * OpaaIndexingTestDirectory#BASE_DIR}.
  *
@@ -32,7 +32,7 @@ final class OpaaIndexingFilesystemAllowlistInitializer
             new MapPropertySource(
                 "opaaIndexingFilesystemAllowlist",
                 Map.of(
-                    "opaa.indexing.filesystem-allowlist",
+                    "opaa.indexing.filesystem.allowlist",
                     OpaaIndexingTestDirectory.BASE_DIR.toAbsolutePath().toString())));
   }
 }

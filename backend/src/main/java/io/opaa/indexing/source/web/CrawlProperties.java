@@ -21,7 +21,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     failure treatment. Also bounds the total number of directories a crawl visits: a
  *     directory-only symlink cycle would otherwise never grow {@code results} at all and be bounded
  *     by {@link #maxDepth} alone, up to {@code b^maxDepth} requests for a cycle with branching
- *     factor {@code b}. Default 5000. {@code 0} falls back to the default; a negative value is
+ *     factor {@code b}. Default 50 000. {@code 0} falls back to the default; a negative value is
  *     rejected outright.
  * @param maxFileSizeBytes the maximum number of bytes a single crawled entry may transfer before
  *     {@code BoundedDownloader#download} aborts it - enforced while streaming to disk, so neither
@@ -50,7 +50,7 @@ public record CrawlProperties(int maxDepth, int maxEntries, long maxFileSizeByte
       throw new IllegalArgumentException("maxEntries must not be negative, got " + maxEntries);
     }
     if (maxEntries == 0) {
-      maxEntries = 5000;
+      maxEntries = 50_000;
     }
     if (maxFileSizeBytes < 0) {
       throw new IllegalArgumentException(

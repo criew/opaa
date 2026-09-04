@@ -221,7 +221,7 @@ class AsyncIndexingExecutorTest {
         .parseDocument(file);
 
     IndexingProperties indexingProperties =
-        new IndexingProperties(1000, 0, 50, null, null, null, null, null, null, 1);
+        new IndexingProperties(1000, 0, 50, null, null, null, null, null, 1);
     FileProcessingService realFileProcessingService =
         new FileProcessingService(
             TestPipelineRegistries.fallbackOnly(
