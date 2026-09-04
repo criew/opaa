@@ -65,7 +65,7 @@ public class PdfDocumentPipeline implements DocumentPipeline {
   @Override
   public DocumentPipelineResult run(DocumentPipelineSource source) {
     if (source.file() == null) {
-      return DocumentPipelineResult.noContent();
+      return DocumentPipelineResult.parseFailed();
     }
     try (PDDocument doc = Loader.loadPDF(source.file().toFile())) {
       String fullText = new PDFTextStripper().getText(doc);
@@ -80,7 +80,7 @@ public class PdfDocumentPipeline implements DocumentPipeline {
       return chunkByPage(doc).withProperties(properties);
     } catch (IOException | RuntimeException e) {
       log.warn("Could not read PDF document {} via PDFBox", source.fileName(), e);
-      return DocumentPipelineResult.noContent();
+      return DocumentPipelineResult.parseFailed();
     }
   }
 

@@ -8,11 +8,16 @@ import org.springframework.ai.document.Document;
  * What a {@link DocumentPipeline} produced for one document: its chunks, plus the reason there are
  * none when a pipeline could not turn the source into anything indexable.
  *
- * <p>The three outcomes are the ones {@code FileProcessingService} has always distinguished, moved
- * behind the abstraction so that a format-specific pipeline decides them for its own format instead
- * of the caller re-deciding for every format (the open-closed criterion of
- * docs/features/ingestion-pipelines.md, Teil 1): a scan PDF is {@code NO_EXTRACTABLE_TEXT} because
- * the PDF pipeline says so, not because the caller knows about PDFs.
+ * <p>The outcomes are decided by the format-specific pipeline instead of by the caller re-deciding
+ * for every format (the open-closed criterion of docs/features/ingestion-pipelines.md, Teil 1): a
+ * scan PDF is {@code NO_EXTRACTABLE_TEXT} because the PDF pipeline says so, not because the caller
+ * knows about PDFs.
+ *
+ * <p>{@link Outcome#PARSE_FAILED} versus {@link Outcome#NO_CONTENT}/{@link
+ * Outcome#NO_EXTRACTABLE_TEXT} is the distinction "the source could not be read" versus "the source
+ * was read and is empty", and it is load-bearing for the caller: a document being re-indexed keeps
+ * its previous chunks on a parse failure and loses them on a legitimately empty new version
+ * (#1268). A pipeline that cannot tell the two apart reports {@code PARSE_FAILED}.
  *
  * @param chunks never {@code null}; empty for every outcome other than {@link Outcome#CHUNKED}
  * @param discoveredAttachments embedded objects (e.g. mail/archive attachments) this pipeline found
@@ -45,20 +50,26 @@ public record DocumentPipelineResult(
     /** At least one chunk was produced. */
     CHUNKED,
     /**
-     * The reader returned nothing at all - the document could not be parsed into any text. Maps to
-     * the generic failure, not to the "likely a scan" rejection.
-     *
-     * <p>A pipeline reports this by catching every {@link java.io.IOException}/{@link
-     * RuntimeException} its own parser can throw (a corrupt archive, a rejected XXE attempt, a
-     * DoS-hardening limit) and returning {@link #noContent()} with a single {@code log.warn} naming
-     * the document - never by letting the exception propagate out of {@link DocumentPipeline#run}.
-     * PDF, DOCX, PPTX, ODT, ODP and the XLSX/CSV/ODS pipeline (tabular) follow this contract
-     * (#1108); HTML, Markdown, mail and the Tika fallback pipeline (the catch-all for every format
-     * none of those claim, so a corrupt file is likeliest to reach it) still propagate an unchecked
-     * exception on a parse failure instead - a known, pre-existing gap outside this refactor's
-     * scope, not a model to copy for a new pipeline.
+     * The reader ran over the whole source and it holds nothing at all - an empty file, a document
+     * body without a single element. The source was readable; there is simply nothing in it.
      */
     NO_CONTENT,
+    /**
+     * The source could not be read at all - a corrupt container, a rejected XXE attempt, a
+     * DoS-hardening limit, a file the format's reader refuses. Distinct from {@link #NO_CONTENT}
+     * because nothing is known about the document's actual content: the caller must therefore not
+     * treat it as "the new version is empty".
+     *
+     * <p>A pipeline reports this by catching every {@link java.io.IOException}/{@link
+     * RuntimeException} its own parser can throw and returning {@link #parseFailed()} with a single
+     * {@code log.warn} naming the document - never by letting the exception propagate out of {@link
+     * DocumentPipeline#run}. PDF, DOCX, PPTX, ODT, ODP and the XLSX/CSV/ODS pipeline (tabular)
+     * follow this contract (#1108); HTML, Markdown and the Tika fallback pipeline (the catch-all
+     * for every format none of those claim, so a corrupt file is likeliest to reach it) still
+     * propagate an unchecked exception on a parse failure instead - a known, pre-existing gap, but
+     * one the caller handles identically since #1268.
+     */
+    PARSE_FAILED,
     /**
      * The document parsed, but carries no usable text - a PDF without a text layer (see {@link
      * TikaFallbackPipeline#isTextlessPdf}), or text that chunked down to nothing. Maps to {@code
@@ -115,6 +126,14 @@ public record DocumentPipelineResult(
   public static DocumentPipelineResult noContent() {
     return new DocumentPipelineResult(
         Outcome.NO_CONTENT, List.of(), List.of(), OptionalLong.empty(), DocumentProperties.EMPTY);
+  }
+
+  /**
+   * See {@link Outcome#PARSE_FAILED}: the source could not be read, so nothing is known about it.
+   */
+  public static DocumentPipelineResult parseFailed() {
+    return new DocumentPipelineResult(
+        Outcome.PARSE_FAILED, List.of(), List.of(), OptionalLong.empty(), DocumentProperties.EMPTY);
   }
 
   public static DocumentPipelineResult noExtractableText() {

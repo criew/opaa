@@ -79,7 +79,7 @@ public class OdpDocumentPipeline implements DocumentPipeline {
   @Override
   public DocumentPipelineResult run(DocumentPipelineSource source) {
     if (source.file() == null) {
-      return DocumentPipelineResult.noContent();
+      return DocumentPipelineResult.parseFailed();
     }
     OdpContentHandler handler =
         new OdpContentHandler(
@@ -94,13 +94,13 @@ public class OdpDocumentPipeline implements DocumentPipeline {
       // an IOException) is reported the same way as PDF/DOCX/PPTX/Tabular/ODT - see
       // DocumentPipelineResult's own Javadoc for the shared contract.
       log.warn("Could not read ODP document {}", source.fileName(), e);
-      return DocumentPipelineResult.noContent();
+      return DocumentPipelineResult.parseFailed();
     }
     if (!found) {
       // Not a genuine ODF ZIP (no content.xml entry at all) - the same "could not be parsed" case
       // OdtDocumentPipeline reports for a corrupt .odt, distinct from a well-formed but empty
       // presentation below.
-      return DocumentPipelineResult.noContent();
+      return DocumentPipelineResult.parseFailed();
     }
     if (handler.chunks().isEmpty() || !handler.anySlideHasText()) {
       // Covers both a genuinely empty <office:presentation/> (zero draw:page elements) and a

@@ -170,9 +170,10 @@ Weil ein hängender Lauf seine Bibliothek dauerhaft blockieren würde, gibt es z
 Ein abgebrochener Lauf lässt den bisherigen Bestand weitgehend stehen. Dokumente, die der Lauf
 bereits fertig verarbeitet hat, bleiben indiziert; Dokumente, die er noch nicht erreicht hat,
 bleiben auf dem alten Stand. Nur das eine Dokument, das gerade in Arbeit war, kann ohne Chunks
-zurückbleiben, weil die alten Chunks eines geänderten Dokuments vor dem Parsen entfernt werden
-(Abschnitt 5, Schritt 1; Ticket #1268 ändert das). Es steht dann nicht auf „indiziert" und wird
-im nächsten Lauf erneut verarbeitet, unabhängig von der Prüfsumme.
+zurückbleiben, und auch das nur noch, wenn der Abbruch genau zwischen dem Entfernen der alten
+Chunks und dem Schreiben der neuen fiel — seit #1268 ist das das Zeitfenster des Embedding-Aufrufs
+statt der gesamten Verarbeitung (Abschnitt 5, Schritt 6a). Es steht dann nicht auf „indiziert" und
+wird im nächsten Lauf erneut verarbeitet, unabhängig von der Prüfsumme.
 
 ## 4. Die Quellen: der Übergabepunkt an die Konnektoren
 
@@ -226,21 +227,23 @@ flowchart TB
     S1[1 Prüfsumme bilden<br/>Dokumentzeile suchen] --> Q{unverändert und<br/>zuletzt erfolgreich?}
     Q -- ja --> SK[übersprungen]
     Q -- nein --> S2[2 Speicherkontingent prüfen]
-    S2 --> S2b[2b alte Chunks entfernen<br/>bei geändertem Dokument]
-    S2b --> S3[3 Format erkennen<br/>und Pipeline wählen]
+    S2 --> S3[3 Format erkennen<br/>und Pipeline wählen]
     S3 --> S4[4 Parsen und Chunken<br/>in der Format-Pipeline]
     S4 --> R{Ergebnis}
-    R -- kein Inhalt --> FA[fehlgeschlagen,<br/>ohne Chunks]
-    R -- kein Text<br/>z. B. Scan-PDF --> NT[abgewiesen:<br/>kein extrahierbarer Text]
+    R -- Parsen gescheitert --> FP[fehlgeschlagen,<br/>alte Chunks bleiben]
+    R -- gelesen, aber leer --> FA[fehlgeschlagen,<br/>alte Chunks entfernt]
+    R -- kein Text<br/>z. B. Scan-PDF --> NT[abgewiesen: kein extrahierbarer<br/>Text, alte Chunks entfernt]
     R -- Chunks --> S5[5 Metadaten anreichern]
-    S5 --> S6[6 Embedden]
+    S5 --> S6b[6a alte Chunks entfernen<br/>bei geändertem Dokument]
+    S6b --> S6[6 Embedden]
     S6 --> S7[7 Vektor + Volltext schreiben<br/>eine Transaktion]
     S7 --> S8[8 Dokument als indiziert markieren]
     S4 -. gefundene Anhänge .-> AT[Anhänge als eigene<br/>Dokumente durch dieselbe Strecke]
 ```
 
-Schritt 2b steht bewusst im Bild: Die alten Chunks werden heute **vor** dem Parsen entfernt.
-Ticket #1268 dreht das um, sodass sie erst nach erfolgreicher Verarbeitung ersetzt werden.
+Schritt 6a steht bewusst im Bild: Seit #1268 werden die alten Chunks erst entfernt, wenn die neue
+Fassung geparst und gechunkt vorliegt — vorher geschah das direkt nach der Kontingentprüfung, also
+vor dem Parsen.
 
 ### Schritt 1: Prüfsumme und Identität
 
@@ -253,13 +256,16 @@ Hat sich der Inhalt geändert, bleibt die Dokumentzeile mit ihrer ID bestehen. N
 werden ausgetauscht. Dadurch überleben Verweise auf das Dokument, etwa aus Chat-Zitaten oder von
 Anhängen, eine Aktualisierung.
 
-**Heutiger Stand:** Die alten Chunks werden unmittelbar nach der Kontingentprüfung entfernt, also
-vor dem Parsen (Schritt 2b im Bild). Scheitert das Parsen der neuen Fassung, steht das Dokument
-bis zum nächsten erfolgreichen Lauf ohne Chunks im Bestand und ist als „fehlgeschlagen" markiert.
-Der Nachzug nach einem Pipeline-Update (Abschnitt 9) verfährt bereits anders und löscht die
-alten Chunks erst, wenn die neuen vorliegen. Ticket #1268 überträgt dieses Verhalten auf den
-regulären Weg: Der alte Stand bleibt durchsuchbar, bis die neue Fassung erfolgreich verarbeitet
-ist; nur bei einer legitim leeren oder textlosen neuen Fassung werden die Chunks entfernt.
+**Wann die alten Chunks verschwinden (seit #1268):** erst, wenn die neue Fassung tatsächlich
+geparst und gechunkt vorliegt (Schritt 6a im Bild) — vorher geschah das schon direkt nach der
+Kontingentprüfung. Scheitert das Parsen der neuen Fassung, bleibt der alte Stand durchsuchbar; das
+Dokument steht auf „fehlgeschlagen", behält aber seine Chunks und seine bisherige Chunk-Anzahl.
+Nur eine neue Fassung, die gelesen werden konnte und leer oder ohne extrahierbaren Text ist,
+entfernt die alten Chunks — dann ist „leer" eine Aussage über den neuen Inhalt, und die
+Chunk-Anzahl der Dokumentzeile steht auf 0. An der Chunk-Anzahl einer fehlgeschlagenen
+Dokumentzeile ist damit ablesbar, ob sie noch Chunks hat oder nicht — maßgeblich ist, ob gelöscht
+wurde, nicht der Grund des Fehlschlags: Auch ein Fehler beim Embedden oder Schreiben, also nach dem
+Löschen, hinterlässt eine 0.
 
 ### Schritt 2: Speicherkontingent
 
@@ -289,10 +295,12 @@ kann der Zuschnitt entlang dieser Struktur erfolgen.
 
 Was alle Pipelines gemeinsam haben:
 
-- Sie liefern eine Liste von **Chunks** mit Text und Strukturkontext, oder eines von zwei
-  Nicht-Ergebnissen: „kein Inhalt" (Parser lieferte nichts, zählt als Fehler) und „kein
-  extrahierbarer Text" (typisch für eingescannte PDFs ohne Textebene, zählt als Ablehnung, nicht
-  als Fehler).
+- Sie liefern eine Liste von **Chunks** mit Text und Strukturkontext, oder eines von drei
+  Nicht-Ergebnissen: „Parsen gescheitert" (die Quelle war nicht lesbar — beschädigte Datei,
+  abgewiesene Schutzgrenze; zählt als Fehler), „kein Inhalt" (die Quelle war lesbar und ist leer;
+  zählt ebenfalls als Fehler) und „kein extrahierbarer Text" (typisch für eingescannte PDFs ohne
+  Textebene, zählt als Ablehnung, nicht als Fehler). Die Unterscheidung der ersten beiden
+  entscheidet, ob die alten Chunks eines geänderten Dokuments stehen bleiben (Schritt 1).
 - Jeder Chunk trägt eine **Ortsangabe**, etwa „S. 3 · Abschn. Fristen › Verlängerung", die später
   im Zitat erscheint. Die Seitenzahl überlebt die Textextraktion nur, weil Seitenwechsel als
   Marker in den Text geschrieben und vor dem Embedden wieder entfernt werden.
@@ -360,6 +368,12 @@ Zuletzt wird die Dokumentzeile auf „indiziert" gesetzt, mit Chunk-Anzahl, Prü
 Zeitstempel. Das geschieht als bedingte Aktualisierung: Wurde das Dokument währenddessen
 gelöscht, werden die gerade geschriebenen Chunks wieder entfernt, statt eine Leiche
 zurückzulassen.
+
+> **Restfenster:** Das Entfernen der alten Chunks (Schritt 6a) und das Schreiben der neuen
+> (Schritt 7) liegen nicht in einer gemeinsamen Transaktion — dazwischen liegt der
+> Embedding-Aufruf. Stürzt der Prozess genau darin ab, hat das Dokument kurzzeitig keine Chunks,
+> während seine Zeile noch „indiziert" mit der alten Chunk-Anzahl zeigt. Der nächste Lauf
+> verarbeitet es erneut (Abschnitt 3.3). Alte und neue Chunks liegen nie gleichzeitig vor.
 
 ## 6. Anhänge: ein Dokument in einem Dokument
 

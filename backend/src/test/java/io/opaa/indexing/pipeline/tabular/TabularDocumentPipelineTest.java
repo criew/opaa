@@ -622,11 +622,11 @@ class TabularDocumentPipelineTest {
 
     DocumentPipelineResult result = pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.ods"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
-  void aZipWithoutAContentXmlEntryHasNoContent() throws IOException {
+  void aZipWithoutAContentXmlEntryIsAParseFailure() throws IOException {
     // #1108 review, finding 7: mirrors OdtDocumentPipelineTest/OdpDocumentPipelineTest's identical
     // case - not a genuine ODF ZIP, the same "could not be parsed" failure as a corrupt ZIP, not
     // the "parsed, but empty" NO_EXTRACTABLE_TEXT a well-formed empty spreadsheet gets below.
@@ -640,7 +640,7 @@ class TabularDocumentPipelineTest {
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofFile(file, "ohne-content-xml.ods"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
@@ -682,7 +682,7 @@ class TabularDocumentPipelineTest {
     DocumentPipelineResult result =
         tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.ods"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
@@ -715,7 +715,7 @@ class TabularDocumentPipelineTest {
     DocumentPipelineResult result =
         tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-zeilen.ods"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
