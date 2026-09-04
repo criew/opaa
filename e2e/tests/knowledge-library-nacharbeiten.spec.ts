@@ -419,9 +419,10 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
 
-    // No indexing run was triggered - the section itself must still render (with its empty state
-    // and without an upload widget, since this library was never given upload rights at all).
-    await expect(page.getByRole('heading', { name: 'Dokumente' })).toBeVisible()
+    // No indexing run was triggered - the documents area (the default tab since the tab layout)
+    // must still render, with its empty state and without an upload widget, since this library
+    // was never given upload rights at all.
+    await expect(page.getByRole('tab', { name: 'Dokumente' })).toBeVisible()
     await expect(page.getByText('Es sind noch keine Dokumente vorhanden.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Dateien hochladen' })).toHaveCount(0)
   })
@@ -456,6 +457,7 @@ test.describe('Quellkonfiguration bearbeiten (#516)', () => {
     await expect(page.getByRole('heading', { name: libraryName })).toBeVisible()
     createdLibraryIds.push(libraryIdFromCurrentUrl(page))
 
+    await page.getByRole('tab', { name: 'Indizierung' }).click()
     await page.getByRole('button', { name: 'Quellkonfiguration bearbeiten' }).click()
     const editDialog = page.getByRole('dialog')
     await expect(
@@ -483,6 +485,7 @@ test.describe('Quellkonfiguration bearbeiten (#516)', () => {
 
     // Reopening confirms the credentials are still considered present - had the blank field wiped
     // them, this would show the "keine Zugangsdaten hinterlegt" copy instead.
+    await page.getByRole('tab', { name: 'Indizierung' }).click()
     await page.getByRole('button', { name: 'Quellkonfiguration bearbeiten' }).click()
     await expect(
       page.getByRole('dialog').getByText(

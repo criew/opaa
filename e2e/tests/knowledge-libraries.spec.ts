@@ -153,6 +153,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
   test('5. Entzug wirkt', async ({ authenticatedPage: adminPage, regularUserPage: bPage }) => {
     await gotoLibraries(adminPage)
     await gotoLibraryDetail(adminPage, LIBRARY_NAME)
+    await adminPage.getByRole('tab', { name: 'Verwaltung' }).click()
     await adminPage.getByRole('button', { name: 'Rechte verwalten' }).click()
     adminPage.once('dialog', (dialog) => dialog.accept())
     await adminPage.getByRole('button', { name: 'Freigabe für Dev User entziehen' }).click()
@@ -208,6 +209,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
 
     await gotoLibraries(adminPage)
     await gotoLibraryDetail(adminPage, LIBRARY_NAME)
+    await adminPage.getByRole('tab', { name: 'Verwaltung' }).click()
     await adminPage.getByRole('button', { name: 'Rechte verwalten' }).click()
     await adminPage.getByRole('button', { name: 'Freigeben' }).click()
     await adminPage.getByRole('radio', { name: 'Gruppe' }).click()
