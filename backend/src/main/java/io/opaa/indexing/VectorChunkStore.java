@@ -1,6 +1,8 @@
 package io.opaa.indexing;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.BatchingStrategy;
@@ -82,6 +84,18 @@ public class VectorChunkStore {
     List<float[]> embeddings =
         embeddingModel.embed(chunks, EmbeddingOptions.builder().build(), batchingStrategy);
     vectorStoreWriter.writeEmbeddedChunks(chunks, embeddings);
+  }
+
+  /**
+   * Rewrites document-level metadata keys on every chunk of {@code documentId} without touching
+   * content or embedding (ADR-0024) - see {@link VectorStoreWriter#updateDocumentMetadata}. The
+   * path a metadata correction and the Bestandslauf take instead of re-indexing.
+   *
+   * @return the number of chunks updated
+   */
+  public int updateDocumentMetadata(
+      UUID documentId, Map<String, Object> values, Set<String> keysToClear) {
+    return vectorStoreWriter.updateDocumentMetadata(documentId, values, keysToClear);
   }
 
   /** Deletes every chunk (vector and full-text) carrying the given {@code document_id} metadata. */

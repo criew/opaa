@@ -4,6 +4,7 @@ import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.RepeatingHeaderChunk;
 import java.io.IOException;
@@ -114,7 +115,13 @@ public class OdpDocumentPipeline implements DocumentPipeline {
     if (masterSlideChunk != null) {
       chunks.add(0, masterSlideChunk);
     }
-    return DocumentPipelineResult.chunked(chunks);
+    return DocumentPipelineResult.chunked(chunks).withProperties(readProperties(source));
+  }
+
+  /** {@code meta.xml}'s title/dates (ADR-0024); ODP slides carry no heading hierarchy to read. */
+  @Override
+  public DocumentProperties readProperties(DocumentPipelineSource source) {
+    return OdfMetaProperties.read(source, odfProperties);
   }
 
   /**

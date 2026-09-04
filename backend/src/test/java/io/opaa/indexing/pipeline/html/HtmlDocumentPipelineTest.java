@@ -34,6 +34,25 @@ class HtmlDocumentPipelineTest {
     assertThat(pipeline.version()).isEqualTo((short) 1);
   }
 
+  /** ADR-0024: the page title and the first h1 are the HTML format's declared properties. */
+  @Test
+  void readsTheTitleAndTheFirstH1AsDocumentProperties() {
+    DocumentPipelineSource source =
+        DocumentPipelineSource.ofExtractedText(REALISTIC_PAGE, "seite.html");
+
+    io.opaa.indexing.pipeline.DocumentProperties properties = pipeline.readProperties(source);
+
+    assertThat(properties.title()).isEqualTo("Buergeramt");
+    assertThat(properties.firstHeading()).isNotBlank();
+    assertThat(REALISTIC_PAGE).contains("<h1>" + properties.firstHeading() + "</h1>");
+    assertThat(pipeline.run(source).properties()).isEqualTo(properties);
+    assertThat(
+            pipeline
+                .readProperties(DocumentPipelineSource.ofExtractedText("<p>nur Text</p>", "x.html"))
+                .title())
+        .isNull();
+  }
+
   // A realistic Government Site Builder-style page: nav, header, footer and a cookie banner
   // outside <main>, plus nested headings (h1 > h2 > h3) inside it.
   private static final String REALISTIC_PAGE =

@@ -3,6 +3,7 @@ package io.opaa.indexing.pipeline.html;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -142,7 +143,24 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
       // reports for content that reduces to nothing (see TabularDocumentPipeline#run).
       return DocumentPipelineResult.noExtractableText();
     }
-    return DocumentPipelineResult.chunked(chunks);
+    return DocumentPipelineResult.chunked(chunks).withProperties(properties(htmlDoc));
+  }
+
+  /** The {@code <title>} and the first {@code <h1>} (ADR-0024). */
+  @Override
+  public DocumentProperties readProperties(DocumentPipelineSource source) {
+    try {
+      return properties(parse(source));
+    } catch (UncheckedIOException e) {
+      return DocumentProperties.EMPTY;
+    }
+  }
+
+  private static DocumentProperties properties(org.jsoup.nodes.Document htmlDoc) {
+    Element h1 = htmlDoc.selectFirst("h1");
+    return DocumentProperties.EMPTY
+        .withTitle(htmlDoc.title())
+        .withFirstHeading(h1 == null ? null : h1.text());
   }
 
   private static org.jsoup.nodes.Document parse(DocumentPipelineSource source) {

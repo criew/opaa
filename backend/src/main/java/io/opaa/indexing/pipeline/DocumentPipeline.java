@@ -57,6 +57,17 @@ public interface DocumentPipeline {
   DocumentPipelineResult run(DocumentPipelineSource source);
 
   /**
+   * The raw metadata sources of {@code source} alone (ADR-0024) - what {@link #run} would attach as
+   * {@link DocumentPipelineResult#properties()}, without chunking. Lets the Bestandslauf re-read a
+   * document's core fields from its original file without re-chunking or re-embedding it. Never
+   * throws for a parse failure; returns {@link DocumentProperties#EMPTY} instead. Defaults to
+   * {@code EMPTY} for a pipeline whose format declares nothing usable.
+   */
+  default DocumentProperties readProperties(DocumentPipelineSource source) {
+    return DocumentProperties.EMPTY;
+  }
+
+  /**
    * Chunk metadata keys this pipeline may set on a produced chunk's own metadata (as opposed to
    * {@link ChunkPipelineMetadata}'s keys, which {@code storeChunks} writes itself on every chunk
    * regardless of any pipeline's declaration here) that {@code FileProcessingService#storeChunks}

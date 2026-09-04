@@ -3,6 +3,7 @@ package io.opaa.indexing.pipeline.office;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.RepeatingHeaderChunk;
 import java.io.IOException;
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.poi.ooxml.POIXMLProperties;
 import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFFieldRun;
@@ -123,21 +125,64 @@ public class DocxDocumentPipeline implements DocumentPipeline {
     if (headerFooterChunk != null) {
       chunks.add(0, headerFooterChunk);
     }
-    return DocumentPipelineResult.chunked(chunks);
+    return DocumentPipelineResult.chunked(chunks)
+        .withProperties(content.properties().withFirstHeading(firstTopLevelHeading(events)));
   }
 
-  private record DocxContent(List<IBodyElement> bodyElements, String headerFooterText) {}
+  /**
+   * The OOXML core properties (dc:title, created, modified) plus the first level-1 heading
+   * (ADR-0024), read without building the chunk stream.
+   */
+  @Override
+  public DocumentProperties readProperties(DocumentPipelineSource source) {
+    if (source.file() == null) {
+      return DocumentProperties.EMPTY;
+    }
+    DocxContent content = readDocxContent(source);
+    if (content == null) {
+      return DocumentProperties.EMPTY;
+    }
+    return content
+        .properties()
+        .withFirstHeading(firstTopLevelHeading(toEvents(content.bodyElements())));
+  }
+
+  private record DocxContent(
+      List<IBodyElement> bodyElements, String headerFooterText, DocumentProperties properties) {}
 
   /** {@code null} when the file could not be opened as a DOCX at all - reported as no content. */
   private static DocxContent readDocxContent(DocumentPipelineSource source) {
     try (InputStream in = Files.newInputStream(source.file())) {
       try (XWPFDocument document = new XWPFDocument(in)) {
-        return new DocxContent(document.getBodyElements(), headerFooterText(document));
+        return new DocxContent(
+            document.getBodyElements(), headerFooterText(document), coreProperties(document));
       }
     } catch (IOException | RuntimeException e) {
       log.warn("Could not read DOCX document {}", source.fileName(), e);
       return null;
     }
+  }
+
+  private static DocumentProperties coreProperties(XWPFDocument document) {
+    POIXMLProperties.CoreProperties core = document.getProperties().getCoreProperties();
+    return new DocumentProperties(
+        core.getTitle(),
+        DocumentProperties.toLocalDate(core.getCreated()),
+        DocumentProperties.toLocalDate(core.getModified()),
+        null,
+        null,
+        Map.of());
+  }
+
+  private static String firstTopLevelHeading(List<HeadingSectionSplitter.Event> events) {
+    for (HeadingSectionSplitter.Event event : events) {
+      if (event instanceof HeadingSectionSplitter.Heading heading
+          && heading.level() == 1
+          && !heading.title().isBlank()) {
+        return heading.title();
+      }
+    }
+    return null;
   }
 
   private static String headerFooterText(XWPFDocument document) {

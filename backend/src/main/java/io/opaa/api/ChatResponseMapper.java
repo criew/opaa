@@ -4,11 +4,13 @@ import io.opaa.api.dto.ChatDetail;
 import io.opaa.api.dto.ChatMessageResponse;
 import io.opaa.api.dto.ChatSummary;
 import io.opaa.api.dto.ChunkLocation;
+import io.opaa.api.dto.SourceMetadataEntry;
 import io.opaa.api.dto.SourceReference;
 import io.opaa.chat.Chat;
 import io.opaa.chat.ChatConversation;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
+import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.chat.ChatTurn;
 import java.util.List;
 
@@ -83,7 +85,27 @@ final class ChatResponseMapper {
         .mailFrom(source.getMailFrom())
         .mailTo(source.getMailTo())
         .mailSubject(source.getMailSubject())
-        .mailDate(source.getMailDate());
+        .mailDate(source.getMailDate())
+        .metadata(toMetadataEntries(source.getMetadata()));
+  }
+
+  /** An absent or empty list maps to null - the Beleg has nothing to render either way. */
+  private static List<SourceMetadataEntry> toMetadataEntries(
+      List<ChatSourceMetadataEntry> entries) {
+    if (entries == null || entries.isEmpty()) {
+      return null;
+    }
+    return entries.stream()
+        .map(
+            entry ->
+                new SourceMetadataEntry(
+                        entry.fieldKey(),
+                        entry.label(),
+                        entry.value(),
+                        entry.displayValue(),
+                        entry.origin())
+                    .datePrecision(entry.datePrecision()))
+        .toList();
   }
 
   private static List<ChunkLocation> toChunkLocations(List<ChatSourceLocation> locations) {

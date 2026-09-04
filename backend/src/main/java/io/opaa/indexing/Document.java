@@ -142,6 +142,14 @@ public class Document {
   @Column(name = "folder_id")
   private UUID folderId;
 
+  /**
+   * The {@code CoreMetadataExtractor#EXTRACTION_VERSION} that last ran over this document (ADR-
+   * 0024), or {@code null} when none ever did - the selection key of the Bestandslauf (#1067).
+   * Written only through {@link DocumentRepository#updateMetadataExtractionVersion}.
+   */
+  @Column(name = "metadata_extraction_version", insertable = false, updatable = false)
+  private Integer metadataExtractionVersion;
+
   protected Document() {}
 
   public Document(String fileName, String filePath, String contentType, Long fileSize) {
@@ -331,6 +339,10 @@ public class Document {
 
   public void setFolderId(UUID folderId) {
     this.folderId = folderId;
+  }
+
+  public Integer getMetadataExtractionVersion() {
+    return metadataExtractionVersion;
   }
 
   /**

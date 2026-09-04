@@ -1050,6 +1050,41 @@ Elternpfad allein sorgt bereits für Eindeutigkeit über verschiedene Mails hinw
 gilt dieselbe Regel rekursiv: Der `file_path` eines Anhangs einer weitergeleiteten Mail enthält
 bereits den synthetischen `file_path` dieser weitergeleiteten Mail selbst.
 
+**Das Original eines Anhangs wird beim Öffnen nachextrahiert, nicht beim Indizieren abgelegt**
+(#1239): Die Anhangsbytes existieren während der Indizierung nur als temporäre Datei. Fragt jemand
+über „Im Dokument öffnen" (`GET /documents/{id}/content`, `LibraryDocumentService#loadContent`) das
+Original eines Anhangsdokuments an, lädt OPAA das Original des Wurzel-Elterndokuments über den ganz
+normalen Weg seines Quelltyps (UPLOAD/FILESYSTEM von der Platte, HTTP_DIRECTORY/RSS_FEED über den
+Proxy-Abruf), lässt dieselbe Pipeline es erneut parsen und streamt den Anhang an dem im `file_path`
+kodierten Positionsindex; die gemeinsame Extraktion dafür ist `io.opaa.indexing.AttachmentExtractor`,
+die auch der selektive Re-Index nutzt — nur so ist die Extraktionsreihenfolge (und damit die Bedeutung
+des Index) dieselbe wie beim Indizieren, und es gelten dieselben Parse-Grenzen aus `MailProperties`.
+Verschachtelung ist kein Sonderfall: Jede Kettenstufe ist ein weiterer Extraktionsschritt. Der
+Positionsindex ist nur bei unveränderter Elterndatei aussagekräftig, deshalb muss der Dateiname des
+extrahierten Anhangs zum `file_name` der Zeile passen — sonst antwortet der Endpunkt mit demselben
+404 wie bei „kein Originaldokument verfügbar", statt fremde Bytes unter diesem Namen auszuliefern.
+Temporäre Dateien dieses Wegs werden beim Schließen des Antwortstroms gelöscht (Spring schließt die
+Ressource in jedem Fall, auch bei Abbruch durch den Client). Kein dauerhafter Zweitspeicher, keine
+doppelte Quotenzählung, gleiches Verhalten für alle Quelltypen.
+
+**Der Preis dieses Wegs, ausdrücklich benannt:** Ein Abruf parst die Elternnachricht vollständig,
+das heißt die Pipeline materialisiert dabei *alle* ihre Anlagen als temporäre Dateien (bis
+`max-attachments-per-message`, Vorgabe 50), nicht nur die angeforderte; bei Konnektor-Beständen
+kommt der vollständige Abruf des Elternoriginals in eine weitere temporäre Datei hinzu. Das läuft im
+synchronen Anfragepfad, ohne Cache und ohne Serialisierung, und ist von jedem VIEWER wiederholt und
+parallel auslösbar — spürbar als temporärer Plattenbedarf und als Last auf der Quelle. Ein Deckel
+oder Cache dafür ist bewusst offen und als eigenes Ticket erfasst (#1243), keine stillschweigende
+Annahme.
+
+**Nur ein Anhang ohne eigene Quellidentität wird nachextrahiert:** Ein Anhang aus dem
+`AttachmentSource.Download`-Schnitt (RSS heute, Confluence künftig) trägt zwar ebenfalls
+`parent_document_id`, hat als `file_path` aber seine echte Download-URL — er wird unverändert über
+den Proxy-Weg geliefert. Unterschieden wird deshalb an der Pfadform (`attachmentIndexIn` erkennt den
+eingebetteten Elternpfad), nicht am Vorhandensein eines Elterndokuments. Aus demselben Grund endet
+auch die Kettenwanderung an der ersten Stufe mit eigener Quellidentität: Eine per RSS
+heruntergeladene `.eml` ist Anlage ihres Eintrags **und** Elterndokument ihrer eigenen Mail-Anlagen —
+sie wird von ihrer URL geholt, statt aus dem Eintrag extrahiert zu werden.
+
 **Die Rekursionstiefe (Mail-in-Mail) lebt auf dem verallgemeinerten Anhangsweg, nicht mehr in dieser
 Pipeline** (ADR-0022, Entscheidung 6): `AttachmentIndexer` zählt die Verschachtelungstiefe über einen
 threadlokalen Zähler, sobald ein gemeldeter Anhang selbst wieder über `FileProcessingService

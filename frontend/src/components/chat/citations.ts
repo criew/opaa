@@ -212,3 +212,31 @@ export function formatMailSummary(source: SourceReference | undefined): string |
   ].filter((segment): segment is string => Boolean(segment))
   return segments.length > 0 ? `Mail ${segments.join(' — ')}` : undefined
 }
+
+/**
+ * #1066 (ADR-0024; Maintainer-Beschluss vom 04.09.2026 am Epic #1065): the Beleg's metadata line
+ * ("Dienstanweisung IT-Nutzung · Dienstanweisung · 12.03.2026"), rendered from the generic
+ * field-value list without any field knowledge - the backend supplies label, display text and
+ * origin per entry, and a library's own fields (#1071) simply appear as further entries. An
+ * empty field is not in the list, so it never renders (metadata-schema.md, Wirkstelle 3); a value
+ * a model derived is marked as such, so it never looks like a read one. `undefined` when the list
+ * is absent or empty, so callers omit the line entirely. Shared between {@code SourceFootnotes}
+ * and {@code SourceEvidenceDrawer}.
+ */
+export function formatMetadataLine(source: SourceReference | undefined): string | undefined {
+  const entries = source?.metadata
+  if (!entries || entries.length === 0) return undefined
+  return entries
+    .map((entry) => `${entry.displayValue}${entry.origin === 'DERIVED' ? ' (abgeleitet)' : ''}`)
+    .join(' · ')
+}
+
+/**
+ * #1066: the accessible name of the metadata line - every entry as "Label: Wert", so a screen
+ * reader hears what a sighted reader infers from the value alone.
+ */
+export function describeMetadata(source: SourceReference | undefined): string | undefined {
+  const entries = source?.metadata
+  if (!entries || entries.length === 0) return undefined
+  return entries.map((entry) => `${entry.label}: ${entry.displayValue}`).join(', ')
+}

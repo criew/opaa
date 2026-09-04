@@ -7,8 +7,11 @@ import io.opaa.chat.Chat;
 import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.ChatSourceLocation;
+import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.metadata.CoreMetadata;
+import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -60,6 +63,7 @@ public class QueryService {
   private final QueryProperties queryProperties;
   private final KnowledgeLibraryRepository knowledgeLibraryRepository;
   private final RerankModelRole rerankModelRole;
+  private final DocumentMetadataService documentMetadataService;
 
   public QueryService(
       RetrievalPipeline retrievalPipeline,
@@ -74,7 +78,8 @@ public class QueryService {
       QueryMetrics metrics,
       QueryProperties queryProperties,
       KnowledgeLibraryRepository knowledgeLibraryRepository,
-      RerankModelRole rerankModelRole) {
+      RerankModelRole rerankModelRole,
+      DocumentMetadataService documentMetadataService) {
     this.retrievalPipeline = retrievalPipeline;
     this.answerGenerationService = answerGenerationService;
     this.chatMemory = chatMemory;
@@ -88,6 +93,7 @@ public class QueryService {
     this.queryProperties = queryProperties;
     this.knowledgeLibraryRepository = knowledgeLibraryRepository;
     this.rerankModelRole = rerankModelRole;
+    this.documentMetadataService = documentMetadataService;
   }
 
   /**
@@ -240,9 +246,15 @@ public class QueryService {
                 Map<String, Integer> matchCounts = countMatchesPerDocument(relevantChunks);
                 Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId =
                     lookupSourceDocuments(relevantChunks);
+                Map<UUID, CoreMetadata> coreMetadataByDocId =
+                    lookupCoreMetadata(sourceDocumentsByDocId);
                 List<ChatSource> sources =
                     mapSources(
-                        relevantChunks, validatedCitations, matchCounts, sourceDocumentsByDocId);
+                        relevantChunks,
+                        validatedCitations,
+                        matchCounts,
+                        sourceDocumentsByDocId,
+                        coreMetadataByDocId);
 
                 log.debug(
                     "Citations found: {} validated, {} total sources",
@@ -515,6 +527,26 @@ public class QueryService {
   }
 
   /**
+   * The core metadata fields (ADR-0024) of every document {@link #lookupSourceDocuments} resolved,
+   * in one query - read from the document, never from the chunk, so every chunk of a document
+   * reports the same title/Dokumentart/Datum and the origin travels along. A lookup failure is
+   * logged and yields no core fields rather than failing the answer.
+   */
+  private Map<UUID, CoreMetadata> lookupCoreMetadata(
+      Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId) {
+    Set<UUID> ids =
+        sourceDocumentsByDocId.values().stream()
+            .map(io.opaa.indexing.Document::getId)
+            .collect(Collectors.toSet());
+    try {
+      return documentMetadataService.coreMetadataFor(ids);
+    } catch (RuntimeException e) {
+      log.warn("Core metadata lookup failed for {} source document(s)", ids.size(), e);
+      return Map.of();
+    }
+  }
+
+  /**
    * Logs the number of invalid citations found in this answer's response (#386) - deliberately a
    * single log line per answer, not a new metric: the issue's scope is the deterministic validation
    * itself, not new metrics infrastructure. Nothing is logged when every citation validated, so the
@@ -559,7 +591,8 @@ public class QueryService {
       List<Document> chunks,
       List<CitationValidator.ValidatedCitation> validatedCitations,
       Map<String, Integer> matchCounts,
-      Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId) {
+      Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId,
+      Map<UUID, CoreMetadata> coreMetadataByDocId) {
     Set<String> retrievedDocumentIds =
         chunks.stream()
             .map(c -> c.getMetadata().getOrDefault("document_id", "").toString())
@@ -596,6 +629,11 @@ public class QueryService {
                   Instant indexedAt = sourceDocument != null ? sourceDocument.getIndexedAt() : null;
                   String sourceEntryUrl =
                       sourceDocument != null ? sourceDocument.getSourceEntryUrl() : null;
+                  List<ChatSourceMetadataEntry> metadataEntries =
+                      sourceDocument != null
+                          ? ChatSourceMetadataEntry.fromCore(
+                              coreMetadataByDocId.get(sourceDocument.getId()))
+                          : List.of();
                   ChatSource reference =
                       new ChatSource(fileName, score, matches, cited)
                           .indexedAt(indexedAt)
@@ -613,7 +651,8 @@ public class QueryService {
                           .mailSubject(
                               mailMetadataValue(chunk, ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
                           .mailDate(
-                              mailMetadataValue(chunk, ChunkMailMetadata.MAIL_DATE_METADATA_KEY));
+                              mailMetadataValue(chunk, ChunkMailMetadata.MAIL_DATE_METADATA_KEY))
+                          .metadata(metadataEntries.isEmpty() ? null : metadataEntries);
                   return Map.entry(groupKey, reference);
                 })
             .collect(
@@ -748,6 +787,11 @@ public class QueryService {
         preferMailField(preferred.getMailSubject(), a.getMailSubject(), b.getMailSubject());
     String mergedMailDate =
         preferMailField(preferred.getMailDate(), a.getMailDate(), b.getMailDate());
+    // ADR-0024: schema metadata hangs on the document, so both sides carry the same list or none.
+    List<ChatSourceMetadataEntry> mergedMetadata =
+        preferred.getMetadata() != null
+            ? preferred.getMetadata()
+            : a.getMetadata() != null ? a.getMetadata() : b.getMetadata();
 
     if (shouldBeCited && !preferred.getCited()) {
       return new ChatSource(
@@ -765,7 +809,8 @@ public class QueryService {
           .mailFrom(mergedMailFrom)
           .mailTo(mergedMailTo)
           .mailSubject(mergedMailSubject)
-          .mailDate(mergedMailDate);
+          .mailDate(mergedMailDate)
+          .metadata(mergedMetadata);
     }
 
     preferred.setSourceEntryUrl(mergedSourceEntryUrl);
@@ -775,6 +820,7 @@ public class QueryService {
     preferred.setMailTo(mergedMailTo);
     preferred.setMailSubject(mergedMailSubject);
     preferred.setMailDate(mergedMailDate);
+    preferred.setMetadata(mergedMetadata);
     return preferred;
   }
 

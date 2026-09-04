@@ -3,6 +3,7 @@ package io.opaa.indexing.pipeline.markdown;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
 import java.io.IOException;
@@ -11,7 +12,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -26,8 +29,8 @@ import org.springframework.ai.document.Document;
  * <p>A YAML frontmatter block ({@code ---} ... {@code ---}) at the very start of the file, before
  * any heading, is metadata rather than content and is dropped instead of becoming a headingless
  * leading chunk; a {@code ---} anywhere else (e.g. a horizontal rule mid-document, or an
- * unterminated block at the start) is ordinary content. Frontmatter fields themselves are not
- * evaluated here (see #1107 for metadata extraction).
+ * unterminated block at the start) is ordinary content. Frontmatter fields are handed over
+ * uninterpreted via {@link DocumentProperties#frontmatter()} (ADR-0024).
  *
  * <p>Registered as a {@code DocumentPipeline} bean since #1103, replacing {@link
  * TikaFallbackPipeline} for {@code .md}: the retrieval-quality evaluation corpus is entirely
@@ -52,6 +55,9 @@ public class MarkdownDocumentPipeline implements DocumentPipeline {
 
   private static final Pattern FRONTMATTER_DELIMITER = Pattern.compile("^-{3}[ \\t]*$");
 
+  private static final Pattern FRONTMATTER_ENTRY =
+      Pattern.compile("^([A-Za-z0-9_\\-]+)[ \\t]*:[ \\t]*(\\S.*?)[ \\t]*$");
+
   @Override
   public String id() {
     return ID;
@@ -69,15 +75,70 @@ public class MarkdownDocumentPipeline implements DocumentPipeline {
 
   @Override
   public DocumentPipelineResult run(DocumentPipelineSource source) {
-    String text = stripLeadingFrontmatter(readText(source));
+    String raw = readText(source);
+    String text = stripLeadingFrontmatter(raw);
     if (text.isBlank()) {
       return DocumentPipelineResult.noContent();
     }
-    List<Document> chunks = HeadingSectionSplitter.chunk(toEvents(text), MAX_CUTTING_LEVEL);
+    List<HeadingSectionSplitter.Event> events = toEvents(text);
+    List<Document> chunks = HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL);
     if (chunks.isEmpty()) {
       return DocumentPipelineResult.noExtractableText();
     }
-    return DocumentPipelineResult.chunked(chunks);
+    return DocumentPipelineResult.chunked(chunks).withProperties(properties(raw, events));
+  }
+
+  /**
+   * The frontmatter's scalar entries verbatim plus the first level-1 heading (ADR-0024) - the eval
+   * corpus' {@code titel}/{@code dokumentart}/{@code stand_datum}/{@code fassung} keys reach the
+   * extractor this way, uninterpreted.
+   */
+  @Override
+  public DocumentProperties readProperties(DocumentPipelineSource source) {
+    String raw;
+    try {
+      raw = readText(source);
+    } catch (UncheckedIOException e) {
+      return DocumentProperties.EMPTY;
+    }
+    return properties(raw, toEvents(stripLeadingFrontmatter(raw)));
+  }
+
+  private static DocumentProperties properties(
+      String raw, List<HeadingSectionSplitter.Event> events) {
+    String firstHeading = null;
+    for (HeadingSectionSplitter.Event event : events) {
+      if (event instanceof HeadingSectionSplitter.Heading heading
+          && heading.level() == 1
+          && !heading.title().isBlank()) {
+        firstHeading = heading.title();
+        break;
+      }
+    }
+    return new DocumentProperties(null, null, null, null, firstHeading, frontmatterEntries(raw));
+  }
+
+  /**
+   * The {@code key: value} lines of a leading frontmatter block (same delimiter rule as {@link
+   * #stripLeadingFrontmatter}); nested YAML structures are skipped, values keep their quotes.
+   */
+  static Map<String, String> frontmatterEntries(String text) {
+    String[] lines = text.split("\n", -1);
+    if (lines.length == 0 || !FRONTMATTER_DELIMITER.matcher(stripCr(lines[0])).matches()) {
+      return Map.of();
+    }
+    Map<String, String> entries = new LinkedHashMap<>();
+    for (int i = 1; i < lines.length; i++) {
+      String line = stripCr(lines[i]);
+      if (FRONTMATTER_DELIMITER.matcher(line).matches()) {
+        return entries;
+      }
+      Matcher entry = FRONTMATTER_ENTRY.matcher(line);
+      if (entry.matches()) {
+        entries.put(entry.group(1), entry.group(2));
+      }
+    }
+    return Map.of();
   }
 
   /**

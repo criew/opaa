@@ -36,6 +36,7 @@ public final class ChatSource {
   private String mailTo;
   private String mailSubject;
   private String mailDate;
+  private List<ChatSourceMetadataEntry> metadata;
 
   public ChatSource() {}
 
@@ -105,6 +106,15 @@ public final class ChatSource {
    */
   public ChatSource mailDate(String mailDate) {
     this.mailDate = mailDate;
+    return this;
+  }
+
+  /**
+   * ADR-0024: the document's schema metadata as a generic list, core fields first; null when it
+   * carries none (or for a synthetic entry).
+   */
+  public ChatSource metadata(List<ChatSourceMetadataEntry> metadata) {
+    this.metadata = metadata;
     return this;
   }
 
@@ -231,5 +241,13 @@ public final class ChatSource {
 
   public void setMailDate(String mailDate) {
     this.mailDate = mailDate;
+  }
+
+  public List<ChatSourceMetadataEntry> getMetadata() {
+    return metadata;
+  }
+
+  public void setMetadata(List<ChatSourceMetadataEntry> metadata) {
+    this.metadata = metadata;
   }
 }
