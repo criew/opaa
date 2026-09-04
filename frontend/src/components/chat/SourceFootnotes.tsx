@@ -6,7 +6,7 @@ import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import type { CitationIndex } from './citations'
-import { citationRowId, formatMailSummary } from './citations'
+import { citationRowId, formatCoreMetadataLine, formatMailSummary, sourceLabel } from './citations'
 import type { SourceReference } from '../../types/api'
 import { fontFamily } from '../../theme/tokens'
 
@@ -103,6 +103,8 @@ function renderDocRow(
 ) {
   const indexedAtLabel = formatIndexedAt(doc.source?.indexedAt)
   const mailSummary = formatMailSummary(doc.source)
+  const label = sourceLabel(doc.source, doc.fileName)
+  const coreMetadataLine = formatCoreMetadataLine(doc.source)
   return (
     <Box
       key={doc.fileName}
@@ -141,9 +143,31 @@ function renderDocRow(
           {doc.numbers.join('·')}
         </Typography>
       )}
+      {/* #1066: the core-field title is the readable label when the document carries one; the
+          file name then moves to secondary text so it stays visible and searchable. */}
       <Typography component="span" sx={{ fontSize: 12, fontWeight: 500 }}>
-        {doc.fileName}
+        {label}
       </Typography>
+      {label !== doc.fileName && (
+        <Typography
+          component="span"
+          data-testid="source-file-name"
+          sx={{ fontSize: 12, color: 'text.secondary' }}
+        >
+          {doc.fileName}
+        </Typography>
+      )}
+      {/* #1066: Dokumentart and Datum/Stand (metadata-schema.md, Wirkstelle 3) - only the fields
+          that carry a value; a document without any shows no line at all. */}
+      {coreMetadataLine && (
+        <Typography
+          component="span"
+          data-testid="source-core-metadata"
+          sx={{ fontSize: 12, color: 'text.secondary' }}
+        >
+          {coreMetadataLine}
+        </Typography>
+      )}
       {/* #1164: the mail Kopfdaten summary ("Mail von …, TT.MM.JJJJ — Betreff"), only for a source
           whose retrieved chunk carried mail_* metadata. */}
       {mailSummary && (

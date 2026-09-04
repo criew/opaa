@@ -1,6 +1,86 @@
 import { describe, expect, test } from 'vitest'
-import { buildCitationIndex } from './citations'
+import {
+  buildCitationIndex,
+  formatCoreMetadataLine,
+  formatDocumentDate,
+  sourceLabel,
+} from './citations'
 import type { SourceReference } from '../../types/api'
+
+// #1066 (metadata-schema.md, Wirkstelle 3): the core-field line and label helpers shared by the
+// Fundstellen block and the Belegfenster.
+describe('formatDocumentDate', () => {
+  test('renders a day, a month and a year at their own precision', () => {
+    expect(formatDocumentDate('2026-03-12', 'DAY')).toBe('12.03.2026')
+    expect(formatDocumentDate('2026-03-01', 'MONTH')).toBe('März 2026')
+    expect(formatDocumentDate('2024-01-01', 'YEAR')).toBe('2024')
+  })
+
+  test('never shifts the day through a time zone', () => {
+    expect(formatDocumentDate('2026-01-01', 'DAY')).toBe('01.01.2026')
+    expect(formatDocumentDate('2026-12-31', 'DAY')).toBe('31.12.2026')
+  })
+})
+
+describe('formatCoreMetadataLine', () => {
+  const base: SourceReference = {
+    fileName: 'da.pdf',
+    relevanceScore: 1,
+    matchCount: 1,
+    cited: true,
+    indexedAt: null,
+    citationValid: true,
+  }
+
+  test('is undefined without core metadata or with every field empty', () => {
+    expect(formatCoreMetadataLine(undefined)).toBeUndefined()
+    expect(formatCoreMetadataLine({ ...base, coreMetadata: null })).toBeUndefined()
+    expect(
+      formatCoreMetadataLine({ ...base, coreMetadata: { title: 'Nur Titel' } }),
+    ).toBeUndefined()
+  })
+
+  test('joins only the fields that carry a value and marks derived ones', () => {
+    expect(
+      formatCoreMetadataLine({
+        ...base,
+        coreMetadata: {
+          documentTypeLabel: 'Vermerk',
+          documentTypeOrigin: 'DERIVED',
+          documentDate: '2026-03-12',
+          documentDatePrecision: 'DAY',
+          documentDateOrigin: 'MANUAL',
+        },
+      }),
+    ).toBe('Vermerk (abgeleitet) · Stand 12.03.2026')
+    expect(
+      formatCoreMetadataLine({
+        ...base,
+        coreMetadata: { documentDate: '2024-01-01', documentDatePrecision: 'YEAR' },
+      }),
+    ).toBe('Stand 2024')
+  })
+})
+
+describe('sourceLabel', () => {
+  test('prefers the title, falls back to the file name and marks a derived title', () => {
+    expect(sourceLabel(undefined, 'da.pdf')).toBe('da.pdf')
+    expect(
+      sourceLabel(
+        {
+          fileName: 'da.pdf',
+          relevanceScore: 1,
+          matchCount: 1,
+          cited: true,
+          indexedAt: null,
+          citationValid: true,
+          coreMetadata: { title: 'Dienstanweisung', titleOrigin: 'DERIVED' },
+        },
+        'da.pdf',
+      ),
+    ).toBe('Dienstanweisung (abgeleitet)')
+  })
+})
 
 function source(
   fileName: string,

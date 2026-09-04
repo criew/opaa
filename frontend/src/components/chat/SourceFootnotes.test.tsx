@@ -148,6 +148,84 @@ describe('SourceFootnotes', () => {
     })
   })
 
+  // #1066 (metadata-schema.md, Wirkstelle 3): the Beleg shows the core fields; an empty field is
+  // absent - never "ohne Angabe" - and a year-only date reads as "2024", not "01.01.2024".
+  describe('core metadata line', () => {
+    it('shows the title as the label, the file name secondary, and Dokumentart plus Stand', () => {
+      const citations = buildCitationIndex('Satz【source: doc-1#0 | 2026-03-12_da.pdf】', [
+        source('2026-03-12_da.pdf', true, {
+          documentId: 'doc-1',
+          coreMetadata: {
+            title: 'Dienstanweisung IT-Nutzung',
+            titleOrigin: 'DETERMINISTIC',
+            documentType: 'DIENSTANWEISUNG',
+            documentTypeLabel: 'Dienstanweisung',
+            documentTypeOrigin: 'DETERMINISTIC',
+            documentDate: '2026-03-12',
+            documentDatePrecision: 'DAY',
+            documentDateOrigin: 'DETERMINISTIC',
+          },
+        }),
+      ])
+
+      renderFootnotes(citations)
+
+      expect(screen.getByText('Dienstanweisung IT-Nutzung')).toBeVisible()
+      expect(screen.getByTestId('source-file-name')).toHaveTextContent('2026-03-12_da.pdf')
+      expect(screen.getByTestId('source-core-metadata')).toHaveTextContent(
+        'Dienstanweisung · Stand 12.03.2026',
+      )
+    })
+
+    it('omits every empty field and renders a year-only Stand as the bare year', () => {
+      const citations = buildCitationIndex('Satz【source: doc-1#0 | satzung.md】', [
+        source('satzung.md', true, {
+          documentId: 'doc-1',
+          coreMetadata: {
+            title: null,
+            documentType: null,
+            documentTypeLabel: null,
+            documentDate: '2024-01-01',
+            documentDatePrecision: 'YEAR',
+            documentDateOrigin: 'DETERMINISTIC',
+          },
+        }),
+      ])
+
+      renderFootnotes(citations)
+
+      expect(screen.getByText('satzung.md')).toBeVisible()
+      expect(screen.queryByTestId('source-file-name')).not.toBeInTheDocument()
+      expect(screen.getByTestId('source-core-metadata')).toHaveTextContent('Stand 2024')
+      expect(screen.getByTestId('source-core-metadata')).not.toHaveTextContent('01.01.2024')
+      expect(screen.queryByText(/ohne Angabe/)).not.toBeInTheDocument()
+    })
+
+    it('marks a derived value as such', () => {
+      const citations = buildCitationIndex('Satz【source: doc-1#0 | vermerk.pdf】', [
+        source('vermerk.pdf', true, {
+          documentId: 'doc-1',
+          coreMetadata: {
+            documentType: 'VERMERK',
+            documentTypeLabel: 'Vermerk',
+            documentTypeOrigin: 'DERIVED',
+          },
+        }),
+      ])
+
+      renderFootnotes(citations)
+
+      expect(screen.getByTestId('source-core-metadata')).toHaveTextContent('Vermerk (abgeleitet)')
+    })
+
+    it('shows no line at all for a document without core fields', () => {
+      renderFootnotes(indexWithDocs(1))
+
+      expect(screen.queryByTestId('source-core-metadata')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('source-file-name')).not.toBeInTheDocument()
+    })
+  })
+
   describe('"Im Dokument öffnen"', () => {
     it('calls openDocument with the documentId and file name for a local (UPLOAD/FILESYSTEM) original', async () => {
       const citations = buildCitationIndex('Satz【source: doc-1#0 | dienstanweisung.pdf】', [

@@ -151,6 +151,26 @@ export const mockQueryResponses: QueryResponse[] = [
         mailSubject: 'Bebauungsplan Nord',
         mailDate: '2026-03-14T09:15:00Z',
       },
+      {
+        // #1066: an uncited source with core metadata (VITE_ENABLE_MOCKS=true), so the mocked
+        // frontend shows the Fundstellen core-field line without a matching citation marker.
+        fileName: '2026-03-12_Dienstanweisung_IT-Nutzung.pdf',
+        relevanceScore: 0.1,
+        matchCount: 1,
+        indexedAt: '2026-03-13T08:00:00Z',
+        cited: false,
+        citationValid: true,
+        coreMetadata: {
+          title: 'Dienstanweisung zur IT-Nutzung',
+          titleOrigin: 'DETERMINISTIC',
+          documentType: 'DIENSTANWEISUNG',
+          documentTypeLabel: 'Dienstanweisung',
+          documentTypeOrigin: 'DETERMINISTIC',
+          documentDate: '2026-03-12',
+          documentDatePrecision: 'DAY',
+          documentDateOrigin: 'DETERMINISTIC',
+        },
+      },
     ],
     metadata: {
       model: 'gpt-4o',

@@ -198,6 +198,68 @@ export function citationRowId(messageId: string, docIndex: number): string {
  * account for this mismatch explicitly rather than assume the displayed date and the filtered
  * range agree bit-for-bit.
  */
+type CoreMetadata = NonNullable<SourceReference['coreMetadata']>
+
+/**
+ * #1066 (ADR-0024): a document date rendered at the precision it was read at - "12.03.2026",
+ * "März 2026" or just "2024" - never a padded "01.01.2024" for a year-only Fassung. The ISO date
+ * is split by hand rather than parsed through `Date`, so no time-zone shift can move the day.
+ */
+export function formatDocumentDate(
+  isoDate: string,
+  precision: CoreMetadata['documentDatePrecision'] | undefined,
+): string {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  if (precision === 'YEAR' || !month) {
+    return String(year)
+  }
+  if (precision === 'MONTH' || !day) {
+    return new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString('de-DE', {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    })
+  }
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('de-DE', {
+    dateStyle: 'medium',
+    timeZone: 'UTC',
+  })
+}
+
+/**
+ * #1066: the Beleg's core-field line ("Dienstanweisung · Stand 12.03.2026") next to the Fundort,
+ * shared between {@code SourceFootnotes} and {@code SourceEvidenceDrawer}. An empty field is
+ * simply absent - never "ohne Angabe" (metadata-schema.md, Wirkstelle 3) - and a value a model
+ * derived is marked as such, so it never looks like a read one. `undefined` when no field is set,
+ * so callers omit the line entirely. The title is not part of this line: it replaces the file name
+ * as the row's label (see {@link sourceLabel}).
+ */
+export function formatCoreMetadataLine(source: SourceReference | undefined): string | undefined {
+  const core = source?.coreMetadata
+  if (!core) return undefined
+  const derived = (origin: CoreMetadata['titleOrigin'] | undefined) =>
+    origin === 'DERIVED' ? ' (abgeleitet)' : ''
+  const segments = [
+    core.documentTypeLabel
+      ? `${core.documentTypeLabel}${derived(core.documentTypeOrigin)}`
+      : undefined,
+    core.documentDate
+      ? `Stand ${formatDocumentDate(core.documentDate, core.documentDatePrecision)}${derived(core.documentDateOrigin)}`
+      : undefined,
+  ].filter((segment): segment is string => Boolean(segment))
+  return segments.length > 0 ? segments.join(' · ') : undefined
+}
+
+/**
+ * #1066: the readable label of a source row - its core-field title when the document carries one,
+ * otherwise its file name. A derived title is marked as such.
+ */
+export function sourceLabel(source: SourceReference | undefined, fileName: string): string {
+  const title = source?.coreMetadata?.title
+  if (!title) return fileName
+  return source?.coreMetadata?.titleOrigin === 'DERIVED' ? `${title} (abgeleitet)` : title
+}
+
 export function formatMailSummary(source: SourceReference | undefined): string | undefined {
   if (!source?.mailFrom && !source?.mailTo && !source?.mailDate && !source?.mailSubject) {
     return undefined
