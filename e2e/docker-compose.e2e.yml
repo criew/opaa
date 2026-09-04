@@ -82,15 +82,14 @@ services:
       OPAA_AUTH_DEV_USERS_2_SUBJECT: dev-outsider
       OPAA_AUTH_DEV_USERS_2_EMAIL: outsider@opaa.local
       OPAA_AUTH_DEV_USERS_2_DISPLAY_NAME: Dev Outsider
-      # A fourth dev user, "dev-format-pipelines" (#1109): an account under which a scenario asks
-      # a chat question and asserts on which sources are cited (knowledge-libraries.spec.ts,
-      # space-chats.spec.ts) must never also receive a pure indexing upload from a different
-      # scenario - with the AI stub's deterministic embedding (every chunk equally "similar", see
-      # e2e/ai-stub/server.mjs's own comment) and no per-scenario chunk budget, an unrelated upload
-      # would crowd the citation-checking scenario's expected source out of the retrieved top-k,
-      # regardless of relevance. format-pipelines-upload.spec.ts uploads several documents purely
-      # to prove indexing succeeds and never asks a question, so it runs under this dedicated
-      # account instead of any of the three above.
+      # A fourth dev user, "dev-format-pipelines" (#1109): format-pipelines-upload.spec.ts uploads
+      # several documents purely to prove indexing succeeds and never asks a question, so it runs
+      # under this dedicated account instead of any of the three above - a second, retrieval-
+      # window-independent line of defense (#1152) that keeps a pure-upload scenario's documents
+      # out of a citation-checking scenario's readable corpus entirely, on top of e2e.env's
+      # OPAA_QUERY_TOP_K/OPAA_QUERY_FETCH_K already being sized to hold every account's own,
+      # never-cleaned-up corpus with headroom (see e2e/ai-stub/server.mjs's own comment on the
+      # deterministic embedding this guards against).
       OPAA_AUTH_DEV_USERS_3_SUBJECT: dev-format-pipelines
       OPAA_AUTH_DEV_USERS_3_EMAIL: format-pipelines@opaa.local
       OPAA_AUTH_DEV_USERS_3_DISPLAY_NAME: Dev Format Pipelines

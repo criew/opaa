@@ -19,10 +19,12 @@ import { test as base, expect, type Page } from '@playwright/test'
  * account's own grants (or lack of them) from other scenarios never accidentally decide the
  * outcome. `dev-format-pipelines` (#1109) is for scenarios that upload documents without asking
  * any chat question at all: with the AI stub's deterministic embedding (every chunk equally
- * "similar" regardless of content, see e2e/ai-stub/server.mjs), an upload into any of the other
- * three accounts risks crowding a *different*, citation-checking scenario's expected source out
- * of the retrieved top-k - `dev-outsider` included, since knowledge-libraries.spec.ts's own
- * negative scenarios already ask a question under that account too.
+ * "similar" regardless of content, see e2e/ai-stub/server.mjs) and e2e.env's own
+ * OPAA_QUERY_TOP_K/OPAA_QUERY_FETCH_K sized to hold every account's whole, never-cleaned-up
+ * corpus with headroom (#1152), an upload into any of the other three accounts no longer crowds a
+ * *different*, citation-checking scenario's expected source out of the retrieved window - this
+ * account stays a second, retrieval-window-independent line of defense that keeps a pure-upload
+ * scenario's documents out of a citation-checking scenario's readable corpus entirely.
  */
 const ADMIN_USER = 'dev-admin'
 const REGULAR_USER = 'dev-user'

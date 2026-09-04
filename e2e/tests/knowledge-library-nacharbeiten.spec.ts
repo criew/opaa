@@ -13,12 +13,9 @@ import type { APIRequestContext, Page } from '@playwright/test'
 // knowledge-libraries.spec.ts (siehe dort OWN_DOCUMENT_PATH's Kommentar), nur ohne den
 // Freigabe-Aspekt, den dieses Issue ausdrücklich nicht abdeckt.
 //
-// Dateiname bewusst "knowledge-library-..." (Singular): sortiert alphabetisch nach
-// "knowledge-libraries.spec.ts", dessen Szenario 2 sich sonst mit den hier angelegten,
-// admin-lesbaren Wegwerfdokumenten in die Quere käme (siehe #424, ai-stub liefert für jede Anfrage
-// denselben Embedding-Vektor) - jede Bibliothek dieser Datei räumt sich zusätzlich über
-// test.afterAll selbst wieder ab (siehe cleanupLibraries unten), das ist also nur die zweite,
-// unabhängige Absicherung.
+// Jede Bibliothek dieser Datei räumt sich über test.afterAll selbst wieder ab (siehe
+// cleanupLibraries unten) - kein anderes Szenario der Suite sieht ihre admin-lesbaren
+// Wegwerfdokumente also über das eigene test.describe-Ende hinaus.
 const runId = Date.now()
 
 // Mirrors frontend/src/services/devAuth.ts's DEV_USER_HEADER - not imported from there since e2e/

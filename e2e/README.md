@@ -176,15 +176,18 @@ erteilt wurde) — verwendet statt `dev-user`, dessen eigene Freigaben aus ander
 das Ergebnis verfälschen könnten.
 
 `dev-format-pipelines` ist für Szenarien, die Dokumente hochladen, ohne je eine Chatfrage zu
-stellen: Mit dem deterministischen Embedding des KI-Stubs (jeder Chunk gleich „relevant"
-unabhängig vom Inhalt) kann ein Upload in eines der drei anderen Konten das erwartete Ergebnis
-eines *anderen*, zitatprüfenden Szenarios aus den obersten Treffern verdrängen (siehe
-`format-pipelines-upload.spec.ts` und den zugehörigen Kommentar in `docker-compose.e2e.yml`). Als
-Faustregel gilt: **Wer hochlädt, ohne Zitate zu prüfen, nimmt `formatPipelinesPage`; wer unter
-einem zitat-prüfenden Konto hochlädt, sortiert die Datei weiterhin nach `knowledge-librar*`** (die
-Namenskonvention aus PR #554, siehe die Erläuterung bei `space-chats.spec.ts` unter „Szenarien"
-unten) — beide
-Mechanismen bestehen nebeneinander und lösen dasselbe Problem auf unterschiedlichen Ebenen.
+stellen (siehe `format-pipelines-upload.spec.ts` und den zugehörigen Kommentar in
+`docker-compose.e2e.yml`). Mit dem deterministischen Embedding des KI-Stubs (jeder Chunk gleich
+„relevant" unabhängig vom Inhalt, siehe „KI-Stub statt echtem Modell" unten) trägt `topK`/`fetchK`
+in dieser Suite keine fachliche Auswahl, sondern nur eine Fenstergröße — seit #1152 sind beide
+(`OPAA_QUERY_TOP_K`/`OPAA_QUERY_FETCH_K` in `e2e.env`) so groß bemessen, dass sie den kompletten,
+niemals aufgeräumten Bestand jedes Testkontos über die ganze Suite hinweg mit deutlicher Reserve
+fassen — ein Upload verdrängt damit kein anderes, zitatprüfendes Szenario mehr aus den obersten
+Treffern, unabhängig von der Ausführungsreihenfolge der Spec-Dateien. Die frühere
+Dateinamen-Konvention („nach `knowledge-librar*` sortieren", PR #554) ist damit entfallen; `dev-
+format-pipelines` bleibt als zweite, von der Fenstergröße unabhängige Verteidigungslinie bestehen
+— ein Konto, das nur hochlädt, trägt so überhaupt nichts zum lesbaren Bestand eines
+zitatprüfenden Kontos bei, selbst falls eine künftige Änderung das Fenster wieder verengen sollte.
 
 Einordnung dieser vier Nutzer neben den übrigen Testkonto-Mustern des Repos (Keycloak-Realm-Nutzer,
 Quellenzugangsdaten): [`docs/handbuch/deployment.md`, Abschnitt „Testkonten im
@@ -298,10 +301,10 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
 
 - `tests/knowledge-library-nacharbeiten.spec.ts` (#547) — vier zuvor nicht abgedeckte
   Verhaltensweisen aus der Nacharbeiten-Serie #514/#516/#517/#519, jede in eigener,
-  wegwerfbarer Bibliothek. Dateiname bewusst Singular ("library", nicht "libraries") und damit
-  alphabetisch _nach_ `knowledge-libraries.spec.ts` sortiert - siehe die Spec-Datei für die
-  Begründung (Reihenfolge schützt #424s Szenario 2 vor einem durch diese Datei aufgeblähten,
-  admin-lesbaren Bestand mit identischem ai-stub-Embedding-Vektor):
+  wegwerfbarer Bibliothek (Dateiname bewusst Singular, "library" statt "libraries", ursprünglich
+  auch damit begründet, alphabetisch _nach_ `knowledge-libraries.spec.ts` zu sortieren - seit
+  #1152 nicht mehr load-bearing, siehe "KI-Stub statt echtem Modell" oben, aber als natürlicher
+  Name unverändert geblieben):
   - Ein ~2-MB-PDF (zur Laufzeit mit `pdf-lib` erzeugt, nicht eingecheckt) wird durch den echten,
     containerisierten nginx hochgeladen und erfolgreich indiziert - Regressionsschutz für
     `client_max_body_size` in `frontend/nginx.conf` (#519).
@@ -356,16 +359,19 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   "Neuer Chat" gestarteter Chat im selben Space hält seinen eigenen, nach einem Neuladen weiterhin
   getrennten Verlauf und seine eigene, sticky `@`-Referenz.
 
-  Dateiname bewusst nicht `chats-in-spaces.spec.ts` (die ursprüngliche Wahl): der sortiert
-  alphabetisch _vor_ `knowledge-libraries.spec.ts`, und diese Datei legt selbst mehrere,
-  admin-lesbare Bibliotheken an. #424s Szenarien 1/2/5 laufen dann gegen einen bereits
-  aufgeblähten, unscoped-topK-durchsuchten Korpus — das ist exakt in CI aufgefallen (PR #554):
-  `wissensdokument.txt` fiel aus den Top-5-Treffern, weil identische ai-stub-Embeddings (siehe "KI-
-  Stub statt echtem Modell" oben) jeden zusätzlichen Chunk gleich relevant erscheinen lassen wie
-  den eigentlich gesuchten. `space-chats.spec.ts` sortiert dagegen _nach_ sowohl
-  `knowledge-libraries.spec.ts` als auch `knowledge-library-nacharbeiten.spec.ts` (`s` > `k`,
-  dasselbe Muster wie beim Nacharbeiten-Dateinamen oben) — #424s Szenarien laufen also gegen den
-  kleinstmöglichen Korpus, bevor diese Datei ihn selbst weiter aufbläht.
+  Dateiname bewusst nicht `chats-in-spaces.spec.ts` (die ursprüngliche Wahl, die alphabetisch
+  _vor_ `knowledge-libraries.spec.ts` sortiert hätte): diese Datei legt selbst mehrere,
+  admin-lesbare Bibliotheken an, und mit dem damaligen, auf Produktionswerte gesetzten
+  `OPAA_QUERY_TOP_K`/`OPAA_QUERY_FETCH_K` liefen #424s Szenarien 1/2/5 dann gegen einen bereits
+  aufgeblähten Korpus — das ist exakt in CI aufgefallen (PR #554): `wissensdokument.txt` fiel aus
+  den Top-5-Treffern, weil identische ai-stub-Embeddings (siehe "KI-Stub statt echtem Modell"
+  oben) jeden zusätzlichen Chunk gleich relevant erscheinen lassen wie den eigentlich gesuchten.
+  Seit #1152 fassen `OPAA_QUERY_TOP_K`/`OPAA_QUERY_FETCH_K` (`e2e.env`) den kompletten,
+  über die ganze Suite hinweg niemals aufgeräumten Bestand jedes Kontos mit deutlicher Reserve -
+  die Ausführungsreihenfolge der Spec-Dateien entscheidet also nicht mehr darüber, ob #424s
+  Szenarien einen bestimmten Treffer noch finden. Der Dateiname (`s` > `k`, sortiert nach sowohl
+  `knowledge-libraries.spec.ts` als auch `knowledge-library-nacharbeiten.spec.ts`) blieb trotzdem
+  unverändert, da er weiterhin ein zutreffender, beschreibender Name ist.
 
   Aus demselben Grund verwendet diese Datei ausschließlich eigene, in der gesamten Suite einmalige
   Fixture-Dateien (`demo/seed/e2e-data/test-documents/chatdokument-a.txt`/`chatdokument-b.txt`, nicht
