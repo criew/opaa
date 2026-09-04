@@ -80,7 +80,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
 
     AutoindexCrawlerService service =
         new AutoindexCrawlerService(
-            TargetAddressValidator.disabled(), new CrawlProperties(10, 100));
+            TargetAddressValidator.disabled(), new CrawlProperties(10, 100, 0));
 
     AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(
@@ -113,7 +113,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
     int maxDepth = 3;
     AutoindexCrawlerService service =
         new AutoindexCrawlerService(
-            TargetAddressValidator.disabled(), new CrawlProperties(maxDepth, 1000));
+            TargetAddressValidator.disabled(), new CrawlProperties(maxDepth, 1000, 0));
 
     AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(
@@ -165,7 +165,8 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
         });
 
     AutoindexCrawlerService service =
-        new AutoindexCrawlerService(TargetAddressValidator.disabled(), new CrawlProperties(10, 2));
+        new AutoindexCrawlerService(
+            TargetAddressValidator.disabled(), new CrawlProperties(10, 2, 0));
 
     AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(
@@ -200,7 +201,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
 
     AutoindexCrawlerService service =
         new AutoindexCrawlerService(
-            TargetAddressValidator.disabled(), new CrawlProperties(10, 100));
+            TargetAddressValidator.disabled(), new CrawlProperties(10, 100, 0));
 
     AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(

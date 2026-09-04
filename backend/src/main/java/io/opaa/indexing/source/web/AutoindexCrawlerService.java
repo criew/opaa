@@ -44,7 +44,7 @@ public class AutoindexCrawlerService {
   private final CrawlProperties crawlProperties;
 
   public AutoindexCrawlerService(TargetAddressValidator targetAddressValidator) {
-    this(targetAddressValidator, new CrawlProperties(0, 0));
+    this(targetAddressValidator, new CrawlProperties(0, 0, 0));
   }
 
   public AutoindexCrawlerService(
