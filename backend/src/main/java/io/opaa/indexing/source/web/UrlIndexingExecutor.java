@@ -391,11 +391,25 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     }
   }
 
-  /** The German run-protocol message for an entry cut off at {@link #crawlProperties}' size cap. */
+  /**
+   * The German run-protocol message for an entry cut off at {@link #crawlProperties}' size cap. The
+   * limit is named in the largest unit that still states it exactly, so a configured value below
+   * one MiB is never reported as "0 MiB".
+   */
   private String tooLargeMessage() {
     return "Datei überschreitet die zulässige Größe von "
-        + (crawlProperties.maxFileSizeBytes() / (1024 * 1024))
-        + " MiB und wurde nicht indiziert";
+        + formatByteLimit(crawlProperties.maxFileSizeBytes())
+        + " und wurde nicht indiziert";
+  }
+
+  private static String formatByteLimit(long bytes) {
+    if (bytes % (1024 * 1024) == 0) {
+      return (bytes / (1024 * 1024)) + " MiB";
+    }
+    if (bytes % 1024 == 0) {
+      return (bytes / 1024) + " KiB";
+    }
+    return bytes + " Byte";
   }
 
   /**

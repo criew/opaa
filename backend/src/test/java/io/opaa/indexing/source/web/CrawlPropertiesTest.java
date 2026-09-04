@@ -17,8 +17,10 @@ class CrawlPropertiesTest {
 
   @Test
   void theDefaultEntrySizeCapStaysBelowTheMarkLimitOfTikasPoifsDetection() {
-    // A cap at or above 128 MiB would leave the case #1236 exists for open: an OLE2 entry that is
-    // transferred in full only to be rejected afterwards by that detection limit.
+    // A cap at or above the markLimit would leave the case #1236 exists for open: an OLE2 entry
+    // transferred in full only to be rejected afterwards by that detection limit. 128 MiB is
+    // POIFSContainerDetector's own default (Tika 3.3.2, the pinned version);
+    // Tika exposes it only through a package-private field, hence the literal here.
     assertThat(CrawlProperties.DEFAULT_MAX_FILE_SIZE_BYTES).isLessThan(128L * 1024 * 1024);
   }
 

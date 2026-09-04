@@ -278,9 +278,10 @@ public final class SupportedDocumentFormats {
    * <p>The fallback does not resolve every container either: Tika's own {@code
    * POIFSContainerDetector} reads at most its {@code markLimit} (128 MiB by default) before
    * reporting the unresolved type again, so an OLE2 document larger than that stays rejected even
-   * with its complete bytes at hand. On the network path that case is out of reach in practice: the
-   * fetch itself is capped below that limit ({@code CrawlProperties#maxFileSizeBytes}, #1236), so
-   * such an entry is rejected while streaming rather than after a full transfer.
+   * with its complete bytes at hand. On the network path the fetch itself is capped ({@code
+   * CrawlProperties#maxFileSizeBytes}, #1236), by default below that limit - such an entry is then
+   * rejected while streaming rather than after a full transfer; an installation raising the cap
+   * past 128 MiB brings the case back.
    */
   public static ContentDecision decideForPrefix(
       String fileName, byte[] prefix, CompleteContent completeContent)

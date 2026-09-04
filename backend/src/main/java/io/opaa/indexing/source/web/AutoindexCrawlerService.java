@@ -229,6 +229,13 @@ public class AutoindexCrawlerService {
     return normalizeUrl(fullUrl).startsWith(normalizedBase);
   }
 
+  /**
+   * The upper bound on a single directory page, deliberately a fixed value rather than a further
+   * configuration knob: an autoindex listing of {@link CrawlProperties#maxEntries} entries stays
+   * far below this even with verbose markup, so an operator has no reason to tune it.
+   */
+  static final int MAX_LISTING_BYTES = 8 * 1024 * 1024;
+
   String fetchPage(HttpClient httpClient, String authHeader, String url)
       throws IOException, InterruptedException {
 
@@ -253,7 +260,20 @@ public class AutoindexCrawlerService {
       if (response.statusCode() != 200) {
         throw new IOException("HTTP " + response.statusCode() + " for URL: " + url);
       }
-      return new String(body.readAllBytes(), StandardCharsets.UTF_8);
+      // #1236 review, finding 7: a directory page is read under a fixed cap, never unbounded - a
+      // remote end streaming an endless text/html would otherwise grow the heap until an
+      // OutOfMemoryError kills the whole run instead of skipping one directory. An oversized page
+      // is an IOException like any other fetch failure: a subdirectory is then marked incomplete,
+      // the root fails the run with a message.
+      byte[] page = body.readNBytes(MAX_LISTING_BYTES + 1);
+      if (page.length > MAX_LISTING_BYTES) {
+        throw new IOException(
+            "Verzeichnisseite überschreitet die zulässige Größe von "
+                + (MAX_LISTING_BYTES / (1024 * 1024))
+                + " MiB: "
+                + url);
+      }
+      return new String(page, StandardCharsets.UTF_8);
     }
   }
 

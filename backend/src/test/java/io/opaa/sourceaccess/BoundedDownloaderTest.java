@@ -548,7 +548,7 @@ class BoundedDownloaderTest {
         .isInstanceOf(BoundedDownloader.AttachmentTooLargeException.class);
     assertThat(probeTempFiles())
         .as("an aborted transfer must not leave its temp file behind")
-        .isEqualTo(before);
+        .containsExactlyInAnyOrderElementsOf(before);
   }
 
   @Test
@@ -584,7 +584,7 @@ class BoundedDownloaderTest {
         .isInstanceOf(BoundedDownloader.AttachmentTooLargeException.class);
     assertThat(probeTempFiles())
         .as("an aborted transfer must not leave its temp file behind")
-        .isEqualTo(before);
+        .containsExactlyInAnyOrderElementsOf(before);
   }
 
   @Test
@@ -613,9 +613,10 @@ class BoundedDownloaderTest {
   }
 
   /**
-   * Every temp file this class' own {@link #CAP_TEST_SUFFIX} currently has in the shared temp
-   * directory - compared before and after a transfer, since a parallel build's files may sit there
-   * too.
+   * Every temp file carrying {@link #CAP_TEST_SUFFIX} currently in the shared temp directory,
+   * compared before and after a transfer so that files a parallel build left there beforehand do
+   * not count as this transfer's leftovers. Order is not compared - {@code Files.list} guarantees
+   * none.
    */
   private static List<Path> probeTempFiles() throws IOException {
     try (var entries = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {

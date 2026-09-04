@@ -25,11 +25,13 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     rejected outright.
  * @param maxFileSizeBytes the maximum number of bytes a single crawled entry may transfer before
  *     {@code BoundedDownloader#download} aborts it - enforced while streaming to disk, so neither
- *     the temp partition nor the heap ever holds more than this much of one entry, whether it is
- *     indexed or rejected afterwards (#1236). Default 104 857 600 (100 MiB): the same order as
- *     {@code MailProperties#maxMessageBytes}, and deliberately below the 128 MiB {@code markLimit}
- *     of Tika's POIFS container detection, past which an OLE2 entry would be rejected after a full
- *     transfer anyway. {@code 0} falls back to the default; a negative value is rejected outright.
+ *     the temp partition nor the transfer itself ever holds more than this much of one entry,
+ *     whether it is indexed or rejected afterwards (#1236). It bounds the heap only indirectly, by
+ *     bounding the input every later step works on. Default 104 857 600 (100 MiB): the same order
+ *     as {@code MailProperties#maxMessageBytes}, and deliberately below the 128 MiB {@code
+ *     markLimit} of Tika's POIFS container detection, past which an OLE2 entry would be rejected
+ *     after a full transfer anyway. {@code 0} falls back to the default; a negative value is
+ *     rejected outright.
  */
 @ConfigurationProperties(prefix = "opaa.indexing.crawl")
 public record CrawlProperties(int maxDepth, int maxEntries, long maxFileSizeBytes) {

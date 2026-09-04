@@ -280,7 +280,9 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
    `OPAA_INDEXING_CRAWL_MAX_ENTRIES`, siehe [Umgebungsvariablen](../handbuch/deployment.md#alle-umgebungsvariablen)),
    damit ein Zyklus auf dem Zielserver (z. B. eine Symlink-Schleife) nicht zu endloser Rekursion
    führt (#836). Ein durch eines dieser Limits abgeschnittener Lauf wird als solcher protokolliert,
-   nicht als Fehler behandelt.
+   nicht als Fehler behandelt. Die Verzeichnisseite selbst wird dabei nur bis zu einer festen
+   Obergrenze von 8 MiB gelesen — eine endlos streamende Antwort auf eine Verzeichnis-URL bringt
+   damit einen einzelnen Abruf zu Fall statt den ganzen Lauf (#1236).
 2. Die gefundenen Einträge werden auf die verarbeitbaren Dateitypen gefiltert (siehe
    [Welche Dateien OPAA verarbeitet](./data-indexing-rag.md#welche-dateien-opaa-verarbeitet)).
 3. Der **Änderungszeitpunkt aus der Liste** entscheidet, ob überhaupt geladen wird. Ein unverändertes
