@@ -50,10 +50,10 @@ export default function MetadataValueForm({
           <Checkbox
             checked={notDeterminable}
             disabled={disabled}
+            // The typed value is kept either way - only the state travels; the request body
+            // drops it (metadataValueRequestFor), so an accidental click costs no retyping.
             onChange={(e) =>
-              onChange(
-                e.target.checked ? { state: 'NOT_DETERMINABLE' } : { ...value, state: 'SET' },
-              )
+              onChange({ ...value, state: e.target.checked ? 'NOT_DETERMINABLE' : 'SET' })
             }
           />
         }

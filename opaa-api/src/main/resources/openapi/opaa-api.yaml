@@ -1600,9 +1600,11 @@ paths:
             documents GET /api/v1/libraries/{libraryId}/metadata/maintenance counts. A field marked
             "kein Wert ermittelbar" is not listed, which is what lets the list be emptied. Like q,
             the filter is bibliotheksweit (folders and breadcrumb are empty, folderId does not
-            scope it) and combines with q; an attachment without a value surfaces its top-level
-            parent and stays individually selectable inside the group. An unknown field key is
-            rejected with 400.
+            scope it) and combines with q. Unlike every other listing, it pages over document rows
+            rather than top-level documents: an attachment without a value is an entry of its own
+            and no document with a value is ever returned, so totalElements equals the anchor's
+            number and a Sammelzuweisung over the whole page cannot overwrite a maintained value.
+            An unknown field key is rejected with 400.
           schema:
             type: string
             example: document_date

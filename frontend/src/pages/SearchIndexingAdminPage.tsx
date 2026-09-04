@@ -48,6 +48,7 @@ import type {
   SearchPathStatusResponse,
   TrackedDocumentResponse,
 } from '../types/api'
+import { formatShare } from '../utils/labels'
 import { translateListLabel, translateStageNote } from '../utils/retrievalProtocolText'
 import { getSearchChunk } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
@@ -298,7 +299,7 @@ function MetadataBackfillCell({
         {backfill.fields
           .map(
             (field) =>
-              `${field.label} ${field.filledDocuments} (${Math.round(field.filledShare * 100)} %)`,
+              `${field.label} ${field.filledDocuments} (${formatShare(field.filledShare)})`,
           )
           .join(' · ')}
       </Typography>
@@ -313,9 +314,9 @@ function MetadataBackfillCell({
         {backfill.fields
           .map(
             (field) =>
-              `${field.label} ${field.documentsWithoutValue} ohne Wert (${Math.round(
-                field.missingShare * 100,
-              )} %)`,
+              `${field.label} ${field.documentsWithoutValue} ohne Wert (${formatShare(
+                field.missingShare,
+              )})`,
           )
           .join(' · ')}
       </Typography>

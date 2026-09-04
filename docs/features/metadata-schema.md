@@ -1014,9 +1014,12 @@ nennen; Bearbeiten bleibt beim Bearbeitungsrecht aus #1068.
 **Die Liste der N Dokumente.** `GET …/documents?missingMetadataField=<Feldschlüssel>` zeigt genau die
 gezählten Dokumente — bibliotheksweit wie eine Suche (der Anker zählt die ganze Bibliothek, eine
 Ordner-Einschränkung würde weniger zeigen als die genannte Zahl), mit `q` kombinierbar, ein
-unbekannter Feldschlüssel wird abgelehnt (400). Ein Anhang ohne Wert bringt sein Elterndokument in
-die Liste (dieselbe Regel wie bei einem Namenstreffer, ADR-0022) und bleibt in der Gruppe einzeln
-auswählbar, sodass die Mehrfachauswahl und die Sammelzuweisung aus #1068 unverändert greifen.
+unbekannter Feldschlüssel wird abgelehnt (400). Anders als jede andere Dokumentliste blättert sie
+**über Dokumentzeilen statt über Elterndokumente**: Ein Anhang ohne Wert ist ein eigener Eintrag,
+und kein Dokument mit Wert steht darin. Damit ist die Länge der Liste dieselbe Zahl wie der Anker,
+und „alle auf dieser Seite auswählen" plus Sammelzuweisung (#1068) kann keinen gepflegten Wert
+überschreiben — die Anhangsgruppierung aus ADR-0022 tritt in dieser einen Ansicht bewusst zurück,
+weil ein Elterndokument mit Wert sonst als Zeile erschiene, die niemand bearbeiten soll.
 
 **Anzeige.** In den Einstellungen der Bibliothek steht der Abschnitt „Metadaten-Pflege" über der
 Dokumentliste: je Feld „N Dokumente ohne Wert (x %)" (oder „vollständig gepflegt") mit einer

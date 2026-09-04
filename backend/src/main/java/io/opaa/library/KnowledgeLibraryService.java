@@ -815,42 +815,26 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * The Pflege-Anker's list (#1069): exactly the documents the anchor counts as "ohne Wert" for
-   * {@code fieldKey}, so a person can work the number down to zero from the anchor. Bibliotheksweit
-   * like a search - the anchor counts the whole library, so scoping the list to one folder would
-   * show fewer documents than the number promised - and combinable with {@code q}. An attachment
-   * without a value surfaces its top-level parent, the same way a name hit does (#1184), and stays
-   * individually selectable inside the group.
+   * The Pflege-Anker's list (#1069): exactly the document rows the anchor counts as "ohne Wert" for
+   * {@code fieldKey} - one entry per row, attachments included and listed in their own right, so
+   * the number in the anchor and the length of this list are the same figure and every entry a
+   * Sammelzuweisung touches is genuinely open. Bibliotheksweit like a search (the anchor counts the
+   * whole library) and combinable with {@code q}; folders and breadcrumb stay empty.
    */
   private LibraryDocumentPage listDocumentsWithoutMetadataValue(
       UUID libraryId, String q, String fieldKey, Pageable pageable) {
     if (CoreMetadataField.fromKey(fieldKey).isEmpty()) {
       throw new ValidationException("Unbekanntes Metadatenfeld: " + fieldKey);
     }
-    Set<UUID> attachmentRootIds =
-        q == null
-            ? Set.of()
-            : topLevelRootsOf(
-                documentRepository
-                    .findByLibraryIdAndParentDocumentIdIsNotNullAndFileNameContainingIgnoreCase(
-                        libraryId, q));
-    Set<UUID> missingRootIds =
-        topLevelRootsOf(
-            documentRepository.findAttachmentsWithoutMetadataValue(
-                libraryId, fieldKey, DocumentStatus.INDEXED));
     Page<Document> page =
-        documentRepository.searchTopLevelWithoutMetadataValue(
-            libraryId,
-            q == null ? "" : escapeLike(q),
-            attachmentRootIds,
-            missingRootIds,
-            fieldKey,
-            DocumentStatus.INDEXED,
-            pageable);
+        documentRepository.searchWithoutMetadataValue(
+            libraryId, q == null ? "" : escapeLike(q), fieldKey, DocumentStatus.INDEXED, pageable);
     Map<UUID, LibraryFolder> foldersById =
         LibraryFolderPaths.loadFoldersById(folderRepository, libraryId);
     return new LibraryDocumentPage(
-        withAttachments(page.getContent(), foldersById),
+        page.getContent().stream()
+            .map(document -> toLibraryDocumentEntry(document, foldersById))
+            .toList(),
         pageable.getPageNumber(),
         pageable.getPageSize(),
         page.getTotalElements(),

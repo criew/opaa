@@ -166,10 +166,11 @@ public class DocumentMetadataValue {
   /**
    * Records that a person found there is no value to find (#1069): the row stays, carries no value
    * and is only storable with origin {@code MANUAL} ({@code
-   * chk_document_metadata_values_not_determinable_is_manual}). No automatic extraction ever writes
-   * or clears it - {@link DocumentMetadataService} leaves every {@code MANUAL} row alone.
+   * chk_document_metadata_values_not_determinable_is_manual}) - package-private, so only {@link
+   * MetadataValueInput}'s manual path reaches it. No automatic extraction ever writes or clears it
+   * - {@link DocumentMetadataService} leaves every {@code MANUAL} row alone.
    */
-  public DocumentMetadataValue assignNotDeterminable() {
+  DocumentMetadataValue assignNotDeterminable() {
     clearValue();
     this.state = MetadataValueState.NOT_DETERMINABLE;
     return this;

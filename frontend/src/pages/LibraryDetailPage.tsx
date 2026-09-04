@@ -638,9 +638,13 @@ function LibraryDocumentsSection({
     parent: LibraryDocumentResponse
     attachments: LibraryDocumentResponse[]
   }[] = []
+  // #1069: the Pflege-Anker's list holds exactly the rows without a value - an attachment is a row
+  // of its own there and its parent may be absent, so grouping would nest it under an unrelated
+  // document. Every row stands for itself while the filter is active.
+  const isMissingFilterActive = Boolean(pageState?.missingMetadataField)
   for (const doc of documents) {
     const lastGroup = documentGroups[documentGroups.length - 1]
-    if (doc.parentDocumentId && lastGroup) {
+    if (!isMissingFilterActive && doc.parentDocumentId && lastGroup) {
       lastGroup.attachments.push(doc)
     } else {
       documentGroups.push({ parent: doc, attachments: [] })
@@ -697,6 +701,15 @@ function LibraryDocumentsSection({
     setAnchorRefreshToken((previous) => previous + 1)
     // A document that just got a value leaves the anchor's worklist - reload the same page.
     void loadDocuments(libraryId, {})
+  }
+
+  // #1069: a corrected document leaves the anchor - and, while its worklist is open, the list
+  // below too, so the number and the rows keep telling the same story.
+  function handleMetadataValueChanged() {
+    setAnchorRefreshToken((previous) => previous + 1)
+    if (missingFieldParam) {
+      void loadDocuments(libraryId, {})
+    }
   }
 
   // #1069: opens (or leaves) the anchor's worklist - the list is bibliotheksweit, so an open
@@ -1058,7 +1071,7 @@ function LibraryDocumentsSection({
             fileName={document.fileName}
             canEdit={canEditMetadata}
             refreshToken={metadataRefreshToken}
-            onValueChanged={() => setAnchorRefreshToken((previous) => previous + 1)}
+            onValueChanged={handleMetadataValueChanged}
           />
         )}
       </Fragment>

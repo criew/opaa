@@ -1456,23 +1456,25 @@ export const handlers = [
     let responseFolderId: string | null
 
     if (missingMetadataField) {
-      // #1069: the Pflege-Anker's list - bibliotheksweit like a search, narrowed to documents
-      // without a value for the field (a "kein Wert ermittelbar" mark is not empty), and
-      // combinable with q. An attachment without a value surfaces its top-level parent.
+      // #1069: the Pflege-Anker's list - bibliotheksweit like a search, one entry per document row
+      // without a value for the field (a "kein Wert ermittelbar" mark is not empty), attachments
+      // in their own right rather than grouped, so the list length equals the anchor's number.
       const isEmptyFor = (doc: LibraryDocumentResponse) =>
         ((mockDocumentMetadata[doc.id] ?? []).find(
           (field) => field.fieldKey === missingMetadataField,
         )?.state ?? 'EMPTY') === 'EMPTY'
-      const matchesQ = (doc: LibraryDocumentResponse) =>
-        !q || doc.fileName.toLowerCase().includes(q.toLowerCase())
-      filtered = topLevelDocuments.filter(
-        (doc) =>
-          (matchesQ(doc) || descendantsOf(doc.id).some(matchesQ)) &&
-          (isEmptyFor(doc) || descendantsOf(doc.id).some(isEmptyFor)),
+      const matching = allDocuments.filter(
+        (doc) => (!q || doc.fileName.toLowerCase().includes(q.toLowerCase())) && isEmptyFor(doc),
       )
-      folders = []
-      breadcrumb = []
-      responseFolderId = null
+      return HttpResponse.json({
+        items: matching.slice(page * size, page * size + size),
+        page,
+        size,
+        totalElements: matching.length,
+        folderId: null,
+        folders: [],
+        breadcrumb: [],
+      })
     } else if (q) {
       // Search is always bibliotheksweit, regardless of folderId (ADR-0020, Entscheidung 4) -
       // folders/breadcrumb stay empty, folderId is echoed back as null. A hit on an attachment's

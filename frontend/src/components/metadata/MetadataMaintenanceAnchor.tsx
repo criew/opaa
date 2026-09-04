@@ -6,6 +6,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { LibraryMetadataMaintenanceResponse } from '../../types/api'
 import { getLibraryMetadataMaintenance } from '../../services/api'
+import { formatShare } from '../../utils/labels'
 
 interface MetadataMaintenanceAnchorProps {
   libraryId: string
@@ -15,10 +16,6 @@ interface MetadataMaintenanceAnchorProps {
   onClearFilter: () => void
   // Bumped by the parent after any metadata change, so the counts are recomputed.
   refreshToken?: number
-}
-
-function percent(share: number): string {
-  return `${(share * 100).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`
 }
 
 // #1069 (metadata-schema.md, "Der Pflege-Anker"): per core field, how many of the library's
@@ -89,7 +86,7 @@ export default function MetadataMaintenanceAnchor({
                 ? 'vollständig gepflegt'
                 : `${field.documentsWithoutValue} ${
                     field.documentsWithoutValue === 1 ? 'Dokument' : 'Dokumente'
-                  } ohne Wert (${percent(field.missingShare)})`}
+                  } ohne Wert (${formatShare(field.missingShare)})`}
             </Typography>
             {field.notDeterminableDocuments > 0 && (
               <Typography variant="caption" color="text.secondary">

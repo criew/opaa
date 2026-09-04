@@ -6,11 +6,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
@@ -338,10 +340,14 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
   }
 
   private LibraryDocumentPage listWithoutValue(String fieldKey, CurrentUser caller) {
+    return listWithoutValue(fieldKey, caller, null);
+  }
+
+  private LibraryDocumentPage listWithoutValue(String fieldKey, CurrentUser caller, String q) {
     return libraryService.listDocuments(
         library.getId(),
         caller,
-        null,
+        q,
         null,
         fieldKey,
         PageRequest.of(0, 20, Sort.by(Sort.Order.asc("fileName"), Sort.Order.asc("id"))));
@@ -387,6 +393,22 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
 
   private Document indexed(String fileName) throws IOException {
     return indexedIn(library, fileName);
+  }
+
+  /** An indexed attachment row of {@code parent} - no file, only the row the anchor counts. */
+  private Document attachmentOf(Document parent, String fileName) {
+    Document attachment =
+        new Document(
+            fileName,
+            parent.getFilePath() + "!/" + fileName,
+            "application/pdf",
+            1L,
+            parent.getSourceType());
+    attachment.setLibraryId(library.getId());
+    attachment.setOrganizationId(Organization.DEFAULT_ID);
+    attachment.setParentDocumentId(parent.getId());
+    attachment.setStatus(DocumentStatus.INDEXED);
+    return documentRepository.save(attachment);
   }
 
   private Document lastDocument(String fileName) {
@@ -462,5 +484,70 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
       doc.getDocumentInformation().setTitle(title);
       doc.save(file.toFile());
     }
+  }
+
+  /**
+   * The anchor's promise in one assertion: its number and the length of its list are the same
+   * figure, over a mixed bestand of parents and attachments with and without a value. Everything
+   * the list shows is genuinely open, so selecting the whole page and assigning a value cannot
+   * overwrite a maintained one.
+   */
+  @Test
+  void theAnchorNumberEqualsTheLengthOfItsListForParentsAndAttachmentsAlike() throws IOException {
+    Document mail = indexed("Protokoll_Sitzung_2025-11.pdf");
+    Document attachmentWithValue = attachmentOf(mail, "anhang-mit-wert.pdf");
+    attachmentOf(mail, "anhang-ohne-wert.pdf");
+    indexed("Notiz_ohne_Art.pdf");
+    correctionService.setValue(
+        library.getId(),
+        attachmentWithValue.getId(),
+        "document_type",
+        MetadataValueInput.vocabulary("VERMERK"),
+        editor);
+
+    // The mail itself carries a Dokumentart from its file name; open are the two rows below.
+    MetadataFieldMaintenance anchor = anchorOf("document_type", bothLibraries);
+    assertThat(anchor.documentsWithoutValue()).isEqualTo(2);
+
+    LibraryDocumentPage page = listWithoutValue("document_type", bothLibraries);
+    assertThat(page.totalElements())
+        .as("the list holds exactly the documents the anchor counts")
+        .isEqualTo(anchor.documentsWithoutValue());
+    assertThat(page.documents())
+        .extracting(entry -> entry.document().getFileName())
+        .containsExactlyInAnyOrder("anhang-ohne-wert.pdf", "Notiz_ohne_Art.pdf");
+  }
+
+  @Test
+  void theListCombinesWithASearchTermAndRejectsAnUnknownField() throws IOException {
+    Document mail = indexed("Protokoll_Sitzung_2025-11.pdf");
+    attachmentOf(mail, "anhang-ohne-wert.pdf");
+    indexed("Notiz_ohne_Art.pdf");
+
+    assertThat(listWithoutValue("document_type", bothLibraries, "anhang").documents())
+        .extracting(entry -> entry.document().getFileName())
+        .containsExactly("anhang-ohne-wert.pdf");
+    assertThatThrownBy(() -> listWithoutValue("autor", bothLibraries))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Unbekanntes Metadatenfeld");
+  }
+
+  @Test
+  void deletingAThirdStateMarkPutsTheDocumentBackIntoTheAnchor() throws IOException {
+    Document document = indexed("Notiz_ohne_Art.pdf");
+    correctionService.setValue(
+        library.getId(),
+        document.getId(),
+        "document_type",
+        MetadataValueInput.notDeterminable(),
+        editor);
+    assertThat(anchorOf("document_type", bothLibraries).documentsWithoutValue()).isZero();
+
+    correctionService.deleteValue(library.getId(), document.getId(), "document_type", editor);
+
+    assertThat(anchorOf("document_type", bothLibraries).documentsWithoutValue()).isEqualTo(1);
+    assertThat(listWithoutValue("document_type", bothLibraries).documents())
+        .extracting(entry -> entry.document().getFileName())
+        .containsExactly("Notiz_ohne_Art.pdf");
   }
 }
