@@ -693,6 +693,7 @@ function LibraryDocumentsSection({
   // this the same way, see the document row rendering below).
   function navigateToFolder(folderId: string | null) {
     setSearchInput('')
+    setSelectedDocumentIds([])
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     // #822 review, finding 1: a search hit's folderPath link (or, in principle, a breadcrumb/folder
     // row for the folder already open) can name the very folder already loaded - the URL then does
@@ -1033,8 +1034,11 @@ function LibraryDocumentsSection({
     )
   }
 
+  // #1068: the selection is bound to the list the person is looking at - a folder, search or
+  // page change drops it, so "Feld setzen" never writes onto documents nobody sees.
   function handleSearchChange(value: string) {
     setSearchInput(value)
+    setSelectedDocumentIds([])
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     searchDebounceRef.current = setTimeout(() => {
       void loadDocuments(libraryId, { page: 0, q: value })
@@ -1042,6 +1046,7 @@ function LibraryDocumentsSection({
   }
 
   function handlePageChange(_event: unknown, newPage: number) {
+    setSelectedDocumentIds([])
     void loadDocuments(libraryId, { page: newPage - 1 })
   }
 

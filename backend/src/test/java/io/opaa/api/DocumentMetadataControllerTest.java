@@ -27,7 +27,6 @@ import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.DocumentMetadataCorrectionService;
 import io.opaa.indexing.metadata.DocumentMetadataFieldView;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
-import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.indexing.metadata.MetadataValueInput;
 import io.opaa.indexing.metadata.MetadataValueSnapshot;
 import io.opaa.indexing.metadata.MetadataValueState;
@@ -63,7 +62,6 @@ class DocumentMetadataControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private DocumentMetadataCorrectionService correctionService;
-  @MockitoBean private DocumentTypeVocabularyRepository vocabularyRepository;
   @MockitoBean private UserService userService;
 
   private final UUID libraryId = UUID.randomUUID();
@@ -281,7 +279,7 @@ class DocumentMetadataControllerTest {
 
   @Test
   void theVocabularyIsListedInDisplayOrder() throws Exception {
-    when(vocabularyRepository.findAllByOrderBySortOrderAsc())
+    when(correctionService.vocabulary())
         .thenReturn(
             List.of(
                 new DocumentTypeVocabularyEntry("SATZUNG_ORDNUNG", "Satzung/Ordnung", 10, Set.of()),

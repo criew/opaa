@@ -1639,6 +1639,9 @@ export const handlers = [
       if (!canManageMockLibrary(libraryId)) {
         return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
       }
+      if (!(mockLibraryDocuments[libraryId] ?? []).some((doc) => doc.id === documentId)) {
+        return HttpResponse.json({ error: 'Dokument nicht gefunden' }, { status: 404 })
+      }
       mockDocumentMetadata[documentId] = (mockDocumentMetadata[documentId] ?? []).filter(
         (item) => item.fieldKey !== String(params.fieldKey),
       )

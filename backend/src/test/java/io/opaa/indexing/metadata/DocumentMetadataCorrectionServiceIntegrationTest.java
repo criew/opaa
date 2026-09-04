@@ -261,6 +261,39 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
         .isEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION);
   }
 
+  /**
+   * The promise behind deleting a value: the field is empty, not locked - the next automatic
+   * extraction may fill it again. The Bestandslauf only selects documents whose extraction version
+   * is missing or outdated, so deleting has to reset that version or the promise is empty.
+   */
+  @Test
+  void aDeletedValueIsRefilledByTheNextBestandslauf() throws IOException {
+    Document document = indexed("2026-03-12_Dienstanweisung_IT-Nutzung.pdf");
+    assertThat(documentMetadataService.coreMetadataFor(document.getId()).documentTypeCode())
+        .isEqualTo("DIENSTANWEISUNG");
+
+    correctionService.deleteValue(library.getId(), document.getId(), "document_type", editor);
+    assertThat(valueRepository.findByDocumentIdAndFieldKey(document.getId(), "document_type"))
+        .isEmpty();
+    assertThat(
+            documentRepository
+                .findById(document.getId())
+                .orElseThrow()
+                .getMetadataExtractionVersion())
+        .as("a deleted value hands the document back to the Bestandslauf")
+        .isNull();
+
+    MetadataBackfillResult run =
+        backfillService.backfillBatch(Organization.DEFAULT_ID, library.getId(), 10);
+
+    assertThat(run.processedDocuments()).isEqualTo(1);
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isEqualTo("DIENSTANWEISUNG");
+    assertThat(core.documentTypeOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+    assertThat(chunkMetadata(document.getId()))
+        .allSatisfy(metadata -> assertThat(metadata).containsEntry("doc_type", "DIENSTANWEISUNG"));
+  }
+
   @Test
   void everySetAndDeleteRewritesTheFilterableChunkKeysInPlace() throws IOException {
     Document document = indexed("2026-03-12_Dienstanweisung_IT-Nutzung.pdf");
@@ -304,6 +337,7 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
       throws IOException {
     Document first = indexed("2026-03-12_Dienstanweisung_IT-Nutzung.pdf");
     Document second = indexed("Protokoll_Sitzung_2025-11.pdf");
+    Document third = indexed("Formular_Antrag.pdf");
     Document elsewhere = indexedIn(otherLibrary, "Vermerk_Haushalt.pdf");
     UUID unknown = UUID.randomUUID();
     // Already carries the target value by hand: counted as unchanged, no second event.
@@ -320,15 +354,24 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
             library.getId(),
             "document_type",
             MetadataValueInput.vocabulary("SATZUNG_ORDNUNG"),
-            List.of(first.getId(), second.getId(), elsewhere.getId(), unknown, first.getId()),
+            List.of(
+                first.getId(),
+                second.getId(),
+                third.getId(),
+                elsewhere.getId(),
+                unknown,
+                first.getId()),
             editor);
 
-    assertThat(result.updatedCount()).isEqualTo(1);
+    assertThat(result.updatedCount()).isEqualTo(2);
     assertThat(result.unchangedCount()).isEqualTo(1);
     assertThat(result.rejectedDocumentIds()).containsExactly(elsewhere.getId(), unknown);
     assertThat(result.correlationRef()).startsWith("metadata-bulk-");
-    assertThat(documentMetadataService.coreMetadataFor(first.getId()).documentTypeCode())
-        .isEqualTo("SATZUNG_ORDNUNG");
+    for (Document own : List.of(first, second, third)) {
+      CoreMetadata core = documentMetadataService.coreMetadataFor(own.getId());
+      assertThat(core.documentTypeCode()).isEqualTo("SATZUNG_ORDNUNG");
+      assertThat(core.documentTypeOrigin()).isEqualTo(MetadataOrigin.MANUAL);
+    }
     assertThat(documentMetadataService.coreMetadataFor(elsewhere.getId()).documentTypeCode())
         .as("a foreign document is never touched")
         .isNotEqualTo("SATZUNG_ORDNUNG");
@@ -336,12 +379,20 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
         auditEvents().stream()
             .filter(entry -> result.correlationRef().equals(entry.getCorrelationRef()))
             .toList();
-    assertThat(auditEvents()).hasSize(eventsBefore + 1);
-    assertThat(bulkEvents).hasSize(1);
-    assertThat(parse(bulkEvents.get(0).getAfter()))
-        .containsEntry("documentId", first.getId().toString())
-        .containsEntry("value", "SATZUNG_ORDNUNG")
-        .containsEntry("origin", "MANUAL");
+    // One event per changed document, none for the unchanged one, all under one correlationRef.
+    assertThat(auditEvents()).hasSize(eventsBefore + 2);
+    assertThat(bulkEvents).hasSize(2);
+    assertThat(bulkEvents)
+        .extracting(entry -> parse(entry.getAfter()).get("documentId"))
+        .containsExactlyInAnyOrder(first.getId().toString(), third.getId().toString());
+    assertThat(bulkEvents)
+        .allSatisfy(
+            entry -> {
+              assertThat(parse(entry.getAfter()))
+                  .containsEntry("value", "SATZUNG_ORDNUNG")
+                  .containsEntry("origin", "MANUAL");
+              assertThat(parse(entry.getBefore())).containsEntry("origin", "DETERMINISTIC");
+            });
     assertThatThrownBy(
             () ->
                 correctionService.bulkSetValue(

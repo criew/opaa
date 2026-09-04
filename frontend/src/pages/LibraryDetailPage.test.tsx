@@ -1260,6 +1260,32 @@ describe('LibraryDetailPage', () => {
       ).toBeInTheDocument()
       expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument()
     })
+
+    it('drops the selection when the list changes by page or search', async () => {
+      // The selection belongs to the list the person is looking at - never to documents that
+      // scrolled out of sight through a page change or a search.
+      mockGetLibraryDocuments.mockResolvedValue(pageOf(indexedDocuments, { totalElements: 45 }))
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelzuweisung' })
+      await user.click(
+        screen.getByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
+      )
+      expect(within(toolbar).getByText('1 ausgewählt')).toBeInTheDocument()
+
+      const pagination = screen.getByRole('navigation', { name: 'Dokumentenliste blättern' })
+      await user.click(within(pagination).getByRole('button', { name: /seite 2/i }))
+      await waitFor(() => expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument())
+
+      await user.click(
+        screen.getByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
+      )
+      expect(within(toolbar).getByText('1 ausgewählt')).toBeInTheDocument()
+      await user.type(screen.getByLabelText('Dokumente durchsuchen'), 'dienst')
+      expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument()
+    })
   })
 
   describe('"Original öffnen"', () => {

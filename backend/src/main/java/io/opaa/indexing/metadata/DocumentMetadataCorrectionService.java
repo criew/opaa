@@ -69,6 +69,15 @@ public class DocumentMetadataCorrectionService {
     this.auditEventRecorder = auditEventRecorder;
   }
 
+  /**
+   * The Dokumentart vocabulary in display order - schema, not an aggregate over documents, hence
+   * visible to every authenticated person (metadata-schema.md, Rechte-Invariante).
+   */
+  @Transactional(readOnly = true)
+  public List<DocumentTypeVocabularyEntry> vocabulary() {
+    return vocabularyRepository.findAllByOrderBySortOrderAsc();
+  }
+
   /** Every core field of the document, empty ones included, for anyone who may read the library. */
   @Transactional(readOnly = true)
   public List<DocumentMetadataFieldView> fieldsOf(

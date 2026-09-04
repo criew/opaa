@@ -1801,10 +1801,12 @@ paths:
       tags: [library]
       summary: >
         Remove the stored value of one core field (#1068). Removes the row whatever its origin, so
-        the field is empty again and the next automatic extraction may fill it - a lasting "there
-        is no value" is the third state of #1069, not a deletion. Same right as setting a value
-        (EDITOR or above); writes one audit event carrying the removed value. Deleting an already
-        empty field is a no-op that writes no event.
+        the field is empty again and the next automatic extraction may fill it: the document's
+        extraction version is cleared in the same transaction, which hands it back to the
+        Bestandslauf (POST /api/v1/admin/indexing/metadata-backfill) - a lasting "there is no
+        value" is the third state of #1069, not a deletion. Same right as setting a value (EDITOR
+        or above); writes one audit event carrying the removed value. Deleting an already empty
+        field is a no-op that writes no event.
       responses:
         "204":
           description: Value removed (or already absent)

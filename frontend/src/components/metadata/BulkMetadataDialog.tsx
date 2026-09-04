@@ -57,6 +57,9 @@ export default function BulkMetadataDialog({
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<BulkMetadataValueResponse | null>(null)
+  // Captured when the assignment is sent: the parent may clear its selection on onDone while the
+  // result step is still open, and the title must keep naming the count that was assigned.
+  const [submittedCount, setSubmittedCount] = useState<number | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -85,6 +88,7 @@ export default function BulkMetadataDialog({
   async function handleAssign() {
     setError(null)
     setSubmitting(true)
+    setSubmittedCount(documentIds.length)
     try {
       const response = await bulkSetDocumentMetadata(libraryId, {
         fieldKey,
@@ -106,7 +110,9 @@ export default function BulkMetadataDialog({
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Feld für {documentCountLabel(documentIds.length)} setzen</DialogTitle>
+      <DialogTitle>
+        Feld für {documentCountLabel(submittedCount ?? documentIds.length)} setzen
+      </DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           {error && <Alert severity="error">{error}</Alert>}

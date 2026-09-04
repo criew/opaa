@@ -216,8 +216,10 @@ public class DocumentMetadataService {
 
   /**
    * Removes the row of {@code field}, whatever its origin, so the field is empty again and the next
-   * extraction may fill it; chunk keys are rewritten in the same transaction. An already empty
-   * field is reported as unchanged.
+   * extraction may fill it: the document's extraction version is cleared in the same transaction,
+   * which is what puts it back into the Bestandslauf's selection (a file that never changes would
+   * otherwise never be read again). Chunk keys are rewritten in the same transaction; an already
+   * empty field is reported as unchanged.
    */
   public ManualValueChange deleteValue(UUID documentId, CoreMetadataField field) {
     return transactionTemplate.execute(
@@ -229,12 +231,16 @@ public class DocumentMetadataService {
           }
           MetadataValueSnapshot before = MetadataValueSnapshot.of(current);
           valueRepository.delete(current);
+          documentRepository.clearMetadataExtractionVersion(documentId);
           propagateToChunks(documentId, field);
           return new ManualValueChange(before, null, true);
         });
   }
 
-  /** The title is not a chunk key (ADR-0024, Entscheidung 5) - only the other two are rewritten. */
+  /**
+   * The title is not a chunk key (ADR-0024, Entscheidung 5) - only the other two are rewritten. The
+   * chunk keys carry codes, never labels, so no vocabulary is loaded here.
+   */
   private void propagateToChunks(UUID documentId, CoreMetadataField field) {
     if (field == CoreMetadataField.TITLE) {
       return;
@@ -242,7 +248,7 @@ public class DocumentMetadataService {
     valueRepository.flush();
     CoreMetadata core =
         toCoreMetadata(
-            valueRepository.findByDocumentId(documentId), vocabularyRepository.snapshot());
+            valueRepository.findByDocumentId(documentId), DocumentTypeVocabulary.empty());
     vectorChunkStore.updateDocumentMetadata(
         documentId, core.chunkMetadata(), CoreMetadataChunkKeys.ALL);
   }

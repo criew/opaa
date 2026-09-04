@@ -9,7 +9,6 @@ import io.opaa.api.dto.MetadataValueRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.metadata.DocumentMetadataCorrectionService;
-import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -32,13 +31,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class DocumentMetadataController {
 
   private final DocumentMetadataCorrectionService correctionService;
-  private final DocumentTypeVocabularyRepository vocabularyRepository;
 
-  public DocumentMetadataController(
-      DocumentMetadataCorrectionService correctionService,
-      DocumentTypeVocabularyRepository vocabularyRepository) {
+  public DocumentMetadataController(DocumentMetadataCorrectionService correctionService) {
     this.correctionService = correctionService;
-    this.vocabularyRepository = vocabularyRepository;
   }
 
   @GetMapping("/libraries/{libraryId}/documents/{documentId}/metadata")
@@ -90,7 +85,6 @@ public class DocumentMetadataController {
 
   @GetMapping("/metadata/document-types")
   public DocumentTypeVocabularyResponse listDocumentTypes() {
-    return DocumentMetadataResponseMapper.toVocabularyResponse(
-        vocabularyRepository.findAllByOrderBySortOrderAsc());
+    return DocumentMetadataResponseMapper.toVocabularyResponse(correctionService.vocabulary());
   }
 }

@@ -633,7 +633,11 @@ Bestandslauf (`DocumentMetadataCorrectionServiceIntegrationTest`). Ein identisch
 bereits steht, ist keine Änderung: nichts wird geschrieben, kein Ereignis entsteht.
 
 **Löschsemantik.** Löschen entfernt die Zeile unabhängig von ihrer Herkunft; das Feld ist danach
-**leer**, und die nächste automatische Extraktion darf es wieder befüllen. Eine Löschung ist keine
+**leer**, und die nächste automatische Extraktion darf es wieder befüllen — dafür setzt die Löschung
+in derselben Transaktion `documents.metadata_extraction_version` auf `NULL`, sodass der Bestandslauf
+das Dokument wieder auswählt und aus der unveränderten Datei neu extrahiert (abgesichert im
+Integrationstest; ein Konnektorlauf liest ein unverändertes Dokument sonst nie wieder). Eine
+`MANUAL`-Zeile eines anderen Feldes bleibt dabei unberührt. Eine Löschung ist keine
 Sperre — „hier gibt es dauerhaft keinen Wert" ist genau der dritte Zustand aus #1069 und wird dort als
 eigener Wert gesetzt, nicht als gelöschte Zeile nachgebildet. Die Regel „ein manuell gesetzter Wert
 wird nie überschrieben" gilt für gesetzte Werte; eine gelöschte Zeile ist kein gesetzter Wert.

@@ -319,6 +319,15 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   int updateMetadataExtractionVersion(@Param("id") UUID id, @Param("version") int version);
 
   /**
+   * Hands a document back to the Bestandslauf (#1068): a manually deleted core value must be
+   * re-extractable, and the run selects only documents without a current extraction version.
+   */
+  @Modifying
+  @Transactional
+  @Query("update Document d set d.metadataExtractionVersion = null where d.id = :id")
+  int clearMetadataExtractionVersion(@Param("id") UUID id);
+
+  /**
    * The connector counterpart to {@link #markIndexed(UUID, int, Instant)}, generalized for {@code
    * FileProcessingService#processFile}/{@code #processUrlFile}/{@code #processRssEntry}. Those
    * three paths only learn the checksum - and for URL/RSS sources, the remote's own {@code

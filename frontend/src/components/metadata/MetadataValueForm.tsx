@@ -71,6 +71,13 @@ export default function MetadataValueForm({
         required
         disabled={disabled}
         slotProps={{ inputLabel: { shrink: true } }}
+        helperText={
+          value.datePrecision === 'MONTH'
+            ? 'Bei Genauigkeit „Monat" zählt nur Monat und Jahr des Datums.'
+            : value.datePrecision === 'YEAR'
+              ? 'Bei Genauigkeit „Jahr" zählt nur das Jahr des Datums.'
+              : undefined
+        }
         sx={{ flexGrow: 1 }}
       />
       <FormControl sx={{ minWidth: 160 }} disabled={disabled}>
