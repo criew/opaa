@@ -1,0 +1,34 @@
+Content-Type: multipart/mixed; boundary="===============1184118411841184118=="
+MIME-Version: 1.0
+Subject: Foerderbescheid mit Anlagen
+From: Buergeramt <buergeramt@example.org>
+To: Sachbearbeitung <sachbearbeitung@example.org>
+Date: Wed, 02 Sep 2026 09:15:00 -0000
+
+--===============1184118411841184118==
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+
+Sehr geehrte Sachbearbeitung,
+
+anbei der Foerderbescheid samt Berechnungsanlage fuer den E2E-Fall zu Issue #1184:
+Eine Mail mit zwei Anhaengen muss in der Dokumentliste gruppiert dargestellt werden.
+
+Mit freundlichen Gruessen
+Buergeramt
+--===============1184118411841184118==
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="foerderbescheid-anlage-eins.txt"
+
+Anlage eins: Foerderbescheid ueber 1.200 Euro fuer das Projekt Lesefoerderung.
+--===============1184118411841184118==
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="foerderbescheid-anlage-zwei.txt"
+
+Anlage zwei: Berechnungsgrundlage der Foerdersumme nach Richtlinie 7.
+--===============1184118411841184118==--

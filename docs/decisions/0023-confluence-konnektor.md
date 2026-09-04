@@ -286,9 +286,13 @@ Entscheidung 5; umgesetzt mit #877 in `cleanupVanished`) und ist für Confluence
 dieser Bibliothek gehören, (b) aus Confluence stammen und (c) in der Auflistung der aktuell
 ausgewählten Spaces nicht mehr vorkommen. Ein Dokument eines abgewählten Spaces erfüllt (c) und
 verschwindet; ein Dokument einer *anderen* Confluence-Bibliothek gegen dieselbe Instanz erfüllt (a)
-nicht und bleibt unberührt. Anhänge folgen ADR-0022: Der Lauf meldet die Pfade aller angetroffenen
-Anhänge — auch die bereits vorhandener Anhänge einer unverändert übersprungenen Seite — in dieselbe
-Menge. Ein Vollabgleich, der **null** Dokumente antrifft, löscht bewusst nichts (bestehender
+nicht und bleibt unberührt. Anhänge folgen ADR-0022: Sie laufen über den verallgemeinerten Anhangsweg
+(`AttachmentIndexer`) und hängen per `parent_document_id` an ihrer Seite; nur der Download bleibt beim
+editionsbewussten Client (Zugangsdaten, Anfragebudget, Weiterleitungsregel). Der Lauf meldet die Pfade
+aller angetroffenen Anhänge in dieselbe Menge; die Anhänge einer Seite, deren Anhangsliste er nicht
+erneut geholt hat (übersprungen im fortgesetzten Lauf, nicht lesbar, fehlgeschlagen), und die
+Kind-Anhänge eines nicht erneut verarbeiteten Anhangs werden vor dem Abgleich aus der Datenbank
+ergänzt (ADR-0022, Entscheidung 3, Nachtragsfall). Ein Vollabgleich, der **null** Dokumente antrifft, löscht bewusst nichts (bestehender
 Failsafe in `StaleDocumentCleanupService`, weil ein leerer Bestand von einer nicht erreichbaren
 Quelle nicht zu unterscheiden ist); der Bestand einer vollständig geleerten Auswahl verschwindet über
 das Löschen der Bibliothek, nicht über einen Lauf.

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -6,6 +6,13 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import CircularProgress from '@mui/material/CircularProgress'
+import Dialog from '@mui/material/Dialog'
+import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
+import IconButton from '@mui/material/IconButton'
+import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
@@ -17,12 +24,16 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import PageHeading from '../components/a11y/PageHeading'
 import GlobalScopeNote from '../components/GlobalScopeNote'
 import SectionHead from '../components/SectionHead'
 
 import type {
+  ChunkInspectionResponse,
+  DocumentChunksResponse,
   LibraryIndexState,
   LibrarySearchStatusResponse,
   RetrievalCandidateOutcome,
@@ -38,14 +49,29 @@ import type {
   TrackedDocumentResponse,
 } from '../types/api'
 import { translateListLabel, translateStageNote } from '../utils/retrievalProtocolText'
+import { getSearchChunk } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useSearchAdminStore } from '../stores/searchAdminStore'
 
 const OWN_CONTEXT_VALUE = 'SELF'
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** A document key is only a loadable document id when it is a UUID; other keys stay plain text. */
+function isUuid(value: string) {
+  return UUID_PATTERN.test(value)
+}
+
 /** German singular/plural, so the page never says "1 Bibliotheken". */
 function plural(count: number, one: string, many: string) {
   return `${count} ${count === 1 ? one : many}`
+}
+
+function formatMetadataValue(value: unknown): string {
+  if (value == null) return '—'
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return JSON.stringify(value)
 }
 
 const ROLE_LABELS: Record<SearchModelRole, string> = {
@@ -157,6 +183,12 @@ function trackedDocumentMessage(tracked: TrackedDocumentResponse): {
           'Das ist ein Problem der Rangfolge, nicht der Indexierung.',
       }
   }
+}
+
+/** The two navigations every diagnosis row offers: open one chunk, or jump to its document. */
+interface ChunkNavigation {
+  onShowChunk: (chunkId: string) => void
+  onShowDocument: (documentId: string) => void
 }
 
 function ModelRoleCard({ role }: { role: SearchModelRoleStatusResponse }) {
@@ -271,7 +303,53 @@ function LibraryStatusTable({ libraries }: { libraries: LibrarySearchStatusRespo
   )
 }
 
-function StagePanel({ stage }: { stage: RetrievalStageResponse }) {
+/** The document cell of a diagnosis row: a link into the document's chunk list where the key is an id. */
+function DocumentTitleCell({
+  documentKey,
+  documentTitle,
+  onShowDocument,
+}: {
+  documentKey: string
+  documentTitle: string | null | undefined
+  onShowDocument: (documentId: string) => void
+}) {
+  const label = documentTitle ?? documentKey
+  if (!isUuid(documentKey)) {
+    return <TableCell>{label}</TableCell>
+  }
+  return (
+    <TableCell>
+      <Link
+        component="button"
+        type="button"
+        variant="body2"
+        onClick={() => onShowDocument(documentKey)}
+        sx={{ textAlign: 'left', wordBreak: 'break-word' }}
+      >
+        {label}
+      </Link>
+    </TableCell>
+  )
+}
+
+function ShowChunkButton({
+  chunkId,
+  onShowChunk,
+}: { chunkId: string } & Pick<ChunkNavigation, 'onShowChunk'>) {
+  return (
+    <IconButton size="small" aria-label="Chunk anzeigen" onClick={() => onShowChunk(chunkId)}>
+      <ArticleOutlinedIcon fontSize="small" />
+    </IconButton>
+  )
+}
+
+function StagePanel({
+  stage,
+  navigation,
+}: {
+  stage: RetrievalStageResponse
+  navigation: ChunkNavigation
+}) {
   return (
     <Accordion variant="outlined" disableGutters slotProps={{ heading: { component: 'h3' } }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -315,12 +393,17 @@ function StagePanel({ stage }: { stage: RetrievalStageResponse }) {
                   <TableCell>Liste</TableCell>
                   <TableCell align="right">Rang</TableCell>
                   <TableCell align="right">Wert</TableCell>
+                  <TableCell align="center">Chunk</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {stage.verdicts.map((verdict) => (
                   <TableRow key={`${verdict.chunkId}-${verdict.listLabel ?? 'fusioniert'}`}>
-                    <TableCell>{verdict.documentTitle ?? verdict.documentKey}</TableCell>
+                    <DocumentTitleCell
+                      documentKey={verdict.documentKey}
+                      documentTitle={verdict.documentTitle}
+                      onShowDocument={navigation.onShowDocument}
+                    />
                     <TableCell>{verdict.libraryName ?? '—'}</TableCell>
                     <TableCell>{OUTCOME_LABELS[verdict.outcome]}</TableCell>
                     <TableCell>{REASON_LABELS[verdict.reason]}</TableCell>
@@ -328,6 +411,12 @@ function StagePanel({ stage }: { stage: RetrievalStageResponse }) {
                     <TableCell align="right">{verdict.rank ?? '—'}</TableCell>
                     <TableCell align="right">
                       {verdict.value == null ? '—' : verdict.value.toFixed(4)}
+                    </TableCell>
+                    <TableCell align="center">
+                      <ShowChunkButton
+                        chunkId={verdict.chunkId}
+                        onShowChunk={navigation.onShowChunk}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -340,7 +429,13 @@ function StagePanel({ stage }: { stage: RetrievalStageResponse }) {
   )
 }
 
-function DiagnosisResult({ diagnosis }: { diagnosis: SearchDiagnosisResponse }) {
+function DiagnosisResult({
+  diagnosis,
+  navigation,
+}: {
+  diagnosis: SearchDiagnosisResponse
+  navigation: ChunkNavigation
+}) {
   return (
     <Box sx={{ mt: 3 }}>
       <SectionHead component="h3">Ergebnis</SectionHead>
@@ -359,7 +454,7 @@ function DiagnosisResult({ diagnosis }: { diagnosis: SearchDiagnosisResponse }) 
       )}
       <Stack spacing={1} sx={{ mb: 3 }}>
         {diagnosis.stages.map((stage) => (
-          <StagePanel key={stage.stage} stage={stage} />
+          <StagePanel key={stage.stage} stage={stage} navigation={navigation} />
         ))}
       </Stack>
       <SectionHead component="h3">Endauswahl</SectionHead>
@@ -375,19 +470,239 @@ function DiagnosisResult({ diagnosis }: { diagnosis: SearchDiagnosisResponse }) 
                 <TableCell align="right">Rang</TableCell>
                 <TableCell>Dokument</TableCell>
                 <TableCell>Bibliothek</TableCell>
+                <TableCell align="center">Chunk</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {diagnosis.finalSelection.map((entry) => (
                 <TableRow key={entry.chunkId}>
                   <TableCell align="right">{entry.rank}</TableCell>
-                  <TableCell>{entry.documentTitle ?? entry.documentKey}</TableCell>
+                  <DocumentTitleCell
+                    documentKey={entry.documentKey}
+                    documentTitle={entry.documentTitle}
+                    onShowDocument={navigation.onShowDocument}
+                  />
                   <TableCell>{entry.libraryName ?? '—'}</TableCell>
+                  <TableCell align="center">
+                    <ShowChunkButton chunkId={entry.chunkId} onShowChunk={navigation.onShowChunk} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableContainer>
+      )}
+    </Box>
+  )
+}
+
+/** Monospace, line breaks preserved: the chunk exactly as the index holds it, prefix included. */
+function ChunkContent({ content }: { content: string }) {
+  return (
+    <Box
+      component="pre"
+      sx={{
+        m: 0,
+        p: 1.5,
+        fontFamily: 'monospace',
+        fontSize: '0.8125rem',
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+        bgcolor: 'action.hover',
+        borderRadius: 1,
+        maxHeight: 420,
+        overflow: 'auto',
+      }}
+    >
+      {content}
+    </Box>
+  )
+}
+
+const CHUNK_DIALOG_TITLE_ID = 'chunk-preview-title'
+
+/**
+ * Lazy chunk preview: nothing is fetched until a row's "Chunk anzeigen" is clicked, and the fetched
+ * text leaves the DOM with the dialog rather than lingering hidden.
+ */
+function ChunkPreviewDialog({ chunkId, onClose }: { chunkId: string | null; onClose: () => void }) {
+  // Keyed by chunk id so a stale result never shows under a newly requested id; the loading state
+  // is simply "nothing loaded for this id yet".
+  const [loaded, setLoaded] = useState<{
+    chunkId: string
+    chunk?: ChunkInspectionResponse
+    error?: string
+  } | null>(null)
+
+  useEffect(() => {
+    if (chunkId == null) return
+    let cancelled = false
+    getSearchChunk(chunkId)
+      .then((chunk) => {
+        if (!cancelled) setLoaded({ chunkId, chunk })
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setLoaded({
+            chunkId,
+            error: err instanceof Error ? err.message : 'Chunk konnte nicht geladen werden',
+          })
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [chunkId])
+
+  const current = loaded !== null && loaded.chunkId === chunkId ? loaded : null
+  const chunk = current?.chunk ?? null
+  const error = current?.error ?? null
+
+  const metadataEntries = chunk
+    ? Object.entries(chunk.metadata).sort(([a], [b]) => a.localeCompare(b))
+    : []
+
+  return (
+    <Dialog
+      open={chunkId != null}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      scroll="paper"
+      aria-labelledby={CHUNK_DIALOG_TITLE_ID}
+    >
+      <DialogTitle id={CHUNK_DIALOG_TITLE_ID}>Chunk-Vorschau</DialogTitle>
+      <DialogContent dividers>
+        {error && <Alert severity="error">{error}</Alert>}
+        {!error && !chunk && (
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+            <CircularProgress size={20} />
+            <Typography variant="body2" color="text.secondary">
+              Chunk wird geladen …
+            </Typography>
+          </Stack>
+        )}
+        {chunk && (
+          <Stack spacing={2}>
+            <Box>
+              <Typography variant="body2">
+                Dokument: <strong>{chunk.documentTitle ?? '—'}</strong>
+              </Typography>
+              <Typography variant="body2">Bibliothek: {chunk.libraryName ?? '—'}</Typography>
+              <Typography variant="body2">Chunk-Index: {chunk.chunkIndex ?? '—'}</Typography>
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+                <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                  Chunk-ID: <code>{chunk.chunkId}</code>
+                </Typography>
+                <IconButton
+                  size="small"
+                  aria-label="Chunk-ID kopieren"
+                  onClick={() => void navigator.clipboard?.writeText(chunk.chunkId).catch(() => {})}
+                >
+                  <ContentCopyIcon fontSize="inherit" />
+                </IconButton>
+              </Stack>
+            </Box>
+            <Box>
+              <Typography component="h3" sx={{ fontSize: 14, fontWeight: 600, mb: 0.5 }}>
+                Inhalt
+              </Typography>
+              <ChunkContent content={chunk.content} />
+            </Box>
+            <Box>
+              <Typography component="h3" sx={{ fontSize: 14, fontWeight: 600, mb: 0.5 }}>
+                Metadaten
+              </Typography>
+              {metadataEntries.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  Zu diesem Chunk sind keine Metadaten gespeichert.
+                </Typography>
+              ) : (
+                <Table size="small" aria-label="Chunk-Metadaten">
+                  <TableBody>
+                    {metadataEntries.map(([key, value]) => (
+                      <TableRow key={key}>
+                        <TableCell component="th" scope="row" sx={{ width: '30%' }}>
+                          <code>{key}</code>
+                        </TableCell>
+                        <TableCell sx={{ wordBreak: 'break-word' }}>
+                          {formatMetadataValue(value)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </Box>
+          </Stack>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Schließen</Button>
+      </DialogActions>
+    </Dialog>
+  )
+}
+
+function DocumentChunkList({ document }: { document: DocumentChunksResponse }) {
+  const stored = document.chunks.length
+  return (
+    <Box sx={{ mt: 2 }}>
+      <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>
+        {document.documentTitle ?? document.documentId}
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+        Bibliothek: {document.libraryName ?? '—'} ·{' '}
+        {plural(stored, 'gespeicherter Chunk', 'gespeicherte Chunks')}, laut Dokument{' '}
+        {document.chunkCount}
+      </Typography>
+      {stored !== document.chunkCount && (
+        <Alert severity="warning" sx={{ mb: 1.5 }}>
+          Die Zahl der gespeicherten Chunks ({stored}) weicht von der im Dokument vermerkten Anzahl
+          ({document.chunkCount}) ab - der Index ist veraltet oder unvollständig geschrieben.
+        </Alert>
+      )}
+      {stored === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          Für dieses Dokument ist kein Chunk gespeichert.
+        </Typography>
+      ) : (
+        <Stack spacing={1}>
+          {document.chunks.map((chunk) => {
+            const location = chunk.metadata.location
+            return (
+              <Accordion
+                key={chunk.chunkId}
+                variant="outlined"
+                disableGutters
+                slotProps={{ heading: { component: 'h4' } }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Stack
+                    direction="row"
+                    spacing={1.5}
+                    sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}
+                  >
+                    <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
+                      Chunk {chunk.chunkIndex ?? '?'}
+                    </Typography>
+                    <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+                      {plural(chunk.content.length, 'Zeichen', 'Zeichen')}
+                    </Typography>
+                    {typeof location === 'string' && location !== '' && (
+                      <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+                        Fundort: {location}
+                      </Typography>
+                    )}
+                  </Stack>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <ChunkContent content={chunk.content} />
+                </AccordionDetails>
+              </Accordion>
+            )
+          })}
+        </Stack>
       )}
     </Box>
   )
@@ -401,12 +716,19 @@ export default function SearchIndexingAdminPage() {
   const diagnosis = useSearchAdminStore((s) => s.diagnosis)
   const diagnosisError = useSearchAdminStore((s) => s.diagnosisError)
   const running = useSearchAdminStore((s) => s.isRunningDiagnosis)
+  const documentChunks = useSearchAdminStore((s) => s.documentChunks)
+  const documentChunksError = useSearchAdminStore((s) => s.documentChunksError)
+  const loadingDocumentChunks = useSearchAdminStore((s) => s.isLoadingDocumentChunks)
   const loadStatus = useSearchAdminStore((s) => s.loadStatus)
   const runDiagnosis = useSearchAdminStore((s) => s.runDiagnosis)
+  const loadDocumentChunks = useSearchAdminStore((s) => s.loadDocumentChunks)
 
   const [question, setQuestion] = useState('')
   const [contextChoice, setContextChoice] = useState<string | null>(null)
   const [trackedDocumentId, setTrackedDocumentId] = useState('')
+  const [previewChunkId, setPreviewChunkId] = useState<string | null>(null)
+  const [documentIdInput, setDocumentIdInput] = useState('')
+  const documentChunksSectionRef = useRef<HTMLDivElement>(null)
 
   // Derived rather than set from an effect once the profiles arrive: the preselected context is a
   // permission profile wherever one exists, the caller's own context otherwise - never a person,
@@ -426,6 +748,17 @@ export default function SearchIndexingAdminPage() {
       permissionProfileId: contextType === 'PERMISSION_PROFILE' ? contextValue : undefined,
       trackedDocumentId: trackedDocumentId.trim() === '' ? undefined : trackedDocumentId.trim(),
     })
+  }
+
+  function showDocumentChunks(documentId: string) {
+    setDocumentIdInput(documentId)
+    void loadDocumentChunks(documentId)
+    documentChunksSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }
+
+  const navigation: ChunkNavigation = {
+    onShowChunk: setPreviewChunkId,
+    onShowDocument: showDocumentChunks,
   }
 
   if (!isSystemAdmin) {
@@ -492,7 +825,7 @@ export default function SearchIndexingAdminPage() {
         <LibraryStatusTable libraries={status?.libraries ?? []} />
       </Box>
 
-      <Box>
+      <Box sx={{ mb: 4 }}>
         <SectionHead>Diagnose</SectionHead>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Die Diagnose führt eine frisch eingegebene Testfrage im gewählten Rechtekontext aus und
@@ -551,8 +884,43 @@ export default function SearchIndexingAdminPage() {
             {diagnosisError}
           </Alert>
         )}
-        {diagnosis && <DiagnosisResult diagnosis={diagnosis} />}
+        {diagnosis && <DiagnosisResult diagnosis={diagnosis} navigation={navigation} />}
       </Box>
+
+      <Box ref={documentChunksSectionRef}>
+        <SectionHead>Chunks eines Dokuments</SectionHead>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Zeigt alle gespeicherten Chunks eines Dokuments in Reihenfolge - so, wie die
+          Indexierungs-Pipeline sie abgelegt hat, mit Zuschnitt, Kontextpräfix und Fundort. Ein
+          Klick auf einen Dokumenttitel in der Diagnose führt hierher.
+        </Typography>
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', maxWidth: 720 }}>
+          <TextField
+            label="Dokument-ID"
+            value={documentIdInput}
+            onChange={(e) => setDocumentIdInput(e.target.value)}
+            size="small"
+            fullWidth
+          />
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => showDocumentChunks(documentIdInput.trim())}
+            disabled={loadingDocumentChunks || documentIdInput.trim() === ''}
+            sx={{ flex: 'none', mt: 0.25 }}
+          >
+            {loadingDocumentChunks ? 'Lädt …' : 'Chunks laden'}
+          </Button>
+        </Stack>
+        {documentChunksError && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {documentChunksError}
+          </Alert>
+        )}
+        {documentChunks && <DocumentChunkList document={documentChunks} />}
+      </Box>
+
+      <ChunkPreviewDialog chunkId={previewChunkId} onClose={() => setPreviewChunkId(null)} />
     </Box>
   )
 }

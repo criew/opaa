@@ -251,7 +251,8 @@ public class LibraryDocumentService {
       // different libraries is two legitimate documents, only a second copy inside the *same*
       // library is rejected.
       Optional<Document> existing =
-          documentRepository.findByLibraryIdAndChecksum(libraryId, checksum);
+          documentRepository.findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+              libraryId, checksum);
       if (existing.isPresent()) {
         Document existingDoc = existing.get();
         if (existingDoc.getStatus() != DocumentStatus.FAILED) {
@@ -265,7 +266,17 @@ public class LibraryDocumentService {
         // upload. It should never have surviving chunks (FileProcessingService cleans those up on
         // every failure path), but the delete is unconditional anyway, mirroring processFile's own
         // re-index cleanup - defence in depth costs nothing here.
+        //
+        // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage, #1218): a FAILED mail row can still have
+        // INDEXED attachment children from before the failure (attachments are indexed while the
+        // parent is being parsed, before its own chunks are written) - they must go with it, or
+        // documentRepository.delete below fails fk_documents_parent and the retry is blocked
+        // forever. The retry's re-parse recreates them under the new row's own file_path.
         Path oldFailedFile = uploadedFileIfManagedByThisService(existingDoc, libraryId);
+        for (Document descendant : descendantsDeepestFirst(existingDoc.getId())) {
+          vectorChunkStore.deleteByDocumentId(descendant.getId());
+          documentRepository.delete(descendant);
+        }
         vectorChunkStore.deleteByDocumentId(existingDoc.getId());
         documentRepository.delete(existingDoc);
         if (oldFailedFile != null) {
@@ -708,14 +719,16 @@ public class LibraryDocumentService {
     // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage): a document with attachment rows pointing at
     // it via parent_document_id cannot be deleted first without failing fk_documents_parent - this
     // path takes its attachments with it, mirroring StaleDocumentCleanupService's own
-    // children-before-parent order. None of them are ever an UPLOAD-managed file of this service's
-    // own (only the connector paths that create attachments set parentDocumentId), so there is no
-    // extra file to clean up for a child the way there can be for the parent below.
-    List<Document> attachments = documentRepository.findByParentDocumentId(document.getId());
+    // deepest-nesting-first order (#1183: a Mail-in-Mail chain can nest an attachment inside an
+    // attachment, not just one level). None of them are ever an UPLOAD-managed file of this
+    // service's own (only the connector paths that create attachments set parentDocumentId), so
+    // there is no extra file to clean up for a descendant the way there can be for the parent
+    // below.
+    List<Document> descendantsDeepestFirst = descendantsDeepestFirst(document.getId());
     List<UUID> attachmentChunkFilterIds = new ArrayList<>();
-    for (Document attachment : attachments) {
-      attachmentChunkFilterIds.add(attachment.getId());
-      documentRepository.delete(attachment);
+    for (Document descendant : descendantsDeepestFirst) {
+      attachmentChunkFilterIds.add(descendant.getId());
+      documentRepository.delete(descendant);
     }
 
     // The row is deleted first, the chunks only afterwards - deliberately the reverse of the order
@@ -779,6 +792,33 @@ public class LibraryDocumentService {
             deleteQuietly(fileManagedByThisService);
           }
         });
+  }
+
+  /**
+   * Every descendant of {@code rootId} (children, grandchildren, ...) via {@code
+   * parent_document_id}, ordered deepest-first (#1183): a breadth-first walk collects each level in
+   * turn, then the result is reversed so the deepest level - the one with no descendants of its own
+   * still pending deletion - is deleted first, mirroring {@code
+   * StaleDocumentCleanupService#sortedDeepestFirst}'s own reasoning for {@code
+   * fk_documents_parent}. A Mail-in-Mail chain (an attachment that is itself a parent with its own
+   * attachments) is the motivating case; a flat, one-level attachment set (RSS, Confluence) is just
+   * a breadth-first walk of depth 1.
+   */
+  private List<Document> descendantsDeepestFirst(UUID rootId) {
+    List<Document> deepestFirst = new ArrayList<>();
+    List<UUID> currentLevel = List.of(rootId);
+    while (!currentLevel.isEmpty()) {
+      List<Document> nextLevel = new ArrayList<>();
+      for (UUID parentId : currentLevel) {
+        nextLevel.addAll(documentRepository.findByParentDocumentId(parentId));
+      }
+      if (nextLevel.isEmpty()) {
+        break;
+      }
+      deepestFirst.addAll(0, nextLevel);
+      currentLevel = nextLevel.stream().map(Document::getId).toList();
+    }
+    return deepestFirst;
   }
 
   /**

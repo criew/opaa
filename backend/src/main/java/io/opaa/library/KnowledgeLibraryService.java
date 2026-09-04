@@ -378,7 +378,7 @@ public class KnowledgeLibraryService {
     // once per row - a library with no rows here simply has zero documents.
     Map<UUID, Long> documentCounts =
         documentRepository
-            .countByLibraryIdIn(libraries.stream().map(KnowledgeLibrary::getId).toList())
+            .countTopLevelByLibraryIdIn(libraries.stream().map(KnowledgeLibrary::getId).toList())
             .stream()
             .collect(
                 Collectors.toMap(
@@ -832,12 +832,21 @@ public class KnowledgeLibraryService {
 
     boolean searching = q != null && !q.isBlank();
     if (searching) {
+      // #1184 (ADR-0022, Entscheidung 5): a hit on an attachment's file name must surface its
+      // top-level parent - resolve every matching attachment row up its parentDocumentId chain
+      // first, then page over top-level documents matching by own name or by subtree.
+      Set<UUID> attachmentRootIds =
+          topLevelRootsOf(
+              documentRepository
+                  .findByLibraryIdAndParentDocumentIdIsNotNullAndFileNameContainingIgnoreCase(
+                      libraryId, q));
       Page<Document> page =
-          documentRepository.findByLibraryIdAndFileNameContainingIgnoreCase(libraryId, q, pageable);
+          documentRepository.searchTopLevelByFileNameOrAttachmentRoot(
+              libraryId, escapeLike(q), attachmentRootIds, pageable);
       Map<UUID, LibraryFolder> foldersById =
           LibraryFolderPaths.loadFoldersById(folderRepository, libraryId);
       return new LibraryDocumentPage(
-          page.getContent().stream().map(d -> toLibraryDocumentEntry(d, foldersById)).toList(),
+          withAttachments(page.getContent(), foldersById),
           pageable.getPageNumber(),
           pageable.getPageSize(),
           page.getTotalElements(),
@@ -848,19 +857,102 @@ public class KnowledgeLibraryService {
 
     Page<Document> page =
         folderId == null
-            ? documentRepository.findByLibraryIdAndFolderIdIsNull(libraryId, pageable)
+            ? documentRepository.findByLibraryIdAndFolderIdIsNullAndParentDocumentIdIsNull(
+                libraryId, pageable)
             : documentRepository.findByLibraryIdAndFolderId(libraryId, folderId, pageable);
     Map<UUID, LibraryFolder> foldersById =
         LibraryFolderPaths.loadFoldersById(folderRepository, libraryId);
 
     return new LibraryDocumentPage(
-        page.getContent().stream().map(d -> toLibraryDocumentEntry(d, foldersById)).toList(),
+        withAttachments(page.getContent(), foldersById),
         pageable.getPageNumber(),
         pageable.getPageSize(),
         page.getTotalElements(),
         foldersOf(libraryId, folderId),
         breadcrumbOf(folderId, foldersById),
         folderId);
+  }
+
+  /**
+   * Expands a page of top-level documents into the flat entry list {@code LibraryDocumentPage}
+   * promises (#1184): each document immediately followed by its complete attachment subtree,
+   * depth-first, siblings in {@code filePath} order (which embeds the extraction-order index for
+   * mail attachments, ADR-0022 Entscheidung 2). Attachments never count towards paging - they ride
+   * along on their parent's page. Children are loaded once per nesting level, not once per parent.
+   */
+  private List<LibraryDocumentEntry> withAttachments(
+      List<Document> parents, Map<UUID, LibraryFolder> foldersById) {
+    Map<UUID, List<Document>> childrenByParent = new HashMap<>();
+    List<UUID> level = parents.stream().map(Document::getId).toList();
+    while (!level.isEmpty()) {
+      List<Document> children =
+          documentRepository.findByParentDocumentIdInOrderByFilePathAsc(level);
+      if (children.isEmpty()) {
+        break;
+      }
+      for (Document child : children) {
+        childrenByParent
+            .computeIfAbsent(child.getParentDocumentId(), k -> new ArrayList<>())
+            .add(child);
+      }
+      level = children.stream().map(Document::getId).toList();
+    }
+    List<LibraryDocumentEntry> entries = new ArrayList<>();
+    for (Document parent : parents) {
+      appendSubtree(parent, childrenByParent, foldersById, entries);
+    }
+    return entries;
+  }
+
+  private void appendSubtree(
+      Document document,
+      Map<UUID, List<Document>> childrenByParent,
+      Map<UUID, LibraryFolder> foldersById,
+      List<LibraryDocumentEntry> entries) {
+    entries.add(toLibraryDocumentEntry(document, foldersById));
+    for (Document child : childrenByParent.getOrDefault(document.getId(), List.of())) {
+      appendSubtree(child, childrenByParent, foldersById, entries);
+    }
+  }
+
+  /**
+   * Walks each attachment in {@code attachments} up its {@code parentDocumentId} chain to the
+   * top-level document ({@code parentDocumentId == null}) it transitively belongs to - one {@code
+   * findAllById} per nesting level. A parent that no longer resolves (deleted concurrently) simply
+   * drops out rather than failing the search. {@code visited} guards against a cyclic {@code
+   * parent_document_id} chain (nothing in the schema forbids one) hanging the request thread - a
+   * cycle simply never reaches a root and contributes nothing.
+   */
+  private Set<UUID> topLevelRootsOf(List<DocumentRepository.AttachmentParentRef> attachments) {
+    Set<UUID> roots = new HashSet<>();
+    Set<UUID> visited = new HashSet<>();
+    Set<UUID> parentIds =
+        attachments.stream()
+            .map(DocumentRepository.AttachmentParentRef::getParentDocumentId)
+            .collect(Collectors.toSet());
+    while (!parentIds.isEmpty()) {
+      visited.addAll(parentIds);
+      Set<UUID> next = new HashSet<>();
+      for (Document parent : documentRepository.findAllById(parentIds)) {
+        if (parent.getParentDocumentId() == null) {
+          roots.add(parent.getId());
+        } else if (!visited.contains(parent.getParentDocumentId())) {
+          next.add(parent.getParentDocumentId());
+        }
+      }
+      parentIds = next;
+    }
+    return roots;
+  }
+
+  /**
+   * Backslash-escapes LIKE metacharacters ({@code \}, {@code %}, {@code _}) for {@code
+   * DocumentRepository#searchTopLevelByFileNameOrAttachmentRoot}'s hand-written LIKE - preserving
+   * the literal-match semantics the derived {@code ...ContainingIgnoreCase} finders apply
+   * automatically (#517 review, nit 3).
+   */
+  private static String escapeLike(String q) {
+    return q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
   }
 
   /**
@@ -1420,7 +1512,10 @@ public class KnowledgeLibraryService {
   }
 
   private LibraryDetail toLibraryDetail(KnowledgeLibrary library, AssetRole myRole) {
-    long documentCount = documentRepository.countByLibraryId(library.getId());
+    // #1184: top-level documents only, consistent with the document list's own parent-level
+    // totalElements - attachments are visible inside their parent's group, not in this count.
+    long documentCount =
+        documentRepository.countByLibraryIdAndParentDocumentIdIsNull(library.getId());
     // #507/#119: sourcePath/sourceUrl/sourceProxy/schedule/storage quota are administration
     // detail - internal server paths, crawl targets and bestand size - gated at MANAGER, not
     // exposed to a mere VIEWER (or even EDITOR) of an organization-wide library.

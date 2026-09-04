@@ -26,6 +26,7 @@ import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
@@ -33,9 +34,9 @@ import io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository;
 import io.opaa.library.ConfluenceSpaceSelection;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.time.Clock;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -85,8 +86,6 @@ class ConfluenceDataCenterFullSyncTest {
     DocumentRepository documentRepository = mock(DocumentRepository.class);
     when(documentRepository.findByLibraryIdAndFilePath(any(), anyString()))
         .thenReturn(Optional.empty());
-    when(documentRepository.findByLibraryIdAndSourceEntryUrl(any(), anyString()))
-        .thenReturn(List.of());
     eventRepository = mock(IndexingRunEventRepository.class);
     cleanupService = mock(StaleDocumentCleanupService.class);
     syncStateRepository = mock(ConfluenceSyncStateRepository.class);
@@ -97,6 +96,11 @@ class ConfluenceDataCenterFullSyncTest {
             factory,
             properties,
             fileProcessingService,
+            new AttachmentIndexer(
+                new BoundedDownloader(TargetAddressValidator.disabled()),
+                fileProcessingService,
+                mock(LibraryStorageQuotaService.class),
+                documentRepository),
             indexingJobService,
             documentRepository,
             eventRepository,
@@ -165,7 +169,10 @@ class ConfluenceDataCenterFullSyncTest {
             eq(DocumentSourceType.CONFLUENCE),
             eq(pagePath("Abschnitt 1.1")),
             any(),
-            eq(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1 / Abschnitt 1.1")));
+            argThat(
+                access ->
+                    new SourceDocumentContext("ENG", "Handbuch / Kapitel 1 / Abschnitt 1.1")
+                        .equals(access.sourceContext())));
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);

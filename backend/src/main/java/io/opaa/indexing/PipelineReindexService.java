@@ -2,19 +2,26 @@ package io.opaa.indexing;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
+import io.opaa.indexing.pipeline.DiscoveredAttachment;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
+import io.opaa.indexing.pipeline.DocumentPipelineRunner;
+import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.UploadProperties;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -72,6 +79,7 @@ public class PipelineReindexService {
   private final DocumentRepository documentRepository;
   private final KnowledgeLibraryRepository libraryRepository;
   private final FileProcessingService fileProcessingService;
+  private final ChecksumService checksumService;
   private final VectorChunkStore vectorChunkStore;
   private final FilesystemPathAllowlist filesystemAllowlist;
   private final UploadProperties uploadProperties;
@@ -83,6 +91,7 @@ public class PipelineReindexService {
       DocumentRepository documentRepository,
       KnowledgeLibraryRepository libraryRepository,
       FileProcessingService fileProcessingService,
+      ChecksumService checksumService,
       VectorChunkStore vectorChunkStore,
       FilesystemPathAllowlist filesystemAllowlist,
       UploadProperties uploadProperties,
@@ -93,6 +102,7 @@ public class PipelineReindexService {
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
     this.fileProcessingService = fileProcessingService;
+    this.checksumService = checksumService;
     this.vectorChunkStore = vectorChunkStore;
     this.filesystemAllowlist = filesystemAllowlist;
     this.uploadProperties = uploadProperties;
@@ -303,18 +313,29 @@ public class PipelineReindexService {
       // path if its content actually changed - no delete-and-recreate happens here, so an RSS
       // entry's attachments (parent_document_id, ADR-0022 Entscheidung 4) are never at risk from
       // this path itself.
+      if (document.getParentDocumentId() != null) {
+        return markRemoteAttachmentChainForNextRun(document);
+      }
       documentRepository.markForReindexOnNextRun(documentId);
       return Advance.MARKED_FOR_NEXT_RUN;
     }
-    Path localFile = localSourceFile(document);
-    if (localFile == null) {
-      log.info(
-          "Skipping document {} in the pipeline re-index: its file is not readable within the"
-              + " directories this deployment is configured to read",
-          documentId);
-      return Advance.SKIPPED;
+    boolean advanced;
+    if (document.getParentDocumentId() != null) {
+      advanced = reindexAttachmentDocument(document);
+    } else {
+      Path localFile = localSourceFile(document);
+      if (localFile == null) {
+        log.info(
+            "Skipping document {} in the pipeline re-index: its file is not readable within the"
+                + " directories this deployment is configured to read",
+            documentId);
+        return Advance.SKIPPED;
+      }
+      advanced =
+          fileProcessingService.reindexStoredDocument(
+              documentId, localFile, attachmentAccessFor(document));
     }
-    if (!fileProcessingService.reindexStoredDocument(documentId, localFile)) {
+    if (!advanced) {
       return Advance.SKIPPED;
     }
     // Loop protection for the file-name-approximation branch of the routing gap (#1105): a
@@ -331,6 +352,228 @@ public class PipelineReindexService {
       return Advance.SKIPPED;
     }
     return Advance.REINDEXED;
+  }
+
+  /**
+   * Marks a remote (HTTP_DIRECTORY/RSS_FEED) attachment document for its next connector run
+   * (#1219): its bytes can only be re-extracted from its root ancestor, which only that run can
+   * re-download - so the <em>whole</em> chain has its change markers cleared, root included.
+   * Clearing only the attachment itself would never converge: the unchanged root would be skipped
+   * by the next run's own change check, its attachments never re-enumerated, and the attachment's
+   * chunks would stay below version forever. With every level cleared, the next run re-processes
+   * the root (no {@code last_modified_remote} to match), each intermediate attachment fails its
+   * checksum comparison (cleared) and is re-parsed, and the target attachment is rewritten at the
+   * current version. A broken or cyclic chain is a skip, mirroring {@link
+   * #reindexAttachmentDocument}'s own treatment.
+   */
+  private Advance markRemoteAttachmentChainForNextRun(Document document) {
+    List<UUID> chainIds = new ArrayList<>();
+    Set<UUID> seen = new HashSet<>();
+    Document current = document;
+    while (true) {
+      if (!seen.add(current.getId())) {
+        log.warn(
+            "Skipping attachment document {}: its parent_document_id chain contains a cycle",
+            document.getId());
+        return Advance.SKIPPED;
+      }
+      chainIds.add(current.getId());
+      if (current.getParentDocumentId() == null) {
+        break;
+      }
+      Document parent = documentRepository.findById(current.getParentDocumentId()).orElse(null);
+      if (parent == null) {
+        log.warn(
+            "Skipping attachment document {}: its parent chain is broken at {}",
+            document.getId(),
+            current.getParentDocumentId());
+        return Advance.SKIPPED;
+      }
+      current = parent;
+    }
+    for (UUID id : chainIds) {
+      documentRepository.markForReindexOnNextRun(id);
+    }
+    return Advance.MARKED_FOR_NEXT_RUN;
+  }
+
+  /**
+   * Re-runs the current pipeline over an attachment document (ADR-0022) - a row whose {@code
+   * file_path} is synthetic ({@code <parentPath>/<index>/<name>}, see {@code
+   * FileProcessingService#attachmentFilePath}) and therefore never resolves to a file of its own.
+   * The bytes are re-extracted from the root ancestor's still-readable source file by re-running
+   * the parent chain's pipelines and following the positional index encoded in each {@code
+   * file_path} segment - so a raised sub-pipeline version (e.g. PDF) reaches an attachment inside a
+   * Mail without waiting for the Mail file itself to change. Every non-recoverable mismatch (chain
+   * broken, root unreadable, index out of range because the parent file changed since) is a skip,
+   * never an error - the next full indexing run of the parent re-establishes consistency.
+   */
+  private boolean reindexAttachmentDocument(Document document) {
+    List<Document> chain = new ArrayList<>();
+    Set<UUID> seen = new HashSet<>();
+    Document current = document;
+    while (current.getParentDocumentId() != null) {
+      if (!seen.add(current.getId())) {
+        log.warn(
+            "Skipping attachment document {}: its parent_document_id chain contains a cycle",
+            document.getId());
+        return false;
+      }
+      Document parent = documentRepository.findById(current.getParentDocumentId()).orElse(null);
+      if (parent == null) {
+        log.warn(
+            "Skipping attachment document {}: its parent chain is broken at {}",
+            document.getId(),
+            current.getParentDocumentId());
+        return false;
+      }
+      chain.add(current);
+      current = parent;
+    }
+    Document root = current;
+    if (root.getSourceType() != DocumentSourceType.FILESYSTEM
+        && root.getSourceType() != DocumentSourceType.UPLOAD) {
+      log.info(
+          "Skipping attachment document {}: only FILESYSTEM and UPLOAD parents support"
+              + " re-extraction",
+          document.getId());
+      return false;
+    }
+    Path rootFile = localSourceFile(root);
+    if (rootFile == null) {
+      log.info(
+          "Skipping attachment document {}: its root ancestor's file is not readable within the"
+              + " directories this deployment is configured to read",
+          document.getId());
+      return false;
+    }
+    List<Integer> indices = new ArrayList<>(chain.size());
+    String parentPath = root.getFilePath();
+    for (int i = chain.size() - 1; i >= 0; i--) {
+      int index = FileProcessingService.attachmentIndexIn(parentPath, chain.get(i).getFilePath());
+      if (index < 0) {
+        log.warn(
+            "Skipping attachment document {}: file_path {} does not embed its parent's path {}",
+            document.getId(),
+            chain.get(i).getFilePath(),
+            parentPath);
+        return false;
+      }
+      indices.add(index);
+      parentPath = chain.get(i).getFilePath();
+    }
+    List<Path> extractedFiles = new ArrayList<>(indices.size());
+    try {
+      Path currentFile = rootFile;
+      String currentName = root.getFileName();
+      for (int i = 0; i < indices.size(); i++) {
+        Path extracted = extractAttachment(currentFile, currentName, indices.get(i));
+        if (extracted == null) {
+          log.info(
+              "Skipping attachment document {}: attachment index {} no longer exists in {}",
+              document.getId(),
+              indices.get(i),
+              currentName);
+          return false;
+        }
+        extractedFiles.add(extracted);
+        currentFile = extracted;
+        currentName = chain.get(chain.size() - 1 - i).getFileName();
+      }
+      // Positional indices are only stable while the parent file is unchanged - a parent edited
+      // since the row was created (an attachment removed, order shifted) can leave a DIFFERENT
+      // attachment at this row's index. Extraction is deterministic, so for an unchanged parent
+      // the re-extracted bytes match the row's own stored checksum exactly; a mismatch means the
+      // bytes belong to some other attachment and must never be written under this row.
+      String extractedChecksum = checksumService.computeSha256(currentFile);
+      if (document.getChecksum() != null && !extractedChecksum.equals(document.getChecksum())) {
+        log.info(
+            "Skipping attachment document {}: the re-extracted bytes no longer match its checksum"
+                + " (parent file changed since indexing) - the next indexing run of the parent"
+                + " re-establishes consistency",
+            document.getId());
+        return false;
+      }
+      return fileProcessingService.reindexStoredDocument(
+          document.getId(), currentFile, attachmentAccessFor(document));
+    } catch (IOException e) {
+      log.warn("Skipping attachment document {}: re-extraction failed", document.getId(), e);
+      return false;
+    } finally {
+      for (Path extracted : extractedFiles) {
+        try {
+          Files.deleteIfExists(extracted);
+        } catch (IOException e) {
+          log.warn("Failed to delete re-extracted attachment temp file: {}", extracted, e);
+        }
+      }
+    }
+  }
+
+  /**
+   * Runs {@code file}'s own routed pipeline solely for its {@code discoveredAttachments} and copies
+   * the attachment at {@code index} (0-based extraction order) to a temp file of its own before
+   * {@link DocumentPipelineRunner} deletes the originals, or {@code null} when there is no
+   * attachment at that index (the parent file changed since the attachment row was created).
+   */
+  private Path extractAttachment(Path file, String fileName, int index) {
+    Path[] extracted = new Path[1];
+    try {
+      DocumentPipelineRegistry.Routed routed = pipelineRegistry.routedPipelineFor(file, fileName);
+      DocumentPipelineRunner.run(
+          routed.pipeline(),
+          DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()),
+          result -> {
+            List<DiscoveredAttachment> attachments = result.discoveredAttachments();
+            if (index >= attachments.size()) {
+              return;
+            }
+            DiscoveredAttachment attachment = attachments.get(index);
+            try {
+              Path copy = Files.createTempFile("opaa-reindex-", suffixOf(attachment.fileName()));
+              Files.copy(attachment.tempFile(), copy, StandardCopyOption.REPLACE_EXISTING);
+              extracted[0] = copy;
+            } catch (IOException e) {
+              log.warn("Failed to copy re-extracted attachment {}", attachment.fileName(), e);
+            }
+          });
+    } catch (RuntimeException e) {
+      // A corrupt or unreadable parent must cost only this candidate (counted as skipped by the
+      // caller), never the whole reindexBatch call - some pipelines still throw on a parse
+      // failure instead of reporting NO_CONTENT.
+      log.warn("Failed to re-extract attachment {} of {}", index, fileName, e);
+      return null;
+    }
+    return extracted[0];
+  }
+
+  private static String suffixOf(String fileName) {
+    if (fileName == null) {
+      return ".tmp";
+    }
+    int dot = fileName.lastIndexOf('.');
+    return dot >= 0 ? fileName.substring(dot).toLowerCase(Locale.ROOT) : ".tmp";
+  }
+
+  /**
+   * The {@link AttachmentAccess} a re-index hands to {@code
+   * FileProcessingService#reindexStoredDocument} so attachments a re-run pipeline discovers reach
+   * the generalized attachment path - FILESYSTEM and, since #1218, UPLOAD (the two source types
+   * whose files this machine can re-read, see {@link #localSourceFile}). There is no job or run
+   * here, so events are only logged and no progress is counted ({@link
+   * StandaloneAttachmentAccess}).
+   */
+  private AttachmentAccess attachmentAccessFor(Document document) {
+    if ((document.getSourceType() != DocumentSourceType.FILESYSTEM
+            && document.getSourceType() != DocumentSourceType.UPLOAD)
+        || document.getLibraryId() == null) {
+      return null;
+    }
+    KnowledgeLibrary library = libraryRepository.findById(document.getLibraryId()).orElse(null);
+    if (library == null) {
+      return null;
+    }
+    return new StandaloneAttachmentAccess(library, "Pipeline re-index");
   }
 
   /**

@@ -522,13 +522,15 @@ class DocumentIndexingIntegrationTest {
   }
 
   @Test
-  void indexesEmlDocumentWithAttachmentRoutedRecursivelyThroughTheRealRegistry() throws Exception {
-    // #1109 (Epic #1054/#1110 review, E3): EML/MSG were the only supported formats never exercised
-    // end-to-end - and EML's attachment path is the only place in the whole system where
-    // DocumentPipelineRegistry is used reentrantly (temp file -> sub-pipeline -> "Anhang: ..."
-    // Fundort). MailDocumentPipelineTest already proves this against a hand-built registry; this
-    // proves the real, circularly-wired Spring bean graph (MailDocumentPipeline's ObjectProvider<
-    // DocumentPipelineRegistry>, see its own Javadoc) does the same thing.
+  void indexesEmlDocumentWithAttachmentAsItsOwnDocumentThroughTheGeneralizedAttachmentPath()
+      throws Exception {
+    // #1109 (Epic #1054/#1110 review, E3), rewritten for #1183 (ADR-0022, the #1130 Befund 2
+    // structural fix): an attachment is no longer merged into its Mail parent's own chunks - it is
+    // its own Document row, indexed through the generalized attachment path
+    // (io.opaa.indexing.source.attachment.AttachmentIndexer), with the correct pipeline id of its
+    // own format (here: the Tika fallback for a plain-text attachment) and parent_document_id
+    // pointing at the mail. Proves the real, Spring-wired bean graph end to end - not just
+    // MailDocumentPipelineTest's own hand-built registry.
     Message message =
         Message.Builder.of()
             .setSubject("Anfrage Bauantrag")
@@ -553,15 +555,26 @@ class DocumentIndexingIntegrationTest {
 
     var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
     assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    // The mail file is the one processed entry of this run - the attachment is not a discrete
+    // processed/skipped/failed unit of its own (IndexingRunProgress#recordDocumentIndexed, see its
+    // own Javadoc), only a second indexed document.
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(1);
     assertThat(completedJob.getDocumentsFailed()).isZero();
     assertThat(completedJob.getDocumentsSkipped()).isZero();
 
     List<Document> documents = documentRepository.findAll();
-    assertThat(documents).hasSize(1);
-    assertThat(documents.getFirst().getStatus()).isEqualTo(DocumentStatus.INDEXED);
-    // At least the body chunk and the attachment's own chunk.
-    assertThat(documents.getFirst().getChunkCount()).isGreaterThanOrEqualTo(2);
+    assertThat(documents).hasSize(2);
+    assertThat(documents)
+        .allSatisfy(d -> assertThat(d.getStatus()).isEqualTo(DocumentStatus.INDEXED));
+
+    Document mailDocument =
+        documents.stream().filter(d -> d.getParentDocumentId() == null).findFirst().orElseThrow();
+    Document attachmentDocument =
+        documents.stream().filter(d -> d.getParentDocumentId() != null).findFirst().orElseThrow();
+    // Only the body chunk - the attachment no longer contributes to the mail's own chunk count.
+    assertThat(mailDocument.getChunkCount()).isEqualTo(1);
+    assertThat(attachmentDocument.getParentDocumentId()).isEqualTo(mailDocument.getId());
+    assertThat(attachmentDocument.getFileName()).isEqualTo("anlage.txt");
 
     List<org.springframework.ai.document.Document> bodyResults =
         vectorStore.similaritySearch(
@@ -571,11 +584,11 @@ class DocumentIndexingIntegrationTest {
                 .similarityThreshold(0.0)
                 .build());
     assertThat(bodyResults).isNotEmpty();
-    // Every chunk this pipeline produces - including the attachment's own - is attributed to the
-    // mail pipeline's own id (MailDocumentPipeline's own Javadoc), never to the attachment's own
-    // sub-pipeline (here, the Tika fallback for the .txt attachment).
+    // similarityThreshold(0.0) returns every chunk in the store, not only the query's true match
+    // (the attachment's own chunk is a second, unrelated result now that it is its own document) -
+    // anyMatch, not allMatch, is the meaningful assertion here.
     assertThat(bodyResults)
-        .allMatch(
+        .anyMatch(
             r ->
                 "email"
                     .equals(r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
@@ -588,12 +601,13 @@ class DocumentIndexingIntegrationTest {
                 .similarityThreshold(0.0)
                 .build());
     assertThat(attachmentResults).isNotEmpty();
+    // #1130 Befund 2, the structural fix: the attachment's own chunk carries its own pipeline's id
+    // (the Tika fallback for a plain-text file), never the outer mail pipeline's.
     assertThat(attachmentResults)
         .anyMatch(
             r ->
-                "email".equals(r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY))
-                    && String.valueOf(r.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
-                        .startsWith("Anhang: anlage.txt"));
+                "tika-fallback"
+                    .equals(r.getMetadata().get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY)));
   }
 
   @Test

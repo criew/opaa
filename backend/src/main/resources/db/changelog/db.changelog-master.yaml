@@ -41,3 +41,5 @@ databaseChangeLog:
       file: db/changelog/changes/015-confluence-run-metrics.yaml
   - include:
       file: db/changelog/changes/016-documents-parent-document-id-backfill.yaml
+  - include:
+      file: db/changelog/changes/017-documents-library-checksum-parentless.yaml

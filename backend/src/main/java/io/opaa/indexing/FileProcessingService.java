@@ -3,13 +3,19 @@ package io.opaa.indexing;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
+import io.opaa.indexing.pipeline.DiscoveredAttachment;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineRunner;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
+import io.opaa.indexing.source.attachment.AttachmentAccess;
+import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
+import io.opaa.indexing.source.attachment.AttachmentIndexer;
+import io.opaa.indexing.source.attachment.AttachmentSource;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.observability.IndexingMetrics;
 import java.io.IOException;
@@ -31,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.ContentFormatter;
 import org.springframework.ai.document.DefaultContentFormatter;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.annotation.Async;
 
 public class FileProcessingService {
@@ -84,6 +91,26 @@ public class FileProcessingService {
   private final int embeddingConcurrency;
   private final Executor embeddingExecutor;
 
+  /**
+   * Lazily resolved (#1183) - mirrors {@code MailDocumentPipeline}'s pre-#1183 {@code
+   * ObjectProvider<DocumentPipelineRegistry>}: {@link AttachmentIndexer} itself depends on this
+   * class to store an attachment ({@code processUrlFile}), so a direct, eager constructor
+   * dependency in both directions would deadlock Spring's bean graph. Resolved once, at the point a
+   * pipeline actually reports a {@link DiscoveredAttachment} - the common case (no attachment)
+   * never touches it.
+   */
+  private final ObjectProvider<AttachmentIndexer> attachmentIndexerProvider;
+
+  /** The generalized attachment path's limits for a Mail attachment - see its own Javadoc. */
+  private final AttachmentDownloadLimits mailAttachmentLimits;
+
+  /**
+   * Only read by {@link #processUploadedFileAsync} to build the upload path's own {@link
+   * StandaloneAttachmentAccess} (#1218) - an upload has no run/job whose library entity would
+   * already be in hand the way an executor's is.
+   */
+  private final KnowledgeLibraryRepository libraryRepository;
+
   public FileProcessingService(
       DocumentPipelineRegistry pipelineRegistry,
       DocumentRepository documentRepository,
@@ -92,7 +119,10 @@ public class FileProcessingService {
       IndexingMetrics metrics,
       LibraryStorageQuotaService storageQuotaService,
       IndexingProperties indexingProperties,
-      Executor embeddingExecutor) {
+      Executor embeddingExecutor,
+      ObjectProvider<AttachmentIndexer> attachmentIndexerProvider,
+      AttachmentDownloadLimits mailAttachmentLimits,
+      KnowledgeLibraryRepository libraryRepository) {
     this.pipelineRegistry = pipelineRegistry;
     this.documentRepository = documentRepository;
     this.vectorChunkStore = vectorChunkStore;
@@ -102,11 +132,14 @@ public class FileProcessingService {
     this.embeddingBatchSize = indexingProperties.batchSize();
     this.embeddingConcurrency = indexingProperties.embeddingConcurrency();
     this.embeddingExecutor = embeddingExecutor;
+    this.attachmentIndexerProvider = attachmentIndexerProvider;
+    this.mailAttachmentLimits = mailAttachmentLimits;
+    this.libraryRepository = libraryRepository;
   }
 
   public FileProcessingResult processFile(Path file, KnowledgeLibrary targetLibrary)
       throws IOException {
-    return processFile(file, targetLibrary, null);
+    return processFile(file, targetLibrary, null, null);
   }
 
   /**
@@ -126,16 +159,42 @@ public class FileProcessingService {
    */
   public FileProcessingResult processFile(Path file, KnowledgeLibrary targetLibrary, UUID folderId)
       throws IOException {
+    return processFile(file, targetLibrary, folderId, null);
+  }
+
+  /**
+   * Like {@link #processFile(Path, KnowledgeLibrary, UUID)}, plus {@code attachmentAccess} (#1183):
+   * when non-{@code null}, an attachment the routed pipeline discovers while parsing {@code file}
+   * (e.g. a Mail attachment, ADR-0022) is indexed as its own {@code Document} row via the
+   * generalized attachment path, with {@code parent_document_id} set to this document's own id -
+   * {@code null} keeps today's behaviour of discarding any discovered attachment (every existing
+   * caller but {@code AsyncIndexingExecutor}).
+   *
+   * <p><b>Update-in-place, not delete-and-recreate, for a changed existing document</b> (#1183
+   * review of #1213: mirrors {@link #processRssEntry}'s own contract) - a delete-and-recreate would
+   * fail {@code fk_documents_parent} the moment this row already has attachment children (a Mail
+   * file whose attachments were indexed on an earlier run). Only the chunks are exchanged; the
+   * row's own id, and therefore every attachment's {@code parent_document_id}, survives unchanged.
+   * The quota check compares the size delta against the already-in-place row, not the full new size
+   * against a {@code usedBytes} that still includes the old size - see {@link #processRssEntry}'s
+   * own Javadoc for why a delete-first quota check does not apply here.
+   */
+  public FileProcessingResult processFile(
+      Path file, KnowledgeLibrary targetLibrary, UUID folderId, AttachmentAccess attachmentAccess)
+      throws IOException {
     String filePath = file.toAbsolutePath().toString();
     String fileName = file.getFileName().toString();
 
     // Compute checksum before any processing
     String checksum = checksumService.computeSha256(file);
+    String contentType = Files.probeContentType(file);
+    long fileSize = Files.size(file);
 
     // Check if document already exists in this library (#877: identity is (library_id, file_path),
     // never file_path alone - a document with the same path in a different library is independent).
     Optional<Document> existing =
         documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), filePath);
+    Document doc = null;
     if (existing.isPresent()) {
       Document existingDoc = existing.get();
       if (checksum.equals(existingDoc.getChecksum())
@@ -148,38 +207,62 @@ public class FileProcessingService {
         metrics.recordSkipped();
         return FileProcessingResult.SKIPPED;
       }
-      // Content changed, or it was not successfully indexed - delete old data. Deleting by
-      // document_id removes every chunk of this document, so no stale chunk survives a re-index.
+      // Updated in place under the same id - see this method's own Javadoc.
+      long previousSize = existingDoc.getFileSize() == null ? 0L : existingDoc.getFileSize();
+      long delta = fileSize - previousSize;
+      if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), delta)) {
+        log.warn(
+            "Skipping {}: library {} storage quota would be exceeded",
+            fileName,
+            targetLibrary.getId());
+        metrics.recordSkipped();
+        return FileProcessingResult.QUOTA_EXCEEDED;
+      }
       vectorChunkStore.deleteByDocumentId(existingDoc.getId());
-      documentRepository.delete(existingDoc);
+      existingDoc.setContentType(contentType);
+      existingDoc.setFileSize(fileSize);
+      existingDoc.setFolderId(folderId);
+      doc = existingDoc;
+    } else {
+      // See this method's own comment on why this runs after the existing-document handling above.
+      if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), fileSize)) {
+        log.warn(
+            "Skipping {}: library {} storage quota would be exceeded",
+            fileName,
+            targetLibrary.getId());
+        metrics.recordSkipped();
+        return FileProcessingResult.QUOTA_EXCEEDED;
+      }
     }
 
-    String contentType = Files.probeContentType(file);
-    long fileSize = Files.size(file);
-
-    // Checked after the deletion above (if this file replaces an existing document), so
-    // usedBytes already excludes the content being superseded and this measures the true delta.
-    if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), fileSize)) {
-      log.warn(
-          "Skipping {}: library {} storage quota would be exceeded",
-          fileName,
-          targetLibrary.getId());
-      metrics.recordSkipped();
-      return FileProcessingResult.QUOTA_EXCEEDED;
+    if (doc == null) {
+      doc = new Document(fileName, filePath, contentType, fileSize);
+      doc.setLibraryId(targetLibrary.getId());
+      doc.setOrganizationId(targetLibrary.getOrganizationId());
+      doc.setFolderId(folderId);
     }
-
-    var doc = new Document(fileName, filePath, contentType, fileSize);
-    doc.setLibraryId(targetLibrary.getId());
-    doc.setOrganizationId(targetLibrary.getOrganizationId());
-    doc.setFolderId(folderId);
     doc = documentRepository.save(doc);
 
+    Document savedDoc = doc;
+    UUID documentId = doc.getId();
     try {
       DocumentPipelineRegistry.Routed routed = pipelineRegistry.routedPipelineFor(file, fileName);
       DocumentPipeline pipeline = routed.pipeline();
       DocumentPipelineResult parsed =
           DocumentPipelineRunner.run(
-              pipeline, DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()));
+              pipeline,
+              DocumentPipelineSource.ofFile(file, fileName, routed.detectedExtension()),
+              result -> {
+                // Before the attachments: their own quota checks must already see the parent's
+                // corrected (attachment-free) fileSize, or the attachment bytes count twice.
+                applyContentByteSizeOverride(savedDoc, result);
+                processDiscoveredAttachments(
+                    result.discoveredAttachments(),
+                    documentId,
+                    filePath,
+                    DocumentSourceType.FILESYSTEM,
+                    attachmentAccess);
+              });
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
           log.warn("No usable text extracted from {} by pipeline {}", file, pipeline.id());
@@ -275,21 +358,65 @@ public class FileProcessingService {
         targetLibrary,
         sourceType,
         sourceEntryUrl,
-        null,
-        SourceDocumentContext.NONE);
+        (UUID) null);
   }
 
   /**
    * The attachment-aware counterpart of the eight-argument overload above, generalized (#1182) from
    * an RSS-only implementation: sets {@link Document#getParentDocumentId()} (ADR-0022, Entscheidung
    * 4) so the caller's attachment is a queryable child of {@code parentDocumentId}, used by {@code
-   * io.opaa.indexing.source.attachment.AttachmentIndexer} for every source it serves - and records
-   * where inside its source the document sits ({@link SourceDocumentContext}, ADR-0023), a
-   * Confluence attachment's space and page hierarchy.
+   * io.opaa.indexing.source.attachment.AttachmentIndexer} for every source it serves. Discards any
+   * {@link DiscoveredAttachment} the routed pipeline reports - see the ten-argument overload below
+   * for the variant that indexes them.
    *
    * @param parentDocumentId the row this document is an attachment of, or {@code null} for a
    *     document that is not an attachment (every use of the eight-argument overload above)
-   * @param context the source context, {@link SourceDocumentContext#NONE} for sources without one
+   */
+  public FileProcessingResult processUrlFile(
+      Path localFile,
+      String originalFileName,
+      String remoteUrl,
+      String lastModified,
+      long remoteFileSize,
+      KnowledgeLibrary targetLibrary,
+      DocumentSourceType sourceType,
+      String sourceEntryUrl,
+      UUID parentDocumentId)
+      throws IOException {
+    return processUrlFile(
+        localFile,
+        originalFileName,
+        remoteUrl,
+        lastModified,
+        remoteFileSize,
+        targetLibrary,
+        sourceType,
+        sourceEntryUrl,
+        parentDocumentId,
+        null);
+  }
+
+  /**
+   * Like the nine-argument overload above, plus {@code attachmentAccess} (#1183): when non-{@code
+   * null}, an attachment the routed pipeline discovers while parsing {@code localFile} (e.g. a
+   * nested Mail-in-Mail attachment - this document is itself already an attachment, reached via
+   * {@link io.opaa.indexing.source.attachment.AttachmentIndexer}) is indexed as its own child of
+   * <em>this</em> document, chaining {@code parent_document_id} naturally rather than as a special
+   * case, and the document records where inside its source it sits ({@link
+   * AttachmentAccess#sourceContext()}, ADR-0023 - a Confluence attachment's space and page
+   * hierarchy), refreshed on every re-index so a renamed ancestor reaches the attachment too.
+   * {@code null} keeps the nine-argument overload's behaviour of discarding a discovered attachment
+   * and records {@link SourceDocumentContext#NONE}.
+   *
+   * <p><b>Update-in-place, not delete-and-recreate, for a changed existing document</b> (mirrors
+   * {@link #processRssEntry}'s own contract, needed the moment an attachment can itself have
+   * children - a nested Mail-in-Mail attachment reprocessed here, or an RSS/Confluence attachment
+   * once it also grows its own attachments): deleting this row and recreating it under a new id
+   * would fail {@code fk_documents_parent} the moment a grandchild attachment still points at the
+   * old id. Only the chunks are exchanged; the row's own id survives. The quota check compares the
+   * size <em>delta</em> against the already-replaced-in-place row, exactly like {@link
+   * #processRssEntry}'s own reasoning - see that method's Javadoc for why a delete-first quota
+   * check does not apply here.
    */
   public FileProcessingResult processUrlFile(
       Path localFile,
@@ -301,10 +428,12 @@ public class FileProcessingService {
       DocumentSourceType sourceType,
       String sourceEntryUrl,
       UUID parentDocumentId,
-      SourceDocumentContext context)
+      AttachmentAccess attachmentAccess)
       throws IOException {
 
     String fileName = originalFileName;
+    SourceDocumentContext context =
+        attachmentAccess == null ? SourceDocumentContext.NONE : attachmentAccess.sourceContext();
 
     // Compute SHA-256 on the downloaded file for content-based deduplication
     String checksum = checksumService.computeSha256(localFile);
@@ -312,6 +441,7 @@ public class FileProcessingService {
     // Check if document already exists in this library by remote URL (#877, see processFile above)
     Optional<Document> existing =
         documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), remoteUrl);
+    Document doc = null;
     if (existing.isPresent()) {
       Document existingDoc = existing.get();
       if (checksum.equals(existingDoc.getChecksum())
@@ -320,35 +450,50 @@ public class FileProcessingService {
         metrics.recordSkipped();
         return FileProcessingResult.SKIPPED;
       }
-      // Content changed, or it was not successfully indexed - delete old data. Deleting by
-      // document_id removes every chunk of this document, so no stale chunk survives a re-index.
-      // Safe for an attachment (this overload's callers): unlike an RSS entry's own row (see
-      // FileProcessingService#processRssEntry), an attachment never has children of its own yet
-      // (#1182 scope; nested Mail-in-Mail attachments are #1183).
+      // Updated in place under the same id - see this method's own Javadoc.
+      long previousSize = existingDoc.getFileSize() == null ? 0L : existingDoc.getFileSize();
+      long delta = remoteFileSize - previousSize;
+      if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), delta)) {
+        log.warn(
+            "Skipping {}: library {} storage quota would be exceeded",
+            fileName,
+            targetLibrary.getId());
+        metrics.recordSkipped();
+        return FileProcessingResult.QUOTA_EXCEEDED;
+      }
       vectorChunkStore.deleteByDocumentId(existingDoc.getId());
-      documentRepository.delete(existingDoc);
+      existingDoc.setFileName(fileName);
+      existingDoc.setContentType(Files.probeContentType(localFile));
+      existingDoc.setFileSize(remoteFileSize);
+      existingDoc.setSourceEntryUrl(sourceEntryUrl);
+      existingDoc.setParentDocumentId(parentDocumentId);
+      existingDoc.applySourceContext(context);
+      doc = existingDoc;
+    } else {
+      // See processFile's own comment on why this runs after the existing-document handling above.
+      if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), remoteFileSize)) {
+        log.warn(
+            "Skipping {}: library {} storage quota would be exceeded",
+            fileName,
+            targetLibrary.getId());
+        metrics.recordSkipped();
+        return FileProcessingResult.QUOTA_EXCEEDED;
+      }
     }
 
-    String contentType = Files.probeContentType(localFile);
-
-    // See processFile's own comment on why this runs after the existing-document deletion above.
-    if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), remoteFileSize)) {
-      log.warn(
-          "Skipping {}: library {} storage quota would be exceeded",
-          fileName,
-          targetLibrary.getId());
-      metrics.recordSkipped();
-      return FileProcessingResult.QUOTA_EXCEEDED;
+    if (doc == null) {
+      String contentType = Files.probeContentType(localFile);
+      doc = new Document(fileName, remoteUrl, contentType, remoteFileSize, sourceType);
+      doc.setLibraryId(targetLibrary.getId());
+      doc.setOrganizationId(targetLibrary.getOrganizationId());
+      doc.setSourceEntryUrl(sourceEntryUrl);
+      doc.setParentDocumentId(parentDocumentId);
+      doc.applySourceContext(context);
     }
-
-    var doc = new Document(fileName, remoteUrl, contentType, remoteFileSize, sourceType);
-    doc.setLibraryId(targetLibrary.getId());
-    doc.setOrganizationId(targetLibrary.getOrganizationId());
-    doc.setSourceEntryUrl(sourceEntryUrl);
-    doc.setParentDocumentId(parentDocumentId);
-    doc.applySourceContext(context);
     doc = documentRepository.save(doc);
 
+    Document savedDoc = doc;
+    UUID documentId = doc.getId();
     try {
       DocumentPipelineRegistry.Routed routed =
           pipelineRegistry.routedPipelineFor(localFile, fileName);
@@ -356,7 +501,17 @@ public class FileProcessingService {
       DocumentPipelineResult parsed =
           DocumentPipelineRunner.run(
               pipeline,
-              DocumentPipelineSource.ofFile(localFile, fileName, routed.detectedExtension()));
+              DocumentPipelineSource.ofFile(localFile, fileName, routed.detectedExtension()),
+              result -> {
+                // Before the attachments - see processFile's handler on the quota ordering.
+                applyContentByteSizeOverride(savedDoc, result);
+                processDiscoveredAttachments(
+                    result.discoveredAttachments(),
+                    documentId,
+                    remoteUrl,
+                    sourceType,
+                    attachmentAccess);
+              });
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
           log.warn(
@@ -580,7 +735,24 @@ public class FileProcessingService {
    */
   @Async("uploadTaskExecutor")
   public void processUploadedFileAsync(UUID documentId, Path storedFile) {
-    processStoredFile(documentId, storedFile, false);
+    processStoredFile(documentId, storedFile, false, uploadAttachmentAccessFor(documentId));
+  }
+
+  /**
+   * The upload path's {@link AttachmentAccess} (#1218): an attachment of an uploaded {@code
+   * .eml}/{@code .msg} is indexed through the generalized attachment path like any connector's,
+   * only without a job - events are logged, progress is a no-op ({@link
+   * StandaloneAttachmentAccess}), the quota runs over the library exactly as in a run. {@code null}
+   * (attachments discarded, the pre-#1218 behaviour) only when the document or its library is
+   * already gone - {@link #processStoredFile} then finds nothing to update either way.
+   */
+  private AttachmentAccess uploadAttachmentAccessFor(UUID documentId) {
+    return documentRepository
+        .findById(documentId)
+        .map(Document::getLibraryId)
+        .flatMap(libraryRepository::findById)
+        .<AttachmentAccess>map(library -> new StandaloneAttachmentAccess(library, "Upload"))
+        .orElse(null);
   }
 
   /**
@@ -602,10 +774,21 @@ public class FileProcessingService {
    * to the upload path's cleanup, because from that point there is no untouched state left to
    * preserve.
    *
+   * <p><b>Attachments survive a version re-index</b> (#1183, ADR-0022 Entscheidung 3's rule for
+   * every path that replaces a parent document): when {@code attachmentAccess} is non-{@code null},
+   * every attachment the re-run pipeline discovers is handed to the generalized attachment path,
+   * exactly as in {@link #processFile} - an unchanged attachment is confirmed by checksum, a
+   * not-yet-extracted one (the pre-ADR-0022 inline-chunk bestand, migrated by the operator-driven
+   * email-v4 re-index) becomes its own row for the first time. A {@code null} access discards
+   * discovered attachments and keeps the parent's raw {@code fileSize} (no {@code
+   * contentByteSizeOverride}), so the attachment bytes stay accounted on the parent - since #1218
+   * only the degenerate case of a library deleted mid-flight, no longer a per-source-type gap.
+   *
    * @return whether the document was actually re-indexed
    */
-  boolean reindexStoredDocument(UUID documentId, Path storedFile) {
-    return processStoredFile(documentId, storedFile, true);
+  boolean reindexStoredDocument(
+      UUID documentId, Path storedFile, AttachmentAccess attachmentAccess) {
+    return processStoredFile(documentId, storedFile, true, attachmentAccess);
   }
 
   /**
@@ -621,7 +804,10 @@ public class FileProcessingService {
    * @return whether chunks were written and the document transitioned to {@code INDEXED}
    */
   private boolean processStoredFile(
-      UUID documentId, Path storedFile, boolean replacingExistingChunks) {
+      UUID documentId,
+      Path storedFile,
+      boolean replacingExistingChunks,
+      AttachmentAccess attachmentAccess) {
     Document doc = documentRepository.findById(documentId).orElse(null);
     if (doc == null) {
       log.warn(
@@ -637,11 +823,28 @@ public class FileProcessingService {
       DocumentPipelineRegistry.Routed routed =
           pipelineRegistry.routedPipelineFor(storedFile, doc.getFileName());
       DocumentPipeline pipeline = routed.pipeline();
+      Document storedDoc = doc;
       DocumentPipelineResult parsed =
           DocumentPipelineRunner.run(
               pipeline,
               DocumentPipelineSource.ofFile(
-                  storedFile, doc.getFileName(), routed.detectedExtension()));
+                  storedFile, doc.getFileName(), routed.detectedExtension()),
+              result -> {
+                if (attachmentAccess == null) {
+                  // No attachment path for this caller (see reindexStoredDocument's contract):
+                  // discovered attachments are discarded and the parent keeps its raw fileSize -
+                  // reducing it without indexing the attachments would under-count the quota.
+                  return;
+                }
+                // Before the attachments - see processFile's handler on the quota ordering.
+                applyContentByteSizeOverride(storedDoc, result);
+                processDiscoveredAttachments(
+                    result.discoveredAttachments(),
+                    storedDoc.getId(),
+                    storedDoc.getFilePath(),
+                    storedDoc.getSourceType(),
+                    attachmentAccess);
+              });
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
           log.warn(
@@ -755,6 +958,7 @@ public class FileProcessingService {
     String checksum = checksumService.computeSha256(contentBytes);
     Optional<Document> existing =
         documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), pageUrl);
+    Document doc = null;
     if (existing.isPresent()) {
       Document existingDoc = existing.get();
       if (checksum.equals(existingDoc.getChecksum())
@@ -778,10 +982,27 @@ public class FileProcessingService {
         metrics.recordSkipped();
         return FileProcessingResult.SKIPPED;
       }
+      // Updated in place under the same id, never deleted-and-recreated (ADR-0022, Entscheidung
+      // 4): the page's attachments point at this row via parent_document_id, and deleting it would
+      // fail fk_documents_parent while they exist. Only the chunks are exchanged; the quota check
+      // measures the size delta for the same reason as in processRssEntry (see there).
+      long previousSize = existingDoc.getFileSize() == null ? 0L : existingDoc.getFileSize();
+      long delta = contentBytes.length - previousSize;
+      if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), delta)) {
+        log.warn(
+            "Skipping Confluence page {}: library {} storage quota would be exceeded",
+            pageUrl,
+            targetLibrary.getId());
+        metrics.recordSkipped();
+        return FileProcessingResult.QUOTA_EXCEEDED;
+      }
       vectorChunkStore.deleteByDocumentId(existingDoc.getId());
-      documentRepository.delete(existingDoc);
-    }
-    if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), contentBytes.length)) {
+      existingDoc.setFileName(fileName);
+      existingDoc.setContentType("text/html");
+      existingDoc.setFileSize((long) contentBytes.length);
+      existingDoc.applySourceContext(context);
+      doc = existingDoc;
+    } else if (storageQuotaService.wouldExceedQuota(targetLibrary.getId(), contentBytes.length)) {
       log.warn(
           "Skipping Confluence page {}: library {} storage quota would be exceeded",
           pageUrl,
@@ -789,16 +1010,18 @@ public class FileProcessingService {
       metrics.recordSkipped();
       return FileProcessingResult.QUOTA_EXCEEDED;
     }
-    var doc =
-        new Document(
-            fileName,
-            pageUrl,
-            "text/html",
-            (long) contentBytes.length,
-            DocumentSourceType.CONFLUENCE);
-    doc.setLibraryId(targetLibrary.getId());
-    doc.setOrganizationId(targetLibrary.getOrganizationId());
-    doc.applySourceContext(context);
+    if (doc == null) {
+      doc =
+          new Document(
+              fileName,
+              pageUrl,
+              "text/html",
+              (long) contentBytes.length,
+              DocumentSourceType.CONFLUENCE);
+      doc.setLibraryId(targetLibrary.getId());
+      doc.setOrganizationId(targetLibrary.getOrganizationId());
+      doc.applySourceContext(context);
+    }
     doc = documentRepository.save(doc);
     try {
       DocumentPipeline pipeline =
@@ -969,6 +1192,113 @@ public class FileProcessingService {
     if (updated == 0) {
       log.warn("Document {} was deleted before it could be marked FAILED", documentId);
     }
+  }
+
+  /**
+   * Turns every {@code discovered} attachment into its own {@code Document} row via the generalized
+   * attachment path (ADR-0022) - a no-op when {@code attachmentAccess} is {@code null} (a caller
+   * with no run/job context of its own for indexing attachments, e.g. every existing caller of
+   * {@link #processFile(Path, KnowledgeLibrary)}/{@link #processUrlFile(Path, String, String,
+   * String, long, KnowledgeLibrary)} that predates #1183) or when {@code discovered} is empty
+   * (every pipeline but {@code MailDocumentPipeline} today).
+   *
+   * @param parentDocumentId the row every indexed attachment becomes a child of ({@code
+   *     Document#getParentDocumentId()})
+   * @param parentFilePath the {@code file_path} of the document {@code discovered} was found on -
+   *     every attachment's own {@code file_path} embeds it (ADR-0022, Entscheidung 2, see {@link
+   *     #attachmentFilePath})
+   */
+  private void processDiscoveredAttachments(
+      List<DiscoveredAttachment> discovered,
+      UUID parentDocumentId,
+      String parentFilePath,
+      DocumentSourceType sourceType,
+      AttachmentAccess attachmentAccess) {
+    if (discovered.isEmpty() || attachmentAccess == null) {
+      return;
+    }
+    List<AttachmentSource> sources = new ArrayList<>(discovered.size());
+    for (int i = 0; i < discovered.size(); i++) {
+      DiscoveredAttachment attachment = discovered.get(i);
+      sources.add(
+          new AttachmentSource.LocalFile(
+              attachment.tempFile(),
+              attachment.fileName(),
+              attachmentFilePath(parentFilePath, i, attachment.fileName())));
+    }
+    attachmentIndexerProvider
+        .getObject()
+        .indexAll(
+            attachmentAccess,
+            sources,
+            parentDocumentId,
+            parentFilePath,
+            sourceType,
+            mailAttachmentLimits);
+  }
+
+  /**
+   * The {@code file_path} identity for the {@code index}-th (0-based, extraction order) attachment
+   * of the document at {@code parentFilePath} (ADR-0022, Entscheidung 2, decided by this ticket,
+   * #1183): embeds the parent's own {@code file_path}, so two identically-named attachments of two
+   * different parents never collide ({@code uk_documents_library_path} is scoped to {@code
+   * (library_id, file_path)} only, not to the attachment's own name), and the positional index
+   * disambiguates two identically-named attachments of the <em>same</em> parent (e.g. two {@code
+   * "anlage.pdf"} in different MIME parts of the same mail). The shape is {@code
+   * <parentFilePath>/<index>/<fileName>}: a plain {@code "/"} cannot collide with a real filesystem
+   * path, because {@code parentFilePath} names a <em>file</em> - no real filesystem can have
+   * further entries underneath a file, so every path of this shape is unreachable by any actual
+   * file a directory walk could discover. Recursion (Mail-in-Mail: an attachment that is itself a
+   * parent with its own attachments, e.g. a forwarded {@code .eml}) is not a special case: that
+   * inner message's own {@code file_path} (already of this same shape) becomes the {@code
+   * parentFilePath} its own attachments are built from here, chaining naturally rather than needing
+   * distinct handling per nesting level.
+   */
+  static String attachmentFilePath(String parentFilePath, int index, String fileName) {
+    return parentFilePath + "/" + index + "/" + fileName;
+  }
+
+  /**
+   * The inverse of {@link #attachmentFilePath}: the 0-based extraction-order index encoded in
+   * {@code attachmentPath}, given the known {@code parentFilePath} it was built from, or {@code -1}
+   * when {@code attachmentPath} does not have that shape (a parent path that changed since, a
+   * malformed row). Used by {@code PipelineReindexService} to re-extract an attachment from its
+   * parent's source file.
+   */
+  static int attachmentIndexIn(String parentFilePath, String attachmentPath) {
+    String prefix = parentFilePath + "/";
+    if (attachmentPath == null || !attachmentPath.startsWith(prefix)) {
+      return -1;
+    }
+    String remainder = attachmentPath.substring(prefix.length());
+    int slash = remainder.indexOf('/');
+    if (slash <= 0) {
+      return -1;
+    }
+    try {
+      return Integer.parseInt(remainder.substring(0, slash));
+    } catch (NumberFormatException e) {
+      return -1;
+    }
+  }
+
+  /**
+   * Overrides {@code document}'s {@code fileSize} with {@link
+   * DocumentPipelineResult#contentByteSizeOverride()} when the pipeline reported one (ADR-0022,
+   * Entscheidung 6 - {@code MailDocumentPipeline} only): the raw source file's own size (used for
+   * the quota check earlier, before parsing) may include bytes - a Mail attachment's base64 payload
+   * - that must not also count toward this document's own quota footprint once that attachment is
+   * its own row with its own {@code fileSize}. A no-op, and therefore an extra {@code save}-free
+   * call, for every other pipeline.
+   */
+  private void applyContentByteSizeOverride(Document document, DocumentPipelineResult parsed) {
+    parsed
+        .contentByteSizeOverride()
+        .ifPresent(
+            override -> {
+              document.setFileSize(override);
+              documentRepository.save(document);
+            });
   }
 
   /**

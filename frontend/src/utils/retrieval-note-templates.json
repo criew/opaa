@@ -1,0 +1,158 @@
+{
+  "notes": [
+    {
+      "name": "BUDGET_WIDENED_TO_RERANK_WINDOW",
+      "template": "budget widened to the rerank candidate window %d"
+    },
+    {
+      "name": "DECOMPOSITION_DISABLED",
+      "template": "decomposition switched off by configuration: single-query fallback"
+    },
+    {
+      "name": "DECOMPOSITION_FAILED",
+      "template": "decomposition returned nothing (failed or unparsable): single-query fallback"
+    },
+    {
+      "name": "DECOMPOSITION_PRODUCED",
+      "template": "decomposition produced %d %s"
+    },
+    {
+      "name": "DEDUPLICATED_BY_CHUNK_ID",
+      "template": "deduplicated by chunk id: %d list entries became %d distinct candidates"
+    },
+    {
+      "name": "DISABLED",
+      "template": "stage switched off for this run"
+    },
+    {
+      "name": "FETCH_K",
+      "template": "fetch-k %d per list"
+    },
+    {
+      "name": "FULL_TEXT_BACKFILL_PENDING",
+      "template": "the lexical path stays out of the fusion until a library's backfill is complete"
+    },
+    {
+      "name": "FULL_TEXT_PERMISSION_FILTER",
+      "template": "permission filter applied inside the query: %d of %d scoped libraries searched, the rest awaiting their backfill"
+    },
+    {
+      "name": "FULL_TEXT_SEARCH_LISTS",
+      "template": "full-text search, %d list(s)"
+    },
+    {
+      "name": "LEXICAL_PATH_DISABLED",
+      "template": "lexical search path switched off (%s)"
+    },
+    {
+      "name": "LEXICAL_SEARCH_FAILED",
+      "template": "lexical search failed for %s: %s"
+    },
+    {
+      "name": "MAX_CHUNKS_PER_DOCUMENT",
+      "template": "max-chunks-per-document %d"
+    },
+    {
+      "name": "MMR_LAMBDA_ACTIVE",
+      "template": "mmr-lambda %s (diversity term active, cosine similarity of real chunk embeddings)"
+    },
+    {
+      "name": "MMR_LAMBDA_INACTIVE",
+      "template": "mmr-lambda %s (diversity term inactive: plain top-k by relevance)"
+    },
+    {
+      "name": "NOT_REACHED",
+      "template": "run halted before this stage: nothing left to retrieve"
+    },
+    {
+      "name": "NO_FULL_TEXT_BACKFILL",
+      "template": "no library of the search scope has a completed full-text backfill"
+    },
+    {
+      "name": "OVERALL_BUDGET_TOP_K",
+      "template": "overall budget top-k %d"
+    },
+    {
+      "name": "PER_LIST_BUDGET",
+      "template": "per-list budget %d"
+    },
+    {
+      "name": "RANK_FUSION_LISTS",
+      "template": "reciprocal rank fusion over %d list(s)"
+    },
+    {
+      "name": "RERANK_CANDIDATE_WINDOW",
+      "template": "rerank candidate window %d"
+    },
+    {
+      "name": "RERANK_DISABLED_BY_CANDIDATE_COUNT",
+      "template": "reranking switched off through opaa.query.rerank-candidate-count=0"
+    },
+    {
+      "name": "RERANK_DISABLED_BY_ROLE_SWITCH",
+      "template": "reranking switched off through the rerank model role's own switch (opaa.rerank.enabled / OPAA_RERANK_ENABLED)"
+    },
+    {
+      "name": "RERANK_NOTHING_TO_RERANK",
+      "template": "no candidate reached this stage; there was nothing to rerank"
+    },
+    {
+      "name": "RERANK_NOT_USABLE",
+      "template": "the rerank model role is switched on but was not usable when this run started - no endpoint or model is configured for it, or its endpoint did not answer; the role's own state says which (RerankRoleStatusProvider#currentStatus)"
+    },
+    {
+      "name": "RERANK_SCORED_COUNT",
+      "template": "%d of %d candidate(s) scored by the rerank model"
+    },
+    {
+      "name": "RERANK_SCORED_NOTHING",
+      "template": "the rerank model role scored nothing; the fused order was kept and capped at top-k %d"
+    },
+    {
+      "name": "SEARCH_QUERY",
+      "template": "search query: %s"
+    },
+    {
+      "name": "SEARCH_SCOPE",
+      "template": "search scope: %d %s"
+    },
+    {
+      "name": "SEARCH_SCOPE_EMPTY",
+      "template": "empty search scope: nothing readable in scope, retrieval halted"
+    },
+    {
+      "name": "SEARCH_SCOPE_PERMISSION_FILTER",
+      "template": "permission filter applied inside every search of this run, never afterwards"
+    },
+    {
+      "name": "SIBLINGS_COMPLETED",
+      "template": "%d sibling chunk(s) completed from the candidate pool"
+    },
+    {
+      "name": "SIMILARITY_THRESHOLD",
+      "template": "similarity threshold %s, applied in-query"
+    },
+    {
+      "name": "UNAVAILABLE",
+      "template": "stage switched on but unavailable: the run continued without it"
+    },
+    {
+      "name": "VECTOR_SEARCH_LISTS",
+      "template": "vector search, %d list(s)"
+    }
+  ],
+  "listLabels": [
+    {
+      "name": "FULL_TEXT_SEARCH",
+      "template": "full-text search · sub-query %d"
+    },
+    {
+      "name": "FUSED",
+      "template": "fused (RRF)"
+    },
+    {
+      "name": "VECTOR_SEARCH",
+      "template": "vector search · sub-query %d"
+    }
+  ]
+}

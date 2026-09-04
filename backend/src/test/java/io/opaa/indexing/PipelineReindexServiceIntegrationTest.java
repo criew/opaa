@@ -18,13 +18,19 @@ import io.opaa.library.UploadProperties;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import io.opaa.test.OpaaIndexingTestDirectory;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.james.mime4j.dom.Message;
+import org.apache.james.mime4j.message.BodyPartBuilder;
+import org.apache.james.mime4j.message.DefaultMessageWriter;
+import org.apache.james.mime4j.message.MultipartBuilder;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -67,7 +73,10 @@ class PipelineReindexServiceIntegrationTest {
   @BeforeEach
   void setUp() {
     jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text, chunk_full_text_skip");
-    documentRepository.deleteAll();
+    // A single-statement delete, not documentRepository.deleteAll(): per-entity deletes in
+    // arbitrary order trip fk_documents_parent for a bestand with attachment child rows, while
+    // one statement removes parents and children together.
+    jdbcTemplate.update("DELETE FROM documents");
     jdbcTemplate.update(
         "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
             + " email = 'pipeline-reindex-it@example.com')");
@@ -847,6 +856,297 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(result.removedOrphanChunkSets()).isEqualTo(1);
     assertThat(chunkTextsOf(vanishedDocumentId)).isEmpty();
     assertThat(reindexBatch(10).isEmpty()).isTrue();
+  }
+
+  @Test
+  void aMailVersionReindexCreatesTheAttachmentAsItsOwnDocumentInsteadOfLosingIt() throws Exception {
+    // ADR-0022, Entscheidung 3's rule for every path that replaces a parent document, applied to
+    // the operator-driven email-v4 bestandsmigration (#1183): re-running the mail pipeline over an
+    // old, pre-ADR-0022 mail (whose attachment was an inline chunk, now no longer produced) must
+    // hand the re-discovered attachment to the generalized attachment path - otherwise the
+    // re-index deletes the old inline attachment chunks and creates nothing in their place, and
+    // the subsequent checksum skip of the unchanged mail file cements the loss forever.
+    DocumentPipeline mailPipeline = mailPipeline();
+    Message message =
+        Message.Builder.of()
+            .setSubject("Anfrage Bauantrag")
+            .setFrom("Buergeramt <buergeramt@example.org>")
+            .setTo("Sachbearbeitung <sachbearbeitung@example.org>")
+            .setBody(
+                MultipartBuilder.create("mixed")
+                    .addTextPart("Bitte pruefen Sie den Antrag.", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        BodyPartBuilder.create()
+                            .setBody(
+                                "Anhangsinhalt fuer den Bauantrag."
+                                    .getBytes(StandardCharsets.UTF_8),
+                                "text/plain")
+                            .setContentDisposition("attachment", "anlage.txt"))
+                    .build())
+            .build();
+    Path emlFile = classTempDir.resolve(UUID.randomUUID() + "-anfrage.eml");
+    Files.write(emlFile, DefaultMessageWriter.asBytes(message));
+    Document mailDocument =
+        persistedDocumentPointingAt(
+            "anfrage.eml", emlFile, DocumentSourceType.FILESYSTEM, library.getId());
+    seedChunk(
+        mailDocument.getId(),
+        "alter Mail-Chunk mit eingebettetem Anhang",
+        mailPipeline.id(),
+        (short) (mailPipeline.version() - 1));
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, mailPipeline.id(), mailPipeline.version(), 10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    List<Document> attachments = documentRepository.findByParentDocumentId(mailDocument.getId());
+    assertThat(attachments).hasSize(1);
+    Document attachment = attachments.getFirst();
+    assertThat(attachment.getFileName()).isEqualTo("anlage.txt");
+    assertThat(attachment.getFilePath()).isEqualTo(emlFile.toAbsolutePath() + "/0/anlage.txt");
+    assertThat(attachment.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+    assertThat(pipelineIdsOf(attachment.getId())).containsOnly(TikaFallbackPipeline.ID);
+  }
+
+  @Test
+  void aPdfPipelineVersionBumpReachesAPdfAttachmentInsideAMail() throws Exception {
+    // The core case of #1130 Befund 2 (acceptance criterion 2 of #1183): an attachment document's
+    // file_path is synthetic and resolves to no file of its own - the re-index re-extracts its
+    // bytes from the root mail file via the positional index in the path, so a raised PDF pipeline
+    // version reaches a PDF inside a mail without the mail file itself having changed.
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    byte[] pdfBytes =
+        pdfBytes("Die Verwaltungsgebühr für einen Personalausweis beträgt 37,00 EUR.");
+    Message message =
+        Message.Builder.of()
+            .setSubject("Gebuehrenbescheid")
+            .setFrom("Buergeramt <buergeramt@example.org>")
+            .setTo("Sachbearbeitung <sachbearbeitung@example.org>")
+            .setBody(
+                MultipartBuilder.create("mixed")
+                    .addTextPart("Der Bescheid haengt an.", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        BodyPartBuilder.create()
+                            .setBody(pdfBytes, "application/pdf")
+                            .setContentDisposition("attachment", "anlage.pdf"))
+                    .build())
+            .build();
+    Path emlFile = classTempDir.resolve(UUID.randomUUID() + "-bescheid.eml");
+    Files.write(emlFile, DefaultMessageWriter.asBytes(message));
+    Document mailDocument =
+        persistedDocumentPointingAt(
+            "bescheid.eml", emlFile, DocumentSourceType.FILESYSTEM, library.getId());
+    Document attachmentDocument =
+        new Document(
+            "anlage.pdf",
+            emlFile.toAbsolutePath() + "/0/anlage.pdf",
+            "application/pdf",
+            (long) pdfBytes.length);
+    attachmentDocument.setLibraryId(library.getId());
+    attachmentDocument.setOrganizationId(Organization.DEFAULT_ID);
+    // The genuine checksum of the attachment bytes, as a real indexing run would have stored it -
+    // the re-index verifies the re-extracted bytes against it before writing anything.
+    attachmentDocument.setChecksum(new ChecksumService().computeSha256(pdfBytes));
+    attachmentDocument.setParentDocumentId(mailDocument.getId());
+    attachmentDocument = documentRepository.save(attachmentDocument);
+    seedChunk(
+        attachmentDocument.getId(),
+        "alter Anhang-Chunk",
+        pdfPipeline.id(),
+        (short) (pdfPipeline.version() - 1));
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    // Same row, fresh chunks at the current PDF pipeline version.
+    assertThat(documentRepository.findById(attachmentDocument.getId())).isPresent();
+    assertThat(pipelineIdsOf(attachmentDocument.getId())).containsOnly(pdfPipeline.id());
+    assertThat(chunkTextsOf(attachmentDocument.getId())).doesNotContain("alter Anhang-Chunk");
+    List<Integer> versions =
+        jdbcTemplate.queryForList(
+            "SELECT DISTINCT (metadata->>'pipeline_version')::int FROM vector_store WHERE"
+                + " metadata->>'document_id' = ?",
+            Integer.class,
+            attachmentDocument.getId().toString());
+    assertThat(versions).containsOnly((int) pdfPipeline.version());
+  }
+
+  @Test
+  void aPdfPipelineVersionBumpReachesAPdfAttachmentInsideAnUploadedMail() throws Exception {
+    // #1218: the UPLOAD counterpart of aPdfPipelineVersionBumpReachesAPdfAttachmentInsideAMail -
+    // an attachment of an uploaded mail is re-extracted from the managed-storage mail file, so
+    // attachmentAccessFor/reindexAttachmentDocument must accept UPLOAD roots instead of skipping.
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    byte[] pdfBytes = pdfBytes("Die Hundesteuer betraegt 96,00 EUR im Jahr.");
+    Message message =
+        Message.Builder.of()
+            .setSubject("Steuerbescheid")
+            .setFrom("Steueramt <steueramt@example.org>")
+            .setTo("Sachbearbeitung <sachbearbeitung@example.org>")
+            .setBody(
+                MultipartBuilder.create("mixed")
+                    .addTextPart("Der Bescheid haengt an.", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        BodyPartBuilder.create()
+                            .setBody(pdfBytes, "application/pdf")
+                            .setContentDisposition("attachment", "anlage.pdf"))
+                    .build())
+            .build();
+    Path managedDirectory =
+        Path.of(uploadProperties.storagePath()).resolve(uploadLibrary.getId().toString());
+    Files.createDirectories(managedDirectory);
+    Path emlFile = managedDirectory.resolve(UUID.randomUUID() + ".eml");
+    Files.write(emlFile, DefaultMessageWriter.asBytes(message));
+    Document mailDocument =
+        persistedDocumentPointingAt(
+            "bescheid.eml", emlFile, DocumentSourceType.UPLOAD, uploadLibrary.getId());
+    Document attachmentDocument =
+        new Document(
+            "anlage.pdf",
+            emlFile.toAbsolutePath() + "/0/anlage.pdf",
+            "application/pdf",
+            (long) pdfBytes.length,
+            DocumentSourceType.UPLOAD);
+    attachmentDocument.setLibraryId(uploadLibrary.getId());
+    attachmentDocument.setOrganizationId(Organization.DEFAULT_ID);
+    attachmentDocument.setChecksum(new ChecksumService().computeSha256(pdfBytes));
+    attachmentDocument.setParentDocumentId(mailDocument.getId());
+    attachmentDocument = documentRepository.save(attachmentDocument);
+    seedChunk(
+        attachmentDocument.getId(),
+        uploadLibrary.getId(),
+        "alter Anhang-Chunk",
+        pdfPipeline.id(),
+        (short) (pdfPipeline.version() - 1));
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    assertThat(documentRepository.findById(attachmentDocument.getId())).isPresent();
+    assertThat(pipelineIdsOf(attachmentDocument.getId())).containsOnly(pdfPipeline.id());
+    assertThat(chunkTextsOf(attachmentDocument.getId())).doesNotContain("alter Anhang-Chunk");
+  }
+
+  @Test
+  void aRemoteAttachmentDocumentMarksItsWholeParentChainForTheNextRun() {
+    // #1219: a remote (HTTP_DIRECTORY) attachment can only be re-extracted by its parent's own
+    // connector run. Marking only the attachment row would never converge - the unchanged parent
+    // would be skipped by the run's change check and the attachment never re-parsed - so the
+    // whole chain, root included, has its change markers cleared.
+    Document mail = persistedRemoteDocument("https://example.test/mail.eml");
+    mail.setLastModifiedRemote("Mon, 01 Sep 2026 10:00:00 GMT");
+    mail = documentRepository.save(mail);
+    Document attachment =
+        new Document(
+            "anlage.pdf",
+            "https://example.test/mail.eml/0/anlage.pdf",
+            "application/pdf",
+            1024L,
+            DocumentSourceType.HTTP_DIRECTORY);
+    attachment.setLibraryId(library.getId());
+    attachment.setOrganizationId(Organization.DEFAULT_ID);
+    attachment.setChecksum("checksum-attachment");
+    attachment.setParentDocumentId(mail.getId());
+    attachment = documentRepository.save(attachment);
+    seedChunk(attachment.getId(), "alter chunk", null, null);
+
+    PipelineReindexResult result = reindexBatch(10);
+
+    assertThat(result.markedForNextRun()).isEqualTo(1);
+    Document reloadedMail = documentRepository.findById(mail.getId()).orElseThrow();
+    Document reloadedAttachment = documentRepository.findById(attachment.getId()).orElseThrow();
+    assertThat(reloadedAttachment.getChecksum()).isNull();
+    // The root parent is cleared too - without this, the next run skips the unchanged mail and
+    // the attachment stays below version forever.
+    assertThat(reloadedMail.getChecksum()).isNull();
+    assertThat(reloadedMail.getLastModifiedRemote()).isNull();
+    // Drains: the marked attachment leaves the backlog selection on the next call.
+    assertThat(reindexBatch(10).isEmpty()).isTrue();
+  }
+
+  @Test
+  void anIndexShiftedAttachmentIsSkippedInsteadOfReindexedWithForeignBytes() throws Exception {
+    // Review round 2, finding 2: positional indices are only stable while the parent file is
+    // unchanged. If the mail was edited since indexing (an attachment removed, order shifted),
+    // today's attachment at the row's index carries DIFFERENT bytes - re-indexing them under this
+    // row would put foreign content under a foreign name into search and citations. The checksum
+    // verification must skip the row instead; the next scheduled run of the library heals it.
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    byte[] shiftedPdfBytes = pdfBytes("Ein ganz anderer Bescheid ueber 99,00 EUR.");
+    Message message =
+        Message.Builder.of()
+            .setSubject("Geaenderte Mail")
+            .setFrom("Buergeramt <buergeramt@example.org>")
+            .setTo("Sachbearbeitung <sachbearbeitung@example.org>")
+            .setBody(
+                MultipartBuilder.create("mixed")
+                    .addTextPart(
+                        "Der urspruengliche Anhang wurde entfernt.", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        BodyPartBuilder.create()
+                            .setBody(shiftedPdfBytes, "application/pdf")
+                            .setContentDisposition("attachment", "c.pdf"))
+                    .build())
+            .build();
+    Path emlFile = classTempDir.resolve(UUID.randomUUID() + "-geaendert.eml");
+    Files.write(emlFile, DefaultMessageWriter.asBytes(message));
+    Document mailDocument =
+        persistedDocumentPointingAt(
+            "geaendert.eml", emlFile, DocumentSourceType.FILESYSTEM, library.getId());
+    // The row was created for the mail's FORMER attachment at index 0 (b.pdf) - its checksum
+    // belongs to bytes that today's index 0 no longer carries.
+    Document attachmentDocument =
+        new Document("b.pdf", emlFile.toAbsolutePath() + "/0/b.pdf", "application/pdf", 1024L);
+    attachmentDocument.setLibraryId(library.getId());
+    attachmentDocument.setOrganizationId(Organization.DEFAULT_ID);
+    attachmentDocument.setChecksum(
+        new ChecksumService()
+            .computeSha256("frueherer Anhangsinhalt".getBytes(StandardCharsets.UTF_8)));
+    attachmentDocument.setParentDocumentId(mailDocument.getId());
+    attachmentDocument = documentRepository.save(attachmentDocument);
+    seedChunk(
+        attachmentDocument.getId(),
+        "alter Anhang-Chunk",
+        pdfPipeline.id(),
+        (short) (pdfPipeline.version() - 1));
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(result.reindexedDocuments()).isZero();
+    assertThat(result.skippedDocuments()).isEqualTo(1);
+    // Nothing was destroyed or replaced - the old chunk survives untouched.
+    assertThat(chunkTextsOf(attachmentDocument.getId())).containsExactly("alter Anhang-Chunk");
+  }
+
+  private DocumentPipeline mailPipeline() {
+    return pipelineRegistry.pipelines().stream()
+        .filter(candidate -> candidate.handledFormats().contains(".eml"))
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("No mail pipeline registered"));
+  }
+
+  private byte[] pdfBytes(String text) throws IOException {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    try (PDDocument pdf = new PDDocument()) {
+      PDPage page = new PDPage(PDRectangle.A4);
+      pdf.addPage(page);
+      try (PDPageContentStream stream = new PDPageContentStream(pdf, page)) {
+        stream.beginText();
+        stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+        stream.newLineAtOffset(50, 700);
+        stream.showText(text);
+        stream.endText();
+      }
+      pdf.save(out);
+    }
+    return out.toByteArray();
   }
 
   private PipelineReindexResult reindexBatch(int batchSize) {

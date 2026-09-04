@@ -1260,6 +1260,130 @@ describe('LibraryDetailPage', () => {
     expect(screen.getAllByText(/herkunft:/i)).toHaveLength(1)
   })
 
+  // #1184 (ADR-0022, Entscheidung 5): attachments carry parentDocumentId and follow their
+  // top-level parent in the server's items order - the list groups them collapsibly under it.
+  describe('attachment grouping (#1184)', () => {
+    function docOf(
+      id: string,
+      fileName: string,
+      overrides: Partial<LibraryDocumentResponse> = {},
+    ): LibraryDocumentResponse {
+      return {
+        id,
+        fileName,
+        contentType: 'application/pdf',
+        fileSize: 1000,
+        status: 'INDEXED',
+        sourceType: 'UPLOAD',
+        chunkCount: 3,
+        indexedAt: '2026-03-01T10:00:00Z',
+        uploadedByUserId: null,
+        ...overrides,
+      }
+    }
+
+    const mail = docOf('document-mail', 'posteingang.eml')
+    const attachment1 = docOf('document-anhang-1', 'foerderbescheid.pdf', {
+      parentDocumentId: 'document-mail',
+    })
+    const attachment2 = docOf('document-anhang-2', 'anlage-berechnung.xlsx', {
+      parentDocumentId: 'document-mail',
+    })
+
+    it('collapses attachments under their parent by default and toggles them via the button', async () => {
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      mockGetLibraryDocuments.mockResolvedValue(
+        pageOf([mail, attachment1, attachment2], { totalElements: 1 }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await screen.findByText('posteingang.eml')
+      // Collapsed by default: the list stays at its parent-level length.
+      expect(screen.queryByText('foerderbescheid.pdf')).not.toBeInTheDocument()
+      expect(screen.queryByText('anlage-berechnung.xlsx')).not.toBeInTheDocument()
+
+      const toggle = screen.getByRole('button', { name: 'Anhänge von posteingang.eml anzeigen' })
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      expect(toggle).toHaveTextContent('2 Anhänge')
+      await user.click(toggle)
+
+      expect(screen.getByText('foerderbescheid.pdf')).toBeInTheDocument()
+      expect(screen.getByText('anlage-berechnung.xlsx')).toBeInTheDocument()
+      // Attachment rows are marked as such.
+      expect(screen.getAllByText('Anhang', { exact: true })).toHaveLength(2)
+
+      const collapse = screen.getByRole('button', { name: 'Anhänge von posteingang.eml verbergen' })
+      expect(collapse).toHaveAttribute('aria-expanded', 'true')
+      await user.click(collapse)
+      expect(screen.queryByText('foerderbescheid.pdf')).not.toBeInTheDocument()
+    })
+
+    it('expands groups by default while a search is active, so an attachment hit is visible', async () => {
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      // The backend answers an attachment hit with the parent plus its whole group (#1184).
+      mockGetLibraryDocuments.mockResolvedValue(
+        pageOf([mail, attachment1, attachment2], { totalElements: 1 }),
+      )
+      await user.type(await screen.findByLabelText(/dokumente durchsuchen/i), 'foerder')
+
+      expect(await screen.findByText('foerderbescheid.pdf')).toBeInTheDocument()
+      expect(screen.getByText('posteingang.eml')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'Anhänge von posteingang.eml verbergen' }),
+      ).toHaveAttribute('aria-expanded', 'true')
+    })
+
+    it('renders a nested attachment chain flat under the top-level parent with a via hint', async () => {
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      const forwardedMail = docOf('document-weiterleitung', 'weiterleitung.eml', {
+        parentDocumentId: 'document-mail',
+      })
+      const innerAttachment = docOf('document-innere-anlage', 'innere-anlage.pdf', {
+        parentDocumentId: 'document-weiterleitung',
+      })
+      mockGetLibraryDocuments.mockResolvedValue(
+        pageOf([mail, forwardedMail, innerAttachment], { totalElements: 1 }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await screen.findByText('posteingang.eml')
+      await user.click(screen.getByRole('button', { name: 'Anhänge von posteingang.eml anzeigen' }))
+
+      // Both nesting levels sit flat under the one top-level row; the deeper one names its
+      // direct parent instead of nesting further.
+      expect(screen.getByText('weiterleitung.eml')).toBeInTheDocument()
+      expect(screen.getByText('innere-anlage.pdf')).toBeInTheDocument()
+      expect(screen.getByText('Anhang von: weiterleitung.eml')).toBeInTheDocument()
+    })
+
+    it('pages on the parent level: attachments neither count towards totalElements nor paginate', async () => {
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      const other = docOf('document-b', 'b-dokument.pdf')
+      // A page of size 2 carrying 2 parents plus 2 attachments - totalElements counts the 3
+      // parents across all pages, so exactly 2 pagination pages result, not 3.
+      mockGetLibraryDocuments.mockResolvedValue(
+        pageOf([mail, attachment1, attachment2, other], { size: 2, totalElements: 3 }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await screen.findByText('posteingang.eml')
+      expect(screen.getByText('b-dokument.pdf')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Anhänge von posteingang.eml anzeigen' }))
+      expect(screen.getByText('foerderbescheid.pdf')).toBeInTheDocument()
+
+      const pagination = screen.getByRole('navigation', { name: 'Dokumentenliste blättern' })
+      expect(within(pagination).getByRole('button', { name: /seite 2/i })).toBeInTheDocument()
+      expect(within(pagination).queryByRole('button', { name: /seite 3/i })).not.toBeInTheDocument()
+    })
+  })
+
   // #738: local sourceTypes fetch the file as a Blob and open/download it client-side, since the
   // download endpoint is Bearer-authenticated - see utils/documentContent.test.ts for that piece's
   // own behaviour, mocked here (see the vi.mock above) to isolate which target this page picks.

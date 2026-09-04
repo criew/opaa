@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: 017-documents-library-checksum-parentless
+      author: opaa
+      comment: >-
+        #1218 (ADR-0022): scopes the upload dedup index uk_documents_library_checksum to parentless
+        rows. Since attachments of uploaded mails are indexed as their own UPLOAD-source_type rows
+        (parent_document_id set), the old index shape would reject two different mails carrying an
+        identical attachment (same checksum) in the same library - the second attachment insert
+        would fail the unique index even though neither is a user upload. Dedup remains a guarantee
+        about what users upload, not about content derived from it; the Java-side lookup
+        (DocumentRepository#findByLibraryIdAndChecksumAndParentDocumentIdIsNull) matches this scope.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP INDEX public.uk_documents_library_checksum;
+              CREATE UNIQUE INDEX uk_documents_library_checksum ON public.documents USING btree (library_id, checksum)
+                  WHERE ((checksum IS NOT NULL) AND ((source_type)::text = 'UPLOAD'::text) AND (parent_document_id IS NULL));
+      rollback:
+        - sql:
+            sql: |
+              DROP INDEX public.uk_documents_library_checksum;
+              CREATE UNIQUE INDEX uk_documents_library_checksum ON public.documents USING btree (library_id, checksum)
+                  WHERE ((checksum IS NOT NULL) AND ((source_type)::text = 'UPLOAD'::text));

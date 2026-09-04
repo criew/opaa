@@ -207,9 +207,11 @@ public final class SupportedDocumentFormats {
   }
 
   /**
-   * The number of leading bytes {@link #detectMediaType(byte[])} needs to reliably identify every
-   * type {@link #EXTENSIONS} accepts - mirrors the 64 KiB default buffer Tika's own {@code
-   * MimeTypes} magic detection reads from a stream ({@code MimeTypes#getMinLength()}).
+   * The number of leading bytes {@link #detectMediaType(byte[])} needs to identify every type
+   * {@link #EXTENSIONS} accepts by its own signature - mirrors the 64 KiB default buffer Tika's own
+   * {@code MimeTypes} magic detection reads from a stream ({@code MimeTypes#getMinLength()}). Not
+   * enough for a container whose identifying part may sit past the sample; {@link #decideForPrefix}
+   * is where that case is resolved.
    */
   public static final int DETECTION_PREFIX_BYTES = 65_536;
 
@@ -218,7 +220,9 @@ public final class SupportedDocumentFormats {
    * {@link #detectMediaType(Path)}, used before a file behind a listing is downloaded in full:
    * {@code UrlIndexingExecutor} reads at most {@link #DETECTION_PREFIX_BYTES} to decide whether an
    * entry is worth downloading at all, so an arbitrarily large file linked from a directory listing
-   * never has to be written to disk in full only to be rejected afterwards.
+   * never has to be written to disk in full only to be rejected afterwards - except when the sample
+   * yields an {@link #isUnresolvedContainerType unresolved container type}, which is no verdict at
+   * all and makes {@link #decideForPrefix} fetch the complete file to decide.
    */
   public static String detectMediaType(byte[] contentPrefix) {
     try {
@@ -228,6 +232,63 @@ public final class SupportedDocumentFormats {
       // checked exception because it accepts any InputStream.
       throw new UncheckedIOException(e);
     }
+  }
+
+  /**
+   * The generic container types Tika reports when it recognizes the container but not the format
+   * inside it. A detection over a bounded prefix ({@link #DETECTION_PREFIX_BYTES}) runs into this
+   * routinely: an OLE2 file's directory sector - the part naming the streams that identify a {@code
+   * .msg} or {@code .doc} - can sit anywhere in the file, so any OLE2 document larger than the
+   * sample detects as {@code application/x-tika-msoffice} there while its complete bytes detect as
+   * the specific type. {@code application/x-tika-ooxml} is the same situation for a ZIP container.
+   */
+  private static final Set<String> UNRESOLVED_CONTAINER_TYPES =
+      Set.of("application/x-tika-msoffice", "application/x-tika-ooxml");
+
+  /**
+   * Whether {@code detectedMimeType} is one of {@link #UNRESOLVED_CONTAINER_TYPES} - a detection
+   * that carries no verdict about the complete file. A caller holding only a prefix must therefore
+   * not turn it into a rejection; {@link #decideForPrefix} is where that is enforced.
+   */
+  public static boolean isUnresolvedContainerType(String detectedMimeType) {
+    if (detectedMimeType == null) {
+      return false;
+    }
+    return UNRESOLVED_CONTAINER_TYPES.contains(
+        detectedMimeType.split(";", 2)[0].strip().toLowerCase(Locale.ROOT));
+  }
+
+  /** Supplies a file's complete content on demand, for {@link #decideForPrefix}. */
+  @FunctionalInterface
+  public interface CompleteContent {
+    Path get() throws IOException, InterruptedException;
+  }
+
+  /**
+   * The decision for a file whose bytes are, at first, only available as a leading prefix - the
+   * network path's counterpart to calling {@link #decideForFileName} on a complete file.
+   *
+   * <p>The prefix decides on its own unless it detected one of {@link #UNRESOLVED_CONTAINER_TYPES}
+   * and was not accepted: that outcome says the sample ended before the container revealed which
+   * format it holds, not that the file is unsupported, so {@code completeContent} is fetched and
+   * decides instead. Every other detection - a resolved type, or content Tika could not place at
+   * all - is final on the prefix alone, so an entry this system does not want still costs a bounded
+   * read rather than a full transfer.
+   *
+   * <p>The fallback does not resolve every container either: Tika's own {@code
+   * POIFSContainerDetector} reads at most its {@code markLimit} (128 MiB by default) before
+   * reporting the unresolved type again, so an OLE2 document larger than that stays rejected even
+   * with its complete bytes at hand.
+   */
+  public static ContentDecision decideForPrefix(
+      String fileName, byte[] prefix, CompleteContent completeContent)
+      throws IOException, InterruptedException {
+    String detectedFromPrefix = detectMediaType(prefix);
+    ContentDecision decision = decideForFileName(fileName, detectedFromPrefix);
+    if (decision.supported() || !isUnresolvedContainerType(detectedFromPrefix)) {
+      return decision;
+    }
+    return decideForFileName(fileName, detectMediaType(completeContent.get()));
   }
 
   /**

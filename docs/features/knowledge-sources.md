@@ -96,9 +96,13 @@ Ablauf beim Hochladen:
    Verzeichnis- und URL-Aufnahme, eine konfigurierbare Größenobergrenze. **Seit #435 prüft der
    Upload zusätzlich den tatsächlichen Dateiinhalt** per Tika-Erkennung anhand der Magic Bytes gegen
    die behauptete Dateiendung — eine Binärdatei als `.pdf` oder eine Office-Datei als `.txt` wird
-   abgelehnt; bei Textformaten (`.md`, `.txt`) genügt es, dass der Inhalt überhaupt Text ist. Diese
-   Inhaltsprüfung gilt nur für den Upload-Pfad; Verzeichnis- und URL-Aufnahme bleiben bei der reinen
-   Endungsentscheidung (Begründung in `SupportedDocumentFormats`). **Die Schadsoftwareprüfung fehlt
+   abgelehnt; bei Textformaten (`.md`, `.txt`) genügt es, dass der Inhalt überhaupt Text ist. Seit
+   #404 entscheiden auch Verzeichnis- und URL-Aufnahme über den erkannten Inhalt statt über die
+   Endung — nur die Folge eines Widerspruchs unterscheidet sich: Der Upload lehnt ab, die
+   Aufnahmeläufe indizieren und melden ein `FORMAT_MISMATCH`-Ereignis (Begründung in
+   `SupportedDocumentFormats`). Der URL-Weg entscheidet dafür zunächst nur an einer Leseprobe und
+   lädt vollständig nach, wenn diese den Containertyp nicht auflösen konnte (#1229, siehe
+   [Aufnahme-Pipelines](./ingestion-pipelines.md)). **Die Schadsoftwareprüfung fehlt
    noch bewusst** — sie braucht eine eigene Entscheidung über Prüfdienst und Betriebsweg und ist als
    eigenes Issue vorzuziehen, bevor ein Produktivbetrieb möglich ist.
 3. Ablage im Dokumentenspeicher der Installation, getrennt je Bibliothek. **Gebaut.**
@@ -118,9 +122,14 @@ Ablauf beim Hochladen:
    nur, solange die dort geöffnete Bibliothek mindestens `EDITOR` gewährt, sodass sich beide Zwecke
    nie widersprechen können.
 
+Eine hochgeladene `.eml`/`.msg` bringt ihre Anhänge mit: Sie werden seit #1218 über den
+quellentyp-übergreifenden Anhangsweg (ADR-0022) als eigene Dokumente mit `parent_document_id` auf die
+Mail indiziert — derselbe Weg wie bei FILESYSTEM- (#1183) und Webverzeichnis-Läufen (#1219), nur ohne
+Lauf-/Job-Kontext.
+
 Ein hochgeladenes Dokument lässt sich über `DELETE /api/v1/libraries/{libraryId}/documents/{documentId}`
 auch wieder entfernen (`EDITOR` erforderlich) — die Dokumentzeile, ihre Chunks im Vektorspeicher und die
-abgelegte Datei. **Gebaut (#420).**
+abgelegte Datei; Anhangsdokumente der Mail gehen dabei mit (ADR-0022, Entscheidung 3). **Gebaut (#420).**
 
 Zwei Sicherungen gehören zusätzlich dazu, beide noch offen:
 
@@ -231,8 +240,13 @@ unveränderlich sichtbar; Adresse, Zugangsdaten und Space-Auswahl bleiben über 
 bearbeitbar. **Der Vollabgleich ist gebaut (#1136):** Ein Lauf prüft zuerst die Zugangsdaten (Data
 Center bedient ein widerrufenes Token anonym mit leerer Auflistung — sie darf nie als vollständig
 gelten), listet dann jeden ausgewählten Space vollständig auf — Kennungen, Titel und Versionen, nie
-den Inhalt —, holt jede Seite einzeln, deren Version sich geändert hat, und nimmt ihre Anhänge als
-eigene Dokumente auf (ADR-0022). Jedes Dokument trägt Space-Schlüssel, Gliederungspfad
+den Inhalt —, holt jede Seite einzeln, deren Version sich geändert hat, und nimmt ihre Anhänge über
+den quellentyp-übergreifenden Anhangsweg (`AttachmentIndexer`, ADR-0022) als eigene Dokumente mit
+`parent_document_id` auf die Seite auf — Format-Zulassung, Prüfsumme, verschachtelte Anhänge (eine
+`.eml` an einer Seite) und die Buchhaltung für den Abgleich sind dieselben wie bei RSS und Mail; nur
+der Download selbst bleibt beim editionsbewussten Client, weil dort Zugangsdaten, Anfragebudget und
+die Weiterleitungsregel der Cloud-Medienablage liegen. Ein unveränderter Anhang (Versionsnummer) wird
+vor jedem Download übersprungen. Jedes Dokument trägt Space-Schlüssel, Gliederungspfad
 (Titel der Vorfahren), Seitentitel, Versionsnummer und die titelfreie Confluence-URL, über die der
 Beleg es öffnet. Erst wenn **alle** ausgewählten Spaces vollständig aufgelistet wurden, verschwindet
 aus dem Index, was der Lauf nicht wieder angetroffen hat: gelöschte und in den Papierkorb
@@ -393,10 +407,17 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
 4. Geladen wird in einen temporären Bereich; anschließend wird eine **Prüfsumme über den Inhalt**
    gebildet. Sie erkennt Umbenennungen und Verschiebungen und sichert gegen einen unzuverlässigen
    Änderungszeitpunkt ab.
-5. Die Datei durchläuft dieselbe Verarbeitungskette wie jedes andere Dokument.
+5. Die Datei durchläuft dieselbe Verarbeitungskette wie jedes andere Dokument. Meldet ihre
+   Pipeline dabei Anhänge (eine `.eml`/`.msg` aus dem Webverzeichnis), laufen diese seit #1219 über
+   den quellentyp-übergreifenden Anhangsweg (ADR-0022) und werden eigene Dokumente mit
+   `parent_document_id` auf die Mail — wie bei FILESYSTEM-Läufen und beim Upload.
 6. Der temporäre Bereich wird nach der Verarbeitung geräumt — auch bei einem Fehler.
 7. **Löschung durch Abwesenheit ist gebaut** (ADR-0017, Entscheidung 5): Ein Dokument, dessen URL
    im aktuellen Abruf fehlt, wird am Ende eines erfolgreichen Laufs samt seiner Chunks entfernt.
+   Anhangsdokumente folgen der Buchhaltung aus ADR-0022, Entscheidung 3: Ein beim Verarbeiten der
+   Mail gemeldeter Anhang zählt als vorhanden, die Anhänge einer unverändert übersprungenen Mail
+   werden aus der Datenbank nachgetragen, und nur ein aus einer neu verarbeiteten Mail
+   verschwundener Anhang fällt weg.
    Drei Fälle lösen das bewusst **nicht** aus, weil der jeweilige Bestand dann keine verlässliche
    Aussage über ein Verschwinden ist: ein durch Tiefen-/Mengenlimit abgeschnittener Lauf (Schritt
    1), ein Lauf, bei dem mindestens ein Unterverzeichnis nicht abgerufen werden konnte, und ein
@@ -464,7 +485,7 @@ ein Dokument. Was indiziert werden soll, muss OPAA erst aus dieser Seite gewinne
    kennzeichnen. Jede gefundene Anlage durchläuft dieselbe Verarbeitungskette wie eine Datei aus einer
    Verzeichnisliste, über den quellentyp-übergreifenden Anhangsweg
    (`io.opaa.indexing.source.attachment.AttachmentIndexer`, ADR-0022, seit #1182 ohne RSS-spezifische
-   Abhängigkeiten — derselbe Weg, den Mail und Confluence künftig mitnutzen). Diese dritte Stufe läuft
+   Abhängigkeiten — denselben Weg nutzt Mail seit #1183, Confluence künftig). Diese dritte Stufe läuft
    nicht bei jedem Eintrag: Sie folgt entweder aus einer tatsächlichen Neuverarbeitung (Stufe 2) oder —
    bei einem unveränderten Eintrag ohne bisherige Anlagen — aus dem Nachholmechanismus der
    Änderungserkennung unten.
@@ -472,7 +493,7 @@ ein Dokument. Was indiziert werden soll, muss OPAA erst aus dieser Seite gewinne
 **Herkunftsanzeige (gebaut, #493; verallgemeinert, ADR-0022 Entscheidung 4).** Eine Anlage führt intern
 fest, zu welchem Eintrag sie gehört — über `source_entry_url` (RSS-spezifisch, unverändert seit #493)
 und über `parent_document_id`, die FK-basierte, quellentyp-übergreifende Fassung derselben Beziehung,
-die auch Mail- und künftige Confluence-Anhänge setzen. Die Bibliotheksdetailseite zeigt diesen Eintrag
+die seit #1183 auch Mail-Anhänge setzen (künftig Confluence). Die Bibliotheksdetailseite zeigt diesen Eintrag
 als Link unter der Anlage an, und `LibraryDocumentResponse` trägt ihn als `sourceEntryUrl` — eine
 Anlage im Index bleibt damit ihrem Feed-Eintrag zuordenbar. Noch nicht durchgereicht ist er in die
 Belegangabe einer Chat-Antwort (`SourceReference`); das ist als eigenständiger Folgeschritt in

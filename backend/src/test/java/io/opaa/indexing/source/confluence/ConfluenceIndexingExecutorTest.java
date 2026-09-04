@@ -33,9 +33,12 @@ import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.source.attachment.AttachmentAccess;
+import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.library.ConfluenceSpaceSelection;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
@@ -57,10 +60,11 @@ import org.mockito.ArgumentMatcher;
 
 /**
  * The full sync (#1136) end to end against {@link FakeConfluenceServer}, for both editions: the
- * access layer is real, everything behind it (processing, job bookkeeping, repositories, the
- * reconciliation) is mocked and asserted on. Mirrors {@code UrlIndexingExecutorExecuteTest}'s
- * pattern; {@code execute} is called directly, so no {@code timeout()} is needed for the
- * assertions, only for the asynchronous habit's sake.
+ * access layer and the generalized attachment path ({@link AttachmentIndexer}) are real, everything
+ * behind them (processing, job bookkeeping, repositories, the reconciliation) is mocked and
+ * asserted on. Mirrors {@code UrlIndexingExecutorExecuteTest}'s pattern; {@code execute} is called
+ * directly, so no {@code timeout()} is needed for the assertions, only for the asynchronous habit's
+ * sake.
  */
 class ConfluenceIndexingExecutorTest {
 
@@ -87,6 +91,13 @@ class ConfluenceIndexingExecutorTest {
   private VectorChunkStore vectorChunkStore;
   private final List<Duration> sleeps = new ArrayList<>();
 
+  /**
+   * Every page {@code processConfluencePage} stored this test - the default {@code
+   * findByLibraryIdAndFilePath} answers from it, so the executor finds the page row an attachment
+   * becomes a child of.
+   */
+  private final List<Document> storedPages = new ArrayList<>();
+
   /** #1141: the request budget the executor under test runs with; 0 (the default) is unbounded. */
   private int requestBudget;
 
@@ -107,9 +118,13 @@ class ConfluenceIndexingExecutorTest {
     indexingJobService = mock(IndexingJobService.class);
     documentRepository = mock(DocumentRepository.class);
     when(documentRepository.findByLibraryIdAndFilePath(any(), anyString()))
-        .thenReturn(Optional.empty());
-    when(documentRepository.findByLibraryIdAndSourceEntryUrl(any(), anyString()))
-        .thenReturn(List.of());
+        .thenAnswer(
+            inv ->
+                storedPages.stream()
+                    .filter(d -> d.getFilePath().equals(inv.getArgument(1)))
+                    .findFirst());
+    // Mockito invokes the stubbed method with null arguments while a test re-stubs it - such a
+    // call must not leave a page without a path behind.
     eventRepository = mock(IndexingRunEventRepository.class);
     storageQuotaService = mock(LibraryStorageQuotaService.class);
     when(storageQuotaService.quotaExceededMessage(any()))
@@ -120,8 +135,40 @@ class ConfluenceIndexingExecutorTest {
     when(syncStateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     vectorChunkStore = mock(VectorChunkStore.class);
     when(fileProcessingService.processConfluencePage(any(), any(), any(), any(), any(), any()))
-        .thenReturn(FileProcessingResult.PROCESSED);
+        .thenAnswer(
+            inv -> {
+              if (inv.getArgument(2) != null) {
+                storedPages.add(
+                    storedPage(
+                        inv.getArgument(1),
+                        inv.getArgument(2),
+                        inv.getArgument(3),
+                        inv.getArgument(4)));
+              }
+              return FileProcessingResult.PROCESSED;
+            });
     jobId = UUID.randomUUID();
+  }
+
+  private static Document storedPage(
+      String title, String path, String version, SourceDocumentContext context) {
+    Document doc = new Document(title, path, "text/html", 10L, DocumentSourceType.CONFLUENCE);
+    doc.setStatus(DocumentStatus.INDEXED);
+    doc.setLastModifiedRemote(version);
+    doc.applySourceContext(context);
+    return doc;
+  }
+
+  private Document storedPage(String path) {
+    return storedPages.stream()
+        .filter(d -> d.getFilePath().equals(path))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("no page stored under " + path));
+  }
+
+  /** The {@link AttachmentAccess} carries the page's context to every attachment. */
+  private static AttachmentAccess withContext(SourceDocumentContext context) {
+    return argThat(access -> access != null && context.equals(access.sourceContext()));
   }
 
   @AfterEach
@@ -197,6 +244,7 @@ class ConfluenceIndexingExecutorTest {
             factory,
             properties,
             fileProcessingService,
+            attachmentIndexer(),
             indexingJobService,
             documentRepository,
             eventRepository,
@@ -205,6 +253,15 @@ class ConfluenceIndexingExecutorTest {
             syncStateRepository,
             vectorChunkStore,
             Clock.fixed(NOW, ZoneOffset.UTC));
+  }
+
+  /** The real generalized attachment path over the mocked processing (#1137). */
+  private AttachmentIndexer attachmentIndexer() {
+    return new AttachmentIndexer(
+        new BoundedDownloader(TargetAddressValidator.disabled()),
+        fileProcessingService,
+        storageQuotaService,
+        documentRepository);
   }
 
   private String pagePath(ConfluenceEdition edition, String spaceKey, String id) {
@@ -240,6 +297,8 @@ class ConfluenceIndexingExecutorTest {
             eq(library));
     verify(fileProcessingService, never())
         .processConfluencePage(any(), eq("Streng geheim"), any(), any(), any(), any());
+    // ADR-0022 (#1137): the attachment goes the generalized path - a child of the page's own row,
+    // with the page's place as its context and the version as its change marker
     ArgumentCaptor<String> attachmentPath = ArgumentCaptor.forClass(String.class);
     verify(fileProcessingService)
         .processUrlFile(
@@ -251,8 +310,8 @@ class ConfluenceIndexingExecutorTest {
             eq(library),
             eq(DocumentSourceType.CONFLUENCE),
             eq(abschnitt),
-            any(),
-            eq(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1 / Abschnitt 1.1")));
+            eq(storedPage(abschnitt).getId()),
+            withContext(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1 / Abschnitt 1.1")));
     assertThat(attachmentPath.getValue()).doesNotContain("?").contains("notizen.txt");
 
     // the listing carried identifiers and versions only - every body was fetched individually
@@ -318,7 +377,7 @@ class ConfluenceIndexingExecutorTest {
             any(),
             any(),
             eq(abschnitt),
-            any(),
+            eq(indexed.getId()),
             any());
     verify(indexingJobService).completeJob(jobId, 2, 0, 1, 3);
   }
@@ -489,19 +548,22 @@ class ConfluenceIndexingExecutorTest {
   void attachmentsOfAPageThisRunCouldNotProcessStayInTheReconciliationSet(ConfluenceEdition edition)
       throws Exception {
     // #1179 review, CRITICAL: a page that cannot be fetched (404) or stored (quota) is no finding
-    // about its attachments - their known documents must not look vanished to the cleanup.
+    // about its attachments - their known documents must not look vanished to the cleanup. Since
+    // #1137 the attachments hang on the page by parent_document_id and are preserved from the
+    // database (ADR-0022, Entscheidung 3), the attachment of an attachment included.
     start(edition, null, "ENG");
     String abschnitt = pagePath(edition, "ENG", "102");
+    Document knownPage =
+        new Document("Abschnitt 1.1", abschnitt, "text/html", 10L, DocumentSourceType.CONFLUENCE);
     Document knownAttachment =
-        new Document(
-            "notizen.txt",
-            server.baseUrl() + "/download/attachments/102/notizen.txt",
-            "text/plain",
-            19L,
-            DocumentSourceType.CONFLUENCE);
-    knownAttachment.setStatus(DocumentStatus.INDEXED);
-    when(documentRepository.findByLibraryIdAndSourceEntryUrl(library.getId(), abschnitt))
-        .thenReturn(List.of(knownAttachment));
+        confluenceAttachment(
+            "notizen.eml", server.baseUrl() + "/download/attachments/102/notizen.eml", knownPage);
+    Document nestedAttachment =
+        confluenceAttachment(
+            "anlage.pdf", knownAttachment.getFilePath() + "/0/anlage.pdf", knownAttachment);
+    when(documentRepository.findByLibraryIdAndSourceType(
+            library.getId(), DocumentSourceType.CONFLUENCE))
+        .thenReturn(List.of(knownPage, knownAttachment, nestedAttachment));
     server.hideFromFetch("102");
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
@@ -509,7 +571,18 @@ class ConfluenceIndexingExecutorTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
     verify(cleanupService).cleanupVanished(any(), any(), current.capture(), any(), any(), any());
-    assertThat(current.getValue()).contains(abschnitt, knownAttachment.getFilePath());
+    assertThat(current.getValue())
+        .contains(abschnitt, knownAttachment.getFilePath(), nestedAttachment.getFilePath());
+  }
+
+  private Document confluenceAttachment(String fileName, String filePath, Document parent) {
+    Document attachment =
+        new Document(
+            fileName, filePath, "application/octet-stream", 5L, DocumentSourceType.CONFLUENCE);
+    attachment.setStatus(DocumentStatus.INDEXED);
+    attachment.setLibraryId(library.getId());
+    attachment.setParentDocumentId(parent.getId());
+    return attachment;
   }
 
   @ParameterizedTest
@@ -518,15 +591,14 @@ class ConfluenceIndexingExecutorTest {
       throws Exception {
     start(edition, null, "ENG");
     String abschnitt = pagePath(edition, "ENG", "102");
+    Document knownPage =
+        new Document("Abschnitt 1.1", abschnitt, "text/html", 10L, DocumentSourceType.CONFLUENCE);
     Document knownAttachment =
-        new Document(
-            "notizen.txt",
-            server.baseUrl() + "/download/attachments/102/notizen.txt",
-            "text/plain",
-            19L,
-            DocumentSourceType.CONFLUENCE);
-    when(documentRepository.findByLibraryIdAndSourceEntryUrl(library.getId(), abschnitt))
-        .thenReturn(List.of(knownAttachment));
+        confluenceAttachment(
+            "notizen.txt", server.baseUrl() + "/download/attachments/102/notizen.txt", knownPage);
+    when(documentRepository.findByLibraryIdAndSourceType(
+            library.getId(), DocumentSourceType.CONFLUENCE))
+        .thenReturn(List.of(knownPage, knownAttachment));
     when(fileProcessingService.processConfluencePage(
             any(), eq("Abschnitt 1.1"), any(), any(), any(), any()))
         .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
@@ -633,7 +705,7 @@ class ConfluenceIndexingExecutorTest {
             argThat(
                 event(
                     IndexingEventCategory.UNSUPPORTED_FORMAT,
-                    "Anhangsformat wird nicht unterstützt",
+                    "Anlagenformat wird nicht unterstützt",
                     null)));
     verify(fileProcessingService, never())
         .processUrlFile(
@@ -770,6 +842,7 @@ class ConfluenceIndexingExecutorTest {
                 smallOverlap, TargetAddressValidator.disabled(), sleeps::add),
             smallOverlap,
             fileProcessingService,
+            attachmentIndexer(),
             indexingJobService,
             documentRepository,
             eventRepository,
@@ -919,8 +992,8 @@ class ConfluenceIndexingExecutorTest {
             eq(library),
             eq(DocumentSourceType.CONFLUENCE),
             eq(abschnitt),
-            any(),
-            eq(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1 / Abschnitt 1.1")));
+            eq(indexed.getId()),
+            withContext(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1 / Abschnitt 1.1")));
     verify(eventRepository)
         .save(argThat(event(IndexingEventCategory.REJECTED, "nicht ausgewählten Space", "200")));
     assertThat(server.requests())
@@ -948,20 +1021,23 @@ class ConfluenceIndexingExecutorTest {
     String abschnitt = pagePath(edition, "ENG", "102");
     Document kapitelDoc =
         new Document("Kapitel 1", kapitel, "text/html", 10L, DocumentSourceType.CONFLUENCE);
-    Document anhang =
-        new Document(
-            "notizen.txt", abschnitt + "#900", "text/plain", 5L, DocumentSourceType.CONFLUENCE);
+    Document anhang = confluenceAttachment("notizen.eml", kapitel + "#900", kapitelDoc);
+    Document nested =
+        confluenceAttachment("anlage.pdf", anhang.getFilePath() + "/0/anlage.pdf", anhang);
     when(documentRepository.findByLibraryIdAndFilePath(library.getId(), kapitel))
         .thenReturn(Optional.of(kapitelDoc));
-    when(documentRepository.findByLibraryIdAndSourceEntryUrl(library.getId(), kapitel))
-        .thenReturn(List.of(anhang));
+    when(documentRepository.findByParentDocumentId(kapitelDoc.getId())).thenReturn(List.of(anhang));
+    when(documentRepository.findByParentDocumentId(anhang.getId())).thenReturn(List.of(nested));
     server.trashPage("101");
     server.hideFromFetch("102");
 
     executor.refreshPages(jobId, library, Set.of("101", "102"));
 
-    verify(documentRepository).delete(kapitelDoc);
-    verify(documentRepository).delete(anhang);
+    // fk_documents_parent: the deepest attachment goes first, the page last
+    org.mockito.InOrder deletes = org.mockito.Mockito.inOrder(documentRepository);
+    deletes.verify(documentRepository).delete(nested);
+    deletes.verify(documentRepository).delete(anhang);
+    deletes.verify(documentRepository).delete(kapitelDoc);
     verify(eventRepository)
         .save(
             argThat(
@@ -1052,6 +1128,7 @@ class ConfluenceIndexingExecutorTest {
             new ConfluenceClientFactory(unbounded, TargetAddressValidator.disabled(), sleeps::add),
             unbounded,
             fileProcessingService,
+            attachmentIndexer(),
             indexingJobService,
             documentRepository,
             eventRepository,

@@ -14,6 +14,8 @@ import {
   mockSearchStatus,
   mockSearchPermissionProfiles,
   mockSearchDiagnosis,
+  mockChunkInspections,
+  mockDocumentChunks,
   mockLlmModels,
   resetMockLlmModels,
   mockUser,
@@ -48,6 +50,7 @@ import type {
   DocumentSourceType,
   DocumentStatus,
   IndexingStatusResponse,
+  LibraryDocumentResponse,
   LibraryFolderBreadcrumbItem,
   LibraryFolderListItem,
   LibraryFolderRenameRequest,
@@ -1045,6 +1048,21 @@ export const handlers = [
     })
   }),
 
+  http.get('/api/v1/admin/search/chunks/:chunkId', ({ params }) => {
+    const chunk = mockChunkInspections[params.chunkId as string]
+    if (!chunk) {
+      return HttpResponse.json({ error: 'Der Chunk wurde nicht gefunden.' }, { status: 404 })
+    }
+    return HttpResponse.json(chunk)
+  }),
+
+  http.get('/api/v1/admin/search/documents/:documentId/chunks', ({ params }) => {
+    if (params.documentId !== mockDocumentChunks.documentId) {
+      return HttpResponse.json({ error: 'Das Dokument wurde nicht gefunden.' }, { status: 404 })
+    }
+    return HttpResponse.json(mockDocumentChunks)
+  }),
+
   http.get('/api/v1/libraries', () => {
     return HttpResponse.json(mockLibraries)
   }),
@@ -1449,6 +1467,15 @@ export const handlers = [
       return HttpResponse.json({ error: 'Ordner nicht gefunden' }, { status: 404 })
     }
 
+    // #1184 (ADR-0022, Entscheidung 5): attachments (parentDocumentId set) never page, sort or
+    // count on their own - paging operates on top-level documents, and each returned top-level
+    // document brings its complete (transitive) attachment subtree along, right after itself.
+    const descendantsOf = (parentId: string): LibraryDocumentResponse[] =>
+      allDocuments
+        .filter((doc) => doc.parentDocumentId === parentId)
+        .flatMap((child) => [child, ...descendantsOf(child.id)])
+    const topLevelDocuments = allDocuments.filter((doc) => !doc.parentDocumentId)
+
     let filtered: typeof allDocuments
     let folders: LibraryFolderListItem[]
     let breadcrumb: LibraryFolderBreadcrumbItem[]
@@ -1456,18 +1483,25 @@ export const handlers = [
 
     if (q) {
       // Search is always bibliotheksweit, regardless of folderId (ADR-0020, Entscheidung 4) -
-      // folders/breadcrumb stay empty, folderId is echoed back as null.
-      filtered = allDocuments.filter((doc) => doc.fileName.toLowerCase().includes(q.toLowerCase()))
+      // folders/breadcrumb stay empty, folderId is echoed back as null. A hit on an attachment's
+      // file name surfaces its top-level parent with the whole group (#1184).
+      const matches = (doc: LibraryDocumentResponse) =>
+        doc.fileName.toLowerCase().includes(q.toLowerCase())
+      filtered = topLevelDocuments.filter(
+        (doc) => matches(doc) || descendantsOf(doc.id).some(matches),
+      )
       folders = []
       breadcrumb = []
       responseFolderId = null
     } else {
       responseFolderId = folderIdParam
-      filtered = allDocuments.filter((doc) => (doc.folderId ?? null) === responseFolderId)
+      filtered = topLevelDocuments.filter((doc) => (doc.folderId ?? null) === responseFolderId)
       folders = listMockSubfolders(libraryId, responseFolderId)
       breadcrumb = buildMockBreadcrumb(libraryId, responseFolderId)
     }
-    const items = filtered.slice(page * size, page * size + size)
+    const items = filtered
+      .slice(page * size, page * size + size)
+      .flatMap((doc) => [doc, ...descendantsOf(doc.id)])
 
     return HttpResponse.json({
       items,

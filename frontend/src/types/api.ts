@@ -139,6 +139,8 @@ export type DiagnosisSelectionEntryResponse =
   components['schemas']['DiagnosisSelectionEntryResponse']
 export type TrackedDocumentOutcome = components['schemas']['TrackedDocumentOutcome']
 export type TrackedDocumentResponse = components['schemas']['TrackedDocumentResponse']
+export type ChunkInspectionResponse = components['schemas']['ChunkInspectionResponse']
+export type DocumentChunksResponse = components['schemas']['DocumentChunksResponse']
 
 export function isErrorResponse(data: unknown): data is ErrorResponse {
   return (

@@ -89,4 +89,61 @@ class StaleDocumentCleanupServiceTest {
     order.verify(vectorChunkStore).deleteByDocumentId(parent.getId());
     order.verify(documentRepository).delete(parent);
   }
+
+  /**
+   * #1183: a Mail-in-Mail chain nests an attachment inside an attachment (a forwarded {@code .eml}
+   * with its own attachment) - two levels of {@code parent_document_id}, not the one level {@link
+   * #deletesAVanishedAttachmentBeforeItsOwnVanishedParent} covers. Stubbed in the order least
+   * favorable to a naive one-level sort (grandchild first, then parent, then the intermediate
+   * child) to prove the delete order is derived from actual nesting depth, not from the
+   * repository's incidental result order.
+   */
+  @Test
+  void deletesAVanishedGrandchildAttachmentBeforeItsIntermediateAndOutermostParents() {
+    Document outerMail =
+        new Document("Aussenmail.eml", "https://feed.example/outer", "message/rfc822", 10L);
+    outerMail.setLibraryId(library.getId());
+    Document innerMail =
+        new Document(
+            "weitergeleitet.eml",
+            "https://feed.example/outer/0/weitergeleitet.eml",
+            "message/rfc822",
+            8L);
+    innerMail.setLibraryId(library.getId());
+    innerMail.setParentDocumentId(outerMail.getId());
+    Document grandchildAttachment =
+        new Document(
+            "anlage.pdf",
+            "https://feed.example/outer/0/weitergeleitet.eml/0/anlage.pdf",
+            "application/pdf",
+            5L);
+    grandchildAttachment.setLibraryId(library.getId());
+    grandchildAttachment.setParentDocumentId(innerMail.getId());
+    when(documentRepository.findByLibraryIdAndSourceType(
+            library.getId(), DocumentSourceType.RSS_FEED))
+        .thenReturn(List.of(grandchildAttachment, outerMail, innerMail));
+    IndexingRunEventRecorder events =
+        new IndexingRunEventRecorder(mock(IndexingRunEventRepository.class), null, null);
+    SourceIndexingExecutor executor = mock(SourceIndexingExecutor.class);
+    when(executor.runModes())
+        .thenReturn(Map.of(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE));
+
+    int removed =
+        service.cleanupVanished(
+            library,
+            DocumentSourceType.RSS_FEED,
+            Set.of("https://unrelated.example/still-there"),
+            events,
+            executor,
+            IndexingRunMode.FULL);
+
+    assertThat(removed).isEqualTo(3);
+    InOrder order = inOrder(documentRepository, vectorChunkStore);
+    order.verify(vectorChunkStore).deleteByDocumentId(grandchildAttachment.getId());
+    order.verify(documentRepository).delete(grandchildAttachment);
+    order.verify(vectorChunkStore).deleteByDocumentId(innerMail.getId());
+    order.verify(documentRepository).delete(innerMail);
+    order.verify(vectorChunkStore).deleteByDocumentId(outerMail.getId());
+    order.verify(documentRepository).delete(outerMail);
+  }
 }

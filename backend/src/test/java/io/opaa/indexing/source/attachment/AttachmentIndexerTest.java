@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -21,6 +22,7 @@ import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunEventRecorder;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.IndexingRunProgress;
+import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.source.rss.RssFeedRunContext;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -64,7 +66,9 @@ class AttachmentIndexerTest {
     fileProcessingService = mock(FileProcessingService.class);
     LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
     documentRepository = mock(DocumentRepository.class);
-    limits = new AttachmentDownloadLimits(10, 5_242_880L, 0, "opaa-test-agent");
+    limits =
+        new AttachmentDownloadLimits(
+            10, 5_242_880L, 0, "opaa-test-agent", AttachmentIndexer.DEFAULT_MAX_ATTACHMENT_DEPTH);
     indexer =
         new AttachmentIndexer(
             attachmentDownloader, fileProcessingService, storageQuotaService, documentRepository);
@@ -142,6 +146,115 @@ class AttachmentIndexerTest {
     // No recordFailed()/recordProcessed() call on this run's own counters - an attachment failure
     // must never call completeJob with an inflated or deflated processed/failed count of its own.
     verifyNoInteractions(indexingJobService);
+  }
+
+  @Test
+  void aTransientlyFailingAttachmentIsStillReportedAsPresentAndNotLeftToVanish()
+      throws IOException {
+    // Review round 2, finding 1: recordIndexedAttachment must also fire on the failure branches.
+    // A still-present, earlier-indexed attachment of a re-parsed parent that fails transiently
+    // (quota momentarily full, temp read error) would otherwise appear in neither the recorded
+    // paths nor the caller's database fold-in (the parent counts as reprocessed) - cleanupVanished
+    // would delete its row permanently, and the then-unchanged parent's checksum skip would never
+    // re-extract it. reprocessed=false: its own children were not freshly enumerated either.
+    KnowledgeLibrary filesystemLibrary =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Bibliothek",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false,
+            DocumentSourceType.FILESYSTEM,
+            tempDir.toString(),
+            null,
+            null,
+            null,
+            false);
+    AttachmentAccess access = mock(AttachmentAccess.class);
+    when(access.targetLibrary()).thenReturn(filesystemLibrary);
+    when(access.events()).thenReturn((category, message, reference) -> {});
+    Path extracted = tempDir.resolve("anlage.txt");
+    Files.writeString(extracted, "Anhangsinhalt");
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any()))
+        .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
+
+    List<String> indexed =
+        indexer.indexAll(
+            access,
+            List.of(
+                new AttachmentSource.LocalFile(extracted, "anlage.txt", "/mail.eml/0/anlage.txt")),
+            parentDocumentId,
+            "/mail.eml",
+            DocumentSourceType.FILESYSTEM,
+            limits);
+
+    // Not part of the created/confirmed return value - but reported as present.
+    assertThat(indexed).isEmpty();
+    verify(access).recordIndexedAttachment("/mail.eml/0/anlage.txt", false);
+    verify(access).markDeferred();
+  }
+
+  @Test
+  void aLocalFileCarriesItsSourcesVersionAndTheAccessCarriesTheParentsContext() throws IOException {
+    // #1137: a Confluence attachment reaches this path as a LocalFile (the edition-aware client
+    // downloaded it) - its version must land in last_modified_remote so the executor's
+    // pre-download check can skip it next run, and the page's context travels via the access.
+    KnowledgeLibrary confluenceLibrary =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Wiki",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false,
+            DocumentSourceType.CONFLUENCE,
+            null,
+            "https://wiki.example",
+            null,
+            null,
+            false);
+    SourceDocumentContext pageContext = new SourceDocumentContext("ENG", "Handbuch / Kapitel 1");
+    AttachmentAccess access = mock(AttachmentAccess.class);
+    when(access.targetLibrary()).thenReturn(confluenceLibrary);
+    when(access.events()).thenReturn((category, message, reference) -> {});
+    when(access.progress()).thenReturn(() -> {});
+    when(access.sourceContext()).thenReturn(pageContext);
+    Path downloaded = tempDir.resolve("notizen.txt");
+    Files.writeString(downloaded, "Notizen");
+    when(fileProcessingService.processUrlFile(
+            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    List<String> indexed =
+        indexer.indexAll(
+            access,
+            List.of(
+                new AttachmentSource.LocalFile(
+                    downloaded,
+                    "notizen.txt",
+                    "https://wiki.example/download/900/notizen.txt",
+                    "3")),
+            parentDocumentId,
+            "https://wiki.example/pages/102",
+            DocumentSourceType.CONFLUENCE,
+            limits);
+
+    assertThat(indexed).containsExactly("https://wiki.example/download/900/notizen.txt");
+    verify(fileProcessingService)
+        .processUrlFile(
+            eq(downloaded),
+            eq("notizen.txt"),
+            eq("https://wiki.example/download/900/notizen.txt"),
+            eq("3"),
+            eq(7L),
+            eq(confluenceLibrary),
+            eq(DocumentSourceType.CONFLUENCE),
+            eq("https://wiki.example/pages/102"),
+            eq(parentDocumentId),
+            eq(access));
+    verify(access).recordIndexedAttachment("https://wiki.example/download/900/notizen.txt", true);
   }
 
   @Test

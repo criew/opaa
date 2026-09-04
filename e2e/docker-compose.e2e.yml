@@ -10,6 +10,13 @@ x-embedding-dimensions: &embedding-dimensions "1536"
 
 services:
   backend:
+    # #1184: backs document-attachment-grouping.spec.ts - a FILESYSTEM library over this mount
+    # creates attachment rows (parent_document_id) for the mounted mail. Chosen when the UPLOAD
+    # path still discarded discovered attachments; #1227 has since closed that gap, but the
+    # connector variant stays as the deterministic fixture-driven path. /data is already on the
+    # dev profile's filesystem allowlist (application.yml).
+    volumes:
+      - ./demo/seed/e2e-data/filesystem-library:/data/e2e-mail-bibliothek:ro
     depends_on:
       ai-stub:
         # Not service_started: Spring AI's PgVectorStore can probe the embedding provider's

@@ -23,6 +23,8 @@ import type {
   SearchPermissionProfileResponse,
   SearchDiagnosisResponse,
   ConfluenceSpaceRef,
+  ChunkInspectionResponse,
+  DocumentChunksResponse,
 } from '../types/api'
 
 // #822: a plain mock shape rather than LibraryFolderResponse itself - documentCount there is
@@ -636,6 +638,9 @@ export const mockSearchPermissionProfiles: SearchPermissionProfileResponse[] = [
   { id: 'group-phoenix', name: 'Projektbeteiligte Phoenix', libraryCount: 1 },
 ]
 
+export const MOCK_SATZUNG_DOCUMENT_ID = '11111111-1111-4111-8111-111111111111'
+export const MOCK_FORMULAR_DOCUMENT_ID = '22222222-2222-4222-8222-222222222222'
+
 export const mockSearchDiagnosis: SearchDiagnosisResponse = {
   question: 'Was gilt bei Gebuehrenbefreiung wegen Beduerftigkeit?',
   contextType: 'PERMISSION_PROFILE',
@@ -667,7 +672,7 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
       verdicts: [
         {
           chunkId: 'chunk-1',
-          documentKey: 'doc-satzung',
+          documentKey: MOCK_SATZUNG_DOCUMENT_ID,
           documentTitle: 'verwaltungsgebuehrensatzung.pdf',
           libraryName: 'Satzungen & Gebuehrenordnungen',
           outcome: 'ADDED',
@@ -678,7 +683,7 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
         },
         {
           chunkId: 'chunk-2',
-          documentKey: 'doc-formular',
+          documentKey: MOCK_FORMULAR_DOCUMENT_ID,
           documentTitle: 'antrag-befreiung.pdf',
           libraryName: 'Formulare',
           outcome: 'ADDED',
@@ -702,7 +707,7 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
       verdicts: [
         {
           chunkId: 'chunk-1',
-          documentKey: 'doc-satzung',
+          documentKey: MOCK_SATZUNG_DOCUMENT_ID,
           documentTitle: 'verwaltungsgebuehrensatzung.pdf',
           libraryName: 'Satzungen & Gebuehrenordnungen',
           outcome: 'KEPT',
@@ -713,7 +718,7 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
         },
         {
           chunkId: 'chunk-2',
-          documentKey: 'doc-formular',
+          documentKey: MOCK_FORMULAR_DOCUMENT_ID,
           documentTitle: 'antrag-befreiung.pdf',
           libraryName: 'Formulare',
           outcome: 'DROPPED',
@@ -729,7 +734,7 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
     {
       rank: 1,
       chunkId: 'chunk-1',
-      documentKey: 'doc-satzung',
+      documentKey: MOCK_SATZUNG_DOCUMENT_ID,
       documentTitle: 'verwaltungsgebuehrensatzung.pdf',
       libraryName: 'Satzungen & Gebuehrenordnungen',
     },
@@ -987,6 +992,44 @@ const INITIAL_LIBRARY_DOCUMENTS: Record<string, LibraryDocumentResponse[]> = {
       chunkCount: 0,
       indexedAt: null,
       uploadedByUserId: 'mock-user-id',
+    },
+    // #1184 (ADR-0022, Entscheidung 5): an indexed mail whose two attachments are their own
+    // document rows carrying parentDocumentId - exercises the grouped, collapsible rendering and
+    // the attachment-aware search of the documents list in mock/dev mode.
+    {
+      id: 'document-posteingang',
+      fileName: 'posteingang-foerderbescheid.eml',
+      contentType: 'message/rfc822',
+      fileSize: 45213,
+      status: 'INDEXED',
+      sourceType: 'UPLOAD',
+      chunkCount: 3,
+      indexedAt: '2026-03-02T10:00:00Z',
+      uploadedByUserId: 'mock-user-id',
+    },
+    {
+      id: 'document-posteingang-anhang-1',
+      fileName: 'foerderbescheid.pdf',
+      contentType: 'application/pdf',
+      fileSize: 220145,
+      status: 'INDEXED',
+      sourceType: 'UPLOAD',
+      chunkCount: 8,
+      indexedAt: '2026-03-02T10:01:00Z',
+      uploadedByUserId: null,
+      parentDocumentId: 'document-posteingang',
+    },
+    {
+      id: 'document-posteingang-anhang-2',
+      fileName: 'anlage-berechnung.xlsx',
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      fileSize: 18342,
+      status: 'INDEXED',
+      sourceType: 'UPLOAD',
+      chunkCount: 2,
+      indexedAt: '2026-03-02T10:02:00Z',
+      uploadedByUserId: null,
+      parentDocumentId: 'document-posteingang',
     },
     {
       id: 'document-vermerk',
@@ -1274,3 +1317,66 @@ export const mockConfluenceSpaces: ConfluenceSpaceRef[] = [
   { key: 'KAEM', name: 'Kämmerei' },
   { key: 'RECHT', name: 'Rechtsamt' },
 ]
+
+export const mockChunkInspections: Record<string, ChunkInspectionResponse> = {
+  'chunk-1': {
+    chunkId: 'chunk-1',
+    documentId: MOCK_SATZUNG_DOCUMENT_ID,
+    documentTitle: 'verwaltungsgebuehrensatzung.pdf',
+    libraryId: 'lib-satzungen',
+    libraryName: 'Satzungen & Gebuehrenordnungen',
+    chunkIndex: 3,
+    content:
+      'Verwaltungsgebuehrensatzung > § 4 Befreiung\n\n(1) Von der Gebuehr wird auf Antrag befreit, wer bedürftig im Sinne des § 53 AO ist.\n(2) Der Antrag ist schriftlich zu stellen.',
+    metadata: {
+      document_id: MOCK_SATZUNG_DOCUMENT_ID,
+      chunk_index: 3,
+      library_id: 'lib-satzungen',
+      file_name: 'verwaltungsgebuehrensatzung.pdf',
+      location: 'Seite 2',
+      pipeline_id: 'markdown',
+      pipeline_version: 2,
+    },
+  },
+  'chunk-2': {
+    chunkId: 'chunk-2',
+    documentId: MOCK_FORMULAR_DOCUMENT_ID,
+    documentTitle: 'antrag-befreiung.pdf',
+    libraryId: 'lib-formulare',
+    libraryName: 'Formulare',
+    chunkIndex: 0,
+    content: 'Antrag auf Befreiung von Verwaltungsgebuehren\n\nName, Vorname: ______',
+    metadata: {
+      document_id: MOCK_FORMULAR_DOCUMENT_ID,
+      chunk_index: 0,
+      library_id: 'lib-formulare',
+      file_name: 'antrag-befreiung.pdf',
+    },
+  },
+}
+
+/** chunkCount (3) deliberately exceeds the stored rows (2): the page must show the gap. */
+export const mockDocumentChunks: DocumentChunksResponse = {
+  documentId: MOCK_SATZUNG_DOCUMENT_ID,
+  documentTitle: 'verwaltungsgebuehrensatzung.pdf',
+  libraryId: 'lib-satzungen',
+  libraryName: 'Satzungen & Gebuehrenordnungen',
+  chunkCount: 3,
+  chunks: [
+    {
+      chunkId: 'chunk-0',
+      documentId: MOCK_SATZUNG_DOCUMENT_ID,
+      documentTitle: 'verwaltungsgebuehrensatzung.pdf',
+      libraryId: 'lib-satzungen',
+      libraryName: 'Satzungen & Gebuehrenordnungen',
+      chunkIndex: 0,
+      content: 'Verwaltungsgebuehrensatzung\n\n§ 1 Geltungsbereich\nDiese Satzung gilt für ...',
+      metadata: {
+        document_id: MOCK_SATZUNG_DOCUMENT_ID,
+        chunk_index: 0,
+        location: 'Seite 1',
+      },
+    },
+    mockChunkInspections['chunk-1'],
+  ],
+}

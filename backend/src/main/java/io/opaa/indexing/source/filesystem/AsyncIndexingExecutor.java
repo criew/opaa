@@ -2,6 +2,8 @@ package io.opaa.indexing.source.filesystem;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -72,6 +74,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   private final LibraryStorageQuotaService storageQuotaService;
   private final LibraryFolderService folderService;
   private final StaleDocumentCleanupService staleDocumentCleanupService;
+  private final DocumentRepository documentRepository;
 
   public AsyncIndexingExecutor(
       DocumentService documentService,
@@ -81,7 +84,8 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       IndexingRunEventRepository indexingRunEventRepository,
       LibraryStorageQuotaService storageQuotaService,
       LibraryFolderService folderService,
-      StaleDocumentCleanupService staleDocumentCleanupService) {
+      StaleDocumentCleanupService staleDocumentCleanupService,
+      DocumentRepository documentRepository) {
     this.documentService = documentService;
     this.fileProcessingService = fileProcessingService;
     this.indexingJobService = indexingJobService;
@@ -90,6 +94,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     this.storageQuotaService = storageQuotaService;
     this.folderService = folderService;
     this.staleDocumentCleanupService = staleDocumentCleanupService;
+    this.documentRepository = documentRepository;
   }
 
   @Override
@@ -180,6 +185,17 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       progress.setTotal(discovered.totalFound());
       progress.report();
 
+      // What the attachment path created or confirmed this run, and which of those were actually
+      // re-parsed - feeds the vanished-cleanup bookkeeping below (ADR-0022, Entscheidung 3).
+      Set<String> indexedAttachmentPaths = new HashSet<>();
+      Set<String> reprocessedAttachmentPaths = new HashSet<>();
+      var attachmentAccess =
+          new FilesystemAttachmentAccess(
+              targetLibrary, events, progress, indexedAttachmentPaths, reprocessedAttachmentPaths);
+      // Files whose content was actually (re-)parsed this run - their attachment set was freshly
+      // enumerated, so only the attachment paths recorded above count for them.
+      Set<String> reprocessedFilePaths = new HashSet<>();
+
       // The set of folders this run actually materialized/touched - everything else under this
       // library once the loop below finishes is a candidate for pruneOrphanedFolders.
       Set<UUID> seenFolderIds = new HashSet<>();
@@ -199,7 +215,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
             seenFolderIds.add(folderId);
           }
           FileProcessingResult result =
-              fileProcessingService.processFile(file, targetLibrary, folderId);
+              fileProcessingService.processFile(file, targetLibrary, folderId, attachmentAccess);
           if (result == FileProcessingResult.QUOTA_EXCEEDED) {
             // The library's storage quota was reached mid-run - the file is skipped, not treated
             // as an error, and the reason is recorded so an operator can see why the bestand
@@ -228,6 +244,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
           } else if (result == FileProcessingResult.SKIPPED) {
             progress.recordSkipped();
           } else {
+            reprocessedFilePaths.add(file.toAbsolutePath().toString());
             progress.recordProcessed();
             log.info("Indexing completed: {}", fileName);
           }
@@ -249,7 +266,22 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
         Set<String> currentFilePaths =
             Stream.concat(files.stream(), discovered.rejected().stream())
                 .map(f -> f.toAbsolutePath().toString())
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(HashSet::new));
+        // ADR-0022, Entscheidung 3: an attachment counts as present this run either because the
+        // attachment path itself created/confirmed it while its parent was re-parsed
+        // (indexedAttachmentPaths), or - the Nachtragsfall - because its parent still exists but
+        // was NOT re-parsed this run (checksum-skipped, rejected, failed), so its existing
+        // attachment rows must be preserved from the database. An attachment of a re-parsed
+        // parent that was NOT re-reported is genuinely gone (removed from the mail) and is
+        // deliberately not folded in, so cleanupVanished below removes it.
+        currentFilePaths.addAll(indexedAttachmentPaths);
+        Set<String> reprocessedPaths = new HashSet<>(reprocessedFilePaths);
+        reprocessedPaths.addAll(reprocessedAttachmentPaths);
+        List<Document> existingFilesystemDocuments =
+            documentRepository.findByLibraryIdAndSourceType(
+                targetLibrary.getId(), DocumentSourceType.FILESYSTEM);
+        StaleDocumentCleanupService.foldInPreservedAttachmentPaths(
+            existingFilesystemDocuments, currentFilePaths, reprocessedPaths);
         staleDocumentCleanupService.cleanupVanished(
             targetLibrary, DocumentSourceType.FILESYSTEM, currentFilePaths, events, this, runMode);
       } catch (Exception e) {

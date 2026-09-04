@@ -7,7 +7,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.longThat;
-import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -89,7 +88,10 @@ class FileProcessingServiceTest {
             new IndexingMetrics(meterRegistry),
             storageQuotaService,
             defaultIndexingProperties(),
-            Runnable::run);
+            Runnable::run,
+            org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
     targetLibrary = library();
     // Default: plenty of headroom, so existing tests never trip the quota check unless they
     // explicitly stub it otherwise (see the quota-specific tests below). lenient() because most
@@ -193,7 +195,10 @@ class FileProcessingServiceTest {
             new IndexingMetrics(meterRegistry),
             storageQuotaService,
             defaultIndexingProperties(),
-            Runnable::run);
+            Runnable::run,
+            org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
 
     when(checksumService.computeSha256(file)).thenReturn("sha256-of-scan");
     when(documentRepository.findByLibraryIdAndFilePath(
@@ -306,20 +311,21 @@ class FileProcessingServiceTest {
   }
 
   @Test
-  void quotaCheckMeasuresTheDeltaOnlyAfterAnExistingDocumentHasBeenDeleted() throws IOException {
-    // #119, PR #700 review finding 5: uses a REAL LibraryStorageQuotaService, not a mock, so the
-    // "checked after the old row is deleted, measures the true delta" promise is genuinely
-    // exercised rather than merely asserted against a stub. documentRepository stays a mock (a
-    // data-layer boundary, not the thing under test) - its sumFileSizeByLibraryId answer flips
-    // from the pre-delete to the post-delete figure the moment documentRepository.delete is
-    // called, exactly mirroring how the real aggregate query would behave once that DELETE has
-    // actually run.
+  void quotaCheckMeasuresTheSizeDeltaOfAnInPlaceUpdateNotTheFullNewSize() throws IOException {
+    // #119, PR #700 review finding 5, rewritten for #1183's update-in-place contract (mirrors
+    // processRssEntryChecksTheQuotaDeltaNotTheFullNewSizeWhenUpdatingInPlace): uses a REAL
+    // LibraryStorageQuotaService, not a mock, so "the delta, not the full new size" is genuinely
+    // exercised. The existing row is never deleted here (fk_documents_parent, see this method's
+    // own Javadoc) - documentRepository.sumFileSizeByLibraryId stays at the pre-update figure
+    // (900, the old document still on that path) throughout, exactly mirroring the real aggregate
+    // query's own answer since no DELETE ever runs on this path.
     //
-    // Quota 1000, an existing 900-byte document being replaced by a 950-byte one: checking BEFORE
-    // the delete would see 900 (old) + 950 (new) = 1850 > 1000 and wrongly reject; checking AFTER
-    // (the actual, correct order) sees 0 (old already gone) + 950 = 950 <= 1000 and accepts. A
-    // regression that reordered the two calls would flip this test's result from PROCESSED to
-    // QUOTA_EXCEEDED.
+    // Quota 1000, an existing 900-byte document being replaced by a 950-byte one: checking the
+    // full new size against usedBytes that still includes the old row would see 900 (old,
+    // un-deleted) + 950 (full new size) = 1850 > 1000 and wrongly reject; checking the delta (the
+    // actual, correct behaviour) sees 900 (old) + 50 (delta) = 950 <= 1000 and accepts. A
+    // regression that checked the full new size here would flip this test's result from
+    // PROCESSED to QUOTA_EXCEEDED.
     LibraryStorageQuotaService realQuotaService =
         new LibraryStorageQuotaService(
             documentRepository, new UploadProperties(null, 0, null, 0, 1000));
@@ -332,7 +338,10 @@ class FileProcessingServiceTest {
             new IndexingMetrics(meterRegistry),
             realQuotaService,
             defaultIndexingProperties(),
-            Runnable::run);
+            Runnable::run,
+            org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
 
     Path file = tempDir.resolve("replace-under-quota.txt");
     String newContent = "x".repeat(950);
@@ -342,23 +351,15 @@ class FileProcessingServiceTest {
         new Document(
             "replace-under-quota.txt", file.toAbsolutePath().toString(), "text/plain", 900L);
     existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
     existingDoc.setChecksum("old-checksum");
     existingDoc.setStatus(DocumentStatus.INDEXED);
 
-    AtomicBoolean oldRowDeleted = new AtomicBoolean(false);
     when(checksumService.computeSha256(file)).thenReturn("new-checksum");
     when(documentRepository.findByLibraryIdAndFilePath(
             targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.of(existingDoc));
-    doAnswer(
-            inv -> {
-              oldRowDeleted.set(true);
-              return null;
-            })
-        .when(documentRepository)
-        .delete(existingDoc);
-    when(documentRepository.sumFileSizeByLibraryId(targetLibrary.getId()))
-        .thenAnswer(inv -> oldRowDeleted.get() ? 0L : 900L);
+    when(documentRepository.sumFileSizeByLibraryId(targetLibrary.getId())).thenReturn(900L);
     when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
     when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), any(), any()))
         .thenReturn(1);
@@ -372,7 +373,10 @@ class FileProcessingServiceTest {
     FileProcessingResult result = serviceWithRealQuota.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    verify(documentRepository).delete(existingDoc);
+    verify(documentRepository, never()).delete(any(Document.class));
+    ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, atLeastOnce()).save(savedDocCaptor.capture());
+    assertThat(savedDocCaptor.getValue().getId()).isEqualTo(existingDoc.getId());
   }
 
   @Test
@@ -453,7 +457,7 @@ class FileProcessingServiceTest {
 
     Files.delete(file);
 
-    boolean reindexed = service.reindexStoredDocument(documentId, file);
+    boolean reindexed = service.reindexStoredDocument(documentId, file, null);
 
     assertThat(reindexed).isTrue();
     @SuppressWarnings("unchecked")
@@ -523,7 +527,10 @@ class FileProcessingServiceTest {
             new IndexingMetrics(meterRegistry),
             storageQuotaService,
             defaultIndexingProperties(),
-            Runnable::run);
+            Runnable::run,
+            org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
 
     when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
     when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
@@ -569,7 +576,10 @@ class FileProcessingServiceTest {
             new IndexingMetrics(meterRegistry),
             storageQuotaService,
             defaultIndexingProperties(),
-            Runnable::run);
+            Runnable::run,
+            org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
 
     when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
     when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
@@ -592,147 +602,6 @@ class FileProcessingServiceTest {
     // library_id carries the permission-scoped search filter - a chunk that smuggled a different
     // value through here would leak or hide content across library boundaries.
     assertThat(metadata).containsEntry("library_id", targetLibrary.getId().toString());
-  }
-
-  /**
-   * A stand-in for a future format pipeline with its own structural metadata (Docling-style, e.g.
-   * {@code slide_number}) - stands in for a real pipeline claiming {@code .pdf} without pulling a
-   * real parser into this test.
-   */
-  private record FakeStructuralAttachmentPipeline() implements DocumentPipeline {
-
-    static final String STRUCTURAL_KEY = "slide_number";
-
-    @Override
-    public String id() {
-      return "fake-structural";
-    }
-
-    @Override
-    public short version() {
-      return 1;
-    }
-
-    @Override
-    public Set<String> handledFormats() {
-      return Set.of(".pdf");
-    }
-
-    @Override
-    public Set<String> passthroughMetadataKeys() {
-      return Set.of(STRUCTURAL_KEY);
-    }
-
-    @Override
-    public DocumentPipelineResult run(DocumentPipelineSource source) {
-      return DocumentPipelineResult.chunked(
-          List.of(
-              new org.springframework.ai.document.Document(
-                  "Anhangtext", Map.of(STRUCTURAL_KEY, "3"))));
-    }
-  }
-
-  @Test
-  void aNestedPipelinesOwnPassthroughKeyRidesAlongEvenWhenTheOuterMailPipelineDoesNotDeclareIt()
-      throws Exception {
-    // Regression for the #1128 review blocker: MailDocumentPipeline routes an attachment through a
-    // different pipeline entirely (registry.routedPipelineFor), then reports the attachment's
-    // chunks as its own. storeChunks must therefore filter against every registered pipeline's
-    // declaration, not only the one it was called with - otherwise a key only the inner,
-    // per-attachment pipeline declares is silently dropped.
-    var fakeAttachmentPipeline = new FakeStructuralAttachmentPipeline();
-    var fallback =
-        new io.opaa.indexing.pipeline.TikaFallbackPipeline(
-            new DocumentService(), new ChunkingService(defaultIndexingProperties()));
-
-    io.opaa.indexing.pipeline.DocumentPipelineRegistry[] registryHolder =
-        new io.opaa.indexing.pipeline.DocumentPipelineRegistry[1];
-    org.springframework.beans.factory.ObjectProvider<
-            io.opaa.indexing.pipeline.DocumentPipelineRegistry>
-        registryProvider =
-            new org.springframework.beans.factory.ObjectProvider<>() {
-              @Override
-              public io.opaa.indexing.pipeline.DocumentPipelineRegistry getObject() {
-                return registryHolder[0];
-              }
-
-              @Override
-              public io.opaa.indexing.pipeline.DocumentPipelineRegistry getIfAvailable() {
-                return registryHolder[0];
-              }
-
-              @Override
-              public io.opaa.indexing.pipeline.DocumentPipelineRegistry getIfUnique() {
-                return registryHolder[0];
-              }
-            };
-    var mailPipeline =
-        new io.opaa.indexing.pipeline.mail.MailDocumentPipeline(
-            registryProvider,
-            new ChunkingService(defaultIndexingProperties()),
-            new io.opaa.indexing.pipeline.mail.MailProperties(0, 0, 0, 0),
-            java.time.Clock.systemUTC());
-    registryHolder[0] =
-        new io.opaa.indexing.pipeline.DocumentPipelineRegistry(
-            List.of(fallback, fakeAttachmentPipeline, mailPipeline), fallback);
-
-    FileProcessingService serviceWithMailPipeline =
-        new FileProcessingService(
-            registryHolder[0],
-            documentRepository,
-            vectorChunkStore,
-            checksumService,
-            new IndexingMetrics(meterRegistry),
-            storageQuotaService,
-            defaultIndexingProperties(),
-            Runnable::run);
-
-    byte[] pdfBytes = readTestResourceBytes("test-documents/test-document.pdf");
-    org.apache.james.mime4j.dom.Message message =
-        org.apache.james.mime4j.dom.Message.Builder.of()
-            .setSubject("Anfrage mit Anlage")
-            .setFrom("max@example.org")
-            .setTo("erika@example.org")
-            .setDate(java.util.Date.from(java.time.Instant.parse("2024-01-03T09:15:00Z")))
-            .setBody(
-                org.apache.james.mime4j.message.MultipartBuilder.create("mixed")
-                    .addTextPart("Anbei der Antrag.", java.nio.charset.StandardCharsets.UTF_8)
-                    .addBodyPart(
-                        org.apache.james.mime4j.message.BodyPartBuilder.create()
-                            .setBody(pdfBytes, "application/pdf")
-                            .setContentDisposition("attachment", "folie.pdf"))
-                    .build())
-            .build();
-    Path file = tempDir.resolve("mit-anlage.eml");
-    Files.write(file, org.apache.james.mime4j.message.DefaultMessageWriter.asBytes(message));
-
-    when(checksumService.computeSha256(file)).thenReturn("mail-with-attachment");
-    when(documentRepository.findByLibraryIdAndFilePath(
-            targetLibrary.getId(), file.toAbsolutePath().toString()))
-        .thenReturn(Optional.empty());
-    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
-
-    serviceWithMailPipeline.processFile(file, targetLibrary);
-
-    @SuppressWarnings("unchecked")
-    ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
-        ArgumentCaptor.forClass(List.class);
-    verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
-    List<org.springframework.ai.document.Document> storedChunks = chunkCaptor.getValue();
-    // Every stored chunk is attributed to the outer pipeline (mail)...
-    assertThat(storedChunks)
-        .allSatisfy(
-            chunk ->
-                assertThat(chunk.getMetadata())
-                    .containsEntry(
-                        ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY, mailPipeline.id()));
-    // ...but the attachment's own pipeline's structural key still rides along, even though only
-    // the inner, per-attachment pipeline (not MailDocumentPipeline) declares it.
-    assertThat(storedChunks)
-        .anySatisfy(
-            chunk ->
-                assertThat(chunk.getMetadata())
-                    .containsEntry(FakeStructuralAttachmentPipeline.STRUCTURAL_KEY, "3"));
   }
 
   private static byte[] readTestResourceBytes(String resourcePath) throws IOException {
@@ -899,7 +768,10 @@ class FileProcessingServiceTest {
         new IndexingMetrics(meterRegistry),
         storageQuotaService,
         defaultIndexingProperties(),
-        Runnable::run);
+        Runnable::run,
+        org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
+        new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+        org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
   }
 
   @Test
@@ -990,6 +862,98 @@ class FileProcessingServiceTest {
             existing.getId(), "Abschnitt 1.1 (umbenannt)", "ENG", null);
     verify(documentRepository, never()).save(any(Document.class));
     verify(documentRepository, never()).delete(any(Document.class));
+  }
+
+  @Test
+  void aChangedConfluencePageIsUpdatedInPlaceSoItsAttachmentsKeepTheirParent() {
+    // ADR-0022, Entscheidung 4 (#1137): the page's attachments point at this row via
+    // parent_document_id, so a delete-and-recreate would fail fk_documents_parent. Only the chunks
+    // are exchanged; title, context and the version marker move with the row, and the quota check
+    // measures the delta (mirrors processRssEntry).
+    String pageUrl = "https://wiki.behoerde.example/pages/viewpage.action?pageId=102";
+    Document existing =
+        new Document("Abschnitt 1.1", pageUrl, "text/html", 40L, DocumentSourceType.CONFLUENCE);
+    existing.setStatus(DocumentStatus.INDEXED);
+    existing.setChecksum("sha256-old");
+    existing.setLibraryId(targetLibrary.getId());
+    existing.setOrganizationId(targetLibrary.getOrganizationId());
+    when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-new");
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), pageUrl))
+        .thenReturn(Optional.of(existing));
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    String body = "<h1>Neu</h1><p>Text.</p>";
+
+    FileProcessingResult result =
+        serviceWithConfluencePipeline()
+            .processConfluencePage(
+                body,
+                "Abschnitt 1.1 (neu)",
+                pageUrl,
+                "9",
+                new SourceDocumentContext("ENG", "Handbuch"),
+                targetLibrary);
+
+    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    verify(documentRepository, never()).delete(any(Document.class));
+    verify(vectorStore).delete(documentIdFilter(existing.getId()));
+    ArgumentCaptor<Document> saved = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository).save(saved.capture());
+    assertThat(saved.getValue().getId()).isEqualTo(existing.getId());
+    assertThat(saved.getValue().getFileName()).isEqualTo("Abschnitt 1.1 (neu)");
+    assertThat(saved.getValue().getSourceHierarchyPath()).isEqualTo("Handbuch");
+    assertThat(saved.getValue().getFileSize()).isEqualTo((long) body.length());
+    verify(storageQuotaService)
+        .wouldExceedQuota(
+            eq(targetLibrary.getId()), longThat(delta -> delta == body.length() - 40L));
+    verify(documentRepository)
+        .markIndexedFromSource(eq(existing.getId()), anyInt(), any(), eq("sha256-new"), eq("9"));
+  }
+
+  @Test
+  void anAttachmentTakesItsPlaceInTheSourceFromTheAttachmentAccess() throws IOException {
+    // #1137: the ten-argument overload records AttachmentAccess#sourceContext() on the row - a
+    // Confluence attachment's space and page hierarchy - next to its parent_document_id.
+    Path file = tempDir.resolve("notizen.txt");
+    Files.writeString(file, "Notizen");
+    String url = "https://wiki.behoerde.example/download/attachments/102/notizen.txt";
+    when(checksumService.computeSha256(file)).thenReturn("sha256-notizen");
+    when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), url))
+        .thenReturn(Optional.empty());
+    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+    var parsed = List.of(new org.springframework.ai.document.Document("Notizen"));
+    when(documentService.parseDocument(file)).thenReturn(parsed);
+    when(chunkingService.chunkDocuments(eq("notizen.txt"), eq(parsed)))
+        .thenReturn(List.of(new org.springframework.ai.document.Document("Notizen")));
+    io.opaa.indexing.source.attachment.AttachmentAccess access =
+        org.mockito.Mockito.mock(io.opaa.indexing.source.attachment.AttachmentAccess.class);
+    when(access.sourceContext())
+        .thenReturn(new SourceDocumentContext("ENG", "Handbuch / Abschnitt 1.1"));
+    UUID pageDocumentId = UUID.randomUUID();
+
+    FileProcessingResult result =
+        service.processUrlFile(
+            file,
+            "notizen.txt",
+            url,
+            "3",
+            7L,
+            targetLibrary,
+            DocumentSourceType.CONFLUENCE,
+            "https://wiki.behoerde.example/pages/viewpage.action?pageId=102",
+            pageDocumentId,
+            access);
+
+    assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    ArgumentCaptor<Document> saved = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, atLeastOnce()).save(saved.capture());
+    Document document = saved.getValue();
+    assertThat(document.getParentDocumentId()).isEqualTo(pageDocumentId);
+    assertThat(document.getSourceContainerKey()).isEqualTo("ENG");
+    assertThat(document.getSourceHierarchyPath()).isEqualTo("Handbuch / Abschnitt 1.1");
+    assertThat(document.getSourceEntryUrl())
+        .isEqualTo("https://wiki.behoerde.example/pages/viewpage.action?pageId=102");
+    verify(documentRepository)
+        .markIndexedFromSource(eq(document.getId()), eq(1), any(), eq("sha256-notizen"), eq("3"));
   }
 
   @Test
@@ -1143,6 +1107,7 @@ class FileProcessingServiceTest {
     existingDoc.setChecksum("old-checksum");
     existingDoc.setStatus(DocumentStatus.INDEXED);
     existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
     when(documentRepository.findByLibraryIdAndFilePath(
             targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.of(existingDoc));
@@ -1162,17 +1127,21 @@ class FileProcessingServiceTest {
     FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+    // #1183: updated in place - only the chunks are exchanged, the row (and with it every
+    // attachment's parent_document_id) survives under its own id.
     verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
-    verify(documentRepository).delete(existingDoc);
+    verify(documentRepository, never()).delete(any(Document.class));
+    ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, atLeastOnce()).save(savedDocCaptor.capture());
+    assertThat(savedDocCaptor.getValue().getId()).isEqualTo(existingDoc.getId());
     verify(documentService).parseDocument(file);
   }
 
   @Test
   void reindexingKeepsTheLibraryAssignmentWhenTheTargetLibraryIsUnchanged() throws IOException {
-    // #419 acceptance criteria: re-indexing into the same library keeps the assignment. The old
-    // document row is deleted and a new one created (see reindexesDocumentWithChangedChecksum
-    // above), so this pins that the replacement row still carries the chosen library, not a
-    // dangling/absent one.
+    // #419 acceptance criteria: re-indexing into the same library keeps the assignment. Since
+    // #1183 the row is updated in place (see reindexesDocumentWithChangedChecksum above), so this
+    // pins that the updated row still carries the chosen library, not a dangling/absent one.
     Path file = tempDir.resolve("reindexed.txt");
     Files.writeString(file, "new content");
 
@@ -1199,10 +1168,10 @@ class FileProcessingServiceTest {
 
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
-    Document newDoc = docCaptor.getAllValues().getFirst();
-    assertThat(newDoc.getId()).isNotEqualTo(existingDoc.getId());
-    assertThat(newDoc.getLibraryId()).isEqualTo(targetLibrary.getId());
-    assertThat(newDoc.getOrganizationId()).isEqualTo(targetLibrary.getOrganizationId());
+    Document updatedDoc = docCaptor.getAllValues().getFirst();
+    assertThat(updatedDoc.getId()).isEqualTo(existingDoc.getId());
+    assertThat(updatedDoc.getLibraryId()).isEqualTo(targetLibrary.getId());
+    assertThat(updatedDoc.getOrganizationId()).isEqualTo(targetLibrary.getOrganizationId());
   }
 
   @Test
@@ -1271,6 +1240,8 @@ class FileProcessingServiceTest {
 
     Document existingDoc = new Document("legacy.txt", file.toAbsolutePath().toString(), null, 10L);
     existingDoc.setStatus(DocumentStatus.INDEXED);
+    existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
     // checksum is null (legacy document without checksum)
     when(documentRepository.findByLibraryIdAndFilePath(
             targetLibrary.getId(), file.toAbsolutePath().toString()))
@@ -1287,7 +1258,7 @@ class FileProcessingServiceTest {
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
-    verify(documentRepository).delete(existingDoc);
+    verify(documentRepository, never()).delete(any(Document.class));
   }
 
   @Test
@@ -1301,6 +1272,7 @@ class FileProcessingServiceTest {
     existingDoc.setChecksum("same-checksum");
     existingDoc.setStatus(DocumentStatus.FAILED);
     existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
     when(documentRepository.findByLibraryIdAndFilePath(
             targetLibrary.getId(), file.toAbsolutePath().toString()))
         .thenReturn(Optional.of(existingDoc));
@@ -1619,7 +1591,12 @@ class FileProcessingServiceTest {
   }
 
   @Test
-  void processUrlFileReindexesChangedDocument() throws IOException {
+  void processUrlFileUpdatesAChangedDocumentInPlaceInsteadOfDeletingAndRecreatingIt()
+      throws IOException {
+    // #1183: mirrors processRssEntryUpdatesAChangedEntryInPlaceInsteadOfDeletingAndRecreatingIt -
+    // a delete-and-recreate here would fail fk_documents_parent the moment this document (itself
+    // possibly an attachment reprocessed via AttachmentIndexer, or a Mail-in-Mail attachment with
+    // its own children) has descendant rows pointing at it via parent_document_id.
     Path file = tempDir.resolve("changed-url.pdf");
     Files.writeString(file, "new pdf content");
 
@@ -1635,6 +1612,7 @@ class FileProcessingServiceTest {
     existingDoc.setChecksum("old-sha256");
     existingDoc.setStatus(DocumentStatus.INDEXED);
     existingDoc.setLibraryId(targetLibrary.getId());
+    existingDoc.setOrganizationId(targetLibrary.getOrganizationId());
 
     when(documentRepository.findByLibraryIdAndFilePath(
             targetLibrary.getId(), "https://example.com/docs/changed-url.pdf"))
@@ -1658,7 +1636,10 @@ class FileProcessingServiceTest {
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
-    verify(documentRepository).delete(existingDoc);
+    verify(documentRepository, never()).delete(any(Document.class));
+    ArgumentCaptor<Document> savedDocCaptor = ArgumentCaptor.forClass(Document.class);
+    verify(documentRepository, atLeastOnce()).save(savedDocCaptor.capture());
+    assertThat(savedDocCaptor.getValue().getId()).isEqualTo(existingDoc.getId());
     verify(documentService).parseDocument(file);
   }
 
@@ -1888,7 +1869,7 @@ class FileProcessingServiceTest {
     when(documentService.parseDocument(file))
         .thenThrow(new RuntimeException("Tika konnte die Datei nicht lesen"));
 
-    boolean reindexed = service.reindexStoredDocument(documentId, file);
+    boolean reindexed = service.reindexStoredDocument(documentId, file, null);
 
     assertThat(reindexed).isFalse();
     verify(vectorStore, never()).delete(any(Filter.Expression.class));
@@ -2302,7 +2283,10 @@ class FileProcessingServiceTest {
             new IndexingMetrics(meterRegistry),
             storageQuotaService,
             defaultIndexingProperties(),
-            Runnable::run);
+            Runnable::run,
+            org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
+            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, "", 0),
+            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class));
 
     when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
     when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))

@@ -7,7 +7,7 @@ import java.util.UUID;
  * {@link IndexingJobService} - the shared place for that bookkeeping, so every {@link
  * SourceIndexingExecutor} reuses it instead of repeating it independently.
  */
-public final class IndexingRunProgress {
+public final class IndexingRunProgress implements AttachmentProgressSink {
 
   private final IndexingJobService indexingJobService;
   private final UUID jobId;
@@ -54,6 +54,7 @@ public final class IndexingRunProgress {
    * failed attachment must never call this: {@code AttachmentIndexer#indexOne} only reaches this
    * method once the attachment download and format checks it guards have all succeeded.
    */
+  @Override
   public void recordDocumentIndexed() {
     documentsIndexedTotal++;
   }

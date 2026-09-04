@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -177,12 +178,24 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
           SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, request.insecureSsl());
       String authHeader = SourceHttpClientFactory.buildAuthHeader(username, password);
 
+      // What the attachment path created or confirmed this run, and which of those were actually
+      // re-parsed - feeds the vanished-cleanup bookkeeping below (ADR-0022, Entscheidung 3),
+      // mirroring AsyncIndexingExecutor's FILESYSTEM counterpart (#1219).
+      Set<String> indexedAttachmentPaths = new HashSet<>();
+      Set<String> reprocessedAttachmentPaths = new HashSet<>();
+      var attachmentAccess =
+          new WebAttachmentAccess(
+              targetLibrary, events, progress, indexedAttachmentPaths, reprocessedAttachmentPaths);
+      // Entries whose content was actually (re-)parsed this run - their attachment set was freshly
+      // enumerated, so only the attachment paths recorded above count for them.
+      Set<String> reprocessedEntryUrls = new HashSet<>();
+
       // Step 2: Process each file. Whether a file is indexed at all is decided from its actual
       // content, not from its name in the listing - but only a bounded prefix is read to decide,
       // never the whole file: a directory listing routinely sits next to files nobody meant for
       // indexing at all, and downloading each of those in full before rejecting them would fill
-      // the temp partition. Only an entry the prefix decision already accepts is downloaded in
-      // full via #download below.
+      // the temp partition. The one exception is a prefix that ended inside an unresolved
+      // container, which carries no verdict at all - see SupportedDocumentFormats#decideForPrefix.
       for (AutoindexCrawlerService.CrawledFileEntry entry : allFiles) {
         // Check if document is unchanged before downloading (saves bandwidth)
         if (isUnchanged(entry.url(), entry.lastModified(), targetLibrary)) {
@@ -202,11 +215,26 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                   authHeader,
                   entry.url(),
                   SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
-          SupportedDocumentFormats.ContentDecision decision = decideForEntry(prefix, entry.name());
+          // Holds whatever the decision below had to download in full to reach a verdict, so the
+          // finally block deletes it even when detection on it fails - and so an accepted entry is
+          // not transferred a second time.
+          Path[] downloadedForDecision = new Path[1];
+          SupportedDocumentFormats.ContentDecision decision;
+          try {
+            decision =
+                decideForEntry(
+                    prefix,
+                    entry.name(),
+                    () ->
+                        downloadedForDecision[0] =
+                            downloader.download(httpClient, authHeader, entry.url(), entry.name()));
+          } finally {
+            tempFile = downloadedForDecision[0];
+          }
           if (!decision.supported()) {
             // Rejected documents are part of the job, not invisible - each one becomes its own
-            // UNSUPPORTED_FORMAT event. Rejected here, before #download ever runs - the full file
-            // behind this entry is never transferred.
+            // UNSUPPORTED_FORMAT event. Reached before the full transfer for every entry the
+            // prefix alone could decide, which is all but the unresolved-container case above.
             log.info(
                 "Rejecting URL document with an unsupported format: {} ({})",
                 entry.name(),
@@ -229,7 +257,9 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                 entry.url());
           }
 
-          tempFile = downloader.download(httpClient, authHeader, entry.url(), entry.name());
+          if (tempFile == null) {
+            tempFile = downloader.download(httpClient, authHeader, entry.url(), entry.name());
+          }
           long fileSize = Files.size(tempFile);
           FileProcessingResult result =
               fileProcessingService.processUrlFile(
@@ -238,7 +268,11 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                   entry.url(),
                   entry.lastModified(),
                   fileSize,
-                  targetLibrary);
+                  targetLibrary,
+                  DocumentSourceType.HTTP_DIRECTORY,
+                  null,
+                  null,
+                  attachmentAccess);
 
           if (result == FileProcessingResult.QUOTA_EXCEEDED) {
             // See AsyncIndexingExecutor's own handling of this outcome.
@@ -261,6 +295,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
           } else if (result == FileProcessingResult.SKIPPED) {
             progress.recordSkipped();
           } else {
+            reprocessedEntryUrls.add(entry.url());
             progress.recordProcessed();
             log.info("Indexed URL document: {}", entry.name());
           }
@@ -300,7 +335,24 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
           Set<String> currentUrls =
               allFiles.stream()
                   .map(AutoindexCrawlerService.CrawledFileEntry::url)
-                  .collect(Collectors.toSet());
+                  .collect(Collectors.toCollection(HashSet::new));
+          // ADR-0022, Entscheidung 3, mirroring AsyncIndexingExecutor (#1219): an attachment
+          // counts as present this run either because the attachment path itself
+          // created/confirmed it while its parent was re-parsed (indexedAttachmentPaths), or -
+          // the Nachtragsfall - because its parent still exists but was NOT re-parsed this run
+          // (unchanged, checksum-skipped, rejected, failed), so its existing attachment rows must
+          // be preserved from the database. An attachment of a re-parsed parent that was NOT
+          // re-reported is genuinely gone (removed from the mail) and is deliberately not folded
+          // in, so cleanupVanished below removes it. A truncated or incomplete crawl skips this
+          // whole block, attachments included - their parents' presence is unknowable then too.
+          currentUrls.addAll(indexedAttachmentPaths);
+          Set<String> reprocessedPaths = new HashSet<>(reprocessedEntryUrls);
+          reprocessedPaths.addAll(reprocessedAttachmentPaths);
+          List<Document> existingHttpDocuments =
+              documentRepository.findByLibraryIdAndSourceType(
+                  targetLibrary.getId(), DocumentSourceType.HTTP_DIRECTORY);
+          StaleDocumentCleanupService.foldInPreservedAttachmentPaths(
+              existingHttpDocuments, currentUrls, reprocessedPaths);
           staleDocumentCleanupService.cleanupVanished(
               targetLibrary, DocumentSourceType.HTTP_DIRECTORY, currentUrls, events, this, runMode);
         } catch (Exception e) {
@@ -377,15 +429,17 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Decides whether a crawled entry is supported from a leading byte sample of its content, never
-   * from {@code entryName} alone - the same decision {@link #execute} makes before downloading an
-   * entry in full. Public so the cross-package parity test exercises this exact call instead of a
-   * reimplementation that could silently drift from it.
+   * Decides whether a crawled entry is supported from its content, never from {@code entryName}
+   * alone - the same decision {@link #execute} makes before an entry enters the pipeline. Normally
+   * a leading byte sample settles it; only a prefix that ended inside an unresolved container makes
+   * {@code completeContent} download the entry in full to decide (see {@link
+   * SupportedDocumentFormats#decideForPrefix}). Public so the cross-package parity test exercises
+   * this exact call instead of a reimplementation that could silently drift from it.
    */
   public static SupportedDocumentFormats.ContentDecision decideForEntry(
-      byte[] prefix, String entryName) {
-    return SupportedDocumentFormats.decideForFileName(
-        entryName, SupportedDocumentFormats.detectMediaType(prefix));
+      byte[] prefix, String entryName, SupportedDocumentFormats.CompleteContent completeContent)
+      throws IOException, InterruptedException {
+    return SupportedDocumentFormats.decideForPrefix(entryName, prefix, completeContent);
   }
 
   /**

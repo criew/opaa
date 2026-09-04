@@ -131,7 +131,11 @@ class RssFeedIndexingExecutorTest {
         indexingJobService,
         documentRepository,
         feedStateRepository,
-        new BoundedDownloader(targetAddressValidator),
+        new io.opaa.indexing.source.attachment.AttachmentIndexer(
+            new BoundedDownloader(targetAddressValidator),
+            fileProcessingService,
+            storageQuotaService,
+            documentRepository),
         properties,
         indexingRunEventRepository,
         targetAddressValidator,

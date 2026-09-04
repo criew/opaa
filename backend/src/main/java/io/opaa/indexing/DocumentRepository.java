@@ -36,13 +36,6 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   boolean existsBySourceEntryUrlAndLibraryId(String sourceEntryUrl, UUID libraryId);
 
   /**
-   * The documents found through {@code sourceEntryUrl} in this library - a Confluence page's
-   * attachment documents (ADR-0022), which a verified deletion of the page removes explicitly
-   * together with it (ADR-0023, Entscheidung 4).
-   */
-  List<Document> findByLibraryIdAndSourceEntryUrl(UUID libraryId, String sourceEntryUrl);
-
-  /**
    * Moves a connector document's title and source context without touching its chunks - a
    * Confluence page renamed or moved without a body change (ADR-0023, #1136 review).
    */
@@ -100,14 +93,59 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long countByLibraryId(UUID libraryId);
 
   /**
-   * Backs {@code KnowledgeLibraryService#listDocuments}'s paging and optional stichwort search: a
-   * page of a library's documents, plus the total across all pages the caller's paging controls
-   * need. {@code q} is matched as a case-insensitive substring of the file name when present, or
-   * ignored entirely when {@code null} or blank - {@link #findByLibraryId(UUID, Pageable)} below
-   * backs that second case.
+   * The parent-level counterpart of {@link #countByLibraryId} (#1184): top-level documents only,
+   * matching what the document list pages over - shown as a library's {@code documentCount}. {@link
+   * #countByLibraryId} keeps backing the delete guard, which must see every row.
    */
-  Page<Document> findByLibraryIdAndFileNameContainingIgnoreCase(
-      UUID libraryId, String fileNameQuery, Pageable pageable);
+  long countByLibraryIdAndParentDocumentIdIsNull(UUID libraryId);
+
+  /**
+   * The paged search behind {@code KnowledgeLibraryService#listDocuments} with {@code q} (#1184,
+   * ADR-0022 Entscheidung 5): top-level documents only ({@code parentDocumentId IS NULL}), matching
+   * either their own file name or - via {@code attachmentRootIds}, resolved by the caller from
+   * matching attachment rows - an attachment anywhere in their subtree. {@code escapedQ} must have
+   * {@code \}, {@code %} and {@code _} backslash-escaped by the caller (see {@code
+   * KnowledgeLibraryService#escapeLike}); the hand-written LIKE has no automatic escaping the way
+   * the derived {@code ...ContainingIgnoreCase} finders do.
+   */
+  @Query(
+      """
+      SELECT d FROM Document d
+      WHERE d.libraryId = :libraryId AND d.parentDocumentId IS NULL
+        AND (LOWER(d.fileName) LIKE LOWER(CONCAT('%', :escapedQ, '%')) ESCAPE '\\'
+             OR d.id IN :attachmentRootIds)
+      """)
+  Page<Document> searchTopLevelByFileNameOrAttachmentRoot(
+      @Param("libraryId") UUID libraryId,
+      @Param("escapedQ") String escapedQ,
+      @Param("attachmentRootIds") Collection<UUID> attachmentRootIds,
+      Pageable pageable);
+
+  /**
+   * Every attachment row of {@code libraryId} whose file name matches {@code q} case-insensitively
+   * - the first step of the attachment-aware search above: the caller walks each hit up its {@code
+   * parentDocumentId} chain to the top-level root before paging. Derived query, so LIKE
+   * metacharacters in {@code q} are escaped automatically. A slim projection, not full entities -
+   * only the two ids are needed, and the hit count is unbounded.
+   */
+  List<AttachmentParentRef>
+      findByLibraryIdAndParentDocumentIdIsNotNullAndFileNameContainingIgnoreCase(
+          UUID libraryId, String q);
+
+  /** The two ids the attachment-aware search prefilter needs (#1184) - see the finder above. */
+  interface AttachmentParentRef {
+    UUID getId();
+
+    UUID getParentDocumentId();
+  }
+
+  /**
+   * The attachment rows of every parent in {@code parentDocumentIds}, ordered by {@code filePath}
+   * (which embeds the extraction-order index for mail attachments, ADR-0022 Entscheidung 2) - backs
+   * {@code KnowledgeLibraryService#listDocuments}'s per-page subtree expansion (#1184), called once
+   * per nesting level, not once per parent.
+   */
+  List<Document> findByParentDocumentIdInOrderByFilePathAsc(Collection<UUID> parentDocumentIds);
 
   Page<Document> findByLibraryId(UUID libraryId, Pageable pageable);
 
@@ -121,9 +159,12 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   /**
    * The library root's counterpart to {@link #findByLibraryIdAndFolderId} - backs {@code GET
    * .../documents} with no {@code folderId} and no {@code q}, ADR-0020's convention that a {@code
-   * null folder_id} means the library's root.
+   * null folder_id} means the library's root. Top-level documents only since #1184: an attachment
+   * ({@code parentDocumentId} set) is never paged independently, it rides along with its parent
+   * (see {@link #findByParentDocumentIdInOrderByFilePathAsc}).
    */
-  Page<Document> findByLibraryIdAndFolderIdIsNull(UUID libraryId, Pageable pageable);
+  Page<Document> findByLibraryIdAndFolderIdIsNullAndParentDocumentIdIsNull(
+      UUID libraryId, Pageable pageable);
 
   /**
    * The recursive document counts of a set of folders - each folder's own documents plus every
@@ -175,19 +216,27 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   /**
    * Backs the upload endpoint's per-library deduplication: the same checksum is rejected a second
    * time within the same library, but is deliberately allowed in a different one - see the
-   * acceptance criteria on {@code io.opaa.library.LibraryDocumentService#uploadDocument}.
+   * acceptance criteria on {@code io.opaa.library.LibraryDocumentService#uploadDocument}. Scoped to
+   * parentless rows (#1218), matching {@code uk_documents_library_checksum}'s own scope since
+   * migration 017: an attachment row of an uploaded mail (ADR-0022) is derived content, not a user
+   * upload - uploading a file whose bytes happen to equal an indexed attachment is not a duplicate.
    */
-  Optional<Document> findByLibraryIdAndChecksum(UUID libraryId, String checksum);
+  Optional<Document> findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
+      UUID libraryId, String checksum);
 
   /**
    * Backs {@code KnowledgeLibraryService#listLibraries}'s {@code documentCount} column: one grouped
-   * query for the whole page instead of {@link #countByLibraryId} once per row. Libraries with no
-   * documents simply have no row here - the caller defaults those to zero.
+   * query for the whole page instead of one count per row. Libraries with no documents simply have
+   * no row here - the caller defaults those to zero. Top-level documents only since #1184, matching
+   * the document list's own parent-level totalElements - attachments show up inside their parent's
+   * group, not in this count.
    */
   @Query(
       "select d.libraryId as libraryId, count(d) as documentCount from Document d"
-          + " where d.libraryId in :libraryIds group by d.libraryId")
-  List<LibraryDocumentCount> countByLibraryIdIn(@Param("libraryIds") Collection<UUID> libraryIds);
+          + " where d.libraryId in :libraryIds and d.parentDocumentId is null"
+          + " group by d.libraryId")
+  List<LibraryDocumentCount> countTopLevelByLibraryIdIn(
+      @Param("libraryIds") Collection<UUID> libraryIds);
 
   interface LibraryDocumentCount {
     UUID getLibraryId();

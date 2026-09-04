@@ -4,16 +4,11 @@ import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.ChunkingService;
-import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.pipeline.DocumentPipeline;
-import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
+import io.opaa.indexing.pipeline.DiscoveredAttachment;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
-import io.opaa.indexing.pipeline.TikaFallbackPipeline;
-import io.opaa.indexing.pipeline.tabular.TabularDocumentPipeline;
-import io.opaa.indexing.pipeline.tabular.TabularProperties;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -31,15 +26,20 @@ import org.apache.james.mime4j.message.MultipartBuilder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ai.document.Document;
-import org.springframework.beans.factory.ObjectProvider;
 
 /**
  * The EML/MSG pipeline (#1060, ingestion-pipelines.md Teil 3, Punkt 5): Kopfdaten land as chunk
- * metadata rather than chunk text, one chunk per message (or per thread segment), and an attachment
- * runs through the pipeline of its own type - recursively, including EML-in-EML.
+ * metadata rather than chunk text, one chunk per message (or per thread segment). Since #1183
+ * (ADR-0022, Entscheidung 10) an attachment is no longer recursively processed by this class - it
+ * is reported via {@link DocumentPipelineResult#discoveredAttachments()} instead, for the
+ * generalized attachment path ({@code io.opaa.indexing.source.attachment.AttachmentIndexer}, driven
+ * by {@code FileProcessingService}) to turn into its own {@code Document}. Recursion
+ * (Mail-in-Mail), attachment-count/depth limits and format admission for an attachment therefore
+ * all live one level up - see {@code AttachmentIndexerTest}/{@code FileProcessingServiceTest} for
+ * that coverage instead.
  *
  * <p>EML fixtures are built at test time through mime4j's own writer ({@link DefaultMessageWriter})
- * - a real, spec-shaped MIME message rather than a hand-computed byte literal, mirroring how {@link
+ * - a real, spec-shaped MIME message rather than a hand-computed byte literal, mirroring how {@code
  * TabularDocumentPipelineTest} builds its XLSX fixtures through Apache POI rather than a static
  * binary file. The two {@code .msg} fixtures are real files instead (Apache POI offers no MSG
  * writer - see {@code test-documents/mail/NOTICE.md}).
@@ -74,80 +74,9 @@ class MailDocumentPipelineTest {
     return pipeline(properties, defaultChunkingService());
   }
 
-  /**
-   * Mirrors the production circular-bean resolution ({@link IndexingConfiguration}'s own comment on
-   * why {@link MailDocumentPipeline} takes an {@link ObjectProvider}): the registry needs the
-   * pipeline instance under test to route a nested EML/MSG attachment back into it, but the
-   * pipeline needs the registry - so the registry is only assembled (into this holder) once the
-   * pipeline itself already exists, and {@code getObject()} reads it lazily, after that assembly,
-   * exactly the way a real attachment routing call would.
-   *
-   * @param extraPipelines additional pipelines registered alongside the fallback and tabular ones -
-   *     e.g. a {@link FakePipeline} that throws, for the "a sub-pipeline failure costs only the
-   *     attachment" regression (#1101 review, finding 4a)
-   */
   private MailDocumentPipeline pipeline(
-      MailProperties properties,
-      ChunkingService chunkingService,
-      DocumentPipeline... extraPipelines) {
-    DocumentPipelineRegistry[] registryHolder = new DocumentPipelineRegistry[1];
-    ObjectProvider<DocumentPipelineRegistry> provider =
-        new ObjectProvider<>() {
-          @Override
-          public DocumentPipelineRegistry getObject() {
-            return registryHolder[0];
-          }
-
-          @Override
-          public DocumentPipelineRegistry getIfAvailable() {
-            return registryHolder[0];
-          }
-
-          @Override
-          public DocumentPipelineRegistry getIfUnique() {
-            return registryHolder[0];
-          }
-        };
-    MailDocumentPipeline mailPipeline =
-        new MailDocumentPipeline(provider, chunkingService, properties, TEST_CLOCK);
-
-    TikaFallbackPipeline fallback =
-        new TikaFallbackPipeline(new DocumentService(), defaultChunkingService());
-    TabularDocumentPipeline tabular =
-        new TabularDocumentPipeline(new TabularProperties(0, 0, 0, 0));
-    List<DocumentPipeline> pipelines = new java.util.ArrayList<>();
-    pipelines.add(fallback);
-    pipelines.add(tabular);
-    pipelines.add(mailPipeline);
-    pipelines.addAll(List.of(extraPipelines));
-    registryHolder[0] = new DocumentPipelineRegistry(pipelines, fallback);
-    return mailPipeline;
-  }
-
-  /** A stand-in for a sub-pipeline that throws, mirroring {@code DocumentPipelineRegistryTest}. */
-  private record FakePipeline(
-      String id, short version, java.util.Set<String> handledFormats, RuntimeException toThrow)
-      implements DocumentPipeline {
-
-    @Override
-    public DocumentPipelineResult run(DocumentPipelineSource source) {
-      throw toThrow;
-    }
-  }
-
-  /**
-   * A stand-in for a sub-pipeline that reports a {@link
-   * io.opaa.indexing.pipeline.DiscoveredAttachment} of its own (#1181 review, finding 1) - stands
-   * in for a real pipeline that will report one once ADR-0022 part 3/4 land.
-   */
-  private record FakeDiscoveringPipeline(
-      String id, short version, java.util.Set<String> handledFormats, DocumentPipelineResult result)
-      implements DocumentPipeline {
-
-    @Override
-    public DocumentPipelineResult run(DocumentPipelineSource source) {
-      return result;
-    }
+      MailProperties properties, ChunkingService chunkingService) {
+    return new MailDocumentPipeline(chunkingService, properties, TEST_CLOCK);
   }
 
   @Test
@@ -155,7 +84,7 @@ class MailDocumentPipelineTest {
     MailDocumentPipeline pipeline = pipeline(defaultProperties);
     assertThat(pipeline.handledFormats()).containsExactlyInAnyOrder(".eml", ".msg");
     assertThat(pipeline.id()).isEqualTo("email");
-    assertThat(pipeline.version()).isEqualTo((short) 3);
+    assertThat(pipeline.version()).isEqualTo((short) 4);
   }
 
   @Test
@@ -223,6 +152,7 @@ class MailDocumentPipelineTest {
     assertThat(chunk.getMetadata()).containsKey(ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
     // Single message, no thread split: no "Nachricht n von N" location needed.
     assertThat(chunk.getMetadata()).doesNotContainKey(ChunkingService.LOCATION_METADATA_KEY);
+    assertThat(result.discoveredAttachments()).isEmpty();
     // A produced key that is part of the registry-wide passthrough union must be declared - only a
     // union key can ever ride along onto the persisted chunk.
     Set<String> actualKeysInUnion =
@@ -262,6 +192,7 @@ class MailDocumentPipelineTest {
         pipeline(defaultProperties).run(DocumentPipelineSource.ofFile(file, "leer.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+    assertThat(result.discoveredAttachments()).isEmpty();
   }
 
   /**
@@ -288,7 +219,7 @@ class MailDocumentPipelineTest {
         pipeline(defaultProperties).run(DocumentPipelineSource.ofFile(file, "leer.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks()).hasSize(1);
     Document headerChunk = result.chunks().getFirst();
     assertThat(headerChunk.getText())
         .isEqualTo(
@@ -299,6 +230,8 @@ class MailDocumentPipelineTest {
     assertThat(headerChunk.getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
         .isEqualTo("Leer");
     assertThat(headerChunk.getMetadata()).doesNotContainKey(ChunkingService.LOCATION_METADATA_KEY);
+    assertThat(result.discoveredAttachments()).hasSize(1);
+    assertThat(result.discoveredAttachments().getFirst().fileName()).isEqualTo("bescheid.csv");
   }
 
   /**
@@ -319,6 +252,36 @@ class MailDocumentPipelineTest {
         pipeline(defaultProperties).run(DocumentPipelineSource.ofFile(file, "leer.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+  }
+
+  /**
+   * #1183: a message with neither body text nor Kopfdaten, but at least one attachment, still
+   * reports that attachment - {@code DocumentPipelineResult}'s own contract reserves {@code
+   * CHUNKED}-with-empty-chunks for the generalized attachment path, not this pipeline, but {@code
+   * noExtractableText(List)} still carries the attachment for that path to pick up.
+   */
+  @Test
+  void aBlankBodyWithNoKopfdatenButAnAttachmentStillReportsIt() throws Exception {
+    Message message =
+        Message.Builder.of()
+            .setBody(
+                MultipartBuilder.create("mixed")
+                    .addTextPart("", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        BodyPartBuilder.create()
+                            .setBody("Inhalt".getBytes(StandardCharsets.UTF_8), "text/csv")
+                            .setContentDisposition("attachment", "anlage.csv"))
+                    .build())
+            .build();
+    Path file = writeEml(DefaultMessageWriter.asBytes(message));
+
+    DocumentPipelineResult result =
+        pipeline(defaultProperties).run(DocumentPipelineSource.ofFile(file, "leer.eml"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
+    assertThat(result.chunks()).isEmpty();
+    assertThat(result.discoveredAttachments()).hasSize(1);
+    assertThat(result.discoveredAttachments().getFirst().fileName()).isEqualTo("anlage.csv");
   }
 
   /**
@@ -371,12 +334,13 @@ class MailDocumentPipelineTest {
                 assertThat(chunk.getText().length())
                     .isLessThanOrEqualTo(MAX_CHUNK_CHARS_FOR_CONFIGURED_SIZE));
     assertThat(headerChunks.getFirst().getText()).startsWith("Von: amt@example.org");
+    assertThat(result.discoveredAttachments()).hasSize(1);
   }
 
-  // --- EML: attachments run through their own pipeline --------------------------------------
+  // --- EML: attachments are reported, not processed inline (#1183) --------------------------
 
   @Test
-  void aPdfAttachmentIsRoutedThroughItsOwnPipelineWithATraceableLocation() throws Exception {
+  void aPdfAttachmentIsReportedAsDiscoveredNotProcessedInline() throws Exception {
     byte[] pdfBytes = readTestResource("test-document.pdf");
     Message message =
         newMessageBuilder("Anfrage mit Anlage", "max@example.org", "erika@example.org")
@@ -395,26 +359,21 @@ class MailDocumentPipelineTest {
         pipeline(defaultProperties).run(DocumentPipelineSource.ofFile(file, "mit-anlage.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    // The mail body chunk plus at least one chunk from the PDF's own pipeline.
-    assertThat(result.chunks()).hasSizeGreaterThanOrEqualTo(2);
+    // Only the mail body's own chunk - the attachment is no longer merged in (#1183).
+    assertThat(result.chunks()).hasSize(1);
     Document bodyChunk = result.chunks().getFirst();
     assertThat(bodyChunk.getText()).contains("Anbei der Antrag.");
-    Document attachmentChunk = result.chunks().get(1);
-    assertThat(attachmentChunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
-        .asString()
-        .startsWith("Anhang: antrag.pdf");
-    // The attachment's own chunk carries no mail Kopfdaten - those belong to the message, not to
-    // an attachment routed through a different pipeline entirely.
-    assertThat(attachmentChunk.getMetadata())
-        .doesNotContainKey(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY);
-    // Nor does it carry the leading context block - #1130 Befund 1: that block is prepended before
-    // chunking runs on the message's own body text, never on a recursively produced attachment
-    // chunk.
-    assertThat(attachmentChunk.getText()).doesNotContain("Von:", "Betreff:");
+    assertThat(result.discoveredAttachments()).hasSize(1);
+    DiscoveredAttachment attachment = result.discoveredAttachments().getFirst();
+    assertThat(attachment.fileName()).isEqualTo("antrag.pdf");
+    assertThat(Files.exists(attachment.tempFile())).isTrue();
+    assertThat(Files.readAllBytes(attachment.tempFile())).isEqualTo(pdfBytes);
   }
 
   @Test
-  void anUnsupportedAttachmentFormatIsSkippedNotFailed() throws Exception {
+  void anAttachmentOfAnUnsupportedFormatIsStillReportedHere() throws Exception {
+    // #1183: format admission is no longer this pipeline's job - AttachmentIndexer decides that
+    // once, for every attachment path, instead of this class pre-filtering with duplicate logic.
     Message message =
         newMessageBuilder("Mit unbekanntem Anhang", "max@example.org", "erika@example.org")
             .setBody(
@@ -436,12 +395,14 @@ class MailDocumentPipelineTest {
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(1);
     assertThat(result.chunks().getFirst().getText()).contains("Siehe Anhang.");
+    assertThat(result.discoveredAttachments()).hasSize(1);
+    assertThat(result.discoveredAttachments().getFirst().fileName()).isEqualTo("programm.exe");
   }
 
-  // --- EML: nested EML-in-EML ------------------------------------------------------------------
+  // --- EML: a nested EML-in-EML attachment is reported, not recursed into here (#1183) --------
 
   @Test
-  void aNestedEmlAttachmentIsParsedRecursivelyWithItsOwnHeaders() throws Exception {
+  void aNestedEmlAttachmentIsReportedAsDiscoveredNotRecursedIntoHere() throws Exception {
     Message forwarded =
         newMessageBuilder("Urspruengliche Anfrage", "buerger@example.org", "amt@example.org")
             .setBody("Ich beantrage eine Baugenehmigung.", StandardCharsets.UTF_8)
@@ -464,62 +425,28 @@ class MailDocumentPipelineTest {
             .run(DocumentPipelineSource.ofFile(file, "weiterleitung.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    assertThat(result.chunks()).hasSize(2);
-    assertThat(result.chunks().get(0).getText()).contains("Zur Kenntnis.");
-    Document nestedChunk = result.chunks().get(1);
-    assertThat(nestedChunk.getText()).contains("Ich beantrage eine Baugenehmigung.");
-    assertThat(nestedChunk.getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
-        .isEqualTo("Urspruengliche Anfrage");
-    assertThat(nestedChunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
-        .asString()
-        .startsWith("Anhang: weitergeleitet.eml");
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText()).contains("Zur Kenntnis.");
+    // Mail-in-Mail recursion is the generalized attachment path's job now (#1183): running the
+    // reported attachment's own bytes back through this same pipeline is exactly what
+    // FileProcessingService#processUrlFile does once AttachmentIndexer routes it there.
+    assertThat(result.discoveredAttachments()).hasSize(1);
+    DiscoveredAttachment nested = result.discoveredAttachments().getFirst();
+    assertThat(nested.fileName()).isEqualTo("weitergeleitet.eml");
+    DocumentPipelineResult nestedResult =
+        pipeline(new MailProperties(5, 0, 0, 0))
+            .run(DocumentPipelineSource.ofFile(nested.tempFile(), nested.fileName()));
+    assertThat(nestedResult.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(nestedResult.chunks().getFirst().getText())
+        .contains("Ich beantrage eine Baugenehmigung.");
+    assertThat(nestedResult.chunks().getFirst().getMetadata())
+        .containsEntry(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY, "Urspruengliche Anfrage");
   }
 
   @Test
-  void nestedEmlAttachmentsBeyondTheConfiguredDepthAreSkipped() throws Exception {
-    Message innermost =
-        newMessageBuilder("Ebene 2", "a@example.org", "b@example.org")
-            .setBody("Tiefste Ebene.", StandardCharsets.UTF_8)
-            .build();
-    Message middle =
-        newMessageBuilder("Ebene 1", "a@example.org", "b@example.org")
-            .setBody(
-                MultipartBuilder.create("mixed")
-                    .addTextPart("Mittlere Ebene.", StandardCharsets.UTF_8)
-                    .addBodyPart(
-                        BodyPartBuilder.create()
-                            .setBody(innermost)
-                            .setContentDisposition("attachment", "ebene2.eml"))
-                    .build())
-            .build();
-    Message outer =
-        newMessageBuilder("Ebene 0", "a@example.org", "b@example.org")
-            .setBody(
-                MultipartBuilder.create("mixed")
-                    .addTextPart("Oberste Ebene.", StandardCharsets.UTF_8)
-                    .addBodyPart(
-                        BodyPartBuilder.create()
-                            .setBody(middle)
-                            .setContentDisposition("attachment", "ebene1.eml"))
-                    .build())
-            .build();
-    Path file = writeEml(DefaultMessageWriter.asBytes(outer));
-
-    // Depth 1: the outer message and its direct attachment (Ebene 1) are read, but Ebene 1's own
-    // nested attachment (Ebene 2) is one level too deep and is skipped.
-    DocumentPipelineResult result =
-        pipeline(new MailProperties(1, 0, 0, 0))
-            .run(DocumentPipelineSource.ofFile(file, "tief.eml"));
-
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    List<String> texts = result.chunks().stream().map(Document::getText).toList();
-    assertThat(texts).anyMatch(t -> t.contains("Oberste Ebene."));
-    assertThat(texts).anyMatch(t -> t.contains("Mittlere Ebene."));
-    assertThat(texts).noneMatch(t -> t.contains("Tiefste Ebene."));
-  }
-
-  @Test
-  void attachmentsBeyondTheConfiguredCountPerMessageAreSkipped() throws Exception {
+  void attachmentsBeyondTheConfiguredCountPerMessageAreNeverExtractedAtAll() throws Exception {
+    // The per-message extraction cap stays EmlReader's own job (unchanged by #1183) - only the
+    // recursion-depth cap moved to the generalized attachment path (ADR-0022, Entscheidung 6).
     MultipartBuilder multipart = MultipartBuilder.create("mixed");
     multipart.addTextPart("Drei Anhaenge, aber nur zwei erlaubt.", StandardCharsets.UTF_8);
     for (int i = 1; i <= 3; i++) {
@@ -539,12 +466,12 @@ class MailDocumentPipelineTest {
             .run(DocumentPipelineSource.ofFile(file, "viele.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    // Body chunk plus exactly two of the three CSV attachments (each a single-row chunk).
-    assertThat(result.chunks()).hasSize(3);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.discoveredAttachments()).hasSize(2);
   }
 
   @Test
-  void anAttachmentExceedingTheSizeLimitIsSkippedButTheBodyStillIndexes() throws Exception {
+  void anAttachmentExceedingTheSizeLimitIsNeverExtractedButTheBodyStillIndexes() throws Exception {
     byte[] pdfBytes = readTestResource("test-document.pdf");
     Message message =
         newMessageBuilder("Grosser Anhang", "a@example.org", "b@example.org")
@@ -566,6 +493,7 @@ class MailDocumentPipelineTest {
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(1);
     assertThat(result.chunks().getFirst().getText()).contains("Der Anhang ist zu gross.");
+    assertThat(result.discoveredAttachments()).isEmpty();
   }
 
   // --- EML: an unbounded header block is bounded by the token splitter (#1130 Befund 1) -------
@@ -723,121 +651,11 @@ class MailDocumentPipelineTest {
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
   }
 
-  // --- Attachment robustness (#1101 review, finding 4) ----------------------------------------
-
   @Test
-  void aFailingSubPipelineSkipsOnlyThatAttachmentNotTheWholeMessage() throws Exception {
-    Message message =
-        newMessageBuilder("Mit defektem Anhang", "a@example.org", "b@example.org")
-            .setBody(
-                MultipartBuilder.create("mixed")
-                    .addTextPart("Der Anhang ist kaputt.", StandardCharsets.UTF_8)
-                    .addBodyPart(
-                        BodyPartBuilder.create()
-                            .setBody("Inhalt".getBytes(StandardCharsets.UTF_8), "text/csv")
-                            .setContentDisposition("attachment", "kaputt.csv"))
-                    .build())
-            .build();
-    Path file = writeEml(DefaultMessageWriter.asBytes(message));
-    // Claims .csv itself, in a registry built without the shared helper's own tabular pipeline
-    // (which would otherwise also claim .csv and collide) - see pipelineWithFailingCsvPipeline.
-    FakePipeline throwingOnCsv =
-        new FakePipeline(
-            "broken",
-            (short) 1,
-            java.util.Set.of(".csv"),
-            new IllegalStateException("simulated sub-pipeline failure"));
-
-    DocumentPipelineResult result = pipelineWithFailingCsvPipeline(file, throwingOnCsv);
-
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    assertThat(result.chunks()).hasSize(1);
-    assertThat(result.chunks().getFirst().getText()).contains("Der Anhang ist kaputt.");
-  }
-
-  @Test
-  void aNestedPipelinesDiscoveredAttachmentTempFileIsCleanedUpEvenThoughNotYetForwarded()
-      throws Exception {
-    // #1181 review, finding 1: processAttachment is itself a second, recursive caller of
-    // DocumentPipeline#run (besides FileProcessingService) - it must go through
-    // DocumentPipelineRunner too, or a nested pipeline's own discoveredAttachments (ADR-0022, part
-    // 2) leak a temp file just because this class does not yet forward them itself (part 4,
-    // #1183).
-    Path nestedAttachmentTempFile = tempDir.resolve("nested-attachment.tmp");
-    Files.writeString(nestedAttachmentTempFile, "nested bytes");
-    var nestedAttachment =
-        new io.opaa.indexing.pipeline.DiscoveredAttachment(
-            "eingebettet.pdf", nestedAttachmentTempFile, "application/pdf");
-    var discoveringPipeline =
-        new FakeDiscoveringPipeline(
-            "fake-discovering",
-            (short) 1,
-            java.util.Set.of(".pdf"),
-            DocumentPipelineResult.chunked(
-                List.of(new Document("Anhangtext")), List.of(nestedAttachment)));
-
-    byte[] pdfBytes = readTestResource("test-document.pdf");
-    Message message =
-        newMessageBuilder("Mit Anlage", "a@example.org", "b@example.org")
-            .setBody(
-                MultipartBuilder.create("mixed")
-                    .addTextPart("Anbei die Anlage.", StandardCharsets.UTF_8)
-                    .addBodyPart(
-                        BodyPartBuilder.create()
-                            .setBody(pdfBytes, "application/pdf")
-                            .setContentDisposition("attachment", "anlage.pdf"))
-                    .build())
-            .build();
-    Path file = writeEml(DefaultMessageWriter.asBytes(message));
-
-    DocumentPipelineResult result =
-        pipeline(defaultProperties, defaultChunkingService(), discoveringPipeline)
-            .run(DocumentPipelineSource.ofFile(file, "mit-anlage.eml"));
-
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    assertThat(Files.exists(nestedAttachmentTempFile)).isFalse();
-  }
-
-  /**
-   * Builds a registry with {@code throwingOnCsv} as the sole claimant of {@code .csv} (no tabular
-   * pipeline, which would otherwise collide) and runs {@code file} through it - the "a sub-pipeline
-   * failure costs only the attachment" regression (#1101 review, finding 4a) needs a pipeline that
-   * actually throws, which neither the fallback nor the tabular pipeline ever does for well-formed
-   * input.
-   */
-  private DocumentPipelineResult pipelineWithFailingCsvPipeline(
-      Path file, FakePipeline throwingOnCsv) {
-    DocumentPipelineRegistry[] registryHolder = new DocumentPipelineRegistry[1];
-    ObjectProvider<DocumentPipelineRegistry> provider =
-        new ObjectProvider<>() {
-          @Override
-          public DocumentPipelineRegistry getObject() {
-            return registryHolder[0];
-          }
-
-          @Override
-          public DocumentPipelineRegistry getIfAvailable() {
-            return registryHolder[0];
-          }
-
-          @Override
-          public DocumentPipelineRegistry getIfUnique() {
-            return registryHolder[0];
-          }
-        };
-    MailDocumentPipeline mailPipeline =
-        new MailDocumentPipeline(provider, defaultChunkingService(), defaultProperties, TEST_CLOCK);
-    TikaFallbackPipeline fallback =
-        new TikaFallbackPipeline(new DocumentService(), defaultChunkingService());
-    registryHolder[0] =
-        new DocumentPipelineRegistry(List.of(fallback, mailPipeline, throwingOnCsv), fallback);
-    return mailPipeline.run(DocumentPipelineSource.ofFile(file, file.getFileName().toString()));
-  }
-
-  @Test
-  void anAttachmentWithAnUnsafeFileNameIsSkippedNotFailed() throws Exception {
-    // #1101 review, finding 4c: a colon is invalid in a Windows temp-file suffix and used to throw
-    // InvalidPathException, failing the whole message.
+  void anAttachmentWithAnUnsafeFileNameIsStillNotExtracted() throws Exception {
+    // #1101 review, finding 4c: a colon is invalid in a Windows temp-file suffix - EmlReader's own
+    // extraction (unchanged by #1183) still declines to create a temp file for it, so it never
+    // reaches discoveredAttachments at all, but must not fail the whole message either.
     Message message =
         newMessageBuilder("Mit unsicherem Dateinamen", "a@example.org", "b@example.org")
             .setBody(
@@ -881,8 +699,7 @@ class MailDocumentPipelineTest {
   }
 
   @Test
-  void aMsgFixtureWithAPdfAttachmentIndexesTheAttachmentAndSkipsTheEmbeddedMessageAttachment()
-      throws Exception {
+  void aMsgFixtureWithAPdfAttachmentReportsIt() throws Exception {
     Path file = testResourceCopy("mail/attachment_msg_pdf.msg", "attachment.msg");
 
     DocumentPipelineResult result =
@@ -891,15 +708,10 @@ class MailDocumentPipelineTest {
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     Document bodyChunk = result.chunks().getFirst();
     assertThat(bodyChunk.getText()).contains("Test email with 1 msg attachment, 1 pdf");
-    // One real (PDF) attachment plus the body chunk - the fixture's second attachment chunk is an
-    // embedded Outlook item, which MsgReader documents skipping rather than failing on, so it
-    // contributes no chunk of its own.
-    assertThat(result.chunks())
-        .anySatisfy(
-            chunk ->
-                assertThat(chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
-                    .asString()
-                    .startsWith("Anhang: smbprn"));
+    // The fixture's second attachment is an embedded Outlook item, which MsgReader documents
+    // skipping rather than extracting - only the real PDF attachment is ever reported here.
+    assertThat(result.discoveredAttachments())
+        .anySatisfy(attachment -> assertThat(attachment.fileName()).startsWith("smbprn"));
   }
 
   // --- helpers -----------------------------------------------------------------------------

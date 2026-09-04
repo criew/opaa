@@ -237,7 +237,11 @@ class RssFeedIndexingExecutorInsecureSslTest {
             indexingJobService,
             documentRepository,
             feedStateRepository,
-            new BoundedDownloader(targetAddressValidator),
+            new io.opaa.indexing.source.attachment.AttachmentIndexer(
+                new BoundedDownloader(targetAddressValidator),
+                fileProcessingService,
+                mock(LibraryStorageQuotaService.class),
+                documentRepository),
             properties,
             indexingRunEventRepository,
             targetAddressValidator,
