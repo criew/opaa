@@ -194,7 +194,7 @@ export default function SourceEvidenceDrawer({
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ fontSize: 16, fontWeight: 600 }}>Belege dieser Antwort</Typography>
           <Typography sx={{ fontSize: 11, color: 'text.secondary', mt: 0.25 }}>
-            {stellen} in {dokumente} · zitierte nach Zitatnummer, danach nach Relevanzrang
+            {stellen} in {dokumente} · zitierte nach Zitatnummer, übrige nach Relevanzrang sortiert
           </Typography>
         </Box>
         <IconButton size="small" onClick={onClose} aria-label="Belegfenster schließen">

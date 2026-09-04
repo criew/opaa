@@ -77,7 +77,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(within(drawer).getByText('Belege dieser Antwort')).toBeInTheDocument()
     expect(
       within(drawer).getByText(
-        '3 Stellen in 3 Dokumenten · zitierte nach Zitatnummer, danach nach Relevanzrang',
+        '3 Stellen in 3 Dokumenten · zitierte nach Zitatnummer, übrige nach Relevanzrang sortiert',
       ),
     ).toBeInTheDocument()
     expect(within(drawer).getByText(/Stand der Antwort: 20\.08\.2026, 14:12/)).toBeInTheDocument()
