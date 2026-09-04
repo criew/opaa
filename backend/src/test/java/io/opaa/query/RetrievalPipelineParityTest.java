@@ -49,8 +49,7 @@ class RetrievalPipelineParityTest {
             // (fullTextSearchEnabled = false): parity is claimed against the pre-#1046 algorithm,
             // which had no second search path. Its own behaviour is covered by
             // FullTextSearchStageTest and FullTextChunkSearchIntegrationTest.
-            new FullTextSearchStage(
-                mock(FullTextChunkSearch.class), mock(FullTextBackfillGate.class)),
+            new FullTextSearchStage(mock(FullTextChunkSearch.class)),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(mock(RerankModelRole.class)),

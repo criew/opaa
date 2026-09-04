@@ -16,7 +16,7 @@ import io.opaa.eval.EvaluationReport.WorstQuery;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIndexingService;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FullTextBackfillProgressService;
+import io.opaa.indexing.FullTextIndexFillStateService;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingProperties;
@@ -364,7 +364,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
   @Autowired private QueryProperties queryProperties;
   // #1049: the fill state of the measured library's full-text index, a fixed point of every
   // pipeline report since the lexical path feeds the fusion.
-  @Autowired private FullTextBackfillProgressService fullTextBackfillProgressService;
+  @Autowired private FullTextIndexFillStateService fullTextIndexFillStateService;
   @Autowired private RetrievalPipelineProperties pipelineProperties;
   // #1050: whether this run could rerank at all - a fact about the context, and the one
   // requireMeasurableConfiguration needs to keep a reranking run out of the committed baseline.
@@ -846,7 +846,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             "eval/golden/" + DOMAIN.goldenDatasetFileName(),
             GoldenDataset.sha256(goldenFile),
             // Issue #1049: whether the lexical path could contribute at all in this run.
-            fullTextBackfillProgressService.progressForLibrary(evalLibraryId).isComplete(),
+            fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isComplete(),
             ingestionPipelineFingerprint,
             activeChatModel),
         queryService,
@@ -879,7 +879,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
               manifest.fileNames().size(),
               "eval/golden/" + DOMAIN.goldenDatasetFileName(),
               GoldenDataset.sha256(goldenFile),
-              fullTextBackfillProgressService.progressForLibrary(evalLibraryId).isComplete(),
+              fullTextIndexFillStateService.fillStateForLibrary(evalLibraryId).isComplete(),
               ingestionPipelineFingerprint,
               activeChatModel),
           queryService,

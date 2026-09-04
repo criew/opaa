@@ -72,7 +72,7 @@ class PipelineReindexServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text, chunk_full_text_skip");
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
     // A single-statement delete, not documentRepository.deleteAll(): per-entity deletes in
     // arbitrary order trip fk_documents_parent for a bestand with attachment child rows, while
     // one statement removes parents and children together.

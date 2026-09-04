@@ -6986,12 +6986,9 @@ components:
       type: string
       description: >
         EMPTY - the library holds no chunk at all. READY - every chunk this index needs is there.
-        INCOMPLETE - chunks are missing (still pending a first attempt) or permanently skipped
-        after repeated failures ("poison chunks", #1093); for the full-text index, only the
-        still-pending case is what actually keeps the lexical path from searching this library -
-        see fullTextMissingChunks vs. fullTextSkippedChunks below for the distinction this display
-        state deliberately blurs back together, so a library is never shown as flawlessly READY
-        while it is quietly missing content the search cannot find.
+        INCOMPLETE - chunks are missing from this index, so the library is never shown as
+        flawlessly READY while it is quietly missing content the search cannot find. Nothing
+        repairs such a gap in the background (#1270): the remedy is a reindex.
       enum: [EMPTY, READY, INCOMPLETE]
       example: INCOMPLETE
 
@@ -7012,7 +7009,6 @@ components:
           fullTextIndexState,
           fullTextIndexedChunks,
           fullTextMissingChunks,
-          fullTextSkippedChunks,
           metadataBackfill,
         ]
       properties:
@@ -7069,20 +7065,8 @@ components:
           format: int64
           description: >
             Counted by anti-join, never derived as total minus indexed - see
-            FullTextBackfillProgress's own documentation for why the two counts cannot be
-            subtracted. This is the one number the full-text backfill completion gate reads, and
-            therefore the same data source the "Volltextpfad inaktiv oder unvollständig" alarm
-            reads. Disjoint from fullTextSkippedChunks: a chunk the backfill permanently gave up on
-            (#1093) is never counted here, so the gate does not stay closed for a library forever
-            because of one chunk that will never resolve on its own.
-        fullTextSkippedChunks:
-          type: integer
-          format: int64
-          description: >
-            Chunks the full-text backfill (io.opaa.indexing.FullTextBackfillService) permanently
-            gave up indexing after repeated failures ("poison chunks", #1093) - visible here so a
-            permanent gap in the full-text index is never silent, even though it does not keep the
-            gate closed the way fullTextMissingChunks does (see that field's own description).
+            FullTextIndexFillState's own documentation for why the two counts cannot be subtracted.
+            The same data source the "Volltextpfad inaktiv oder unvollständig" alarm reads.
         metadataBackfill:
           $ref: "#/components/schemas/MetadataBackfillStatusResponse"
 

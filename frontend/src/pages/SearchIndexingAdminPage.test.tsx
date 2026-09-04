@@ -118,12 +118,9 @@ describe('SearchIndexingAdminPage', () => {
     const singularRow = within(table).getByText('Protokolle').closest('tr')
     expect(within(singularRow as HTMLElement).getByText('1 Abschnitt fehlt')).toBeInTheDocument()
 
-    // A library with only a permanently skipped chunk (#1093 review, Blocker 2) - nothing
-    // missing/pending - must not look flawlessly ready either: its own hint stays visible.
-    const skippedRow = within(table).getByText('Formulare').closest('tr')
-    expect(
-      within(skippedRow as HTMLElement).getByText('1 Abschnitt dauerhaft übersprungen'),
-    ).toBeInTheDocument()
+    // A library whose full-text index carries every chunk shows no gap hint at all.
+    const readyRow = within(table).getByText('Formulare').closest('tr')
+    expect(within(readyRow as HTMLElement).queryByText(/Abschnitt/)).toBeNull()
   })
 
   it('does not re-render the library status table while typing in the diagnosis form', async () => {

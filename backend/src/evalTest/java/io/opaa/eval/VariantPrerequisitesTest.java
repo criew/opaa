@@ -63,23 +63,25 @@ class VariantPrerequisitesTest {
   }
 
   /**
-   * Issue #1049: over an incomplete full-text backfill the gate keeps the measured library out of
-   * the lexical path entirely - the variant would measure the vector-only configuration under the
-   * name of the hybrid one, and its Δ0.000 against a vector-only reference would read as "the
-   * lexical path changes nothing".
+   * Issue #1049: chunks missing from the full-text index are invisible to the lexical path - the
+   * variant would measure a diminished lexical contribution under the name of the full hybrid
+   * configuration, and a Δ near zero against a vector-only reference would read as "the lexical
+   * path changes nothing".
    */
   @Test
-  void aHybridVariantIsSkippedWhileTheFullTextBackfillIsIncomplete() {
+  void aHybridVariantIsSkippedWhileTheFullTextIndexIsIncomplete() {
     var reason =
         VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, true, false, false);
 
     assertThat(reason).isPresent();
-    assertThat(reason.get()).contains("Backfill");
+    assertThat(reason.get()).contains("Volltextindex");
   }
 
-  /** The same variant with a complete backfill runs, and a vector-only variant always does. */
+  /**
+   * The same variant with a complete full-text index runs, and a vector-only variant always does.
+   */
   @Test
-  void theBackfillPrerequisiteOnlyConstrainsAVariantThatUsesTheLexicalPath() {
+  void theFullTextIndexPrerequisiteOnlyConstrainsAVariantThatUsesTheLexicalPath() {
     var vectorOnly = new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
 
     assertThat(VariantPrerequisites.unmetReason(variant(false), PRODUCTION_LIKE, true, true, false))

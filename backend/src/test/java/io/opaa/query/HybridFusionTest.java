@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.llm.RerankModelRole;
@@ -39,7 +38,6 @@ class HybridFusionTest {
   private final QueryDecompositionService queryDecompositionService =
       mock(QueryDecompositionService.class);
   private final FullTextChunkSearch fullTextChunkSearch = mock(FullTextChunkSearch.class);
-  private final FullTextBackfillGate backfillGate = mock(FullTextBackfillGate.class);
 
   private RetrievalPipeline pipeline() {
     return new QueryConfiguration()
@@ -47,7 +45,7 @@ class HybridFusionTest {
             new SearchScopeStage(),
             new SubQueryDecompositionStage(queryDecompositionService),
             new VectorSearchStage(vectorStore),
-            new FullTextSearchStage(fullTextChunkSearch, backfillGate),
+            new FullTextSearchStage(fullTextChunkSearch),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(mock(RerankModelRole.class)),
@@ -83,7 +81,6 @@ class HybridFusionTest {
    */
   @Test
   void aChunkOnlyTheLexicalPathFoundReachesTheSelection() {
-    when(backfillGate.searchableLibraries(Set.of(LIBRARY_ID))).thenReturn(Set.of(LIBRARY_ID));
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-a", 0.8), chunk("vector-b", 0.7)));
     when(fullTextChunkSearch.search(anyString(), any(), anyInt()))
@@ -100,7 +97,6 @@ class HybridFusionTest {
    */
   @Test
   void aChunkBothPathsFoundIsOneCandidateWithTwoContributions() {
-    when(backfillGate.searchableLibraries(Set.of(LIBRARY_ID))).thenReturn(Set.of(LIBRARY_ID));
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-top", 0.8), chunk("both", 0.6)));
     when(fullTextChunkSearch.search(anyString(), any(), anyInt()))
@@ -122,7 +118,6 @@ class HybridFusionTest {
    */
   @Test
   void aFailingLexicalQueryLeavesTheVectorSelectionIntact() {
-    when(backfillGate.searchableLibraries(Set.of(LIBRARY_ID))).thenReturn(Set.of(LIBRARY_ID));
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-a", 0.8), chunk("vector-b", 0.7)));
     when(fullTextChunkSearch.search(anyString(), any(), anyInt()))
@@ -132,17 +127,15 @@ class HybridFusionTest {
   }
 
   /**
-   * The backfill gate keeps a library whose full-text index is incomplete out of the lexical path
-   * entirely - a half-filled index returns hits and hides the rest
-   * (docs/features/hybrid-retrieval.md, Arbeitspaket 2a).
+   * A library whose lexical path finds nothing still contributes its vector candidates - the fusion
+   * runs on the lists it has, it does not require every path to deliver one.
    */
   @Test
-  void aLibraryWithAnUnfinishedBackfillContributesNoLexicalCandidates() {
-    when(backfillGate.searchableLibraries(Set.of(LIBRARY_ID))).thenReturn(Set.of());
+  void aLibraryWithoutLexicalHitsStillContributesItsVectorCandidates() {
+    when(fullTextChunkSearch.search(anyString(), any(), anyInt())).thenReturn(List.of());
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-a", 0.8)));
 
     assertThat(run(HYBRID)).extracting(Document::getId).containsExactly("vector-a");
-    verifyNoInteractions(fullTextChunkSearch);
   }
 }

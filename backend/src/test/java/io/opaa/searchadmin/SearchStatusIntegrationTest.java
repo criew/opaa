@@ -2,8 +2,8 @@ package io.opaa.searchadmin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.FullTextBackfillProgress;
-import io.opaa.indexing.FullTextBackfillProgressService;
+import io.opaa.indexing.FullTextIndexFillState;
+import io.opaa.indexing.FullTextIndexFillStateService;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.List;
@@ -19,8 +19,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The status display against a real Postgres - above all that the per-library full-text fill state
- * is the very number {@link FullTextBackfillProgressService} produces for the completion gate, not
- * a second count with its own logic (#1053 acceptance criterion 2).
+ * is the very number {@link FullTextIndexFillStateService} produces, not a second count with its
+ * own logic (#1053 acceptance criterion 2).
  */
 @OpaaIndexingIntegrationTest
 class SearchStatusIntegrationTest {
@@ -29,7 +29,7 @@ class SearchStatusIntegrationTest {
       UUID.fromString("00000000-0000-0000-0000-000000000001");
 
   @Autowired private SearchStatusService searchStatusService;
-  @Autowired private FullTextBackfillProgressService backfillProgressService;
+  @Autowired private FullTextIndexFillStateService fullTextIndexFillStateService;
   @Autowired private VectorStore vectorStore;
   @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -68,21 +68,21 @@ class SearchStatusIntegrationTest {
   }
 
   @Test
-  void theFullTextFillStateIsTheSameNumberTheCompletionGateReads() {
+  void theFullTextFillStateIsTheSameNumberTheFillStateServiceReads() {
     UUID documentId = UUID.randomUUID();
     insertDocument(documentId, "satzung.pdf", "INDEXED", 3);
     // Written straight into the vector store, bypassing VectorChunkStore - so no chunk_full_text
-    // row exists and the library is exactly in the state the lexical path refuses to search.
+    // row exists and the library is exactly in the state this page must show as incomplete.
     vectorStore.add(
         List.of(chunk(documentId, "satzung.pdf", 0), chunk(documentId, "satzung.pdf", 1)));
 
     LibrarySearchStatus status = statusOfOwnLibrary();
-    FullTextBackfillProgress gateSource = backfillProgressService.progressForLibrary(libraryId);
+    FullTextIndexFillState source = fullTextIndexFillStateService.fillStateForLibrary(libraryId);
 
-    assertThat(status.vectorChunkCount()).isEqualTo(gateSource.totalChunks()).isEqualTo(2);
-    assertThat(status.fullTextIndexedChunks()).isEqualTo(gateSource.indexedChunks()).isZero();
-    assertThat(status.fullTextMissingChunks()).isEqualTo(gateSource.missingChunks()).isEqualTo(2);
-    assertThat(gateSource.isComplete()).isFalse();
+    assertThat(status.vectorChunkCount()).isEqualTo(source.totalChunks()).isEqualTo(2);
+    assertThat(status.fullTextIndexedChunks()).isEqualTo(source.indexedChunks()).isZero();
+    assertThat(status.fullTextMissingChunks()).isEqualTo(source.missingChunks()).isEqualTo(2);
+    assertThat(source.isComplete()).isFalse();
     assertThat(status.fullTextIndexCondition())
         .isEqualTo(LibrarySearchStatus.IndexCondition.INCOMPLETE);
   }

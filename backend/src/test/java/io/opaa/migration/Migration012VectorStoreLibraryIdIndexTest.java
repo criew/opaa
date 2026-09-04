@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Delta test for {@code changes/012-vector-store-library-id-index.yaml} (#1119): the expression
- * index backing {@code FullTextBackfillProgressService}'s {@code metadata->>'library_id'} predicate
+ * index backing {@code FullTextIndexFillStateService}'s {@code metadata->>'library_id'} predicate
  * on {@code vector_store}.
  *
  * <p>{@code vector_store} is not Liquibase-owned (Spring AI creates it at application startup, see

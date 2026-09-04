@@ -31,8 +31,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  *
  * <p><b>Resumable by construction, not through a cursor table.</b> The remaining work is always
  * re-derived from the chunk metadata itself: a chunk rewritten at the current version is no longer
- * selected, so a run interrupted at any point simply continues where it stood on the next call -
- * the same property {@code FullTextBackfillService} has, and for the same reason.
+ * selected, so a run interrupted at any point simply continues where it stood on the next call.
  *
  * <p><b>Every call terminates and every call makes progress.</b> A candidate that cannot be
  * advanced right now - its file is outside what this deployment is allowed to read, or the pipeline
@@ -49,7 +48,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * moment a version is raised.
  *
  * <p>Table/schema name come from the same {@code spring.ai.vectorstore.pgvector.*} properties
- * {@code PgVectorStore} itself binds, mirroring {@code FullTextBackfillService}'s pattern.
+ * {@code PgVectorStore} itself binds, never hardcoded independently of that configuration.
  */
 public class PipelineReindexService {
 
@@ -98,8 +97,7 @@ public class PipelineReindexService {
    * per library or per pipeline.
    *
    * <p>Reads {@code vector_store} with a {@code metadata->>...} predicate that no expression index
-   * backs - the same accepted cost {@code FullTextBackfillProgressService} already carries at
-   * today's data volumes.
+   * backs - an accepted cost at today's data volumes.
    */
   public List<PipelineVersionProgress> progressForOrganization(UUID organizationId) {
     Map<String, Short> currentVersions = currentVersionsById();

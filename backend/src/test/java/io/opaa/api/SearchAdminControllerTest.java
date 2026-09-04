@@ -150,7 +150,6 @@ class SearchAdminControllerTest {
                         Instant.EPOCH,
                         80,
                         20,
-                        0,
                         new MetadataBackfillProgress(
                             UUID.randomUUID(),
                             5,

@@ -511,18 +511,24 @@ weitere Felder, beide als Gültigkeitsfelder nach Entscheidung 18:
   bewusst **kein** Fixpunkt (die Stufe lief protokollarisch, die Endauswahl war bit-identisch); die
   Auflage, ihn mit der Aufnahme in die Fusion nachzuziehen, stand seit dem Review zu #1048 in
   docs/features/hybrid-retrieval.md, Arbeitspaket 2.
-- **`fullTextBackfillComplete`** — ob der Volltext-Backfill der gemessenen Bibliothek abgeschlossen
-  war. Das Backfill-Tor (`FullTextBackfillGate`) hält eine unvollständig indizierte Bibliothek
-  vollständig aus dem lexikalischen Pfad heraus; ein Lauf mit `fullTextSearchEnabled = true` über
-  einem halb gefüllten Index misst deshalb die vector-only-Konfiguration, ohne es zu sagen. Erst
+- **`fullTextIndexComplete`** (bis Issue #1270: `fullTextBackfillComplete`) — ob der Volltextindex
+  der gemessenen Bibliothek vollständig war. Ein Abschnitt ohne Volltextzeile ist für den
+  lexikalischen Pfad unsichtbar; ein Lauf mit `fullTextSearchEnabled = true` über einem halb
+  gefüllten Index misst deshalb einen geschmälerten lexikalischen Beitrag, ohne es zu sagen. Erst
   beide Felder zusammen beantworten die Frage „hat der lexikalische Pfad in diesem Lauf beigetragen?".
+
+  > **Nachtrag (Issue #1270, 09/2026):** Bis dahin hielt ein Tor (`FullTextBackfillGate`) eine
+  > unvollständig indizierte Bibliothek vollständig aus dem lexikalischen Pfad heraus, und das Feld
+  > beschrieb den Zustand dieses Tors. Tor und Volltext-Nachzug sind entfernt; der Fixpunkt bleibt
+  > mit unveränderter Bedeutung („war der Index vollständig?") und trägt seither seinen heutigen
+  > Namen — Pipeline-Messvertrag Version 6 → 7, reine Umbenennung ohne neuen Messlauf.
 
 Der Harness-Guard (`PipelineHarnessSupport#requireMeasurableConfiguration`) weist zusätzlich einen
 Lauf mit `fullTextSearchEnabled = false` ab — nicht weil er nicht messbar wäre (das ist er, seit der
 Fixpunkt existiert), sondern weil der Pfad, der die committete Baseline schreibt, die ausgelieferte
 Konfiguration messen muss. Die vector-only-Messung ist ein benannter Variantenvergleich
 (`eval/variants/*-lexical-path.json`), und ein Variantenbericht ist ein Artefakt, keine Baseline.
-Ein Variantenlauf, der den lexikalischen Pfad über einem unvollständigen Backfill anfordert, wird
+Ein Variantenlauf, der den lexikalischen Pfad über einem unvollständigen Volltextindex anfordert, wird
 als „nicht ausgeführt" gemeldet statt stillschweigend degradiert (`VariantPrerequisites`) — dieselbe
 Regel wie für die Teilfragen-Zerlegung ohne Chat-Modell (Entscheidung 15).
 

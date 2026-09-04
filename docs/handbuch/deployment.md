@@ -1068,18 +1068,19 @@ Erlassnummern, seltene Fachbegriffe.
 
 ### Was zu tun ist
 
-Nichts. Jeder neu indexierte Chunk bekommt seinen Volltexteintrag in derselben Transaktion wie den
-Vektor. Der **Bestand** aus der Zeit davor wird von einem Hintergrundlauf nachgezogen, der in kleinen
-Stapeln arbeitet, jederzeit unterbrechbar ist und nach einem Neustart dort weitermacht, wo er stand.
-Erst wenn der Nachlauf einer Bibliothek abgeschlossen ist, wird diese Bibliothek volltextlich
-durchsucht — ein halb gefüllter Index liefert Treffer und verschweigt den Rest, und das ist schlechter,
-als gar nichts zu liefern.
+Nichts. Jeder indexierte Chunk bekommt seinen Volltexteintrag in derselben Transaktion wie den
+Vektor; es gibt keinen Zustand, in dem ein Abschnitt vektorisiert, aber noch nicht volltextindiziert
+wäre.
 
-Dasselbe passiert automatisch, wenn ein Update die Art ändert, wie der Volltextindex gebildet wird: Die
-betroffenen Zeilen gelten dann als fehlend und werden nachgezogen. Ein manueller Reindex ist dafür
-**nicht** nötig — anders als bei einer Änderung am Einbettungsmodell (siehe
-[„Was ein Update mit dem Index macht"](#was-ein-update-mit-dem-index-macht)), denn hier ist kein
-Modellaufruf im Spiel.
+**Ändert ein Update die Art, wie der Volltextindex gebildet wird**, gelten die betroffenen Zeilen als
+fehlend: Der lexikalische Pfad findet sie nicht mehr, und die Seite „Suche & Indexierung" zeigt die
+betroffenen Bibliotheken als **unvollständig** an. Einen Hintergrundlauf, der das von selbst
+nachzieht, gibt es nicht (mehr) — nötig ist dann ein **Nachzug über die Administrationsseite**
+(Pipeline-Nachzug) oder eine vollständige Neuindizierung, wie bei jeder anderen Änderung an der
+Aufbereitung. Anders als bei einer Änderung am Einbettungsmodell (siehe
+[„Was ein Update mit dem Index macht"](#was-ein-update-mit-dem-index-macht)) ist dabei kein
+Modellaufruf im Spiel; der Nachzug ist deshalb vergleichsweise schnell und kostet keine
+Einbettungs-Rechenzeit. Ein solches Update wird in den Release-Hinweisen ausdrücklich genannt.
 
 ### Bekannte Grenze: `ts_rank` ist kein BM25
 

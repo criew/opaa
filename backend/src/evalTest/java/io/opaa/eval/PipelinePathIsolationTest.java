@@ -59,14 +59,15 @@ class PipelinePathIsolationTest {
 
   @Test
   void pipelinePathCountsItsOwnContractVersionSeparately() {
-    // Version 6: 3 from issue #1049 (the lexical path's switch and the measured library's
-    // full-text backfill state), plus 1 from issue #1144 (ingestionPipelineFingerprint), plus 1
+    // Version 7: 3 from issue #1049 (the lexical path's switch and the measured library's
+    // full-text index state), plus 1 from issue #1144 (ingestionPipelineFingerprint), plus 1
     // from issue #1164/PR #1201 (MailDocumentPipeline#version() moved 2 -> 3, shifting the
     // collective fingerprint), plus 1 from issue #1183 (MailDocumentPipeline#version() moved 3 ->
-    // 4, ADR-0022) — counted independently of the raw-vector path above, whose own count (2 plus
-    // the same #1144/#1164/#1183 bumps) moves for unrelated reasons at unrelated points in its
-    // history.
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(6);
+    // 4, ADR-0022), plus 1 from issue #1270 (fullTextBackfillComplete renamed to
+    // fullTextIndexComplete) — counted independently of the raw-vector path above, whose own count
+    // (2 plus the same #1144/#1164/#1183 bumps) moves for unrelated reasons at unrelated points in
+    // its history.
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(7);
   }
 
   @Test

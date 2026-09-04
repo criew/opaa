@@ -26,15 +26,11 @@ import org.springframework.stereotype.Component;
  * permission filter as the vector path's candidates, so the pool invariant that confines document
  * completion to permission-scoped chunks (#932) holds unchanged.
  *
- * <p><b>Two gates, both narrowing, never widening:</b>
- *
- * <ul>
- *   <li>{@link QueryProperties#fullTextSearchEnabled()} - the operator's switch, and the {@code
- *       vector-only} measurement variant.
- *   <li>{@link FullTextBackfillGate} - a library whose backfill has not finished is not searched. A
- *       half-filled full-text index returns hits and hides the rest, which is worse than returning
- *       nothing (docs/features/hybrid-retrieval.md, "Arbeitspaket 2a").
- * </ul>
+ * <p><b>One gate, narrowing, never widening:</b> {@link QueryProperties#fullTextSearchEnabled()} -
+ * the operator's switch, and the {@code vector-only} measurement variant. Every library of the
+ * search scope is searched otherwise: a chunk's full-text row is written in the same transaction as
+ * its vector row, so there is no state in which a scoped library is vectorized but not yet
+ * full-text-indexed (#1270 removed the per-library completion gate that guarded that state).
  *
  * <p><b>A failure degrades the path, never the answer.</b> A missing or broken full-text column may
  * cost search quality and must not raise for the person asking (docs/features/hybrid-retrieval.md,
@@ -50,11 +46,9 @@ class FullTextSearchStage implements RetrievalStage {
   private static final Logger log = LoggerFactory.getLogger(FullTextSearchStage.class);
 
   private final FullTextChunkSearch fullTextChunkSearch;
-  private final FullTextBackfillGate backfillGate;
 
-  FullTextSearchStage(FullTextChunkSearch fullTextChunkSearch, FullTextBackfillGate backfillGate) {
+  FullTextSearchStage(FullTextChunkSearch fullTextChunkSearch) {
     this.fullTextChunkSearch = fullTextChunkSearch;
-    this.backfillGate = backfillGate;
   }
 
   @Override
@@ -84,19 +78,7 @@ class FullTextSearchStage implements RetrievalStage {
                       "opaa.query.full-text-search-enabled"))));
     }
 
-    Set<UUID> searchable = backfillGate.searchableLibraries(context.searchScope());
-    if (searchable.isEmpty()) {
-      return new StageOutcome(
-          state,
-          StageExplanation.executed(
-              name(),
-              inFlight,
-              inFlight,
-              List.of(),
-              List.of(
-                  RetrievalNote.NO_FULL_TEXT_BACKFILL.format(),
-                  RetrievalNote.FULL_TEXT_BACKFILL_PENDING.format())));
-    }
+    Set<UUID> searchScope = context.searchScope();
 
     List<String> searchQueries =
         state.searchQueries().isEmpty() ? List.of(context.question()) : state.searchQueries();
@@ -109,7 +91,7 @@ class FullTextSearchStage implements RetrievalStage {
       try {
         candidates =
             fullTextChunkSearch.search(
-                searchQueries.get(i), searchable, context.queryProperties().fetchK());
+                searchQueries.get(i), searchScope, context.queryProperties().fetchK());
       } catch (RuntimeException e) {
         log.warn(
             "Lexical search path failed for sub-query {} - retrieval continues without its"
@@ -136,10 +118,7 @@ class FullTextSearchStage implements RetrievalStage {
     int retrieved = lists.stream().mapToInt(list -> list.documents().size()).sum();
     notes.add(0, RetrievalNote.FULL_TEXT_SEARCH_LISTS.format(lists.size()));
     notes.add(1, RetrievalNote.FETCH_K.format(context.queryProperties().fetchK()));
-    notes.add(
-        2,
-        RetrievalNote.FULL_TEXT_PERMISSION_FILTER.format(
-            searchable.size(), context.searchScope().size()));
+    notes.add(2, RetrievalNote.FULL_TEXT_PERMISSION_FILTER.format(searchScope.size()));
     // Records the queries actually searched when this stage derived them itself, so a run never
     // reports having searched nothing while it did - the vector path does the same, and either
     // path may be the one that runs.

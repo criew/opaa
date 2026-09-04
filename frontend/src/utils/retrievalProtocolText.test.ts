@@ -28,11 +28,9 @@ const BACKEND_NOTES = [
   'fetch-k 25 per list',
   'similarity threshold 0.5, applied in-query',
   'lexical search path switched off (opaa.query.full-text-search-enabled)',
-  'no library of the search scope has a completed full-text backfill',
-  "the lexical path stays out of the fusion until a library's backfill is complete",
   'lexical search failed for full-text search · sub-query 2: DataAccessResourceFailureException',
   'full-text search, 3 list(s)',
-  'permission filter applied inside the query: 2 of 3 scoped libraries searched, the rest awaiting their backfill',
+  'permission filter applied inside the query: 3 scoped libraries searched',
   'per-list budget 8',
   'mmr-lambda 1.0 (diversity term inactive: plain top-k by relevance)',
   'mmr-lambda 0.7 (diversity term active, cosine similarity of real chunk embeddings)',
@@ -56,7 +54,7 @@ const BACKEND_NOTES = [
 
 /**
  * Words that occur only in the English originals. Deliberately not exhaustive over English as such:
- * `Backfill`, `Fusion` and `Reranking` are established German terms of this project's documentation.
+ * `Fusion` and `Reranking` are established German terms of this project's documentation.
  */
 const ENGLISH_WORDS =
   /\b(search|scope|budget|switched|stage|query|chunk|library|libraries|permission|threshold|lexical|document|nothing|candidate|candidates|list|entries|distinct|window|sibling|pool)\b/i

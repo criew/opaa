@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - changeSet:
+      id: 021-drop-chunk-full-text-skip-table
+      author: opaa
+      comment: >-
+        #1270: drops chunk_full_text_skip, the poison-chunk bookkeeping of the full-text backfill
+        (009-chunk-full-text-skip-table.yaml). The backfill itself is gone with this change - since
+        #1047 a chunk's chunk_full_text row is written in the same transaction as its vector row,
+        so there is no backlog left to drain and no batch a single unindexable chunk could stall.
+        The table has no reader after this change; a permanent gap in the full-text index stays
+        visible as fullTextMissingChunks on the search administration page and is resolved by a
+        reindex, not by a background job. Dropped, not emptied: a table nothing writes and nothing
+        reads is a maintenance obligation without a purpose. The rollback recreates the table
+        exactly as 009 defined it (empty - the rows it held described attempts of a mechanism that
+        no longer exists).
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE IF EXISTS public.chunk_full_text_skip CASCADE;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE IF NOT EXISTS public.chunk_full_text_skip (
+                  chunk_id uuid NOT NULL PRIMARY KEY,
+                  document_id uuid,
+                  library_id uuid NOT NULL,
+                  content_tsv_version smallint NOT NULL,
+                  error_message text NOT NULL,
+                  sqlstate text,
+                  attempts smallint NOT NULL DEFAULT 1,
+                  skipped_at timestamptz NOT NULL DEFAULT now()
+              );
+              CREATE INDEX IF NOT EXISTS idx_chunk_full_text_skip_library_id ON public.chunk_full_text_skip (library_id);

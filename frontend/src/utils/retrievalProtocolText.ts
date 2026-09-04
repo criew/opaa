@@ -93,17 +93,6 @@ const NOTE_RULES: NoteRule[] = [
     german: (m) => `Volltextpfad abgeschaltet (${m[1]}).`,
   },
   {
-    name: 'NO_FULL_TEXT_BACKFILL',
-    pattern: /^no library of the search scope has a completed full-text backfill$/,
-    german: () => 'Keine Bibliothek des Suchbereichs hat einen abgeschlossenen Volltext-Backfill.',
-  },
-  {
-    name: 'FULL_TEXT_BACKFILL_PENDING',
-    pattern: /^the lexical path stays out of the fusion until a library's backfill is complete$/,
-    german: () =>
-      'Der Volltextpfad bleibt aus der Fusion heraus, bis der Backfill mindestens einer Bibliothek abgeschlossen ist.',
-  },
-  {
     name: 'LEXICAL_SEARCH_FAILED',
     // The exception type the backend appends is developer diagnostics and stays in the server log:
     // a Java class name says nothing to the operator that this sentence does not say better.
@@ -118,10 +107,9 @@ const NOTE_RULES: NoteRule[] = [
   },
   {
     name: 'FULL_TEXT_PERMISSION_FILTER',
-    pattern:
-      /^permission filter applied inside the query: (\d+) of (\d+) scoped libraries searched, the rest awaiting their backfill$/,
+    pattern: /^permission filter applied inside the query: (\d+) scoped libraries searched$/,
     german: (m) =>
-      `Rechtefilter in der Suchanfrage angewendet: ${m[1]} von ${m[2]} Bibliotheken des Suchbereichs durchsucht, die übrigen warten auf ihren Backfill.`,
+      `Rechtefilter in der Suchanfrage angewendet: ${plural(m[1], 'Bibliothek', 'Bibliotheken')} des Suchbereichs durchsucht.`,
   },
 
   // MmrSelectionStage

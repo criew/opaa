@@ -25,8 +25,7 @@ class IndexingJobRecoverySchedulerTest {
 
   @BeforeEach
   void setUp() {
-    var properties =
-        new IndexingProperties(1000, 0, 50, null, null, Duration.ofHours(4), null, null, 0);
+    var properties = new IndexingProperties(1000, 0, 50, null, null, Duration.ofHours(4), null, 0);
     scheduler = new IndexingJobRecoveryScheduler(indexingJobService, properties);
   }
 

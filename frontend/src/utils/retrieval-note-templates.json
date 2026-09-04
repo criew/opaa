@@ -29,12 +29,8 @@
       "template": "fetch-k %d per list"
     },
     {
-      "name": "FULL_TEXT_BACKFILL_PENDING",
-      "template": "the lexical path stays out of the fusion until a library's backfill is complete"
-    },
-    {
       "name": "FULL_TEXT_PERMISSION_FILTER",
-      "template": "permission filter applied inside the query: %d of %d scoped libraries searched, the rest awaiting their backfill"
+      "template": "permission filter applied inside the query: %d scoped libraries searched"
     },
     {
       "name": "FULL_TEXT_SEARCH_LISTS",
@@ -63,10 +59,6 @@
     {
       "name": "NOT_REACHED",
       "template": "run halted before this stage: nothing left to retrieve"
-    },
-    {
-      "name": "NO_FULL_TEXT_BACKFILL",
-      "template": "no library of the search scope has a completed full-text backfill"
     },
     {
       "name": "OVERALL_BUDGET_TOP_K",

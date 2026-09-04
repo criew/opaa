@@ -184,7 +184,8 @@ final class SearchAdminResponseMapper {
               + status.incompleteLibraryCount()
               + " von "
               + status.libraryCount()
-              + " Bibliotheken sind unvollständig und werden von diesem Pfad nicht durchsucht.";
+              + " Bibliotheken sind unvollständig; ihre fehlenden Abschnitte findet dieser Pfad"
+              + " nicht.";
     };
   }
 
@@ -203,7 +204,6 @@ final class SearchAdminResponseMapper {
             toIndexState(status.fullTextIndexCondition()),
             status.fullTextIndexedChunks(),
             status.fullTextMissingChunks(),
-            status.fullTextSkippedChunks(),
             MetadataBackfillResponseMapper.toStatusResponse(status.metadataBackfill()))
         .lastIndexedAt(status.lastIndexedAt());
   }

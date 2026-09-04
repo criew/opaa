@@ -429,15 +429,6 @@ export const LibraryStatusTable = memo(function LibraryStatusTable({
                     {plural(library.fullTextMissingChunks, 'Abschnitt fehlt', 'Abschnitte fehlen')}
                   </Typography>
                 )}
-                {library.fullTextSkippedChunks > 0 && (
-                  <Typography variant="caption" color="warning.main" component="div">
-                    {plural(
-                      library.fullTextSkippedChunks,
-                      'Abschnitt dauerhaft übersprungen',
-                      'Abschnitte dauerhaft übersprungen',
-                    )}
-                  </Typography>
-                )}
               </TableCell>
               <MetadataBackfillCell
                 library={library}
