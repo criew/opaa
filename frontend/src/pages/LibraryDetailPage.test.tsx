@@ -74,7 +74,34 @@ const {
   mockDeleteLibraryFolder,
   mockTriggerIndexing,
   mockGetIndexingStatus,
+  mockGetDocumentMetadata,
+  mockBulkSetDocumentMetadata,
+  mockGetDocumentTypeVocabulary,
 } = vi.hoisted(() => ({
+  mockGetDocumentMetadata: vi.fn(async (_libraryId: string, documentId: string) => ({
+    documentId,
+    fields: [
+      { fieldKey: 'title', label: 'Titel' },
+      {
+        fieldKey: 'document_type',
+        label: 'Dokumentart',
+        value: 'VERMERK',
+        displayValue: 'Vermerk',
+        origin: 'DERIVED',
+        confidence: 0.7,
+      },
+      { fieldKey: 'document_date', label: 'Datum/Stand' },
+    ],
+  })),
+  mockBulkSetDocumentMetadata: vi.fn(async () => ({
+    updatedCount: 2,
+    unchangedCount: 0,
+    rejectedDocumentIds: [],
+    correlationRef: 'metadata-bulk-1',
+  })),
+  mockGetDocumentTypeVocabulary: vi.fn(async () => ({
+    items: [{ code: 'VERMERK', label: 'Vermerk' }],
+  })),
   mockGetLibrary: vi.fn(async (id: string) => useLibraryStore.getState().libraryDetails[id]),
   mockUpdateLibrary: vi.fn(async () => ({}) as LibraryResponse),
   mockDeleteLibrary: vi.fn(async () => undefined),
@@ -127,6 +154,9 @@ vi.mock('../services/api', async () => {
     deleteLibraryFolder: mockDeleteLibraryFolder,
     triggerIndexing: mockTriggerIndexing,
     getIndexingStatus: mockGetIndexingStatus,
+    getDocumentMetadata: mockGetDocumentMetadata,
+    bulkSetDocumentMetadata: mockBulkSetDocumentMetadata,
+    getDocumentTypeVocabulary: mockGetDocumentTypeVocabulary,
   }
 })
 
@@ -1135,6 +1165,103 @@ describe('LibraryDetailPage', () => {
   // #738: local sourceTypes fetch the file as a Blob and open/download it client-side, since the
   // download endpoint is Bearer-authenticated - see utils/documentContent.test.ts for that piece's
   // own behaviour, mocked here (see the vi.mock above) to isolate which target this page picks.
+  // #1068: metadata view per document and the Sammelzuweisung on the selection.
+  describe('Metadaten', () => {
+    const indexedDocuments: LibraryDocumentResponse[] = [
+      {
+        id: 'doc-1',
+        fileName: 'dienstanweisung.pdf',
+        contentType: 'application/pdf',
+        fileSize: 2048,
+        status: 'INDEXED',
+        sourceType: 'UPLOAD',
+        chunkCount: 3,
+        indexedAt: '2026-03-01T10:00:00Z',
+        uploadedByUserId: null,
+      },
+      {
+        id: 'doc-2',
+        fileName: 'vermerk.docx',
+        contentType: 'application/msword',
+        fileSize: 1024,
+        status: 'INDEXED',
+        sourceType: 'UPLOAD',
+        chunkCount: 2,
+        indexedAt: '2026-03-01T10:00:00Z',
+        uploadedByUserId: null,
+      },
+    ]
+
+    it('opens the metadata view of a document and marks a derived value as such', async () => {
+      mockGetLibraryDocuments.mockResolvedValue(pageOf(indexedDocuments))
+      setLibraryState(viewerLibrary, detailsOf(viewerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await user.click(
+        await screen.findByRole('button', { name: 'Metadaten von dienstanweisung.pdf anzeigen' }),
+      )
+
+      const region = await screen.findByRole('region', {
+        name: 'Metadaten von dienstanweisung.pdf',
+      })
+      expect(mockGetDocumentMetadata).toHaveBeenCalledWith('library-readonly', 'doc-1')
+      expect(within(region).getByText('Vermerk')).toBeInTheDocument()
+      expect(within(region).getByText('abgeleitet')).toBeInTheDocument()
+      // A VIEWER sees the values but neither correction controls nor the bulk toolbar.
+      expect(within(region).queryByRole('button', { name: /bearbeiten/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('toolbar', { name: 'Sammelzuweisung' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
+      ).not.toBeInTheDocument()
+
+      await user.click(
+        screen.getByRole('button', { name: 'Metadaten von dienstanweisung.pdf verbergen' }),
+      )
+      expect(
+        screen.queryByRole('region', { name: 'Metadaten von dienstanweisung.pdf' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('lets an editor select documents and set one field on the selection', async () => {
+      mockGetLibraryDocuments.mockResolvedValue(pageOf(indexedDocuments))
+      setLibraryState(
+        { ...managerLibrary, myRole: 'EDITOR' },
+        detailsOf({ ...managerLibrary, myRole: 'EDITOR' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelzuweisung' })
+      expect(within(toolbar).getByRole('button', { name: 'Feld setzen' })).toBeDisabled()
+      await user.click(
+        screen.getByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
+      )
+      await user.click(screen.getByRole('checkbox', { name: 'Dokument vermerk.docx auswählen' }))
+      expect(within(toolbar).getByText('2 ausgewählt')).toBeInTheDocument()
+      await user.click(within(toolbar).getByRole('button', { name: 'Feld setzen' }))
+
+      const dialog = await screen.findByRole('dialog', { name: 'Feld für 2 Dokumente setzen' })
+      await user.click(await within(dialog).findByRole('combobox', { name: /Dokumentart/ }))
+      await user.click(await screen.findByRole('option', { name: 'Vermerk' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Zuweisen' }))
+
+      await waitFor(() =>
+        expect(mockBulkSetDocumentMetadata).toHaveBeenCalledWith('library-team', {
+          fieldKey: 'document_type',
+          value: { vocabularyCode: 'VERMERK' },
+          documentIds: ['doc-1', 'doc-2'],
+        }),
+      )
+      await user.click(within(dialog).getByRole('button', { name: 'Schließen' }))
+      expect(
+        await screen.findByText('Feld gesetzt: 2 Dokumente aktualisiert, 0 unverändert.'),
+      ).toBeInTheDocument()
+      expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument()
+    })
+  })
+
   describe('"Original öffnen"', () => {
     it('fetches and opens the file as a Blob for a local (UPLOAD/FILESYSTEM) document', async () => {
       mockGetLibraryDocuments.mockResolvedValueOnce(

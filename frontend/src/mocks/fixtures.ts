@@ -37,6 +37,10 @@ export interface MockLibraryFolder {
   createdAt: string
 }
 import type { AuthConfig, AuthUser } from '../types/auth'
+import type {
+  DocumentMetadataFieldResponse,
+  DocumentTypeVocabularyEntryResponse,
+} from '../types/api'
 
 export const mockHealthResponse: HealthResponse = {
   status: 'UP',
@@ -1187,6 +1191,65 @@ export let mockLibraryDocuments: Record<string, LibraryDocumentResponse[]> =
 
 export function resetMockLibraryDocuments() {
   mockLibraryDocuments = structuredClone(INITIAL_LIBRARY_DOCUMENTS)
+}
+
+// #1068: the Dokumentart vocabulary (ADR-0024, Entscheidung 3) as the backend seeds it.
+export const mockDocumentTypeVocabulary: DocumentTypeVocabularyEntryResponse[] = [
+  { code: 'SATZUNG_ORDNUNG', label: 'Satzung/Ordnung' },
+  { code: 'DIENSTANWEISUNG', label: 'Dienstanweisung' },
+  { code: 'VERMERK', label: 'Vermerk' },
+  { code: 'PROTOKOLL', label: 'Protokoll' },
+  { code: 'BESCHEID_VORLAGE', label: 'Bescheid-Vorlage' },
+  { code: 'FORMULAR', label: 'Formular' },
+  { code: 'GEBUEHRENVERZEICHNIS', label: 'Gebührenverzeichnis' },
+  { code: 'PRAESENTATION', label: 'Präsentation' },
+  { code: 'SONSTIGES', label: 'Sonstiges' },
+]
+
+// #1068: core metadata per document with its provenance - one deterministic, one derived and
+// one manual value on the first fixture document, so every origin marking is exercised in
+// mock/dev mode; documents without an entry read as three empty fields.
+const INITIAL_DOCUMENT_METADATA: Record<string, DocumentMetadataFieldResponse[]> = {
+  'document-dienstanweisung': [
+    {
+      fieldKey: 'title',
+      label: 'Titel',
+      value: 'Dienstanweisung zur IT-Nutzung',
+      displayValue: 'Dienstanweisung zur IT-Nutzung',
+      origin: 'DETERMINISTIC',
+      extractionVersion: 1,
+      updatedAt: '2026-03-02T09:00:00Z',
+    },
+    {
+      fieldKey: 'document_type',
+      label: 'Dokumentart',
+      value: 'DIENSTANWEISUNG',
+      displayValue: 'Dienstanweisung',
+      origin: 'DERIVED',
+      confidence: 0.82,
+      modelId: 'mock-model',
+      extractionVersion: 1,
+      updatedAt: '2026-03-02T09:00:00Z',
+    },
+    {
+      fieldKey: 'document_date',
+      label: 'Datum/Stand',
+      value: '2024-01-01',
+      displayValue: '2024',
+      origin: 'MANUAL',
+      datePrecision: 'YEAR',
+      actorUserId: 'mock-user-id',
+      actorDisplayName: 'Max Mustermann',
+      updatedAt: '2026-03-03T14:30:00Z',
+    },
+  ],
+}
+
+export let mockDocumentMetadata: Record<string, DocumentMetadataFieldResponse[]> =
+  structuredClone(INITIAL_DOCUMENT_METADATA)
+
+export function resetMockDocumentMetadata() {
+  mockDocumentMetadata = structuredClone(INITIAL_DOCUMENT_METADATA)
 }
 
 // #822: one pre-existing root-level folder on 'library-mine' (the OWNER/UPLOAD fixture already

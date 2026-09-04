@@ -542,12 +542,65 @@ ist, prüft nichts:
    häufigste Fehler ist eine Sicherung, deren Teile aus verschiedenen Zeitpunkten stammen.
 4. **Rechteprobe:** Eine Person ohne Freigabe darf nach der Wiederherstellung nicht mehr sehen als
    vorher. Ein Wiederanlauf, der Rechte verliert, ist schlimmer als ein Ausfall.
-5. **Zeit messen und festhalten**, gegen den vereinbarten Zielwert.
-6. **Ergebnis dokumentieren** — mit Datum, Stand und aufgetretenen Abweichungen. Der Nachweis
+5. **Manuelle Metadatenwerte abgleichen** — siehe
+   [den eigenen Abschnitt unten](#manuelle-metadatenwerte-nach-einem-restore-abgleichen). Nur nötig,
+   wenn der Wiederherstellungspunkt der Datenbank hinter dem des Protokollbestands liegt.
+6. **Zeit messen und festhalten**, gegen den vereinbarten Zielwert.
+7. **Ergebnis dokumentieren** — mit Datum, Stand und aufgetretenen Abweichungen. Der Nachweis
    gegenüber einer Prüfung ist das Protokoll der Übung, nicht die Absichtserklärung.
 
 Die Übung wird wiederkehrend durchgeführt und zusätzlich nach jeder Änderung, die den Aufbau der
 Installation berührt.
+
+### Manuelle Metadatenwerte nach einem Restore abgleichen
+
+Von allen Metadatenwerten eines Dokuments
+([Metadatenschema](./metadata-schema.md#jeder-wert-trägt-seine-herkunft)) ist genau eine Art nicht
+durch einen erneuten Lauf reproduzierbar: die von Hand gesetzten. Deterministische Werte erzeugt der
+Bestandslauf neu, abgeleitete die modellgestützte Extraktion — eine Korrektur einer Person entsteht
+genau einmal. Deshalb schreibt jede manuelle Setzung, Änderung und Löschung ein Audit-Ereignis
+`DOCUMENT_METADATA_CHANGED` mit Alt- und Neuwert (#1068), und deshalb gehört nach einer
+Wiederherstellung, die die Datenbank auf einen älteren Stand zurücksetzt als den Protokollbestand,
+dieser Abgleich dazu. Liegt das Protokoll in derselben Sicherung wie die Werte (der Regelfall bei einer
+Sicherung der ganzen Datenbank), ist nichts abzugleichen — beide sind dann gleich alt.
+
+**Welche Ereignisse.** Je Bibliothek: Objekttyp `KNOWLEDGE_LIBRARY`, Objekt-ID der Bibliothek,
+Ereignistyp `DOCUMENT_METADATA_CHANGED`, ab dem Wiederherstellungspunkt der Datenbank. Über den
+Objektzugriffspfad des Protokolls (`GET /api/v1/audit/events/by-object?objectType=KNOWLEDGE_LIBRARY
+&objectId={libraryId}&from={wiederherstellungspunkt}&to=…`, mit Begründung — der Zugriff wird selbst
+protokolliert)
+oder, bei direktem Datenbankzugriff auf den Protokollbestand:
+
+```sql
+SELECT recorded_at, event_id, correlation_ref, after
+  FROM audit_log
+ WHERE organization_id = :organisation
+   AND event_type = 'DOCUMENT_METADATA_CHANGED'
+   AND object_type = 'KNOWLEDGE_LIBRARY'
+   AND object_id = :bibliothek
+   AND recorded_at > :wiederherstellungspunkt
+ ORDER BY recorded_at, event_id;
+```
+
+**In welcher Reihenfolge.** In Aufzeichnungsreihenfolge (`recorded_at`, dann `event_id`). Jedes
+Ereignis trägt in `after` den vollständigen Zielzustand eines Feldes — `documentId`, `fieldKey` und
+entweder `state = "EMPTY"` oder `state = "SET"` mit `value` (Vokabularcode, ISO-Datum oder Text) und
+gegebenenfalls `datePrecision`; `before` trägt den Altwert und dient nur der Plausibilisierung, nicht
+dem Wiedereinspielen. Ein späteres Ereignis zu demselben Dokument und Feld ersetzt ein früheres; der
+letzte Zustand je `(documentId, fieldKey)` ist der wiederherzustellende. Die Ereignisse einer
+Sammelzuweisung teilen sich eine `correlation_ref` und werden wie Einzelereignisse behandelt.
+
+**Wie anwenden.** Je `(documentId, fieldKey)` mit letztem Zustand `SET`: den Wert über die reguläre
+Korrektur-API setzen (`PUT /api/v1/libraries/{libraryId}/documents/{documentId}/metadata/{fieldKey}`
+mit `textValue`, `vocabularyCode` oder `dateValue` + `datePrecision` aus `after`), als Person mit
+Bearbeitungsrecht an der Bibliothek. Das erzeugt neue Ereignisse mit dem Abgleich als Akteur — erwünscht,
+denn der Abgleich ist selbst ein Vorgang, der im Protokoll stehen soll. Bei letztem Zustand `EMPTY`:
+`DELETE` auf denselben Pfad, sofern die wiederhergestellte Datenbank dort noch einen Wert hält. Ein
+Dokument, das in der wiederhergestellten Datenbank nicht mehr existiert (nach dem Wiederherstellungspunkt
+aufgenommen), wird beim Abgleich übersprungen — es kommt mit dem nächsten Konnektorlauf oder Upload
+wieder und trägt dann keinen manuellen Wert; diese Fälle gehören in das Übungsprotokoll. Direkte
+`INSERT`s in `document_metadata_values` sind kein Ersatz: Sie ziehen die Chunk-Schlüssel nicht nach und
+hinterlassen kein Ereignis.
 
 ---
 
