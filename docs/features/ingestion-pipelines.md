@@ -1049,6 +1049,22 @@ Elternpfad allein sorgt bereits für Eindeutigkeit über verschiedene Mails hinw
 gilt dieselbe Regel rekursiv: Der `file_path` eines Anhangs einer weitergeleiteten Mail enthält
 bereits den synthetischen `file_path` dieser weitergeleiteten Mail selbst.
 
+**Das Original eines Anhangs wird beim Öffnen nachextrahiert, nicht beim Indizieren abgelegt**
+(#1239): Die Anhangsbytes existieren während der Indizierung nur als temporäre Datei. Fragt jemand
+über „Im Dokument öffnen" (`GET /documents/{id}/content`, `LibraryDocumentService#loadContent`) das
+Original eines Anhangsdokuments an, lädt OPAA das Original des Wurzel-Elterndokuments über den ganz
+normalen Weg seines Quelltyps (UPLOAD/FILESYSTEM von der Platte, HTTP_DIRECTORY/RSS_FEED über den
+Proxy-Abruf), lässt dieselbe Pipeline es erneut parsen und streamt den Anhang an dem im `file_path`
+kodierten Positionsindex; die gemeinsame Extraktion dafür ist `io.opaa.indexing.AttachmentExtractor`,
+die auch der selektive Re-Index nutzt — nur so ist die Extraktionsreihenfolge (und damit die Bedeutung
+des Index) dieselbe wie beim Indizieren, und es gelten dieselben Parse-Grenzen aus `MailProperties`.
+Verschachtelung ist kein Sonderfall: Jede Kettenstufe ist ein weiterer Extraktionsschritt. Der
+Positionsindex ist nur bei unveränderter Elterndatei aussagekräftig, deshalb muss der Dateiname des
+extrahierten Anhangs zum `file_name` der Zeile passen — sonst antwortet der Endpunkt mit demselben
+404 wie bei „kein Originaldokument verfügbar", statt fremde Bytes unter diesem Namen auszuliefern.
+Temporäre Dateien dieses Wegs werden beim Schließen des Antwortstroms gelöscht. Kein zusätzlicher
+Speicherbedarf, keine doppelte Quotenzählung, gleiches Verhalten für alle Quelltypen.
+
 **Die Rekursionstiefe (Mail-in-Mail) lebt auf dem verallgemeinerten Anhangsweg, nicht mehr in dieser
 Pipeline** (ADR-0022, Entscheidung 6): `AttachmentIndexer` zählt die Verschachtelungstiefe über einen
 threadlokalen Zähler, sobald ein gemeldeter Anhang selbst wieder über `FileProcessingService

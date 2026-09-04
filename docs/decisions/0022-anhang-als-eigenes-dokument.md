@@ -371,6 +371,10 @@ Confluence-Anforderung an unabhängiger Versionierung gar nicht erfüllen kann.
 - #1130 Befund 2 braucht keinen eigenen, gezielten Fix mehr — er verschwindet mit der Umstellung.
 - Die Beleg-/Zitat-Anzeige wird für jeden Anhangsweg einheitlich (eigenes Dokument, eigener Deep Link,
   Elternbezug über `parent_document_id`), statt mail-spezifisch textbasiert zu sein.
+- Das Original eines Anhangs bleibt öffenbar, ohne dass seine Bytes gespeichert werden: Der
+  Content-Endpunkt extrahiert den Anhang beim Zugriff aus dem Original seines Elterndokuments nach
+  (#1239, siehe `docs/features/ingestion-pipelines.md`) — dieselbe Extraktion wie beim Indizieren,
+  daher kein zweiter Speicherort und keine doppelte Quotenzählung.
 - Änderungserkennung wird für Anhänge granular — Voraussetzung für #1139, sonst nicht erreichbar.
 
 ### Schwieriger
@@ -387,6 +391,9 @@ Confluence-Anforderung an unabhängiger Versionierung gar nicht erfüllen kann.
   Mail-Bibliotheken.
 - `Document#fileSize` bekommt für Mail-Elterndokumente eine neue Bedeutung (ohne Anhangsbytes) — ein
   Verhaltensunterschied gegenüber dem heutigen, undifferenzierten `Files.size(file)`.
+- Jeder Lesezugriff auf ein Anhangsoriginal kostet ein erneutes Parsen des Elterndokuments (und bei
+  Konnektor-Beständen einen erneuten Abruf des Elternoriginals) — bewusst in Kauf genommener
+  Rechenaufwand gegen doppelte Speicherung (#1239).
 - Löschen eines Elterndokuments außerhalb von `StaleDocumentCleanupService` (z. B. eine selektive
   Neuindizierung über `PipelineReindexService`, eine künftige Einzeldokument-Löschfunktion für
   Konnektor-Bestände) muss seine Anhangszeilen ausdrücklich mitbehandeln — es gibt keinen impliziten

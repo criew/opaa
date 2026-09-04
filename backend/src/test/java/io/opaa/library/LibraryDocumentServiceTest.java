@@ -152,7 +152,8 @@ class LibraryDocumentServiceTest {
             disabledTargetAddressValidator,
             remoteContentProperties,
             folderRepository,
-            folderService);
+            folderService,
+            mock(io.opaa.indexing.AttachmentExtractor.class));
 
     KnowledgeLibrary library = mock(KnowledgeLibrary.class);
     when(library.getId()).thenReturn(libraryId);
@@ -1181,7 +1182,8 @@ class LibraryDocumentServiceTest {
             enabledValidator,
             remoteContentProperties,
             folderRepository,
-            folderService);
+            folderService,
+            mock(io.opaa.indexing.AttachmentExtractor.class));
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
         .thenReturn(AssetRole.VIEWER);
     KnowledgeLibrary library = remoteLibrary(null);
