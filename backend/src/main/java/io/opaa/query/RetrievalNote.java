@@ -16,6 +16,18 @@ enum RetrievalNote {
   SEARCH_SCOPE_PERMISSION_FILTER(
       "permission filter applied inside every search of this run, never afterwards"),
 
+  METADATA_FILTER_NONE("no metadata filter set: every candidate of the search scope qualifies"),
+  METADATA_FILTER_DOCUMENT_TYPES("metadata filter: document type in [%s]"),
+  METADATA_FILTER_DATE_WINDOW(
+      "metadata filter: document date from %s to %s, a value counting for the whole span its"
+          + " precision leaves open"),
+  METADATA_FILTER_SUBORDINATE(
+      "metadata filter applied inside both search paths, AND-ed to the permission filter; a"
+          + " document without a value for a filtered field is kept"),
+  METADATA_FILTER_NO_VALUE_CANDIDATES(
+      "metadata filter applied inside the query: %d of %d candidate(s) kept without a value for"
+          + " a filtered field"),
+
   DECOMPOSITION_PRODUCED("decomposition produced %d %s"),
   DECOMPOSITION_FAILED(
       "decomposition returned nothing (failed or unparsable): single-query fallback"),

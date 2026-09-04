@@ -102,7 +102,10 @@ class FullTextSearchStage implements RetrievalStage {
       try {
         candidates =
             fullTextChunkSearch.search(
-                searchQueries.get(i), searchScope, context.queryProperties().fetchK());
+                searchQueries.get(i),
+                searchScope,
+                state.metadataFilter(),
+                context.queryProperties().fetchK());
       } catch (RuntimeException e) {
         log.warn(
             "Lexical search path failed for sub-query {} - retrieval continues without its"
@@ -133,6 +136,14 @@ class FullTextSearchStage implements RetrievalStage {
         2,
         RetrievalNote.FULL_TEXT_PERMISSION_FILTER.format(
             searchScope.size(), indexCompleteness.incompleteLibraryCount(searchScope)));
+    if (!state.metadataFilter().isEmpty()) {
+      List<Document> all = lists.stream().flatMap(list -> list.documents().stream()).toList();
+      notes.add(
+          3,
+          RetrievalNote.METADATA_FILTER_NO_VALUE_CANDIDATES.format(
+              MetadataFilterExpressions.countKeptWithoutValue(state.metadataFilter(), all),
+              all.size()));
+    }
     // Records the queries actually searched when this stage derived them itself, so a run never
     // reports having searched nothing while it did - the vector path does the same, and either
     // path may be the one that runs.

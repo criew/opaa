@@ -208,7 +208,8 @@ class SearchAdminControllerTest {
                     {"question":"  Was gilt bei Gebührenbefreiung?  ",
                      "contextType":"PERMISSION_PROFILE",
                      "permissionProfileId":"%s",
-                     "trackedDocumentId":"%s"}
+                     "trackedDocumentId":"%s",
+                     "metadataFilter":{"documentTypes":["VERMERK"],"documentDateTo":"2024-12-31"}}
                     """
                         .formatted(profileId, trackedId))
                 .with(asAdmin()))
@@ -222,6 +223,10 @@ class SearchAdminControllerTest {
     assertThat(query.contextType()).isEqualTo(DiagnosisContextType.PERMISSION_PROFILE);
     assertThat(query.permissionProfileId()).isEqualTo(profileId);
     assertThat(query.trackedDocumentId()).isEqualTo(trackedId);
+    // #1070: the diagnosis runs with the same filter a chat query would.
+    assertThat(query.metadataFilter().documentTypes()).containsExactly("VERMERK");
+    assertThat(query.metadataFilter().documentDateTo())
+        .isEqualTo(java.time.LocalDate.of(2024, 12, 31));
   }
 
   @Test

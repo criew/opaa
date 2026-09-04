@@ -41,6 +41,7 @@ import type { AuthConfig, AuthUser } from '../types/auth'
 import type {
   DocumentMetadataFieldResponse,
   DocumentTypeVocabularyEntryResponse,
+  MetadataFilterOptionsResponse,
 } from '../types/api'
 
 export const mockHealthResponse: HealthResponse = {
@@ -820,6 +821,14 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
       verdicts: [],
     },
     {
+      stage: 'METADATA_FILTER',
+      status: 'EXECUTED',
+      incomingCount: 0,
+      outgoingCount: 0,
+      notes: ['no metadata filter set: every candidate of the search scope qualifies'],
+      verdicts: [],
+    },
+    {
       stage: 'VECTOR_SEARCH',
       status: 'EXECUTED',
       incomingCount: 0,
@@ -1252,6 +1261,39 @@ export function resetMockLibraryDocuments() {
 }
 
 // #1068: the Dokumentart vocabulary (ADR-0024, Entscheidung 3) as the backend seeds it.
+// #1070: the filter options of the mock bestand - Dokumentart above its threshold and therefore
+// offered, Datum/Stand below its threshold and therefore not.
+export const mockMetadataFilterOptions: MetadataFilterOptionsResponse = {
+  totalDocuments: 40,
+  fields: [
+    {
+      fieldKey: 'document_type',
+      label: 'Dokumentart',
+      filledDocuments: 37,
+      totalDocuments: 40,
+      fillShare: 0.925,
+      threshold: 0.9,
+      offered: true,
+    },
+    {
+      fieldKey: 'document_date',
+      label: 'Datum/Stand',
+      filledDocuments: 22,
+      totalDocuments: 40,
+      fillShare: 0.55,
+      threshold: 0.75,
+      offered: false,
+    },
+  ],
+  documentTypes: [
+    { code: 'SATZUNG_ORDNUNG', label: 'Satzung/Ordnung', documentCount: 19 },
+    { code: 'DIENSTANWEISUNG', label: 'Dienstanweisung', documentCount: 12 },
+    { code: 'VERMERK', label: 'Vermerk', documentCount: 6 },
+  ],
+  documentDateMin: '2019-01-01',
+  documentDateMax: '2026-03-12',
+}
+
 export const mockDocumentTypeVocabulary: DocumentTypeVocabularyEntryResponse[] = [
   { code: 'SATZUNG_ORDNUNG', label: 'Satzung/Ordnung' },
   { code: 'DIENSTANWEISUNG', label: 'Dienstanweisung' },

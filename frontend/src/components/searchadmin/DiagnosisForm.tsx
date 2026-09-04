@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
@@ -7,10 +7,13 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
 import type {
+  DocumentTypeVocabularyEntryResponse,
+  MetadataFilter,
   SearchDiagnosisContextType,
   SearchDiagnosisRequest,
   SearchPermissionProfileResponse,
 } from '../../types/api'
+import { getDocumentTypeVocabulary } from '../../services/api'
 import { plural, UUID_PATTERN } from './format'
 
 const OWN_CONTEXT_VALUE = 'SELF'
@@ -46,6 +49,31 @@ export default function DiagnosisForm({
   const [targetUserId, setTargetUserId] = useState('')
   const [justification, setJustification] = useState('')
   const [trackedDocumentId, setTrackedDocumentId] = useState('')
+  // #1070: the core-field filter the diagnosis runs with - applied exactly as a chat query applies
+  // it, so "Sicht als" can check what a person's filtered question sees. The Dokumentart choices
+  // come from the vocabulary (schema, not an aggregate), since the diagnosis may run in a foreign
+  // rights context whose occurring values this page must not aggregate.
+  const [filterDocumentTypes, setFilterDocumentTypes] = useState<string[]>([])
+  const [filterDateFrom, setFilterDateFrom] = useState('')
+  const [filterDateTo, setFilterDateTo] = useState('')
+  const [vocabulary, setVocabulary] = useState<DocumentTypeVocabularyEntryResponse[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    getDocumentTypeVocabulary()
+      .then((response) => {
+        if (!cancelled) setVocabulary(response.items)
+      })
+      .catch(() => {
+        // The filter field then offers no Dokumentart; the diagnosis itself is unaffected.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const filterDateInvalid =
+    filterDateFrom !== '' && filterDateTo !== '' && filterDateTo < filterDateFrom
 
   // Derived rather than set from an effect once the profiles arrive: the preselected context is a
   // permission profile wherever one exists, the caller's own context otherwise - never a person
@@ -60,6 +88,11 @@ export default function DiagnosisForm({
   async function handleDiagnosis() {
     const contextType: SearchDiagnosisContextType =
       contextValue === OWN_CONTEXT_VALUE ? 'SELF' : isPersonContext ? 'USER' : 'PERMISSION_PROFILE'
+    const metadataFilter: MetadataFilter = {
+      ...(filterDocumentTypes.length > 0 ? { documentTypes: filterDocumentTypes } : {}),
+      ...(filterDateFrom !== '' ? { documentDateFrom: filterDateFrom } : {}),
+      ...(filterDateTo !== '' ? { documentDateTo: filterDateTo } : {}),
+    }
     await onRunDiagnosis({
       question: question.trim(),
       contextType,
@@ -67,6 +100,7 @@ export default function DiagnosisForm({
       targetUserId: contextType === 'USER' ? targetUserId.trim() : undefined,
       justification: contextType === 'USER' ? justification.trim() : undefined,
       trackedDocumentId: trackedDocumentId.trim() === '' ? undefined : trackedDocumentId.trim(),
+      ...(Object.keys(metadataFilter).length > 0 ? { metadataFilter } : {}),
     })
   }
 
@@ -145,12 +179,63 @@ export default function DiagnosisForm({
         size="small"
         fullWidth
       />
+      <TextField
+        select
+        label="Metadatenfilter: Dokumentart (optional)"
+        value={filterDocumentTypes}
+        onChange={(e) => {
+          const value = e.target.value as unknown
+          setFilterDocumentTypes(Array.isArray(value) ? (value as string[]) : [])
+        }}
+        helperText="Der Filter wirkt wie im Chat: in beiden Suchpfaden, unter dem Rechtefilter; ein Dokument ohne Angabe bleibt enthalten."
+        size="small"
+        fullWidth
+        slotProps={{
+          select: {
+            multiple: true,
+            renderValue: (selected) =>
+              (selected as string[])
+                .map((code) => vocabulary.find((entry) => entry.code === code)?.label ?? code)
+                .join(', '),
+          },
+        }}
+      >
+        {vocabulary.map((entry) => (
+          <MenuItem key={entry.code} value={entry.code}>
+            {entry.label}
+          </MenuItem>
+        ))}
+      </TextField>
+      <Stack direction="row" spacing={2}>
+        <TextField
+          label="Metadatenfilter: Datum von"
+          type="date"
+          value={filterDateFrom}
+          onChange={(e) => setFilterDateFrom(e.target.value)}
+          size="small"
+          fullWidth
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+        <TextField
+          label="Metadatenfilter: Datum bis"
+          type="date"
+          value={filterDateTo}
+          onChange={(e) => setFilterDateTo(e.target.value)}
+          error={filterDateInvalid}
+          helperText={filterDateInvalid ? 'Das Fenster endet vor seinem Beginn.' : undefined}
+          size="small"
+          fullWidth
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+      </Stack>
       <Box>
         <Button
           variant="contained"
           size="small"
           onClick={() => void handleDiagnosis()}
-          disabled={running || question.trim() === '' || personContextIncomplete}
+          disabled={
+            running || question.trim() === '' || personContextIncomplete || filterDateInvalid
+          }
         >
           {running ? 'Diagnose läuft …' : 'Diagnose ausführen'}
         </Button>

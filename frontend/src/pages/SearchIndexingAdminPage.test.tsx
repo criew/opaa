@@ -490,6 +490,37 @@ describe('SearchIndexingAdminPage', () => {
     ).toBeInTheDocument()
   })
 
+  // #1070: the diagnosis runs with the same core-field filter a chat query would, so "Sicht als"
+  // can check what a person's filtered question sees; the new stage appears in the protocol.
+  it('sends the metadata filter with the diagnosis and shows the filter stage', async () => {
+    signInAs('SYSTEM_ADMIN')
+    let requestBody: Record<string, unknown> | undefined
+    server.use(
+      http.post('/api/v1/admin/search/diagnosis', async ({ request }) => {
+        requestBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(mockSearchDiagnosis)
+      }),
+    )
+
+    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    const user = userEvent.setup()
+    await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+
+    await user.click(await screen.findByRole('combobox', { name: /Metadatenfilter: Dokumentart/ }))
+    await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: 'Vermerk' }))
+    await user.keyboard('{Escape}')
+    await user.type(screen.getByLabelText('Metadatenfilter: Datum von'), '2024-01-01')
+    await runDiagnosis(user)
+
+    await waitFor(() => {
+      expect(requestBody?.metadataFilter).toEqual({
+        documentTypes: ['VERMERK'],
+        documentDateFrom: '2024-01-01',
+      })
+    })
+    expect(await screen.findByRole('heading', { name: /Metadatenfilter/ })).toBeInTheDocument()
+  })
+
   it('says plainly whether a tracked document was never found or displaced at a stage', async () => {
     signInAs('SYSTEM_ADMIN')
 

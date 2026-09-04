@@ -59,6 +59,8 @@ import type {
   DocumentMetadataFieldResponse,
   DocumentMetadataResponse,
   DocumentTypeVocabularyResponse,
+  MetadataFilter,
+  MetadataFilterOptionsResponse,
   LibraryMetadataMaintenanceResponse,
   MetadataValueRequest,
 } from '../types/api'
@@ -132,6 +134,7 @@ export async function sendQuery(
   chatId?: string,
   useKnowledge = true,
   libraryIds?: string[],
+  metadataFilter?: MetadataFilter | null,
 ): Promise<QueryResponse> {
   try {
     // libraryIds is only meaningful (and only sent) when useKnowledge is false - the backend
@@ -139,14 +142,50 @@ export async function sendQuery(
     // chatId (#525) is the persisted-chat/in-memory-cache key; when it names a chat the caller
     // authored, useKnowledge/libraryIds below are ignored server-side in favour of the chat's own
     // settings (#525) - the UI itself does not create persisted chats yet, that lands with the UI
-    // overhaul, #527.
+    // overhaul, #527. metadataFilter (#1070) follows the same rule: a persisted chat's own sticky
+    // filter applies, so it is only sent for an ephemeral query.
     const request: QueryRequest = {
       question,
       chatId,
       useKnowledge,
       ...(useKnowledge ? {} : { libraryIds }),
+      ...(metadataFilter && !isEmptyMetadataFilter(metadataFilter) ? { metadataFilter } : {}),
     }
     const { data } = await client.post<QueryResponse>('/v1/query', request)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** #1070: a filter without any condition - what the backend treats as "no filter". */
+export function isEmptyMetadataFilter(filter: MetadataFilter | null | undefined): boolean {
+  if (!filter) return true
+  return (
+    (filter.documentTypes ?? []).length === 0 && !filter.documentDateFrom && !filter.documentDateTo
+  )
+}
+
+/**
+ * #1070: the Füllstand and the offered values of the filterable core fields in the caller's
+ * search scope, resolved with the same rules the query itself applies (chatId first, otherwise
+ * useKnowledge/libraryIds).
+ */
+export async function getMetadataFilterOptions(params: {
+  chatId?: string | null
+  useKnowledge: boolean
+  libraryIds?: string[]
+}): Promise<MetadataFilterOptionsResponse> {
+  try {
+    const searchParams = new URLSearchParams()
+    if (params.chatId) searchParams.set('chatId', params.chatId)
+    searchParams.set('useKnowledge', String(params.useKnowledge))
+    for (const libraryId of params.libraryIds ?? []) {
+      searchParams.append('libraryIds', libraryId)
+    }
+    const { data } = await client.get<MetadataFilterOptionsResponse>(
+      `/v1/search/metadata-filter-options?${searchParams.toString()}`,
+    )
     return data
   } catch (err) {
     normalizeError(err)

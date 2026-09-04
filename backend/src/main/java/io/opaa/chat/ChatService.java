@@ -5,6 +5,8 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationRepository;
@@ -83,6 +85,7 @@ public class ChatService {
   private final ObjectMapper objectMapper;
   private final ChatMessageWriter chatMessageWriter;
   private final ChatTitleGenerationService chatTitleGenerationService;
+  private final DocumentTypeVocabularyRepository vocabularyRepository;
 
   public ChatService(
       ChatRepository chatRepository,
@@ -93,7 +96,9 @@ public class ChatService {
       LibraryAccessService libraryAccessService,
       ObjectMapper objectMapper,
       ChatMessageWriter chatMessageWriter,
-      ChatTitleGenerationService chatTitleGenerationService) {
+      ChatTitleGenerationService chatTitleGenerationService,
+      DocumentTypeVocabularyRepository vocabularyRepository) {
+    this.vocabularyRepository = vocabularyRepository;
     this.chatRepository = chatRepository;
     this.chatMessageRepository = chatMessageRepository;
     this.spaceRepository = spaceRepository;
@@ -129,8 +134,19 @@ public class ChatService {
             title,
             useKnowledge == null || useKnowledge,
             referencedLibraryIds);
+    if (creation.getMetadataFilter() != null) {
+      chat.applyMetadataFilter(validatedMetadataFilter(creation.getMetadataFilter()));
+    }
     Chat saved = chatRepository.save(chat);
     return toConversation(saved);
+  }
+
+  /**
+   * A chat's filter is checked against the Dokumentart vocabulary when it is set, not when it is
+   * applied - a code no document can carry would otherwise sit silently on every later question.
+   */
+  private MetadataFilter validatedMetadataFilter(MetadataFilter filter) {
+    return filter.validatedAgainst(vocabularyRepository.snapshot());
   }
 
   @Transactional(readOnly = true)
@@ -159,7 +175,12 @@ public class ChatService {
     if (referencedLibraryIds != null) {
       requireReadableLibraries(referencedLibraryIds, authorId, chat.getOrganizationId());
     }
-    chat.applyUpdate(patch.getTitle(), patch.getUseKnowledge(), referencedLibraryIds);
+    MetadataFilter metadataFilter =
+        patch.getMetadataFilter() == null
+            ? null
+            : validatedMetadataFilter(patch.getMetadataFilter());
+    chat.applyUpdate(
+        patch.getTitle(), patch.getUseKnowledge(), referencedLibraryIds, metadataFilter);
     return toConversation(chatRepository.save(chat));
   }
 

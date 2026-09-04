@@ -4,9 +4,10 @@ import type {
   ChatDetail,
   ChatMessageResponse,
   ChatUpdateRequest,
+  MetadataFilter,
   SourceReference,
 } from '../types/api'
-import { createChat, getChat, sendQuery, updateChat } from '../services/api'
+import { createChat, getChat, isEmptyMetadataFilter, sendQuery, updateChat } from '../services/api'
 import { useChatListStore } from './chatListStore'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
@@ -57,10 +58,14 @@ const settingsUpdateChains = new Map<string, Promise<void>>()
 // chained: if an earlier queued change for the same chat also failed, its own local snapshot is
 // already stale, and rolling back to it would resurrect an optimistic value the server never saw
 // either.
-const confirmedSettingsByChatId = new Map<
-  string,
-  { scope: SearchScope; referencedLibraryIds: string[] }
->()
+const confirmedSettingsByChatId = new Map<string, ConfirmedSettings>()
+
+/** The server-confirmed chat settings the chip bar and the filter (#1070) mirror. */
+interface ConfirmedSettings {
+  scope: SearchScope
+  referencedLibraryIds: string[]
+  metadataFilter: MetadataFilter | null
+}
 
 // Monotonically increasing, per-chat counter incremented each time applyScopeChange starts a new
 // settings change for that chat (#619). loadChat captures this chat's value before firing its GET
@@ -116,10 +121,28 @@ export function dropChatSettingsCache(chatId: string): void {
  * that a settings PATCH resolving after a logout does not repopulate this module-level map,
  * which is otherwise entirely private to this module.
  */
-export function getConfirmedSettingsForTesting(
-  chatId: string,
-): { scope: SearchScope; referencedLibraryIds: string[] } | undefined {
+export function getConfirmedSettingsForTesting(chatId: string): ConfirmedSettings | undefined {
   return confirmedSettingsByChatId.get(chatId)
+}
+
+/**
+ * #1070: normalizes a filter for state and comparison - an object without any condition is no
+ * filter (null), and the type list is sorted so two equal filters compare equal.
+ */
+export function normalizeMetadataFilter(
+  filter: MetadataFilter | null | undefined,
+): MetadataFilter | null {
+  if (isEmptyMetadataFilter(filter)) return null
+  const documentTypes = [...(filter?.documentTypes ?? [])].sort()
+  return {
+    ...(documentTypes.length > 0 ? { documentTypes } : {}),
+    ...(filter?.documentDateFrom ? { documentDateFrom: filter.documentDateFrom } : {}),
+    ...(filter?.documentDateTo ? { documentDateTo: filter.documentDateTo } : {}),
+  }
+}
+
+function sameMetadataFilter(a: MetadataFilter | null, b: MetadataFilter | null): boolean {
+  return JSON.stringify(normalizeMetadataFilter(a)) === JSON.stringify(normalizeMetadataFilter(b))
 }
 
 // The chip bar is the only search-scope control (#560): 'all' shows the special @Alles-Wissen
@@ -183,6 +206,9 @@ interface ChatState {
   // addReferencedLibrary/removeReferencedLibrary); before that, they only shape the first
   // message's implicit chat creation.
   referencedLibraryIds: string[]
+  /** The chat's sticky core-field filter (#1070), null without one. Persisted like the scope via
+   * PATCH once a chat exists; before that it shapes the first message's implicit chat creation. */
+  metadataFilter: MetadataFilter | null
   /** The in-flight PATCH (if any) from the most recently *started* setScopeAll/
    * addReferencedLibrary/removeReferencedLibrary call across all chats - never rejects (failures
    * are caught and turned into `error` + a local rollback). Exposed for tests/UI only; sendMessage
@@ -204,6 +230,8 @@ interface ChatState {
   /** Removes the @Alles-Wissen chip, emptying the bar (scope -> 'none'); the reverse of
    * setScopeAll. Every chip - including @Alles-Wissen - is removable (#560). */
   clearScope: () => void
+  /** Sets or clears (null / no condition) the chat's core-field filter (#1070). */
+  setMetadataFilter: (filter: MetadataFilter | null) => void
   /** Drops the active chat back to its initial, empty state (#440) - used on logout so a
    * subsequent sign-in by a different user never briefly sees the previous user's conversation. */
   reset: () => void
@@ -232,6 +260,7 @@ function applyChatDetail(detail: ChatDetail) {
     // Only 'libraries' actually uses these ids as the search scope - dropping them for 'all'/
     // 'none' keeps the chip bar an exact mirror of what the server applies (#560).
     referencedLibraryIds: scope === 'libraries' ? referencedLibraryIds : [],
+    metadataFilter: normalizeMetadataFilter(detail.metadataFilter),
     messages: detail.messages.map(toChatMessage),
   }
 }
@@ -258,6 +287,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   error: null,
   scope: 'all',
   referencedLibraryIds: [],
+  metadataFilter: null,
   pendingSettingsUpdate: null,
 
   loadChat: async (chatId: string) => {
@@ -282,7 +312,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const settingsRacedByPatch =
         (settingsChangeSequenceByChatId.get(chatId) ?? 0) !== settingsSequenceAtStart
       if (settingsRacedByPatch) {
-        set({ ...omitKeys(detailState, ['scope', 'referencedLibraryIds']), isLoadingChat: false })
+        set({
+          ...omitKeys(detailState, ['scope', 'referencedLibraryIds', 'metadataFilter']),
+          isLoadingChat: false,
+        })
       } else {
         set({ ...detailState, isLoadingChat: false })
         // The just-loaded settings are the server's own record - the rollback base for any PATCH
@@ -290,6 +323,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         confirmedSettingsByChatId.set(detailState.chatId, {
           scope: detailState.scope,
           referencedLibraryIds: detailState.referencedLibraryIds,
+          metadataFilter: detailState.metadataFilter,
         })
       }
     } catch (err) {
@@ -327,6 +361,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       error: null,
       scope: 'all',
       referencedLibraryIds: [],
+      metadataFilter: null,
       isLoadingChat: false,
     })
   },
@@ -361,7 +396,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     try {
       let { chatId } = get()
-      const { spaceId, scope, referencedLibraryIds } = get()
+      const { spaceId, scope, referencedLibraryIds, metadataFilter } = get()
       const useKnowledge = scope === 'all'
       // Only 'libraries' actually names a scope - 'none' sends an empty array, matching what the
       // chip bar shows (#560).
@@ -373,6 +408,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const created = await createChat(spaceId, {
           useKnowledge,
           referencedLibraryIds: libraryIds,
+          ...(metadataFilter ? { metadataFilter } : {}),
         })
         chatId = created.id
         // #575: a logout in between (e.g. a 401 elsewhere triggering authStore.logout()) must not
@@ -381,7 +417,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
         set({ chatId })
         // The settings this chat was just created with are the server's own record too (#565
         // review) - same reasoning as loadChat above.
-        confirmedSettingsByChatId.set(chatId, { scope, referencedLibraryIds: libraryIds })
+        confirmedSettingsByChatId.set(chatId, {
+          scope,
+          referencedLibraryIds: libraryIds,
+          metadataFilter,
+        })
         // Makes the implicitly created chat show up in its space's chat list immediately,
         // instead of only after a manual reload (#548 review, finding 4).
         useChatListStore.getState().upsertChat(spaceId, {
@@ -411,7 +451,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         await pendingChainForChat
       }
 
-      const response = await sendQuery(question, chatId, useKnowledge, libraryIds)
+      const response = await sendQuery(question, chatId, useKnowledge, libraryIds, metadataFilter)
       // #575: the query answer arriving after a logout must not resurrect messages/chatId into the
       // now-emptied store - this is the second of the two write-back paths the #618 review flagged.
       if (isStaleSessionEpoch(sessionEpoch)) return
@@ -486,6 +526,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
     applyScopeChange(get, set, 'none', [])
   },
 
+  setMetadataFilter: (filter: MetadataFilter | null) => {
+    const next = normalizeMetadataFilter(filter)
+    if (sameMetadataFilter(get().metadataFilter, next)) return
+    const { scope, referencedLibraryIds } = get()
+    // An object without any condition clears the chat's filter server-side (PATCH semantics:
+    // null would leave it unchanged).
+    applySettingsChange(
+      get,
+      set,
+      { scope, referencedLibraryIds, metadataFilter: next },
+      { metadataFilter: next ?? {} },
+    )
+  },
+
   reset: () => {
     // Invalidates any loadChat still in flight, matching startNewChat above - otherwise a
     // response arriving after reset() could resurrect the previous user's chat.
@@ -505,6 +559,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       error: null,
       scope: 'all',
       referencedLibraryIds: [],
+      metadataFilter: null,
       pendingSettingsUpdate: null,
     })
   },
@@ -534,6 +589,32 @@ function applyScopeChange(
   nextScope: SearchScope,
   nextReferencedLibraryIds: string[],
 ): void {
+  applySettingsChange(
+    get,
+    set,
+    {
+      scope: nextScope,
+      referencedLibraryIds: nextReferencedLibraryIds,
+      metadataFilter: get().metadataFilter,
+    },
+    {
+      useKnowledge: nextScope === 'all',
+      referencedLibraryIds: nextScope === 'libraries' ? nextReferencedLibraryIds : [],
+    },
+  )
+}
+
+/**
+ * The shared persistence path of every chat setting (#1070 generalized applyScopeChange): `next`
+ * is the full local settings state applied optimistically and confirmed on success, `patch` only
+ * what this change sends - a scope change leaves the filter untouched and vice versa.
+ */
+function applySettingsChange(
+  get: () => ChatState,
+  set: (partial: Partial<ChatState>) => void,
+  next: ConfirmedSettings,
+  patch: ChatUpdateRequest,
+): void {
   // Captured before the optimistic set() below: the chat this change applies to, and this call's
   // token in the settings-update sequence (#565). Both are checked in the failure handler below,
   // once the PATCH's response - possibly stale - actually arrives.
@@ -546,7 +627,7 @@ function applyScopeChange(
   // the reset just discarded.
   const sessionEpoch = currentSessionEpoch()
 
-  set({ scope: nextScope, referencedLibraryIds: nextReferencedLibraryIds })
+  set({ ...next })
 
   const chatId = requestChatId
   if (!chatId) return
@@ -555,11 +636,6 @@ function applyScopeChange(
   // loadChat GET already in flight for this chat - captured its baseline earlier - recognizes on
   // arrival that this change now, not its own stale snapshot, decides scope/referencedLibraryIds.
   settingsChangeSequenceByChatId.set(chatId, (settingsChangeSequenceByChatId.get(chatId) ?? 0) + 1)
-
-  const patch: ChatUpdateRequest = {
-    useKnowledge: nextScope === 'all',
-    referencedLibraryIds: nextScope === 'libraries' ? nextReferencedLibraryIds : [],
-  }
 
   // Queues this call's PATCH behind whatever is already queued for this chat - `.catch(() =>
   // undefined)` keeps the chain alive across an earlier queued PATCH's failure, so this call's own
@@ -577,10 +653,7 @@ function applyScopeChange(
         if (isStaleSessionEpoch(sessionEpoch)) return
         // This request's settings are now the server's own record - the rollback base for any
         // *later* PATCH on this chat that fails (#565 review).
-        confirmedSettingsByChatId.set(chatId, {
-          scope: nextScope,
-          referencedLibraryIds: nextReferencedLibraryIds,
-        })
+        confirmedSettingsByChatId.set(chatId, { ...next })
         // #573: a late-succeeding PATCH is, at the moment it resolves, the most authoritative
         // source for this chat's settings - more so than a loadChat that raced it and read the
         // server before this PATCH committed (Chat A, slow PATCH -> navigate to B -> back to A,
@@ -591,7 +664,7 @@ function applyScopeChange(
         // requested change for it, may still update local state once its response arrives.
         if (get().chatId !== requestChatId) return
         if (requestId !== settingsUpdateSequence) return
-        set({ scope: nextScope, referencedLibraryIds: nextReferencedLibraryIds })
+        set({ ...next })
       },
       (err: unknown) => {
         // A stale failure must not roll back a chat the user has since navigated away from
@@ -608,9 +681,10 @@ function applyScopeChange(
         // Rolls back to the last state the server actually confirmed for this chat, not to
         // whatever was locally applied right before this call - if an earlier queued change for
         // the same chat also failed, that snapshot would itself already be stale (#565 review).
-        const rollback = confirmedSettingsByChatId.get(chatId) ?? {
-          scope: 'all' as SearchScope,
+        const rollback: ConfirmedSettings = confirmedSettingsByChatId.get(chatId) ?? {
+          scope: 'all',
           referencedLibraryIds: [],
+          metadataFilter: null,
         }
         set({ ...rollback, error: message })
       },

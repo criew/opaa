@@ -89,6 +89,18 @@ Javadoc-Begründung an `QueryService#query`). Ein leerer Suchbereich überspring
 vollständig (`relevantChunks = List.of()`, keine der dortigen Aufrufe läuft) — Schritt 7 läuft trotzdem,
 mit null Chunks im Kontext, und markiert das Ergebnis über `QueryOutcome#answeredWithoutKnowledge`.
 
+### 1b. Metadatenfilter (#1070)
+
+Direkt hinter der Scope-Bestimmung trägt `MetadataFilterStage` den Kernfeld-Filter der Person oder
+des Chats (`MetadataFilter`: Dokumentart-Codes, Datumsfenster) in den Lauf — bei einem persistierten
+Chat dessen eigener Filter (`chats.metadata_filter`), sonst der aus der Anfrage. Die Stufe übersetzt
+ihn einmal in die `Filter.Expression` des Vektorpfads und reicht beide Formen im Zustand weiter; die
+Suchstufen 3 und 3b hängen ihn **innerhalb ihrer Abfrage** mit UND unter den Rechtefilter, der
+Volltextpfad als SQL über dieselben Chunk-Schlüssel (`doc_type`, `doc_date`, `doc_date_precision`).
+Ein Dokument ohne Wert im gefilterten Feld bleibt in beiden Pfaden enthalten und wird in Schritt 7 am
+`SourceReference` als `NO_VALUE` („ohne Angabe") gekennzeichnet. Semantik und Tests: [Metadatenschema,
+Umgesetzt (#1070, Teil 1)](./metadata-schema.md#umgesetzt-1070-teil-1).
+
 ### 2. LLM-Teilfragen-Zerlegung/Reformulierung
 
 `SubQueryDecompositionStage` ruft, sofern `opaa.query.query-decomposition-enabled`

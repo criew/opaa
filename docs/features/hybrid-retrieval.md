@@ -249,6 +249,7 @@ Kandidaten sehen, als ihr übergeben wurden.
 | Stufe | Aufgabe | Stand |
 |---|---|---|
 | Suchbereich bestimmen | lesbare Bibliotheken ∩ Kontext des Chats | gebaut |
+| **Metadatenfilter setzen** | Kernfeld-Filter der Person/des Chats in beide Suchpfade tragen, unter dem Rechtefilter | gebaut (#1070) |
 | Teilfragen bilden | 1..`max-sub-queries` eigenständige Suchanfragen | gebaut (#923) |
 | Vektorsuche je Teilfrage | `fetch-k` Kandidaten, Rechtefilter, Ähnlichkeitsschwelle | gebaut |
 | **Volltextsuche je Teilfrage** | `fetch-k` Kandidaten, identischer Rechtefilter | gebaut (#1048), in der Fusion seit #1049 |
@@ -257,9 +258,14 @@ Kandidaten sehen, als ihr übergeben wurden.
 | **Reranking** | Cross-Encoder über die fusionierte Kandidatenmenge | **neu (AP 4)** |
 | Dokument-Vervollständigung | bis `max-chunks-per-document` Chunks je Dokument | gebaut (#932/#935) |
 
-Als Stufen registriert sind heute `SEARCH_SCOPE`, `SUB_QUERY_DECOMPOSITION`, `VECTOR_SEARCH`,
-`FULL_TEXT_SEARCH`, `MMR_SELECTION`, `RANK_FUSION` und `DOCUMENT_COMPLETION`, in dieser Reihenfolge; die
-Reranking-Stufe wird an der in der Tabelle genannten Stelle eingehängt.
+Als Stufen registriert sind heute `SEARCH_SCOPE`, `METADATA_FILTER`, `SUB_QUERY_DECOMPOSITION`,
+`VECTOR_SEARCH`, `FULL_TEXT_SEARCH`, `MMR_SELECTION`, `RANK_FUSION`, `RERANK` und
+`DOCUMENT_COMPLETION`, in dieser Reihenfolge. `METADATA_FILTER` (#1070) trägt den Kernfeld-Filter aus
+[Metadatenschema, Wirkstelle 1](./metadata-schema.md#umgesetzt-1070-teil-1) in den Lauf: Sie
+übersetzt ihn einmal in die Form des Vektorpfads (`Filter.Expression`) und reicht beide Formen im
+Zustand weiter; die zwei Suchstufen hängen ihn **innerhalb ihrer Abfrage** mit UND unter den
+Rechtefilter — dieselbe Bedingung in beiden Pfaden, nie ein Nachfilter, und ein Dokument ohne Wert im
+gefilterten Feld bleibt enthalten. Die Stufe ist abschaltbar; ohne sie suchen die Pfade ungefiltert.
 
 Zwei Eigenschaften sind verbindlich, weil alles Weitere daran hängt:
 

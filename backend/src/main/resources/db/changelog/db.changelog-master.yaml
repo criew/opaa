@@ -43,3 +43,5 @@ databaseChangeLog:
       file: db/changelog/changes/020-document-type-suffixes.yaml
   - include:
       file: db/changelog/changes/021-drop-chunk-full-text-skip-table.yaml
+  - include:
+      file: db/changelog/changes/022-chats-metadata-filter.yaml

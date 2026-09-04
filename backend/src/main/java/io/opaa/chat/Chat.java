@@ -1,6 +1,7 @@
 package io.opaa.chat;
 
 import io.opaa.api.types.ChatStatus;
+import io.opaa.indexing.metadata.MetadataFilter;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -18,6 +19,8 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * A persistent, space-owned chat (#525, docs/features/spaces-and-assets.md#chats). Composition, not
@@ -103,6 +106,16 @@ public class Chat {
   @Column(name = "library_id")
   private Set<UUID> referencedLibraryIds = new LinkedHashSet<>();
 
+  /**
+   * The chat's sticky core-field filter (#1070, migration 022) as {@link MetadataFilterJson} writes
+   * it; {@code null} for no filter. Applied to every question of this chat next to the search scope
+   * above - the Kontext der Unterhaltung the specification names as one of the two sources of a
+   * filter (metadata-schema.md, Wirkstelle 1).
+   */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "metadata_filter", columnDefinition = "jsonb")
+  private String metadataFilter;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -153,6 +166,21 @@ public class Chat {
    */
   public void applyUpdate(
       String newTitle, Boolean newUseKnowledge, Set<UUID> newReferencedLibraryIds) {
+    applyUpdate(newTitle, newUseKnowledge, newReferencedLibraryIds, null);
+  }
+
+  /**
+   * The same PATCH with the metadata filter (#1070): {@code null} leaves it unchanged, an empty
+   * filter clears it - the one field whose "omitted" and "cleared" are told apart by emptiness.
+   */
+  public void applyUpdate(
+      String newTitle,
+      Boolean newUseKnowledge,
+      Set<UUID> newReferencedLibraryIds,
+      MetadataFilter newMetadataFilter) {
+    if (newMetadataFilter != null) {
+      applyMetadataFilter(newMetadataFilter);
+    }
     if (newTitle != null) {
       this.title = newTitle;
       // #557: a user-initiated rename is CUSTOM from here on - permanent, see TitleSource's
@@ -202,6 +230,16 @@ public class Chat {
 
   public Set<UUID> getReferencedLibraryIds() {
     return Collections.unmodifiableSet(referencedLibraryIds);
+  }
+
+  /** Sets or clears (empty filter) the sticky metadata filter. */
+  public void applyMetadataFilter(MetadataFilter filter) {
+    this.metadataFilter = MetadataFilterJson.write(filter);
+  }
+
+  /** The sticky metadata filter, {@link MetadataFilter#NONE} when the chat has none. */
+  public MetadataFilter getMetadataFilter() {
+    return MetadataFilterJson.read(metadataFilter);
   }
 
   public Instant getCreatedAt() {

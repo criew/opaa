@@ -88,6 +88,7 @@ const PATH_STATE_LABELS: Record<SearchPathStatusResponse['state'], string> = {
 
 const STAGE_LABELS: Record<RetrievalStage, string> = {
   SEARCH_SCOPE: 'Suchbereich',
+  METADATA_FILTER: 'Metadatenfilter',
   SUB_QUERY_DECOMPOSITION: 'Teilfragen',
   VECTOR_SEARCH: 'Vektorsuche',
   FULL_TEXT_SEARCH: 'Volltextsuche',
