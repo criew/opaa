@@ -29,6 +29,14 @@ import org.slf4j.LoggerFactory;
  * <p>An embedded Outlook item attachment (a message attached as its own MAPI object, not as bytes)
  * is skipped, not recursed into - POI offers no public writer to reconstruct a standalone {@code
  * .msg} from it.
+ *
+ * <p><b>Selective extraction</b> (#1243): with a {@code wantedIndex}, every attachment is still
+ * classified in the same order, but only the one at that position is written to a temp file.
+ * Positions are counted exactly as an unfiltered run does: an attachment that is skipped entirely -
+ * an embedded Outlook item, an unreadable chunk, one over the size limit - consumes no position,
+ * because it would not appear in the unfiltered run's attachment list either. The returned {@link
+ * ParsedMailMessage} then carries the wanted attachment alone, or none; a negative {@code
+ * wantedIndex} materializes nothing at all.
  */
 final class MsgReader {
 
@@ -37,6 +45,15 @@ final class MsgReader {
   private MsgReader() {}
 
   static ParsedMailMessage read(Path file, MailProperties properties) throws IOException {
+    return read(file, properties, null);
+  }
+
+  /**
+   * {@code wantedIndex} restricts what is materialized: {@code null} means every attachment, a
+   * negative value none at all - see this class' own Javadoc.
+   */
+  static ParsedMailMessage read(Path file, MailProperties properties, Integer wantedIndex)
+      throws IOException {
     try (InputStream in = Files.newInputStream(file);
         MAPIMessage message = new MAPIMessage(in)) {
       String subject = safeGet(message::getSubject);
@@ -44,7 +61,8 @@ final class MsgReader {
       String to = safeGet(message::getDisplayTo);
       Instant date = safeDate(message);
       String body = extractBody(message);
-      List<ParsedMailAttachment> attachments = extractAttachments(message, file, properties);
+      List<ParsedMailAttachment> attachments =
+          extractAttachments(message, file, properties, wantedIndex);
       return new ParsedMailMessage(subject, from, to, date, body, attachments);
     }
   }
@@ -59,10 +77,14 @@ final class MsgReader {
   }
 
   private static List<ParsedMailAttachment> extractAttachments(
-      MAPIMessage message, Path file, MailProperties properties) throws IOException {
+      MAPIMessage message, Path file, MailProperties properties, Integer wantedIndex)
+      throws IOException {
     AttachmentChunks[] chunks = message.getAttachmentFiles();
     List<ParsedMailAttachment> attachments = new ArrayList<>(chunks.length);
     AttachmentBudget budget = new AttachmentBudget(properties.maxAttachmentsPerMessage());
+    // The extraction position an unfiltered run would assign - advanced by every attachment that
+    // was read successfully, materialized or not, so a filtered run numbers them identically.
+    int position = 0;
     try {
       for (AttachmentChunks chunk : chunks) {
         if (!budget.hasCapacity()) {
@@ -71,8 +93,13 @@ final class MsgReader {
           continue;
         }
         budget.reserve();
-        ParsedMailAttachment attachment = extractAttachment(chunk, properties);
-        if (attachment != null) {
+        boolean materialize = wantedIndex == null || wantedIndex == position;
+        ParsedMailAttachment attachment = extractAttachment(chunk, properties, materialize);
+        if (attachment == null) {
+          continue;
+        }
+        position++;
+        if (attachment.tempFile() != null) {
           attachments.add(attachment);
         }
       }
@@ -94,8 +121,14 @@ final class MsgReader {
     return attachments;
   }
 
+  /**
+   * The attachment behind {@code chunk}, or {@code null} when it could not be read at all (which
+   * also skips an extraction position). With {@code materialize} {@code false} the same decisions
+   * are made but no temp file is written - the returned record then carries a {@code null} {@link
+   * ParsedMailAttachment#tempFile()}, which the caller counts and drops.
+   */
   private static ParsedMailAttachment extractAttachment(
-      AttachmentChunks chunk, MailProperties properties) throws IOException {
+      AttachmentChunks chunk, MailProperties properties, boolean materialize) throws IOException {
     byte[] data;
     String fileName;
     try {
@@ -116,6 +149,9 @@ final class MsgReader {
           fileName,
           properties.maxAttachmentBytes());
       return null;
+    }
+    if (!materialize) {
+      return new ParsedMailAttachment(fileName, null);
     }
     Path tempFile = MailAttachmentIo.createTempFile(fileName);
     try (OutputStream out = Files.newOutputStream(tempFile)) {

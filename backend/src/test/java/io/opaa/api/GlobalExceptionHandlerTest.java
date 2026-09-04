@@ -339,6 +339,24 @@ class GlobalExceptionHandlerTest {
   }
 
   @Test
+  void handleTooManyRequestsExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handleTooManyRequestsException(
+            new io.opaa.common.TooManyRequestsException(
+                "Es werden gerade zu viele Anhänge geöffnet."
+                    + " Bitte versuchen Sie es in einem Moment erneut."));
+    assertEquals(429, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(429, body.getStatus());
+    assertEquals(
+        "Es werden gerade zu viele Anhänge geöffnet."
+            + " Bitte versuchen Sie es in einem Moment erneut.",
+        body.getError());
+    assertNotNull(body.getTimestamp());
+  }
+
+  @Test
   void handleServiceUnavailableExceptionReturnsSameBodyShapeAsResponseStatusException() {
     var response =
         handler.handleServiceUnavailableException(

@@ -1861,7 +1861,10 @@ paths:
         no response here reveals whether a given documentId exists, nor whether "not found" means
         "no such document" or "source currently unreachable". There is no 403: VIEWER is the lowest
         AssetRole, so any grant at all already satisfies this floor - a caller either clears it or
-        has no grant, which is the 404 case above.
+        has no grant, which is the 404 case above. 429 is answered when this endpoint is under
+        load: either by its own rate limit, or - for an attachment document, whose bytes are
+        re-extracted from its parent original on every read (ADR-0022, #1243) - when too many such
+        re-extractions are already running. Both carry a German message and may be retried.
       responses:
         "200":
           description: The original file's bytes
@@ -1872,6 +1875,8 @@ paths:
                 format: binary
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/libraries/{libraryId}/grants:
     parameters:
@@ -6913,6 +6918,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     PayloadTooLarge:
       description: Payload too large
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    TooManyRequests:
+      description: Too many requests
       content:
         application/json:
           schema:

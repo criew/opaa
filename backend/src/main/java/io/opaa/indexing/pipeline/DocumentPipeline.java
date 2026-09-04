@@ -52,7 +52,9 @@ public interface DocumentPipeline {
    * turning them into chunks reports them via {@link
    * DocumentPipelineResult#discoveredAttachments()} (ADR-0022, part 2) rather than processing them
    * inline. Every caller of this method goes through {@link DocumentPipelineRunner#run}, which owns
-   * deleting any temporary file such an attachment carries.
+   * deleting any temporary file such an attachment carries. Such a pipeline must honour {@link
+   * DocumentPipelineSource#attachmentIndex()} (#1243) - see that component's own Javadoc for the
+   * exact contract; a pipeline that never reports attachments ignores it.
    */
   DocumentPipelineResult run(DocumentPipelineSource source);
 

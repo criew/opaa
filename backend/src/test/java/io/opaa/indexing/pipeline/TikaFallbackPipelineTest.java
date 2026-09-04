@@ -93,10 +93,10 @@ class TikaFallbackPipelineTest {
 
   @Test
   void aSourceMustCarryEitherAFileOrExtractedTextButNeverBoth() {
-    assertThatThrownBy(() -> new DocumentPipelineSource("x.txt", null, null, null))
+    assertThatThrownBy(() -> new DocumentPipelineSource("x.txt", null, null, null, null))
         .isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(
-            () -> new DocumentPipelineSource("x.txt", tempDir.resolve("x.txt"), "text", null))
+            () -> new DocumentPipelineSource("x.txt", tempDir.resolve("x.txt"), "text", null, null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
