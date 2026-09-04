@@ -64,7 +64,7 @@ class ChunkReplacementOrderIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text, chunk_full_text_skip");
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
     documentRepository.deleteAll();
 
     jdbcTemplate.update(
