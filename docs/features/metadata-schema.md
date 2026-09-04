@@ -11,7 +11,7 @@
 **Themenbereich A** der [Produktvision](../VISION.md). Diese Spezifikation ist der Umsetzungsschnitt
 eines Punkts, den [Wissensschicht und Retrieval](./data-indexing-rag.md) als Zielbild bereits benennt —
 [Extraktion von Dokumentmetadaten](./data-indexing-rag.md#extraktion-von-dokumentmetadaten--phase-2) —
-und der im heutigen Code nicht existiert: Chunk-Metadaten sind heute rein technisch (`document_id`,
+und der bis #1066 im Code nicht existierte: Chunk-Metadaten waren rein technisch (`document_id`,
 `chunk_index`, `file_name`, `library_id`, `organization_id`, `location`), und es gibt in der Suche
 keinen Metadatenfilter.
 
@@ -19,7 +19,11 @@ Sie ist die dritte von drei zusammengehörigen Spezifikationen und die letzte in
 [Hybrides Retrieval](./hybrid-retrieval.md) baut die zwei Suchpfade, in denen ein Filter überhaupt
 wirken kann; [Ingestion-Pipelines](./ingestion-pipelines.md) baut die Aufnahmestrecke, in der
 Metadaten entstehen; dieses Dokument beschreibt, **welche** Metadaten das sind, **woher sie kommen**
-und **was sie im Retrieval bewirken**. **Nichts aus dieser Spezifikation ist gebaut.**
+und **was sie im Retrieval bewirken**. **Gebaut ist bisher Arbeitspaket 1** (Kernfelder,
+Herkunft, deterministische Extraktion, Beleg-Anzeige — #1066, siehe
+[Umgesetzt (#1066)](#umgesetzt-1066) und [ADR-0024](../decisions/0024-metadatenschema-kernfelder.md));
+alles Weitere — Bestandslauf, manuelle Korrektur, Filter, Bibliotheksfelder, Modell-Extraktion — ist
+noch nicht gebaut.
 
 ---
 
@@ -317,6 +321,64 @@ Extraktionsreihenfolge ist verbindlich:
 
 Die Klassifikation läuft **einmal je Dokument beim Aufnehmen**, nicht je Anfrage — der Kostenunterschied
 ist der zwischen einem einmaligen Lauf über den Bestand und einem Modellaufruf in jedem Suchvorgang.
+
+### Umgesetzt (#1066)
+
+Arbeitspaket 1 — Datenmodell, Herkunftsangabe, deterministische Extraktion (Schritt 1 oben) und die
+Beleg-Anzeige (Wirkstelle 3). Die tragenden Festlegungen stehen in
+[ADR-0024](../decisions/0024-metadatenschema-kernfelder.md); hier der Umsetzungsstand und die
+Abweichungen.
+
+**Datenmodell (Migration 018).** `document_metadata_values` hält je `(document_id, field_key)` genau
+eine Zeile mit `origin`, `extraction_version`, `confidence` (nur bei `DERIVED` speicherbar),
+`actor_user_id`, `model_id` und Zeitstempeln — die Regeln aus
+[Jeder Wert trägt seine Herkunft](#jeder-wert-trägt-seine-herkunft) sind CHECK-Constraints. Ein leeres
+Feld ist die Abwesenheit der Zeile; der dritte Zustand „kein Wert ermittelbar" (#1069) ist als
+`value_state = 'NOT_DETERMINABLE'` vorgesehen, nur mit `origin = 'MANUAL'` speicherbar, und wird noch
+nicht geschrieben. Die Dokumentart ist ein Fremdschlüssel auf die Seed-Tabelle
+`document_type_vocabulary` (Codes `SATZUNG_ORDNUNG`, `DIENSTANWEISUNG`, `VERMERK`, `PROTOKOLL`,
+`BESCHEID_VORLAGE`, `FORMULAR`, `GEBUEHRENVERZEICHNIS`, `PRAESENTATION`, `SONSTIGES`, deutsche Labels,
+Synonymliste in `document_type_synonyms`) — ein Wert außerhalb des Vokabulars ist nicht speicherbar. Das
+Datum trägt eine Genauigkeit (`DAY`/`MONTH`/`YEAR`); „Fassung 2024" ist `(2024-01-01, YEAR)`.
+`documents.metadata_extraction_version` (NULL = nie extrahiert) ist die Selektionsspalte des
+Bestandslaufs (#1067).
+
+**Extraktion.** `CoreMetadataExtractor` (Version 1) ist der einzige Interpreter; die Pipelines liefern
+über `DocumentProperties` nur, was ihr Format erklärt — PDF-Info-Dictionary, OOXML-Core-Properties
+(DOCX, PPTX), ODF-`meta.xml` (ODT, ODP), Markdown-Frontmatter (`titel`, `dokumentart`, `stand_datum`,
+`fassung` — die Schlüssel des Verwaltungskorpus, exakt gegen das Vokabular abgeglichen), HTML-`<title>`/
+`<h1>`, Mail-Betreff und -Datum — sowie jeweils die erste Überschrift erster Ebene. Reihenfolgen: Titel
+aus Eigenschaft → Frontmatter → Überschrift → Dateiname (humanisiert über `ChunkContextTitle`, daher
+immer befüllt); Dokumentart aus Frontmatter (eine Deklaration außerhalb des Vokabulars lässt das Feld
+leer, sie fällt nicht auf den Dateinamen durch) → Dateinamens-Token (genau ein eindeutiger Code);
+Datum aus Frontmatter/Mail-Datum → Überschrift → Dateiname (ISO, deutsche Schreibweise, `JJJJ-MM`,
+Monatsname + Jahr, nacktes Jahr nur als eigenständiges Token) → Änderungs- → Erstell-Eigenschaft. Ein
+Dateisystem-Änderungsdatum ist keine Quelle. Ein manueller Wert wird nie überschrieben; ein Feld, für
+das die Extraktion nichts mehr liefert, verliert seine deterministische Zeile. Die Extraktion läuft als
+Systemprozess im Ingest ohne Personenrechtekontext (Beschluss 1 des Maintainers am Epic #1065) — sie
+zeigt niemandem Inhalte. `DocumentPipeline#readProperties` liefert dieselben Rohquellen ohne Chunking;
+`DocumentMetadataService#reextractFromFile` ist damit der Baustein je Dokument, den der Bestandslauf
+wiederholt: Datei parsen → Werte speichern → Chunk-Schlüssel per JSON-Update nachziehen, ohne
+Neu-Einbetten.
+
+**Chunk-Metadaten.** `storeChunks` schreibt `doc_type`, `doc_date` und `doc_date_precision` zentral auf
+jeden Chunk des Dokuments (nicht über `passthroughMetadataKeys()` — die Werte hängen am Dokument); der
+Titel wird nicht dupliziert. Keine `version()` einer Pipeline ist gestiegen: Die erzeugten Chunks
+ändern sich nicht (Regel (d) der Ingestion-Spezifikation), die Nachrüstung läuft über
+`metadata_extraction_version`.
+
+**Beleg-Anzeige.** `SourceReference.coreMetadata` trägt Titel, Dokumentart (Code + Label) und
+Datum (+ Genauigkeit), je Wert mit Herkunft; `location` bleibt die Fundstelle. Die Fundstellenzeile
+und das Belegfenster zeigen den Titel als Beschriftung (Dateiname als Zweitzeile) und eine Zeile
+„Dokumentart · Stand …" nur aus den befüllten Feldern — ein leeres Feld erscheint gar nicht, ein
+`DERIVED`-Wert ist mit „(abgeleitet)" gekennzeichnet, Jahresgenauigkeit erscheint als „2024".
+
+**Abweichungen und bewusst nicht Gebautes.** Das Abnahmekriterium „Die Extraktion läuft im
+Rechtekontext" ist durch Beschluss 1 des Maintainers ersetzt (Systemprozess; die Rechte-Invariante gilt
+für Aggregate, Stichproben und Modell-Extraktion). Das Korpus-Frontmatter `dokumentart: formularhinweis`
+bleibt leer — es ist kein Vokabularwert, und die Regel verbietet die Abbildung auf `FORMULAR`.
+Tabellen-Pipelines (XLSX/CSV/ODS) und der Tika-Fallback liefern keine `DocumentProperties`; dort
+greifen nur Dateiname und Struktur.
 
 ## Deterministischer Bestandslauf über den Altbestand
 
@@ -828,7 +890,7 @@ solange keine Füllstandsverteilung eines echten Bestands vorliegt.
 
 | # | Paket | Abhängig von | Nutzen allein |
 |---|---|---|---|
-| 1 | Kernfelder: Datenmodell, Herkunft/Konfidenz/Akteur, deterministische Extraktion beim Aufnehmen | — | Beleg-Anzeige wird einordbar; Grundlage für alles Weitere |
+| 1 | Kernfelder: Datenmodell, Herkunft/Konfidenz/Akteur, deterministische Extraktion beim Aufnehmen — **umgesetzt mit #1066**, siehe [Umgesetzt (#1066)](#umgesetzt-1066) | — | Beleg-Anzeige wird einordbar; Grundlage für alles Weitere |
 | 2 | **Deterministischer Bestandslauf** über den Altbestand, bibliotheksweise, mit den Nachlauf-Zusagen | 1 | Die Kernfelder gelten für den vorhandenen Bestand, nicht nur für künftige Dokumente |
 | 3 | Manuelle Korrektur, Sammelzuweisung, Audit-Ereignis und Pflege-Anker („N ohne Wert", absolut und anteilig) | 1, 2 | Die Leerwert-Regel wird behebbar statt Dauerzustand |
 | 4 | Metadatenfilter in beiden Suchpfaden, mit Füllstandsanzeige je Feld | 2, 3, Hybrid-Suche AP 3 | Löst Szenario 9; die `metadata_filter`-Fälle werden erstmals lösbar |
