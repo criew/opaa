@@ -601,12 +601,13 @@ function DiagnosisResult({
       {diagnosis.lockedLibraryCount > 0 && (
         <Alert severity="info" sx={{ mb: 2 }}>
           {`${plural(diagnosis.lockedLibraryCount, 'Bibliothek ist', 'Bibliotheken sind')} als gesperrter Suchbereich ausgenommen. Daraus zeigt die Diagnose nichts - weder Treffer noch Titel. Aufheben kann die Sperre nur die für die Bibliothek zuständige Stelle, nicht die Systemverwaltung.`}{' '}
-          {/* #1257: die Sperre selbst wird auf der Detailseite jeder Bibliothek bedient, nicht
-              hier - dieser Hinweis verlinkt nur dorthin, ohne die Bibliotheken selbst zu nennen
-              (Leitplanke (e): kein Titel aus einem gesperrten Bereich). */}
-          Bedient wird sie auf der jeweiligen{' '}
+          {/* #1257/#1278 review: die Sperre selbst wird auf der Detailseite der jeweiligen
+              Bibliothek bedient, nicht hier - der Link führt bewusst nur zur Bibliotheksliste,
+              ohne eine der gesperrten Bibliotheken selbst zu nennen (Leitplanke (e): kein Titel
+              aus einem gesperrten Bereich). */}
+          Bedient wird sie in den{' '}
           <Link component={RouterLink} to="/libraries">
-            Bibliotheks-Detailseite
+            Bibliotheken
           </Link>
           .
         </Alert>

@@ -458,9 +458,33 @@ describe('LibraryDetailPage', () => {
       ).not.toBeInTheDocument()
     })
 
+    // #1278 review: a system admin's myRole bypasses to OWNER unconditionally
+    // (LibraryResponse#myRole) even without any grant on the library - the toggle must key off
+    // the dedicated diagnosticsLockToggleable field instead, or this admin would see a button that
+    // is guaranteed to fail its PUT with 403.
+    it('hides the control for a system-admin OWNER bypass without an independent grant', async () => {
+      const adminBypassLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
+      setLibraryState(
+        adminBypassLibrary,
+        detailsOf(adminBypassLibrary, {
+          diagnosticsLocked: true,
+          diagnosticsLockToggleable: false,
+        }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await screen.findByText('Diagnose gesperrt')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /diagnosesperre lösen/i }),
+      ).not.toBeInTheDocument()
+    })
+
     it('lets an OWNER lift the lock, updating the shown state', async () => {
       const ownerLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
-      setLibraryState(ownerLibrary, detailsOf(ownerLibrary, { diagnosticsLocked: true }))
+      setLibraryState(
+        ownerLibrary,
+        detailsOf(ownerLibrary, { diagnosticsLocked: true, diagnosticsLockToggleable: true }),
+      )
       // #1257: the default handler in mocks/handlers.ts answers off mockLibraryDetails
       // (fixtures.ts), which this file's own library-team/-readonly/-mine fixtures never
       // populate - overridden here the same way the indexing/runs tests below already do for
@@ -482,7 +506,10 @@ describe('LibraryDetailPage', () => {
 
     it('shows the backend 403 message in German when the caller is not the responsible body', async () => {
       const ownerLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
-      setLibraryState(ownerLibrary, detailsOf(ownerLibrary, { diagnosticsLocked: true }))
+      setLibraryState(
+        ownerLibrary,
+        detailsOf(ownerLibrary, { diagnosticsLocked: true, diagnosticsLockToggleable: true }),
+      )
       server.use(
         http.put('/api/v1/libraries/:libraryId/diagnostics-lock', () =>
           HttpResponse.json(

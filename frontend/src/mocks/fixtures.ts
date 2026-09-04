@@ -1066,6 +1066,9 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     documentCount: 12,
     sourceType: 'UPLOAD',
     diagnosticsLocked: true,
+    // #1278 review: the mock user is the library's named (ownerId) OWNER here, not merely an
+    // admin bypass - the one case holdsIndependentOwnerRole (and this mock field) says true for.
+    diagnosticsLockToggleable: true,
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -1085,6 +1088,7 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     // the fixture #479's connector-upload/-delete tests use.
     sourceType: 'FILESYSTEM',
     diagnosticsLocked: true,
+    diagnosticsLockToggleable: false,
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -1100,6 +1104,7 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     documentCount: 87,
     sourceType: 'UPLOAD',
     diagnosticsLocked: true,
+    diagnosticsLockToggleable: false,
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -1115,6 +1120,7 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     documentCount: 0,
     sourceType: 'UPLOAD',
     diagnosticsLocked: true,
+    diagnosticsLockToggleable: true,
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },

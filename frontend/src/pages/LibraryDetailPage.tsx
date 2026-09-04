@@ -112,16 +112,6 @@ function canDeleteLibrary(role: AssetRole | undefined): boolean {
   return role === 'OWNER'
 }
 
-// #1257: the backend's holdsIndependentOwnerRole (LibraryDiagnosticsLockService) is stricter than
-// "myRole is OWNER" - it also discounts an OWNER grant a system admin issued to themselves. That
-// distinction cannot be reconstructed client-side from myRole alone (it already bypasses to OWNER
-// for a system admin, see LibraryResponse#myRole), so this only narrows the control to the same
-// OWNER threshold canDeleteLibrary already uses; a caller who fails the stricter backend rule still
-// sees the PUT .../diagnostics-lock 403 with its German explanation.
-function canToggleDiagnosticsLock(role: AssetRole | undefined): boolean {
-  return role === 'OWNER'
-}
-
 // ADR-0018, Entscheidung 2: auslösen darf, wer an der Bibliothek mindestens EDITOR ist - dieselbe
 // Schwelle wie beim Hoch- und Löschen von Dokumenten.
 function canManageDocuments(role: AssetRole | undefined): boolean {
@@ -439,7 +429,11 @@ export default function LibraryDetailPage() {
           {details && (
             <DiagnosticsLockControl
               locked={details.diagnosticsLocked ?? true}
-              canToggle={canToggleDiagnosticsLock(library.myRole)}
+              // #1278 review: myRole bypasses to OWNER for a system admin unconditionally
+              // (LibraryResponse#myRole) - this dedicated field mirrors the backend's stricter
+              // holdsIndependentOwnerRole instead, so an admin without an independent OWNER grant
+              // never sees a button that is guaranteed to fail with 403.
+              canToggle={details.diagnosticsLockToggleable ?? false}
               saving={diagnosticsLockSaving}
               error={diagnosticsLockError}
               onToggle={() => void handleToggleDiagnosticsLock()}

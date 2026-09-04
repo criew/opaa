@@ -4952,6 +4952,16 @@ components:
             starts locked, including every pre-existing one, so a client renders this value rather
             than assuming an unlocked default. Visible to everyone who may read the library: it
             says that a locked area exists, never anything from inside it.
+        diagnosticsLockToggleable:
+          type: boolean
+          description: >
+            Whether the caller themselves may call PUT /api/v1/libraries/{libraryId}/diagnostics-lock
+            on this library right now - LibraryAccessService#holdsIndependentOwnerRole evaluated for
+            the caller, not merely "myRole is OWNER". The two diverge for a system admin: myRole
+            bypasses to OWNER unconditionally (see myRole above), but holdsIndependentOwnerRole never
+            does, so an admin without a self-issued or independently-held OWNER grant sees false
+            here even though myRole reads OWNER (#1278 review). A client uses this, not myRole, to
+            decide whether to offer the toggle at all.
         createdAt:
           type: string
           format: date-time
