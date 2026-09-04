@@ -5,13 +5,18 @@ import io.opaa.api.dto.DocumentMetadataFieldResponse;
 import io.opaa.api.dto.DocumentMetadataResponse;
 import io.opaa.api.dto.DocumentTypeVocabularyEntryResponse;
 import io.opaa.api.dto.DocumentTypeVocabularyResponse;
+import io.opaa.api.dto.LibraryMetadataMaintenanceResponse;
+import io.opaa.api.dto.MetadataFieldMaintenanceResponse;
+import io.opaa.api.dto.MetadataFieldState;
 import io.opaa.api.dto.MetadataValueRequest;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.metadata.BulkMetadataResult;
 import io.opaa.indexing.metadata.DocumentMetadataFieldView;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
+import io.opaa.indexing.metadata.LibraryMetadataMaintenance;
 import io.opaa.indexing.metadata.MetadataValueInput;
 import io.opaa.indexing.metadata.MetadataValueSnapshot;
+import io.opaa.indexing.metadata.MetadataValueState;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -36,10 +41,37 @@ final class DocumentMetadataResponseMapper {
       }
     }
     return new MetadataValueInput(
+        toState(request.getState()),
         blankToNull(request.getTextValue()),
         blankToNull(request.getVocabularyCode()),
         date,
         request.getDatePrecision());
+  }
+
+  /** An absent state means "set a value" - the request body of every client before #1069. */
+  private static MetadataValueState toState(MetadataValueRequest.StateEnum state) {
+    return state == MetadataValueRequest.StateEnum.NOT_DETERMINABLE
+        ? MetadataValueState.NOT_DETERMINABLE
+        : MetadataValueState.SET;
+  }
+
+  static LibraryMetadataMaintenanceResponse toMaintenanceResponse(
+      LibraryMetadataMaintenance maintenance) {
+    return new LibraryMetadataMaintenanceResponse(
+        maintenance.libraryId(),
+        maintenance.totalDocuments(),
+        maintenance.fields().stream()
+            .map(
+                field ->
+                    new MetadataFieldMaintenanceResponse(
+                        field.field().key(),
+                        field.field().label(),
+                        field.totalDocuments(),
+                        field.documentsWithoutValue(),
+                        field.missingShare(),
+                        field.filledDocuments(),
+                        field.notDeterminableDocuments()))
+            .toList());
   }
 
   static DocumentMetadataResponse toResponse(
@@ -49,11 +81,20 @@ final class DocumentMetadataResponseMapper {
   }
 
   static DocumentMetadataFieldResponse toFieldResponse(DocumentMetadataFieldView view) {
-    DocumentMetadataFieldResponse response =
-        new DocumentMetadataFieldResponse(view.field().key(), view.field().label());
     MetadataValueSnapshot value = view.value();
+    DocumentMetadataFieldResponse response =
+        new DocumentMetadataFieldResponse(
+            view.field().key(), fieldStateOf(value), view.field().label());
     if (value == null) {
       return response;
+    }
+    if (value.state() == MetadataValueState.NOT_DETERMINABLE) {
+      // "Kein Wert ermittelbar" carries no value; only its provenance is shown.
+      return response
+          .origin(value.origin())
+          .actorUserId(value.actorUserId())
+          .actorDisplayName(view.actorDisplayName())
+          .updatedAt(value.updatedAt());
     }
     return response
         .value(value.value())
@@ -66,6 +107,16 @@ final class DocumentMetadataResponseMapper {
         .actorUserId(value.actorUserId())
         .actorDisplayName(view.actorDisplayName())
         .updatedAt(value.updatedAt());
+  }
+
+  /** An absent row is the empty state - the row itself never carries {@code EMPTY} (#1069). */
+  private static MetadataFieldState fieldStateOf(MetadataValueSnapshot value) {
+    if (value == null) {
+      return MetadataFieldState.EMPTY;
+    }
+    return value.state() == MetadataValueState.NOT_DETERMINABLE
+        ? MetadataFieldState.NOT_DETERMINABLE
+        : MetadataFieldState.SET;
   }
 
   static BulkMetadataValueResponse toBulkResponse(BulkMetadataResult result) {

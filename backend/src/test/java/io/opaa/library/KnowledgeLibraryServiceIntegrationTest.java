@@ -1382,6 +1382,7 @@ class KnowledgeLibraryServiceIntegrationTest {
                     currentUserOf(stranger),
                     null,
                     null,
+                    null,
                     PageRequest.of(0, 10)))
         .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(
@@ -1414,6 +1415,7 @@ class KnowledgeLibraryServiceIntegrationTest {
                 .listDocuments(
                     library.library().getId(),
                     currentUserOf(viewer, false),
+                    null,
                     null,
                     null,
                     PageRequest.of(0, 10))

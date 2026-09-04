@@ -102,6 +102,7 @@ describe('documentStore', () => {
       q: '',
       totalElements: 1,
       folderId: null,
+      missingMetadataField: null,
     })
     expect(useDocumentStore.getState().isLoading).toBe(false)
     expect(useDocumentStore.getState().error).toBeNull()
@@ -119,6 +120,7 @@ describe('documentStore', () => {
       size: 5,
       q: 'dienst',
       folderId: null,
+      missingMetadataField: null,
     })
     expect(useDocumentStore.getState().pageStateByLibrary['library-1']).toEqual({
       page: 2,
@@ -126,6 +128,7 @@ describe('documentStore', () => {
       q: 'dienst',
       totalElements: 42,
       folderId: null,
+      missingMetadataField: null,
     })
   })
 
@@ -139,6 +142,7 @@ describe('documentStore', () => {
       size: 20,
       q: '',
       folderId: 'folder-1',
+      missingMetadataField: null,
     })
     expect(useDocumentStore.getState().pageStateByLibrary['library-1'].folderId).toBe('folder-1')
   })
@@ -154,6 +158,7 @@ describe('documentStore', () => {
       size: 20,
       q: '',
       folderId: null,
+      missingMetadataField: null,
     })
     expect(useDocumentStore.getState().pageStateByLibrary['library-1'].folderId).toBeNull()
     expect(useDocumentStore.getState().folderNotFoundMessage).not.toBeNull()
@@ -199,7 +204,14 @@ describe('documentStore', () => {
     useDocumentStore.setState({
       documentsByLibrary: { 'library-1': [indexedDocument] },
       pageStateByLibrary: {
-        'library-1': { page: 1, size: 5, q: 'dienst', totalElements: 6, folderId: null },
+        'library-1': {
+          page: 1,
+          size: 5,
+          q: 'dienst',
+          totalElements: 6,
+          folderId: null,
+          missingMetadataField: null,
+        },
       },
     })
     mockUploadDocument.mockResolvedValueOnce(pendingDocument)
@@ -217,6 +229,7 @@ describe('documentStore', () => {
       size: 5,
       q: 'dienst',
       folderId: null,
+      missingMetadataField: null,
     })
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([
       indexedDocument,
@@ -229,7 +242,14 @@ describe('documentStore', () => {
   it('passes a given folderPath through to the request layer, relative to the open folder (#823)', async () => {
     useDocumentStore.setState({
       pageStateByLibrary: {
-        'library-1': { page: 0, size: 20, q: '', totalElements: 0, folderId: 'folder-bestand' },
+        'library-1': {
+          page: 0,
+          size: 20,
+          q: '',
+          totalElements: 0,
+          folderId: 'folder-bestand',
+          missingMetadataField: null,
+        },
       },
     })
     mockUploadDocument.mockResolvedValueOnce(pendingDocument)
@@ -337,7 +357,14 @@ describe('documentStore', () => {
     useDocumentStore.setState({
       documentsByLibrary: { 'library-1': [indexedDocument] },
       pageStateByLibrary: {
-        'library-1': { page: 0, size: 20, q: '', totalElements: 2, folderId: null },
+        'library-1': {
+          page: 0,
+          size: 20,
+          q: '',
+          totalElements: 2,
+          folderId: null,
+          missingMetadataField: null,
+        },
       },
     })
     mockDeleteLibraryDocument.mockResolvedValueOnce(undefined)
@@ -350,6 +377,7 @@ describe('documentStore', () => {
       size: 20,
       q: '',
       folderId: null,
+      missingMetadataField: null,
     })
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([])
     expect(useDocumentStore.getState().pageStateByLibrary['library-1'].totalElements).toBe(1)
@@ -360,7 +388,14 @@ describe('documentStore', () => {
     useDocumentStore.setState({
       documentsByLibrary: { 'library-1': [indexedDocument] },
       pageStateByLibrary: {
-        'library-1': { page: 2, size: 1, q: '', totalElements: 21, folderId: null },
+        'library-1': {
+          page: 2,
+          size: 1,
+          q: '',
+          totalElements: 21,
+          folderId: null,
+          missingMetadataField: null,
+        },
       },
     })
     mockDeleteLibraryDocument.mockResolvedValueOnce(undefined)
@@ -379,6 +414,7 @@ describe('documentStore', () => {
       size: 1,
       q: '',
       folderId: null,
+      missingMetadataField: null,
     })
     expect(useDocumentStore.getState().documentsByLibrary['library-1']).toEqual([
       previousPageDocument,
@@ -474,7 +510,14 @@ describe('documentStore', () => {
     it('creates a folder under the currently open folder and reloads the current page', async () => {
       useDocumentStore.setState({
         pageStateByLibrary: {
-          'library-1': { page: 0, size: 20, q: '', totalElements: 0, folderId: 'folder-parent' },
+          'library-1': {
+            page: 0,
+            size: 20,
+            q: '',
+            totalElements: 0,
+            folderId: 'folder-parent',
+            missingMetadataField: null,
+          },
         },
       })
       mockCreateLibraryFolder.mockResolvedValueOnce({
@@ -498,6 +541,7 @@ describe('documentStore', () => {
         size: 20,
         q: '',
         folderId: 'folder-parent',
+        missingMetadataField: null,
       })
       expect(useDocumentStore.getState().folderError).toBeNull()
     })
