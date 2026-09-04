@@ -76,18 +76,62 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
 
     expect(within(drawer).getByText('Belege dieser Antwort')).toBeInTheDocument()
     expect(
-      within(drawer).getByText('3 Stellen in 3 Dokumenten · nach Relevanzrang sortiert'),
+      within(drawer).getByText(
+        '3 Stellen in 3 Dokumenten · zitierte nach Zitatnummer, danach nach Relevanzrang',
+      ),
     ).toBeInTheDocument()
     expect(within(drawer).getByText(/Stand der Antwort: 20\.08\.2026, 14:12/)).toBeInTheDocument()
   })
 
-  it('lists documents in the order the pipeline selected them, uncited ones at the end', async () => {
+  // #1238: `message()` deliberately cites in a different order than the pipeline's `sources`
+  // array (zweiter.md is footnote 1 despite sitting second in `sources`) - the cited group must
+  // follow the footnote numbers, not the pipeline order, with the uncited source trailing by rank.
+  it('lists cited documents by citation number, uncited ones after them by rank', async () => {
     const { drawer } = await openDrawer()
 
     const names = within(drawer)
       .getAllByTestId('evidence-doc')
       .map((el) => el.getAttribute('data-file'))
-    expect(names).toEqual(['erster.md', 'zweiter.md', 'dritter.md', 'ungenutzt.md'])
+    expect(names).toEqual(['zweiter.md', 'erster.md', 'dritter.md', 'ungenutzt.md'])
+  })
+
+  // #1238: regression guard for the reported demo behaviour - footnote 2 points at the lowest-rank
+  // source and footnote 3 at a higher-ranked one, so citation-number order and rank order disagree
+  // on which of the two comes first.
+  it('keeps citation-number order even when a later footnote outranks an earlier one', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(
+      <MessageBubble
+        message={{
+          id: 'ev-1238',
+          role: 'assistant',
+          content:
+            'Erstens【source: a#0 | eins.md】, zweitens【source: b#0 | zwei.md】, ' +
+            'drittens【source: c#0 | drei.md】.',
+          sources: [
+            source('eins.md', true, 1),
+            source('drei.md', true, 0.5),
+            source('zwei.md', true, 1 / 3),
+          ],
+          timestamp: new Date('2026-09-04T09:00:00'),
+        }}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
+    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
+
+    const rows = within(drawer).getAllByTestId('evidence-doc')
+    expect(rows.map((el) => el.getAttribute('data-file'))).toEqual([
+      'eins.md',
+      'zwei.md',
+      'drei.md',
+    ])
+    expect(within(rows[0]).getByText('1')).toBeInTheDocument()
+    expect(within(rows[1]).getByText('2')).toBeInTheDocument()
+    expect(within(rows[2]).getByText('3')).toBeInTheDocument()
+    expect(within(rows[0]).getByText(/Rang 1$/)).toBeInTheDocument()
+    expect(within(rows[1]).getByText(/Rang 3$/)).toBeInTheDocument()
+    expect(within(rows[2]).getByText(/Rang 2$/)).toBeInTheDocument()
   })
 
   // #1102: relevanceScore is the reciprocal of the fused rank, so it is only ever a label - a
@@ -119,9 +163,11 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
   it('labels a source with its rank in the answer, not a percentage weight (#1102)', async () => {
     const { drawer } = await openDrawer()
 
+    // #1238: the rows themselves are in citation-number order (zweiter.md, erster.md, dritter.md)
+    // - their ranks stay tied to pipeline position (`sources` index 1, 0, 2), not to row position.
     const rows = within(drawer).getAllByTestId('evidence-doc')
-    expect(within(rows[0]).getByText(/Rang 1/)).toBeInTheDocument()
-    expect(within(rows[1]).getByText(/Rang 2/)).toBeInTheDocument()
+    expect(within(rows[0]).getByText(/Rang 2/)).toBeInTheDocument()
+    expect(within(rows[1]).getByText(/Rang 1/)).toBeInTheDocument()
     expect(within(rows[2]).getByText(/Rang 3/)).toBeInTheDocument()
     expect(within(drawer).queryByText(/Gewicht/)).not.toBeInTheDocument()
   })
@@ -245,7 +291,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     const names = within(drawer)
       .getAllByTestId('evidence-doc')
       .map((el) => el.getAttribute('data-file'))
-    expect(names).toEqual(['erster.md', 'zweiter.md', 'dritter.md'])
+    expect(names).toEqual(['zweiter.md', 'erster.md', 'dritter.md'])
   })
 
   it('flags a source with an invalid citation as "Beleg nicht bestätigt" (#386)', async () => {
