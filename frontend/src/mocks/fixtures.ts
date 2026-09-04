@@ -627,6 +627,30 @@ export const mockSearchStatus: SearchStatusResponse = {
       fullTextIndexedChunks: 180,
       fullTextMissingChunks: 56,
       fullTextSkippedChunks: 0,
+      metadataBackfill: {
+        extractionVersion: 1,
+        totalDocuments: 11,
+        currentDocuments: 9,
+        pendingDocuments: 2,
+        awaitingConnectorRunDocuments: 1,
+        lastSkippedDocuments: 1,
+        complete: false,
+        fields: [
+          { fieldKey: 'title', label: 'Titel', filledDocuments: 11, filledShare: 1.0 },
+          {
+            fieldKey: 'document_type',
+            label: 'Dokumentart',
+            filledDocuments: 4,
+            filledShare: 0.3636,
+          },
+          {
+            fieldKey: 'document_date',
+            label: 'Datum/Stand',
+            filledDocuments: 7,
+            filledShare: 0.6364,
+          },
+        ],
+      },
     },
     {
       libraryId: 'lib-protokolle',
@@ -644,6 +668,30 @@ export const mockSearchStatus: SearchStatusResponse = {
       fullTextIndexedChunks: 29,
       fullTextMissingChunks: 1,
       fullTextSkippedChunks: 0,
+      metadataBackfill: {
+        extractionVersion: 1,
+        totalDocuments: 3,
+        currentDocuments: 3,
+        pendingDocuments: 0,
+        awaitingConnectorRunDocuments: 0,
+        lastSkippedDocuments: 0,
+        complete: true,
+        fields: [
+          { fieldKey: 'title', label: 'Titel', filledDocuments: 3, filledShare: 1.0 },
+          {
+            fieldKey: 'document_type',
+            label: 'Dokumentart',
+            filledDocuments: 3,
+            filledShare: 1.0,
+          },
+          {
+            fieldKey: 'document_date',
+            label: 'Datum/Stand',
+            filledDocuments: 2,
+            filledShare: 0.6667,
+          },
+        ],
+      },
     },
     {
       libraryId: 'lib-formulare',
@@ -661,6 +709,30 @@ export const mockSearchStatus: SearchStatusResponse = {
       fullTextIndexedChunks: 47,
       fullTextMissingChunks: 0,
       fullTextSkippedChunks: 1,
+      metadataBackfill: {
+        extractionVersion: 1,
+        totalDocuments: 4,
+        currentDocuments: 4,
+        pendingDocuments: 0,
+        awaitingConnectorRunDocuments: 0,
+        lastSkippedDocuments: 0,
+        complete: true,
+        fields: [
+          { fieldKey: 'title', label: 'Titel', filledDocuments: 4, filledShare: 1.0 },
+          {
+            fieldKey: 'document_type',
+            label: 'Dokumentart',
+            filledDocuments: 4,
+            filledShare: 1.0,
+          },
+          {
+            fieldKey: 'document_date',
+            label: 'Datum/Stand',
+            filledDocuments: 4,
+            filledShare: 1.0,
+          },
+        ],
+      },
     },
   ],
 }

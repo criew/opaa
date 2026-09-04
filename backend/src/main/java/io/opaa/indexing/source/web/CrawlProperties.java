@@ -3,10 +3,11 @@ package io.opaa.indexing.source.web;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Bounds {@link AutoindexCrawlerService}'s recursive descent - deliberately its own property block
- * rather than a component of {@code IndexingProperties} (mirrors {@code UploadProperties}'s own
- * reasoning): {@link AutoindexCrawlerService} is a plain, non-Spring-bean class with a single
- * test-friendly constructor, and adding these two values there would touch every one of {@link
+ * Bounds an {@code HTTP_DIRECTORY} run: {@link AutoindexCrawlerService}'s recursive descent and the
+ * size of a single entry {@link UrlIndexingExecutor} transfers - deliberately its own property
+ * block rather than a component of {@code IndexingProperties} (mirrors {@code UploadProperties}'s
+ * own reasoning): {@link AutoindexCrawlerService} is a plain, non-Spring-bean class with a single
+ * test-friendly constructor, and adding these values there would touch every one of {@link
  * IndexingProperties}'s many positional-record call sites for a concern specific to the {@code
  * HTTP_DIRECTORY} crawl path alone.
  *
@@ -22,9 +23,21 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     by {@link #maxDepth} alone, up to {@code b^maxDepth} requests for a cycle with branching
  *     factor {@code b}. Default 5000. {@code 0} falls back to the default; a negative value is
  *     rejected outright.
+ * @param maxFileSizeBytes the maximum number of bytes a single crawled entry may transfer before
+ *     {@code BoundedDownloader#download} aborts it - enforced while streaming to disk, so neither
+ *     the temp partition nor the transfer itself ever holds more than this much of one entry,
+ *     whether it is indexed or rejected afterwards (#1236). It bounds the heap only indirectly, by
+ *     bounding the input every later step works on. Default 104 857 600 (100 MiB): the same order
+ *     as {@code MailProperties#maxMessageBytes}, and deliberately below the 128 MiB {@code
+ *     markLimit} of Tika's POIFS container detection, past which an OLE2 entry would be rejected
+ *     after a full transfer anyway. {@code 0} falls back to the default; a negative value is
+ *     rejected outright.
  */
 @ConfigurationProperties(prefix = "opaa.indexing.crawl")
-public record CrawlProperties(int maxDepth, int maxEntries) {
+public record CrawlProperties(int maxDepth, int maxEntries, long maxFileSizeBytes) {
+
+  /** Default entry size cap - see {@link #maxFileSizeBytes}. */
+  public static final long DEFAULT_MAX_FILE_SIZE_BYTES = 104_857_600L;
 
   public CrawlProperties {
     if (maxDepth < 0) {
@@ -38,6 +51,13 @@ public record CrawlProperties(int maxDepth, int maxEntries) {
     }
     if (maxEntries == 0) {
       maxEntries = 5000;
+    }
+    if (maxFileSizeBytes < 0) {
+      throw new IllegalArgumentException(
+          "maxFileSizeBytes must not be negative, got " + maxFileSizeBytes);
+    }
+    if (maxFileSizeBytes == 0) {
+      maxFileSizeBytes = DEFAULT_MAX_FILE_SIZE_BYTES;
     }
   }
 }

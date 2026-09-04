@@ -1,5 +1,8 @@
 import { http, HttpResponse } from 'msw'
 import { assetRoleLabel } from '../utils/labels'
+
+/** Per-library countdown of the mock metadata backfill; see the handler below. */
+const mockMetadataBackfillRemaining = new Map<string, number>()
 import {
   mockHealthResponse,
   mockIndexingIdle,
@@ -960,6 +963,29 @@ export const handlers = [
 
   http.get('/api/v1/admin/search/permission-profiles', () => {
     return HttpResponse.json(mockSearchPermissionProfiles)
+  }),
+
+  // The fixture is static, so the remaining work is counted down here: every call processes one
+  // document until the library's pending count is used up, then reports done - otherwise the
+  // page's batch loop would never end in mock mode.
+  http.post('/api/v1/admin/indexing/metadata-backfill', async ({ request }) => {
+    const body = (await request.json()) as { libraryId?: string; batchSize?: number }
+    const library = mockSearchStatus.libraries.find((l) => l.libraryId === body.libraryId)
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const remaining =
+      mockMetadataBackfillRemaining.get(library.libraryId) ??
+      library.metadataBackfill.pendingDocuments -
+        library.metadataBackfill.awaitingConnectorRunDocuments
+    const processed = Math.min(remaining, 1)
+    mockMetadataBackfillRemaining.set(library.libraryId, remaining - processed)
+    return HttpResponse.json({
+      processedDocuments: processed,
+      markedForNextRun: 0,
+      skippedDocuments: 0,
+      done: processed === 0,
+    })
   }),
 
   http.post('/api/v1/admin/search/diagnosis', async ({ request }) => {

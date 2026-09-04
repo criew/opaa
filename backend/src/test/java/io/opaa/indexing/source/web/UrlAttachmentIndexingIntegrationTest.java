@@ -136,14 +136,15 @@ class UrlAttachmentIndexingIntegrationTest {
     TargetAddressValidator validator = TargetAddressValidator.disabled();
     executor =
         new UrlIndexingExecutor(
-            new AutoindexCrawlerService(validator, new CrawlProperties(0, 0)),
+            new AutoindexCrawlerService(validator, new CrawlProperties(0, 0, 0)),
             new BoundedDownloader(validator),
             fileProcessingService,
             indexingJobService,
             documentRepository,
             indexingRunEventRepository,
             storageQuotaService,
-            staleDocumentCleanupService);
+            staleDocumentCleanupService,
+            new CrawlProperties(0, 0, 0));
   }
 
   @AfterEach

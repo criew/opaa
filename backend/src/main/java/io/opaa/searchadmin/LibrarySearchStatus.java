@@ -1,5 +1,6 @@
 package io.opaa.searchadmin;
 
+import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -26,6 +27,8 @@ import java.util.UUID;
  *     repeated failures ("poison chunks", #1093) - see {@link #fullTextIndexCondition()} for why
  *     this, unlike {@code fullTextMissingChunks}, does not by itself keep the search gate closed,
  *     but still must not go unseen on this page.
+ * @param metadataBackfill the core-metadata extraction state and Füllgrad per field (#1067), read
+ *     from the same selection the backfill itself drains.
  */
 public record LibrarySearchStatus(
     UUID libraryId,
@@ -40,7 +43,8 @@ public record LibrarySearchStatus(
     Instant lastIndexedAt,
     long fullTextIndexedChunks,
     long fullTextMissingChunks,
-    long fullTextSkippedChunks) {
+    long fullTextSkippedChunks,
+    MetadataBackfillProgress metadataBackfill) {
 
   /** Whether an index holds what it is supposed to hold. */
   public enum IndexCondition {

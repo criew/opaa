@@ -60,6 +60,67 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
     }
   }
 
+  /**
+   * Streams {@code byteCount} bytes of filler markup, chunked - the response a caller cannot bound
+   * from its headers, which is exactly the shape {@code fetchPage}'s cap has to survive.
+   */
+  private static void respondOversized(com.sun.net.httpserver.HttpExchange exchange, int byteCount)
+      throws IOException {
+    byte[] chunk = "<!-- x -->".repeat(1024).getBytes(StandardCharsets.UTF_8);
+    exchange.getResponseHeaders().add("Content-Type", "text/html; charset=utf-8");
+    exchange.sendResponseHeaders(200, 0);
+    try (OutputStream os = exchange.getResponseBody()) {
+      for (int written = 0; written < byteCount; written += chunk.length) {
+        os.write(chunk);
+      }
+    } catch (IOException expected) {
+      // The crawler cuts the connection at the cap - that abort is the point of these tests.
+    }
+  }
+
+  @Test
+  void anOversizedRootListingFailsTheCrawlInsteadOfGrowingTheHeapWithoutBound() {
+    // #1236 review, finding 7: fetchPage used to read the page with readAllBytes(), so an endless
+    // text/html response grew the heap until an OutOfMemoryError - an Error the run's own error
+    // handling does not catch. It is now a plain IOException with a German message.
+    server.createContext(
+        "/",
+        exchange -> respondOversized(exchange, AutoindexCrawlerService.MAX_LISTING_BYTES + 65_536));
+
+    AutoindexCrawlerService service =
+        new AutoindexCrawlerService(
+            TargetAddressValidator.disabled(), new CrawlProperties(10, 100, 0));
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> service.crawl(baseUrl + "/", null, -1, null, null, false))
+        .isInstanceOf(IOException.class)
+        .hasMessageContaining("Verzeichnisseite überschreitet die zulässige Größe");
+  }
+
+  @Test
+  void anOversizedSubdirectoryListingOnlyMarksTheCrawlIncomplete()
+      throws IOException, InterruptedException {
+    // The same cap one level down must not end the run: the subtree is unreachable, so the crawl
+    // is incomplete (which stops stale-document cleanup), while the root's own files still count.
+    server.createContext(
+        "/", exchange -> respond(exchange, directoryListing("sub/", "sub", "datei.txt")));
+    server.createContext(
+        "/sub/",
+        exchange -> respondOversized(exchange, AutoindexCrawlerService.MAX_LISTING_BYTES + 65_536));
+
+    AutoindexCrawlerService service =
+        new AutoindexCrawlerService(
+            TargetAddressValidator.disabled(), new CrawlProperties(10, 100, 0));
+
+    AutoindexCrawlerService.CrawlResult result =
+        service.crawl(baseUrl + "/", null, -1, null, null, false);
+
+    assertThat(result.incomplete()).isTrue();
+    assertThat(result.entries())
+        .extracting(AutoindexCrawlerService.CrawledFileEntry::name)
+        .containsExactly("datei.txt");
+  }
+
   @Test
   void mutualCycleTerminatesAndVisitsEachDirectoryOnce() throws IOException, InterruptedException {
     // /a/ links (absolute, same-origin) to /b/, /b/ links back to /a/ - without a visited-URL
@@ -80,7 +141,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
 
     AutoindexCrawlerService service =
         new AutoindexCrawlerService(
-            TargetAddressValidator.disabled(), new CrawlProperties(10, 100));
+            TargetAddressValidator.disabled(), new CrawlProperties(10, 100, 0));
 
     AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(
@@ -113,7 +174,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
     int maxDepth = 3;
     AutoindexCrawlerService service =
         new AutoindexCrawlerService(
-            TargetAddressValidator.disabled(), new CrawlProperties(maxDepth, 1000));
+            TargetAddressValidator.disabled(), new CrawlProperties(maxDepth, 1000, 0));
 
     AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(
@@ -165,7 +226,8 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
         });
 
     AutoindexCrawlerService service =
-        new AutoindexCrawlerService(TargetAddressValidator.disabled(), new CrawlProperties(10, 2));
+        new AutoindexCrawlerService(
+            TargetAddressValidator.disabled(), new CrawlProperties(10, 2, 0));
 
     AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(
@@ -200,7 +262,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
 
     AutoindexCrawlerService service =
         new AutoindexCrawlerService(
-            TargetAddressValidator.disabled(), new CrawlProperties(10, 100));
+            TargetAddressValidator.disabled(), new CrawlProperties(10, 100, 0));
 
     AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(

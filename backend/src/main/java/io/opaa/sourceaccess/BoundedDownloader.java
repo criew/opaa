@@ -2,11 +2,12 @@ package io.opaa.sourceaccess;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -35,8 +36,18 @@ public class BoundedDownloader {
    * origin, but the crawl itself keeps following. Used for {@code HTTP_DIRECTORY} crawls of an
    * address the system administration chose deliberately - unlike {@link #downloadBounded}, used
    * for a feed/page-supplied attachment URL this system does not vouch for.
+   *
+   * <p>Capped at {@code maxBytes} while streaming to disk (#1236): a response is cut off the moment
+   * it exceeds the limit, before the excess bytes are written, so one entry can never fill the temp
+   * partition - not even one that is rejected right afterwards. A {@code Content-Length} above the
+   * limit is refused before the body is read at all; a missing or understated one is caught by the
+   * bounded copy itself.
+   *
+   * @throws AttachmentTooLargeException if the response body exceeds {@code maxBytes}; the partial
+   *     temp file is deleted before it is thrown
    */
-  public Path download(HttpClient httpClient, String authHeader, String fileUrl, String fileName)
+  public Path download(
+      HttpClient httpClient, String authHeader, String fileUrl, String fileName, long maxBytes)
       throws IOException, InterruptedException {
 
     log.debug("Downloading: {}", fileUrl);
@@ -55,19 +66,23 @@ public class BoundedDownloader {
             targetAddressValidator,
             RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN);
 
-    // Preserve original extension for correct content-type detection
-    String suffix = extractExtension(fileName);
-    Path tempFile = Files.createTempFile("opaa-", suffix);
-
+    Path tempFile;
     try (InputStream body = response.body()) {
       if (response.statusCode() != 200) {
-        Files.deleteIfExists(tempFile);
         throw new IOException("HTTP " + response.statusCode() + " downloading: " + fileUrl);
       }
-      Files.copy(body, tempFile, StandardCopyOption.REPLACE_EXISTING);
-    } catch (IOException | RuntimeException e) {
-      Files.deleteIfExists(tempFile);
-      throw e;
+      if (declaredLengthExceeds(response, maxBytes)) {
+        throw new AttachmentTooLargeException();
+      }
+      // Preserve original extension for correct content-type detection
+      tempFile = Files.createTempFile("opaa-", extractExtension(fileName));
+      try (OutputStream out =
+          Files.newOutputStream(tempFile, StandardOpenOption.TRUNCATE_EXISTING)) {
+        copyBounded(body, out, maxBytes);
+      } catch (IOException | RuntimeException e) {
+        Files.deleteIfExists(tempFile);
+        throw e;
+      }
     }
 
     log.debug("Downloaded {} to {}", fileUrl, tempFile);
@@ -311,6 +326,42 @@ public class BoundedDownloader {
   public record DownloadedStream(InputStream stream, String contentType) {}
 
   /**
+   * Copies {@code in} to {@code out}, throwing {@link AttachmentTooLargeException} the moment the
+   * copied volume would exceed {@code maxBytes} - the excess is never written, and the caller is
+   * responsible for deleting the partial target.
+   */
+  private static void copyBounded(InputStream in, OutputStream out, long maxBytes)
+      throws IOException {
+    byte[] buffer = new byte[8192];
+    long total = 0;
+    int read;
+    while ((read = in.read(buffer)) != -1) {
+      total += read;
+      if (total > maxBytes) {
+        throw new AttachmentTooLargeException();
+      }
+      out.write(buffer, 0, read);
+    }
+  }
+
+  /**
+   * Whether the response declares a {@code Content-Length} above {@code maxBytes}. An absent or
+   * unparsable header answers {@code false} - the bounded copy still enforces the limit while
+   * reading, regardless of what the header claimed.
+   */
+  private static boolean declaredLengthExceeds(HttpResponse<InputStream> response, long maxBytes) {
+    Optional<String> declaredLength = response.headers().firstValue("Content-Length");
+    if (declaredLength.isEmpty()) {
+      return false;
+    }
+    try {
+      return Long.parseLong(declaredLength.get()) > maxBytes;
+    } catch (NumberFormatException e) {
+      return false;
+    }
+  }
+
+  /**
    * Reads at most {@code maxBytes} from {@code in}, throwing {@link AttachmentTooLargeException}
    * the moment a further byte would exceed the limit - enforced while streaming.
    */
@@ -337,8 +388,8 @@ public class BoundedDownloader {
   public record DownloadedFile(Path path, String contentType) {}
 
   /**
-   * Thrown by {@link #downloadBounded}/{@link #downloadStreaming} when the configured byte limit is
-   * exceeded while streaming.
+   * Thrown by {@link #download}/{@link #downloadBounded}/{@link #downloadStreaming} when the
+   * configured byte limit is exceeded while streaming.
    */
   public static final class AttachmentTooLargeException extends RuntimeException {}
 }
