@@ -34,6 +34,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
@@ -82,6 +83,10 @@ class UrlFolderMappingIntegrationTest {
   @Autowired private LibraryFolderService folderService;
   @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private JdbcTemplate jdbcTemplate;
+
+  /** A real 1x1 PNG - an unsupported format, decided from its content rather than its name. */
+  private static final String ONE_PIXEL_PNG =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
   private HttpServer server;
   private String baseUrl;
@@ -399,6 +404,34 @@ class UrlFolderMappingIntegrationTest {
     assertThat(backfilled.getChecksum()).isEqualTo(sha256(content));
     assertThat(backfilled.getChunkCount()).isEqualTo(1);
     assertThat(backfilled.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+  }
+
+  @Test
+  void assignsTheFolderOfAnExistingDocumentWhoseFormatIsNowRejected() {
+    // An entry rejected for its format never reaches processUrlFile, but a document row from an
+    // earlier run still exists and must not stay behind at the library root.
+    byte[] png = Base64.getDecoder().decode(ONE_PIXEL_PNG);
+    servedFiles.put("abgelehnt/bild.png", png);
+
+    UUID legacyDocumentId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO documents (id, file_name, file_path, content_type, file_size, chunk_count,"
+            + " indexed_at, checksum, status, source_type, library_id, organization_id,"
+            + " created_at, folder_id) VALUES (?, ?, ?, 'image/png', ?, 1, now(), ?, 'INDEXED',"
+            + " 'HTTP_DIRECTORY', ?, ?, now(), NULL)",
+        legacyDocumentId,
+        "bild.png",
+        baseUrl + "/dokumente/abgelehnt/bild.png",
+        (long) png.length,
+        sha256(png),
+        library.getId(),
+        Organization.DEFAULT_ID);
+
+    run();
+
+    LibraryFolder abgelehnt = findFolder(null, "abgelehnt").orElseThrow();
+    assertThat(documentRepository.findById(legacyDocumentId).orElseThrow().getFolderId())
+        .isEqualTo(abgelehnt.getId());
   }
 
   @Test

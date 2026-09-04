@@ -356,8 +356,11 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
               log.warn("Failed to delete temp file: {}", tempFile, e);
             }
           }
+          // In the finally block, not after it: every early `continue` above (unsupported format,
+          // rejected target, oversized entry) must still assign the folder of an entry that
+          // already has a document row from an earlier run.
+          mirrorFolder(targetLibrary, entry.url(), normalizedUrl, folderMirror);
         }
-        mirrorFolder(targetLibrary, entry.url(), normalizedUrl, folderMirror);
         progress.report();
       }
 
@@ -423,12 +426,13 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
    * attachment belongs into its parent mail's folder) to the folder the crawled URL path maps to
    * (ADR-0020, #1277), materializing that folder chain on first use.
    *
-   * <p>Runs after the entry was processed rather than inside {@code
-   * FileProcessingService#processUrlFile}: the folder must also be assigned to an entry this run
-   * skipped without downloading it at all (unchanged by {@code Last-Modified}), which never reaches
-   * that method - the same nachtrag {@code AsyncIndexingExecutor} gets from {@code processFile}'s
-   * own SKIPPED branch. An entry that produced no document row (rejected format, failed download)
-   * materializes no folder either, so a directory holding only such entries never appears.
+   * <p>Runs in the executor rather than inside {@code FileProcessingService#processUrlFile}: the
+   * folder must also be assigned to an entry this run never handed to that method at all - one
+   * skipped undownloaded because {@code Last-Modified} was unchanged, or one rejected for its
+   * format, target or size - as long as an earlier run left a document row behind. That is the same
+   * nachtrag {@code AsyncIndexingExecutor} gets from {@code processFile}'s own SKIPPED branch.
+   * Without a document row nothing is materialized, so a directory holding only never-indexed
+   * entries produces no folder.
    *
    * <p>Failures are logged, never rethrown - a folder assignment must not fail an entry whose
    * content was indexed successfully.
