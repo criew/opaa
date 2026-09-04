@@ -30,7 +30,8 @@ enum RetrievalNote {
   LEXICAL_SEARCH_FAILED("lexical search failed for %s: %s"),
   FULL_TEXT_SEARCH_LISTS("full-text search, %d list(s)"),
   FULL_TEXT_PERMISSION_FILTER(
-      "permission filter applied inside the query: %d scoped libraries searched"),
+      "permission filter applied inside the query: %d scoped libraries searched, %d of them with an"
+          + " incomplete full-text index"),
 
   PER_LIST_BUDGET("per-list budget %d"),
   MMR_LAMBDA_INACTIVE("mmr-lambda %s (diversity term inactive: plain top-k by relevance)"),

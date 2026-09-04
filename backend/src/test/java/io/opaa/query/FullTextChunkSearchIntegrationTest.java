@@ -2,6 +2,7 @@ package io.opaa.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.List;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * The lexical search path against a real PostgreSQL (#1048, docs/features/hybrid-retrieval.md,
@@ -30,6 +32,7 @@ class FullTextChunkSearchIntegrationTest {
 
   @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private FullTextChunkSearch fullTextChunkSearch;
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   private final UUID readableLibrary = UUID.randomUUID();
   private final UUID forbiddenLibrary = UUID.randomUUID();
@@ -39,6 +42,26 @@ class FullTextChunkSearchIntegrationTest {
   void tearDown() {
     vectorChunkStore.deleteByLibraryId(readableLibrary);
     vectorChunkStore.deleteByLibraryId(forbiddenLibrary);
+  }
+
+  /**
+   * A row built under an older {@link io.opaa.indexing.FullTextChunkStore#CURRENT_TSV_VERSION}
+   * carries lexemes of a different analysis chain and must not answer a query built with the
+   * current one - it is invisible to this path until a re-index rewrites it (#1270).
+   */
+  @Test
+  void aRowBelowTheCurrentTsvVersionIsNotFound() {
+    UUID current = seed(readableLibrary, "Die Gebührenbefreiung ist auf Antrag zu gewähren.");
+    UUID stale = seed(readableLibrary, "Gebührenbefreiung im Einzelfall nach Aktenlage.");
+    jdbcTemplate.update(
+        "UPDATE chunk_full_text SET content_tsv_version = ? WHERE chunk_id = ?",
+        (short) (FullTextChunkStore.CURRENT_TSV_VERSION - 1),
+        stale);
+
+    List<Document> hits =
+        fullTextChunkSearch.search("Gebührenbefreiung", Set.of(readableLibrary), 25);
+
+    assertThat(hits).extracting(Document::getId).containsExactly(current.toString());
   }
 
   /**

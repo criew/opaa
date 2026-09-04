@@ -60,7 +60,8 @@ class RetrievalPipelineTest {
             // (fullTextSearchEnabled = false): the structural guarantees asserted here are about
             // the vector path's candidates. The lexical stage's own behaviour is covered by
             // FullTextSearchStageTest.
-            new FullTextSearchStage(mock(FullTextChunkSearch.class)),
+            new FullTextSearchStage(
+                mock(FullTextChunkSearch.class), mock(FullTextIndexCompleteness.class)),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(mock(RerankModelRole.class)),

@@ -139,10 +139,14 @@ Kennungs-Lexeme per Konstruktion ASCII-alphanumerisch); kein Zeichen der Nutzerf
 `to_tsquery` als Operator.
 
 **Ein Tor, verengend:** `opaa.query.full-text-search-enabled` (`OPAA_QUERY_FULL_TEXT_SEARCH_ENABLED`,
-Ebene-1-Wert, Default `true`). Jede Bibliothek des Rechtebereichs wird sonst durchsucht: Die
-Volltextzeile entsteht in derselben Transaktion wie der Vektor, ein halb gefüllter Zustand kann also
-nicht mehr entstehen. Das frühere Backfill-Tor ist mit #1270 entfallen (siehe
-[Arbeitspaket 2a](./hybrid-retrieval.md#arbeitspaket-2a-volltextspalte-index-und-füllstand)).
+Ebene-1-Wert, Default `true`). Jede Bibliothek des Rechtebereichs wird sonst durchsucht; das frühere
+Backfill-Tor ist mit #1270 entfallen (siehe
+[Arbeitspaket 2a](./hybrid-retrieval.md#arbeitspaket-2a-volltextspalte-index-und-füllstand)). Auf dem
+regulären Schreibweg entsteht der Volltexteintrag in derselben Transaktion wie der Vektor, ein halb
+gefüllter Index also nicht — **wohl aber nach einem Bump von `content_tsv_version`** (Bestandszeilen
+gelten dann als fehlend) oder durch verwaiste Zeilen. Der Pfad liefert dann eine unvollständige
+Liste statt gar keiner; das Erklärprotokoll weist die Zahl der betroffenen Bibliotheken aus, und die
+Administrationsseite zeigt sie als unvollständig.
 
 **Ein Fehlschlag degradiert den Pfad, nie die Antwort.** Eine defekte oder fehlende Volltextspalte darf
 Suchqualität kosten, aber nie zum Fehler für den fragenden Menschen werden; die Rückfallebene ist eine

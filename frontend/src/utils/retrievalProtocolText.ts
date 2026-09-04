@@ -107,9 +107,10 @@ const NOTE_RULES: NoteRule[] = [
   },
   {
     name: 'FULL_TEXT_PERMISSION_FILTER',
-    pattern: /^permission filter applied inside the query: (\d+) scoped libraries searched$/,
+    pattern:
+      /^permission filter applied inside the query: (\d+) scoped libraries searched, (\d+) of them with an incomplete full-text index$/,
     german: (m) =>
-      `Rechtefilter in der Suchanfrage angewendet: ${plural(m[1], 'Bibliothek', 'Bibliotheken')} des Suchbereichs durchsucht.`,
+      `Rechtefilter in der Suchanfrage angewendet: ${plural(m[1], 'Bibliothek', 'Bibliotheken')} des Suchbereichs durchsucht, davon ${m[2]} mit unvollständigem Volltextindex.`,
   },
 
   // MmrSelectionStage

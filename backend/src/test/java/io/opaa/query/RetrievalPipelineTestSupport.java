@@ -30,7 +30,8 @@ public final class RetrievalPipelineTestSupport {
             new SearchScopeStage(),
             new SubQueryDecompositionStage(mock(QueryDecompositionService.class)),
             new VectorSearchStage(vectorStore),
-            new FullTextSearchStage(mock(FullTextChunkSearch.class)),
+            new FullTextSearchStage(
+                mock(FullTextChunkSearch.class), mock(FullTextIndexCompleteness.class)),
             new MmrSelectionStage(mock(ChunkEmbeddingLookup.class)),
             new RankFusionStage(),
             new RerankStage(rerankModelRole),

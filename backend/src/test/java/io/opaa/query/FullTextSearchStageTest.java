@@ -38,9 +38,10 @@ class FullTextSearchStageTest {
       new QueryProperties(8, 25, 1.0, 0.3, 1.0, false, 3, 2, false, 50);
 
   private final FullTextChunkSearch search = mock(FullTextChunkSearch.class);
+  private final FullTextIndexCompleteness indexCompleteness = mock(FullTextIndexCompleteness.class);
 
   private FullTextSearchStage stage() {
-    return new FullTextSearchStage(search);
+    return new FullTextSearchStage(search, indexCompleteness);
   }
 
   private static RetrievalContext context(Set<UUID> searchScope) {
@@ -99,6 +100,29 @@ class FullTextSearchStageTest {
     assertThat(libraries.getValue()).containsExactlyInAnyOrder(SCOPED_LIBRARY, SECOND_LIBRARY);
     assertThat(outcome.explanation().notes())
         .anySatisfy(note -> assertThat(note).contains("2 scoped libraries"));
+  }
+
+  /**
+   * #1270: a library whose full-text index is incomplete is searched anyway - the completion gate
+   * is gone - but the run says so, so a partially filled list never reaches the fusion silently.
+   */
+  @Test
+  void searchesAnIncompletelyIndexedLibraryAndRecordsThatItIsIncomplete() {
+    Set<UUID> scope = Set.of(SCOPED_LIBRARY, SECOND_LIBRARY);
+    when(indexCompleteness.incompleteLibraryCount(scope)).thenReturn(1L);
+    when(search.search(anyString(), any(), anyInt())).thenReturn(List.of(chunk("a")));
+
+    StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Set<UUID>> libraries = ArgumentCaptor.forClass(Set.class);
+    verify(search).search(anyString(), libraries.capture(), anyInt());
+    assertThat(libraries.getValue()).containsExactlyInAnyOrder(SCOPED_LIBRARY, SECOND_LIBRARY);
+    assertThat(outcome.explanation().notes())
+        .anySatisfy(
+            note ->
+                assertThat(note)
+                    .contains("2 scoped libraries searched, 1 of them with an incomplete"));
   }
 
   @Test

@@ -1068,19 +1068,24 @@ Erlassnummern, seltene Fachbegriffe.
 
 ### Was zu tun ist
 
-Nichts. Jeder indexierte Chunk bekommt seinen Volltexteintrag in derselben Transaktion wie den
-Vektor; es gibt keinen Zustand, in dem ein Abschnitt vektorisiert, aber noch nicht volltextindiziert
-wäre.
+Im laufenden Betrieb nichts. Jeder indexierte Chunk bekommt seinen Volltexteintrag in derselben
+Transaktion wie den Vektor; auf diesem Weg entsteht kein Abschnitt, der vektorisiert, aber nicht
+volltextindiziert ist.
 
 **Ändert ein Update die Art, wie der Volltextindex gebildet wird**, gelten die betroffenen Zeilen als
 fehlend: Der lexikalische Pfad findet sie nicht mehr, und die Seite „Suche & Indexierung" zeigt die
 betroffenen Bibliotheken als **unvollständig** an. Einen Hintergrundlauf, der das von selbst
-nachzieht, gibt es nicht (mehr) — nötig ist dann ein **Nachzug über die Administrationsseite**
-(Pipeline-Nachzug) oder eine vollständige Neuindizierung, wie bei jeder anderen Änderung an der
-Aufbereitung. Anders als bei einer Änderung am Einbettungsmodell (siehe
-[„Was ein Update mit dem Index macht"](#was-ein-update-mit-dem-index-macht)) ist dabei kein
-Modellaufruf im Spiel; der Nachzug ist deshalb vergleichsweise schnell und kostet keine
-Einbettungs-Rechenzeit. Ein solches Update wird in den Release-Hinweisen ausdrücklich genannt.
+nachzieht, gibt es nicht — **nötig ist dann der Nachzug auf der Administrationsseite**
+(„Suche & Indexierung", Pipeline-Nachzug). Er erfasst solche Abschnitte ausdrücklich, auch wenn sich
+an der Aufbereitung des Dokuments sonst nichts geändert hat.
+
+**Was das kostet:** Der Nachzug liest jedes betroffene Dokument neu ein, zerlegt es erneut in
+Abschnitte und **bettet diese neu ein** — er verursacht also Aufrufe beim Einbettungsmodell und ist
+in derselben Größenordnung teuer wie eine Neuindizierung dieser Dokumente. Er ist damit teurer als
+das reine Neuschreiben der Volltextspalte wäre, aber der einzige Weg, der dieselben Abschnitte
+lückenlos wiederherstellt. Der Lauf ist stapelweise, unterbrechbar und wiederaufnehmbar; bis er
+durch ist, arbeitet die Suche für die betroffenen Bestände rein vektoriell weiter. Ein Update, das
+diesen Nachzug nötig macht, wird in den Release-Hinweisen ausdrücklich genannt.
 
 ### Bekannte Grenze: `ts_rank` ist kein BM25
 

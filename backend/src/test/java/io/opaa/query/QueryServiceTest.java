@@ -112,7 +112,8 @@ class QueryServiceTest {
                 // (fullTextSearchEnabled = false): this class is about what QueryService does with
                 // the selection, not about how the selection is retrieved (see
                 // FullTextSearchStageTest).
-                new FullTextSearchStage(mock(FullTextChunkSearch.class)),
+                new FullTextSearchStage(
+                    mock(FullTextChunkSearch.class), mock(FullTextIndexCompleteness.class)),
                 new MmrSelectionStage(chunkEmbeddingLookup),
                 new RankFusionStage(),
                 new RerankStage(disabledRerankRole()),
@@ -2351,7 +2352,8 @@ class QueryServiceTest {
                   new SearchScopeStage(),
                   new SubQueryDecompositionStage(queryDecompositionService),
                   new VectorSearchStage(vectorStore),
-                  new FullTextSearchStage(fullTextChunkSearch),
+                  new FullTextSearchStage(
+                      fullTextChunkSearch, mock(FullTextIndexCompleteness.class)),
                   new MmrSelectionStage(chunkEmbeddingLookup),
                   new RankFusionStage(),
                   new RerankStage(disabledRerankRole()),

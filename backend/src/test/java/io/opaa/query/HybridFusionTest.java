@@ -45,7 +45,7 @@ class HybridFusionTest {
             new SearchScopeStage(),
             new SubQueryDecompositionStage(queryDecompositionService),
             new VectorSearchStage(vectorStore),
-            new FullTextSearchStage(fullTextChunkSearch),
+            new FullTextSearchStage(fullTextChunkSearch, mock(FullTextIndexCompleteness.class)),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(mock(RerankModelRole.class)),

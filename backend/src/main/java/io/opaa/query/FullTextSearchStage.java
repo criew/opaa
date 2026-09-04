@@ -28,9 +28,17 @@ import org.springframework.stereotype.Component;
  *
  * <p><b>One gate, narrowing, never widening:</b> {@link QueryProperties#fullTextSearchEnabled()} -
  * the operator's switch, and the {@code vector-only} measurement variant. Every library of the
- * search scope is searched otherwise: a chunk's full-text row is written in the same transaction as
- * its vector row, so there is no state in which a scoped library is vectorized but not yet
- * full-text-indexed (#1270 removed the per-library completion gate that guarded that state).
+ * search scope is searched otherwise; the per-library completion gate that used to hold an
+ * incompletely indexed library out of this path entirely is gone (#1270).
+ *
+ * <p><b>A half-filled full-text index is therefore possible and deliberately tolerated.</b> On the
+ * regular write path a chunk's full-text row is written in the same transaction as its vector row,
+ * so no gap opens there - but a raised {@code FullTextChunkStore#CURRENT_TSV_VERSION}, an orphaned
+ * row, or a write that bypassed {@code VectorChunkStore} leaves chunks this path cannot find, and
+ * it then contributes a partially filled list to the fusion instead of none. That state is not
+ * silent: {@link FullTextIndexCompleteness} puts the number of affected libraries into this stage's
+ * notes, the administration page shows the library as incomplete, and the pipeline re-index is what
+ * repairs it.
  *
  * <p><b>A failure degrades the path, never the answer.</b> A missing or broken full-text column may
  * cost search quality and must not raise for the person asking (docs/features/hybrid-retrieval.md,
@@ -46,9 +54,12 @@ class FullTextSearchStage implements RetrievalStage {
   private static final Logger log = LoggerFactory.getLogger(FullTextSearchStage.class);
 
   private final FullTextChunkSearch fullTextChunkSearch;
+  private final FullTextIndexCompleteness indexCompleteness;
 
-  FullTextSearchStage(FullTextChunkSearch fullTextChunkSearch) {
+  FullTextSearchStage(
+      FullTextChunkSearch fullTextChunkSearch, FullTextIndexCompleteness indexCompleteness) {
     this.fullTextChunkSearch = fullTextChunkSearch;
+    this.indexCompleteness = indexCompleteness;
   }
 
   @Override
@@ -118,7 +129,10 @@ class FullTextSearchStage implements RetrievalStage {
     int retrieved = lists.stream().mapToInt(list -> list.documents().size()).sum();
     notes.add(0, RetrievalNote.FULL_TEXT_SEARCH_LISTS.format(lists.size()));
     notes.add(1, RetrievalNote.FETCH_K.format(context.queryProperties().fetchK()));
-    notes.add(2, RetrievalNote.FULL_TEXT_PERMISSION_FILTER.format(searchScope.size()));
+    notes.add(
+        2,
+        RetrievalNote.FULL_TEXT_PERMISSION_FILTER.format(
+            searchScope.size(), indexCompleteness.incompleteLibraryCount(searchScope)));
     // Records the queries actually searched when this stage derived them itself, so a run never
     // reports having searched nothing while it did - the vector path does the same, and either
     // path may be the one that runs.

@@ -30,7 +30,7 @@
     },
     {
       "name": "FULL_TEXT_PERMISSION_FILTER",
-      "template": "permission filter applied inside the query: %d scoped libraries searched"
+      "template": "permission filter applied inside the query: %d scoped libraries searched, %d of them with an incomplete full-text index"
     },
     {
       "name": "FULL_TEXT_SEARCH_LISTS",

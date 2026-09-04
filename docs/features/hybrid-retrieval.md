@@ -353,12 +353,17 @@ nächsten Abschnitts und nicht ein Nebeneffekt der Migration.
 > Administrationsseite.
 >
 > **Bewusst in Kauf genommene Folge:** Ein künftiger Bump der Volltext-Aufbereitung
-> (`FullTextChunkStore.CURRENT_TSV_VERSION`) hat keinen Nachzugsmechanismus mehr. Bestandszeilen
-> gelten dann als fehlend, sind für den lexikalischen Pfad unsichtbar und die Bibliothek erscheint
-> auf der Administrationsseite als `INCOMPLETE`. Der Weg zurück ist derselbe wie bei jeder anderen
-> Pipeline-Änderung: Neuindizierung über den Pipeline-Nachzug
-> (`POST /api/v1/admin/indexing/pipeline-reindex`) oder vollständige Neuindizierung. Ein solcher
-> Bump ist damit eine bewusste Betriebsaufgabe und kein Selbstläufer mehr.
+> (`FullTextChunkStore.CURRENT_TSV_VERSION`) hat keinen eigenen, billigen Nachzug mehr.
+> Bestandszeilen gelten dann als fehlend, sind für den lexikalischen Pfad unsichtbar und die
+> Bibliothek erscheint auf der Administrationsseite als `INCOMPLETE`. Der Weg zurück ist der
+> **Pipeline-Nachzug** (`POST /api/v1/admin/indexing/pipeline-reindex`), der genau dafür
+> versionsbewusst erweitert wurde: Er wählt ein Dokument auch dann aus, wenn nur seine
+> `chunk_full_text`-Zeilen unter der aktuellen `content_tsv_version` liegen (oder fehlen) —
+> unabhängig von der Pipeline-Version, denn ein Bump dieser Konstante hebt keine
+> `DocumentPipeline#version()`. **Der Preis ist benannt:** Dieser Weg liest, zerlegt und
+> **bettet neu ein**; er ist damit deutlich teurer als das reine Neuschreiben der `tsvector`-Spalte,
+> das der entfernte Backfill leistete. Ein Bump ist damit eine bewusste, eingeplante Betriebsaufgabe
+> und kein Selbstläufer mehr.
 
 Die ursprüngliche Begründung des Arbeitspakets bleibt hier stehen, weil sie die Schemaentscheidungen
 trägt, die weiterhin gelten. Ein Volltextpfad, der nur die Hälfte des Bestands sieht, ist schlimmer
@@ -1605,14 +1610,21 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   **Die bewusst in Kauf genommene Folge:** Ein Bump von `CURRENT_TSV_VERSION` markiert schlagartig
   jede Zeile jeder Bibliothek als veraltet. Diese Zeilen sind für den lexikalischen Pfad unsichtbar
   — dessen Abfrage filtert auf die aktuelle Version —, und nichts holt sie von selbst wieder ein.
-  Der Zustand ist sichtbar (`fullTextIndexCondition()` zeigt `INCOMPLETE`, der Suchpfad meldet sich
-  als unvollständig), und der Weg heraus ist derselbe wie bei jeder anderen Pipeline-Änderung: der
-  Pipeline-Nachzug (`POST /api/v1/admin/indexing/pipeline-reindex`) oder eine vollständige
-  Neuindizierung. Ein Bump der Volltext-Aufbereitung ist damit **eine geplante Betriebsaufgabe**;
-  wer ihn vornimmt, plant den Nachzug mit ein, statt sich auf einen Hintergrundlauf zu verlassen.
-  Anders als früher fällt dabei nicht der gesamte Bestand für die Dauer eines Nachlaufs aus der
-  Fusion: Betroffen sind nur die Bibliotheken, deren Zeilen noch nicht neu aufbereitet sind, und
-  jede kehrt zurück, sobald ihr Nachzug durch ist.
+  Der Bestand ist damit bis zum Nachzug **vollständig** aus dem lexikalischen Pfad heraus, und
+  während der Nachzug läuft, arbeitet jede noch nicht fertige Bibliothek mit einem **halb gefüllten**
+  Volltextindex — genau der Zustand, den dieses Arbeitspaket weiter oben als „schlimmer als keiner"
+  führt. Das frühere Tor verhinderte ihn; ohne Tor ist er möglich und wird hingenommen, dafür aber
+  ausgewiesen: `fullTextIndexCondition()` zeigt `INCOMPLETE`, der Suchpfad meldet sich als
+  unvollständig, und das Erklärprotokoll jeder Suche nennt die Zahl der betroffenen Bibliotheken
+  (`FULL_TEXT_PERMISSION_FILTER`).
+
+  Der Weg heraus ist der **Pipeline-Nachzug** (`POST /api/v1/admin/indexing/pipeline-reindex`), der
+  ein Dokument seit #1270 auch allein wegen veralteter oder fehlender `chunk_full_text`-Zeilen
+  auswählt — unabhängig von der Pipeline-Version, weil ein Bump dieser Konstante keine
+  `DocumentPipeline#version()` hebt. **Er ist teurer als der entfernte Backfill:** Er liest, zerlegt
+  und bettet neu ein, statt nur die `tsvector`-Spalte zu überschreiben. Ein Bump der
+  Volltext-Aufbereitung ist damit **eine geplante Betriebsaufgabe** mit benannten Kosten; wer ihn
+  vornimmt, plant den Nachzug mit ein, statt sich auf einen Hintergrundlauf zu verlassen.
 - **Wirkt der Kontextpräfix aus Contextual Chunking (#933/#940) auch in den Volltextindex?**
   Anthropics „contextual BM25" spricht dafür, und die Roadmap sieht es in Phase 2a vor. Es ist aber eine
   eigene Messung wert: Ein Titelpräfix in jedem Chunk verändert die Termstatistik des ganzen Index.
