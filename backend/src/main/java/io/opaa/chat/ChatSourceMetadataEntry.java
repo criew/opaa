@@ -24,10 +24,6 @@ public record ChatSourceMetadataEntry(
     MetadataOrigin origin,
     DatePrecision datePrecision) {
 
-  static final String TITLE_LABEL = "Titel";
-  static final String DOCUMENT_TYPE_LABEL = "Dokumentart";
-  static final String DOCUMENT_DATE_LABEL = "Datum/Stand";
-
   private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM.yyyy");
   private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MM/yyyy");
 
@@ -41,7 +37,7 @@ public record ChatSourceMetadataEntry(
       entries.add(
           new ChatSourceMetadataEntry(
               CoreMetadataField.TITLE.key(),
-              TITLE_LABEL,
+              CoreMetadataField.TITLE.label(),
               core.title(),
               core.title(),
               core.titleOrigin(),
@@ -51,7 +47,7 @@ public record ChatSourceMetadataEntry(
       entries.add(
           new ChatSourceMetadataEntry(
               CoreMetadataField.DOCUMENT_TYPE.key(),
-              DOCUMENT_TYPE_LABEL,
+              CoreMetadataField.DOCUMENT_TYPE.label(),
               core.documentTypeCode(),
               core.documentTypeLabel() != null ? core.documentTypeLabel() : core.documentTypeCode(),
               core.documentTypeOrigin(),
@@ -61,7 +57,7 @@ public record ChatSourceMetadataEntry(
       entries.add(
           new ChatSourceMetadataEntry(
               CoreMetadataField.DOCUMENT_DATE.key(),
-              DOCUMENT_DATE_LABEL,
+              CoreMetadataField.DOCUMENT_DATE.label(),
               core.documentDate().toString(),
               displayDate(core.documentDate(), core.documentDatePrecision()),
               core.documentDateOrigin(),

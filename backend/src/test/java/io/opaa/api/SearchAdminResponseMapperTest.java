@@ -1,10 +1,13 @@
 package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.api.dto.ChunkInspectionResponse;
+import io.opaa.api.dto.CoreMetadataFieldFillResponse;
 import io.opaa.api.dto.DocumentChunksResponse;
 import io.opaa.api.dto.LibraryIndexState;
+import io.opaa.api.dto.MetadataBackfillStatusResponse;
 import io.opaa.api.dto.RetrievalCandidateOutcome;
 import io.opaa.api.dto.RetrievalStage;
 import io.opaa.api.dto.RetrievalStageStatus;
@@ -17,6 +20,9 @@ import io.opaa.api.dto.SearchPath;
 import io.opaa.api.dto.SearchPathState;
 import io.opaa.api.dto.SearchStatusResponse;
 import io.opaa.api.dto.TrackedDocumentOutcome;
+import io.opaa.indexing.metadata.CoreMetadataExtractor;
+import io.opaa.indexing.metadata.CoreMetadataField;
+import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.query.CandidateOutcome;
 import io.opaa.query.CandidateVerdict;
 import io.opaa.query.RetrievalExplanation;
@@ -138,7 +144,17 @@ class SearchAdminResponseMapperTest {
             Instant.parse("2026-09-01T08:00:00Z"),
             200,
             30,
-            5);
+            5,
+            new MetadataBackfillProgress(
+                LIBRARY_ID,
+                10,
+                6,
+                4,
+                2,
+                Map.of(
+                    CoreMetadataField.TITLE, 10L,
+                    CoreMetadataField.DOCUMENT_TYPE, 4L,
+                    CoreMetadataField.DOCUMENT_DATE, 6L)));
 
     var response =
         SearchAdminResponseMapper.toStatusResponse(
@@ -147,6 +163,25 @@ class SearchAdminResponseMapperTest {
             .get(0);
 
     assertThat(response.getLibraryId()).isEqualTo(LIBRARY_ID);
+    // The core-metadata extraction state travels with the library row, so the page shows it in the
+    // same table as the rest of the index state (metadata-schema.md, "Nachlauf im Betrieb").
+    MetadataBackfillStatusResponse backfill = response.getMetadataBackfill();
+    assertThat(backfill.getExtractionVersion()).isEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION);
+    assertThat(backfill.getTotalDocuments()).isEqualTo(10);
+    assertThat(backfill.getCurrentDocuments()).isEqualTo(6);
+    assertThat(backfill.getPendingDocuments()).isEqualTo(4);
+    assertThat(backfill.getLastSkippedDocuments()).isEqualTo(2);
+    assertThat(backfill.getComplete()).isFalse();
+    assertThat(backfill.getFields())
+        .extracting(
+            CoreMetadataFieldFillResponse::getFieldKey,
+            CoreMetadataFieldFillResponse::getLabel,
+            CoreMetadataFieldFillResponse::getFilledDocuments,
+            CoreMetadataFieldFillResponse::getFilledShare)
+        .containsExactly(
+            tuple("title", "Titel", 10L, 1.0d),
+            tuple("document_type", "Dokumentart", 4L, 0.4d),
+            tuple("document_date", "Datum/Stand", 6L, 0.6d));
     assertThat(response.getLibraryName()).isEqualTo("Satzungen");
     assertThat(response.getDocumentCount()).isEqualTo(12);
     assertThat(response.getIndexedDocumentCount()).isEqualTo(10);
@@ -174,13 +209,35 @@ class SearchAdminResponseMapperTest {
                     List.of(),
                     List.of(
                         new LibrarySearchStatus(
-                            LIBRARY_ID, "Leer", 0, 0, 0, 0, 0, 0, 0, null, 0, 0, 0))))
+                            LIBRARY_ID,
+                            "Leer",
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            null,
+                            0,
+                            0,
+                            0,
+                            MetadataBackfillProgress.empty(LIBRARY_ID)))))
             .getLibraries()
             .get(0);
 
     assertThat(response.getVectorIndexState()).isEqualTo(LibraryIndexState.EMPTY);
     assertThat(response.getFullTextIndexState()).isEqualTo(LibraryIndexState.EMPTY);
     assertThat(response.getLastIndexedAt()).isNull();
+    // Nothing pending in an empty library is "complete", and a share over zero documents is 0, not
+    // NaN.
+    assertThat(response.getMetadataBackfill().getComplete()).isTrue();
+    assertThat(response.getMetadataBackfill().getFields())
+        .allSatisfy(
+            field -> {
+              assertThat(field.getFilledDocuments()).isZero();
+              assertThat(field.getFilledShare()).isZero();
+            });
   }
 
   @Test

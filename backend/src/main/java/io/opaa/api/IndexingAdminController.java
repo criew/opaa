@@ -1,6 +1,8 @@
 package io.opaa.api;
 
 import io.opaa.api.dto.LowChunkDocumentPageResponse;
+import io.opaa.api.dto.MetadataBackfillRequest;
+import io.opaa.api.dto.MetadataBackfillResponse;
 import io.opaa.api.dto.PipelineReindexRequest;
 import io.opaa.api.dto.PipelineReindexResponse;
 import io.opaa.api.dto.PipelineVersionStatusResponse;
@@ -14,6 +16,9 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.LowChunkDocumentAuditService;
 import io.opaa.indexing.PipelineReindexResult;
 import io.opaa.indexing.PipelineReindexService;
+import io.opaa.indexing.metadata.CoreMetadataExtractor;
+import io.opaa.indexing.metadata.MetadataBackfillResult;
+import io.opaa.indexing.metadata.MetadataBackfillService;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import java.nio.charset.StandardCharsets;
@@ -46,16 +51,19 @@ public class IndexingAdminController {
 
   private final LowChunkDocumentAuditService lowChunkDocumentAuditService;
   private final PipelineReindexService pipelineReindexService;
+  private final MetadataBackfillService metadataBackfillService;
   private final DocumentPipelineRegistry pipelineRegistry;
   private final AuditEventRecorder auditEventRecorder;
 
   public IndexingAdminController(
       LowChunkDocumentAuditService lowChunkDocumentAuditService,
       PipelineReindexService pipelineReindexService,
+      MetadataBackfillService metadataBackfillService,
       DocumentPipelineRegistry pipelineRegistry,
       AuditEventRecorder auditEventRecorder) {
     this.lowChunkDocumentAuditService = lowChunkDocumentAuditService;
     this.pipelineReindexService = pipelineReindexService;
+    this.metadataBackfillService = metadataBackfillService;
     this.pipelineRegistry = pipelineRegistry;
     this.auditEventRecorder = auditEventRecorder;
   }
@@ -164,6 +172,53 @@ public class IndexingAdminController {
                     "markedForNextRun", result.markedForNextRun(),
                     "skippedDocuments", result.skippedDocuments(),
                     "removedOrphanChunkSets", result.removedOrphanChunkSets()))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
+  }
+
+  /**
+   * One batch of the deterministic core-metadata backfill (#1067). The library is the explicit,
+   * library-wise release the specification demands; a library of another organization is absent
+   * (404), decided in the service. Pausing is not calling again; the next call resumes.
+   */
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PostMapping("/metadata-backfill")
+  public MetadataBackfillResponse backfillMetadataBatch(
+      @RequestBody MetadataBackfillRequest request, @Caller CurrentUser caller) {
+    UUID libraryId = request.getLibraryId();
+    if (libraryId == null) {
+      throw new IllegalArgumentException("libraryId ist erforderlich");
+    }
+    int batchSize =
+        request.getBatchSize() == null ? DEFAULT_REINDEX_BATCH_SIZE : request.getBatchSize();
+    if (batchSize < 1 || batchSize > MAX_REINDEX_BATCH_SIZE) {
+      throw new IllegalArgumentException(
+          "batchSize muss zwischen 1 und " + MAX_REINDEX_BATCH_SIZE + " liegen, war " + batchSize);
+    }
+    MetadataBackfillResult result =
+        metadataBackfillService.backfillBatch(caller.organizationId(), libraryId, batchSize);
+    recordBackfillAudit(caller, libraryId, result);
+    return MetadataBackfillResponseMapper.toBackfillResponse(result);
+  }
+
+  /**
+   * One event per triggering call, mirroring {@link #recordReindexAudit}; the object is the
+   * library.
+   */
+  private void recordBackfillAudit(
+      CurrentUser caller, UUID libraryId, MetadataBackfillResult result) {
+    auditEventRecorder.recordUserAction(
+        AuditEvent.builder()
+            .organizationId(caller.organizationId())
+            .actor(caller.id())
+            .type(AuditEventType.INDEXING_METADATA_BACKFILL_TRIGGERED)
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, libraryId, "Bibliothek " + libraryId)
+            .after(
+                Map.of(
+                    "extractionVersion", CoreMetadataExtractor.EXTRACTION_VERSION,
+                    "processedDocuments", result.processedDocuments(),
+                    "markedForNextRun", result.markedForNextRun(),
+                    "skippedDocuments", result.skippedDocuments()))
             .outcome(AuditOutcome.SUCCESS)
             .build());
   }

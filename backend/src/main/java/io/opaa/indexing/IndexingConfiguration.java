@@ -197,6 +197,27 @@ public class IndexingConfiguration {
     return new DocumentPipelineRegistry(pipelines, fallback);
   }
 
+  /**
+   * The one source-access instance both operator-triggered runs over the bestand share (pipeline
+   * re-index, core-metadata backfill), so both read files under the same containment rules.
+   */
+  @Bean
+  StoredDocumentSourceAccess storedDocumentSourceAccess(
+      DocumentPipelineRegistry documentPipelineRegistry,
+      DocumentRepository documentRepository,
+      KnowledgeLibraryRepository libraryRepository,
+      ChecksumService checksumService,
+      FilesystemPathAllowlist filesystemPathAllowlist,
+      UploadProperties uploadProperties) {
+    return new StoredDocumentSourceAccess(
+        documentPipelineRegistry,
+        documentRepository,
+        libraryRepository,
+        checksumService,
+        filesystemPathAllowlist,
+        uploadProperties);
+  }
+
   @Bean
   PipelineReindexService pipelineReindexService(
       JdbcTemplate jdbcTemplate,
@@ -204,10 +225,8 @@ public class IndexingConfiguration {
       DocumentRepository documentRepository,
       KnowledgeLibraryRepository libraryRepository,
       FileProcessingService fileProcessingService,
-      ChecksumService checksumService,
       VectorChunkStore vectorChunkStore,
-      FilesystemPathAllowlist filesystemPathAllowlist,
-      UploadProperties uploadProperties,
+      StoredDocumentSourceAccess storedDocumentSourceAccess,
       @Value("${spring.ai.vectorstore.pgvector.schema-name:public}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     return new PipelineReindexService(
@@ -216,10 +235,8 @@ public class IndexingConfiguration {
         documentRepository,
         libraryRepository,
         fileProcessingService,
-        checksumService,
         vectorChunkStore,
-        filesystemPathAllowlist,
-        uploadProperties,
+        storedDocumentSourceAccess,
         schemaName,
         tableName);
   }
