@@ -244,7 +244,7 @@ class PipelinePathIsolationTest {
             new OdtDocumentPipeline(new OdfProperties(0, 0, 0, 0, 0)),
             new OdpDocumentPipeline(new OdfProperties(0, 0, 0, 0, 0)),
             new PdfDocumentPipeline(),
-            new MailDocumentPipeline(null, new MailProperties(0, 0, 0, 0), Clock.systemUTC()));
+            new MailDocumentPipeline(null, new MailProperties(0, 0, 0), Clock.systemUTC()));
     return new DocumentPipelineRegistry(pipelines, fallback);
   }
 }

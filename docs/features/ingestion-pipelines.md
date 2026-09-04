@@ -1127,20 +1127,23 @@ threadlokalen Zähler, sobald ein gemeldeter Anhang selbst wieder über `FilePro
 `MailDocumentPipeline`s eigenes `RECURSION_DEPTH`-Feld vor #1183 gespielt hat, jetzt auf der
 gemeinsamen Ebene, weil auch RSS/Confluence-Anhänge grundsätzlich verschachtelt sein können.
 
-**Drei Sicherheits-Grenzfälle, Muster `TabularProperties`** (`MailProperties`,
-`opaa.indexing.mail.*`): `max-attachment-depth` (Standard 5, seit #1183 nur noch der Vorgabewert für
-`AttachmentDownloadLimits#maxAttachmentDepth()` auf dem Anhangsweg, siehe oben) deckelt die
-Rekursionstiefe gegen eine Mail, die sich selbst oder zyklisch weiterleitet; `max-attachments-per-message`
+Die Rekursionstiefe selbst kommt seit #1269 nicht mehr aus `MailProperties`, sondern aus der
+allgemeinen `AttachmentProperties#maxDepth()` (`opaa.indexing.attachments.max-depth`, Standard 5) —
+`AttachmentIndexer` wendet sie unabhängig vom Konnektor an, dieselbe Grenze für Mail-in-Mail wie für
+eine verschachtelte Feed-Anlage.
+
+**Zwei weitere Sicherheits-Grenzfälle, Muster `TabularProperties`** (`MailProperties`,
+`opaa.indexing.mail.*`): `max-attachments-per-message`
 (gesetzt 50) deckelt die Anzahl der Anhänge — durchgesetzt direkt in der Extraktionsschleife von
 `EmlReader`/`MsgReader` selbst, sodass für einen Anhang jenseits der Grenze erst gar keine temporäre
 Datei entsteht; und `max-attachment-bytes` (gesetzt 50 MiB) deckelt die Größe eines einzelnen
 Anhangs. Bei EML wird diese
 Byte-Grenze beim Kopieren des Anhangs in eine temporäre Datei durchgesetzt (wie
-`TabularDocumentPipeline`s ODS-Leser), bei MSG nur nachträglich (siehe unten). **Diese drei Grenzen
+`TabularDocumentPipeline`s ODS-Leser), bei MSG nur nachträglich (siehe unten). **Diese zwei Grenzen
 schützen Platte und nachgelagerte Verarbeitung, nicht den Parse-Vorgang selbst** — sowohl mime4j
 (`BasicBodyFactory`) als auch POI (`MAPIMessage`) halten beim Parsen ohnehin jeden Teil der Nachricht,
 Anhänge eingeschlossen, vollständig im Heap, bevor dieser Code auch nur entscheidet, ob ein Teil ein
-Anhang ist. Die eigentliche Speichergrenze ist eine vierte, neue Eigenschaft: `max-message-bytes`
+Anhang ist. Die eigentliche Speichergrenze ist eine dritte, neue Eigenschaft: `max-message-bytes`
 (gesetzt 100 MiB) — geprüft gegen die Größe der `.eml`/`.msg`-Datei selbst, bevor überhaupt geparst
 wird, denn `FileProcessingService#processFile` erzwingt keine Einzeldateigrößen-Grenze (nur die
 Speicherplatz-Quote der Bibliothek insgesamt). Bei MSG bleibt die Anhangsgrenze zusätzlich

@@ -1,0 +1,80 @@
+databaseChangeLog:
+  - changeSet:
+      id: 020-document-type-suffixes
+      author: opaa
+      comment: >-
+        #1263 (docs/features/metadata-schema.md Teil II (a)/Teil III): the Kompositum rule of the
+        Dokumentart vocabulary. German administrative documents name their type inside a compound
+        word - "Verwaltungsgebuehrensatzung" is a Satzung, but the exact token match of #1066 does
+        not see it, which is why the Dokumentart stood at 5 % over the Satzungen library of the
+        demo instance. document_type_suffixes seeds, per vocabulary value, the endings a token may
+        carry, plus the minimum number of characters that must stand in front of the ending: with
+        min_prefix_length 3, "verordnung" (a Rechtsnorm) resolves to SATZUNG_ORDNUNG while
+        "anordnung" resolves to nothing. Deterministic string comparison, no distance measure - the
+        Leitregel "kein Wert ausserhalb des Vokabulars, keine Aehnlichkeitsabbildung" holds: a
+        token that fits no ending stays empty, and a token that fits two different Dokumentarten
+        yields nothing either. document_type_suffix_exclusions carries the compounds an ending
+        would otherwise claim wrongly ("Einordnung", "Neuordnung", "Unterordnung"); "anordnung" is
+        listed there as well although min_prefix_length already excludes it, so that a later
+        tuning of that minimum cannot silently turn it into a Satzung. Both tables are seed data an
+        installation extends by inserting rows, exactly like document_type_synonyms of migration
+        018, which stays untouched. One changeset, because the two tables are one rule: the
+        exclusions have no meaning without the endings they restrict. The exclusion list is
+        deliberately concrete rather than clever: "Tagesordnung", "Groessenordnung", "Sitzordnung",
+        "Rangordnung", "Sperrvermerk" and their siblings are frequent administrative words that are
+        no Dokumentart, and no length rule separates them from "Verordnung" or "Hausordnung", which
+        are Rechtsnormen and therefore stay admitted. Tokens are stored transcribed
+        ("groessenordnung"), because DocumentTypeVocabulary normalizes every term it compares the
+        same way - the spelling with an umlaut is covered by that one entry.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.document_type_suffixes (
+                  code character varying(50) NOT NULL,
+                  suffix character varying(100) NOT NULL,
+                  min_prefix_length integer NOT NULL DEFAULT 3,
+                  CONSTRAINT document_type_suffixes_pkey PRIMARY KEY (code, suffix),
+                  CONSTRAINT fk_document_type_suffixes_code FOREIGN KEY (code)
+                      REFERENCES public.document_type_vocabulary(code) ON DELETE CASCADE,
+                  CONSTRAINT chk_document_type_suffixes_min_prefix_length
+                      CHECK ((min_prefix_length >= 1))
+              );
+
+              CREATE TABLE public.document_type_suffix_exclusions (
+                  code character varying(50) NOT NULL,
+                  token character varying(100) NOT NULL,
+                  CONSTRAINT document_type_suffix_exclusions_pkey PRIMARY KEY (code, token),
+                  CONSTRAINT fk_document_type_suffix_exclusions_code FOREIGN KEY (code)
+                      REFERENCES public.document_type_vocabulary(code) ON DELETE CASCADE
+              );
+
+              INSERT INTO public.document_type_suffixes (code, suffix, min_prefix_length) VALUES
+                  ('SATZUNG_ORDNUNG', 'satzung', 3),
+                  ('SATZUNG_ORDNUNG', 'ordnung', 3),
+                  ('DIENSTANWEISUNG', 'dienstanweisung', 3),
+                  ('GEBUEHRENVERZEICHNIS', 'gebuehrenverzeichnis', 3),
+                  ('PROTOKOLL', 'protokoll', 3),
+                  ('FORMULAR', 'formular', 3),
+                  ('VERMERK', 'vermerk', 3);
+
+              INSERT INTO public.document_type_suffix_exclusions (code, token) VALUES
+                  ('SATZUNG_ORDNUNG', 'anordnung'),
+                  ('SATZUNG_ORDNUNG', 'zuordnung'),
+                  ('SATZUNG_ORDNUNG', 'neuzuordnung'),
+                  ('SATZUNG_ORDNUNG', 'einordnung'),
+                  ('SATZUNG_ORDNUNG', 'neuordnung'),
+                  ('SATZUNG_ORDNUNG', 'umordnung'),
+                  ('SATZUNG_ORDNUNG', 'unterordnung'),
+                  ('SATZUNG_ORDNUNG', 'rangordnung'),
+                  ('SATZUNG_ORDNUNG', 'sitzordnung'),
+                  ('SATZUNG_ORDNUNG', 'tagesordnung'),
+                  ('SATZUNG_ORDNUNG', 'groessenordnung'),
+                  ('VERMERK', 'sperrvermerk'),
+                  ('VERMERK', 'sichtvermerk'),
+                  ('VERMERK', 'eingangsvermerk');
+      rollback:
+        - sql:
+            sql: |
+              DROP TABLE IF EXISTS public.document_type_suffix_exclusions;
+              DROP TABLE IF EXISTS public.document_type_suffixes;

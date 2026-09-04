@@ -66,6 +66,7 @@ class SearchDiagnosisClockTest {
             rerankModelRole,
             mock(ForeignDiagnosticContextService.class),
             mock(DiagnosticImpersonationGrantService.class),
+            mock(io.opaa.diagnosticaccess.LibraryDiagnosticsLockService.class),
             fixedClock);
 
     SearchDiagnosis diagnosis =

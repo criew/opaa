@@ -190,7 +190,8 @@ public class MetadataBackfillService {
    * as {@code file_name != file_path}: an entry whose title is literally its own URL loses that
    * title here, accepted as too exotic to carry a marker column for. Everything else remote (an
    * HTTP directory file, any remote attachment) can only be re-read by its own connector run, which
-   * re-extracts on every inflow, and is marked for it.
+   * re-extracts on every inflow, and is marked for it. The name is marked as synthetic exactly as
+   * the ingest marks it (#1263), so both paths read the same fields out of the same row.
    */
   private Advance advanceRemote(Document document) {
     if (document.getSourceType() == DocumentSourceType.RSS_FEED
@@ -200,6 +201,7 @@ public class MetadataBackfillService {
       DocumentProperties properties =
           DocumentProperties.EMPTY
               .withTitle(hasHeadline ? document.getFileName() : null)
+              .withSyntheticName(true)
               .withDocumentDate(
                   DocumentProperties.instantToLocalDate(document.getLastModifiedRemote()));
       documentMetadataService.reextractFromProperties(document, properties);
