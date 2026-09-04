@@ -962,6 +962,21 @@ export const handlers = [
     return HttpResponse.json(mockSearchPermissionProfiles)
   }),
 
+  http.post('/api/v1/admin/indexing/metadata-backfill', async ({ request }) => {
+    const body = (await request.json()) as { libraryId?: string; batchSize?: number }
+    const library = mockSearchStatus.libraries.find((l) => l.libraryId === body.libraryId)
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const pending = library.metadataBackfill.pendingDocuments
+    return HttpResponse.json({
+      processedDocuments: pending,
+      markedForNextRun: 0,
+      skippedDocuments: 0,
+      done: pending === 0,
+    })
+  }),
+
   http.post('/api/v1/admin/search/diagnosis', async ({ request }) => {
     const body = (await request.json()) as {
       question?: string

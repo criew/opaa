@@ -51,7 +51,7 @@ import type {
 import { translateListLabel, translateStageNote } from '../utils/retrievalProtocolText'
 import { getSearchChunk } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
-import { useSearchAdminStore } from '../stores/searchAdminStore'
+import { useSearchAdminStore, type MetadataBackfillRun } from '../stores/searchAdminStore'
 
 const OWN_CONTEXT_VALUE = 'SELF'
 
@@ -222,7 +222,90 @@ function ModelRoleCard({ role }: { role: SearchModelRoleStatusResponse }) {
   )
 }
 
-function LibraryStatusTable({ libraries }: { libraries: LibrarySearchStatusResponse[] }) {
+/**
+ * The core-metadata extraction state of one library and the control that drives its backfill
+ * (#1067). Start, Weiter and Anhalten are one button: the run is a loop of batch calls this page
+ * repeats, so pausing is simply not calling again and resuming is calling again - the server
+ * re-derives the remaining work on every call.
+ */
+function MetadataBackfillCell({
+  library,
+  run,
+  onStart,
+  onPause,
+}: {
+  library: LibrarySearchStatusResponse
+  run: MetadataBackfillRun | undefined
+  onStart: (libraryId: string) => void
+  onPause: (libraryId: string) => void
+}) {
+  const backfill = library.metadataBackfill
+  const running = run?.running ?? false
+  const resumable = !running && run != null && !run.done && run.error == null
+  const buttonLabel = running ? 'Anhalten' : resumable ? 'Weiter' : 'Kernfelder nachrüsten'
+  return (
+    <TableCell>
+      <Typography variant="body2" component="div">
+        {backfill.currentDocuments} / {backfill.totalDocuments} aktuell
+      </Typography>
+      {backfill.pendingDocuments > 0 && (
+        <Typography variant="caption" color="warning.main" component="div">
+          {plural(backfill.pendingDocuments, 'Dokument ausstehend', 'Dokumente ausstehend')}
+        </Typography>
+      )}
+      {backfill.lastSkippedDocuments > 0 && (
+        <Typography variant="caption" color="warning.main" component="div">
+          {plural(
+            backfill.lastSkippedDocuments,
+            'Dokument zuletzt übersprungen',
+            'Dokumente zuletzt übersprungen',
+          )}
+        </Typography>
+      )}
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        component="div"
+        aria-label={`Füllgrad je Kernfeld: ${library.libraryName}`}
+      >
+        {backfill.fields
+          .map(
+            (field) =>
+              `${field.label} ${field.filledDocuments} (${Math.round(field.filledShare * 100)} %)`,
+          )
+          .join(' · ')}
+      </Typography>
+      {run?.error && (
+        <Typography variant="caption" color="error.main" component="div" role="alert">
+          {run.error}
+        </Typography>
+      )}
+      {(backfill.pendingDocuments > 0 || running) && (
+        <Button
+          size="small"
+          variant={running ? 'outlined' : 'contained'}
+          sx={{ mt: 0.5 }}
+          aria-label={`${buttonLabel}: ${library.libraryName}`}
+          onClick={() => (running ? onPause(library.libraryId) : onStart(library.libraryId))}
+        >
+          {buttonLabel}
+        </Button>
+      )}
+    </TableCell>
+  )
+}
+
+function LibraryStatusTable({
+  libraries,
+  backfillRuns,
+  onStartBackfill,
+  onPauseBackfill,
+}: {
+  libraries: LibrarySearchStatusResponse[]
+  backfillRuns: Record<string, MetadataBackfillRun>
+  onStartBackfill: (libraryId: string) => void
+  onPauseBackfill: (libraryId: string) => void
+}) {
   if (libraries.length === 0) {
     return (
       <Typography variant="body2" color="text.secondary">
@@ -243,6 +326,7 @@ function LibraryStatusTable({ libraries }: { libraries: LibrarySearchStatusRespo
             <TableCell>Letzter Lauf</TableCell>
             <TableCell>Vektorindex</TableCell>
             <TableCell>Volltextindex</TableCell>
+            <TableCell>Kernfelder</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -295,6 +379,12 @@ function LibraryStatusTable({ libraries }: { libraries: LibrarySearchStatusRespo
                   </Typography>
                 )}
               </TableCell>
+              <MetadataBackfillCell
+                library={library}
+                run={backfillRuns[library.libraryId]}
+                onStart={onStartBackfill}
+                onPause={onPauseBackfill}
+              />
             </TableRow>
           ))}
         </TableBody>
@@ -722,6 +812,9 @@ export default function SearchIndexingAdminPage() {
   const loadStatus = useSearchAdminStore((s) => s.loadStatus)
   const runDiagnosis = useSearchAdminStore((s) => s.runDiagnosis)
   const loadDocumentChunks = useSearchAdminStore((s) => s.loadDocumentChunks)
+  const backfillRuns = useSearchAdminStore((s) => s.metadataBackfillRuns)
+  const startMetadataBackfill = useSearchAdminStore((s) => s.startMetadataBackfill)
+  const pauseMetadataBackfill = useSearchAdminStore((s) => s.pauseMetadataBackfill)
 
   const [question, setQuestion] = useState('')
   const [contextChoice, setContextChoice] = useState<string | null>(null)
@@ -777,8 +870,9 @@ export default function SearchIndexingAdminPage() {
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <PageHeading title="Suche & Indexierung" gutterBottom />
       <GlobalScopeNote>
-        Diese Seite zeigt die aktive Konfiguration an und ändert nichts. Sie beantwortet, warum ein
-        Dokument in einer Antwort steht oder fehlt.
+        Diese Seite zeigt die aktive Konfiguration an und ändert sie nicht. Sie beantwortet, warum
+        ein Dokument in einer Antwort steht oder fehlt. Der einzige Eingriff ist das Nachrüsten der
+        Kernfelder je Bibliothek - ein bewusster Start, kein Automatismus.
       </GlobalScopeNote>
 
       {statusError && (
@@ -822,7 +916,18 @@ export default function SearchIndexingAdminPage() {
 
       <Box sx={{ mb: 4 }}>
         <SectionHead>Indexstatus je Bibliothek</SectionHead>
-        <LibraryStatusTable libraries={status?.libraries ?? []} />
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion der Kernfelder (Titel,
+          Dokumentart, Datum/Stand) tragen und wie gut jedes Feld befüllt ist. Das Nachrüsten liest
+          die Originaldateien in Chargen erneut; die Suche bleibt währenddessen verfügbar, ein
+          angehaltener Lauf setzt beim nächsten unverarbeiteten Dokument fort.
+        </Typography>
+        <LibraryStatusTable
+          libraries={status?.libraries ?? []}
+          backfillRuns={backfillRuns}
+          onStartBackfill={(libraryId) => void startMetadataBackfill(libraryId)}
+          onPauseBackfill={pauseMetadataBackfill}
+        />
       </Box>
 
       <Box sx={{ mb: 4 }}>
