@@ -308,6 +308,9 @@ public class PipelineReindexService {
           ? Advance.MARKED_FOR_NEXT_RUN
           : Advance.SKIPPED;
     }
+    // Read before the rewrite: it decides how a rewritten-but-still-fallback-labeled document is
+    // counted below - a document selected for its stale lexical index was genuinely repaired.
+    boolean hadFullTextGap = !fullTextRowsCurrent(documentId);
     boolean advanced;
     if (document.getParentDocumentId() != null) {
       // Re-runs the current pipeline over an attachment re-extracted from its root ancestor, so a
@@ -345,10 +348,30 @@ public class PipelineReindexService {
     // predicate that selected this candidate for pipelineId - even though the fresh write may
     // resolve to a different extension than the one stored before, or write no key at all when
     // detection fails transiently.
-    if (stillFallbackLabeledAfterReindex(documentId, pipelineId)) {
+    // Not applied to a document that was selected for its stale or missing lexical index (#1270):
+    // that document was genuinely repaired - its rows now carry the current version - and reporting
+    // it as skipped would understate what the call did. It cannot loop either: with the gap closed,
+    // the lexical-index branch no longer selects it, and if the routing gap alone still did, the
+    // next attempt takes the branch below and scans past it.
+    if (!hadFullTextGap && stillFallbackLabeledAfterReindex(documentId, pipelineId)) {
       return Advance.SKIPPED;
     }
     return Advance.REINDEXED;
+  }
+
+  /** Whether every chunk of {@code documentId} carries its {@code chunk_full_text} row today. */
+  private boolean fullTextRowsCurrent(UUID documentId) {
+    Long missing =
+        jdbcTemplate.queryForObject(
+            "SELECT count(*) FROM "
+                + vectorStoreTable
+                + " v WHERE v.metadata->>'document_id' = ? AND NOT EXISTS ("
+                + "  SELECT 1 FROM chunk_full_text f "
+                + "  WHERE f.chunk_id = v.id AND f.content_tsv_version = ?)",
+            Long.class,
+            documentId.toString(),
+            FullTextChunkStore.CURRENT_TSV_VERSION);
+    return missing != null && missing == 0;
   }
 
   /**

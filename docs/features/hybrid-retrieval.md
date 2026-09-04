@@ -395,8 +395,11 @@ eigenen Index wäre das bei rund 1 Mio. Chunks ein vollständiger Tabellenscan j
 Ausdrucksindex auf `metadata->>'library_id'` (#1119) trägt ihn; ein zusätzlicher Index auf den
 `::uuid`-Cast, den `fillStateForLibraries` für sein `GROUP BY` verwendet, ist gemessen nicht nötig —
 der Textindex leistet die zeilenbeschränkende Arbeit, der Cast läuft danach nur noch über die bereits
-gefilterten Zeilen. Seit #1270 wird der Füllstand nur noch auf der Administrationsseite gelesen,
-nicht mehr im Antwortpfad der Suche.
+gefilterten Zeilen. Gelesen wird er an zwei Stellen: auf der Administrationsseite bei jedem
+Seitenaufruf, und im Antwortpfad der Suche durch `FullTextIndexCompleteness` — dort nur noch
+**meldend** (die Zahl der unvollständigen Bibliotheken im Erklärprotokoll), seit das frühere Tor mit
+#1270 entfallen ist. Die Cache-Regel dieser zweiten Aufrufstelle ist unverändert: eine vollständige
+Bibliothek für die Prozesslaufzeit, eine unvollständige höchstens 60 Sekunden.
 
 Auf einer Neuinstallation entsteht dieser Index erst beim **zweiten** Anwendungsstart: `vector_store`
 wird von Spring AI erst nach Liquibase angelegt, das Changeset überspringt sich deshalb beim ersten

@@ -544,6 +544,52 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(chunkIdsOf(document.getId())).isEqualTo(chunkIdsAfterFirstCall);
   }
 
+  /**
+   * #1270 Nachreview: a document selected purely for its stale lexical index is reported as
+   * re-indexed even when its rewritten chunks still name the fallback pipeline - it was genuinely
+   * repaired, and the loop protection that counts such a document as skipped exists for the routing
+   * gap, which is not why this one was selected.
+   */
+  @Test
+  void aDocumentRepairedOnlyForItsStaleFullTextRowsCountsAsReindexedNotSkipped()
+      throws IOException {
+    DocumentPipeline pdfPipeline = pdfPipeline();
+    Document document =
+        persistedFilesystemTextDocumentNamedLikePdf(
+            "bericht.pdf", "Dies ist kein PDF, sondern reiner Text. ");
+    // NO_ROUTING_EXTENSION excludes this chunk from the routing-gap branch, so only the stale
+    // full-text row can select it - while a re-index still writes fallback-labeled chunks.
+    UUID chunkId =
+        seedChunk(
+            document.getId(),
+            library.getId(),
+            "alter chunk",
+            TikaFallbackPipeline.ID,
+            TikaFallbackPipeline.VERSION,
+            ChunkPipelineMetadata.NO_ROUTING_EXTENSION);
+    jdbcTemplate.update(
+        "UPDATE chunk_full_text SET content_tsv_version = ? WHERE chunk_id = ?",
+        (short) (FullTextChunkStore.CURRENT_TSV_VERSION - 1),
+        chunkId);
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    assertThat(result.skippedDocuments()).isZero();
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackPipeline.ID);
+    assertThat(currentVersionFullTextRowsOf(document.getId()))
+        .isEqualTo(chunkTextsOf(document.getId()).size())
+        .isPositive();
+    // And it terminates: with the gap closed, nothing selects the document again.
+    assertThat(
+            reindexService
+                .reindexBatch(Organization.DEFAULT_ID, pdfPipeline.id(), pdfPipeline.version(), 10)
+                .isEmpty())
+        .isTrue();
+  }
+
   private List<String> chunkIdsOf(UUID documentId) {
     return jdbcTemplate.queryForList(
         "SELECT id FROM vector_store WHERE metadata->>'document_id' = ? ORDER BY id",
