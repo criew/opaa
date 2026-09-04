@@ -73,8 +73,7 @@ public record RerankProperties(
 
   /**
    * The base address as far as it may be shown, stored or logged: an address carrying userinfo is
-   * replaced rather than reproduced (#1147). {@link RerankModelRole} rejects such an address
-   * outright; this is the second line, so that no accidental description ever prints one.
+   * replaced rather than reproduced.
    */
   String safeBaseUrl() {
     return ModelEndpointUri.containsCredentials(baseUrl)

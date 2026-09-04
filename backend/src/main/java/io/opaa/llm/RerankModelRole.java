@@ -44,9 +44,9 @@ public class RerankModelRole implements RerankRoleStatusProvider {
   private final RerankClient client;
 
   /**
-   * Whether {@code opaa.rerank.base-url} carries userinfo (#1147). Such an address is refused
-   * rather than stripped, and it leaves the role unusable exactly as an unset one does - the
-   * application still starts, for the same reason a broken endpoint does not fail it.
+   * Whether {@code opaa.rerank.base-url} carries userinfo. Such an address leaves the role unusable
+   * exactly as an unset one does; the application still starts, for the same reason a broken
+   * endpoint does not fail it.
    */
   private final boolean baseUrlRejected;
 

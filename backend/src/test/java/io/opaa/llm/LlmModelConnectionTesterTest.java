@@ -76,7 +76,12 @@ class LlmModelConnectionTesterTest {
                 tester.test(
                     "https://" + secret + "@modellserver.example.internal/v1", "m", null, null))
         .isInstanceOf(ValidationException.class)
-        .satisfies(e -> assertThat(e.getMessage()).doesNotContain(secret));
+        .satisfies(
+            e ->
+                assertThat(e.getMessage())
+                    .doesNotContain(secret)
+                    .doesNotContain("geheim")
+                    .doesNotContain("modellserver.example.internal"));
   }
 
   @Test

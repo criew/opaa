@@ -4,19 +4,12 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 /**
- * The shared handling of an operator-entered base address, for every model role alike (#1147).
- *
- * <p>Appends an API path: a trailing slash on the base URL is tolerated and never doubled, and any
- * query string (e.g. an Azure {@code api-version} parameter) is preserved and moved behind the
- * appended path instead of ending up in the middle of it.
- *
- * <p><b>An address carrying userinfo is rejected, never stripped</b> ({@code
- * https://user:secret@host/v1}). Stripping would accept a configuration whose stated intent - "use
- * these credentials" - is then silently not carried out; rejecting says so. The rejection text
- * deliberately does not echo the address, because it travels into exactly the API responses, log
- * lines and status displays this rule exists to keep credentials out of.
+ * The shared handling of an operator-entered base address, for every model role alike. An address
+ * carrying userinfo ({@code https://user:secret@host/v1}) is rejected, never stripped; appending a
+ * path tolerates a trailing slash without doubling it and keeps any query string last (see
+ * docs/features/llm-integration.md for the reasoning behind both).
  */
-final class ModelEndpointUri {
+public final class ModelEndpointUri {
 
   /** German, user-facing rejection text; never contains the rejected address itself. */
   static final String CREDENTIALS_REJECTED_MESSAGE =
@@ -31,7 +24,7 @@ final class ModelEndpointUri {
    * textually rather than passed through as "not a URI": a rejection rule that only covers
    * well-formed addresses is no rejection rule.
    */
-  static boolean containsCredentials(String baseUrl) {
+  public static boolean containsCredentials(String baseUrl) {
     if (baseUrl == null) {
       return false;
     }

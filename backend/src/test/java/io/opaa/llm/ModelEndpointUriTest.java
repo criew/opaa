@@ -57,9 +57,18 @@ class ModelEndpointUriTest {
         .hasToString("http://host/v1/rerank?api-version=2024-02-01");
   }
 
-  /** The message travels into API responses and log lines and must not carry an address. */
+  /**
+   * The message travels into API responses and log lines: it names the rule and must not reproduce
+   * any part of the address it rejects - not the user, not the password, not the host.
+   */
   @Test
-  void theRejectionTextNamesTheRuleWithoutQuotingAnAddress() {
-    assertThat(ModelEndpointUri.CREDENTIALS_REJECTED_MESSAGE).contains("Anmeldedaten");
+  void theRejectionTextNamesTheRuleWithoutQuotingTheRejectedAddress() {
+    String message = ModelEndpointUri.CREDENTIALS_REJECTED_MESSAGE;
+
+    assertThat(message).contains("Anmeldedaten");
+    assertThat(message)
+        .doesNotContain("benutzer:geheim")
+        .doesNotContain("geheim")
+        .doesNotContain("modellserver.example.internal");
   }
 }

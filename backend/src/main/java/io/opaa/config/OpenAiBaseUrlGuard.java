@@ -1,12 +1,13 @@
 package io.opaa.config;
 
+import io.opaa.llm.ModelEndpointUri;
 import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.util.StringUtils;
 
 /**
- * Refuses to start when the base URL for a function is blank.
+ * Refuses to start when the base URL for a function is blank or carries credentials.
  *
  * <p>{@code openai} is a protocol name, not a vendor name: locally operated model servers (Ollama
  * included, via its own {@code /v1} endpoint) expose the same API, and since #762 it is the only
@@ -42,7 +43,21 @@ public class OpenAiBaseUrlGuard {
     if (!OPENAI_PROVIDER.equalsIgnoreCase(provider)) {
       return;
     }
-    if (StringUtils.hasText(environment.getProperty(baseUrlProperty))) {
+    String baseUrl = environment.getProperty(baseUrlProperty);
+    if (ModelEndpointUri.containsCredentials(baseUrl)) {
+      // #1147: the address reaches log files on its own - Spring's ResourceAccessException carries
+      // the target URI in its message, and io.opaa.indexing.FileProcessingService logs the whole
+      // stack trace of a failed embedding call. The address itself is never named here.
+      throw new IllegalStateException(
+          """
+          The base URL configured for the %s function carries credentials \
+          (https://user:secret@host/v1). Configure the address without them and supply the access \
+          key via OPAA_OPENAI_API_KEY or %s instead - a base URL is written to log files and \
+          status output and is not treated as a secret anywhere. \
+          See docs/handbuch/deployment.md."""
+              .formatted(function, specificVariable.replace("_BASE_URL", "_API_KEY")));
+    }
+    if (StringUtils.hasText(baseUrl)) {
       return;
     }
     throw new IllegalStateException(

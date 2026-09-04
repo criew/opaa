@@ -16,11 +16,9 @@ package io.opaa.llm;
  *     TLS). A reachable-but-slow CPU reranker must read differently from a genuinely unreachable
  *     one on the state page (#1154), even though {@code state} is {@link
  *     RerankRoleState#UNREACHABLE} for both. Always {@code false} outside that state.
- * @param baseUrlRejected whether the configured base address was refused because it carried
- *     credentials (#1147). Distinguishes "nothing was configured" from "what was configured cannot
- *     be used" - two different remedies - while {@code baseUrl} stays {@code null} either way,
- *     since a rejected address may not be shown. Only ever {@code true} for {@link
- *     RerankRoleState#UNCONFIGURED}.
+ * @param baseUrlRejected whether the configured base address was refused for carrying credentials.
+ *     {@code baseUrl} stays {@code null} either way, since a rejected address may not be shown.
+ *     Only ever {@code true} for {@link RerankRoleState#UNCONFIGURED}.
  */
 public record RerankRoleStatus(
     RerankRoleState state,

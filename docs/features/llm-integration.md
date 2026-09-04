@@ -285,8 +285,20 @@ wiederholt den beanstandeten Anteil dabei nicht, weil die Fehlermeldung selbst w
 Log wandert. Der Zugangsschlüssel gehört in das dafür vorgesehene Feld (Chat-Rolle) bzw. in
 `OPAA_RERANK_API_KEY` (Rerank-Rolle); er wird als `Authorization`-Kopfzeile gesendet.
 
-Die Einbettungs-Rolle führt heute keine eigene Basis-Adresse (`io.opaa.llm.EmbeddingInfoService`
-liest Anbieter, Modell-Kennung und Dimensionszahl) und ist deshalb nicht betroffen.
+Die Prüfung greift **beim Schreiben** — beim Anlegen und Ändern eines Modells, beim Verbindungstest,
+bei der einmaligen Übernahme aus der Umgebungskonfiguration und beim Start für die
+Umgebungs-Basis-Adressen. Eine Maskierung auf der Leseseite gibt es bewusst nicht: Es existieren
+keine Bestandsinstallationen mit bereits gespeicherten Adressen, und eine zweite Darstellungsschicht
+für einen Fall, den es nicht gibt, wäre Aufwand ohne Nutzen.
+
+Die Einbettungs-Rolle führt **keine Basis-Adresse in Anzeige, Audit oder Schnittstelle**:
+`io.opaa.llm.EmbeddingInfoService` liest nur Anbieter, Modell-Kennung und Dimensionszahl. Eine
+Basis-Adresse hat sie aber sehr wohl — `OPAA_OPENAI_EMBEDDING_BASE_URL` —, und diese verlässt den
+Prozess auch: Ein fehlgeschlagener Einbettungsaufruf trägt die Ziel-Adresse im Meldungstext der
+Spring-Ausnahme und landet mit dem Stacktrace im Log. Sie wird deshalb beim Start geprüft
+(`io.opaa.config.OpenAiBaseUrlGuard`, gemeinsam mit der Chat-Basis-Adresse aus derselben
+Umgebungskonfiguration) — hier ist ein **Startabbruch** richtig, anders als bei der Rerank-Rolle:
+Ohne Einbettungen findet die Suche nichts, es gibt also keinen sinnvoll eingeschränkten Weiterbetrieb.
 
 ### Ein Anbindungsweg, nicht zwei
 
