@@ -4,8 +4,8 @@ import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.CoreMetadataField;
+import io.opaa.indexing.metadata.MetadataValueDisplay;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,13 +24,6 @@ public record ChatSourceMetadataEntry(
     MetadataOrigin origin,
     DatePrecision datePrecision) {
 
-  static final String TITLE_LABEL = "Titel";
-  static final String DOCUMENT_TYPE_LABEL = "Dokumentart";
-  static final String DOCUMENT_DATE_LABEL = "Datum/Stand";
-
-  private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-  private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MM/yyyy");
-
   /** The core fields of {@code core} in schema order; empty (not null-padded) for absent fields. */
   public static List<ChatSourceMetadataEntry> fromCore(CoreMetadata core) {
     List<ChatSourceMetadataEntry> entries = new ArrayList<>(3);
@@ -41,7 +34,7 @@ public record ChatSourceMetadataEntry(
       entries.add(
           new ChatSourceMetadataEntry(
               CoreMetadataField.TITLE.key(),
-              TITLE_LABEL,
+              CoreMetadataField.TITLE.label(),
               core.title(),
               core.title(),
               core.titleOrigin(),
@@ -51,7 +44,7 @@ public record ChatSourceMetadataEntry(
       entries.add(
           new ChatSourceMetadataEntry(
               CoreMetadataField.DOCUMENT_TYPE.key(),
-              DOCUMENT_TYPE_LABEL,
+              CoreMetadataField.DOCUMENT_TYPE.label(),
               core.documentTypeCode(),
               core.documentTypeLabel() != null ? core.documentTypeLabel() : core.documentTypeCode(),
               core.documentTypeOrigin(),
@@ -61,7 +54,7 @@ public record ChatSourceMetadataEntry(
       entries.add(
           new ChatSourceMetadataEntry(
               CoreMetadataField.DOCUMENT_DATE.key(),
-              DOCUMENT_DATE_LABEL,
+              CoreMetadataField.DOCUMENT_DATE.label(),
               core.documentDate().toString(),
               displayDate(core.documentDate(), core.documentDatePrecision()),
               core.documentDateOrigin(),
@@ -72,13 +65,6 @@ public record ChatSourceMetadataEntry(
 
   /** "12.03.2026", "03/2026" or "2024" - a date at its own precision, never a padded day. */
   static String displayDate(LocalDate date, DatePrecision precision) {
-    if (precision == null) {
-      return DAY.format(date);
-    }
-    return switch (precision) {
-      case DAY -> DAY.format(date);
-      case MONTH -> MONTH.format(date);
-      case YEAR -> Integer.toString(date.getYear());
-    };
+    return MetadataValueDisplay.displayDate(date, precision);
   }
 }

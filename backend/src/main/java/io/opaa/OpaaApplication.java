@@ -5,9 +5,13 @@ import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.pipeline.mail.MailProperties;
 import io.opaa.indexing.pipeline.office.OdfProperties;
 import io.opaa.indexing.pipeline.tabular.TabularProperties;
+import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookProperties;
+import io.opaa.indexing.source.filesystem.FilesystemProperties;
 import io.opaa.indexing.source.web.CrawlProperties;
+import io.opaa.library.AttachmentExtractionProperties;
+import io.opaa.library.LibraryProperties;
 import io.opaa.library.RemoteContentProperties;
 import io.opaa.library.UploadProperties;
 import io.opaa.llm.RerankProperties;
@@ -23,12 +27,16 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   IndexingProperties.class,
   AuthProperties.class,
   UploadProperties.class,
+  LibraryProperties.class,
   CredentialsEncryptionProperties.class,
   RemoteContentProperties.class,
+  AttachmentExtractionProperties.class,
   SettingsEncryptionProperties.class,
   CrawlProperties.class,
   ConfluenceProperties.class,
   ConfluenceWebhookProperties.class,
+  FilesystemProperties.class,
+  AttachmentProperties.class,
   TabularProperties.class,
   MailProperties.class,
   OdfProperties.class,

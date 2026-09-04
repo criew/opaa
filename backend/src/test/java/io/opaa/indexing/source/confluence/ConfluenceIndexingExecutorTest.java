@@ -261,7 +261,8 @@ class ConfluenceIndexingExecutorTest {
         new BoundedDownloader(TargetAddressValidator.disabled()),
         fileProcessingService,
         storageQuotaService,
-        documentRepository);
+        documentRepository,
+        new io.opaa.indexing.source.attachment.AttachmentProperties(5));
   }
 
   private String pagePath(ConfluenceEdition edition, String spaceKey, String id) {

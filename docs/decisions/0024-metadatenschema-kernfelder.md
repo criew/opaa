@@ -110,6 +110,15 @@ Quellenreihenfolge (Version 1, `CoreMetadataExtractor.EXTRACTION_VERSION`):
   Stand. Ein falsch gelesenes Datum mit Herkunft `DETERMINISTIC` wäre genau der unsichtbare Dauerschaden,
   den die Spezifikation ausschließt.
 
+Die Quellenreihenfolge der **Dokumentart** ist mit #1263 auf Version 2 erweitert worden (Dateiname →
+Dokumentkopf → Dateiformat, samt Kompositum-Endungsregel im Seed) und mit #1289 auf Version 3
+korrigiert: Aus dem Dokument zählt nur noch die **Titelzeile**, nicht mehr der ganze Kopfbereich —
+eine Erwähnung darunter (Beschriftung, Zitat, Abschnittsüberschrift) ist eine Referenz auf ein
+anderes Dokument. Maßgeblich ist dafür
+[Umgesetzt (#1263)](../features/metadata-schema.md#umgesetzt-1263). Die Entscheidungen dieses ADR —
+exakte Abbildung gegen ein geseedetes Vokabular, kein Wert außerhalb davon, keine
+Ähnlichkeitsabbildung — gelten unverändert.
+
 Die Extraktion läuft ohne Personenrechtekontext (Beschluss 1 des Maintainers, Epic #1065): Sie zeigt
 niemandem Inhalte, sie liest, was der Ingest ohnehin liest. Die Rechte-Invariante der Spezifikation gilt
 für Aggregate, Stichproben und die modellgestützte Extraktion.

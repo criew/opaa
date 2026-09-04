@@ -9,8 +9,10 @@ import type {
   ChatSummary,
   ChatUpdateRequest,
   EmbeddingInfoResponse,
+  MetadataBackfillRequest,
+  MetadataBackfillResponse,
   SearchStatusResponse,
-  SearchPermissionProfileResponse,
+  SearchDiagnosisContextResponse,
   SearchDiagnosisRequest,
   SearchDiagnosisResponse,
   ChunkInspectionResponse,
@@ -21,6 +23,7 @@ import type {
   HealthResponse,
   IndexingRunListResponse,
   IndexingStatusResponse,
+  LibraryDiagnosticsLockResponse,
   LibraryDocumentPageResponse,
   LibraryDocumentResponse,
   LibraryFolderRenameRequest,
@@ -55,6 +58,13 @@ import type {
   ConfluenceSpaceListResponse,
   IndexingRunMode,
   ConfluenceWebhookSecretResponse,
+  BulkMetadataValueRequest,
+  BulkMetadataValueResponse,
+  DocumentMetadataFieldResponse,
+  DocumentMetadataResponse,
+  DocumentTypeVocabularyResponse,
+  LibraryMetadataMaintenanceResponse,
+  MetadataValueRequest,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
 import { setupAuthInterceptors } from './apiInterceptors'
@@ -648,6 +658,21 @@ export async function updateLibrary(
   }
 }
 
+export async function updateLibraryDiagnosticsLock(
+  libraryId: string,
+  locked: boolean,
+): Promise<LibraryDiagnosticsLockResponse> {
+  try {
+    const { data } = await client.put<LibraryDiagnosticsLockResponse>(
+      `/v1/libraries/${libraryId}/diagnostics-lock`,
+      { locked },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 export async function deleteLibrary(libraryId: string): Promise<void> {
   try {
     await client.delete(`/v1/libraries/${libraryId}`)
@@ -658,7 +683,13 @@ export async function deleteLibrary(libraryId: string): Promise<void> {
 
 export async function getLibraryDocuments(
   libraryId: string,
-  options?: { page?: number; size?: number; q?: string; folderId?: string | null },
+  options?: {
+    page?: number
+    size?: number
+    q?: string
+    folderId?: string | null
+    missingMetadataField?: string | null
+  },
 ): Promise<LibraryDocumentPageResponse> {
   try {
     const { data } = await client.get<LibraryDocumentPageResponse>(
@@ -676,6 +707,8 @@ export async function getLibraryDocuments(
           // folderId param) - dropped here the same way q is above, rather than sent as the string
           // "null".
           folderId: options?.folderId || undefined,
+          // #1069: the Pflege-Anker's list - dropped when absent, like q above.
+          missingMetadataField: options?.missingMetadataField || undefined,
         },
       },
     )
@@ -866,6 +899,88 @@ export async function deleteLibraryDocument(libraryId: string, documentId: strin
   }
 }
 
+// #1068: manual metadata correction - every core field of a document with its provenance.
+export async function getDocumentMetadata(
+  libraryId: string,
+  documentId: string,
+): Promise<DocumentMetadataResponse> {
+  try {
+    const { data } = await client.get<DocumentMetadataResponse>(
+      `/v1/libraries/${libraryId}/documents/${documentId}/metadata`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function setDocumentMetadataValue(
+  libraryId: string,
+  documentId: string,
+  fieldKey: string,
+  value: MetadataValueRequest,
+): Promise<DocumentMetadataFieldResponse> {
+  try {
+    const { data } = await client.put<DocumentMetadataFieldResponse>(
+      `/v1/libraries/${libraryId}/documents/${documentId}/metadata/${fieldKey}`,
+      value,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function deleteDocumentMetadataValue(
+  libraryId: string,
+  documentId: string,
+  fieldKey: string,
+): Promise<void> {
+  try {
+    await client.delete(`/v1/libraries/${libraryId}/documents/${documentId}/metadata/${fieldKey}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function bulkSetDocumentMetadata(
+  libraryId: string,
+  request: BulkMetadataValueRequest,
+): Promise<BulkMetadataValueResponse> {
+  try {
+    const { data } = await client.post<BulkMetadataValueResponse>(
+      `/v1/libraries/${libraryId}/documents/metadata/bulk`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** #1069: the Pflege-Anker of a library - "N Dokumente ohne Wert" per core field. */
+export async function getLibraryMetadataMaintenance(
+  libraryId: string,
+): Promise<LibraryMetadataMaintenanceResponse> {
+  try {
+    const { data } = await client.get<LibraryMetadataMaintenanceResponse>(
+      `/v1/libraries/${libraryId}/metadata/maintenance`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function getDocumentTypeVocabulary(): Promise<DocumentTypeVocabularyResponse> {
+  try {
+    const { data } = await client.get<DocumentTypeVocabularyResponse>('/v1/metadata/document-types')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 export async function getLibraryGrants(libraryId: string): Promise<AssetGrantResponse[]> {
   try {
     const { data } = await client.get<AssetGrantResponse[]>(`/v1/libraries/${libraryId}/grants`)
@@ -1020,10 +1135,34 @@ export async function getSearchStatus(): Promise<SearchStatusResponse> {
   }
 }
 
-export async function getSearchPermissionProfiles(): Promise<SearchPermissionProfileResponse[]> {
+/**
+ * One batch of the deterministic core-metadata backfill of a library (#1067). Repeated until
+ * `done`; the remaining work is re-derived server-side on every call, so stopping the repetition
+ * is the pause and the next call the resumption.
+ */
+export async function runMetadataBackfillBatch(
+  request: MetadataBackfillRequest,
+): Promise<MetadataBackfillResponse> {
   try {
-    const { data } = await client.get<SearchPermissionProfileResponse[]>(
-      '/v1/admin/search/permission-profiles',
+    const { data } = await client.post<MetadataBackfillResponse>(
+      '/v1/admin/indexing/metadata-backfill',
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * The rights contexts this administrator may choose between - the profiles, and whether they hold
+ * the "Sicht als" befugnis for the person context. The answer only shapes the form; the diagnosis
+ * endpoint checks the befugnis again on every run.
+ */
+export async function getSearchDiagnosisContext(): Promise<SearchDiagnosisContextResponse> {
+  try {
+    const { data } = await client.get<SearchDiagnosisContextResponse>(
+      '/v1/admin/search/diagnosis-context',
     )
     return data
   } catch (err) {

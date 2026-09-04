@@ -40,6 +40,50 @@ class OpenAiBaseUrlGuardTest {
         .run(context -> assertThat(context).hasNotFailed());
   }
 
+  /**
+   * The embedding base URL is a live runtime address, and a failed embedding call carries it into
+   * the log: Spring's {@code ResourceAccessException} names the target URI, and {@code
+   * FileProcessingService} logs the whole stack trace. Refused at startup, and the refusal itself
+   * must not repeat the address.
+   */
+  @Test
+  void refusesToStartWhenTheEmbeddingBaseUrlCarriesCredentials() {
+    contextRunner
+        .withPropertyValues(
+            "spring.ai.model.chat=none",
+            "spring.ai.model.embedding=openai",
+            "spring.ai.openai.embedding.base-url=https://benutzer:geheim@modellserver.example.internal/v1")
+        .run(
+            context ->
+                assertThat(context)
+                    .hasFailed()
+                    .getFailure()
+                    .rootCause()
+                    .hasMessageContaining("carries credentials")
+                    .hasMessageContaining("embedding")
+                    .hasMessageContaining("OPAA_OPENAI_EMBEDDING_API_KEY")
+                    .hasMessageNotContaining("geheim")
+                    .hasMessageNotContaining("modellserver.example.internal"));
+  }
+
+  @Test
+  void refusesToStartWhenTheChatBaseUrlCarriesCredentials() {
+    contextRunner
+        .withPropertyValues(
+            "spring.ai.model.chat=openai",
+            "spring.ai.model.embedding=none",
+            "spring.ai.openai.chat.base-url=https://benutzer:geheim@modellserver.example.internal/v1")
+        .run(
+            context ->
+                assertThat(context)
+                    .hasFailed()
+                    .getFailure()
+                    .rootCause()
+                    .hasMessageContaining("carries credentials")
+                    .hasMessageContaining("OPAA_OPENAI_CHAT_API_KEY")
+                    .hasMessageNotContaining("geheim"));
+  }
+
   @Test
   void refusesToStartWhenTheChatProviderIsOpenAiWithoutABaseUrl() {
     contextRunner

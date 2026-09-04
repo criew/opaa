@@ -125,6 +125,12 @@ public class MailDocumentPipeline implements DocumentPipeline {
         ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
   }
 
+  /**
+   * Honours {@link DocumentPipelineSource#attachmentIndex()} (#1243) by handing it to the reader:
+   * the extraction order is unchanged, but only the requested attachment is written to a temp file
+   * and reported - the whole message's worth of temporary disk an "open this attachment" click used
+   * to cost collapses to that one file.
+   */
   @Override
   public DocumentPipelineResult run(DocumentPipelineSource source) {
     if (source.file() == null) {
@@ -147,7 +153,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
             source.fileName(),
             Files.size(source.file()),
             properties.maxMessageBytes());
-        return DocumentPipelineResult.noContent();
+        return DocumentPipelineResult.parseFailed();
       }
     } catch (IOException e) {
       throw new UncheckedIOException("Could not read mail document " + source.fileName(), e);
@@ -157,8 +163,8 @@ public class MailDocumentPipeline implements DocumentPipeline {
     try {
       message =
           ".msg".equals(resolveExtension(source))
-              ? MsgReader.read(source.file(), properties)
-              : EmlReader.read(source.file(), properties);
+              ? MsgReader.read(source.file(), properties, source.attachmentIndex())
+              : EmlReader.read(source.file(), properties, source.attachmentIndex());
     } catch (IOException e) {
       throw new UncheckedIOException("Could not read mail document " + source.fileName(), e);
     }
@@ -183,6 +189,13 @@ public class MailDocumentPipeline implements DocumentPipeline {
         .withProperties(properties(message));
   }
 
+  /**
+   * A wanted index no attachment position can ever equal - {@link #readProperties} only needs the
+   * Kopfdaten, and does not run through {@link io.opaa.indexing.pipeline.DocumentPipelineRunner},
+   * so any temp file it caused a reader to write would never be deleted by anyone.
+   */
+  private static final int MATERIALIZE_NO_ATTACHMENT = -1;
+
   /** Betreff as the title and the Date header as the document's own date (ADR-0024). */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
@@ -195,8 +208,8 @@ public class MailDocumentPipeline implements DocumentPipeline {
       }
       ParsedMailMessage message =
           ".msg".equals(resolveExtension(source))
-              ? MsgReader.read(source.file(), properties)
-              : EmlReader.read(source.file(), properties);
+              ? MsgReader.read(source.file(), properties, MATERIALIZE_NO_ATTACHMENT)
+              : EmlReader.read(source.file(), properties, MATERIALIZE_NO_ATTACHMENT);
       return properties(message);
     } catch (IOException | RuntimeException e) {
       log.warn("Could not read mail properties of {}", source.fileName(), e);

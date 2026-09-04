@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.indexing.FullTextBackfillProgressService;
+import io.opaa.indexing.metadata.MetadataBackfillService;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
@@ -57,6 +58,8 @@ class SearchStatusProbeCacheTest {
       mock(LibraryDocumentStatsReader.class);
   private final FullTextBackfillProgressService backfillProgressService =
       mock(FullTextBackfillProgressService.class);
+  private final MetadataBackfillService metadataBackfillService =
+      mock(MetadataBackfillService.class);
   private final AdvanceableClock clock =
       new AdvanceableClock(Instant.parse("2026-09-01T10:00:00Z"));
 
@@ -79,6 +82,7 @@ class SearchStatusProbeCacheTest {
     when(libraryRepository.findByOrganizationId(ORGANIZATION_ID)).thenReturn(List.of());
     when(documentStatsReader.statsForOrganization(ORGANIZATION_ID)).thenReturn(Map.of());
     when(backfillProgressService.progressForLibraries(any())).thenReturn(List.of());
+    when(metadataBackfillService.progressForLibraries(any())).thenReturn(Map.of());
 
     service =
         new SearchStatusService(
@@ -90,6 +94,7 @@ class SearchStatusProbeCacheTest {
             libraryRepository,
             documentStatsReader,
             backfillProgressService,
+            metadataBackfillService,
             new QueryProperties(8, 25, 1.0, 0.0, 1.0, true, 3, 2, true, 50),
             new RetrievalPipelineProperties(Set.of()),
             clock);
@@ -176,6 +181,33 @@ class SearchStatusProbeCacheTest {
 
     assertThat(detail).contains("antwortet nicht");
     assertThat(detail).doesNotContain("OPAA_RERANK_TIMEOUT");
+  }
+
+  /**
+   * A base address refused for carrying credentials must read as such on the page (#1147), not as
+   * "nothing configured" - and the page must not reproduce the address to say it.
+   */
+  @Test
+  void aRejectedRerankBaseUrlIsNamedAsSuchWithoutShowingTheAddress() {
+    when(rerankRoleStatusProvider.currentStatus())
+        .thenReturn(
+            new RerankRoleStatus(
+                RerankRoleState.UNCONFIGURED,
+                null,
+                "bge-reranker",
+                "base URL carries credentials",
+                false,
+                true));
+
+    ModelRoleStatus rerank =
+        service.statusForOrganization(ORGANIZATION_ID).modelRoles().stream()
+            .filter(r -> r.role() == ModelRole.RERANK)
+            .findFirst()
+            .orElseThrow();
+
+    assertThat(rerank.detail()).contains("Anmeldedaten");
+    assertThat(rerank.detail()).doesNotContain("keine Rerank-Modellrolle hinterlegt");
+    assertThat(rerank.endpoint()).isNull();
   }
 
   private static ModelRoleCondition conditionOf(SearchStatus status, ModelRole role) {

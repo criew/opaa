@@ -681,6 +681,46 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/indexing/metadata-backfill:
+    post:
+      operationId: backfillMetadataBatch
+      tags: [admin, indexing]
+      summary: >
+        Re-extract the core metadata fields of one batch of a library's Altbestand from the
+        original files (system admin only, #1067, metadata-schema.md "Deterministischer
+        Bestandslauf")
+      description: >
+        Processes at most batchSize INDEXED documents of libraryId (which must belong to the
+        caller's own organization, otherwise 404) whose metadata_extraction_version is missing or
+        below the current CoreMetadataExtractor version: the original file is re-read for its
+        declared properties, the core fields are stored at the document and the filterable keys are
+        rewritten on its existing chunks - no re-chunking, no re-embedding, no model call. The
+        search stays available throughout; a document carries either its old or its new fields,
+        never a mixture. Repeat until done is true; the remaining work is re-derived from the
+        documents table on every call, so pausing is simply not calling again, and the next call
+        resumes at the next unprocessed document. A manually set value is never overwritten. A
+        system process without a person's rights context (Epic #1065, Beschluss 1). Nothing
+        triggers this automatically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MetadataBackfillRequest"
+      responses:
+        "200":
+          description: What this batch did
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataBackfillResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/admin/search/status:
     get:
       operationId: getSearchStatus
@@ -703,25 +743,26 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /api/v1/admin/search/permission-profiles:
+  /api/v1/admin/search/diagnosis-context:
     get:
-      operationId: listSearchPermissionProfiles
+      operationId: getSearchDiagnosisContext
       tags: [admin, search]
-      summary: The permission profiles the diagnosis can be run in (system admin only, #1053)
+      summary: The rights contexts the diagnosis can be run in (system admin only, #1053, #1150)
       description: >
-        A permission profile is a group together with the library set it may read - the diagnosis
-        context hybrid-retrieval.md's Berechtigungs-Leitplanken (d) names as the default one. A
-        person is deliberately not offered here: the "Sicht als (Person)" context needs the
-        Befugnis- und Protokollmodell (#1052) and is not delivered without it.
+        The permission profiles - a group together with the library set it may read, the default
+        context of hybrid-retrieval.md's Berechtigungs-Leitplanken (d) - plus whether the calling
+        administrator may choose the person context at all. The person context needs the separately
+        granted "Sicht als" befugnis (#1052); holding SYSTEM_ADMIN confers nothing here, so the
+        answer is a property of the caller and not of their role. No person is listed: the target of
+        a person context is named by id, never picked from a directory this page would have to
+        expose.
       responses:
         "200":
-          description: The permission profiles of the caller's own organization, by name
+          description: The profiles of the caller's own organization and their own person-context permission
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SearchPermissionProfileResponse"
+                $ref: "#/components/schemas/SearchDiagnosisContextResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
 
@@ -741,6 +782,13 @@ paths:
         Zugriffshistorien-Nachweis, and it applies a permission filter like every other search - it
         sets that filter differently, it never omits it. No answer is generated; the run stops
         after retrieval.
+
+
+        The person context (contextType USER, #1150) runs through ForeignDiagnosticContextService
+        and through nothing else: befugnis, mandatory justification, subtraction of
+        diagnosegesperrte libraries and the protocol entry happen in that one call. Without the
+        befugnis the answer is 403, whatever the caller's role. The result of such a run is
+        returned once and stored nowhere (Leitplanke (j)).
       requestBody:
         required: true
         content:
@@ -1582,6 +1630,23 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: missingMetadataField
+          in: query
+          required: false
+          description: >
+            The Pflege-Anker's list (#1069): a core field key (title, document_type, document_date)
+            narrowing the response to exactly the indexed documents that have no value for it - the
+            documents GET /api/v1/libraries/{libraryId}/metadata/maintenance counts. A field marked
+            "kein Wert ermittelbar" is not listed, which is what lets the list be emptied. Like q,
+            the filter is bibliotheksweit (folders and breadcrumb are empty, folderId does not
+            scope it) and combines with q. Unlike every other listing, it pages over document rows
+            rather than top-level documents: an attachment without a value is an entry of its own
+            and no document with a value is ever returned, so totalElements equals the anchor's
+            number and a Sammelzuweisung over the whole page cannot overwrite a maintained value.
+            An unknown field key is rejected with 400.
+          schema:
+            type: string
+            example: document_date
       responses:
         "200":
           description: Page of documents
@@ -1694,6 +1759,212 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata/maintenance:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLibraryMetadataMaintenance
+      tags: [library]
+      summary: >
+        The Pflege-Anker of a library (#1069, metadata-schema.md "Der Pflege-Anker"): per core
+        field, how many of the library's indexed documents have no value - absolute and as a share
+        of the bestand. Only the empty state counts; a field marked "kein Wert ermittelbar" is
+        done, which is what lets the number reach zero. The figures are counted on every request in
+        the rights context of the asking person and never precomputed or cached
+        (metadata-schema.md, Rechte-Invariante) - reading needs VIEWER on the library, correcting a
+        value keeps the EDITOR right of #1068. GET
+        /api/v1/libraries/{libraryId}/documents?missingMetadataField=... lists exactly the counted
+        documents. A library of another organization or one the caller holds no right on is absent
+        (404).
+      responses:
+        "200":
+          description: The anchor per core field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataMaintenanceResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/documents/{documentId}/metadata:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getDocumentMetadata
+      tags: [library]
+      summary: >
+        The core metadata fields of one document with the provenance of every value
+        (docs/features/metadata-schema.md, "Jeder Wert trägt seine Herkunft"; #1068). Every core
+        field is listed, an empty one with value null. Readable by everyone who may see the
+        library's document list (VIEWER or above); a document of another library or a library of
+        another organization is absent (404).
+      responses:
+        "200":
+          description: The document's core fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentMetadataResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/documents/{documentId}/metadata/{fieldKey}:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: path
+        required: true
+        description: One of the core field keys title, document_type or document_date.
+        schema:
+          type: string
+          example: document_type
+
+    put:
+      operationId: setDocumentMetadataValue
+      tags: [library]
+      summary: >
+        Set or change one core field of a document by hand (#1068, metadata-schema.md "Manuelle
+        Korrektur ist Teil des ersten Schnitts"). The stored value carries origin MANUAL, the
+        calling person as actor and the time of the call; no automatic extraction ever overwrites
+        it afterwards. The filterable keys on the document's chunks are rewritten in the same
+        transaction, without re-embedding. Requires the right to edit the library's documents
+        (EDITOR or above) - no management right at the library. Every call that changes something
+        writes one audit event (DOCUMENT_METADATA_CHANGED) with the old and the new value; an
+        identical manual value already in place changes nothing and writes no event. Validation:
+        a Dokumentart outside the vocabulary, a title that is blank, a date without precision or a
+        value of the wrong kind for the field are rejected with 400. The third state "kein Wert
+        ermittelbar" (#1069) is set through this same operation, with state NOT_DETERMINABLE and no
+        value.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MetadataValueRequest"
+      responses:
+        "200":
+          description: The field after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentMetadataFieldResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: deleteDocumentMetadataValue
+      tags: [library]
+      summary: >
+        Remove the stored value of one core field (#1068). Removes the row whatever its origin, so
+        the field is empty again and the next automatic extraction may fill it: the document's
+        extraction version is cleared in the same transaction, which hands it back to the
+        Bestandslauf (POST /api/v1/admin/indexing/metadata-backfill) - a lasting "there is no
+        value" is the third state (PUT with state NOT_DETERMINABLE), not a deletion. Deleting a
+        NOT_DETERMINABLE mark works the same way and puts the document back into the Pflege-Anker. Same right as setting a value (EDITOR
+        or above); writes one audit event carrying the removed value. Deleting an already empty
+        field is a no-op that writes no event.
+      responses:
+        "204":
+          description: Value removed (or already absent)
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/documents/metadata/bulk:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: bulkSetDocumentMetadata
+      tags: [library]
+      summary: >
+        Set one field to one value on a chosen set of this library's documents (#1068,
+        metadata-schema.md "Sammelzuweisung auf einer Auswahl"). Same right and same validation as
+        the single-document PUT; every document gets its own MANUAL value, its own chunk rewrite
+        and its own audit event with old and new value - the events of one call share a
+        correlationRef, returned in the response. An id that is not a document of this library
+        (deleted meanwhile, or belonging to another library) is rejected and listed in
+        rejectedDocumentIds - never silently skipped - while the remaining documents are still
+        processed; the whole call is one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkMetadataValueRequest"
+      responses:
+        "200":
+          description: Counters of the bulk assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BulkMetadataValueResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/metadata/document-types:
+    get:
+      operationId: listDocumentTypes
+      tags: [library]
+      summary: >
+        The controlled Dokumentart vocabulary (ADR-0024, Entscheidung 3) in display order - the
+        choice list a client offers when a person sets the field. Schema, not an aggregate over
+        documents: the list exists independently of any document and is visible to every
+        authenticated user (metadata-schema.md, Rechte-Invariante: "Die konfigurierte Werteliste
+        ... ist von dieser Regel ausgenommen").
+      responses:
+        "200":
+          description: The vocabulary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentTypeVocabularyResponse"
 
   /api/v1/libraries/{libraryId}/folders:
     parameters:
@@ -1860,7 +2131,10 @@ paths:
         no response here reveals whether a given documentId exists, nor whether "not found" means
         "no such document" or "source currently unreachable". There is no 403: VIEWER is the lowest
         AssetRole, so any grant at all already satisfies this floor - a caller either clears it or
-        has no grant, which is the 404 case above.
+        has no grant, which is the 404 case above. 429 is answered when this endpoint is under
+        load: either by its own rate limit, or - for an attachment document, whose bytes are
+        re-extracted from its parent original on every read (ADR-0022, #1243) - when too many such
+        re-extractions are already running. Both carry a German message and may be retried.
       responses:
         "200":
           description: The original file's bytes
@@ -1871,6 +2145,8 @@ paths:
                 format: binary
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/libraries/{libraryId}/grants:
     parameters:
@@ -2715,8 +2991,9 @@ paths:
         audited in turn - and, where the library is owned by a group that is not an ORG_UNIT, an
         admin can add themselves to that owning group via POST /api/v1/groups/{groupId}/members,
         which makes them the library's named responsible body and lets them lift the lock alone.
-        Group administration has no self-exclusion today; closing that path is tracked separately
-        (issue #1124). The library's named owner user, in contrast, is immutable.
+        Group administration has no self-exclusion, and that stays so by decision rather than by
+        omission (docs/features/hybrid-retrieval.md, Berechtigungs-Leitplanken (e)): both steps are
+        audited. The library's named owner user, in contrast, is immutable.
       requestBody:
         required: true
         content:
@@ -2794,10 +3071,11 @@ paths:
           in: query
           required: true
           description: >
-            Mandatory Anlass; a missing one is rejected, and the rejected attempt is itself recorded
-            in audit_log.
+            Mandatory Anlass; a missing or over-length one is rejected, and the rejected attempt is
+            itself recorded in audit_log.
           schema:
             type: string
+            maxLength: 1000
         - name: page
           in: query
           required: false
@@ -2823,6 +3101,51 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "403":
           $ref: "#/components/responses/Forbidden"
+
+  /api/v1/audit/diagnostic-context-events/{eventId}:
+    parameters:
+      - name: eventId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getDiagnosticContextEvent
+      tags: [audit]
+      summary: >
+        One already-known protocol entry, named by its own event id - the einzelfall- und
+        anlassbezogene Auswertung of Leitplanke (g), and the only place the rights snapshot of an
+        entry is published. Same bar as the Gesamtprotokoll: AUDITOR role and a mandatory reason,
+        and every call - accepted or rejected, including one naming an unreadable id - is itself
+        recorded in audit_log with that reason. This path names no person either: an event id has
+        to be known from the list before it can be asked for. What it does not do is make a
+        per-person evaluation impossible - an auditor can fetch a page's entries one by one and
+        group them by their rights snapshot; it makes every one of those fetches carry its own
+        Anlass and its own audit_log entry.
+      parameters:
+        - name: reason
+          in: query
+          required: true
+          description: >
+            Mandatory Anlass for this single entry; a missing or over-length one is rejected, and
+            the rejected attempt is itself recorded in audit_log.
+          schema:
+            type: string
+            maxLength: 1000
+      responses:
+        "200":
+          description: The single protocol entry, including its rights snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiagnosticContextEventDetailResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /api/v1/branding:
     get:
@@ -4363,7 +4686,7 @@ components:
           description: >
             Filesystem directory to crawl - only for sourceType FILESYSTEM. Must be an absolute
             path, and must resolve underneath one of the operator-configured allowlist base
-            directories (opaa.indexing.filesystem-allowlist, #484/ADR-0018 Entscheidung 6) -
+            directories (opaa.indexing.filesystem.allowlist, #484/ADR-0018 Entscheidung 6) -
             otherwise rejected with 400. An empty allowlist disables sourceType FILESYSTEM
             entirely.
           example: /data/documents/rechtsquellen
@@ -4466,7 +4789,7 @@ components:
           description: >
             Only for sourceType FILESYSTEM. Must be an absolute path, and must resolve
             underneath one of the operator-configured allowlist base directories
-            (opaa.indexing.filesystem-allowlist, #484/ADR-0018 Entscheidung 6) - otherwise
+            (opaa.indexing.filesystem.allowlist, #484/ADR-0018 Entscheidung 6) - otherwise
             rejected with 400, without touching the filesystem at all. An empty allowlist
             disables sourceType FILESYSTEM entirely, identical to LibraryRequest.sourcePath.
           example: /data/documents/rechtsquellen
@@ -4741,7 +5064,7 @@ components:
           description: >
             Filesystem directory to crawl - only for sourceType FILESYSTEM. Must be an absolute
             path, and must resolve underneath one of the operator-configured allowlist base
-            directories (opaa.indexing.filesystem-allowlist, #484/ADR-0018 Entscheidung 6) -
+            directories (opaa.indexing.filesystem.allowlist, #484/ADR-0018 Entscheidung 6) -
             otherwise rejected with 400. An empty allowlist disables sourceType FILESYSTEM
             entirely.
           example: /data/documents/rechtsquellen
@@ -5032,6 +5355,26 @@ components:
             document regardless of who uploaded or indexed it - never broken down per user (#216,
             "kein personenbezogener Auswertungspfad"). Set only if myRole is at least MANAGER
             (#507) - see sourcePath above for why.
+        diagnosticsLocked:
+          type: boolean
+          description: >
+            Whether this library is diagnosegesperrt (Leitplanke (e) of
+            docs/features/hybrid-retrieval.md) - the read path for the state that
+            PUT /api/v1/libraries/{libraryId}/diagnostics-lock sets, which until now was visible
+            only in that endpoint's own response, immediately after setting it. Every library
+            starts locked, including every pre-existing one, so a client renders this value rather
+            than assuming an unlocked default. Visible to everyone who may read the library: it
+            says that a locked area exists, never anything from inside it.
+        diagnosticsLockToggleable:
+          type: boolean
+          description: >
+            Whether the caller themselves may call PUT /api/v1/libraries/{libraryId}/diagnostics-lock
+            on this library right now - LibraryAccessService#holdsIndependentOwnerRole evaluated for
+            the caller, not merely "myRole is OWNER". The two diverge for a system admin: myRole
+            bypasses to OWNER unconditionally (see myRole above), but holdsIndependentOwnerRole never
+            does, so an admin without a self-issued or independently-held OWNER grant sees false
+            here even though myRole reads OWNER (#1278 review). A client uses this, not myRole, to
+            decide whether to offer the toggle at all.
         createdAt:
           type: string
           format: date-time
@@ -5328,6 +5671,267 @@ components:
           items:
             $ref: "#/components/schemas/LibraryFolderBreadcrumbItem"
 
+    MetadataValueRequest:
+      type: object
+      description: >-
+        The value a person sets for one core field (#1068): exactly one of textValue (title),
+        vocabularyCode (document_type) or dateValue plus datePrecision (document_date), matching the
+        field addressed - or, with state NOT_DETERMINABLE and no value at all, the third state
+        "kein Wert ermittelbar" (#1069).
+      properties:
+        state:
+          type: string
+          enum: [SET, NOT_DETERMINABLE]
+          description: >-
+            SET - also the meaning of an absent state - stores the value given below. NOT_DETERMINABLE records that a person
+            established there is no value to find: valid for every core field, rejected with 400
+            together with any value, stored with origin MANUAL and the calling person as actor, and
+            never written or cleared by an automatic extraction. For filters and the Beleg it
+            behaves like an empty field; the Pflege-Anker does not count it.
+        textValue:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: The title text; blank is rejected.
+          example: Dienstanweisung zur IT-Nutzung
+        vocabularyCode:
+          type: string
+          nullable: true
+          description: A code of the Dokumentart vocabulary; anything else is rejected with 400.
+          example: DIENSTANWEISUNG
+        dateValue:
+          type: string
+          nullable: true
+          pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          description: >-
+            The ISO-8601 calendar date; an impossible date is rejected with 400. Padded
+            server-side to the first day of what datePrecision leaves unknown.
+          example: "2026-03-12"
+        datePrecision:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/DatePrecision"
+          description: Required together with dateValue.
+
+    MetadataFieldState:
+      type: string
+      description: >-
+        The three states a core field of a document can be in (#1069, metadata-schema.md "Kein Wert
+        ermittelbar ist ein dritter Zustand"): EMPTY (not yet established - the open rest the
+        Pflege-Anker counts), SET (a value is present) and NOT_DETERMINABLE (a person established
+        there is none). NOT_DETERMINABLE behaves like EMPTY for filters and the Beleg-Anzeige, but
+        is done, not open.
+      enum: [EMPTY, SET, NOT_DETERMINABLE]
+
+    DocumentMetadataFieldResponse:
+      type: object
+      required: [fieldKey, label, state]
+      description: >-
+        One core field of a document with everything metadata-schema.md demands a value to carry
+        ("Jeder Wert trägt seine Herkunft"). An empty field has value, displayValue and origin
+        null; so does a NOT_DETERMINABLE one, which state tells apart from it.
+      properties:
+        fieldKey:
+          type: string
+          example: document_type
+        state:
+          $ref: "#/components/schemas/MetadataFieldState"
+        label:
+          type: string
+          description: The German field label.
+          example: Dokumentart
+        value:
+          type: string
+          nullable: true
+          description: >-
+            The machine-readable value - vocabulary code, ISO-8601 date or the text itself; null
+            when the field is empty.
+        displayValue:
+          type: string
+          nullable: true
+          description: >-
+            What a client shows - the German vocabulary label, or the date at its own precision.
+        origin:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/MetadataOrigin"
+        datePrecision:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/DatePrecision"
+        confidence:
+          type: number
+          format: double
+          nullable: true
+          description: Only for a DERIVED value.
+        modelId:
+          type: string
+          nullable: true
+          description: Only for a DERIVED value.
+        extractionVersion:
+          type: integer
+          nullable: true
+          description: Set for every non-manual value.
+        actorUserId:
+          type: string
+          format: uuid
+          nullable: true
+          description: The person who set a MANUAL value.
+        actorDisplayName:
+          type: string
+          nullable: true
+          description: >-
+            The display name of that person, null when the account no longer exists.
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the current value was written.
+
+    DocumentMetadataResponse:
+      type: object
+      required: [documentId, fields]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        fields:
+          type: array
+          description: Every core field in schema order (Titel, Dokumentart, Datum/Stand).
+          items:
+            $ref: "#/components/schemas/DocumentMetadataFieldResponse"
+
+    BulkMetadataValueRequest:
+      type: object
+      required: [fieldKey, value, documentIds]
+      properties:
+        fieldKey:
+          type: string
+          description: The core field to set on every listed document.
+          example: document_type
+        value:
+          $ref: "#/components/schemas/MetadataValueRequest"
+        documentIds:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          description: >-
+            The chosen documents - ids taken from this library's own document list. Duplicates are
+            processed once.
+          items:
+            type: string
+            format: uuid
+
+    BulkMetadataValueResponse:
+      type: object
+      required: [updatedCount, unchangedCount, rejectedDocumentIds, correlationRef]
+      properties:
+        updatedCount:
+          type: integer
+          description: Documents whose value was set or changed - one audit event each.
+        unchangedCount:
+          type: integer
+          description: >-
+            Documents that already carried exactly this manual value; nothing written, no event.
+        rejectedDocumentIds:
+          type: array
+          description: >-
+            Ids that are not documents of this library; none of them was touched.
+          items:
+            type: string
+            format: uuid
+        correlationRef:
+          type: string
+          description: >-
+            The correlationRef every audit event of this call carries, so the whole bulk
+            assignment can be read back from the audit log as one operation.
+
+    MetadataFieldMaintenanceResponse:
+      type: object
+      description: >-
+        The Pflege-Anker of one core field in one library (#1069, metadata-schema.md "Der
+        Pflege-Anker"): how many of the library's indexed documents still have no value for it -
+        absolute and as a share, both side by side, because "120 ohne Wert" means something
+        different at 130 than at 12.000 documents. documentsWithoutValue counts only the empty
+        state: a field marked "kein Wert ermittelbar" is done, which is what lets the number reach
+        zero.
+      required:
+        [
+          fieldKey,
+          label,
+          totalDocuments,
+          documentsWithoutValue,
+          missingShare,
+          filledDocuments,
+          notDeterminableDocuments,
+        ]
+      properties:
+        fieldKey:
+          type: string
+          example: document_date
+        label:
+          type: string
+          description: The German field label.
+          example: Datum/Stand
+        totalDocuments:
+          type: integer
+          format: int64
+          description: The library's indexed documents - the base of missingShare.
+        documentsWithoutValue:
+          type: integer
+          format: int64
+          description: Documents with neither a value nor a "kein Wert ermittelbar" mark.
+        missingShare:
+          type: number
+          format: double
+          description: documentsWithoutValue / totalDocuments, in 0..1; 0 for an empty library.
+        filledDocuments:
+          type: integer
+          format: int64
+        notDeterminableDocuments:
+          type: integer
+          format: int64
+          description: Documents a person marked as having no value to find.
+
+    LibraryMetadataMaintenanceResponse:
+      type: object
+      description: >-
+        The Pflege-Anker of one library (#1069), one entry per core field in schema order. Built at
+        query time in the rights context of the asking person and never precomputed or cached
+        (metadata-schema.md, Rechte-Invariante).
+      required: [libraryId, totalDocuments, fields]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        totalDocuments:
+          type: integer
+          format: int64
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataFieldMaintenanceResponse"
+
+    DocumentTypeVocabularyEntryResponse:
+      type: object
+      required: [code, label]
+      properties:
+        code:
+          type: string
+          example: DIENSTANWEISUNG
+        label:
+          type: string
+          example: Dienstanweisung
+
+    DocumentTypeVocabularyResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentTypeVocabularyEntryResponse"
+
     LowChunkDocumentResponse:
       type: object
       required: [documentId, libraryId, libraryName, fileName, chunkCount]
@@ -5515,6 +6119,169 @@ components:
             ignores skippedDocuments: a call that only skipped is exactly the "nothing further is
             possible right now" state, and repeating it would retry the same unreachable documents
             forever.
+
+    MetadataBackfillRequest:
+      type: object
+      required: [libraryId]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+          description: >
+            The library whose Altbestand is to be nachgerüstet. Per library on purpose: starting the
+            run is the explicit, library-wise release the specification demands, never a side
+            effect of anything else.
+        batchSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: >
+            The maximum number of documents one call processes. Repeat until done is true; an
+            interrupted run loses at most one batch, and every finished document keeps its result.
+
+    MetadataBackfillResponse:
+      type: object
+      required: [processedDocuments, markedForNextRun, skippedDocuments, done]
+      properties:
+        processedDocuments:
+          type: integer
+          description: >
+            Documents whose original file (or, for an RSS entry, its stored headline and publication
+            date) was re-read on the spot: core fields stored at the document, filterable keys
+            rewritten on its chunks, extraction version recorded - one transaction per document.
+        markedForNextRun:
+          type: integer
+          description: >
+            Documents whose source is remote and can only be re-read by their own connector run;
+            marked so that run re-reads them, which re-extracts the core fields on every inflow. They
+            stay pending in the status figures until that run happens.
+        skippedDocuments:
+          type: integer
+          description: >
+            Documents this call could not advance: the file lies outside what this deployment may
+            read, has vanished, or its re-extraction failed this time. Nothing about such a document
+            changes - it keeps its old fields and chunks, stays pending, and is tried again on the
+            next call. Also reported per library as lastSkippedDocuments in the status display.
+        done:
+          type: boolean
+          description: >
+            True when this call advanced nothing - the signal to stop repeating it. Ignores
+            skippedDocuments for the same reason PipelineReindexResponse.done does.
+
+    CoreMetadataFieldFillResponse:
+      type: object
+      description: >
+        The Füllgrad of one core field in one library (#1067): how many of the library's indexed
+        documents carry a value for it. Computed at query time in the administrative context - the
+        organization is the rights context here - never precomputed.
+      required:
+        [
+          fieldKey,
+          label,
+          filledDocuments,
+          filledShare,
+          notDeterminableDocuments,
+          documentsWithoutValue,
+          missingShare,
+        ]
+      properties:
+        fieldKey:
+          type: string
+          example: document_type
+        label:
+          type: string
+          description: The German field label, as the Beleg-Anzeige shows it.
+          example: Dokumentart
+        filledDocuments:
+          type: integer
+          format: int64
+        filledShare:
+          type: number
+          format: double
+          description: filledDocuments / totalDocuments, in 0..1; 0 for a library without documents.
+        notDeterminableDocuments:
+          type: integer
+          format: int64
+          description: >-
+            Documents a person marked as "kein Wert ermittelbar" for this field (#1069). Neither
+            filled nor open - the reason documentsWithoutValue below is not totalDocuments minus
+            filledDocuments.
+        documentsWithoutValue:
+          type: integer
+          format: int64
+          description: >-
+            The Pflege-Anker of this library and field (#1069): documents with neither a value nor
+            a "kein Wert ermittelbar" mark. The same figure GET
+            /api/v1/libraries/{libraryId}/metadata/maintenance shows in the library's own settings,
+            counted here over the organization instead (the administrative exception of the
+            Rechte-Invariante, Beschluss 1 am Epic #1065).
+          example: 12
+        missingShare:
+          type: number
+          format: double
+          description: documentsWithoutValue / totalDocuments, in 0..1.
+
+    MetadataBackfillStatusResponse:
+      type: object
+      description: >
+        The core-metadata extraction state of one library (#1067, metadata-schema.md "Nachlauf im
+        Betrieb"): how much of its indexed bestand carries the current extraction version, how much
+        is still pending, and the Füllgrad per core field. Pending documents are a defined,
+        permitted operating state - the search keeps running over them with their old fields.
+      required:
+        [
+          extractionVersion,
+          totalDocuments,
+          currentDocuments,
+          pendingDocuments,
+          awaitingConnectorRunDocuments,
+          lastSkippedDocuments,
+          complete,
+          fields,
+        ]
+      properties:
+        extractionVersion:
+          type: integer
+          description: The current CoreMetadataExtractor version every document is measured against.
+        totalDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents of the library - the base of every share below.
+        currentDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents already at the current extraction version.
+        pendingDocuments:
+          type: integer
+          format: int64
+          description: >
+            Indexed documents never extracted or extracted with an older version. A superset of
+            what a metadata-backfill call selects: it includes the documents in
+            awaitingConnectorRunDocuments, which no further call advances.
+        awaitingConnectorRunDocuments:
+          type: integer
+          format: int64
+          description: >
+            The subset of pendingDocuments whose bytes live on a remote (HTTP directory, remote
+            attachment) and whose change markers are cleared - marked for their next connector run,
+            which re-reads and re-extracts them. A backfill call reports done while these remain;
+            they are the reason pendingDocuments can stay above 0 after a completed run.
+        lastSkippedDocuments:
+          type: integer
+          format: int64
+          description: >
+            Documents the most recent metadata-backfill call for this library could not advance.
+            A process-lifetime figure (ADR-0021, single instance): it resets on restart and is 0
+            before the first call.
+        complete:
+          type: boolean
+          description: True when pendingDocuments is 0.
+        fields:
+          type: array
+          description: One entry per core field, in schema order (Titel, Dokumentart, Datum/Stand).
+          items:
+            $ref: "#/components/schemas/CoreMetadataFieldFillResponse"
 
     LibraryFolderRequest:
       type: object
@@ -5908,6 +6675,8 @@ components:
           MODEL_POLICY_CHANGED,
           CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
           INDEXING_PIPELINE_REINDEX_TRIGGERED,
+          INDEXING_METADATA_BACKFILL_TRIGGERED,
+          DOCUMENT_METADATA_CHANGED,
           BRANDING_SETTINGS_CHANGED,
           LLM_MODEL_CREATED,
           LLM_MODEL_CHANGED,
@@ -6161,8 +6930,10 @@ components:
         per-person pseudonym; it is present only for a PERMISSION_PROFILE target, where it is the
         profile's label and belongs to nobody), and permissionSnapshot (the rights fingerprint of
         one person, identical across every entry about them until their rights change). Both stay
-        in the stored entry, where Leitplanke (f) requires them; the anlassbezogene single-entry
-        view that may show the rights snapshot is not part of this endpoint (issue #1124).
+        in the stored entry, where Leitplanke (f) requires them, and the rights snapshot is
+        readable one entry at a time through
+        GET /api/v1/audit/diagnostic-context-events/{eventId}, which is the anlassbezogene
+        Auswertung Leitplanke (g) allows.
 
         What this does not claim: that correlating individual rows is impossible. recordedAt,
         actorRef and hitRefs remain, and two entries produced by the same test question against the
@@ -6190,6 +6961,10 @@ components:
           type: string
         hitCount:
           type: integer
+          description: >
+            The number of hits the diagnosis actually displayed. hitRefs may name fewer of them: an
+            oversized identifier list is truncated and then ends in a marker naming how many
+            identifiers were left out, so the two fields never diverge silently.
         hitRefs:
           type: string
         justification:
@@ -6213,6 +6988,54 @@ components:
           type: integer
         hasMore:
           type: boolean
+
+    DiagnosticContextEventDetailResponse:
+      type: object
+      description: >
+        One protocol entry as the single-entry view shows it: every field of the list response plus
+        permissionSnapshot, the rights snapshot Leitplanke (f) requires in the stored entry. It is
+        published here and only here: in a list it is a stable per-person key a client can GROUP BY
+        in one step, whereas one entry fetched under its own reason and its own audit_log record is
+        the einzelfall- und anlassbezogene Auswertung Leitplanke (g) provides for. That is a
+        difference in cost and traceability, not in possibility - N fetches rebuild the grouping,
+        and each of them is separately justified and recorded. targetRef follows the same rule as
+        in the list: a profile's identifier is shown, a person's pseudonym is not.
+      required:
+        [
+          eventId,
+          recordedAt,
+          actorRef,
+          targetKind,
+          testQuestion,
+          hitCount,
+          hitRefs,
+          permissionSnapshot,
+        ]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        recordedAt:
+          type: string
+          format: date-time
+        actorRef:
+          type: string
+        targetKind:
+          $ref: "#/components/schemas/DiagnosticTargetKind"
+        targetRef:
+          type: string
+          nullable: true
+        testQuestion:
+          type: string
+        hitCount:
+          type: integer
+        hitRefs:
+          type: string
+        permissionSnapshot:
+          type: string
+        justification:
+          type: string
+          nullable: true
 
     AuditIncidentScopePurpose:
       type: string
@@ -6465,7 +7288,11 @@ components:
           type: string
           minLength: 1
           maxLength: 500
-          description: The OpenAI-compatible endpoint, including any provider-specific path suffix.
+          description: >
+            The OpenAI-compatible endpoint, including any provider-specific path suffix. Must not
+            contain userinfo (https://user:secret@host/v1) - such an address is rejected with 400,
+            because a stored base URL is returned by this API and written to the audit log. The
+            access key belongs in apiKey.
           example: http://ollama:11434/v1
         modelIdentifier:
           type: string
@@ -6502,6 +7329,9 @@ components:
         baseUrl:
           type: string
           minLength: 1
+          description: >
+            Must not contain userinfo (https://user:secret@host/v1) - such an address is rejected
+            with 400 before any probe, because the probe URI is logged on failure.
           example: http://ollama:11434/v1
         modelIdentifier:
           type: string
@@ -6653,6 +7483,7 @@ components:
           fullTextIndexedChunks,
           fullTextMissingChunks,
           fullTextSkippedChunks,
+          metadataBackfill,
         ]
       properties:
         libraryId:
@@ -6722,6 +7553,8 @@ components:
             gave up indexing after repeated failures ("poison chunks", #1093) - visible here so a
             permanent gap in the full-text index is never silent, even though it does not keep the
             gate closed the way fullTextMissingChunks does (see that field's own description).
+        metadataBackfill:
+          $ref: "#/components/schemas/MetadataBackfillStatusResponse"
 
     SearchStatusResponse:
       type: object
@@ -6759,9 +7592,35 @@ components:
       type: string
       description: >
         SELF runs in the calling administrator's own rights context; PERMISSION_PROFILE runs in a
-        group's. A person context is deliberately not part of this enum - it needs #1052.
-      enum: [SELF, PERMISSION_PROFILE]
+        group's; USER runs in one named person's (#1150). USER is the exception of
+        Berechtigungs-Leitplanke (d): it needs the "Sicht als" befugnis and a free-text
+        justification, it is never the preselected context, and it runs only through
+        ForeignDiagnosticContextService - the one path that also subtracts diagnosegesperrte
+        libraries and writes the protocol entry.
+      enum: [SELF, PERMISSION_PROFILE, USER]
       example: PERMISSION_PROFILE
+
+    SearchDiagnosisContextResponse:
+      type: object
+      required: [permissionProfiles, personContextAvailable, personContextHint]
+      properties:
+        permissionProfiles:
+          type: array
+          description: >
+            The profiles of the caller's own organization, by name. Empty where the organization
+            has no groups - a permission profile is a group, and none are derived from grant
+            patterns.
+          items:
+            $ref: "#/components/schemas/SearchPermissionProfileResponse"
+        personContextAvailable:
+          type: boolean
+          description: >
+            Whether the caller currently holds a valid, unrevoked "Sicht als" befugnis. False makes
+            the person context unselectable in the user interface; the endpoint enforces the same
+            rule again and answers 403 regardless of what a client sends.
+        personContextHint:
+          type: string
+          description: The German explanation of that permission, shown next to the disabled choice.
 
     SearchDiagnosisRequest:
       type: object
@@ -6782,7 +7641,24 @@ components:
           format: uuid
           nullable: true
           description: >
-            Required for PERMISSION_PROFILE, rejected with 400 for SELF. An unknown id yields 404.
+            Required for PERMISSION_PROFILE, rejected with 400 for SELF and USER. An unknown id
+            yields 404.
+        targetUserId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            The person whose rights context to assume. Required for USER, rejected with 400
+            otherwise, and rejected with 400 when it names the caller themselves - a run in one's
+            own rights context is not a "Sicht als".
+        justification:
+          type: string
+          maxLength: 1000
+          nullable: true
+          description: >
+            The free-text justification Berechtigungs-Leitplanke (d) requires for a person context.
+            Mandatory for USER - a person context without one is not executed - and carried into the
+            protocol entry. Ignored for the other context types, which write no entry.
         trackedDocumentId:
           type: string
           format: uuid
@@ -6929,10 +7805,14 @@ components:
       type: string
       description: >
         OUTSIDE_SEARCH_SCOPE - the context may not read this document's library, so no search could
-        have reached it. NOT_RETRIEVED - inside the scope, but no search stage found any of its
-        chunks: an indexing or chunking problem. DISPLACED - found and dropped at a named stage: a
-        ranking problem. IN_FINAL_SELECTION - it is in the Endauswahl.
-      enum: [OUTSIDE_SEARCH_SCOPE, NOT_RETRIEVED, DISPLACED, IN_FINAL_SELECTION]
+        have reached it. IN_LOCKED_AREA - its library is diagnosegesperrt and was left out of the
+        run; this follows from the library's lock state alone and says nothing about the target
+        person's rights. NOT_RETRIEVED - inside the
+        scope, but no search stage found any of its chunks: an indexing or chunking problem.
+        DISPLACED - found and dropped at a named stage: a ranking problem. IN_FINAL_SELECTION - it
+        is in the Endauswahl.
+      enum:
+        [OUTSIDE_SEARCH_SCOPE, IN_LOCKED_AREA, NOT_RETRIEVED, DISPLACED, IN_FINAL_SELECTION]
       example: DISPLACED
 
     TrackedDocumentResponse:
@@ -6945,6 +7825,10 @@ components:
         fileName:
           type: string
           nullable: true
+          description: >
+            Null for a document outside the searched scope of a person context: naming it would
+            describe a library that run did not search, and for IN_LOCKED_AREA it would be exactly
+            the Dokumenttitel Berechtigungs-Leitplanke (e) rules out.
         libraryId:
           type: string
           format: uuid
@@ -6952,6 +7836,7 @@ components:
         libraryName:
           type: string
           nullable: true
+          description: Null under the same rule as fileName.
         outcome:
           $ref: "#/components/schemas/TrackedDocumentOutcome"
         displacedAtStage:
@@ -6982,6 +7867,7 @@ components:
           searchQueries,
           stages,
           finalSelection,
+          lockedLibraryCount,
         ]
       properties:
         question:
@@ -7017,6 +7903,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DiagnosisSelectionEntryResponse"
+        lockedLibraryCount:
+          type: integer
+          description: >
+            How many libraries of the organization are diagnosegesperrt (Berechtigungs-Leitplanke
+            (e)). Deliberately not intersected with the target person's read rights: an
+            intersection would make "may this person read a locked library?" readable off the
+            answer, which the diagnosis explicitly does not state. Their existence is named,
+            nothing from inside them is: no name, no hit, no count of documents. Always 0 outside
+            the person context, where the lock does not apply.
         trackedDocument:
           allOf:
             - $ref: "#/components/schemas/TrackedDocumentResponse"
@@ -7187,6 +8082,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     PayloadTooLarge:
       description: Payload too large
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    TooManyRequests:
+      description: Too many requests
       content:
         application/json:
           schema:

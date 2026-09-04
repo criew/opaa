@@ -175,3 +175,34 @@ Zwei Punkte, von denen der erste die Aussagekraft des Harness **stärkt** statt 
 > Einbettungsanbietern zu beziffern, weil beide Seiten dasselbe Modell verwenden. Der optionale
 > Vergleichslauf aus Entscheidung 4 behält seinen ursprünglichen Zweck — Modellvergleich —, aber
 > nicht mehr diese Begründung.
+
+## Nachtrag: Pinning-Regel gilt auch für das Chat-Modell des Pipeline-Pfads
+
+> **Nachtrag vom 2026-09-04 (Issue #1085).** Erweitert Entscheidung 4 um eine zweite Modellrolle;
+> die Entscheidung selbst bleibt unverändert gültig.
+
+Entscheidung 3 („kein LLM ist beteiligt") beschreibt den **Rohvektor-Pfad** und gilt dort
+unverändert. Der seit Issue #1039 zusätzlich gemessene **Pipeline-Pfad** kann dagegen die
+Teilfragen-Zerlegung ausführen, und die braucht ein Chat-Modell. Für dieses Modell gilt dieselbe
+Disziplin wie für das Einbettungsmodell aus Entscheidung 4:
+
+- **Lokal über denselben Ollama-Mechanismus** bereitgestellt (Testcontainer, oder der externe
+  Endpunkt aus #1076) — kein gehostetes Modell, kein Secret, kein stiller Anbieterwechsel.
+- **Auf Tag *und* Content-Digest festgenagelt**, mit hartem Abbruch bei Drift
+  (`io.opaa.eval.EvalChatModel`, geprüft in `EvalOllamaModel#ensurePresent`). Ein neuer Digest ist
+  eine bewusste Neuziehung mit neuen Zahlen im PR, kein Codefehler.
+- **Temperatur 0** — die am wenigsten nichtdeterministische Einstellung, die dieser Endpunkt
+  anbietet.
+- **Über den produktiven Anbindungsweg verdrahtet**: eine aktive Zeile in `llm_models`, aufgelöst
+  von `ActiveChatModelResolver` wie bei jeder echten Anfrage, statt eines harness-eigenen
+  `ChatModel`-Beans.
+
+Modell dieser Rolle ist seit dem 04.09.2026 `qwen2.5:1.5b-instruct`
+(Digest `65ec06548149b04c096a120e4a6da9d4017ea809c91734ea5631e89f96ddc57b`), festgelegt durch
+Maintainer-Entscheidung in Issue #1085.
+
+**Was diese Rolle nicht heilt:** Temperatur 0 macht die Zerlegung nicht deterministisch — gemessen
+wichen bei `qwen2.5:1.5b-instruct` einzelne Fragen zwischen zwei identischen Aufrufen ab. Deshalb
+bleibt die Mehrfachlauf-Regel aus [`retrieval-benchmark.md`](../features/retrieval-benchmark.md)
+Abschnitt 3 der zuständige Mechanismus, und deshalb ist ein zerlegender Lauf kein Ersatz für die
+deterministische Baseline, sondern eine zweite, ausdrücklich benannte Messung.

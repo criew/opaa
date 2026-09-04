@@ -55,7 +55,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
     // #484: overrides the dev profile's /data,/tmp default so this suite's own @TempDir stays
     // inside the allowlist.
     registry.add(
-        "opaa.indexing.filesystem-allowlist", () -> documentDir.toAbsolutePath().toString());
+        "opaa.indexing.filesystem.allowlist", () -> documentDir.toAbsolutePath().toString());
   }
 
   @Autowired private MockMvc mockMvc;

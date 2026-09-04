@@ -214,8 +214,9 @@ public final class AuditEvent {
     }
 
     /**
-     * Optional - the sync run id linking every entry one {@link
-     * AuditEventRecorder#recordSystemProcessAction} run writes together.
+     * Optional - the id linking every entry one operation writes together: a sync run ({@link
+     * AuditEventRecorder#recordSystemProcessAction}) or a person's bulk assignment ({@link
+     * AuditEventRecorder#recordUserAction}).
      */
     public Builder correlationRef(String correlationRef) {
       this.correlationRef = correlationRef;

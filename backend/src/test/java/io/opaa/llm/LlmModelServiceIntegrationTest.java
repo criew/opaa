@@ -7,6 +7,7 @@ import io.opaa.api.types.AuditEventType;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
+import io.opaa.common.ValidationException;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
@@ -38,6 +39,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 @OpaaIntegrationTest
 class LlmModelServiceIntegrationTest {
+
+  private static final String SECRET_IN_BASE_URL = "benutzer:geheim";
+  private static final String CREDENTIALS_BASE_URL =
+      "https://" + SECRET_IN_BASE_URL + "@modellserver.example.internal/v1";
 
   @Autowired private LlmModelService llmModelService;
   @Autowired private LlmModelSeeder llmModelSeeder;
@@ -366,6 +371,71 @@ class LlmModelServiceIntegrationTest {
 
     assertThat(llmModelService.listModels()).extracting(LlmModel::getId).contains(model.getId());
     assertThat(auditEntries(AuditEventType.LLM_MODEL_DELETED)).isEmpty();
+  }
+
+  /**
+   * #1147: a base address carrying userinfo would otherwise be stored verbatim and end up in the
+   * audit log, in every API response and thus on the administration page. The rejection happens
+   * before the row is written, so neither the model nor an audit event exists afterwards.
+   */
+  @Test
+  void aBaseUrlWithCredentialsIsRejectedAndLeavesNeitherRowNorAuditEvent() {
+    assertThatThrownBy(
+            () ->
+                llmModelService.createModel(
+                    organizationId,
+                    userId,
+                    "Modell mit Anmeldedaten",
+                    CREDENTIALS_BASE_URL,
+                    "phi3:mini",
+                    new BigDecimal("0.70"),
+                    2000,
+                    null))
+        .isInstanceOf(ValidationException.class)
+        .satisfies(e -> assertThat(e.getMessage()).doesNotContain(SECRET_IN_BASE_URL));
+
+    assertThat(llmModelService.listModels()).isEmpty();
+    assertThat(auditEntries(AuditEventType.LLM_MODEL_CREATED)).isEmpty();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM llm_models WHERE base_url LIKE ?",
+                Integer.class,
+                "%" + SECRET_IN_BASE_URL + "%"))
+        .isZero();
+  }
+
+  /** The same rule on the update path - an existing, clean entry cannot be edited into one. */
+  @Test
+  void updatingAModelToABaseUrlWithCredentialsIsRejectedAndWritesNoAuditEvent() {
+    LlmModel model =
+        llmModelService.createModel(
+            organizationId,
+            userId,
+            "Sauberes Modell",
+            "http://ollama:11434/v1",
+            "phi3:mini",
+            new BigDecimal("0.70"),
+            2000,
+            null);
+
+    assertThatThrownBy(
+            () ->
+                llmModelService.updateModel(
+                    organizationId,
+                    userId,
+                    model.getId(),
+                    "Sauberes Modell",
+                    CREDENTIALS_BASE_URL,
+                    "phi3:mini",
+                    new BigDecimal("0.70"),
+                    2000,
+                    null))
+        .isInstanceOf(ValidationException.class)
+        .satisfies(e -> assertThat(e.getMessage()).doesNotContain(SECRET_IN_BASE_URL));
+
+    assertThat(auditEntries(AuditEventType.LLM_MODEL_CHANGED)).isEmpty();
+    assertThat(llmModelService.getModel(model.getId()).getBaseUrl())
+        .isEqualTo("http://ollama:11434/v1");
   }
 
   private List<Map<String, Object>> auditEntries(AuditEventType eventType) {

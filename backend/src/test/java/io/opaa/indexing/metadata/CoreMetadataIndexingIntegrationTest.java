@@ -38,6 +38,9 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xslf.usermodel.XSLFSlide;
+import org.apache.poi.xslf.usermodel.XSLFTextBox;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +53,9 @@ import org.springframework.transaction.PlatformTransactionManager;
  * The core fields end to end (#1066, ADR-0024): a PDF, a DOCX and a Markdown file with frontmatter
  * go through {@link FileProcessingService#processFile}; their values land at the document with
  * origin and extraction version, their filterable keys on every chunk, and a manual value survives
- * a re-extraction that rewrites the chunk metadata without touching the chunks.
+ * a re-extraction that rewrites the chunk metadata without touching the chunks. Since #1263 also
+ * the three further Dokumentart sources against the seeded vocabulary of the database: the
+ * Kompositum ending in a file name, the document head, and the file format.
  */
 @OpaaIndexingIntegrationTest
 class CoreMetadataIndexingIntegrationTest {
@@ -194,6 +199,175 @@ class CoreMetadataIndexingIntegrationTest {
     assertThat(core.documentTypeCode()).isEqualTo("SATZUNG_ORDNUNG");
     assertThat(core.documentTypeLabel()).isEqualTo("Satzung/Ordnung");
     assertThat(core.documentDate()).isEqualTo(LocalDate.of(2024, 1, 1));
+    assertThat(core.documentDatePrecision()).isEqualTo(DatePrecision.DAY);
+  }
+
+  /**
+   * #1263: the demo's Satzungen carry the Dokumentart as a Kompositum in the file name - the exact
+   * token match of #1066 does not see it, the seeded ending of migration 020 does.
+   */
+  @Test
+  void aKompositumInTheFileNameNamesTheDokumentart() throws IOException {
+    Path file = classTempDir.resolve("01_verwaltungsgebuehrensatzung.pdf");
+    writePdf(file, null, null);
+
+    assertThat(fileProcessingService.processFile(file, targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isEqualTo("SATZUNG_ORDNUNG");
+    assertThat(core.documentTypeOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+  }
+
+  /**
+   * #1263: the demo's Dienstanweisungen are named after their subject, not their Dokumentart - the
+   * document head is the source that carries it.
+   */
+  @Test
+  void theDocumentHeadNamesTheDokumentartWhenTheFileNameDoesNot() throws IOException {
+    Path file = classTempDir.resolve("01_identitaetszweifel-ausweisantrag.docx");
+    writeDocxWithHead(
+        file,
+        "Dienstanweisung Nr. 1 - Identitätszweifel beim Ausweisantrag",
+        "Diese Regelung gilt fuer alle Mitarbeitenden des Buergerbueros.");
+
+    assertThat(fileProcessingService.processFile(file, targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isEqualTo("DIENSTANWEISUNG");
+    assertThat(core.documentTypeOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+    assertThat(chunkMetadata(document.getId()))
+        .isNotEmpty()
+        .allSatisfy(metadata -> assertThat(metadata).containsEntry("doc_type", "DIENSTANWEISUNG"));
+  }
+
+  /**
+   * #1289: the demo's Leistungsbeschreibungen carry the Formular they point to as a label line
+   * right below their title - a reference, never a self-designation.
+   */
+  @Test
+  void aLabelLineBelowTheTitleNeverNamesTheDokumentart() throws IOException {
+    Path file = classTempDir.resolve("13_fabrikneues-fahrzeug-anmelden.md");
+    Files.writeString(
+        file,
+        """
+        # Fabrikneues Fahrzeug anmelden
+
+        **Formular:** RF-KFZ-001
+
+        Die Zulassungsstelle nimmt den Antrag persoenlich entgegen.
+        """);
+
+    assertThat(fileProcessingService.processFile(file, targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isNull();
+    assertThat(chunkMetadata(document.getId()))
+        .isNotEmpty()
+        .allSatisfy(metadata -> assertThat(metadata).doesNotContainKey("doc_type"));
+  }
+
+  /**
+   * #1289: a level-1 heading from inside the document is no title line - a section naming the
+   * Formular a service needs is the same reference as the label line above.
+   */
+  @Test
+  void aSectionHeadingFromInsideTheDocumentNeverNamesTheDokumentart() throws IOException {
+    Path file = classTempDir.resolve("14_gebrauchtfahrzeug-umschreiben.md");
+    Files.writeString(
+        file,
+        """
+        ## Gebrauchtfahrzeug umschreiben
+
+        Die Umschreibung erfolgt in der Zulassungsstelle.
+
+        # Benoetigtes Formular
+
+        RF-KFZ-002 liegt vor Ort aus.
+        """);
+
+    assertThat(fileProcessingService.processFile(file, targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isNull();
+  }
+
+  /**
+   * #1289: a FAQ that cites a Dienstanweisung in its opening text is none - below the title line
+   * the head is not read for the Dokumentart.
+   */
+  @Test
+  void aQuotationBelowTheTitleLineNeverNamesTheDokumentart() throws IOException {
+    Path file = classTempDir.resolve("15_faq-ausweisbeantragung.pdf");
+    writePdfPage(
+        file,
+        List.of(
+            "Haeufige Fragen zur Ausweisbeantragung",
+            "Termine werden nach der Dienstanweisung zur Terminvergabe vergeben.",
+            "Die Gebuehr ist bei Antragstellung faellig."));
+
+    assertThat(fileProcessingService.processFile(file, targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isNull();
+    // The backfill reads the file the same way, without chunking.
+    assertThat(documentMetadataService.reextractFromFile(document, file).documentTypeCode())
+        .isNull();
+  }
+
+  /** #1263: a presentation is a Präsentation - the format is the last source, and a sure one. */
+  @Test
+  void aPresentationGetsItsDokumentartFromTheFormatAlone() throws IOException {
+    Path file = classTempDir.resolve("21_onboarding-buergerbuero.pptx");
+    writePptx(file, "Onboarding Buergerbuero", "Ablauf der ersten Woche im Buergerbuero.");
+
+    assertThat(fileProcessingService.processFile(file, targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isEqualTo("PRAESENTATION");
+    assertThat(core.documentTypeLabel()).isEqualTo("Präsentation");
+    assertThat(core.documentTypeOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+    // The backfill reads the same three sources from the file alone, without chunking.
+    assertThat(documentMetadataService.reextractFromFile(document, file).documentTypeCode())
+        .isEqualTo("PRAESENTATION");
+  }
+
+  /**
+   * #1263: an RSS entry names other documents than itself - neither its body text (no Kopfbereich)
+   * nor its headline (no file name) may become a Dokumentart, and its headline is no Stand either.
+   */
+  @Test
+  void anRssEntryNeitherReadsItsBodyAsAKopfbereichNorItsHeadlineAsAFileName() {
+    assertThat(
+            fileProcessingService.processRssEntry(
+                // Two traps in the lead: the Kompositum "Hundesteuersatzung" and "Vortrag", a
+                // seeded synonym of PRAESENTATION; two more in the headline: the Kompositum again
+                // and a bare year that would look like a Stand.
+                "Der Rat hat in seiner Sitzung die neue Hundesteuersatzung beschlossen. Der"
+                    + " Vortrag dazu findet am Montag statt.",
+                "Rat beschliesst Hundesteuersatzung fuer 2024",
+                "https://feed.example/rat-beschluss",
+                "2026-03-12T10:00:00Z",
+                targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentTypeCode()).isNull();
+    assertThat(core.title()).isEqualTo("Rat beschliesst Hundesteuersatzung fuer 2024");
+    // The feed's publication instant, not the year in the headline.
+    assertThat(core.documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
     assertThat(core.documentDatePrecision()).isEqualTo(DatePrecision.DAY);
   }
 
@@ -373,6 +547,26 @@ class CoreMetadataIndexingIntegrationTest {
     return new tools.jackson.databind.ObjectMapper().readValue(json, Map.class);
   }
 
+  /** A PDF whose first page carries {@code lines} as separate text lines (#1289). */
+  private static void writePdfPage(Path file, List<String> lines) throws IOException {
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = new PDPage(PDRectangle.A4);
+      doc.addPage(page);
+      try (PDPageContentStream content = new PDPageContentStream(doc, page)) {
+        content.beginText();
+        content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+        content.setLeading(16);
+        content.newLineAtOffset(50, 700);
+        for (String line : lines) {
+          content.showText(line);
+          content.newLine();
+        }
+        content.endText();
+      }
+      doc.save(file.toFile());
+    }
+  }
+
   private static void writePdf(Path file, String title, LocalDate creationDate) throws IOException {
     try (PDDocument doc = new PDDocument()) {
       for (String text :
@@ -401,6 +595,32 @@ class CoreMetadataIndexingIntegrationTest {
         info.setModificationDate(calendar);
       }
       doc.save(file.toFile());
+    }
+  }
+
+  /** A DOCX whose Dokumentart stands in its first lines and nowhere else (#1263). */
+  private static void writeDocxWithHead(Path file, String head, String body) throws IOException {
+    try (XWPFDocument doc = new XWPFDocument()) {
+      for (String text : List.of(head, body)) {
+        XWPFParagraph paragraph = doc.createParagraph();
+        paragraph.createRun().setText(text);
+      }
+      try (OutputStream out = Files.newOutputStream(file)) {
+        doc.write(out);
+      }
+    }
+  }
+
+  private static void writePptx(Path file, String title, String body) throws IOException {
+    try (XMLSlideShow show = new XMLSlideShow()) {
+      XSLFSlide slide = show.createSlide();
+      for (String text : List.of(title, body)) {
+        XSLFTextBox box = slide.createTextBox();
+        box.setText(text);
+      }
+      try (OutputStream out = Files.newOutputStream(file)) {
+        show.write(out);
+      }
     }
   }
 

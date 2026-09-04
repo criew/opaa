@@ -16,6 +16,8 @@ import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.NotFoundException;
+import io.opaa.indexing.metadata.CoreMetadataField;
+import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.query.RetrievalExplanation;
 import io.opaa.searchadmin.ChunkInspection;
 import io.opaa.searchadmin.ChunkInspectionService;
@@ -148,7 +150,16 @@ class SearchAdminControllerTest {
                         Instant.EPOCH,
                         80,
                         20,
-                        0))));
+                        0,
+                        new MetadataBackfillProgress(
+                            UUID.randomUUID(),
+                            5,
+                            2,
+                            3,
+                            1,
+                            1,
+                            Map.of(CoreMetadataField.TITLE, 2L),
+                            Map.of(CoreMetadataField.DOCUMENT_TYPE, 1L))))));
 
     mockMvc
         .perform(get("/api/v1/admin/search/status").with(asAdmin()))
@@ -158,7 +169,14 @@ class SearchAdminControllerTest {
         .andExpect(jsonPath("$.modelRoles[0].faulted").value(true))
         .andExpect(jsonPath("$.libraries[0].lowChunkDocumentCount").value(2))
         .andExpect(jsonPath("$.libraries[0].fullTextMissingChunks").value(20))
-        .andExpect(jsonPath("$.libraries[0].fullTextIndexState").value("INCOMPLETE"));
+        .andExpect(jsonPath("$.libraries[0].fullTextIndexState").value("INCOMPLETE"))
+        .andExpect(jsonPath("$.libraries[0].metadataBackfill.pendingDocuments").value(3))
+        .andExpect(
+            jsonPath("$.libraries[0].metadataBackfill.awaitingConnectorRunDocuments").value(1))
+        .andExpect(jsonPath("$.libraries[0].metadataBackfill.lastSkippedDocuments").value(1))
+        .andExpect(jsonPath("$.libraries[0].metadataBackfill.complete").value(false))
+        .andExpect(jsonPath("$.libraries[0].metadataBackfill.fields[0].fieldKey").value("title"))
+        .andExpect(jsonPath("$.libraries[0].metadataBackfill.fields[0].filledDocuments").value(2));
 
     verify(searchStatusService).statusForOrganization(actingAdminOrganizationId);
   }
@@ -179,6 +197,7 @@ class SearchAdminControllerTest {
                 new RetrievalExplanation(List.of()),
                 List.of(),
                 Map.of(),
+                0,
                 null));
 
     mockMvc
@@ -219,18 +238,104 @@ class SearchAdminControllerTest {
   }
 
   @Test
-  void permissionProfilesAreListedForTheCallersOwnOrganization() throws Exception {
+  void theDiagnosisContextListsTheProfilesAndTheOwnPersonContextPermission() throws Exception {
     UUID profileId = UUID.randomUUID();
-    when(searchDiagnosisService.permissionProfiles(any()))
+    when(searchDiagnosisService.diagnosisContext(any()))
         .thenReturn(
-            List.of(new SearchDiagnosisService.PermissionProfile(profileId, "Bürgerbüro", 4)));
+            new SearchDiagnosisService.DiagnosisContextOptions(
+                List.of(new SearchDiagnosisService.PermissionProfile(profileId, "Bürgerbüro", 4)),
+                false));
 
     mockMvc
-        .perform(get("/api/v1/admin/search/permission-profiles").with(asAdmin()))
+        .perform(get("/api/v1/admin/search/diagnosis-context").with(asAdmin()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].id").value(profileId.toString()))
-        .andExpect(jsonPath("$[0].name").value("Bürgerbüro"))
-        .andExpect(jsonPath("$[0].libraryCount").value(4));
+        .andExpect(jsonPath("$.permissionProfiles[0].id").value(profileId.toString()))
+        .andExpect(jsonPath("$.permissionProfiles[0].name").value("Bürgerbüro"))
+        .andExpect(jsonPath("$.permissionProfiles[0].libraryCount").value(4))
+        .andExpect(jsonPath("$.personContextAvailable").value(false))
+        .andExpect(
+            jsonPath("$.personContextHint")
+                .value(org.hamcrest.Matchers.containsString("Sicht als")));
+  }
+
+  /**
+   * The person context reaches the service as a person context, with its target and its
+   * justification - without this mapping the context type is not even selectable at the endpoint
+   * (#1150).
+   */
+  @Test
+  void aPersonContextRequestCarriesItsTargetAndJustificationToTheService() throws Exception {
+    UUID targetUserId = UUID.randomUUID();
+    when(searchDiagnosisService.diagnose(any(), any()))
+        .thenReturn(
+            new SearchDiagnosis(
+                "Warum fehlt die Satzung?",
+                DiagnosisContextType.USER,
+                null,
+                Instant.parse("2026-09-01T10:00:00Z"),
+                List.of(),
+                List.of(),
+                new RetrievalExplanation(List.of()),
+                List.of(),
+                Map.of(),
+                1,
+                null));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/search/diagnosis")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"question":"Warum fehlt die Satzung?",
+                     "contextType":"USER",
+                     "targetUserId":"%s",
+                     "justification":"Beschwerde vom 02.09., Ticket 4711"}
+                    """
+                        .formatted(targetUserId))
+                .with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.contextType").value("USER"))
+        .andExpect(jsonPath("$.contextLabel").value("Rechtekontext einer Person"))
+        .andExpect(jsonPath("$.lockedLibraryCount").value(1));
+
+    ArgumentCaptor<DiagnosisQuery> captor = ArgumentCaptor.forClass(DiagnosisQuery.class);
+    verify(searchDiagnosisService).diagnose(any(), captor.capture());
+    DiagnosisQuery query = captor.getValue();
+    assertThat(query.contextType()).isEqualTo(DiagnosisContextType.USER);
+    assertThat(query.targetUserId()).isEqualTo(targetUserId);
+    assertThat(query.justification()).isEqualTo("Beschwerde vom 02.09., Ticket 4711");
+  }
+
+  /**
+   * The befugnis is checked in the domain, not by a role annotation: a SYSTEM_ADMIN without it gets
+   * the domain's own German message rather than a generic denial.
+   */
+  @Test
+  void aPersonContextWithoutTheBefugnisIsForbiddenWithTheDomainsOwnMessage() throws Exception {
+    when(searchDiagnosisService.diagnose(any(), any()))
+        .thenThrow(
+            new io.opaa.common.AccessDeniedException(
+                "Für „Sicht als“ ist eine eigene, befristete Befugnis nötig; Sie halten keine."));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/search/diagnosis")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"question":"Warum fehlt die Satzung?",
+                     "contextType":"USER",
+                     "targetUserId":"%s",
+                     "justification":"Beschwerde vom 02.09."}
+                    """
+                        .formatted(UUID.randomUUID()))
+                .with(asAdmin()))
+        .andExpect(status().isForbidden())
+        .andExpect(
+            jsonPath("$.error")
+                .value(
+                    "Für „Sicht als“ ist eine eigene, befristete Befugnis nötig; Sie halten keine."));
   }
 
   @Test

@@ -1,5 +1,8 @@
 import { http, HttpResponse } from 'msw'
 import { assetRoleLabel } from '../utils/labels'
+
+/** Per-library countdown of the mock metadata backfill; see the handler below. */
+const mockMetadataBackfillRemaining = new Map<string, number>()
 import {
   mockHealthResponse,
   mockIndexingIdle,
@@ -12,7 +15,7 @@ import {
   setMockBranding,
   mockEmbeddingInfo,
   mockSearchStatus,
-  mockSearchPermissionProfiles,
+  mockSearchDiagnosisContext,
   mockSearchDiagnosis,
   mockChunkInspections,
   mockDocumentChunks,
@@ -30,6 +33,9 @@ import {
   mockSpaceLibraryAssociations,
   mockLibraryDocuments,
   mockLibraryFolders,
+  mockDocumentMetadata,
+  mockDocumentTypeVocabulary,
+  resetMockDocumentMetadata,
   mockLibraryGrants,
   mockMyGroups,
   mockChatDetails,
@@ -44,6 +50,9 @@ import type { MockLibraryFolder } from './fixtures'
 import type {
   AssetGrantRequest,
   BrandingUpdateRequest,
+  BulkMetadataValueRequest,
+  DocumentMetadataFieldResponse,
+  MetadataValueRequest,
   AssetRole,
   ChatCreateRequest,
   ChatUpdateRequest,
@@ -96,6 +105,92 @@ export function resetDocumentMockState() {
   documentsPendingFailure.clear()
   resetMockLibraryDocuments()
   resetMockLibraryFolders()
+  resetMockDocumentMetadata()
+}
+
+// #1068: the three core fields of a document, empty ones included (mirrors
+// DocumentMetadataCorrectionService#fieldsOf).
+const CORE_METADATA_LABELS: Record<string, string> = {
+  title: 'Titel',
+  document_type: 'Dokumentart',
+  document_date: 'Datum/Stand',
+}
+
+function mockMetadataFieldsOf(documentId: string): DocumentMetadataFieldResponse[] {
+  const stored = mockDocumentMetadata[documentId] ?? []
+  return Object.entries(CORE_METADATA_LABELS).map(
+    ([fieldKey, label]) =>
+      stored.find((field) => field.fieldKey === fieldKey) ?? {
+        fieldKey,
+        label,
+        state: 'EMPTY' as const,
+      },
+  )
+}
+
+function mockDisplayDate(iso: string, precision: string): string {
+  const [year, month, day] = iso.split('-')
+  if (precision === 'YEAR') return year
+  if (precision === 'MONTH') return `${month}/${year}`
+  return `${day}.${month}.${year}`
+}
+
+/** Validates like MetadataValueInput#validatedFor; returns the stored field or an error text. */
+function mockManualField(
+  fieldKey: string,
+  value: MetadataValueRequest,
+): DocumentMetadataFieldResponse | string {
+  const label = CORE_METADATA_LABELS[fieldKey]
+  if (!label) return `Unbekanntes Metadatenfeld: ${fieldKey}`
+  const base = {
+    fieldKey,
+    label,
+    state: 'SET' as const,
+    origin: 'MANUAL' as const,
+    actorUserId: mockUser.id,
+    actorDisplayName: mockUser.displayName,
+    updatedAt: new Date().toISOString(),
+  }
+  // #1069: the third state is the same operation without a value, for every core field.
+  if (value.state === 'NOT_DETERMINABLE') {
+    if (value.textValue || value.vocabularyCode || value.dateValue) {
+      return `„Kein Wert ermittelbar“ wird ohne Wert gesetzt (Feld ${label})`
+    }
+    return { ...base, state: 'NOT_DETERMINABLE' as const }
+  }
+  if (fieldKey === 'title') {
+    const text = value.textValue?.trim()
+    if (!text) return 'Der Titel darf nicht leer sein'
+    return { ...base, value: text, displayValue: text }
+  }
+  if (fieldKey === 'document_type') {
+    const entry = mockDocumentTypeVocabulary.find((item) => item.code === value.vocabularyCode)
+    if (!entry) return `Unbekannte Dokumentart: ${value.vocabularyCode ?? ''}`
+    return { ...base, value: entry.code, displayValue: entry.label }
+  }
+  if (!value.dateValue || !value.datePrecision) {
+    return 'Für das Datum ist eine Genauigkeit erforderlich'
+  }
+  const [year, month] = value.dateValue.split('-')
+  const padded =
+    value.datePrecision === 'YEAR'
+      ? `${year}-01-01`
+      : value.datePrecision === 'MONTH'
+        ? `${year}-${month}-01`
+        : value.dateValue
+  return {
+    ...base,
+    value: padded,
+    displayValue: mockDisplayDate(padded, value.datePrecision),
+    datePrecision: value.datePrecision,
+  }
+}
+
+function storeMockMetadataField(documentId: string, field: DocumentMetadataFieldResponse) {
+  const current = (mockDocumentMetadata[documentId] ?? []).filter(
+    (item) => item.fieldKey !== field.fieldKey,
+  )
+  mockDocumentMetadata[documentId] = [...current, field]
 }
 
 // #822: every descendant folder id of `folderId` (inclusive) - a folder's own documentCount
@@ -1012,8 +1107,31 @@ export const handlers = [
     return HttpResponse.json(mockSearchStatus)
   }),
 
-  http.get('/api/v1/admin/search/permission-profiles', () => {
-    return HttpResponse.json(mockSearchPermissionProfiles)
+  http.get('/api/v1/admin/search/diagnosis-context', () => {
+    return HttpResponse.json(mockSearchDiagnosisContext)
+  }),
+
+  // The fixture is static, so the remaining work is counted down here: every call processes one
+  // document until the library's pending count is used up, then reports done - otherwise the
+  // page's batch loop would never end in mock mode.
+  http.post('/api/v1/admin/indexing/metadata-backfill', async ({ request }) => {
+    const body = (await request.json()) as { libraryId?: string; batchSize?: number }
+    const library = mockSearchStatus.libraries.find((l) => l.libraryId === body.libraryId)
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const remaining =
+      mockMetadataBackfillRemaining.get(library.libraryId) ??
+      library.metadataBackfill.pendingDocuments -
+        library.metadataBackfill.awaitingConnectorRunDocuments
+    const processed = Math.min(remaining, 1)
+    mockMetadataBackfillRemaining.set(library.libraryId, remaining - processed)
+    return HttpResponse.json({
+      processedDocuments: processed,
+      markedForNextRun: 0,
+      skippedDocuments: 0,
+      done: processed === 0,
+    })
   }),
 
   http.post('/api/v1/admin/search/diagnosis', async ({ request }) => {
@@ -1021,10 +1139,35 @@ export const handlers = [
       question?: string
       contextType?: string
       permissionProfileId?: string
+      targetUserId?: string
+      justification?: string
       trackedDocumentId?: string
     }
     if (!body.question || body.question.trim() === '') {
       return HttpResponse.json({ error: 'Die Testfrage darf nicht leer sein.' }, { status: 400 })
+    }
+    // Mirrors the endpoint: the person context is refused without the befugnis, whatever the
+    // client sends, and it is never executed without a justification.
+    if (body.contextType === 'USER') {
+      if (!mockSearchDiagnosisContext.personContextAvailable) {
+        return HttpResponse.json(
+          {
+            error:
+              'Fuer „Sicht als“ ist eine eigene, befristete Befugnis noetig; Sie halten keine.',
+          },
+          { status: 403 },
+        )
+      }
+      if (!body.justification || body.justification.trim() === '') {
+        return HttpResponse.json({ error: 'Begruendung ist erforderlich' }, { status: 400 })
+      }
+      return HttpResponse.json({
+        ...mockSearchDiagnosis,
+        question: body.question,
+        contextType: 'USER',
+        contextLabel: 'Rechtekontext einer Person',
+        lockedLibraryCount: 1,
+      })
     }
     return HttpResponse.json({
       ...mockSearchDiagnosis,
@@ -1410,6 +1553,27 @@ export const handlers = [
     return HttpResponse.json(library)
   }),
 
+  // #1257: mirrors LibraryDiagnosticsLockService#setLocked - only a real OWNER grant may
+  // toggle the lock, the exact 403 message the backend sends when that is not the case.
+  http.put('/api/v1/libraries/:libraryId/diagnostics-lock', async ({ params, request }) => {
+    const libraryId = String(params.libraryId)
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    // #1278 review: mirrors diagnosticsLockToggleable, not myRole - myRole alone would let a
+    // mocked system-admin bypass (myRole 'OWNER' without an independent grant) through.
+    if (!library.diagnosticsLockToggleable) {
+      return HttpResponse.json(
+        { error: 'Die Diagnosesperre setzt und löst nur die für die Bibliothek zuständige Stelle' },
+        { status: 403 },
+      )
+    }
+    const body = (await request.json()) as { locked: boolean }
+    library.diagnosticsLocked = body.locked
+    return HttpResponse.json({ libraryId, locked: body.locked })
+  }),
+
   http.delete('/api/v1/libraries/:libraryId', ({ params }) => {
     const libraryId = String(params.libraryId)
     const library = mockLibraryDetails[libraryId]
@@ -1457,6 +1621,7 @@ export const handlers = [
     const page = Number(url.searchParams.get('page') ?? '0')
     const size = Number(url.searchParams.get('size') ?? '20')
     const folderIdParam = url.searchParams.get('folderId')
+    const missingMetadataField = url.searchParams.get('missingMetadataField')
 
     // #822: folderId is validated with or without q, mirroring GET .../folders/{folderId}'s own
     // unknown/foreign-folder 404 (ADR-0020).
@@ -1481,7 +1646,27 @@ export const handlers = [
     let breadcrumb: LibraryFolderBreadcrumbItem[]
     let responseFolderId: string | null
 
-    if (q) {
+    if (missingMetadataField) {
+      // #1069: the Pflege-Anker's list - bibliotheksweit like a search, one entry per document row
+      // without a value for the field (a "kein Wert ermittelbar" mark is not empty), attachments
+      // in their own right rather than grouped, so the list length equals the anchor's number.
+      const isEmptyFor = (doc: LibraryDocumentResponse) =>
+        ((mockDocumentMetadata[doc.id] ?? []).find(
+          (field) => field.fieldKey === missingMetadataField,
+        )?.state ?? 'EMPTY') === 'EMPTY'
+      const matching = allDocuments.filter(
+        (doc) => (!q || doc.fileName.toLowerCase().includes(q.toLowerCase())) && isEmptyFor(doc),
+      )
+      return HttpResponse.json({
+        items: matching.slice(page * size, page * size + size),
+        page,
+        size,
+        totalElements: matching.length,
+        folderId: null,
+        folders: [],
+        breadcrumb: [],
+      })
+    } else if (q) {
       // Search is always bibliotheksweit, regardless of folderId (ADR-0020, Entscheidung 4) -
       // folders/breadcrumb stay empty, folderId is echoed back as null. A hit on an attachment's
       // file name surfaces its top-level parent with the whole group (#1184).
@@ -1624,6 +1809,140 @@ export const handlers = [
       listEntry.documentCount = (listEntry.documentCount ?? 0) + 1
     }
     return HttpResponse.json(document, { status: 201 })
+  }),
+
+  // #1069: the Pflege-Anker of a library - counted over its mock documents on every call.
+  http.get('/api/v1/libraries/:libraryId/metadata/maintenance', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const documents = mockLibraryDocuments[libraryId] ?? []
+    const totalDocuments = documents.length
+    return HttpResponse.json({
+      libraryId,
+      totalDocuments,
+      fields: Object.entries(CORE_METADATA_LABELS).map(([fieldKey, label]) => {
+        const states = documents.map(
+          (doc) =>
+            (mockDocumentMetadata[doc.id] ?? []).find((field) => field.fieldKey === fieldKey)
+              ?.state ?? 'EMPTY',
+        )
+        const documentsWithoutValue = states.filter((state) => state === 'EMPTY').length
+        return {
+          fieldKey,
+          label,
+          totalDocuments,
+          documentsWithoutValue,
+          missingShare: totalDocuments === 0 ? 0 : documentsWithoutValue / totalDocuments,
+          filledDocuments: states.filter((state) => state === 'SET').length,
+          notDeterminableDocuments: states.filter((state) => state === 'NOT_DETERMINABLE').length,
+        }
+      }),
+    })
+  }),
+
+  // #1068: manual metadata correction - read, set, delete, bulk, plus the vocabulary.
+  http.get('/api/v1/metadata/document-types', () =>
+    HttpResponse.json({ items: mockDocumentTypeVocabulary }),
+  ),
+
+  http.get('/api/v1/libraries/:libraryId/documents/:documentId/metadata', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    const documentId = String(params.documentId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!(mockLibraryDocuments[libraryId] ?? []).some((doc) => doc.id === documentId)) {
+      return HttpResponse.json({ error: 'Dokument nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json({ documentId, fields: mockMetadataFieldsOf(documentId) })
+  }),
+
+  http.put(
+    '/api/v1/libraries/:libraryId/documents/:documentId/metadata/:fieldKey',
+    async ({ params, request }) => {
+      const libraryId = String(params.libraryId)
+      const documentId = String(params.documentId)
+      if (!mockLibraryDetails[libraryId]) {
+        return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+      }
+      if (!canManageMockLibrary(libraryId)) {
+        return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+      }
+      if (!(mockLibraryDocuments[libraryId] ?? []).some((doc) => doc.id === documentId)) {
+        return HttpResponse.json({ error: 'Dokument nicht gefunden' }, { status: 404 })
+      }
+      const body = (await request.json()) as MetadataValueRequest
+      const field = mockManualField(String(params.fieldKey), body)
+      if (typeof field === 'string') {
+        return HttpResponse.json({ error: field }, { status: 400 })
+      }
+      storeMockMetadataField(documentId, field)
+      return HttpResponse.json(field)
+    },
+  ),
+
+  http.delete(
+    '/api/v1/libraries/:libraryId/documents/:documentId/metadata/:fieldKey',
+    ({ params }) => {
+      const libraryId = String(params.libraryId)
+      const documentId = String(params.documentId)
+      if (!mockLibraryDetails[libraryId]) {
+        return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+      }
+      if (!canManageMockLibrary(libraryId)) {
+        return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+      }
+      if (!(mockLibraryDocuments[libraryId] ?? []).some((doc) => doc.id === documentId)) {
+        return HttpResponse.json({ error: 'Dokument nicht gefunden' }, { status: 404 })
+      }
+      mockDocumentMetadata[documentId] = (mockDocumentMetadata[documentId] ?? []).filter(
+        (item) => item.fieldKey !== String(params.fieldKey),
+      )
+      return new HttpResponse(null, { status: 204 })
+    },
+  ),
+
+  http.post('/api/v1/libraries/:libraryId/documents/metadata/bulk', async ({ params, request }) => {
+    const libraryId = String(params.libraryId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!canManageMockLibrary(libraryId)) {
+      return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+    }
+    const body = (await request.json()) as BulkMetadataValueRequest
+    const field = mockManualField(body.fieldKey, body.value)
+    if (typeof field === 'string') {
+      return HttpResponse.json({ error: field }, { status: 400 })
+    }
+    const own = new Set((mockLibraryDocuments[libraryId] ?? []).map((doc) => doc.id))
+    const requested = Array.from(new Set(body.documentIds))
+    const rejectedDocumentIds = requested.filter((id) => !own.has(id))
+    let updatedCount = 0
+    let unchangedCount = 0
+    for (const documentId of requested.filter((id) => own.has(id))) {
+      const current = (mockDocumentMetadata[documentId] ?? []).find(
+        (item) => item.fieldKey === field.fieldKey,
+      )
+      if (
+        current?.origin === 'MANUAL' &&
+        current.state === field.state &&
+        current.value === field.value
+      ) {
+        unchangedCount += 1
+        continue
+      }
+      storeMockMetadataField(documentId, field)
+      updatedCount += 1
+    }
+    return HttpResponse.json({
+      updatedCount,
+      unchangedCount,
+      rejectedDocumentIds,
+      correlationRef: `metadata-bulk-${Date.now()}`,
+    })
   }),
 
   http.delete('/api/v1/libraries/:libraryId/documents/:documentId', ({ params }) => {

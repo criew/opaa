@@ -225,8 +225,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
 
     IndexingProperties.Rss rss =
         new IndexingProperties.Rss(200, 10_000, 10_000, 0, "OPAA-Indexer/test", null, null, 0, 0);
-    IndexingProperties properties =
-        new IndexingProperties(0, 0, 0, null, rss, null, null, null, null, 0);
+    IndexingProperties properties = new IndexingProperties(0, 0, 0, null, rss, null, null, null, 0);
     // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest) -
     // disabled here since every server this class talks to is deliberately loopback.
     TargetAddressValidator targetAddressValidator = TargetAddressValidator.disabled();
@@ -241,7 +240,8 @@ class RssFeedIndexingExecutorInsecureSslTest {
                 new BoundedDownloader(targetAddressValidator),
                 fileProcessingService,
                 mock(LibraryStorageQuotaService.class),
-                documentRepository),
+                documentRepository,
+                new io.opaa.indexing.source.attachment.AttachmentProperties(5)),
             properties,
             indexingRunEventRepository,
             targetAddressValidator,

@@ -4,6 +4,7 @@ import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.indexing.pipeline.DocumentTitleLine;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.RepeatingHeaderChunk;
 import java.io.IOException;
@@ -90,7 +91,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
       // An ODT pipeline is only ever reached through a genuine .odt file (never RSS-extracted
       // text, ADR-0017 decision 2) - defensive fallback, mirrors DocxDocumentPipeline/
       // PptxDocumentPipeline.
-      return DocumentPipelineResult.noContent();
+      return DocumentPipelineResult.parseFailed();
     }
     List<HeadingSectionSplitter.Event> events;
     try {
@@ -105,7 +106,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
         // Not a genuine ODF ZIP (no content.xml entry at all) - the same "could not be parsed"
         // case DocxDocumentPipeline reports for a corrupt .docx, distinct from a well-formed but
         // empty document below.
-        return DocumentPipelineResult.noContent();
+        return DocumentPipelineResult.parseFailed();
       }
       events = handler.events();
     } catch (IOException | RuntimeException e) {
@@ -113,7 +114,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
       // an IOException) is reported the same way as PDF/DOCX/PPTX/Tabular - see
       // DocumentPipelineResult's own Javadoc for the shared contract.
       log.warn("Could not read ODT document {}", source.fileName(), e);
-      return DocumentPipelineResult.noContent();
+      return DocumentPipelineResult.parseFailed();
     }
     List<Document> chunks = HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL);
     if (chunks.isEmpty()) {
@@ -133,10 +134,14 @@ public class OdtDocumentPipeline implements DocumentPipeline {
     return DocumentPipelineResult.chunked(allChunks)
         .withProperties(
             OdfMetaProperties.read(source, odfProperties)
-                .withFirstHeading(firstTopLevelHeading(events)));
+                .withFirstHeading(firstTopLevelHeading(events))
+                .withTitleLine(DocumentTitleLine.ofEvents(events)));
   }
 
-  /** {@code meta.xml}'s title/dates plus the first level-1 {@code text:h} (ADR-0024). */
+  /**
+   * {@code meta.xml}'s title/dates, the first level-1 {@code text:h} (ADR-0024) and the opening of
+   * the body text (#1263).
+   */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
     if (source.file() == null) {
@@ -150,7 +155,8 @@ public class OdtDocumentPipeline implements DocumentPipeline {
               odfProperties.maxSpaceRepeat(),
               odfProperties.maxTextCharacters());
       if (OdfContentXml.parse(source.file(), odfProperties.maxContentXmlBytes(), handler)) {
-        return meta.withFirstHeading(firstTopLevelHeading(handler.events()));
+        return meta.withFirstHeading(firstTopLevelHeading(handler.events()))
+            .withTitleLine(DocumentTitleLine.ofEvents(handler.events()));
       }
     } catch (IOException | RuntimeException e) {
       log.warn("Could not read headings of ODT document {}", source.fileName(), e);

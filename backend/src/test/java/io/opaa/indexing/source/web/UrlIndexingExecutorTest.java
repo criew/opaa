@@ -39,7 +39,9 @@ class UrlIndexingExecutorTest {
           documentRepository,
           mock(IndexingRunEventRepository.class),
           mock(LibraryStorageQuotaService.class),
-          mock(StaleDocumentCleanupService.class));
+          mock(StaleDocumentCleanupService.class),
+          new CrawlProperties(0, 0, 0),
+          mock(io.opaa.library.LibraryFolderService.class));
 
   // --- #550 review: blank lastModified must never be treated as "unchanged" -----------------
 
@@ -168,7 +170,9 @@ class UrlIndexingExecutorTest {
             documentRepository,
             mock(IndexingRunEventRepository.class),
             mock(LibraryStorageQuotaService.class),
-            mock(StaleDocumentCleanupService.class));
+            mock(StaleDocumentCleanupService.class),
+            new CrawlProperties(0, 0, 0),
+            mock(io.opaa.library.LibraryFolderService.class));
     UUID jobId = UUID.randomUUID();
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(

@@ -102,7 +102,8 @@ Ablauf beim Hochladen:
    Aufnahmeläufe indizieren und melden ein `FORMAT_MISMATCH`-Ereignis (Begründung in
    `SupportedDocumentFormats`). Der URL-Weg entscheidet dafür zunächst nur an einer Leseprobe und
    lädt vollständig nach, wenn diese den Containertyp nicht auflösen konnte (#1229, siehe
-   [Aufnahme-Pipelines](./ingestion-pipelines.md)). **Die Schadsoftwareprüfung fehlt
+   [Aufnahme-Pipelines](./ingestion-pipelines.md)) — auch dieses Nachladen bleibt unter dem
+   Bytedeckel des Verzeichnis-Wegs (#1236). **Die Schadsoftwareprüfung fehlt
    noch bewusst** — sie braucht eine eigene Entscheidung über Prüfdienst und Betriebsweg und ist als
    eigenes Issue vorzuziehen, bevor ein Produktivbetrieb möglich ist.
 3. Ablage im Dokumentenspeicher der Installation, getrennt je Bibliothek. **Gebaut.**
@@ -397,14 +398,24 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
    `OPAA_INDEXING_CRAWL_MAX_ENTRIES`, siehe [Umgebungsvariablen](../handbuch/deployment.md#alle-umgebungsvariablen)),
    damit ein Zyklus auf dem Zielserver (z. B. eine Symlink-Schleife) nicht zu endloser Rekursion
    führt (#836). Ein durch eines dieser Limits abgeschnittener Lauf wird als solcher protokolliert,
-   nicht als Fehler behandelt.
+   nicht als Fehler behandelt. Die Verzeichnisseite selbst wird dabei nur bis zu einer festen
+   Obergrenze von 8 MiB gelesen — eine endlos streamende Antwort auf eine Verzeichnis-URL bringt
+   damit einen einzelnen Abruf zu Fall statt den ganzen Lauf (#1236).
 2. Die gefundenen Einträge werden auf die verarbeitbaren Dateitypen gefiltert (siehe
    [Welche Dateien OPAA verarbeitet](./data-indexing-rag.md#welche-dateien-opaa-verarbeitet)).
 3. Der **Änderungszeitpunkt aus der Liste** entscheidet, ob überhaupt geladen wird. Ein unverändertes
    Dokument wird übersprungen, bevor Bandbreite anfällt — sofern das Dokument bereits in derselben
    Bibliothek liegt; zeigt die Quelle neu auf eine andere Zielbibliothek, wird auch ein unverändertes
    Dokument neu geladen und wandert dorthin.
-4. Geladen wird in einen temporären Bereich; anschließend wird eine **Prüfsumme über den Inhalt**
+4. Geladen wird in einen temporären Bereich — **gedeckelt auf eine konfigurierbare Bytegrenze je
+   Eintrag** (`OPAA_INDEXING_CRAWL_MAX_FILE_SIZE_BYTES`, Vorgabe 100 MiB, siehe
+   [Umgebungsvariablen](../handbuch/deployment.md#alle-umgebungsvariablen)). Der Deckel greift
+   während des Übertragens, nicht danach: Ein Eintrag darüber wird abgebrochen, bevor die
+   überschüssigen Bytes auf der Platte landen, als Ablehnung im Protokoll des Laufs vermerkt und
+   als übersprungen gezählt; der Lauf selbst geht weiter (#1236). Das gilt auch für den
+   Nachlade-Weg unter Punkt 2, der einen unaufgelösten Containertyp erst an der vollständigen Datei
+   entscheidet — ein solcher Eintrag kostet also nie mehr als diesen Deckel, ob er am Ende indiziert
+   oder abgewiesen wird. Anschließend wird eine **Prüfsumme über den Inhalt**
    gebildet. Sie erkennt Umbenennungen und Verschiebungen und sichert gegen einen unzuverlässigen
    Änderungszeitpunkt ab.
 5. Die Datei durchläuft dieselbe Verarbeitungskette wie jedes andere Dokument. Meldet ihre
@@ -446,21 +457,18 @@ Anstoß-Endpunkt gegen Überlastung — je aufrufender Netzadresse **und** je Bi
 höchstens ein Lauf gleichzeitig je Bibliothek. Der Fortschritt ist über
 `GET /api/v1/libraries/{libraryId}/indexing/status` abrufbar.
 
-**Was noch fehlt** — und zwar so, dass es benannt gehört:
+**Zielprüfung (gebaut, #267).** Jede ausgehende Adresse — Start-URL, jede Weiterleitung, der
+Proxy-Host und die Ziele des Verbindungstests im Erstellungsdialog — wird gegen private, lokale und
+nicht routbare Adressbereiche geprüft; zulässig sind nur die Schemata `http` und `https`, eine
+Weiterleitung von `https` auf `http` wird immer verweigert, und eine Weiterleitung auf einen fremden
+Ursprung verliert die Zugangsdaten. Konfigurierbar über `opaa.indexing.target-validation`
+(Abschaltung und Hostnamen-Allowlist). Die Pfad-Allowlist sichert den Dateisystem-Typ auf dieselbe
+Weise ab (**gebaut**, #484).
 
-- **Zielprüfung.** Die angegebene Adresse wird heute nicht gegen private, lokale und nicht routbare
-  Adressbereiche geprüft, und die zulässigen Schemata werden nicht ausdrücklich eingegrenzt.
-  Weiterleitungen werden gefolgt. Mit der Öffnung des Anstoßes auf jeden `EDITOR` (ADR-0018) und der
-  dauerhaft offenen Anlageberechtigung (ADR-0018, Entscheidung 6) ist diese Härtung dringlicher als
-  zuvor. Anders als beim Dateisystem-Typ, für den die Pfad-Allowlist die Anlage bereits absichert
-  (**gebaut**, #484), ist diese Zielprüfung für `HTTP_DIRECTORY`/`RSS_FEED` noch offen und der
-  verbleibende Blocker für den Mehrbenutzer-Produktivbetrieb. Erfasst als **Issue #267** — die
-  Lücke gilt seit #514 gleichermaßen für den Verbindungstest im Erstellungsdialog, der dieselben
-  ausgehenden Verbindungen aufbaut, nur synchron statt über einen Indizierungslauf.
-- **Zeitplan.** ~~Der Lauf wird angestoßen, nicht geplant.~~ **Gebaut (#485):** an- und abschaltbarer
-  Zeitplan je Bibliothek (stündlich / täglich / wöchentlich, feste Uhrzeit), zusätzlich zum
-  weiterhin möglichen manuellen Anstoß. Siehe ADR-0018, Nachtrag 2026-08-21, für die vollständige
-  Entscheidung (Zeitzone, verteilte Ausführung, Fehlerverhalten).
+**Zeitplan (gebaut, #485).** An- und abschaltbarer Zeitplan je Bibliothek (stündlich / täglich /
+wöchentlich, feste Uhrzeit), zusätzlich zum weiterhin möglichen manuellen Anstoß. Siehe ADR-0018,
+Nachtrag 2026-08-21, für die vollständige Entscheidung (Zeitzone, verteilte Ausführung,
+Fehlerverhalten).
 
 ### Feeds als Quelle (gebaut)
 
@@ -566,11 +574,9 @@ durch](#selbst-aktualisierende-wissensblöcke) unten und
 /api/v1/libraries/{libraryId}/indexing`. Die Bibliothek trägt den Typ `RSS_FEED` und die Feed-Adresse als
 gespeicherte Konfiguration (**gebaut**, [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md));
 Auslösen darf, wer an der Bibliothek mindestens `EDITOR` ist, wie bei jedem lauf-basierten Typ.
-
-**Was noch fehlt** — und zwar so, dass es benannt gehört:
-
-- **Zeitplan.** Der Lauf wird angestoßen, nicht geplant, wie bei der Verzeichnisliste. Erfasst als
-  **Issue #485**.
+Zeitplan (#485) und Zielprüfung (#267) gelten wie bei der Verzeichnisliste; die Zielprüfung greift
+hier zusätzlich auf jede Detailseite und jede Anlage, und für fremde Ursprünge werden weder
+Zugangsdaten noch eine ausgesetzte Zertifikatsprüfung angewendet.
 
 ---
 
@@ -826,8 +832,8 @@ ordner-bewusste Dokumentliste und der Upload in einen Ordner mit #821, die Navig
 in der Bibliotheks-Detailansicht (Breadcrumb, Ordnerzeilen, Anlegen/Umbenennen/Löschen, Upload in den
 geöffneten Ordner, Ordnerpfad bei Suchtreffern) mit #822, der Ordner-Upload per Drag & Drop mit
 Strukturübernahme mit #823, die read-only Abbildung der Verzeichnisstruktur für
-FILESYSTEM-Bibliotheken mit #824 — die darunterstehende Liste beschreibt durchgängig gebaute
-Funktionalität, kein Zielbild mehr.
+FILESYSTEM-Bibliotheken mit #824 und für HTTP_DIRECTORY-Bibliotheken mit #1277 — die darunterstehende
+Liste beschreibt durchgängig gebaute Funktionalität, kein Zielbild mehr.
 
 ### Ordner in UPLOAD-Bibliotheken
 
@@ -881,7 +887,7 @@ Funktionalität, kein Zielbild mehr.
   Retrieval); ein Treffer trägt zusätzlich `folderId`/`folderPath` seines Dokuments und zeigt diesen
   Pfad an — ein Klick darauf öffnet den betreffenden Ordner.
 
-### Ordner in FILESYSTEM-Bibliotheken (#824, gebaut)
+### Ordner in Konnektorbibliotheken (#824/#1277, gebaut)
 
 Eine `FILESYSTEM`-Bibliothek bildet die tatsächliche Verzeichnisstruktur der Quelle als **read-only
 Ordner** ab — angelegt und nachgeführt bei jedem Indizierungslauf, nicht manuell editierbar (die
@@ -908,14 +914,32 @@ nebenbei, dass gleichnamige Dateien aus verschiedenen Unterverzeichnissen heute 
 einer flachen Liste ununterscheidbar sind — jede Datei bekommt über ihren Ordner einen eindeutigen
 Platz.
 
+**Eine `HTTP_DIRECTORY`-Bibliothek spiegelt ihr gecrawltes Webverzeichnis nach denselben Regeln
+(#1277).** An die Stelle des zu `sourcePath` relativen Verzeichnisanteils tritt der URL-Pfad relativ
+zur normalisierten Start-URL, segmentweise prozentdekodiert (`Verg%C3%BCtung` → `Vergütung`);
+Query-Parameter gehören nicht zum Pfad. Ein Segment, das nach der Dekodierung leer ist, `.` oder `..`
+lautet, einen Pfadtrenner oder ein NUL-Byte (`%00`) enthält oder länger als 255 Zeichen ist (die
+Breite von `library_folders.name`), wird abgewiesen — die Datei liegt dann in der Wurzel der
+Bibliothek, mit einer Warnung im Anwendungsprotokoll, statt unter einem erfundenen Ordnernamen. Auch
+hier entstehen Ordner nur entlang tatsächlich gefundener Dateien, antworten die Folder-CRUD-Endpoints
+mit `409` und bekommt ein bereits vor #1277 indiziertes Dokument seine `folder_id` beim nächsten Lauf
+nachgetragen, ohne neu indiziert zu werden. Aufgeräumt wird nur am Ende eines **vollständigen** Laufs:
+Wurde der Crawl durch ein Limit abgeschnitten (`truncated`) oder konnte er ein Unterverzeichnis gar
+nicht abrufen (`incomplete`), bleiben Dokumente wie Ordner unangetastet — der Bestand dieses Laufs
+taugt dann nicht als Maßstab dafür, was an der Quelle noch existiert. Ein Mail-Anhang aus einem
+Webverzeichnis liegt im Ordner seiner Elternmail
+([ADR-0022](../decisions/0022-anhang-als-eigenes-dokument.md)); `RSS_FEED`-Bibliotheken haben
+weiterhin keine Ordner, da ein Feed keine Verzeichnisstruktur hat.
+
 ---
 
 ## Zeitpläne, Vorrang und Betrieb
 
 ### Auslöser
 
-Ein Lauf beginnt auf vier Wegen: nach **Zeitplan je Bibliothek** (Zielbild, **Issue #485** — heute wird
-angestoßen, nicht geplant), durch eine **Meldung des Quellsystems** (Zielbild), durch **ausdrücklichen
+Ein Lauf beginnt auf vier Wegen: nach **Zeitplan je Bibliothek** (**gebaut**, #485: stündlich /
+täglich / wöchentlich, verpasste Termine werden nicht nachgeholt), durch eine **Meldung des
+Quellsystems** (Zielbild), durch **ausdrücklichen
 Anstoß** — `POST /api/v1/libraries/{libraryId}/indexing`, EDITOR an der Bibliothek genügt (**gebaut**,
 ADR-0018) — oder, beim Upload, **unmittelbar** mit der Übergabe.
 
@@ -1006,11 +1030,12 @@ Bearbeitenden vorbehalten (mindestens MANAGER-Rolle an der Bibliothek), nicht je
 Entscheidungen, die bereits getroffen sind. Sie stehen hier, damit sie nicht in einem Jahr als neue
 Idee wieder aufgemacht werden.
 
-- **Speicherkontingente — ja, für manuelle Uploads.** Es gibt eine Obergrenze je Person mit einem
-  hausweit konfigurierbaren Standardwert; einzelne Personen können davon abweichend gesetzt werden.
-  Ohne Kontingent wird der persönliche Bereich zur Ausweichablage für ganze Netzlaufwerke, und zwar an
-  der Kuratierung vorbei. Konnektorbestände sind davon nicht betroffen — sie werden über den Zuschnitt
-  der Quelle begrenzt, nicht über ein Kontingent. Erfasst als **Issue #119**.
+- **Speicherkontingente — ja, für jede Bibliothek.** Es gibt eine Obergrenze je Bibliothek mit einem
+  hausweit konfigurierbaren Standardwert (`opaa.library.quota-bytes`), durchgesetzt von
+  `LibraryStorageQuotaService` auf jedem Aufnahmeweg — manueller Upload ebenso wie die Konnektorpfade
+  FILESYSTEM, HTTP_DIRECTORY und RSS_FEED sowie Mail-Anhänge. Ohne Kontingent wird eine Bibliothek zur
+  Ausweichablage für ganze Netzlaufwerke oder unbegrenzt wachsende Konnektorquellen, und zwar an der
+  Kuratierung vorbei. Erfasst als **Issue #119**.
 - **Anzeige ähnlicher Dokumente beim Upload — ja**, beschränkt auf Bestände, die die hochladende Person
   sehen darf, und als Hinweis ohne Blockade (siehe [Duplikate erkennen](#duplikate-erkennen)). Ebenfalls
   **Issue #119**.

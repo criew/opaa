@@ -120,8 +120,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
             this.properties.maxAttachmentsPerEntry(),
             this.properties.maxAttachmentSizeBytes(),
             this.properties.requestDelayMs(),
-            this.properties.userAgent(),
-            AttachmentIndexer.DEFAULT_MAX_ATTACHMENT_DEPTH);
+            this.properties.userAgent());
   }
 
   @Override

@@ -93,6 +93,13 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long countByLibraryId(UUID libraryId);
 
   /**
+   * The bestand the Pflege-Anker (#1069) and the Füllgrad of #1067 measure against: a library's
+   * {@code INDEXED} documents, attachments included - a metadata value hangs at every document row,
+   * not only at the ones the document list pages over.
+   */
+  long countByLibraryIdAndStatus(UUID libraryId, DocumentStatus status);
+
+  /**
    * The parent-level counterpart of {@link #countByLibraryId} (#1184): top-level documents only,
    * matching what the document list pages over - shown as a library's {@code documentCount}. {@link
    * #countByLibraryId} keeps backing the delete guard, which must see every row.
@@ -131,6 +138,31 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   List<AttachmentParentRef>
       findByLibraryIdAndParentDocumentIdIsNotNullAndFileNameContainingIgnoreCase(
           UUID libraryId, String q);
+
+  /**
+   * The paged Pflege-Anker list (#1069): every indexed document row of the library - top-level and
+   * attachment alike - that has no row for {@code fieldKey}, optionally narrowed by {@code
+   * escapedQ} (empty matches every name). Deliberately not the top-level paging of {@link
+   * #searchTopLevelByFileNameOrAttachmentRoot}: this list must hold exactly the rows the anchor
+   * counts, so that every entry is genuinely open and a Sammelzuweisung over the whole page cannot
+   * overwrite a maintained value. Only {@code status} rows count - an anchor over documents that
+   * were never indexed would never reach zero. The gap is a correlated {@code NOT EXISTS}, so no
+   * unbounded id list travels between two queries.
+   */
+  @Query(
+      """
+      SELECT d FROM Document d
+      WHERE d.libraryId = :libraryId AND d.status = :status
+        AND LOWER(d.fileName) LIKE LOWER(CONCAT('%', :escapedQ, '%')) ESCAPE '\\'
+        AND NOT EXISTS (SELECT 1 FROM DocumentMetadataValue v
+                        WHERE v.documentId = d.id AND v.fieldKey = :fieldKey)
+      """)
+  Page<Document> searchWithoutMetadataValue(
+      @Param("libraryId") UUID libraryId,
+      @Param("escapedQ") String escapedQ,
+      @Param("fieldKey") String fieldKey,
+      @Param("status") DocumentStatus status,
+      Pageable pageable);
 
   /** The two ids the attachment-aware search prefilter needs (#1184) - see the finder above. */
   interface AttachmentParentRef {
@@ -284,6 +316,20 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   int markFailed(@Param("id") UUID id, @Param("errorMessage") String errorMessage);
 
   /**
+   * Like {@link #markFailed}, plus {@code chunk_count = 0}: for a document whose chunks were just
+   * removed because its new version is legitimately empty (#1268). {@link #markFailed} deliberately
+   * leaves {@code chunk_count} alone, which is right for a document that kept its previous chunks
+   * and wrong for one that has none left - since #1268 those two cases are distinguishable, so the
+   * column must say which of them a {@code FAILED} row is.
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.status = io.opaa.api.types.DocumentStatus.FAILED, d.errorMessage ="
+          + " :errorMessage, d.chunkCount = 0 where d.id = :id")
+  int markFailedWithoutChunks(@Param("id") UUID id, @Param("errorMessage") String errorMessage);
+
+  /**
    * The successful counterpart to {@link #markFailed} - same reasoning, same
    * zero-rows-means-the-row-is-gone contract.
    */
@@ -332,6 +378,15 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Transactional
   @Query("update Document d set d.metadataExtractionVersion = :version where d.id = :id")
   int updateMetadataExtractionVersion(@Param("id") UUID id, @Param("version") int version);
+
+  /**
+   * Hands a document back to the Bestandslauf (#1068): a manually deleted core value must be
+   * re-extractable, and the run selects only documents without a current extraction version.
+   */
+  @Modifying
+  @Transactional
+  @Query("update Document d set d.metadataExtractionVersion = null where d.id = :id")
+  int clearMetadataExtractionVersion(@Param("id") UUID id);
 
   /**
    * The connector counterpart to {@link #markIndexed(UUID, int, Instant)}, generalized for {@code

@@ -89,9 +89,13 @@ public class LlmModelConnectionTester {
    *
    * @throws NotFoundException 404 when {@code modelId} is set but no such model exists
    * @throws ValidationException 400 when the stored key would have to be sent to an address other
-   *     than the model's own
+   *     than the model's own, or when {@code baseUrl} itself carries credentials (#1147) - the
+   *     probe URI is logged on failure, so such an address must not reach the probe at all
    */
   public TestOutcome test(String baseUrl, String modelIdentifier, String apiKey, UUID modelId) {
+    if (ModelEndpointUri.containsCredentials(baseUrl)) {
+      throw new ValidationException(ModelEndpointUri.CREDENTIALS_REJECTED_MESSAGE);
+    }
     String effectiveApiKey = apiKey;
     if (!StringUtils.hasText(apiKey) && modelId != null) {
       LlmModel model =
@@ -199,18 +203,11 @@ public class LlmModelConnectionTester {
    * (docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei) - a trailing slash on {@code
    * baseUrl} is tolerated, never doubled. Any query string on {@code baseUrl} (e.g. an Azure {@code
    * api-version} parameter) is preserved and moved to the end of the resulting URI rather than
-   * ending up in the middle of the path (#757 review).
+   * ending up in the middle of the path (#757 review). Shared with the rerank role through {@link
+   * ModelEndpointUri}, which also enforces the "no credentials in the address" rule (#1147).
    */
   private static URI chatCompletionsUri(String baseUrl) throws URISyntaxException {
-    String trimmed = baseUrl.strip();
-    int queryIndex = trimmed.indexOf('?');
-    String withoutQuery = queryIndex >= 0 ? trimmed.substring(0, queryIndex) : trimmed;
-    String query = queryIndex >= 0 ? trimmed.substring(queryIndex) : "";
-    String withoutTrailingSlash =
-        withoutQuery.endsWith("/")
-            ? withoutQuery.substring(0, withoutQuery.length() - 1)
-            : withoutQuery;
-    return new URI(withoutTrailingSlash + "/chat/completions" + query);
+    return ModelEndpointUri.append(baseUrl, "/chat/completions");
   }
 
   /**

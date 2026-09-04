@@ -16,9 +16,11 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Convenience entry point services call to write an audit event - composes {@link
  * AuditActorPseudonymService} (actor/subject pseudonymisation) and {@link AuditLogService} (the
- * actual write) so no caller needs to repeat that wiring. Every {@code recordXxx} method except
+ * actual write) so no caller needs to repeat that wiring. Every {@code recordXxx} method other than
  * {@link #recordAuditLogAccess} holds no {@code @Transactional} of its own: it delegates to {@link
  * AuditLogService#record}, which joins the caller's ambient transaction (see that class's Javadoc).
+ * {@link #recordAuditLogAccess} is the one exception and carries {@code Propagation.NOT_SUPPORTED};
+ * its own Javadoc says why.
  *
  * <p>{@code before}/{@code after} are small {@link Map}s the caller builds inline, serialised here
  * with a locally-owned {@link JsonMapper} instance rather than the application's autoconfigured
@@ -49,12 +51,13 @@ public class AuditEventRecorder {
    * Records an event caused by a person ({@link AuditEvent.Builder#actor}), with no affected rights
    * subject - e.g. a space or library being created. See {@link #recordUserActionOnSubject} for the
    * sibling that carries one. {@code event} must have been built with {@link
-   * AuditEvent.Builder#actor} and no {@link AuditEvent.Builder#subject}.
+   * AuditEvent.Builder#actor} and no {@link AuditEvent.Builder#subject}. An optional {@link
+   * AuditEvent.Builder#correlationRef} links the per-document entries one person's bulk operation
+   * writes together (metadata Sammelzuweisung, #1068).
    */
   public void recordUserAction(AuditEvent event) {
     UUID actorUserId = requireUserActor(event);
     requireNoSubject(event, "recordUserAction");
-    requireNoCorrelationRef(event, "recordUserAction");
     String actorRef = pseudonymService.pseudonymFor(actorUserId, event.organizationId()).toString();
     auditLogService.record(
         AuditLogEntry.withoutSubject(
@@ -69,7 +72,7 @@ public class AuditEventRecorder {
             toJson(event.after()),
             event.outcome(),
             event.reason(),
-            null));
+            event.correlationRef()));
   }
 
   /**
@@ -177,10 +180,9 @@ public class AuditEventRecorder {
   }
 
   /**
-   * {@code correlationRef} only ever reaches a column via {@link #recordSystemProcessAction} - a
-   * caller setting it on a user-action event has almost always mixed up which of the two builder
-   * paths it meant, and silently ignoring the field would hide that mistake instead of failing the
-   * call that made it.
+   * A subject-carrying user action is always a single rights change, never one entry of a batch - a
+   * caller setting a {@code correlationRef} on one has mixed up which builder path it meant, and
+   * silently ignoring the field would hide that mistake instead of failing the call that made it.
    */
   private static void requireNoCorrelationRef(AuditEvent event, String methodName) {
     if (event.correlationRef() != null) {
@@ -191,12 +193,13 @@ public class AuditEventRecorder {
 
   /**
    * The self-log entry for one access attempt against {@code audit_log} itself. {@code outcome} is
-   * {@link AuditOutcome#SUCCESS} for a permitted, executed query and {@link AuditOutcome#DENIED}
-   * for a rejected attempt, so a denied attempt is recorded exactly like a successful one. {@code
-   * scope} (access path plus whatever of object/event type, correlation ref, incident scope id and
-   * time range that path takes) has no dedicated column and is serialised into {@code after}.
-   * {@code reason} is required by the caller ({@link AuditQueryService#loggedAccess}) before this
-   * method is ever reached, not re-validated here. {@code object_id} is the fixed {@link
+   * {@link AuditOutcome#SUCCESS} for a permitted, executed query, {@link AuditOutcome#DENIED} for a
+   * rejected attempt and {@link AuditOutcome#FAILURE} for one that failed after passing its checks,
+   * so an attempt that never succeeded is recorded exactly like a successful one. {@code scope}
+   * (access path plus whatever of object/event type, correlation ref, incident scope id and time
+   * range that path takes) has no dedicated column and is serialised into {@code after}. {@code
+   * reason} is required by the caller ({@link AuditQueryService#loggedAccess}) before this method
+   * is ever reached, not re-validated here. {@code object_id} is the fixed {@link
    * #AUDIT_LOG_SELF_OBJECT_ID}, not a per-query id: {@code audit_log} itself is what was accessed,
    * once per organization, regardless of which rows the query touched.
    *

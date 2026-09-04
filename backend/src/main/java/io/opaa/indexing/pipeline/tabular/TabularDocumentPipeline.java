@@ -127,7 +127,7 @@ public class TabularDocumentPipeline implements DocumentPipeline {
       // the same way as PDF/DOCX/PPTX/ODT/ODP - see DocumentPipelineResult's own Javadoc for the
       // shared contract.
       log.warn("Could not read tabular document {}", source.fileName(), e);
-      return DocumentPipelineResult.noContent();
+      return DocumentPipelineResult.parseFailed();
     }
     if (chunks.isEmpty()) {
       // Covers an empty file and a workbook whose every sheet is empty - the same "parsed, but

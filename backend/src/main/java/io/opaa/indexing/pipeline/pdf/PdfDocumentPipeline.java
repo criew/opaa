@@ -5,6 +5,7 @@ import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.indexing.pipeline.DocumentTitleLine;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -64,7 +65,7 @@ public class PdfDocumentPipeline implements DocumentPipeline {
   @Override
   public DocumentPipelineResult run(DocumentPipelineSource source) {
     if (source.file() == null) {
-      return DocumentPipelineResult.noContent();
+      return DocumentPipelineResult.parseFailed();
     }
     try (PDDocument doc = Loader.loadPDF(source.file().toFile())) {
       String fullText = new PDFTextStripper().getText(doc);
@@ -72,20 +73,21 @@ public class PdfDocumentPipeline implements DocumentPipeline {
         return DocumentPipelineResult.noExtractableText();
       }
       List<OutlineEntry> entries = flattenOutline(doc);
-      DocumentProperties properties = properties(doc, entries);
+      DocumentProperties properties = properties(doc, entries, firstPageText(doc));
       if (!entries.isEmpty()) {
         return chunkByOutline(doc, entries).withProperties(properties);
       }
       return chunkByPage(doc).withProperties(properties);
     } catch (IOException | RuntimeException e) {
       log.warn("Could not read PDF document {} via PDFBox", source.fileName(), e);
-      return DocumentPipelineResult.noContent();
+      return DocumentPipelineResult.parseFailed();
     }
   }
 
   /**
-   * The Info dictionary's Title/CreationDate/ModDate plus the first top-level outline entry as the
-   * first heading (ADR-0024) - read without extracting any page text.
+   * The Info dictionary's Title/CreationDate/ModDate, the first top-level outline entry as the
+   * first heading (ADR-0024) and the opening of the first page's text as the head text (#1263) -
+   * the only page whose text is extracted here.
    */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
@@ -93,14 +95,31 @@ public class PdfDocumentPipeline implements DocumentPipeline {
       return DocumentProperties.EMPTY;
     }
     try (PDDocument doc = Loader.loadPDF(source.file().toFile())) {
-      return properties(doc, flattenOutline(doc));
+      return properties(doc, flattenOutline(doc), firstPageText(doc));
     } catch (IOException | RuntimeException e) {
       log.warn("Could not read PDF properties of {} via PDFBox", source.fileName(), e);
       return DocumentProperties.EMPTY;
     }
   }
 
-  private static DocumentProperties properties(PDDocument doc, List<OutlineEntry> entries) {
+  /**
+   * The first page's text as the head area (#1263), or {@code null} when it cannot be extracted -
+   * never a failure. Read on both paths, so {@link #run} and {@link #readProperties} declare the
+   * same head for the same file.
+   */
+  private static String firstPageText(PDDocument doc) {
+    try {
+      PDFTextStripper stripper = new PDFTextStripper();
+      stripper.setStartPage(1);
+      stripper.setEndPage(1);
+      return stripper.getText(doc);
+    } catch (IOException | RuntimeException e) {
+      return null;
+    }
+  }
+
+  private static DocumentProperties properties(
+      PDDocument doc, List<OutlineEntry> entries, String text) {
     PDDocumentInformation info = doc.getDocumentInformation();
     String firstHeading =
         entries.stream()
@@ -108,8 +127,9 @@ public class PdfDocumentPipeline implements DocumentPipeline {
             .map(OutlineEntry::title)
             .findFirst()
             .orElse(null);
+    String titleLine = DocumentTitleLine.of(text);
     if (info == null) {
-      return DocumentProperties.EMPTY.withFirstHeading(firstHeading);
+      return DocumentProperties.EMPTY.withFirstHeading(firstHeading).withTitleLine(titleLine);
     }
     return new DocumentProperties(
         info.getTitle(),
@@ -117,6 +137,9 @@ public class PdfDocumentPipeline implements DocumentPipeline {
         DocumentProperties.toLocalDate(info.getModificationDate()),
         null,
         firstHeading,
+        titleLine,
+        null,
+        false,
         Map.of());
   }
 

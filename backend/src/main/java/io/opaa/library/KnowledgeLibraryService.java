@@ -6,6 +6,7 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.ScheduleFrequency;
@@ -28,6 +29,7 @@ import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
 import io.opaa.indexing.LibraryScheduleCodec;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.source.confluence.ConfluenceConnection;
 import io.opaa.indexing.source.confluence.ConfluenceCredentials;
 import io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository;
@@ -319,7 +321,7 @@ public class KnowledgeLibraryService {
     eventPublisher.publishEvent(
         new LibraryChanged(
             saved, LibraryChanged.Cause.CREATED, currentUserId, null, libraryAuditPayload(saved)));
-    return toLibraryDetail(saved, AssetRole.OWNER);
+    return toLibraryDetail(saved, AssetRole.OWNER, currentUserId);
   }
 
   private Map<String, Object> libraryAuditPayload(KnowledgeLibrary library) {
@@ -448,7 +450,7 @@ public class KnowledgeLibraryService {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
     AssetRole role =
         accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
-    return toLibraryDetail(library, role);
+    return toLibraryDetail(library, role, caller.id());
   }
 
   @Transactional
@@ -641,7 +643,7 @@ public class KnowledgeLibraryService {
       }
     }
     return toLibraryDetail(
-        updated, accessService.effectiveRole(updated, currentUserId, systemAdmin));
+        updated, accessService.effectiveRole(updated, currentUserId, systemAdmin), currentUserId);
   }
 
   @Transactional
@@ -817,9 +819,18 @@ public class KnowledgeLibraryService {
    * folder is actually created and something is uploaded into it - seeing that content requires
    * navigating into the folder, which is exactly what {@code folderId} is for (frontend follows in
    * #822).
+   *
+   * <p><b>Pflege-Anker seit #1069.</b> {@code missingMetadataField} narrows the list to exactly the
+   * documents the Pflege-Anker counts for that core field - see {@link
+   * #listDocumentsWithoutMetadataValue}, which then owns the whole request.
    */
   public LibraryDocumentPage listDocuments(
-      UUID libraryId, CurrentUser caller, String q, UUID folderId, Pageable pageable) {
+      UUID libraryId,
+      CurrentUser caller,
+      String q,
+      UUID folderId,
+      String missingMetadataField,
+      Pageable pageable) {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
 
@@ -831,6 +842,10 @@ public class KnowledgeLibraryService {
     }
 
     boolean searching = q != null && !q.isBlank();
+    if (missingMetadataField != null && !missingMetadataField.isBlank()) {
+      return listDocumentsWithoutMetadataValue(
+          libraryId, searching ? q : null, missingMetadataField.strip(), pageable);
+    }
     if (searching) {
       // #1184 (ADR-0022, Entscheidung 5): a hit on an attachment's file name must surface its
       // top-level parent - resolve every matching attachment row up its parentDocumentId chain
@@ -871,6 +886,35 @@ public class KnowledgeLibraryService {
         foldersOf(libraryId, folderId),
         breadcrumbOf(folderId, foldersById),
         folderId);
+  }
+
+  /**
+   * The Pflege-Anker's list (#1069): exactly the document rows the anchor counts as "ohne Wert" for
+   * {@code fieldKey} - one entry per row, attachments included and listed in their own right, so
+   * the number in the anchor and the length of this list are the same figure and every entry a
+   * Sammelzuweisung touches is genuinely open. Bibliotheksweit like a search (the anchor counts the
+   * whole library) and combinable with {@code q}; folders and breadcrumb stay empty.
+   */
+  private LibraryDocumentPage listDocumentsWithoutMetadataValue(
+      UUID libraryId, String q, String fieldKey, Pageable pageable) {
+    if (CoreMetadataField.fromKey(fieldKey).isEmpty()) {
+      throw new ValidationException("Unbekanntes Metadatenfeld: " + fieldKey);
+    }
+    Page<Document> page =
+        documentRepository.searchWithoutMetadataValue(
+            libraryId, q == null ? "" : escapeLike(q), fieldKey, DocumentStatus.INDEXED, pageable);
+    Map<UUID, LibraryFolder> foldersById =
+        LibraryFolderPaths.loadFoldersById(folderRepository, libraryId);
+    return new LibraryDocumentPage(
+        page.getContent().stream()
+            .map(document -> toLibraryDocumentEntry(document, foldersById))
+            .toList(),
+        pageable.getPageNumber(),
+        pageable.getPageSize(),
+        page.getTotalElements(),
+        List.of(),
+        List.of(),
+        null);
   }
 
   /**
@@ -1511,7 +1555,7 @@ public class KnowledgeLibraryService {
     return library;
   }
 
-  private LibraryDetail toLibraryDetail(KnowledgeLibrary library, AssetRole myRole) {
+  private LibraryDetail toLibraryDetail(KnowledgeLibrary library, AssetRole myRole, UUID userId) {
     // #1184: top-level documents only, consistent with the document list's own parent-level
     // totalElements - attachments are visible inside their parent's group, not in this count.
     long documentCount =
@@ -1525,7 +1569,11 @@ public class KnowledgeLibraryService {
         myRole.atLeast(AssetRole.MANAGER)
             ? toManagementDetail(library)
             : LibraryManagementDetail.EMPTY;
-    return new LibraryDetail(library, myRole, documentCount, managementDetail);
+    // #1278 review: myRole alone cannot tell a client whether PUT .../diagnostics-lock will
+    // succeed - it bypasses to OWNER for a system admin, holdsIndependentOwnerRole never does.
+    boolean diagnosticsLockToggleable = accessService.holdsIndependentOwnerRole(library, userId);
+    return new LibraryDetail(
+        library, myRole, documentCount, managementDetail, diagnosticsLockToggleable);
   }
 
   private LibraryManagementDetail toManagementDetail(KnowledgeLibrary library) {

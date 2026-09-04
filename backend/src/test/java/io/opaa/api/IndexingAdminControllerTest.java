@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,10 +19,14 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.common.NotFoundException;
 import io.opaa.indexing.LowChunkDocumentAuditService;
 import io.opaa.indexing.PipelineReindexResult;
 import io.opaa.indexing.PipelineReindexService;
 import io.opaa.indexing.PipelineVersionProgress;
+import io.opaa.indexing.metadata.CoreMetadataExtractor;
+import io.opaa.indexing.metadata.MetadataBackfillResult;
+import io.opaa.indexing.metadata.MetadataBackfillService;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
@@ -61,6 +66,7 @@ class IndexingAdminControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private LowChunkDocumentAuditService lowChunkDocumentAuditService;
   @MockitoBean private PipelineReindexService pipelineReindexService;
+  @MockitoBean private MetadataBackfillService metadataBackfillService;
   @MockitoBean private DocumentPipelineRegistry pipelineRegistry;
   @MockitoBean private AuditEventRecorder auditEventRecorder;
   @MockitoBean private UserService userService;
@@ -326,5 +332,100 @@ class IndexingAdminControllerTest {
                 .content("{\"pipelineId\":\"tika-fallback\",\"belowVersion\":1}")
                 .with(asRegularUser()))
         .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void metadataBackfillAsRegularUserReturns403() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/metadata-backfill")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + UUID.randomUUID() + "\"}")
+                .with(asRegularUser()))
+        .andExpect(status().isForbidden());
+    verifyNoInteractions(metadataBackfillService);
+  }
+
+  @Test
+  void metadataBackfillScopesToTheCallersOwnOrganizationAndReportsWhenDone() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    when(metadataBackfillService.backfillBatch(actingAdminOrganizationId, libraryId, 5))
+        .thenReturn(new MetadataBackfillResult(0, 0, 0));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/metadata-backfill")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + libraryId + "\",\"batchSize\":5}")
+                .with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.done").value(true))
+        .andExpect(jsonPath("$.processedDocuments").value(0));
+
+    verify(metadataBackfillService).backfillBatch(actingAdminOrganizationId, libraryId, 5);
+  }
+
+  @Test
+  void metadataBackfillOfAForeignLibraryIs404NotForbidden() throws Exception {
+    // A library of another organization is absent, not merely forbidden - the same boundary rule
+    // every other library endpoint applies; the service decides it against the caller's org.
+    UUID libraryId = UUID.randomUUID();
+    when(metadataBackfillService.backfillBatch(actingAdminOrganizationId, libraryId, 10))
+        .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/metadata-backfill")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + libraryId + "\"}")
+                .with(asAdmin()))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.error").value("Bibliothek nicht gefunden"));
+    verify(auditEventRecorder, org.mockito.Mockito.never()).recordUserAction(any());
+  }
+
+  @Test
+  void metadataBackfillRejectsAnOversizedBatchWith400() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/metadata-backfill")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + UUID.randomUUID() + "\",\"batchSize\":101}")
+                .with(asAdmin()))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("batchSize muss zwischen 1 und 100 liegen, war 101"));
+    verifyNoInteractions(metadataBackfillService);
+  }
+
+  @Test
+  void metadataBackfillRecordsAnAuditEventForTheTriggeringCall() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    when(metadataBackfillService.backfillBatch(actingAdminOrganizationId, libraryId, 10))
+        .thenReturn(new MetadataBackfillResult(4, 1, 2));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/metadata-backfill")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + libraryId + "\"}")
+                .with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.processedDocuments").value(4))
+        .andExpect(jsonPath("$.markedForNextRun").value(1))
+        .andExpect(jsonPath("$.skippedDocuments").value(2))
+        .andExpect(jsonPath("$.done").value(false));
+
+    ArgumentCaptor<AuditEvent> auditCaptor = ArgumentCaptor.forClass(AuditEvent.class);
+    verify(auditEventRecorder).recordUserAction(auditCaptor.capture());
+    AuditEvent event = auditCaptor.getValue();
+    assertThat(event.eventType()).isEqualTo(AuditEventType.INDEXING_METADATA_BACKFILL_TRIGGERED);
+    assertThat(event.organizationId()).isEqualTo(actingAdminOrganizationId);
+    assertThat(event.actorUserId()).isEqualTo(actingAdminId);
+    assertThat(event.objectId()).isEqualTo(libraryId);
+    assertThat(event.after())
+        .containsEntry("extractionVersion", CoreMetadataExtractor.EXTRACTION_VERSION)
+        .containsEntry("processedDocuments", 4)
+        .containsEntry("markedForNextRun", 1)
+        .containsEntry("skippedDocuments", 2);
   }
 }

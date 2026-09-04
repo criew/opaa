@@ -104,7 +104,9 @@ final class LibraryResponseMapper {
                 library.getCreatedAt(),
                 library.getUpdatedAt())
             .description(library.getDescription())
-            .documentCount(detail.documentCount());
+            .documentCount(detail.documentCount())
+            .diagnosticsLocked(library.isDiagnosticsLocked())
+            .diagnosticsLockToggleable(detail.diagnosticsLockToggleable());
     if (library.getSourceType() == DocumentSourceType.CONFLUENCE) {
       // ADR-0023: edition and selection are visible to every reader - the selection is exactly
       // the scope every reader of this library can see, so naming it is not configuration detail

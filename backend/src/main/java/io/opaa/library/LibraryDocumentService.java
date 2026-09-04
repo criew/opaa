@@ -15,7 +15,7 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.VectorChunkStore;
-import io.opaa.indexing.pipeline.mail.MailProperties;
+import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
@@ -127,7 +127,8 @@ public class LibraryDocumentService {
   private final LibraryFolderRepository folderRepository;
   private final LibraryFolderService folderService;
   private final AttachmentExtractor attachmentExtractor;
-  private final MailProperties mailProperties;
+  private final AttachmentProperties attachmentProperties;
+  private final AttachmentExtractionLimiter attachmentExtractionLimiter;
 
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
@@ -145,7 +146,8 @@ public class LibraryDocumentService {
       LibraryFolderRepository folderRepository,
       LibraryFolderService folderService,
       AttachmentExtractor attachmentExtractor,
-      MailProperties mailProperties) {
+      AttachmentProperties attachmentProperties,
+      AttachmentExtractionLimiter attachmentExtractionLimiter) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
     this.documentRepository = documentRepository;
@@ -161,7 +163,8 @@ public class LibraryDocumentService {
     this.folderRepository = folderRepository;
     this.folderService = folderService;
     this.attachmentExtractor = attachmentExtractor;
-    this.mailProperties = mailProperties;
+    this.attachmentProperties = attachmentProperties;
+    this.attachmentExtractionLimiter = attachmentExtractionLimiter;
   }
 
   /**
@@ -271,9 +274,9 @@ public class LibraryDocumentService {
         // per-library dedup check above (and uk_documents_library_checksum, migration 020) can't
         // otherwise tell "this content already succeeded" from "this content failed once and the
         // user is trying again", so it replaces the old FAILED row instead of rejecting the new
-        // upload. It should never have surviving chunks (FileProcessingService cleans those up on
-        // every failure path), but the delete is unconditional anyway, mirroring processFile's own
-        // re-index cleanup - defence in depth costs nothing here.
+        // upload. A FAILED connector row can legitimately still have chunks since #1268 (a version
+        // whose parsing failed keeps the previous, working ones), so the delete below is what
+        // actually removes them here - not merely defence in depth.
         //
         // ADR-0022, Entscheidung 3 (Nebenpfad-Auflage, #1218): a FAILED mail row can still have
         // INDEXED attachment children from before the failure (attachments are indexed while the
@@ -556,6 +559,10 @@ public class LibraryDocumentService {
    *
    * <p>Every temp file this method creates is deleted when the returned stream is closed, or before
    * it throws.
+   *
+   * <p>The extraction itself runs under {@link AttachmentExtractionLimiter} (#1243): serialized per
+   * parent document and capped instance-wide, with a 429 rather than an unbounded wait once the cap
+   * is reached.
    */
   private DocumentContent loadAttachmentContent(Document document, KnowledgeLibrary library) {
     List<Document> chain = new ArrayList<>();
@@ -607,6 +614,22 @@ public class LibraryDocumentService {
       parentPath = chain.get(i).getFilePath();
     }
 
+    return attachmentExtractionLimiter.runExtraction(
+        root.getId(), () -> extractFromRoot(document, library, root, chain, indices));
+  }
+
+  /**
+   * The actual re-extraction of {@code document} out of {@code root}'s original, following {@code
+   * indices} down {@code chain}. Runs under {@link AttachmentExtractionLimiter} (#1243) - it is the
+   * part that parses (and, for a connector Bestand, downloads) the parent original and writes temp
+   * files, everything before it is repository lookups.
+   */
+  private DocumentContent extractFromRoot(
+      Document document,
+      KnowledgeLibrary library,
+      Document root,
+      List<Document> chain,
+      List<Integer> indices) {
     DocumentContent rootContent = loadOriginal(root, library);
     List<Path> tempFiles = new ArrayList<>();
     boolean streaming = false;
@@ -660,12 +683,12 @@ public class LibraryDocumentService {
 
   /**
    * The chain length {@link #loadAttachmentContent} still follows: the nesting depth the indexing
-   * path itself may produce ({@code opaa.indexing.mail.max-attachment-depth}) plus one level of
+   * path itself may produce ({@code opaa.indexing.attachments.max-depth}) plus one level of
    * headroom, so raising that property never makes an indexable attachment unopenable, while a
    * corrupt or cyclic chain is still cut off after a bounded number of steps.
    */
   private int maxAttachmentChainDepth() {
-    return mailProperties.maxAttachmentDepth() + 1;
+    return attachmentProperties.maxDepth() + 1;
   }
 
   /**

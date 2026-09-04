@@ -3,6 +3,7 @@ package io.opaa.library;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -22,6 +23,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
+import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.AttachmentExtractor;
 import io.opaa.indexing.ChecksumService;
@@ -31,7 +33,7 @@ import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.VectorStoreWriter;
-import io.opaa.indexing.pipeline.mail.MailProperties;
+import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
@@ -41,9 +43,15 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -99,6 +107,7 @@ class LibraryDocumentServiceTest {
   // in this class that never passes a folderPath at all.
   private LibraryFolderService folderService;
   private AttachmentExtractor attachmentExtractor;
+  private UploadProperties uploadProperties;
   private LibraryDocumentService service;
 
   private final UUID currentUserId = UUID.randomUUID();
@@ -124,8 +133,7 @@ class LibraryDocumentServiceTest {
             mock(org.springframework.ai.embedding.BatchingStrategy.class),
             mock(VectorStoreWriter.class),
             mock(FullTextChunkStore.class));
-    UploadProperties uploadProperties =
-        new UploadProperties(storageDir.toString(), 10L * 1024, null, 0, 0);
+    uploadProperties = new UploadProperties(storageDir.toString(), 10L * 1024, null, 0);
     storageQuotaService = mock(LibraryStorageQuotaService.class);
     // Default: plenty of headroom, so existing tests exercising other behaviour never trip the
     // quota check unless they explicitly stub it otherwise (see
@@ -142,24 +150,7 @@ class LibraryDocumentServiceTest {
     folderService = mock(LibraryFolderService.class);
     attachmentExtractor = mock(AttachmentExtractor.class);
 
-    service =
-        new LibraryDocumentService(
-            libraryRepository,
-            accessService,
-            documentRepository,
-            checksumService,
-            fileProcessingService,
-            vectorChunkStore,
-            uploadProperties,
-            storageQuotaService,
-            filesystemAllowlist,
-            boundedDownloader,
-            disabledTargetAddressValidator,
-            remoteContentProperties,
-            folderRepository,
-            folderService,
-            attachmentExtractor,
-            new MailProperties(0, 0, 0, 0));
+    service = serviceWith(new AttachmentExtractionProperties(0, null));
 
     KnowledgeLibrary library = mock(KnowledgeLibrary.class);
     when(library.getId()).thenReturn(libraryId);
@@ -208,6 +199,31 @@ class LibraryDocumentServiceTest {
   // delete string.
   private static Filter.Expression documentIdFilter(UUID documentId) {
     return new FilterExpressionBuilder().eq("document_id", documentId.toString()).build();
+  }
+
+  /**
+   * A service sharing this class' mocks but its own {@link AttachmentExtractionLimiter} - the #1243
+   * concurrency tests need a tighter ceiling than the default one {@link #setUp} wires up.
+   */
+  private LibraryDocumentService serviceWith(AttachmentExtractionProperties limits) {
+    return new LibraryDocumentService(
+        libraryRepository,
+        accessService,
+        documentRepository,
+        checksumService,
+        fileProcessingService,
+        vectorChunkStore,
+        uploadProperties,
+        storageQuotaService,
+        filesystemAllowlist,
+        boundedDownloader,
+        disabledTargetAddressValidator,
+        remoteContentProperties,
+        folderRepository,
+        folderService,
+        attachmentExtractor,
+        new AttachmentProperties(0),
+        new AttachmentExtractionLimiter(limits));
   }
 
   @Test
@@ -1392,7 +1408,7 @@ class LibraryDocumentServiceTest {
             checksumService,
             fileProcessingService,
             vectorChunkStore,
-            new UploadProperties(storageDir.toString(), 10L * 1024, null, 0, 0),
+            new UploadProperties(storageDir.toString(), 10L * 1024, null, 0),
             storageQuotaService,
             filesystemAllowlist,
             new BoundedDownloader(enabledValidator),
@@ -1401,7 +1417,8 @@ class LibraryDocumentServiceTest {
             folderRepository,
             folderService,
             attachmentExtractor,
-            new MailProperties(0, 0, 0, 0));
+            new AttachmentProperties(0),
+            new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)));
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
         .thenReturn(AssetRole.VIEWER);
     KnowledgeLibrary library = remoteLibrary(null);
@@ -1415,5 +1432,148 @@ class LibraryDocumentServiceTest {
         .isInstanceOf(NotFoundException.class)
         .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
     assertThat(requestsReceived.get()).isZero();
+  }
+
+  // --- #1243: the re-extraction path is serialized per parent and globally capped -------------
+
+  /**
+   * #1243: re-extracting an attachment parses the whole parent original, so two clicks on two
+   * attachments of the same mail must not parse it twice at the same time. The first extraction
+   * blocks until the second request has provably had its chance to start (its thread is inside
+   * {@code loadContent} and waiting), so a green run cannot mean "the second thread was simply
+   * slower" - it means it was actually held back.
+   */
+  @Test
+  void loadContentSerializesConcurrentReExtractionsOfTheSameParent() throws Exception {
+    Document mail = uploadedMailRow("gleichzeitig.eml");
+    Document first = mailAttachmentRow(mail, 0, "anlage-0.txt");
+    Document second = mailAttachmentRow(mail, 1, "anlage-1.txt");
+    when(documentRepository.findById(mail.getId())).thenReturn(Optional.of(mail));
+    when(documentRepository.findById(first.getId())).thenReturn(Optional.of(first));
+    when(documentRepository.findById(second.getId())).thenReturn(Optional.of(second));
+    grantViewerOnUploadLibrary();
+
+    AtomicInteger inFlight = new AtomicInteger();
+    AtomicInteger maxInFlight = new AtomicInteger();
+    CountDownLatch firstExtractionStarted = new CountDownLatch(1);
+    CountDownLatch secondRequestIsWaiting = new CountDownLatch(1);
+    when(attachmentExtractor.extract(any(), eq("gleichzeitig.eml"), anyInt()))
+        .thenAnswer(
+            invocation -> {
+              int concurrent = inFlight.incrementAndGet();
+              maxInFlight.accumulateAndGet(concurrent, Math::max);
+              try {
+                firstExtractionStarted.countDown();
+                // Only the first extraction waits: it holds the parent until the other request's
+                // thread is demonstrably blocked inside loadContent, so an overlap would be seen.
+                assertThat(secondRequestIsWaiting.await(30, TimeUnit.SECONDS)).isTrue();
+              } finally {
+                inFlight.decrementAndGet();
+              }
+              int index = invocation.getArgument(2);
+              Path extracted = Files.createTempFile("opaa-attachment-test-", ".txt");
+              Files.writeString(extracted, "Anhang " + index);
+              return new AttachmentExtractor.Extracted(extracted, "anlage-" + index + ".txt");
+            });
+
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      Future<DocumentContent> firstLoad =
+          executor.submit(() -> service.loadContent(first.getId(), caller));
+      assertThat(firstExtractionStarted.await(30, TimeUnit.SECONDS)).isTrue();
+
+      Thread secondThread =
+          new Thread(() -> secondContent.set(service.loadContent(second.getId(), caller)));
+      secondThread.start();
+      awaitBlocked(secondThread);
+      secondRequestIsWaiting.countDown();
+
+      DocumentContent firstResult = firstLoad.get(30, TimeUnit.SECONDS);
+      secondThread.join(30_000);
+      assertThat(secondContent.get()).isNotNull();
+      assertThat(maxInFlight.get()).isEqualTo(1);
+      firstResult.stream().close();
+      secondContent.get().stream().close();
+    } finally {
+      secondRequestIsWaiting.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  private final AtomicReference<DocumentContent> secondContent = new AtomicReference<>();
+
+  /**
+   * Waits until {@code thread} is parked rather than merely started - {@code loadContent} blocks on
+   * the limiter's own lock, so {@code WAITING}/{@code TIMED_WAITING} is what "has had its chance to
+   * overlap and did not get it" looks like from the outside.
+   */
+  private static void awaitBlocked(Thread thread) throws InterruptedException {
+    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+    while (System.nanoTime() < deadline) {
+      Thread.State state = thread.getState();
+      if (state == Thread.State.WAITING
+          || state == Thread.State.TIMED_WAITING
+          || state == Thread.State.BLOCKED) {
+        return;
+      }
+      Thread.sleep(10);
+    }
+    throw new AssertionError("The second request never blocked on the extraction limiter");
+  }
+
+  /**
+   * #1243: once the instance-wide ceiling is reached, a further re-extraction is refused with the
+   * same German 429 this endpoint's rate limit already uses, instead of waiting without limit or
+   * piling further parses onto the instance.
+   */
+  @Test
+  void loadContentAnswers429WhenTheConcurrentExtractionCeilingIsReached() throws Exception {
+    LibraryDocumentService cappedService =
+        serviceWith(new AttachmentExtractionProperties(1, Duration.ofMillis(50)));
+    Document firstMail = uploadedMailRow("erste.eml");
+    Document secondMail = uploadedMailRow("zweite.eml");
+    Document firstAttachment = mailAttachmentRow(firstMail, 0, "anlage-0.txt");
+    Document secondAttachment = mailAttachmentRow(secondMail, 0, "anlage-0.txt");
+    when(documentRepository.findById(firstMail.getId())).thenReturn(Optional.of(firstMail));
+    when(documentRepository.findById(secondMail.getId())).thenReturn(Optional.of(secondMail));
+    when(documentRepository.findById(firstAttachment.getId()))
+        .thenReturn(Optional.of(firstAttachment));
+    when(documentRepository.findById(secondAttachment.getId()))
+        .thenReturn(Optional.of(secondAttachment));
+    grantViewerOnUploadLibrary();
+
+    CountDownLatch firstExtractionStarted = new CountDownLatch(1);
+    CountDownLatch releaseFirstExtraction = new CountDownLatch(1);
+    when(attachmentExtractor.extract(any(), eq("erste.eml"), anyInt()))
+        .thenAnswer(
+            invocation -> {
+              firstExtractionStarted.countDown();
+              assertThat(releaseFirstExtraction.await(10, TimeUnit.SECONDS)).isTrue();
+              Path extracted = Files.createTempFile("opaa-attachment-test-", ".txt");
+              Files.writeString(extracted, "Anhang");
+              return new AttachmentExtractor.Extracted(extracted, "anlage-0.txt");
+            });
+
+    ExecutorService executor = Executors.newSingleThreadExecutor();
+    try {
+      Future<DocumentContent> holder =
+          executor.submit(() -> cappedService.loadContent(firstAttachment.getId(), caller));
+      assertThat(firstExtractionStarted.await(10, TimeUnit.SECONDS)).isTrue();
+
+      assertThatThrownBy(() -> cappedService.loadContent(secondAttachment.getId(), caller))
+          .isInstanceOf(TooManyRequestsException.class)
+          .hasMessage(
+              "Es werden gerade zu viele Anhänge geöffnet."
+                  + " Bitte versuchen Sie es in einem Moment erneut.");
+      // The refused request never reached the extraction itself.
+      verify(attachmentExtractor, never()).extract(any(), eq("zweite.eml"), anyInt());
+
+      releaseFirstExtraction.countDown();
+      DocumentContent content = holder.get(10, TimeUnit.SECONDS);
+      content.stream().close();
+    } finally {
+      releaseFirstExtraction.countDown();
+      executor.shutdownNow();
+    }
   }
 }

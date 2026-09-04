@@ -207,10 +207,70 @@ die Registry noch `FileProcessingService` noch `SupportedDocumentFormats` änder
 Zwei Pipelines, die dasselbe Format beanspruchen, sind ein Verdrahtungsfehler und lassen den Kontext
 beim Start scheitern, statt die Bean-Reihenfolge entscheiden zu lassen.
 
-Die drei Ausgänge, die `FileProcessingService` bisher selbst entschied — „Scan ohne Textebene",
+Die Ausgänge, die `FileProcessingService` bisher selbst entschied — „Scan ohne Textebene",
 „gar nichts geparst", „Text, aber keine Chunks" — entscheidet jetzt die Pipeline für ihr eigenes
 Format. Genau das braucht eine PDF-Pipeline später, um Scan-Erkennung anders zu beantworten als eine
 Tabellen-Pipeline.
+
+**Vierter Ausgang: `PARSE_FAILED` (#1268).** „Gar nichts geparst" trug bis dahin zwei
+unterscheidbare Fälle: die Quelle war lesbar und ist leer (`NO_CONTENT`), und die Quelle ließ sich
+gar nicht erst lesen — beschädigter Container, abgewiesene XXE-Auflösung, überschrittene
+Schutzgrenze. Der zweite Fall heißt jetzt `PARSE_FAILED`. Eine Pipeline, die beides nicht
+auseinanderhalten kann, meldet `PARSE_FAILED`; sie sagt damit nur, dass sie nichts über den Inhalt
+weiß. Die Pipelines für PDF, DOCX, PPTX, ODT, ODP und XLSX/CSV/ODS fangen ihre Lesefehler selbst ab
+und melden diesen Ausgang; HTML, Markdown und der Tika-Fallback werfen weiterhin eine Ausnahme —
+der Aufrufer behandelt beides gleich.
+
+### Übergabepunkt: die Reihenfolge, in der Chunks ersetzt werden
+
+Der Übergabepunkt zwischen Pipeline und Ablage ist nicht nur eine Datenstruktur, sondern eine
+**Reihenfolge**: Beim erneuten Aufnehmen eines geänderten Dokuments bleiben die alten Chunks stehen,
+bis die neue Fassung tatsächlich geparst und gechunkt ist. Erst unmittelbar vor dem Schreiben der
+neuen Chunks werden die alten gelöscht — in beiden Speichern (`vector_store`, `chunk_full_text`),
+über denselben Aufruf, der sie auch beim Löschen eines Dokuments gemeinsam entfernt.
+
+Vor #1268 löschten `processFile`, `processUrlFile` und `processRssEntry` die alten Chunks direkt
+nach der Kontingentprüfung, also **vor** dem Parsen. Scheiterte das Parsen der neuen Fassung, stand
+das Dokument bis zum nächsten erfolgreichen Lauf ohne Chunks im Bestand — der zuvor gültige,
+durchsuchbare Stand war verloren, obwohl er fachlich weiterhin der beste verfügbare war. Der
+Pipeline-Nachzug (`PipelineReindexService`) verfuhr schon vorher nach der jetzt allgemeinen Regel.
+
+Welcher Ausgang was bedeutet — für die Konnektorwege (`processFile`, `processUrlFile`,
+`processRssEntry`), die eine geänderte Quelle verarbeiten:
+
+| Ausgang | Alte Chunks | Dokumentzustand |
+|---|---|---|
+| `CHUNKED` | werden unmittelbar vor dem Schreiben der neuen ersetzt | `INDEXED` |
+| `NO_CONTENT` (geparst, leer) | werden entfernt — „leer" ist eine Aussage über die neue Fassung | `FAILED`, `chunk_count = 0` |
+| `NO_EXTRACTABLE_TEXT` (z. B. Scan-PDF ohne Textebene) | werden entfernt — dieselbe Begründung | `FAILED`, `chunk_count = 0`, mit Hinweis auf fehlenden extrahierbaren Text |
+| `PARSE_FAILED` oder Ausnahme **vor** dem Löschen | **bleiben unverändert** | `FAILED`, `chunk_count` unverändert, Ereignis protokolliert |
+| Ausnahme **nach** dem Löschen (Embedding, Schreibvorgang) | sind bereits weg; angefangene neue werden mit entfernt | `FAILED`, `chunk_count = 0`, Ereignis protokolliert |
+
+`chunk_count` ist damit auch die Auskunft darüber, welcher `FAILED`-Fall vorliegt: ein Wert größer
+null heißt „noch mit dem alten Stand durchsuchbar", null heißt „ohne Chunks". Maßgeblich ist dabei
+nicht der Ausgang, sondern ob gelöscht wurde — eine Ausnahme, die erst nach dem Löschen auftritt,
+hinterlässt ebenfalls eine Null.
+
+Auf dem **Nachzugsweg** (`PipelineReindexService` → `reindexStoredDocument`) bleiben auch die leeren
+Ausgänge folgenlos: Dort ist die Datei unverändert und nur die Pipeline-Version neu, ein leeres
+Ergebnis sagt also nichts über eine neue Fassung aus. Das Dokument behält seine Chunks und seine
+`INDEXED`-Zeile und wird als nicht nachgezogen zurückgemeldet.
+
+**Löschen und Schreiben liegen nicht in einer Transaktion.** Zwischen beiden liegt der
+Embedding-Aufruf (ein HTTP-Rundlauf, bewusst außerhalb jeder Transaktion, siehe
+`VectorStoreWriter`), und die Konnektorwege sind selbst nicht `@Transactional`. In diesem Fenster
+hat das Dokument **keine** Chunks, während seine Zeile noch `INDEXED` mit dem alten `chunk_count`
+zeigt; ein Absturz genau darin hinterlässt den chunklosen Zustand, den diese Reihenfolge verhindern
+soll. Das ist der verbleibende Restfall — das Fenster ist aber deutlich kleiner als vor #1268, wo es
+Parsen **und** Embedding umspannte. Alte und neue Chunks existieren zu keinem Zeitpunkt
+nebeneinander; eine Fundstelle kann dasselbe Dokument also nie aus zwei Fassungen zugleich belegen.
+
+**Das Speicherkontingent bleibt unberührt.** Es wird über die Dokumentzeile (`file_size`) gemessen,
+nie über Chunks — die Reihenfolge des Chunk-Austauschs taucht in der Delta-Prüfung gar nicht auf.
+
+Anhänge (ADR-0022) sind ebenfalls nicht betroffen: Eine Elternmail, deren Parsen scheitert, meldet
+überhaupt keine Anhänge, der verallgemeinerte Anhangsweg läuft dann nicht an, und die vorhandenen
+Anhangsdokumente bleiben mitsamt ihrem `parent_document_id` unverändert stehen.
 
 **Keine Datenbankänderung nötig.** Die Pipeline-Version ist ein Chunk-Metadatum und liegt damit dort,
 wo Chunk-Metadaten liegen: in `vector_store.metadata`. Diese Tabelle legt Spring AI beim Start an,
@@ -902,15 +962,21 @@ Zwei Grenzen dieser Auflösung gehören dazu:
 
 - **Der Nachlade-Weg trifft mehr als nur MSG.** Ein unaufgelöster OLE2-Container ist jede
   Legacy-Office-Datei — `.xls`, `.ppt`, `.vsd`, `.pub`, `.mpp` —, die neben dem Bestand im
-  Verzeichnis liegt. Solche Einträge werden jetzt vollständig geladen und danach verworfen; der
-  `HTTP_DIRECTORY`-Download ist dabei bis heute ungedeckelt (Issue #1236). Für ZIP-basierte Formate
+  Verzeichnis liegt. Solche Einträge werden jetzt vollständig geladen und danach verworfen — seit
+  #1236 aber nur bis zum Bytedeckel des Verzeichnis-Wegs
+  (`opaa.indexing.crawl.max-file-size-bytes`, Vorgabe 100 MiB): Wird er überschritten, bricht die
+  Übertragung ab, bevor die überschüssigen Bytes geschrieben sind, der Eintrag wird als Ablehnung
+  protokolliert und übersprungen, und der Lauf geht weiter. Für ZIP-basierte Formate
   entsteht der Fall dagegen praktisch nicht: OOXML trägt `[Content_Types].xml`, ODF sein
   `mimetype` als erste Archiv-Eintragung, beide werden also schon aus der Leseprobe aufgelöst —
   belegt in `DocumentFormatParityTest` an einer DOCX oberhalb der Probe.
 - **Auch die vollständige Datei löst nicht unbegrenzt auf.** Tikas `POIFSContainerDetector` liest
   höchstens sein `markLimit` (voreingestellt 128 MiB) und meldet darüber hinaus wieder den
   unaufgelösten Containertyp. Eine `.msg` jenseits dieser Grenze bleibt also abgewiesen, trotz
-  vollständigem Download.
+  vollständigem Download. Auf dem Verzeichnis-Weg ist dieser Fall seit #1236 praktisch unerreichbar:
+  Der Bytedeckel (Vorgabe 100 MiB) liegt bewusst unterhalb des `markLimit`, ein so großer Eintrag
+  wird also schon beim Übertragen abgewiesen. Für Upload und Dateisystem, die die vollständige Datei
+  ohnehin lokal vorliegen haben, gilt die `markLimit`-Grenze unverändert.
 
 **Zwei eigene Leser statt eines gemeinsamen Tika-Parsers**, weil Kopfdaten, Text und Anhänge getrennt
 werden müssen, statt in einen Block zu fließen:
@@ -1067,14 +1133,44 @@ Temporäre Dateien dieses Wegs werden beim Schließen des Antwortstroms gelösch
 Ressource in jedem Fall, auch bei Abbruch durch den Client). Kein dauerhafter Zweitspeicher, keine
 doppelte Quotenzählung, gleiches Verhalten für alle Quelltypen.
 
-**Der Preis dieses Wegs, ausdrücklich benannt:** Ein Abruf parst die Elternnachricht vollständig,
-das heißt die Pipeline materialisiert dabei *alle* ihre Anlagen als temporäre Dateien (bis
-`max-attachments-per-message`, Vorgabe 50), nicht nur die angeforderte; bei Konnektor-Beständen
-kommt der vollständige Abruf des Elternoriginals in eine weitere temporäre Datei hinzu. Das läuft im
-synchronen Anfragepfad, ohne Cache und ohne Serialisierung, und ist von jedem VIEWER wiederholt und
-parallel auslösbar — spürbar als temporärer Plattenbedarf und als Last auf der Quelle. Ein Deckel
-oder Cache dafür ist bewusst offen und als eigenes Ticket erfasst (#1243), keine stillschweigende
-Annahme.
+**Der Preis dieses Wegs, ausdrücklich benannt und seit #1243 gedeckelt:** Ein Abruf parst die
+Elternnachricht weiterhin vollständig — das ist der unvermeidbare Teil. Materialisiert wird dabei
+aber nur noch die *angeforderte* Anlage: Der Anfragepfad reicht die gesuchte Position über
+`DocumentPipelineSource#attachmentIndex` bis in `EmlReader`/`MsgReader` durch, die jede Anlage
+weiterhin in derselben Reihenfolge lesen, aber nur für diese eine eine temporäre Datei schreiben.
+Statt bis zu `max-attachments-per-message` (Vorgabe 50) temporären Dateien je Abruf entsteht damit
+genau eine je Kettenstufe. Bei Konnektor-Beständen kommt der vollständige Abruf des Elternoriginals
+in eine weitere temporäre Datei hinzu; das bleibt so.
+
+**Die Positionszählung bleibt dabei exakt die des unfilterten Laufs**, denn der gespeicherte Index
+ist die Listenposition in `discoveredAttachments` (`FileProcessingService#processDiscoveredAttachments`).
+Eine Anlage, die der unfilterte Lauf gar nicht erst meldet — weil sie `max-attachment-bytes`
+überschreitet, sich nicht dekodieren lässt oder (bei MSG) ein eingebettetes Outlook-Objekt ist —,
+**verbraucht deshalb auch im filternden Lauf keine Position**. Würde sie mitgezählt, verschöbe sich
+die Position gegenüber der gespeicherten.
+
+Zusätzlich begrenzt `AttachmentExtractionLimiter` den Anfragepfad (nicht den Hintergrundlauf von
+`PipelineReindexService`): Abrufe **desselben Elterndokuments** laufen nacheinander, und ein globaler
+Deckel (`opaa.documents.attachment-extraction.max-concurrent`, Vorgabe 4) begrenzt die Zahl
+**gleichzeitig laufender** Nachextraktionen. Jede der beiden Schranken wird mit
+`opaa.documents.attachment-extraction.acquire-timeout` (Vorgabe 10 s) versucht — im ungünstigsten
+Fall wartet ein Abruf also das Doppelte —, danach antwortet er mit **429** und einer deutschen
+Meldung statt unbegrenzt zu warten; denselben Status verwendet das Rate-Limit dieses Endpunkts
+bereits.
+
+**Was der Deckel deckelt, und was nicht:** Er begrenzt die gleichzeitig laufende Extraktion — also
+Parsen, Herunterladen und Schreiben —, nicht die Lebensdauer der geschriebenen Datei. Der Platz wird
+freigegeben, sobald die Extraktion zurückkehrt; gelöscht wird die temporäre Datei erst beim Schließen
+des Antwortstroms. Wer langsam lädt oder den Tab offen lässt, hält seine Datei also über den Deckel
+hinaus. Die Zahl gleichzeitig offener Antworten begrenzt nicht dieser Deckel, sondern das Rate-Limit
+auf `GET /api/v1/documents/{documentId}/content` (`RateLimitProperties`). Die eigentliche Entlastung
+dieses Wegs ist der Faktor: eine statt bis zu 50 temporären Dateien je Abruf.
+
+Was bewusst **nicht** gebaut wurde: ein Bytes-Cache der zuletzt nachextrahierten Anhänge.
+Wiederholte Klicks auf denselben Anhang parsen weiterhin erneut. Das bleibt vertretbar, weil ein
+Abruf jetzt nur noch eine Anlage materialisiert und die Parallelität gedeckelt ist; ein Cache brächte
+zusätzlich die Frage nach Invalidierung bei geändertem Elterndokument mit sich, ohne die es Bytes
+unter dem falschen Namen ausliefern könnte.
 
 **Nur ein Anhang ohne eigene Quellidentität wird nachextrahiert:** Ein Anhang aus dem
 `AttachmentSource.Download`-Schnitt (RSS heute, Confluence künftig) trägt zwar ebenfalls
@@ -1092,20 +1188,23 @@ threadlokalen Zähler, sobald ein gemeldeter Anhang selbst wieder über `FilePro
 `MailDocumentPipeline`s eigenes `RECURSION_DEPTH`-Feld vor #1183 gespielt hat, jetzt auf der
 gemeinsamen Ebene, weil auch RSS/Confluence-Anhänge grundsätzlich verschachtelt sein können.
 
-**Drei Sicherheits-Grenzfälle, Muster `TabularProperties`** (`MailProperties`,
-`opaa.indexing.mail.*`): `max-attachment-depth` (Standard 5, seit #1183 nur noch der Vorgabewert für
-`AttachmentDownloadLimits#maxAttachmentDepth()` auf dem Anhangsweg, siehe oben) deckelt die
-Rekursionstiefe gegen eine Mail, die sich selbst oder zyklisch weiterleitet; `max-attachments-per-message`
+Die Rekursionstiefe selbst kommt seit #1269 nicht mehr aus `MailProperties`, sondern aus der
+allgemeinen `AttachmentProperties#maxDepth()` (`opaa.indexing.attachments.max-depth`, Standard 5) —
+`AttachmentIndexer` wendet sie unabhängig vom Konnektor an, dieselbe Grenze für Mail-in-Mail wie für
+eine verschachtelte Feed-Anlage.
+
+**Zwei weitere Sicherheits-Grenzfälle, Muster `TabularProperties`** (`MailProperties`,
+`opaa.indexing.mail.*`): `max-attachments-per-message`
 (gesetzt 50) deckelt die Anzahl der Anhänge — durchgesetzt direkt in der Extraktionsschleife von
 `EmlReader`/`MsgReader` selbst, sodass für einen Anhang jenseits der Grenze erst gar keine temporäre
 Datei entsteht; und `max-attachment-bytes` (gesetzt 50 MiB) deckelt die Größe eines einzelnen
 Anhangs. Bei EML wird diese
 Byte-Grenze beim Kopieren des Anhangs in eine temporäre Datei durchgesetzt (wie
-`TabularDocumentPipeline`s ODS-Leser), bei MSG nur nachträglich (siehe unten). **Diese drei Grenzen
+`TabularDocumentPipeline`s ODS-Leser), bei MSG nur nachträglich (siehe unten). **Diese zwei Grenzen
 schützen Platte und nachgelagerte Verarbeitung, nicht den Parse-Vorgang selbst** — sowohl mime4j
 (`BasicBodyFactory`) als auch POI (`MAPIMessage`) halten beim Parsen ohnehin jeden Teil der Nachricht,
 Anhänge eingeschlossen, vollständig im Heap, bevor dieser Code auch nur entscheidet, ob ein Teil ein
-Anhang ist. Die eigentliche Speichergrenze ist eine vierte, neue Eigenschaft: `max-message-bytes`
+Anhang ist. Die eigentliche Speichergrenze ist eine dritte, neue Eigenschaft: `max-message-bytes`
 (gesetzt 100 MiB) — geprüft gegen die Größe der `.eml`/`.msg`-Datei selbst, bevor überhaupt geparst
 wird, denn `FileProcessingService#processFile` erzwingt keine Einzeldateigrößen-Grenze (nur die
 Speicherplatz-Quote der Bibliothek insgesamt). Bei MSG bleibt die Anhangsgrenze zusätzlich

@@ -27,17 +27,17 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Creates, renames and (recursively) deletes {@link LibraryFolder}s (#820, Epic #520 Phase 2,
  * ADR-0020) - the CRUD counterpart to {@link LibraryDocumentService}'s document upload/delete,
  * sharing its permission floor ({@link AssetRole#EDITOR}, see {@link #requireEditable}) and its
- * "only an UPLOAD library accepts this" restriction (see {@link #requireUploadLibrary}): a
- * FILESYSTEM library's folders will be read-only, derived from the crawled directory structure
- * itself in a later task (#824), not editable through this service.
+ * "only an UPLOAD library accepts this" restriction (see {@link #requireUploadLibrary}): the
+ * folders of a FILESYSTEM (#824) or HTTP_DIRECTORY (#1277) library are read-only, derived from the
+ * crawled directory structure itself, not editable through this service.
  *
- * <p><b>#824 (Epic #520 Phase 4) is that later task:</b> {@link #materializeFolderPath} and {@link
- * #pruneOrphanedFolders} are the internal counterparts a FILESYSTEM indexing run uses to mirror its
- * source directory structure - deliberately bypassing {@link #requireUploadLibrary} (a FILESYSTEM
- * library's folders are meant to be created this way, not blocked) and {@link #requireEditable} (an
- * indexing job acts on the system's own behalf, there is no request-scoped caller/role to check).
- * Neither method is reachable through {@link io.opaa.api.LibraryController} - only {@code
- * io.opaa.indexing.source.filesystem.AsyncIndexingExecutor} calls them.
+ * <p>{@link #materializeFolderPath} and {@link #pruneOrphanedFolders} are the internal counterparts
+ * such an indexing run uses to mirror that structure - deliberately bypassing {@link
+ * #requireUploadLibrary} (those folders are meant to be created this way, not blocked) and {@link
+ * #requireEditable} (an indexing job acts on the system's own behalf, there is no request-scoped
+ * caller/role to check). Neither method is reachable through {@link io.opaa.api.LibraryController}
+ * - only {@code io.opaa.indexing.source.SourceFolderMirror}, the executors' shared per-run helper,
+ * calls them.
  *
  * <p><b>Deletion is recursive and runs through the application layer, never a database cascade</b>
  * (ADR-0020, Entscheidung 5): {@link #deleteFolder} walks the folder's subtree leaf-first, deleting
@@ -197,9 +197,10 @@ public class LibraryFolderService {
   /**
    * Materializes (idempotently) the {@link LibraryFolder} chain for {@code segments} - one row per
    * path component, reusing an existing folder at the same level instead of creating a duplicate
-   * (#824). The internal counterpart to {@link #createFolder} a FILESYSTEM indexing run uses to
-   * mirror its source directory structure - see this class's own Javadoc for why it bypasses {@link
-   * #requireUploadLibrary}/{@link #requireEditable}.
+   * (#824). The internal counterpart to {@link #createFolder} an indexing run uses to mirror its
+   * source directory structure - see this class's own Javadoc for why it bypasses {@link
+   * #requireUploadLibrary}/{@link #requireEditable}. Since #1277 an {@code HTTP_DIRECTORY} run uses
+   * the same path, with the crawled URL path relative to the start URL as its segments.
    *
    * <p><b>{@link #validateName}/{@link #MAX_DEPTH} are bypassed too, deliberately</b> (#824 review,
    * Befund 4b) - not just the permission/upload-type checks named above. A mirrored directory name
@@ -224,15 +225,13 @@ public class LibraryFolderService {
    * @param segments the path components between the library's {@code sourcePath} and the file
    *     itself, outermost first; an empty list means the library's root
    * @return the id of the deepest folder in {@code segments}, or {@code null} for an empty list
-   * @throws IllegalArgumentException if {@code library} is not {@link
-   *     DocumentSourceType#FILESYSTEM} - this method's only caller today ({@code
-   *     AsyncIndexingExecutor}) only ever passes a FILESYSTEM library, but the guard protects the
-   *     next one from silently mirroring a directory structure into an {@code UPLOAD}/{@code
-   *     HTTP_DIRECTORY}/{@code RSS_FEED} library's CRUD-managed folder tree
+   * @throws IllegalArgumentException if {@code library}'s source type does not mirror a directory
+   *     structure ({@link #MIRRORED_SOURCE_TYPES}) - the guard protects an {@code UPLOAD}/{@code
+   *     RSS_FEED} library's CRUD-managed folder tree from being written by an indexing run
    */
   @Transactional
   public UUID materializeFolderPath(KnowledgeLibrary library, List<String> segments) {
-    requireFilesystemLibrary(library);
+    requireMirroredSourceLibrary(library);
     UUID parentFolderId = null;
     for (String name : segments) {
       parentFolderId = materializeSingleFolder(library, parentFolderId, name);
@@ -241,15 +240,25 @@ public class LibraryFolderService {
   }
 
   /**
+   * The source types whose folders mirror a crawled directory structure instead of being managed
+   * through this service's CRUD methods: run-based types that actually have one ({@code
+   * HTTP_DIRECTORY} since #1277). {@code RSS_FEED} is deliberately absent - a feed has no directory
+   * structure to mirror.
+   */
+  private static final Set<DocumentSourceType> MIRRORED_SOURCE_TYPES =
+      Set.of(DocumentSourceType.FILESYSTEM, DocumentSourceType.HTTP_DIRECTORY);
+
+  /**
    * The internal counterpart to {@link #requireUploadLibrary}, guarding the opposite direction
    * (#824 review, Befund 4a): {@link #materializeFolderPath}/{@link #pruneOrphanedFolders} must
-   * never run against anything but a {@code FILESYSTEM} library - see {@link
-   * #materializeFolderPath} 's own Javadoc for why.
+   * never run against a library whose folders are not mirrored from a source directory structure -
+   * see {@link #materializeFolderPath}'s own Javadoc for why.
    */
-  private void requireFilesystemLibrary(KnowledgeLibrary library) {
-    if (library.getSourceType() != DocumentSourceType.FILESYSTEM) {
+  private void requireMirroredSourceLibrary(KnowledgeLibrary library) {
+    if (!MIRRORED_SOURCE_TYPES.contains(library.getSourceType())) {
       throw new IllegalArgumentException(
-          "materializeFolderPath/pruneOrphanedFolders is only valid for a FILESYSTEM library, got "
+          "materializeFolderPath/pruneOrphanedFolders is only valid for a library whose folders"
+              + " mirror a source directory structure, got "
               + library.getSourceType());
     }
   }
@@ -300,7 +309,7 @@ public class LibraryFolderService {
   /**
    * Resolves (idempotently creating as needed) the folder chain described by {@code pathSegments},
    * relative to {@code baseFolderId} in an {@code UPLOAD} library (#823, Epic #520 Phase 4) - the
-   * upload-path counterpart to {@link #materializeFolderPath}'s FILESYSTEM-only mirroring. Unlike
+   * upload-path counterpart to {@link #materializeFolderPath}'s connector-only mirroring. Unlike
    * that method, this one enforces every check {@link #createFolder} itself enforces - permission,
    * {@code UPLOAD}-only, name shape, depth - once for the whole chain, exactly as if each segment
    * had been created one REST call at a time; an existing folder at any level is reused rather than
@@ -374,8 +383,7 @@ public class LibraryFolderService {
    * Removes every {@link LibraryFolder} of {@code libraryId} that is both absent from {@code
    * currentFolderIds} (this indexing run's own directory walk never touched it - its source
    * directory is gone) and empty, including transitively (#824, docs/features/knowledge-sources.md
-   * "Ordner in FILESYSTEM-Bibliotheken"). {@code
-   * io.opaa.indexing.source.filesystem.AsyncIndexingExecutor} calls {@code
+   * "Ordner in Konnektorbibliotheken"). Every calling executor calls {@code
    * io.opaa.indexing.StaleDocumentCleanupService#cleanupVanished} before this method (#886): a
    * document whose backing file disappeared is already gone by the time this runs, so a folder left
    * holding only such a document is correctly treated as empty and pruned, not left standing.
@@ -385,13 +393,13 @@ public class LibraryFolderService {
    * #deleteRecursive}'s own order, though here driven by absence from {@code currentFolderIds}
    * rather than an explicit delete request.
    *
-   * @throws IllegalArgumentException if {@code library} is not {@link
-   *     DocumentSourceType#FILESYSTEM} - see {@link #materializeFolderPath}'s own Javadoc, which
-   *     this method mirrors (#824 review, Befund 4a/4b)
+   * @throws IllegalArgumentException if {@code library}'s source type does not mirror a directory
+   *     structure - see {@link #materializeFolderPath}'s own Javadoc, which this method mirrors
+   *     (#824 review, Befund 4a/4b)
    */
   @Transactional
   public void pruneOrphanedFolders(KnowledgeLibrary library, Set<UUID> currentFolderIds) {
-    requireFilesystemLibrary(library);
+    requireMirroredSourceLibrary(library);
     UUID libraryId = library.getId();
     List<LibraryFolder> all = folderRepository.findByLibraryId(libraryId);
     // Built by hand, not via Collectors.groupingBy (#824 review self-catch): groupingBy's
@@ -541,9 +549,9 @@ public class LibraryFolderService {
 
   /**
    * ADR-0020: only an {@code UPLOAD} library accepts folder creation/rename/deletion through this
-   * service - a {@code FILESYSTEM} library's folders will mirror its crawled directory structure
-   * automatically (#824), and {@code HTTP_DIRECTORY}/{@code RSS_FEED} have no directory concept at
-   * all. {@code 409} rather than {@code 400}, mirroring {@code LibraryDocumentService#
+   * service - a {@code FILESYSTEM} (#824) or {@code HTTP_DIRECTORY} (#1277) library's folders
+   * mirror its crawled directory structure automatically, and {@code RSS_FEED} has no directory
+   * concept at all. {@code 409} rather than {@code 400}, mirroring {@code LibraryDocumentService#
    * requireUploadLibrary}: the request is well-formed, it simply conflicts with this library's
    * fixed, immutable source type.
    */

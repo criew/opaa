@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link as RouterLink } from 'react-router'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -13,7 +14,6 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import IconButton from '@mui/material/IconButton'
 import Link from '@mui/material/Link'
-import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
@@ -22,7 +22,6 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
@@ -30,18 +29,21 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import PageHeading from '../components/a11y/PageHeading'
 import GlobalScopeNote from '../components/GlobalScopeNote'
 import SectionHead from '../components/SectionHead'
+import ChunkContent from '../components/searchadmin/ChunkContent'
+import DiagnosisForm from '../components/searchadmin/DiagnosisForm'
+import DocumentChunkSection, {
+  type DocumentChunkSectionHandle,
+} from '../components/searchadmin/DocumentChunkSection'
+import LibraryStatusTable from '../components/searchadmin/LibraryStatusTable'
+import { isUuid, plural } from '../components/searchadmin/format'
 
 import type {
   ChunkInspectionResponse,
-  DocumentChunksResponse,
-  LibraryIndexState,
-  LibrarySearchStatusResponse,
   RetrievalCandidateOutcome,
   RetrievalStage,
   RetrievalStageResponse,
   RetrievalStageStatus,
   RetrievalVerdictReason,
-  SearchDiagnosisContextType,
   SearchDiagnosisResponse,
   SearchModelRole,
   SearchModelRoleStatusResponse,
@@ -52,20 +54,6 @@ import { translateListLabel, translateStageNote } from '../utils/retrievalProtoc
 import { getSearchChunk } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
 import { useSearchAdminStore } from '../stores/searchAdminStore'
-
-const OWN_CONTEXT_VALUE = 'SELF'
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-/** A document key is only a loadable document id when it is a UUID; other keys stay plain text. */
-function isUuid(value: string) {
-  return UUID_PATTERN.test(value)
-}
-
-/** German singular/plural, so the page never says "1 Bibliotheken". */
-function plural(count: number, one: string, many: string) {
-  return `${count} ${count === 1 ? one : many}`
-}
 
 function formatMetadataValue(value: unknown): string {
   if (value == null) return '—'
@@ -95,12 +83,6 @@ const PATH_LABELS: Record<SearchPathStatusResponse['path'], string> = {
 const PATH_STATE_LABELS: Record<SearchPathStatusResponse['state'], string> = {
   ACTIVE: 'Aktiv',
   DISABLED: 'Abgeschaltet',
-  INCOMPLETE: 'Unvollständig',
-}
-
-const INDEX_STATE_LABELS: Record<LibraryIndexState, string> = {
-  EMPTY: 'Leer',
-  READY: 'Vollständig',
   INCOMPLETE: 'Unvollständig',
 }
 
@@ -156,13 +138,24 @@ function trackedDocumentMessage(tracked: TrackedDocumentResponse): {
         severity: 'success',
         text: `„${name}“ steht mit ${plural(tracked.selectedChunkCount, 'Abschnitt', 'Abschnitten')} in der Endauswahl.`,
       }
-    case 'OUTSIDE_SEARCH_SCOPE':
+    case 'IN_LOCKED_AREA':
       return {
         severity: 'info',
         text:
-          `„${name}“ liegt außerhalb des Suchbereichs dieses Rechtekontexts` +
-          `${tracked.libraryName ? ` (Bibliothek „${tracked.libraryName}“)` : ''}. ` +
-          'Keine Suchstufe konnte es erreichen - das ist eine Rechtefrage, keine Suchfrage.',
+          'Das verfolgte Dokument liegt in einem gesperrten Suchbereich. Die Diagnose trifft dazu ' +
+          'keine Aussage - weder zu seinem Titel noch dazu, ob die Person es lesen darf.',
+      }
+    case 'OUTSIDE_SEARCH_SCOPE':
+      // Without a name the run is a person context: it may then not say "Rechtefrage" either,
+      // because a locked area is excluded for its own reason (Leitplanke (e)).
+      return {
+        severity: 'info',
+        text: tracked.fileName
+          ? `„${name}“ liegt außerhalb des Suchbereichs dieses Rechtekontexts` +
+            `${tracked.libraryName ? ` (Bibliothek „${tracked.libraryName}“)` : ''}. ` +
+            'Keine Suchstufe konnte es erreichen - das ist eine Rechtefrage, keine Suchfrage.'
+          : 'Das verfolgte Dokument liegt außerhalb des durchsuchten Rechtekontexts. Keine ' +
+            'Suchstufe konnte es erreichen; aus dieser Bibliothek zeigt die Diagnose nichts.',
       }
     case 'NOT_RETRIEVED':
       return {
@@ -219,87 +212,6 @@ function ModelRoleCard({ role }: { role: SearchModelRoleStatusResponse }) {
         Modell-Kennung: {role.modelIdentifier ?? 'nicht hinterlegt'}
       </Typography>
     </Paper>
-  )
-}
-
-function LibraryStatusTable({ libraries }: { libraries: LibrarySearchStatusResponse[] }) {
-  if (libraries.length === 0) {
-    return (
-      <Typography variant="body2" color="text.secondary">
-        Es ist noch keine Wissensbibliothek angelegt.
-      </Typography>
-    )
-  }
-  return (
-    <TableContainer component={Paper} variant="outlined">
-      <Table size="small" aria-label="Indexstatus je Bibliothek">
-        <TableHead>
-          <TableRow>
-            <TableCell>Bibliothek</TableCell>
-            <TableCell align="right">Dokumente</TableCell>
-            <TableCell align="right">Rückstand</TableCell>
-            <TableCell align="right">Abschnitte (im Index / laut Dokumenten)</TableCell>
-            <TableCell align="right">Ohne oder mit auffällig wenigen Abschnitten</TableCell>
-            <TableCell>Letzter Lauf</TableCell>
-            <TableCell>Vektorindex</TableCell>
-            <TableCell>Volltextindex</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {libraries.map((library) => (
-            <TableRow key={library.libraryId}>
-              <TableCell>{library.libraryName}</TableCell>
-              <TableCell align="right">
-                {library.indexedDocumentCount} / {library.documentCount}
-              </TableCell>
-              <TableCell align="right">{library.pendingDocumentCount}</TableCell>
-              <TableCell align="right">
-                {`${library.vectorChunkCount} / ${library.chunkCount}`}
-                {library.vectorChunkCount !== library.chunkCount && (
-                  <Typography variant="caption" color="text.secondary" component="div">
-                    Vektorindex und Dokumentzählung weichen ab
-                  </Typography>
-                )}
-              </TableCell>
-              <TableCell align="right">{library.lowChunkDocumentCount}</TableCell>
-              <TableCell>
-                {library.lastIndexedAt
-                  ? new Date(library.lastIndexedAt).toLocaleString('de-DE')
-                  : 'noch nie'}
-              </TableCell>
-              <TableCell>
-                <Chip
-                  size="small"
-                  label={INDEX_STATE_LABELS[library.vectorIndexState]}
-                  color={library.vectorIndexState === 'INCOMPLETE' ? 'warning' : 'default'}
-                />
-              </TableCell>
-              <TableCell>
-                <Chip
-                  size="small"
-                  label={INDEX_STATE_LABELS[library.fullTextIndexState]}
-                  color={library.fullTextIndexState === 'INCOMPLETE' ? 'warning' : 'default'}
-                />
-                {library.fullTextMissingChunks > 0 && (
-                  <Typography variant="caption" color="text.secondary" component="div">
-                    {plural(library.fullTextMissingChunks, 'Abschnitt fehlt', 'Abschnitte fehlen')}
-                  </Typography>
-                )}
-                {library.fullTextSkippedChunks > 0 && (
-                  <Typography variant="caption" color="warning.main" component="div">
-                    {plural(
-                      library.fullTextSkippedChunks,
-                      'Abschnitt dauerhaft übersprungen',
-                      'Abschnitte dauerhaft übersprungen',
-                    )}
-                  </Typography>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
   )
 }
 
@@ -447,6 +359,20 @@ function DiagnosisResult({
         {diagnosis.searchQueries.length > 0 &&
           ` · Teilfragen: ${diagnosis.searchQueries.join(' · ')}`}
       </Typography>
+      {diagnosis.lockedLibraryCount > 0 && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          {`In dieser Organisation ${diagnosis.lockedLibraryCount === 1 ? 'ist' : 'sind'} ${plural(diagnosis.lockedLibraryCount, 'Bibliothek', 'Bibliotheken')} für die Diagnose gesperrt; daraus zeigt die Diagnose nichts - weder Treffer noch Titel. Die Zahl gilt für den gesamten Bestand und sagt nichts darüber, was die betrachtete Person lesen darf. Aufheben kann die Sperre nur die für die Bibliothek zuständige Stelle, nicht die Systemverwaltung.`}{' '}
+          {/* #1257/#1278 review: die Sperre selbst wird auf der Detailseite der jeweiligen
+              Bibliothek bedient, nicht hier - der Link führt bewusst nur zur Bibliotheksliste,
+              ohne eine der gesperrten Bibliotheken selbst zu nennen (Leitplanke (e): kein Titel
+              aus einem gesperrten Bereich). */}
+          Bedient wird sie in den{' '}
+          <Link component={RouterLink} to="/libraries">
+            Bibliotheken
+          </Link>
+          .
+        </Alert>
+      )}
       {diagnosis.trackedDocument && (
         <Alert severity={trackedDocumentMessage(diagnosis.trackedDocument).severity} sx={{ mb: 2 }}>
           {trackedDocumentMessage(diagnosis.trackedDocument).text}
@@ -492,29 +418,6 @@ function DiagnosisResult({
           </Table>
         </TableContainer>
       )}
-    </Box>
-  )
-}
-
-/** Monospace, line breaks preserved: the chunk exactly as the index holds it, prefix included. */
-function ChunkContent({ content }: { content: string }) {
-  return (
-    <Box
-      component="pre"
-      sx={{
-        m: 0,
-        p: 1.5,
-        fontFamily: 'monospace',
-        fontSize: '0.8125rem',
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-word',
-        bgcolor: 'action.hover',
-        borderRadius: 1,
-        maxHeight: 420,
-        overflow: 'auto',
-      }}
-    >
-      {content}
     </Box>
   )
 }
@@ -644,74 +547,12 @@ function ChunkPreviewDialog({ chunkId, onClose }: { chunkId: string | null; onCl
   )
 }
 
-function DocumentChunkList({ document }: { document: DocumentChunksResponse }) {
-  const stored = document.chunks.length
-  return (
-    <Box sx={{ mt: 2 }}>
-      <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>
-        {document.documentTitle ?? document.documentId}
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        Bibliothek: {document.libraryName ?? '—'} ·{' '}
-        {plural(stored, 'gespeicherter Chunk', 'gespeicherte Chunks')}, laut Dokument{' '}
-        {document.chunkCount}
-      </Typography>
-      {stored !== document.chunkCount && (
-        <Alert severity="warning" sx={{ mb: 1.5 }}>
-          Die Zahl der gespeicherten Chunks ({stored}) weicht von der im Dokument vermerkten Anzahl
-          ({document.chunkCount}) ab - der Index ist veraltet oder unvollständig geschrieben.
-        </Alert>
-      )}
-      {stored === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          Für dieses Dokument ist kein Chunk gespeichert.
-        </Typography>
-      ) : (
-        <Stack spacing={1}>
-          {document.chunks.map((chunk) => {
-            const location = chunk.metadata.location
-            return (
-              <Accordion
-                key={chunk.chunkId}
-                variant="outlined"
-                disableGutters
-                slotProps={{ heading: { component: 'h4' } }}
-              >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Stack
-                    direction="row"
-                    spacing={1.5}
-                    sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 0.5 }}
-                  >
-                    <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
-                      Chunk {chunk.chunkIndex ?? '?'}
-                    </Typography>
-                    <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-                      {plural(chunk.content.length, 'Zeichen', 'Zeichen')}
-                    </Typography>
-                    {typeof location === 'string' && location !== '' && (
-                      <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-                        Fundort: {location}
-                      </Typography>
-                    )}
-                  </Stack>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <ChunkContent content={chunk.content} />
-                </AccordionDetails>
-              </Accordion>
-            )
-          })}
-        </Stack>
-      )}
-    </Box>
-  )
-}
-
 export default function SearchIndexingAdminPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const status = useSearchAdminStore((s) => s.status)
   const profiles = useSearchAdminStore((s) => s.profiles)
+  const personContextAvailable = useSearchAdminStore((s) => s.personContextAvailable)
+  const personContextHint = useSearchAdminStore((s) => s.personContextHint)
   const statusError = useSearchAdminStore((s) => s.statusError)
   const diagnosis = useSearchAdminStore((s) => s.diagnosis)
   const diagnosisError = useSearchAdminStore((s) => s.diagnosisError)
@@ -722,43 +563,20 @@ export default function SearchIndexingAdminPage() {
   const loadStatus = useSearchAdminStore((s) => s.loadStatus)
   const runDiagnosis = useSearchAdminStore((s) => s.runDiagnosis)
   const loadDocumentChunks = useSearchAdminStore((s) => s.loadDocumentChunks)
+  const backfillRuns = useSearchAdminStore((s) => s.metadataBackfillRuns)
+  const startMetadataBackfill = useSearchAdminStore((s) => s.startMetadataBackfill)
+  const pauseMetadataBackfill = useSearchAdminStore((s) => s.pauseMetadataBackfill)
 
-  const [question, setQuestion] = useState('')
-  const [contextChoice, setContextChoice] = useState<string | null>(null)
-  const [trackedDocumentId, setTrackedDocumentId] = useState('')
   const [previewChunkId, setPreviewChunkId] = useState<string | null>(null)
-  const [documentIdInput, setDocumentIdInput] = useState('')
-  const documentChunksSectionRef = useRef<HTMLDivElement>(null)
-
-  // Derived rather than set from an effect once the profiles arrive: the preselected context is a
-  // permission profile wherever one exists, the caller's own context otherwise - never a person,
-  // which is not offered at all until #1052 delivers the Befugnis- und Protokollmodell.
-  const contextValue = contextChoice ?? (profiles.length > 0 ? profiles[0].id : OWN_CONTEXT_VALUE)
+  const documentChunkSectionRef = useRef<DocumentChunkSectionHandle>(null)
 
   useEffect(() => {
     if (isSystemAdmin) void loadStatus()
   }, [isSystemAdmin, loadStatus])
 
-  async function handleDiagnosis() {
-    const contextType: SearchDiagnosisContextType =
-      contextValue === OWN_CONTEXT_VALUE ? 'SELF' : 'PERMISSION_PROFILE'
-    await runDiagnosis({
-      question: question.trim(),
-      contextType,
-      permissionProfileId: contextType === 'PERMISSION_PROFILE' ? contextValue : undefined,
-      trackedDocumentId: trackedDocumentId.trim() === '' ? undefined : trackedDocumentId.trim(),
-    })
-  }
-
-  function showDocumentChunks(documentId: string) {
-    setDocumentIdInput(documentId)
-    void loadDocumentChunks(documentId)
-    documentChunksSectionRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
-  }
-
   const navigation: ChunkNavigation = {
     onShowChunk: setPreviewChunkId,
-    onShowDocument: showDocumentChunks,
+    onShowDocument: (documentId) => documentChunkSectionRef.current?.showDocument(documentId),
   }
 
   if (!isSystemAdmin) {
@@ -777,8 +595,9 @@ export default function SearchIndexingAdminPage() {
     <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, overflowY: 'auto' }}>
       <PageHeading title="Suche & Indexierung" gutterBottom />
       <GlobalScopeNote>
-        Diese Seite zeigt die aktive Konfiguration an und ändert nichts. Sie beantwortet, warum ein
-        Dokument in einer Antwort steht oder fehlt.
+        Diese Seite zeigt die aktive Konfiguration an und ändert sie nicht. Sie beantwortet, warum
+        ein Dokument in einer Antwort steht oder fehlt. Der einzige Eingriff ist das Nachrüsten der
+        Kernfelder je Bibliothek — ein bewusster Start, kein Automatismus.
       </GlobalScopeNote>
 
       {statusError && (
@@ -822,7 +641,20 @@ export default function SearchIndexingAdminPage() {
 
       <Box sx={{ mb: 4 }}>
         <SectionHead>Indexstatus je Bibliothek</SectionHead>
-        <LibraryStatusTable libraries={status?.libraries ?? []} />
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion der Kernfelder tragen, wie
+          gut jedes Feld befüllt ist und wie viele Dokumente je Feld noch ohne Wert sind — derselbe
+          Pflege-Anker, den die Einstellungen der Bibliothek zeigen; von Hand als „kein Wert
+          ermittelbar" gekennzeichnete Felder zählen nicht mit. Das Nachrüsten liest die
+          Originaldateien in Chargen erneut; die Suche bleibt währenddessen verfügbar, ein
+          angehaltener Lauf setzt beim nächsten unverarbeiteten Dokument fort.
+        </Typography>
+        <LibraryStatusTable
+          libraries={status?.libraries ?? []}
+          backfillRuns={backfillRuns}
+          onStartBackfill={(libraryId) => void startMetadataBackfill(libraryId)}
+          onPauseBackfill={pauseMetadataBackfill}
+        />
       </Box>
 
       <Box sx={{ mb: 4 }}>
@@ -832,53 +664,13 @@ export default function SearchIndexingAdminPage() {
           zeigt jede Stufe einzeln. Sie liest keine bestehenden Gespräche und beantwortet nur den
           jetzigen Zustand - sie ist kein Nachweis über zurückliegende Zugriffe.
         </Typography>
-        <Stack spacing={2} sx={{ maxWidth: 720 }}>
-          <TextField
-            label="Testfrage"
-            required
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            size="small"
-            fullWidth
-          />
-          {/* Every library the chosen context may read is diagnosable; the per-library
-              diagnosis lock of Leitplanke (e) needs the Befugnismodell of #1052 and does not
-              exist yet. */}
-          <TextField
-            select
-            label="Sicht als"
-            value={contextValue}
-            onChange={(e) => setContextChoice(e.target.value)}
-            helperText="Rechteprofile und der eigene Rechtekontext. Der Rechtekontext einer bestimmten Person steht hier nicht zur Wahl."
-            size="small"
-            fullWidth
-          >
-            <MenuItem value={OWN_CONTEXT_VALUE}>Eigener Rechtekontext</MenuItem>
-            {profiles.map((profile) => (
-              <MenuItem key={profile.id} value={profile.id}>
-                {`Rechteprofil „${profile.name}“ (${plural(profile.libraryCount, 'Bibliothek', 'Bibliotheken')})`}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            label="Dokument verfolgen (optional)"
-            value={trackedDocumentId}
-            onChange={(e) => setTrackedDocumentId(e.target.value)}
-            helperText="Kennung eines Dokuments aus der Dokumentliste einer Bibliothek. Die Diagnose sagt dann, ob es gar nicht gefunden oder in einer bestimmten Stufe verdrängt wurde."
-            size="small"
-            fullWidth
-          />
-          <Box>
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => void handleDiagnosis()}
-              disabled={running || question.trim() === ''}
-            >
-              {running ? 'Diagnose läuft …' : 'Diagnose ausführen'}
-            </Button>
-          </Box>
-        </Stack>
+        <DiagnosisForm
+          profiles={profiles}
+          personContextAvailable={personContextAvailable}
+          personContextHint={personContextHint}
+          running={running}
+          onRunDiagnosis={runDiagnosis}
+        />
         {diagnosisError && (
           <Alert severity="error" sx={{ mt: 2 }}>
             {diagnosisError}
@@ -887,38 +679,13 @@ export default function SearchIndexingAdminPage() {
         {diagnosis && <DiagnosisResult diagnosis={diagnosis} navigation={navigation} />}
       </Box>
 
-      <Box ref={documentChunksSectionRef}>
-        <SectionHead>Chunks eines Dokuments</SectionHead>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Zeigt alle gespeicherten Chunks eines Dokuments in Reihenfolge - so, wie die
-          Indexierungs-Pipeline sie abgelegt hat, mit Zuschnitt, Kontextpräfix und Fundort. Ein
-          Klick auf einen Dokumenttitel in der Diagnose führt hierher.
-        </Typography>
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start', maxWidth: 720 }}>
-          <TextField
-            label="Dokument-ID"
-            value={documentIdInput}
-            onChange={(e) => setDocumentIdInput(e.target.value)}
-            size="small"
-            fullWidth
-          />
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => showDocumentChunks(documentIdInput.trim())}
-            disabled={loadingDocumentChunks || documentIdInput.trim() === ''}
-            sx={{ flex: 'none', mt: 0.25 }}
-          >
-            {loadingDocumentChunks ? 'Lädt …' : 'Chunks laden'}
-          </Button>
-        </Stack>
-        {documentChunksError && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {documentChunksError}
-          </Alert>
-        )}
-        {documentChunks && <DocumentChunkList document={documentChunks} />}
-      </Box>
+      <DocumentChunkSection
+        ref={documentChunkSectionRef}
+        documentChunks={documentChunks}
+        documentChunksError={documentChunksError}
+        loading={loadingDocumentChunks}
+        onLoadDocumentChunks={(documentId) => void loadDocumentChunks(documentId)}
+      />
 
       <ChunkPreviewDialog chunkId={previewChunkId} onClose={() => setPreviewChunkId(null)} />
     </Box>

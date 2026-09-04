@@ -156,6 +156,20 @@ public class DiagnosticImpersonationGrantService {
                         + " Person."));
   }
 
+  /**
+   * Whether {@code actor} holds any valid, unrevoked befugnis at all right now - what a user
+   * interface needs in order to say whether the person context is selectable. Deliberately weaker
+   * than {@link #requireImpersonationPermission}, which additionally binds a grant to the target
+   * person's Organisationseinheit: a caller can hold a befugnis and still be refused for a
+   * particular person.
+   */
+  @Transactional(readOnly = true)
+  public boolean holdsImpersonationPermission(CurrentUser actor) {
+    return !grantRepository
+        .findActive(actor.organizationId(), actor.id(), clock.instant())
+        .isEmpty();
+  }
+
   private void validateWindow(DiagnosticImpersonationGrantCreation creation, Instant now) {
     if (creation.validFrom() == null || creation.validUntil() == null) {
       throw new ValidationException("Die Befugnis braucht einen Beginn und ein Ende");

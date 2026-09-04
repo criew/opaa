@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import type { DragEvent, ReactNode } from 'react'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router'
 import Accordion from '@mui/material/Accordion'
@@ -56,6 +56,7 @@ import { alpha } from '@mui/material/styles'
 import { fontFamily } from '../theme/tokens'
 import type {
   AssetRole,
+  BulkMetadataValueResponse,
   DocumentSourceType,
   IndexingRunResponse,
   LibraryDocumentResponse,
@@ -95,6 +96,10 @@ import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../components/EditLibraryScheduleDialog'
 import ConfluenceWebhookSection from '../components/library/ConfluenceWebhookSection'
 import DocumentTextPreviewDialog from '../components/DocumentTextPreviewDialog'
+import DocumentMetadataPanel from '../components/metadata/DocumentMetadataPanel'
+import MetadataMaintenanceAnchor from '../components/metadata/MetadataMaintenanceAnchor'
+import { coreMetadataFieldLabel } from '../components/metadata/metadataValues'
+import BulkMetadataDialog from '../components/metadata/BulkMetadataDialog'
 import PageHeading from '../components/a11y/PageHeading'
 import FieldLabel from '../components/wizard/FieldLabel'
 import MetaBadge from '../components/MetaBadge'
@@ -232,6 +237,65 @@ function HeroStatTile({ icon, children }: HeroStatTileProps) {
   )
 }
 
+interface DiagnosticsLockControlProps {
+  locked: boolean
+  canToggle: boolean
+  saving: boolean
+  error: string | null
+  onToggle: () => void
+  onDismissError: () => void
+}
+
+// #1257: renders the Diagnosesperre state (docs/features/hybrid-retrieval.md, Leitplanke (e)) -
+// visible to everyone who may read the library (see LibraryResponse#diagnosticsLocked), but only
+// togglable by the responsible body itself. The 403 a caller without that standing gets back from
+// PUT .../diagnostics-lock is shown verbatim (see normalizeError) - it already names, in German,
+// who may act instead.
+function DiagnosticsLockControl({
+  locked,
+  canToggle,
+  saving,
+  error,
+  onToggle,
+  onDismissError,
+}: DiagnosticsLockControlProps) {
+  return (
+    <Box sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+      <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+        <Chip
+          label={locked ? 'Diagnose gesperrt' : 'Diagnose freigegeben'}
+          size="small"
+          color={locked ? 'default' : 'warning'}
+          variant="outlined"
+        />
+        {canToggle && (
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={onToggle}
+            disabled={saving}
+            aria-label={locked ? 'Diagnosesperre lösen' : 'Diagnosesperre setzen'}
+          >
+            {saving ? 'Wird gespeichert …' : locked ? 'Sperre lösen' : 'Sperre setzen'}
+          </Button>
+        )}
+      </Stack>
+      <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.5 }}>
+        Solange gesperrt, bleibt diese Bibliothek von einer Suchdiagnose im Rechtekontext einer
+        anderen Person ausgeschlossen — dort ist dann weder ein Treffer noch ein Titel aus ihr zu
+        sehen.
+        {!canToggle &&
+          ' Setzen und lösen kann die Sperre nur die für die Bibliothek zuständige Stelle (Eigentümer), nicht die Systemverwaltung als solche.'}
+      </Typography>
+      {error && (
+        <Alert severity="error" sx={{ mt: 1 }} onClose={onDismissError}>
+          {error}
+        </Alert>
+      )}
+    </Box>
+  )
+}
+
 function statusChipColor(
   status: LibraryDocumentResponse['status'],
 ): 'success' | 'warning' | 'error' {
@@ -251,6 +315,7 @@ export default function LibraryDetailPage() {
   const loadLibraryDetails = useLibraryStore((s) => s.loadLibraryDetails)
   const updateExistingLibrary = useLibraryStore((s) => s.updateExistingLibrary)
   const deleteExistingLibrary = useLibraryStore((s) => s.deleteExistingLibrary)
+  const setLibraryDiagnosticsLock = useLibraryStore((s) => s.setLibraryDiagnosticsLock)
   const storeError = useLibraryStore((s) => s.error)
 
   const [grantsDialogOpen, setGrantsDialogOpen] = useState(false)
@@ -262,6 +327,8 @@ export default function LibraryDetailPage() {
   } | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [diagnosticsLockError, setDiagnosticsLockError] = useState<string | null>(null)
+  const [diagnosticsLockSaving, setDiagnosticsLockSaving] = useState(false)
   const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => {
@@ -394,6 +461,24 @@ export default function LibraryDetailPage() {
       navigate('/libraries')
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen')
+    }
+  }
+
+  // #1257: PUT .../diagnostics-lock takes the desired end state, not a toggle - this always
+  // requests the opposite of the currently rendered state, so a stale double-click cannot request
+  // the same state twice.
+  async function handleToggleDiagnosticsLock() {
+    if (!libraryId || !details) return
+    setDiagnosticsLockError(null)
+    setDiagnosticsLockSaving(true)
+    try {
+      await setLibraryDiagnosticsLock(libraryId, !details.diagnosticsLocked)
+    } catch (err) {
+      setDiagnosticsLockError(
+        err instanceof Error ? err.message : 'Diagnosesperre konnte nicht geändert werden',
+      )
+    } finally {
+      setDiagnosticsLockSaving(false)
     }
   }
 
@@ -901,6 +986,22 @@ export default function LibraryDetailPage() {
                     {saving ? 'Wird gespeichert …' : 'Speichern'}
                   </Button>
                 </Stack>
+
+                {details && (
+                  <DiagnosticsLockControl
+                    locked={details.diagnosticsLocked ?? true}
+                    // #1278 review: myRole bypasses to OWNER for a system admin unconditionally
+                    // (LibraryResponse#myRole) - this dedicated field mirrors the backend's
+                    // stricter holdsIndependentOwnerRole instead, so an admin without an
+                    // independent OWNER grant never sees a button that is guaranteed to fail
+                    // with 403.
+                    canToggle={details.diagnosticsLockToggleable ?? false}
+                    saving={diagnosticsLockSaving}
+                    error={diagnosticsLockError}
+                    onToggle={() => void handleToggleDiagnosticsLock()}
+                    onDismissError={() => setDiagnosticsLockError(null)}
+                  />
+                )}
               </Stack>
             </DetailCard>
 
@@ -1003,6 +1104,9 @@ function LibraryDocumentsSection({
   // lands back in the same folder instead of always resetting to the library's root.
   const [searchParams, setSearchParams] = useSearchParams()
   const folderIdParam = searchParams.get('folder')
+  // #1069: the Pflege-Anker's filter is URL state (?missingField=<core field key>) - the anchor's
+  // button navigates here, a reload keeps the same worklist open.
+  const missingFieldParam = searchParams.get('missingField')
 
   const [isDragActive, setIsDragActive] = useState(false)
   const [searchInput, setSearchInput] = useState('')
@@ -1015,6 +1119,17 @@ function LibraryDocumentsSection({
   )
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false)
   const [renameFolderTarget, setRenameFolderTarget] = useState<LibraryFolderListItem | null>(null)
+  // #1068: per-document metadata panel (expanded on demand), the selection for a Sammelzuweisung
+  // and the bulk dialog's outcome. A bulk assignment bumps metadataRefreshToken so every open
+  // panel reloads its values.
+  const [metadataOpenById, setMetadataOpenById] = useState<Record<string, boolean>>({})
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([])
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false)
+  const [bulkResultMessage, setBulkResultMessage] = useState<string | null>(null)
+  const [metadataRefreshToken, setMetadataRefreshToken] = useState(0)
+  // #1069: bumped after every metadata change so the anchor recounts; separate from
+  // metadataRefreshToken, which reloads the open per-document panels.
+  const [anchorRefreshToken, setAnchorRefreshToken] = useState(0)
   const [folderMenu, setFolderMenu] = useState<{
     anchorEl: HTMLElement
     folder: LibraryFolderListItem
@@ -1043,6 +1158,10 @@ function LibraryDocumentsSection({
   // as document upload/delete (ADR-0020 restricts folder creation to UPLOAD libraries the same way
   // POST .../documents already is).
   const canManageFolders = isUploadLibrary && canManage
+  // #1068 (metadata-schema.md, "Manuelle Korrektur ist Teil des ersten Schnitts"): whoever may
+  // edit the library's documents may correct their metadata - for every sourceType, since a
+  // metadata value hangs at the document row, not at the file.
+  const canEditMetadata = canManage
 
   useEffect(() => {
     // #506 review, finding 2: uploadErrors/deleteError/error are not keyed by library - without
@@ -1069,8 +1188,9 @@ function LibraryDocumentsSection({
       size: DEFAULT_PAGE_SIZE,
       q: '',
       folderId: folderIdParam,
+      missingMetadataField: missingFieldParam,
     })
-  }, [libraryId, folderIdParam, loadDocuments])
+  }, [libraryId, folderIdParam, missingFieldParam, loadDocuments])
 
   // A finished indexing run bumps refreshToken (see LibraryDetailPage): reload the view the user
   // is looking at - same page, search and folder, all preserved by runLoadDocuments' fallback to
@@ -1125,9 +1245,13 @@ function LibraryDocumentsSection({
     parent: LibraryDocumentResponse
     attachments: LibraryDocumentResponse[]
   }[] = []
+  // #1069: the Pflege-Anker's list holds exactly the rows without a value - an attachment is a row
+  // of its own there and its parent may be absent, so grouping would nest it under an unrelated
+  // document. Every row stands for itself while the filter is active.
+  const isMissingFilterActive = Boolean(pageState?.missingMetadataField)
   for (const doc of documents) {
     const lastGroup = documentGroups[documentGroups.length - 1]
-    if (doc.parentDocumentId && lastGroup) {
+    if (!isMissingFilterActive && doc.parentDocumentId && lastGroup) {
       lastGroup.attachments.push(doc)
     } else {
       documentGroups.push({ parent: doc, attachments: [] })
@@ -1154,19 +1278,86 @@ function LibraryDocumentsSection({
     }))
   }
 
+  function toggleMetadataPanel(documentId: string) {
+    setMetadataOpenById((previous) => ({ ...previous, [documentId]: !previous[documentId] }))
+  }
+
+  function toggleSelected(documentId: string) {
+    setSelectedDocumentIds((previous) =>
+      previous.includes(documentId)
+        ? previous.filter((id) => id !== documentId)
+        : [...previous, documentId],
+    )
+  }
+
+  const visibleDocumentIds = documents.map((doc) => doc.id)
+  const allVisibleSelected =
+    visibleDocumentIds.length > 0 &&
+    visibleDocumentIds.every((id) => selectedDocumentIds.includes(id))
+
+  function toggleAllVisible() {
+    setSelectedDocumentIds((previous) =>
+      allVisibleSelected
+        ? previous.filter((id) => !visibleDocumentIds.includes(id))
+        : [...previous, ...visibleDocumentIds.filter((id) => !previous.includes(id))],
+    )
+  }
+
+  function handleBulkDone(result: BulkMetadataValueResponse) {
+    const parts = [
+      `${result.updatedCount} ${result.updatedCount === 1 ? 'Dokument' : 'Dokumente'} aktualisiert`,
+      `${result.unchangedCount} unverändert`,
+    ]
+    if (result.rejectedDocumentIds.length > 0) {
+      parts.push(`${result.rejectedDocumentIds.length} abgewiesen`)
+    }
+    setBulkResultMessage(`Feld gesetzt: ${parts.join(', ')}.`)
+    setSelectedDocumentIds([])
+    setMetadataRefreshToken((previous) => previous + 1)
+    setAnchorRefreshToken((previous) => previous + 1)
+    // A document that just got a value leaves the anchor's worklist - reload the same page.
+    void loadDocuments(libraryId, {})
+  }
+
+  // #1069: a corrected document leaves the anchor - and, while its worklist is open, the list
+  // below too, so the number and the rows keep telling the same story.
+  function handleMetadataValueChanged() {
+    setAnchorRefreshToken((previous) => previous + 1)
+    if (missingFieldParam) {
+      void loadDocuments(libraryId, {})
+    }
+  }
+
+  // #1069: opens (or leaves) the anchor's worklist - the list is bibliotheksweit, so an open
+  // folder and a running search are dropped with it, and the selection starts empty.
+  function setMissingFieldFilter(fieldKey: string | null) {
+    setSearchInput('')
+    setSelectedDocumentIds([])
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
+    const next = new URLSearchParams(searchParams)
+    next.delete('folder')
+    if (fieldKey) {
+      next.set('missingField', fieldKey)
+    } else {
+      next.delete('missingField')
+    }
+    setSearchParams(next)
+  }
+
   // #822: navigates into a folder (or back to the root with null) by changing the URL's folder
   // param - the load effect above reacts to that change. Also clears any in-flight search, since a
   // folder is always browsed bibliotheksweit-search-free (a search hit's own folderPath link uses
   // this the same way, see the document row rendering below).
   function navigateToFolder(folderId: string | null) {
     setSearchInput('')
+    setSelectedDocumentIds([])
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     // #822 review, finding 1: a search hit's folderPath link (or, in principle, a breadcrumb/folder
     // row for the folder already open) can name the very folder already loaded - the URL then does
     // not change, so the load effect above never fires and the stale, still-bibliotheksweit search
     // results would keep showing despite the now-empty search field. Reloading explicitly in that
     // case is the only way to still land on that folder's contents.
-    if (folderId === folderIdParam) {
+    if (folderId === folderIdParam && !missingFieldParam) {
       void loadDocuments(libraryId, { page: 0, size: DEFAULT_PAGE_SIZE, q: '', folderId })
       return
     }
@@ -1176,6 +1367,8 @@ function LibraryDocumentsSection({
     } else {
       next.delete('folder')
     }
+    // #1069: browsing a folder leaves the anchor's (bibliotheksweite) worklist.
+    next.delete('missingField')
     setSearchParams(next)
   }
 
@@ -1350,151 +1543,186 @@ function LibraryDocumentsSection({
     const isAttachment = Boolean(document.parentDocumentId)
     const attachments = options.attachments ?? []
     const expanded = isGroupExpanded(document.id)
+    const metadataOpen = Boolean(metadataOpenById[document.id])
     return (
-      <Box
-        key={document.id}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 2,
-          p: 1.5,
-          ...(isAttachment && { py: 1.25 }),
-        }}
-      >
-        <Stack spacing={0.25} sx={{ minWidth: 0, flexGrow: 1 }}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
-            {isAttachment && <AttachFileIcon sx={{ fontSize: 16 }} color="action" />}
-            <Typography
-              sx={{
-                fontWeight: isAttachment ? 500 : 600,
-                fontSize: isAttachment ? 13.5 : undefined,
-                wordBreak: 'break-word',
-              }}
-            >
-              {document.fileName}
+      <Fragment key={document.id}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 2,
+            p: 1.5,
+            ...(isAttachment && { py: 1.25 }),
+          }}
+        >
+          {canEditMetadata && (
+            <Checkbox
+              size="small"
+              checked={selectedDocumentIds.includes(document.id)}
+              onChange={() => toggleSelected(document.id)}
+              slotProps={{ input: { 'aria-label': `Dokument ${document.fileName} auswählen` } }}
+              sx={{ p: 0.5 }}
+            />
+          )}
+          <Stack spacing={0.25} sx={{ minWidth: 0, flexGrow: 1 }}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
+              {isAttachment && <AttachFileIcon sx={{ fontSize: 16 }} color="action" />}
+              <Typography
+                sx={{
+                  fontWeight: isAttachment ? 500 : 600,
+                  fontSize: isAttachment ? 13.5 : undefined,
+                  wordBreak: 'break-word',
+                }}
+              >
+                {document.fileName}
+              </Typography>
+              {isAttachment && <Chip label="Anhang" size="small" variant="outlined" />}
+            </Stack>
+            <Typography variant="caption" color="text.secondary">
+              {formatFileSize(document.fileSize)} · {document.chunkCount}{' '}
+              {document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} ·{' '}
+              {formatIndexedAt(document.indexedAt)}
             </Typography>
-            {isAttachment && <Chip label="Anhang" size="small" variant="outlined" />}
-          </Stack>
-          <Typography variant="caption" color="text.secondary">
-            {formatFileSize(document.fileSize)} · {document.chunkCount}{' '}
-            {document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} ·{' '}
-            {formatIndexedAt(document.indexedAt)}
-          </Typography>
-          {/* ADR-0023 (#1136): a Confluence row names its space (resolved to the name the library's
+            {/* ADR-0023 (#1136): a Confluence row names its space (resolved to the name the library's
               selection carries) and, where present, the page's position in the space's hierarchy -
               without this a reader cannot tell which space a document belongs to. */}
-          {document.sourceContainerKey && (
-            <Typography variant="caption" color="text.secondary">
-              Space: {confluenceSpaceLabel(document.sourceContainerKey)}
-              {document.sourceHierarchyPath ? ` · ${document.sourceHierarchyPath}` : ''}
-            </Typography>
-          )}
-          {options.viaFileName && (
-            <Typography variant="caption" color="text.secondary">
-              Anhang von: {options.viaFileName}
-            </Typography>
-          )}
-          {/* #822: shown whenever a document sits in a folder - most usefully on a search
+            {document.sourceContainerKey && (
+              <Typography variant="caption" color="text.secondary">
+                Space: {confluenceSpaceLabel(document.sourceContainerKey)}
+                {document.sourceHierarchyPath ? ` · ${document.sourceHierarchyPath}` : ''}
+              </Typography>
+            )}
+            {options.viaFileName && (
+              <Typography variant="caption" color="text.secondary">
+                Anhang von: {options.viaFileName}
+              </Typography>
+            )}
+            {/* #822: shown whenever a document sits in a folder - most usefully on a search
               hit (bibliotheksweit, ADR-0020), whose result list has no breadcrumb of its
               own to place it in the structure; the link navigates into that folder and
               clears the active search (navigateToFolder). */}
-          {document.folderPath && (
-            <Typography variant="caption" color="text.secondary">
-              Ordner:{' '}
-              <Link
-                component="button"
-                underline="hover"
-                onClick={() => navigateToFolder(document.folderId ?? null)}
-              >
-                {document.folderPath}
-              </Link>
-            </Typography>
-          )}
-          {/* #493: sourceEntryUrl trägt nur eine Anlage, die von einem RSS-Feed-Eintrag
+            {document.folderPath && (
+              <Typography variant="caption" color="text.secondary">
+                Ordner:{' '}
+                <Link
+                  component="button"
+                  underline="hover"
+                  onClick={() => navigateToFolder(document.folderId ?? null)}
+                >
+                  {document.folderPath}
+                </Link>
+              </Typography>
+            )}
+            {/* #493: sourceEntryUrl trägt nur eine Anlage, die von einem RSS-Feed-Eintrag
               stammt (#468) - der Link macht sichtbar, aus welchem Eintrag sie gefunden
               wurde, statt sie im Index kontextlos stehen zu lassen. */}
-          {document.sourceEntryUrl && (
-            <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
-              Herkunft:{' '}
-              <Link href={document.sourceEntryUrl} target="_blank" rel="noopener noreferrer">
-                {document.sourceEntryUrl}
-              </Link>
-            </Typography>
-          )}
-          {/* #747: sourceUrl (HTTP_DIRECTORY's own location, or a plain RSS entry's own
+            {document.sourceEntryUrl && (
+              <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+                Herkunft:{' '}
+                <Link href={document.sourceEntryUrl} target="_blank" rel="noopener noreferrer">
+                  {document.sourceEntryUrl}
+                </Link>
+              </Typography>
+            )}
+            {/* #747: sourceUrl (HTTP_DIRECTORY's own location, or a plain RSS entry's own
               page) stays visible as secondary information now that "Original öffnen"
               proxies through the content endpoint instead of navigating here directly -
               only shown when sourceEntryUrl above is absent, to avoid the same remote
               address appearing twice for an RSS attachment. */}
-          {!document.sourceEntryUrl && document.sourceUrl && (
-            <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
-              Quelle:{' '}
-              <Link href={document.sourceUrl} target="_blank" rel="noopener noreferrer">
-                {document.sourceUrl}
-              </Link>
-            </Typography>
-          )}
-          {attachments.length > 0 && (
-            <Box>
-              <Button
-                size="small"
-                onClick={() => toggleAttachmentGroup(document.id)}
-                aria-expanded={expanded}
-                aria-label={`Anhänge von ${document.fileName} ${expanded ? 'verbergen' : 'anzeigen'}`}
-                startIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-              >
-                {attachments.length} {attachments.length === 1 ? 'Anhang' : 'Anhänge'}
-              </Button>
-            </Box>
-          )}
-        </Stack>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
-          {/* #434: a FAILED document's asynchronous processing failure is only visible to
+            {!document.sourceEntryUrl && document.sourceUrl && (
+              <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+                Quelle:{' '}
+                <Link href={document.sourceUrl} target="_blank" rel="noopener noreferrer">
+                  {document.sourceUrl}
+                </Link>
+              </Typography>
+            )}
+            {attachments.length > 0 && (
+              <Box>
+                <Button
+                  size="small"
+                  onClick={() => toggleAttachmentGroup(document.id)}
+                  aria-expanded={expanded}
+                  aria-label={`Anhänge von ${document.fileName} ${expanded ? 'verbergen' : 'anzeigen'}`}
+                  startIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                >
+                  {attachments.length} {attachments.length === 1 ? 'Anhang' : 'Anhänge'}
+                </Button>
+              </Box>
+            )}
+          </Stack>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
+            {/* #434: a FAILED document's asynchronous processing failure is only visible to
               the user via this German errorMessage - the status chip alone only says
               something went wrong, not what. */}
-          <Tooltip
-            title={document.status === 'FAILED' ? (document.errorMessage ?? '') : ''}
-            disableHoverListener={document.status !== 'FAILED' || !document.errorMessage}
-          >
-            <Chip
-              label={documentStatusLabel(document.status)}
-              size="small"
-              color={statusChipColor(document.status)}
-              variant="outlined"
-            />
-          </Tooltip>
-          {/* #738/#747: every sourceType offers the action - CONFLUENCE opens at its source URL
+            <Tooltip
+              title={document.status === 'FAILED' ? (document.errorMessage ?? '') : ''}
+              disableHoverListener={document.status !== 'FAILED' || !document.errorMessage}
+            >
+              <Chip
+                label={documentStatusLabel(document.status)}
+                size="small"
+                color={statusChipColor(document.status)}
+                variant="outlined"
+              />
+            </Tooltip>
+            {/* #738/#747: every sourceType offers the action - CONFLUENCE opens at its source URL
               (useDocumentPreview), every other type through the content endpoint; a source that
               turns out unreachable surfaces as a popup notification, not a reason to hide the
               button. Icon-only buttons always carry a tooltip (guidelines 5.1). */}
-          <Tooltip title="Original öffnen">
-            <IconButton
-              aria-label={`Original von ${document.fileName} öffnen`}
-              size="small"
-              onClick={() => void handleOpenOriginal(document)}
-            >
-              <OpenInNewIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          {canDelete && (
-            <Tooltip title="Dokument löschen">
+            <Tooltip title={metadataOpen ? 'Metadaten verbergen' : 'Metadaten anzeigen'}>
               <IconButton
-                aria-label={`Dokument ${document.fileName} löschen`}
+                aria-label={`Metadaten von ${document.fileName} ${metadataOpen ? 'verbergen' : 'anzeigen'}`}
+                aria-expanded={metadataOpen}
                 size="small"
-                onClick={() => void handleDelete(document)}
+                color={metadataOpen ? 'primary' : 'default'}
+                onClick={() => toggleMetadataPanel(document.id)}
               >
-                <DeleteIcon fontSize="small" />
+                <InfoOutlinedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-          )}
-        </Stack>
-      </Box>
+            <Tooltip title="Original öffnen">
+              <IconButton
+                aria-label={`Original von ${document.fileName} öffnen`}
+                size="small"
+                onClick={() => void handleOpenOriginal(document)}
+              >
+                <OpenInNewIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            {canDelete && (
+              <Tooltip title="Dokument löschen">
+                <IconButton
+                  aria-label={`Dokument ${document.fileName} löschen`}
+                  size="small"
+                  onClick={() => void handleDelete(document)}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Stack>
+        </Box>
+        {metadataOpen && (
+          <DocumentMetadataPanel
+            libraryId={libraryId}
+            documentId={document.id}
+            fileName={document.fileName}
+            canEdit={canEditMetadata}
+            refreshToken={metadataRefreshToken}
+            onValueChanged={handleMetadataValueChanged}
+          />
+        )}
+      </Fragment>
     )
   }
 
+  // #1068: the selection is bound to the list the person is looking at - a folder, search or
+  // page change drops it, so "Feld setzen" never writes onto documents nobody sees.
   function handleSearchChange(value: string) {
     setSearchInput(value)
+    setSelectedDocumentIds([])
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     searchDebounceRef.current = setTimeout(() => {
       void loadDocuments(libraryId, { page: 0, q: value })
@@ -1502,6 +1730,7 @@ function LibraryDocumentsSection({
   }
 
   function handlePageChange(_event: unknown, newPage: number) {
+    setSelectedDocumentIds([])
     void loadDocuments(libraryId, { page: newPage - 1 })
   }
 
@@ -1700,6 +1929,29 @@ function LibraryDocumentsSection({
         </Breadcrumbs>
       )}
 
+      <MetadataMaintenanceAnchor
+        libraryId={libraryId}
+        activeFieldKey={missingFieldParam}
+        onShowMissing={(fieldKey) => setMissingFieldFilter(fieldKey)}
+        onClearFilter={() => setMissingFieldFilter(null)}
+        refreshToken={anchorRefreshToken}
+      />
+
+      {missingFieldParam && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => setMissingFieldFilter(null)}>
+              Filter aufheben
+            </Button>
+          }
+        >
+          Es werden nur Dokumente ohne Wert für „{coreMetadataFieldLabel(missingFieldParam)}"
+          angezeigt — bibliotheksweit, unabhängig vom Ordner.
+        </Alert>
+      )}
+
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
         <TextField
           size="small"
@@ -1743,6 +1995,51 @@ function LibraryDocumentsSection({
           ))}
         </Select>
       </Stack>
+
+      {bulkResultMessage && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setBulkResultMessage(null)}>
+          {bulkResultMessage}
+        </Alert>
+      )}
+      {/* #1068: Sammelzuweisung - the selection lives in this rights-filtered list, so a person
+          can only ever pick documents they see here. */}
+      {canEditMetadata && documents.length > 0 && (
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{ alignItems: 'center', mb: 1.5, flexWrap: 'wrap' }}
+          role="toolbar"
+          aria-label="Sammelzuweisung"
+        >
+          <FormControlLabel
+            control={
+              <Checkbox
+                size="small"
+                checked={allVisibleSelected}
+                indeterminate={!allVisibleSelected && selectedDocumentIds.length > 0}
+                onChange={toggleAllVisible}
+              />
+            }
+            label="Alle auf dieser Seite auswählen"
+          />
+          <Typography variant="body2" color="text.secondary">
+            {selectedDocumentIds.length} ausgewählt
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            disabled={selectedDocumentIds.length === 0}
+            onClick={() => setBulkDialogOpen(true)}
+          >
+            Feld setzen
+          </Button>
+          {selectedDocumentIds.length > 0 && (
+            <Button size="small" onClick={() => setSelectedDocumentIds([])}>
+              Auswahl aufheben
+            </Button>
+          )}
+        </Stack>
+      )}
 
       {isLoading ? (
         <Stack spacing={1} aria-label="Dokumente werden geladen">
@@ -1897,6 +2194,15 @@ function LibraryDocumentsSection({
       )}
 
       <DocumentTextPreviewDialog previewDocument={previewDocument} onClose={closePreview} />
+      {bulkDialogOpen && (
+        <BulkMetadataDialog
+          open
+          onClose={() => setBulkDialogOpen(false)}
+          libraryId={libraryId}
+          documentIds={selectedDocumentIds}
+          onDone={handleBulkDone}
+        />
+      )}
 
       {canManageFolders && (
         <Menu

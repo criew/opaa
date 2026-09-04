@@ -35,7 +35,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 class GlobalExceptionHandlerTest {
 
   private final GlobalExceptionHandler handler =
-      new GlobalExceptionHandler(new UploadProperties(null, 52_428_800L, null, 0, 0));
+      new GlobalExceptionHandler(new UploadProperties(null, 52_428_800L, null, 0));
 
   @Test
   void handleGenericExceptionReturnsInternalServerError() {
@@ -336,6 +336,24 @@ class GlobalExceptionHandlerTest {
     assertNotNull(body);
     assertEquals(413, body.getStatus());
     assertEquals("Das Logo darf höchstens 512 KiB groß sein", body.getError());
+  }
+
+  @Test
+  void handleTooManyRequestsExceptionReturnsSameBodyShapeAsResponseStatusException() {
+    var response =
+        handler.handleTooManyRequestsException(
+            new io.opaa.common.TooManyRequestsException(
+                "Es werden gerade zu viele Anhänge geöffnet."
+                    + " Bitte versuchen Sie es in einem Moment erneut."));
+    assertEquals(429, response.getStatusCode().value());
+    ErrorResponse body = response.getBody();
+    assertNotNull(body);
+    assertEquals(429, body.getStatus());
+    assertEquals(
+        "Es werden gerade zu viele Anhänge geöffnet."
+            + " Bitte versuchen Sie es in einem Moment erneut.",
+        body.getError());
+    assertNotNull(body.getTimestamp());
   }
 
   @Test

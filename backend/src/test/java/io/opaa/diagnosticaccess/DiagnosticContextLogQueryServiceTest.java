@@ -17,6 +17,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -32,6 +33,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -119,6 +121,38 @@ class DiagnosticContextLogQueryServiceTest {
         .isInstanceOf(ValidationException.class);
   }
 
+  /**
+   * Regression guard for #1256: an over-length reason must be rejected with a 400-mapped {@link
+   * ValidationException} and recorded as {@code DENIED} - not left to fail the {@code audit_log}
+   * write of {@code varchar(1000)} and surface as an unrecorded 500.
+   */
+  @Test
+  void anOverlongReasonIsRejectedAndTheAttemptIsRecorded() {
+    String overlong = "x".repeat(1001);
+
+    assertThatThrownBy(
+            () ->
+                service.findByTimeRange(
+                    caller(SystemRole.AUDITOR),
+                    FROM,
+                    FROM.plus(1, ChronoUnit.DAYS),
+                    overlong,
+                    0,
+                    50))
+        .isInstanceOf(ValidationException.class);
+
+    ArgumentCaptor<String> recordedReason = ArgumentCaptor.captor();
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID),
+            eq(callerId),
+            any(),
+            eq(AuditOutcome.DENIED),
+            recordedReason.capture());
+    assertThat(recordedReason.getValue()).hasSize(1000);
+    verify(logRepository, never()).findByTimeRange(any(), any(), any(), any());
+  }
+
   @Test
   void anAuditorCannotRequestAnUnboundedWindow() {
     assertThatThrownBy(
@@ -172,6 +206,179 @@ class DiagnosticContextLogQueryServiceTest {
         .isInstanceOf(AccessDeniedException.class);
 
     verify(auditEventRecorder, never()).recordUserAction(any());
+  }
+
+  @Test
+  void aFachvorgesetzterReachesNoSingleEntryEither() {
+    assertThatThrownBy(
+            () ->
+                service.findSingleEvent(
+                    caller(SystemRole.SYSTEM_ADMIN), UUID.randomUUID().toString(), "Beschwerde"))
+        .isInstanceOf(AccessDeniedException.class);
+
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID), eq(callerId), any(), eq(AuditOutcome.DENIED), eq("Beschwerde"));
+    verify(logRepository, never()).findSingleEntry(any(), any());
+  }
+
+  @Test
+  void aSingleEntryNeedsItsOwnReason() {
+    assertThatThrownBy(
+            () ->
+                service.findSingleEvent(
+                    caller(SystemRole.AUDITOR), UUID.randomUUID().toString(), "  "))
+        .isInstanceOf(ValidationException.class);
+
+    verify(logRepository, never()).findSingleEntry(any(), any());
+  }
+
+  /**
+   * Same bound as {@link #anOverlongReasonIsRejectedAndTheAttemptIsRecorded}, single-entry path.
+   */
+  @Test
+  void aSingleEntryReasonThatIsTooLongIsRejectedAndTheAttemptIsRecorded() {
+    String overlong = "x".repeat(1001);
+
+    assertThatThrownBy(
+            () ->
+                service.findSingleEvent(
+                    caller(SystemRole.AUDITOR), UUID.randomUUID().toString(), overlong))
+        .isInstanceOf(ValidationException.class);
+
+    ArgumentCaptor<String> recordedReason = ArgumentCaptor.captor();
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID),
+            eq(callerId),
+            any(),
+            eq(AuditOutcome.DENIED),
+            recordedReason.capture());
+    assertThat(recordedReason.getValue()).hasSize(1000);
+    verify(logRepository, never()).findSingleEntry(any(), any());
+  }
+
+  @Test
+  void anUnknownEntryIsNotFoundAndTheAttemptIsStillRecorded() {
+    UUID eventId = UUID.randomUUID();
+    when(logRepository.findSingleEntry(ORGANIZATION_ID, eventId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () ->
+                service.findSingleEvent(
+                    caller(SystemRole.AUDITOR), eventId.toString(), "Beschwerde 4711"))
+        .isInstanceOf(NotFoundException.class);
+
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID),
+            eq(callerId),
+            any(),
+            eq(AuditOutcome.DENIED),
+            eq("Beschwerde 4711"));
+  }
+
+  /**
+   * The einzelfall- und anlassbezogene Auswertung of Leitplanke (g): one already-known entry, the
+   * same AUDITOR bar as the Gesamtprotokoll, and its own audit_log record naming the entry.
+   */
+  @Test
+  void anAuditorReadsOneKnownEntryUnderItsOwnAnlassAndTheReadIsRecorded() {
+    UUID ownPseudonym = UUID.randomUUID();
+    DiagnosticContextLogEntry stored = entry(UUID.randomUUID(), ownPseudonym.toString());
+    when(logRepository.findSingleEntry(ORGANIZATION_ID, stored.getEventId()))
+        .thenReturn(Optional.of(stored));
+
+    DiagnosticContextLogEntry found =
+        service.findSingleEvent(
+            caller(SystemRole.AUDITOR), stored.getEventId().toString(), "Beschwerde 4711");
+
+    assertThat(found).isSameAs(stored);
+    ArgumentCaptor<Map<String, Object>> scope = ArgumentCaptor.captor();
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID),
+            eq(callerId),
+            scope.capture(),
+            eq(AuditOutcome.SUCCESS),
+            eq("Beschwerde 4711"));
+    assertThat(scope.getValue())
+        .containsEntry("accessPath", "diagnostic-context-events/{eventId}")
+        .containsEntry("eventId", stored.getEventId().toString());
+  }
+
+  /**
+   * The id travels as text so that a malformed one reaches this method rather than Spring MVC's
+   * type conversion - the endpoint promises an entry for every call, accepted or rejected, and that
+   * promise must not depend on the request being well-formed.
+   */
+  @Test
+  void anUnreadableEventIdIsARejectedAttemptAndIsRecordedAsOne() {
+    assertThatThrownBy(
+            () ->
+                service.findSingleEvent(
+                    caller(SystemRole.AUDITOR), "nicht-eine-uuid", "Beschwerde 4711"))
+        .isInstanceOf(ValidationException.class);
+
+    ArgumentCaptor<Map<String, Object>> scope = ArgumentCaptor.captor();
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID),
+            eq(callerId),
+            scope.capture(),
+            eq(AuditOutcome.DENIED),
+            eq("Beschwerde 4711"));
+    assertThat(scope.getValue()).containsEntry("eventId", "nicht-eine-uuid");
+    verify(logRepository, never()).findSingleEntry(any(), any());
+  }
+
+  /** An oversized id is bounded before it reaches the entry - it is caller-supplied text. */
+  @Test
+  void anOversizedEventIdIsRecordedOnlyAsFarAsItCanBeOne() {
+    String oversized = "x".repeat(500);
+
+    assertThatThrownBy(
+            () -> service.findSingleEvent(caller(SystemRole.AUDITOR), oversized, "Beschwerde 4711"))
+        .isInstanceOf(ValidationException.class);
+
+    ArgumentCaptor<Map<String, Object>> scope = ArgumentCaptor.captor();
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID),
+            eq(callerId),
+            scope.capture(),
+            eq(AuditOutcome.DENIED),
+            eq("Beschwerde 4711"));
+    assertThat((String) scope.getValue().get("eventId")).hasSize(64);
+  }
+
+  /**
+   * A query that breaks after role and reason were accepted is a malfunction, not a turned-away
+   * attempt - recording it as DENIED would put it in the trail next to attempted overreach.
+   */
+  @Test
+  void aFailingQueryAfterAPassedCheckIsRecordedAsFailureRatherThanDenied() {
+    when(logRepository.findByTimeRange(any(), any(), any(), any()))
+        .thenThrow(new QueryTimeoutException("statement timeout"));
+
+    assertThatThrownBy(
+            () ->
+                service.findByTimeRange(
+                    caller(SystemRole.AUDITOR),
+                    FROM,
+                    FROM.plus(1, ChronoUnit.DAYS),
+                    "Beschwerde 4711",
+                    0,
+                    50))
+        .isInstanceOf(QueryTimeoutException.class);
+
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID),
+            eq(callerId),
+            any(),
+            eq(AuditOutcome.FAILURE),
+            eq("Beschwerde 4711"));
   }
 
   private DiagnosticContextLogEntry entry(UUID actorPseudonym, String targetRef) {

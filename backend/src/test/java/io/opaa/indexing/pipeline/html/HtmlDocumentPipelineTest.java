@@ -53,6 +53,35 @@ class HtmlDocumentPipelineTest {
         .isNull();
   }
 
+  /**
+   * #1289: the Dokumentart is read from the title line, and an HTML page has no line breaks of its
+   * own - the first text block is that line, the label paragraph below it is not part of it.
+   */
+  @Test
+  void readsTheFirstTextBlockAsTheTitleLine() {
+    assertThat(
+            pipeline
+                .readProperties(
+                    DocumentPipelineSource.ofExtractedText(REALISTIC_PAGE, "seite.html"))
+                .titleLine())
+        .isEqualTo("Personalausweis beantragen");
+
+    String withLabelLine =
+        """
+        <html><body><main>
+          <h1>Fabrikneues Fahrzeug anmelden</h1>
+          <p><strong>Formular:</strong> RF-KFZ-001</p>
+          <p>Die Zulassungsstelle nimmt den Antrag persoenlich entgegen.</p>
+        </main></body></html>
+        """;
+
+    assertThat(
+            pipeline
+                .readProperties(DocumentPipelineSource.ofExtractedText(withLabelLine, "kfz.html"))
+                .titleLine())
+        .isEqualTo("Fabrikneues Fahrzeug anmelden");
+  }
+
   // A realistic Government Site Builder-style page: nav, header, footer and a cookie banner
   // outside <main>, plus nested headings (h1 > h2 > h3) inside it.
   private static final String REALISTIC_PAGE =

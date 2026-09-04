@@ -24,6 +24,9 @@ import org.slf4j.LoggerFactory;
  */
 class PipelineHarnessSupportTest {
 
+  /** The pinned eval chat model of a run that has one (issue #1085). */
+  private static final String CHAT_MODEL = "qwen2.5:1.5b-instruct";
+
   private static final PipelineHarnessSupport.RunIdentity IDENTITY =
       new PipelineHarnessSupport.RunIdentity(
           "ollama",
@@ -38,7 +41,8 @@ class PipelineHarnessSupportTest {
           "golden",
           "hash",
           true,
-          "markdown:1");
+          "markdown:1",
+          CHAT_MODEL);
 
   private static QueryProperties productionLikeProperties(
       int topK, boolean queryDecompositionEnabled) {
@@ -103,7 +107,9 @@ class PipelineHarnessSupportTest {
             () ->
                 runWith(
                     productionLikeProperties(8, true),
-                    RetrievalPipelineProperties.allStagesEnabled()))
+                    RetrievalPipelineProperties.allStagesEnabled(),
+                    false,
+                    null))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("query-decomposition-enabled");
 
@@ -114,6 +120,23 @@ class PipelineHarnessSupportTest {
                     RetrievalPipelineProperties.allStagesEnabled()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("top-k");
+  }
+
+  /**
+   * Issue #1085: decomposition is measurable once a chat model is installed - the prerequisite
+   * constrains the missing model, not the decomposition. Which of the two settings a run measures
+   * is a fixed point of its report, not something this check prescribes.
+   */
+  @Test
+  void decompositionIsMeasurableWithAnActiveChatModel() {
+    assertThatCode(
+            () ->
+                PipelineHarnessSupport.requireMeasurableConfiguration(
+                    productionLikeProperties(8, true),
+                    RetrievalPipelineProperties.allStagesEnabled(),
+                    false,
+                    CHAT_MODEL))
+        .doesNotThrowAnyException();
   }
 
   /**
@@ -172,23 +195,31 @@ class PipelineHarnessSupportTest {
     assertThatCode(
             () ->
                 PipelineHarnessSupport.requireMeasurableConfiguration(
-                    windowOff, RetrievalPipelineProperties.allStagesEnabled(), true))
+                    windowOff, RetrievalPipelineProperties.allStagesEnabled(), true, null))
         .doesNotThrowAnyException();
   }
 
   private static void runWith(
       QueryProperties queryProperties, RetrievalPipelineProperties pipelineProperties) {
-    runWith(queryProperties, pipelineProperties, false);
+    runWith(queryProperties, pipelineProperties, false, CHAT_MODEL);
+  }
+
+  private static void runWith(
+      QueryProperties queryProperties,
+      RetrievalPipelineProperties pipelineProperties,
+      boolean rerankRoleUsable) {
+    runWith(queryProperties, pipelineProperties, rerankRoleUsable, CHAT_MODEL);
   }
 
   /** Collaborators are null on purpose: the guard must reject before touching any of them. */
   private static void runWith(
       QueryProperties queryProperties,
       RetrievalPipelineProperties pipelineProperties,
-      boolean rerankRoleUsable) {
+      boolean rerankRoleUsable,
+      String chatModel) {
     PipelineHarnessSupport.runAndWriteGuarded(
         EvalDomainConfig.COMIC_CHARACTERS,
-        IDENTITY,
+        identityWithChatModel(chatModel),
         null,
         queryProperties,
         pipelineProperties,
@@ -198,5 +229,23 @@ class PipelineHarnessSupportTest {
         oneCase(),
         Instant.now(),
         LoggerFactory.getLogger(PipelineHarnessSupportTest.class));
+  }
+
+  private static PipelineHarnessSupport.RunIdentity identityWithChatModel(String chatModel) {
+    return new PipelineHarnessSupport.RunIdentity(
+        "ollama",
+        "model",
+        "digest",
+        "image",
+        768,
+        true,
+        "hnsw",
+        "manifest",
+        1,
+        "golden",
+        "hash",
+        true,
+        "markdown:1",
+        chatModel);
   }
 }

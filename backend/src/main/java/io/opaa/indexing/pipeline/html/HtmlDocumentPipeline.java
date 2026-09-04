@@ -143,24 +143,66 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
       // reports for content that reduces to nothing (see TabularDocumentPipeline#run).
       return DocumentPipelineResult.noExtractableText();
     }
-    return DocumentPipelineResult.chunked(chunks).withProperties(properties(htmlDoc));
+    return DocumentPipelineResult.chunked(chunks).withProperties(properties(htmlDoc, contentRoots));
   }
 
-  /** The {@code <title>} and the first {@code <h1>} (ADR-0024). */
+  /**
+   * The {@code <title>}, the first {@code <h1>} (ADR-0024) and the title line of the content
+   * (#1263, #1289). {@link #selectContentRoots} runs here too, so the title line is read from the
+   * same boilerplate-stripped view {@link #run} sees - a navigation label must not become a
+   * Dokumentart.
+   */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
     try {
-      return properties(parse(source));
+      org.jsoup.nodes.Document htmlDoc = parse(source);
+      return properties(htmlDoc, selectContentRoots(htmlDoc));
     } catch (UncheckedIOException e) {
       return DocumentProperties.EMPTY;
     }
   }
 
-  private static DocumentProperties properties(org.jsoup.nodes.Document htmlDoc) {
+  private static DocumentProperties properties(
+      org.jsoup.nodes.Document htmlDoc, List<Element> contentRoots) {
     Element h1 = htmlDoc.selectFirst("h1");
     return DocumentProperties.EMPTY
         .withTitle(htmlDoc.title())
-        .withFirstHeading(h1 == null ? null : h1.text());
+        .withFirstHeading(h1 == null ? null : h1.text())
+        .withTitleLine(titleLine(contentRoots));
+  }
+
+  /**
+   * The first text block of the content (#1289) - a page has no line breaks of its own, so the
+   * block boundaries of {@link #BLOCK_TAGS} and the headings are what a title line ends at.
+   */
+  private static String titleLine(List<Element> contentRoots) {
+    for (Element root : contentRoots) {
+      SectionAccumulator section = new SectionAccumulator();
+      root.traverse(
+          new NodeVisitor() {
+            @Override
+            public void head(Node node, int depth) {
+              if (node instanceof Element el) {
+                String tag = el.tagName().toLowerCase(Locale.ROOT);
+                if (HEADING_TAGS.contains(tag) || BLOCK_TAGS.contains(tag)) {
+                  section.breakBlock();
+                }
+                return;
+              }
+              if (node instanceof TextNode textNode) {
+                section.appendText(textNode.getWholeText());
+              }
+            }
+
+            @Override
+            public void tail(Node node, int depth) {}
+          });
+      List<String> blocks = section.takeBlocks();
+      if (!blocks.isEmpty()) {
+        return blocks.getFirst();
+      }
+    }
+    return null;
   }
 
   private static org.jsoup.nodes.Document parse(DocumentPipelineSource source) {

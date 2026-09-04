@@ -21,6 +21,7 @@ import type {
   SpaceLibraryAssociationListResponse,
   SearchStatusResponse,
   SearchPermissionProfileResponse,
+  SearchDiagnosisContextResponse,
   SearchDiagnosisResponse,
   ConfluenceSpaceRef,
   ChunkInspectionResponse,
@@ -38,6 +39,10 @@ export interface MockLibraryFolder {
   createdAt: string
 }
 import type { AuthConfig, AuthUser } from '../types/auth'
+import type {
+  DocumentMetadataFieldResponse,
+  DocumentTypeVocabularyEntryResponse,
+} from '../types/api'
 
 export const mockHealthResponse: HealthResponse = {
   status: 'UP',
@@ -629,6 +634,44 @@ export const mockSearchStatus: SearchStatusResponse = {
       fullTextIndexedChunks: 180,
       fullTextMissingChunks: 56,
       fullTextSkippedChunks: 0,
+      metadataBackfill: {
+        extractionVersion: 1,
+        totalDocuments: 11,
+        currentDocuments: 9,
+        pendingDocuments: 2,
+        awaitingConnectorRunDocuments: 1,
+        lastSkippedDocuments: 1,
+        complete: false,
+        fields: [
+          {
+            fieldKey: 'title',
+            label: 'Titel',
+            filledDocuments: 11,
+            filledShare: 1.0,
+            notDeterminableDocuments: 0,
+            documentsWithoutValue: 0,
+            missingShare: 0.0,
+          },
+          {
+            fieldKey: 'document_type',
+            label: 'Dokumentart',
+            filledDocuments: 4,
+            filledShare: 0.3636,
+            notDeterminableDocuments: 0,
+            documentsWithoutValue: 7,
+            missingShare: 0.6364,
+          },
+          {
+            fieldKey: 'document_date',
+            label: 'Datum/Stand',
+            filledDocuments: 7,
+            filledShare: 0.6364,
+            notDeterminableDocuments: 1,
+            documentsWithoutValue: 3,
+            missingShare: 0.2727,
+          },
+        ],
+      },
     },
     {
       libraryId: 'lib-protokolle',
@@ -646,6 +689,44 @@ export const mockSearchStatus: SearchStatusResponse = {
       fullTextIndexedChunks: 29,
       fullTextMissingChunks: 1,
       fullTextSkippedChunks: 0,
+      metadataBackfill: {
+        extractionVersion: 1,
+        totalDocuments: 3,
+        currentDocuments: 3,
+        pendingDocuments: 0,
+        awaitingConnectorRunDocuments: 0,
+        lastSkippedDocuments: 0,
+        complete: true,
+        fields: [
+          {
+            fieldKey: 'title',
+            label: 'Titel',
+            filledDocuments: 3,
+            filledShare: 1.0,
+            notDeterminableDocuments: 0,
+            documentsWithoutValue: 0,
+            missingShare: 0.0,
+          },
+          {
+            fieldKey: 'document_type',
+            label: 'Dokumentart',
+            filledDocuments: 3,
+            filledShare: 1.0,
+            notDeterminableDocuments: 0,
+            documentsWithoutValue: 0,
+            missingShare: 0.0,
+          },
+          {
+            fieldKey: 'document_date',
+            label: 'Datum/Stand',
+            filledDocuments: 2,
+            filledShare: 0.6667,
+            notDeterminableDocuments: 1,
+            documentsWithoutValue: 0,
+            missingShare: 0.0,
+          },
+        ],
+      },
     },
     {
       libraryId: 'lib-formulare',
@@ -663,6 +744,44 @@ export const mockSearchStatus: SearchStatusResponse = {
       fullTextIndexedChunks: 47,
       fullTextMissingChunks: 0,
       fullTextSkippedChunks: 1,
+      metadataBackfill: {
+        extractionVersion: 1,
+        totalDocuments: 4,
+        currentDocuments: 4,
+        pendingDocuments: 0,
+        awaitingConnectorRunDocuments: 0,
+        lastSkippedDocuments: 0,
+        complete: true,
+        fields: [
+          {
+            fieldKey: 'title',
+            label: 'Titel',
+            filledDocuments: 4,
+            filledShare: 1.0,
+            notDeterminableDocuments: 0,
+            documentsWithoutValue: 0,
+            missingShare: 0.0,
+          },
+          {
+            fieldKey: 'document_type',
+            label: 'Dokumentart',
+            filledDocuments: 4,
+            filledShare: 1.0,
+            notDeterminableDocuments: 0,
+            documentsWithoutValue: 0,
+            missingShare: 0.0,
+          },
+          {
+            fieldKey: 'document_date',
+            label: 'Datum/Stand',
+            filledDocuments: 4,
+            filledShare: 1.0,
+            notDeterminableDocuments: 0,
+            documentsWithoutValue: 0,
+            missingShare: 0.0,
+          },
+        ],
+      },
     },
   ],
 }
@@ -672,12 +791,20 @@ export const mockSearchPermissionProfiles: SearchPermissionProfileResponse[] = [
   { id: 'group-phoenix', name: 'Projektbeteiligte Phoenix', libraryCount: 1 },
 ]
 
+export const mockSearchDiagnosisContext: SearchDiagnosisContextResponse = {
+  permissionProfiles: mockSearchPermissionProfiles,
+  personContextAvailable: false,
+  personContextHint:
+    'Fuer den Rechtekontext einer Person ist die eigene, befristete Befugnis „Sicht als“ noetig; Sie halten keine. Sie wird einzeln vergeben und folgt nicht aus der Administratorrolle.',
+}
+
 export const MOCK_SATZUNG_DOCUMENT_ID = '11111111-1111-4111-8111-111111111111'
 export const MOCK_FORMULAR_DOCUMENT_ID = '22222222-2222-4222-8222-222222222222'
 
 export const mockSearchDiagnosis: SearchDiagnosisResponse = {
   question: 'Was gilt bei Gebuehrenbefreiung wegen Beduerftigkeit?',
   contextType: 'PERMISSION_PROFILE',
+  lockedLibraryCount: 0,
   contextLabel: 'Rechteprofil „Sachbearbeitung Buergerbuero“',
   executedAt: '2026-09-01T10:00:00Z',
   searchScope: [
@@ -940,6 +1067,10 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     myRole: 'OWNER',
     documentCount: 12,
     sourceType: 'UPLOAD',
+    diagnosticsLocked: true,
+    // #1278 review: the mock user is the library's named (ownerId) OWNER here, not merely an
+    // admin bypass - the one case holdsIndependentOwnerRole (and this mock field) says true for.
+    diagnosticsLockToggleable: true,
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -958,6 +1089,8 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     // libraries have no run type at all (DocumentIndexingService#toIndexingSourceType, 409). Also
     // the fixture #479's connector-upload/-delete tests use.
     sourceType: 'FILESYSTEM',
+    diagnosticsLocked: true,
+    diagnosticsLockToggleable: false,
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -972,6 +1105,8 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     myRole: 'VIEWER',
     documentCount: 87,
     sourceType: 'UPLOAD',
+    diagnosticsLocked: true,
+    diagnosticsLockToggleable: false,
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -986,6 +1121,8 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     myRole: 'OWNER',
     documentCount: 0,
     sourceType: 'UPLOAD',
+    diagnosticsLocked: true,
+    diagnosticsLockToggleable: true,
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
@@ -1117,6 +1254,68 @@ export let mockLibraryDocuments: Record<string, LibraryDocumentResponse[]> =
 
 export function resetMockLibraryDocuments() {
   mockLibraryDocuments = structuredClone(INITIAL_LIBRARY_DOCUMENTS)
+}
+
+// #1068: the Dokumentart vocabulary (ADR-0024, Entscheidung 3) as the backend seeds it.
+export const mockDocumentTypeVocabulary: DocumentTypeVocabularyEntryResponse[] = [
+  { code: 'SATZUNG_ORDNUNG', label: 'Satzung/Ordnung' },
+  { code: 'DIENSTANWEISUNG', label: 'Dienstanweisung' },
+  { code: 'VERMERK', label: 'Vermerk' },
+  { code: 'PROTOKOLL', label: 'Protokoll' },
+  { code: 'BESCHEID_VORLAGE', label: 'Bescheid-Vorlage' },
+  { code: 'FORMULAR', label: 'Formular' },
+  { code: 'GEBUEHRENVERZEICHNIS', label: 'Gebührenverzeichnis' },
+  { code: 'PRAESENTATION', label: 'Präsentation' },
+  { code: 'SONSTIGES', label: 'Sonstiges' },
+]
+
+// #1068: core metadata per document with its provenance - one deterministic, one derived and
+// one manual value on the first fixture document, so every origin marking is exercised in
+// mock/dev mode; documents without an entry read as three empty fields.
+const INITIAL_DOCUMENT_METADATA: Record<string, DocumentMetadataFieldResponse[]> = {
+  'document-dienstanweisung': [
+    {
+      fieldKey: 'title',
+      label: 'Titel',
+      state: 'SET',
+      value: 'Dienstanweisung zur IT-Nutzung',
+      displayValue: 'Dienstanweisung zur IT-Nutzung',
+      origin: 'DETERMINISTIC',
+      extractionVersion: 1,
+      updatedAt: '2026-03-02T09:00:00Z',
+    },
+    {
+      fieldKey: 'document_type',
+      label: 'Dokumentart',
+      state: 'SET',
+      value: 'DIENSTANWEISUNG',
+      displayValue: 'Dienstanweisung',
+      origin: 'DERIVED',
+      confidence: 0.82,
+      modelId: 'mock-model',
+      extractionVersion: 1,
+      updatedAt: '2026-03-02T09:00:00Z',
+    },
+    {
+      fieldKey: 'document_date',
+      label: 'Datum/Stand',
+      state: 'SET',
+      value: '2024-01-01',
+      displayValue: '2024',
+      origin: 'MANUAL',
+      datePrecision: 'YEAR',
+      actorUserId: 'mock-user-id',
+      actorDisplayName: 'Max Mustermann',
+      updatedAt: '2026-03-03T14:30:00Z',
+    },
+  ],
+}
+
+export let mockDocumentMetadata: Record<string, DocumentMetadataFieldResponse[]> =
+  structuredClone(INITIAL_DOCUMENT_METADATA)
+
+export function resetMockDocumentMetadata() {
+  mockDocumentMetadata = structuredClone(INITIAL_DOCUMENT_METADATA)
 }
 
 // #822: one pre-existing root-level folder on 'library-mine' (the OWNER/UPLOAD fixture already

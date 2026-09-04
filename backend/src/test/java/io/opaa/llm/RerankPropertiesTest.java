@@ -51,6 +51,19 @@ class RerankPropertiesTest {
     assertThat(properties.describeWithoutSecrets()).contains("bge-reranker");
   }
 
+  /**
+   * A base address carrying userinfo is credentials, and both of these forms are meant to be safe
+   * to log - so neither may reproduce it, not even the host part around it.
+   */
+  @Test
+  void neitherTheDescriptionNorTheStringFormCarriesCredentialsFromTheBaseUrl() {
+    RerankProperties properties =
+        properties("https://benutzer:geheim@reranker.example.internal/v1", "bge-reranker");
+
+    assertThat(properties.describeWithoutSecrets()).doesNotContain("benutzer:geheim");
+    assertThat(properties.toString()).doesNotContain("benutzer:geheim");
+  }
+
   @Test
   void anUnboundRoleDescribesItselfWithoutPretendingToHaveAnEndpoint() {
     assertThat(properties("", "").describeWithoutSecrets()).isEqualTo("(keine Endpunktangaben)");

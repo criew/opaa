@@ -18,7 +18,10 @@ import org.slf4j.LoggerFactory;
  * parent's routed pipeline solely for its {@code discoveredAttachments} and copies the attachment
  * at {@code index} - the 0-based extraction order encoded in the attachment's synthetic {@code
  * file_path}, see {@link FileProcessingService#attachmentFilePath} - to a temp file <b>the caller
- * owns and must delete</b>.
+ * owns and must delete</b>. The run is restricted to that one index ({@link
+ * DocumentPipelineSource#attachmentIndex()}, #1243), so a message with many attachments costs one
+ * temporary file here, not one per attachment; the extraction order itself is unchanged, which is
+ * what keeps the stored index meaningful.
  *
  * <p>Attachment bytes are never stored at indexing time, so every read path re-extracts them here:
  * the selective re-index ({@code PipelineReindexService}, #1218) and "Im Dokument öffnen" ({@code
@@ -49,13 +52,16 @@ public class AttachmentExtractor {
           pipelineRegistry.routedPipelineFor(parentFile, parentFileName);
       DocumentPipelineRunner.run(
           routed.pipeline(),
-          DocumentPipelineSource.ofFile(parentFile, parentFileName, routed.detectedExtension()),
+          DocumentPipelineSource.ofFile(parentFile, parentFileName, routed.detectedExtension())
+              .withAttachmentIndex(index),
           result -> {
             List<DiscoveredAttachment> attachments = result.discoveredAttachments();
-            if (index >= attachments.size()) {
+            if (attachments.isEmpty()) {
               return;
             }
-            DiscoveredAttachment attachment = attachments.get(index);
+            // Selective extraction: the source above restricts the run to index, so the pipeline
+            // reports that attachment as the only one (DocumentPipelineSource#attachmentIndex).
+            DiscoveredAttachment attachment = attachments.getFirst();
             try {
               Path copy = Files.createTempFile("opaa-attachment-", suffixOf(attachment.fileName()));
               Files.copy(attachment.tempFile(), copy, StandardCopyOption.REPLACE_EXISTING);
@@ -66,7 +72,7 @@ public class AttachmentExtractor {
           });
     } catch (RuntimeException e) {
       // A corrupt or unreadable parent must cost only this one extraction - some pipelines still
-      // throw on a parse failure instead of reporting NO_CONTENT.
+      // throw on a parse failure instead of reporting PARSE_FAILED.
       log.warn("Failed to re-extract attachment {} of {}", index, parentFileName, e);
       return null;
     }

@@ -57,6 +57,7 @@ class UrlAttachmentIndexingIntegrationTest {
   @Autowired private IndexingRunEventRepository indexingRunEventRepository;
   @Autowired private LibraryStorageQuotaService storageQuotaService;
   @Autowired private StaleDocumentCleanupService staleDocumentCleanupService;
+  @Autowired private io.opaa.library.LibraryFolderService folderService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private io.opaa.indexing.VectorChunkStore vectorChunkStore;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -138,14 +139,16 @@ class UrlAttachmentIndexingIntegrationTest {
     TargetAddressValidator validator = TargetAddressValidator.disabled();
     executor =
         new UrlIndexingExecutor(
-            new AutoindexCrawlerService(validator, new CrawlProperties(0, 0)),
+            new AutoindexCrawlerService(validator, new CrawlProperties(0, 0, 0)),
             new BoundedDownloader(validator),
             fileProcessingService,
             indexingJobService,
             documentRepository,
             indexingRunEventRepository,
             storageQuotaService,
-            staleDocumentCleanupService);
+            staleDocumentCleanupService,
+            new CrawlProperties(0, 0, 0),
+            folderService);
   }
 
   @AfterEach

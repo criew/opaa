@@ -11,6 +11,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ServiceUnavailableException;
+import io.opaa.common.TooManyRequestsException;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.common.ValidationException;
 import io.opaa.library.UploadProperties;
@@ -315,6 +316,14 @@ public class GlobalExceptionHandler {
         .body(
             new ErrorResponse(
                 ex.getMessage(), HttpStatus.PAYLOAD_TOO_LARGE.value(), Instant.now()));
+  }
+
+  @ExceptionHandler(TooManyRequestsException.class)
+  public ResponseEntity<ErrorResponse> handleTooManyRequestsException(TooManyRequestsException ex) {
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+        .body(
+            new ErrorResponse(
+                ex.getMessage(), HttpStatus.TOO_MANY_REQUESTS.value(), Instant.now()));
   }
 
   @ExceptionHandler(ServiceUnavailableException.class)

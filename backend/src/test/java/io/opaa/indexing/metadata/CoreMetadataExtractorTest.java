@@ -118,6 +118,380 @@ class CoreMetadataExtractorTest {
     }
   }
 
+  /** #1263: the Kompositum ending rule seeded per vocabulary value in migration 020. */
+  @Nested
+  class KompositumEndings {
+
+    @Test
+    void aTokenEndingOnASeededSuffixDenotesThatDokumentart() {
+      assertThat(
+              extract("01_verwaltungsgebuehrensatzung.pdf", DocumentProperties.EMPTY)
+                  .documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+      assertThat(
+              extract("Friedhofsgebuehrenordnung.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+      assertThat(
+              extract("Verwaltungsgebührenverzeichnis.pdf", DocumentProperties.EMPTY)
+                  .documentTypeCode())
+          .contains("GEBUEHRENVERZEICHNIS");
+      assertThat(extract("Rahmendienstanweisung.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .contains("DIENSTANWEISUNG");
+    }
+
+    @Test
+    void aTooShortPrefixInFrontOfTheEndingNeverCounts() {
+      // "Anordnung" is an Anordnung, not an Ordnung: two characters in front of the ending are
+      // below the seeded minimum, and the seed lists the token as an exclusion on top of that.
+      assertThat(extract("Anordnung_Streugut.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .isEmpty();
+      assertThat(extract("Zuordnung_Aktenzeichen.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void aSeededExclusionIsNeverClaimedByItsEnding() {
+      // Frequent administrative compounds that are no Dokumentart; no length rule separates them
+      // from "Verordnung" or "Hausordnung", so the seed names them one by one.
+      for (String fileName :
+          List.of(
+              "Einordnung_Rechtslage.pdf",
+              "Neuordnung_Aemter.pdf",
+              "Tagesordnung_Ratssitzung.pdf",
+              "Groessenordnung_Beschaffung.pdf",
+              "Größenordnung_Beschaffung.pdf",
+              "Sitzordnung_Ratssaal.pdf",
+              "Rangordnung.pdf",
+              "Sperrvermerk_Haushalt.pdf",
+              "Eingangsvermerk.pdf")) {
+        assertThat(extract(fileName, DocumentProperties.EMPTY).documentTypeCode())
+            .as(fileName)
+            .isEmpty();
+      }
+    }
+
+    @Test
+    void aCompoundThatIsGenuinelyARechtsnormStaysAdmitted() {
+      assertThat(extract("Hausordnung_Rathaus.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+      assertThat(extract("Hundesteuerverordnung.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+    }
+
+    @Test
+    void anEndingNeverBeatsAnExactVocabularyTerm() {
+      // "dienstanordnung" is a seeded synonym of DIENSTANWEISUNG; the ending "-ordnung" would
+      // otherwise make it a Satzung/Ordnung.
+      assertThat(extract("Dienstanordnung_IT.pdf", DocumentProperties.EMPTY).documentTypeCode())
+          .contains("DIENSTANWEISUNG");
+    }
+  }
+
+  /**
+   * #1263, #1289: the title line as the third source of the Dokumentart - the first heading, else
+   * the first line of the text, and nothing below it.
+   */
+  @Nested
+  class TitleLineSource {
+
+    @Test
+    void theFirstHeadingNamesTheDokumentartWhenTheFileNameDoesNot() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withFirstHeading("Dienstanweisung Nr. 1 - Identitaetszweifel");
+
+      assertThat(extract("01_identitaetszweifel-ausweisantrag.docx", properties).documentTypeCode())
+          .contains("DIENSTANWEISUNG");
+    }
+
+    @Test
+    void theTitleLineOfTheBodyTextCountsWhenThereIsNoHeading() {
+      assertThat(
+              extract(
+                      "anlage.pdf",
+                      DocumentProperties.EMPTY.withTitleLine(
+                          "Niederschrift ueber die Sitzung des Rates"))
+                  .documentTypeCode())
+          .contains("PROTOKOLL");
+    }
+
+    @Test
+    void aWordBeyondTheTitleLineLimitNeverBecomesADokumentart() {
+      String longLead = "Sehr geehrte Damen und Herren, ".repeat(20);
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withTitleLine(longLead + "Protokoll der Sitzung");
+
+      assertThat(properties.titleLine())
+          .as("DocumentProperties cuts the title line itself, so the word is no longer in it")
+          .doesNotContain("Protokoll");
+      assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
+    }
+
+    @Test
+    void theKompositumEndingNeverAppliesToRunningText() {
+      // The ending rule is for file names; running text is full of compounds that are no
+      // Dokumentart, and a wrong DETERMINISTIC value is the damage the Leitregel excludes.
+      for (String head :
+          List.of(
+              "Beschaffungen in dieser Größenordnung beduerfen der Zustimmung des Rates.",
+              "Die Tagesordnung wird zu Beginn der Sitzung festgestellt.",
+              "Der Vorgang traegt einen Sperrvermerk.",
+              "Diese Gebuehrensatzung wurde am 12.03.2026 beschlossen.")) {
+        assertThat(
+                extract("anlage.pdf", DocumentProperties.EMPTY.withTitleLine(head))
+                    .documentTypeCode())
+            .as(head)
+            .isEmpty();
+      }
+      // An exact vocabulary term in the title line still counts - that is the source's whole
+      // purpose.
+      assertThat(
+              extract(
+                      "anlage.pdf",
+                      DocumentProperties.EMPTY.withTitleLine(
+                          "Satzung ueber die Erhebung von" + " Gebuehren"))
+                  .documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+    }
+
+    @Test
+    void theTitleLineIsCutAtAWordBoundarySoNoFragmentEverMatches() {
+      // The limit falls exactly behind "Gebührensatzung" inside "Gebührensatzungsentwurf" - a hard
+      // cut would turn the fragment into a seeded synonym and yield a DETERMINISTIC value.
+      String lead = "a".repeat(DocumentProperties.MAX_TITLE_LINE_LENGTH - 16) + " ";
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withTitleLine(lead + "Gebührensatzungsentwurf liegt vor");
+
+      assertThat(properties.titleLine()).doesNotContain("ebühren");
+      assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
+    }
+
+    @Test
+    void onlyWholeWordsMatch() {
+      assertThat(
+              extract(
+                      "anlage.pdf",
+                      DocumentProperties.EMPTY.withTitleLine("Vermerkzettel und Protokollanten"))
+                  .documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void theFileNameOutranksTheTitleLine() {
+      DocumentProperties properties = DocumentProperties.EMPTY.withFirstHeading("Vermerk");
+
+      assertThat(extract("Protokoll_Sitzung.pdf", properties).documentTypeCode())
+          .contains("PROTOKOLL");
+    }
+
+    @Test
+    void anAmbiguousFileNameStillLetsTheTitleLineDecide() {
+      // Unlike the frontmatter declaration, an ambiguous file name is no statement about the
+      // document - it yields nothing, and the next source is still asked.
+      DocumentProperties properties = DocumentProperties.EMPTY.withFirstHeading("Vermerk");
+
+      assertThat(extract("Protokoll_zur_Dienstanweisung.pdf", properties).documentTypeCode())
+          .contains("VERMERK");
+    }
+
+    @Test
+    void twoDifferentDokumentartenInTheTitleLineLeaveTheFieldEmpty() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withFirstHeading("Protokoll zur Dienstanweisung vom 12.03.2026");
+
+      assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
+    }
+
+    @Test
+    void aFirstHeadingContradictingTheTitleLineLeavesTheFieldEmpty() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withFirstHeading("Protokoll")
+              .withTitleLine("Anlage zur Dienstanweisung vom 12.03.2026");
+
+      assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
+    }
+
+    @Test
+    void aLabelLineBelowTheTitleNeverNamesTheDokumentart() {
+      // The demo's Leistungsbeschreibungen: the head names the Formular the service needs.
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withFirstHeading("Fabrikneues Fahrzeug anmelden")
+              .withTitleLine(
+                  "Fabrikneues Fahrzeug anmelden\nFormular: RF-KFZ-001\nAktenzeichen: 12/2026");
+
+      assertThat(extract("13_fabrikneues-fahrzeug-anmelden.md", properties).documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void aQuotationBelowTheTitleLineNeverNamesTheDokumentart() {
+      // 15_faq-ausweisbeantragung.pdf: a FAQ that cites a Dienstanweisung is none.
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withTitleLine(
+              "Häufige Fragen zur Ausweisbeantragung\nTermine werden nach der Dienstanweisung"
+                  + " zur Terminvergabe vergeben.");
+
+      assertThat(properties.titleLine())
+          .as("DocumentProperties keeps the first line and nothing else")
+          .isEqualTo("Häufige Fragen zur Ausweisbeantragung");
+      assertThat(extract("15_faq-ausweisbeantragung.pdf", properties).documentTypeCode()).isEmpty();
+    }
+
+    @Test
+    void aTitleLineNamingTheDokumentartStillCounts() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withTitleLine(
+              "Dienstanweisung Nr. 3 – Terminvergabe\nGilt ab dem 01.04.2026.");
+
+      assertThat(extract("03_terminvergabe.pdf", properties).documentTypeCode())
+          .contains("DIENSTANWEISUNG");
+    }
+
+    @Test
+    void aSectionHeadingFromInsideTheDocumentNeverNamesTheDokumentart() {
+      // A Markdown Leistungsbeschreibung opening with a level-2 title and carrying a level-1
+      // section "Benötigtes Formular" further down: the section names the Formular the service
+      // needs, exactly the reference the label line was.
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withTitleLine("Fabrikneues Fahrzeug anmelden")
+              .withFirstHeading("Benötigtes Formular");
+
+      assertThat(extract("13_fabrikneues-fahrzeug-anmelden.md", properties).documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void aPdfOutlineEntryNeverOutranksTheFirstTextLine() {
+      // firstHeading of a PDF is an outline entry from anywhere in the document, not its first
+      // line - two different codes are an ambiguity, and the field stays empty.
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withFirstHeading("Benötigtes Formular")
+              .withTitleLine("Protokoll der Sitzung des Rates");
+
+      assertThat(extract("anlage.pdf", properties).documentTypeCode()).isEmpty();
+    }
+
+    @Test
+    void aFirstHeadingWithoutADokumentartLeavesTheTitleLineItsOwn() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY
+              .withFirstHeading("Anlagen und Fristen")
+              .withTitleLine("Protokoll der Sitzung des Rates");
+
+      assertThat(extract("anlage.pdf", properties).documentTypeCode()).contains("PROTOKOLL");
+    }
+  }
+
+  /** #1263: the file format as the last source. */
+  @Nested
+  class SyntheticName {
+
+    private final DocumentProperties headline = DocumentProperties.EMPTY.withSyntheticName(true);
+
+    @Test
+    void aHeadlineIsNoNamingConventionForTheDokumentart() {
+      // An RSS entry's name is its headline: it names what the article is about, not what the
+      // article is. Both the exact token and the Kompositum ending are off here.
+      assertThat(extract("Rat beschließt neue Hundesteuersatzung", headline).documentTypeCode())
+          .isEmpty();
+      assertThat(extract("Vermerk zur Sitzung veröffentlicht", headline).documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void aHeadlineIsNoNamingConventionForTheDate() {
+      assertThat(extract("Haushalt 2024 beschlossen", headline).date()).isEmpty();
+      assertThat(extract("Bürgerbüro ab 12.03.2026 länger geöffnet", headline).date()).isEmpty();
+      // A date the feed itself declares still counts - it is the entry's own date, not a name.
+      assertThat(
+              extract(
+                      "Haushalt 2024 beschlossen",
+                      headline.withDocumentDate(LocalDate.of(2026, 3, 12)))
+                  .date())
+          .contains(ExtractedDate.day(LocalDate.of(2026, 3, 12)));
+    }
+
+    @Test
+    void aHeadlineIsStillATitle() {
+      assertThat(extract("Rat beschließt neue Hundesteuersatzung", headline).title())
+          .hasValueSatisfying(title -> assertThat(title).contains("Hundesteuersatzung"));
+    }
+
+    @Test
+    void aRealFileNameOfTheSameWordingStillCarriesItsConvention() {
+      assertThat(
+              extract("Rat beschließt neue Hundesteuersatzung.pdf", DocumentProperties.EMPTY)
+                  .documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+      assertThat(extract("Haushalt 2024 beschlossen.pdf", DocumentProperties.EMPTY).date())
+          .contains(ExtractedDate.year(2024));
+    }
+  }
+
+  /** #1263: the file format as the last source. */
+  @Nested
+  class FileFormatSource {
+
+    @Test
+    void aPresentationFormatYieldsPraesentationWhenNoTextSourceDoes() {
+      assertThat(
+              extract(
+                      "21_onboarding-buergerbuero.pptx",
+                      DocumentProperties.EMPTY.withFormatExtension(".pptx"))
+                  .documentTypeCode())
+          .contains("PRAESENTATION");
+      assertThat(
+              extract("folien.odp", DocumentProperties.EMPTY.withFormatExtension(".odp"))
+                  .documentTypeCode())
+          .contains("PRAESENTATION");
+      // Only the two formats SupportedDocumentFormats admits as presentations.
+      assertThat(
+              extract("folien.ppt", DocumentProperties.EMPTY.withFormatExtension(".ppt"))
+                  .documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void everyTextSourceOutranksTheFormat() {
+      DocumentProperties properties =
+          DocumentProperties.EMPTY.withFormatExtension(".pptx").withFirstHeading("Vermerk");
+
+      assertThat(extract("anlage.pptx", properties).documentTypeCode()).contains("VERMERK");
+      assertThat(
+              extract(
+                      "Protokoll_Sitzung.pptx",
+                      DocumentProperties.EMPTY.withFormatExtension(".pptx"))
+                  .documentTypeCode())
+          .contains("PROTOKOLL");
+    }
+
+    @Test
+    void aFormatThatCarriesEveryDokumentartYieldsNone() {
+      assertThat(
+              extract("anlage.pdf", DocumentProperties.EMPTY.withFormatExtension(".pdf"))
+                  .documentTypeCode())
+          .isEmpty();
+      assertThat(
+              extract("anlage.docx", DocumentProperties.EMPTY.withFormatExtension(".docx"))
+                  .documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void aVocabularyWithoutThePresentationCodeYieldsNothingForTheFormat() {
+      ExtractedCoreMetadata result =
+          CoreMetadataExtractor.extract(
+              "folien.pptx",
+              DocumentProperties.EMPTY.withFormatExtension(".pptx"),
+              DocumentTypeVocabulary.empty());
+
+      assertThat(result.documentTypeCode()).isEmpty();
+    }
+  }
+
   @Nested
   class TitleSourceOrder {
 

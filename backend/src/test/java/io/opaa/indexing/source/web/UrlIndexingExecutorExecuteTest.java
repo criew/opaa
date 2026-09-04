@@ -110,7 +110,7 @@ class UrlIndexingExecutorExecuteTest {
     // disabled here so a loopback test server is actually reachable, mirroring
     // BoundedDownloaderTest/RssFeedIndexingExecutorTest's own setup.
     targetAddressValidator = TargetAddressValidator.disabled();
-    executor = buildExecutor(new CrawlProperties(0, 0));
+    executor = buildExecutor(new CrawlProperties(0, 0, 0));
   }
 
   private TargetAddressValidator targetAddressValidator;
@@ -140,7 +140,7 @@ class UrlIndexingExecutorExecuteTest {
                 return downloaded;
               })
           .when(downloader)
-          .download(any(), any(), anyString(), anyString());
+          .download(any(), any(), anyString(), anyString(), anyLong());
     } catch (IOException | InterruptedException e) {
       throw new IllegalStateException(e);
     }
@@ -152,7 +152,9 @@ class UrlIndexingExecutorExecuteTest {
         documentRepository,
         indexingRunEventRepository,
         mock(LibraryStorageQuotaService.class),
-        staleDocumentCleanupService);
+        staleDocumentCleanupService,
+        crawlProperties,
+        mock(io.opaa.library.LibraryFolderService.class));
   }
 
   @AfterEach
@@ -354,6 +356,71 @@ class UrlIndexingExecutorExecuteTest {
         .doesNotExist();
   }
 
+  @Test
+  void anEntryAboveTheSizeCapIsRejectedAsSkippedWhileTheRestOfTheRunContinues() throws IOException {
+    // #1236: the entry's transfer is cut off at CrawlProperties#maxFileSizeBytes, so it never
+    // reaches processUrlFile, counts as skipped rather than failed, leaves no temp file behind -
+    // and the next entry of the same run is still indexed.
+    executor = buildExecutor(new CrawlProperties(10, 5000, 100_000L));
+    serve(
+        "/files/",
+        "text/html",
+        ("<html><head><title>Index of /files/</title></head><body><ul>"
+                + "<li><a href=\"riesig.txt\">riesig.txt</a></li>"
+                + "<li><a href=\"klein.txt\">klein.txt</a></li>"
+                + "</ul></body></html>")
+            .getBytes(StandardCharsets.UTF_8));
+    serve(
+        "/files/riesig.txt",
+        "text/plain",
+        "Bericht. ".repeat(40_000).getBytes(StandardCharsets.UTF_8));
+    serve("/files/klein.txt", "text/plain", "Kurzer Bericht.".getBytes(StandardCharsets.UTF_8));
+    when(fileProcessingService.processUrlFile(
+            any(),
+            anyString(),
+            anyString(),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.HTTP_DIRECTORY),
+            isNull(),
+            isNull(),
+            any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute();
+
+    verify(fileProcessingService, never())
+        .processUrlFile(
+            any(), eq("riesig.txt"), any(), any(), anyLong(), any(), any(), any(), any(), any());
+    verify(fileProcessingService, timeout(5000))
+        .processUrlFile(
+            any(),
+            eq("klein.txt"),
+            anyString(),
+            any(),
+            anyLong(),
+            eq(library),
+            eq(DocumentSourceType.HTTP_DIRECTORY),
+            isNull(),
+            isNull(),
+            any());
+    verify(indexingRunEventRepository, timeout(5000).times(1))
+        .save(
+            argThat(
+                event ->
+                    event != null
+                        && event.getCategory() == IndexingEventCategory.REJECTED
+                        && event.getMessage().contains("überschreitet die zulässige Größe")));
+    verify(indexingJobService, timeout(5000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
+    assertThat(fullDownloads)
+        .as("only the accepted entry was ever transferred in full; the capped one never completed")
+        .hasSize(1);
+    assertThat(fullDownloads.getFirst())
+        .as("every temp file of the run is deleted afterwards")
+        .doesNotExist();
+  }
+
   private static byte[] resourceBytes(String name) throws IOException {
     try (InputStream in =
         UrlIndexingExecutorExecuteTest.class.getClassLoader().getResourceAsStream(name)) {
@@ -423,7 +490,7 @@ class UrlIndexingExecutorExecuteTest {
     // #836/#851: a run capped by the configured entry limit must not clean up - its own
     // currentUrls would not be the source's complete bestand, so anything beyond the cut would
     // incorrectly look vanished.
-    executor = buildExecutor(new CrawlProperties(10, 1));
+    executor = buildExecutor(new CrawlProperties(10, 1, 0));
     serve(
         "/files/",
         "text/html",

@@ -381,7 +381,8 @@ class OdpDocumentPipelineTest {
   @Test
   void aPresentationWithoutAnySlideIsRejectedAsNoExtractableText() throws IOException {
     // A well-formed but empty <office:presentation/> is a parsed document with nothing to chunk,
-    // not an unparseable one - distinct from aZipWithoutAContentXmlEntryHasNoContent below. Matches
+    // not an unparseable one - distinct from aZipWithoutAContentXmlEntryIsAParseFailure below.
+    // Matches
     // the NO_EXTRACTABLE_TEXT outcome TikaFallbackPipeline reported for this exact case before this
     // pipeline existed (#1057).
     Path file = tempDir.resolve("keine-folien.odp");
@@ -395,7 +396,7 @@ class OdpDocumentPipelineTest {
   }
 
   @Test
-  void aZipWithoutAContentXmlEntryHasNoContent() throws IOException {
+  void aZipWithoutAContentXmlEntryIsAParseFailure() throws IOException {
     Path file = tempDir.resolve("ohne-content-xml.odp");
     try (var out = new ZipOutputStream(Files.newOutputStream(file))) {
       out.putNextEntry(new ZipEntry("mimetype"));
@@ -406,29 +407,29 @@ class OdpDocumentPipelineTest {
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofFile(file, "ohne-content-xml.odp", ".odp"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
-  void aFilelessSourceHasNoContent() {
+  void aFilelessSourceIsAParseFailure() {
     // An ODP pipeline is only ever reached through a genuine .odp file (never RSS-extracted text,
     // ADR-0017 decision 2) - defensive fallback, mirrors DocxDocumentPipeline/PptxDocumentPipeline.
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofExtractedText("irrelevanter Text", "quelle.odp"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
     assertThat(result.chunks()).isEmpty();
   }
 
   @Test
-  void aFileThatIsNotAValidZipArchiveHasNoContent() throws IOException {
+  void aFileThatIsNotAValidZipArchiveIsAParseFailure() throws IOException {
     Path file = tempDir.resolve("kaputt.odp");
     Files.writeString(file, "das ist kein odp");
 
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.odp", ".odp"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
@@ -455,7 +456,7 @@ class OdpDocumentPipelineTest {
     DocumentPipelineResult result =
         pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.odp", ".odp"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
@@ -468,7 +469,7 @@ class OdpDocumentPipelineTest {
     DocumentPipelineResult result =
         tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.odp", ".odp"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
@@ -521,7 +522,7 @@ class OdpDocumentPipelineTest {
     DocumentPipelineResult result =
         tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odp", ".odp"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
@@ -557,7 +558,7 @@ class OdpDocumentPipelineTest {
     DocumentPipelineResult result =
         tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-folien.odp", ".odp"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test

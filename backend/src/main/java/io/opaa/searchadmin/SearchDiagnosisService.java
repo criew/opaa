@@ -2,6 +2,12 @@ package io.opaa.searchadmin;
 
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ValidationException;
+import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService;
+import io.opaa.diagnosticaccess.ForeignDiagnosticContext;
+import io.opaa.diagnosticaccess.ForeignDiagnosticContextService;
+import io.opaa.diagnosticaccess.ForeignDiagnosticFindings;
+import io.opaa.diagnosticaccess.ForeignDiagnosticRequest;
+import io.opaa.diagnosticaccess.LibraryDiagnosticsLockService;
 import io.opaa.group.GroupDetail;
 import io.opaa.group.GroupService;
 import io.opaa.indexing.Document;
@@ -67,6 +73,9 @@ public class SearchDiagnosisService {
   private final GroupService groupService;
   private final DocumentRepository documentRepository;
   private final RerankModelRole rerankModelRole;
+  private final ForeignDiagnosticContextService foreignDiagnosticContextService;
+  private final DiagnosticImpersonationGrantService grantService;
+  private final LibraryDiagnosticsLockService lockService;
   private final Clock clock;
 
   public SearchDiagnosisService(
@@ -77,6 +86,9 @@ public class SearchDiagnosisService {
       GroupService groupService,
       DocumentRepository documentRepository,
       RerankModelRole rerankModelRole,
+      ForeignDiagnosticContextService foreignDiagnosticContextService,
+      DiagnosticImpersonationGrantService grantService,
+      LibraryDiagnosticsLockService lockService,
       Clock clock) {
     this.retrievalPipeline = retrievalPipeline;
     this.queryProperties = queryProperties;
@@ -85,6 +97,9 @@ public class SearchDiagnosisService {
     this.groupService = groupService;
     this.documentRepository = documentRepository;
     this.rerankModelRole = rerankModelRole;
+    this.foreignDiagnosticContextService = foreignDiagnosticContextService;
+    this.grantService = grantService;
+    this.lockService = lockService;
     this.clock = clock;
   }
 
@@ -104,31 +119,116 @@ public class SearchDiagnosisService {
   }
 
   /**
+   * The contexts this caller can choose between: the organization's profiles, and whether they
+   * personally hold the "Sicht als" befugnis. That permission is read here only so the page can
+   * explain the choice; every run enforces it again inside {@link ForeignDiagnosticContextService},
+   * so a client ignoring this answer gains nothing.
+   */
+  public DiagnosisContextOptions diagnosisContext(CurrentUser caller) {
+    return new DiagnosisContextOptions(
+        permissionProfiles(caller), grantService.holdsImpersonationPermission(caller));
+  }
+
+  /**
    * Runs {@code query} and returns the protocol of what happened.
    *
    * @throws ValidationException when the context type and the profile id contradict each other
    */
   public SearchDiagnosis diagnose(CurrentUser caller, DiagnosisQuery query) {
-    String profileName = null;
-    Set<UUID> searchScope;
-    if (query.contextType() == DiagnosisContextType.PERMISSION_PROFILE) {
-      if (query.permissionProfileId() == null) {
-        throw new ValidationException(
-            "Für eine Diagnose als Rechteprofil ist ein Profil zu wählen.");
+    return switch (query.contextType()) {
+      case USER -> diagnoseAsPerson(caller, query);
+      case PERMISSION_PROFILE -> {
+        if (query.permissionProfileId() == null) {
+          throw new ValidationException(
+              "Für eine Diagnose als Rechteprofil ist ein Profil zu wählen.");
+        }
+        requireNoTargetUser(query);
+        GroupDetail profile = groupService.getGroup(query.permissionProfileId(), caller);
+        yield run(
+            caller,
+            query,
+            libraryAccessService.readableLibraryIdsForGroup(
+                query.permissionProfileId(), caller.organizationId()),
+            profile.group().getName(),
+            false);
       }
-      GroupDetail profile = groupService.getGroup(query.permissionProfileId(), caller);
-      profileName = profile.group().getName();
-      searchScope =
-          libraryAccessService.readableLibraryIdsForGroup(
-              query.permissionProfileId(), caller.organizationId());
-    } else {
-      if (query.permissionProfileId() != null) {
-        throw new ValidationException(
-            "Eine Diagnose im eigenen Rechtekontext nimmt kein Rechteprofil entgegen.");
+      case SELF -> {
+        if (query.permissionProfileId() != null) {
+          throw new ValidationException(
+              "Eine Diagnose im eigenen Rechtekontext nimmt kein Rechteprofil entgegen.");
+        }
+        requireNoTargetUser(query);
+        yield run(
+            caller,
+            query,
+            libraryAccessService.readableLibraryIds(caller.id(), caller.organizationId()),
+            null,
+            false);
       }
-      searchScope = libraryAccessService.readableLibraryIds(caller.id(), caller.organizationId());
-    }
+    };
+  }
 
+  /**
+   * The person context, and the only place it is produced: the search scope comes from {@link
+   * ForeignDiagnosticContextService#execute} instead of from this service's own resolution, so
+   * befugnis, mandatory justification, subtraction of diagnosegesperrte libraries and the protocol
+   * entry cannot be reached around (Leitplanken (c)-(f) and the Klarstellung zu (e) in
+   * docs/features/hybrid-retrieval.md). The result is handed back to the caller and stored nowhere
+   * (Leitplanke (j)).
+   */
+  private SearchDiagnosis diagnoseAsPerson(CurrentUser caller, DiagnosisQuery query) {
+    if (query.permissionProfileId() != null) {
+      throw new ValidationException(
+          "Eine Diagnose im Rechtekontext einer Person nimmt kein Rechteprofil entgegen.");
+    }
+    return foreignDiagnosticContextService
+        .execute(
+            caller,
+            ForeignDiagnosticRequest.forUser(
+                query.targetUserId(), query.question(), query.justification()),
+            context -> findings(caller, query, context))
+        .presentation();
+  }
+
+  /**
+   * Only a person context is redacted and lock-aware: for the caller's own context and for a
+   * profile, the run shows nothing the executing administrator may not see anyway (Leitplanke (c)),
+   * and the Diagnosesperre does not apply to those.
+   */
+  private static void requireNoTargetUser(DiagnosisQuery query) {
+    if (query.targetUserId() != null) {
+      throw new ValidationException(
+          "Eine Zielperson nimmt nur eine Diagnose im Rechtekontext einer Person entgegen.");
+    }
+  }
+
+  private ForeignDiagnosticFindings<SearchDiagnosis> findings(
+      CurrentUser caller, DiagnosisQuery query, ForeignDiagnosticContext context) {
+    SearchDiagnosis diagnosis = run(caller, query, context.searchableLibraryIds(), null, true);
+    return new ForeignDiagnosticFindings<>(displayedChunkIds(diagnosis), diagnosis);
+  }
+
+  /**
+   * Every chunk this run put in front of the executing person, not just the Endauswahl: each stage
+   * verdict is displayed with its document title and library name, so Leitplanke (f)'s "Zahl und
+   * Kennungen der angezeigten Fundstellen" covers them too.
+   */
+  private static List<String> displayedChunkIds(SearchDiagnosis diagnosis) {
+    Set<String> chunkIds = new LinkedHashSet<>();
+    diagnosis.selection().forEach(chunk -> chunkIds.add(chunk.chunkId()));
+    diagnosis
+        .explanation()
+        .stages()
+        .forEach(stage -> stage.verdicts().forEach(verdict -> chunkIds.add(verdict.chunkId())));
+    return List.copyOf(chunkIds);
+  }
+
+  private SearchDiagnosis run(
+      CurrentUser caller,
+      DiagnosisQuery query,
+      Set<UUID> searchScope,
+      String profileName,
+      boolean personContext) {
     // Empty history, deliberately: the diagnosis never reads a conversation (Leitplanke (a)).
     // The rerank role's state is read exactly as QueryService reads it, so this run reranks
     // whenever a chat query would.
@@ -149,7 +249,8 @@ public class SearchDiagnosisService {
     TrackedDocumentVerdict tracked =
         query.trackedDocumentId() == null
             ? null
-            : trackDocument(caller, query.trackedDocumentId(), searchScope, result, selection);
+            : trackDocument(
+                caller, query.trackedDocumentId(), searchScope, personContext, result, selection);
 
     return new SearchDiagnosis(
         query.question(),
@@ -161,6 +262,7 @@ public class SearchDiagnosisService {
         result.explanation(),
         selection,
         documentsByKey,
+        personContext ? (int) lockService.countLocked(caller.organizationId()) : 0,
         tracked);
   }
 
@@ -240,14 +342,25 @@ public class SearchDiagnosisService {
   }
 
   /**
-   * The verdict on one specific document: outside the scope, never retrieved, displaced at a named
-   * stage, or selected. The stage named for a displaced document is the <b>last</b> one that
-   * dropped one of its chunks - see {@link TrackedDocumentVerdict}.
+   * The verdict on one specific document: in a locked area, outside the scope, never retrieved,
+   * displaced at a named stage, or selected. The stage named for a displaced document is the
+   * <b>last</b> one that dropped one of its chunks - see {@link TrackedDocumentVerdict}.
+   *
+   * <p>Resolved in the same rights and lock context the run searched in: a document outside {@code
+   * searchScope} is answered without its name and without its library, and a document in a
+   * diagnosegesperrte library is told apart from one the rights context may not read - calling the
+   * lock a Rechtefrage would be a wrong statement about a person (Leitplanke (e)).
+   *
+   * <p>{@link TrackedDocumentVerdict.Outcome#IN_LOCKED_AREA} follows from the library's lock state
+   * alone, never from the intersection of lock and target rights: an intersection would make the
+   * verdict differ between a person who may read the locked library and one who may not, and thus
+   * answer a question about that person the diagnosis refuses to answer.
    */
   private TrackedDocumentVerdict trackDocument(
       CurrentUser caller,
       UUID documentId,
       Set<UUID> searchScope,
+      boolean personContext,
       RetrievalPipelineResult result,
       List<SearchDiagnosis.SelectedChunk> selection) {
     Document document =
@@ -255,22 +368,20 @@ public class SearchDiagnosisService {
             .findById(documentId)
             .filter(candidate -> caller.organizationId().equals(candidate.getOrganizationId()))
             .orElseThrow(() -> new io.opaa.common.NotFoundException("Dokument nicht gefunden"));
-    String libraryName =
-        document.getLibraryId() == null
-            ? null
-            : libraryRepository
-                .findById(document.getLibraryId())
-                .map(KnowledgeLibrary::getName)
-                .orElse(null);
+    UUID libraryId = document.getLibraryId();
     Set<String> keys = documentKeysOf(document);
 
-    if (document.getLibraryId() == null || !searchScope.contains(document.getLibraryId())) {
+    if (libraryId == null || !searchScope.contains(libraryId)) {
+      TrackedDocumentVerdict.Outcome outcome =
+          personContext && lockService.isLocked(libraryId)
+              ? TrackedDocumentVerdict.Outcome.IN_LOCKED_AREA
+              : TrackedDocumentVerdict.Outcome.OUTSIDE_SEARCH_SCOPE;
       return new TrackedDocumentVerdict(
           documentId,
-          document.getFileName(),
-          document.getLibraryId(),
-          libraryName,
-          TrackedDocumentVerdict.Outcome.OUTSIDE_SEARCH_SCOPE,
+          personContext ? null : document.getFileName(),
+          personContext ? null : libraryId,
+          personContext ? null : libraryName(libraryId),
+          outcome,
           null,
           null,
           0,
@@ -309,8 +420,8 @@ public class SearchDiagnosisService {
     return new TrackedDocumentVerdict(
         documentId,
         document.getFileName(),
-        document.getLibraryId(),
-        libraryName,
+        libraryId,
+        libraryName(libraryId),
         outcome,
         displaced ? lastDropStage : null,
         displaced && lastDrop != null ? lastDrop.reason() : null,
@@ -329,6 +440,12 @@ public class SearchDiagnosisService {
       keys.add("file:" + document.getFileName());
     }
     return keys;
+  }
+
+  private String libraryName(UUID libraryId) {
+    return libraryId == null
+        ? null
+        : libraryRepository.findById(libraryId).map(KnowledgeLibrary::getName).orElse(null);
   }
 
   private List<SearchedLibraryRef> searchedLibraries(Set<UUID> searchScope) {
@@ -350,4 +467,11 @@ public class SearchDiagnosisService {
 
   /** A permission profile: a group and how many libraries it may read. Never a person. */
   public record PermissionProfile(UUID id, String name, int libraryCount) {}
+
+  /**
+   * What one caller may choose as a diagnosis context: the organization's profiles, and that
+   * caller's own "Sicht als" befugnis - which follows from no role.
+   */
+  public record DiagnosisContextOptions(
+      List<PermissionProfile> profiles, boolean personContextAvailable) {}
 }

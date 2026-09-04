@@ -16,9 +16,11 @@ import io.opaa.indexing.IndexingRunProgress;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.source.IndexingSourceType;
+import io.opaa.indexing.source.SourceFolderMirror;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
@@ -31,6 +33,7 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -42,6 +45,12 @@ import org.springframework.scheduling.annotation.Async;
 /**
  * Executes indexing runs for {@link IndexingSourceType#HTTP_DIRECTORY} via Apache mod_autoindex
  * crawling (ADR-0017).
+ *
+ * <p>The crawled directory structure is mirrored into {@code library_folders} (ADR-0020, #1277)
+ * through the same {@link io.opaa.indexing.source.SourceFolderMirror} the FILESYSTEM executor uses:
+ * a document's folder path is its URL path relative to the normalized start URL, see {@link
+ * UrlFolderPath}. Folders are pruned under the very same completeness condition as the document
+ * cleanup below, and only after it.
  *
  * <p>Once every crawled entry has been processed, {@link
  * StaleDocumentCleanupService#cleanupVanished} removes every {@code HTTP_DIRECTORY} document of
@@ -75,6 +84,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   private final IndexingRunEventRepository indexingRunEventRepository;
   private final LibraryStorageQuotaService storageQuotaService;
   private final StaleDocumentCleanupService staleDocumentCleanupService;
+  private final CrawlProperties crawlProperties;
+  private final LibraryFolderService folderService;
 
   public UrlIndexingExecutor(
       AutoindexCrawlerService crawlerService,
@@ -84,7 +95,9 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       DocumentRepository documentRepository,
       IndexingRunEventRepository indexingRunEventRepository,
       LibraryStorageQuotaService storageQuotaService,
-      StaleDocumentCleanupService staleDocumentCleanupService) {
+      StaleDocumentCleanupService staleDocumentCleanupService,
+      CrawlProperties crawlProperties,
+      LibraryFolderService folderService) {
     this.crawlerService = crawlerService;
     this.downloader = downloader;
     this.fileProcessingService = fileProcessingService;
@@ -93,6 +106,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     this.indexingRunEventRepository = indexingRunEventRepository;
     this.storageQuotaService = storageQuotaService;
     this.staleDocumentCleanupService = staleDocumentCleanupService;
+    this.crawlProperties = crawlProperties;
+    this.folderService = folderService;
   }
 
   @Override
@@ -190,16 +205,26 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       // enumerated, so only the attachment paths recorded above count for them.
       Set<String> reprocessedEntryUrls = new HashSet<>();
 
+      // Mirrors the crawled directory structure into library_folders (ADR-0020, #1277) - the same
+      // helper AsyncIndexingExecutor drives for FILESYSTEM. normalizedUrl is the path every entry
+      // URL is made relative to.
+      var folderMirror = new SourceFolderMirror(folderService, targetLibrary);
+      String normalizedUrl = url;
+
       // Step 2: Process each file. Whether a file is indexed at all is decided from its actual
       // content, not from its name in the listing - but only a bounded prefix is read to decide,
       // never the whole file: a directory listing routinely sits next to files nobody meant for
       // indexing at all, and downloading each of those in full before rejecting them would fill
       // the temp partition. The one exception is a prefix that ended inside an unresolved
-      // container, which carries no verdict at all - see SupportedDocumentFormats#decideForPrefix.
+      // container, which carries no verdict at all - see SupportedDocumentFormats#decideForPrefix;
+      // that transfer, like every other one here, is capped at CrawlProperties#maxFileSizeBytes.
       for (AutoindexCrawlerService.CrawledFileEntry entry : allFiles) {
         // Check if document is unchanged before downloading (saves bandwidth)
         if (isUnchanged(entry.url(), entry.lastModified(), targetLibrary)) {
           log.info("Skipping unchanged URL document: {}", entry.name());
+          // Runs even here, before the download is skipped: a document indexed before #1277 (or
+          // one whose directory moved) picks up its folder without being re-indexed.
+          mirrorFolder(targetLibrary, entry.url(), normalizedUrl, folderMirror);
           progress.recordSkipped();
           progress.report();
           continue;
@@ -227,7 +252,12 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                     entry.name(),
                     () ->
                         downloadedForDecision[0] =
-                            downloader.download(httpClient, authHeader, entry.url(), entry.name()));
+                            downloader.download(
+                                httpClient,
+                                authHeader,
+                                entry.url(),
+                                entry.name(),
+                                crawlProperties.maxFileSizeBytes()));
           } finally {
             tempFile = downloadedForDecision[0];
           }
@@ -258,7 +288,13 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
           }
 
           if (tempFile == null) {
-            tempFile = downloader.download(httpClient, authHeader, entry.url(), entry.name());
+            tempFile =
+                downloader.download(
+                    httpClient,
+                    authHeader,
+                    entry.url(),
+                    entry.name(),
+                    crawlProperties.maxFileSizeBytes());
           }
           long fileSize = Files.size(tempFile);
           FileProcessingResult result =
@@ -299,6 +335,16 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
             progress.recordProcessed();
             log.info("Indexed URL document: {}", entry.name());
           }
+        } catch (BoundedDownloader.AttachmentTooLargeException e) {
+          // #1236: the transfer was cut off at the configured cap, so no bytes past it ever
+          // reached the temp partition. Skipped, not failed - an entry too large for this
+          // installation is a rejection like any other on this path, and the run continues.
+          log.warn(
+              "Rejecting URL document exceeding the size limit of {} bytes: {}",
+              crawlProperties.maxFileSizeBytes(),
+              entry.url());
+          events.record(IndexingEventCategory.REJECTED, tooLargeMessage(), entry.url());
+          progress.recordSkipped();
         } catch (TargetAddressValidator.TargetAddressBlockedException e) {
           // e.getMessage() is already German, user-facing (see TargetAddressValidator's Javadoc).
           // Treated as skipped, not failed - mirrors RssFeedIndexingExecutor's identical policy
@@ -323,6 +369,10 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
               log.warn("Failed to delete temp file: {}", tempFile, e);
             }
           }
+          // In the finally block, not after it: every early `continue` above (unsupported format,
+          // rejected target, oversized entry) must still assign the folder of an entry that
+          // already has a document row from an earlier run.
+          mirrorFolder(targetLibrary, entry.url(), normalizedUrl, folderMirror);
         }
         progress.report();
       }
@@ -361,6 +411,11 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
               targetLibrary.getId(),
               e);
         }
+        // After the document cleanup, mirroring AsyncIndexingExecutor's order: a folder left
+        // holding only a now-removed document is pruned in this same run. Inside the
+        // complete-run guard, so a truncated or incomplete crawl never removes a folder whose
+        // documents it simply never saw.
+        folderMirror.prune();
       }
 
       events.finalizeRun();
@@ -377,6 +432,83 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       events.finalizeRun();
       progress.fail(e.getMessage());
     }
+  }
+
+  /**
+   * Assigns {@code entryUrl}'s document (and, recursively, its attachments - ADR-0022: an
+   * attachment belongs into its parent mail's folder) to the folder the crawled URL path maps to
+   * (ADR-0020, #1277), materializing that folder chain on first use.
+   *
+   * <p>Runs in the executor rather than inside {@code FileProcessingService#processUrlFile}: the
+   * folder must also be assigned to an entry this run never handed to that method at all - one
+   * skipped undownloaded because {@code Last-Modified} was unchanged, or one rejected for its
+   * format, target or size - as long as an earlier run left a document row behind. That is the same
+   * nachtrag {@code AsyncIndexingExecutor} gets from {@code processFile}'s own SKIPPED branch.
+   * Without a document row nothing is materialized, so a directory holding only never-indexed
+   * entries produces no folder.
+   *
+   * <p>Failures are logged, never rethrown - a folder assignment must not fail an entry whose
+   * content was indexed successfully.
+   */
+  private void mirrorFolder(
+      KnowledgeLibrary targetLibrary,
+      String entryUrl,
+      String normalizedUrl,
+      SourceFolderMirror folderMirror) {
+    try {
+      Optional<Document> document =
+          documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl);
+      if (document.isEmpty()) {
+        return;
+      }
+      UrlFolderPath path = UrlFolderPath.of(normalizedUrl, entryUrl);
+      if (path.rejected()) {
+        // Mirrors AsyncIndexingExecutor's own "does not sit under sourcePath" case: the document
+        // stays at the library root rather than being dropped or mapped to a made-up name.
+        log.warn(
+            "Cannot map URL path segment \"{}\" of {} to a folder name - leaving the document at"
+                + " the library root",
+            path.rejectedSegment(),
+            entryUrl);
+      }
+      UUID folderId = folderMirror.folderFor(path.segments());
+      applyFolder(document.get(), folderId);
+      folderMirror.markSeen(folderId);
+    } catch (Exception e) {
+      log.warn("Failed to mirror the source folder of {}", entryUrl, e);
+    }
+  }
+
+  /** Writes {@code folderId} onto {@code document} and every attachment below it, if changed. */
+  private void applyFolder(Document document, UUID folderId) {
+    if (!Objects.equals(document.getFolderId(), folderId)) {
+      document.setFolderId(folderId);
+      documentRepository.save(document);
+    }
+    for (Document child : documentRepository.findByParentDocumentId(document.getId())) {
+      applyFolder(child, folderId);
+    }
+  }
+
+  /**
+   * The German run-protocol message for an entry cut off at {@link #crawlProperties}' size cap. The
+   * limit is named in the largest unit that still states it exactly, so a configured value below
+   * one MiB is never reported as "0 MiB".
+   */
+  private String tooLargeMessage() {
+    return "Datei überschreitet die zulässige Größe von "
+        + formatByteLimit(crawlProperties.maxFileSizeBytes())
+        + " und wurde nicht indiziert";
+  }
+
+  private static String formatByteLimit(long bytes) {
+    if (bytes % (1024 * 1024) == 0) {
+      return (bytes / (1024 * 1024)) + " MiB";
+    }
+    if (bytes % 1024 == 0) {
+      return (bytes / 1024) + " KiB";
+    }
+    return bytes + " Byte";
   }
 
   /**

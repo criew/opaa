@@ -59,9 +59,20 @@ class RerankRoleStartupCheck implements ApplicationListener<ApplicationReadyEven
           // not evidence the endpoint is down (#1154).
           status.timedOut() ? ", timed out rather than unreachable" : "",
           status.diagnostic(),
-          status.baseUrl() == null ? "(none configured)" : status.baseUrl());
+          endpointForLog(status));
       return;
     }
     log.info("Rerank role state: {}", status.state());
+  }
+
+  /**
+   * The address as far as it may be written to a log file: an address refused for carrying
+   * credentials is named as refused, never reproduced (#1147).
+   */
+  private static String endpointForLog(RerankRoleStatus status) {
+    if (status.baseUrlRejected()) {
+      return "(rejected: the configured address carries credentials)";
+    }
+    return status.baseUrl() == null ? "(none configured)" : status.baseUrl();
   }
 }

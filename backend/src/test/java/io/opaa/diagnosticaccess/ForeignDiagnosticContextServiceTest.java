@@ -8,13 +8,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DiagnosticTargetKind;
+import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditActorPseudonymService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.group.Group;
+import io.opaa.group.GroupRepository;
 import io.opaa.library.LibraryAccessService;
 import java.util.List;
 import java.util.Optional;
@@ -44,6 +48,7 @@ class ForeignDiagnosticContextServiceTest {
   @Mock private LibraryDiagnosticsLockService lockService;
   @Mock private LibraryAccessService libraryAccessService;
   @Mock private UserRepository userRepository;
+  @Mock private GroupRepository groupRepository;
   @Mock private AuditActorPseudonymService pseudonymService;
   @Mock private DiagnosticContextLogWriter logWriter;
 
@@ -53,6 +58,8 @@ class ForeignDiagnosticContextServiceTest {
   private final UUID targetId = UUID.randomUUID();
   private final UUID openLibrary = UUID.randomUUID();
   private final UUID lockedLibrary = UUID.randomUUID();
+  private final Group profileGroup =
+      new Group(ORGANIZATION_ID, GroupKind.AD_HOC, "Sachbearbeitung Bauamt", null, null, null);
 
   @BeforeEach
   void setUp() {
@@ -62,6 +69,7 @@ class ForeignDiagnosticContextServiceTest {
             lockService,
             libraryAccessService,
             userRepository,
+            groupRepository,
             pseudonymService,
             logWriter);
     when(pseudonymService.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
@@ -72,6 +80,9 @@ class ForeignDiagnosticContextServiceTest {
     when(lockService.lockedAmong(any())).thenReturn(Set.of(lockedLibrary));
     when(logWriter.record(any())).thenAnswer(invocation -> invocation.getArgument(0));
     when(libraryAccessService.readableLibraryIds(actorId, ORGANIZATION_ID))
+        .thenReturn(Set.of(openLibrary, lockedLibrary));
+    when(groupRepository.findById(profileGroup.getId())).thenReturn(Optional.of(profileGroup));
+    when(libraryAccessService.readableLibraryIdsForGroup(profileGroup.getId(), ORGANIZATION_ID))
         .thenReturn(Set.of(openLibrary, lockedLibrary));
   }
 
@@ -119,7 +130,10 @@ class ForeignDiagnosticContextServiceTest {
             context -> new ForeignDiagnosticFindings<>(List.of("chunk-1"), "Anzeige"));
 
     assertThat(outcome.context().searchableLibraryIds()).containsExactly(openLibrary);
-    assertThat(outcome.context().lockedLibraryIds()).containsExactly(lockedLibrary);
+    // Named in the rights snapshot and nowhere else: the answer the caller builds from this
+    // context cannot reach the locked set at all.
+    assertThat(outcome.context().permissionSnapshot())
+        .isEqualTo("libraries=[" + openLibrary + "];lockedLibraries=[" + lockedLibrary + "]");
     assertThat(outcome.presentation()).isEqualTo("Anzeige");
   }
 
@@ -149,8 +163,7 @@ class ForeignDiagnosticContextServiceTest {
     ForeignDiagnosticOutcome<String> outcome =
         service.execute(
             actor(),
-            ForeignDiagnosticRequest.forProfile(
-                "Sachbearbeitung Bauamt", Set.of(openLibrary, lockedLibrary), "Wo steht das?"),
+            ForeignDiagnosticRequest.forProfile(profileGroup.getId(), "Wo steht das?"),
             context -> new ForeignDiagnosticFindings<>(List.of("chunk-1"), "Anzeige"));
 
     verify(grantService, never()).requireImpersonationPermission(any(), any());
@@ -158,7 +171,8 @@ class ForeignDiagnosticContextServiceTest {
         ArgumentCaptor.forClass(DiagnosticContextLogEntry.class);
     verify(logWriter).record(entry.capture());
     assertThat(entry.getValue().getTargetKind()).isEqualTo(DiagnosticTargetKind.PERMISSION_PROFILE);
-    assertThat(entry.getValue().getTargetRef()).isEqualTo("Sachbearbeitung Bauamt");
+    // The profile's identifier, never a free text a caller could put a person's name into.
+    assertThat(entry.getValue().getTargetRef()).isEqualTo(profileGroup.getId().toString());
     assertThat(entry.getValue().getJustification()).isNull();
     assertThat(outcome.logEntryId()).isNotNull();
   }
@@ -184,16 +198,15 @@ class ForeignDiagnosticContextServiceTest {
   @Test
   void refusesAProfileNamingALibraryTheCallerMayNotReadThemselves() {
     UUID foreignLibrary = UUID.randomUUID();
+    when(libraryAccessService.readableLibraryIdsForGroup(profileGroup.getId(), ORGANIZATION_ID))
+        .thenReturn(Set.of(openLibrary, foreignLibrary));
     AtomicBoolean executed = new AtomicBoolean();
 
     assertThatThrownBy(
             () ->
                 service.execute(
-                    actor(),
-                    ForeignDiagnosticRequest.forProfile(
-                        "Sachbearbeitung Bauamt",
-                        Set.of(openLibrary, foreignLibrary),
-                        "Wo steht das?"),
+                    nonAdminActor(),
+                    ForeignDiagnosticRequest.forProfile(profileGroup.getId(), "Wo steht das?"),
                     context -> {
                       executed.set(true);
                       return new ForeignDiagnosticFindings<>(List.of(), "x");
@@ -202,6 +215,29 @@ class ForeignDiagnosticContextServiceTest {
 
     assertThat(executed).isFalse();
     verify(logWriter, never()).record(any());
+  }
+
+  /**
+   * Regression guard for #1256: {@code readableLibraryIds} carries no system-admin bypass (see its
+   * own Javadoc), so without one here a SYSTEM_ADMIN caller was refused the entire profile
+   * diagnosis for any library they administer but hold no grant on - even though {@code
+   * SearchDiagnosisService#diagnose} runs the same profile for them directly. The bypass mirrors
+   * {@code LibraryAccessService#effectiveRole}'s administrative fail-open.
+   */
+  @Test
+  void aSystemAdminRunsAProfileEvenOverALibraryTheyCannotReadThemselves() {
+    UUID foreignLibrary = UUID.randomUUID();
+    when(libraryAccessService.readableLibraryIdsForGroup(profileGroup.getId(), ORGANIZATION_ID))
+        .thenReturn(Set.of(openLibrary, foreignLibrary));
+
+    ForeignDiagnosticOutcome<String> outcome =
+        service.execute(
+            actor(),
+            ForeignDiagnosticRequest.forProfile(profileGroup.getId(), "Wo steht das?"),
+            context -> new ForeignDiagnosticFindings<>(List.of("chunk-1"), "Anzeige"));
+
+    assertThat(outcome.context().searchableLibraryIds()).contains(foreignLibrary);
+    verify(libraryAccessService, never()).readableLibraryIds(actorId, ORGANIZATION_ID);
   }
 
   /**
@@ -229,7 +265,65 @@ class ForeignDiagnosticContextServiceTest {
     assertThat(entry.getValue().getJustification()).isEqualTo("Beschwerde 4711");
   }
 
+  /**
+   * A profile of a foreign organization is not reachable, and it is not distinguishable from an
+   * unknown one - the profile's own id is the target reference, so resolving it is a permission
+   * step, not a lookup convenience.
+   */
+  @Test
+  void refusesAProfileOfAForeignOrganization() {
+    Group foreign =
+        new Group(UUID.randomUUID(), GroupKind.AD_HOC, "Fremde Gruppe", null, null, null);
+    when(groupRepository.findById(foreign.getId())).thenReturn(Optional.of(foreign));
+
+    assertThatThrownBy(
+            () ->
+                service.execute(
+                    actor(),
+                    ForeignDiagnosticRequest.forProfile(foreign.getId(), "Wo steht das?"),
+                    context -> new ForeignDiagnosticFindings<>(List.of(), "x")))
+        .isInstanceOf(NotFoundException.class);
+    verify(logWriter, never()).record(any());
+  }
+
+  /**
+   * hitCount stays the number of hits displayed; an oversized identifier list is cut between two
+   * identifiers and names how many it left out. Without the count in the marker the two fields
+   * would diverge silently at exactly the entries where the diagnosis saw the most.
+   */
+  @Test
+  void namesHowManyIdentifiersTheTruncationLeftOutInsteadOfCuttingSilently() {
+    List<String> hitRefs =
+        java.util.stream.IntStream.range(0, 1000)
+            .mapToObj(index -> String.format("chunk-%015d", index))
+            .toList();
+
+    service.execute(
+        actor(),
+        ForeignDiagnosticRequest.forUser(targetId, "Wo steht das?", "Beschwerde 4711"),
+        context -> new ForeignDiagnosticFindings<>(hitRefs, "Anzeige"));
+
+    ArgumentCaptor<DiagnosticContextLogEntry> entry =
+        ArgumentCaptor.forClass(DiagnosticContextLogEntry.class);
+    verify(logWriter).record(entry.capture());
+    DiagnosticContextLogEntry written = entry.getValue();
+    assertThat(written.getHitCount()).isEqualTo(1000);
+
+    List<String> recorded = List.of(written.getHitRefs().split(","));
+    String marker = recorded.getLast();
+    int omitted = Integer.parseInt(marker.substring("…(+".length(), marker.length() - 1));
+    assertThat(recorded).hasSizeGreaterThan(1);
+    assertThat(recorded.subList(0, recorded.size() - 1))
+        .as("truncation cuts between identifiers, never inside one")
+        .allSatisfy(ref -> assertThat(hitRefs).contains(ref))
+        .hasSize(written.getHitCount() - omitted);
+  }
+
   private CurrentUser actor() {
     return CurrentUser.of(actorId, ORGANIZATION_ID, SystemRole.SYSTEM_ADMIN, "Diagnostizierende");
+  }
+
+  private CurrentUser nonAdminActor() {
+    return CurrentUser.of(actorId, ORGANIZATION_ID, SystemRole.USER, "Diagnostizierende");
   }
 }

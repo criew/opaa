@@ -15,6 +15,7 @@ import io.opaa.indexing.IndexingRunProgress;
 import io.opaa.indexing.RejectedDocumentReporter;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingSourceType;
+import io.opaa.indexing.source.SourceFolderMirror;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
@@ -23,7 +24,6 @@ import io.opaa.library.LibraryStorageQuotaService;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -196,24 +196,16 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       // enumerated, so only the attachment paths recorded above count for them.
       Set<String> reprocessedFilePaths = new HashSet<>();
 
-      // The set of folders this run actually materialized/touched - everything else under this
-      // library once the loop below finishes is a candidate for pruneOrphanedFolders.
-      Set<UUID> seenFolderIds = new HashSet<>();
-      // A large tree can hold thousands of files per directory - without this cache, every one of
-      // them would call materializeFolderPath (a SELECT per path segment) for a relative directory
-      // this run has already resolved moments ago. Keyed by the relative directory Path (null for
-      // the library's root, mirroring materializeFolder's own convention below).
-      Map<Path, UUID> folderIdByRelativeDir = new HashMap<>();
+      // Mirrors this run's directory structure into library_folders and remembers which folders
+      // it actually used - the same helper UrlIndexingExecutor drives (ADR-0020, #1277).
+      var folderMirror = new SourceFolderMirror(folderService, targetLibrary);
 
       for (Path file : files) {
         String fileName = file.getFileName().toString();
         try {
           log.info("Processing: {}", fileName);
-          UUID folderId =
-              materializeFolder(documentDir, file, targetLibrary, folderIdByRelativeDir);
-          if (folderId != null) {
-            seenFolderIds.add(folderId);
-          }
+          UUID folderId = materializeFolder(documentDir, file, folderMirror);
+          folderMirror.markSeen(folderId);
           FileProcessingResult result =
               fileProcessingService.processFile(file, targetLibrary, folderId, attachmentAccess);
           if (result == FileProcessingResult.QUOTA_EXCEEDED) {
@@ -236,9 +228,9 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
                 fileName);
             progress.recordSkipped();
           } else if (result == FileProcessingResult.FAILED) {
-            // See DocumentPipelineResult.Outcome#NO_CONTENT: the pipeline could not parse the
-            // document at all - the same failure the catch block below reports, only reached
-            // without throwing (#1108).
+            // See DocumentPipelineResult.Outcome#PARSE_FAILED/#NO_CONTENT: the pipeline could
+            // not parse the document, or read it and found it empty - the same failure the catch
+            // block below reports, only reached without throwing (#1108).
             events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", fileName);
             progress.recordFailed();
           } else if (result == FileProcessingResult.SKIPPED) {
@@ -291,14 +283,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
             e);
       }
 
-      // Caught separately, not left to the outer catch below - a failure here must not turn an
-      // otherwise-successful document run into a FAILED job.
-      try {
-        folderService.pruneOrphanedFolders(targetLibrary, seenFolderIds);
-      } catch (Exception e) {
-        log.warn(
-            "Failed to prune orphaned filesystem folders for library {}", targetLibrary.getId(), e);
-      }
+      folderMirror.prune();
 
       events.finalizeRun();
       progress.complete();
@@ -315,10 +300,8 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
 
   /**
    * Resolves the {@code io.opaa.library.LibraryFolder} {@code file}'s own directory maps to under
-   * {@code documentDir}, materializing it via {@link LibraryFolderService#materializeFolderPath}
-   * only on a {@code folderIdByRelativeDir} cache miss - one call per distinct directory this run
-   * visits, not one per file; every other file in an already-resolved directory is a plain map
-   * lookup.
+   * {@code documentDir}, materializing it through {@link SourceFolderMirror} - which caches per
+   * distinct directory, so a directory holding thousands of files still costs one materialization.
    *
    * <p>{@code documentDir} and {@code file} are both already absolute and {@link Path#normalize()
    * normalize}d - {@code file} because {@link DocumentService#discoverFiles(Path)} only ever
@@ -330,8 +313,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
    * @return {@code null} for a file directly in {@code documentDir} (the library's root), or when
    *     {@code file} unexpectedly does not sit under {@code documentDir} at all
    */
-  private UUID materializeFolder(
-      Path documentDir, Path file, KnowledgeLibrary targetLibrary, Map<Path, UUID> folderCache) {
+  private UUID materializeFolder(Path documentDir, Path file, SourceFolderMirror folderMirror) {
     Path normalizedFile = file.toAbsolutePath().normalize();
     if (!normalizedFile.startsWith(documentDir)) {
       log.warn(
@@ -345,15 +327,10 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     if (relativeDir == null) {
       return null;
     }
-    if (folderCache.containsKey(relativeDir)) {
-      return folderCache.get(relativeDir);
-    }
     List<String> segments = new ArrayList<>();
     for (Path part : relativeDir) {
       segments.add(part.toString());
     }
-    UUID folderId = folderService.materializeFolderPath(targetLibrary, segments);
-    folderCache.put(relativeDir, folderId);
-    return folderId;
+    return folderMirror.folderFor(segments);
   }
 }

@@ -11,6 +11,7 @@ import io.opaa.api.dto.RetrievalStageResponse;
 import io.opaa.api.dto.RetrievalStageStatus;
 import io.opaa.api.dto.RetrievalVerdictReason;
 import io.opaa.api.dto.RetrievalVerdictResponse;
+import io.opaa.api.dto.SearchDiagnosisContextResponse;
 import io.opaa.api.dto.SearchDiagnosisContextType;
 import io.opaa.api.dto.SearchDiagnosisResponse;
 import io.opaa.api.dto.SearchModelRole;
@@ -44,7 +45,6 @@ import io.opaa.searchadmin.SearchDiagnosisService;
 import io.opaa.searchadmin.SearchPathStatus;
 import io.opaa.searchadmin.SearchStatus;
 import io.opaa.searchadmin.TrackedDocumentVerdict;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -63,14 +63,30 @@ final class SearchAdminResponseMapper {
         status.libraries().stream().map(SearchAdminResponseMapper::toLibraryResponse).toList());
   }
 
-  static List<SearchPermissionProfileResponse> toPermissionProfileResponses(
-      List<SearchDiagnosisService.PermissionProfile> profiles) {
-    return profiles.stream()
-        .map(
-            profile ->
-                new SearchPermissionProfileResponse(
-                    profile.id(), profile.name(), profile.libraryCount()))
-        .toList();
+  static SearchDiagnosisContextResponse toDiagnosisContextResponse(
+      SearchDiagnosisService.DiagnosisContextOptions options) {
+    return new SearchDiagnosisContextResponse(
+        options.profiles().stream()
+            .map(
+                profile ->
+                    new SearchPermissionProfileResponse(
+                        profile.id(), profile.name(), profile.libraryCount()))
+            .toList(),
+        options.personContextAvailable(),
+        personContextHint(options.personContextAvailable()));
+  }
+
+  /**
+   * Names which of the two states the caller is in and why, rather than only that a control is
+   * disabled: the befugnis follows from no role, so "you are an administrator" is no answer.
+   */
+  private static String personContextHint(boolean available) {
+    return available
+        ? "Sie halten eine gültige Befugnis „Sicht als“. Der Rechtekontext einer Person verlangt"
+            + " eine Begründung und wird protokolliert."
+        : "Für den Rechtekontext einer Person ist die eigene, befristete Befugnis „Sicht als“"
+            + " nötig; Sie halten keine. Sie wird einzeln vergeben und folgt nicht aus der"
+            + " Administratorrolle.";
   }
 
   static SearchDiagnosisResponse toDiagnosisResponse(SearchDiagnosis diagnosis) {
@@ -90,7 +106,8 @@ final class SearchAdminResponseMapper {
                 .toList(),
             diagnosis.selection().stream()
                 .map(chunk -> toSelectionEntry(chunk, documents))
-                .toList());
+                .toList(),
+            diagnosis.lockedLibraryCount());
     if (diagnosis.trackedDocument() != null) {
       response.setTrackedDocument(toTrackedDocument(diagnosis.trackedDocument()));
     }
@@ -125,10 +142,11 @@ final class SearchAdminResponseMapper {
    * exempt from every further Befugnis.
    */
   private static String contextLabel(SearchDiagnosis diagnosis) {
-    if (diagnosis.contextType() == DiagnosisContextType.PERMISSION_PROFILE) {
-      return "Rechteprofil „" + diagnosis.permissionProfileName() + "“";
-    }
-    return "Eigener Rechtekontext";
+    return switch (diagnosis.contextType()) {
+      case PERMISSION_PROFILE -> "Rechteprofil „" + diagnosis.permissionProfileName() + "“";
+      case USER -> "Rechtekontext einer Person";
+      case SELF -> "Eigener Rechtekontext";
+    };
   }
 
   private static SearchModelRoleStatusResponse toModelRoleResponse(ModelRoleStatus status) {
@@ -185,7 +203,8 @@ final class SearchAdminResponseMapper {
             toIndexState(status.fullTextIndexCondition()),
             status.fullTextIndexedChunks(),
             status.fullTextMissingChunks(),
-            status.fullTextSkippedChunks())
+            status.fullTextSkippedChunks(),
+            MetadataBackfillResponseMapper.toStatusResponse(status.metadataBackfill()))
         .lastIndexedAt(status.lastIndexedAt());
   }
 
@@ -286,6 +305,7 @@ final class SearchAdminResponseMapper {
     return switch (type) {
       case SELF -> SearchDiagnosisContextType.SELF;
       case PERMISSION_PROFILE -> SearchDiagnosisContextType.PERMISSION_PROFILE;
+      case USER -> SearchDiagnosisContextType.USER;
     };
   }
 
@@ -337,6 +357,7 @@ final class SearchAdminResponseMapper {
   private static TrackedDocumentOutcome toTrackedOutcome(TrackedDocumentVerdict.Outcome outcome) {
     return switch (outcome) {
       case OUTSIDE_SEARCH_SCOPE -> TrackedDocumentOutcome.OUTSIDE_SEARCH_SCOPE;
+      case IN_LOCKED_AREA -> TrackedDocumentOutcome.IN_LOCKED_AREA;
       case NOT_RETRIEVED -> TrackedDocumentOutcome.NOT_RETRIEVED;
       case DISPLACED -> TrackedDocumentOutcome.DISPLACED;
       case IN_FINAL_SELECTION -> TrackedDocumentOutcome.IN_FINAL_SELECTION;

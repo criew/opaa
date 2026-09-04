@@ -8,6 +8,7 @@ import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.pipeline.DiscoveredAttachment;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -16,6 +17,7 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -48,7 +50,7 @@ class MailDocumentPipelineTest {
 
   @TempDir Path tempDir;
 
-  private final MailProperties defaultProperties = new MailProperties(0, 0, 0, 0);
+  private final MailProperties defaultProperties = new MailProperties(0, 0, 0);
 
   /**
    * A fixed non-UTC zone (winter CET, UTC+1) - #1130 Befund 1 review, finding 2: the leading
@@ -67,7 +69,7 @@ class MailDocumentPipelineTest {
 
   private static ChunkingService defaultChunkingService() {
     return new ChunkingService(
-        new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1));
+        new IndexingProperties(1000, 100, 50, null, null, null, null, null, 1));
   }
 
   private MailDocumentPipeline pipeline(MailProperties properties) {
@@ -156,7 +158,7 @@ class MailDocumentPipelineTest {
     long fileSize = Files.size(file);
 
     assertThat(
-            pipeline(new MailProperties(0, 0, 0, fileSize - 1))
+            pipeline(new MailProperties(0, 0, fileSize - 1))
                 .readProperties(DocumentPipelineSource.ofFile(file, "zu-gross.eml")))
         .isEqualTo(io.opaa.indexing.pipeline.DocumentProperties.EMPTY);
     assertThat(
@@ -358,8 +360,7 @@ class MailDocumentPipelineTest {
             .build();
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
     ChunkingService realisticChunking =
-        new ChunkingService(
-            new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1));
+        new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, null, null, 1));
 
     DocumentPipelineResult result =
         pipeline(defaultProperties, realisticChunking)
@@ -464,7 +465,7 @@ class MailDocumentPipelineTest {
     Path file = writeEml(DefaultMessageWriter.asBytes(outer));
 
     DocumentPipelineResult result =
-        pipeline(new MailProperties(5, 0, 0, 0))
+        pipeline(new MailProperties(0, 0, 0))
             .run(DocumentPipelineSource.ofFile(file, "weiterleitung.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
@@ -477,7 +478,7 @@ class MailDocumentPipelineTest {
     DiscoveredAttachment nested = result.discoveredAttachments().getFirst();
     assertThat(nested.fileName()).isEqualTo("weitergeleitet.eml");
     DocumentPipelineResult nestedResult =
-        pipeline(new MailProperties(5, 0, 0, 0))
+        pipeline(new MailProperties(0, 0, 0))
             .run(DocumentPipelineSource.ofFile(nested.tempFile(), nested.fileName()));
     assertThat(nestedResult.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(nestedResult.chunks().getFirst().getText())
@@ -505,8 +506,7 @@ class MailDocumentPipelineTest {
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
 
     DocumentPipelineResult result =
-        pipeline(new MailProperties(0, 2, 0, 0))
-            .run(DocumentPipelineSource.ofFile(file, "viele.eml"));
+        pipeline(new MailProperties(2, 0, 0)).run(DocumentPipelineSource.ofFile(file, "viele.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(1);
@@ -530,7 +530,7 @@ class MailDocumentPipelineTest {
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
 
     DocumentPipelineResult result =
-        pipeline(new MailProperties(0, 0, 10, 0)) // 10 bytes - smaller than the PDF fixture
+        pipeline(new MailProperties(0, 10, 0)) // 10 bytes - smaller than the PDF fixture
             .run(DocumentPipelineSource.ofFile(file, "gross.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
@@ -563,8 +563,7 @@ class MailDocumentPipelineTest {
             .build();
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
     ChunkingService realisticChunking =
-        new ChunkingService(
-            new IndexingProperties(1000, 100, 50, null, null, List.of(), null, null, null, 1));
+        new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, null, null, 1));
 
     DocumentPipelineResult result =
         pipeline(defaultProperties, realisticChunking)
@@ -627,8 +626,7 @@ class MailDocumentPipelineTest {
             .build();
     Path file = writeEml(DefaultMessageWriter.asBytes(message));
     ChunkingService tinyChunking =
-        new ChunkingService(
-            new IndexingProperties(20, 5, 50, null, null, List.of(), null, null, null, 1));
+        new ChunkingService(new IndexingProperties(20, 5, 50, null, null, null, null, null, 1));
 
     DocumentPipelineResult result =
         pipeline(defaultProperties, tinyChunking)
@@ -676,10 +674,10 @@ class MailDocumentPipelineTest {
     long fileSize = Files.size(file);
 
     DocumentPipelineResult result =
-        pipeline(new MailProperties(0, 0, 0, fileSize - 1))
+        pipeline(new MailProperties(0, 0, fileSize - 1))
             .run(DocumentPipelineSource.ofFile(file, "zu-gross.eml"));
 
-    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_CONTENT);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
 
   @Test
@@ -688,7 +686,7 @@ class MailDocumentPipelineTest {
     long fileSize = Files.size(file);
 
     DocumentPipelineResult result =
-        pipeline(new MailProperties(0, 0, 0, fileSize + 1))
+        pipeline(new MailProperties(0, 0, fileSize + 1))
             .run(DocumentPipelineSource.ofFile(file, "passt.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
@@ -757,6 +755,184 @@ class MailDocumentPipelineTest {
         .anySatisfy(attachment -> assertThat(attachment.fileName()).startsWith("smbprn"));
   }
 
+  // --- #1243: selective extraction materializes one attachment, not the whole message --------
+
+  /**
+   * #1243: an "Im Dokument oeffnen" click re-extracts one attachment, and used to pay for every
+   * attachment of the message in temporary files. With {@code attachmentIndex} set, exactly one
+   * temp file is written - proven by counting this reader's own {@code opaa-mail-} files while the
+   * result is still alive, before {@code DocumentPipelineRunner} deletes anything.
+   */
+  @Test
+  void aFilteredRunWritesATempFileForTheRequestedAttachmentOnly() throws Exception {
+    Path file =
+        writeEml(
+            DefaultMessageWriter.asBytes(
+                messageWithAttachments(
+                    List.of("eins.txt", "zwei.txt", "drei.txt"),
+                    List.of("Erster.", "Zweiter.", "Dritter."))));
+
+    Set<Path> before = readerTempFiles();
+    DocumentPipelineResult result =
+        pipeline(defaultProperties)
+            .run(DocumentPipelineSource.ofFile(file, "viele-anlagen.eml").withAttachmentIndex(1));
+    Set<Path> written = newReaderTempFiles(before, List.of("Erster.", "Zweiter.", "Dritter."));
+
+    try {
+      assertThat(written).hasSize(1);
+      assertThat(result.discoveredAttachments()).hasSize(1);
+      DiscoveredAttachment attachment = result.discoveredAttachments().getFirst();
+      assertThat(attachment.fileName()).isEqualTo("zwei.txt");
+      assertThat(Files.readAllBytes(attachment.tempFile()))
+          .isEqualTo("Zweiter.".getBytes(StandardCharsets.UTF_8));
+    } finally {
+      deleteAll(written);
+    }
+  }
+
+  /** An unfiltered run is unchanged: every attachment is still materialized and reported. */
+  @Test
+  void anUnfilteredRunStillWritesATempFileForEveryAttachment() throws Exception {
+    Path file =
+        writeEml(
+            DefaultMessageWriter.asBytes(
+                messageWithAttachments(
+                    List.of("eins.txt", "zwei.txt", "drei.txt"),
+                    List.of("Erster.", "Zweiter.", "Dritter."))));
+
+    Set<Path> before = readerTempFiles();
+    DocumentPipelineResult result =
+        pipeline(defaultProperties).run(DocumentPipelineSource.ofFile(file, "viele-anlagen.eml"));
+    Set<Path> written = newReaderTempFiles(before, List.of("Erster.", "Zweiter.", "Dritter."));
+
+    try {
+      assertThat(written).hasSize(3);
+      assertThat(result.discoveredAttachments()).hasSize(3);
+      assertThat(result.discoveredAttachments().stream().map(DiscoveredAttachment::fileName))
+          .containsExactly("eins.txt", "zwei.txt", "drei.txt");
+    } finally {
+      deleteAll(written);
+    }
+  }
+
+  /**
+   * #1243: the extraction position is what an attachment row's own {@code file_path} stores - the
+   * list position in {@code discoveredAttachments} - so a filtered run must number attachments
+   * exactly as an unfiltered one does. An attachment the unfiltered run would not report at all
+   * (here: one over {@code max-attachment-bytes}) therefore consumes no position, and position 1 is
+   * the third part of this message, not the second.
+   */
+  @Test
+  void aFilteredRunNumbersAttachmentsLikeAnUnfilteredOneIncludingSkippedOnes() throws Exception {
+    String oversized = "x".repeat(200);
+    Path file =
+        writeEml(
+            DefaultMessageWriter.asBytes(
+                messageWithAttachments(
+                    List.of("klein.txt", "zu-gross.txt", "auch-klein.txt"),
+                    List.of("Erster.", oversized, "Dritter."))));
+    MailProperties tightAttachmentLimit = new MailProperties(0, 100, 0);
+
+    Set<Path> before = readerTempFiles();
+    DocumentPipelineResult result =
+        pipeline(tightAttachmentLimit)
+            .run(DocumentPipelineSource.ofFile(file, "mit-zu-grosser.eml").withAttachmentIndex(1));
+    Set<Path> written = newReaderTempFiles(before, List.of("Erster.", oversized, "Dritter."));
+
+    try {
+      assertThat(result.discoveredAttachments()).hasSize(1);
+      assertThat(result.discoveredAttachments().getFirst().fileName()).isEqualTo("auch-klein.txt");
+      assertThat(written).hasSize(1);
+    } finally {
+      deleteAll(written);
+    }
+  }
+
+  /**
+   * #1243: {@link MsgReader} counts positions in its own, separate loop, so the rule that a skipped
+   * attachment consumes no position is nailed down for MSG as well - this fixture's embedded
+   * Outlook item is skipped entirely (POI offers no writer for it), so the PDF behind it sits at
+   * position 0, not 1.
+   */
+  @Test
+  void aFilteredMsgRunSkipsTheEmbeddedItemWithoutConsumingItsPosition() throws Exception {
+    Path file = testResourceCopy("mail/attachment_msg_pdf.msg", "gefiltert.msg");
+
+    DocumentPipelineResult atZero =
+        pipeline(defaultProperties)
+            .run(DocumentPipelineSource.ofFile(file, "gefiltert.msg").withAttachmentIndex(0));
+    try {
+      assertThat(atZero.discoveredAttachments()).hasSize(1);
+      assertThat(atZero.discoveredAttachments().getFirst().fileName()).startsWith("smbprn");
+    } finally {
+      deleteAll(
+          atZero.discoveredAttachments().stream()
+              .map(DiscoveredAttachment::tempFile)
+              .collect(java.util.stream.Collectors.toCollection(java.util.HashSet::new)));
+    }
+
+    DocumentPipelineResult atOne =
+        pipeline(defaultProperties)
+            .run(DocumentPipelineSource.ofFile(file, "gefiltert.msg").withAttachmentIndex(1));
+    try {
+      assertThat(atOne.discoveredAttachments()).isEmpty();
+    } finally {
+      deleteAll(
+          atOne.discoveredAttachments().stream()
+              .map(DiscoveredAttachment::tempFile)
+              .collect(java.util.stream.Collectors.toCollection(java.util.HashSet::new)));
+    }
+  }
+
+  /**
+   * #1243: {@code readProperties} needs only the Kopfdaten and never runs through {@code
+   * DocumentPipelineRunner}, so any temp file it caused a reader to write would leak - it therefore
+   * materializes no attachment at all.
+   */
+  @Test
+  void readingPropertiesAloneWritesNoAttachmentTempFile() throws Exception {
+    Path file =
+        writeEml(
+            DefaultMessageWriter.asBytes(
+                messageWithAttachments(
+                    List.of("eins.txt", "zwei.txt"), List.of("Erster.", "Zweiter."))));
+
+    Set<Path> before = readerTempFiles();
+    DocumentProperties properties =
+        pipeline(defaultProperties)
+            .readProperties(DocumentPipelineSource.ofFile(file, "mit-anlagen.eml"));
+    Set<Path> written = newReaderTempFiles(before, List.of("Erster.", "Zweiter."));
+
+    try {
+      assertThat(properties.title()).isEqualTo("Mit Anlagen");
+      assertThat(written).isEmpty();
+    } finally {
+      deleteAll(written);
+    }
+  }
+
+  /** A position no attachment occupies reports nothing, rather than some other attachment. */
+  @Test
+  void aFilteredRunReportsNothingWhenNoAttachmentOccupiesThatPosition() throws Exception {
+    Path file =
+        writeEml(
+            DefaultMessageWriter.asBytes(
+                messageWithAttachments(List.of("eins.txt"), List.of("Erster."))));
+
+    Set<Path> before = readerTempFiles();
+    DocumentPipelineResult result =
+        pipeline(defaultProperties)
+            .run(DocumentPipelineSource.ofFile(file, "eine-anlage.eml").withAttachmentIndex(3));
+    Set<Path> written = newReaderTempFiles(before, List.of("Erster."));
+
+    try {
+      assertThat(result.discoveredAttachments()).isEmpty();
+      assertThat(written).isEmpty();
+    } finally {
+      deleteAll(written);
+    }
+  }
+
   // --- helpers -----------------------------------------------------------------------------
 
   private static Message.Builder newMessageBuilder(String subject, String from, String to)
@@ -805,5 +981,63 @@ class MailDocumentPipelineTest {
       Files.copy(in, file);
     }
     return file;
+  }
+
+  private static Message messageWithAttachments(List<String> fileNames, List<String> contents)
+      throws Exception {
+    MultipartBuilder body =
+        MultipartBuilder.create("mixed").addTextPart("Anbei die Anlagen.", StandardCharsets.UTF_8);
+    for (int i = 0; i < fileNames.size(); i++) {
+      body.addBodyPart(
+          BodyPartBuilder.create()
+              .setBody(contents.get(i).getBytes(StandardCharsets.UTF_8), "text/plain")
+              .setContentDisposition("attachment", fileNames.get(i)));
+    }
+    return newMessageBuilder("Mit Anlagen", "max@example.org", "erika@example.org")
+        .setBody(body.build())
+        .build();
+  }
+
+  /**
+   * The temp files {@code MailAttachmentIo} creates live in the JVM's own shared temp directory, so
+   * a run's own files are identified by diffing that directory around the call.
+   */
+  private static Set<Path> readerTempFiles() throws IOException {
+    try (var entries = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
+      return entries
+          .filter(path -> path.getFileName().toString().startsWith("opaa-mail-"))
+          .collect(java.util.stream.Collectors.toCollection(java.util.HashSet::new));
+    }
+  }
+
+  /**
+   * The files the call between the two snapshots wrote, restricted to those carrying one of this
+   * fixture's own attachment texts - Gradle runs this suite with {@code maxParallelForks = 2}, and
+   * the other worker writes its own {@code opaa-mail-} files into the very same directory.
+   */
+  private static Set<Path> newReaderTempFiles(Set<Path> before, Collection<String> ownContents)
+      throws IOException {
+    Set<Path> after = readerTempFiles();
+    after.removeAll(before);
+    Set<Path> own = new java.util.HashSet<>();
+    for (Path candidate : after) {
+      String content;
+      try {
+        content = Files.readString(candidate, StandardCharsets.UTF_8);
+      } catch (IOException e) {
+        // A file the other worker wrote and deleted (or wrote as binary) between the snapshots.
+        continue;
+      }
+      if (ownContents.contains(content)) {
+        own.add(candidate);
+      }
+    }
+    return own;
+  }
+
+  private static void deleteAll(Set<Path> files) throws IOException {
+    for (Path file : files) {
+      Files.deleteIfExists(file);
+    }
   }
 }

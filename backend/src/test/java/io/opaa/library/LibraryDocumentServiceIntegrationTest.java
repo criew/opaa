@@ -96,7 +96,7 @@ class LibraryDocumentServiceIntegrationTest {
 
   // #742 review, finding 3: a base directory the FILESYSTEM loadContent tests below can use as a
   // library's sourcePath, alongside the shared suite's fixed "/data,/tmp" default (see
-  // application.yml's comment on filesystem-allowlist) rather than replacing it - the existing
+  // application.yml's comment on filesystem.allowlist) rather than replacing it - the existing
   // FILESYSTEM-flavoured tests elsewhere in this class (e.g.
   // uploadingIntoAConnectorLibraryIsRejectedWithConflict) still rely on "/data/documents" resolving
   // under that default.
@@ -107,7 +107,7 @@ class LibraryDocumentServiceIntegrationTest {
     registry.add("opaa.upload.storage-path", () -> uploadStorageDir.toAbsolutePath().toString());
     registry.add("opaa.upload.max-file-size", () -> 4096);
     registry.add(
-        "opaa.indexing.filesystem-allowlist",
+        "opaa.indexing.filesystem.allowlist",
         () -> "/data,/tmp," + filesystemAllowlistDir.toAbsolutePath());
     // #747: target validation stays enabled (application.yml's own default) - only 127.0.0.1 is
     // allowlisted, so this suite's own local HttpServer instances are reachable for the remote
@@ -1195,7 +1195,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var firstPage =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), null, null, stableOrder(0, 2));
+            libraryId, currentUserOf(editor, false), null, null, null, stableOrder(0, 2));
     assertThat(firstPage.documents()).hasSize(2);
     assertThat(firstPage.page()).isZero();
     assertThat(firstPage.size()).isEqualTo(2);
@@ -1203,14 +1203,14 @@ class LibraryDocumentServiceIntegrationTest {
 
     var secondPage =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), null, null, stableOrder(1, 2));
+            libraryId, currentUserOf(editor, false), null, null, null, stableOrder(1, 2));
     assertThat(secondPage.documents()).hasSize(2);
     assertThat(secondPage.page()).isEqualTo(1);
     assertThat(secondPage.totalElements()).isEqualTo(5);
 
     var lastPage =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), null, null, stableOrder(2, 2));
+            libraryId, currentUserOf(editor, false), null, null, null, stableOrder(2, 2));
     assertThat(lastPage.documents()).hasSize(1);
 
     assertThat(
@@ -1238,7 +1238,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var result =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), "dienst", null, stableOrder(0, 20));
+            libraryId, currentUserOf(editor, false), "dienst", null, null, stableOrder(0, 20));
 
     assertThat(result.totalElements()).isEqualTo(2);
     assertThat(result.documents())
@@ -1260,14 +1260,14 @@ class LibraryDocumentServiceIntegrationTest {
 
     var percentResult =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), "100%", null, stableOrder(0, 20));
+            libraryId, currentUserOf(editor, false), "100%", null, null, stableOrder(0, 20));
     assertThat(percentResult.documents())
         .extracting(entry -> entry.document().getFileName())
         .containsExactly("100%-Regel.pdf");
 
     var underscoreResult =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), "akte_alt", null, stableOrder(0, 20));
+            libraryId, currentUserOf(editor, false), "akte_alt", null, null, stableOrder(0, 20));
     assertThat(underscoreResult.documents())
         .extracting(entry -> entry.document().getFileName())
         .containsExactly("akte_alt.pdf");
@@ -1280,7 +1280,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var result =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), "  ", null, PageRequest.of(0, 20));
+            libraryId, currentUserOf(editor, false), "  ", null, null, PageRequest.of(0, 20));
 
     assertThat(result.totalElements()).isEqualTo(2);
   }
@@ -1292,6 +1292,7 @@ class LibraryDocumentServiceIntegrationTest {
                 libraryService.listDocuments(
                     UUID.randomUUID(),
                     currentUserOf(editor, false),
+                    null,
                     null,
                     null,
                     PageRequest.of(0, 20)))
@@ -1310,7 +1311,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var result =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), null, null, stableOrder(0, 20));
+            libraryId, currentUserOf(editor, false), null, null, null, stableOrder(0, 20));
 
     // Only the root-level document - not the one inside Protokolle - mirrors ADR-0020's
     // documented, accepted behaviour change from "the whole bestand" to "the root" (#821 spec).
@@ -1342,7 +1343,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var result =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), null, null, stableOrder(0, 20));
+            libraryId, currentUserOf(editor, false), null, null, null, stableOrder(0, 20));
 
     assertThat(result.folders())
         .extracting(f -> f.folder().getName())
@@ -1360,7 +1361,12 @@ class LibraryDocumentServiceIntegrationTest {
 
     var result =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), null, protokolle.getId(), stableOrder(0, 20));
+            libraryId,
+            currentUserOf(editor, false),
+            null,
+            protokolle.getId(),
+            null,
+            stableOrder(0, 20));
 
     assertThat(result.documents())
         .extracting(entry -> entry.document().getFileName())
@@ -1390,6 +1396,7 @@ class LibraryDocumentServiceIntegrationTest {
             currentUserOf(editor, false),
             "dienstanweisung",
             jahr2026.getId(),
+            null,
             stableOrder(0, 20));
 
     assertThat(result.documents())
@@ -1425,6 +1432,7 @@ class LibraryDocumentServiceIntegrationTest {
                     currentUserOf(editor, false),
                     null,
                     UUID.randomUUID(),
+                    null,
                     stableOrder(0, 20)))
         .isInstanceOf(NotFoundException.class);
   }
@@ -1443,6 +1451,7 @@ class LibraryDocumentServiceIntegrationTest {
                     currentUserOf(editor, false),
                     "dienst",
                     UUID.randomUUID(),
+                    null,
                     stableOrder(0, 20)))
         .isInstanceOf(NotFoundException.class);
   }
@@ -1463,6 +1472,7 @@ class LibraryDocumentServiceIntegrationTest {
                     currentUserOf(editor, false),
                     null,
                     foreignFolder.getId(),
+                    null,
                     stableOrder(0, 20)))
         .isInstanceOf(NotFoundException.class);
 
@@ -1503,7 +1513,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var firstPage =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), null, null, stableOrder(0, 2));
+            libraryId, currentUserOf(editor, false), null, null, null, stableOrder(0, 2));
     // totalElements counts the 3 parents, never the 3 attachments - and the first page carries
     // 2 parents plus mailA's 2 attachments, exceeding size=2 by design (group never torn apart).
     assertThat(firstPage.totalElements()).isEqualTo(3);
@@ -1513,7 +1523,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var secondPage =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), null, null, stableOrder(1, 2));
+            libraryId, currentUserOf(editor, false), null, null, null, stableOrder(1, 2));
     assertThat(secondPage.documents())
         .extracting(entry -> entry.document().getFileName())
         .containsExactly("c-mail.eml", "bericht.pdf");
@@ -1539,7 +1549,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var page =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), null, null, stableOrder(0, 20));
+            libraryId, currentUserOf(editor, false), null, null, null, stableOrder(0, 20));
 
     assertThat(page.documents())
         .extracting(entry -> entry.document().getFileName())
@@ -1556,7 +1566,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var page =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), null, null, stableOrder(0, 20));
+            libraryId, currentUserOf(editor, false), null, null, null, stableOrder(0, 20));
 
     assertThat(page.totalElements()).isEqualTo(1);
     assertThat(page.documents())
@@ -1575,7 +1585,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var page =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), "haushalt", null, stableOrder(0, 20));
+            libraryId, currentUserOf(editor, false), "haushalt", null, null, stableOrder(0, 20));
 
     // The parent has no own hit but stays visible with its complete group; the unrelated document
     // does not appear, and totalElements counts the one matching parent.
@@ -1593,7 +1603,7 @@ class LibraryDocumentServiceIntegrationTest {
 
     var page =
         libraryService.listDocuments(
-            libraryId, currentUserOf(editor, false), "haushalt", null, stableOrder(0, 20));
+            libraryId, currentUserOf(editor, false), "haushalt", null, null, stableOrder(0, 20));
 
     assertThat(page.totalElements()).isEqualTo(1);
     assertThat(page.documents())

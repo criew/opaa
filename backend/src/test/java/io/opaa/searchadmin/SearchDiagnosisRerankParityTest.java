@@ -8,6 +8,8 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService;
+import io.opaa.diagnosticaccess.ForeignDiagnosticContextService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -78,10 +80,13 @@ class SearchDiagnosisRerankParityTest {
             mock(io.opaa.group.GroupService.class),
             mock(DocumentRepository.class),
             rerankModelRole,
+            mock(ForeignDiagnosticContextService.class),
+            mock(DiagnosticImpersonationGrantService.class),
+            mock(io.opaa.diagnosticaccess.LibraryDiagnosticsLockService.class),
             java.time.Clock.systemUTC());
 
     return service.diagnose(
-        caller, new DiagnosisQuery("Frage", DiagnosisContextType.SELF, null, null));
+        caller, new DiagnosisQuery("Frage", DiagnosisContextType.SELF, null, null, null, null));
   }
 
   private RetrievalPipeline pipeline() {

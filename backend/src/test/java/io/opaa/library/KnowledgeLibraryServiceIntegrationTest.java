@@ -1382,6 +1382,7 @@ class KnowledgeLibraryServiceIntegrationTest {
                     currentUserOf(stranger),
                     null,
                     null,
+                    null,
                     PageRequest.of(0, 10)))
         .isInstanceOf(NotFoundException.class);
     assertThatThrownBy(
@@ -1414,6 +1415,7 @@ class KnowledgeLibraryServiceIntegrationTest {
                 .listDocuments(
                     library.library().getId(),
                     currentUserOf(viewer, false),
+                    null,
                     null,
                     null,
                     PageRequest.of(0, 10))
@@ -2459,6 +2461,30 @@ class KnowledgeLibraryServiceIntegrationTest {
                     currentUserOf(owner, false))
                 .myRole())
         .isEqualTo(AssetRole.OWNER);
+  }
+
+  // #1278 review: myRole bypasses to OWNER for a system admin (LibraryAccessService#effectiveRole)
+  // even without any grant on the library - diagnosticsLockToggleable must not follow that bypass,
+  // since PUT .../diagnostics-lock (LibraryDiagnosticsLockService#setLocked,
+  // holdsIndependentOwnerRole) rejects that same admin with 403.
+  @Test
+  void getLibrarySetsDiagnosticsLockToggleableFromHoldsIndependentOwnerRoleNotFromMyRole() {
+    UUID owner = createUser(organizationA);
+    UUID admin = createUser(organizationA);
+    LibraryDetail library =
+        libraryService.createLibrary(
+            libraryCreation("Rechtsquellen Soziales", DocumentSourceType.UPLOAD).build(),
+            currentUserOf(owner));
+
+    LibraryDetail asAdmin =
+        libraryService.getLibrary(library.library().getId(), currentUserOf(admin, true));
+    assertThat(asAdmin.myRole()).isEqualTo(AssetRole.OWNER);
+    assertThat(asAdmin.diagnosticsLockToggleable()).isFalse();
+
+    LibraryDetail asOwner =
+        libraryService.getLibrary(library.library().getId(), currentUserOf(owner, false));
+    assertThat(asOwner.myRole()).isEqualTo(AssetRole.OWNER);
+    assertThat(asOwner.diagnosticsLockToggleable()).isTrue();
   }
 
   @Test

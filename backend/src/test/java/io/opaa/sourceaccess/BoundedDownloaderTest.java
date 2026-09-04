@@ -71,13 +71,15 @@ class BoundedDownloaderTest {
     HttpClient httpClient = mock(HttpClient.class);
 
     when(response.statusCode()).thenReturn(200);
+    when(response.headers()).thenReturn(HttpHeaders.of(Map.of(), (a, b) -> true));
     when(response.body())
         .thenReturn(new ByteArrayInputStream("content".getBytes(StandardCharsets.UTF_8)));
     when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
         .thenReturn(response);
 
     Path result =
-        downloader.download(httpClient, null, "https://example.com/files/report.pdf", "report.pdf");
+        downloader.download(
+            httpClient, null, "https://example.com/files/report.pdf", "report.pdf", 1_000_000L);
     try {
       assertThat(result.getFileName().toString()).endsWith(".pdf");
     } finally {
@@ -99,7 +101,7 @@ class BoundedDownloaderTest {
     assertThatThrownBy(
             () ->
                 downloader.download(
-                    httpClient, null, "https://example.com/missing.txt", "missing.txt"))
+                    httpClient, null, "https://example.com/missing.txt", "missing.txt", 1_000_000L))
         .isInstanceOf(IOException.class)
         .hasMessageContaining("HTTP 404");
   }
@@ -140,7 +142,8 @@ class BoundedDownloaderTest {
               SourceHttpClientFactory.buildHttpClient(null, -1, false),
               "Basic dGVzdDp0ZXN0",
               baseUrl + "/report.pdf",
-              "report.pdf");
+              "report.pdf",
+              1_000_000L);
       try {
         assertThat(receivedAuthorization.get()).isNull();
       } finally {
@@ -178,7 +181,8 @@ class BoundedDownloaderTest {
             SourceHttpClientFactory.buildHttpClient(null, -1, false),
             "Basic dGVzdDp0ZXN0",
             baseUrl + "/report.pdf",
-            "report.pdf");
+            "report.pdf",
+            1_000_000L);
     try {
       assertThat(receivedAuthorization.get()).isEqualTo("Basic dGVzdDp0ZXN0");
     } finally {
@@ -473,7 +477,8 @@ class BoundedDownloaderTest {
               SourceHttpClientFactory.buildHttpClient(null, -1, false),
               "Basic dGVzdDp0ZXN0",
               baseUrl + "/report.pdf",
-              "report.pdf");
+              "report.pdf",
+              1_000_000L);
       try {
         assertThat(receivedAuthorization.get()).isNull();
       } finally {
@@ -507,9 +512,118 @@ class BoundedDownloaderTest {
     assertThatThrownBy(
             () ->
                 downloader.download(
-                    httpClient, null, "https://example.com/report.pdf", "report.pdf"))
+                    httpClient, null, "https://example.com/report.pdf", "report.pdf", 1_000_000L))
         .isInstanceOf(IOException.class)
         .hasMessageContaining("protocol downgrade");
+  }
+
+  // --- #1236: download itself is capped, so one entry can never fill the temp partition -------
+
+  /**
+   * A suffix used by this class alone, so the leftover-temp-file assertions below cannot be
+   * confused by another test's (or another build's) temp files in the shared temp directory.
+   */
+  private static final String CAP_TEST_SUFFIX = ".deckelprobe";
+
+  @Test
+  void downloadRejectsAResponseDeclaringAContentLengthAboveTheCap() throws IOException {
+    List<Path> before = probeTempFiles();
+    byte[] body = "x".repeat(100_000).getBytes(StandardCharsets.UTF_8);
+    server.createContext(
+        "/gross" + CAP_TEST_SUFFIX,
+        exchange -> {
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    assertThatThrownBy(
+            () ->
+                downloader.download(
+                    httpClient,
+                    null,
+                    baseUrl + "/gross" + CAP_TEST_SUFFIX,
+                    "gross" + CAP_TEST_SUFFIX,
+                    4_096L))
+        .isInstanceOf(BoundedDownloader.AttachmentTooLargeException.class);
+    assertThat(probeTempFiles())
+        .as("an aborted transfer must not leave its temp file behind")
+        .containsExactlyInAnyOrderElementsOf(before);
+  }
+
+  @Test
+  void downloadAbortsWhileStreamingWhenTheResponseDeclaresNoContentLength() throws IOException {
+    List<Path> before = probeTempFiles();
+    // The case the Content-Length check alone cannot catch: a chunked response (or one whose
+    // header understates the body) is only bounded while it is actually being read.
+    byte[] chunk = "y".repeat(8_192).getBytes(StandardCharsets.UTF_8);
+    server.createContext(
+        "/chunked" + CAP_TEST_SUFFIX,
+        exchange -> {
+          // 0 makes com.sun.net.httpserver answer chunked, i.e. without a Content-Length header.
+          exchange.sendResponseHeaders(200, 0);
+          try (var out = exchange.getResponseBody()) {
+            for (int i = 0; i < 50; i++) {
+              out.write(chunk);
+              out.flush();
+            }
+          } catch (IOException expected) {
+            // The client cuts the connection at the cap - that abort is the point of this test.
+          }
+          exchange.close();
+        });
+
+    assertThatThrownBy(
+            () ->
+                downloader.download(
+                    httpClient,
+                    null,
+                    baseUrl + "/chunked" + CAP_TEST_SUFFIX,
+                    "chunked" + CAP_TEST_SUFFIX,
+                    4_096L))
+        .isInstanceOf(BoundedDownloader.AttachmentTooLargeException.class);
+    assertThat(probeTempFiles())
+        .as("an aborted transfer must not leave its temp file behind")
+        .containsExactlyInAnyOrderElementsOf(before);
+  }
+
+  @Test
+  void downloadKeepsAResponseExactlyAtTheCap() throws IOException, InterruptedException {
+    byte[] body = "z".repeat(4_096).getBytes(StandardCharsets.UTF_8);
+    server.createContext(
+        "/genau" + CAP_TEST_SUFFIX,
+        exchange -> {
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    Path result =
+        downloader.download(
+            httpClient,
+            null,
+            baseUrl + "/genau" + CAP_TEST_SUFFIX,
+            "genau" + CAP_TEST_SUFFIX,
+            4_096L);
+    try {
+      assertThat(Files.size(result)).isEqualTo(4_096L);
+    } finally {
+      Files.deleteIfExists(result);
+    }
+  }
+
+  /**
+   * Every temp file carrying {@link #CAP_TEST_SUFFIX} currently in the shared temp directory,
+   * compared before and after a transfer so that files a parallel build left there beforehand do
+   * not count as this transfer's leftovers. Order is not compared - {@code Files.list} guarantees
+   * none.
+   */
+  private static List<Path> probeTempFiles() throws IOException {
+    try (var entries = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
+      return entries
+          .filter(path -> path.getFileName().toString().endsWith(CAP_TEST_SUFFIX))
+          .toList();
+    }
   }
 
   // --- #404 review, finding 1: downloadPrefix never reads more than the requested cap ----------
@@ -694,7 +808,8 @@ class BoundedDownloaderTest {
                     SourceHttpClientFactory.buildHttpClient(null, -1, false),
                     null,
                     baseUrl + "/anlage.pdf",
-                    "anlage.pdf"))
+                    "anlage.pdf",
+                    1_000_000L))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
         .hasMessageContaining("gesperrten Adressbereich");
   }

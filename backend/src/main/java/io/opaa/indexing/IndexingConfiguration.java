@@ -22,12 +22,14 @@ import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
+import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository;
 import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
+import io.opaa.indexing.source.filesystem.FilesystemProperties;
 import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
 import io.opaa.indexing.source.rss.RssFeedParser;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
@@ -220,6 +222,27 @@ public class IndexingConfiguration {
     return new AttachmentExtractor(documentPipelineRegistry);
   }
 
+  /**
+   * The one source-access instance both operator-triggered runs over the bestand share (pipeline
+   * re-index, core-metadata backfill), so both read files under the same containment rules.
+   */
+  @Bean
+  StoredDocumentSourceAccess storedDocumentSourceAccess(
+      AttachmentExtractor attachmentExtractor,
+      DocumentRepository documentRepository,
+      KnowledgeLibraryRepository libraryRepository,
+      ChecksumService checksumService,
+      FilesystemPathAllowlist filesystemPathAllowlist,
+      UploadProperties uploadProperties) {
+    return new StoredDocumentSourceAccess(
+        attachmentExtractor,
+        documentRepository,
+        libraryRepository,
+        checksumService,
+        filesystemPathAllowlist,
+        uploadProperties);
+  }
+
   @Bean
   PipelineReindexService pipelineReindexService(
       JdbcTemplate jdbcTemplate,
@@ -227,11 +250,8 @@ public class IndexingConfiguration {
       DocumentRepository documentRepository,
       KnowledgeLibraryRepository libraryRepository,
       FileProcessingService fileProcessingService,
-      ChecksumService checksumService,
       VectorChunkStore vectorChunkStore,
-      FilesystemPathAllowlist filesystemPathAllowlist,
-      UploadProperties uploadProperties,
-      AttachmentExtractor attachmentExtractor,
+      StoredDocumentSourceAccess storedDocumentSourceAccess,
       @Value("${spring.ai.vectorstore.pgvector.schema-name:public}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     return new PipelineReindexService(
@@ -240,11 +260,8 @@ public class IndexingConfiguration {
         documentRepository,
         libraryRepository,
         fileProcessingService,
-        checksumService,
         vectorChunkStore,
-        filesystemPathAllowlist,
-        uploadProperties,
-        attachmentExtractor,
+        storedDocumentSourceAccess,
         schemaName,
         tableName);
   }
@@ -259,9 +276,14 @@ public class IndexingConfiguration {
       BoundedDownloader boundedDownloader,
       FileProcessingService fileProcessingService,
       LibraryStorageQuotaService libraryStorageQuotaService,
-      DocumentRepository documentRepository) {
+      DocumentRepository documentRepository,
+      AttachmentProperties attachmentProperties) {
     return new AttachmentIndexer(
-        boundedDownloader, fileProcessingService, libraryStorageQuotaService, documentRepository);
+        boundedDownloader,
+        fileProcessingService,
+        libraryStorageQuotaService,
+        documentRepository,
+        attachmentProperties);
   }
 
   /**
@@ -270,16 +292,14 @@ public class IndexingConfiguration {
    * parse-time DoS-hardening ceilings (redundant-but-harmless safety once an attachment already
    * passed {@code EmlReader}/{@code MsgReader}'s own extraction-loop limits); {@code
    * requestDelayMs}/{@code userAgent} are unused for an {@code AttachmentSource.LocalFile} (no
-   * request of its own), which is all a Mail attachment ever is.
+   * request of its own), which is all a Mail attachment ever is. The nesting depth is not part of
+   * this record any more (#1269) - {@link AttachmentIndexer} enforces {@link
+   * AttachmentProperties#maxDepth()} itself, the same value for every connector.
    */
   @Bean
   AttachmentDownloadLimits mailAttachmentDownloadLimits(MailProperties mailProperties) {
     return new AttachmentDownloadLimits(
-        mailProperties.maxAttachmentsPerMessage(),
-        mailProperties.maxAttachmentBytes(),
-        0L,
-        "",
-        mailProperties.maxAttachmentDepth());
+        mailProperties.maxAttachmentsPerMessage(), mailProperties.maxAttachmentBytes(), 0L, "");
   }
 
   @Bean
@@ -312,7 +332,7 @@ public class IndexingConfiguration {
   }
 
   @Bean
-  FilesystemPathAllowlist filesystemPathAllowlist(IndexingProperties properties) {
+  FilesystemPathAllowlist filesystemPathAllowlist(FilesystemProperties properties) {
     return new FilesystemPathAllowlist(properties);
   }
 
@@ -395,7 +415,9 @@ public class IndexingConfiguration {
       DocumentRepository documentRepository,
       IndexingRunEventRepository indexingRunEventRepository,
       LibraryStorageQuotaService libraryStorageQuotaService,
-      StaleDocumentCleanupService staleDocumentCleanupService) {
+      StaleDocumentCleanupService staleDocumentCleanupService,
+      CrawlProperties crawlProperties,
+      LibraryFolderService libraryFolderService) {
     return new UrlIndexingExecutor(
         autoindexCrawlerService,
         boundedDownloader,
@@ -404,7 +426,9 @@ public class IndexingConfiguration {
         documentRepository,
         indexingRunEventRepository,
         libraryStorageQuotaService,
-        staleDocumentCleanupService);
+        staleDocumentCleanupService,
+        crawlProperties,
+        libraryFolderService);
   }
 
   @Bean

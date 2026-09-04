@@ -74,7 +74,77 @@ const {
   mockDeleteLibraryFolder,
   mockTriggerIndexing,
   mockGetIndexingStatus,
+  mockGetDocumentMetadata,
+  mockBulkSetDocumentMetadata,
+  mockGetDocumentTypeVocabulary,
+  mockGetLibraryMetadataMaintenance,
+  mockSetDocumentMetadataValue,
 } = vi.hoisted(() => ({
+  mockSetDocumentMetadataValue: vi.fn(async () => ({
+    fieldKey: 'document_type',
+    label: 'Dokumentart',
+    state: 'NOT_DETERMINABLE',
+    origin: 'MANUAL',
+    actorDisplayName: 'Max Mustermann',
+    updatedAt: '2026-09-04T10:00:00Z',
+  })),
+  mockGetLibraryMetadataMaintenance: vi.fn(async (libraryId: string) => ({
+    libraryId,
+    totalDocuments: 4,
+    fields: [
+      {
+        fieldKey: 'title',
+        label: 'Titel',
+        totalDocuments: 4,
+        documentsWithoutValue: 0,
+        missingShare: 0,
+        filledDocuments: 4,
+        notDeterminableDocuments: 0,
+      },
+      {
+        fieldKey: 'document_type',
+        label: 'Dokumentart',
+        totalDocuments: 4,
+        documentsWithoutValue: 3,
+        missingShare: 0.75,
+        filledDocuments: 1,
+        notDeterminableDocuments: 0,
+      },
+      {
+        fieldKey: 'document_date',
+        label: 'Datum/Stand',
+        totalDocuments: 4,
+        documentsWithoutValue: 0,
+        missingShare: 0,
+        filledDocuments: 3,
+        notDeterminableDocuments: 1,
+      },
+    ],
+  })),
+  mockGetDocumentMetadata: vi.fn(async (_libraryId: string, documentId: string) => ({
+    documentId,
+    fields: [
+      { fieldKey: 'title', label: 'Titel' },
+      {
+        fieldKey: 'document_type',
+        label: 'Dokumentart',
+        value: 'VERMERK',
+        displayValue: 'Vermerk',
+        origin: 'DERIVED',
+        confidence: 0.7,
+      },
+      { fieldKey: 'document_date', label: 'Datum/Stand' },
+    ],
+  })),
+  mockBulkSetDocumentMetadata: vi.fn(async () => ({
+    updatedCount: 2,
+    unchangedCount: 0,
+    rejectedDocumentIds: [],
+    correlationRef: 'metadata-bulk-1',
+  })),
+  mockGetDocumentTypeVocabulary: vi.fn(async () => ({
+    items: [{ code: 'VERMERK', label: 'Vermerk' }],
+  })),
   mockGetLibrary: vi.fn(async (id: string) => useLibraryStore.getState().libraryDetails[id]),
   mockUpdateLibrary: vi.fn(async () => ({}) as LibraryResponse),
   mockDeleteLibrary: vi.fn(async () => undefined),
@@ -127,6 +197,11 @@ vi.mock('../services/api', async () => {
     deleteLibraryFolder: mockDeleteLibraryFolder,
     triggerIndexing: mockTriggerIndexing,
     getIndexingStatus: mockGetIndexingStatus,
+    getDocumentMetadata: mockGetDocumentMetadata,
+    bulkSetDocumentMetadata: mockBulkSetDocumentMetadata,
+    getDocumentTypeVocabulary: mockGetDocumentTypeVocabulary,
+    getLibraryMetadataMaintenance: mockGetLibraryMetadataMaintenance,
+    setDocumentMetadataValue: mockSetDocumentMetadataValue,
   }
 })
 
@@ -373,6 +448,105 @@ describe('LibraryDetailPage', () => {
       expect(mockDeleteLibrary).toHaveBeenCalledWith('library-team')
     })
     expect(confirmSpy).toHaveBeenCalledWith(expect.stringMatching(/indizierten dokumente/i))
+  })
+
+  // #1257: the Diagnosesperre state and its control - visible to everyone who can read the
+  // library, but only the "Sperre lösen"/"Sperre setzen" button is scoped to an OWNER.
+  describe('Diagnosesperre (#1257)', () => {
+    it('shows the locked state and an explanation, without a control, for a MANAGER', async () => {
+      setLibraryState(managerLibrary, detailsOf(managerLibrary, { diagnosticsLocked: true }))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await screen.findByText('Diagnose gesperrt')).toBeInTheDocument()
+      expect(
+        screen.getByText(/im rechtekontext einer anderen person ausgeschlossen/i),
+      ).toBeInTheDocument()
+      expect(screen.getByText(/nur die für die bibliothek zuständige stelle/i)).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /diagnosesperre lösen/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    // #1278 review: a system admin's myRole bypasses to OWNER unconditionally
+    // (LibraryResponse#myRole) even without any grant on the library - the toggle must key off
+    // the dedicated diagnosticsLockToggleable field instead, or this admin would see a button that
+    // is guaranteed to fail its PUT with 403.
+    it('hides the control for a system-admin OWNER bypass without an independent grant', async () => {
+      const adminBypassLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
+      setLibraryState(
+        adminBypassLibrary,
+        detailsOf(adminBypassLibrary, {
+          diagnosticsLocked: true,
+          diagnosticsLockToggleable: false,
+        }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await screen.findByText('Diagnose gesperrt')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /diagnosesperre lösen/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('lets an OWNER lift the lock, updating the shown state', async () => {
+      const ownerLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
+      setLibraryState(
+        ownerLibrary,
+        detailsOf(ownerLibrary, { diagnosticsLocked: true, diagnosticsLockToggleable: true }),
+      )
+      // #1257: the default handler in mocks/handlers.ts answers off mockLibraryDetails
+      // (fixtures.ts), which this file's own library-team/-readonly/-mine fixtures never
+      // populate - overridden here the same way the indexing/runs tests below already do for
+      // the same reason.
+      server.use(
+        http.put('/api/v1/libraries/:libraryId/diagnostics-lock', async ({ params, request }) => {
+          const body = (await request.json()) as { locked: boolean }
+          return HttpResponse.json({ libraryId: String(params.libraryId), locked: body.locked })
+        }),
+      )
+      const user = userEvent.setup()
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      // Since the tab layout, the Diagnosesperre control lives in the "Verwaltung" area.
+      await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+      await user.click(await screen.findByRole('button', { name: /diagnosesperre lösen/i }))
+
+      expect(await screen.findByText('Diagnose freigegeben')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /diagnosesperre setzen/i })).toBeInTheDocument()
+    })
+
+    it('shows the backend 403 message in German when the caller is not the responsible body', async () => {
+      const ownerLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
+      setLibraryState(
+        ownerLibrary,
+        detailsOf(ownerLibrary, { diagnosticsLocked: true, diagnosticsLockToggleable: true }),
+      )
+      server.use(
+        http.put('/api/v1/libraries/:libraryId/diagnostics-lock', () =>
+          HttpResponse.json(
+            {
+              error:
+                'Die Diagnosesperre setzt und löst nur die für die Bibliothek zuständige Stelle',
+            },
+            { status: 403 },
+          ),
+        ),
+      )
+      const user = userEvent.setup()
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      // Since the tab layout, the Diagnosesperre control lives in the "Verwaltung" area.
+      await user.click(await screen.findByRole('tab', { name: 'Verwaltung' }))
+      await user.click(await screen.findByRole('button', { name: /diagnosesperre lösen/i }))
+
+      expect(
+        await screen.findByText(
+          'Die Diagnosesperre setzt und löst nur die für die Bibliothek zuständige Stelle',
+        ),
+      ).toBeInTheDocument()
+      // The optimistic toggle must not have gone through - the state stays locked.
+      expect(screen.getByText('Diagnose gesperrt')).toBeInTheDocument()
+    })
   })
 
   it('shows the upload zone and document list for an UPLOAD library', async () => {
@@ -1442,6 +1616,162 @@ describe('LibraryDetailPage', () => {
   // #738: local sourceTypes fetch the file as a Blob and open/download it client-side, since the
   // download endpoint is Bearer-authenticated - see utils/documentContent.test.ts for that piece's
   // own behaviour, mocked here (see the vi.mock above) to isolate which target this page picks.
+  // #1068: metadata view per document and the Sammelzuweisung on the selection.
+  describe('Metadaten', () => {
+    const indexedDocuments: LibraryDocumentResponse[] = [
+      {
+        id: 'doc-1',
+        fileName: 'dienstanweisung.pdf',
+        contentType: 'application/pdf',
+        fileSize: 2048,
+        status: 'INDEXED',
+        sourceType: 'UPLOAD',
+        chunkCount: 3,
+        indexedAt: '2026-03-01T10:00:00Z',
+        uploadedByUserId: null,
+      },
+      {
+        id: 'doc-2',
+        fileName: 'vermerk.docx',
+        contentType: 'application/msword',
+        fileSize: 1024,
+        status: 'INDEXED',
+        sourceType: 'UPLOAD',
+        chunkCount: 2,
+        indexedAt: '2026-03-01T10:00:00Z',
+        uploadedByUserId: null,
+      },
+    ]
+
+    it('opens the metadata view of a document and marks a derived value as such', async () => {
+      mockGetLibraryDocuments.mockResolvedValue(pageOf(indexedDocuments))
+      setLibraryState(viewerLibrary, detailsOf(viewerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      await user.click(
+        await screen.findByRole('button', { name: 'Metadaten von dienstanweisung.pdf anzeigen' }),
+      )
+
+      const region = await screen.findByRole('region', {
+        name: 'Metadaten von dienstanweisung.pdf',
+      })
+      expect(mockGetDocumentMetadata).toHaveBeenCalledWith('library-readonly', 'doc-1')
+      expect(within(region).getByText('Vermerk')).toBeInTheDocument()
+      expect(within(region).getByText('abgeleitet')).toBeInTheDocument()
+      // A VIEWER sees the values but neither correction controls nor the bulk toolbar.
+      expect(within(region).queryByRole('button', { name: /bearbeiten/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('toolbar', { name: 'Sammelzuweisung' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
+      ).not.toBeInTheDocument()
+
+      await user.click(
+        screen.getByRole('button', { name: 'Metadaten von dienstanweisung.pdf verbergen' }),
+      )
+      expect(
+        screen.queryByRole('region', { name: 'Metadaten von dienstanweisung.pdf' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('lets an editor select documents and set one field on the selection', async () => {
+      mockGetLibraryDocuments.mockResolvedValue(pageOf(indexedDocuments))
+      setLibraryState(
+        { ...managerLibrary, myRole: 'EDITOR' },
+        detailsOf({ ...managerLibrary, myRole: 'EDITOR' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelzuweisung' })
+      expect(within(toolbar).getByRole('button', { name: 'Feld setzen' })).toBeDisabled()
+      await user.click(
+        screen.getByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
+      )
+      await user.click(screen.getByRole('checkbox', { name: 'Dokument vermerk.docx auswählen' }))
+      expect(within(toolbar).getByText('2 ausgewählt')).toBeInTheDocument()
+      await user.click(within(toolbar).getByRole('button', { name: 'Feld setzen' }))
+
+      const dialog = await screen.findByRole('dialog', { name: 'Feld für 2 Dokumente setzen' })
+      await user.click(await within(dialog).findByRole('combobox', { name: /Dokumentart/ }))
+      await user.click(await screen.findByRole('option', { name: 'Vermerk' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
+      await user.click(within(dialog).getByRole('button', { name: 'Zuweisen' }))
+
+      await waitFor(() =>
+        expect(mockBulkSetDocumentMetadata).toHaveBeenCalledWith('library-team', {
+          fieldKey: 'document_type',
+          value: { vocabularyCode: 'VERMERK' },
+          documentIds: ['doc-1', 'doc-2'],
+        }),
+      )
+      await user.click(within(dialog).getByRole('button', { name: 'Schließen' }))
+      expect(
+        await screen.findByText('Feld gesetzt: 2 Dokumente aktualisiert, 0 unverändert.'),
+      ).toBeInTheDocument()
+      expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument()
+    })
+
+    // #1069: working the anchor's list document by document is the normal case - the counted
+    // number and the listed rows must not drift apart while doing it.
+    it('reloads anchor and worklist after a single correction inside the worklist', async () => {
+      mockGetLibraryDocuments.mockResolvedValue(pageOf(indexedDocuments))
+      setLibraryState(
+        { ...managerLibrary, myRole: 'EDITOR' },
+        detailsOf({ ...managerLibrary, myRole: 'EDITOR' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, {
+        withRouter: true,
+        initialRoute: '/?missingField=document_type',
+      })
+      const user = userEvent.setup()
+
+      await user.click(
+        await screen.findByRole('button', { name: 'Metadaten von dienstanweisung.pdf anzeigen' }),
+      )
+      await user.click(
+        await screen.findByRole('button', {
+          name: 'Dokumentart von dienstanweisung.pdf bearbeiten',
+        }),
+      )
+      const dialog = await screen.findByRole('dialog')
+      await user.click(within(dialog).getByRole('checkbox', { name: 'Kein Wert ermittelbar' }))
+      mockGetLibraryDocuments.mockClear()
+      mockGetLibraryMetadataMaintenance.mockClear()
+      await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+      await waitFor(() => expect(mockSetDocumentMetadataValue).toHaveBeenCalled())
+      await waitFor(() => expect(mockGetLibraryMetadataMaintenance).toHaveBeenCalled())
+      await waitFor(() => expect(mockGetLibraryDocuments).toHaveBeenCalled())
+    })
+
+    it('drops the selection when the list changes by page or search', async () => {
+      // The selection belongs to the list the person is looking at - never to documents that
+      // scrolled out of sight through a page change or a search.
+      mockGetLibraryDocuments.mockResolvedValue(pageOf(indexedDocuments, { totalElements: 45 }))
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelzuweisung' })
+      await user.click(
+        screen.getByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
+      )
+      expect(within(toolbar).getByText('1 ausgewählt')).toBeInTheDocument()
+
+      const pagination = screen.getByRole('navigation', { name: 'Dokumentenliste blättern' })
+      await user.click(within(pagination).getByRole('button', { name: /seite 2/i }))
+      await waitFor(() => expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument())
+
+      await user.click(
+        screen.getByRole('checkbox', { name: 'Dokument dienstanweisung.pdf auswählen' }),
+      )
+      expect(within(toolbar).getByText('1 ausgewählt')).toBeInTheDocument()
+      await user.type(screen.getByLabelText('Dokumente durchsuchen'), 'dienst')
+      expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument()
+    })
+  })
+
   describe('"Original öffnen"', () => {
     it('opens a Confluence document at its source URL instead of the content endpoint (ADR-0023)', async () => {
       // The backend's content endpoint deliberately answers 404 for CONFLUENCE - a page has no
@@ -1787,6 +2117,7 @@ describe('LibraryDetailPage', () => {
           size: 20,
           q: 'sozial',
           folderId: null,
+          missingMetadataField: null,
         })
       },
       { timeout: 2000 },
@@ -1836,7 +2167,8 @@ describe('LibraryDetailPage', () => {
       const folderRow = await screen.findByRole('button', {
         name: /ordner protokolle öffnen/i,
       })
-      expect(screen.getByText(/3 dokumente/i)).toBeInTheDocument()
+      // Scoped to the folder row: the Pflege-Anker (#1069) above can carry the same wording.
+      expect(within(folderRow).getByText(/3 dokumente/i)).toBeInTheDocument()
 
       mockGetLibraryDocuments.mockResolvedValueOnce(
         pageOf([], {
@@ -1853,6 +2185,7 @@ describe('LibraryDetailPage', () => {
         size: 20,
         q: '',
         folderId: 'folder-protokolle',
+        missingMetadataField: null,
       })
     })
 
@@ -1877,6 +2210,7 @@ describe('LibraryDetailPage', () => {
         size: 20,
         q: '',
         folderId: 'folder-protokolle',
+        missingMetadataField: null,
       })
     })
 
@@ -2553,6 +2887,7 @@ describe('LibraryDetailPage', () => {
           size: 20,
           q: '',
           folderId: 'folder-protokolle',
+          missingMetadataField: null,
         })
       })
       expect(screen.queryByText('protokoll-2026-01.pdf')).not.toBeInTheDocument()
@@ -2671,5 +3006,34 @@ describe('LibraryDetailPage', () => {
       )
       await initialLoad
     })
+  })
+
+  // #1069 (metadata-schema.md, "Der Pflege-Anker")
+  it('shows the Pflege-Anker per field and opens exactly those documents from it', async () => {
+    setLibraryState(personalLibrary, detailsOf(personalLibrary))
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const anchor = await screen.findByRole('region', { name: 'Metadaten-Pflege' })
+    expect(within(anchor).getByText('3 Dokumente ohne Wert (75 %)')).toBeInTheDocument()
+    expect(within(anchor).getByText('1 × kein Wert ermittelbar')).toBeInTheDocument()
+
+    mockGetLibraryDocuments.mockClear()
+    await user.click(
+      within(anchor).getByRole('button', { name: 'Dokumente ohne Wert für Dokumentart anzeigen' }),
+    )
+
+    await waitFor(() =>
+      expect(mockGetLibraryDocuments).toHaveBeenLastCalledWith('library-mine', {
+        page: 0,
+        size: 20,
+        q: '',
+        folderId: null,
+        missingMetadataField: 'document_type',
+      }),
+    )
+    expect(
+      await screen.findByText(/Es werden nur Dokumente ohne Wert für „Dokumentart" angezeigt/),
+    ).toBeInTheDocument()
   })
 })

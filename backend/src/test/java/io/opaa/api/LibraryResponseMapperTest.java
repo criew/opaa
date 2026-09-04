@@ -52,7 +52,7 @@ class LibraryResponseMapperTest {
             LibraryVisibility.ORGANIZATION,
             true);
     LibraryDetail detail =
-        new LibraryDetail(library, AssetRole.VIEWER, 7L, LibraryManagementDetail.EMPTY);
+        new LibraryDetail(library, AssetRole.VIEWER, 7L, LibraryManagementDetail.EMPTY, false);
 
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);
 
@@ -66,6 +66,12 @@ class LibraryResponseMapperTest {
     assertThat(response.getMyRole()).isEqualTo(AssetRole.VIEWER);
     assertThat(response.getSourceType()).isEqualTo(DocumentSourceType.UPLOAD);
     assertThat(response.getDocumentCount()).isEqualTo(7L);
+    // Leitplanke (e): every library starts diagnosegesperrt, and the state is readable by anyone
+    // who may read the library - not only by whoever just set it through the lock endpoint. Both
+    // states are asserted: a mapper reading the wrong field would match the entity's default.
+    assertThat(response.getDiagnosticsLocked()).isTrue();
+    library.setDiagnosticsLocked(false);
+    assertThat(LibraryResponseMapper.toResponse(detail).getDiagnosticsLocked()).isFalse();
     // #507: a caller below MANAGER never sees sourcePath/sourceUrl/schedule/storage quota - every
     // LibraryManagementDetail field stays null even though the record itself is always present.
     assertThat(response.getSourcePath()).isNull();
@@ -77,6 +83,31 @@ class LibraryResponseMapperTest {
     assertThat(response.getLastScheduledRunsFailed()).isNull();
     assertThat(response.getStorageQuotaBytes()).isNull();
     assertThat(response.getStorageUsedBytes()).isNull();
+  }
+
+  // #1278 review: myRole alone (bypassed to OWNER for a system admin) must not be mistaken for
+  // this field - a mapper reading myRole instead of LibraryDetail#diagnosticsLockToggleable would
+  // still pass every other assertion in this file, since every existing detail's myRole already
+  // matches the intended toggleable value.
+  @Test
+  void toResponseCopiesDiagnosticsLockToggleableIndependentlyOfMyRole() {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Rechtsquellen",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false);
+    LibraryDetail toggleable =
+        new LibraryDetail(library, AssetRole.OWNER, 0L, LibraryManagementDetail.EMPTY, true);
+    LibraryDetail notToggleable =
+        new LibraryDetail(library, AssetRole.OWNER, 0L, LibraryManagementDetail.EMPTY, false);
+
+    assertThat(LibraryResponseMapper.toResponse(toggleable).getDiagnosticsLockToggleable())
+        .isTrue();
+    assertThat(LibraryResponseMapper.toResponse(notToggleable).getDiagnosticsLockToggleable())
+        .isFalse();
   }
 
   @Test
@@ -105,7 +136,8 @@ class LibraryResponseMapperTest {
             false,
             1_000_000L,
             250_000L);
-    LibraryDetail detail = new LibraryDetail(library, AssetRole.MANAGER, 3L, managementDetail);
+    LibraryDetail detail =
+        new LibraryDetail(library, AssetRole.MANAGER, 3L, managementDetail, true);
 
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);
 
@@ -139,7 +171,7 @@ class LibraryResponseMapperTest {
             false);
     LibraryManagementDetail managementDetail =
         new LibraryManagementDetail(null, null, null, false, false, null, null, null, 0L, 0L);
-    LibraryDetail detail = new LibraryDetail(library, AssetRole.OWNER, 0L, managementDetail);
+    LibraryDetail detail = new LibraryDetail(library, AssetRole.OWNER, 0L, managementDetail, true);
 
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);
 
@@ -316,7 +348,8 @@ class LibraryResponseMapperTest {
 
     LibraryResponse response =
         LibraryResponseMapper.toResponse(
-            new LibraryDetail(confluence, AssetRole.VIEWER, 0, LibraryManagementDetail.EMPTY));
+            new LibraryDetail(
+                confluence, AssetRole.VIEWER, 0, LibraryManagementDetail.EMPTY, false));
 
     assertThat(response.getConfluenceEdition()).isEqualTo(ConfluenceEdition.CLOUD);
     assertThat(response.getConfluenceSpaces())
@@ -329,7 +362,7 @@ class LibraryResponseMapperTest {
             UUID.randomUUID(), "Upload", null, UUID.randomUUID(), LibraryVisibility.PRIVATE, false);
     LibraryResponse plain =
         LibraryResponseMapper.toResponse(
-            new LibraryDetail(upload, AssetRole.OWNER, 0, LibraryManagementDetail.EMPTY));
+            new LibraryDetail(upload, AssetRole.OWNER, 0, LibraryManagementDetail.EMPTY, false));
     assertThat(plain.getConfluenceEdition()).isNull();
     assertThat(plain.getConfluenceSpaces()).isNull();
   }

@@ -251,9 +251,10 @@ gilt zusätzlich die Mehrfachlauf-Regel aus [Abschnitt 3](#3-schlanke-statistik)
 > — kein zweiter Spring-Kontext, kein zweiter Reindex. Der Bericht (`VariantReport`, Artefakt unter
 > `build/eval-reports/`, nie committet) weist je Variante entweder das Messergebnis oder einen
 > Skip-Grund aus sowie für jede ausgeführte Variante ein Delta gegen die Referenzvariante,
-> aggregiert und je Golden-Fall. Eine Variante mit `requiresReindex=true` oder mit aktivierter
-> Teilfragen-Zerlegung wird als „nicht ausgeführt" gemeldet (`VariantPrerequisites`), nicht
-> stillschweigend gegen den falschen Index bzw. ohne Chat-Modell gemessen. Die
+> aggregiert und je Golden-Fall. Eine Variante mit `requiresReindex=true` wird als „nicht ausgeführt" gemeldet
+> (`VariantPrerequisites`), nicht stillschweigend gegen den falschen Index gemessen; dasselbe galt
+> bis Issue #1085 für jede Variante mit aktivierter Teilfragen-Zerlegung und gilt seither nur noch
+> für einen Lauf ohne aktives Chat-Modell. Die
 > Referenzvarianten-Selbstprüfung vergleicht die Referenzvariante gegen einen zweiten, unabhängigen
 > direkten Aufruf desselben produktiv verdrahteten `QueryService`-Beans im selben Lauf — Metriken
 > und Laufkonfiguration, harte Assertion, bitgleich — nicht gegen eine zweite, handgebaute
@@ -339,26 +340,30 @@ Variantenvergleich formulieren lässt. Genau das ist der Zweck des Aufbaus.
 > neben den Chunks auch die tatsächlich gestellten Suchanfragen zurückgibt; jeder Pipeline-Report
 > führt sie seither je Fall mit (`PipelineQueryResult#subQueries`).
 >
-> **Der Mechanismus ist heute nicht scharf geschaltet**, weil er es nicht sein kann: Jede Variante
-> mit `queryDecompositionEnabled=true` wird von `VariantPrerequisites` weiterhin als „nicht
-> ausgeführt“ gemeldet, weil der Harness-Kontext noch kein Chat-Modell hat (siehe „Offene Punkte“ 3
-> unten). Die Regel selbst — Ausführungszahl, Aggregation, Median-Auswahl, Abweichungszählung — ist
-> deshalb über `MultiRunAggregatorTest`/`VariantRunnerTest` mit synthetischen Reports und einem
-> injizierten Mess-Supplier abgesichert (issue #1044 review, Befund 1: `VariantRunner` trennt die
-> Regel selbst von der Docker-gebundenen `QueryService`-Beschaffung genau dafür), nicht über einen
-> echten Zerlegungslauf.
+> **Scharf geschaltet mit Issue #1085.** Der Harness hat seither ein gepinntes, lokales
+> Chat-Modell (`io.opaa.eval.EvalChatModel`, ADR-0011-Nachtrag), und `VariantPrerequisites`
+> überspringt eine zerlegende Variante nur noch, wenn der Lauf gar kein aktives Chat-Modell hat. Die
+> Regel selbst — Ausführungszahl, Aggregation, Median-Auswahl, Abweichungszählung — bleibt
+> zusätzlich über `MultiRunAggregatorTest`/`VariantRunnerTest` mit synthetischen Reports und einem
+> injizierten Mess-Supplier abgesichert (issue #1044 review, Befund 1), damit sie ohne Docker
+> prüfbar bleibt.
 >
-> **Sie greift automatisch, sobald eine Variante das Chat-Modell bekommt — mit einer offenen Folge,
-> die #1085 mitlösen muss.** Wird dabei die Referenzvariante selbst (keine Parameteränderung)
-> zerlegungsfähig — etwa weil `queryDecompositionEnabled` in der Produktionskonfiguration auf
-> `true` wechselt —, wird sie bei ihrem nächsten Lauf ebenfalls zur Mehrfachlauf-Variante: drei
-> Läufe, Median-Auswahl. Die Referenzvarianten-Selbstprüfung
-> (`RetrievalEvaluationHarnessTest`, siehe `eval/variants/README.md`) vergleicht die
-> Referenzvariante bisher aber bitgleich gegen genau **einen** unabhängigen Direktaufruf desselben
-> `QueryService`-Beans — ein Median aus drei nichtdeterministischen Läufen kann mit einem einzelnen
-> Direktaufruf strukturell nicht mehr bitgleich sein. Diese Prüfung muss #1085 deshalb mitlösen
-> (z. B. durch drei Direktaufrufe und denselben Median-Vergleich auf beiden Seiten), nicht als
-> Nebeneffekt der Chat-Modell-Anbindung entdecken.
+> **Sie gilt jetzt auf beiden Seiten der Referenzvarianten-Selbstprüfung.** Wird die
+> Referenzvariante selbst zerlegungsfähig (weil `queryDecompositionEnabled` in der gemessenen
+> Konfiguration `true` ist), ist sie eine Mehrfachlauf-Variante: drei Läufe, Median-Auswahl. Der
+> unabhängige Direktaufruf desselben `QueryService`-Beans läuft deshalb seit #1085 durch dieselbe
+> Regel (`MehrfachlaufRule`, angewandt in `ReferenceVariantSelfCheck`) — ein Median gegen einen
+> Einzellauf könnte aus strukturellen Gründen nie bitgleich sein, unabhängig davon, wie stabil das
+> Chat-Modell ist. Dasselbe gilt für den Pipeline-Messpfad selbst: mit aktiver Zerlegung misst er
+> dreimal und berichtet den Median-Lauf, samt Minimum/Median/Maximum und Abweichungszahl im
+> Lauf-Log.
+>
+> **Der Determinismus-Vorbehalt bleibt bestehen und ist jetzt gemessen.** Im ersten echten
+> Mehrfachlauf (Verwaltung, 46 Fälle, `qwen2.5:1.5b-instruct` bei Temperatur 0) wichen **0 Fälle**
+> zwischen den drei Läufen ab, alle vier Metriken min = median = max. Eine separate Stichprobe
+> derselben Fragen gegen denselben Endpunkt unter hoher CPU-Last lieferte dagegen bei 2 von 8 Fragen
+> unterschiedliche Teilfragen — Temperatur 0 allein garantiert die Reproduzierbarkeit also nicht,
+> und genau dafür existieren die Mehrfachläufe und die Abweichungszahl des `MultiRunSummary`.
 
 ### Entscheidung
 
@@ -879,21 +884,101 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
    von 180 Minuten in der langsamsten beobachteten Messung) verträgt die Vervielfachung durch mehrere
    Varianten und dreifache Zerlegungsläufe nicht risikofrei, und Variantenvergleiche sind laut
    Abschnitt 2 ohnehin punktuelle Belege für Roadmap-Entscheidungen, keine laufende Prüfung.
-3. **Chat-Modell für den Pipeline-Pfad mit aktiver Zerlegung — Empfehlung mit Issue #1044 (08/2026),
-   Umsetzung als Folge-Issue #1085.** Empfehlung: ein lokales, über den bestehenden
-   Ollama-Mechanismus bereitgestelltes Instruct-Modell, wie das Einbettungsmodell per Tag **und**
-   Content-Digest gepinnt, Temperatur 0 — konsistent mit dem übrigen Determinismus-/Pinning-Ansatz
-   dieses Harness (ADR-0011, Entscheidung 4) und ohne neues Secret. Kandidat: ein kleines Modell in
-   der Größenordnung von `qwen2.5:1.5b-instruct` oder `llama3.2:3b-instruct`, endgültige Auswahl
-   anhand tatsächlicher Zerlegungsqualität an Golden-Fällen. Akzeptierte Nachteile: zusätzliche
-   Laufzeit (durch die Mehrfachlauf-Regel aus Abschnitt 3 je Zerlegungsvariante verdreifacht) und eine
-   Zerlegungsqualität, die nicht repräsentativ für das tatsächliche Produktionsmodell ist — der
-   Benchmark misst dann die Zerlegungs**mechanik**, nicht die Zerlegungs**güte** des
-   Produktionsmodells. Ein gehostetes Modell (Secret, Kosten, Driftrisiko) und ein eingefrorener
-   Zerlegungs-Cache (vollständig deterministisch, misst Zerlegung aber gar nicht mehr) wurden
-   erwogen und zugunsten des lokalen Modells zurückgestellt. Die formale Freigabe dieser Empfehlung
-   und ihre Umsetzung (Chat-Modell-Bean im Eval-Kontext, Modell-Cache in der Workflow-Datei,
-   Prerequisite-Lockerung, erste Baseline mit aktiver Zerlegung) sind Gegenstand von Issue #1085.
+   **Nachgeschärft mit Issue #1085 (09/2026):** Die Aufteilung bleibt genau so. Neu gemessen wurde
+   nur, was der zerlegende Lauf kosten würde (Punkt 3 unten) — er bleibt deshalb ebenfalls
+   ausschließlich manuell. Der nächtliche Job misst unverändert die deterministische Konfiguration
+   ohne Zerlegung; die **Messzeit** ändert sich dadurch nicht. Was sich ändert, ist der Modell-Cache:
+   Der Cache-Schlüssel trägt jetzt beide Digests, der **erste** Lauf nach dieser Änderung ist deshalb
+   kalt und zieht zusätzlich ~986 MB, jeder folgende restauriert ~1,26 GB statt ~275 MB (siehe
+   `.github/workflows/retrieval-regression.yml`). Dafür ist `timeout_minutes` der langsamsten Domäne
+   (`city-landmarks`, im ungünstigsten beobachteten Fall ~133 von zuvor 180 Minuten) auf 195 Minuten
+   angehoben — der zusätzliche Puffer deckt den kalten Erstlauf, ohne die Grenze so weit zu öffnen,
+   dass eine hängende Indizierung darin verschwindet.
+3. **Chat-Modell für den Pipeline-Pfad mit aktiver Zerlegung — angebunden mit Issue #1085
+   (09/2026).** Der Harness hat seither ein lokales, über den bestehenden Ollama-Mechanismus
+   bereitgestelltes Instruct-Modell: `qwen2.5:1.5b-instruct`, per Tag **und** Content-Digest
+   gepinnt, Temperatur 0, über den produktiven Anbindungsweg verdrahtet (aktive Zeile in
+   `llm_models`, aufgelöst von `ActiveChatModelResolver`) — kein Secret, kein zweiter Codepfad
+   (`io.opaa.eval.EvalChatModel`, ADR-0011-Nachtrag vom 04.09.2026). Damit ist
+   `queryDecompositionEnabled=true` messbar, und die Mehrfachlauf-Regel aus Abschnitt 3 ist real
+   scharf geschaltet statt nur synthetisch geprüft.
+
+   **Gemessen wurde dabei zweierlei, und beides spricht gegen eine committete Baseline mit aktiver
+   Zerlegung** (Domäne Verwaltung, 46 Golden-Fälle, Testcontainer-Pfad, CPU):
+
+   - **Zerlegungsgüte.** Mit diesem Modell fällt der Pipeline-Pfad von nDCG@8 0,740 auf 0,402 und
+     von Hit Rate@5 0,957 auf 0,587. Die Ursache ist kein graduell schwächeres Umformulieren: In
+     23 der 46 Fälle bestand die einzige erzeugte Teilfrage aus dem **Beispielsatz des
+     Systemprompts** („und was kostet das?"), die eigentliche Nutzerfrage war damit vollständig
+     verworfen. Ein 1,5-B-Modell verwechselt das Beispiel in der Regel mit der Aufgabe. Eine
+     Baseline auf dieser Grundlage würde nicht die Zerlegungsmechanik absichern, sondern einen
+     Defekt einfrieren.
+   - **Laufzeit.** Ein zerlegender Durchlauf kostet einen Chat-Aufruf je Golden-Fall und läuft nach
+     der Mehrfachlauf-Regel dreimal. Auf einer entwicklungsüblichen CPU-Maschine gemessen: rund
+     1,5 s je Aufruf unter Last, ~200 s für die drei Durchläufe der kleinsten Domäne (46 Fälle) —
+     gegenüber rund 25 s für den einen deterministischen Durchlauf, den der nächtliche Job heute
+     fährt. Auf die größte Domäne (`comic-characters`, 121 Fälle) und die 2-vCPU-Runner der CI
+     hochgerechnet liegt das deutlich über dem Zeitbudget, das `city-landmarks` ohnehin schon zu
+     drei Vierteln ausschöpft (siehe Punkt 2).
+
+   **Daraus folgt der heutige Stand:** Jede committete Pipeline-Baseline bleibt bei
+   `queryDecompositionEnabled=false`, ausgewiesen als Festpunkt der Baseline-Datei; der zerlegende
+   Lauf ist ein ausdrückliches Opt-in (`-Dopaa.eval.queryDecomposition=true`,
+   `io.opaa.eval.EvalQueryDecomposition`) und damit eine benannte Einzelmessung, die
+   `PipelineBaselineComparator` als unvergleichbar meldet statt als Regression. Offen bleibt die
+   Modell- bzw. Promptfrage: ein größeres lokales Modell, ein für kleine Modelle robusterer
+   Zerlegungsprompt (der heutige führt sein Beispiel im Fließtext) oder ein gehostetes Modell
+   (Secret, Kosten, Driftrisiko). Das ist Gegenstand von Issue #1254, nicht dieser Anbindung.
+
+   **Nachgemessen mit Issue #1254 (09/2026) — Promptfrage beantwortet, Baselinefrage weiterhin
+   offen.** Der Zerlegungsprompt führt sein Beispiel nicht mehr im Fließtext einer Regel mit; er
+   beschreibt die Ausgabeform nur noch, die Folgefragen-Auflösung bleibt als Regel erhalten.
+   Zusätzlich fällt `QueryDecompositionService` auf die unzerlegte Frage zurück, sobald auch nur
+   eine Teilfrage keinen Wortbezug zu Frage und Gesprächsverlauf hat — sichtbar über WARN
+   (Zählwerte, keine Inhalte) und `opaa.query.decomposition.fallback`. Gemessen auf der Domäne
+   Verwaltung (46 Golden-Fälle, Temperatur 0, `-Dopaa.eval.ollamaBaseUrl` gegen ein Host-Ollama
+   statt des Testcontainers, `-Dopaa.eval.queryDecomposition=true`, Median aus je drei Läufen):
+
+   | Metrik | Zerlegung aus | qwen2.5:1.5b, alter Prompt | qwen2.5:1.5b, neuer Prompt | phi3:mini, alter Prompt | phi3:mini, neuer Prompt |
+   |---|---|---|---|---|---|
+   | Hit Rate@5 | 0,957 | 0,804 | 0,957 | 0,913 | 0,935 |
+   | MRR@8 | 0,779 | 0,690 | 0,770 | 0,741 | 0,785 |
+   | nDCG@8 | 0,740 | 0,642 | 0,727 | 0,701 | 0,745 |
+   | Recall@8 | 0,837 | 0,714 | 0,826 | 0,786 | 0,819 |
+   | Fälle mit degenerierter Ausgabe | — | 8 von 46 | 0 von 46 | 1 von 46 | 0 von 46 |
+
+   Die Zahlen der Spalte „Zerlegung aus" sind auf diesem Endpunkt bitgleich zur committeten
+   Baseline; die Spalten sind also untereinander vergleichbar. `phi3:mini` ist das Standardmodell
+   aus `.env.example` und wurde durch dieselbe Messung geschickt (dafür wurde `EvalChatModel` lokal
+   und uncommittet umgepinnt) — es litt unter dem alten Prompt deutlich weniger als das
+   1,5-B-Modell und gewinnt durch den neuen ebenfalls. Der Einbruch war ein Produktionsfehler, kein
+   Modellbefund: Auf dieser Hardware fiel bereits der alte Prompt milder aus als im
+   CPU-Testcontainer des ursprünglichen Befunds (8 statt 23 degenerierte Fälle), und der neue
+   Prompt beseitigt sie vollständig.
+
+   Als Delta gegen die Konfiguration ohne Zerlegung (Abschnitt 3 verlangt Deltas, keine
+   Streuungsbehauptung — der Pipeline-Pfad ist mit Zerlegung nicht deterministisch, aber alle vier
+   Metriken hatten in jedem der Läufe min = median = max, es liegt also keine gemessene Streuung
+   vor, hinter der ein Delta verschwinden könnte): Mit `qwen2.5:1.5b-instruct` liegen drei der vier
+   Metriken **unter** der Konfiguration ohne Zerlegung — nDCG@8 0,727 gegen 0,740 (−0,013), MRR@8
+   0,770 gegen 0,779 (−0,009), Recall@8 0,826 gegen 0,837 (−0,011) —, Hit Rate@5 ist mit 0,957
+   gleich. Mit `phi3:mini` liegen zwei darüber — nDCG@8 0,745 gegen 0,740 (+0,005), MRR@8 0,785
+   gegen 0,779 (+0,006) — und zwei darunter: Hit Rate@5 0,935 gegen 0,957 (−0,022), Recall@8 0,819
+   gegen 0,837 (−0,018). Die Zerlegung kauft auf dieser Domäne also keinen Gewinn; sie kostet nach
+   der Prompt-Korrektur aber auch nichts mehr in der Größenordnung des ursprünglichen Einbruchs
+   (nDCG@8 −0,098).
+
+   **Ungemessen bleibt der Folgefragen-Pfad.** Der Harness fährt ohne Gesprächsverlauf (ein
+   Golden-Fall ist eine eigenständige Frage), die 46 Fälle enthalten also keine einzige Folgefrage;
+   die obige Parität gilt ausdrücklich nur für eigenständige Fragen. Für den Folgefragen-Pfad gibt
+   es bislang nur eine manuelle Stichprobe über fünf Fälle (PR #1281) und einen Unit-Test mit
+   gestubbtem Modell — nichts davon ist eine Messung im Sinne dieses Dokuments.
+
+   **Nicht entschieden** ist, ob die committete Pipeline-Baseline auf
+   `queryDecompositionEnabled=true` umgestellt wird — dagegen spricht unverändert das
+   Laufzeitargument oben (drei Läufe je Domäne), und der Festpunktwechsel ist eine bewusste
+   Neuziehung. Der Punkt bleibt offen und wird zusammen mit der zweiten Domäne in einem
+   Folge-Issue geführt.
 4. **Umgang mit `answer_span` bei Fallklassen mit mehreren Zieldokumenten — entschieden mit Issue
    #1043 (08/2026).** Die Chunkebenen-Metrik wird **je Fall** gebildet, und ein `answer_span` ist
    nur bei Fällen mit **genau einem** erwarteten Dokument zulässig; mehrdokumentige Fälle

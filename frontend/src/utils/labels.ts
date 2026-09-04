@@ -1,10 +1,12 @@
 import type {
   AssetRole,
+  DatePrecision,
   DocumentSourceType,
   DocumentStatus,
   GroupKind,
   IndexingRunEventCategory,
   LibraryVisibility,
+  MetadataOrigin,
   PermissionSubjectType,
   ScheduleFrequency,
   ScheduleWeekday,
@@ -343,4 +345,39 @@ const confluenceEditionLabels: Record<ConfluenceEdition, string> = {
 export function confluenceEditionLabel(edition: ConfluenceEdition | string | undefined): string {
   if (!edition) return ''
   return confluenceEditionLabels[edition as ConfluenceEdition] ?? edition
+}
+
+// #1068: provenance of a document metadata value (metadata-schema.md, "Jeder Wert trägt seine
+// Herkunft") - a DERIVED value is always marked as such in the UI.
+const metadataOriginLabels: Record<MetadataOrigin, string> = {
+  DETERMINISTIC: 'automatisch ermittelt',
+  DERIVED: 'abgeleitet',
+  MANUAL: 'manuell',
+}
+
+export function metadataOriginLabel(origin: MetadataOrigin | string | null | undefined): string {
+  if (!origin) return ''
+  return metadataOriginLabels[origin as MetadataOrigin] ?? origin
+}
+
+export const datePrecisions: DatePrecision[] = ['DAY', 'MONTH', 'YEAR']
+
+const datePrecisionLabels: Record<DatePrecision, string> = {
+  DAY: 'Tag',
+  MONTH: 'Monat',
+  YEAR: 'Jahr',
+}
+
+export function datePrecisionLabel(precision: DatePrecision | string | null | undefined): string {
+  if (!precision) return ''
+  return datePrecisionLabels[precision as DatePrecision] ?? precision
+}
+
+/**
+ * A 0..1 share as a whole German percentage - the one rendering of the Füllgrad and the
+ * Pflege-Anker (#1069), so the same figure never appears as "64 %" in one place and "63,6 %" in
+ * another.
+ */
+export function formatShare(share: number): string {
+  return `${Math.round(share * 100)} %`
 }

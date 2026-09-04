@@ -97,7 +97,7 @@ an den JVM-Prozess gebunden, der ihn eingereiht hat):
 | Fundstelle | Zustand |
 | --- | --- |
 | `LibraryDocumentService` (Upload-Pfad, `opaa.upload.storage-path`, Default `./uploads`) | Speichert hochgeladene Dokumente unter `<storagePath>/<libraryId>/<random-uuid><extension>` auf dem lokalen Dateisystem des Prozesses. Bei zwei Instanzen ohne geteiltes Volume: ein Upload, der auf Instanz A ankommt, ist über Instanz B nicht lesbar - 404/`FileNotFoundException`, sobald eine spätere Anfrage (Download, Re-Indizierung) zufällig auf B landet. Härteste Annahme dieser Liste: kein Cache-Verfall oder Retry hilft hier, die Datei existiert auf B schlicht nicht |
-| `FilesystemPathAllowlist` (`FILESYSTEM`-Quellentyp, #484, ADR-0018) | Vom Betreiber gemounteter Nachbarfall, keine eigene Annahme dieser Anwendung: das Backend liest von per `opaa.indexing.filesystem-allowlist` konfigurierten Basisverzeichnissen. Ob mehrere Instanzen dasselbe Verzeichnis sehen, hängt vollständig davon ab, ob der Betreiber es auf jeder Instanz gleich mountet - anders als beim Upload-Pfad gibt es hier keinen anwendungsseitigen Schreibpfad, der bei fehlendem geteiltem Mount silently divergieren könnte |
+| `FilesystemPathAllowlist` (`FILESYSTEM`-Quellentyp, #484, ADR-0018) | Vom Betreiber gemounteter Nachbarfall, keine eigene Annahme dieser Anwendung: das Backend liest von per `opaa.indexing.filesystem.allowlist` konfigurierten Basisverzeichnissen. Ob mehrere Instanzen dasselbe Verzeichnis sehen, hängt vollständig davon ab, ob der Betreiber es auf jeder Instanz gleich mountet - anders als beim Upload-Pfad gibt es hier keinen anwendungsseitigen Schreibpfad, der bei fehlendem geteiltem Mount silently divergieren könnte |
 
 ### Regel für neue Stellen
 

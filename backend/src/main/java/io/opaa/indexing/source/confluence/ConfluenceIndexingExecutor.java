@@ -139,11 +139,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     this.clock = clock;
     this.attachmentLimits =
         new AttachmentDownloadLimits(
-            1,
-            properties.maxAttachmentSizeBytes(),
-            0L,
-            properties.userAgent(),
-            AttachmentIndexer.DEFAULT_MAX_ATTACHMENT_DEPTH);
+            1, properties.maxAttachmentSizeBytes(), 0L, properties.userAgent());
   }
 
   @Override

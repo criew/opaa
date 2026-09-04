@@ -4,6 +4,7 @@ import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.indexing.pipeline.DocumentTitleLine;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
 import java.io.IOException;
@@ -89,9 +90,10 @@ public class MarkdownDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * The frontmatter's scalar entries verbatim plus the first level-1 heading (ADR-0024) - the eval
-   * corpus' {@code titel}/{@code dokumentart}/{@code stand_datum}/{@code fassung} keys reach the
-   * extractor this way, uninterpreted.
+   * The frontmatter's scalar entries verbatim, the first level-1 heading (ADR-0024) and the opening
+   * of the text after the frontmatter (#1263) - the eval corpus' {@code titel}/{@code
+   * dokumentart}/{@code stand_datum}/{@code fassung} keys reach the extractor this way,
+   * uninterpreted.
    */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
@@ -115,7 +117,16 @@ public class MarkdownDocumentPipeline implements DocumentPipeline {
         break;
       }
     }
-    return new DocumentProperties(null, null, null, null, firstHeading, frontmatterEntries(raw));
+    return new DocumentProperties(
+        null,
+        null,
+        null,
+        null,
+        firstHeading,
+        DocumentTitleLine.ofEvents(events),
+        null,
+        false,
+        frontmatterEntries(raw));
   }
 
   /**

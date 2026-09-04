@@ -19,11 +19,16 @@ Sie ist die dritte von drei zusammengehörigen Spezifikationen und die letzte in
 [Hybrides Retrieval](./hybrid-retrieval.md) baut die zwei Suchpfade, in denen ein Filter überhaupt
 wirken kann; [Ingestion-Pipelines](./ingestion-pipelines.md) baut die Aufnahmestrecke, in der
 Metadaten entstehen; dieses Dokument beschreibt, **welche** Metadaten das sind, **woher sie kommen**
-und **was sie im Retrieval bewirken**. **Gebaut ist bisher Arbeitspaket 1** (Kernfelder,
-Herkunft, deterministische Extraktion, Beleg-Anzeige — #1066, siehe
-[Umgesetzt (#1066)](#umgesetzt-1066) und [ADR-0024](../decisions/0024-metadatenschema-kernfelder.md));
-alles Weitere — Bestandslauf, manuelle Korrektur, Filter, Bibliotheksfelder, Modell-Extraktion — ist
-noch nicht gebaut.
+und **was sie im Retrieval bewirken**. **Gebaut sind bisher die Arbeitspakete 1, 2 und
+3** (Kernfelder, Herkunft, deterministische Extraktion, Beleg-Anzeige — #1066,
+siehe [Umgesetzt (#1066)](#umgesetzt-1066) und
+[ADR-0024](../decisions/0024-metadatenschema-kernfelder.md); deterministischer Bestandslauf — #1067,
+siehe [Umgesetzt (#1067)](#umgesetzt-1067); manuelle Korrektur, Sammelzuweisung und Audit-Ereignis —
+#1068, siehe [Umgesetzt (#1068)](#umgesetzt-1068); Pflege-Anker und der dritte Zustand „kein Wert
+ermittelbar" — #1069, siehe [Umgesetzt (#1069)](#umgesetzt-1069); Dokumentart auch aus Dokumentkopf
+und Dateiformat — #1263, siehe [Umgesetzt (#1263)](#umgesetzt-1263), mit der Kopfregel auf die
+Titelzeile verengt in #1289); alles Weitere — Filter,
+Bibliotheksfelder, Modell-Extraktion — ist noch nicht gebaut.
 
 ---
 
@@ -187,7 +192,7 @@ Drei Felder, fest eingebaut, für jedes Dokument in jeder Bibliothek:
 | Feld | Typ | Zweck | Herkunft |
 |---|---|---|---|
 | **Titel** | Text | Beleg-Anzeige, Kontextpräfix | Dokumenteigenschaften, Überschrift erster Ebene, Dateiname — in dieser Reihenfolge |
-| **Dokumentart** | kontrolliertes Vokabular | Filter („nur Dienstanweisungen"), Beleg-Einordnung | Dateinamenskonvention, Dokumentkopf; sonst — sofern für die Bibliothek eingeschaltet — Sprachmodell mit Konfidenz |
+| **Dokumentart** | kontrolliertes Vokabular | Filter („nur Dienstanweisungen"), Beleg-Einordnung | Dateinamenskonvention, Titelzeile des Dokuments, Dateiformat; sonst — sofern für die Bibliothek eingeschaltet — Sprachmodell mit Konfidenz |
 | **Datum/Stand** | Datum oder Jahr | Filter („nach dem Stand 2024"), Beleg-Anzeige, Aktualitätsfragen | Datumsangaben im Kopfbereich, Dateiname, Dokumenteigenschaften |
 
 Drei Festlegungen dazu:
@@ -386,8 +391,95 @@ gekennzeichnet; `location` bleibt die Fundstelle. Die vier Mail-Sonderfelder
 Rechtekontext" ist durch Beschluss 1 des Maintainers ersetzt (Systemprozess; die Rechte-Invariante gilt
 für Aggregate, Stichproben und Modell-Extraktion). Das Korpus-Frontmatter `dokumentart: formularhinweis`
 bleibt leer — es ist kein Vokabularwert, und die Regel verbietet die Abbildung auf `FORMULAR`.
-Tabellen-Pipelines (XLSX/CSV/ODS) und der Tika-Fallback liefern keine `DocumentProperties`; dort
-greifen nur Dateiname und Struktur.
+Tabellen-Pipelines (XLSX/CSV/ODS) liefern keine `DocumentProperties`; dort greifen nur Dateiname und
+Struktur. Der Tika-Fallback lieferte in diesem Schnitt ebenfalls keine — seit #1263 liefert er eine
+Titelzeile (#1289).
+
+### Umgesetzt (#1263)
+
+Die Dokumentart aus **Dokumentkopf und Dateiformat**, nachgezogen nach dem ersten Füllstandsnachweis
+auf der Demo-Instanz (04.09.2026): Dort lag die Dokumentart bei 0–5 %, weil die Dateinamen des
+Bestands entweder gar keinen Vokabular-Token tragen (`01_identitaetszweifel-ausweisantrag.docx`,
+`21_onboarding-buergerbuero.pptx`) oder ihn als deutsches Kompositum
+(`01_verwaltungsgebuehrensatzung.pdf`), das ein exakter Token-Abgleich nicht sieht. Die
+Extraktionsversion steigt auf **2**; der Bestandslauf (#1067) wählt jedes Dokument der Version 1
+dadurch erneut aus. Die Kopfregel dieses Schnitts ist mit #1289 auf die Titelzeile verengt worden
+(siehe unten) — die Extraktionsversion steht seitdem auf **3**.
+
+**Quellenreihenfolge der Dokumentart:** Frontmatter → Dateiname → Titelzeile → Dateiformat. Erste
+Quelle mit genau einem eindeutigen Treffer gewinnt. Für die drei Token-Quellen gilt: mehrere
+verschiedene Treffer in **einer** Quelle liefern aus dieser Quelle nichts, die nächste Quelle wird
+aber noch gefragt — ein mehrdeutiger Dateiname ist keine Aussage über das Dokument, sondern nur eine
+Quelle ohne Ergebnis. Die Frontmatter-Deklaration bleibt davon ausgenommen: Sie ist eine ausdrückliche
+Erklärung, und ein Wert außerhalb des Vokabulars lässt das Feld leer, statt auf den Dateinamen
+durchzufallen (unverändert seit #1066).
+
+**Titelzeile (korrigiert mit #1289).** Aus dem Dokument zählt für die Dokumentart genau **eine**
+Zeile: die erste nicht-leere Zeile des Textes — bei Markdown die erste Überschrift oder Zeile ohne
+`#`-Präfix, bei DOCX/ODT der erste Absatz, bei PDF die erste Textzeile der ersten Seite, bei HTML der
+erste Textblock. Eine **Überschrift der ersten Ebene, die nicht diese Zeile ist** (ein
+Markdown-Abschnitt „# Benötigtes Formular", ein PDF-Lesezeichen), liefert selbst keine Dokumentart —
+sie ist dieselbe Referenz wie eine Beschriftungszeile. Sie wirkt nur als Veto: Trägt sie einen
+anderen Vokabularwert als die Titelzeile, bleibt das Feld leer („lieber leer als geraten"). Nur wenn
+ein Format überhaupt keine Textzeile liefert, tritt die erste Überschrift an ihre Stelle. `DocumentProperties`
+trägt sie als `titleLine` — das Record kürzt einen übergebenen Text selbst auf diese eine Zeile und
+begrenzt sie auf 300 Zeichen, damit keine Pipeline versehentlich mehr als eine Titelzeile übergeben
+kann. Befüllt von DOCX, ODT, Markdown, HTML (erster Textblock, weil eine Seite keine eigenen
+Zeilenumbrüche hat), PDF (die erste Seite, auf beiden Wegen — `run` und `readProperties` — dieselbe)
+und dem Tika-Fallback. Der Abgleich läuft über Wortgrenzen, groß-/kleinschreibungs- und
+umlautunempfindlich, **exakt** gegen Code, Label und Synonyme — die Endungsregel unten gilt hier
+ausdrücklich **nicht**: Auch eine Titelzeile trägt Komposita, die keine Dokumentart sind („in dieser
+Größenordnung"), und ein falscher Wert mit Herkunft `DETERMINISTIC` ist genau der unsichtbare
+Dauerschaden, den die Leitregel ausschließt. Der Schnitt bei 300 Zeichen läuft bis zur letzten
+Wortgrenze, damit kein Wortfragment zum Treffer wird. Eine Titelzeile entsteht nur für eine echte
+Datei: Der Fließtext eines RSS-Beitrags ist keine Selbstbezeichnung, weil eine Pressemitteilung
+*andere* Dokumente benennt als sich selbst.
+
+**Warum nur die Titelzeile (#1289).** #1263 las den ganzen Kopfbereich (300 Zeichen Fließtext). Der
+zweite Füllstandsnachweis auf der Demo zeigte den Schaden: 83 Leistungsbeschreibungen trugen
+`FORMULAR`, weil unter ihrem Titel eine Beschriftungszeile `**Formular:** RF-KFZ-001` steht, und
+`15_faq-ausweisbeantragung.pdf` trug `DIENSTANWEISUNG` wegen des Satzes „… nach der Dienstanweisung
+zur Terminvergabe …". Eine Erwähnung unterhalb der Titelzeile ist eine **Referenz auf ein anderes
+Dokument**, keine Selbstbezeichnung — Beschriftungen (`Formular:`, `Aktenzeichen:`) und Zitate werden
+deshalb gar nicht mehr gelesen. Die Extraktionsversion steigt dafür auf **3**; der Bestandslauf wählt
+jedes Dokument der Version 2 erneut aus, ein falscher `DETERMINISTIC`-Wert wird bei leerem Ergebnis
+entfernt, ein manueller Wert bleibt unberührt.
+
+**Kompositum-Endungsregel (Migration 020).** Je Vokabularwert sind Endungen geseedet
+(`document_type_suffixes`: `satzung`, `ordnung`, `dienstanweisung`, `gebuehrenverzeichnis`,
+`protokoll`, `formular`, `vermerk`) mit einer Mindestlänge des Vorderteils (3). Sie gilt **nur für
+Dateinamen-Token**. Ein Token, das auf eine Endung endet und genug davor trägt, denotiert diese
+Dokumentart:
+`verwaltungsgebuehrensatzung` → `SATZUNG_ORDNUNG`, `verordnung` (eine Rechtsnorm) ebenso,
+`anordnung` dagegen nicht. `document_type_suffix_exclusions` führt die Komposita, die eine Endung
+sonst zu Unrecht beanspruchen würde — `Tagesordnung`, `Größenordnung`, `Sitzordnung`, `Rangordnung`,
+`Ein-/Neu-/Um-/Unter-/Zu-/Neuzuordnung` sowie `Sperr-`, `Sicht-` und `Eingangsvermerk`; `anordnung`
+und `zuordnung` stehen dort zusätzlich, damit ein späteres Nachjustieren der Mindestlänge sie nicht
+stillschweigend zu Satzungen macht. Die Liste ist bewusst konkret statt schlau: Keine Längenregel
+trennt `Tagesordnung` von `Verordnung` oder `Hausordnung`, die Rechtsnormen sind und zugelassen
+bleiben. Deterministischer Zeichenvergleich, kein Distanzmaß — ein exakter Vokabularbegriff
+schlägt jede Endung (`dienstanordnung` ist eine Dienstanweisung), und ein Token, auf das zwei
+verschiedene Dokumentarten passen, liefert nichts. Die Endungsregel gilt nur für Token aus Dateiname
+und Kopf; ein **deklarierter oder manuell gesetzter** Wert wird weiterhin ausschließlich exakt gegen
+das Vokabular geprüft.
+
+**Ein Name, der kein Dateiname ist.** `DocumentProperties` trägt ein Kennzeichen dafür, ob der Name
+eines Dokuments überhaupt ein Dateiname ist. Für einen RSS-Beitrag ist er es nicht: Dort steht die
+Überschrift des Eintrags (ersatzweise seine URL) im `file_name`. Eine Überschrift benennt, *worum es
+geht*, nicht *was das Dokument ist* — „Rat beschließt neue Hundesteuersatzung" ist keine Satzung, und
+„Haushalt 2024 beschlossen" trägt keinen Stand. Für einen solchen synthetischen Namen entfallen
+deshalb **beide** Namensquellen: der Token-Abgleich der Dokumentart (samt Endungsregel) und die
+Datumsangabe aus dem Namen. Als **Titel** bleibt die Überschrift, denn genau das ist sie. Gesetzt wird
+das Kennzeichen an den zwei Stellen, an denen ein RSS-Eintragskörper in die Extraktion geht —
+`FileProcessingService#processRssEntry` im Ingest und `MetadataBackfillService` im Bestandslauf —,
+damit beide Wege dieselben Felder aus derselben Zeile lesen.
+
+**Dateiformat.** PPTX/ODP → `PRAESENTATION` (die beiden Präsentationsformate, die
+`SupportedDocumentFormats` überhaupt zulässt), als letzte Quelle: Jede Textquelle geht vor, und ein
+Vokabular ohne diesen Code liefert nichts. Keine Ableitung für PDF/DOCX — diese Formate tragen jede
+Dokumentart. Die geroutete Formatkennung hängt zentral an den Rohquellen
+(`DocumentPipelineRunner` im Ingest, `DocumentMetadataService#reextractFromFile` im Bestandslauf),
+nicht in den einzelnen Pipelines — sie ist ein Befund des Routings, nicht des Formats.
 
 ## Deterministischer Bestandslauf über den Altbestand
 
@@ -417,6 +509,82 @@ Wer nach `Fassung` filtert, sieht am Feld, für wie viele Dokumente der Biblioth
 vorliegt. Ein Filter auf ein zu 12 % befülltes Feld ist eine andere Handlung als ein Filter auf ein zu
 97 % befülltes — und der Unterschied ist an der Trefferliste allein nicht erkennbar, weil die
 Leerwert-Regel beide Fälle gleich aussehen lässt.
+
+### Umgesetzt (#1067)
+
+Arbeitspaket 2 — der Bestandslauf über den Altbestand, gebaut als **zweiter Anwender derselben
+Mechanik wie der Pipeline-Reindex** ([Ingestion-Pipelines, Umgesetzt (#1056)](./ingestion-pipelines.md#umgesetzt-1056)),
+nicht als zweiter Nachlauf-Mechanismus.
+
+**Ein Chargen-Endpunkt, kein Hintergrundprozess.** `POST /api/v1/admin/indexing/metadata-backfill`
+(`SYSTEM_ADMIN`, auf die eigene Organisation begrenzt; eine fremde Bibliothek ist abwesend, 404)
+verarbeitet **eine Charge** einer Bibliothek (`libraryId`, `batchSize` 1–100) und wird wiederholt
+aufgerufen, bis `done` gemeldet wird. Der Reststand wird bei jedem Aufruf neu aus
+`documents.metadata_extraction_version` abgeleitet (`NULL` oder kleiner als
+`CoreMetadataExtractor.EXTRACTION_VERSION`, nur `INDEXED`-Dokumente) — es gibt keine Cursor-Tabelle
+und keinen Lauf-Datensatz. Damit sind die vier Zusagen aus
+[Nachlauf im Betrieb](#nachlauf-im-betrieb) so erfüllt:
+
+- **Suche verfügbar, Mischzustand definiert:** Es wird kein Chunk gelöscht, neu zerlegt oder neu
+  eingebettet. Je Dokument liest der Lauf die Originaldatei über `DocumentPipeline#readProperties`
+  (Dateiname, Dokumenteigenschaften, Frontmatter, erste Überschrift — nicht die Chunk-Texte), speichert
+  die Werte und zieht `doc_type`/`doc_date`/`doc_date_precision` per JSON-Update auf die vorhandenen
+  Chunks nach (`DocumentMetadataService#reextractFromFile`). Der Mischzustand ist je Bibliothek
+  abfragbar (siehe unten).
+- **Dokumentgranular und idempotent:** Werte, Chunk-Nachzug und Extraktionsversion sind **eine
+  Transaktion je Dokument**; ein Fehler bei einem Dokument kostet nur dieses (übersprungen, geloggt,
+  beim nächsten Aufruf erneut versucht; eine Charge scannt höchstens das Zehnfache ihrer Größe an
+  Übersprungenen, dann endet der Aufruf). Ein verarbeitetes Dokument trägt die aktuelle Version und
+  fällt aus der Auswahl; ein zweiter Lauf über verarbeitete Dokumente ändert nichts und meldet `done`.
+  Ein manueller Wert wird nie überschrieben (`DocumentMetadataService`). **Eine seit dem Indexlauf
+  geänderte Datei wird übersprungen** (Prüfsumme der Zeile gegen die Datei, dieselbe Regel wie im
+  Anhangspfad): Ihre Chunks stammen aus dem alten Inhalt, und Kernfelder eines anderen Textes auf
+  diese Chunks zu schreiben, hieße, Filter und Beleg beschreiben etwas, das so nicht im Index steht;
+  der nächste Konnektorlauf indiziert sie neu und extrahiert dabei.
+- **Bewusste, eigene Freigabe:** Der Lauf startet nur über den Endpunkt, **bibliotheksweise** — die
+  Bibliothek ist Pflichtparameter, nicht Filter. Nichts löst ihn von selbst aus, auch keine
+  Erhöhung der Extraktionsversion; der auslösende Aufruf wird protokolliert
+  (`INDEXING_METADATA_BACKFILL_TRIGGERED`, Objekt ist die Bibliothek, mit Extraktionsversion und
+  Chargenzählern — ein Eintrag je Aufruf, nicht je Dokument).
+- **Anhaltbar und wieder aufnehmbar:** Der Chargenaufruf **ist** die Wiederaufnahme; Anhalten ist das
+  Ausbleiben des nächsten Aufrufs. Die Seite „Suche & Indexierung" treibt den Lauf als Schleife von
+  Chargenaufrufen und bietet je Bibliothek „Kernfelder nachrüsten" / „Anhalten" / „Weiter" — „Anhalten"
+  beendet die Schleife nach der laufenden Charge, „Weiter" ruft erneut auf. Es gibt keinen serverseitigen
+  Zustand, der weiterliefe.
+
+**Entfernte Quellen.** Ein RSS-Eintrag hat nie eine Datei gehabt; seine deklarierten Quellen —
+Headline und Veröffentlichungsdatum des Feeds — stehen in der Zeile (`file_name`,
+`last_modified_remote`) und werden **ohne Download** erneut durch die Extraktion geführt. Alles andere
+Entfernte (Datei eines HTTP-Verzeichnisses, jeder entfernte Anhang samt Elternkette) kann nur der
+eigene Konnektorlauf neu lesen und wird dafür vorgemerkt — derselbe Mechanismus wie beim
+Pipeline-Reindex (beide Änderungsmarker geleert); der Konnektorlauf führt die Extraktion seit #1066
+bei jedem Zufluss ohnehin aus. Bis dahin bleibt das Dokument als ausstehend ausgewiesen und fällt aus
+der Auswahl, damit der Lauf abschließt. Anhangsdokumente lokaler Quellen werden über ihre Elternkette
+neu gewonnen (ADR-0022) — dieselbe Prüfsummen- und Kettenlogik wie beim Reindex.
+
+**Geteilte Infrastruktur.** Dateiauflösung mit Laufzeitprüfung (Allowlist, Lage unterhalb des
+konfigurierten Quell- bzw. Upload-Verzeichnisses über `toRealPath`; ADR-0018, Entscheidung 6),
+Anhangs-Elternkette und Vormerkung für den nächsten Konnektorlauf sind aus dem Reindex-Dienst nach
+`StoredDocumentSourceAccess` herausgelöst und von beiden Läufen benutzt. Die Auswahl bleibt je Lauf
+eigen (Chunk-Metadaten nach Pipeline-Version dort, `documents`-Tabelle nach Extraktionsversion hier),
+ebenso die Verarbeitungseinheit (Neu-Zerlegen dort, `reextractFromFile` hier).
+
+**Zustand je Bibliothek.** `GET /api/v1/admin/search/status` trägt je Bibliothek
+`metadataBackfill`: Dokumente insgesamt (`INDEXED`), auf aktueller Extraktionsversion, ausstehend
+(die Obermenge der Laufauswahl), davon **wartend auf den nächsten Konnektorlauf** (entfernte
+Dokumente mit geleerten Änderungsmarkern — der Grund, warum „ausstehend" nach einem vollständigen
+Lauf über 0 bleiben kann, ohne dass ein weiterer Aufruf etwas daran ändert),
+zuletzt übersprungen (Zähler des letzten Aufrufs, prozesslebenslang — ADR-0021, Single-Instance),
+`complete` und den **Füllgrad je Kernfeld** (Dokumente mit Wert, absolut und anteilig, deutsches
+Label). Der Füllgrad wird bei jeder Abfrage aus `document_metadata_values` gebildet, nie
+vorberechnet; im Verwaltungskontext ist die Organisation der Rechtekontext (Beschluss 1 des
+Maintainers am Epic #1065). Die Seite „Suche & Indexierung" zeigt das in derselben Tabelle wie
+Vektor- und Volltextindex ([Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)).
+Die Füllgrad-Anzeige in der **Filter-Oberfläche** (oben) gehört zu Arbeitspaket 4 (#1070).
+Auswahl und Füllgrad-Abfrage laufen über den Index `documents (library_id, status)` (Migration 019);
+die Seite ruft Chargen zu 50 Dokumenten ab und lädt den Status nach jeder Charge neu, bricht aber nach
+drei Chargen ohne Fortschritt oder 1000 Chargen je Start von sich aus ab, damit kein Defekt auf einer
+Seite zur Endlosschleife wird.
 
 ## Die modellgestützte Extraktion im Betrieb
 
@@ -523,7 +691,92 @@ Das ist **kein** Widerspruch zu den ausgeschlossenen Pflege-Automatismen (siehe
 niemand entschieden hat. Hier entscheidet ein Mensch genau einmal statt dreihundertmal — die Zahl der
 Entscheidungen sinkt, nicht ihre Verbindlichkeit.
 
-## Rechte-Invariante der Extraktion und aller Aggregate
+### Umgesetzt (#1068)
+
+Der Korrekturteil von Arbeitspaket 3 — Einzelkorrektur, Sammelzuweisung und die protokollpflichtige
+Setzung; der Pflege-Anker und der dritte Zustand sind mit #1069 nachgezogen und hängen an derselben
+Setz-Operation (siehe [Umgesetzt (#1069)](#umgesetzt-1069)).
+
+**Rechte.** Die Korrektur läuft an der Schwelle, an der auch Hochladen und Löschen eines Dokuments
+liegen: `EDITOR` an der Bibliothek (`LibraryAccessService#requireRole`), dieselbe Prüfung wie
+`LibraryDocumentService` — kein Verwaltungsrecht. Lesen der Metadatenansicht verlangt `VIEWER`. Eine
+Bibliothek einer fremden Organisation oder ohne jedes Recht ist abwesend (404), zu wenig Recht ist 403;
+ein Dokument einer anderen Bibliothek ist so abwesend wie ein nicht existierendes.
+
+**API.** `GET /api/v1/libraries/{libraryId}/documents/{documentId}/metadata` liefert alle drei
+Kernfelder — auch leere — mit Wert, Anzeigewert, Herkunft, Konfidenz, Modell, Extraktionsversion,
+Akteur (Kennung und Anzeigename) und Zeitpunkt. `PUT …/metadata/{fieldKey}` setzt oder ändert einen
+Wert (Textwert, Vokabularcode oder Datum mit Genauigkeit — genau eines, passend zum Feld; ein Wert
+außerhalb des Vokabulars, ein leerer Titel, ein Datum ohne Genauigkeit oder ein Wert falscher Art ist
+400, nichts wird auf den nächstähnlichen Wert abgebildet). `DELETE …/metadata/{fieldKey}` entfernt die
+Zeile. `POST /api/v1/libraries/{libraryId}/documents/metadata/bulk` setzt ein Feld auf einen Wert für
+eine Liste von Dokument-IDs (höchstens 1000). `GET /api/v1/metadata/document-types` liefert das
+Vokabular als Auswahlliste — Schema, kein Aggregat, deshalb für jede angemeldete Person sichtbar. Der
+Wertkörper ist so geschnitten, dass #1069 den Zustand „kein Wert ermittelbar" als weitere Alternative
+derselben Anfrage ergänzt.
+
+**Herkunft und Überschreibschutz.** Ein gesetzter Wert trägt `origin = MANUAL`, `actor_user_id` und
+Zeitpunkt; Konfidenz, Modell und Extraktionsversion sind leer — auch wenn die Zeile vorher
+deterministisch oder abgeleitet war (sie wird umetikettiert, nicht ersetzt). `DocumentMetadataService`
+lässt eine `MANUAL`-Zeile bei jeder Reconciliation unangetastet; abgesichert Ende-zu-Ende über den
+Bestandslauf (`DocumentMetadataCorrectionServiceIntegrationTest`). Ein identischer manueller Wert, der
+bereits steht, ist keine Änderung: nichts wird geschrieben, kein Ereignis entsteht.
+
+**Löschsemantik.** Löschen entfernt die Zeile unabhängig von ihrer Herkunft; das Feld ist danach
+**leer**, und die nächste automatische Extraktion darf es wieder befüllen — dafür setzt die Löschung
+in derselben Transaktion `documents.metadata_extraction_version` auf `NULL`, sodass der Bestandslauf
+das Dokument wieder auswählt und aus der unveränderten Datei neu extrahiert (abgesichert im
+Integrationstest; ein Konnektorlauf liest ein unverändertes Dokument sonst nie wieder). Eine
+`MANUAL`-Zeile eines anderen Feldes bleibt dabei unberührt. Eine Löschung ist keine
+Sperre — „hier gibt es dauerhaft keinen Wert" ist genau der dritte Zustand aus #1069 und wird dort als
+eigener Wert gesetzt, nicht als gelöschte Zeile nachgebildet. Die Regel „ein manuell gesetzter Wert
+wird nie überschrieben" gilt für gesetzte Werte; eine gelöschte Zeile ist kein gesetzter Wert.
+
+**Chunk-Nachzug.** Jede Setzung und Löschung von Dokumentart oder Datum/Stand schreibt `doc_type`,
+`doc_date` und `doc_date_precision` per JSON-Update auf die vorhandenen Chunks nach
+(`VectorChunkStore#updateDocumentMetadata`), in derselben Transaktion wie die Zeile — kein
+Neu-Zerlegen, kein Neu-Einbetten. Der Titel ist kein Chunk-Schlüssel (ADR-0024, Entscheidung 5) und
+löst keinen Nachzug aus.
+
+**Sammelzuweisung.** Ein Feld, ein Wert, eine Liste von Dokument-IDs aus derselben rechtegefilterten
+Dokumentliste. Eine ID, die kein Dokument dieser Bibliothek ist (gelöscht, fremde Bibliothek), wird
+**abgewiesen und in der Antwort benannt** (`rejectedDocumentIds`), nicht stillschweigend übersprungen;
+die übrigen Dokumente werden in derselben Transaktion verarbeitet. Die Antwort trägt Zähler
+(aktualisiert, unverändert) und die Korrelationsreferenz der Ereignisse. Bewusst kein
+Alles-oder-nichts: Der häufige Fall einer abgewiesenen ID ist ein Dokument, das zwischen Auswahl und
+Bestätigung gelöscht wurde — die Person soll die Zuweisung deswegen nicht wiederholen müssen.
+
+**Audit.** Jede wirksame Setzung, Änderung und Löschung schreibt ein Ereignis
+`DOCUMENT_METADATA_CHANGED` über den bestehenden `AuditEventRecorder` in die Protokollablage nach
+ADR-0015 — kein zweiter Mechanismus. **Objekt ist die Bibliothek** (`KNOWLEDGE_LIBRARY`), das Dokument
+steht mit Kennung und Dateiname im Ereignis: `before` und `after` tragen je `documentId`, `fileName`,
+`fieldKey` und entweder `state = EMPTY` oder `state = SET` mit `value`, `displayValue`, `origin`,
+`datePrecision`, `extractionVersion`, `confidence`, `modelId` — der Altwert vollständig, auch wenn er
+deterministisch war. Akteur (pseudonymisiert) und Zeitpunkt kommen aus der Ablage. Die Bibliothek als
+Objekt ist eine bewusste Entscheidung: Der Objektzugriffspfad des Protokolls
+(`GET /api/v1/audit/events/by-object`, Index `organization_id, object_type, object_id, recorded_at`)
+liefert damit alle Metadatenereignisse **einer Bibliothek** in Aufzeichnungsreihenfolge — genau die
+Abfrage, die die Wiederherstellung braucht — und die Ablage braucht keinen neuen Objekttyp (ihre
+`CHECK`-Constraint auf `object_type` liegt bei der Eigentümerrolle `opaa_audit_owner`, ADR-0015). Bei
+der Sammelzuweisung entsteht **ein Ereignis je Dokument**; alle Ereignisse eines Aufrufs teilen sich
+eine `correlationRef` (`metadata-bulk-<uuid>`), über den Korrelationspfad des Protokolls als ein
+Vorgang lesbar. Dafür nimmt `AuditEventRecorder#recordUserAction` seit #1068 eine
+Korrelationsreferenz an; die subjektbezogene Variante weist sie weiterhin zurück.
+
+**Wiederherstellbarkeit.** Aus der Ereignisfolge einer Bibliothek lässt sich ihr manueller Stand
+rekonstruieren (Test: Wiedereinspielen der `after`-Nutzlasten in Aufzeichnungsreihenfolge ergibt
+genau die `MANUAL`-Zeilen). Das Wiederherstellungs-Runbook in
+[Betrieb und Infrastruktur](./deployment-infrastructure.md#manuelle-metadatenwerte-nach-einem-restore-abgleichen)
+benennt den Abgleichschritt.
+
+**Oberfläche.** In der Dokumentliste der Bibliothek klappt „Metadaten von … anzeigen" je Dokument die
+drei Kernfelder auf: Wert, Herkunftskennzeichnung (`automatisch ermittelt` / `abgeleitet` /
+`manuell`; Akteur und Zeitpunkt bzw. Konfidenz und Modell im Tooltip) und — nur mit Bearbeitungsrecht
+— Bearbeiten (Dokumentart als Auswahl aus dem Vokabular, Datum mit Genauigkeit Tag/Monat/Jahr, Titel
+als Text) und Löschen. Mit Bearbeitungsrecht trägt jede Zeile ein Auswahlkästchen; „Feld setzen" auf
+der Auswahl öffnet die Sammelzuweisung: ein Feld, ein Wert, Bestätigung mit Anzahl, Ergebnis mit
+Zählern und abgewiesenen Dokumenten. Für Konnektorbibliotheken gilt dasselbe — der Wert hängt am
+Dokument, nicht an der Datei.
 
 Zwei Regeln, die aus dem Rechtemodell folgen und nicht verhandelbar sind (Grundsatz siehe
 [Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit)):
@@ -539,6 +792,13 @@ Zwei Regeln, die aus dem Rechtemodell folgen und nicht verhandelbar sind (Grunds
   Projektnamen zeigt, ist eine Aufzählung von Vorhaben, deren Unterlagen die fragende Person nicht
   lesen darf; eine Zahl „412 Dokumente ohne Fassungsangabe" verrät den Umfang eines Bestands, den
   dieselbe Person mit 30 Dokumenten sieht. Kein Aggregat wird global vorberechnet und dann angezeigt.
+  **Eine eng begrenzte Ausnahme** ist der `SYSTEM_ADMIN`-Verwaltungspfad des Bestandslaufs
+  ([Umgesetzt (#1067)](#umgesetzt-1067)): Dort ist die Organisation der Rechtekontext — der
+  Extraktionsstand und der Füllgrad je Kernfeld auf der Seite „Suche & Indexierung" zählen über alle
+  Bibliotheken der eigenen Organisation, weil der Lauf ein Systemprozess ist (Beschluss 1 des
+  Maintainers am Epic #1065) und diese Zahlen keine Feldwerte, nur Anzahlen zeigen. Die Ausnahme gilt
+  ausschließlich für diese Verwaltungsansicht; die Füllgrad-Anzeige in der Filter-Oberfläche (#1070)
+  und jede Werteliste bleiben an die Regel gebunden.
 
 **Die konfigurierte Werteliste eines Bibliotheksfeldes ist von dieser Regel ausgenommen** — sie ist
 Schemabestandteil, kein Aggregat: Ihre Werte hat ein Mensch beim Anlegen des Feldes festgelegt, sie
@@ -804,6 +1064,66 @@ Die Zahl ist derselbe Datentyp wie der Füllstand des Volltext-Backfills: **abfr
 Logeintrag** — und gehört damit in dieselbe Zustandsübersicht wie dieser (siehe
 [Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)).
 
+### Umgesetzt (#1069)
+
+Der Rest von Arbeitspaket 3 — der Pflege-Anker und der dritte Zustand, beide an der vorhandenen
+Setz-Operation aus [Umgesetzt (#1068)](#umgesetzt-1068), nicht als eigener Mechanismus.
+
+**Der dritte Zustand ist dieselbe Operation ohne Wert.** `PUT
+/api/v1/libraries/{libraryId}/documents/{documentId}/metadata/{fieldKey}` nimmt statt eines Wertes
+`state: NOT_DETERMINABLE` entgegen — für jedes Kernfeld, zusammen mit einem Wert abgelehnt (400), und
+ebenso als Sammelzuweisung (`POST …/documents/metadata/bulk`). Gespeichert wird die vorhandene Zeile
+mit `value_state = 'NOT_DETERMINABLE'`, Herkunft `MANUAL` und Akteur (Migration 018 lässt sie nur so
+zu); es entsteht dasselbe Audit-Ereignis `DOCUMENT_METADATA_CHANGED` mit Alt- und Neuwert wie bei
+jeder anderen Setzung, und eine erneute identische Setzung schreibt nichts. Keine automatische
+Extraktion vergibt ihn und keine setzt ihn zurück: `DocumentMetadataService` lässt jede `MANUAL`-Zeile
+unangetastet — abgesichert über die Extraktion beim Aufnehmen **und** über einen Bestandslauf im
+Test. Zurücknehmen lässt er sich wie jeder Wert über `DELETE …/metadata/{fieldKey}`; das Dokument
+zählt dann wieder zum Anker.
+
+**Für Filter und Beleg verhält er sich wie leer.** `CoreMetadata` übernimmt nur `SET`-Zeilen, also
+enthält die generische Feld-Wert-Liste am `SourceReference` das Feld nicht, und die filterbaren
+Chunk-Schlüssel `doc_type`/`doc_date`/`doc_date_precision` werden bei der Setzung von den Chunks
+entfernt (JSON-Update, kein Neu-Einbetten) — das Dokument wird von einem künftigen Filter also nicht
+ausgeschlossen (#1070, [Leerwerte schließen nicht aus](#leerwerte-schließen-nicht-aus)). In der
+Metadatenansicht des Dokuments steht er dagegen ausdrücklich als „– (kein Wert ermittelbar)" mit
+seiner Herkunft.
+
+**Der Anker.** `GET /api/v1/libraries/{libraryId}/metadata/maintenance` liefert je Kernfeld die
+Dokumente ohne Wert — absolut **und** als Anteil, beide nebeneinander —, dazu die befüllten und die
+als „kein Wert ermittelbar" gekennzeichneten. Gezählt werden nur fehlende Zeilen; der dritte Zustand
+zählt nicht mit, weshalb der Wert 0 erreichbar ist. Bezugsmenge ist der **indizierte** Bestand der
+Bibliothek (Anhänge eingeschlossen — ein Metadatenwert hängt an jeder Dokumentzeile), dieselbe Menge,
+die der Füllgrad aus [Umgesetzt (#1067)](#umgesetzt-1067) misst. Die Zahlen werden **bei jeder
+Abfrage** gezählt, nichts wird vorberechnet oder zwischengespeichert, und die Abfrage läuft im
+Rechtekontext der fragenden Person: Leserecht an der Bibliothek genügt (die Person, die den Bestand
+kennt, sieht seine Lücken), eine Bibliothek ohne Leserecht ist abwesend (404) statt eine Zahl zu
+nennen; Bearbeiten bleibt beim Bearbeitungsrecht aus #1068.
+
+**Die Liste der N Dokumente.** `GET …/documents?missingMetadataField=<Feldschlüssel>` zeigt genau die
+gezählten Dokumente — bibliotheksweit wie eine Suche (der Anker zählt die ganze Bibliothek, eine
+Ordner-Einschränkung würde weniger zeigen als die genannte Zahl), mit `q` kombinierbar, ein
+unbekannter Feldschlüssel wird abgelehnt (400). Anders als jede andere Dokumentliste blättert sie
+**über Dokumentzeilen statt über Elterndokumente**: Ein Anhang ohne Wert ist ein eigener Eintrag,
+und kein Dokument mit Wert steht darin. Damit ist die Länge der Liste dieselbe Zahl wie der Anker,
+und „alle auf dieser Seite auswählen" plus Sammelzuweisung (#1068) kann keinen gepflegten Wert
+überschreiben — die Anhangsgruppierung aus ADR-0022 tritt in dieser einen Ansicht bewusst zurück,
+weil ein Elterndokument mit Wert sonst als Zeile erschiene, die niemand bearbeiten soll.
+
+**Anzeige.** In den Einstellungen der Bibliothek steht der Abschnitt „Metadaten-Pflege" über der
+Dokumentliste: je Feld „N Dokumente ohne Wert (x %)" (oder „vollständig gepflegt") mit einer
+Schaltfläche, die genau diese Dokumente in der Liste darunter öffnet — als URL-Zustand
+(`?missingField=…`), damit ein Neuladen dieselbe Arbeitsliste zeigt. Dieselben Zahlen erscheinen in
+der betrieblichen Zustandsübersicht „Suche & Indexierung" neben dem Füllgrad je Kernfeld; dort ist
+die Organisation der Rechtekontext (die eng begrenzte Ausnahme aus
+[Rechte-Invariante](#rechte-invariante-der-extraktion-und-aller-aggregate)).
+
+**Bewusst nicht gebaut.** Es gibt **keine** Erinnerungen (weder Mail noch Hinweis in der
+Oberfläche), **keine** Pflichtfeld-Erzwingung beim Hochladen, **keine** Qualitätsnote je Bibliothek
+und **keine** automatische Nachbefüllung eines leeren oder als „kein Wert ermittelbar"
+gekennzeichneten Feldes. Der Anker ist die vollständige Pflegemechanik; alles darüber hinaus erzeugt
+Arbeit, die niemand beauftragt hat.
+
 ## Spätere Ausbaustufe: der geführte Assistent
 
 Der im Diskussionspapier beschriebene Wizard ist **nicht Teil des ersten Umsetzungsschnitts**. Er
@@ -900,8 +1220,8 @@ solange keine Füllstandsverteilung eines echten Bestands vorliegt.
 | # | Paket | Abhängig von | Nutzen allein |
 |---|---|---|---|
 | 1 | Kernfelder: Datenmodell, Herkunft/Konfidenz/Akteur, deterministische Extraktion beim Aufnehmen — **umgesetzt mit #1066**, siehe [Umgesetzt (#1066)](#umgesetzt-1066) | — | Beleg-Anzeige wird einordbar; Grundlage für alles Weitere |
-| 2 | **Deterministischer Bestandslauf** über den Altbestand, bibliotheksweise, mit den Nachlauf-Zusagen | 1 | Die Kernfelder gelten für den vorhandenen Bestand, nicht nur für künftige Dokumente |
-| 3 | Manuelle Korrektur, Sammelzuweisung, Audit-Ereignis und Pflege-Anker („N ohne Wert", absolut und anteilig) | 1, 2 | Die Leerwert-Regel wird behebbar statt Dauerzustand |
+| 2 | **Deterministischer Bestandslauf** über den Altbestand, bibliotheksweise, mit den Nachlauf-Zusagen — **umgesetzt mit #1067**, siehe [Umgesetzt (#1067)](#umgesetzt-1067) | 1 | Die Kernfelder gelten für den vorhandenen Bestand, nicht nur für künftige Dokumente |
+| 3 | Manuelle Korrektur, Sammelzuweisung, Audit-Ereignis — **umgesetzt mit #1068**, siehe [Umgesetzt (#1068)](#umgesetzt-1068) — und Pflege-Anker („N ohne Wert", absolut und anteilig) samt drittem Zustand — **umgesetzt mit #1069**, siehe [Umgesetzt (#1069)](#umgesetzt-1069) | 1, 2 | Die Leerwert-Regel wird behebbar statt Dauerzustand |
 | 4 | Metadatenfilter in beiden Suchpfaden, mit Füllstandsanzeige je Feld | 2, 3, Hybrid-Suche AP 3 | Löst Szenario 9; die `metadata_filter`-Fälle werden erstmals lösbar |
 | 5 | Bibliotheksfelder: Schemakonfiguration je Bibliothek, Wertelisten mit bestätigter Abbildung | 1, 4 | Fassung und Rechtsebene werden führbar |
 | 6 | Metadaten im Kontextpräfix, mit Folgekostenanzeige und selektivem Nachlauf | 5, Ingestion Regel (b)/(d) | Wirkung auch ohne gesetzten Filter |
