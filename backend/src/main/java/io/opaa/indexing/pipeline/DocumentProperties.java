@@ -32,6 +32,9 @@ import java.util.TreeMap;
  *     DocumentMetadataService#reextractFromFile} from {@link
  *     DocumentPipelineSource#detectedExtension()}, never by a pipeline; {@code null} when routing
  *     resolved none
+ * @param syntheticName whether the document's name is <em>not</em> a file name but free text an
+ *     upstream source declared - an RSS entry's headline or its URL (#1263). A naming convention
+ *     can only be read out of a real file name; a headline names what an article is <em>about</em>.
  * @param frontmatter a Markdown YAML frontmatter's scalar entries, verbatim, keys lower-cased
  */
 public record DocumentProperties(
@@ -42,13 +45,14 @@ public record DocumentProperties(
     String firstHeading,
     String headText,
     String formatExtension,
+    boolean syntheticName,
     Map<String, String> frontmatter) {
 
   /** Upper bound of {@link #headText}, in characters. */
   public static final int MAX_HEAD_TEXT_LENGTH = 300;
 
   public static final DocumentProperties EMPTY =
-      new DocumentProperties(null, null, null, null, null, null, null, Map.of());
+      new DocumentProperties(null, null, null, null, null, null, null, false, Map.of());
 
   public DocumentProperties {
     title = blankToNull(title);
@@ -76,6 +80,7 @@ public record DocumentProperties(
         firstHeading,
         headText,
         formatExtension,
+        syntheticName,
         frontmatter);
   }
 
@@ -88,6 +93,7 @@ public record DocumentProperties(
         firstHeading,
         headText,
         formatExtension,
+        syntheticName,
         frontmatter);
   }
 
@@ -100,6 +106,7 @@ public record DocumentProperties(
         firstHeading,
         headText,
         formatExtension,
+        syntheticName,
         frontmatter);
   }
 
@@ -112,6 +119,7 @@ public record DocumentProperties(
         firstHeading,
         headText,
         formatExtension,
+        syntheticName,
         frontmatter);
   }
 
@@ -124,6 +132,7 @@ public record DocumentProperties(
         firstHeading,
         headText,
         formatExtension,
+        syntheticName,
         frontmatter);
   }
 
@@ -136,6 +145,21 @@ public record DocumentProperties(
         firstHeading,
         headText,
         formatExtension,
+        syntheticName,
+        frontmatter);
+  }
+
+  /** Marks the document's name as free text rather than a file name (#1263). */
+  public DocumentProperties withSyntheticName(boolean syntheticName) {
+    return new DocumentProperties(
+        title,
+        createdAt,
+        modifiedAt,
+        documentDate,
+        firstHeading,
+        headText,
+        formatExtension,
+        syntheticName,
         frontmatter);
   }
 
@@ -148,6 +172,7 @@ public record DocumentProperties(
         firstHeading,
         headText,
         formatExtension,
+        syntheticName,
         frontmatter);
   }
 
@@ -160,6 +185,7 @@ public record DocumentProperties(
         firstHeading,
         headText,
         formatExtension,
+        syntheticName,
         frontmatter);
   }
 

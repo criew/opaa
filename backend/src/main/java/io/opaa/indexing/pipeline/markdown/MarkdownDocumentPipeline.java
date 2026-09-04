@@ -125,6 +125,7 @@ public class MarkdownDocumentPipeline implements DocumentPipeline {
         firstHeading,
         DocumentHeadText.ofEvents(events),
         null,
+        false,
         frontmatterEntries(raw));
   }
 

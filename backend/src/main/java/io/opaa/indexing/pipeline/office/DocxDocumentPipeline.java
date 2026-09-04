@@ -180,6 +180,7 @@ public class DocxDocumentPipeline implements DocumentPipeline {
         null,
         null,
         null,
+        false,
         Map.of());
   }
 

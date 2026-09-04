@@ -445,6 +445,17 @@ verschiedene Dokumentarten passen, liefert nichts. Die Endungsregel gilt nur fü
 und Kopf; ein **deklarierter oder manuell gesetzter** Wert wird weiterhin ausschließlich exakt gegen
 das Vokabular geprüft.
 
+**Ein Name, der kein Dateiname ist.** `DocumentProperties` trägt ein Kennzeichen dafür, ob der Name
+eines Dokuments überhaupt ein Dateiname ist. Für einen RSS-Beitrag ist er es nicht: Dort steht die
+Überschrift des Eintrags (ersatzweise seine URL) im `file_name`. Eine Überschrift benennt, *worum es
+geht*, nicht *was das Dokument ist* — „Rat beschließt neue Hundesteuersatzung" ist keine Satzung, und
+„Haushalt 2024 beschlossen" trägt keinen Stand. Für einen solchen synthetischen Namen entfallen
+deshalb **beide** Namensquellen: der Token-Abgleich der Dokumentart (samt Endungsregel) und die
+Datumsangabe aus dem Namen. Als **Titel** bleibt die Überschrift, denn genau das ist sie. Gesetzt wird
+das Kennzeichen an den zwei Stellen, an denen ein RSS-Eintragskörper in die Extraktion geht —
+`FileProcessingService#processRssEntry` im Ingest und `MetadataBackfillService` im Bestandslauf —,
+damit beide Wege dieselben Felder aus derselben Zeile lesen.
+
 **Dateiformat.** PPTX/ODP → `PRAESENTATION` (die beiden Präsentationsformate, die
 `SupportedDocumentFormats` überhaupt zulässt), als letzte Quelle: Jede Textquelle geht vor, und ein
 Vokabular ohne diesen Code liefert nichts. Keine Ableitung für PDF/DOCX — diese Formate tragen jede

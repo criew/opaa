@@ -139,6 +139,7 @@ public class PdfDocumentPipeline implements DocumentPipeline {
         firstHeading,
         headText,
         null,
+        false,
         Map.of());
   }
 

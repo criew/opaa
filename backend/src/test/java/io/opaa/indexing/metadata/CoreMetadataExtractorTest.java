@@ -302,6 +302,52 @@ class CoreMetadataExtractorTest {
 
   /** #1263: the file format as the last source. */
   @Nested
+  class SyntheticName {
+
+    private final DocumentProperties headline = DocumentProperties.EMPTY.withSyntheticName(true);
+
+    @Test
+    void aHeadlineIsNoNamingConventionForTheDokumentart() {
+      // An RSS entry's name is its headline: it names what the article is about, not what the
+      // article is. Both the exact token and the Kompositum ending are off here.
+      assertThat(extract("Rat beschließt neue Hundesteuersatzung", headline).documentTypeCode())
+          .isEmpty();
+      assertThat(extract("Vermerk zur Sitzung veröffentlicht", headline).documentTypeCode())
+          .isEmpty();
+    }
+
+    @Test
+    void aHeadlineIsNoNamingConventionForTheDate() {
+      assertThat(extract("Haushalt 2024 beschlossen", headline).date()).isEmpty();
+      assertThat(extract("Bürgerbüro ab 12.03.2026 länger geöffnet", headline).date()).isEmpty();
+      // A date the feed itself declares still counts - it is the entry's own date, not a name.
+      assertThat(
+              extract(
+                      "Haushalt 2024 beschlossen",
+                      headline.withDocumentDate(LocalDate.of(2026, 3, 12)))
+                  .date())
+          .contains(ExtractedDate.day(LocalDate.of(2026, 3, 12)));
+    }
+
+    @Test
+    void aHeadlineIsStillATitle() {
+      assertThat(extract("Rat beschließt neue Hundesteuersatzung", headline).title())
+          .hasValueSatisfying(title -> assertThat(title).contains("Hundesteuersatzung"));
+    }
+
+    @Test
+    void aRealFileNameOfTheSameWordingStillCarriesItsConvention() {
+      assertThat(
+              extract("Rat beschließt neue Hundesteuersatzung.pdf", DocumentProperties.EMPTY)
+                  .documentTypeCode())
+          .contains("SATZUNG_ORDNUNG");
+      assertThat(extract("Haushalt 2024 beschlossen.pdf", DocumentProperties.EMPTY).date())
+          .contains(ExtractedDate.year(2024));
+    }
+  }
+
+  /** #1263: the file format as the last source. */
+  @Nested
   class FileFormatSource {
 
     @Test

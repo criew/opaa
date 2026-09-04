@@ -30,6 +30,9 @@ import java.util.regex.Pattern;
  *       <em>from that source</em> - the next source is still asked, unlike for the frontmatter
  *       declaration. A file-name token may also carry a seeded Kompositum ending; the Kopfbereich
  *       is matched exactly, because running text names other documents than its own.
+ *   <li><b>A {@link DocumentProperties#syntheticName() synthetic name}</b> (an RSS entry's
+ *       headline) is no naming convention: it yields neither a Dokumentart nor a Datum. It remains
+ *       a title - that is what a headline is.
  *   <li><b>Datum/Stand</b>: frontmatter {@code stand_datum}/{@code fassung} and the format's own
  *       document date (a mail's Date header), then the first heading (Kopfbereich), then the file
  *       name, then the modified and finally the created property. Within one source every candidate
@@ -140,9 +143,12 @@ public final class CoreMetadataExtractor {
     if (declared != null) {
       return vocabulary.resolve(unquote(declared));
     }
-    Optional<String> fromFileName = singleCode(fileNameTokens(fileName), vocabulary::resolveToken);
-    if (fromFileName.isPresent()) {
-      return fromFileName;
+    if (!props.syntheticName()) {
+      Optional<String> fromFileName =
+          singleCode(fileNameTokens(fileName), vocabulary::resolveToken);
+      if (fromFileName.isPresent()) {
+        return fromFileName;
+      }
     }
     Optional<String> fromHead = singleCode(headTokens(props), vocabulary::resolve);
     if (fromHead.isPresent()) {
@@ -210,9 +216,11 @@ public final class CoreMetadataExtractor {
     if (heading.isPresent()) {
       return heading;
     }
-    Optional<ExtractedDate> fromName = parseDate(stripExtension(fileName), BareYearRule.ALLOWED);
-    if (fromName.isPresent()) {
-      return fromName;
+    if (!props.syntheticName()) {
+      Optional<ExtractedDate> fromName = parseDate(stripExtension(fileName), BareYearRule.ALLOWED);
+      if (fromName.isPresent()) {
+        return fromName;
+      }
     }
     if (props.modifiedAt() != null) {
       return Optional.of(ExtractedDate.day(props.modifiedAt()));

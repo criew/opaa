@@ -294,6 +294,9 @@ class MetadataBackfillServiceIntegrationTest {
     assertThat(result.markedForNextRun()).isZero();
     CoreMetadata core = documentMetadataService.coreMetadataFor(entryId);
     assertThat(core.title()).isEqualTo("Gebührensatzung tritt in Kraft");
+    // The stored file_name is the headline, not a file name (#1263): the backfill must read no
+    // naming convention out of it, exactly as the ingest does not.
+    assertThat(core.documentTypeCode()).isNull();
     assertThat(core.documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
     assertThat(core.documentDatePrecision()).isEqualTo(DatePrecision.DAY);
     assertThat(documentRepository.findById(entryId).orElseThrow().getMetadataExtractionVersion())

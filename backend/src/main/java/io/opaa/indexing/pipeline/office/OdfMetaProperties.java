@@ -42,6 +42,7 @@ final class OdfMetaProperties {
         null,
         null,
         null,
+        false,
         Map.of());
   }
 

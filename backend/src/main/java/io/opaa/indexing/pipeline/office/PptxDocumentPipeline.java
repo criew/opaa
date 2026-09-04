@@ -119,6 +119,7 @@ public class PptxDocumentPipeline implements DocumentPipeline {
                 firstHeading,
                 null,
                 null,
+                false,
                 Map.of()));
       }
     } catch (IOException | RuntimeException e) {
