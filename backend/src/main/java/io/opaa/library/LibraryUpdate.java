@@ -30,4 +30,5 @@ public record LibraryUpdate(
     Boolean sourceInsecureSsl,
     LibraryScheduleUpdate schedule,
     ConfluenceEdition confluenceEdition,
-    List<ConfluenceSpaceSelection> confluenceSpaces) {}
+    List<ConfluenceSpaceSelection> confluenceSpaces,
+    Integer confluenceFullSyncIntervalDays) {}

@@ -45,7 +45,8 @@ final class LibraryResponseMapper {
         request.getSourceCredentials(),
         request.getSourceInsecureSsl(),
         request.getConfluenceEdition(),
-        toSelections(request.getConfluenceSpaces()));
+        toSelections(request.getConfluenceSpaces()),
+        request.getConfluenceFullSyncIntervalDays());
   }
 
   static LibraryUpdate toUpdate(LibraryUpdateRequest request) {
@@ -62,7 +63,8 @@ final class LibraryResponseMapper {
         request.getSourceInsecureSsl(),
         toScheduleUpdate(request.getSchedule()),
         request.getConfluenceEdition(),
-        toSelections(request.getConfluenceSpaces()));
+        toSelections(request.getConfluenceSpaces()),
+        request.getConfluenceFullSyncIntervalDays());
   }
 
   /** {@code null} stays {@code null} ("leave the selection alone"), an empty list stays empty. */
@@ -124,6 +126,9 @@ final class LibraryResponseMapper {
         .sourceInsecureSsl(managementDetail.sourceInsecureSsl())
         .sourceCredentialsSet(managementDetail.sourceCredentialsSet())
         .confluenceWebhookSecretSet(managementDetail.confluenceWebhookSecretSet())
+        .confluenceFullSyncIntervalDays(managementDetail.confluenceFullSyncIntervalDays())
+        .confluenceFullSyncIntervalDefaultDays(
+            managementDetail.confluenceFullSyncIntervalDefaultDays())
         .storageQuotaBytes(managementDetail.storageQuotaBytes())
         .storageUsedBytes(managementDetail.storageUsedBytes());
     LibraryScheduleDetail schedule = managementDetail.schedule();

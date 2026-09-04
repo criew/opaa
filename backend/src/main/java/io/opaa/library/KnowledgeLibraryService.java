@@ -32,6 +32,7 @@ import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.source.confluence.ConfluenceConnection;
 import io.opaa.indexing.source.confluence.ConfluenceCredentials;
+import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
@@ -131,6 +132,7 @@ public class KnowledgeLibraryService {
   private final IndexingJobService indexingJobService;
   private final RssFeedStateRepository rssFeedStateRepository;
   private final ConfluenceSyncStateRepository confluenceSyncStateRepository;
+  private final ConfluenceProperties confluenceProperties;
   private final Clock schedulingClock;
   private final LibraryStorageQuotaService storageQuotaService;
   private final LibraryFolderRepository folderRepository;
@@ -158,7 +160,8 @@ public class KnowledgeLibraryService {
       LibraryStorageQuotaService storageQuotaService,
       LibraryFolderRepository folderRepository,
       ApplicationEventPublisher eventPublisher,
-      ConfluenceConnectionService confluenceConnectionService) {
+      ConfluenceConnectionService confluenceConnectionService,
+      ConfluenceProperties confluenceProperties) {
     this.libraryRepository = libraryRepository;
     this.userRepository = userRepository;
     this.groupRepository = groupRepository;
@@ -180,6 +183,7 @@ public class KnowledgeLibraryService {
     this.folderRepository = folderRepository;
     this.eventPublisher = eventPublisher;
     this.confluenceConnectionService = confluenceConnectionService;
+    this.confluenceProperties = confluenceProperties;
   }
 
   @Transactional
@@ -252,6 +256,8 @@ public class KnowledgeLibraryService {
           sourceConfiguration.confluenceEdition());
       library.configureConfluence(
           sourceConfiguration.confluenceEdition(), sourceConfiguration.confluenceSpaces());
+      library.updateConfluenceFullSyncIntervalDays(
+          sourceConfiguration.confluenceFullSyncIntervalDays());
     }
 
     KnowledgeLibrary saved = libraryRepository.save(library);
@@ -531,6 +537,20 @@ public class KnowledgeLibraryService {
     }
     if (replacesConfluenceSpaces) {
       library.updateConfluenceSpaces(confluenceSpaces);
+    }
+    // #1200: present replaces the library's own rhythm, 0 returns it to the instance-wide
+    // default, absent leaves the stored value untouched - the same replace-when-present rule as
+    // the space selection above.
+    if (request.confluenceFullSyncIntervalDays() != null) {
+      if (library.getSourceType() != DocumentSourceType.CONFLUENCE) {
+        throw new ValidationException(
+            "confluenceFullSyncIntervalDays ist nur für sourceType CONFLUENCE zulässig");
+      }
+      library.updateConfluenceFullSyncIntervalDays(
+          request.confluenceFullSyncIntervalDays() == 0
+              ? null
+              : validateConfluenceFullSyncIntervalDays(
+                  library.getSourceType(), request.confluenceFullSyncIntervalDays()));
     }
     KnowledgeLibrary updated = libraryRepository.save(library);
     boolean visibilityOrListedChanged =
@@ -1130,7 +1150,30 @@ public class KnowledgeLibraryService {
         sourceCredentials,
         sourceInsecureSsl,
         request.confluenceEdition(),
-        confluenceSpaces);
+        confluenceSpaces,
+        validateConfluenceFullSyncIntervalDays(
+            sourceType, request.confluenceFullSyncIntervalDays()));
+  }
+
+  /**
+   * #1200 (ADR-0023, Entscheidung 4): only a {@code CONFLUENCE} library carries its own full-sync
+   * rhythm, and a value is 1-365 days - the rhythm can be lengthened, never switched off. {@code
+   * null} (follow the instance-wide default) is always acceptable.
+   */
+  private Integer validateConfluenceFullSyncIntervalDays(
+      DocumentSourceType sourceType, Integer days) {
+    if (days == null) {
+      return null;
+    }
+    if (sourceType != DocumentSourceType.CONFLUENCE) {
+      throw new ValidationException(
+          "confluenceFullSyncIntervalDays ist nur für sourceType CONFLUENCE zulässig");
+    }
+    if (days < 1 || days > 365) {
+      throw new ValidationException(
+          "confluenceFullSyncIntervalDays muss zwischen 1 und 365 Tagen liegen");
+    }
+    return days;
   }
 
   /**
@@ -1256,7 +1299,10 @@ public class KnowledgeLibraryService {
         sourceCredentials,
         sourceInsecureSsl,
         library.getSourceConfluenceEdition(),
-        List.of());
+        List.of(),
+        // #1200: the rhythm is replaced by its own update block, never via the grouped source
+        // configuration - this value is unused on the update path.
+        null);
   }
 
   /**
@@ -1464,7 +1510,8 @@ public class KnowledgeLibraryService {
       String sourceCredentials,
       boolean sourceInsecureSsl,
       ConfluenceEdition confluenceEdition,
-      List<ConfluenceSpaceSelection> confluenceSpaces) {}
+      List<ConfluenceSpaceSelection> confluenceSpaces,
+      Integer confluenceFullSyncIntervalDays) {}
 
   /**
    * Resolves a group and enforces the organization boundary, treating a group from another
@@ -1605,6 +1652,14 @@ public class KnowledgeLibraryService {
         // #1140: the same yes/no for the webhook secret - it is shown once, at generation.
         library.getSourceType() == DocumentSourceType.CONFLUENCE
             ? library.getConfluenceWebhookSecret() != null
+            : null,
+        library.getSourceType() == DocumentSourceType.CONFLUENCE
+            ? library.getConfluenceFullSyncIntervalDays()
+            : null,
+        // #1200: the instance-wide rhythm in whole days, so the schedule dialog can name the
+        // default instead of hard-coding it; a sub-day interval still reads as one day.
+        library.getSourceType() == DocumentSourceType.CONFLUENCE
+            ? (int) Math.max(1, confluenceProperties.fullSyncInterval().toDays())
             : null,
         schedule,
         lastScheduledRunsFailed,

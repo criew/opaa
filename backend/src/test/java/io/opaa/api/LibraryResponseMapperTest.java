@@ -132,6 +132,8 @@ class LibraryResponseMapperTest {
             true,
             true,
             true,
+            14,
+            7,
             schedule,
             false,
             1_000_000L,
@@ -143,6 +145,9 @@ class LibraryResponseMapperTest {
 
     assertThat(response.getSourcePath()).isEqualTo("/data/documents");
     assertThat(response.getConfluenceWebhookSecretSet()).isTrue();
+    // #1200: distinct values prove both rhythm fields are carried, not aliased
+    assertThat(response.getConfluenceFullSyncIntervalDays()).isEqualTo(14);
+    assertThat(response.getConfluenceFullSyncIntervalDefaultDays()).isEqualTo(7);
     assertThat(response.getSourceUrl()).isEqualTo(URI.create("https://example.com/documents/"));
     assertThat(response.getSourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(response.getSourceInsecureSsl()).isTrue();
@@ -170,7 +175,8 @@ class LibraryResponseMapperTest {
             LibraryVisibility.PRIVATE,
             false);
     LibraryManagementDetail managementDetail =
-        new LibraryManagementDetail(null, null, null, false, false, null, null, null, 0L, 0L);
+        new LibraryManagementDetail(
+            null, null, null, false, false, null, null, null, null, null, 0L, 0L);
     LibraryDetail detail = new LibraryDetail(library, AssetRole.OWNER, 0L, managementDetail, true);
 
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);

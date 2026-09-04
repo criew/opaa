@@ -164,6 +164,17 @@ public class KnowledgeLibrary {
   private List<ConfluenceSpaceSelection> confluenceSpaces = new ArrayList<>();
 
   /**
+   * This library's own full-sync rhythm in days (#1200, ADR-0023, Entscheidung 4) - {@code null}
+   * while the library follows the instance-wide default ({@code
+   * opaa.indexing.confluence.full-sync-interval}). Always positive when set ({@code
+   * chk_knowledge_libraries_confluence_full_sync_interval}): the rhythm can be lengthened per
+   * library but never switched off. Only meaningful for {@code CONFLUENCE}; {@code
+   * KnowledgeLibraryService} rejects it for every other type.
+   */
+  @Column(name = "source_confluence_full_sync_interval_days")
+  private Integer confluenceFullSyncIntervalDays;
+
+  /**
    * Whether this library's indexing runs are triggered automatically on a schedule (#485) - always
    * {@code false} for {@code UPLOAD} (no run exists for it at all, {@link
    * DocumentSourceType#UPLOAD}) and enforced by {@code chk_knowledge_libraries_schedule} (migration
@@ -418,6 +429,20 @@ public class KnowledgeLibrary {
     }
     this.sourceConfluenceEdition = Objects.requireNonNull(edition, "edition");
     updateConfluenceSpaces(selection);
+  }
+
+  /**
+   * Replaces this library's own full-sync rhythm (#1200) - {@code null} returns it to the
+   * instance-wide default; a value is always positive, validated by {@code KnowledgeLibraryService}
+   * before this is called.
+   */
+  public void updateConfluenceFullSyncIntervalDays(Integer days) {
+    this.confluenceFullSyncIntervalDays = days;
+    this.updatedAt = Instant.now();
+  }
+
+  public Integer getConfluenceFullSyncIntervalDays() {
+    return confluenceFullSyncIntervalDays;
   }
 
   /**

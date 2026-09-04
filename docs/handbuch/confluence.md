@@ -155,7 +155,10 @@ Konfigurationsinterna), Verwaltenden zusätzlich Adresse, Proxy und Webhook-Zust
 
 „Jetzt indizieren“ folgt dem Zustand der Bibliothek; „Vollabgleich starten“ erzwingt den Vollabgleich.
 Der Vollabgleich bleibt nötig, weil nur er Löschungen nachvollzieht; sein Rhythmus ist verlängerbar,
-nicht abschaltbar (instanzweit; je Bibliothek ist #1200).
+nicht abschaltbar. Die instanzweite Vorgabe setzt `OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL`
+(Standard sieben Tage); seit #1200 kann jede Bibliothek im Zeitplan-Dialog einen eigenen Rhythmus
+von 1–365 Tagen tragen („Vollabgleich alle … Tage", leer = Vorgabe) — eine Bibliothek über einem
+50.000-Seiten-Space darf seltener vollständig abgleichen als eine über einem Team-Space.
 
 ### 4.3 Löschsemantik — der eine Satz
 
@@ -356,8 +359,9 @@ Auswertungen über viele Läufe.
 - **Ratenbudget der Instanz ist geteilt** zwischen allen Bibliotheken gegen dieselbe Instanz mit
   demselben Dienstkonto; eine
   instanzweite Koordination der Läufe gibt es nicht.
-- **Rhythmus des Vollabgleichs ist instanzweit** (#1200: je Bibliothek); ein bibliotheksweiter Zustand
-  „Auflistung unvollständig“ jenseits des Laufprotokolls ist #1191.
+- **Rhythmus des Vollabgleichs:** instanzweite Vorgabe, seit #1200 je Bibliothek über den
+  Zeitplan-Dialog verlängerbar; der bibliotheksweite Zustand „Auflistung unvollständig" ist seit
+  #1191 dauerhaft an der Bibliothek sichtbar.
 - **Webhooks:** kein Replay-Schutz, keine Bestätigung an Confluence über das Ergebnis, Cloud nur über
   Automation-Regeln.
 

@@ -26,6 +26,7 @@ public final class LibraryUpdateBuilder {
   private LibraryScheduleUpdate schedule;
   private ConfluenceEdition confluenceEdition;
   private List<ConfluenceSpaceSelection> confluenceSpaces;
+  private Integer confluenceFullSyncIntervalDays;
 
   private LibraryUpdateBuilder(String name) {
     this.name = name;
@@ -95,6 +96,11 @@ public final class LibraryUpdateBuilder {
     return this;
   }
 
+  public LibraryUpdateBuilder confluenceFullSyncIntervalDays(Integer days) {
+    this.confluenceFullSyncIntervalDays = days;
+    return this;
+  }
+
   public LibraryUpdate build() {
     return new LibraryUpdate(
         name,
@@ -109,6 +115,7 @@ public final class LibraryUpdateBuilder {
         sourceInsecureSsl,
         schedule,
         confluenceEdition,
-        confluenceSpaces);
+        confluenceSpaces,
+        confluenceFullSyncIntervalDays);
   }
 }

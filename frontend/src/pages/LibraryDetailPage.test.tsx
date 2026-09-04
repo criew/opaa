@@ -1107,6 +1107,74 @@ describe('LibraryDetailPage', () => {
     })
   })
 
+  it('shows the full-sync rhythm of a Confluence library and lets a MANAGER lengthen it (#1200)', async () => {
+    const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, {
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+        confluenceFullSyncIntervalDays: null,
+        confluenceFullSyncIntervalDefaultDays: 7,
+        schedule: { frequency: 'HOURLY', nextRunAt: '2026-03-02T03:00:00Z' },
+      }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
+    expect(
+      await screen.findByText('Vollabgleich alle 7 Tage (Vorgabe der Instanz)'),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^zeitplan bearbeiten$/i }))
+    const daysField = await screen.findByLabelText('Vollabgleich alle … Tage')
+    await user.type(daysField, '14')
+    await user.click(screen.getByRole('button', { name: /^speichern$/i }))
+
+    await waitFor(() => {
+      expect(mockUpdateLibrary).toHaveBeenCalledWith(
+        'library-team',
+        expect.objectContaining({ confluenceFullSyncIntervalDays: 14 }),
+      )
+    })
+  })
+
+  it('returns the rhythm to the instance default when the field is cleared (#1200)', async () => {
+    const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, {
+        sourceType: 'CONFLUENCE',
+        sourceUrl: 'https://wiki.behoerde.example/confluence',
+        confluenceEdition: 'DATA_CENTER',
+        confluenceSpaces: [{ key: 'ENG', name: 'Engineering' }],
+        confluenceFullSyncIntervalDays: 30,
+        confluenceFullSyncIntervalDefaultDays: 7,
+        schedule: { frequency: 'HOURLY', nextRunAt: '2026-03-02T03:00:00Z' },
+      }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
+    expect(await screen.findByText('Vollabgleich alle 30 Tage')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^zeitplan bearbeiten$/i }))
+    const daysField = await screen.findByLabelText('Vollabgleich alle … Tage')
+    await user.clear(daysField)
+    await user.click(screen.getByRole('button', { name: /^speichern$/i }))
+
+    await waitFor(() => {
+      expect(mockUpdateLibrary).toHaveBeenCalledWith(
+        'library-team',
+        expect.objectContaining({ confluenceFullSyncIntervalDays: 0 }),
+      )
+    })
+  })
+
   it('shows the plain document wording for a completed FILESYSTEM run', async () => {
     setLibraryState(
       managerLibrary,

@@ -169,9 +169,14 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
    */
   @Override
   public IndexingRunMode defaultRunMode(KnowledgeLibrary library) {
+    // #1200: the library's own rhythm, where set, takes precedence over the instance-wide one.
+    Duration fullSyncInterval =
+        library.getConfluenceFullSyncIntervalDays() != null
+            ? Duration.ofDays(library.getConfluenceFullSyncIntervalDays())
+            : properties.fullSyncInterval();
     return syncStateRepository
         .findByLibraryId(library.getId())
-        .filter(state -> !state.isFullSyncDue(properties.fullSyncInterval(), clock.instant()))
+        .filter(state -> !state.isFullSyncDue(fullSyncInterval, clock.instant()))
         .map(state -> IndexingRunMode.INCREMENTAL)
         .orElse(IndexingRunMode.FULL);
   }

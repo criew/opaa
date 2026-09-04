@@ -957,6 +957,19 @@ class ConfluenceIndexingExecutorTest {
     assertThat(executor.defaultRunMode(library))
         .as("older than the weekly interval")
         .isEqualTo(IndexingRunMode.FULL);
+
+    // #1200: the library's own rhythm takes precedence over the instance-wide default - the same
+    // 8-day-old state reads as recent under a 30-day rhythm ...
+    library.updateConfluenceFullSyncIntervalDays(30);
+    assertThat(executor.defaultRunMode(library))
+        .as("8 days old, own rhythm 30 days")
+        .isEqualTo(IndexingRunMode.INCREMENTAL);
+    // ... and a 2-day-old state as due under a 1-day rhythm
+    completedFullSync(NOW.minus(Duration.ofDays(2)));
+    library.updateConfluenceFullSyncIntervalDays(1);
+    assertThat(executor.defaultRunMode(library))
+        .as("2 days old, own rhythm 1 day")
+        .isEqualTo(IndexingRunMode.FULL);
   }
 
   @ParameterizedTest

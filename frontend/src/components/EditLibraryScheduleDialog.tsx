@@ -46,6 +46,12 @@ interface EditLibraryScheduleDialogProps {
   onClose: () => void
   libraryId: string
   schedule: LibrarySchedule | null | undefined
+  // #1200: present only for a CONFLUENCE library - the dialog then offers the library's own
+  // full-sync rhythm. intervalDays null means "follows the instance-wide default" (defaultDays).
+  confluence?: {
+    intervalDays: number | null
+    defaultDays: number | null
+  }
   // KnowledgeLibraryService#updateLibrary overwrites name/description/visibility/listed
   // unconditionally when present in the request (see EditLibrarySourceDialog's identical
   // reasoning) - this dialog only touches the schedule, so the current values must be resent
@@ -66,6 +72,7 @@ export default function EditLibraryScheduleDialog({
   onClose,
   libraryId,
   schedule,
+  confluence,
   library,
 }: EditLibraryScheduleDialogProps) {
   const updateExistingLibrary = useLibraryStore((s) => s.updateExistingLibrary)
@@ -73,6 +80,9 @@ export default function EditLibraryScheduleDialog({
   const [frequency, setFrequency] = useState<ScheduleFrequency>(schedule?.frequency ?? 'DISABLED')
   const [time, setTime] = useState(partsToTimeString(schedule?.hour, schedule?.minute))
   const [weekday, setWeekday] = useState<ScheduleWeekday>(schedule?.weekday ?? 'MONDAY')
+  const [fullSyncDays, setFullSyncDays] = useState(
+    confluence?.intervalDays != null ? String(confluence.intervalDays) : '',
+  )
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -88,6 +98,22 @@ export default function EditLibraryScheduleDialog({
       setError('Bitte eine gültige Uhrzeit angeben.')
       return
     }
+    // #1200: an empty field returns the library to the instance-wide default (sent as 0); a value
+    // is 1-365 days - the rhythm is lengthenable, never switchable off.
+    let fullSyncIntervalDays: number | undefined
+    if (confluence) {
+      const trimmed = fullSyncDays.trim()
+      if (trimmed === '') {
+        fullSyncIntervalDays = 0
+      } else {
+        const parsed = Number(trimmed)
+        if (!Number.isInteger(parsed) || parsed < 1 || parsed > 365) {
+          setError('Der Vollabgleich-Rhythmus muss zwischen 1 und 365 Tagen liegen.')
+          return
+        }
+        fullSyncIntervalDays = parsed
+      }
+    }
     setSubmitting(true)
     try {
       await updateExistingLibrary(libraryId, {
@@ -100,6 +126,7 @@ export default function EditLibraryScheduleDialog({
         // unverändert, solange keines ihrer Felder in der Anfrage vorhanden ist. Dieser Dialog
         // rührt nur den Zeitplan an.
         sourceInsecureSsl: null,
+        ...(confluence ? { confluenceFullSyncIntervalDays: fullSyncIntervalDays } : {}),
         schedule: {
           frequency,
           hour: parts?.hour ?? null,
@@ -145,6 +172,19 @@ export default function EditLibraryScheduleDialog({
               value={time}
               onChange={(e) => setTime(e.target.value)}
               slotProps={{ inputLabel: { shrink: true } }}
+              size="small"
+            />
+          )}
+
+          {confluence && (
+            <TextField
+              label="Vollabgleich alle … Tage"
+              type="number"
+              value={fullSyncDays}
+              onChange={(e) => setFullSyncDays(e.target.value)}
+              placeholder={confluence.defaultDays != null ? String(confluence.defaultDays) : '7'}
+              helperText={`Leer = Vorgabe der Instanz (alle ${confluence.defaultDays ?? 7} Tage). Der Vollabgleich ist verlängerbar, aber nicht abschaltbar — nur er erkennt Löschungen in Confluence.`}
+              slotProps={{ htmlInput: { min: 1, max: 365 } }}
               size="small"
             />
           )}

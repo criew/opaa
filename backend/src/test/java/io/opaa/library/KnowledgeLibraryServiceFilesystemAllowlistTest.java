@@ -22,6 +22,7 @@ import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.VectorStoreWriter;
+import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import java.time.Clock;
@@ -76,6 +77,9 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
     LibraryFolderRepository folderRepository = mock(LibraryFolderRepository.class);
     ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
+    // #1200: every null/zero component falls back to the record's own defaults (7-day rhythm).
+    ConfluenceProperties confluenceProperties =
+        new ConfluenceProperties(0, null, null, 0, null, 0, 0, null, 0, null, null, 0);
     libraryService =
         new KnowledgeLibraryService(
             libraryRepository,
@@ -99,7 +103,8 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             storageQuotaService,
             folderRepository,
             eventPublisher,
-            org.mockito.Mockito.mock(ConfluenceConnectionService.class));
+            org.mockito.Mockito.mock(ConfluenceConnectionService.class),
+            confluenceProperties);
 
     ownerId = UUID.randomUUID();
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");

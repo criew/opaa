@@ -2543,6 +2543,8 @@ interface LibraryIndexingSectionProps {
     confluenceEdition?: ConfluenceEdition | null
     confluenceSpaces?: ConfluenceSpaceRef[] | null
     confluenceWebhookSecretSet?: boolean | null
+    confluenceFullSyncIntervalDays?: number | null
+    confluenceFullSyncIntervalDefaultDays?: number | null
     schedule?: LibrarySchedule | null
     lastScheduledRunsFailed?: boolean | null
   }
@@ -2659,6 +2661,21 @@ function LibraryIndexingSection({
           <Typography variant="body2">
             {scheduleFrequencyLabel(library.schedule?.frequency ?? 'DISABLED')}
           </Typography>
+          {configKind === 'confluence' && (
+            <Typography variant="body2" color="text.secondary">
+              {(() => {
+                const days =
+                  library.confluenceFullSyncIntervalDays ??
+                  library.confluenceFullSyncIntervalDefaultDays ??
+                  7
+                const rhythm =
+                  days === 1 ? 'Vollabgleich täglich' : `Vollabgleich alle ${days} Tage`
+                return library.confluenceFullSyncIntervalDays == null
+                  ? `${rhythm} (Vorgabe der Instanz)`
+                  : rhythm
+              })()}
+            </Typography>
+          )}
           {library.schedule?.nextRunAt && (
             <Typography variant="body2" color="text.secondary">
               Nächster geplanter Lauf:{' '}
@@ -2682,6 +2699,14 @@ function LibraryIndexingSection({
             onClose={() => setEditScheduleOpen(false)}
             libraryId={libraryId}
             schedule={library.schedule}
+            confluence={
+              configKind === 'confluence'
+                ? {
+                    intervalDays: library.confluenceFullSyncIntervalDays ?? null,
+                    defaultDays: library.confluenceFullSyncIntervalDefaultDays ?? null,
+                  }
+                : undefined
+            }
             library={library}
           />
         </DetailCard>

@@ -340,6 +340,67 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                     caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("nur für sourceType CONFLUENCE zulässig");
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    rss, libraryUpdate("Feed").confluenceFullSyncIntervalDays(14).build(), caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("nur für sourceType CONFLUENCE zulässig");
+  }
+
+  @Test
+  void fullSyncRhythmIsPerLibraryLengthenableAndNeverSwitchableOff() {
+    // #1200 (ADR-0023, Entscheidung 4): a library may carry its own rhythm from creation on;
+    // without one the instance-wide default applies, named alongside for the schedule dialog.
+    UUID owner = user();
+    CurrentUser caller = currentUser(owner);
+    LibraryDetail created =
+        libraryService.createLibrary(
+            confluence("Wiki", ConfluenceEdition.DATA_CENTER, dataCenter.baseUrl())
+                .confluenceFullSyncIntervalDays(14)
+                .build(),
+            caller);
+    UUID libraryId = created.library().getId();
+    assertThat(created.managementDetail().confluenceFullSyncIntervalDays()).isEqualTo(14);
+    assertThat(created.managementDetail().confluenceFullSyncIntervalDefaultDays()).isEqualTo(7);
+
+    // present replaces, absent leaves the stored value untouched, 0 returns to the default
+    libraryService.updateLibrary(
+        libraryId, libraryUpdate("Wiki").confluenceFullSyncIntervalDays(30).build(), caller);
+    assertThat(storedRhythm(libraryId)).isEqualTo(30);
+    libraryService.updateLibrary(libraryId, libraryUpdate("Wiki umbenannt").build(), caller);
+    assertThat(storedRhythm(libraryId)).isEqualTo(30);
+    LibraryDetail reset =
+        libraryService.updateLibrary(
+            libraryId,
+            libraryUpdate("Wiki umbenannt").confluenceFullSyncIntervalDays(0).build(),
+            caller);
+    assertThat(storedRhythm(libraryId)).isNull();
+    assertThat(reset.managementDetail().confluenceFullSyncIntervalDays()).isNull();
+    assertThat(reset.managementDetail().confluenceFullSyncIntervalDefaultDays()).isEqualTo(7);
+
+    // lengthenable, never switchable off: the bounds are 1-365 days, with no "never"
+    assertThatThrownBy(
+            () ->
+                libraryService.updateLibrary(
+                    libraryId,
+                    libraryUpdate("Wiki umbenannt").confluenceFullSyncIntervalDays(366).build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("zwischen 1 und 365 Tagen");
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    confluence("Wiki 2", ConfluenceEdition.DATA_CENTER, dataCenter.baseUrl())
+                        .confluenceFullSyncIntervalDays(0)
+                        .build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("zwischen 1 und 365 Tagen");
+  }
+
+  private Integer storedRhythm(UUID libraryId) {
+    return libraryRepository.findById(libraryId).orElseThrow().getConfluenceFullSyncIntervalDays();
   }
 
   @Test

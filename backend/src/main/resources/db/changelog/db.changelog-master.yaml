@@ -55,3 +55,5 @@ databaseChangeLog:
       file: db/changelog/changes/022-chats-metadata-filter.yaml
   - include:
       file: db/changelog/changes/023-indexing-jobs-listing-assessment.yaml
+  - include:
+      file: db/changelog/changes/024-library-confluence-full-sync-interval.yaml
