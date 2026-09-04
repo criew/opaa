@@ -1,10 +1,10 @@
 package io.opaa.indexing.pipeline.office;
 
-import io.opaa.indexing.pipeline.DocumentHeadText;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.indexing.pipeline.DocumentTitleLine;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.RepeatingHeaderChunk;
 import java.io.IOException;
@@ -131,7 +131,7 @@ public class DocxDocumentPipeline implements DocumentPipeline {
             content
                 .properties()
                 .withFirstHeading(firstTopLevelHeading(events))
-                .withHeadText(DocumentHeadText.ofEvents(events)));
+                .withTitleLine(DocumentTitleLine.ofEvents(events)));
   }
 
   /**
@@ -151,7 +151,7 @@ public class DocxDocumentPipeline implements DocumentPipeline {
     return content
         .properties()
         .withFirstHeading(firstTopLevelHeading(events))
-        .withHeadText(DocumentHeadText.ofEvents(events));
+        .withTitleLine(DocumentTitleLine.ofEvents(events));
   }
 
   private record DocxContent(

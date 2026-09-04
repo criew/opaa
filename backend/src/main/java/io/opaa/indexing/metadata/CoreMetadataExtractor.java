@@ -24,12 +24,13 @@ import java.util.regex.Pattern;
  *       humanized file name ({@link ChunkContextTitle}) - so a title is always found.
  *   <li><b>Dokumentart</b>: frontmatter {@code dokumentart} (an explicit declaration outside the
  *       vocabulary leaves the field empty, it never falls through), then the file name's tokens,
- *       then the Kopfbereich ({@link DocumentProperties#firstHeading()} plus {@link
- *       DocumentProperties#headText()}), then the file format (#1263). Within one of the two token
- *       sources exactly one distinct code must result; two different codes at once yield nothing
- *       <em>from that source</em> - the next source is still asked, unlike for the frontmatter
- *       declaration. A file-name token may also carry a seeded Kompositum ending; the Kopfbereich
- *       is matched exactly, because running text names other documents than its own.
+ *       then the {@link DocumentProperties#titleLine() title line}, then the file format (#1263).
+ *       Within one of the two token sources exactly one distinct code must result; two different
+ *       codes at once yield nothing <em>from that source</em> - the next source is still asked,
+ *       unlike for the frontmatter declaration. A file-name token may also carry a seeded
+ *       Kompositum ending; the title line is matched exactly. Nothing below the title line is read
+ *       at all (#1289): a label line ({@code Formular: RF-KFZ-001}), a quotation and a section
+ *       heading name other documents, never the document itself.
  *   <li><b>A {@link DocumentProperties#syntheticName() synthetic name}</b> (an RSS entry's
  *       headline) is no naming convention: it yields neither a Dokumentart nor a Datum. It remains
  *       a title - that is what a headline is.
@@ -46,7 +47,7 @@ import java.util.regex.Pattern;
  */
 public final class CoreMetadataExtractor {
 
-  public static final int EXTRACTION_VERSION = 2;
+  public static final int EXTRACTION_VERSION = 3;
 
   static final String FRONTMATTER_TITLE = "titel";
   static final String FRONTMATTER_DOCUMENT_TYPE = "dokumentart";
@@ -150,9 +151,9 @@ public final class CoreMetadataExtractor {
         return fromFileName;
       }
     }
-    Optional<String> fromHead = singleCode(headTokens(props), vocabulary::resolve);
-    if (fromHead.isPresent()) {
-      return fromHead;
+    Optional<String> fromTitleLine = fromTitleLine(props, vocabulary);
+    if (fromTitleLine.isPresent()) {
+      return fromTitleLine;
     }
     return fromFormat(props.formatExtension(), vocabulary);
   }
@@ -171,21 +172,31 @@ public final class CoreMetadataExtractor {
   }
 
   /**
-   * The words of the Kopfbereich: the first heading and the opening of the body text, which {@link
-   * DocumentProperties} has already cut to its head - a word further down the document is never
-   * seen here, and can never become a Dokumentart. Matched exactly against the vocabulary, never
-   * through a Kompositum ending: running text is full of compounds that are no Dokumentart
-   * ("Tagesordnung", "in dieser Größenordnung").
+   * The Dokumentart of the document's title line - the first line of its text ({@link
+   * DocumentProperties} keeps only that line), or its first heading when the format has no text
+   * line at all. Nothing else of the document is read: only the title line is a self-designation.
+   * Matched exactly against the vocabulary, never through a Kompositum ending, because a title too
+   * is full of compounds that are no Dokumentart ("Tagesordnung", "in dieser Größenordnung").
+   *
+   * <p>A {@link DocumentProperties#firstHeading() first heading} that is <em>not</em> the title
+   * line is a level-1 heading from somewhere inside the document (a Markdown section, a PDF outline
+   * entry). It never supplies a Dokumentart of its own - a section named "Benötigtes Formular" is a
+   * reference like any other. It does veto: a code of its own that differs from the title line's
+   * leaves the field empty, "lieber leer als geraten".
    */
-  private static List<String> headTokens(DocumentProperties props) {
-    StringBuilder head = new StringBuilder();
-    if (props.firstHeading() != null) {
-      head.append(props.firstHeading()).append('\n');
+  private static Optional<String> fromTitleLine(
+      DocumentProperties props, DocumentTypeVocabulary vocabulary) {
+    String heading = props.firstHeading();
+    String titleLine = props.titleLine() != null ? props.titleLine() : heading;
+    if (titleLine == null) {
+      return Optional.empty();
     }
-    if (props.headText() != null) {
-      head.append(props.headText());
+    Optional<String> code = singleCode(textTokens(titleLine), vocabulary::resolve);
+    if (heading == null || heading.equals(titleLine)) {
+      return code;
     }
-    return textTokens(head.toString());
+    Optional<String> fromHeading = singleCode(textTokens(heading), vocabulary::resolve);
+    return fromHeading.isPresent() && !fromHeading.equals(code) ? Optional.empty() : code;
   }
 
   private static Optional<String> fromFormat(
