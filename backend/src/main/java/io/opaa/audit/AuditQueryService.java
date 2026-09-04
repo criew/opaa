@@ -32,8 +32,10 @@ import org.springframework.stereotype.Service;
  * be invisible to the self-log ("auch der abgewiesene Versuch erzeugt einen Eintrag"). {@link
  * io.opaa.api.AuditController} therefore declares no {@code @PreAuthorize} on these endpoints.
  * {@link #loggedAccess} logs exactly once per call - {@link AuditOutcome#SUCCESS} if the query
- * completes, {@link AuditOutcome#DENIED} if anything it does throws - and always rethrows the
- * original exception unchanged, even if writing the {@code DENIED} entry itself fails.
+ * completes, otherwise the outcome {@link AuditAccessOutcome} derives from the exception (a
+ * rejected attempt is {@code DENIED}, a query that broke after the checks passed is {@code
+ * FAILURE}) - and always rethrows the original exception unchanged, even if writing the entry
+ * itself fails.
  *
  * <p><b>Transaction behaviour.</b> No method here opens or joins an ambient transaction; {@link
  * AuditEventRecorder#recordAuditLogAccess} carries its own {@code Propagation.NOT_SUPPORTED} so the
@@ -291,18 +293,17 @@ public class AuditQueryService {
           organizationId, callerId, scope, AuditOutcome.SUCCESS, reason);
       return result;
     } catch (RuntimeException ex) {
-      // recordAuditLogAccess itself can throw; that must never replace the original rejection
-      // (ex) - the DENIED entry is best-effort on top of it, never a precondition for reporting
-      // it correctly. A logging failure is attached via addSuppressed and logged here, since ex
+      // recordAuditLogAccess itself can throw; that must never replace the original exception
+      // (ex) - the entry is best-effort on top of it, never a precondition for reporting it
+      // correctly. A logging failure is attached via addSuppressed and logged here, since ex
       // may propagate to a handler that never logs suppressed exceptions.
       try {
         eventRecorder.recordAuditLogAccess(
-            organizationId, callerId, scope, AuditOutcome.DENIED, reason);
+            organizationId, callerId, scope, AuditAccessOutcome.of(ex), reason);
       } catch (RuntimeException loggingFailure) {
         log.error(
-            "Failed to write the DENIED self-log entry for a rejected audit_log access - the"
-                + " rejection is still reported correctly, but this attempt is missing its"
-                + " audit_log entry",
+            "Failed to write the self-log entry for a failed audit_log access - the failure is"
+                + " still reported correctly, but this attempt is missing its audit_log entry",
             loggingFailure);
         ex.addSuppressed(loggingFailure);
       }

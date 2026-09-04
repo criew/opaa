@@ -33,6 +33,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.dao.QueryTimeoutException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -242,6 +243,35 @@ class DiagnosticContextLogQueryServiceTest {
     assertThat(scope.getValue())
         .containsEntry("accessPath", "diagnostic-context-events/{eventId}")
         .containsEntry("eventId", stored.getEventId().toString());
+  }
+
+  /**
+   * A query that breaks after role and reason were accepted is a malfunction, not a turned-away
+   * attempt - recording it as DENIED would put it in the trail next to attempted overreach.
+   */
+  @Test
+  void aFailingQueryAfterAPassedCheckIsRecordedAsFailureRatherThanDenied() {
+    when(logRepository.findByTimeRange(any(), any(), any(), any()))
+        .thenThrow(new QueryTimeoutException("statement timeout"));
+
+    assertThatThrownBy(
+            () ->
+                service.findByTimeRange(
+                    caller(SystemRole.AUDITOR),
+                    FROM,
+                    FROM.plus(1, ChronoUnit.DAYS),
+                    "Beschwerde 4711",
+                    0,
+                    50))
+        .isInstanceOf(QueryTimeoutException.class);
+
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID),
+            eq(callerId),
+            any(),
+            eq(AuditOutcome.FAILURE),
+            eq("Beschwerde 4711"));
   }
 
   private DiagnosticContextLogEntry entry(UUID actorPseudonym, String targetRef) {

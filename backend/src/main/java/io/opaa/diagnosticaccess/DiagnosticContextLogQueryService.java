@@ -3,6 +3,7 @@ package io.opaa.diagnosticaccess;
 import io.opaa.api.types.AuditOutcome;
 import io.opaa.api.types.DiagnosticTargetKind;
 import io.opaa.api.types.SystemRole;
+import io.opaa.audit.AuditAccessOutcome;
 import io.opaa.audit.AuditActorPseudonymService;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
@@ -102,8 +103,10 @@ public class DiagnosticContextLogQueryService {
    * including a rejected one - the role check happens here rather than as an annotation exactly so
    * a denial is recordable, and it is recorded through {@link
    * AuditEventRecorder#recordAuditLogAccess}, whose {@code Propagation.NOT_SUPPORTED} keeps the
-   * entry from being rolled back by the very exception that rejects the call. This method holds no
-   * transaction of its own: it issues one query and needs none.
+   * entry from being rolled back by the very exception that rejects the call. A rejected attempt is
+   * recorded as {@code DENIED}, a query that fails after the checks passed as {@code FAILURE} -
+   * {@link AuditAccessOutcome} draws the line for both classes. This method holds no transaction of
+   * its own: it issues one query and needs none.
    */
   public Page<DiagnosticContextLogEntry> findByTimeRange(
       CurrentUser caller, Instant from, Instant to, String reason, int page, int size) {
@@ -130,27 +133,27 @@ public class DiagnosticContextLogQueryService {
           logRepository.findByTimeRange(caller.organizationId(), from, to, pageRequest(page, size));
       recordProtocolAccess(caller, scope, reason, AuditOutcome.SUCCESS);
       return result;
-    } catch (RuntimeException rejected) {
-      // Mirrors AuditQueryService#loggedAccess: the DENIED entry is best-effort on top of the
-      // rejection, never a precondition for reporting it correctly.
+    } catch (RuntimeException failed) {
+      // Mirrors AuditQueryService#loggedAccess: the entry is best-effort on top of the failure,
+      // never a precondition for reporting it correctly.
       try {
-        recordProtocolAccess(caller, scope, reason, AuditOutcome.DENIED);
+        recordProtocolAccess(caller, scope, reason, AuditAccessOutcome.of(failed));
       } catch (RuntimeException loggingFailure) {
         log.error(
-            "Failed to write the DENIED entry for a rejected Gesamtprotokoll access - the"
-                + " rejection is still reported correctly, but this attempt is missing its"
-                + " audit_log entry",
+            "Failed to write the entry for a failed Gesamtprotokoll access - the failure is"
+                + " still reported correctly, but this attempt is missing its audit_log entry",
             loggingFailure);
-        rejected.addSuppressed(loggingFailure);
+        failed.addSuppressed(loggingFailure);
       }
-      throw rejected;
+      throw failed;
     }
   }
 
   /**
    * One entry by its own id, for an evaluation that already knows which entry it is about. Same
-   * bar, same recording and the same best-effort DENIED entry as {@link #findByTimeRange}, and it
-   * holds no transaction of its own for the same reason.
+   * bar, same recording and the same best-effort entry as {@link #findByTimeRange}, and it holds no
+   * transaction of its own for the same reason. An unknown or organization-foreign id is a rejected
+   * attempt, not a malfunction, and is therefore recorded as {@code DENIED}.
    *
    * @throws io.opaa.common.NotFoundException if no entry of the caller's organization carries this
    *     id - an entry of a foreign organization is not distinguishable from an unknown one here
@@ -177,17 +180,17 @@ public class DiagnosticContextLogQueryService {
               .orElseThrow(() -> new NotFoundException("Protokolleintrag nicht gefunden"));
       recordProtocolAccess(caller, scope, reason, AuditOutcome.SUCCESS);
       return entry;
-    } catch (RuntimeException rejected) {
+    } catch (RuntimeException failed) {
       try {
-        recordProtocolAccess(caller, scope, reason, AuditOutcome.DENIED);
+        recordProtocolAccess(caller, scope, reason, AuditAccessOutcome.of(failed));
       } catch (RuntimeException loggingFailure) {
         log.error(
-            "Failed to write the DENIED entry for a rejected single-entry access - the rejection"
-                + " is still reported correctly, but this attempt is missing its audit_log entry",
+            "Failed to write the entry for a failed single-entry access - the failure is still"
+                + " reported correctly, but this attempt is missing its audit_log entry",
             loggingFailure);
-        rejected.addSuppressed(loggingFailure);
+        failed.addSuppressed(loggingFailure);
       }
-      throw rejected;
+      throw failed;
     }
   }
 

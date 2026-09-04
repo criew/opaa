@@ -139,7 +139,11 @@ class Migration007DiagnosticContextLogTest extends AbstractMigrationTest {
         .hasMessageContaining("permission denied");
   }
 
-  /** Every partition carries its own ACL - a parent-only grant would not cover this (ADR-0015). */
+  /**
+   * A named partition is reached through its own, empty ACL rather than through the parent's grant
+   * (ADR-0015; see {@link #grantsNothingOnAPartitionItself}), so naming one directly is no way
+   * around the restriction either.
+   */
   @Test
   void applicationAccountCannotChangeANamedPartitionEither() throws Exception {
     UUID eventId = insertEntryAs(appConnection, "PERMISSION_PROFILE", "Profil", null);
@@ -205,13 +209,27 @@ class Migration007DiagnosticContextLogTest extends AbstractMigrationTest {
         .containsExactly("SELECT");
   }
 
-  /** A partition carries no ACL of its own, so nothing reaches it except through the parent. */
+  /** A partition carries no ACL of its own - nothing is granted on it, by anyone. */
   @Test
   void grantsNothingOnAPartitionItself() throws Exception {
     UUID eventId = insertEntryAs(appConnection, "PERMISSION_PROFILE", "Profil", null);
     String partition = partitionNameOf(eventId);
 
     assertThat(tablePrivilegesOf(partition.replace("public.", ""), changesetAccount())).isEmpty();
+  }
+
+  /**
+   * The write bar on the retention setting is a column grant, so it appears in {@code
+   * column_privileges} and not in {@code table_privileges} - the assertion above cannot see it.
+   * Without this one, a grant widened to {@code last_cutoff} or {@code last_run_month} would go
+   * unnoticed, and those two are the deletion function's own state: an account able to move them
+   * could stall the deletion Leitplanke (i) requires.
+   */
+  @Test
+  void grantsTheApplicationAccountUpdateOnExactlyTheTwoConfigurableColumns() throws SQLException {
+    assertThat(updatableColumnsOf("diagnostic_context_retention_settings", changesetAccount()))
+        .containsExactlyInAnyOrder("retention_months", "updated_at");
+    assertThat(updatableColumnsOf("diagnostic_context_log", changesetAccount())).isEmpty();
   }
 
   /**
@@ -411,6 +429,24 @@ class Migration007DiagnosticContextLogTest extends AbstractMigrationTest {
         }
       }
       return privileges;
+    }
+  }
+
+  private List<String> updatableColumnsOf(String tableName, String grantee) throws SQLException {
+    try (PreparedStatement statement =
+        connection.prepareStatement(
+            "SELECT DISTINCT column_name FROM information_schema.column_privileges WHERE"
+                + " table_schema = 'public' AND table_name = ? AND grantee = ? AND privilege_type"
+                + " = 'UPDATE'")) {
+      statement.setString(1, tableName);
+      statement.setString(2, grantee);
+      List<String> columns = new ArrayList<>();
+      try (ResultSet rs = statement.executeQuery()) {
+        while (rs.next()) {
+          columns.add(rs.getString(1));
+        }
+      }
+      return columns;
     }
   }
 

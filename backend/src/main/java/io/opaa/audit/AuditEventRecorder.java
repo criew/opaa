@@ -16,9 +16,11 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Convenience entry point services call to write an audit event - composes {@link
  * AuditActorPseudonymService} (actor/subject pseudonymisation) and {@link AuditLogService} (the
- * actual write) so no caller needs to repeat that wiring. Every {@code recordXxx} method except
+ * actual write) so no caller needs to repeat that wiring. Every {@code recordXxx} method other than
  * {@link #recordAuditLogAccess} holds no {@code @Transactional} of its own: it delegates to {@link
  * AuditLogService#record}, which joins the caller's ambient transaction (see that class's Javadoc).
+ * {@link #recordAuditLogAccess} is the one exception and carries {@code Propagation.NOT_SUPPORTED};
+ * its own Javadoc says why.
  *
  * <p>{@code before}/{@code after} are small {@link Map}s the caller builds inline, serialised here
  * with a locally-owned {@link JsonMapper} instance rather than the application's autoconfigured
@@ -191,12 +193,13 @@ public class AuditEventRecorder {
 
   /**
    * The self-log entry for one access attempt against {@code audit_log} itself. {@code outcome} is
-   * {@link AuditOutcome#SUCCESS} for a permitted, executed query and {@link AuditOutcome#DENIED}
-   * for a rejected attempt, so a denied attempt is recorded exactly like a successful one. {@code
-   * scope} (access path plus whatever of object/event type, correlation ref, incident scope id and
-   * time range that path takes) has no dedicated column and is serialised into {@code after}.
-   * {@code reason} is required by the caller ({@link AuditQueryService#loggedAccess}) before this
-   * method is ever reached, not re-validated here. {@code object_id} is the fixed {@link
+   * {@link AuditOutcome#SUCCESS} for a permitted, executed query, {@link AuditOutcome#DENIED} for a
+   * rejected attempt and {@link AuditOutcome#FAILURE} for one that failed after passing its checks,
+   * so an attempt that never succeeded is recorded exactly like a successful one. {@code scope}
+   * (access path plus whatever of object/event type, correlation ref, incident scope id and time
+   * range that path takes) has no dedicated column and is serialised into {@code after}. {@code
+   * reason} is required by the caller ({@link AuditQueryService#loggedAccess}) before this method
+   * is ever reached, not re-validated here. {@code object_id} is the fixed {@link
    * #AUDIT_LOG_SELF_OBJECT_ID}, not a per-query id: {@code audit_log} itself is what was accessed,
    * once per organization, regardless of which rows the query touched.
    *
