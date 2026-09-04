@@ -120,10 +120,11 @@ final class DiagnosticAccessResponseMapper {
   }
 
   /**
-   * The single-entry view, which additionally carries {@code permissionSnapshot}. The objection
-   * against that field is a grouping objection, and it does not apply to one entry fetched under
-   * its own Anlass and its own audit_log record; {@code targetRef} follows the same rule as the
-   * list above, since nothing about a single entry makes a person's pseudonym useful here.
+   * The single-entry view, which additionally carries {@code permissionSnapshot}. What that costs,
+   * stated plainly: an AUDITOR holding a page of event ids can fetch them one by one and group the
+   * result by snapshot - the barrier here is not that the evaluation is inexpressible (as it is for
+   * the list), it is that every single fetch carries its own Anlass and its own audit_log entry.
+   * {@code targetRef} follows the same rule as the list above.
    */
   static DiagnosticContextEventDetailResponse toDetailResponse(DiagnosticContextLogEntry entry) {
     return new DiagnosticContextEventDetailResponse(

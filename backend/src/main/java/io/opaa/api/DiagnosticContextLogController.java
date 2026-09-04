@@ -7,7 +7,6 @@ import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.diagnosticaccess.DiagnosticContextLogQueryService;
 import java.time.Instant;
-import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -22,7 +21,9 @@ import org.springframework.web.bind.annotation.RestController;
  * DiagnosticContextPurposeLimitationTest} fails the build if that changes. {@code reason} is bound
  * {@code required = false} even though the specification declares it required - the same deliberate
  * gap {@code AuditController} makes, so a request missing it reaches the service that records the
- * rejected attempt instead of being short-circuited by Spring MVC's own binding error.
+ * rejected attempt instead of being short-circuited by Spring MVC's own binding error. {@code
+ * eventId} is bound as a {@code String} and parsed in the service for the same reason: a malformed
+ * id must produce the same recorded, rejected attempt as a malformed anything else.
  */
 @RestController
 public class DiagnosticContextLogController {
@@ -55,7 +56,7 @@ public class DiagnosticContextLogController {
 
   @GetMapping("/api/v1/audit/diagnostic-context-events/{eventId}")
   public DiagnosticContextEventDetailResponse getDiagnosticContextEvent(
-      @PathVariable UUID eventId,
+      @PathVariable String eventId,
       @RequestParam(name = "reason", required = false) String reason,
       @Caller CurrentUser caller) {
     return DiagnosticAccessResponseMapper.toDetailResponse(

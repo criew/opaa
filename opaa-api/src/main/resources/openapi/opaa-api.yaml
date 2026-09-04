@@ -2726,9 +2726,12 @@ paths:
         One already-known protocol entry, named by its own event id - the einzelfall- und
         anlassbezogene Auswertung of Leitplanke (g), and the only place the rights snapshot of an
         entry is published. Same bar as the Gesamtprotokoll: AUDITOR role and a mandatory reason,
-        and every call - accepted or rejected - is itself recorded in audit_log with that reason.
-        This path names no person either: an event id has to be known from the list before it can
-        be asked for, and one entry at a time rebuilds no per-person evaluation.
+        and every call - accepted or rejected, including one naming an unreadable id - is itself
+        recorded in audit_log with that reason. This path names no person either: an event id has
+        to be known from the list before it can be asked for. What it does not do is make a
+        per-person evaluation impossible - an auditor can fetch a page's entries one by one and
+        group them by their rights snapshot; it makes every one of those fetches carry its own
+        Anlass and its own audit_log entry.
       parameters:
         - name: reason
           in: query
@@ -5993,11 +5996,12 @@ components:
       description: >
         One protocol entry as the single-entry view shows it: every field of the list response plus
         permissionSnapshot, the rights snapshot Leitplanke (f) requires in the stored entry. It is
-        published here and only here, because the objection against it is a grouping objection - in
-        a list it is a stable per-person key a client can GROUP BY, whereas one entry fetched under
-        its own reason and its own audit_log record is exactly the einzelfall- und anlassbezogene
-        Auswertung Leitplanke (g) provides for. targetRef follows the same rule as in the list: a
-        profile's identifier is shown, a person's pseudonym is not.
+        published here and only here: in a list it is a stable per-person key a client can GROUP BY
+        in one step, whereas one entry fetched under its own reason and its own audit_log record is
+        the einzelfall- und anlassbezogene Auswertung Leitplanke (g) provides for. That is a
+        difference in cost and traceability, not in possibility - N fetches rebuild the grouping,
+        and each of them is separately justified and recorded. targetRef follows the same rule as
+        in the list: a profile's identifier is shown, a person's pseudonym is not.
       required:
         [
           eventId,

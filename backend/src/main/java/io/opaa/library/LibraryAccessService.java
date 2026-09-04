@@ -185,7 +185,8 @@ public class LibraryAccessService {
    * knows no self-exclusion, and its {@code rejectOrgUnit} guard covers only {@code ORG_UNIT}
    * groups. An administrator can therefore add themselves to a non-{@code ORG_UNIT} owning group in
    * one step, become {@code namedOwner}, and validate their own self-issued {@code OWNER} grant.
-   * Closing that is a change to group administration with its own trade-off (issue #1124), not to
+   * That path stays open by decision, not by omission: docs/features/hybrid-retrieval.md,
+   * Berechtigungs-Leitplanken (e). Closing it would be a change to group administration, not to
    * this method.
    */
   public boolean holdsIndependentOwnerRole(KnowledgeLibrary library, UUID userId) {

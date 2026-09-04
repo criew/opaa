@@ -181,7 +181,7 @@ class DiagnosticContextLogQueryServiceTest {
     assertThatThrownBy(
             () ->
                 service.findSingleEvent(
-                    caller(SystemRole.SYSTEM_ADMIN), UUID.randomUUID(), "Beschwerde"))
+                    caller(SystemRole.SYSTEM_ADMIN), UUID.randomUUID().toString(), "Beschwerde"))
         .isInstanceOf(AccessDeniedException.class);
 
     verify(auditEventRecorder)
@@ -193,7 +193,9 @@ class DiagnosticContextLogQueryServiceTest {
   @Test
   void aSingleEntryNeedsItsOwnReason() {
     assertThatThrownBy(
-            () -> service.findSingleEvent(caller(SystemRole.AUDITOR), UUID.randomUUID(), "  "))
+            () ->
+                service.findSingleEvent(
+                    caller(SystemRole.AUDITOR), UUID.randomUUID().toString(), "  "))
         .isInstanceOf(ValidationException.class);
 
     verify(logRepository, never()).findSingleEntry(any(), any());
@@ -205,7 +207,9 @@ class DiagnosticContextLogQueryServiceTest {
     when(logRepository.findSingleEntry(ORGANIZATION_ID, eventId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(
-            () -> service.findSingleEvent(caller(SystemRole.AUDITOR), eventId, "Beschwerde 4711"))
+            () ->
+                service.findSingleEvent(
+                    caller(SystemRole.AUDITOR), eventId.toString(), "Beschwerde 4711"))
         .isInstanceOf(NotFoundException.class);
 
     verify(auditEventRecorder)
@@ -229,7 +233,8 @@ class DiagnosticContextLogQueryServiceTest {
         .thenReturn(Optional.of(stored));
 
     DiagnosticContextLogEntry found =
-        service.findSingleEvent(caller(SystemRole.AUDITOR), stored.getEventId(), "Beschwerde 4711");
+        service.findSingleEvent(
+            caller(SystemRole.AUDITOR), stored.getEventId().toString(), "Beschwerde 4711");
 
     assertThat(found).isSameAs(stored);
     ArgumentCaptor<Map<String, Object>> scope = ArgumentCaptor.captor();
@@ -243,6 +248,51 @@ class DiagnosticContextLogQueryServiceTest {
     assertThat(scope.getValue())
         .containsEntry("accessPath", "diagnostic-context-events/{eventId}")
         .containsEntry("eventId", stored.getEventId().toString());
+  }
+
+  /**
+   * The id travels as text so that a malformed one reaches this method rather than Spring MVC's
+   * type conversion - the endpoint promises an entry for every call, accepted or rejected, and that
+   * promise must not depend on the request being well-formed.
+   */
+  @Test
+  void anUnreadableEventIdIsARejectedAttemptAndIsRecordedAsOne() {
+    assertThatThrownBy(
+            () ->
+                service.findSingleEvent(
+                    caller(SystemRole.AUDITOR), "nicht-eine-uuid", "Beschwerde 4711"))
+        .isInstanceOf(ValidationException.class);
+
+    ArgumentCaptor<Map<String, Object>> scope = ArgumentCaptor.captor();
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID),
+            eq(callerId),
+            scope.capture(),
+            eq(AuditOutcome.DENIED),
+            eq("Beschwerde 4711"));
+    assertThat(scope.getValue()).containsEntry("eventId", "nicht-eine-uuid");
+    verify(logRepository, never()).findSingleEntry(any(), any());
+  }
+
+  /** An oversized id is bounded before it reaches the entry - it is caller-supplied text. */
+  @Test
+  void anOversizedEventIdIsRecordedOnlyAsFarAsItCanBeOne() {
+    String oversized = "x".repeat(500);
+
+    assertThatThrownBy(
+            () -> service.findSingleEvent(caller(SystemRole.AUDITOR), oversized, "Beschwerde 4711"))
+        .isInstanceOf(ValidationException.class);
+
+    ArgumentCaptor<Map<String, Object>> scope = ArgumentCaptor.captor();
+    verify(auditEventRecorder)
+        .recordAuditLogAccess(
+            eq(ORGANIZATION_ID),
+            eq(callerId),
+            scope.capture(),
+            eq(AuditOutcome.DENIED),
+            eq("Beschwerde 4711"));
+    assertThat((String) scope.getValue().get("eventId")).hasSize(64);
   }
 
   /**

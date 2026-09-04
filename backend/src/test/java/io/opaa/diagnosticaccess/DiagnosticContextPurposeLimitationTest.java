@@ -33,8 +33,9 @@ import org.yaml.snakeyaml.Yaml;
  *   <li>Every {@code public} method of {@link DiagnosticContextLogQueryService} and {@code
  *       DiagnosticContextLogController} takes only the caller's own identity, a time bound, a
  *       paging number, {@code reason}, or an {@code eventId} naming one already-known entry. A
- *       package-private or protected method is not covered - the filter is on {@code public} - so a
- *       read path built as one would slip through.
+ *       {@link UUID} parameter is allowed on none of them. A package-private or protected method is
+ *       not covered - the filter is on {@code public} - so a read path built as one would slip
+ *       through.
  *   <li>The published schemas of the two protocol responses and their pages carry no
  *       aggregate-looking field and no {@code permissionSnapshot}. {@code targetRef} is not checked
  *       here - it is a declared property of the schema, and only the mapper suppresses it for a
@@ -124,9 +125,10 @@ class DiagnosticContextPurposeLimitationTest {
       return true;
     }
     // An event id names one entry the caller already knows of, not a person and no selection
-    // criterion about one - the only UUID a read path may take, and only under this name.
-    if (type == UUID.class) {
-      return "eventId".equals(name);
+    // criterion about one. It travels as text so that an unreadable one still reaches the service
+    // that records the rejected attempt.
+    if (type == String.class && "eventId".equals(name)) {
+      return true;
     }
     if (type == Instant.class) {
       return Set.of("from", "to").contains(name);

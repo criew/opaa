@@ -57,6 +57,9 @@ public class DiagnosticContextLogQueryService {
 
   private static final int MAX_PAGE_SIZE = 100;
 
+  /** A UUID is 36 characters; anything longer is not one and is recorded only as far as this. */
+  private static final int MAX_EVENT_ID_LENGTH = 64;
+
   private static final Logger log = LoggerFactory.getLogger(DiagnosticContextLogQueryService.class);
 
   private final DiagnosticContextLogRepository logRepository;
@@ -152,17 +155,19 @@ public class DiagnosticContextLogQueryService {
   /**
    * One entry by its own id, for an evaluation that already knows which entry it is about. Same
    * bar, same recording and the same best-effort entry as {@link #findByTimeRange}, and it holds no
-   * transaction of its own for the same reason. An unknown or organization-foreign id is a rejected
-   * attempt, not a malfunction, and is therefore recorded as {@code DENIED}.
+   * transaction of its own for the same reason. An unknown, unreadable or organization-foreign id
+   * is a rejected attempt, not a malfunction, and is therefore recorded as {@code DENIED} - the id
+   * is taken as text and parsed here so that a malformed one reaches this method at all, the same
+   * reason {@code DiagnosticContextLogController} binds {@code reason} as optional.
    *
    * @throws io.opaa.common.NotFoundException if no entry of the caller's organization carries this
    *     id - an entry of a foreign organization is not distinguishable from an unknown one here
    */
   public DiagnosticContextLogEntry findSingleEvent(
-      CurrentUser caller, UUID eventId, String reason) {
+      CurrentUser caller, String eventId, String reason) {
     Map<String, Object> scope = new LinkedHashMap<>();
     scope.put("accessPath", "diagnostic-context-events/{eventId}");
-    scope.put("eventId", eventId == null ? null : eventId.toString());
+    scope.put("eventId", abbreviated(eventId));
     try {
       if (caller.systemRole() != SystemRole.AUDITOR) {
         throw new AccessDeniedException(
@@ -171,12 +176,10 @@ public class DiagnosticContextLogQueryService {
       if (reason == null || reason.isBlank()) {
         throw new ValidationException("Für die Einsicht ist ein Anlass anzugeben");
       }
-      if (eventId == null) {
-        throw new ValidationException("Der Protokolleintrag ist nicht benannt");
-      }
+      UUID requested = requireEventId(eventId);
       DiagnosticContextLogEntry entry =
           logRepository
-              .findSingleEntry(caller.organizationId(), eventId)
+              .findSingleEntry(caller.organizationId(), requested)
               .orElseThrow(() -> new NotFoundException("Protokolleintrag nicht gefunden"));
       recordProtocolAccess(caller, scope, reason, AuditOutcome.SUCCESS);
       return entry;
@@ -208,6 +211,26 @@ public class DiagnosticContextLogQueryService {
             .orElse(null);
     return new OwnDiagnosticContextEvent(
         entry.getRecordedAt(), actorDisplayName, entry.getJustification());
+  }
+
+  /** Parsed here, not bound by Spring MVC - see {@link #findSingleEvent}. */
+  private static UUID requireEventId(String eventId) {
+    if (eventId == null || eventId.isBlank()) {
+      throw new ValidationException("Der Protokolleintrag ist nicht benannt");
+    }
+    return parseUuid(eventId)
+        .orElseThrow(
+            () -> new ValidationException("Die Kennung des Protokolleintrags ist unlesbar"));
+  }
+
+  /** Bounds what an unparsed, caller-supplied id can put into the audit entry's scope. */
+  private static String abbreviated(String eventId) {
+    if (eventId == null) {
+      return null;
+    }
+    return eventId.length() <= MAX_EVENT_ID_LENGTH
+        ? eventId
+        : eventId.substring(0, MAX_EVENT_ID_LENGTH);
   }
 
   private void recordProtocolAccess(

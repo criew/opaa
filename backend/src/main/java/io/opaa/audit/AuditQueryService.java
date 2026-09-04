@@ -276,8 +276,9 @@ public class AuditQueryService {
   /**
    * Enforces the AUDITOR role and the mandatory {@code reason} (both here, not on the controller -
    * see the class Javadoc), runs {@code query}, and writes exactly one self-log entry either way -
-   * {@link AuditOutcome#SUCCESS} if {@code query} returns normally, {@link AuditOutcome#DENIED} if
-   * anything above throws. The original exception always propagates unchanged after logging.
+   * {@link AuditOutcome#SUCCESS} if {@code query} returns normally, otherwise the outcome {@link
+   * AuditAccessOutcome} derives from the exception. The original exception always propagates
+   * unchanged after logging.
    */
   private <T> T loggedAccess(
       UUID organizationId,
