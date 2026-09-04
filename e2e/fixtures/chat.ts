@@ -108,7 +108,11 @@ export async function expectCitedSource(page: Page, fileName: string): Promise<v
 }
 
 async function unfoldSourcesIfNeeded(page: Page, card: Locator): Promise<void> {
-  const foldToggle = page.getByRole('button', { name: /weitere Dokumente? .* anzeigen$/ })
+  // data-testid, not a text/role match on the toggle's label ("N weitere Dokumente"/"1 weiteres
+  // Dokument mit 1 Stelle anzeigen", see SourceFootnotes.tsx's foldedLabel) - a label-text regex
+  // would need to cover both German singular and plural forms and stays coupled to copy that is
+  // free to change (README.md's "Selektor-Konvention").
+  const foldToggle = page.getByTestId('source-footnotes-fold-toggle')
   await expect(async () => {
     if ((await card.count()) > 0) return
     if ((await foldToggle.count()) > 0) {

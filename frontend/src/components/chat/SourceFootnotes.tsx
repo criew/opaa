@@ -332,6 +332,7 @@ export default function SourceFootnotes({
             <Link
               component="button"
               type="button"
+              data-testid="source-footnotes-fold-toggle"
               underline="hover"
               onClick={() => setFoldedOpen((open) => !open)}
               sx={{ fontSize: 11, color: 'text.disabled' }}
