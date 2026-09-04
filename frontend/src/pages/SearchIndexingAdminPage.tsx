@@ -314,7 +314,15 @@ function LibraryStatusTable({
     )
   }
   return (
-    <TableContainer component={Paper} variant="outlined">
+    // Nine columns overflow narrower viewports into a horizontal scroll; a scrollable region must
+    // be reachable and scrollable by keyboard (axe scrollable-region-focusable), hence the tab stop.
+    <TableContainer
+      component={Paper}
+      variant="outlined"
+      tabIndex={0}
+      role="region"
+      aria-label="Tabelle Indexstatus je Bibliothek, horizontal scrollbar"
+    >
       <Table size="small" aria-label="Indexstatus je Bibliothek">
         <TableHead>
           <TableRow>
