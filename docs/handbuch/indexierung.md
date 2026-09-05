@@ -535,11 +535,11 @@ MANAGER an der Bibliothek, weil sie interne Pfade und URLs der Quellkonfiguratio
 Scheitern zwei geplante Läufe hintereinander, zeigt die Bibliothek ein Warnbanner. Manuelle
 Versuche zählen dafür nicht mit, damit ein Testlauf den Befund nicht überschreibt.
 
-Jeder Lauf zeigt zusätzlich eine Kennzahlenzeile: Anfragen an die Quelle, Drosselungen, Anhänge
-(indiziert, übersprungen, fehlgeschlagen) und Dauer. Anhänge zählt jeder Konnektor; Anfragen und
-Drosselungen zählt nur der Confluence-Konnektor, bei den anderen stehen sie auf 0. Bei Confluence
-kommen die Betriebsart und das Kennzeichen „unvollständig, wird fortgesetzt" hinzu; eine
-unvollständige Auflistung bleibt dauerhaft an der Bibliothek sichtbar.
+Jeder Lauf zeigt zusätzlich eine Kennzahlenzeile mit Anhängen (indiziert, übersprungen,
+fehlgeschlagen) und Dauer. Anfragen an die Quelle und Drosselungen erscheinen nur bei Confluence,
+dem einzigen Konnektor, der sie zählt. Bei Confluence kommen außerdem die Betriebsart und das
+Kennzeichen „unvollständig, wird fortgesetzt" hinzu; eine unvollständige Auflistung bleibt
+dauerhaft an der Bibliothek sichtbar.
 
 Systemweit sieht ein Systemadministrator zusätzlich eine Liste der Dokumente **ohne einen
 einzigen Chunk**, der typische Befund für eingescannte PDFs, sowie den Pipeline-Versionsstand je

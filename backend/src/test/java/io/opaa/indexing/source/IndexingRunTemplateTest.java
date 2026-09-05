@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -146,7 +147,17 @@ class IndexingRunTemplateTest {
   }
 
   @Test
-  void anInterruptionFailsTheJobAsInterruptedAndKeepsTheThreadsFlag() {
+  void anInterruptionFailsTheJobAsInterruptedAndRestoresTheFlagOnlyAfterTheJobIsWritten() {
+    // A pending interrupt makes the connection acquisition for the terminal job write fail, so
+    // the flag is restored after failJob has run - and it is restored, for the executor thread.
+    AtomicReference<Boolean> interruptedDuringFailJob = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              interruptedDuringFailJob.set(Thread.currentThread().isInterrupted());
+              return null;
+            })
+        .when(jobService)
+        .failJob(any(), any());
     try {
       template.run(
           jobId,
@@ -162,6 +173,7 @@ class IndexingRunTemplateTest {
       Thread.interrupted();
     }
     verify(jobService).failJob(jobId, IndexingRunTemplate.INTERRUPTED_MESSAGE);
+    assertThat(interruptedDuringFailJob.get()).isFalse();
   }
 
   @Test
@@ -207,7 +219,7 @@ class IndexingRunTemplateTest {
           throw new java.net.ConnectException();
         });
 
-    verify(jobService).failJob(eq(jobId), any());
+    verify(jobService).failJob(jobId, "Unerwarteter Fehler (ConnectException)");
     verify(jobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
   }
 

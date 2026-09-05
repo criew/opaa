@@ -89,6 +89,7 @@ public class IndexingRunTemplate {
     boolean failed = false;
     String failure = null;
     boolean incomplete = false;
+    boolean interrupted = false;
     try {
       ListingOutcome listing = Objects.requireNonNull(body.run(run), "listing outcome");
       incomplete = listing instanceof ListingOutcome.Truncated;
@@ -103,7 +104,7 @@ public class IndexingRunTemplate {
       log.warn("Indexing run {} for library {} interrupted", jobId, library.getId());
       failed = true;
       failure = INTERRUPTED_MESSAGE;
-      Thread.currentThread().interrupt();
+      interrupted = true;
     } catch (DataIntegrityViolationException e) {
       log.error(
           "Indexing run {} failed - target library {} no longer exists", jobId, library.getId(), e);
@@ -112,7 +113,10 @@ public class IndexingRunTemplate {
     } catch (Exception e) {
       log.error("Indexing run {} for library {} failed unexpectedly", jobId, library.getId(), e);
       failed = true;
-      failure = e.getMessage();
+      failure =
+          e.getMessage() != null
+              ? e.getMessage()
+              : "Unerwarteter Fehler (" + e.getClass().getSimpleName() + ")";
     }
     recordCost(run, !failed && incomplete);
     log.info(
@@ -130,11 +134,19 @@ public class IndexingRunTemplate {
         incomplete,
         failed,
         failure);
-    events.finalizeRun();
-    if (failed) {
-      progress.fail(failure);
-    } else {
-      progress.complete();
+    // The interrupt flag is restored only after the job row is written: a pending interrupt makes
+    // the connection acquisition for that write fail and would leave the job RUNNING forever.
+    try {
+      events.finalizeRun();
+      if (failed) {
+        progress.fail(failure);
+      } else {
+        progress.complete();
+      }
+    } finally {
+      if (interrupted) {
+        Thread.currentThread().interrupt();
+      }
     }
   }
 
