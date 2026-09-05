@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import Typography from '@mui/material/Typography'
 import { useAuthStore } from '../stores/authStore'
@@ -11,15 +12,17 @@ export default function AuthCallbackPage() {
   const handleOidcCallback = useAuthStore((s) => s.handleOidcCallback)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const isLoading = useAuthStore((s) => s.isLoading)
-  const userManager = useAuthStore((s) => s.userManager)
+  const mode = useAuthStore((s) => s.mode)
   const error = useAuthStore((s) => s.error)
   const navigate = useNavigate()
 
+  // initialize() already activated the manager of the provider this tab started the flow at
+  // (ADR-0025); handleOidcCallback reports it when that provider is gone in the meantime.
   useEffect(() => {
-    if (!isLoading && userManager) {
-      handleOidcCallback()
+    if (!isLoading && mode === 'oidc') {
+      void handleOidcCallback()
     }
-  }, [isLoading, userManager, handleOidcCallback])
+  }, [isLoading, mode, handleOidcCallback])
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -35,14 +38,20 @@ export default function AuthCallbackPage() {
         justifyContent: 'center',
         alignItems: 'center',
         height: '100vh',
+        gap: 2,
       }}
     >
       {error ? (
-        <Typography color="error">{error}</Typography>
+        <>
+          <Typography color="error">{error}</Typography>
+          <Button variant="outlined" onClick={() => navigate('/login', { replace: true })}>
+            Zur Anmeldung
+          </Button>
+        </>
       ) : (
         <>
           <CircularProgress />
-          <Typography sx={{ mt: 2 }}>Anmeldung wird abgeschlossen …</Typography>
+          <Typography>Anmeldung wird abgeschlossen …</Typography>
         </>
       )}
     </Box>

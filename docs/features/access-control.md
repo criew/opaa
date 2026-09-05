@@ -128,10 +128,98 @@ Die Mandantengrenze gilt auch für die Anmeldung: Eine Identität gehört zu **g
 Es gibt kein Konto, das mehrere Mandanten sieht, und keinen Wechsel zwischen ihnen innerhalb einer
 Sitzung.
 
-> **Backlog-Notiz:** Mehrere OIDC-Anbieter gleichzeitig als Anmeldeweg anbieten (z. B. keycloak1,
-> keycloak2, … zur Auswahl). Steht im Spannungsverhältnis zur heutigen Annahme eines einzelnen
-> OIDC-Issuers je Organisation (`DirectorySyncService`, siehe
-> [ADR-0005](../decisions/0005-authentication-strategy.md)) und ist noch nicht spezifiziert.
+> **Mehrere OIDC-Anbieter** (Epic #1294): Eine Installation kann mehrere Identitätsanbieter
+> gleichzeitig anbieten — die Anmeldeseite zeigt sie zur Auswahl. Die Architektur legt
+> [ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md) fest: Anbieter in der Datenbank mit
+> Admin-Oberfläche, Identität strikt als `(Issuer, Subject)` ohne Zusammenführung über die E-Mail,
+> Erstadministrator-Regel nur für den Standardanbieter, Verzeichnisabgleich an den Standardanbieter
+> gebunden. Der Ist-Stand der Umsetzung steht im Epic.
+
+**Anbieterverwaltung (gebaut, #1329).** Die Identitätsanbieter liegen in der Tabelle
+`oidc_providers` und werden über die Admin-API `/api/v1/admin/oidc-providers` (nur `SYSTEM_ADMIN`)
+gepflegt: Anzeigename, Issuer-URI (eindeutig), Client-ID, optional die Backend-seitige
+JWK-Set-Adresse, die Claim-Zuordnung, Reihenfolge, Standardanbieter, aktiviert/deaktiviert. Jede
+Änderung ist ein Audit-Ereignis (`OIDC_PROVIDER_*`) und wirkt ohne Neustart des Backends: Das
+Backend prüft jedes Token gegen den Anbieter seines Issuers, ein deaktivierter Anbieter wird ab dem
+nächsten Token abgewiesen (`unknown_issuer`). Der erste Anbieter ist automatisch der Standardanbieter;
+er kann weder deaktiviert noch gelöscht werden, bevor ein anderer aktivierter Anbieter Standard ist.
+Die Issuer-URI eines Anbieters, über den bereits Konten angelegt wurden, ist nicht änderbar. Beim
+ersten Start im `oidc`-Modus übernimmt OPAA den bisherigen `OPAA_OIDC_*`-Anbieter einmalig als
+Standardanbieter „Verzeichnisdienst"; `OPAA_OIDC_BOOTSTRAP=force` stellt ihn im Notfall wieder
+her. Vom Betreiber eingegebene Adressen durchlaufen eine eigene Adressprüfung
+(`OPAA_OIDC_TARGET_VALIDATION_*`); die Bootstrap-Adressen sind immer erlaubt. Ein Verbindungstest
+prüft Discovery-Dokument und JWK-Set vor dem Speichern. Die Anmeldeseite (#1332) und die
+Verwaltungsoberfläche (#1333) folgen.
+
+**Kontenmodell je Anbieter (gebaut, #1330).** Die Identität eines Kontos ist das Paar
+`(Issuer, Subject)`. Dieselbe Person bei zwei Anbietern hat zwei Konten mit getrennten
+persönlichen Spaces, Systemrollen und Space-Rechten — eine Zusammenführung über die E-Mail findet
+nie statt, auch nicht stillschweigend bei gleicher Adresse (Anbieter B kann kein Konto aus Anbieter
+A übernehmen). Die Erstadministrator-Regel (`OPAA_INITIAL_ADMIN_EMAIL`) greift nur beim Anlegen
+eines Kontos und nur über den **Standardanbieter** (im `dev`-Modus: den Dev-Issuer); dieselbe
+Adresse aus einem zweiten Anbieter ergibt einen regulären Nutzer, ebenso ein Konto, das angelegt
+wird, solange noch kein Standardanbieter existiert — beides wird als Warnung protokolliert, da die
+Regel nur einmal, beim Anlegen, greift. Ein Token eines deaktivierten oder gelöschten Anbieters wird
+mit `401` und `error_description="unknown_issuer"` abgewiesen, sodass die Oberfläche den Fall vom
+abgelaufenen Token unterscheiden kann.
+
+**Claim-Zuordnung je Anbieter (gebaut, #1331).** Jede Anbieterzeile legt fest, aus welchen
+Token-Claims E-Mail und Anzeigename gelesen werden (Vorgabe `email`/`name`, Rückfall
+`preferred_username`, nie das Subject) und optional, aus welchem Claim Rollen und Gruppen kommen —
+dieselbe Token-Struktur ergibt unter zwei Anbietern zwei verschieden gelesene Identitäten. Ist ein
+**Rollen-Claim** gesetzt (Pfad in Punktnotation, z. B. `realm_access.roles`, mit den Rollenwerten
+für `SYSTEM_ADMIN` und `AUDITOR`), ist der Anbieter für diese Systemrollen führend: Bei jeder
+Anfrage wird die Rolle aus dem Token abgeleitet (`SYSTEM_ADMIN` vor `AUDITOR`, sonst regulärer
+Nutzer) und nur bei Abweichung geschrieben — als Rollenänderung mit Audit-Ereignis unter dem
+Systemprozess-Akteur `identity-provider`. Drei Sicherungen: Der letzte `SYSTEM_ADMIN` wird nie per
+Token entzogen (bedingter, je Organisation serialisierter `UPDATE`; der abgelehnte Entzug wird
+protokolliert und als `SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED` auditiert), die manuelle Rollenvergabe
+ist für Konten eines solchen Anbieters gesperrt (409), und die Oberfläche (#1333) verlangt beim
+Setzen des Rollen-Claims eine Bestätigung. `AUDITOR` ist nicht geschützt. Ist ein
+**Gruppen-Claim** gesetzt, werden die Gruppennamen des Tokens bei jeder Anmeldung zu
+Mitgliedschaften in Gruppen der Art „Gruppe aus dem Identitätsanbieter" (`IDENTITY_PROVIDER`) im
+Namensraum des Anbieters (`oidc:<Anbieter-ID>:<Name>`, Namen bis 213 Zeichen): gleichnamige
+Gruppen zweier Anbieter sind zwei Gruppen, ein Anbieter erreicht nie die Gruppen eines anderen;
+Mitgliedschaften folgen dem Token (Historie `IDENTITY_PROVIDER_ADDED`/`_REMOVED`, Audit unter
+`identity-provider`), die Gruppen selbst bleiben bestehen und sind in der Gruppenverwaltung
+schreibgeschützt; sie sind weder Gegenstand des Verzeichnisabgleichs noch als „Sicht als"-Bereich
+wählbar. Der **Verzeichnisabgleich** ist an den Standardanbieter gebunden: Er löst die Subjects
+des Verzeichnisses nur unter dessen Konten auf (ein gleichnamiges Subject eines zweiten Anbieters
+erbt keine Mitgliedschaft) und verwaltet ausschließlich Organisationseinheiten; ohne
+Standardanbieter bricht ein Lauf ohne Änderungen ab.
+
+**Anmeldeseite mit mehreren Anbietern (gebaut, #1332).** `GET /api/v1/auth/config` liefert ohne
+Anmeldung die aktivierten Anbieter, deren Schlüssel das Backend abrufen konnte — Anzeigename,
+Issuer-URI (zugleich die Authority des Anmeldeflusses), Client-ID, Standard-Kennzeichen und
+Reihenfolge, nichts über Claim-Zuordnung oder Konten. Die Anmeldeseite zeigt je Anbieter eine
+Schaltfläche in der konfigurierten Reihenfolge; vorgeschlagen (die eine primäre Schaltfläche)
+wird der zuletzt im Browser benutzte Anbieter, sonst der Standardanbieter, sonst der erste. Mit
+genau einem Anbieter bleibt es beim direkten Einstieg. „Mit anderem Konto anmelden" schickt
+`prompt=login` an den vorgeschlagenen Anbieter. Die SPA hält je Anbieter einen eigenen
+OIDC-Client; der Anbieter des laufenden Flusses und der aktiven Sitzung ist je Tab gemerkt
+(`sessionStorage`), der zuletzt benutzte nur als Vorschlag (`localStorage`). Der Callback
+`<Origin>/auth/callback` ist für alle Anbieter derselbe; wurde der Anbieter während des Flusses
+deaktiviert, erklärt die Seite das und führt zurück zur Anmeldung. Die Abmeldung ist ein
+RP-initiierter Logout beim Anbieter der aktiven Sitzung; ein Anbieter ohne
+`end_session_endpoint` endet in einer lokalen Abmeldung mit Hinweis. Antwortet das Backend auf
+ein Token mit `unknown_issuer` (Anbieter deaktiviert oder gelöscht), wird die Sitzung ohne
+Erneuerungsversuch beendet und der Grund benannt.
+
+**Verwaltungsoberfläche (gebaut, #1333).** Unter Administration → Identitätsanbieter (nur
+`SYSTEM_ADMIN`) stehen die Anbieter in Anmeldereihenfolge mit Standard-Kennzeichen, Zustand
+(erreichbar, nicht erreichbar mit Grund aus der Registry, deaktiviert) und dem Hinweis, wenn ein
+Anbieter die Rollen führt. Reihenfolge per Pfeilschaltflächen, Standardanbieter wechseln,
+aktivieren/deaktivieren und löschen jeweils mit Konsequenz-Hinweis (Nutzer des Anbieters können
+sich nicht mehr anmelden, Konten bleiben); der Standardanbieter bietet weder Deaktivieren noch
+Löschen an. Der Formulardialog führt Anzeigename, Issuer-URI, Client-ID, die Backend-seitige
+JWK-Set-Adresse (als Vertrauensanker benannt) und die Claim-Zuordnung — kein Secret-Feld, die SPA
+ist Public Client. Das Setzen eines Rollen-Claims verlangt eine ausdrückliche Bestätigung; ein
+Verbindungstest prüft Discovery-Dokument und JWK-Set vor dem Speichern; Fehlermeldungen des
+Backends (etwa die verweigerte Issuer-Änderung eines Anbieters mit Konten) erscheinen im Dialog.
+Eine Anleitung nennt die aus dem eigenen Origin zusammengesetzte Weiterleitungs-URI
+`<Origin>/auth/callback` und den Origin, den CSP-Schritt (`OPAA_CSP_CONNECT_SRC_EXTRA`, Neustart
+des Frontend-Containers) und die Adress-Allowlist des Backends. Im `dev`-Modus weist die Seite
+darauf hin, dass Anbieter erst im OIDC-Modus wirken.
 
 ---
 

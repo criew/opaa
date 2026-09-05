@@ -122,6 +122,35 @@ describe('GroupManagementPage', () => {
     })
   })
 
+  // ADR-0025, Entscheidung 4 (#1331): a token-derived group is read-only like an org unit, but
+  // the explanation names its actual source
+  it('explains a group from the identity provider and keeps it read-only', async () => {
+    const tokenGroup: GroupListResponse = {
+      ...orgUnitGroup,
+      id: 'group-token-fachbereich',
+      name: 'Fachbereich 3',
+      kind: 'IDENTITY_PROVIDER',
+      externalId: 'oidc:p-partner:Fachbereich 3',
+    }
+    setGroupState([tokenGroup], {
+      'group-token-fachbereich': {
+        ...tokenGroup,
+        members: [{ userId: 'u3', displayName: 'Carla', createdAt: '2026-03-01T10:00:00Z' }],
+      },
+    })
+    renderWithProviders(<GroupManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    expect(await screen.findByText('Gruppe aus dem Identitätsanbieter')).toBeInTheDocument()
+    await user.click(screen.getByText('Fachbereich 3'))
+
+    expect(await screen.findByText('Carla')).toBeInTheDocument()
+    expect(screen.getByText(/stammt aus dem identitätsanbieter/i)).toBeInTheDocument()
+    expect(screen.queryByText(/aus dem verzeichnis synchronisiert/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /gruppe löschen/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^entfernen$/i })).not.toBeInTheDocument()
+  })
+
   it('disables editing and member management for an org-unit group', async () => {
     setGroupState([orgUnitGroup], { 'group-referat-50': orgUnitDetails })
     renderWithProviders(<GroupManagementPage />, { withRouter: true })
