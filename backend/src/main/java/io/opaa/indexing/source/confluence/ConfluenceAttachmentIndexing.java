@@ -6,7 +6,6 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.SourceDocumentContext;
-import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.attachment.AttachmentSource;
 import io.opaa.sourceaccess.BoundedDownloader;
@@ -32,22 +31,10 @@ final class ConfluenceAttachmentIndexing {
   private final AttachmentIndexer attachmentIndexer;
   private final DocumentRepository documentRepository;
 
-  /**
-   * The download is bounded by {@link ConfluenceProperties#maxAttachmentSizeBytes()} before the
-   * path ever sees the bytes, one attachment is handed over per call (the request budget bounds a
-   * run, not a per-page cap), and a nested attachment descends as deep as every other source.
-   */
-  private final AttachmentDownloadLimits limits;
-
   ConfluenceAttachmentIndexing(
-      AttachmentIndexer attachmentIndexer,
-      DocumentRepository documentRepository,
-      ConfluenceProperties properties) {
+      AttachmentIndexer attachmentIndexer, DocumentRepository documentRepository) {
     this.attachmentIndexer = attachmentIndexer;
     this.documentRepository = documentRepository;
-    this.limits =
-        new AttachmentDownloadLimits(
-            1, properties.maxAttachmentSizeBytes(), 0L, properties.userAgent());
   }
 
   /**
@@ -98,6 +85,11 @@ final class ConfluenceAttachmentIndexing {
     }
   }
 
+  /**
+   * The download is bounded by {@link ConfluenceProperties#maxAttachmentSizeBytes()} before the
+   * path ever sees the bytes, and one attachment is handed over per call (the request budget bounds
+   * a run, not a per-page cap) - so the shared attachment limits apply, none of Confluence's own.
+   */
   private void indexAttachment(
       ConfluenceRun run,
       ConfluenceAttachment attachment,
@@ -119,8 +111,7 @@ final class ConfluenceAttachmentIndexing {
                   String.valueOf(attachment.version()))),
           pageDocumentId,
           pagePath,
-          DocumentSourceType.CONFLUENCE,
-          limits);
+          DocumentSourceType.CONFLUENCE);
     } catch (BoundedDownloader.AttachmentTooLargeException e) {
       run.events.record(
           IndexingEventCategory.REJECTED, "Anhang überschreitet die Größengrenze", path);

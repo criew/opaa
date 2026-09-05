@@ -86,7 +86,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
 
     // #1200: every null/zero component falls back to the record's own defaults (7-day rhythm).
     ConfluenceProperties confluenceProperties =
-        new ConfluenceProperties(0, null, null, 0, null, 0, 0, null, 0, null, null, 0);
+        new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0);
     libraryService =
         new KnowledgeLibraryService(
             libraryRepository,

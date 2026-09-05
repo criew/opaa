@@ -227,7 +227,7 @@ class LibraryDocumentServiceTest {
         folderRepository,
         folderService,
         attachmentExtractor,
-        new AttachmentProperties(0),
+        new AttachmentProperties(0, 0, 0),
         new AttachmentExtractionLimiter(limits));
   }
 
@@ -1432,7 +1432,7 @@ class LibraryDocumentServiceTest {
             folderRepository,
             folderService,
             attachmentExtractor,
-            new AttachmentProperties(0),
+            new AttachmentProperties(0, 0, 0),
             new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)));
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
         .thenReturn(AssetRole.VIEWER);

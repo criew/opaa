@@ -29,8 +29,8 @@ import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
-import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
+import io.opaa.indexing.source.attachment.AttachmentLimits;
 import io.opaa.indexing.source.attachment.AttachmentSource;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryProperties;
@@ -145,7 +145,7 @@ class FileProcessingServiceTest {
         defaultIndexingProperties(),
         Runnable::run,
         attachmentIndexerProvider,
-        new AttachmentDownloadLimits(0, 0, 0, ""),
+        new AttachmentLimits(0, 0),
         TestDocumentMetadataServices.returningEmpty());
   }
 
@@ -1047,7 +1047,7 @@ class FileProcessingServiceTest {
               defaultIndexingProperties(),
               Runnable::run,
               Mockito.mock(ObjectProvider.class),
-              new AttachmentDownloadLimits(0, 0, 0, ""),
+              new AttachmentLimits(0, 0),
               metadataService);
       when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
       when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), ENTRY_URL))

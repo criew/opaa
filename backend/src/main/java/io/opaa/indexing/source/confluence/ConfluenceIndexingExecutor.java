@@ -102,8 +102,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     this.vectorChunkStore = vectorChunkStore;
     this.clock = clock;
     this.runTemplate = runTemplate;
-    this.attachments =
-        new ConfluenceAttachmentIndexing(attachmentIndexer, documentRepository, properties);
+    this.attachments = new ConfluenceAttachmentIndexing(attachmentIndexer, documentRepository);
   }
 
   @Override

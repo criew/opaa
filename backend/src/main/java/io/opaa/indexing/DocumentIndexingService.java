@@ -197,14 +197,11 @@ public class DocumentIndexingService {
    * perfectly valid target, it simply has nothing to run.
    */
   private IndexingSourceType toIndexingSourceType(DocumentSourceType sourceType) {
-    return switch (sourceType) {
-      case FILESYSTEM -> IndexingSourceType.FILESYSTEM;
-      case HTTP_DIRECTORY -> IndexingSourceType.HTTP_DIRECTORY;
-      case RSS_FEED -> IndexingSourceType.RSS_FEED;
-      case UPLOAD ->
-          throw new ConflictException("Für UPLOAD-Bibliotheken gibt es keinen Indizierungslauf");
-      case CONFLUENCE -> IndexingSourceType.CONFLUENCE;
-    };
+    if (!sourceType.hasIndexingRun()) {
+      throw new ConflictException(
+          "Für " + sourceType + "-Bibliotheken gibt es keinen Indizierungslauf");
+    }
+    return IndexingSourceType.of(sourceType);
   }
 
   /**

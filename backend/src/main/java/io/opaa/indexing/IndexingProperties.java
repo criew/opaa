@@ -94,7 +94,7 @@ public record IndexingProperties(
       threadPool = new ThreadPool(2, 4, 20);
     }
     if (rss == null) {
-      rss = new Rss(200, 10_485_760L, 5_242_880L, 1000L, null, null, null, 0, 0L);
+      rss = new Rss(200, 10_485_760L, 5_242_880L, 1000L, null, null, 0, 0L);
     }
     if (staleJobTimeout == null) {
       staleJobTimeout = Duration.ofHours(4);
@@ -135,7 +135,9 @@ public record IndexingProperties(
    * addresses an RSS run touches - the feed itself and every entry's detail page - come from the
    * feed operator, not from OPAA's own configuration; {@code RssFeedParser} deliberately does not
    * enforce any of these limits itself (it is a pure, unbounded parser meant to run without network
-   * or database), so the executor that drives it is the only place left to apply them.
+   * or database), so the executor that drives it is the only place left to apply them. The {@code
+   * User-Agent} and the {@code 429} tolerance are {@link SourceHttpProperties}', shared with every
+   * other connector.
    *
    * @param maxEntries the maximum number of feed entries processed in a single run. Excess entries
    *     are logged and dropped, not treated as an error.
@@ -148,8 +150,6 @@ public record IndexingProperties(
    * @param requestDelayMs the minimum delay, in milliseconds, between two detail-page requests -
    *     being a well-behaved crawler against sites OPAA does not operate. Default 1000: a
    *     conservative one request per second.
-   * @param userAgent the {@code User-Agent} header sent with every request this executor makes.
-   *     Deliberately truthful by default - impersonating a browser is explicitly out of scope.
    * @param mainContentSelector the CSS selector (Jsoup syntax) used to find a detail page's main
    *     content, tried against the whole document. Falls back to {@code body} when it matches
    *     nothing, so an unusual page still yields the full page's text rather than nothing at all.
@@ -170,14 +170,10 @@ public record IndexingProperties(
       long maxFeedSizeBytes,
       long maxPageSizeBytes,
       long requestDelayMs,
-      String userAgent,
       String mainContentSelector,
       AttachmentProfile attachmentProfile,
       int maxAttachmentsPerEntry,
       long maxAttachmentSizeBytes) {
-
-    /** Truthful default {@code User-Agent} - never a value that impersonates a browser. */
-    static final String DEFAULT_USER_AGENT = "OPAA-Indexer/1.0";
 
     /**
      * Tried in order against the whole document; the first selector that matches anything wins.
@@ -198,9 +194,6 @@ public record IndexingProperties(
       }
       if (requestDelayMs < 0) {
         requestDelayMs = 1000L;
-      }
-      if (userAgent == null || userAgent.isBlank()) {
-        userAgent = DEFAULT_USER_AGENT;
       }
       if (mainContentSelector == null || mainContentSelector.isBlank()) {
         mainContentSelector = DEFAULT_MAIN_CONTENT_SELECTOR;

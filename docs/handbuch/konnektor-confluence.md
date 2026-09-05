@@ -122,7 +122,7 @@ Webhook-Zustand sehen nur Verwaltende (Rolle MANAGER oder Eigentümer), ebenso d
 | Zugriffsschicht | je Edition ein eigener Adapter: Cloud über `/wiki/api/v2` (Cursor-Paginierung) und die v1-Suche für CQL; Data Center über `/rest/api` (Offset-Paginierung). Läufe, Verbindungstest und Space-Liste sehen dieselbe Schnittstelle. |
 | Authentifizierung | Cloud HTTP Basic, Data Center Bearer; die Zugangsdaten erreichen nie eine Fehlermeldung oder ein Protokoll |
 | Zugangsdaten vor dem ersten Lauf | jeder Lauf prüft zuerst, ob die Instanz das Token annimmt (Cloud: Space-Liste, Data Center: angemeldetes Konto); eine anonym beantwortete Anfrage beendet den Lauf, bevor irgendetwas aufgelistet wird |
-| User-Agent | konfigurierbar, Standard `OPAA-Indexer/1.0` |
+| User-Agent | gemeinsam für alle Netzkonnektoren konfigurierbar (`opaa.indexing.http.user-agent`), Standard `OPAA-Indexer/1.0` |
 | Timeouts | 30 s je JSON-Anfrage, 10 s je Sonde der Editionserkennung, 120 s je Anhangs-Download, 30 s Verbindungsaufbau |
 | Paginierung | folgt dem `next`-Link der Instanz bis zum Ende; höchstens 500 Seiten je Auflistung (Standard), danach Abbruch mit sichtbarem Fehler, nie stilles Abschneiden |
 | Weiterleitungen | JSON-Aufrufe: ein fremder Ursprung wird abgelehnt. Anhangs-Downloads: eine Weiterleitung auf einen fremden Host (Cloud liefert Anhänge von einem vorsignierten Medien-Host) wird gefolgt, aber ohne Zugangsdaten. Ein `next`-Link oder Download-Link, der die Instanz verlässt, wird abgelehnt. |
@@ -476,11 +476,10 @@ Alle Schlüssel unter `opaa.indexing.confluence.*`, Umgebungsvariablen als
 | `page-size` | 100 | Seitengröße jeder Auflistung; Cloud kappt bei 250, Data Center bei 200 |
 | `request-timeout` | 30s | Zeitlimit je JSON-Anfrage |
 | `detection-timeout` | 10s | Zeitlimit je Sonde der Editionserkennung |
-| `max-rate-limit-retries` | 6 | aufeinanderfolgende 429-Antworten, die eine Anfrage abwartet |
+| `max-rate-limit-retries` | 6 | aufeinanderfolgende 429-Antworten, die eine Anfrage abwartet (Confluence-eigener Wert; der `User-Agent` kommt aus `opaa.indexing.http.user-agent`) |
 | `max-retry-after` | 2m | Obergrenze einer einzelnen Wartezeit aus `Retry-After` |
 | `max-response-bytes` | 10485760 (10 MiB) | Obergrenze je JSON-Antwort |
 | `max-attachment-size-bytes` | 20971520 (20 MiB) | Obergrenze je Anhang |
-| `user-agent` | `OPAA-Indexer/1.0` | `User-Agent` aller Anfragen |
 | `max-listing-pages` | 500 | Seiten je Auflistung, bevor sie als unbegrenzt abgebrochen wird |
 | `full-sync-interval` | 7d | instanzweite Vorgabe für den Vollabgleich-Rhythmus; je Bibliothek überschreibbar |
 | `incremental-overlap` | 10m | Überlappung des Änderungsfensters nach hinten |

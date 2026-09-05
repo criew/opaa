@@ -2,7 +2,9 @@ package io.opaa.indexing.source.rss;
 
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.source.IndexingRunFailedException;
+import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -11,7 +13,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -35,16 +36,19 @@ class FeedFetcher {
   private final RssFeedStateRepository feedStateRepository;
   private final RssFeedParser feedParser;
   private final IndexingProperties.Rss properties;
+  private final SourceRequestPolicy requestPolicy;
 
   FeedFetcher(
       TargetAddressValidator targetAddressValidator,
       RssFeedStateRepository feedStateRepository,
       RssFeedParser feedParser,
-      IndexingProperties.Rss properties) {
+      IndexingProperties.Rss properties,
+      SourceRequestPolicy requestPolicy) {
     this.targetAddressValidator = targetAddressValidator;
     this.feedStateRepository = feedStateRepository;
     this.feedParser = feedParser;
     this.properties = properties;
+    this.requestPolicy = requestPolicy;
   }
 
   /** The feed response and parsed entries {@link #fetchAndParse} hands back on success. */
@@ -75,13 +79,14 @@ class FeedFetcher {
 
     List<RssFeedEntry> entries;
     try (InputStream body = feedResponse.body()) {
-      byte[] feedBytes = readFeedBody(body);
+      // bounded while streaming, never after the whole response has been downloaded
+      byte[] feedBytes = BoundedStreams.readFully(body, properties.maxFeedSizeBytes());
       entries = feedParser.parse(new ByteArrayInputStream(feedBytes));
     } catch (RssFeedParseException e) {
       // German, user-facing message straight from the parser.
       log.warn("RSS feed did not parse: {}", feedUrl, e);
       throw new IndexingRunFailedException(e.getMessage(), e);
-    } catch (FeedTooLargeException e) {
+    } catch (BoundedStreams.LimitExceededException e) {
       throw new IndexingRunFailedException(
           "Der RSS-Feed überschreitet die zulässige Größe von "
               + properties.maxFeedSizeBytes()
@@ -125,16 +130,13 @@ class FeedFetcher {
    * conditional {@code GET}, so a {@code 304} ends the caller's run without a body being read.
    * Follows redirects that leave the feed's own origin ({@link
    * RedirectFollowingFetcher.RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN}) but drops {@code
-   * Authorization} at that hop, so a provider's CDN redirect cannot leak the feed's credentials.
+   * Authorization} at that hop, so a provider's CDN redirect cannot leak the feed's credentials. A
+   * {@code 429} is waited out under the shared {@link SourceRequestPolicy}.
    */
   private HttpResponse<InputStream> fetchFeed(
       HttpClient httpClient, String feedUrl, Optional<RssFeedState> feedState, String authHeader)
       throws IOException, InterruptedException {
-    Map<String, String> headers = new LinkedHashMap<>();
-    headers.put("User-Agent", properties.userAgent());
-    if (authHeader != null) {
-      headers.put("Authorization", authHeader);
-    }
+    Map<String, String> headers = requestPolicy.headers(authHeader);
     feedState.ifPresent(
         state -> {
           if (state.getEtag() != null) {
@@ -150,22 +152,8 @@ class FeedFetcher {
         Duration.ofSeconds(60),
         headers,
         targetAddressValidator,
-        RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN);
-  }
-
-  /**
-   * Reads at most {@link IndexingProperties.Rss#maxFeedSizeBytes()} from {@code body}, throwing
-   * {@link FeedTooLargeException} the moment a further byte would exceed the limit - enforced while
-   * streaming, not after the full response has already been downloaded.
-   */
-  private byte[] readFeedBody(InputStream body) throws IOException {
-    byte[] probe =
-        body.readNBytes(
-            Math.toIntExact(Math.min(properties.maxFeedSizeBytes() + 1, Integer.MAX_VALUE)));
-    if (probe.length > properties.maxFeedSizeBytes()) {
-      throw new FeedTooLargeException();
-    }
-    return probe;
+        RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
+        requestPolicy.rateLimitHandling());
   }
 
   /**
@@ -190,7 +178,4 @@ class FeedFetcher {
     state.setUpdatedAt(Instant.now());
     feedStateRepository.save(state);
   }
-
-  /** Thrown by {@link #readFeedBody} when the configured byte limit is exceeded while streaming. */
-  static final class FeedTooLargeException extends RuntimeException {}
 }

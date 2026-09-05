@@ -10,11 +10,11 @@ class ConfluencePropertiesTest {
   @Test
   void theRequestBudgetRejectsNegativeValuesAndTreatsZeroAsUnbounded() {
     assertThatThrownBy(
-            () -> new ConfluenceProperties(0, null, null, 0, null, 0, 0, null, 0, null, null, -1))
+            () -> new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, -1))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("requestBudgetPerRun");
     ConfluenceProperties unbounded =
-        new ConfluenceProperties(0, null, null, 0, null, 0, 0, null, 0, null, null, 0);
+        new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0);
     assertThat(unbounded.hasRequestBudget()).isFalse();
     assertThat(ConfluenceProperties.defaults().requestBudgetPerRun())
         .isEqualTo(ConfluenceProperties.DEFAULT_REQUEST_BUDGET_PER_RUN);

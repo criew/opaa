@@ -161,12 +161,18 @@ opaa:
       core-size: ${OPAA_INDEXING_THREAD_POOL_CORE_SIZE:2}
       max-size: ${OPAA_INDEXING_THREAD_POOL_MAX_SIZE:4}
       queue-capacity: ${OPAA_INDEXING_THREAD_POOL_QUEUE_CAPACITY:20}
+    # What every request to a source OPAA does not operate carries and tolerates - RSS feed, web
+    # directory and Confluence alike; see SourceHttpProperties. Confluence keeps its own
+    # rate-limit numbers below.
+    http:
+      user-agent: ${OPAA_INDEXING_HTTP_USER_AGENT:OPAA-Indexer/1.0}
+      max-rate-limit-retries: ${OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_RETRIES:6}
+      max-retry-after: ${OPAA_INDEXING_HTTP_MAX_RETRY_AFTER:2m}
     rss:
       max-entries: ${OPAA_INDEXING_RSS_MAX_ENTRIES:200}
       max-feed-size-bytes: ${OPAA_INDEXING_RSS_MAX_FEED_SIZE_BYTES:10485760}
       max-page-size-bytes: ${OPAA_INDEXING_RSS_MAX_PAGE_SIZE_BYTES:5242880}
       request-delay-ms: ${OPAA_INDEXING_RSS_REQUEST_DELAY_MS:1000}
-      user-agent: ${OPAA_INDEXING_RSS_USER_AGENT:OPAA-Indexer/1.0}
       main-content-selector: ${OPAA_INDEXING_RSS_MAIN_CONTENT_SELECTOR:main, article, [role=main]}
       attachment-profile: ${OPAA_INDEXING_RSS_ATTACHMENT_PROFILE:GENERIC}
       max-attachments-per-entry: ${OPAA_INDEXING_RSS_MAX_ATTACHMENTS_PER_ENTRY:10}
@@ -190,7 +196,6 @@ opaa:
       max-retry-after: ${OPAA_INDEXING_CONFLUENCE_MAX_RETRY_AFTER:2m}
       max-response-bytes: ${OPAA_INDEXING_CONFLUENCE_MAX_RESPONSE_BYTES:10485760}
       max-attachment-size-bytes: ${OPAA_INDEXING_CONFLUENCE_MAX_ATTACHMENT_SIZE_BYTES:20971520}
-      user-agent: ${OPAA_INDEXING_CONFLUENCE_USER_AGENT:OPAA-Indexer/1.0}
       max-listing-pages: ${OPAA_INDEXING_CONFLUENCE_MAX_LISTING_PAGES:500}
       full-sync-interval: ${OPAA_INDEXING_CONFLUENCE_FULL_SYNC_INTERVAL:7d}
       incremental-overlap: ${OPAA_INDEXING_CONFLUENCE_INCREMENTAL_OVERLAP:10m}
@@ -236,6 +241,8 @@ opaa:
     # applied by AttachmentIndexer regardless of which connector discovered the attachment.
     attachments:
       max-depth: ${OPAA_INDEXING_ATTACHMENTS_MAX_DEPTH:5}
+      max-per-parent: ${OPAA_INDEXING_ATTACHMENTS_MAX_PER_PARENT:10}
+      max-size-bytes: ${OPAA_INDEXING_ATTACHMENTS_MAX_SIZE_BYTES:20971520}
     # #267: SSRF hardening for HTTP_DIRECTORY/RSS_FEED fetches - see
     # io.opaa.sourceaccess.TargetAddressValidator.
     target-validation:

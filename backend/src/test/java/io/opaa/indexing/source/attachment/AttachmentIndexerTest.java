@@ -60,7 +60,7 @@ class AttachmentIndexerTest {
   private IndexingRunEventRepository indexingRunEventRepository;
   private AttachmentIndexer indexer;
   private RssFeedRunContext ctx;
-  private AttachmentDownloadLimits limits;
+  private AttachmentLimits limits;
   private UUID parentDocumentId;
 
   @BeforeEach
@@ -68,13 +68,13 @@ class AttachmentIndexerTest {
     attachmentDownloader = mock(BoundedDownloader.class);
     fileProcessingService = mock(FileProcessingService.class);
     LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
-    limits = new AttachmentDownloadLimits(10, 5_242_880L, 0, "opaa-test-agent");
+    limits = new AttachmentLimits(10, 5_242_880L);
     indexer =
         new AttachmentIndexer(
             attachmentDownloader,
             fileProcessingService,
             storageQuotaService,
-            new AttachmentProperties(5));
+            new AttachmentProperties(5, 0, 0));
     parentDocumentId = UUID.randomUUID();
 
     indexingJobService = mock(IndexingJobService.class);
@@ -116,8 +116,7 @@ class AttachmentIndexerTest {
     // feed's ETag persistence (anyEntryDeferred) and log an ERROR event, never call recordFailed().
     Path downloaded = tempDir.resolve("attachment.txt");
     Files.writeString(downloaded, "content");
-    when(attachmentDownloader.downloadBounded(
-            any(), anyString(), anyString(), anyLong(), any(), any()))
+    when(attachmentDownloader.downloadBounded(any(), anyString(), anyString(), anyLong(), any()))
         .thenReturn(new BoundedDownloader.DownloadedFile(downloaded, "text/plain"));
     when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
         .thenReturn(FileProcessingResult.FAILED);
@@ -130,7 +129,8 @@ class AttachmentIndexerTest {
                     "https://example.org/attachment.txt",
                     "attachment.txt",
                     HttpClient.newHttpClient(),
-                    null)),
+                    null,
+                    0)),
             parentDocumentId,
             "https://example.org/entry.html",
             DocumentSourceType.RSS_FEED,
@@ -204,16 +204,14 @@ class AttachmentIndexerTest {
   @Test
   void theSameConfiguredDepthGovernsBothMailInMailAndFeedAttachmentChains()
       throws IOException, InterruptedException {
-    // the recursion-depth cutoff moved out of AttachmentDownloadLimits (a per-source,
-    // per-connector record) into AttachmentProperties, one value AttachmentIndexer applies
-    // regardless of which connector's own, differently-shaped AttachmentDownloadLimits (count,
-    // size, politeness, user agent) a given call carries.
+    // the recursion-depth cutoff is AttachmentProperties', one value AttachmentIndexer applies
+    // regardless of which connector's own AttachmentLimits (count, size) a given call carries.
     AttachmentIndexer shallowIndexer =
         new AttachmentIndexer(
             attachmentDownloader,
             fileProcessingService,
             mock(LibraryStorageQuotaService.class),
-            new AttachmentProperties(1));
+            new AttachmentProperties(1, 0, 0));
 
     // Mail-in-Mail: a LocalFile attachment whose own processing reports one more nested LocalFile
     // attachment - mirrors FileProcessingService#processUrlFile routing a discovered .eml back
@@ -275,18 +273,15 @@ class AttachmentIndexerTest {
 
     // Feed-Anlage: the RSS/HTTP-directory analogue, a Download attachment whose own processing
     // reports one more nested Download attachment - a different, feed-shaped
-    // AttachmentDownloadLimits (its own count/size/politeness/user-agent), the same
-    // AttachmentProperties.maxDepth() cutoff.
-    AttachmentDownloadLimits feedLimits =
-        new AttachmentDownloadLimits(20, 1_048_576L, 250, "opaa-feed-agent");
+    // AttachmentLimits (its own count/size), the same AttachmentProperties.maxDepth() cutoff.
+    AttachmentLimits feedLimits = new AttachmentLimits(20, 1_048_576L);
     Path outerFeedFile = tempDir.resolve("aussen.txt");
     Files.writeString(outerFeedFile, "outer feed content");
-    when(attachmentDownloader.downloadBounded(
-            any(), anyString(), anyString(), anyLong(), any(), any()))
+    when(attachmentDownloader.downloadBounded(any(), anyString(), anyString(), anyLong(), any()))
         .thenReturn(new BoundedDownloader.DownloadedFile(outerFeedFile, "text/plain"));
     AttachmentSource.Download nestedFeedSource =
         new AttachmentSource.Download(
-            "https://example.org/innen.txt", "innen.txt", HttpClient.newHttpClient(), null);
+            "https://example.org/innen.txt", "innen.txt", HttpClient.newHttpClient(), null, 0);
     // doAnswer again - restubbing processUrlFile via when(...) here would evaluate the call
     // eagerly and re-trigger the mail answer above as a side effect (the mock is still stubbed
     // with it at this point).
@@ -312,7 +307,8 @@ class AttachmentIndexerTest {
                     "https://example.org/aussen.txt",
                     "aussen.txt",
                     HttpClient.newHttpClient(),
-                    null)),
+                    null,
+                    0)),
             parentDocumentId,
             "https://example.org/entry.html",
             DocumentSourceType.RSS_FEED,

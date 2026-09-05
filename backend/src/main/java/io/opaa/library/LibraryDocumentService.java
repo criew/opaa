@@ -836,7 +836,6 @@ public class LibraryDocumentService {
               httpClient,
               sourceUrl,
               remoteContentProperties.maxBytes(),
-              null,
               authHeader,
               Duration.ofSeconds(remoteContentProperties.timeoutSeconds()));
 
