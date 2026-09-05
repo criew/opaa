@@ -87,7 +87,8 @@ class LibraryIndexingControllerTest {
             currentUser.getId(),
             currentUser.getOrganizationId(),
             currentUser.getSystemRole(),
-            currentUser.getDisplayName());
+            currentUser.getDisplayName(),
+            currentUser.getEmail());
     when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
         .thenReturn(currentUser);
   }

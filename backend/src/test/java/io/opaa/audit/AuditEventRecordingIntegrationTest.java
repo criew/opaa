@@ -189,7 +189,11 @@ class AuditEventRecordingIntegrationTest {
   /** {@link CurrentUser} snapshot for a {@link User} entity this test already loaded/created. */
   private CurrentUser currentUserOf(User user) {
     return CurrentUser.of(
-        user.getId(), user.getOrganizationId(), user.getSystemRole(), user.getDisplayName());
+        user.getId(),
+        user.getOrganizationId(),
+        user.getSystemRole(),
+        user.getDisplayName(),
+        user.getEmail());
   }
 
   private CurrentUser currentUserOf(UUID userId) {
@@ -208,7 +212,8 @@ class AuditEventRecordingIntegrationTest {
         user.getId(),
         user.getOrganizationId(),
         systemAdmin ? SystemRole.SYSTEM_ADMIN : SystemRole.USER,
-        user.getDisplayName());
+        user.getDisplayName(),
+        user.getEmail());
   }
 
   private UUID createLibrary(UUID ownerId) {

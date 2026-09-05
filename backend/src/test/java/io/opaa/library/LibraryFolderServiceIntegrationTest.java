@@ -107,7 +107,8 @@ class LibraryFolderServiceIntegrationTest {
         user.getId(),
         user.getOrganizationId(),
         systemAdmin ? SystemRole.SYSTEM_ADMIN : user.getSystemRole(),
-        user.getDisplayName());
+        user.getDisplayName(),
+        user.getEmail());
   }
 
   private CurrentUser currentUserOf(UUID userId) {

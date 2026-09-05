@@ -80,7 +80,11 @@ class LibraryControllerFolderTest {
     setId(user, currentUserId);
     caller =
         CurrentUser.of(
-            user.getId(), user.getOrganizationId(), user.getSystemRole(), user.getDisplayName());
+            user.getId(),
+            user.getOrganizationId(),
+            user.getSystemRole(),
+            user.getDisplayName(),
+            user.getEmail());
     when(userService.findOrCreateUser(
             org.mockito.ArgumentMatchers.eq(TEST_SUBJECT),
             org.mockito.ArgumentMatchers.eq(TEST_ISSUER),
@@ -338,7 +342,8 @@ class LibraryControllerFolderTest {
             admin.getId(),
             admin.getOrganizationId(),
             admin.getSystemRole(),
-            admin.getDisplayName());
+            admin.getDisplayName(),
+            admin.getEmail());
     when(userService.findOrCreateUser(
             org.mockito.ArgumentMatchers.eq("admin-subject"),
             org.mockito.ArgumentMatchers.eq(TEST_ISSUER),

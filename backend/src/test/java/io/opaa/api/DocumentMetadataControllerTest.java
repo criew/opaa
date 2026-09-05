@@ -91,7 +91,11 @@ class DocumentMetadataControllerTest {
     setId(user, currentUserId);
     caller =
         CurrentUser.of(
-            user.getId(), user.getOrganizationId(), user.getSystemRole(), user.getDisplayName());
+            user.getId(),
+            user.getOrganizationId(),
+            user.getSystemRole(),
+            user.getDisplayName(),
+            user.getEmail());
     when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
         .thenReturn(user);
   }
