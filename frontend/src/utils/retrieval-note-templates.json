@@ -57,6 +57,10 @@
       "template": "metadata filter: document type in [%s]"
     },
     {
+      "name": "METADATA_FILTER_LIBRARY_FIELD",
+      "template": "metadata filter: library field %s of library %s %s"
+    },
+    {
       "name": "METADATA_FILTER_NONE",
       "template": "no metadata filter set: every candidate of the search scope qualifies"
     },
