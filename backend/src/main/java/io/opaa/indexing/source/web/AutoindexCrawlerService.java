@@ -61,19 +61,11 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * The outcome of {@link #crawl}: {@code depthLimitReached}/{@code entryLimitReached} tell the
-   * caller whether either of {@link CrawlProperties}'s limits actually cut the crawl short, so a
-   * capped run is distinguishable from a complete one in the UI instead of only in the log. {@code
-   * incomplete} is a distinct, non-limit reason a full bestand was not achieved: at least one
-   * subdirectory could not be fetched at all (network hiccup, transient 5xx) - {@code entries} is
-   * then missing everything under that subtree, exactly the way a limit-truncated crawl is missing
-   * everything past its cut. {@link #truncated()} intentionally does not fold this in: callers that
-   * only care about the UI-visible "capped by a configured limit" event (as opposed to the "safe to
-   * delete by absence" decision) must keep telling the two apart. {@code rejectedLinks} carries the
-   * raw (best-effort resolved) address of every link a directory page contained but {@link
-   * #resolveFollowableUrl} refused to follow - a foreign origin or an escape from the directory
-   * page's own subtree - so a caller can surface what the crawler silently left out instead of only
-   * logging it internally.
+   * The outcome of {@link #crawl}. {@code depthLimitReached}/{@code entryLimitReached} say whether
+   * a configured limit cut the crawl short; {@code incomplete} is the distinct, non-limit reason
+   * that at least one subdirectory could not be fetched at all. {@link #truncated()} deliberately
+   * keeps the two apart, since only the second decides whether deleting by absence is safe. {@code
+   * rejectedLinks} carries every link {@link #resolveFollowableUrl} refused to follow.
    */
   public record CrawlResult(
       List<CrawledFileEntry> entries,
@@ -158,14 +150,11 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * Recurses into {@code url} unless a limit already stops it: {@code visited} (normalized URLs)
-   * breaks a cycle back to a directory already crawled; {@code depth} exceeding {@link
-   * CrawlProperties#maxDepth} bounds a same-origin cycle that never repeats a URL exactly (root is
-   * depth 0, so a crawl visits depths {@code 0..maxDepth} inclusive); and {@code visited} (not just
-   * {@code results}) reaching {@link CrawlProperties#maxEntries} bounds a directory-only symlink
-   * cycle that {@code results} alone would never catch, since a directory linking only to further
-   * directories never grows {@code results} at all. Every limit truncates - logged once per reason
-   * via {@code truncation}, never thrown as an error.
+   * Recurses into {@code url} unless a limit stops it: {@code visited} breaks a cycle back to an
+   * already-crawled directory, {@code depth} past {@link CrawlProperties#maxDepth} bounds a cycle
+   * that never repeats a URL exactly, and {@code visited} reaching {@link
+   * CrawlProperties#maxEntries} bounds a directory-only cycle {@code results} would never catch.
+   * Every limit truncates and is logged once per reason, never thrown.
    */
   private void crawlRecursive(
       HttpClient httpClient,
@@ -235,12 +224,10 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * Resolves {@code href} against {@code baseUrl} and returns the resulting absolute URL, or {@code
-   * null} if the link must not be followed at all - shared by {@link #parseHtmlTableLayout} and
-   * {@link #parseLinkBasedLayout} so both layouts apply exactly the same rule to an absolute,
-   * already-resolved {@code http(s)://} href as to a relative one, rather than a layout-specific
-   * subset of it. A rejected link's best-effort resolved address is appended to {@code
-   * rejectedLinks} so a caller can report what was silently left out of the crawl.
+   * Resolves {@code href} against {@code baseUrl}, or {@code null} if the link must not be followed
+   * - shared by both layout parsers, so an already-absolute {@code http(s)://} href is judged by
+   * exactly the same rule as a relative one. A rejected link's best-effort resolved address is
+   * appended to {@code rejectedLinks}, so a caller can report what the crawl left out.
    */
   private static String resolveFollowableUrl(
       String baseUrl, String href, List<String> rejectedLinks) {
@@ -266,18 +253,11 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * Whether {@code fullUrl} stays inside {@code baseUrl}'s own subtree - both sides are normalized
-   * via {@link #normalizeUrl} before comparing, not compared as raw strings: a relative href like
-   * {@code "../"} resolves, via {@link #resolveUrl}'s naive string-concatenation, to a URL whose
-   * raw string still starts with {@code baseUrl} even though it climbs back out of it once the
-   * {@code ".."} segment is actually collapsed. {@link URI#normalize()} only collapses literal
-   * {@code .}/{@code ..} segments, so {@link #hasEncodedPathTraversalSegment} additionally rejects
-   * a segment that only turns into one of those (or a path separator) after percent-decoding (e.g.
-   * {@code %2E%2E/}), the same way a real web server resolves the path before serving it - applied
-   * only to the part of the path beyond {@code baseUrl}'s own, so a start URL whose own path
-   * happens to contain such a sequence never blocks every link beneath it. A URL {@link URI} cannot
-   * parse is rejected rather than passed through, mirroring {@link #isSameOriginAsBase}'s own
-   * fail-closed behavior.
+   * Whether {@code fullUrl} stays inside {@code baseUrl}'s own subtree, comparing both sides after
+   * {@link #normalizeUrl}: a {@code "../"} href resolves to a string that still starts with {@code
+   * baseUrl} until the segment is collapsed. Since {@link URI#normalize()} only collapses literal
+   * segments, {@link #hasEncodedPathTraversalSegment} additionally rejects one that becomes a
+   * traversal after percent-decoding. A URL {@link URI} cannot parse is rejected, not passed.
    */
   private static boolean staysUnderBase(String baseUrl, String fullUrl) {
     try {
@@ -294,13 +274,10 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * Whether any raw, query/fragment-stripped path segment of {@code relativePath} decodes (per
-   * {@link UrlFolderPath#decodeSegment}) to a literal {@code .}/{@code ..} or a segment carrying a
-   * path separator - the same check {@link UrlFolderPath#of} applies when mapping an entry to a
-   * folder, reused here so {@link #staysUnderBase} rejects a link a web server would resolve
-   * outside the crawled subtree even though its raw, undecoded string still looks like it stays
-   * under {@code baseUrl}. {@code relativePath} is plain text (the suffix of an already-normalized
-   * URL string), never a full URL to parse, so this cannot itself fail to determine an answer.
+   * Whether any raw, query/fragment-stripped path segment of {@code relativePath} decodes to a
+   * literal {@code .}/{@code ..} or a segment carrying a path separator - the same check {@link
+   * UrlFolderPath#of} applies, reused so {@link #staysUnderBase} rejects a link a web server would
+   * resolve outside the crawled subtree. Plain text in, so this can always answer.
    */
   private static boolean hasEncodedPathTraversalSegment(String relativePath) {
     int query = relativePath.indexOf('?');
@@ -375,14 +352,11 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * Parses an autoindex-style directory listing using JSoup, trying every layout this class
-   * understands (see the class Javadoc). The Apache {@code HTMLTable} layout is tried first since
-   * it carries date/size in dedicated columns the other layouts only approximate from trailing
-   * text; if it finds no rows, the page is re-parsed as a link-based layout ({@code <pre>} or
-   * {@code <ul>}) - but only if {@link #looksLikeDirectoryListing(Document)} recognizes the page as
-   * a listing at all. Without that gate, an ordinary homepage would be crawled as a directory too:
-   * every link with a trailing {@code /} becomes a {@code DIR} entry {@link #crawl} then recurses
-   * into.
+   * Parses an autoindex-style directory listing with JSoup, trying every layout this class knows.
+   * The Apache {@code HTMLTable} layout comes first, since it carries date and size in dedicated
+   * columns; a page with no rows is re-parsed as a link-based layout, but only once {@link
+   * #looksLikeDirectoryListing(Document)} recognizes it as a listing at all - without that gate an
+   * ordinary homepage would be crawled as a directory.
    */
   List<CrawledFileEntry> parseDirectory(String html, String baseUrl, int depth) {
     return parseDirectory(html, baseUrl, depth, new ArrayList<>());
@@ -517,14 +491,11 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * Parses the link-based layouts: Apache mod_autoindex without {@code HTMLTable} and nginx's
-   * {@code autoindex on} both render a {@code <pre>} block of one {@code <a>} link per line,
-   * followed by a trailing-text "column" of date and size; Apache {@code -FancyIndexing} and
-   * Python's {@code http.server} both render a plain {@code <ul>} of one {@code <a>} link per
-   * {@code <li>}, without any date/size at all. Rather than distinguishing those four layouts up
-   * front, this walks every {@code <a href>} in the document and reconstructs an entry from
-   * whatever surrounds it - robust against layout variance because it never assumes a specific
-   * markup shape, only that a real file/subdirectory is, in every one of these layouts, a link.
+   * Parses the link-based layouts: a {@code <pre>} block of one link per line with trailing
+   * date/size (Apache without {@code HTMLTable}, nginx), or a plain {@code <ul>} of links without
+   * either (Apache {@code -FancyIndexing}, Python's {@code http.server}). Rather than telling those
+   * apart up front, this walks every {@code <a href>} and reconstructs an entry from what surrounds
+   * it - it assumes no specific markup shape, only that an entry is a link.
    */
   private List<CrawledFileEntry> parseLinkBasedLayout(
       Document doc, String baseUrl, int depth, List<String> rejectedLinks) {
@@ -579,12 +550,11 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * Derives an entry's display name from its {@code href} rather than its link text: Apache's
-   * {@code IndexOptions NameWidth} truncates the displayed name to a fixed column width while the
-   * {@code href} itself always carries the untruncated, URL-encoded file name - using the link text
-   * would lose the file extension for any truncated name, silently dropping it from {@link
-   * SupportedDocumentFormats#isSupported}. Falls back to the (trailing-slash-stripped) link text
-   * only when the href's last path segment cannot be recovered at all.
+   * Derives an entry's display name from its {@code href}, not its link text: Apache's {@code
+   * IndexOptions NameWidth} truncates the displayed name while the {@code href} always carries the
+   * full one, and a truncated name would lose its extension and with it {@link
+   * SupportedDocumentFormats#isSupported}. Falls back to the link text only if the href's last
+   * segment cannot be recovered.
    */
   private static String deriveEntryName(String href, String linkText) {
     String fromHref = extractLastPathSegment(href);
@@ -655,17 +625,11 @@ public class AutoindexCrawlerService {
   private static final Pattern SIZE_TOKEN = Pattern.compile("^-$|^\\d+(?:\\.\\d+)?[KMGTP]?$");
 
   /**
-   * Reconstructs the "date size" trailing text that both {@code <pre>}-based layouts (Apache
-   * without {@code HTMLTable}, nginx) print after each link on the same line, e.g. {@code <a
-   * href="report.pdf">report.pdf</a> 10-Jun-2025 14:22 4.5M}. The {@code <ul>}-based layouts never
-   * have this trailing text, so this simply returns two empty strings for those - date/size are
-   * informational only (used for change-detection, see {@code UrlIndexingExecutor#isUnchanged}),
-   * never for deciding what gets indexed.
-   *
-   * <p>The last three whitespace-separated tokens are only accepted as "date time size" if they
-   * actually look like one - Apache's optional {@code IndexOptions Description} column would
-   * otherwise be blindly picked up as a fabricated date/size whenever it happens to end in three
-   * space-separated words.
+   * Reconstructs the "date size" trailing text both {@code <pre>}-based layouts print after each
+   * link; the {@code <ul>}-based layouts have none, so this returns two empty strings for them.
+   * Date and size are informational only, never used to decide what gets indexed. The last three
+   * tokens are accepted only if they actually look like "date time size", or Apache's optional
+   * description column would be picked up as a fabricated one.
    */
   private static String[] extractTrailingLineMeta(Element link) {
     StringBuilder line = new StringBuilder();

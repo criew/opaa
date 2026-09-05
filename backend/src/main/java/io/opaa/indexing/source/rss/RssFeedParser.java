@@ -22,26 +22,15 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Parses a standard RSS 2.0 feed (ADR-0017) into its {@link RssFeedEntry} items, using only the
- * JDK's own StAX implementation - no additional library is needed for a format this small.
+ * JDK's own StAX implementation. Scope stops at "a list of content elements with a name, a
+ * reference to the origin and a change marker" - {@code title}/{@code link}/{@code
+ * description}/{@code pubDate}; resolving a {@code <link>} is a separate, later step, which keeps
+ * this class a pure transformation checkable against fixtures.
  *
- * <p>Scope (ADR-0017, decision 2): this class stops at "a list of content elements with a name, a
- * reference to the origin and a change marker" - here, {@code title}/{@code link}/{@code
- * description}/{@code pubDate}. Resolving a {@code <link>} to its detail page's article text and
- * attachments is a separate, later step, deliberately not part of this parser: parsing is pure
- * transformation (text in, entries out) and is fully checkable against fixtures, without network or
- * database.
- *
- * <p>Hardening against XXE: a feed is attacker-controlled content from a third party; the JDK's
- * default StAX settings would otherwise let a feed instruct the parser to read local files or reach
- * out over the network via a DOCTYPE-declared external entity. Both DTDs and external entities are
- * disabled below, following the standard StAX XXE mitigation.
- *
- * <p>Leniency: unknown elements and elements from a foreign namespace (Atom's {@code atom:link},
- * Media RSS's {@code media:*}, {@code content:encoded}, ...) are simply skipped rather than treated
- * as errors - only the four fields above, read directly under {@code <item>} without a namespace,
- * are recognised. An item without a {@code <link>} is skipped entirely. A document that does not
- * parse as XML at all fails with a German, user-facing {@link RssFeedParseException} - unlike the
- * rest of this class's log/exception text, which stays English per AGENTS.md's language split.
+ * <p>DTDs and external entities are disabled: a feed is attacker-controlled third-party content,
+ * and the JDK's default StAX settings would let it read local files over a DOCTYPE entity. Unknown
+ * and foreign-namespace elements are skipped, an item without a {@code <link>} entirely; a document
+ * that is not XML fails with a German, user-facing {@link RssFeedParseException}.
  */
 public class RssFeedParser {
 

@@ -25,19 +25,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The selective re-index by pipeline version (docs/features/ingestion-pipelines.md,
- * Querschnittsregel (d)): every chunk below version N of one pipeline, triggerable, resumable, and
- * with progress queryable per library. Also the only repair path for a chunk whose {@code
- * chunk_full_text} row is missing or older than {@link FullTextChunkStore#CURRENT_TSV_VERSION} - at
- * the price of re-parsing, re-chunking and re-embedding the document.
+ * The selective re-index by pipeline version (ingestion-pipelines.md, Querschnittsregel (d)): every
+ * chunk below version N of one pipeline, triggerable, resumable, with progress queryable per
+ * library. Also the only repair path for a chunk whose {@code chunk_full_text} row is missing or
+ * older than {@link FullTextChunkStore#CURRENT_TSV_VERSION}, at the price of re-embedding.
  *
- * <p>Resumable by construction: the remaining work is re-derived from the chunk metadata itself, so
- * an interrupted run continues where it stood. Every call terminates and makes progress - a
- * candidate that cannot be advanced right now stays in the candidate set and is scanned past by an
- * offset rather than hidden by a database write, and is reported as skipped.
- *
- * <p>Never scheduled: only an explicit admin call drives this, never a background tick that would
- * re-index a whole corpus the moment a version is raised.
+ * <p>Resumable by construction - the remaining work is re-derived from the chunk metadata - and
+ * every call terminates and makes progress: a candidate that cannot be advanced stays in the set
+ * and is scanned past by an offset rather than hidden by a write, and is reported as skipped. Only
+ * an explicit admin call ever drives this, never a background tick.
  */
 public class PipelineReindexService {
 
@@ -82,11 +78,9 @@ public class PipelineReindexService {
 
   /**
    * The pipeline-version fill state of every library of {@code organizationId} that has at least
-   * one chunk, computed from a single grouped query over the chunk metadata rather than one query
-   * per library or per pipeline.
-   *
-   * <p>Reads {@code vector_store} with a {@code metadata->>...} predicate that no expression index
-   * backs - an accepted cost at today's data volumes.
+   * one chunk, from a single grouped query over the chunk metadata rather than one query per
+   * library. Reads {@code vector_store} with a {@code metadata->>...} predicate that no expression
+   * index backs - an accepted cost at today's data volumes.
    */
   public List<PipelineVersionProgress> progressForOrganization(UUID organizationId) {
     Map<String, Short> currentVersions = currentVersionsById();
@@ -199,17 +193,10 @@ public class PipelineReindexService {
 
   /**
    * Advances up to {@code batchSize} documents of {@code organizationId} that still hold chunks
-   * from {@code pipelineId} below {@code belowVersion}. Call repeatedly until the result {@link
-   * PipelineReindexResult#isEmpty() is empty}.
-   *
-   * <p>A document whose source file is locally readable and passes the same containment checks a
-   * download would (see {@link StoredDocumentSourceAccess#localSourceFile}) is rewritten under its
-   * own document id, so citations survive; a remote document is marked for its next connector run
-   * instead. Anything else is counted as skipped and scanned past.
-   *
-   * <p>Deliberately not {@code @Transactional}: one batch embeds several documents over the
-   * network, and holding one transaction across it would pin a pooled connection for every
-   * embedding call. An interrupted batch keeps what it finished; the next call takes the rest.
+   * from {@code pipelineId} below {@code belowVersion}; call repeatedly until the result is empty.
+   * A source that passes {@link StoredDocumentSourceAccess#localSourceFile} is rewritten under its
+   * own id, a remote one marked for its next run, anything else skipped. Deliberately not
+   * {@code @Transactional}: one transaction would pin a connection for every embedding call.
    */
   public PipelineReindexResult reindexBatch(
       UUID organizationId, String pipelineId, int belowVersion, int batchSize) {
@@ -465,15 +452,10 @@ public class PipelineReindexService {
 
   /**
    * Whether a chunk belongs to {@code pipelineId} today but is not stored under it - exactly, via
-   * its own {@link ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} where present, or via the
-   * file-name approximation {@link #currentPipelineIdForFileName} where it is not. Expressed in SQL
-   * so {@link #selectStaleDocuments} can filter and paginate in the database.
-   *
-   * <p>The exact branch compares in every direction, including into the fallback pipeline itself,
-   * and converges because a re-index writes the routing key fresh from re-detected content and each
-   * extension maps to at most one pipeline. The heuristic branch stays narrower - a specialized
-   * {@code pipelineId} only, and only a still-fallback-labeled chunk - because a wider guess from
-   * the file name could disagree with content-based re-routing on every call and never converge.
+   * its {@link ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY}, or via the file-name
+   * approximation where that key is absent. Expressed in SQL so {@link #selectStaleDocuments} can
+   * filter and paginate in the database. The exact branch compares in every direction and always
+   * converges; the heuristic one stays narrow, or it could disagree on every call and never do.
    */
   private MisroutedPredicate misroutedPredicateFor(String pipelineId) {
     String fallbackId = pipelineRegistry.fallbackPipeline().id();
@@ -573,15 +555,10 @@ public class PipelineReindexService {
 
   /**
    * The id of the pipeline that would claim {@code fileName} today, purely by its extension - the
-   * Java counterpart of {@link #misroutedPredicateFor}'s heuristic branch, used only for a chunk
-   * that carries no {@link ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY}.
-   *
-   * <p>A deliberately narrower approximation of routing, not a second implementation of it: the
-   * routing contract is never on the extension alone, because grown file shares carry wrong
-   * extensions routinely. An actual re-index always re-routes on re-detected content, never on this
-   * guess, so every gap left open here is read-only - an RSS entry's chunk keeps naming {@code
-   * tika-fallback} (ADR-0017), and a document already re-indexed under a specialized pipeline whose
-   * name no longer matches is left alone.
+   * Java counterpart of {@link #misroutedPredicateFor}'s heuristic branch, for a chunk without a
+   * routing key. A deliberately narrower approximation of routing, not a second implementation: an
+   * actual re-index always re-routes on re-detected content, so every gap left open here is
+   * read-only and merely leaves a chunk where it is.
    */
   private String currentPipelineIdForFileName(String fileName) {
     String lowerCased = fileName.toLowerCase(Locale.ROOT);

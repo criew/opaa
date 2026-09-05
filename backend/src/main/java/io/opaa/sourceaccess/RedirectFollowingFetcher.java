@@ -16,19 +16,13 @@ import org.slf4j.LoggerFactory;
 /**
  * Sends a GET request and manually follows up to {@link #MAX_REDIRECTS} redirects - the single
  * redirect implementation every source-access caller uses, since every client this package builds
- * ({@link SourceHttpClientFactory#buildHttpClient}) uses {@code Redirect.NEVER}.
- *
- * <p>A protocol downgrade (https to http) is never followed. An origin change is governed by {@link
- * RedirectPolicy}: a directory crawl keeps following and only drops {@code Authorization}, a file
- * or attachment download refuses to follow at all, and a caller whose source hands bytes to a
- * foreign media host (Confluence Cloud) opts into the dropping policy explicitly.
- *
- * <p>{@code targetAddressValidator} runs against the current URI at the top of every iteration -
- * the initial request and every hop alike - before a single further byte is requested.
+ * uses {@code Redirect.NEVER}. A protocol downgrade is never followed; an origin change is governed
+ * by {@link RedirectPolicy}. {@code targetAddressValidator} runs against the current URI at the top
+ * of every iteration, before a single further byte is requested.
  *
  * <p>Only under {@link RedirectPolicy#REJECT_OFF_ORIGIN} is the response actually received also
- * checked against the original URL, which closes the gap a caller-supplied auto-following {@link
- * HttpClient} would leave. {@link RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN} carries no such
+ * checked against the original URL, closing the gap a caller-supplied auto-following {@link
+ * HttpClient} would leave; {@link RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN} carries no such
  * check, which is safe only because no production client here auto-follows.
  */
 public final class RedirectFollowingFetcher {
@@ -65,13 +59,9 @@ public final class RedirectFollowingFetcher {
 
   /**
    * Sends a GET request to {@code url} and manually follows up to {@link #MAX_REDIRECTS} redirects.
-   * {@code headers} (most importantly {@code Authorization}, carrying a source configuration's own
-   * credentials) is sent again on every hop, subject to {@code policy} once a hop leaves the
-   * original URL's own origin (see this class's own Javadoc).
-   *
-   * <p>A redirect chain longer than {@link #MAX_REDIRECTS}, or a redirect response without a {@code
-   * Location} header, ends the loop and returns that response as-is - the caller decides what to do
-   * with a non-{@code 200} response.
+   * {@code headers} - most importantly {@code Authorization} - is sent again on every hop, subject
+   * to {@code policy} once a hop leaves the original origin. An over-long chain, or a redirect
+   * without a {@code Location}, ends the loop and returns that response as-is.
    *
    * @throws RedirectRejectedException (an {@link IOException}) under {@link
    *     RedirectPolicy#REJECT_OFF_ORIGIN}, when a redirect would leave the original URL's origin or
@@ -154,15 +144,10 @@ public final class RedirectFollowingFetcher {
 
   /**
    * Whether {@code a} and {@code b} are the same origin - scheme, host and port, with an absent
-   * port ({@code -1}) normalized to the scheme's default (80 for {@code http}, 443 for {@code
-   * https}) before comparing: {@code https://intranet} and {@code https://intranet:8443} share a
-   * host and scheme but are different services.
-   *
-   * <p>Both hosts {@code null} must not compare equal: {@link URI#getHost()} returns {@code null}
-   * for a syntactically valid but non-standard authority (e.g. a hostname containing an
-   * underscore), so an implementation that only compared {@code Objects.equals(a.getHost(),
-   * b.getHost())} would treat two unrelated underscore-hostname URLs as the same origin. {@code
-   * io.opaa.library.SourceOriginMatcher} delegates here for the identical reason.
+   * port normalized to the scheme's default first, so {@code https://intranet} and {@code
+   * https://intranet:8443} are different services. Two {@code null} hosts must not compare equal:
+   * {@link URI#getHost()} is {@code null} for a valid but non-standard authority, and an {@code
+   * Objects.equals} comparison would call two unrelated such URLs the same origin.
    */
   public static boolean sameOrigin(URI a, URI b) {
     if (a.getHost() == null
@@ -186,15 +171,11 @@ public final class RedirectFollowingFetcher {
   }
 
   /**
-   * Whether a redirect from {@code from} to {@code to} may keep being treated as its own origin -
-   * {@link #sameOrigin}'s exact rule, plus one exception: a same-host {@code http} to {@code https}
-   * upgrade at matching ports. {@link #isSchemeDowngrade} already refuses the opposite direction
-   * unconditionally and independently of this method.
-   *
-   * <p>Kept as its own method rather than loosening {@link #sameOrigin} itself, since {@code
-   * sameOrigin} is also used for other, narrower origin questions elsewhere (e.g. whether a link a
-   * page or feed itself carries stays within a source configuration's own vetted origin) - not
-   * whether a same-request redirect hop should still carry that request's own credentials.
+   * Whether a redirect from {@code from} to {@code to} may still be treated as its own origin -
+   * {@link #sameOrigin}'s rule plus one exception, a same-host {@code http} to {@code https}
+   * upgrade at matching ports; the opposite direction is refused by {@link #isSchemeDowngrade}
+   * regardless. Kept separate from {@link #sameOrigin}, which also answers narrower origin
+   * questions that have nothing to do with carrying a request's credentials across a hop.
    */
   public static boolean isRedirectOriginTrusted(URI from, URI to) {
     return sameOrigin(from, to) || isSameHostSchemeUpgrade(from, to);
@@ -237,12 +218,9 @@ public final class RedirectFollowingFetcher {
 
   /**
    * Renders {@code uri} as {@code scheme://host[:port]} only - never path, query or fragment, which
-   * on a redirect's own {@code Location} target can carry a token or other sensitive data a run-log
-   * message must never surface. Used to name a rejected redirect's target in the German,
-   * user-facing message every caller shows in the UI.
-   *
-   * <p>Not a general-purpose redaction: a caller's own {@code log.warn}/{@code log.debug} calls
-   * still log the unsanitized target via the underlying exception's {@code getMessage()}.
+   * on a redirect target can carry a token a run-log message must not surface. Used to name a
+   * rejected redirect in the German, user-facing message. Not a general-purpose redaction: a
+   * caller's own log statements still log the unsanitized target via the exception message.
    */
   static String sanitizedOrigin(URI uri) {
     String scheme = uri.getScheme() == null ? "?" : uri.getScheme();

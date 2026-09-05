@@ -6,26 +6,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Derives a human-readable, German location ("Fundort") for a chunk from the structure of the text
- * it was cut from - the information printed next to a footnote ("S. 2–4", "Abschn. 4.2
- * ‚Fristsetzung'"). Two structural signals are recognised, independently of each other:
+ * Derives the human-readable, German location ("Fundort") printed next to a footnote ("S. 2–4",
+ * "Abschn. 4.2 ‚Fristsetzung'") from the structure of the text a chunk was cut from. Two
+ * independent signals: form feeds ({@code \f}, emitted by {@link PageMarkingContentHandler} for
+ * paginated formats) give a page range, and Markdown-style {@code # Heading} lines give the heading
+ * path in effect at the chunk's start, deepest two levels only.
  *
- * <ul>
- *   <li><b>Page breaks</b>: a form feed ({@code \f}) marks the start of every page after the first
- *       - emitted by {@link PageMarkingContentHandler} for formats Tika paginates (PDF, Office
- *       documents). A chunk's page range is the page its first character sits on up to the page its
- *       last character sits on.
- *   <li><b>Headings</b>: Markdown-style {@code # Heading} lines. The heading path in effect at the
- *       chunk's start is reported, deepest two levels only, so a long document's location stays a
- *       short label rather than a breadcrumb trail.
- * </ul>
- *
- * <p>Both signals combine ("S. 3 · Abschn. Fristen › Verlängerung"); a text carrying neither yields
- * {@code null}, and the caller stores no location at all - the frontend then shows the footnote
- * without a Fundort, which is the honest answer for a flat text file.
- *
- * <p>The text is scanned once per document ({@link #forText}) and then queried per chunk ({@link
- * #locate}), so a document with hundreds of chunks does not rescan its headings hundreds of times.
+ * <p>Both combine; a text carrying neither yields {@code null}, and the caller stores no location
+ * at all. Scanned once per document ({@link #forText}), then queried per chunk ({@link #locate}).
  */
 final class ChunkLocationResolver {
 

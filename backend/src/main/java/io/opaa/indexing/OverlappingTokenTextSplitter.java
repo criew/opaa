@@ -13,18 +13,14 @@ import org.springframework.ai.transformer.splitter.TextSplitter;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 
 /**
- * A {@link TextSplitter} that adds a configurable overlap to Spring AI's {@link TokenTextSplitter}.
+ * A {@link TextSplitter} that adds a configurable overlap to Spring AI's {@link TokenTextSplitter},
+ * which has no overlap option and cuts the token stream into disjoint windows. Without overlap a
+ * statement straddling a boundary is torn apart - the introducing clause at the end of one chunk,
+ * the definition at the start of the next - so neither half carries the claim on its own.
  *
- * <p>{@code TokenTextSplitter} in Spring AI 2.0.0 has no overlap option at all — it cuts the token
- * stream into disjoint windows. Without overlap a statement that straddles a chunk boundary is torn
- * apart: the heading or introducing clause ends up at the end of one chunk and the definition at
- * the start of the next, so neither half carries the claim on its own. That hurts citability, not
- * just recall.
- *
- * <p>This splitter therefore delegates the actual splitting and then prefixes every chunk after the
- * first with the last {@code overlapTokens} tokens of its predecessor. The overlap is measured in
- * tokens of the same {@link EncodingType#CL100K_BASE} encoding {@code TokenTextSplitter} uses for
- * {@code chunkSize}, so both numbers are directly comparable.
+ * <p>Delegates the split, then prefixes every chunk after the first with the last {@code
+ * overlapTokens} tokens of its predecessor, measured in the same {@link EncodingType#CL100K_BASE}
+ * encoding {@code TokenTextSplitter} uses for {@code chunkSize}, so both numbers are comparable.
  */
 class OverlappingTokenTextSplitter extends TextSplitter {
 
@@ -43,13 +39,11 @@ class OverlappingTokenTextSplitter extends TextSplitter {
   private static final int PROBE_LENGTH = 80;
 
   /**
-   * Splits like {@link TextSplitter#apply}, but additionally stamps every chunk with its {@link
-   * ChunkingService#LOCATION_METADATA_KEY} - derived from where the chunk's own text (before the
-   * overlap prefix is prepended) sits in the source document, so the location describes the chunk's
-   * beginning, not the carried-over tail of its predecessor. Page-break markers (see {@link
-   * PageMarkingContentHandler}) are stripped from the stored text here, after locating; they must
-   * not reach the embedding. A chunk whose text cannot be found again in the source simply carries
-   * no location.
+   * Splits like {@link TextSplitter#apply}, and additionally stamps every chunk with its {@link
+   * ChunkingService#LOCATION_METADATA_KEY}, derived from where the chunk's own text - before the
+   * overlap prefix - sits in the source, so the location describes the chunk's beginning rather
+   * than its predecessor's tail. Page-break markers are stripped after locating, since they must
+   * not reach the embedding; a chunk whose text cannot be found again carries no location.
    */
   @Override
   public List<Document> apply(List<Document> documents) {

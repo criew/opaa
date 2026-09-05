@@ -234,9 +234,8 @@ class UrlIndexingExecutorExecuteTest {
   @Test
   void rejectsUnsupportedContentWithoutEverCallingFileProcessingServiceAndCountsItSkippedNotFailed()
       throws IOException {
-    // before the fix, this entry would have been fully
-    // downloaded (unbounded) before being rejected; a network hiccup mid-transfer would then have
-    // counted it as ERROR instead of the clean "skipped" a name-based pre-filter produces.
+    // An entry rejected on its content must not be fully downloaded first: a network hiccup
+    // mid-transfer would count it as ERROR instead of the clean "skipped" it is.
     serve(
         "/files/",
         "text/html",

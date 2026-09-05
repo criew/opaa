@@ -24,24 +24,16 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * The ODP pipeline (docs/features/ingestion-pipelines.md, Teil 3 Punkt 2: eine Folie = ein Chunk) -
- * the ODP counterpart of {@link PptxDocumentPipeline}, reading {@code content.xml} directly through
- * a hardened SAX parser ({@link OdfContentXml}), since Apache POI never reads OpenDocument. Every
- * {@code draw:page} with any text becomes exactly one chunk; a frame's {@code presentation:class}
- * of {@code "title"} becomes the chunk's leading line and {@link
- * ChunkingService#LOCATION_METADATA_KEY location}, every other frame's text becomes body text.
- * {@code presentation:notes} becomes a final labeled paragraph, excluding the same non-content
- * placeholder classes {@link PptxDocumentPipeline} excludes. A presentation where <b>no slide</b>
- * carries any text is rejected as {@code NO_EXTRACTABLE_TEXT} regardless of any master-slide text
- * found (below) - master-slide text is template boilerplate, not evidence that this document itself
- * carries content, and must not defeat the scan/empty-deck guard. A placeholder class on a slide's
- * own {@code draw:frame} (not just in notes) is not read at all.
+ * The ODP pipeline (ingestion-pipelines.md, Teil 3, Punkt 2: eine Folie = ein Chunk) - the ODP
+ * counterpart of {@link PptxDocumentPipeline}, reading {@code content.xml} through the hardened SAX
+ * parser {@link OdfContentXml}, since POI never reads OpenDocument. Every {@code draw:page} with
+ * text becomes one chunk, a {@code presentation:class} of {@code "title"} its leading line and
+ * {@link ChunkingService#LOCATION_METADATA_KEY location}, notes a final labeled paragraph.
  *
- * <p><b>{@code styles.xml}'s master page text</b> is read through the same hardened reader and, if
- * present, becomes one deduplicated leading chunk (location "Masterfolie") rather than being
- * repeated per slide or dropped - see {@link RepeatingHeaderChunk}. A malformed/oversized/malicious
- * {@code styles.xml} only forfeits that leading chunk; the presentation's own slide content, once
- * successfully parsed, is still indexed.
+ * <p>{@code styles.xml}'s master page text becomes one deduplicated leading chunk (see {@link
+ * RepeatingHeaderChunk}); a malformed one forfeits only that chunk. A presentation whose slides
+ * carry no text at all stays {@code NO_EXTRACTABLE_TEXT} regardless of it - template boilerplate
+ * must not defeat the scan guard.
  */
 public class OdpDocumentPipeline implements DocumentPipeline {
 

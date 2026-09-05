@@ -27,18 +27,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 
 /**
- * The PDF pipeline (docs/features/ingestion-pipelines.md, Teil 1). Reads directly through Apache
- * PDFBox rather than Spring AI's PDF readers, both absent from this project's classpath.
+ * The PDF pipeline (ingestion-pipelines.md, Teil 1), reading through PDFBox rather than Spring AI's
+ * PDF readers, which are absent from this classpath. With a resolvable outline every entry becomes
+ * a heading of its own nesting level, cut without a depth cap - a legal text commonly nests § and
+ * Absatz as two separately citable levels - and several entries on one page split that page's text
+ * between their titles. Without an outline, chunking falls back to one chunk per non-blank page.
  *
- * <p>When the PDF catalog (outline/bookmarks) is present, every outline entry that resolves to a
- * page becomes a heading of its own nesting level, cut without a depth cap (unlike Markdown/DOCX) -
- * a legal text's catalog commonly nests § and Absatz as two levels, each citable on its own.
- * Several outline entries sharing one page split that page's text between their titles rather than
- * each claiming the whole page. Without a resolvable outline, chunking falls back to one chunk per
- * non-blank page.
- *
- * <p>Scan detection is answered from this pipeline's own PDFBox extraction: a PDF whose extracted
- * text is entirely blank is rejected as {@code NO_EXTRACTABLE_TEXT}.
+ * <p>Scan detection is answered from this pipeline's own extraction: a PDF whose text is entirely
+ * blank is rejected as {@code NO_EXTRACTABLE_TEXT}.
  */
 public class PdfDocumentPipeline implements DocumentPipeline {
 

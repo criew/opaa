@@ -374,8 +374,8 @@ class HtmlDocumentPipelineTest {
   void manyParagraphsWithNoHeadingStructureAreSplitAtBlockBoundariesInsteadOfOneGiantChunk()
       throws IOException {
     // A "Div-Suppe" and a page whose §-style headings are just <p><strong> both share the same
-    // shape: block-level text with no h1-h3 to cut on. Before the fix, this became a single
-    // ever-growing chunk; the soft budget must split it into several, ordinary-sized ones instead.
+    // shape: block-level text with no h1-h3 to cut on. Without the soft budget this becomes a
+    // single ever-growing chunk; it must be split into several, ordinary-sized ones instead.
     StringBuilder body = new StringBuilder();
     for (int i = 1; i <= 150; i++) {
       body.append("<p>§ ").append(i).append(" Ein Absatz mit etwas Verwaltungstext hier drin.</p>");

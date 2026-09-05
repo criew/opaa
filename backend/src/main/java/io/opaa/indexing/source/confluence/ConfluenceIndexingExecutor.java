@@ -46,29 +46,16 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Async;
 
 /**
- * Executes indexing runs for {@link IndexingSourceType#CONFLUENCE} (ADR-0023). The full sync: every
- * selected space is listed completely - identifiers, titles and versions only, no body expand -,
- * every page whose version changed is fetched individually and handed to {@link
- * FileProcessingService#processConfluencePage}, its attachments are downloaded through the
- * edition-aware client and indexed as children of the page over the generalized attachment path
- * ({@link AttachmentIndexer}, ADR-0022), and once <em>every</em> selected space was listed
- * completely, whatever this library indexed from Confluence before and did not meet again is
- * removed ({@link StaleDocumentCleanupService}). The incremental run asks CQL for what changed
- * since the anchor and never reconciles; which of the two a run without a requested mode takes is
- * decided from the library's sync state in {@link #defaultRunMode}.
+ * Executes indexing runs for {@link IndexingSourceType#CONFLUENCE} (ADR-0023). A full sync lists
+ * every selected space completely (identifiers, titles and versions, no body), fetches each changed
+ * page individually, indexes its attachments as children over {@link AttachmentIndexer}, and
+ * reconciles via {@link StaleDocumentCleanupService}. An incremental run asks CQL for what changed
+ * since the anchor and never reconciles; {@link #defaultRunMode} picks between them.
  *
- * <p><b>What may delete, and what may not</b> (ADR-0023, Entscheidung 4): the credentials are
- * verified before the first listing - Data Center serves an unknown token anonymously with an empty
- * listing, which must never pass for a complete one. A space the token cannot list makes the run's
- * listing incomplete: it is reported, nothing is removed, the bestand of that space stays. A page
- * the token cannot read ({@code 404}) is skipped visibly and stays in the index - a revoked right
- * is no deletion finding. Only {@code trashed}, answered by the instance itself, removes a page
- * (and its attachments) outside the final reconciliation.
- *
- * <p><b>Resumption:</b> the spaces a previous, interrupted full sync completed are recorded in
- * {@link ConfluenceSyncState}; the next run takes the unfinished spaces first. The cheap version
- * check before any body fetch makes re-listing a completed space nearly free, and it has to happen
- * anyway: the reconciliation needs the complete current bestand.
+ * <p>What may delete is narrow (Entscheidung 4): credentials are verified before the first listing,
+ * an unlistable space removes nothing, an unreadable page stays indexed, and only {@code trashed}
+ * removes a page outside the reconciliation. An interrupted full sync resumes from {@link
+ * ConfluenceSyncState}, unfinished spaces first.
  */
 public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
@@ -160,12 +147,10 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * ADR-0023, Entscheidung 4 ("Betriebsarten im Zeitplan"): the first run, every run after a change
-   * of the space selection (KnowledgeLibraryService deletes the state then), a run after an
-   * interrupted full sync and every run once {@code fullSyncInterval} has passed since the last
-   * completed full sync are full ones; the routine run in between is incremental. Decided from the
-   * state at trigger time, so a full run that fell due while an incremental one was running is
-   * taken at the next tick, not lost.
+   * ADR-0023, Entscheidung 4: the first run, a run after the space selection changed, a run after
+   * an interrupted full sync and every run once {@code fullSyncInterval} has passed are full; the
+   * routine run in between is incremental. Decided from the state at trigger time, so a full run
+   * that fell due while an incremental one was running is taken at the next tick, not lost.
    */
   @Override
   public IndexingRunMode defaultRunMode(KnowledgeLibrary library) {
@@ -239,13 +224,10 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * The common end of every run: throttling is reported whether the run succeeded or not - a run
-   * that the instance slowed down forty times before it failed is exactly what an operator wants to
-   * see in the protocol - the cost figures are recorded, and one log line names them.
-   *
-   * <p>{@code assessesListing}: only a full sync attempts to list everything, so only it may judge
-   * its listing - and only when it neither failed nor ran out of budget, because an aborted run has
-   * not seen every space and must not overwrite the previous verdict.
+   * The common end of every run: throttling is reported whether the run succeeded or not, the cost
+   * figures are recorded, and one log line names them. {@code assessesListing} holds only for a
+   * full sync that neither failed nor ran out of budget - an aborted run has not seen every space
+   * and must not overwrite the previous verdict.
    */
   private void finish(
       UUID jobId,
@@ -331,11 +313,9 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     final Set<String> currentPaths = new HashSet<>();
 
     /**
-     * The subset of {@link #currentPaths} whose own attachments were freshly enumerated this run -
-     * a page whose attachment list was fetched, an attachment the attachment path re-parsed
-     * (ADR-0022, Entscheidung 3). The attachments of every other path in {@link #currentPaths} (a
-     * page skipped, unreadable or failed this run, an attachment unchanged by version) are
-     * preserved from the database before the reconciliation, see {@link
+     * The subset of {@link #currentPaths} whose own attachments were freshly enumerated this run
+     * (ADR-0022, Entscheidung 3). Every other path's attachments are preserved from the database
+     * before the reconciliation - see {@link
      * StaleDocumentCleanupService#foldInPreservedAttachmentPaths}.
      */
     final Set<String> reprocessedPaths = new HashSet<>();
@@ -473,12 +453,10 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * The incremental run: asks CQL for the identifiers of the pages in the selected spaces modified
-   * since the anchor minus the overlap, fetches each one individually and takes over what is new or
-   * changed. It never calls the reconciliation - a page absent from this window is not evidence of
-   * anything (ADR-0023, Entscheidung 4) - and it removes only what the instance itself reports as
-   * trashed. The anchor moves to this run's start only when the run failed nothing, so no change
-   * window is ever lost to an aborted run.
+   * The incremental run: asks CQL for the pages in the selected spaces modified since the anchor
+   * minus the overlap and takes over what changed. It never reconciles - a page absent from this
+   * window is evidence of nothing (Entscheidung 4) - and removes only what the instance reports as
+   * trashed. The anchor moves only when the run failed nothing, so no window is lost.
    */
   private void incrementalSync(Run run, Instant startedAt)
       throws ConfluenceAccessException, InterruptedException {
@@ -619,12 +597,10 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * The webhook run: fetches exactly {@code pageIds} and applies what the instance answers - a page
-   * it reports as trashed is removed with its attachments, a changed page is re-indexed, an
-   * unchanged one only has its attachments checked, a 404 or 403 leaves the index untouched (no
-   * positive finding, ADR-0023, Entscheidung 4). Never a listing, never a cleanup, and the
-   * incremental anchor stays where it is: the next incremental run re-reads these pages once more,
-   * which costs a listing entry each and nothing else.
+   * The webhook run: fetches exactly {@code pageIds} and applies what the instance answers -
+   * trashed is removed with its attachments, changed is re-indexed, unchanged has only its
+   * attachments checked, and 404/403 leaves the index untouched (Entscheidung 4). Never a listing,
+   * never a cleanup, and the incremental anchor stays where it is.
    */
   @Async("indexingTaskExecutor")
   public void refreshPages(UUID jobId, KnowledgeLibrary targetLibrary, Set<String> pageIds) {
@@ -1021,14 +997,11 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * One attachment over the generalized attachment path (ADR-0022). The download itself stays with
-   * the edition-aware {@link ConfluenceClient}: it owns the credentials (which never leave {@code
-   * ConfluenceHttp}), the redirect policy Cloud's media service needs, the request budget and the
-   * meter, and maps {@code 403}/{@code 404} to their own findings - the generic {@link
-   * AttachmentSource.Download} cannot do any of that. Everything after the bytes - format
-   * admission, the document row as a child of the page with the page's context, checksum
-   * deduplication, the version as change marker, nested attachments, run events and the
-   * reconciliation bookkeeping - is {@link AttachmentIndexer}'s, the same as for RSS and Mail.
+   * One attachment over the generalized attachment path (ADR-0022). The download stays with the
+   * edition-aware {@link ConfluenceClient}, which owns the credentials, the redirect policy Cloud's
+   * media service needs, the request budget and the meter - none of which the generic {@link
+   * AttachmentSource.Download} can do. Everything after the bytes is {@link AttachmentIndexer}'s,
+   * exactly as for RSS and Mail.
    */
   private void indexAttachment(
       Run run,

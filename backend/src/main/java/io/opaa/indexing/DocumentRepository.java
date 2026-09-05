@@ -109,12 +109,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
    * The paged search behind {@code KnowledgeLibraryService#listDocuments} with {@code q} (ADR-0022,
-   * Entscheidung 5): top-level documents only ({@code parentDocumentId IS NULL}), matching either
-   * their own file name or - via {@code attachmentRootIds}, resolved by the caller from matching
-   * attachment rows - an attachment anywhere in their subtree. {@code escapedQ} must have {@code
-   * \}, {@code %} and {@code _} backslash-escaped by the caller (see {@code
-   * KnowledgeLibraryService#escapeLike}); the hand-written LIKE has no automatic escaping the way
-   * the derived {@code ...ContainingIgnoreCase} finders do.
+   * Entscheidung 5): top-level documents only, matching their own file name or - via {@code
+   * attachmentRootIds}, resolved by the caller - an attachment anywhere in their subtree. {@code
+   * escapedQ} must be backslash-escaped by the caller; this hand-written LIKE has no escaping of
+   * its own.
    */
   @Query(
       """
@@ -141,14 +139,11 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
           UUID libraryId, String q);
 
   /**
-   * The paged Pflege-Anker list: every indexed document row of the library - top-level and
-   * attachment alike - that has no row for {@code fieldKey}, optionally narrowed by {@code
-   * escapedQ} (empty matches every name). Deliberately not the top-level paging of {@link
-   * #searchTopLevelByFileNameOrAttachmentRoot}: this list must hold exactly the rows the anchor
-   * counts, so that every entry is genuinely open and a Sammelzuweisung over the whole page cannot
-   * overwrite a maintained value. Only {@code status} rows count - an anchor over documents that
-   * were never indexed would never reach zero. The gap is a correlated {@code NOT EXISTS}, so no
-   * unbounded id list travels between two queries.
+   * The paged Pflege-Anker list: every indexed document row of the library, top-level and
+   * attachment alike, that has no row for {@code fieldKey}. It must hold exactly the rows the
+   * anchor counts, so a Sammelzuweisung over a page cannot overwrite a maintained value; only
+   * {@code status} rows count, or the anchor would never reach zero. The gap is a correlated {@code
+   * NOT EXISTS}, so no unbounded id list travels between two queries.
    */
   @Query(
       """
@@ -201,18 +196,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
    * The recursive document counts of a set of folders - each folder's own documents plus every
-   * document in every one of its descendant folders, one query for the whole set rather than one
-   * per subfolder. Matches {@code LibraryFolderService#countDocumentsRecursive}'s semantics (the
-   * count {@code LibraryFolderResponse.documentCount} shows before a recursive DELETE, ADR-0020
-   * Entscheidung 5), not a shallow "direct children only" count.
-   *
-   * <p>A single recursive CTE, not application code walking per subfolder: {@code folder_tree}
-   * expands every requested id in {@code folderIds} into itself plus its full descendant subtree,
-   * tagging each descendant with the requested ancestor it came from ({@code root_id}); the outer
-   * query then counts {@code documents} joined on every id in that expanded tree, grouped by {@code
-   * root_id}. A {@code LEFT JOIN}, not an inner join, so a folder with zero documents anywhere in
-   * its subtree still contributes a row with count {@code 0} rather than disappearing from the
-   * result, unlike {@link #countByLibraryIdIn}'s inner-join equivalent.
+   * document in its descendant folders, one query for the whole set. Matches {@code
+   * LibraryFolderService#countDocumentsRecursive}'s semantics (ADR-0020, Entscheidung 5), not a
+   * shallow count. A {@code LEFT JOIN}, so a folder with an empty subtree still yields a row with
+   * count {@code 0} instead of disappearing.
    */
   @Query(
       value =
@@ -247,12 +234,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long deleteByLibraryId(@Param("libraryId") UUID libraryId);
 
   /**
-   * Backs the upload endpoint's per-library deduplication: the same checksum is rejected a second
-   * time within the same library, but is deliberately allowed in a different one - see the
-   * acceptance criteria on {@code io.opaa.library.LibraryDocumentService#uploadDocument}. Scoped to
-   * parentless rows, matching {@code uk_documents_library_checksum}'s own scope since migration
-   * 017: an attachment row of an uploaded mail (ADR-0022) is derived content, not a user upload -
-   * uploading a file whose bytes happen to equal an indexed attachment is not a duplicate.
+   * Backs the upload endpoint's per-library deduplication: the same checksum is rejected within one
+   * library and deliberately allowed in another. Scoped to parentless rows, matching {@code
+   * uk_documents_library_checksum} - an attachment row is derived content, so uploading a file
+   * whose bytes equal an indexed attachment is not a duplicate.
    */
   Optional<Document> findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
       UUID libraryId, String checksum);
@@ -278,18 +263,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   }
 
   /**
-   * Backs {@code LibraryStorageQuotaService}: the total bytes a library's documents currently
-   * occupy, one aggregate query rather than loading every {@link Document} row to sum {@link
-   * Document#getFileSize} in application code. Two {@code coalesce} layers:
-   *
-   * <ul>
-   *   <li>the outer one maps the {@code SUM} of an empty result set to {@code 0} instead of {@code
-   *       null} - callers would otherwise have to null-check a supposedly primitive byte count;
-   *   <li>the inner one makes explicit, rather than leaving to {@code SUM}'s own null-skipping
-   *       behaviour, that an individual row with no recorded {@code file_size} (the column is
-   *       nullable) counts as {@code 0} - see {@code LibraryStorageQuotaService#usedBytes}'s own
-   *       Javadoc.
-   * </ul>
+   * Backs {@code LibraryStorageQuotaService}: the total bytes a library's documents occupy, as one
+   * aggregate query. The outer {@code coalesce} maps the {@code SUM} of an empty result to {@code
+   * 0} rather than {@code null}, so callers need no null check; the inner one states explicitly
+   * that a row without a recorded {@code file_size} counts as {@code 0}.
    */
   @Query(
       "select coalesce(sum(coalesce(d.fileSize, 0)), 0) from Document d where d.libraryId ="
@@ -297,14 +274,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long sumFileSizeByLibraryId(@Param("libraryId") UUID libraryId);
 
   /**
-   * Conditionally transitions an asynchronously-processed upload to {@code FAILED}. {@code
-   * FileProcessingService#processUploadedFileAsync} re-reads the row by id before it starts, but
-   * Tika parsing/embedding can run for seconds - long enough for {@code
-   * LibraryDocumentService#deleteDocument} to remove that same row from another request in the
-   * meantime. A plain {@code documentRepository.save} on the (now stale) entity would not notice:
-   * {@link Document} assigns its own id in its constructor and carries no {@code @Version}, so
-   * Hibernate's merge would silently re-{@code INSERT} it as a zombie row. A conditional {@code
-   * UPDATE} has no such failure mode: it either affects the row that is still there, or nothing.
+   * Conditionally transitions an asynchronously-processed upload to {@code FAILED}. Parsing and
+   * embedding can run for seconds, long enough for a concurrent delete to remove the row. A plain
+   * save would re-insert it as a zombie, since {@link Document} assigns its own id and carries no
+   * {@code @Version}; a conditional {@code UPDATE} either hits the row or nothing.
    *
    * @return the number of rows updated - {@code 0} means the row no longer exists, and the caller
    *     must clean up any chunks it already wrote instead of trying to persist anything
@@ -346,16 +319,9 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
    * Backs {@code UploadPendingRecoveryRunner}: every {@code PENDING} upload created before {@code
-   * threshold} is stuck for good, not merely queued - the process that would have finished it (via
-   * {@code uploadTaskExecutor}) died before {@link #markIndexed}/{@link #markFailed} could run, and
-   * a fresh JVM start has no in-memory record of that task to wait for. A bulk {@code UPDATE}, not
-   * a load-then-save loop, for the same reason as {@link #deleteByLibraryId}.
-   *
-   * <p>Scoped to {@code sourceType = UPLOAD} deliberately: a connector run ({@code FILESYSTEM}/
-   * {@code HTTP_DIRECTORY}/{@code RSS_FEED}) also passes through a transient {@code PENDING} row,
-   * and a crash mid-run could in principle leave one stuck the same way - but that failure mode
-   * belongs to {@code indexing_jobs}' own {@code RUNNING} recovery, not to this upload-specific
-   * runner and its upload-specific error message.
+   * threshold} is stuck for good - the process that would have finished it died. A bulk {@code
+   * UPDATE}, for the same reason as {@link #deleteByLibraryId}, scoped to {@code UPLOAD}: a
+   * connector run's transient {@code PENDING} row belongs to {@code indexing_jobs}' own recovery.
    *
    * @return the number of rows transitioned to {@code FAILED}
    */
@@ -390,15 +356,11 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   int clearMetadataExtractionVersion(@Param("id") UUID id);
 
   /**
-   * The connector counterpart to {@link #markIndexed(UUID, int, Instant)}, generalized for {@code
-   * FileProcessingService#processFile}/{@code #processUrlFile}/{@code #processRssEntry}. Those
-   * three paths only learn the checksum - and for URL/RSS sources, the remote's own {@code
-   * last_modified}/publish marker - once chunking and embedding have already succeeded, unlike the
-   * upload path, which persists its checksum on the {@code PENDING} row before this transition ever
-   * runs. {@code lastModifiedRemote} is {@code null} for {@code processFile}'s filesystem
-   * documents.
-   *
-   * <p>Same zero-rows-means-the-row-is-gone contract as {@link #markIndexed(UUID, int, Instant)}.
+   * The connector counterpart to {@link #markIndexed(UUID, int, Instant)}: those paths only learn
+   * the checksum - and the remote's own change marker - once chunking and embedding have succeeded,
+   * unlike the upload path, which persists its checksum on the {@code PENDING} row beforehand.
+   * {@code lastModifiedRemote} is {@code null} for filesystem documents. Same
+   * zero-rows-means-the-row-is-gone contract.
    */
   @Modifying
   @Transactional
@@ -415,17 +377,9 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
    * Marks a document for reprocessing by its own connector run, by clearing <b>both</b> change
-   * markers a run consults. Used by {@code PipelineReindexService} for documents whose source can
-   * only be re-read by that run.
-   *
-   * <p>Both are required, and clearing only the checksum would be a no-op for the remote paths:
-   * {@code UrlIndexingExecutor#isUnchanged}/{@code RssFeedIndexingExecutor#isUnchanged} decide
-   * <em>before</em> downloading, from {@code last_modified_remote} plus {@link
-   * DocumentStatus#INDEXED} alone - the checksum is never compared, because the bytes it would be
-   * computed from have deliberately not been fetched yet. A {@code null} {@code
-   * last_modified_remote} can never equal the remote's own value, so the download happens; the
-   * {@code null} checksum then stops {@link FileProcessingService#processUrlFile} from skipping the
-   * freshly downloaded file as unchanged in the second gate.
+   * markers a run consults. Clearing only the checksum would be a no-op for the remote paths, which
+   * decide from {@code last_modified_remote} plus {@link DocumentStatus#INDEXED} before
+   * downloading; the cleared checksum then stops the second gate from skipping the fresh download.
    *
    * @return the number of rows updated - {@code 0} means the row was deleted meanwhile, which needs
    *     no further action here

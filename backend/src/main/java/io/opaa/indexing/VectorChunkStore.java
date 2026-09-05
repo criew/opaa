@@ -15,30 +15,14 @@ import org.springframework.stereotype.Component;
 
 /**
  * Writes chunks to the {@link VectorStore} and deletes them by {@code document_id} or {@code
- * library_id}, building delete filters via {@link FilterExpressionBuilder} instead of string
- * concatenation (the same builder {@code SearchScopeStage#libraryFilter} already uses for reads).
+ * library_id}. {@link #DOCUMENT_ID_METADATA_KEY} and {@link #LIBRARY_ID_METADATA_KEY} are the
+ * single source of truth for those two chunk metadata keys. {@link #addChunks} also writes {@code
+ * chunk_full_text} in the same transaction as the vector write, via {@link VectorStoreWriter} -
+ * never one without the other; embedding happens before that transaction opens.
  *
- * <p>{@link #DOCUMENT_ID_METADATA_KEY} and {@link #LIBRARY_ID_METADATA_KEY} are the single source
- * of truth for these two chunk metadata keys - {@code FileProcessingService} writes them on every
- * chunk it stores, {@code QueryService} reads them back for the permission-aware search filter, and
- * this class writes/deletes by them.
- *
- * <p>Per docs/features/hybrid-retrieval.md, "Arbeitspaket 2a", {@link #addChunks} also writes
- * {@code chunk_full_text} - the lexical-search counterpart of {@code vector_store} - in the same
- * transaction as the vector write, via {@link VectorStoreWriter}: a chunk's vector write and its
- * full-text index entry are always written together, never one without the other. Embedding happens
- * here, <em>before</em> that transaction opens (see {@link #addChunks}'s own Javadoc for why);
- * {@link VectorStoreWriter} only ever sees already-embedded chunks.
- *
- * <p>Both delete methods deliberately do <em>not</em> share a transaction across the vector and
- * full-text delete: both callers of this class that run a delete from a deferred {@code
- * TransactionSynchronization#afterCommit} callback (see {@code
- * LibraryDocumentService#deleteDocument}) would otherwise have a {@code @Transactional} delete
- * method try to participate in a transaction whose physical commit has already happened - Spring
- * still reports {@code TransactionSynchronizationManager#isSynchronizationActive()} as {@code true}
- * at that point, so a fresh transaction is not reliably started. Two independent statements are
- * simpler and no worse here: each is a single-row-set {@code DELETE}, already atomic on its own,
- * and idempotent if only one of the two ever runs.
+ * <p>The delete methods deliberately do not share a transaction across the two stores: a caller
+ * deleting from {@code afterCommit} cannot reliably start a fresh one, and each delete is a single
+ * atomic statement, idempotent if only one of the two ever runs.
  */
 @Component
 public class VectorChunkStore {
@@ -66,16 +50,11 @@ public class VectorChunkStore {
   }
 
   /**
-   * Embeds {@code chunks} on the calling thread (a network call to the configured embedding
-   * endpoint - the same {@link EmbeddingModel}/{@link BatchingStrategy} beans {@code PgVectorStore}
-   * itself uses), then hands the already-embedded chunks to {@link
-   * VectorStoreWriter#writeEmbeddedChunks}, which writes {@code vector_store} and {@code
-   * chunk_full_text} together in one transaction (docs/features/hybrid-retrieval.md, "Arbeitspaket
-   * 2": "Der Volltextindex entsteht beim Schreiben des Chunks, in derselben Transaktion wie Text
-   * und Vektor"). Deliberately two steps rather than one {@code VectorStore#add} call inside a
-   * transaction: embedding is an HTTP round trip, and holding a pooled database connection for its
-   * duration - as a transaction spanning the whole call would - risks exhausting the connection
-   * pool under concurrent writes.
+   * Embeds {@code chunks} on the calling thread - the same {@link EmbeddingModel}/{@link
+   * BatchingStrategy} beans {@code PgVectorStore} uses - and only then hands them to {@link
+   * VectorStoreWriter#writeEmbeddedChunks}, which writes both stores in one transaction. Two steps
+   * rather than one {@code VectorStore#add} inside a transaction: embedding is an HTTP round trip,
+   * and holding a pooled connection for its duration risks exhausting the pool.
    */
   public void addChunks(List<Document> chunks) {
     if (chunks.isEmpty()) {

@@ -27,22 +27,16 @@ import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The intake behind {@code POST /api/v1/libraries/{libraryId}/confluence-webhook}.
+ * The intake behind {@code POST /api/v1/libraries/{libraryId}/confluence-webhook}. Authentication
+ * is uniform: an unknown library, a missing secret, a wrong source type and a bad signature all
+ * answer 401, since the endpoint is reachable without a session and must not say which it hit.
  *
- * <p>Authentication first, uniformly: an unknown library, a library without a secret, a library of
- * another source type and a wrong signature are all answered with the same 401 and a warning in the
- * log - the endpoint is reachable without a session, so it must not tell a caller which of these it
- * hit. Then the page ids the body names are queued per library and, {@code debounce} later, one
- * short-lived {@link JobTriggerSource#WEBHOOK} run fetches exactly those pages ({@link
- * ConfluenceIndexingExecutor#refreshPages}); a batch that grew past {@code maxPendingPages} runs an
- * ordinary run in the mode the library's state calls for instead. A notification never deletes by
- * itself and never moves the incremental anchor - it is a hint to look, the instance's answer is
- * the finding (ADR-0023, Entscheidung 4). While another run of the library is in progress the batch
- * waits, up to {@code maxDeferrals} times, then it is dropped: the next scheduled or incremental
- * run covers the same pages, so a drop costs freshness, never correctness. Replays are not
- * detected: a captured, validly signed notification can be sent again and costs one targeted run
- * each time, bounded by the rate limit - harmless for the index (the fetch is the finding), stated
- * in the documentation.
+ * <p>Page ids are then queued per library and, {@code debounce} later, one {@link
+ * JobTriggerSource#WEBHOOK} run fetches exactly those pages; a batch past {@code maxPendingPages}
+ * runs an ordinary run instead. A notification never deletes and never moves the incremental anchor
+ * - it is a hint to look, the instance's answer is the finding (ADR-0023, Entscheidung 4). While
+ * another run is in progress the batch waits up to {@code maxDeferrals} times, then is dropped: the
+ * next run covers the same pages, so a drop costs freshness, never correctness.
  */
 @Service
 public class ConfluenceWebhookService {

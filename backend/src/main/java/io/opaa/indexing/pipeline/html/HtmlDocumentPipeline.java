@@ -23,22 +23,15 @@ import org.jsoup.select.NodeVisitor;
 import org.springframework.ai.document.Document;
 
 /**
- * The HTML pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 4): strips boilerplate
- * (navigation, footer, cookie notice, sidebar) that Tika's reader otherwise leaves in the chunk as
- * if it were content, then cuts along h1-h3 using the same section-emission logic as the other
- * heading-driven pipelines ({@link HeadingSectionSplitter}). Reads the page with Jsoup directly,
- * not Spring AI's HTML reader (absent from this project's classpath).
+ * The HTML pipeline (ingestion-pipelines.md, Teil 3, Punkt 4): strips boilerplate (navigation,
+ * footer, cookie notice, sidebar) that Tika's reader would leave in the chunk as content, then cuts
+ * along h1-h3 via {@link HeadingSectionSplitter}. Reads with Jsoup, since Spring AI's HTML reader
+ * is not on this classpath.
  *
- * <p>Each chunk's heading path travels both as its Fundort metadata and as a leading line of the
- * chunk's own text, repeated on every further-split sub-chunk of an oversized section. h4-h6 stay
- * inside their enclosing section's text rather than cutting a further chunk. A genuinely empty
- * section still becomes a one-line chunk rather than being silently dropped; an ordinary title
- * heading immediately followed by its first subsection heading is not treated as empty, since its
- * title already opens the descendant section's own heading path.
- *
- * <p>Feed detail pages are a named exception: an RSS entry's already-extracted main text goes
- * straight to the Tika fallback pipeline (ADR-0017, decision 2) and never reaches this class. Only
- * genuine {@code .html} files are routed here.
+ * <p>Each chunk's heading path travels as Fundort metadata and as a leading text line, repeated on
+ * every further-split sub-chunk; h4-h6 stay inside their section. An empty section still becomes a
+ * one-line chunk. An RSS entry's extracted text never reaches this class (ADR-0017, decision 2) -
+ * only genuine {@code .html} files are routed here.
  */
 public class HtmlDocumentPipeline implements DocumentPipeline {
 
@@ -58,11 +51,10 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
 
   /**
    * Boilerplate stripped only when it sits <em>outside</em> every chosen content root (see {@link
-   * #selectContentRoots}) - a standard CMS article/section legitimately nests its own {@code
-   * <header>} (title, Stand-Datum) or {@code <footer>} (author, tags), and stripping those away
-   * would silently drop real content along with the surrounding page chrome. Same set {@code
-   * DetailPageExtractor} uses for an RSS detail page, minus the elements moved to {@link
-   * #UNCONDITIONAL_BOILERPLATE_SELECTOR} above.
+   * #selectContentRoots}): a standard CMS article legitimately nests its own {@code <header>} or
+   * {@code <footer>}, and stripping those would drop real content along with the page chrome. Same
+   * set {@code DetailPageExtractor} uses, minus what {@link #UNCONDITIONAL_BOILERPLATE_SELECTOR}
+   * already covers.
    */
   private static final String CONDITIONAL_BOILERPLATE_SELECTOR =
       "header, footer, [role=banner], [role=contentinfo]";
@@ -93,12 +85,10 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
           "article");
 
   /**
-   * Soft budget a section's rendered body text is grouped into before another chunk starts -
-   * delegates to {@link HeadingSectionSplitter#SOFT_CHUNK_CHAR_LIMIT}, the shared value {@link
-   * #flushSection} (via {@link HeadingSectionSplitter#flushSection}) actually applies; kept as its
-   * own named constant here because {@code HtmlDocumentPipelineTest} references it by this class's
-   * name. <b>Gesetzt, nicht gemessen</b> (ingestion-pipelines.md, "Chunk-Größen") - the evaluation
-   * corpus contains no HTML documents at all, so there is nothing to measure a value against yet.
+   * Soft budget a section's body text is grouped into before another chunk starts - delegates to
+   * {@link HeadingSectionSplitter#SOFT_CHUNK_CHAR_LIMIT}, the shared value actually applied, and is
+   * kept as its own constant only because the test references it by this class's name. <b>Gesetzt,
+   * nicht gemessen</b>: the evaluation corpus contains no HTML documents to measure against.
    */
   static final int SOFT_CHUNK_CHAR_LIMIT = HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT;
 
@@ -218,18 +208,11 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * The content root(s) this document is cut from, and the boilerplate-stripping side effect that
-   * has to happen relative to them.
-   *
-   * <p>{@link #UNCONDITIONAL_BOILERPLATE_SELECTOR} is removed first, document-wide, regardless of
-   * where the content area ends up - it is never legitimate content anywhere.
-   *
-   * <p>Every {@link #MAIN_CONTENT_SELECTOR} match is processed, not just the first - an overview
-   * page routinely lists several {@code <article>} teasers, and taking only the first would
-   * silently drop every other one. A match nested inside another match (e.g. {@code
-   * <main><article>…</article></main>}, both matching the selector) is dropped in favour of its
-   * outer match rather than kept as a second, overlapping root - otherwise the same content would
-   * be cut and stored twice.
+   * The content root(s) this document is cut from, plus the boilerplate stripping that has to
+   * happen relative to them: {@link #UNCONDITIONAL_BOILERPLATE_SELECTOR} goes document-wide first,
+   * since it is never content anywhere. Every {@link #MAIN_CONTENT_SELECTOR} match is a root, not
+   * just the first - an overview page routinely lists several teasers - except a match nested in
+   * another, which is dropped in favour of its outer one so no content is cut and stored twice.
    */
   private static List<Element> selectContentRoots(org.jsoup.nodes.Document htmlDoc) {
     htmlDoc.select(UNCONDITIONAL_BOILERPLATE_SELECTOR).remove();
@@ -297,12 +280,10 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * Walks {@code root} in document order via {@link Node#traverse}, so a nested section (e.g.
-   * {@code <section><h2>…</h2><section><h3>…</h3>…</section></section>}) is handled correctly
-   * regardless of how deep the heading actually sits in the DOM - a flat sibling-based scan would
-   * miss that case. A chunk is flushed every time an h1-h3 element opens; a document's own text
-   * appearing before the first heading (an intro paragraph) becomes its own chunk with no heading
-   * path, exactly like a Markdown document with a lead paragraph before its first heading.
+   * Walks {@code root} in document order via {@link Node#traverse}, so a nested section is handled
+   * however deep its heading sits - a flat sibling scan would miss that. A chunk is flushed
+   * whenever an h1-h3 opens; text before the first heading becomes its own chunk without a heading
+   * path, exactly like a Markdown lead paragraph.
    */
   private static List<Document> buildChunks(Element root) {
     List<Document> chunks = new ArrayList<>();

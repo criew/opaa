@@ -9,20 +9,15 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * A filter on the filterable core fields (metadata-schema.md Wirkstelle 1): a set of Dokumentart
- * codes and an inclusive Datum/Stand window. Only these two fields are filterable - the title is
- * not, free keywords never are - so this record is the whole vocabulary of a metadata filter.
- * {@link #NONE} is the absence of any condition.
+ * A filter on the filterable core fields (metadata-schema.md, Wirkstelle 1): a set of Dokumentart
+ * codes and an inclusive Datum/Stand window. Only those two are filterable - the title is not, free
+ * keywords never are - so this record is the whole vocabulary of a metadata filter. {@link #NONE}
+ * is the absence of any condition.
  *
  * <p><b>Date semantics.</b> A stored value covers the whole span its {@link DatePrecision} leaves
- * open (YEAR 2024 is 2024-01-01..2024-12-31) and matches when that span overlaps the window. Since
- * a value is stored as the first day of its span, that is {@code value <= to} and {@code value >=
- * lowerBound(precision)} with {@link #dateFromBound} - the same two comparisons in both search
- * paths.
- *
- * @param documentTypes vocabulary codes; empty means no condition on the Dokumentart.
- * @param documentDateFrom inclusive window start, {@code null} for an open start.
- * @param documentDateTo inclusive window end, {@code null} for an open end.
+ * open and matches when that span overlaps the window. Since it is stored as the first day of its
+ * span, that is {@code value <= to} and {@code value >= lowerBound(precision)} via {@link
+ * #dateFromBound} - the same two comparisons in both search paths.
  */
 public record MetadataFilter(
     Set<String> documentTypes, LocalDate documentDateFrom, LocalDate documentDateTo) {

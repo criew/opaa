@@ -11,28 +11,14 @@ import java.util.regex.Pattern;
 /**
  * The curated pattern list behind the lexical path's identifier protection
  * (docs/features/hybrid-retrieval.md, "Die deutschen Besonderheiten"): paragraph references, file
- * numbers and Erlass-/Drucksachen numbers are carried as <b>undecomposed lexemes</b> next to the
- * German analysis chain, so "§ 34" and "§ 35" stay distinguishable under stemming.
+ * numbers and Erlass-/Drucksachen numbers become <b>undecomposed lexemes</b>, so "§ 34" and "§ 35"
+ * stay distinguishable under stemming. Write and query path call this same method, or the two sides
+ * would build different lexemes and never match.
  *
- * <p>Deliberately a closed list, not a general identifier guess. Write path ({@link
- * FullTextChunkStore#indexChunks}) and query path ({@code io.opaa.query.FullTextChunkSearch}) call
- * this same method, so both sides always build a lexeme identically or they would never match.
- *
- * <p>Two invariants everything else hangs on:
- *
- * <ul>
- *   <li>Every lexeme is lowercase ASCII alphanumeric with an {@code x…} type prefix ({@code xpar},
- *       {@code xakz}, {@code xnr}) - it cannot collide with a stemmer lexeme and passes unquoted
- *       through {@code to_tsquery}.
- *   <li>Every keyword-led pattern has a keyword-free structural counterpart: a document writes "mit
- *       dem Aktenzeichen BAU-DA-2/2024", a question just "BAU-DA-2/2024", and a pattern that fires
- *       on only one of the two protects nothing.
- * </ul>
- *
- * <p>A paragraph reference always yields its bare form ({@code xpar34}) next to any more specific
- * one. A candidate is accepted only if it is structurally an identifier ({@link
- * #looksLikeIdentifier}), or "Aktenzeichen der Satzung" would put {@code xakzder} at weight {@code
- * A} on ordinary prose.
+ * <p>Every lexeme is lowercase ASCII alphanumeric with an {@code x…} type prefix, so it can neither
+ * collide with a stemmer lexeme nor carry an operator into {@code to_tsquery}. Every keyword-led
+ * pattern has a keyword-free counterpart, and a candidate must satisfy {@link
+ * #looksLikeIdentifier}.
  */
 public final class FullTextIdentifiers {
 
@@ -89,14 +75,10 @@ public final class FullTextIdentifiers {
 
   /**
    * The keyword-free counterpart of {@link #KEYWORD_FILE_NUMBER}: the shape administrative file,
-   * Dienstanweisungs- and Formularnummern actually have - an uppercase department or form
-   * abbreviation followed by hyphen-separated parts, optionally with a year ({@code BAU-DA-2/2024},
-   * {@code SOZ-DA-1/2023}, {@code KAE-07}, {@code BUE-08}).
-   *
-   * <p>This is the pattern that makes the protection work at all on the question side: a question
-   * names the number bare ("Was regelt die Dienstanweisung BAU-DA-2/2024?"), the document names it
-   * behind a keyword. {@link #looksLikeIdentifier} keeps it from firing on ordinary hyphenated
-   * uppercase abbreviations, which carry no digit.
+   * Dienstanweisungs- and Formularnummern actually have - an uppercase abbreviation followed by
+   * hyphen-separated parts, optionally with a year. This is what makes the protection work on the
+   * question side, which names the number bare while the document names it behind a keyword. {@link
+   * #looksLikeIdentifier} keeps it off ordinary hyphenated abbreviations, which carry no digit.
    */
   private static final Pattern STRUCTURED_FILE_NUMBER =
       Pattern.compile("\\b([A-Z]{2,4}(?:-[A-Z0-9]{1,4})+(?:/\\d{2,4})?)\\b");
@@ -112,24 +94,11 @@ public final class FullTextIdentifiers {
               + "(\\d{1,6}\\s*[-/]\\s*\\d{1,6}(?:\\s*[-/]\\s*\\d{1,6})?)");
 
   /**
-   * An email address (ingestion-pipelines.md, Querschnittsregel (a)). PostgreSQL's own parser
-   * already keeps an email address as one {@code email}-class token in {@code to_tsvector} - the
-   * gap this pattern closes is on the <em>question</em> side: {@code
-   * io.opaa.query.FullTextChunkSearch#wordTokens} splits a question at every non-alphanumeric
-   * character, so "max.mustermann@example.org" asked back becomes four separate word tokens that
-   * never match the one token the chunk carries (confirmed against a live PostgreSQL: {@code
-   * to_tsvector('german', '... max.mustermann@example.org ...') @@ to_tsquery('german',
-   * 'max|mustermann|example|org')} is {@code false} when none of the four also occurs as an
-   * ordinary word). Carrying the address as an undecomposed lexeme on both sides restores the
-   * match, the same fix this class already applies to §-references and file numbers.
-   *
-   * <p><b>ASCII-only local part and domain</b> - an umlaut is neither letter nor separator to this
-   * pattern, so it ends the match early rather than including it: {@code jörg@stadt.de} yields
-   * {@code xmailrgstadtde} (the match starts at "rg@stadt.de", the leading "j" and "ö" are outside
-   * it), and {@code info@köln.de} yields no lexeme at all (no ASCII run reaches a literal "."
-   * before the umlaut). Both sides of the write/query symmetry apply this same pattern, so this is
-   * a coverage gap, not a mismatch - it never produces a false positive, only a missed address
-   * around an umlaut.
+   * An email address (ingestion-pipelines.md, Querschnittsregel (a)). PostgreSQL keeps one as a
+   * single {@code email} token already; the gap is on the question side, where {@code
+   * FullTextChunkSearch#wordTokens} splits it at every non-alphanumeric character. Local part and
+   * domain are ASCII-only, so an umlaut ends the match early - a missed address, never a false
+   * positive, and symmetric because both sides apply this same pattern.
    */
   private static final Pattern EMAIL_ADDRESS =
       Pattern.compile("\\b([A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\\.[A-Za-z]{2,})\\b");

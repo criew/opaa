@@ -165,13 +165,9 @@ public class IndexingConfiguration {
 
   /**
    * EML/MSG pipeline (ingestion-pipelines.md, Teil 3, Punkt 5). It never recurses into a
-   * sub-pipeline itself (ADR-0022, Entscheidung 10), only reports its attachments via {@link
-   * DocumentPipelineResult#discoveredAttachments()}, and therefore needs no {@link
-   * DocumentPipelineRegistry}.
-   *
-   * <p>The {@code Clock} parameter resolves by type to the single {@code @Primary} {@link Clock}
-   * bean of this application, not to {@link #schedulingClock()} despite the parameter's name -
-   * Spring's {@code @Primary} resolution outranks name matching.
+   * sub-pipeline itself (ADR-0022, Entscheidung 10) and therefore needs no {@link
+   * DocumentPipelineRegistry}. The {@code Clock} parameter resolves by type to this application's
+   * single {@code @Primary} {@link Clock}, not to {@link #schedulingClock()} despite its name.
    */
   @Bean
   MailDocumentPipeline mailDocumentPipeline(
@@ -259,14 +255,11 @@ public class IndexingConfiguration {
   }
 
   /**
-   * The generalized attachment path's limits for a Mail attachment (ADR-0022, Entscheidung 6) -
+   * The generalized attachment path's limits for a Mail attachment (ADR-0022, Entscheidung 6):
    * {@code maxAttachmentsPerMessage}/{@code maxAttachmentBytes} mirror {@code MailProperties}' own
-   * parse-time DoS-hardening ceilings (redundant-but-harmless safety once an attachment already
-   * passed {@code EmlReader}/{@code MsgReader}'s own extraction-loop limits); {@code
-   * requestDelayMs}/{@code userAgent} are unused for an {@code AttachmentSource.LocalFile} (no
-   * request of its own), which is all a Mail attachment ever is. The nesting depth is not part of
-   * this record any more - {@link AttachmentIndexer} enforces {@link
-   * AttachmentProperties#maxDepth()} itself, the same value for every connector.
+   * parse-time ceilings, while {@code requestDelayMs}/{@code userAgent} are unused for the {@code
+   * AttachmentSource.LocalFile} a Mail attachment always is. The nesting depth is {@link
+   * AttachmentIndexer}'s, one value for every connector.
    */
   @Bean
   AttachmentDownloadLimits mailAttachmentDownloadLimits(MailProperties mailProperties) {
@@ -500,12 +493,10 @@ public class IndexingConfiguration {
   }
 
   /**
-   * Backs every {@link SourceIndexingExecutor} (directory/URL/RSS indexing runs). Rejects a full
-   * queue with {@code AbortPolicy}, never {@code ThreadPoolExecutor.DiscardPolicy}: a silently
-   * discarded task would leave its {@code indexing_jobs} row stuck at {@code RUNNING} forever,
-   * locking that library out of every future trigger. {@code AbortPolicy} throws {@link
-   * org.springframework.core.task.TaskRejectedException} synchronously, so {@code
-   * DocumentIndexingService#triggerIndexing} fails the job immediately.
+   * Backs every {@link SourceIndexingExecutor}. Rejects a full queue with {@code AbortPolicy},
+   * never {@code DiscardPolicy}: a silently discarded task would leave its {@code indexing_jobs}
+   * row stuck at {@code RUNNING} forever, locking that library out of every future trigger. {@code
+   * AbortPolicy} throws synchronously, so the trigger fails the job immediately.
    */
   @Bean
   TaskExecutor indexingTaskExecutor(IndexingProperties properties) {
@@ -520,24 +511,11 @@ public class IndexingConfiguration {
   }
 
   /**
-   * Backs {@link FileProcessingService}'s concurrent embedding calls
-   * (opaa.indexing.embedding-concurrency). A single pool shared across every concurrent indexing
-   * run in the process, not one per run or per library, sized to {@code embeddingConcurrency}.
-   *
-   * <p>This pool bounds only the sub-batch fan-out of a single document being split - it is not an
-   * upper bound on every concurrent embedding call the process makes. A document whose chunks fit
-   * in one sub-batch (see {@link FileProcessingService#subBatchSize}) never touches this pool at
-   * all - its single {@code vectorStore.add} call runs directly on whichever thread called {@link
-   * FileProcessingService#storeChunks}, an {@code indexing-} thread ({@link #indexingTaskExecutor})
-   * for a connector run or an {@code upload-} thread ({@link #uploadTaskExecutor}) for an upload.
-   * The actual number of embedding calls in flight across the whole process is therefore up to
-   * {@code indexingTaskExecutor}'s pool size, plus {@code uploadTaskExecutor}'s pool size, plus
-   * this pool's own {@code embeddingConcurrency} threads - not {@code embeddingConcurrency} alone.
-   *
-   * <p>Fixed-size (core == max), mirroring {@link #uploadTaskExecutor}'s reasoning - the queue
-   * capacity is deliberately generous ({@link Integer#MAX_VALUE}) because the only thing ever
-   * queued here is a document's own chunk sub-batches, never an unbounded external input, unlike
-   * {@link #indexingTaskExecutor}'s queue of whole indexing runs.
+   * Backs {@link FileProcessingService}'s concurrent embedding calls, one fixed-size pool shared
+   * across every indexing run in the process. It bounds the sub-batch fan-out of a splitting
+   * document only - one that fits in a single sub-batch embeds on its caller's thread - so the
+   * process-wide number of concurrent embedding calls is this pool plus the indexing and upload
+   * pools. The queue is unbounded: only a document's own sub-batches are ever queued here.
    */
   @Bean
   TaskExecutor embeddingTaskExecutor(IndexingProperties properties) {
@@ -551,14 +529,10 @@ public class IndexingConfiguration {
   }
 
   /**
-   * Backs {@code FileProcessingService#processUploadedFileAsync} - deliberately a separate pool
-   * from {@link #indexingTaskExecutor}, not a shared one, with its own property block ({@link
-   * UploadProperties#threadPool}) rather than reusing {@link IndexingProperties#threadPool()}. Both
-   * executors share the same rejection handling: {@code ThreadPoolTaskExecutor}'s default {@code
-   * AbortPolicy} throws {@link org.springframework.core.task.TaskRejectedException} synchronously
-   * back to the caller on a full queue - {@code LibraryDocumentService#uploadDocument} turns it
-   * into an immediate {@code FAILED} document row, {@code DocumentIndexingService#triggerIndexing}
-   * into an immediate {@code FAILED} job row.
+   * Backs {@code FileProcessingService#processUploadedFileAsync} - deliberately its own pool with
+   * its own {@link UploadProperties#threadPool} rather than a share of {@link
+   * #indexingTaskExecutor}. Both use {@code AbortPolicy}, so a full queue throws synchronously back
+   * to the caller, which turns it into an immediate {@code FAILED} document or job row.
    */
   @Bean
   TaskExecutor uploadTaskExecutor(UploadProperties properties) {

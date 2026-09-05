@@ -666,7 +666,7 @@ class AutoindexCrawlerServiceTest {
     // URLDecoder.decode is built for application/x-www-form-urlencoded
     // (query strings), where '+' means a space - but a listing's href is a URL *path* segment,
     // where a literal '+' has no such meaning and can be an ordinary character in a real file
-    // name. Before the fix, "bericht+final.pdf" surfaced here as "bericht final.pdf".
+    // name: "bericht+final.pdf" must not surface here as "bericht final.pdf".
     String html =
         """
         <html><head><title>Index of /files/</title></head><body>

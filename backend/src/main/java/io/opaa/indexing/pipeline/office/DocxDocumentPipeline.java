@@ -38,33 +38,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 
 /**
- * The DOCX pipeline (docs/features/ingestion-pipelines.md, Teil 2). Reads a {@code .docx} directly
- * through Apache POI's {@link XWPFDocument} rather than Tika, since Tika's flattened text
- * extraction discards the paragraph-format heading levels this pipeline cuts on.
+ * The DOCX pipeline (ingestion-pipelines.md, Teil 2), reading {@code .docx} through POI's {@link
+ * XWPFDocument} rather than Tika, whose flattened extraction discards the heading levels this
+ * pipeline cuts on. Heading level comes from a built-in Word heading style (English or localized)
+ * or its own {@code w:outlineLvl}; cutting stops at {@link #MAX_CUTTING_LEVEL}, a table becomes one
+ * text block, and the legacy binary {@code .doc} stays with the Tika fallback.
  *
- * <p>Heading level comes from the paragraph's own formatting: a built-in Word heading style
- * (English or localized, e.g. {@code Ueberschrift1}), falling back to the paragraph's direct
- * outline level ({@code w:outlineLvl}). A paragraph with neither is body text. Cutting stops at
- * level 3 ({@link #MAX_CUTTING_LEVEL}). Tables are read cell by cell into one paragraph-level text
- * block per table (never a heading). Only {@code .docx} is handled - the legacy binary {@code .doc}
- * keeps running through the Tika fallback pipeline.
- *
- * <p><b>Every header/footer part</b> - {@link XWPFDocument#getHeaderList()}/{@link
- * XWPFDocument#getFooterList()}, the union across every section and every default/first/even
- * variant a multi-section document can carry - becomes one deduplicated leading chunk (location
- * "Kopf-/Fußzeile") rather than being repeated per page or dropped, since none of it is part of
- * {@link XWPFDocument#getBodyElements()}; see {@link RepeatingHeaderChunk}. Two paragraphs whose
- * whitespace-normalized text is equal contribute only once. A field's cached value (e.g. a page
- * number computed the last time the file was saved, correct for at most one page) is excluded
- * rather than indexed as if it were static text.
- *
- * <p><b>Header/footer text never rescues an otherwise body-less document from {@code NO_CONTENT}/
- * {@code NO_EXTRACTABLE_TEXT}.</b> It is template text - present on a scan-only document exactly as
- * much as on one with a text layer - and is therefore no evidence that this document itself carries
- * content; a scanned letter must stay visible as OCR-needing, the single most expensive failure an
- * ingestion pipeline can make (docs/features/ingestion-pipelines.md). The guard is evaluated purely
- * against the body text {@link XWPFDocument#getBodyElements()} yields, before the header/footer
- * chunk is ever added to the result.
+ * <p>Every header/footer part becomes one deduplicated leading chunk (see {@link
+ * RepeatingHeaderChunk}), since none is part of {@link XWPFDocument#getBodyElements()}; a field's
+ * cached value is excluded rather than indexed as static text. That chunk never rescues a body-less
+ * document from {@code NO_CONTENT}/{@code NO_EXTRACTABLE_TEXT} - a scan must stay OCR-needing.
  */
 public class DocxDocumentPipeline implements DocumentPipeline {
 

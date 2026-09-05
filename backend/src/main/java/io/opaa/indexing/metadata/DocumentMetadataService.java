@@ -76,13 +76,11 @@ public class DocumentMetadataService {
   }
 
   /**
-   * Re-reads the core fields of an already indexed document from its original file - routing to the
-   * same pipeline the ingest used, reading only its {@link
-   * io.opaa.indexing.pipeline.DocumentPipeline#readProperties} - then stores the values and
-   * rewrites the filterable keys on the document's existing chunks. Parsing happens outside any
-   * transaction (no pooled connection is held over PDFBox/POI); value rows and chunk propagation
-   * are one transaction, so a failed chunk update leaves the document exactly as it was. No
-   * chunking, no embedding: the unit of work the Bestandslauf repeats per document.
+   * Re-reads an already indexed document's core fields from its original file, routing to the same
+   * pipeline the ingest used and reading only its {@code readProperties}, then stores the values
+   * and rewrites the filterable keys on the existing chunks. Parsing happens outside any
+   * transaction; value rows and chunk propagation are one, so a failed chunk update leaves the
+   * document as it was. No chunking, no embedding.
    */
   public CoreMetadata reextractFromFile(Document document, Path file) {
     DocumentPipelineRegistry.Routed routed =

@@ -34,11 +34,9 @@ public class IndexingJob {
   private int documentsSkipped;
 
   /**
-   * The true count of documents indexed by this run - equals {@code documentsProcessed} for
-   * FILESYSTEM/HTTP_DIRECTORY runs (one processed file is exactly one document), but exceeds it for
-   * an RSS_FEED run whose entries carry attachments: every attachment indexed for an entry adds to
-   * this count without adding another processed entry. {@link IndexingRunProgress#recordProcessed}
-   * increments this alongside {@code documentsProcessed}; {@link
+   * The true count of documents indexed by this run - equal to {@code documentsProcessed} for
+   * FILESYSTEM/HTTP_DIRECTORY runs, but higher for an RSS_FEED run whose entries carry attachments,
+   * since every attachment adds here without adding a processed entry. {@link
    * IndexingRunProgress#recordDocumentIndexed} increments only this one.
    */
   @Column(name = "documents_indexed_total")

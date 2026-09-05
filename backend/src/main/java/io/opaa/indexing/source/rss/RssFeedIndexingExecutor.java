@@ -44,21 +44,16 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Async;
 
 /**
- * Executes indexing runs for {@link IndexingSourceType#RSS_FEED} (ADR-0017): fetches an RSS 2.0
- * feed, resolves every entry's detail page and hands the page's main text - not the whole page -
- * into {@link FileProcessingService#processRssEntry}. Transport, page reduction and attachments
- * belong to {@link FeedFetcher}, {@link DetailPageExtractor} and {@link AttachmentIndexer}; this
- * class keeps the run's orchestration and its per-run state ({@link RssFeedRunContext}).
+ * Executes indexing runs for {@link IndexingSourceType#RSS_FEED} (ADR-0017): fetches the feed,
+ * resolves every entry's detail page and hands the page's main text - not the whole page - into
+ * {@link FileProcessingService#processRssEntry}. Transport, page reduction and attachments belong
+ * to {@link FeedFetcher}, {@link DetailPageExtractor} and {@link AttachmentIndexer}; this class
+ * keeps the orchestration and the per-run state ({@link RssFeedRunContext}).
  *
- * <p>Change detection is three-staged: a conditional {@code GET} on the feed ({@link
- * RssFeedState}), then each entry's stored {@code pubDate}, then the SHA-256 checksum inside {@code
- * processRssEntry}. <b>No deletion by absence</b> (ADR-0017, decision 5): a feed's window is a
- * property of the feed, so an entry scrolling out of it is no evidence that it is gone.
- *
- * <p>A rejected, oversized or unreachable entry never aborts the run; it is skipped, counted and
- * logged. An attachment failure never changes its entry's outcome, only marks the run as having
- * deferred something, and an unchanged entry with no attachments yet still gets its page fetched
- * once for them (see {@link #processUnchangedEntry}).
+ * <p>Change detection is three-staged: a conditional {@code GET} on the feed, each entry's stored
+ * {@code pubDate}, then the SHA-256 checksum. <b>No deletion by absence</b> (decision 5): a feed's
+ * window is a property of the feed. A rejected or unreachable entry never aborts the run, and an
+ * attachment failure only marks the run as having deferred something.
  */
 public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
@@ -310,13 +305,10 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Handles an entry whose {@code pubDate} is unchanged. Since the pubDate never changes again,
-   * {@link #processEntry} would otherwise never re-fetch the detail page attachments are found on.
-   * This method fetches the detail page for attachments alone (the entry's own text is not
-   * reprocessed) only when no attachment document exists yet for it in this run's own library
-   * ({@link DocumentRepository#existsBySourceEntryUrlAndLibraryId}); an entry that already has its
-   * attachments there stays as cheap as before. Scoped to {@code ctx.targetLibrary()} - a different
-   * library's attachments for the same entry URL must not suppress this library's own backfill.
+   * Handles an entry whose {@code pubDate} is unchanged: since it never changes again, {@link
+   * #processEntry} would otherwise never re-fetch the detail page attachments are found on. Fetches
+   * that page for attachments alone - not the entry's text - and only while no attachment document
+   * exists for it in this run's own library, so an entry that already has them stays cheap.
    */
   private void processUnchangedEntry(RssFeedRunContext ctx, String entryUrl) {
     ctx.progress().recordSkipped();
@@ -336,12 +328,10 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Converts {@code candidates} into {@link AttachmentSource.Download} jobs (the {@link HttpClient}
-   * and {@code Authorization} header a download uses are decided per candidate by {@code
-   * ctx.httpClientFor}/{@code ctx.authHeaderFor}) and hands them to {@link
-   * AttachmentIndexer#indexAll}, looking up {@code entryUrl}'s own document row as {@code
-   * parentDocumentId} - present at this point on every call site, since both call it only once its
-   * own entry document is known to exist.
+   * Converts {@code candidates} into {@link AttachmentSource.Download} jobs - client and {@code
+   * Authorization} decided per candidate by {@code ctx.httpClientFor}/{@code ctx.authHeaderFor} -
+   * and hands them to {@link AttachmentIndexer#indexAll} under {@code entryUrl}'s own document row
+   * as {@code parentDocumentId}, which every call site has already ensured exists.
    */
   private void indexAttachments(
       RssFeedRunContext ctx, List<AttachmentCandidate> candidates, String entryUrl) {
@@ -504,12 +494,10 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Checks if an RSS entry's document is unchanged based on its {@code pubDate}, before its detail
-   * page is ever requested (ADR-0017) - mirrors {@code UrlIndexingExecutor#isUnchanged}. A missing
-   * {@code pubDate} is treated as "changed" - the SHA-256 checksum inside {@link
-   * FileProcessingService#processRssEntry} becomes the deciding change signal instead. The lookup
-   * is scoped to {@code targetLibrary}: the same entry URL indexed into a different library is an
-   * independent document.
+   * Whether an RSS entry's document is unchanged by its {@code pubDate}, before its detail page is
+   * ever requested (ADR-0017) - the mirror of {@code UrlIndexingExecutor#isUnchanged}. A missing
+   * {@code pubDate} counts as changed, leaving the SHA-256 checksum as the deciding signal. Scoped
+   * to {@code targetLibrary}, since the same entry in another library is an independent document.
    */
   private boolean isUnchanged(
       String entryUrl, Optional<Instant> publishedAt, KnowledgeLibrary targetLibrary) {

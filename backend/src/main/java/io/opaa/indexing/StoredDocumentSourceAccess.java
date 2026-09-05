@@ -70,22 +70,10 @@ public class StoredDocumentSourceAccess {
 
   /**
    * The document's own file on this machine, or {@code null} when this deployment may not read it
-   * again. Applies the same runtime containment discipline {@code
-   * LibraryDocumentService#filesystemFileIfWithinConfiguredDirectory}/{@code
-   * #uploadedFileIfManagedByThisService} apply before serving an original, and for the same reason
-   * (ADR-0018, Entscheidung 6): {@code file_path} was validated when the document was indexed, but
-   * the allowlist can be narrowed - or emptied, which disables the {@code FILESYSTEM} source type
-   * entirely - afterwards, and a run over the bestand must not be the one path that silently keeps
-   * reading from a directory an operator has since withdrawn.
-   *
-   * <ul>
-   *   <li>{@code FILESYSTEM}: the library's own {@code sourcePath} must still pass {@link
-   *       FilesystemPathAllowlist}, and the file must resolve underneath it - both via {@link
-   *       Path#toRealPath}, so a symlink out of the configured directory cannot pass the lexical
-   *       prefix check.
-   *   <li>{@code UPLOAD}: the file must lie inside this library's own subdirectory of the managed
-   *       upload storage - the only files this system wrote itself.
-   * </ul>
+   * again: a {@code FILESYSTEM} library's {@code sourcePath} must still pass {@link
+   * FilesystemPathAllowlist} and the file must resolve underneath it via {@link Path#toRealPath},
+   * and an {@code UPLOAD} file must lie in this library's own managed subdirectory. The allowlist
+   * can be narrowed after indexing (ADR-0018, Entscheidung 6), so it is re-checked here.
    */
   public Path localSourceFile(Document document) {
     if (document.getFilePath() == null || document.getLibraryId() == null) {
@@ -106,16 +94,11 @@ public class StoredDocumentSourceAccess {
   }
 
   /**
-   * Re-extracts an attachment document's bytes (ADR-0022) - a row whose {@code file_path} is
-   * synthetic ({@code <parentPath>/<index>/<name>}, see {@code
-   * FileProcessingService#attachmentFilePath}) and therefore never resolves to a file of its own -
-   * from the root ancestor's still-readable source file, by re-running the parent chain's pipelines
-   * and following the positional index encoded in each {@code file_path} segment, and hands the
-   * resulting temp file to {@code action}. The temp files are deleted afterwards. Returns {@code
-   * false} without calling {@code action} on every non-recoverable mismatch (chain broken or
-   * cyclic, root remote or unreadable, index out of range or checksum mismatch because the parent
-   * file changed since) - a skip, never an error: the next full indexing run of the parent
-   * re-establishes consistency.
+   * Re-extracts an attachment document's bytes (ADR-0022) - its {@code file_path} is synthetic and
+   * resolves to no file of its own - by re-running the parent chain's pipelines from the root
+   * ancestor's still-readable source and following the positional index in each path segment, then
+   * hands the temp file to {@code action} and deletes it afterwards. Returns {@code false} without
+   * calling {@code action} on any mismatch - a skip, never an error, since the next run repairs it.
    */
   public boolean withReextractedAttachment(Document document, Predicate<Path> action) {
     List<Document> chain = new ArrayList<>();
@@ -220,12 +203,10 @@ public class StoredDocumentSourceAccess {
   }
 
   /**
-   * Marks a remote (HTTP_DIRECTORY/RSS_FEED) document, and for an attachment its <em>whole</em>
-   * parent chain up to the root, for the next connector run by clearing every change marker ({@link
-   * DocumentRepository#markForReindexOnNextRun}). Only that run can re-download the root; a chain
-   * cleared level by level is re-parsed level by level, so the attachment is reached again. Never
-   * deletes a row (ADR-0022, Entscheidung 3). Returns {@code false} - a skip - for a broken or
-   * cyclic chain.
+   * Marks a remote document, and for an attachment its <em>whole</em> parent chain up to the root,
+   * for the next connector run by clearing every change marker. Only that run can re-download the
+   * root, and a chain cleared level by level is re-parsed level by level, so the attachment is
+   * reached again. Never deletes a row (ADR-0022, Entscheidung 3); a broken chain is a skip.
    */
   public boolean markRemoteChainForNextRun(Document document) {
     List<UUID> chainIds = new ArrayList<>();

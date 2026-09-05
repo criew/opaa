@@ -26,18 +26,15 @@ import org.springframework.ai.document.Document;
 
 /**
  * The EML/MSG pipeline (ingestion-pipelines.md, Teil 3, Punkt 5): separates Kopfdaten, body and
- * attachment text, which Tika's native parse flattens into one block.
+ * attachment text, which Tika's native parse flattens into one block. Kopfdaten land as chunk
+ * metadata ({@link ChunkMailMetadata}) and as German-labeled context lines prepended to the first
+ * body text <b>before</b> chunking, so an unbounded {@code An} line is cut by the same splitter. A
+ * blank body with an attachment still gets a header-only chunk; without one it stays {@code
+ * NO_EXTRACTABLE_TEXT}.
  *
- * <p>Kopfdaten land as chunk metadata ({@link ChunkMailMetadata}) and as German-labeled context
- * lines prepended to the first body text <b>before</b> chunking (see {@link #bodyChunks}), so an
- * unbounded {@code An} line is cut by the same splitter instead of growing one chunk past the
- * configured size. A blank body with an attachment still gets a header-only chunk; a blank body
- * without one stays {@code NO_EXTRACTABLE_TEXT} - its Kopfdaten alone are template text.
- *
- * <p>This class never processes an attachment itself (ADR-0022, Entscheidung 10): the readers
- * extract each one into a temporary file and it is reported via {@link
- * DocumentPipelineResult#discoveredAttachments()}. Recursion for Mail-in-Mail and the count/depth
- * limits live on the shared attachment path, not in this class' own state.
+ * <p>This class never processes an attachment itself (ADR-0022, Entscheidung 10) - it reports each
+ * via {@link DocumentPipelineResult#discoveredAttachments()}, and recursion and the count/depth
+ * limits live on the shared attachment path.
  */
 public class MailDocumentPipeline implements DocumentPipeline {
 
@@ -49,11 +46,9 @@ public class MailDocumentPipeline implements DocumentPipeline {
 
   /**
    * Renders {@link ParsedMailMessage#date()} in the leading context line, in {@link #clock}'s own
-   * zone (the same choice {@code LibraryIndexingScheduler} makes for cron evaluation) - never a
-   * fixed zone: the originating header's own offset does not survive parsing into an {@link
-   * java.time.Instant}, but rendering in UTC regardless would put a silently wrong local time into
-   * embedding, full-text index and the cited Beleg alike, off by one or two hours for every German
-   * sender.
+   * zone - never a fixed one: the originating header's offset does not survive parsing into an
+   * {@link java.time.Instant}, and rendering in UTC anyway would put a silently wrong local time
+   * into embedding, full-text index and the cited Beleg alike.
    */
   private static final DateTimeFormatter DATE_FORMATTER =
       DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", Locale.GERMANY);
@@ -209,30 +204,10 @@ public class MailDocumentPipeline implements DocumentPipeline {
 
   /**
    * One chunk per message, or one per thread segment when {@link MailThreadSplitter} finds a quoted
-   * reply chain - every segment carries the same, single set of Kopfdaten metadata: a quoted prior
-   * message's own header lines are free text inside the client's quoting convention, not reliably
-   * parseable back into structured From/To/Date/Subject the way the outer MIME envelope's headers
-   * are. {@code headerContext} is prepended to the raw text of only the first non-blank segment,
-   * <b>before</b> {@link ChunkingService#chunkDocuments} ever runs on it (see {@link
-   * #headerContextText}'s own Javadoc for why prepending here, rather than after chunking, is
-   * load-bearing) - never repeated onto a later segment or further-split part.
-   *
-   * <p><b>A segment too long for one chunk falls back to {@link ChunkingService}'s ordinary token
-   * splitter</b>: a long newsletter or a forwarded chain with no recognizable quote separator would
-   * otherwise become a single, unboundedly large chunk - past the embedding model's own token
-   * limit, failing the whole document. {@link ChunkingService#chunkDocuments} already returns a
-   * single, unmodified chunk for text under its configured {@code opaa.indexing.chunk-size}, so an
-   * ordinary message is unaffected; only a segment that actually exceeds it is further cut, exactly
-   * the fallback role token-chunking plays project-wide once structure runs out
-   * (ingestion-pipelines.md, Teil 2, "Der Grundsatz").
-   *
-   * <p><b>A message whose body never produces a chunk, but carries an attachment, still gets a
-   * header-only chunk</b> if it has any Kopfdaten: the common "Anbei der Bescheid" mail would
-   * otherwise index the attachment while losing sender and Betreff entirely. That header-only text
-   * runs through the same {@link ChunkingService#chunkDocuments} call as every other header-bearing
-   * chunk, so an unbounded {@code An} line is cut like any other text. A blank body with
-   * <em>no</em> attachment is not rescued this way: its Kopfdaten alone are template text like a
-   * repeating page header, not evidence of content.
+   * reply chain, every segment carrying the same single set of Kopfdaten metadata. {@code
+   * headerContext} is prepended to the first non-blank segment before {@link
+   * ChunkingService#chunkDocuments} runs, never onto a later one; an over-long segment falls back
+   * to the token splitter. A blank body yields a header-only chunk only if an attachment exists.
    */
   private List<Document> bodyChunks(
       ParsedMailMessage message, String fileName, String headerContext) {
@@ -292,43 +267,21 @@ public class MailDocumentPipeline implements DocumentPipeline {
 
   /**
    * Renders {@code date} for {@link ChunkMailMetadata#MAIL_DATE_METADATA_KEY}, truncated to whole
-   * seconds first - {@link Instant#toString()} omits the fractional part entirely when it is zero,
-   * so two messages a millisecond apart could otherwise produce ISO-8601 strings that do not
-   * compare correctly as text (".500Z" sorts before "Z" lexicographically) once a Zeitraum filter
-   * compares {@code mail_date} as a string. An EML Date header (RFC 5322) never carries sub-second
-   * precision to begin with, but {@link MsgReader} reads an Outlook FILETIME through {@link
-   * java.util.Calendar}, which can.
+   * seconds first: {@link Instant#toString()} omits a zero fractional part, so two messages a
+   * millisecond apart would otherwise produce strings that do not compare correctly as text once a
+   * Zeitraum filter compares {@code mail_date}. Only {@link MsgReader} can deliver sub-second
+   * precision at all.
    */
   static String renderMailDate(Instant date) {
     return date.truncatedTo(ChronoUnit.SECONDS).toString();
   }
 
   /**
-   * Renders Von/Betreff/Datum/An as German-labeled context lines, one line per present field, no
-   * line at all for an absent one - empty string when the message carries none of the four.
-   *
-   * <p><b>{@code An} is rendered last, deliberately not in its natural Von/An/Betreff/Datum reading
-   * order</b>: {@link ParsedMailMessage#to()} is the one unbounded field ({@code EmlReader} renders
-   * every recipient), so a round mail to hundreds of recipients pushes it across several chunks
-   * once {@link #bodyChunks} runs this block through the token splitter (see below). Leading with
-   * it would strand Betreff and Datum - and the body itself - past the recipient list, in a chunk a
-   * question like "Mail von Müller zum Bebauungsplan" never reaches. Von/Betreff/Datum are short
-   * and stay together in the leading chunk regardless of how large {@code An} grows.
-   *
-   * <p><b>Prepended once, to the raw text of the first non-blank segment, before {@link
-   * ChunkingService#chunkDocuments} runs on it</b> - deliberately not appended after chunking:
-   * appending it to an already-chunked piece of text would grow that one chunk past the configured
-   * {@code opaa.indexing.chunk-size} without bound - exactly the failure mode {@link #bodyChunks}'s
-   * own token-splitter fallback exists to prevent. Prepending before chunking instead lets the same
-   * splitter account for this block like any other text, cutting a pathologically large header into
-   * its own leading chunk(s) rather than growing one chunk unboundedly - the same treatment {@link
-   * #bodyChunks}'s header-only branch gives it when there is no body text to attach it to at all.
-   * Never repeated onto a later segment or further-split part: {@link #bodyChunks} already
-   * duplicates this same information into every chunk's <em>metadata</em> (a quoted-reply thread or
-   * a long newsletter can produce many chunks from one message), and doing the same to the chunk
-   * text would dilute embedding and full-text ranking with an identical block repeated across the
-   * whole document - the same Verwässerungsproblem {@code RepeatingHeaderChunk} avoids for a page
-   * header repeating across a document's chunks.
+   * Renders Von/Betreff/Datum/An as German-labeled context lines, one per present field. {@code An}
+   * comes last, against its natural reading order, because it is the one unbounded field - leading
+   * with it would strand Betreff, Datum and the body past a long recipient list. The block is
+   * prepended once, to the first non-blank segment and <b>before</b> chunking, never repeated: the
+   * same information is already in every chunk's metadata, and repeating it would dilute ranking.
    */
   private String headerContextText(ParsedMailMessage message) {
     StringBuilder text = new StringBuilder();
@@ -369,12 +322,10 @@ public class MailDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * Reports every attachment {@link EmlReader}/{@link MsgReader} already extracted (both cap the
-   * count at {@link MailProperties#maxAttachmentsPerMessage()} themselves, in their own extraction
-   * loop) as a {@link DiscoveredAttachment} - unfiltered by format or size here: the generalized
-   * attachment path ({@code AttachmentIndexer#indexLocalFile}) makes that same admission decision
-   * itself, exactly once, instead of this class pre-filtering with logic that would only duplicate
-   * it.
+   * Reports every attachment {@link EmlReader}/{@link MsgReader} already extracted as a {@link
+   * DiscoveredAttachment} - unfiltered by format or size, since the generalized attachment path
+   * makes that admission decision itself, exactly once. Both readers already cap the count at
+   * {@link MailProperties#maxAttachmentsPerMessage()} in their own extraction loop.
    */
   private static List<DiscoveredAttachment> discoveredAttachments(
       List<ParsedMailAttachment> attachments) {

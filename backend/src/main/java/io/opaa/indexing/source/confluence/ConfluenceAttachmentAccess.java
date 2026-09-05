@@ -9,20 +9,15 @@ import io.opaa.library.KnowledgeLibrary;
 import java.util.Set;
 
 /**
- * {@link ConfluenceIndexingExecutor}'s own {@link AttachmentAccess} (ADR-0022 Entscheidung 8), one
- * instance per page: unlike RSS's run-wide context it carries the page's {@link #sourceContext()} -
- * space key and hierarchy path including the page title - so every attachment stored through it, at
- * any nesting depth, is placed where its page sits.
+ * {@link ConfluenceIndexingExecutor}'s own {@link AttachmentAccess} (ADR-0022, Entscheidung 8), one
+ * instance per page: unlike RSS's run-wide context it carries the page's {@link #sourceContext()},
+ * so every attachment stored through it, at any nesting depth, is placed where its page sits.
  *
- * <p>{@link #markDeferred()} keeps no per-run state to suppress: a Confluence run has no
- * conditional GET; a lost attachment is retried on the next run because its document row is either
- * missing or not {@code INDEXED} at the listed version. The flag is only read by the executor to
- * count the attachment as failed rather than skipped when nothing was stored.
- *
- * <p>{@code currentPaths}/{@code reprocessedPaths} collect what {@link #recordIndexedAttachment}
- * reports across all nesting depths - the executor folds them into the reconciliation set before
- * {@code StaleDocumentCleanupService#cleanupVanished} (ADR-0022, Entscheidung 3), mirroring {@code
- * WebAttachmentAccess}.
+ * <p>{@link #markDeferred()} suppresses nothing - a Confluence run has no conditional GET, and a
+ * lost attachment is retried next run anyway; the flag only lets the executor count it as failed
+ * rather than skipped. {@code currentPaths}/{@code reprocessedPaths} collect what {@link
+ * #recordIndexedAttachment} reports, which the executor folds into the reconciliation set
+ * (Entscheidung 3).
  */
 final class ConfluenceAttachmentAccess implements AttachmentAccess {
 

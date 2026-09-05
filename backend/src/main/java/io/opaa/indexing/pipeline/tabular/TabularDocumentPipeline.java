@@ -57,22 +57,18 @@ public class TabularDocumentPipeline implements DocumentPipeline {
   static final short VERSION = 1;
 
   /**
-   * Rows of data grouped per chunk (the repeated header does not count against this) - <b>gesetzt,
-   * nicht gemessen</b> (ingestion-pipelines.md, "Chunk-Größen"): weder der bestehende
-   * Evaluierungskorpus noch die geplante Verwaltungs-Evaldomäne enthalten heute Tabellenblätter mit
-   * kuratierter Ground Truth, gegen die dieser Wert gemessen werden könnte. 50 teilt eine
-   * mittelgroße Gebühren- oder Zuständigkeitstabelle in überschaubar viele, noch les- und
-   * zitierbare Chunks.
+   * Rows of data grouped per chunk, the repeated header not counting against it - <b>gesetzt, nicht
+   * gemessen</b> (ingestion-pipelines.md, "Chunk-Größen"): es gibt bis heute keine Tabellenblätter
+   * mit kuratierter Ground Truth, gegen die dieser Wert gemessen werden könnte. 50 teilt eine
+   * mittelgroße Gebühren- oder Zuständigkeitstabelle in noch les- und zitierbare Chunks.
    */
   static final int MAX_ROWS_PER_CHUNK = 50;
 
   /**
-   * Soft cap on a chunk's rendered character length, checked before a further row is added - guards
-   * against a pathologically wide sheet (a "Riesenzeile" with hundreds of columns, or one huge
-   * cell) producing an unboundedly large chunk. A single row that alone already exceeds this still
-   * becomes its own one-row chunk rather than being split mid-row or silently dropped - see {@link
-   * HeadingSectionSplitter#HARD_CHUNK_CHAR_LIMIT} for the absolute ceiling that row is still
-   * subject to.
+   * Soft cap on a chunk's rendered character length, checked before a further row is added, against
+   * a pathologically wide sheet producing an unboundedly large chunk. A single row that alone
+   * exceeds it still becomes its own one-row chunk rather than being split mid-row - see {@link
+   * HeadingSectionSplitter#HARD_CHUNK_CHAR_LIMIT} for the absolute ceiling it is still subject to.
    */
   static final int MAX_CHUNK_CHARS = 6_000;
 
@@ -138,13 +134,10 @@ public class TabularDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * The format to dispatch on: {@link DocumentPipelineSource#detectedExtension()} when the registry
-   * resolved one - the normal, content-routed path - falling back to {@code fileName}'s own suffix
-   * only when it did not (a source built directly in a test, or content that never went through
-   * routing at all). Trusting the file name over the detected content would reintroduce exactly
-   * what content-based admission prevents: a genuine XLSX misnamed {@code .csv} would be parsed as
-   * CSV and fail, instead of being read as the XLSX it actually is - and the reverse (a CSV or ODS
-   * misnamed {@code .xlsx}) would hand POI bytes it cannot open at all.
+   * The format to dispatch on: {@link DocumentPipelineSource#detectedExtension()} where the
+   * registry resolved one, falling back to the file name's suffix only where it did not. Trusting
+   * the name over the detected content would reintroduce what content-based admission prevents - an
+   * XLSX misnamed {@code .csv} parsed as CSV, or POI handed bytes it cannot open at all.
    */
   private static String resolveExtension(DocumentPipelineSource source) {
     if (source.detectedExtension() != null) {
@@ -188,13 +181,11 @@ public class TabularDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * Reads {@code file}'s bytes and decodes them as text, tolerating the two encodings a real CSV
-   * export arrives in: UTF-8 (with or without a leading byte-order mark, which is stripped rather
-   * than left to show up as a stray character on the first header cell), and Windows-1252 - German
-   * Excel's own default CSV export encoding. A byte sequence that is not valid UTF-8 (any umlaut or
-   * the Euro sign encoded as a single Windows-1252 byte is not valid UTF-8 on its own) falls back
-   * to Windows-1252, which maps every byte to some character and therefore never itself throws -
-   * the deliberate, single fallback rather than a guess among several candidate charsets.
+   * Reads {@code file}'s bytes as text, tolerating the two encodings a real CSV export arrives in:
+   * UTF-8, with a leading byte-order mark stripped rather than left on the first header cell, and
+   * Windows-1252, German Excel's own default. A byte sequence that is not valid UTF-8 falls back to
+   * Windows-1252, which maps every byte and therefore never throws - one deliberate fallback rather
+   * than a guess among candidates.
    */
   private static String readCsvText(Path file) throws IOException {
     byte[] bytes = Files.readAllBytes(file);
@@ -251,16 +242,11 @@ public class TabularDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * How well {@code candidate} explains {@code sample} as the delimiter: parses {@code sample} with
-   * it and rewards both the column count of the first row and how many sample rows agree on that
-   * count - a delimiter every sampled line agrees on beats one that only happens to split the first
-   * line into more columns. Delimiter occurrences inside a quoted field never count on their own,
-   * because the actual column boundaries come from parsing the candidate, not from a raw character
-   * count - the fix for a quoted field that happens to contain one of the other candidates' own
-   * delimiter (e.g. {@code "Leistung, allgemein";Betrag}, where a naive count of raw commas and
-   * semicolons ties). Returns 0 for a candidate that does not split the sample into more than one
-   * column at all, or that fails to parse as CSV under it (e.g. an unbalanced quote the candidate's
-   * own tokenizer rejects).
+   * How well {@code candidate} explains {@code sample} as the delimiter: it parses the sample and
+   * rewards both the first row's column count and how many rows agree on it, so a delimiter every
+   * line agrees on beats one that merely splits the first line into more columns. Occurrences
+   * inside a quoted field never count, since boundaries come from parsing rather than a raw
+   * character count. Returns 0 for a candidate that does not split the sample or fails to parse.
    */
   private static long delimiterScore(String sample, char candidate) {
     CSVFormat format =
@@ -293,13 +279,11 @@ public class TabularDocumentPipeline implements DocumentPipeline {
   // --- XLSX ----------------------------------------------------------------------------------
 
   /**
-   * Unlike {@link #readOds}, this reader has no explicit byte/row zip-bomb ceiling of its own
-   * ({@link TabularProperties} carries none for XLSX) - POI already guards every ZIP-backed reader
-   * process-wide via {@code org.apache.poi.openxml4j.util.ZipSecureFile}'s default minimum inflate
-   * ratio (rejects an entry that decompresses to more than ~100x its compressed size) and maximum
-   * entry size, active for every {@code WorkbookFactory.create} call without this pipeline having
-   * to configure or duplicate it. The ODS reader needs its own guard precisely because it bypasses
-   * POI (see {@link #readOds}'s own Javadoc) and reads the ZIP entry itself.
+   * Unlike {@link #readOds}, this reader needs no byte/row zip-bomb ceiling of its own: POI already
+   * guards every ZIP-backed reader process-wide through {@code
+   * org.apache.poi.openxml4j.util.ZipSecureFile}'s minimum inflate ratio and maximum entry size.
+   * The ODS reader needs its own guard precisely because it bypasses POI and reads the entry
+   * itself.
    */
   private List<Document> readXlsx(DocumentPipelineSource source) throws IOException {
     if (source.file() == null) {
@@ -369,22 +353,11 @@ public class TabularDocumentPipeline implements DocumentPipeline {
   // --- ODS -------------------------------------------------------------------------------------
 
   /**
-   * Reads an ODS spreadsheet directly from its {@code content.xml} - deliberately not Apache POI,
-   * which only reads OOXML (XLSX/DOCX/PPTX) and legacy binary Office formats, never OpenDocument.
-   * An ODS file is a ZIP archive; {@code content.xml} inside it is plain, well-formed XML ({@code
-   * table:table}/{@code table:table-row}/{@code table:table-cell} elements) - opened and parsed
-   * through {@link OdfContentXml}, the hardened ZIP/SAX reader shared with {@code
-   * OdtDocumentPipeline}/{@code OdpDocumentPipeline}, rather than pulling in a full ODF library
-   * (ODF Toolkit) for a single, narrow read.
-   *
-   * <p>Two independent zip-bomb guards apply while reading {@code content.xml}: a byte ceiling on
-   * the entry's decompressed stream ({@link #maxOdsContentXmlBytes}, enforced by {@link
-   * OdfContentXml}) and a row-count ceiling on the parse itself ({@link #maxOdsRows}, enforced by
-   * {@link OdsContentHandler}) - a small, deeply repetitive {@code content.xml} could stay under
-   * the byte limit while still describing an unreasonable number of rows. Either one exceeded
-   * aborts the parse with an {@link IOException} naming which limit was hit, the same "named
-   * rejection instead of an OutOfMemoryError" contract {@code IndexingProperties.Rss}'s own
-   * streaming bounds already have.
+   * Reads an ODS spreadsheet directly from its {@code content.xml} - not POI, which never reads
+   * OpenDocument - through {@link OdfContentXml}, the hardened ZIP/SAX reader the ODT and ODP
+   * pipelines share. Two independent zip-bomb guards apply, a byte ceiling on the decompressed
+   * entry ({@link #maxOdsContentXmlBytes}) and a row count on the parse ({@link #maxOdsRows});
+   * either one aborts with an {@link IOException} naming the limit, never an {@code OutOfMemory}.
    */
   private List<Document> readOds(DocumentPipelineSource source) throws IOException {
     if (source.file() == null) {
@@ -415,23 +388,11 @@ public class TabularDocumentPipeline implements DocumentPipeline {
   private record OdsSheet(String name, List<RawRow> rows) {}
 
   /**
-   * SAX handler collecting every {@code table:table} into an {@link OdsSheet} of {@link RawRow}s.
-   * Deliberately narrow: it reads only what {@link #chunksFromRawRows} needs (sheet name, row order
-   * and number, cell text) and ignores everything else in {@code content.xml} (styles, formulas,
-   * annotations).
-   *
-   * <p><b>{@code table:number-rows-repeated} advances the row counter but is not expanded</b> - a
-   * repeated row is recorded once, at the first row number of its repeated span, and the running
-   * counter jumps by the full repeat count before the next row - otherwise a citation's "Zeile n"
-   * would be wrong for every row after a filler gap. ODF exporters use this attribute almost
-   * exclusively for large runs of trailing blank filler rows (up to a sheet's full row count);
-   * expanding it for content-bearing rows would be unusual and is not modelled here.
-   *
-   * <p><b>{@code table:number-columns-repeated} is expanded, but capped</b> at {@code
-   * maxCellRepeat} per cell and {@code maxRowColumns} per row - the same style of guard as {@link
-   * #MAX_CHUNK_CHARS} against a pathologically wide sheet, since this attribute is exactly how ODF
-   * represents a "Riesenzeile" of blank filler cells (routinely repeated to the full sheet width,
-   * e.g. 16384).
+   * SAX handler collecting every {@code table:table} into an {@link OdsSheet} of {@link RawRow}s,
+   * reading only what {@link #chunksFromRawRows} needs. {@code table:number-rows-repeated} advances
+   * the row counter without being expanded, so a citation's "Zeile n" stays correct across a filler
+   * gap; {@code table:number-columns-repeated} is expanded but capped at {@code maxCellRepeat} per
+   * cell and {@code maxRowColumns} per row, since that attribute is how ODF writes a Riesenzeile.
    */
   static final class OdsContentHandler extends DefaultHandler {
 
@@ -568,26 +529,12 @@ public class TabularDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * Shared header/data-row detection for all three readers ({@link #readCsv}, {@link #readSheet},
-   * {@link #readOds}) that iterate a sequence of already-extracted rows: the first non-blank row is
-   * the header, every following non-blank row is data, and a table contributing no non-blank rows
-   * at all contributes no chunk - the {@code NO_EXTRACTABLE_TEXT} guard for a genuinely empty
-   * sheet/file.
+   * Shared header/data-row detection for all three readers: the first non-blank row is the header,
+   * every following one is data, and a table without a non-blank row contributes no chunk. Exactly
+   * one non-blank row is always content, in a chunk of its own - treating it as an empty header
+   * would drop real content (ingestion-pipelines.md, Teil 3, Punkt 3).
    *
-   * <p><b>Exactly one non-blank row is always content, in a chunk of its own</b> - not a header
-   * without data. This deliberately departs from an absolute "header without data → no chunk" rule
-   * (ingestion-pipelines.md still states that rule for the case of two or more rows below): a
-   * table/file that never had more than one row has no header/data split to make, and treating the
-   * sole row as an empty header would silently drop real content - both a minimal spreadsheet used
-   * as a one-line text container (one cell) and a genuine one-row result table (several columns,
-   * e.g. a single summary line) are Nutzdaten. A table with a real, multi-column header and
-   * deliberately zero rows beneath it is indistinguishable from the latter once blank filler rows
-   * are filtered out, so this pipeline accepts the (documented) risk of occasionally indexing a
-   * genuinely field-name-only row rather than the alternative of occasionally discarding real data
-   * - see ingestion-pipelines.md, Teil 3, Punkt 3.
-   *
-   * @param sheetName the sheet name, or {@code null} for CSV, forwarded to {@link #buildChunks} /
-   *     {@link #renderSingleRowChunk} unchanged
+   * @param sheetName the sheet name, or {@code null} for CSV, forwarded unchanged
    * @param tableName see {@link #buildChunks}
    */
   private static List<Document> chunksFromRawRows(

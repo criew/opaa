@@ -43,11 +43,10 @@ public class DetailPageExtractor {
   public record DetailPage(String mainText, List<AttachmentCandidate> attachments) {}
 
   /**
-   * Fetches {@code entryUrl} and extracts its main content, following up to {@link
-   * RedirectFollowingFetcher#MAX_REDIRECTS} redirects that stay within {@code entryUrl}'s own
-   * origin ({@link RedirectFollowingFetcher.RedirectPolicy#REJECT_OFF_ORIGIN}) - an entry's {@code
-   * <link>} is content the feed operator controls, not a target the library owner vouches for, so a
-   * redirect leaving that origin is refused outright rather than followed anonymized.
+   * Fetches {@code entryUrl} and extracts its main content, following redirects only within {@code
+   * entryUrl}'s own origin ({@link RedirectFollowingFetcher.RedirectPolicy#REJECT_OFF_ORIGIN}) - an
+   * entry's {@code <link>} is content the feed operator controls, so a redirect leaving that origin
+   * is refused outright rather than followed anonymized.
    *
    * @throws RejectedByRemoteException if the remote end declined outright (403/429) or a redirect
    *     would leave {@code entryUrl}'s own origin or downgrade the protocol

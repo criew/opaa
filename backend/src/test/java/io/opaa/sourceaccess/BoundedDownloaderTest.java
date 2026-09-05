@@ -724,12 +724,10 @@ class BoundedDownloaderTest {
   @Test
   void downloadBoundedFollowsASameHostHttpToHttpsUpgradeRedirectAndResendsAuthorization()
       throws IOException, InterruptedException {
-    // a same-host http->https upgrade at matching (here: both default) ports is not a
-    // foreign origin - before the fix, this was rejected outright with
-    // RedirectRejectedException, exactly like a genuine cross-origin redirect, breaking every
-    // Basic-Auth-protected http:// source whose server upgrades every request to https (as every
-    // well-behaved one does). Mocked at the HttpClient level (mirrors the protocol-downgrade test
-    // above) since neither example.com nor a real TLS listener is reachable from this test.
+    // A same-host http->https upgrade at matching (here: both default) ports is not a foreign
+    // origin and must not be rejected with RedirectRejectedException - that would break every
+    // Basic-Auth-protected http:// source whose server upgrades to https. Mocked at the HttpClient
+    // level since neither example.com nor a real TLS listener is reachable from this test.
     @SuppressWarnings("unchecked")
     HttpResponse<InputStream> redirectResponse = mock(HttpResponse.class);
     when(redirectResponse.statusCode()).thenReturn(301);

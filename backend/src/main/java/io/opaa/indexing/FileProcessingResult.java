@@ -22,15 +22,11 @@ public enum FileProcessingResult {
   NO_EXTRACTABLE_TEXT,
 
   /**
-   * A pipeline produced no chunks and did not reject the document as text-free: either it could not
-   * read the source at all (a corrupt archive, a rejected XXE attempt, a DoS-hardening limit -
-   * {@link io.opaa.indexing.pipeline.DocumentPipelineResult.Outcome#PARSE_FAILED}), or it read the
-   * source and found it empty ({@link
-   * io.opaa.indexing.pipeline.DocumentPipelineResult.Outcome#NO_CONTENT}). The document row is
-   * marked {@code FAILED} either way; a caller must report this the same way it reports an uncaught
-   * exception from the same pipeline run - an {@code ERROR} run event and a failed-document count,
-   * not a silent {@link #PROCESSED}. Distinct from {@link #NO_EXTRACTABLE_TEXT}, which is a
-   * rejection (the pipeline parsed the document but found no usable text).
+   * A pipeline produced no chunks and did not reject the document as text-free: it either could not
+   * read the source at all ({@code PARSE_FAILED}) or read it and found it empty ({@code
+   * NO_CONTENT}). The row is marked {@code FAILED} either way, and a caller must report it like an
+   * uncaught exception from the same run - an {@code ERROR} event and a failed-document count.
+   * Distinct from {@link #NO_EXTRACTABLE_TEXT}, which is a rejection after a successful parse.
    */
   FAILED
 }

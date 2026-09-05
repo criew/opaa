@@ -17,33 +17,14 @@ import java.util.regex.Pattern;
 /**
  * The deterministic core-field extraction (metadata-schema.md, Teil III, step 1; ADR-0024): pure
  * rules over a file name and the {@link DocumentProperties} a pipeline declared, no model, no
- * similarity. Source order per field, first hit wins:
+ * similarity. Per field the sources are tried in a fixed order and the first hit wins - see {@link
+ * #TITLE_SOURCES}, {@link #documentTypeFrom} and {@link #documentDateFrom} for the order each one
+ * uses, and the vocabulary and notation each source is matched against.
  *
- * <ul>
- *   <li><b>Titel</b>: format title property, frontmatter {@code titel}, first level-1 heading, the
- *       humanized file name ({@link ChunkContextTitle}) - so a title is always found.
- *   <li><b>Dokumentart</b>: frontmatter {@code dokumentart} (an explicit declaration outside the
- *       vocabulary leaves the field empty, it never falls through), then the file name's tokens,
- *       then the {@link DocumentProperties#titleLine() title line}, then the file format. Within
- *       one of the two token sources exactly one distinct code must result; two different codes at
- *       once yield nothing <em>from that source</em> - the next source is still asked, unlike for
- *       the frontmatter declaration. A file-name token may also carry a seeded Kompositum ending;
- *       the title line is matched exactly. Nothing below the title line is read at all: a label
- *       line ({@code Formular: RF-KFZ-001}), a quotation and a section heading name other
- *       documents, never the document itself.
- *   <li><b>A {@link DocumentProperties#syntheticName() synthetic name}</b> (an RSS entry's
- *       headline, a Confluence page title) is no naming convention: it yields neither a Dokumentart
- *       nor a Datum. It remains a title - that is what a headline is.
- *   <li><b>Datum/Stand</b>: frontmatter {@code stand_datum}/{@code fassung} and the format's own
- *       document date (a mail's Date header), then the first heading (Kopfbereich), then the file
- *       name, then the modified and finally the created property. Within one source every candidate
- *       of a notation is tried, an impossible calendar date (an Aktenzeichen that looks like one)
- *       is skipped. A bare year 1900-2099 counts only in a file name or frontmatter value; in
- *       heading text it needs an anchor ({@code Stand 2026}, {@code Fassung 2024}) - an unanchored
- *       number there is an amount or a paragraph, never a Stand.
- * </ul>
- *
- * {@link #EXTRACTION_VERSION} is raised whenever a rule here changes its output.
+ * <p>Three rules hold across all fields: a title is always found, falling back to the humanized
+ * file name; an ambiguous source yields nothing from that source but does not stop the next one
+ * from being asked; and a {@link DocumentProperties#syntheticName() synthetic name} is no naming
+ * convention, so it becomes a title but never a Dokumentart or a Datum.
  */
 public final class CoreMetadataExtractor {
 
@@ -172,17 +153,11 @@ public final class CoreMetadataExtractor {
   }
 
   /**
-   * The Dokumentart of the document's title line - the first line of its text ({@link
-   * DocumentProperties} keeps only that line), or its first heading when the format has no text
-   * line at all. Nothing else of the document is read: only the title line is a self-designation.
-   * Matched exactly against the vocabulary, never through a Kompositum ending, because a title too
-   * is full of compounds that are no Dokumentart ("Tagesordnung", "in dieser Größenordnung").
-   *
-   * <p>A {@link DocumentProperties#firstHeading() first heading} that is <em>not</em> the title
-   * line is a level-1 heading from somewhere inside the document (a Markdown section, a PDF outline
-   * entry). It never supplies a Dokumentart of its own - a section named "Benötigtes Formular" is a
-   * reference like any other. It does veto: a code of its own that differs from the title line's
-   * leaves the field empty, "lieber leer als geraten".
+   * The Dokumentart of the document's title line - the first line of its text, or its first heading
+   * when the format has no text line. Nothing else is read: only the title line is a
+   * self-designation. Matched exactly, never through a Kompositum ending, since a title too is full
+   * of compounds that are no Dokumentart ("Tagesordnung"). A first heading that is not the title
+   * line supplies no code of its own but does veto a differing one - lieber leer als geraten.
    */
   private static Optional<String> fromTitleLine(
       DocumentProperties props, DocumentTypeVocabulary vocabulary) {

@@ -18,10 +18,8 @@ import org.springframework.context.annotation.ClassPathScanningCandidateComponen
  * {@code io.opaa.sourceaccess} is meant to depend on neither {@code io.opaa.library} nor {@code
  * io.opaa.library}/{@code io.opaa.api} - a source-access primitive (HTTP client construction,
  * redirect following, target-address validation, bounded downloads) has no business knowing about a
- * knowledge library, indexing-internal types or a generated DTO. The PR 1 extraction relies on
- * that; this test makes the invariant self-checking before PR 2 (the {@code
- * RssFeedIndexingExecutor} decomposition) can unknowingly reintroduce a dependency the same way
- * {@link io.opaa.audit.AuditFunnelStructureTest} guards the audit funnel.
+ * knowledge library, indexing-internal types or a generated DTO. This test makes that invariant
+ * self-checking, so a later change cannot reintroduce such a dependency unnoticed.
  *
  * <p>Modeled after {@link io.opaa.audit.AuditFunnelStructureTest}: reflection over every class this
  * package declares (top-level and nested), checking every field, constructor/method parameter,

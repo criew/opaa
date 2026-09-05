@@ -29,8 +29,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
  * (e.g. by {@code LibraryDocumentService#deleteDocument}, or a whole connector library being
  * removed) after {@link FileProcessingService#processFile}/{@code #processUrlFile}/{@code
  * #processRssEntry} have already inserted the row and started parsing, but before the final status
- * transition runs. Before the fix, that transition was a plain {@code documentRepository.save(doc)}
- * on a detached, already-deleted entity - {@link Document} assigns its own id and carries no
+ * transition runs. That transition must not be a plain {@code documentRepository.save(doc)} on a
+ * detached, already-deleted entity - {@link Document} assigns its own id and carries no
  * {@code @Version}, so Hibernate silently re-{@code INSERT}s it as a zombie row, and any chunks
  * {@code storeChunks} already wrote survive as orphans.
  *

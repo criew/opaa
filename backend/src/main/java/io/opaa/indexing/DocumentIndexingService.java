@@ -55,25 +55,11 @@ public class DocumentIndexingService {
   }
 
   /**
-   * Triggers a run for {@code libraryId}. Resolves and authorizes the library first (404/403, see
-   * {@link #requireEditableLibrary}), then rejects a library whose {@code sourceType} has no
-   * executor ({@code UPLOAD} - 409, see {@link #toIndexingSourceType}), then rejects a second
-   * trigger while a run for this same library is still in progress (409). Only once all three pass
-   * does a job actually start.
-   *
-   * <p>The {@link IndexingJobService#isJobRunning(UUID, UUID)} check above is an optimization, not
-   * the only guard - two concurrent triggers can both pass it before either has inserted its row.
-   * {@link IndexingJobService#startJob(UUID, UUID, JobTriggerSource, IndexingRunMode)} closes that
-   * TOCTOU gap at the database level, so the second of two racing triggers still gets 409, just
-   * from the database constraint instead of this in-memory check.
-   *
-   * <p>A full {@code indexingTaskExecutor} queue must not leave the just-inserted row {@code
-   * RUNNING} forever. {@code executor.execute} is an {@code @Async} void method; when the pool's
-   * queue is full, {@code AbortPolicy} makes the submission throw {@link TaskRejectedException}
-   * synchronously, on this thread, before the run ever starts. Left uncaught, the row {@link
-   * IndexingJobService#startJob} just committed would stay {@code RUNNING} with nothing left to
-   * ever complete it. Catching it here and failing the job immediately keeps that row's lifecycle
-   * intact and answers the caller with 503 instead of a misleading 202.
+   * Triggers a run for {@code libraryId}, in this order: resolve and authorize the library
+   * (404/403), reject a {@code sourceType} without an executor (409), reject a second trigger while
+   * a run is still in progress (409). That last check is an optimization; {@code startJob} closes
+   * the TOCTOU gap in the database. A full executor queue is caught here and fails the job at once,
+   * so the just-inserted row cannot stay {@code RUNNING} and the caller gets 503, not a 202.
    */
   public IndexingJob triggerIndexing(UUID libraryId, CurrentUser caller) {
     return triggerIndexing(libraryId, caller, null);
@@ -112,13 +98,10 @@ public class DocumentIndexingService {
   }
 
   /**
-   * Triggers a scheduled run for {@code library} - called only by {@link LibraryIndexingScheduler},
-   * never from an HTTP request, so unlike {@link #triggerIndexing} there is no caller to authorize:
-   * the library was already selected because its own stored schedule says it is due. Otherwise
-   * mirrors {@link #triggerIndexing}'s shape ({@code isJobRunning} pre-check, {@code
-   * TaskRejectedException} handling), except a conflict here simply propagates as the same 409
-   * {@link IndexingJobService#startJob(UUID, UUID, JobTriggerSource, IndexingRunMode)} already
-   * throws for the TOCTOU case.
+   * Triggers a scheduled run for {@code library}, called only by {@link LibraryIndexingScheduler}:
+   * there is no caller to authorize, since the library was selected by its own stored schedule.
+   * Otherwise the same shape as {@link #triggerIndexing}, except that a conflict simply propagates
+   * as the 409 {@code startJob} already throws for the TOCTOU case.
    */
   public IndexingJob triggerScheduledIndexing(KnowledgeLibrary library) {
     IndexingSourceType sourceType = toIndexingSourceType(library.getSourceType());
@@ -140,16 +123,10 @@ public class DocumentIndexingService {
 
   /**
    * The current or most recently completed run for {@code libraryId}, for whoever can at least read
-   * the library (a narrower bar than {@link #requireEditableLibrary}'s {@code EDITOR}). Uses {@link
-   * LibraryAccessService#requireRole} rather than a plain {@code canRead}/403 check, so a caller
-   * with no grant at all on the library gets the same 404 {@code GET /libraries/{id}} already
-   * answers, instead of a 403 that gives away the library's existence.
-   *
-   * <p>The returned {@link IndexingStatusView#canSeeErrorDetail()} additionally reports whether the
-   * caller may see a {@code FAILED} job's raw error message - requires {@link AssetRole#MANAGER},
-   * the same bar {@link #getRecentRuns} already enforces for the run history's own leak-prone
-   * detail. The caller (the controller) is responsible for actually shortening the message when
-   * this is {@code false}; this method only decides the permission.
+   * the library. Uses {@link LibraryAccessService#requireRole} rather than a plain {@code
+   * canRead}/403 check, so a caller with no grant gets a 404 rather than a 403 that gives away the
+   * library's existence. {@link IndexingStatusView#canSeeErrorDetail()} reports whether the caller
+   * may see a {@code FAILED} run's raw message ({@link AssetRole#MANAGER}).
    */
   public IndexingStatusView getStatus(UUID libraryId, CurrentUser caller) {
     UUID currentUserId = caller.id();
@@ -170,16 +147,10 @@ public class DocumentIndexingService {
 
   /**
    * The last {@value IndexingJobService#MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId},
-   * newest first, each with its own protocol - unlike {@link #getStatus}, this requires {@link
-   * AssetRole#MANAGER}, not just {@code canRead}.
-   *
-   * <p>An {@link IndexingRunEvent#getReference()} routinely carries the library's own {@code
-   * sourcePath}/{@code sourceUrl} (a rejected file's absolute server path, a skipped entry's source
-   * URL) - an internal-path leak. Gating this at {@code canRead} (the same bar as the harmless
-   * counters {@link #getStatus} exposes) would reopen that leak: a {@code VIEWER} on an
-   * organization-wide connector library would see the server's internal filesystem layout or
-   * upstream URLs it was never granted access to. {@code canManage} mirrors {@code
-   * KnowledgeLibraryService#updateLibrary}'s own bar for touching the source configuration.
+   * newest first, each with its protocol - unlike {@link #getStatus} this requires {@link
+   * AssetRole#MANAGER}. An {@link IndexingRunEvent#getReference()} routinely carries the library's
+   * own {@code sourcePath}/{@code sourceUrl}, so gating this at {@code canRead} would show a {@code
+   * VIEWER} the server's internal filesystem layout or upstream URLs.
    */
   public List<IndexingRunDetail> getRecentRuns(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, caller);
@@ -237,17 +208,11 @@ public class DocumentIndexingService {
   }
 
   /**
-   * Resolves and authorizes the indexing run's target library: it must resolve to a library in the
-   * caller's own organization (otherwise 404, indistinguishable from a library that does not exist
-   * at all - the organization boundary must not leak even that much), and the caller must hold at
-   * least {@link AssetRole#EDITOR} on it (otherwise 403). No additional {@code SYSTEM_ADMIN}
-   * requirement, and no blanket system-admin bypass: {@link LibraryAccessService#requireRole} is
-   * always called with {@code systemAdmin = false}, so the real grant/visibility formula decides,
-   * unconditionally.
-   *
-   * <p>Uses {@link LibraryAccessService#requireRole} instead of a plain boolean role check/403 for
-   * the same reason {@link #getStatus} does: "no access at all" must answer 404, not a 403 that
-   * confirms the library exists.
+   * Resolves and authorizes the run's target library: it must resolve within the caller's own
+   * organization (otherwise 404, indistinguishable from a library that does not exist - the
+   * organization boundary must not leak even that), and the caller must hold at least {@link
+   * AssetRole#EDITOR} (otherwise 403). {@link LibraryAccessService#requireRole} is always called
+   * with {@code systemAdmin = false}, so the real grant formula decides, unconditionally.
    */
   private KnowledgeLibrary requireEditableLibrary(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, caller);

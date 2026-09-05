@@ -323,17 +323,16 @@ class IndexingJobServiceTest {
   }
 
   /**
-   * reproduces the leak the issue describes at the service layer, independently of {@code
-   * DocumentIndexingService}'s own library-ownership check. Before the fix (see this test's own
-   * two-argument {@code startJob}/{@code getLatestJob} calls being reduced to one argument, and
-   * {@code IndexingJobRepository#findTopByLibraryIdOrderByStartedAtDesc} being called without
-   * {@code organizationId}), a caller who somehow obtained {@code libraryId} - e.g. through a
-   * future code path that does not itself re-check the library's organization - could read
-   * organization A's job for organization A's library while asking as organization B: {@code
-   * getLatestJob} would answer the same regardless of which organization asked, since {@code
-   * libraryId} alone determined the result. With the fix, the repository query is scoped to {@code
-   * (libraryId, organizationId)} together, so a mismatched organization id returns nothing, exactly
-   * like the library never having run at all.
+   * Reproduces the leak at the service layer, independently of {@code DocumentIndexingService}'s
+   * own library-ownership check. Without {@code organizationId} on {@code startJob}/{@code
+   * getLatestJob} and on {@code IndexingJobRepository#findTopByLibraryIdOrderByStartedAtDesc}, a
+   * caller who somehow obtained {@code libraryId} - e.g. through a future code path that does not
+   * itself re-check the library's organization - could read organization A's job for organization
+   * A's library while asking as organization B: {@code getLatestJob} would answer the same
+   * regardless of which organization asked, since {@code libraryId} alone determined the result.
+   * With the fix, the repository query is scoped to {@code (libraryId, organizationId)} together,
+   * so a mismatched organization id returns nothing, exactly like the library never having run at
+   * all.
    */
   @Test
   void getLatestJobDoesNotLeakAJobToACallerFromADifferentOrganization() {

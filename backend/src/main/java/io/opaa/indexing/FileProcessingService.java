@@ -58,9 +58,7 @@ public class FileProcessingService {
    * The {@code EMBED}-only formatter for a document that split into 2 or more chunks: the title in
    * brackets, a blank line, then the chunk text (ingestion-pipelines.md, Querschnittsregel (b)).
    * Ignores every metadata key rather than excluding a known list, so a key added later cannot
-   * re-enter the embedding input. Stored chunk text and citations are unaffected - {@code
-   * PgVectorStore#add} persists {@link org.springframework.ai.document.Document#getText()}
-   * verbatim.
+   * re-enter the embedding input. Stored chunk text and citations are unaffected.
    */
   private static ContentFormatter chunkEmbedFormatterWithPrefix(String title) {
     return (document, mode) -> "[" + title + "]\n\n" + document.getText();
@@ -148,15 +146,11 @@ public class FileProcessingService {
   }
 
   /**
-   * Like {@link #processFile(Path, KnowledgeLibrary, UUID)}, plus {@code attachmentAccess}: when
-   * non-{@code null}, an attachment the routed pipeline discovers becomes its own {@code Document}
-   * row with this document as its {@code parent_document_id} (ADR-0022); {@code null} discards it.
-   *
-   * <p>A changed document is <b>updated in place</b>, never deleted and recreated - its attachment
-   * children point at this row via {@code fk_documents_parent} - and the quota check therefore
-   * measures the size delta against the in-place row. Chunks are exchanged in the order
-   * ingestion-pipelines.md, "Übergabepunkt: die Reihenfolge, in der Chunks ersetzt werden"
-   * prescribes: nothing is destroyed before the replacement exists.
+   * Like {@link #processFile(Path, KnowledgeLibrary, UUID)}, plus {@code attachmentAccess}: a
+   * non-{@code null} access turns every discovered attachment into a child {@code Document}
+   * (ADR-0022), {@code null} discards it. A changed document is updated in place, never deleted and
+   * recreated, and its chunks are exchanged in the order ingestion-pipelines.md, "Übergabepunkt"
+   * prescribes.
    */
   public FileProcessingResult processFile(
       Path file, KnowledgeLibrary targetLibrary, UUID folderId, AttachmentAccess attachmentAccess)
@@ -323,14 +317,12 @@ public class FileProcessingService {
 
   /**
    * Processes a file downloaded from a remote URL, with an explicit {@link DocumentSourceType} and
-   * origin. Used by both {@code UrlIndexingExecutor} ({@code HTTP_DIRECTORY}, no origin entry - see
-   * the six-argument overload above) and {@code RssFeedIndexingExecutor} for an RSS entry's
-   * attachments ({@code RSS_FEED}, {@code sourceEntryUrl} set to the entry's detail page URL) - the
-   * same processing chain either way, only the recorded provenance differs.
+   * origin - the same processing chain for an {@code HTTP_DIRECTORY} file and an {@code RSS_FEED}
+   * entry's attachment, only the recorded provenance differs.
    *
    * @param sourceEntryUrl the detail page URL an attachment was found on ({@link
    *     Document#getSourceEntryUrl}), or {@code null} when this document was not found through
-   *     another document (every {@code HTTP_DIRECTORY} file, and the RSS entry's own document row)
+   *     another document
    */
   public FileProcessingResult processUrlFile(
       Path localFile,
@@ -388,16 +380,11 @@ public class FileProcessingService {
   }
 
   /**
-   * Like the nine-argument overload above, plus {@code attachmentAccess}: when non-{@code null}, an
-   * attachment discovered while parsing {@code localFile} becomes a child of <em>this</em> document
-   * - {@code parent_document_id} chains naturally through any nesting depth - and the document
-   * records where inside its source it sits ({@link AttachmentAccess#sourceContext()}, ADR-0023),
-   * refreshed on every re-index. {@code null} discards it and records {@link
-   * SourceDocumentContext#NONE}.
-   *
-   * <p>A changed document is updated in place for the same reason as in {@link #processFile}: a
-   * grandchild attachment still points at this row via {@code fk_documents_parent}. Chunks are
-   * exchanged in the order ingestion-pipelines.md, "Übergabepunkt" prescribes.
+   * Like the nine-argument overload above, plus {@code attachmentAccess}: a discovered attachment
+   * becomes a child of <em>this</em> document, chaining {@code parent_document_id} through any
+   * nesting depth, and the row records where inside its source it sits ({@link
+   * AttachmentAccess#sourceContext()}, ADR-0023). {@code null} discards it and records {@link
+   * SourceDocumentContext#NONE}. Updated in place like {@link #processFile}.
    */
   public FileProcessingResult processUrlFile(
       Path localFile,
@@ -554,14 +541,11 @@ public class FileProcessingService {
   }
 
   /**
-   * Processes a single RSS feed entry's already-extracted main text (ADR-0017, decision 2): there
-   * is no file here, so the text bypasses {@link SupportedDocumentFormats}' content-based admission
-   * and format routing entirely and goes straight to {@link
-   * DocumentPipelineRegistry#fallbackPipeline()} - an entry's detail-page text never reaches {@code
-   * HtmlDocumentPipeline}, only a genuine {@code .html} file does.
-   *
-   * <p>Identity is the {@code entryUrl} in {@code file_path}; change detection, chunk replacement
-   * order and quota handling otherwise mirror {@link #processUrlFile}.
+   * Processes a single RSS feed entry's already-extracted main text (ADR-0017, decision 2): with no
+   * file to detect a format from, the text bypasses admission and routing and goes straight to
+   * {@link DocumentPipelineRegistry#fallbackPipeline()}. Identity is the {@code entryUrl} in {@code
+   * file_path}; change detection, chunk replacement order and quota handling mirror {@link
+   * #processUrlFile}.
    */
   public FileProcessingResult processRssEntry(
       String mainText,
@@ -710,18 +694,11 @@ public class FileProcessingService {
   }
 
   /**
-   * Parses, chunks and embeds a document already stored on disk and already persisted as a {@code
-   * PENDING} row by the upload endpoint. Runs on {@code uploadTaskExecutor}, a pool of its own, so
-   * a burst of uploads can never exhaust the pool an indexing run depends on.
-   *
-   * <p>Takes the document's id rather than the entity, which would be detached across threads by
-   * the time this runs. Every outcome leaves a terminal status behind - the frontend's polling
-   * would otherwise see {@code PENDING} forever.
-   *
-   * <p>The status transition is a conditional {@code UPDATE}: a plain save would silently re-insert
-   * a row deleted while this method was parsing ({@link Document} assigns its own id and carries no
-   * {@code @Version}). Zero rows updated means exactly that, and any chunks already written are
-   * removed again.
+   * Parses, chunks and embeds a document already stored on disk and already {@code PENDING}. Runs
+   * on {@code uploadTaskExecutor}, a pool of its own, so uploads cannot exhaust an indexing run's
+   * pool, and takes the document's id rather than a detached entity. Every outcome leaves a
+   * terminal status behind, written as a conditional {@code UPDATE} - a plain save would re-insert
+   * a concurrently deleted row as a zombie, since {@link Document} carries no {@code @Version}.
    */
   @Async("uploadTaskExecutor")
   public void processUploadedFileAsync(UUID documentId, Path storedFile) {
@@ -745,18 +722,9 @@ public class FileProcessingService {
 
   /**
    * Re-runs the current pipeline over a document whose source file is still on this machine and
-   * replaces its chunks - the in-place half of {@code PipelineReindexService#reindexBatch}. The row
-   * keeps its id, so citations and deep links survive.
-   *
-   * <p>A document that cannot be re-chunked keeps its working chunks and its {@code INDEXED} row
-   * and is reported as not re-indexed: unlike a fresh upload, there is an existing, working state
-   * worth more than a consistent-looking failure (ingestion-pipelines.md, "Übergabepunkt"). Once
-   * the previous chunks have been deleted, a later failure falls back to the upload path's cleanup.
-   *
-   * <p>With a non-{@code null} {@code attachmentAccess} every discovered attachment is handed to
-   * the generalized attachment path (ADR-0022, Entscheidung 3), so attachments survive a version
-   * re-index. A {@code null} access discards them and keeps the parent's raw {@code fileSize}, so
-   * the attachment bytes stay accounted on the parent.
+   * replaces its chunks under the same row id, so citations survive. A document that cannot be
+   * re-chunked keeps its chunks and its {@code INDEXED} row (ingestion-pipelines.md,
+   * "Übergabepunkt"). A non-{@code null} {@code attachmentAccess} lets attachments survive.
    *
    * @return whether the document was actually re-indexed
    */
@@ -936,11 +904,9 @@ public class FileProcessingService {
 
   /**
    * Processes one Confluence page's storage-format body (ADR-0023) the way {@link #processRssEntry}
-   * processes an RSS entry's text: identity by the title-free page URL, SHA-256 over the body as
-   * the change layer behind the executor's version check, the version number in {@code
-   * last_modified_remote}, space key and ancestor titles as passthrough metadata on every chunk.
-   * The body goes to {@code ConfluenceDocumentPipeline} directly - a registry without that pipeline
-   * is a wiring error, not a fallback case.
+   * processes an RSS entry's text: identity by the title-free page URL, SHA-256 over the body
+   * behind the executor's version check, space key and ancestor titles as passthrough metadata. It
+   * goes to {@code ConfluenceDocumentPipeline} directly - a registry without it is a wiring error.
    *
    * @param storageBody the page body in Confluence storage format (XHTML with macro elements)
    * @param version the page's Confluence version number, the executor's pre-fetch change marker
@@ -1154,10 +1120,9 @@ public class FileProcessingService {
 
   /**
    * Backs the {@code FAILED} transition on the connector paths when no content could be extracted.
-   * Runs before {@link #storeChunks} on this path, so unlike {@link #markConnectorIndexed} there
-   * are no chunks to clean up. Counts the document as failed, exactly as {@link
-   * #markConnectorFailedAfterException} does - the caller-facing outcome must not depend on which
-   * of the two paths reached it.
+   * Runs before {@link #storeChunks}, so unlike {@link #markConnectorIndexed} there are no chunks
+   * to clean up. Counts the document as failed exactly as {@link
+   * #markConnectorFailedAfterException} does.
    *
    * @param chunksRemoved {@code true} for {@code NO_CONTENT}, whose previous chunks were just
    *     deleted, so {@code chunk_count} has to become {@code 0}; {@code false} for {@code
@@ -1270,13 +1235,11 @@ public class FileProcessingService {
   }
 
   /**
-   * The {@code file_path} identity for the {@code index}-th (0-based, extraction order) attachment
+   * The {@code file_path} identity of the {@code index}-th (0-based, extraction order) attachment
    * of the document at {@code parentFilePath} (ADR-0022, Entscheidung 2), shaped {@code
-   * <parentFilePath>/<index>/<fileName>}. Embedding the parent's path keeps two identically-named
-   * attachments of different parents apart, and the index keeps two of the same parent apart; no
-   * real file can carry this shape, because {@code parentFilePath} names a file. Nesting is not a
-   * special case - an inner message's own path of this shape becomes the {@code parentFilePath} of
-   * its own attachments.
+   * <parentFilePath>/<index>/<fileName>}. Parent path and index keep identically-named attachments
+   * apart, and no real file can carry this shape because {@code parentFilePath} names a file.
+   * Nesting chains naturally: an inner message's own path becomes its attachments' parent path.
    */
   static String attachmentFilePath(String parentFilePath, int index, String fileName) {
     return parentFilePath + "/" + index + "/" + fileName;
@@ -1340,11 +1303,8 @@ public class FileProcessingService {
   /**
    * Enriches {@code chunks} with permission-filter and citation metadata and, for a document that
    * split into 2 or more chunks, prefixes {@code contextTitle} onto the embedding input only (see
-   * {@link #chunkEmbedFormatterWithPrefix}). A document left as a single chunk gets {@link
-   * #CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX} instead: it still carries its full document as its
-   * own content, so a prefix would dilute it rather than restore lost context. The gate reads
-   * {@code chunks.size()} alone, so the decision is never made against a token count the prefix
-   * itself would change.
+   * {@link #chunkEmbedFormatterWithPrefix}). A single chunk gets {@link
+   * #CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX}, since it already carries its whole document.
    *
    * @param contextTitle the candidate prefix, or {@code null} if this document type never gets one.
    *     Computed by each caller rather than derived from {@code document}: {@link
@@ -1452,22 +1412,11 @@ public class FileProcessingService {
   }
 
   /**
-   * Embeds and persists {@code enriched}. At {@code embeddingConcurrency == 1} a single {@link
-   * VectorChunkStore#addChunks} call covers every chunk of this document, on the calling thread, in
-   * document order; that call writes each chunk's {@code chunk_full_text} row in the same
-   * transaction.
-   *
-   * <p>Above that, {@code enriched} is sliced into contiguous sub-batches of {@link #subBatchSize},
-   * each submitted to the shared, bounded {@code embeddingTaskExecutor} and awaited before this
-   * method returns - {@link #storeChunks} stays synchronous for every caller. Chunk order and
-   * {@code chunk_index} are unaffected; the order in which sub-batches reach the store is not,
-   * which is why the retrieval evaluation harnesses pin {@code embedding-concurrency} to {@code 1}
-   * (pgvector's HNSW build is insertion-order-sensitive). Production ranking is not.
-   *
-   * <p>A sub-batch failure is unwrapped from {@link CompletionException} to the same {@link
-   * RuntimeException} a direct call would have thrown, so every catch block that assumes {@code
-   * storeChunks} may throw needs no change; siblings already in flight are not cancelled, and
-   * whatever they wrote is cleaned up by {@link #markConnectorFailedAfterException}.
+   * Embeds and persists {@code enriched}: one {@link VectorChunkStore#addChunks} call on the
+   * calling thread at {@code embeddingConcurrency == 1}, otherwise contiguous sub-batches on the
+   * shared {@code embeddingTaskExecutor}, all awaited before returning. Chunk order is unaffected;
+   * the order sub-batches reach the store is not, which is why the evaluation harnesses pin {@code
+   * embedding-concurrency} to {@code 1}.
    */
   private void addToVectorStore(List<org.springframework.ai.document.Document> enriched) {
     if (embeddingConcurrency <= 1) {
@@ -1506,13 +1455,8 @@ public class FileProcessingService {
   /**
    * The size of each sub-batch {@link #addToVectorStore} splits a document's {@code chunkCount}
    * chunks into: spread as evenly as possible across up to {@code embeddingConcurrency} workers,
-   * capped at {@code opaa.indexing.batchSize} as the upper bound on chunks per {@code
-   * vectorStore.add} call. See {@link #addToVectorStore}'s own Javadoc for why this is decoupled
-   * from using {@code batchSize} directly as the slice size.
-   *
-   * <p>{@code Math.max(1, ...)} guards the degenerate {@code chunkCount == 0} case - never actually
-   * reached, but would otherwise yield a sub-batch size of 0, an infinite loop in {@link
-   * #addToVectorStore}'s slicing loop.
+   * capped at {@code opaa.indexing.batchSize}. {@code Math.max(1, ...)} guards the degenerate
+   * {@code chunkCount == 0}, which would otherwise yield 0 and an endless slicing loop.
    */
   private int subBatchSize(int chunkCount) {
     int perWorker = (int) Math.ceil((double) chunkCount / embeddingConcurrency);

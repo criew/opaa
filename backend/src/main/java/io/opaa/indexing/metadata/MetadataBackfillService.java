@@ -30,14 +30,13 @@ import org.springframework.stereotype.Service;
  * The deterministic core-metadata backfill over a library's Altbestand (metadata-schema.md,
  * "Deterministischer Bestandslauf"; ADR-0024): every {@code INDEXED} document whose {@code
  * metadata_extraction_version} is missing or below {@link CoreMetadataExtractor#EXTRACTION_VERSION}
- * is re-read from its original file through {@link DocumentMetadataService#reextractFromFile} - no
+ * is re-read from its original through {@link DocumentMetadataService#reextractFromFile} - no
  * re-chunking, no embedding, no model call.
  *
  * <p>Resumable by construction, like {@link io.opaa.indexing.PipelineReindexService}: the remaining
- * work is re-derived from the {@code documents} table on every call, a processed document drops out
- * of the selection by its recorded version, an unadvanceable one is scanned past by offset and
- * retried next call. Pausing is not calling again. A system process without a person's rights
- * context (ADR-0024); never scheduled, only driven by {@code IndexingAdminController}.
+ * work is re-derived on every call, and an unadvanceable document is scanned past by offset.
+ * Pausing is not calling again. A system process without a person's rights context, never
+ * scheduled.
  */
 @Service
 public class MetadataBackfillService {
@@ -182,16 +181,11 @@ public class MetadataBackfillService {
   }
 
   /**
-   * An RSS entry's own body was never a file: its declared properties are the stored headline
-   * ({@code file_name}, unless that is only the URL) and the feed's publication instant ({@code
-   * last_modified_remote}) - exactly what {@code FileProcessingService#processRssEntry} hands the
-   * extraction, so it is re-run from the row without a download. "Has a headline" is approximated
-   * as {@code file_name != file_path}: an entry whose title is literally its own URL loses that
-   * title here, accepted as too exotic to carry a marker column for. Everything else remote (an
-   * HTTP directory file, a Confluence page, any remote attachment) can only be re-read by its own
-   * connector run, which re-extracts on every inflow, and is marked for it. The name is marked as
-   * synthetic exactly as the ingest marks it, so both paths read the same fields out of the same
-   * row.
+   * An RSS entry's own body was never a file: its declared properties are the stored headline and
+   * the feed's publication instant, exactly what the ingest hands the extraction, so it is re-run
+   * from the row without a download. "Has a headline" is approximated as {@code file_name !=
+   * file_path}. Everything else remote can only be re-read by its own connector run and is marked
+   * for it. The name is marked synthetic exactly as the ingest marks it.
    */
   private Advance advanceRemote(Document document) {
     if (document.getSourceType() == DocumentSourceType.RSS_FEED
@@ -222,12 +216,10 @@ public class MetadataBackfillService {
   }
 
   /**
-   * A pending document a backfill call can still advance: a local file, an RSS entry body (row-only
-   * extraction), or a remote document not yet marked for its next connector run. The last leg
-   * relies on {@link DocumentRepository#markForReindexOnNextRun} clearing {@code checksum}: a
-   * marked remote document has had everything done to it this run can do, and excluding it is what
-   * lets the run drain instead of marking the same rows on every call. Its complement is what the
-   * status shows as "waiting for the next connector run".
+   * A pending document a backfill call can still advance: a local file, an RSS entry body, or a
+   * remote document not yet marked for its next connector run. That last leg relies on {@link
+   * DocumentRepository#markForReindexOnNextRun} clearing {@code checksum} - excluding an
+   * already-marked document is what lets the run drain instead of re-marking the same rows.
    */
   private static String advanceableSql(String alias) {
     return "("

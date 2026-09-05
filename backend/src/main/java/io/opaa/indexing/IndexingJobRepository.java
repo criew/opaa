@@ -15,22 +15,19 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
 
   /**
    * The most recent run for {@code libraryId} within {@code organizationId}, or empty if none
-   * matches (concurrency and status are per library, not global - see {@link IndexingJobService}).
-   * {@code organizationId} is a second, independent guard on top of {@code libraryId}: {@code
-   * libraryId} alone cannot name a library from a different organization (the composite foreign key
-   * forbids that at the database level), but this still requires the caller's own organization to
-   * match, rather than relying solely on whatever authorized {@code libraryId} in the first place.
+   * matches (concurrency and status are per library, not global). {@code organizationId} is a
+   * second, independent guard: the composite foreign key already forbids a library from another
+   * organization, but this does not rely on whatever authorized {@code libraryId} in the first
+   * place.
    */
   Optional<IndexingJob> findTopByLibraryIdAndOrganizationIdOrderByStartedAtDesc(
       UUID libraryId, UUID organizationId);
 
   /**
    * The most recent run for {@code libraryId} that assessed its source listing - {@code
-   * listing_complete IS NOT NULL}, written only by a successful, non-budget-truncated full sync.
+   * listing_complete IS NOT NULL}, written only by a successful, non-truncated full sync.
    * Deliberately not the most recent run overall: an incremental or webhook run in between never
-   * assesses the listing, and the warning at the library must survive it. {@code organizationId} is
-   * the same second guard {@link #findTopByLibraryIdAndOrganizationIdOrderByStartedAtDesc}
-   * documents.
+   * assesses the listing, and the warning at the library must survive it.
    */
   Optional<IndexingJob>
       findTopByLibraryIdAndOrganizationIdAndListingCompleteIsNotNullOrderByStartedAtDesc(
@@ -46,14 +43,11 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
       JobStatus status, UUID libraryId, UUID organizationId);
 
   /**
-   * Every run for {@code libraryId}, newest first - used only by {@code
-   * IndexingJobService#pruneOldRuns}, which must see every row beyond the retained last 10 to
-   * delete them. Never used to answer the run-history endpoint - see {@link
-   * #findTop10ByLibraryIdAndOrganizationIdOrderByStartedAtDesc} for that: a pre-existing library
-   * with hundreds of historical rows would otherwise load every one of them, plus one {@code
-   * IndexingRunEventRepository} query per row. Not organization-scoped: {@code pruneOldRuns} is
-   * only ever called right after {@code startJob} inserted a row for a {@code libraryId} the caller
-   * already resolved and authorized, so every row this returns necessarily shares its organization.
+   * Every run for {@code libraryId}, newest first - only for {@code
+   * IndexingJobService#pruneOldRuns}, which must see every row beyond the retained last 10. The
+   * run-history endpoint uses {@link #findTop10ByLibraryIdAndOrganizationIdOrderByStartedAtDesc}
+   * instead. Not organization-scoped, because {@code pruneOldRuns} runs right after {@code
+   * startJob} on an already authorized {@code libraryId}.
    */
   List<IndexingJob> findByLibraryIdOrderByStartedAtDesc(UUID libraryId);
 
@@ -97,15 +91,10 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
       UUID libraryId, UUID organizationId, JobTriggerSource triggeredBy);
 
   /**
-   * Fails every currently {@link JobStatus#RUNNING} row, unconditionally. Called once, right after
-   * application startup: a fresh JVM cannot possibly still be running the {@code @Async} task a
-   * {@code RUNNING} row refers to - that task lived in the previous process. Leaving such a row
-   * {@code RUNNING} forever locks its library out of every future trigger (partial unique index,
-   * {@code IndexingJobService#isJobRunning}) with no way to resolve it from the UI - see {@code
-   * IndexingJobRecoveryScheduler#recoverOnStartup}.
-   *
-   * <p>A bulk {@code UPDATE}, not load-then-save: this can affect every library's stuck row in one
-   * statement, mirroring {@code DocumentRepository#markFailed}'s reasoning.
+   * Fails every currently {@link JobStatus#RUNNING} row, unconditionally, once right after startup:
+   * a fresh JVM cannot still be running the {@code @Async} task such a row refers to, and leaving
+   * it {@code RUNNING} would lock its library out of every future trigger with no way to resolve it
+   * from the UI. A bulk {@code UPDATE}, so one statement covers every library's stuck row.
    *
    * @return the number of rows recovered, purely for logging - the caller does not otherwise act on
    *     it
@@ -121,15 +110,9 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
 
   /**
    * Fails every {@link JobStatus#RUNNING} row whose {@link IndexingJob#getLastProgressAt()}
-   * heartbeat is older than {@code cutoff}. Unlike {@link #failAllRunningJobs}, this runs
-   * periodically while the application keeps running, not only once at startup - it is the only
-   * guard against a run that is orphaned without a restart: a task silently dropped by a full
-   * queue, or one that hangs indefinitely.
-   *
-   * <p>Filters on {@code lastProgressAt}, not {@code startedAt}: a genuinely active run of a large
-   * bestand can easily exceed {@code IndexingProperties#staleJobTimeout()} in wall-clock age alone,
-   * and {@code updateProgress} touches {@code lastProgressAt} on every file/entry it processes - so
-   * this only ever catches a run that has actually stopped making progress.
+   * heartbeat is older than {@code cutoff} - the only guard against a run orphaned without a
+   * restart. Filters on {@code lastProgressAt}, not {@code startedAt}, since a genuinely active run
+   * can exceed {@code staleJobTimeout} in wall-clock age alone.
    *
    * @return the number of rows recovered, purely for logging - the caller does not otherwise act on
    *     it
@@ -146,11 +129,9 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
       @Param("completedAt") Instant completedAt);
 
   /**
-   * Completes {@code id} only if it is still {@link JobStatus#RUNNING}. Without this guard, a job
-   * the stale-run sweep or startup recovery already failed - while its executor thread, unaware,
-   * kept running - would have that thread's eventual {@code completeJob} silently flip the row back
-   * from {@code FAILED} to {@code COMPLETED}. Mirrors {@code DocumentRepository#markIndexed}'s same
-   * conditional-update shape and reasoning.
+   * Completes {@code id} only if it is still {@link JobStatus#RUNNING}. Without the guard, a job
+   * the stale-run sweep or startup recovery already failed would be flipped back from {@code
+   * FAILED} to {@code COMPLETED} by its own, unaware executor thread.
    *
    * @return the number of rows updated - 0 means the row was not {@code RUNNING} any more (already
    *     recovered) or does not exist; the caller distinguishes the two via {@link #existsById}

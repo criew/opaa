@@ -2,11 +2,14 @@ package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -116,6 +119,24 @@ class DocumentServiceTest {
     // type must still be rejected - the extension alone is never enough to accept it.
     Path file = tempDir.resolve("image.pdf");
     Files.write(file, new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a});
+
+    var discovered = service.discoverFiles(tempDir);
+
+    assertThat(discovered.rejected()).containsExactly(file);
+    assertThat(discovered.supported()).isEmpty();
+  }
+
+  @Test
+  void discoverFilesTreatsAFileItCannotReadAsUnsupported() throws IOException {
+    // A file whose bytes cannot be read at all (permission-denied, or deleted between the walk and
+    // the detection) counts as unsupported rather than failing the whole run with an IOException.
+    Path file = tempDir.resolve("unlesbar.pdf");
+    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
+    assumeTrue(
+        Files.getFileStore(file).supportsFileAttributeView(PosixFileAttributeView.class),
+        "needs POSIX permissions to make a file unreadable");
+    Files.setPosixFilePermissions(file, Set.of());
+    assumeTrue(!Files.isReadable(file), "needs a genuinely unreadable file, so not as root");
 
     var discovered = service.discoverFiles(tempDir);
 
