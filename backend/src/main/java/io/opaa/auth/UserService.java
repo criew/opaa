@@ -44,7 +44,7 @@ public class UserService {
 
   private final UserRepository userRepository;
   private final SpaceService spaceService;
-  private final AuthProperties authProperties;
+  private final InitialAdminPolicy initialAdminPolicy;
   private final AuditEventRecorder auditEventRecorder;
   private final AuthMetrics authMetrics;
   private final Clock clock;
@@ -52,13 +52,13 @@ public class UserService {
   public UserService(
       UserRepository userRepository,
       SpaceService spaceService,
-      AuthProperties authProperties,
+      InitialAdminPolicy initialAdminPolicy,
       AuditEventRecorder auditEventRecorder,
       AuthMetrics authMetrics,
       Clock clock) {
     this.userRepository = userRepository;
     this.spaceService = spaceService;
-    this.authProperties = authProperties;
+    this.initialAdminPolicy = initialAdminPolicy;
     this.auditEventRecorder = auditEventRecorder;
     this.authMetrics = authMetrics;
     this.clock = clock;
@@ -179,7 +179,9 @@ public class UserService {
   private User insertUser(String subject, String issuer, String email, String displayName) {
     User newUser = new User(subject, issuer, email, displayName);
     newUser.setOrganizationId(Organization.DEFAULT_ID);
-    if (isInitialAdmin(email)) {
+    // ADR-0025, Entscheidung 3: the address alone is not enough - only the trusted provider's
+    // issuer may mint the initial administrator, see InitialAdminPolicy.
+    if (initialAdminPolicy.grantsSystemAdmin(email, issuer)) {
       newUser.setSystemRole(SystemRole.SYSTEM_ADMIN);
     }
     // saveAndFlush forces the INSERT to execute (and thus to fail, if it must) here, instead of
@@ -408,12 +410,5 @@ public class UserService {
             .after(Map.of("role", role.name()))
             .outcome(AuditOutcome.SUCCESS)
             .build());
-  }
-
-  private boolean isInitialAdmin(String email) {
-    String initialAdminEmail = authProperties.initialAdminEmail();
-    return initialAdminEmail != null
-        && !initialAdminEmail.isBlank()
-        && initialAdminEmail.equalsIgnoreCase(email);
   }
 }

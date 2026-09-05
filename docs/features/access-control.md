@@ -151,6 +151,16 @@ her. Vom Betreiber eingegebene Adressen durchlaufen eine eigene Adressprüfung
 prüft Discovery-Dokument und JWK-Set vor dem Speichern. Die Anmeldeseite (#1332) und die
 Verwaltungsoberfläche (#1333) folgen.
 
+**Kontenmodell je Anbieter (gebaut, #1330).** Die Identität eines Kontos ist das Paar
+`(Issuer, Subject)`. Dieselbe Person bei zwei Anbietern hat zwei Konten mit getrennten
+persönlichen Spaces und Rechten — eine Zusammenführung über die E-Mail findet nie statt, auch nicht
+stillschweigend bei gleicher Adresse (Anbieter B kann kein Konto aus Anbieter A übernehmen). Die
+Erstadministrator-Regel (`OPAA_INITIAL_ADMIN_EMAIL`) greift nur beim Anlegen eines Kontos und nur
+über den **Standardanbieter** (im `dev`-Modus: den Dev-Issuer); dieselbe Adresse aus einem zweiten
+Anbieter ergibt einen regulären Nutzer. Ein Token eines deaktivierten oder gelöschten Anbieters wird
+mit `401` und `error_description="unknown_issuer"` abgewiesen, sodass die Oberfläche den Fall vom
+abgelaufenen Token unterscheiden kann.
+
 ---
 
 ## Verzeichnisdienst: Synchronisation und Kontenlebenszyklus
