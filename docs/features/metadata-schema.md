@@ -828,6 +828,81 @@ Dokumentinhalte an ein Modell übergibt. Er wird deshalb als eigenständig steue
   [Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)). Ohne dieses Zählwerk ist die
   einzige Rückmeldung über die Kosten dieser Fähigkeit die Rechnung des Modellanbieters.
 
+### Umgesetzt (#1073)
+
+Arbeitspaket 7 und 8 — die modellgestützte Extraktion (Schritt 2 der Reihenfolge), die freien
+Schlagworte und die eigenständige Messung der Extraktionsgüte.
+
+**Zwei Schalter je Bibliothek, beide voreingestellt aus** (`knowledge_libraries.model_extraction_enabled`,
+`keywords_enabled`, Migration 028): `GET`/`PUT /api/v1/libraries/{id}/metadata/extraction-settings`
+(Verwaltungsrecht) liefern sie zusammen mit der aktiven Chat-Rolle — Basis-Adresse und
+Modell-Kennung, nie ein Zugangsschlüssel — und der Angabe, ob diese Adresse lokal ist
+(Loopback/privates Netz). Der Schalter in den Bibliothekseinstellungen zeigt daraus zwei
+verschiedene Datenschutzhinweise: Bei einem extern betriebenen Modell benennt er ausdrücklich, dass
+**der Inhalt jedes aufgenommenen Dokuments dauerhaft das Haus verlässt**, ohne dass eine Person den
+Vorgang auslöst; bei einem lokal betriebenen Modell, dass keine ausgehende Verbindung entsteht.
+
+**Was das Modell gefragt wird.** `ModelMetadataExtractor` läuft im Ingest **nach** der
+deterministischen Extraktion und nur für Felder, die keine Zeile tragen — und nur für die unscharfen:
+Kernfeld Dokumentart und die SELECT-Felder der Bibliothek. Titel, Datum/Stand und PATTERN-Felder sind
+deterministisch oder nichts und werden nie gefragt. Ein Aufruf je Dokument über die zentrale
+Chat-Rolle (`ActiveChatModelResolver`, keine eigene Modellrolle), Zeitlimit 30 s. Der Prompt trägt die
+Werteliste mit Codes und deutschen Labels, die Anweisung „nur ein aufgeführter Code, sonst null",
+das Antwortformat `{"fields": {"<feld>": {"value", "confidence"}}, "keywords": [...]}`, die Titelzeile
+und den auf **4.000 Zeichen** gekürzten Textanfang. Der Deckel ist bewusst klein: Die unscharfen
+Felder entscheiden sich im Dokumentkopf, der Rest des Textes bewegt die Entscheidung nicht mehr, wohl
+aber Kosten, Laufzeit und die Menge dessen, was das Haus verlässt.
+
+**Übernahme.** Nur bei Konfidenz **≥ 0,80** (Maintainer-Freigabe 05.09.2026, ADR-0012;
+`ModelMetadataExtractor.CONFIDENCE_THRESHOLD`) **und** einem Code aus der angebotenen Liste. Ein Wert
+außerhalb der Liste wird unabhängig von der Konfidenz verworfen — keine Abbildung auf den
+nächstähnlichen Wert. Übernommene Werte tragen `origin = DERIVED`, die gelieferte Konfidenz, die
+Modell-Kennung und die Extraktionsversion; ein manueller Wert wird nie berührt. Die Schwelle darf
+nach einer Messung nur gesenkt werden, nie stillschweigend erhöht, und jede Änderung ist ein Commit
+mit Datum und gemessener Verteilung.
+
+**Ein Ausfall blockiert nie die Aufnahme.** Zeitüberschreitung, Transportfehler und unbrauchbare
+Antwort enden gleich: Feld leer, Dokument regulär aufgenommen und durchsuchbar, Aufruf als Fehler
+gezählt. Kein Retry, keine Warteschlange.
+
+**Zählwerk und verworfene Werte.** `metadata_model_extraction_stats` führt je Bibliothek Aufrufe,
+übernommene Werte, verworfen wegen Schwelle, verworfen wegen Vokabular, Fehler, vergebene Schlagworte
+und den letzten Aufruf; es erscheint in den Bibliothekseinstellungen und in derselben
+Zustandsübersicht wie der übrige Indexzustand. `metadata_model_rejections` hält zusätzlich jeden
+verworfenen Wert **mit seiner Konfidenz** (je Bibliothek auf die 1.000 jüngsten Zeilen gedeckelt,
+rotierend) — ohne diese Verteilung ist die Schwelle auf einem echten Bestand nicht kalibrierbar.
+
+**Freie Schlagworte.** Bei eingeschaltetem Schalter liefert dasselbe Antwortobjekt bis zu **fünf**
+Schlagworte je Dokument, je höchstens 40 Zeichen (längere werden verworfen, nicht gekürzt),
+Personennamen sind Prompt-Regel und nicht prüfbar. Sie liegen in einer **eigenen Tabelle**
+(`document_keywords`), nicht in `document_metadata_values`: Jede Zeile dort ist ein typisiertes Feld,
+das ein Filter benennen darf — genau das darf ein Schlagwort nie werden. Sie fließen in den
+**Volltextindex** (als Ergänzung des analysierten Textes an `content_tsv`, ohne den gespeicherten
+Chunk-Text zu verändern) und als letztes Segment in den **Kontextpräfix**. Sie tragen **keinen
+Chunk-Schlüssel**, erscheinen **nicht im Beleg** und sind **nicht zu Bibliotheksfeldern beförderbar**;
+ein Filter, der sie benennt, ist ein Aufruferfehler (400). Alle vier Zusagen sind Testfälle, keine
+Absichtserklärungen.
+
+**Bestandslauf.** `documents.model_extraction_version` ist die Abtragsmarke des Modellschritts (NULL =
+nie gelaufen). Wird ein Schalter eingeschaltet, nimmt der nächste Bestandslauf den Altbestand genau
+einmal mit; ein Dokument, dessen Aufruf nichts ergab, wird kein zweites Mal bezahlt. Der Lauf liest
+den Text aus den vorhandenen Chunks statt neu zu parsen; dort vergebene Schlagworte erreichen den
+Volltextindex sofort (Neuaufbau der `chunk_full_text`-Zeilen ohne Neu-Einbetten), der Kontextpräfix
+folgt mit dem nächsten Reindex.
+
+**Messung der Extraktionsgüte.** `GET /api/v1/libraries/{id}/metadata/quality` (Leserecht, im
+Rechtekontext, nie zwischengespeichert) liefert je Feld die Anteile deterministisch / modellbefüllt /
+manuell / „kein Wert ermittelbar" / leer plus das Zählwerk; die Bibliothekseinstellungen zeigen es
+neben dem Pflege-Anker. `GET /api/v1/libraries/{id}/metadata/sample?size=100` (Verwaltungsrecht)
+liefert die Grundlage der Handauswertung: Dokumente in stabiler Reihenfolge mit Titelzeile und jedem
+Wert samt Herkunft, Konfidenz und Modell — ohne Schlagworte, die keine Aussage tragen, für die das
+Produkt geradesteht. **Offen bleibt die 100er-Handstichprobe der QA-Rolle**; sie läuft auf der
+Demo-Instanz und ist nicht Teil dieses Schnitts.
+
+**Abweichung.** Der Textdeckel (4.000 Zeichen), die Speicherform der Schlagworte (eigene Tabelle) und
+der Deckel des Verwerfungsprotokolls (1.000 Zeilen je Bibliothek, rotierend) sind Festlegungen dieses
+Schnitts, keine Vorgaben der Spezifikation.
+
 ## Jeder Wert trägt seine Herkunft
 
 Ein Metadatenwert ohne Herkunftsangabe ist nach drei Monaten nicht mehr bewertbar: Niemand weiß, ob

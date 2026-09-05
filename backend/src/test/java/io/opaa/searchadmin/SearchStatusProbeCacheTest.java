@@ -2,6 +2,7 @@ package io.opaa.searchadmin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.indexing.FullTextIndexFillStateService;
 import io.opaa.indexing.metadata.MetadataBackfillService;
+import io.opaa.indexing.metadata.ModelExtractionCounters;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
@@ -60,6 +62,8 @@ class SearchStatusProbeCacheTest {
       mock(FullTextIndexFillStateService.class);
   private final MetadataBackfillService metadataBackfillService =
       mock(MetadataBackfillService.class);
+  private final ModelExtractionCounters modelExtractionCounters =
+      mock(ModelExtractionCounters.class);
   private final AdvanceableClock clock =
       new AdvanceableClock(Instant.parse("2026-09-01T10:00:00Z"));
 
@@ -83,6 +87,7 @@ class SearchStatusProbeCacheTest {
     when(documentStatsReader.statsForOrganization(ORGANIZATION_ID)).thenReturn(Map.of());
     when(fullTextIndexFillStateService.fillStateForLibraries(any())).thenReturn(List.of());
     when(metadataBackfillService.progressForLibraries(any())).thenReturn(Map.of());
+    when(modelExtractionCounters.statsFor(anyCollection())).thenReturn(Map.of());
 
     service =
         new SearchStatusService(
@@ -95,6 +100,7 @@ class SearchStatusProbeCacheTest {
             documentStatsReader,
             fullTextIndexFillStateService,
             metadataBackfillService,
+            modelExtractionCounters,
             new QueryProperties(8, 25, 1.0, 0.0, 1.0, true, 3, 2, true, 50),
             new RetrievalPipelineProperties(Set.of()),
             clock);

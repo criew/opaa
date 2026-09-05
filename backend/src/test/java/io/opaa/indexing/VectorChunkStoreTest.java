@@ -47,7 +47,7 @@ class VectorChunkStoreTest {
 
     vectorChunkStore.addChunks(chunks);
 
-    verify(vectorStoreWriter).writeEmbeddedChunks(chunks, embeddings);
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunks, embeddings, null);
     verifyNoInteractions(vectorStore);
   }
 

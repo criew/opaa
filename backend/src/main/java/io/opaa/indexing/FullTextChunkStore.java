@@ -60,9 +60,20 @@ public class FullTextChunkStore {
    * make {@code setweight} a no-op; {@code ON CONFLICT DO UPDATE} brings an older row up to date.
    */
   void indexChunks(List<org.springframework.ai.document.Document> chunks) {
+    indexChunks(chunks, null);
+  }
+
+  /**
+   * {@link #indexChunks(List)} with a document-level supplement appended to the analysed text: the
+   * freie Schlagworte of the document (metadata-schema.md, Teil II (c)). The supplement reaches
+   * this index only - it is neither stored as chunk text nor written to any chunk metadata key, so
+   * no filter can ever name it.
+   */
+  void indexChunks(List<org.springframework.ai.document.Document> chunks, String supplement) {
     if (chunks.isEmpty()) {
       return;
     }
+    String suffix = supplement == null || supplement.isBlank() ? "" : "\n" + supplement;
     jdbcTemplate.batchUpdate(
         "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv, "
             + "content_tsv_version) VALUES (?, ?, ?, "
@@ -85,7 +96,7 @@ public class FullTextChunkStore {
               UUID.fromString(
                   (String) chunk.getMetadata().get(VectorChunkStore.LIBRARY_ID_METADATA_KEY)));
           ps.setString(4, TEXT_SEARCH_CONFIGURATION);
-          ps.setString(5, chunk.getText());
+          ps.setString(5, chunk.getText() + suffix);
           ps.setString(6, String.join(" ", FullTextIdentifiers.extract(chunk.getText())));
           ps.setShort(7, CURRENT_TSV_VERSION);
         });

@@ -106,6 +106,31 @@ public interface DocumentMetadataValueRepository
   List<LibraryFieldStateCount> countByLibraryFieldAndState(
       @Param("libraryIds") Collection<UUID> libraryIds, @Param("status") DocumentStatus status);
 
+  /**
+   * Per field, origin and state over one library's documents in {@code status} - the Extraktions-
+   * güte (metadata-schema.md, "Messung und Abnahme", Punkt 3). The Füllstand count cannot answer
+   * this: it deliberately knows nothing about where a value came from.
+   */
+  @Query(
+      "select v.fieldKey as fieldKey, v.origin as origin, v.state as state,"
+          + " count(v) as documentCount"
+          + " from DocumentMetadataValue v, Document d"
+          + " where d.id = v.documentId and d.libraryId = :libraryId and d.status = :status"
+          + " group by v.fieldKey, v.origin, v.state")
+  List<FieldOriginStateCount> countByFieldOriginAndState(
+      @Param("libraryId") UUID libraryId, @Param("status") DocumentStatus status);
+
+  /** One row of {@link #countByFieldOriginAndState}. */
+  interface FieldOriginStateCount {
+    String getFieldKey();
+
+    io.opaa.api.types.MetadataOrigin getOrigin();
+
+    MetadataValueState getState();
+
+    long getDocumentCount();
+  }
+
   /** One row of {@link #countByLibraryFieldAndState}. */
   interface LibraryFieldStateCount {
     UUID getLibraryId();

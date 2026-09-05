@@ -145,7 +145,21 @@ public class DocumentMetadataValue {
       String modelId,
       double confidence,
       int extractionVersion) {
-    DocumentMetadataValue value = new DocumentMetadataValue(documentId, field.key(), null);
+    return derived(documentId, field.key(), null, modelId, confidence, extractionVersion);
+  }
+
+  /**
+   * The keyed variant of {@link #derived(UUID, CoreMetadataField, String, double, int)} - a library
+   * field's {@code lib:<key>} together with the field id the database requires beside it.
+   */
+  public static DocumentMetadataValue derived(
+      UUID documentId,
+      String fieldKey,
+      UUID libraryFieldId,
+      String modelId,
+      double confidence,
+      int extractionVersion) {
+    DocumentMetadataValue value = new DocumentMetadataValue(documentId, fieldKey, libraryFieldId);
     value.origin = MetadataOrigin.DERIVED;
     value.modelId = modelId;
     value.confidence = confidence;

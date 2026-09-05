@@ -5,11 +5,16 @@ import io.opaa.api.dto.BulkMetadataValueResponse;
 import io.opaa.api.dto.DocumentMetadataFieldResponse;
 import io.opaa.api.dto.DocumentMetadataResponse;
 import io.opaa.api.dto.DocumentTypeVocabularyResponse;
+import io.opaa.api.dto.LibraryMetadataExtractionSettingsRequest;
+import io.opaa.api.dto.LibraryMetadataExtractionSettingsResponse;
 import io.opaa.api.dto.LibraryMetadataMaintenanceResponse;
+import io.opaa.api.dto.LibraryMetadataQualityResponse;
+import io.opaa.api.dto.LibraryMetadataSampleResponse;
 import io.opaa.api.dto.MetadataValueRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.metadata.DocumentMetadataCorrectionService;
+import io.opaa.indexing.metadata.LibraryMetadataExtractionService;
 import io.opaa.indexing.metadata.LibraryMetadataMaintenanceService;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -21,6 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -35,12 +41,51 @@ public class DocumentMetadataController {
 
   private final DocumentMetadataCorrectionService correctionService;
   private final LibraryMetadataMaintenanceService maintenanceService;
+  private final LibraryMetadataExtractionService extractionService;
 
   public DocumentMetadataController(
       DocumentMetadataCorrectionService correctionService,
-      LibraryMetadataMaintenanceService maintenanceService) {
+      LibraryMetadataMaintenanceService maintenanceService,
+      LibraryMetadataExtractionService extractionService) {
     this.correctionService = correctionService;
     this.maintenanceService = maintenanceService;
+    this.extractionService = extractionService;
+  }
+
+  @GetMapping("/libraries/{libraryId}/metadata/extraction-settings")
+  public LibraryMetadataExtractionSettingsResponse getLibraryMetadataExtractionSettings(
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
+    return MetadataExtractionResponseMapper.toSettingsResponse(
+        extractionService.settingsOf(libraryId, caller));
+  }
+
+  @PutMapping("/libraries/{libraryId}/metadata/extraction-settings")
+  public LibraryMetadataExtractionSettingsResponse updateLibraryMetadataExtractionSettings(
+      @PathVariable UUID libraryId,
+      @Valid @RequestBody LibraryMetadataExtractionSettingsRequest request,
+      @Caller CurrentUser caller) {
+    return MetadataExtractionResponseMapper.toSettingsResponse(
+        extractionService.updateSettings(
+            libraryId,
+            Boolean.TRUE.equals(request.getModelExtractionEnabled()),
+            Boolean.TRUE.equals(request.getKeywordsEnabled()),
+            caller));
+  }
+
+  @GetMapping("/libraries/{libraryId}/metadata/quality")
+  public LibraryMetadataQualityResponse getLibraryMetadataQuality(
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
+    return MetadataExtractionResponseMapper.toQualityResponse(
+        extractionService.qualityOf(libraryId, caller));
+  }
+
+  @GetMapping("/libraries/{libraryId}/metadata/sample")
+  public LibraryMetadataSampleResponse getLibraryMetadataSample(
+      @PathVariable UUID libraryId,
+      @RequestParam(name = "size", defaultValue = "100") int size,
+      @Caller CurrentUser caller) {
+    return MetadataExtractionResponseMapper.toSampleResponse(
+        extractionService.sampleOf(libraryId, size, caller));
   }
 
   @GetMapping("/libraries/{libraryId}/metadata/maintenance")

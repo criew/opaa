@@ -97,6 +97,21 @@ function MetadataBackfillCell({
           )
           .join(' · ')}
       </Typography>
+      {/* #1073: the Zählwerk of the model-backed extraction - without it the only feedback about
+          what this capability costs is the model provider's invoice. */}
+      {library.modelExtraction.calls > 0 && (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          component="div"
+          aria-label={`Modellgestützte Extraktion: ${library.libraryName}`}
+        >
+          {`Modellaufrufe ${library.modelExtraction.calls} · übernommen ${library.modelExtraction.acceptedValues}`}
+          {` · verworfen ${library.modelExtraction.rejectedBelowThreshold + library.modelExtraction.rejectedOutsideVocabulary}`}
+          {` · Fehler ${library.modelExtraction.failures}`}
+          {` · Schlagworte ${library.modelExtraction.keywordsAssigned}`}
+        </Typography>
+      )}
       {run?.error && (
         <Typography variant="caption" color="error.main" component="div" role="alert">
           {run.error}

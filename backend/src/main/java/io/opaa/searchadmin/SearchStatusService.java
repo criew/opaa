@@ -4,6 +4,8 @@ import io.opaa.indexing.FullTextIndexFillState;
 import io.opaa.indexing.FullTextIndexFillStateService;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.indexing.metadata.MetadataBackfillService;
+import io.opaa.indexing.metadata.ModelExtractionCounters;
+import io.opaa.indexing.metadata.ModelExtractionStats;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.EmbeddingInfo;
@@ -84,6 +86,7 @@ public class SearchStatusService {
   private final LibraryDocumentStatsReader documentStatsReader;
   private final FullTextIndexFillStateService fullTextIndexFillStateService;
   private final MetadataBackfillService metadataBackfillService;
+  private final ModelExtractionCounters modelExtractionCounters;
   private final QueryProperties queryProperties;
   private final RetrievalPipelineProperties pipelineProperties;
   private final Clock clock;
@@ -128,6 +131,7 @@ public class SearchStatusService {
       LibraryDocumentStatsReader documentStatsReader,
       FullTextIndexFillStateService fullTextIndexFillStateService,
       MetadataBackfillService metadataBackfillService,
+      ModelExtractionCounters modelExtractionCounters,
       QueryProperties queryProperties,
       RetrievalPipelineProperties pipelineProperties,
       Clock clock) {
@@ -140,6 +144,7 @@ public class SearchStatusService {
     this.documentStatsReader = documentStatsReader;
     this.fullTextIndexFillStateService = fullTextIndexFillStateService;
     this.metadataBackfillService = metadataBackfillService;
+    this.modelExtractionCounters = modelExtractionCounters;
     this.queryProperties = queryProperties;
     this.pipelineProperties = pipelineProperties;
     this.clock = clock;
@@ -402,6 +407,8 @@ public class SearchStatusService {
     // run is reported separately, so the display can explain a remainder the run cannot reach.
     Map<UUID, MetadataBackfillProgress> metadataByLibrary =
         metadataBackfillService.progressForLibraries(libraryIds);
+    Map<UUID, ModelExtractionStats> modelExtractionByLibrary =
+        modelExtractionCounters.statsFor(libraryIds);
 
     List<LibrarySearchStatus> result = new ArrayList<>();
     for (KnowledgeLibrary library : libraries) {
@@ -427,7 +434,9 @@ public class SearchStatusService {
               stats.lastIndexedAt(),
               fillState.indexedChunks(),
               fillState.missingChunks(),
-              metadataBackfill));
+              metadataBackfill,
+              modelExtractionByLibrary.getOrDefault(
+                  library.getId(), ModelExtractionStats.empty(library.getId()))));
     }
     result.sort(
         Comparator.comparing(LibrarySearchStatus::libraryName, String.CASE_INSENSITIVE_ORDER));

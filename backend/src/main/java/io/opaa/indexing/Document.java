@@ -146,6 +146,15 @@ public class Document {
   @Column(name = "metadata_extraction_version", insertable = false, updatable = false)
   private Integer metadataExtractionVersion;
 
+  /**
+   * The extraction version whose model step (metadata-schema.md, Schritt 2) last ran over this
+   * document, or {@code null} when it never did - the drain marker of the Bestandslauf for that
+   * step, so switching the capability on hands the Altbestand to it exactly once. Written only
+   * through {@link DocumentRepository#updateModelExtractionVersion}.
+   */
+  @Column(name = "model_extraction_version", insertable = false, updatable = false)
+  private Integer modelExtractionVersion;
+
   protected Document() {}
 
   public Document(String fileName, String filePath, String contentType, Long fileSize) {
@@ -351,6 +360,10 @@ public class Document {
 
   public Integer getMetadataExtractionVersion() {
     return metadataExtractionVersion;
+  }
+
+  public Integer getModelExtractionVersion() {
+    return modelExtractionVersion;
   }
 
   /**

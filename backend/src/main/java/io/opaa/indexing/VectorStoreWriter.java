@@ -59,6 +59,16 @@ public class VectorStoreWriter {
    */
   @Transactional
   public void writeEmbeddedChunks(List<Document> chunks, List<float[]> embeddings) {
+    writeEmbeddedChunks(chunks, embeddings, null);
+  }
+
+  /**
+   * {@link #writeEmbeddedChunks(List, List)} with a document-level supplement for the full-text
+   * index only - the document's freie Schlagworte, which never become chunk text or chunk metadata.
+   */
+  @Transactional
+  public void writeEmbeddedChunks(
+      List<Document> chunks, List<float[]> embeddings, String fullTextSupplement) {
     if (chunks.isEmpty()) {
       return;
     }
@@ -96,7 +106,70 @@ public class VectorStoreWriter {
           ps.setString(6, metadataJson);
           ps.setObject(7, embedding);
         });
-    fullTextChunkStore.indexChunks(chunks);
+    fullTextChunkStore.indexChunks(chunks, fullTextSupplement);
+  }
+
+  /**
+   * Rebuilds the {@code chunk_full_text} rows of {@code documentId} from the chunk text already in
+   * the vector store, with {@code supplement} appended - the path keywords assigned after the
+   * ingest (the Bestandslauf) take into the lexical index without re-embedding anything.
+   *
+   * @return the number of chunks re-indexed
+   */
+  @Transactional
+  public int reindexFullText(UUID documentId, String supplement) {
+    List<Document> chunks =
+        jdbcTemplate.query(
+            "SELECT id, content, metadata FROM "
+                + schemaName
+                + "."
+                + tableName
+                + " WHERE metadata->>'"
+                + VectorChunkStore.DOCUMENT_ID_METADATA_KEY
+                + "' = ?",
+            (rs, row) ->
+                Document.builder()
+                    .id(rs.getString("id"))
+                    .text(rs.getString("content"))
+                    .metadata(readMetadata(rs.getString("metadata")))
+                    .build(),
+            documentId.toString());
+    fullTextChunkStore.indexChunks(chunks, supplement);
+    return chunks.size();
+  }
+
+  /**
+   * The stored text of {@code documentId}, its chunks in order and capped at {@code limit}
+   * characters - what the model step reads for a document whose file is not being parsed anyway.
+   */
+  public String documentText(UUID documentId, int limit) {
+    List<String> texts =
+        jdbcTemplate.query(
+            "SELECT content FROM "
+                + schemaName
+                + "."
+                + tableName
+                + " WHERE metadata->>'"
+                + VectorChunkStore.DOCUMENT_ID_METADATA_KEY
+                + "' = ? ORDER BY (metadata->>'chunk_index')::int",
+            (rs, row) -> rs.getString("content"),
+            documentId.toString());
+    StringBuilder text = new StringBuilder();
+    for (String chunk : texts) {
+      if (text.length() >= limit) {
+        break;
+      }
+      text.append(chunk == null ? "" : chunk).append('\n');
+    }
+    return text.length() <= limit ? text.toString() : text.substring(0, limit);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> readMetadata(String json) {
+    if (json == null || json.isBlank()) {
+      return Map.of();
+    }
+    return objectMapper.readValue(json, Map.class);
   }
 
   /**

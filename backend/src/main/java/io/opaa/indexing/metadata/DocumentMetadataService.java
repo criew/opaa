@@ -305,6 +305,45 @@ public class DocumentMetadataService {
   }
 
   /**
+   * Stores the values the model-backed extraction accepted (metadata-schema.md, Schritt 2) and
+   * rewrites the document's filterable chunk keys in the same transaction. A field that already
+   * carries a row - of any origin - is skipped: step 2 only ever fills what step 1 left empty, and
+   * a manual correction is never overwritten. Returns the effective chunk metadata afterwards.
+   */
+  public DocumentChunkMetadata applyDerivedValues(
+      Document document, List<DerivedMetadataValue> values) {
+    return transactionTemplate.execute(
+        status -> {
+          for (DerivedMetadataValue value : values) {
+            if (valueRepository
+                .findByDocumentIdAndFieldKey(document.getId(), value.field().key())
+                .isPresent()) {
+              continue;
+            }
+            DocumentMetadataValue row =
+                DocumentMetadataValue.derived(
+                    document.getId(),
+                    value.field().key(),
+                    value.field().libraryFieldId(),
+                    value.modelId(),
+                    value.confidence(),
+                    CoreMetadataExtractor.EXTRACTION_VERSION);
+            if (value.libraryValueId() == null) {
+              row.assignVocabularyCode(value.code());
+            } else {
+              row.assignLibraryValue(value.code(), value.libraryValueId());
+            }
+            valueRepository.save(row);
+          }
+          valueRepository.flush();
+          DocumentChunkMetadata chunkMetadata = chunkMetadataFor(document);
+          vectorChunkStore.updateDocumentMetadata(
+              document.getId(), chunkMetadata.values(), chunkMetadata.managedKeys());
+          return chunkMetadata;
+        });
+  }
+
+  /**
    * Sets {@code field} of {@code documentId} to {@code input} (already validated) by hand: the row
    * becomes {@code MANUAL} with {@code actorUserId}, whatever its origin was, and the filterable
    * chunk keys are rewritten in the same transaction. A row that already holds exactly this manual

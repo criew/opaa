@@ -175,6 +175,64 @@ Die Chunks eines Dokuments bekommen die filterbaren Werte (`doc_type`, `doc_date
 `doc_date_precision`) mitgeschrieben; eine spätere Änderung wird per Aktualisierung an den Chunks
 nachgezogen, ohne neu zu zerlegen oder neu einzubetten. Der Titel steht nur am Dokument.
 
+### 5.3 Modellgestützte Ermittlung und freie Schlagworte
+
+Zwei Schalter je Bibliothek, **beide voreingestellt aus**, in den Bibliothekseinstellungen unter
+**„Modellgestützte Extraktion"** (Verwaltungsrecht). Sie sind der einzige Teil der Ermittlung, der
+Geld kostet, ausfallen kann und Dokumentinhalte an ein Sprachmodell übergibt.
+
+> **Datenschutz.** Wird die aktive Chat-Rolle extern betrieben, verlässt mit eingeschaltetem
+> Schalter **der Inhalt jedes aufgenommenen Dokuments dauerhaft das Haus** — anders als im Chat,
+> ohne dass eine Person den Vorgang auslöst. Der Hinweis am Schalter benennt das und zeigt die
+> Adresse und Modell-Kennung der aktiven Chat-Rolle (nie einen Zugangsschlüssel). Liegt die Rolle
+> auf einem lokal betriebenen Modell, läuft die Ermittlung ohne ausgehende Verbindung; der Hinweis
+> sagt auch das.
+
+**Modellgestützte Ermittlung.** Läuft nach der regelbasierten Ermittlung und nur für Felder, die
+diese leer gelassen hat — und nur für die unscharfen: Dokumentart und die Auswahlfelder der
+Bibliothek. Titel, Datum/Stand und Musterfelder werden nie gefragt. Ein Aufruf je Dokument über die
+zentrale Chat-Rolle, Zeitlimit 30 Sekunden; das Modell bekommt die Werteliste mit Codes und Labels,
+die Titelzeile und die ersten 4.000 Zeichen des Textes und antwortet je Feld mit einem Code und
+einer Konfidenz zwischen 0 und 1.
+
+Übernommen wird ein Wert nur, wenn seine Konfidenz **mindestens 0,80** beträgt **und** er in der
+Werteliste steht. Alles andere bleibt leer — kein nächstähnlicher Wert, kein Vorgabewert. Übernommene
+Werte tragen die Herkunft **„abgeleitet"** mit Konfidenz und Modell-Kennung; ein von Hand gesetzter
+Wert wird nie überschrieben.
+
+**Ein Ausfall hält nichts auf.** Zeitüberschreitung, nicht erreichbares Modell oder unbrauchbare
+Antwort: Das Feld bleibt leer, das Dokument wird regulär aufgenommen und ist durchsuchbar. Es gibt
+keinen erneuten Versuch und keine Warteschlange; nachgeholt wird über den Bestandslauf (Abschnitt 6).
+
+**Zählwerk.** Je Bibliothek werden Aufrufe, übernommene Werte, wegen Konfidenz und wegen Werteliste
+verworfene Werte, Fehler und vergebene Schlagworte geführt — sichtbar in den Bibliothekseinstellungen
+und auf der Seite „Suche & Indexierung". Ohne diese Zahlen ist die einzige Rückmeldung über die
+Kosten die Rechnung des Modellanbieters. Verworfene Werte werden zusätzlich mit ihrer Konfidenz
+protokolliert (je Bibliothek die 1.000 jüngsten), damit die Schwelle an einem echten Bestand
+bewertbar bleibt.
+
+**Freie Schlagworte.** Ist der zweite Schalter an, vergibt dasselbe Modell im selben Aufruf bis zu
+fünf Schlagworte je Dokument, je höchstens 40 Zeichen. Sie fließen in den **Volltextindex** und in
+den **Kontextpräfix** — eine Frage in Alltagssprache findet damit ein Dokument in Amtssprache. Was
+sie nicht tun:
+
+- **Sie filtern nie** — weder in der Suche noch als Facette; ein Filter, der ein Schlagwort benennt,
+  wird abgewiesen.
+- **Sie erscheinen nicht im Beleg** und nicht im Stichproben-Export.
+- **Sie werden nicht zu Bibliotheksfeldern befördert**, auch nicht als Vorschlag aus der Häufigkeit.
+
+### 5.4 Extraktionsgüte
+
+In den Bibliothekseinstellungen steht neben den Schaltern die **Extraktionsgüte**: je Feld, wie viele
+der indizierten Dokumente ihren Wert regelbasiert, modellbefüllt oder von Hand tragen, wie viele als
+„kein Wert ermittelbar" gekennzeichnet und wie viele leer sind. Sie beantwortet die Frage, die ein
+Suchergebnis allein nicht beantwortet: ob ein schwacher Filter am Filter liegt oder an der
+Ermittlung. Die Zahlen werden bei jeder Abfrage gezählt, im Rechtekontext der fragenden Person.
+
+Für die Handauswertung liefert `GET /api/v1/libraries/{libraryId}/metadata/sample?size=100`
+(Verwaltungsrecht) eine Stichprobe in stabiler Reihenfolge: je Dokument die Titelzeile und jeden Wert
+mit Herkunft, Konfidenz und Modell-Kennung.
+
 ## 6. Bestandslauf: den vorhandenen Bestand nachziehen
 
 Ein Bestand, der vor dieser Fähigkeit aufgenommen wurde, ist leer; ebenso liegen nach einem
@@ -192,6 +250,11 @@ Was ein Lauf tut:
 - Je Dokument sind Werte, Chunk-Aktualisierung und Extraktionsversion **eine** Transaktion. Ein
   Fehler kostet nur dieses Dokument; es wird beim nächsten Aufruf erneut versucht. Manuelle Werte
   bleiben unberührt.
+- **Der Modellschritt läuft mit**, wenn einer der beiden Schalter aus Abschnitt 5.3 an ist: Ein
+  eingeschalteter Schalter macht den vorhandenen Bestand genau einmal fällig, und ein Dokument,
+  dessen Aufruf nichts ergab, wird kein zweites Mal bezahlt. Gefragt wird nur für leer gebliebene
+  Felder. Dort vergebene Schlagworte erreichen den Volltextindex sofort; in den Kontextpräfix
+  gelangen sie mit dem nächsten Reindex.
 - Eine seit der Indizierung **geänderte Datei** wird übersprungen (Prüfsumme gegen die Zeile): Die
   Chunks stammen aus dem alten Inhalt, und die Werte eines anderen Textes gehörten nicht daran. Der
   nächste Indexierungslauf nimmt sie neu auf und ermittelt dabei.
@@ -307,7 +370,8 @@ Verteilerliste ist lang und ordnet die Fundstelle nicht ein.
 
 | Was | Wer |
 |---|---|
-| Metadaten eines Dokuments sehen, Pflege-Anker der Bibliothek sehen | VIEWER an der Bibliothek |
+| Metadaten eines Dokuments sehen, Pflege-Anker und Extraktionsgüte der Bibliothek sehen | VIEWER an der Bibliothek |
+| Modellgestützte Ermittlung und freie Schlagworte ein- oder ausschalten, Stichproben-Export | MANAGER an der Bibliothek |
 | Wert setzen, löschen, „kein Wert ermittelbar", Sammelzuweisung | EDITOR an der Bibliothek |
 | Vokabular als Auswahlliste | jede angemeldete Person; es ist Schema, kein Bestand |
 | Bestandslauf starten, Extraktionsstand und Füllgrad aller Bibliotheken der Organisation | Systemadministrator |
@@ -325,6 +389,9 @@ Dokumente ohne Wert" verriete den Umfang eines fremden Bestands.
 | `DELETE …/metadata/{fieldKey}` | Wert löschen |
 | `POST /api/v1/libraries/{libraryId}/documents/metadata/bulk` | Sammelzuweisung |
 | `GET /api/v1/libraries/{libraryId}/metadata/maintenance` | Pflege-Anker je Feld |
+| `GET`/`PUT /api/v1/libraries/{libraryId}/metadata/extraction-settings` | die beiden Schalter mit der aktiven Chat-Rolle |
+| `GET /api/v1/libraries/{libraryId}/metadata/quality` | Extraktionsgüte je Feld und Zählwerk |
+| `GET /api/v1/libraries/{libraryId}/metadata/sample?size=100` | Stichprobe für die Handauswertung |
 | `GET /api/v1/libraries/{libraryId}/documents?missingMetadataField=…` | die gezählten Dokumente ohne Wert |
 | `GET /api/v1/metadata/document-types` | das Vokabular |
 | `GET /api/v1/search/metadata-filter-options` | Füllstand, angebotene Felder, vorkommende Werte für den Suchbereich |
@@ -346,7 +413,5 @@ konfigurierbar.
 - **Bibliotheksfelder** (bis zu fünf eigene typisierte Felder je Bibliothek, etwa Fassung und
   Rechtsebene) und deren Verwaltung in den Bibliothekseinstellungen (Ticket #1071)
 - **Metadaten im Kontextpräfix** des Embeddings (Ticket #1072)
-- **Modellgestützte Ermittlung** mit Konfidenz und **freie Schlagworte**, je Bibliothek
-  einschaltbar, voreingestellt aus (Ticket #1073); die Herkunft „abgeleitet" ist dafür vorgesehen
 - Ableitung eines Filters aus der Frage; Filter auf den Titel; Freitextfelder; eine Oberfläche zur
   Pflege des Vokabulars; ein amtliches Metadatenmodell für die Aktenführung

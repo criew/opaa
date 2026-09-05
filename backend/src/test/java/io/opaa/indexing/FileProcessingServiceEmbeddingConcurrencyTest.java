@@ -137,7 +137,8 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
         executor,
         org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
         new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, ""),
-        TestDocumentMetadataServices.returningEmpty());
+        TestDocumentMetadataServices.returningEmpty(),
+        TestDocumentMetadataServices.notExtracting());
   }
 
   private List<org.springframework.ai.document.Document> chunksOf(int count) {
@@ -319,7 +320,9 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
 
     @Override
     public void writeEmbeddedChunks(
-        List<org.springframework.ai.document.Document> chunks, List<float[]> embeddings) {
+        List<org.springframework.ai.document.Document> chunks,
+        List<float[]> embeddings,
+        String fullTextSupplement) {
       int current = concurrentWriteCalls.incrementAndGet();
       maxConcurrentWriteCalls.updateAndGet(max -> Math.max(max, current));
       threadNames.add(Thread.currentThread().getName());
@@ -354,7 +357,9 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
 
     @Override
     public void writeEmbeddedChunks(
-        List<org.springframework.ai.document.Document> chunks, List<float[]> embeddings) {
+        List<org.springframework.ai.document.Document> chunks,
+        List<float[]> embeddings,
+        String fullTextSupplement) {
       throw new RuntimeException("embedding call blew up");
     }
   }

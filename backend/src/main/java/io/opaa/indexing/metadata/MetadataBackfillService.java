@@ -8,6 +8,7 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentBatchLoop;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.StoredDocumentSourceAccess;
+import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -52,6 +53,15 @@ public class MetadataBackfillService {
   private final StoredDocumentSourceAccess sourceAccess;
   private final ChecksumService checksumService;
   private final MetadataFillCounter fillCounter;
+  private final ModelMetadataExtractor modelMetadataExtractor;
+  private final VectorChunkStore vectorChunkStore;
+
+  /**
+   * The library of the call in flight. The batch loop hands {@link #advance} only a document id,
+   * and re-reading the library per document would be one query per document for a value that is
+   * constant for the whole call; single-instance, single-threaded per call (ADR-0021).
+   */
+  private final ThreadLocal<KnowledgeLibrary> currentLibrary = new ThreadLocal<>();
 
   /** Skipped count of the most recent call per library; process lifetime only (ADR-0021). */
   private final Map<UUID, Integer> lastSkippedByLibrary = new ConcurrentHashMap<>();
@@ -63,7 +73,9 @@ public class MetadataBackfillService {
       DocumentMetadataService documentMetadataService,
       StoredDocumentSourceAccess sourceAccess,
       ChecksumService checksumService,
-      MetadataFillCounter fillCounter) {
+      MetadataFillCounter fillCounter,
+      ModelMetadataExtractor modelMetadataExtractor,
+      VectorChunkStore vectorChunkStore) {
     this.jdbcTemplate = jdbcTemplate;
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
@@ -71,6 +83,8 @@ public class MetadataBackfillService {
     this.sourceAccess = sourceAccess;
     this.checksumService = checksumService;
     this.fillCounter = fillCounter;
+    this.modelMetadataExtractor = modelMetadataExtractor;
+    this.vectorChunkStore = vectorChunkStore;
   }
 
   /**
@@ -89,13 +103,19 @@ public class MetadataBackfillService {
     if (batchSize <= 0) {
       return MetadataBackfillResult.NOTHING_TO_DO;
     }
-    Map<Advance, Integer> counts =
-        DocumentBatchLoop.run(
-            batchSize,
-            Advance.class,
-            Advance.SKIPPED,
-            (limit, offset) -> selectPendingDocuments(library.getId(), limit, offset),
-            this::advance);
+    currentLibrary.set(library);
+    Map<Advance, Integer> counts;
+    try {
+      counts =
+          DocumentBatchLoop.run(
+              batchSize,
+              Advance.class,
+              Advance.SKIPPED,
+              (limit, offset) -> selectPendingDocuments(library, limit, offset),
+              this::advance);
+    } finally {
+      currentLibrary.remove();
+    }
     int skipped = counts.get(Advance.SKIPPED);
     lastSkippedByLibrary.put(library.getId(), skipped);
     return new MetadataBackfillResult(
@@ -130,6 +150,9 @@ public class MetadataBackfillService {
                   documentMetadataService.reextractFromFile(document, file);
                   return true;
                 });
+        if (advanced) {
+          runModelStep(document);
+        }
         return advanced ? Advance.PROCESSED : Advance.SKIPPED;
       }
       Path localFile = sourceAccess.localSourceFile(document);
@@ -151,6 +174,7 @@ public class MetadataBackfillService {
         return Advance.SKIPPED;
       }
       documentMetadataService.reextractFromFile(document, localFile);
+      runModelStep(document);
       return Advance.PROCESSED;
     } catch (RuntimeException | IOException e) {
       log.warn(
@@ -178,11 +202,33 @@ public class MetadataBackfillService {
               .withDocumentDate(
                   DocumentProperties.instantToLocalDate(document.getLastModifiedRemote()));
       documentMetadataService.reextractFromProperties(document, properties);
+      runModelStep(document);
       return Advance.PROCESSED;
     }
     return sourceAccess.markRemoteChainForNextRun(document)
         ? Advance.MARKED_FOR_NEXT_RUN
         : Advance.SKIPPED;
+  }
+
+  /**
+   * Step 2 for one document of the call's library, on the text already in the vector store rather
+   * than on a fresh parse. Keywords assigned here reach the full-text index right away; the
+   * Kontextpräfix follows with the next re-index, since changing it means re-embedding.
+   */
+  private void runModelStep(Document document) {
+    KnowledgeLibrary library = currentLibrary.get();
+    if (library == null || (!library.isModelExtractionEnabled() && !library.isKeywordsEnabled())) {
+      return;
+    }
+    String title =
+        documentMetadataService.coreMetadataFor(document.getId()).title() != null
+            ? documentMetadataService.coreMetadataFor(document.getId()).title()
+            : document.getFileName();
+    String text = vectorChunkStore.documentText(document.getId(), ModelExtractionPrompt.TEXT_LIMIT);
+    ModelExtractionOutcome outcome = modelMetadataExtractor.extract(document, library, title, text);
+    if (!outcome.keywords().isEmpty()) {
+      vectorChunkStore.reindexFullText(document.getId(), outcome.fullTextSupplement());
+    }
   }
 
   /** A document below the current extraction version. */
@@ -216,19 +262,38 @@ public class MetadataBackfillService {
    * Advanceable pending documents in stable id order, so the offset scans past what this call
    * already found unadvanceable.
    */
-  private List<UUID> selectPendingDocuments(UUID libraryId, int limit, int offset) {
+  private List<UUID> selectPendingDocuments(KnowledgeLibrary library, int limit, int offset) {
+    boolean withModelStep = library.isModelExtractionEnabled() || library.isKeywordsEnabled();
+    // Switching the model step on makes every document pending once, and only once: its stamp is
+    // written whether or not the call yielded a value.
+    String pending =
+        withModelStep ? "(" + pendingSql("") + " OR " + modelPendingSql("") + ")" : pendingSql("");
+    List<Object> parameters = new ArrayList<>();
+    parameters.add(library.getId());
+    parameters.add(DocumentStatus.INDEXED.name());
+    parameters.add(CoreMetadataExtractor.EXTRACTION_VERSION);
+    if (withModelStep) {
+      parameters.add(CoreMetadataExtractor.EXTRACTION_VERSION);
+    }
+    parameters.add(offset);
+    parameters.add(limit);
     return jdbcTemplate.query(
         "SELECT id FROM documents WHERE library_id = ? AND status = ? AND "
-            + pendingSql("")
+            + pending
             + " AND "
             + advanceableSql("")
             + " ORDER BY id OFFSET ? LIMIT ?",
         (rs, i) -> (UUID) rs.getObject("id"),
-        libraryId,
-        DocumentStatus.INDEXED.name(),
-        CoreMetadataExtractor.EXTRACTION_VERSION,
-        offset,
-        limit);
+        parameters.toArray());
+  }
+
+  /** A document whose model step never ran, or ran at an older extraction version. */
+  private static String modelPendingSql(String alias) {
+    return "("
+        + alias
+        + "model_extraction_version IS NULL OR "
+        + alias
+        + "model_extraction_version < ?)";
   }
 
   /**

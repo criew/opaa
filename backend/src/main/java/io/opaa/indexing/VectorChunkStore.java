@@ -57,12 +57,36 @@ public class VectorChunkStore {
    * and holding a pooled connection for its duration risks exhausting the pool.
    */
   public void addChunks(List<Document> chunks) {
+    addChunks(chunks, null);
+  }
+
+  /**
+   * {@link #addChunks(List)} with the document's freie Schlagworte as a full-text-only supplement
+   * (metadata-schema.md, Teil II (c)): they are analysed into {@code content_tsv} and reach no
+   * chunk text and no chunk metadata key, so they can never be filtered on.
+   */
+  public void addChunks(List<Document> chunks, String fullTextSupplement) {
     if (chunks.isEmpty()) {
       return;
     }
     List<float[]> embeddings =
         embeddingModel.embed(chunks, EmbeddingOptions.builder().build(), batchingStrategy);
-    vectorStoreWriter.writeEmbeddedChunks(chunks, embeddings);
+    vectorStoreWriter.writeEmbeddedChunks(chunks, embeddings, fullTextSupplement);
+  }
+
+  /**
+   * Rebuilds the full-text rows of an already indexed document with {@code supplement} appended -
+   * what a keyword assigned by the Bestandslauf needs to become findable without re-embedding.
+   *
+   * @return the number of chunks re-indexed
+   */
+  public int reindexFullText(UUID documentId, String supplement) {
+    return vectorStoreWriter.reindexFullText(documentId, supplement);
+  }
+
+  /** The stored text of a document, its chunks in order and capped at {@code limit} characters. */
+  public String documentText(UUID documentId, int limit) {
+    return vectorStoreWriter.documentText(documentId, limit);
   }
 
   /**

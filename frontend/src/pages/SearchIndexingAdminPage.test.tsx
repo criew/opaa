@@ -189,6 +189,15 @@ describe('SearchIndexingAdminPage', () => {
     ).toHaveTextContent(
       'Titel 0 ohne Wert (0 %) · Dokumentart 7 ohne Wert (64 %) · Datum/Stand 3 ohne Wert (27 %)',
     )
+    // #1073: the Zählwerk of the model-backed extraction stands in the same row - the only feedback
+    // about what that capability costs besides the model provider's invoice.
+    expect(
+      within(row as HTMLElement).getByLabelText(
+        'Modellgestützte Extraktion: Satzungen & Gebuehrenordnungen',
+      ),
+    ).toHaveTextContent(
+      'Modellaufrufe 12 · übernommen 8 · verworfen 3 · Fehler 1 · Schlagworte 20',
+    )
     expect(
       within(row as HTMLElement).getByRole('button', {
         name: 'Kernfelder nachrüsten: Satzungen & Gebuehrenordnungen',

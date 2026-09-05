@@ -1,6 +1,7 @@
 package io.opaa.searchadmin;
 
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
+import io.opaa.indexing.metadata.ModelExtractionStats;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -18,6 +19,8 @@ import java.util.UUID;
  *     a permanent operational metric, not a one-off cleanup number (#1055).
  * @param metadataBackfill the core-metadata extraction state and Füllgrad per field (#1067), read
  *     from the same selection the backfill itself drains.
+ * @param modelExtraction the Zählwerk of the model-backed extraction (#1073) - without it the only
+ *     feedback about the cost of that capability is the model provider's invoice.
  */
 public record LibrarySearchStatus(
     UUID libraryId,
@@ -32,7 +35,8 @@ public record LibrarySearchStatus(
     Instant lastIndexedAt,
     long fullTextIndexedChunks,
     long fullTextMissingChunks,
-    MetadataBackfillProgress metadataBackfill) {
+    MetadataBackfillProgress metadataBackfill,
+    ModelExtractionStats modelExtraction) {
 
   /** Whether an index holds what it is supposed to hold. */
   public enum IndexCondition {

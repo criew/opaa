@@ -100,6 +100,7 @@ import DocumentTextPreviewDialog from '../components/DocumentTextPreviewDialog'
 import DocumentMetadataPanel from '../components/metadata/DocumentMetadataPanel'
 import MetadataMaintenanceAnchor from '../components/metadata/MetadataMaintenanceAnchor'
 import LibraryMetadataFieldsSection from '../components/metadata/LibraryMetadataFieldsSection'
+import MetadataExtractionSettingsSection from '../components/metadata/MetadataExtractionSettingsSection'
 import { coreMetadataFieldLabel } from '../components/metadata/metadataValues'
 import BulkMetadataDialog from '../components/metadata/BulkMetadataDialog'
 import PageHeading from '../components/a11y/PageHeading'
@@ -955,6 +956,12 @@ export default function LibraryDetailPage() {
               description="Eigene typisierte Felder dieser Bibliothek, ihre Wirkstellen und ihre Wertelisten."
             >
               <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={canEdit} />
+            </DetailCard>
+            <DetailCard
+              title="Modellgestützte Extraktion"
+              description="Ob das Sprachmodell leer gebliebene Felder ergänzt und freie Schlagworte vergibt — und wie gut die Extraktion diese Bibliothek beschreibt."
+            >
+              <MetadataExtractionSettingsSection libraryId={libraryId} canManage={canEdit} />
             </DetailCard>
             <DetailCard
               title="Stammdaten"
