@@ -200,6 +200,41 @@ public interface DocumentMetadataValueRepository
       @Param("status") DocumentStatus status,
       @Param("fieldKey") String fieldKey);
 
+  /**
+   * Documents and chunks of {@code libraryId} carrying a value for {@code fieldKey} - the
+   * Folgekosten of a planned schema change, counted before it is saved (#1072). Only {@code SET}
+   * rows: a "kein Wert ermittelbar" row carries nothing into a Kontextpraefix.
+   */
+  @Query(
+      "select count(d) as documentCount, coalesce(sum(d.chunkCount), 0) as chunkCount"
+          + " from DocumentMetadataValue v, Document d"
+          + " where d.id = v.documentId and d.libraryId = :libraryId and d.status = :status"
+          + " and v.fieldKey = :fieldKey"
+          + " and v.state = io.opaa.indexing.metadata.MetadataValueState.SET")
+  FieldImpactCount impactOfField(
+      @Param("libraryId") UUID libraryId,
+      @Param("status") DocumentStatus status,
+      @Param("fieldKey") String fieldKey);
+
+  /** The same two figures for the documents carrying one value of a SELECT field's list. */
+  @Query(
+      "select count(d) as documentCount, coalesce(sum(d.chunkCount), 0) as chunkCount"
+          + " from DocumentMetadataValue v, Document d"
+          + " where d.id = v.documentId and d.libraryId = :libraryId and d.status = :status"
+          + " and v.libraryValueId = :libraryValueId"
+          + " and v.state = io.opaa.indexing.metadata.MetadataValueState.SET")
+  FieldImpactCount impactOfValue(
+      @Param("libraryId") UUID libraryId,
+      @Param("status") DocumentStatus status,
+      @Param("libraryValueId") UUID libraryValueId);
+
+  /** One row of {@link #impactOfField}/{@link #impactOfValue}. */
+  interface FieldImpactCount {
+    long getDocumentCount();
+
+    Long getChunkCount();
+  }
+
   /** The one row of {@link #dateSpanInLibraries}. */
   interface DateSpan {
     java.time.LocalDate getMinDate();

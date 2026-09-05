@@ -567,6 +567,9 @@ export default function SearchIndexingAdminPage() {
   const backfillRuns = useSearchAdminStore((s) => s.metadataBackfillRuns)
   const startMetadataBackfill = useSearchAdminStore((s) => s.startMetadataBackfill)
   const pauseMetadataBackfill = useSearchAdminStore((s) => s.pauseMetadataBackfill)
+  const contextPrefixRuns = useSearchAdminStore((s) => s.contextPrefixRuns)
+  const startContextPrefixRerun = useSearchAdminStore((s) => s.startContextPrefixRerun)
+  const pauseContextPrefixRerun = useSearchAdminStore((s) => s.pauseContextPrefixRerun)
 
   const [previewChunkId, setPreviewChunkId] = useState<string | null>(null)
   const documentChunkSectionRef = useRef<DocumentChunkSectionHandle>(null)
@@ -653,8 +656,11 @@ export default function SearchIndexingAdminPage() {
         <LibraryStatusTable
           libraries={status?.libraries ?? []}
           backfillRuns={backfillRuns}
+          contextPrefixRuns={contextPrefixRuns}
           onStartBackfill={(libraryId) => void startMetadataBackfill(libraryId)}
           onPauseBackfill={pauseMetadataBackfill}
+          onStartContextPrefixRerun={(libraryId) => void startContextPrefixRerun(libraryId)}
+          onPauseContextPrefixRerun={pauseContextPrefixRerun}
         />
       </Box>
 

@@ -254,7 +254,8 @@ class ModelMetadataExtractionIntegrationTest {
     assertThat(keywordRepository.findByDocumentIdOrderByKeywordAsc(document.getId()))
         .extracting(DocumentKeyword::getKeyword)
         .containsExactly("Fahrradstellplatz", "Rathausvorplatz");
-    // Found through the lexical path although the word appears nowhere in the document text.
+    // Found through the lexical path although the word appears nowhere in the document text: the
+    // keywords ride in the Kontextpräfix, which is what both indexes are built from.
     assertThat(
             jdbcTemplate.queryForObject(
                 "SELECT count(*) FROM chunk_full_text WHERE document_id = ? AND content_tsv @@"
@@ -314,13 +315,10 @@ class ModelMetadataExtractionIntegrationTest {
     assertThat(keywordRepository.findByDocumentIdOrderByKeywordAsc(document.getId()))
         .extracting(DocumentKeyword::getKeyword)
         .containsExactly("Radverkehr");
-    assertThat(
-            jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM chunk_full_text WHERE document_id = ? AND content_tsv @@"
-                    + " plainto_tsquery('german', 'Radverkehr')",
-                Long.class,
-                document.getId()))
-        .isPositive();
+    // A keyword found here moves the Kontextpräfix, so the document goes to that Nachlauf - which
+    // is the one run that pays for re-embedding; the Bestandslauf never does.
+    assertThat(documentRepository.findById(document.getId()).orElseThrow().getContextPrefixStamp())
+        .isNull();
     assertThat(
             documentRepository.findById(document.getId()).orElseThrow().getModelExtractionVersion())
         .isEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION);

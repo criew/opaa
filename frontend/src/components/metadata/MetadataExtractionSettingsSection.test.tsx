@@ -124,7 +124,9 @@ describe('MetadataExtractionSettingsSection', () => {
       modelExtractionEnabled: true,
       keywordsEnabled: false,
     })
-    expect(await screen.findByLabelText('Modellgestützte Extraktion', { selector: 'input' })).toBeChecked()
+    expect(
+      await screen.findByLabelText('Modellgestützte Extraktion', { selector: 'input' }),
+    ).toBeChecked()
   })
 
   it('shows the extraction quality per field and the Zählwerk', async () => {

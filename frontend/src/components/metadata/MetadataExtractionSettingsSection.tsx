@@ -40,7 +40,9 @@ export default function MetadataExtractionSettingsSection({
     getLibraryMetadataQuality(libraryId)
       .then(setQuality)
       .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : 'Extraktionsgüte konnte nicht geladen werden'),
+        setError(
+          err instanceof Error ? err.message : 'Extraktionsgüte konnte nicht geladen werden',
+        ),
       )
   }, [libraryId])
 
@@ -184,9 +186,8 @@ export default function MetadataExtractionSettingsSection({
       {stats && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
           Modellaufrufe: {stats.calls} · übernommen: {stats.acceptedValues} · verworfen (Konfidenz):{' '}
-          {stats.rejectedBelowThreshold} · verworfen (Werteliste):{' '}
-          {stats.rejectedOutsideVocabulary} · Fehler/Zeitüberschreitungen: {stats.failures} ·
-          Schlagworte: {stats.keywordsAssigned}
+          {stats.rejectedBelowThreshold} · verworfen (Werteliste): {stats.rejectedOutsideVocabulary}{' '}
+          · Fehler/Zeitüberschreitungen: {stats.failures} · Schlagworte: {stats.keywordsAssigned}
         </Typography>
       )}
     </Box>

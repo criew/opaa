@@ -1,5 +1,6 @@
 package io.opaa.searchadmin;
 
+import io.opaa.indexing.ContextPrefixRerunProgress;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.indexing.metadata.ModelExtractionStats;
 import java.time.Instant;
@@ -21,6 +22,8 @@ import java.util.UUID;
  *     from the same selection the backfill itself drains.
  * @param modelExtraction the Zählwerk of the model-backed extraction (#1073) - without it the only
  *     feedback about the cost of that capability is the model provider's invoice.
+ * @param contextPrefixRerun the Kontextpräfix state (#1072) - the defined Mischzustand of a library
+ *     whose prefix is being changed, read from the same selection its Nachlauf drains.
  */
 public record LibrarySearchStatus(
     UUID libraryId,
@@ -36,7 +39,8 @@ public record LibrarySearchStatus(
     long fullTextIndexedChunks,
     long fullTextMissingChunks,
     MetadataBackfillProgress metadataBackfill,
-    ModelExtractionStats modelExtraction) {
+    ModelExtractionStats modelExtraction,
+    ContextPrefixRerunProgress contextPrefixRerun) {
 
   /** Whether an index holds what it is supposed to hold. */
   public enum IndexCondition {

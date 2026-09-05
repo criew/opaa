@@ -35,7 +35,12 @@ class VectorChunkStoreTest {
   private final FullTextChunkStore fullTextChunkStore = mock(FullTextChunkStore.class);
   private final VectorChunkStore vectorChunkStore =
       new VectorChunkStore(
-          vectorStore, embeddingModel, batchingStrategy, vectorStoreWriter, fullTextChunkStore);
+          vectorStore,
+          embeddingModel,
+          batchingStrategy,
+          vectorStoreWriter,
+          fullTextChunkStore,
+          new EmbeddingRateEstimator(4.0));
 
   @Test
   void
@@ -47,7 +52,7 @@ class VectorChunkStoreTest {
 
     vectorChunkStore.addChunks(chunks);
 
-    verify(vectorStoreWriter).writeEmbeddedChunks(chunks, embeddings, null);
+    verify(vectorStoreWriter).writeEmbeddedChunks(chunks, embeddings);
     verifyNoInteractions(vectorStore);
   }
 

@@ -11,7 +11,7 @@ import Typography from '@mui/material/Typography'
 
 import type { LibraryIndexState, LibrarySearchStatusResponse } from '../../types/api'
 import { formatShare } from '../../utils/labels'
-import type { MetadataBackfillRun } from '../../stores/searchAdminStore'
+import type { LibraryBatchRun } from '../../stores/searchAdminStore'
 import { plural } from './format'
 
 const INDEX_STATE_LABELS: Record<LibraryIndexState, string> = {
@@ -33,7 +33,7 @@ function MetadataBackfillCell({
   onPause,
 }: {
   library: LibrarySearchStatusResponse
-  run: MetadataBackfillRun | undefined
+  run: LibraryBatchRun | undefined
   onStart: (libraryId: string) => void
   onPause: (libraryId: string) => void
 }) {
@@ -132,17 +132,86 @@ function MetadataBackfillCell({
   )
 }
 
-/** The index state of every library, with the backfill control per row. */
+/**
+ * The Kontextpräfix state of one library and the control that drives its Nachlauf (#1072). Start,
+ * Weiter and Anhalten are one button for the same reason the backfill's are: the run is a loop of
+ * batch calls this page repeats, and the server re-derives the remaining work on every call.
+ */
+function ContextPrefixCell({
+  library,
+  run,
+  onStart,
+  onPause,
+}: {
+  library: LibrarySearchStatusResponse
+  run: LibraryBatchRun | undefined
+  onStart: (libraryId: string) => void
+  onPause: (libraryId: string) => void
+}) {
+  const rerun = library.contextPrefixRerun
+  const running = run?.running ?? false
+  const resumable = !running && run != null && !run.done && run.error == null
+  const buttonLabel = running ? 'Anhalten' : resumable ? 'Weiter' : 'Neu einbetten'
+  return (
+    <TableCell>
+      <Typography variant="body2" component="div">
+        {rerun.currentDocuments} / {rerun.totalDocuments} mit aktuellem Präfix
+      </Typography>
+      {rerun.pendingDocuments > 0 && (
+        <Typography variant="caption" color="warning.main" component="div">
+          {plural(
+            rerun.pendingDocuments,
+            'Dokument wartet auf Neu-Einbetten',
+            'Dokumente warten auf Neu-Einbetten',
+          )}
+        </Typography>
+      )}
+      {rerun.lastSkippedDocuments > 0 && (
+        <Typography variant="caption" color="warning.main" component="div">
+          {plural(
+            rerun.lastSkippedDocuments,
+            'Dokument zuletzt fehlgeschlagen',
+            'Dokumente zuletzt fehlgeschlagen',
+          )}
+        </Typography>
+      )}
+      {run?.error && (
+        <Typography variant="caption" color="error.main" component="div" role="alert">
+          {run.error}
+        </Typography>
+      )}
+      {(rerun.pendingDocuments > 0 || running) && (
+        <Button
+          size="small"
+          variant={running ? 'outlined' : 'contained'}
+          sx={{ mt: 0.5 }}
+          aria-label={`${buttonLabel}: ${library.libraryName}`}
+          onClick={() => (running ? onPause(library.libraryId) : onStart(library.libraryId))}
+        >
+          {buttonLabel}
+        </Button>
+      )}
+    </TableCell>
+  )
+}
+
+/** The index state of every library, with the two chargen controls per row. */
 export default function LibraryStatusTable({
   libraries,
   backfillRuns,
+  contextPrefixRuns,
   onStartBackfill,
   onPauseBackfill,
+  onStartContextPrefixRerun,
+  onPauseContextPrefixRerun,
 }: {
   libraries: LibrarySearchStatusResponse[]
-  backfillRuns: Record<string, MetadataBackfillRun>
+  backfillRuns: Record<string, LibraryBatchRun>
+  contextPrefixRuns: Record<string, LibraryBatchRun>
   onStartBackfill: (libraryId: string) => void
   onPauseBackfill: (libraryId: string) => void
+  onStartContextPrefixRerun: (libraryId: string) => void
+  onPauseContextPrefixRerun: (libraryId: string) => void
 }) {
   if (libraries.length === 0) {
     return (
@@ -152,7 +221,7 @@ export default function LibraryStatusTable({
     )
   }
   return (
-    // Nine columns overflow narrower viewports into a horizontal scroll; a scrollable region must
+    // Ten columns overflow narrower viewports into a horizontal scroll; a scrollable region must
     // be reachable and scrollable by keyboard (axe scrollable-region-focusable), hence the tab stop.
     <TableContainer
       component={Paper}
@@ -173,6 +242,7 @@ export default function LibraryStatusTable({
             <TableCell>Vektorindex</TableCell>
             <TableCell>Volltextindex</TableCell>
             <TableCell>Kernfelder</TableCell>
+            <TableCell>Kontextpräfix</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -221,6 +291,12 @@ export default function LibraryStatusTable({
                 run={backfillRuns[library.libraryId]}
                 onStart={onStartBackfill}
                 onPause={onPauseBackfill}
+              />
+              <ContextPrefixCell
+                library={library}
+                run={contextPrefixRuns[library.libraryId]}
+                onStart={onStartContextPrefixRerun}
+                onPause={onPauseContextPrefixRerun}
               />
             </TableRow>
           ))}

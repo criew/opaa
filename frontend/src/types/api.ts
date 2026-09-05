@@ -113,17 +113,19 @@ export type LibraryMetadataExtractionSettingsResponse =
   components['schemas']['LibraryMetadataExtractionSettingsResponse']
 export type LibraryMetadataExtractionSettingsRequest =
   components['schemas']['LibraryMetadataExtractionSettingsRequest']
-export type ActiveChatModelSummaryResponse =
-  components['schemas']['ActiveChatModelSummaryResponse']
+export type ActiveChatModelSummaryResponse = components['schemas']['ActiveChatModelSummaryResponse']
 export type MetadataModelExtractionStatsResponse =
   components['schemas']['MetadataModelExtractionStatsResponse']
 export type MetadataFieldQualityResponse = components['schemas']['MetadataFieldQualityResponse']
-export type LibraryMetadataQualityResponse =
-  components['schemas']['LibraryMetadataQualityResponse']
+export type LibraryMetadataQualityResponse = components['schemas']['LibraryMetadataQualityResponse']
 export type LibraryMetadataSampleResponse = components['schemas']['LibraryMetadataSampleResponse']
 export type LibraryMetadataFieldType = components['schemas']['LibraryMetadataFieldType']
 export type LibraryMetadataFieldResponse = components['schemas']['LibraryMetadataFieldResponse']
 export type LibraryMetadataFieldsResponse = components['schemas']['LibraryMetadataFieldsResponse']
+export type CoreContextPrefixRequest = components['schemas']['CoreContextPrefixRequest']
+export type CoreContextPrefixResponse = components['schemas']['CoreContextPrefixResponse']
+export type MetadataChangeKind = components['schemas']['MetadataChangeKind']
+export type MetadataChangeImpactResponse = components['schemas']['MetadataChangeImpactResponse']
 export type LibraryMetadataFieldValueResponse =
   components['schemas']['LibraryMetadataFieldValueResponse']
 export type CreateLibraryMetadataFieldRequest =
@@ -183,6 +185,8 @@ export type LibrarySearchStatusResponse = components['schemas']['LibrarySearchSt
 export type MetadataBackfillStatusResponse = components['schemas']['MetadataBackfillStatusResponse']
 export type CoreMetadataFieldFillResponse = components['schemas']['CoreMetadataFieldFillResponse']
 export type MetadataBackfillRequest = components['schemas']['MetadataBackfillRequest']
+export type ContextPrefixRerunRequest = components['schemas']['ContextPrefixRerunRequest']
+export type ContextPrefixRerunResponse = components['schemas']['ContextPrefixRerunResponse']
 export type MetadataBackfillResponse = components['schemas']['MetadataBackfillResponse']
 export type SearchStatusResponse = components['schemas']['SearchStatusResponse']
 export type SearchPermissionProfileResponse =

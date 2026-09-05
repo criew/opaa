@@ -10,6 +10,7 @@ import {
   getDocumentChunks,
   getSearchDiagnosisContext,
   getSearchStatus,
+  runContextPrefixRerunBatch,
   runMetadataBackfillBatch,
   runSearchDiagnosis,
 } from '../services/api'
@@ -21,8 +22,8 @@ import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
  */
 let latestDocumentChunksRequest = 0
 
-/** Documents per backfill call; small enough that a pause takes effect within seconds. */
-const METADATA_BACKFILL_BATCH_SIZE = 50
+/** Documents per batch call; small enough that a pause takes effect within seconds. */
+const LIBRARY_BATCH_SIZE = 50
 
 /**
  * Consecutive batches that advanced nothing before the loop gives up regardless of `done` - a
@@ -33,15 +34,16 @@ const MAX_BATCHES_WITHOUT_PROGRESS = 3
 /** Hard ceiling on batch calls per start, so no defect on either side can turn into an endless loop. */
 const MAX_BATCHES_PER_START = 1000
 
-export const METADATA_BACKFILL_STALLED_MESSAGE =
+export const BATCH_RUN_STALLED_MESSAGE =
   'Der Lauf wurde angehalten: Mehrere Chargen nacheinander haben kein Dokument vorangebracht.'
 
 /**
- * The state of one library's core-metadata backfill as this page drives it (#1067): the page loops
- * batch calls while `running`; pausing clears the flag and the loop stops after the batch in
- * flight - nothing server-side keeps running, the next start simply calls again.
+ * The state of one library's chargen run as this page drives it - the core-metadata backfill
+ * (#1067) and the Kontextpräfix-Nachlauf (#1072) alike: the page loops batch calls while
+ * `running`; pausing clears the flag and the loop stops after the batch in flight - nothing
+ * server-side keeps running, the next start simply calls again.
  */
-export interface MetadataBackfillRun {
+export interface LibraryBatchRun {
   running: boolean
   done: boolean
   processedDocuments: number
@@ -50,13 +52,21 @@ export interface MetadataBackfillRun {
   error: string | null
 }
 
-const NEW_RUN: MetadataBackfillRun = {
+const NEW_RUN: LibraryBatchRun = {
   running: false,
   done: false,
   processedDocuments: 0,
   markedForNextRun: 0,
   skippedDocuments: 0,
   error: null,
+}
+
+/** What one batch call reports; `markedForNextRun` is 0 for a run that has no such outcome. */
+interface BatchOutcome {
+  processedDocuments: number
+  markedForNextRun: number
+  skippedDocuments: number
+  done: boolean
 }
 
 interface SearchAdminState {
@@ -71,13 +81,16 @@ interface SearchAdminState {
   documentChunks: DocumentChunksResponse | null
   documentChunksError: string | null
   isLoadingDocumentChunks: boolean
-  metadataBackfillRuns: Record<string, MetadataBackfillRun>
+  metadataBackfillRuns: Record<string, LibraryBatchRun>
+  contextPrefixRuns: Record<string, LibraryBatchRun>
   reset: () => void
   loadStatus: () => Promise<void>
   runDiagnosis: (request: SearchDiagnosisRequest) => Promise<void>
   loadDocumentChunks: (documentId: string) => Promise<void>
   startMetadataBackfill: (libraryId: string) => Promise<void>
   pauseMetadataBackfill: (libraryId: string) => void
+  startContextPrefixRerun: (libraryId: string) => Promise<void>
+  pauseContextPrefixRerun: (libraryId: string) => void
 }
 
 const EMPTY: Omit<
@@ -88,6 +101,8 @@ const EMPTY: Omit<
   | 'loadDocumentChunks'
   | 'startMetadataBackfill'
   | 'pauseMetadataBackfill'
+  | 'startContextPrefixRerun'
+  | 'pauseContextPrefixRerun'
 > = {
   status: null,
   profiles: [],
@@ -101,24 +116,80 @@ const EMPTY: Omit<
   documentChunksError: null,
   isLoadingDocumentChunks: false,
   metadataBackfillRuns: {},
+  contextPrefixRuns: {},
 }
 
 /**
  * The state of the "Suche & Indexierung" administration page (#1053). Read-only except for the
- * core-metadata backfill (#1067), which is an explicit, library-wise start on this page.
+ * two chargen runs - the core-metadata backfill (#1067) and the Kontextpraefix-Nachlauf (#1072) -
+ * each an explicit, library-wise start on this page.
  *
  * A diagnosis result of a run in someone else's rights context is never persisted anywhere -
  * it lives in this store for as long as the page is open and is dropped on sign-out like every
  * other session-scoped cache.
  */
 export const useSearchAdminStore = create<SearchAdminState>((set, get) => {
-  function updateRun(libraryId: string, patch: Partial<MetadataBackfillRun>) {
+  type RunsKey = 'metadataBackfillRuns' | 'contextPrefixRuns'
+
+  function updateRun(key: RunsKey, libraryId: string, patch: Partial<LibraryBatchRun>) {
     set((state) => ({
-      metadataBackfillRuns: {
-        ...state.metadataBackfillRuns,
-        [libraryId]: { ...(state.metadataBackfillRuns[libraryId] ?? NEW_RUN), ...patch },
-      },
+      [key]: { ...state[key], [libraryId]: { ...(state[key][libraryId] ?? NEW_RUN), ...patch } },
     }))
+  }
+
+  /**
+   * Calls a batch endpoint until it reports done or the run is paused, refreshing the status table
+   * after every batch so the counters move while the run lasts. A second start while a run is in
+   * flight is ignored - one loop per library and kind.
+   */
+  async function driveBatches(
+    key: RunsKey,
+    libraryId: string,
+    batch: () => Promise<BatchOutcome>,
+    failureMessage: string,
+  ) {
+    if (get()[key][libraryId]?.running) return
+    const sessionEpoch = currentSessionEpoch()
+    updateRun(key, libraryId, { running: true, done: false, error: null })
+    let batches = 0
+    let batchesWithoutProgress = 0
+    while (get()[key][libraryId]?.running) {
+      try {
+        const result = await batch()
+        if (isStaleSessionEpoch(sessionEpoch)) return
+        const previous = get()[key][libraryId] ?? NEW_RUN
+        updateRun(key, libraryId, {
+          processedDocuments: previous.processedDocuments + result.processedDocuments,
+          markedForNextRun: previous.markedForNextRun + result.markedForNextRun,
+          skippedDocuments: previous.skippedDocuments + result.skippedDocuments,
+          done: result.done,
+        })
+        const status = await getSearchStatus()
+        if (isStaleSessionEpoch(sessionEpoch)) return
+        set({ status, statusError: null })
+        if (result.done) {
+          updateRun(key, libraryId, { running: false })
+          return
+        }
+        batches += 1
+        batchesWithoutProgress =
+          result.processedDocuments + result.markedForNextRun > 0 ? 0 : batchesWithoutProgress + 1
+        if (
+          batchesWithoutProgress >= MAX_BATCHES_WITHOUT_PROGRESS ||
+          batches >= MAX_BATCHES_PER_START
+        ) {
+          updateRun(key, libraryId, { running: false, error: BATCH_RUN_STALLED_MESSAGE })
+          return
+        }
+      } catch (err) {
+        if (isStaleSessionEpoch(sessionEpoch)) return
+        updateRun(key, libraryId, {
+          running: false,
+          error: err instanceof Error ? err.message : failureMessage,
+        })
+        return
+      }
+    }
   }
 
   return {
@@ -185,62 +256,33 @@ export const useSearchAdminStore = create<SearchAdminState>((set, get) => {
       }
     },
 
-    /**
-     * Calls the batch endpoint until it reports done or the run is paused, refreshing the status
-     * table after every batch so the counters move while the run lasts. A second start while a run
-     * is in flight is ignored - one loop per library.
-     */
-    startMetadataBackfill: async (libraryId) => {
-      if (get().metadataBackfillRuns[libraryId]?.running) return
-      const sessionEpoch = currentSessionEpoch()
-      updateRun(libraryId, { running: true, done: false, error: null })
-      let batches = 0
-      let batchesWithoutProgress = 0
-      while (get().metadataBackfillRuns[libraryId]?.running) {
-        try {
-          const result = await runMetadataBackfillBatch({
-            libraryId,
-            batchSize: METADATA_BACKFILL_BATCH_SIZE,
-          })
-          if (isStaleSessionEpoch(sessionEpoch)) return
-          const previous = get().metadataBackfillRuns[libraryId] ?? NEW_RUN
-          updateRun(libraryId, {
-            processedDocuments: previous.processedDocuments + result.processedDocuments,
-            markedForNextRun: previous.markedForNextRun + result.markedForNextRun,
-            skippedDocuments: previous.skippedDocuments + result.skippedDocuments,
-            done: result.done,
-          })
-          const status = await getSearchStatus()
-          if (isStaleSessionEpoch(sessionEpoch)) return
-          set({ status, statusError: null })
-          if (result.done) {
-            updateRun(libraryId, { running: false })
-            return
-          }
-          batches += 1
-          batchesWithoutProgress =
-            result.processedDocuments + result.markedForNextRun > 0 ? 0 : batchesWithoutProgress + 1
-          if (
-            batchesWithoutProgress >= MAX_BATCHES_WITHOUT_PROGRESS ||
-            batches >= MAX_BATCHES_PER_START
-          ) {
-            updateRun(libraryId, { running: false, error: METADATA_BACKFILL_STALLED_MESSAGE })
-            return
-          }
-        } catch (err) {
-          if (isStaleSessionEpoch(sessionEpoch)) return
-          updateRun(libraryId, {
-            running: false,
-            error: err instanceof Error ? err.message : 'Nachrüsten fehlgeschlagen',
-          })
-          return
-        }
-      }
-    },
+    startMetadataBackfill: (libraryId) =>
+      driveBatches(
+        'metadataBackfillRuns',
+        libraryId,
+        () => runMetadataBackfillBatch({ libraryId, batchSize: LIBRARY_BATCH_SIZE }),
+        'Nachrüsten fehlgeschlagen',
+      ),
 
     pauseMetadataBackfill: (libraryId) => {
       if (!get().metadataBackfillRuns[libraryId]?.running) return
-      updateRun(libraryId, { running: false })
+      updateRun('metadataBackfillRuns', libraryId, { running: false })
+    },
+
+    startContextPrefixRerun: (libraryId) =>
+      driveBatches(
+        'contextPrefixRuns',
+        libraryId,
+        async () => ({
+          ...(await runContextPrefixRerunBatch({ libraryId, batchSize: LIBRARY_BATCH_SIZE })),
+          markedForNextRun: 0,
+        }),
+        'Neu-Einbetten fehlgeschlagen',
+      ),
+
+    pauseContextPrefixRerun: (libraryId) => {
+      if (!get().contextPrefixRuns[libraryId]?.running) return
+      updateRun('contextPrefixRuns', libraryId, { running: false })
     },
   }
 })

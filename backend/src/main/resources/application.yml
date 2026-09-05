@@ -152,6 +152,10 @@ opaa:
     chunk-overlap: ${OPAA_INDEXING_CHUNK_OVERLAP:100}
     batch-size: ${OPAA_INDEXING_BATCH_SIZE:50}
     embedding-concurrency: ${OPAA_INDEXING_EMBEDDING_CONCURRENCY:3}
+    # #1072: fallback rate of the Folgekosten estimate, in chunks per second. Only used until
+    # EmbeddingRateEstimator has measured enough real embedding calls; the answer names which
+    # of the two it used.
+    embedding-rate-estimate: ${OPAA_INDEXING_EMBEDDING_RATE_ESTIMATE:4.0}
     stale-job-timeout: ${OPAA_INDEXING_STALE_JOB_TIMEOUT:4h}
     thread-pool:
       core-size: ${OPAA_INDEXING_THREAD_POOL_CORE_SIZE:2}

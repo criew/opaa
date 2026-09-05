@@ -101,7 +101,12 @@ class FileProcessingServiceTest {
     meterRegistry = new SimpleMeterRegistry();
     vectorChunkStore =
         new VectorChunkStore(
-            vectorStore, embeddingModel, batchingStrategy, vectorStoreWriter, fullTextChunkStore);
+            vectorStore,
+            embeddingModel,
+            batchingStrategy,
+            vectorStoreWriter,
+            fullTextChunkStore,
+            new EmbeddingRateEstimator(4.0));
     service = serviceWith(TestPipelineRegistries.fallbackOnly(documentService, chunkingService));
     targetLibrary = library();
     // Default: plenty of headroom, so tests never trip the quota check unless they explicitly
@@ -222,7 +227,7 @@ class FileProcessingServiceTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<org.springframework.ai.document.Document>> captor =
         ArgumentCaptor.forClass(List.class);
-    verify(vectorStoreWriter).writeEmbeddedChunks(captor.capture(), any(), any());
+    verify(vectorStoreWriter).writeEmbeddedChunks(captor.capture(), any());
     return captor.getValue();
   }
 
@@ -242,7 +247,7 @@ class FileProcessingServiceTest {
       FileProcessingResult result = service.ingest(localFile(file), null);
 
       assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any(), any());
+      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
       // The initial PENDING row is a plain save; the final INDEXED transition is a conditional
       // UPDATE carrying the checksum, never a second save.
       verify(documentRepository, times(1)).save(any(Document.class));
@@ -284,7 +289,7 @@ class FileProcessingServiceTest {
 
       assertThat(result).isEqualTo(FileProcessingResult.FAILED);
       verify(chunkingService, never()).chunkDocuments(anyString(), any());
-      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any(), any());
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
       UUID documentId = savedDocument().getId();
       verify(documentRepository)
           .markFailedWithoutChunks(documentId, FileProcessingService.NO_CONTENT_MESSAGE);
@@ -323,7 +328,7 @@ class FileProcessingServiceTest {
       stubParsedInto(file, chunks("chunk1"));
       doThrow(new IllegalStateException("vector store unavailable"))
           .when(vectorStoreWriter)
-          .writeEmbeddedChunks(any(), any(), any());
+          .writeEmbeddedChunks(any(), any());
 
       assertThatThrownBy(() -> service.ingest(localFile(file), null))
           .isInstanceOf(IllegalStateException.class);
@@ -351,7 +356,7 @@ class FileProcessingServiceTest {
 
       // storeChunks already ran before the final update failed - the catch block must remove
       // exactly those chunks, keyed by this document's id, or they become orphaned.
-      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any(), any());
+      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
       UUID documentId = savedDocument().getId();
       verify(vectorStore).delete(documentIdFilter(documentId));
       verify(documentRepository)
@@ -372,7 +377,7 @@ class FileProcessingServiceTest {
       FileProcessingResult result = service.ingest(localFile(file), null);
 
       assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
-      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any(), any());
+      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
       UUID documentId = savedDocument().getId();
       verify(vectorStore).delete(documentIdFilter(documentId));
       verify(documentRepository, times(1)).save(any(Document.class));
@@ -508,7 +513,7 @@ class FileProcessingServiceTest {
       assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
       verify(documentService, never()).parseDocument(any());
       verify(chunkingService, never()).chunkDocuments(anyString(), any());
-      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any(), any());
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
       verify(vectorStore, never()).delete(any(Filter.Expression.class));
       verify(documentRepository, never()).save(any(Document.class));
       verify(documentRepository, never())
@@ -814,7 +819,7 @@ class FileProcessingServiceTest {
       assertThat(savedByFilePath.get(attachmentUrl).getSourceEntryUrl())
           .isEqualTo("https://example.gov/artikel/erster-artikel");
       verify(documentRepository, never()).delete(any());
-      verify(vectorStoreWriter, times(1)).writeEmbeddedChunks(any(), any(), any());
+      verify(vectorStoreWriter, times(1)).writeEmbeddedChunks(any(), any());
     }
   }
 
@@ -836,7 +841,7 @@ class FileProcessingServiceTest {
       assertThat(result).isEqualTo(FileProcessingResult.QUOTA_EXCEEDED);
       verify(documentRepository, never()).save(any(Document.class));
       verify(documentService, never()).parseDocument(any());
-      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any(), any());
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
       assertThat(counter("skipped")).isEqualTo(1.0);
     }
 
@@ -1336,7 +1341,7 @@ class FileProcessingServiceTest {
       verify(storageQuotaService, never()).wouldExceedQuota(any(), anyLong());
       verify(documentRepository, never()).save(any(Document.class));
       assertThat(doc.getContentType()).isEqualTo("application/pdf");
-      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any(), any());
+      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
       verify(documentRepository)
           .markIndexedFromSource(
               eq(doc.getId()), eq(1), any(), eq("checksum-upload.pdf"), eq(null));
@@ -1380,7 +1385,7 @@ class FileProcessingServiceTest {
 
       service.processUploadedFileAsync(upload(doc, file), null);
 
-      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any(), any());
+      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
       // Once to make room before the write (an existing row is always replaced), once to remove
       // what the failed run left behind.
       verify(vectorStore, times(2)).delete(documentIdFilter(doc.getId()));
@@ -1406,7 +1411,7 @@ class FileProcessingServiceTest {
 
       assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
       verify(vectorStore).delete(documentIdFilter(doc.getId()));
-      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any(), any());
+      verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
       verify(documentRepository)
           .markIndexedFromSource(eq(doc.getId()), eq(1), any(), eq("same-checksum"), eq(null));
     }
@@ -1452,7 +1457,7 @@ class FileProcessingServiceTest {
       assertThatThrownBy(() -> service.ingest(reindex(doc, file), null))
           .isInstanceOf(IllegalStateException.class);
 
-      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any(), any());
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
       verify(documentRepository, never()).markFailed(any(), any());
       verify(documentRepository, never()).markFailedWithoutChunks(any(), any());
       assertThat(counter("failed")).isEqualTo(1.0);
@@ -1469,7 +1474,7 @@ class FileProcessingServiceTest {
       stubParsedInto(file, chunks("chunk1"));
       doThrow(new IllegalStateException("vector store unavailable"))
           .when(vectorStoreWriter)
-          .writeEmbeddedChunks(any(), any(), any());
+          .writeEmbeddedChunks(any(), any());
 
       assertThatThrownBy(() -> service.ingest(reindex(doc, file), null))
           .isInstanceOf(IllegalStateException.class);

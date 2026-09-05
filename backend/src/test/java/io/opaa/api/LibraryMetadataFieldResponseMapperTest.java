@@ -3,13 +3,18 @@ package io.opaa.api;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.CreateLibraryMetadataFieldRequest;
+import io.opaa.api.dto.EmbeddingRateSource;
 import io.opaa.api.dto.LibraryMetadataFieldResponse;
 import io.opaa.api.dto.LibraryMetadataFieldValueRequest;
 import io.opaa.api.types.LibraryMetadataFieldType;
+import io.opaa.indexing.EmbeddingRateEstimator;
+import io.opaa.indexing.metadata.CoreContextPrefixSettings;
 import io.opaa.indexing.metadata.LibraryFieldValueRemapResult;
 import io.opaa.indexing.metadata.LibraryMetadataFieldDefinition;
 import io.opaa.indexing.metadata.LibraryMetadataFieldInput;
+import io.opaa.indexing.metadata.LibraryMetadataFieldOverview;
 import io.opaa.indexing.metadata.LibraryMetadataFieldTestFixtures;
+import io.opaa.indexing.metadata.MetadataChangeImpact;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -104,5 +109,51 @@ class LibraryMetadataFieldResponseMapperTest {
             });
     assertThat(LibraryMetadataFieldResponseMapper.toUsageResponse(7).getDocumentCount())
         .isEqualTo(7);
+  }
+
+  @Test
+  void theOverviewCarriesTheCoreWirkstellenAndTheNachlaufHintOntoTheResponse() {
+    var response =
+        LibraryMetadataFieldResponseMapper.toResponse(
+            new LibraryMetadataFieldOverview(
+                List.of(
+                    LibraryMetadataFieldTestFixtures.definition(
+                        "fassung",
+                        "Fassung",
+                        LibraryMetadataFieldType.SELECT,
+                        null,
+                        false,
+                        true,
+                        null,
+                        List.of("A"))),
+                new CoreContextPrefixSettings(true, false, true),
+                12));
+
+    assertThat(response.getItems()).hasSize(1);
+    assertThat(response.getCoreContextPrefix().getTitle()).isTrue();
+    assertThat(response.getCoreContextPrefix().getDocumentType()).isFalse();
+    assertThat(response.getCoreContextPrefix().getDocumentDate()).isTrue();
+    assertThat(response.getDocumentsAwaitingContextPrefixRerun()).isEqualTo(12);
+  }
+
+  @Test
+  void everyFigureOfTheFolgekostenReachesTheResponse() {
+    var response =
+        LibraryMetadataFieldResponseMapper.toImpactResponse(
+            new MetadataChangeImpact(
+                12, 4812, 4812, 2400, true, EmbeddingRateEstimator.RateSource.MEASURED));
+
+    assertThat(response.getAffectedDocuments()).isEqualTo(12);
+    assertThat(response.getAffectedChunks()).isEqualTo(4812);
+    assertThat(response.getEmbeddingCalls()).isEqualTo(4812);
+    assertThat(response.getEstimatedSeconds()).isEqualTo(2400);
+    assertThat(response.getReembeddingRequired()).isTrue();
+    assertThat(response.getRateSource()).isEqualTo(EmbeddingRateSource.MEASURED);
+
+    assertThat(
+            LibraryMetadataFieldResponseMapper.toImpactResponse(
+                    MetadataChangeImpact.free(EmbeddingRateEstimator.RateSource.CONFIGURED))
+                .getRateSource())
+        .isEqualTo(EmbeddingRateSource.CONFIGURED);
   }
 }

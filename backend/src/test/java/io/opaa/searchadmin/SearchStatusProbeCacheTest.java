@@ -10,6 +10,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.opaa.indexing.ContextPrefixRerunService;
 import io.opaa.indexing.FullTextIndexFillStateService;
 import io.opaa.indexing.metadata.MetadataBackfillService;
 import io.opaa.indexing.metadata.ModelExtractionCounters;
@@ -64,6 +65,8 @@ class SearchStatusProbeCacheTest {
       mock(MetadataBackfillService.class);
   private final ModelExtractionCounters modelExtractionCounters =
       mock(ModelExtractionCounters.class);
+  private final ContextPrefixRerunService contextPrefixRerunService =
+      mock(ContextPrefixRerunService.class);
   private final AdvanceableClock clock =
       new AdvanceableClock(Instant.parse("2026-09-01T10:00:00Z"));
 
@@ -88,6 +91,7 @@ class SearchStatusProbeCacheTest {
     when(fullTextIndexFillStateService.fillStateForLibraries(any())).thenReturn(List.of());
     when(metadataBackfillService.progressForLibraries(any())).thenReturn(Map.of());
     when(modelExtractionCounters.statsFor(anyCollection())).thenReturn(Map.of());
+    when(contextPrefixRerunService.progressForLibraries(any())).thenReturn(Map.of());
 
     service =
         new SearchStatusService(
@@ -101,6 +105,7 @@ class SearchStatusProbeCacheTest {
             fullTextIndexFillStateService,
             metadataBackfillService,
             modelExtractionCounters,
+            contextPrefixRerunService,
             new QueryProperties(8, 25, 1.0, 0.0, 1.0, true, 3, 2, true, 50),
             new RetrievalPipelineProperties(Set.of()),
             clock);

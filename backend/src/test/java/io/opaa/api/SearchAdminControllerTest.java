@@ -16,6 +16,7 @@ import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.NotFoundException;
+import io.opaa.indexing.ContextPrefixRerunProgress;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.indexing.metadata.MetadataFieldFill;
@@ -164,7 +165,8 @@ class SearchAdminControllerTest {
                                 new MetadataFieldFill(5, 2, 0),
                                 CoreMetadataField.DOCUMENT_TYPE,
                                 new MetadataFieldFill(5, 0, 1))),
-                        ModelExtractionStats.empty(UUID.randomUUID())))));
+                        ModelExtractionStats.empty(UUID.randomUUID()),
+                        new ContextPrefixRerunProgress(UUID.randomUUID(), 5, 4, 1, 0)))));
 
     mockMvc
         .perform(get("/api/v1/admin/search/status").with(asAdmin()))

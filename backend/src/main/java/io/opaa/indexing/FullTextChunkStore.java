@@ -2,6 +2,8 @@ package io.opaa.indexing;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.ai.document.DefaultContentFormatter;
+import org.springframework.ai.document.MetadataMode;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -44,7 +46,7 @@ public class FullTextChunkStore {
    * brought up to date only by {@link PipelineReindexService#reindexBatch}, never by a background
    * job. Public because the query path must restrict itself to rows built under this version.
    */
-  public static final short CURRENT_TSV_VERSION = 4;
+  public static final short CURRENT_TSV_VERSION = 5;
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -58,22 +60,18 @@ public class FullTextChunkStore {
    * {@link FullTextIdentifiers}' undecomposed lexemes at weight {@link #IDENTIFIER_LEXEME_WEIGHT}.
    * Built with {@code to_tsvector}, never the positionless {@code array_to_tsvector} that would
    * make {@code setweight} a no-op; {@code ON CONFLICT DO UPDATE} brings an older row up to date.
+   *
+   * <p>Indexes the chunk's {@code EMBED} form, not its raw text: the Kontextpraefix goes into
+   * embedding <b>and</b> full-text index (metadata-schema.md, Wirkstelle 2), and reading it off the
+   * same formatter the embedding uses is what keeps the two from drifting apart. A chunk still
+   * carrying Spring AI's default formatter is indexed by its raw text instead - that formatter
+   * would spell every metadata key into {@code content_tsv}, and a caller who forgot to set one
+   * must not silently poison the lexical index.
    */
   void indexChunks(List<org.springframework.ai.document.Document> chunks) {
-    indexChunks(chunks, null);
-  }
-
-  /**
-   * {@link #indexChunks(List)} with a document-level supplement appended to the analysed text: the
-   * freie Schlagworte of the document (metadata-schema.md, Teil II (c)). The supplement reaches
-   * this index only - it is neither stored as chunk text nor written to any chunk metadata key, so
-   * no filter can ever name it.
-   */
-  void indexChunks(List<org.springframework.ai.document.Document> chunks, String supplement) {
     if (chunks.isEmpty()) {
       return;
     }
-    String suffix = supplement == null || supplement.isBlank() ? "" : "\n" + supplement;
     jdbcTemplate.batchUpdate(
         "INSERT INTO chunk_full_text (chunk_id, document_id, library_id, content_tsv, "
             + "content_tsv_version) VALUES (?, ?, ?, "
@@ -95,11 +93,21 @@ public class FullTextChunkStore {
               3,
               UUID.fromString(
                   (String) chunk.getMetadata().get(VectorChunkStore.LIBRARY_ID_METADATA_KEY)));
+          String indexedText = indexedTextOf(chunk);
           ps.setString(4, TEXT_SEARCH_CONFIGURATION);
-          ps.setString(5, chunk.getText() + suffix);
-          ps.setString(6, String.join(" ", FullTextIdentifiers.extract(chunk.getText())));
+          ps.setString(5, indexedText);
+          ps.setString(6, String.join(" ", FullTextIdentifiers.extract(indexedText)));
           ps.setShort(7, CURRENT_TSV_VERSION);
         });
+  }
+
+  /**
+   * See {@link #indexChunks}: the chunk's own formatter, never Spring AI's metadata-spelling one.
+   */
+  private static String indexedTextOf(org.springframework.ai.document.Document chunk) {
+    return chunk.getContentFormatter() instanceof DefaultContentFormatter
+        ? chunk.getText()
+        : chunk.getFormattedContent(MetadataMode.EMBED);
   }
 
   /**

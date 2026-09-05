@@ -706,6 +706,13 @@ export const mockSearchStatus: SearchStatusResponse = {
         keywordsAssigned: 20,
         lastCallAt: '2026-09-01T06:05:00Z',
       },
+      contextPrefixRerun: {
+        totalDocuments: 11,
+        currentDocuments: 8,
+        pendingDocuments: 3,
+        lastSkippedDocuments: 1,
+        complete: false,
+      },
     },
     {
       libraryId: 'lib-protokolle',
@@ -769,6 +776,13 @@ export const mockSearchStatus: SearchStatusResponse = {
         keywordsAssigned: 21,
         lastCallAt: '2026-09-01T06:05:00Z',
       },
+      contextPrefixRerun: {
+        totalDocuments: 3,
+        currentDocuments: 3,
+        pendingDocuments: 0,
+        lastSkippedDocuments: 0,
+        complete: true,
+      },
     },
     {
       libraryId: 'lib-formulare',
@@ -831,6 +845,13 @@ export const mockSearchStatus: SearchStatusResponse = {
         failures: 1,
         keywordsAssigned: 22,
         lastCallAt: '2026-09-01T06:05:00Z',
+      },
+      contextPrefixRerun: {
+        totalDocuments: 0,
+        currentDocuments: 0,
+        pendingDocuments: 0,
+        lastSkippedDocuments: 0,
+        complete: true,
       },
     },
   ],

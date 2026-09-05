@@ -170,10 +170,15 @@ public class ModelMetadataExtractor {
     if (!accepted.isEmpty()) {
       chunkMetadata = metadataService.applyDerivedValues(document, accepted);
     }
-    List<String> keywords =
-        wantsKeywords
-            ? storeKeywords(document, library, answer.keywords(), modelId, tally)
-            : List.of();
+    List<String> keywords = List.of();
+    if (wantsKeywords) {
+      keywords = storeKeywords(document, library, answer.keywords(), modelId, tally);
+      // A keyword is a segment of the Kontextpraefix, so the document's chunk metadata is re-read
+      // for the caller (the ingest writes its chunks with it) and the stored Abdruck is compared
+      // against the new one, which hands an already indexed document to the Nachlauf.
+      chunkMetadata = metadataService.chunkMetadataFor(document);
+      metadataService.markContextPrefixStale(document.getId());
+    }
     return new ModelExtractionOutcome(keywords, chunkMetadata);
   }
 

@@ -1,14 +1,17 @@
 package io.opaa.indexing.metadata;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryMetadataFieldType;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.ContextPrefixRerunService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentBatchLoop;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.EmbeddingRateEstimator;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -48,8 +51,10 @@ import org.springframework.transaction.annotation.Transactional;
  * (metadata-schema.md, Rechte-Invariante), which is also why a value list must never carry
  * schutzbedürftige Bezeichnungen.
  *
- * <p><b>Kontextpräfix.</b> The flag is stored here; the prefix itself is built by the following
- * work package, which is also where the re-index a changed prefix costs is paid.
+ * <p><b>Kontextpräfix.</b> A change to a prefix-effective field raises the library's context-prefix
+ * version and thereby hands its whole indexed bestand to the Nachlauf ({@code
+ * ContextPrefixRerunService}); saving moves nothing itself. What that will cost is answered
+ * beforehand by {@link #changeImpact}.
  */
 @Service
 public class LibraryMetadataFieldService {
@@ -76,6 +81,8 @@ public class LibraryMetadataFieldService {
   private final DocumentMetadataService metadataService;
   private final DocumentMetadataCorrectionService correctionService;
   private final DocumentTypeVocabularyRepository vocabularyRepository;
+  private final EmbeddingRateEstimator embeddingRateEstimator;
+  private final ContextPrefixRerunService contextPrefixRerunService;
   private final ApplicationEventPublisher eventPublisher;
 
   public LibraryMetadataFieldService(
@@ -88,6 +95,8 @@ public class LibraryMetadataFieldService {
       DocumentMetadataService metadataService,
       DocumentMetadataCorrectionService correctionService,
       DocumentTypeVocabularyRepository vocabularyRepository,
+      EmbeddingRateEstimator embeddingRateEstimator,
+      ContextPrefixRerunService contextPrefixRerunService,
       ApplicationEventPublisher eventPublisher) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
@@ -98,6 +107,8 @@ public class LibraryMetadataFieldService {
     this.metadataService = metadataService;
     this.correctionService = correctionService;
     this.vocabularyRepository = vocabularyRepository;
+    this.embeddingRateEstimator = embeddingRateEstimator;
+    this.contextPrefixRerunService = contextPrefixRerunService;
     this.eventPublisher = eventPublisher;
   }
 
@@ -106,6 +117,20 @@ public class LibraryMetadataFieldService {
   public List<LibraryMetadataFieldDefinition> fieldsOf(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.VIEWER);
     return definitionsOf(library.getId());
+  }
+
+  /**
+   * The whole "Metadatenfelder" section of a library's settings in one read: fields, the
+   * Kontextpraefix-Wirkstellen of the core fields and the documents waiting for the Nachlauf. Same
+   * {@code VIEWER} bar as {@link #fieldsOf}.
+   */
+  @Transactional(readOnly = true)
+  public LibraryMetadataFieldOverview overviewOf(UUID libraryId, CurrentUser caller) {
+    KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.VIEWER);
+    return new LibraryMetadataFieldOverview(
+        definitionsOf(library.getId()),
+        CoreContextPrefixSettings.of(library),
+        contextPrefixRerunService.pendingDocuments(library.getId()));
   }
 
   /** The fields of several libraries at once - the filter interface's own read. */
@@ -184,6 +209,8 @@ public class LibraryMetadataFieldService {
     } else if (!input.values().isEmpty()) {
       throw new ValidationException("Nur ein Auswahlfeld führt eine Werteliste");
     }
+    // No marking here on purpose: a field that does not exist yet carries no value on any
+    // document, so no document's prefix changes - which is exactly what FIELD_ADDED reports.
     schemaChanged(library);
     return new LibraryMetadataFieldDefinition(field, values);
   }
@@ -206,6 +233,7 @@ public class LibraryMetadataFieldService {
     LibraryMetadataField field = requireField(library, fieldKey);
     requireRetrievalEffect(filter, contextPrefix);
     boolean wasFilterable = field.isFilterEnabled();
+    boolean wasPrefixEffective = field.isContextPrefixEnabled();
     field.apply(
         requireLabel(label, "Der Feldname"),
         filter,
@@ -216,6 +244,11 @@ public class LibraryMetadataFieldService {
       // The chunk keys are what both search paths read; a field that stopped filtering must lose
       // them, one that started filtering must gain them on the documents that carry a value.
       rewriteChunksOf(field);
+    }
+    if (wasPrefixEffective != contextPrefix) {
+      // Both directions cost the same, and both cost it for exactly the documents that carry a
+      // value: for every other document the prefix is unchanged.
+      documentRepository.clearContextPrefixStampForField(library.getId(), field.documentFieldKey());
     }
     schemaChanged(library);
     return new LibraryMetadataFieldDefinition(field, valuesOfField(field.getId()));
@@ -245,6 +278,8 @@ public class LibraryMetadataFieldService {
         field, false, documentId -> metadataService.deleteValue(documentId, ref));
     valueRepository.deleteByFieldId(field.getId());
     fieldRepository.delete(field);
+    // The documents that carried a value were already handed to the Nachlauf by deleteValue above,
+    // which marks whatever it empties on a prefix-effective field - no second marking here.
     schemaChanged(library);
   }
 
@@ -309,6 +344,11 @@ public class LibraryMetadataFieldService {
     LibraryMetadataFieldValue value = requireValue(field, code);
     value.relabel(requireLabel(label, "Die Wertebezeichnung"));
     valueRepository.save(value);
+    if (field.isContextPrefixEnabled()) {
+      // A document carries the code, so no value moves - but the Kontextpraefix carries the label,
+      // so the indexed text of the documents carrying exactly this value does change.
+      documentRepository.clearContextPrefixStampForValue(library.getId(), value.getId());
+    }
     schemaChanged(library);
     return new LibraryMetadataFieldDefinition(field, valuesOfField(field.getId()));
   }
@@ -384,6 +424,114 @@ public class LibraryMetadataFieldService {
     valueRepository.delete(removed);
     schemaChanged(library);
     return new LibraryFieldValueRemapResult(remapped, cleared, correlationRef);
+  }
+
+  /**
+   * The Folgekosten of a planned change to {@code fieldKey} (metadata-schema.md, "Der
+   * Reindex-Preis, ehrlich ausgewiesen"): affected documents and chunks, the embedding calls that
+   * follows and the expected runtime. Read-only - asking costs nothing and changes nothing. {@code
+   * fieldKey} names either a core field or one of the library's own fields; the management right is
+   * the same bar the change itself needs.
+   */
+  @Transactional(readOnly = true)
+  public MetadataChangeImpact changeImpact(
+      UUID libraryId, String fieldKey, MetadataChangeKind kind, CurrentUser caller) {
+    KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.MANAGER);
+    if (kind == MetadataChangeKind.VALUE_ADDED || kind == MetadataChangeKind.FIELD_ADDED) {
+      // Extending a list has no rueckwirkung on a stored value, and a field that does not exist yet
+      // carries none - the two rows of the Kostentabelle that are free whatever the Wirkstellen
+      // are.
+      // A new field starts costing only once values reach it, one document at a time.
+      return MetadataChangeImpact.free(embeddingRateEstimator.rateSource());
+    }
+    CoreMetadataField coreField = CoreMetadataField.fromKey(fieldKey).orElse(null);
+    boolean prefixEffective;
+    DocumentMetadataValueRepository.FieldImpactCount count;
+    if (coreField != null) {
+      if (kind == MetadataChangeKind.FIELD_REMOVED || kind == MetadataChangeKind.VALUE_REMOVED) {
+        throw new ValidationException("Ein Kernfeld kann nicht entfernt werden");
+      }
+      prefixEffective = true;
+      count =
+          documentValueRepository.impactOfField(
+              library.getId(), DocumentStatus.INDEXED, coreField.key());
+    } else {
+      LibraryMetadataField field = requireField(library, fieldKey);
+      prefixEffective =
+          kind == MetadataChangeKind.CONTEXT_PREFIX_ENABLED
+              || kind == MetadataChangeKind.CONTEXT_PREFIX_DISABLED
+              || field.isContextPrefixEnabled();
+      // A value mapping named without its value is answered with the whole field's usage - the
+      // honest upper bound; the exact figure comes from valueChangeImpact, which knows the value.
+      count =
+          documentValueRepository.impactOfField(
+              library.getId(), DocumentStatus.INDEXED, field.documentFieldKey());
+    }
+    return impactOf(count, prefixEffective);
+  }
+
+  /**
+   * The Folgekosten of removing exactly {@code code} from a SELECT field's list - the number behind
+   * the Abbildungsdialog, and the re-embedding it costs when the field is prefix-effective.
+   */
+  @Transactional(readOnly = true)
+  public MetadataChangeImpact valueChangeImpact(
+      UUID libraryId, String fieldKey, String code, CurrentUser caller) {
+    KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.MANAGER);
+    LibraryMetadataField field = requireSelectField(library, fieldKey);
+    LibraryMetadataFieldValue value = requireValue(field, code);
+    return impactOf(
+        documentValueRepository.impactOfValue(
+            library.getId(), DocumentStatus.INDEXED, value.getId()),
+        field.isContextPrefixEnabled());
+  }
+
+  private MetadataChangeImpact impactOf(
+      DocumentMetadataValueRepository.FieldImpactCount count, boolean prefixEffective) {
+    long documents = count == null ? 0 : count.getDocumentCount();
+    long chunks =
+        !prefixEffective || count == null || count.getChunkCount() == null
+            ? 0
+            : count.getChunkCount();
+    return new MetadataChangeImpact(
+        documents,
+        chunks,
+        chunks,
+        embeddingRateEstimator.estimatedSeconds(chunks),
+        prefixEffective && documents > 0,
+        embeddingRateEstimator.rateSource());
+  }
+
+  /** The Kontextpraefix-Wirkstellen of the core fields, as configured for this library. */
+  @Transactional(readOnly = true)
+  public CoreContextPrefixSettings coreContextPrefix(UUID libraryId, CurrentUser caller) {
+    return CoreContextPrefixSettings.of(requireLibrary(libraryId, caller, AssetRole.VIEWER));
+  }
+
+  /**
+   * Switches the Kontextpraefix-Wirkstelle of Dokumentart and Datum/Stand and hands exactly the
+   * documents carrying a value for a switched field to the Nachlauf; it starts nothing - that is a
+   * separate, explicit release on the administration page.
+   */
+  @Transactional
+  public CoreContextPrefixSettings updateCoreContextPrefix(
+      UUID libraryId, boolean documentType, boolean documentDate, CurrentUser caller) {
+    KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.MANAGER);
+    boolean typeSwitched = library.isCoreContextPrefixDocumentType() != documentType;
+    boolean dateSwitched = library.isCoreContextPrefixDocumentDate() != documentDate;
+    if (library.applyCoreContextPrefix(documentType, documentDate)) {
+      libraryRepository.save(library);
+      if (typeSwitched) {
+        documentRepository.clearContextPrefixStampForField(
+            library.getId(), CoreMetadataField.DOCUMENT_TYPE.key());
+      }
+      if (dateSwitched) {
+        documentRepository.clearContextPrefixStampForField(
+            library.getId(), CoreMetadataField.DOCUMENT_DATE.key());
+      }
+      schemaChanged(library);
+    }
+    return CoreContextPrefixSettings.of(library);
   }
 
   /**

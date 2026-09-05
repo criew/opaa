@@ -1,4 +1,7 @@
-/** Formatting shared by the parts of the "Suche & Indexierung" page. */
+/**
+ * Formatting shared by the parts of the "Suche & Indexierung" page - and, for {@link plural},
+ * by every other place that counts documents in German.
+ */
 
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 

@@ -393,9 +393,8 @@ Kernfeldern die Bibliotheksfelder mit Zitierposition — höchstens zwei, in der
 Position, leere Felder gar nicht.
 
 **Kontextpräfix.** Die Wirkstelle wird gespeichert und ist in der Verwaltungsansicht sichtbar; der
-Präfix selbst und der Reindex-Nachlauf, den eine Änderung daran kostet, kommen mit **#1072**. Ein
-Feld, das heute nur den Kontextpräfix bedient, ist ein gültiger Schemazustand ohne heutige Wirkung —
-das ist der Preis dafür, die Wirkstellen vollständig am Feld zu führen, statt sie später nachzurüsten.
+Präfix selbst und der Nachlauf, den eine Änderung daran kostet, kamen mit **#1072** (siehe
+[Umgesetzt (#1072)](#umgesetzt-1072)).
 
 **Oberfläche.** In den Bibliothekseinstellungen steht der Abschnitt „Metadatenfelder": die Liste mit
 Typ, Wirkstellen und Werteliste, das Anlegen (mit der Pflicht, Filter oder Kontextpräfix zu wählen),
@@ -457,7 +456,12 @@ zugleich Titelquelle ist), erscheint nicht zweimal. **Der Empfänger steht nur i
 in der Fundstellenzeile**: Eine Verteilerliste ist unbegrenzt lang und benennt niemanden, der die
 Fundstelle einordnet — sie würde genau die Angaben aus der einen Zeile verdrängen, die es tun. Die
 Obergrenze von zwei Nicht-Kernfeldern der Belegzeile zählt die Formatfelder mit; knapp ist die
-Zeile, nicht die Feldart.
+Zeile, nicht die Feldart. **Kein Formatfeld steht im Kontextpräfix** (#1072): Die Wirkstelle
+„Kontextpräfix" ist je Feld eine bewusste Entscheidung — bei einem Bibliotheksfeld beim Anlegen, bei
+Dokumentart und Datum/Stand je Bibliothek —, und ein Formatfeld legt niemand an, also hat sie auch
+niemand getroffen. Sie stillschweigend zu setzen hieße, jedem Bestand mit Mails einen Nachlauf
+aufzuerlegen, den er nicht beauftragt hat; der Betreff einer Mail steht ohnehin im deutsch
+beschrifteten Kopfblock des Chunk-Textes und ist damit lexikalisch auffindbar.
 
 **Abgelöst.** Die mail-eigenen Chunk-Schlüssel `mail_from`/`mail_to`/`mail_subject`/`mail_date`, die
 vier Felder `mailFrom`/`mailTo`/`mailSubject`/`mailDate` am `SourceReference` und `formatMailSummary`
@@ -876,9 +880,11 @@ rotierend) — ohne diese Verteilung ist die Schwelle auf einem echten Bestand n
 Schlagworte je Dokument, je höchstens 40 Zeichen (längere werden verworfen, nicht gekürzt),
 Personennamen sind Prompt-Regel und nicht prüfbar. Sie liegen in einer **eigenen Tabelle**
 (`document_keywords`), nicht in `document_metadata_values`: Jede Zeile dort ist ein typisiertes Feld,
-das ein Filter benennen darf — genau das darf ein Schlagwort nie werden. Sie fließen in den
-**Volltextindex** (als Ergänzung des analysierten Textes an `content_tsv`, ohne den gespeicherten
-Chunk-Text zu verändern) und als letztes Segment in den **Kontextpräfix**. Sie tragen **keinen
+das ein Filter benennen darf — genau das darf ein Schlagwort nie werden. Sie fließen als **ein
+Segment des Kontextpräfix** (`Schlagworte: …`) durch dasselbe Gate wie jeder andere
+präfixwirksame Wert (`ChunkContextPrefix#forChunk`, #1072) und erreichen darüber **Einbettung und
+Volltextindex** zugleich; der gespeicherte Chunk-Text bleibt unverändert, und ein geänderter
+Schlagwortsatz verändert den Abdruck genau wie ein geänderter Feldwert. Sie tragen **keinen
 Chunk-Schlüssel**, erscheinen **nicht im Beleg** und sind **nicht zu Bibliotheksfeldern beförderbar**;
 ein Filter, der sie benennt, ist ein Aufruferfehler (400). Alle vier Zusagen sind Testfälle, keine
 Absichtserklärungen.
@@ -886,9 +892,9 @@ Absichtserklärungen.
 **Bestandslauf.** `documents.model_extraction_version` ist die Abtragsmarke des Modellschritts (NULL =
 nie gelaufen). Wird ein Schalter eingeschaltet, nimmt der nächste Bestandslauf den Altbestand genau
 einmal mit; ein Dokument, dessen Aufruf nichts ergab, wird kein zweites Mal bezahlt. Der Lauf liest
-den Text aus den vorhandenen Chunks statt neu zu parsen; dort vergebene Schlagworte erreichen den
-Volltextindex sofort (Neuaufbau der `chunk_full_text`-Zeilen ohne Neu-Einbetten), der Kontextpräfix
-folgt mit dem nächsten Reindex.
+den Text aus den vorhandenen Chunks statt neu zu parsen; ein dort vergebenes Schlagwort oder ein dort
+übernommener präfixwirksamer Wert leert den Abdruck und übergibt das Dokument dem
+Kontextpräfix-Nachlauf (#1072) — dieser eine Lauf zahlt das Neu-Einbetten, der Bestandslauf nie.
 
 **Messung der Extraktionsgüte.** `GET /api/v1/libraries/{id}/metadata/quality` (Leserecht, im
 Rechtekontext, nie zwischengespeichert) liefert je Feld die Anteile deterministisch / modellbefüllt /
@@ -1355,6 +1361,95 @@ Extraktionsversion entsteht:
   [Ingestion-Pipelines, Regel (d)](./ingestion-pipelines.md#d-jeder-chunk-trägt-die-version-des-verfahrens-das-ihn-erzeugt-hat));
   es wird kein zweiter gebaut.
 
+### Umgesetzt (#1072)
+
+Arbeitspaket 6: der Kontextpräfix selbst, die Folgekostenanzeige vor dem Speichern und der selektive
+Nachlauf.
+
+**Präfixbildung an einer Stelle.** `ChunkContextPrefix` bildet `Titel › Fassung 2026 › § 7 Gebühren`
+für den Aufnahmeweg und für den Nachlauf gleichermaßen; Aufbau und Regeln stehen in
+[Ingestion-Pipelines, Umgesetzt (#1072)](./ingestion-pipelines.md#umgesetzt-1072). Der Präfix geht in
+Embedding **und** Volltextindex — Letzterer liest dieselbe `EMBED`-Form, statt ihn ein zweites Mal zu
+bilden —, und er bleibt außerhalb des gespeicherten Chunk-Texts: Der Auszug im Beleg ist unverändert
+der Originalwortlaut, abgesichert durch einen Test, der beides zugleich prüft.
+
+**Welche Felder präfixwirksam sind, entscheidet die Bibliothek.** Der **Titel ist immer**
+präfixwirksam — er ersetzt die bisherige Dateinamens-Humanisierung, und ein Präfix ohne ihn benennt
+nichts. **Dokumentart und Datum/Stand sind je Bibliothek schaltbar und ab Werk aus**, genau wie ein
+Bibliotheksfeld: Die Wirkstelle „Kontextpräfix" ist je Feld eine bewusste Entscheidung, keine
+Voreinstellung für alle Felder. Eine installationsweite Voreinstellung gäbe es nicht umsonst — sie
+machte jede spätere Schemaänderung an diesen Feldern für jede Bibliothek zu einem Reindex-Vorgang, den
+niemand beauftragt hat. Gespeichert wird das an der Bibliothek
+(`core_context_prefix_document_type`/`-document_date`, Migration 027); geändert über `PUT
+…/metadata-fields/core-context-prefix` mit dem Verwaltungsrecht.
+
+**Die Folgekosten stehen vor dem Speichern.** `GET
+/api/v1/libraries/{libraryId}/metadata-fields/change-impact?fieldKey=&change=` beantwortet eine
+geplante Änderung mit betroffenen Dokumenten, betroffenen Chunks, der daraus folgenden Zahl der
+Einbettungsaufrufe (einer je Chunk) und der erwarteten Laufzeit — „4.812 Abschnitte in 12 Dokumenten
+neu einzubetten, rund 40 Minuten". Die Rate dahinter ist die **gemessene** mittlere Dauer je Chunk der
+Einbettungsaufrufe dieses Prozesses (`EmbeddingRateEstimator`); gemessen wird nur, was allein lief —
+die Wandzeiten nebenläufiger Teilchargen überlappen und ergäben summiert eine bis zum
+Nebenläufigkeitsfaktor zu pessimistische Rate. Solange zu wenige Aufrufe gemessen sind, gilt die
+konfigurierte `opaa.indexing.embedding-rate-estimate` (Chunks je Sekunde, Voreinstellung 4). Die
+Antwort nennt, welche der beiden gerade zählt — eine geschätzte Zahl als gemessene auszugeben wäre
+genau die Sorte Angabe, gegen die diese Anzeige gebaut ist.
+
+Die Kostentabelle oben verhält sich damit wie beschrieben: Werteliste erweitern kostet nichts; ein
+**neu angelegtes** Feld kostet zunächst ebenfalls nichts, weil noch kein Dokument einen Wert dafür
+trägt (der Preis entsteht dokumentweise, sobald Werte hineinkommen); ein Feld, das nur filtert oder nur
+im Beleg steht, kostet keinen Einbettungsaufruf; eine Änderung an einem präfixwirksamen Feld kostet
+einen Einbettungsaufruf je Chunk **der Dokumente, die dafür einen Wert tragen**. Die Anzeige erscheint
+im Bestätigungsdialog jeder dieser Änderungen — Feld anlegen, Feld bearbeiten, Feld löschen, Wert
+abbilden, Kernfeld schalten.
+
+**Der angezeigte Preis ist der bezahlte Preis.** Die Auswahl des Nachlaufs steht auf **Dokumentebene**:
+Jedes Dokument trägt in `documents.context_prefix_stamp` den Abdruck des Präfix, mit dem seine Chunks
+zuletzt eingebettet wurden (`ChunkContextPrefix#stampOf` über Titel und präfixwirksame Werte; der
+Strukturkontext hängt am Chunk und kann sich ohne Neu-Chunking nicht ändern). Eine präfixwirksame
+Schemaänderung leert diesen Abdruck bei **genau den Dokumenten, deren Präfix sich dadurch ändert** —
+dieselbe Menge, die die Vorschau zählt. Eine bibliotheksweite Markierung gäbe es nicht umsonst: Sie
+ließe die Vorschau „12 Dokumente" sagen und den Lauf danach 10.000 neu einbetten, und genau diese
+Überraschung ist der Grund, aus dem es die Anzeige überhaupt gibt.
+
+**Das Speichern setzt nichts in Bewegung.** Es markiert nur; gestartet wird der Nachlauf über `POST
+/api/v1/admin/indexing/context-prefix-rerun`, bibliotheksweise, von einer Person mit `SYSTEM_ADMIN` auf
+der Seite „Suche & Indexierung" — dieselbe Schranke wie beim Pipeline-Reindex und beim Bestandslauf,
+und aus demselben Grund: Es ist ein Systemprozess über einen ganzen Bestand. In den
+Bibliothekseinstellungen steht dafür der Hinweis „N Dokumente warten auf Neu-Einbetten" mit Verweis auf
+diese Seite — die Fachperson, die die Änderung veranlasst, ist selten selbst Administratorin.
+
+**Der Nachlauf ist kein zweiter Mechanismus.** Er läuft über dieselbe Chargen-Schleife
+(`DocumentBatchLoop`) wie Bestandslauf und Reindex, und seine Auswahl ist der eine Abdruck.
+Verarbeitungseinheit ist das Dokument, und seine Chunks bleiben: Sie werden **unter ihren eigenen IDs**
+neu eingebettet, Vektorzeile und `chunk_full_text` zusammen, ohne Neu-Chunking und ohne den
+gespeicherten Text anzufassen — Belege und Deep Links überleben. Ändert sich das Zerlegungsverfahren
+selbst, ist das weiterhin der reguläre Pipeline-Reindex nach Regel (d). Die vier Betriebszusagen gelten
+damit unverändert: Die Suche bleibt verfügbar (ein noch nicht neu eingebetteter Chunk bleibt gültig und
+auffindbar), der Mischzustand ist je Bibliothek abfragbar und erscheint in derselben Zustandsübersicht
+wie der übrige Indexzustand (siehe
+[Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)), die Wiederaufnahme ist
+dokumentgranular und idempotent (ein zweiter Lauf über bereits verarbeitete Dokumente kostet keinen
+Einbettungsaufruf), und Anhalten ist schlicht das Ausbleiben des nächsten Aufrufs. Ein Dokument, das
+nicht verarbeitet werden kann, behält alles, was es hatte, und bleibt ausstehend — nichts wird
+zerstört, bevor der Ersatz existiert. Jeder Aufruf wird auditiert
+(`INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED`, ein Eintrag je Aufruf, Objekt ist die Bibliothek).
+
+**Eine manuelle Korrektur eines präfixwirksamen Wertes bettet nicht sofort neu ein** (#1068): Sie leert
+den Abdruck dieses einen Dokuments und gibt es damit an den Nachlauf, dessen Start eine ausdrückliche
+Freigabe bleibt. Die Korrektur selbst bleibt, was sie war — ein JSON-Update der Chunk-Schlüssel ohne
+Modellaufruf. Ein Feld, das nur filtert oder nur im Beleg steht, lässt den Abdruck unangetastet.
+
+**Der Bestand vor #1072 trägt keinen Abdruck** und gilt damit unmittelbar nach dem Upgrade als
+ausstehend, ohne dass jemand etwas geändert hätte. Das ist der ehrliche Zustand — die Kernfeld-Titel
+gab es beim Einbetten dieser Chunks noch nicht —, aber es heißt, dass die erste Administratorin nach
+dem Upgrade „N Dokumente warten auf Neu-Einbetten" für den ganzen Bestand liest. Wann dieser eine
+Nachlauf gefahren wird, entscheidet sie; die Suche läuft bis dahin über den alten Stand.
+
+**Bewusst nicht gebaut.** Kein automatischer Start nach einer Schemaänderung; keine bibliotheksweite
+Markierung neben dem Abdruck je Dokument; keine installationsweite Voreinstellung für präfixwirksame
+Kernfelder; kein Präfix im gespeicherten Chunk-Text.
+
 ## Wirkstelle 3: Beleg-Anzeige
 
 Ein Beleg ist heute Dokument plus Fundstelle. Mit Metadaten wird er einordbar:
@@ -1617,8 +1712,8 @@ solange keine Füllstandsverteilung eines echten Bestands vorliegt.
 | 2 | **Deterministischer Bestandslauf** über den Altbestand, bibliotheksweise, mit den Nachlauf-Zusagen — **umgesetzt mit #1067**, siehe [Umgesetzt (#1067)](#umgesetzt-1067) | 1 | Die Kernfelder gelten für den vorhandenen Bestand, nicht nur für künftige Dokumente |
 | 3 | Manuelle Korrektur, Sammelzuweisung, Audit-Ereignis — **umgesetzt mit #1068**, siehe [Umgesetzt (#1068)](#umgesetzt-1068) — und Pflege-Anker („N ohne Wert", absolut und anteilig) samt drittem Zustand — **umgesetzt mit #1069**, siehe [Umgesetzt (#1069)](#umgesetzt-1069) | 1, 2 | Die Leerwert-Regel wird behebbar statt Dauerzustand |
 | 4 | Metadatenfilter in beiden Suchpfaden, mit Füllstandsanzeige je Feld — **vollständig umgesetzt**: Filter, API, Oberfläche und Füllstand mit #1070 (Teil 1), siehe [Umgesetzt (#1070, Teil 1)](#umgesetzt-1070-teil-1); Benchmark-Abnahme mit #1070 (Teil 2), siehe [`retrieval-benchmark.md`](./retrieval-benchmark.md#umgesetzt-1070-teil-2) | 2, 3, Hybrid-Suche AP 3 | Löst Szenario 9; die `metadata_filter`-Fälle werden erstmals lösbar |
-| 5 | Bibliotheksfelder: Schemakonfiguration je Bibliothek, Wertelisten mit bestätigter Abbildung | 1, 4 | Fassung und Rechtsebene werden führbar |
-| 6 | Metadaten im Kontextpräfix, mit Folgekostenanzeige und selektivem Nachlauf | 5, Ingestion Regel (b)/(d) | Wirkung auch ohne gesetzten Filter |
+| 5 | Bibliotheksfelder: Schemakonfiguration je Bibliothek, Wertelisten mit bestätigter Abbildung — **umgesetzt mit #1071**, siehe [Umgesetzt (#1071)](#umgesetzt-1071) | 1, 4 | Fassung und Rechtsebene werden führbar |
+| 6 | Metadaten im Kontextpräfix, mit Folgekostenanzeige und selektivem Nachlauf — **umgesetzt mit #1072**, siehe [Umgesetzt (#1072)](#umgesetzt-1072) | 5, Ingestion Regel (b)/(d) | Wirkung auch ohne gesetzten Filter |
 | 7 | Modellgestützte Extraktion mit Konfidenz, je Bibliothek abschaltbar | 1, 5 | Felder, die deterministisch nicht erreichbar sind |
 | 8 | Freie Schlagworte (optional je Bibliothek) | 7, Volltextpfad | Zusätzlicher Fundweg bei Vokabellücken |
 | 9 | Geführter Assistent | 5, 7 | Bedienkomfort beim Anlegen; keine neue Fähigkeit |

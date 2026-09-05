@@ -195,9 +195,7 @@ describe('SearchIndexingAdminPage', () => {
       within(row as HTMLElement).getByLabelText(
         'Modellgestützte Extraktion: Satzungen & Gebuehrenordnungen',
       ),
-    ).toHaveTextContent(
-      'Modellaufrufe 12 · übernommen 8 · verworfen 3 · Fehler 1 · Schlagworte 20',
-    )
+    ).toHaveTextContent('Modellaufrufe 12 · übernommen 8 · verworfen 3 · Fehler 1 · Schlagworte 20')
     expect(
       within(row as HTMLElement).getByRole('button', {
         name: 'Kernfelder nachrüsten: Satzungen & Gebuehrenordnungen',
@@ -267,8 +265,66 @@ describe('SearchIndexingAdminPage', () => {
     expect(batchCalls).toEqual([50, 50])
     expect(statusLoads).toBeGreaterThanOrEqual(3)
     expect(
-      screen.queryByRole('button', { name: /Satzungen & Gebuehrenordnungen$/ }),
+      screen.queryByRole('button', { name: /^Kernfelder nachrüsten: Satzungen/ }),
     ).not.toBeInTheDocument()
+  })
+
+  it('shows the Kontextpräfix Mischzustand and drives its Nachlauf in batches', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const batchCalls: number[] = []
+    server.use(
+      http.post('/api/v1/admin/indexing/context-prefix-rerun', async ({ request }) => {
+        const body = (await request.json()) as { libraryId: string; batchSize: number }
+        expect(body.libraryId).toBe('lib-satzungen')
+        batchCalls.push(body.batchSize)
+        const done = batchCalls.length >= 2
+        return HttpResponse.json({
+          processedDocuments: done ? 0 : 3,
+          skippedDocuments: 0,
+          done,
+        })
+      }),
+      http.get('/api/v1/admin/search/status', () => {
+        const [satzungen, ...rest] = mockSearchStatus.libraries
+        const caughtUp = batchCalls.length > 0
+        return HttpResponse.json({
+          ...mockSearchStatus,
+          libraries: [
+            {
+              ...satzungen,
+              contextPrefixRerun: {
+                ...satzungen.contextPrefixRerun,
+                currentDocuments: caughtUp ? 11 : 8,
+                pendingDocuments: caughtUp ? 0 : 3,
+                complete: caughtUp,
+              },
+            },
+            ...rest,
+          ],
+        })
+      }),
+    )
+
+    renderWithProviders(<SearchIndexingAdminPage />, { withRouter: true })
+    const table = await screen.findByRole('table', { name: 'Indexstatus je Bibliothek' })
+    const row = within(table).getByText('Satzungen & Gebuehrenordnungen').closest('tr')
+    // The Mischzustand is visible in the same table as the rest of the index state.
+    expect(within(row as HTMLElement).getByText('8 / 11 mit aktuellem Präfix')).toBeInTheDocument()
+    expect(
+      within(row as HTMLElement).getByText('3 Dokumente warten auf Neu-Einbetten'),
+    ).toBeInTheDocument()
+
+    const user = userEvent.setup()
+    await user.click(
+      within(row as HTMLElement).getByRole('button', {
+        name: 'Neu einbetten: Satzungen & Gebuehrenordnungen',
+      }),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('11 / 11 mit aktuellem Präfix')).toBeInTheDocument()
+    })
+    expect(batchCalls).toEqual([50, 50])
   })
 
   it('pausing a run stops after the batch in flight and offers to continue', async () => {

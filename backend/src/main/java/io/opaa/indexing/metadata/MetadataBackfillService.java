@@ -212,8 +212,8 @@ public class MetadataBackfillService {
 
   /**
    * Step 2 for one document of the call's library, on the text already in the vector store rather
-   * than on a fresh parse. Keywords assigned here reach the full-text index right away; the
-   * Kontextpräfix follows with the next re-index, since changing it means re-embedding.
+   * than on a fresh parse. A value or keyword found here moves the Kontextpräfix, which hands the
+   * document to the Kontextpräfix-Nachlauf; that run pays the re-embedding, this one never does.
    */
   private void runModelStep(Document document) {
     KnowledgeLibrary library = currentLibrary.get();
@@ -225,10 +225,7 @@ public class MetadataBackfillService {
             ? documentMetadataService.coreMetadataFor(document.getId()).title()
             : document.getFileName();
     String text = vectorChunkStore.documentText(document.getId(), ModelExtractionPrompt.TEXT_LIMIT);
-    ModelExtractionOutcome outcome = modelMetadataExtractor.extract(document, library, title, text);
-    if (!outcome.keywords().isEmpty()) {
-      vectorChunkStore.reindexFullText(document.getId(), outcome.fullTextSupplement());
-    }
+    modelMetadataExtractor.extract(document, library, title, text);
   }
 
   /** A document below the current extraction version. */

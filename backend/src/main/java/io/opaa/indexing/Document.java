@@ -155,6 +155,36 @@ public class Document {
   @Column(name = "model_extraction_version", insertable = false, updatable = false)
   private Integer modelExtractionVersion;
 
+  /**
+   * The fingerprint of the Kontextpraefix this document's chunks were last embedded with (#1072),
+   * or {@code null} when it waits for the Nachlauf - which is the run's whole selection. Written
+   * only through {@link DocumentRepository#recordContextPrefix} and cleared by exactly the schema
+   * changes and manual corrections that alter this document's prefix.
+   */
+  @Column(name = "context_prefix_stamp", insertable = false, updatable = false, length = 64)
+  private String contextPrefixStamp;
+
+  /**
+   * Whether the ingest gave this document a Kontextpraefix at all - an RSS entry without a headline
+   * gets none (#1072). Recorded so the Nachlauf honours the same decision instead of guessing it
+   * from the file name; {@code null} for a document last written before this was recorded.
+   */
+  @Column(name = "context_prefix_eligible", insertable = false, updatable = false)
+  private Boolean contextPrefixEligible;
+
+  /**
+   * The title the ingest put into this document's Kontextpraefix (#1072) - a Confluence hierarchy
+   * path, a humanised file name, an RSS headline - or {@code null} when it got no prefix. Read back
+   * by the Nachlauf through {@link ChunkContextPrefix#titleAtRest}, so it reproduces the ingest's
+   * own choice instead of deriving a different one.
+   */
+  @Column(
+      name = "context_prefix_title",
+      insertable = false,
+      updatable = false,
+      columnDefinition = "text")
+  private String contextPrefixTitle;
+
   protected Document() {}
 
   public Document(String fileName, String filePath, String contentType, Long fileSize) {
@@ -364,6 +394,18 @@ public class Document {
 
   public Integer getModelExtractionVersion() {
     return modelExtractionVersion;
+  }
+
+  public String getContextPrefixStamp() {
+    return contextPrefixStamp;
+  }
+
+  public Boolean getContextPrefixEligible() {
+    return contextPrefixEligible;
+  }
+
+  public String getContextPrefixTitle() {
+    return contextPrefixTitle;
   }
 
   /**

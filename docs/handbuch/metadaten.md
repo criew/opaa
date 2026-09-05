@@ -212,9 +212,10 @@ protokolliert (je Bibliothek die 1.000 jüngsten), damit die Schwelle an einem e
 bewertbar bleibt.
 
 **Freie Schlagworte.** Ist der zweite Schalter an, vergibt dasselbe Modell im selben Aufruf bis zu
-fünf Schlagworte je Dokument, je höchstens 40 Zeichen. Sie fließen in den **Volltextindex** und in
-den **Kontextpräfix** — eine Frage in Alltagssprache findet damit ein Dokument in Amtssprache. Was
-sie nicht tun:
+fünf Schlagworte je Dokument, je höchstens 40 Zeichen. Sie stehen als eigenes Segment im
+**Kontextpräfix** und erreichen darüber Einbettung und **Volltextindex** — eine Frage in
+Alltagssprache findet damit ein Dokument in Amtssprache. Der gespeicherte Text des Dokuments bleibt
+unverändert. Was sie nicht tun:
 
 - **Sie filtern nie** — weder in der Suche noch als Facette; ein Filter, der ein Schlagwort benennt,
   wird abgewiesen.
@@ -253,8 +254,8 @@ Was ein Lauf tut:
 - **Der Modellschritt läuft mit**, wenn einer der beiden Schalter aus Abschnitt 5.3 an ist: Ein
   eingeschalteter Schalter macht den vorhandenen Bestand genau einmal fällig, und ein Dokument,
   dessen Aufruf nichts ergab, wird kein zweites Mal bezahlt. Gefragt wird nur für leer gebliebene
-  Felder. Dort vergebene Schlagworte erreichen den Volltextindex sofort; in den Kontextpräfix
-  gelangen sie mit dem nächsten Reindex.
+  Felder. Ein dort vergebenes Schlagwort ändert den Kontextpräfix und stellt das Dokument damit in
+  den Kontextpräfix-Nachlauf; erst dieser bettet neu ein — der Bestandslauf selbst nie.
 - Eine seit der Indizierung **geänderte Datei** wird übersprungen (Prüfsumme gegen die Zeile): Die
   Chunks stammen aus dem alten Inhalt, und die Werte eines anderen Textes gehörten nicht daran. Der
   nächste Indexierungslauf nimmt sie neu auf und ermittelt dabei.

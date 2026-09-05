@@ -35,18 +35,21 @@ public class VectorChunkStore {
   private final BatchingStrategy batchingStrategy;
   private final VectorStoreWriter vectorStoreWriter;
   private final FullTextChunkStore fullTextChunkStore;
+  private final EmbeddingRateEstimator embeddingRateEstimator;
 
   public VectorChunkStore(
       VectorStore vectorStore,
       EmbeddingModel embeddingModel,
       BatchingStrategy batchingStrategy,
       VectorStoreWriter vectorStoreWriter,
-      FullTextChunkStore fullTextChunkStore) {
+      FullTextChunkStore fullTextChunkStore,
+      EmbeddingRateEstimator embeddingRateEstimator) {
     this.vectorStore = vectorStore;
     this.embeddingModel = embeddingModel;
     this.batchingStrategy = batchingStrategy;
     this.vectorStoreWriter = vectorStoreWriter;
     this.fullTextChunkStore = fullTextChunkStore;
+    this.embeddingRateEstimator = embeddingRateEstimator;
   }
 
   /**
@@ -57,34 +60,27 @@ public class VectorChunkStore {
    * and holding a pooled connection for its duration risks exhausting the pool.
    */
   public void addChunks(List<Document> chunks) {
-    addChunks(chunks, null);
-  }
-
-  /**
-   * {@link #addChunks(List)} with the document's freie Schlagworte as a full-text-only supplement
-   * (metadata-schema.md, Teil II (c)): they are analysed into {@code content_tsv} and reach no
-   * chunk text and no chunk metadata key, so they can never be filtered on.
-   */
-  public void addChunks(List<Document> chunks, String fullTextSupplement) {
     if (chunks.isEmpty()) {
       return;
     }
-    List<float[]> embeddings =
-        embeddingModel.embed(chunks, EmbeddingOptions.builder().build(), batchingStrategy);
-    vectorStoreWriter.writeEmbeddedChunks(chunks, embeddings, fullTextSupplement);
+    // Measured around the embedding round trip only, never the write: the Folgekosten estimate
+    // names the cost of embedding calls, and a slow disk must not make a reindex look expensive.
+    long measurementToken = embeddingRateEstimator.started();
+    long startedAt = System.nanoTime();
+    List<float[]> embeddings;
+    try {
+      embeddings =
+          embeddingModel.embed(chunks, EmbeddingOptions.builder().build(), batchingStrategy);
+    } finally {
+      embeddingRateEstimator.record(chunks.size(), System.nanoTime() - startedAt, measurementToken);
+    }
+    vectorStoreWriter.writeEmbeddedChunks(chunks, embeddings);
   }
 
   /**
-   * Rebuilds the full-text rows of an already indexed document with {@code supplement} appended -
-   * what a keyword assigned by the Bestandslauf needs to become findable without re-embedding.
-   *
-   * @return the number of chunks re-indexed
+   * The stored text of a document, its chunks in order and capped at {@code limit} characters - the
+   * model step's input for a document whose file is not being parsed anyway (the Bestandslauf).
    */
-  public int reindexFullText(UUID documentId, String supplement) {
-    return vectorStoreWriter.reindexFullText(documentId, supplement);
-  }
-
-  /** The stored text of a document, its chunks in order and capped at {@code limit} characters. */
   public String documentText(UUID documentId, int limit) {
     return vectorStoreWriter.documentText(documentId, limit);
   }

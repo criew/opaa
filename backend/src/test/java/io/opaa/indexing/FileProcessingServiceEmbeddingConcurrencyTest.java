@@ -125,7 +125,8 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
             embeddingModel,
             batchingStrategy,
             vectorStoreWriter,
-            fullTextChunkStore);
+            fullTextChunkStore,
+            new EmbeddingRateEstimator(4.0));
     return new FileProcessingService(
         TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
         documentRepository,
@@ -320,9 +321,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
 
     @Override
     public void writeEmbeddedChunks(
-        List<org.springframework.ai.document.Document> chunks,
-        List<float[]> embeddings,
-        String fullTextSupplement) {
+        List<org.springframework.ai.document.Document> chunks, List<float[]> embeddings) {
       int current = concurrentWriteCalls.incrementAndGet();
       maxConcurrentWriteCalls.updateAndGet(max -> Math.max(max, current));
       threadNames.add(Thread.currentThread().getName());
@@ -357,9 +356,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
 
     @Override
     public void writeEmbeddedChunks(
-        List<org.springframework.ai.document.Document> chunks,
-        List<float[]> embeddings,
-        String fullTextSupplement) {
+        List<org.springframework.ai.document.Document> chunks, List<float[]> embeddings) {
       throw new RuntimeException("embedding call blew up");
     }
   }

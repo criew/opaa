@@ -20,6 +20,8 @@ import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.NotFoundException;
+import io.opaa.indexing.ContextPrefixRerunResult;
+import io.opaa.indexing.ContextPrefixRerunService;
 import io.opaa.indexing.LowChunkDocumentAuditService;
 import io.opaa.indexing.PipelineReindexResult;
 import io.opaa.indexing.PipelineReindexService;
@@ -67,6 +69,7 @@ class IndexingAdminControllerTest {
   @MockitoBean private LowChunkDocumentAuditService lowChunkDocumentAuditService;
   @MockitoBean private PipelineReindexService pipelineReindexService;
   @MockitoBean private MetadataBackfillService metadataBackfillService;
+  @MockitoBean private ContextPrefixRerunService contextPrefixRerunService;
   @MockitoBean private DocumentPipelineRegistry pipelineRegistry;
   @MockitoBean private AuditEventRecorder auditEventRecorder;
   @MockitoBean private UserService userService;
@@ -382,6 +385,55 @@ class IndexingAdminControllerTest {
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.error").value("Bibliothek nicht gefunden"));
     verify(auditEventRecorder, org.mockito.Mockito.never()).recordUserAction(any());
+  }
+
+  @Test
+  void contextPrefixRerunProcessesOneBatchAndRecordsTheTriggeringCall() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    when(contextPrefixRerunService.rerunBatch(actingAdminOrganizationId, libraryId, 5))
+        .thenReturn(new ContextPrefixRerunResult(3, 1));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/context-prefix-rerun")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + libraryId + "\",\"batchSize\":5}")
+                .with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.processedDocuments").value(3))
+        .andExpect(jsonPath("$.skippedDocuments").value(1))
+        .andExpect(jsonPath("$.done").value(false));
+
+    ArgumentCaptor<AuditEvent> auditCaptor = ArgumentCaptor.forClass(AuditEvent.class);
+    verify(auditEventRecorder).recordUserAction(auditCaptor.capture());
+    AuditEvent event = auditCaptor.getValue();
+    assertThat(event.eventType()).isEqualTo(AuditEventType.INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED);
+    assertThat(event.organizationId()).isEqualTo(actingAdminOrganizationId);
+    assertThat(event.actorUserId()).isEqualTo(actingAdminId);
+    assertThat(event.objectId()).isEqualTo(libraryId);
+    assertThat(event.after())
+        .containsEntry("processedDocuments", 3)
+        .containsEntry("skippedDocuments", 1);
+  }
+
+  @Test
+  void contextPrefixRerunIsSystemAdminOnlyAndValidatesItsBatchSize() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/context-prefix-rerun")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + UUID.randomUUID() + "\"}")
+                .with(asRegularUser()))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/context-prefix-rerun")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + UUID.randomUUID() + "\",\"batchSize\":101}")
+                .with(asAdmin()))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error").value("batchSize muss zwischen 1 und 100 liegen, war 101"));
+    verifyNoInteractions(contextPrefixRerunService);
   }
 
   @Test
