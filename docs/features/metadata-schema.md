@@ -1,6 +1,10 @@
 # Metadatenschema für Wissensbibliotheken
 
-> **Status: Entwurf zur Review.**
+> **Status: umgesetzt bis auf Arbeitspaket 9** (Stand 05.09.2026, Epic #1065). Die Arbeitspakete 1
+> bis 8 sind gebaut und gemergt; jedes trägt unten seinen eigenen „Umgesetzt"-Abschnitt. Offen ist
+> allein der geführte Assistent (Paket 9, Issue #1362), der keine neue Fähigkeit hinzufügt. Die
+> modellgestützte Extraktion ist gebaut, aber **nicht abgenommen** — siehe den Abnahmestand am
+> Ende von [Umgesetzt (#1073)](#umgesetzt-1073).
 >
 > Diese Spezifikation setzt die Maintainer-Entscheidungen um, die aus Abschnitt 3 des
 > Diskussionspapiers
@@ -34,8 +38,12 @@ getrennt ausgewiesenen Fehlerrichtungen (#1070, Teil 2, siehe
 [`retrieval-benchmark.md`, „Umgesetzt (#1070, Teil 2)"](./retrieval-benchmark.md#umgesetzt-1070-teil-2)),
 **und Arbeitspaket 5**: die Bibliotheksfelder mit kontrolliertem Vokabular, bestätigter
 Wertelisten-Abbildung, Filter, Beleg-Anzeige und Verwaltungsansicht (#1071, siehe
-[Umgesetzt (#1071)](#umgesetzt-1071)). Der Kontextpräfix-Anteil der Wirkstellen (#1072) und die
-Modell-Extraktion sind noch nicht gebaut.
+[Umgesetzt (#1071)](#umgesetzt-1071)), **Arbeitspaket 6**: Metadaten im Kontextpräfix mit
+Folgekostenanzeige und selektivem Nachlauf (#1072, siehe [Umgesetzt (#1072)](#umgesetzt-1072)), **und
+die Arbeitspakete 7 und 8**: modellgestützte Extraktion, freie Schlagworte und die Messung der
+Extraktionsgüte (#1073, siehe [Umgesetzt (#1073)](#umgesetzt-1073)) — Letztere gebaut, aber nach der
+Handstichprobe **nicht abgenommen**. Nicht gebaut ist allein Arbeitspaket 9, der geführte Assistent
+(Issue #1362).
 
 ---
 
@@ -835,7 +843,9 @@ Dokumentinhalte an ein Modell übergibt. Er wird deshalb als eigenständig steue
 ### Umgesetzt (#1073)
 
 Arbeitspaket 7 und 8 — die modellgestützte Extraktion (Schritt 2 der Reihenfolge), die freien
-Schlagworte und die eigenständige Messung der Extraktionsgüte.
+Schlagworte und die eigenständige Messung der Extraktionsgüte. Die Architekturentscheidungen dieses
+Schnitts stehen in
+[ADR-0026](../decisions/0026-kontextpraefix-abdruck-und-modellgestuetzte-extraktion.md).
 
 **Zwei Schalter je Bibliothek, beide voreingestellt aus** (`knowledge_libraries.model_extraction_enabled`,
 `keywords_enabled`, Migration 028): `GET`/`PUT /api/v1/libraries/{id}/metadata/extraction-settings`
@@ -867,7 +877,9 @@ aber Kosten, Laufzeit und die Menge dessen, was das Haus verlässt.
 `ModelMetadataExtractor.CONFIDENCE_THRESHOLD`) **und** einem Code aus der angebotenen Liste. Ein Wert
 außerhalb der Liste wird unabhängig von der Konfidenz verworfen — keine Abbildung auf den
 nächstähnlichen Wert. Übernommene Werte tragen `origin = DERIVED`, die gelieferte Konfidenz, die
-Modell-Kennung und die Extraktionsversion; ein manueller Wert wird nie berührt. Die Schwelle darf
+Modell-Kennung und die **eigene Extraktionsversion des Modellschritts** — nie die des
+deterministischen Schritts, sonst behauptete ein modellbefüllter Wert nach einer korrigierten Regel
+in Schritt 1 einen Prompt, den es nie gab; ein manueller Wert wird nie berührt. Die Schwelle darf
 nach einer Messung nur gesenkt werden, nie stillschweigend erhöht, und jede Änderung ist ein Commit
 mit Datum und gemessener Verteilung.
 
@@ -930,8 +942,22 @@ manuell / „kein Wert ermittelbar" / leer plus das Zählwerk; die Bibliotheksei
 neben dem Pflege-Anker. `GET /api/v1/libraries/{id}/metadata/sample?size=100` (Verwaltungsrecht)
 liefert die Grundlage der Handauswertung: Dokumente in stabiler Reihenfolge mit Titelzeile und jedem
 Wert samt Herkunft, Konfidenz und Modell — ohne Schlagworte, die keine Aussage tragen, für die das
-Produkt geradesteht. **Offen bleibt die 100er-Handstichprobe der QA-Rolle**; sie läuft auf der
-Demo-Instanz und ist nicht Teil dieses Schnitts.
+Produkt geradesteht.
+
+**Abnahmestand: die Handstichprobe ist gelaufen, die Modell-Extraktion ist nicht abgenommen.** Die
+verbindliche 100er-Handstichprobe der QA-Rolle liegt seit dem 05.09.2026 vor
+(`eval/reports/metadata-extraction-sample-2026-09-05.md`, Demo-Instanz, Modell `claude-haiku-4-5`,
+Schwelle 0,80). Ergebnis: Von 49 modellbefüllten Dokumentart-Werten sind **46 falsch** (93,9 %),
+während die deterministische Extraktion auf derselben Stichprobe fehlerfrei ist. Die
+Kalibrierungsregel („Anteil falsch trotz Konfidenz ≥ 0,80 unter 5 %") ist um mehr als das
+Achtzehnfache verfehlt, und die Konfidenz ist **nicht trennscharf** — sie trennt „das Modell hat
+geantwortet" von „das Modell hat sich enthalten", nicht richtig von falsch. Ursache ist die
+Vokabularlücke: Für 63 der 100 Dokumente gibt es keinen passenden Wert, und das Modell greift dann
+zum nächstbesten. Folgen, alle in **#1359**: Schwelle auf 0,90 (nur Anheben ist ohne neue Messung
+erlaubt), Vokabular um Verwaltungswerte erweitern, Prompt um Negativbeispiele. Der Schalter bleibt
+**voreingestellt aus**, und auf der Demo ist er abgeschaltet. Zwei Befunde derselben Stichprobe
+betreffen die deterministische Extraktion (Generator-Voreinstellungen als Datum, zu früher
+Titel-Fallback) und liegen als **#1360** außerhalb dieses Epics.
 
 **Abweichung.** Der Textdeckel (4.000 Zeichen), die Speicherform der Schlagworte (eigene Tabelle),
 der Deckel des Verwerfungsprotokolls (1.000 Zeilen je Bibliothek, rotierend alle 100 Aufrufe) und die
@@ -1390,10 +1416,20 @@ Extraktionsversion entsteht:
   [Ingestion-Pipelines, Regel (d)](./ingestion-pipelines.md#d-jeder-chunk-trägt-die-version-des-verfahrens-das-ihn-erzeugt-hat));
   es wird kein zweiter gebaut.
 
+**Eine benannte Ausnahme: die Umschlüsselung einer Werteliste.** Sie läuft heute als **eine
+Transaktion** — der Listeneintrag wird erst gelöscht, wenn jedes Dokument umgeschrieben ist — und ist
+damit weder dokumentgranular wiederaufnehmbar noch je Bibliothek im Fortschritt abfragbar. Das ist
+bewusst so: Sie ist die einzige Stelle, an der ein Zwischenzustand den Zustand „Dokument trägt einen
+Wert, den es im Schema nicht mehr gibt" erzeugen könnte, und die Regel „nicht einmal kurz" wiegt hier
+schwerer als die Wiederaufnahme. Der Preis ist eine lange Schreibtransaktion, sobald zehntausende
+Dokumente denselben Code tragen; die zweiphasige Ablösung (Listeneintrag zuerst stilllegen, dann
+chargenweise umschlüsseln, dann löschen) ist als **Issue #1361** außerhalb dieses Epics erfasst.
+
 ### Umgesetzt (#1072)
 
 Arbeitspaket 6: der Kontextpräfix selbst, die Folgekostenanzeige vor dem Speichern und der selektive
-Nachlauf.
+Nachlauf. Die Architekturentscheidungen dieses Schnitts stehen in
+[ADR-0026](../decisions/0026-kontextpraefix-abdruck-und-modellgestuetzte-extraktion.md).
 
 **Präfixbildung an einer Stelle.** `ChunkContextPrefix` bildet `Titel › Fassung 2026 › § 7 Gebühren`
 für den Aufnahmeweg und für den Nachlauf gleichermaßen; Aufbau und Regeln stehen in
@@ -1750,9 +1786,9 @@ solange keine Füllstandsverteilung eines echten Bestands vorliegt.
 | 4 | Metadatenfilter in beiden Suchpfaden, mit Füllstandsanzeige je Feld — **vollständig umgesetzt**: Filter, API, Oberfläche und Füllstand mit #1070 (Teil 1), siehe [Umgesetzt (#1070, Teil 1)](#umgesetzt-1070-teil-1); Benchmark-Abnahme mit #1070 (Teil 2), siehe [`retrieval-benchmark.md`](./retrieval-benchmark.md#umgesetzt-1070-teil-2) | 2, 3, Hybrid-Suche AP 3 | Löst Szenario 9; die `metadata_filter`-Fälle werden erstmals lösbar |
 | 5 | Bibliotheksfelder: Schemakonfiguration je Bibliothek, Wertelisten mit bestätigter Abbildung — **umgesetzt mit #1071**, siehe [Umgesetzt (#1071)](#umgesetzt-1071) | 1, 4 | Fassung und Rechtsebene werden führbar |
 | 6 | Metadaten im Kontextpräfix, mit Folgekostenanzeige und selektivem Nachlauf — **umgesetzt mit #1072**, siehe [Umgesetzt (#1072)](#umgesetzt-1072) | 5, Ingestion Regel (b)/(d) | Wirkung auch ohne gesetzten Filter |
-| 7 | Modellgestützte Extraktion mit Konfidenz, je Bibliothek abschaltbar | 1, 5 | Felder, die deterministisch nicht erreichbar sind |
-| 8 | Freie Schlagworte (optional je Bibliothek) | 7, Volltextpfad | Zusätzlicher Fundweg bei Vokabellücken |
-| 9 | Geführter Assistent | 5, 7 | Bedienkomfort beim Anlegen; keine neue Fähigkeit |
+| 7 | Modellgestützte Extraktion mit Konfidenz, je Bibliothek abschaltbar — **umgesetzt mit #1073**, siehe [Umgesetzt (#1073)](#umgesetzt-1073); gebaut, aber **nicht abgenommen** (Handstichprobe 05.09.2026, Nachkalibrierung in #1359) | 1, 5 | Felder, die deterministisch nicht erreichbar sind |
+| 8 | Freie Schlagworte (optional je Bibliothek) — **umgesetzt mit #1073**, siehe [Umgesetzt (#1073)](#umgesetzt-1073) | 7, Volltextpfad | Zusätzlicher Fundweg bei Vokabellücken |
+| 9 | Geführter Assistent — **offen**, als Issue #1362 aus dem Epic herausgeführt | 5, 7 | Bedienkomfort beim Anlegen; keine neue Fähigkeit |
 
 Paket 2 ist kein Nachzügler, sondern die Bedingung dafür, dass Paket 4 überhaupt beurteilbar ist: Ein
 Filter auf Felder, die nur bei den seit gestern aufgenommenen Dokumenten befüllt sind, lässt sich
@@ -1846,15 +1882,20 @@ Jede Zeile ist eine Entscheidung, keine Auslassung.
 
 Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung entschieden werden müssen.
 
-- **Ab welcher Konfidenz wird ein modellbefüllter Wert übernommen?** Die Regel „unsicher bleibt leer"
-  steht fest, die Schwelle nicht. Sie ist erst mit gemessenen Konfidenzverteilungen auf einem echten
-  Bestand festlegbar — und sie muss, wie jede Benchmark-Schwelle, **vor** dem ersten Variantenvergleich
-  festgelegt und committet sein.
+- ~~**Ab welcher Konfidenz wird ein modellbefüllter Wert übernommen?**~~ **Entschieden.** Vorab
+  festgelegt und committet nach [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md),
+  Maintainer-Freigabe 05.09.2026: **0,80**. Die erste Messung an einem echten Bestand liegt vor —
+  die Handstichprobe über 100 Dokumente (`eval/reports/metadata-extraction-sample-2026-09-05.md`)
+  weist die gemessene Verteilung aus (fünf Konfidenzstufen, 93,9 % falsch oberhalb 0,80, davon
+  100 % falsch auf der Stufe 0,85). Die Kalibrierungsregel verlangt daraus eine Anhebung auf
+  **0,90**; sie erfolgt mit #1359, zusammen mit der eigentlichen Ursache — der Vokabularlücke.
 - **Darf ein Filterwert aus der Frage abgeleitet werden, und wenn ja, wie sichtbar?** Die
   Ableitung ist der eigentliche Bedienkomfort („Galt das auch 2024?" ohne Filterklick), und ihr
   Fehlerfall ist besonders unangenehm. Denkbar ist ein Mittelweg: Ableiten, aber sichtbar als
-  gesetzter Filter anzeigen und mit einem Klick entfernbar machen. Zu entscheiden nach den ersten
-  Messwerten des gesetzten Filters, nicht davor.
+  gesetzter Filter anzeigen und mit einem Klick entfernbar machen. **Entschieden:** Die Messwerte des
+  gesetzten Filters liegen seit #1070 (Teil 2) vor; die Ableitung wird als eigenes Vorhaben verfolgt
+  (Issue #1363, außerhalb dieses Epics) und behält den sichtbaren, entfernbaren Filter als
+  Bedingung.
 - **Wie verhalten sich Fassungen zu den Gültigkeitszuständen des Dokumentlebenszyklus?**
   „archiviert"/„abgelaufen" (siehe
   [Ablauf und Archivierung](./data-indexing-rag.md#ablauf-und-archivierung-von-dokumenten--phase-2))
@@ -1862,12 +1903,17 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   Zustand **nicht** in ein Schemafeld dupliziert wird, ist entschieden; wie beide in derselben Abfrage
   zusammenwirken — insbesondere ob eine Fassungsfrage abgelaufene Dokumente erreichen darf — ist es
   nicht.
-- **Woher kommt der Wertevorrat für `Rechtsebene` und `Dokumentart` bei einer Erweiterung?** Die
-  ausgelieferte Liste ist je Installation erweiterbar. Offen ist, ob eine Erweiterung auf
-  Organisationsebene oder je Bibliothek gilt — Ersteres hält das Vokabular zusammen, Letzteres passt
-  zur Ebene-3-Zuordnung des übrigen Schemas.
-- **Welcher Füllstand genügt, damit ein Kernfeld als Filter angeboten wird?** Vorab committet
-  (Koordinator-Festlegung 04.09.2026, siehe [Umgesetzt (#1070, Teil 1)](#umgesetzt-1070-teil-1)):
-  Dokumentart 0,90, Datum/Stand 0,75. Offen bleibt die Kalibrierung an der Demo-Instanz nach dem
-  Nachzug von #1263 — ob die Werte dort tragen, zeigt erst der Füllstandsnachweis auf dem echten
-  Bestand.
+- **Woher kommt der Wertevorrat für `Rechtsebene` und `Dokumentart` bei einer Erweiterung?**
+  **Teilweise entschieden:** Das Dokumentart-Vokabular ist heute **installationsweit** und wird über
+  Seed-Zeilen erweitert (`document_type_vocabulary`); die Bibliotheksfelder tragen ihre Wertelisten
+  dagegen je Bibliothek (#1071) — die Zuordnungsfrage stellt sich damit nur noch für die
+  Dokumentart. Die erste inhaltliche Erweiterung um Verwaltungswerte
+  (`LEISTUNGSBESCHREIBUNG`, `PRESSEMITTEILUNG`, `FAQ_MERKBLATT`) ist mit #1359 beauftragt; ob eine
+  Erweiterung künftig je Organisation gelten soll, bleibt offen.
+- ~~**Welcher Füllstand genügt, damit ein Kernfeld als Filter angeboten wird?**~~ **Entschieden.**
+  Vorab committet (Koordinator-Festlegung 04.09.2026, siehe
+  [Umgesetzt (#1070, Teil 1)](#umgesetzt-1070-teil-1)): Dokumentart **0,90**, Datum/Stand **0,75**.
+  Die Kalibrierung an der Demo-Instanz ist erfolgt (dritter Füllstandsnachweis am Epic #1065, nach
+  dem Nachzug von #1263/#1289): Die Schwellen tragen und wirken wie beabsichtigt — im Suchbereich
+  „alle Bibliotheken" wird keines der beiden Felder angeboten, in „Satzungen &
+  Gebührenordnungen" beide. Die Werte bleiben unverändert.
