@@ -1710,6 +1710,13 @@ Daraus folgen drei bindende Punkte:
    trotz vorhandener Angabe" — die erste ist der stille Schaden, die zweite eine Lücke der
    Extraktionsregeln.
 
+   Die erste Stichprobe dieser Art liegt vor:
+   [Handausgewertete Stichprobe der Extraktionsgüte, 05.09.2026](../../eval/reports/metadata-extraction-sample-2026-09-05.md)
+   (Extraktionsversion 4 auf der Demo-Instanz). Ihr Ergebnis: Die deterministische Dokumentart ist
+   fehlerfrei, die modellgestützte trägt 93,9 % falsche Werte oberhalb der Konfidenzschwelle, und die
+   Konfidenz ist nicht trennscharf — die modellgestützte Extraktion der Dokumentart ist auf diesem
+   Bestand damit nicht abnahmefähig.
+
 ### Eintrittsbedingung für den Kernfeld-Filter
 
 Der `metadata_filter`-Korpus misst den Filter unter Idealbedingungen: Seine Dokumente tragen die
