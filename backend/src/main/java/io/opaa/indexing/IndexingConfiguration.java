@@ -544,9 +544,10 @@ public class IndexingConfiguration {
    * Backs the model step's one call per document (#1073) - deliberately not the common {@code
    * ForkJoinPool}: that pool is shared with everything else in the JVM, and a saturated one would
    * let the 30-second limit expire on a call that never started, counted as a model failure nobody
-   * caused. Sized for every thread that can ingest at once (indexing plus upload pool), and a task
-   * rejected all the same runs on its calling thread, so a call is always made; the timeout bounds
-   * the ingest's waiting time, not the call.
+   * caused. Sized for every thread that can ingest at once (indexing plus upload pool), so a
+   * rejection means every ingest thread is already inside a model call. {@code AbortPolicy}, never
+   * caller-runs: an inline call would return only after the model answered, which is exactly the
+   * unbounded wait the limit exists to prevent - a rejected call is counted and skipped instead.
    */
   @Bean
   TaskExecutor modelExtractionTaskExecutor(
@@ -558,7 +559,7 @@ public class IndexingConfiguration {
     executor.setMaxPoolSize(concurrency);
     executor.setQueueCapacity(0);
     executor.setThreadNamePrefix("model-extraction-");
-    executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+    executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
     executor.initialize();
     return executor;
   }

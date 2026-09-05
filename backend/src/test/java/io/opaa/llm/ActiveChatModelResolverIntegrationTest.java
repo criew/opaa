@@ -16,6 +16,7 @@ import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -105,6 +106,42 @@ class ActiveChatModelResolverIntegrationTest {
     jdbcTemplate.update("DELETE FROM llm_models");
     userRepository.deleteById(userId);
     organizationRepository.deleteById(organizationId);
+  }
+
+  @Test
+  void aClientWithARequestTimeoutGivesUpOnAModelThatNeverAnswers() throws IOException {
+    // #1073: the model step's abandoned calls must end and give their thread back - the caller's
+    // own Future.get(timeout) bounds only its waiting, never the request. Without the timeout this
+    // call would sit on the socket until the SDK's own default (minutes), which is exactly the
+    // state that fills a bounded extraction pool with hanging calls.
+    CountDownLatch requestArrived = new CountDownLatch(1);
+    HttpServer silentServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    silentServer.createContext(
+        "/v1/chat/completions",
+        exchange -> {
+          requestArrived.countDown();
+          // Never answers, never closes: the request hangs until the client gives up.
+        });
+    silentServer.start();
+    try {
+      LlmModel silent =
+          createModel(
+              "Stummes Modell",
+              "http://127.0.0.1:" + silentServer.getAddress().getPort() + "/v1",
+              "model-silent");
+      llmModelService.activateModel(organizationId, userId, silent.getId());
+      ChatClient client = resolver.resolveChatClient(Duration.ofMillis(700));
+
+      long startedAt = System.nanoTime();
+      assertThatThrownBy(() -> client.prompt().user("Frage").call().content()).isNotNull();
+      Duration waited = Duration.ofNanos(System.nanoTime() - startedAt);
+
+      assertThat(waited)
+          .as("the request itself is bounded, not just the caller's waiting")
+          .isLessThan(Duration.ofSeconds(20));
+    } finally {
+      silentServer.stop(0);
+    }
   }
 
   @Test
@@ -299,7 +336,7 @@ class ActiveChatModelResolverIntegrationTest {
 
     ExecutorService executor = Executors.newSingleThreadExecutor();
     try {
-      Future<ChatClient> inFlightBuild = executor.submit(resolver::resolveChatClient);
+      Future<ChatClient> inFlightBuild = executor.submit(() -> resolver.resolveChatClient());
       assertThat(modelRead.await(5, TimeUnit.SECONDS)).isTrue();
 
       // Activates while Thread A (above) is paused having already read model A - the scenario

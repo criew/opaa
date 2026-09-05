@@ -161,7 +161,7 @@ class SearchAdminResponseMapperTest {
                     new MetadataFieldFill(10, 4, 2),
                     CoreMetadataField.DOCUMENT_DATE,
                     new MetadataFieldFill(10, 6, 0))),
-            new ModelExtractionStats(LIBRARY_ID, 7, 4, 2, 1, 0, 9, Instant.EPOCH),
+            new ModelExtractionStats(LIBRARY_ID, 7, 4, 2, 1, 0, 0, 9, Instant.EPOCH),
             new ContextPrefixRerunProgress(LIBRARY_ID, 10, 7, 3, 1));
 
     var response =

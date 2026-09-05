@@ -58,6 +58,7 @@ const quality = {
     rejectedBelowThreshold: 2,
     rejectedOutsideVocabulary: 1,
     failures: 1,
+    rejectedPoolFull: 2,
     keywordsAssigned: 20,
     lastCallAt: '2026-09-01T06:05:00Z',
   },
@@ -141,6 +142,7 @@ describe('MetadataExtractionSettingsSection', () => {
     ).toBeInTheDocument()
     expect(screen.getByText(/Modellaufrufe: 12/)).toBeInTheDocument()
     expect(screen.getByText(/verworfen \(Konfidenz\): 2/)).toBeInTheDocument()
+    expect(screen.getByText(/übersprungen \(ausgelastet\): 2/)).toBeInTheDocument()
     // Without the management right the switches are not offered at all.
     expect(screen.queryByLabelText('Modellgestützte Extraktion', { selector: 'input' })).toBeNull()
     expect(mockGetSettings).not.toHaveBeenCalled()

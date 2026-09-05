@@ -109,6 +109,7 @@ function MetadataBackfillCell({
           {`Modellaufrufe ${library.modelExtraction.calls} · übernommen ${library.modelExtraction.acceptedValues}`}
           {` · verworfen ${library.modelExtraction.rejectedBelowThreshold + library.modelExtraction.rejectedOutsideVocabulary}`}
           {` · Fehler ${library.modelExtraction.failures}`}
+          {` · übersprungen ${library.modelExtraction.rejectedPoolFull}`}
           {` · Schlagworte ${library.modelExtraction.keywordsAssigned}`}
         </Typography>
       )}

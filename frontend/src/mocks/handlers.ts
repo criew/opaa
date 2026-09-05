@@ -1989,6 +1989,7 @@ export const handlers = [
         rejectedBelowThreshold: 2,
         rejectedOutsideVocabulary: 1,
         failures: 1,
+        rejectedPoolFull: 0,
         keywordsAssigned: 20,
         lastCallAt: '2026-09-01T06:05:00Z',
       },

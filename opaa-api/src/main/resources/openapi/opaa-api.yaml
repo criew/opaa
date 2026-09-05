@@ -6719,6 +6719,7 @@ components:
           rejectedBelowThreshold,
           rejectedOutsideVocabulary,
           failures,
+          rejectedPoolFull,
           keywordsAssigned,
         ]
       properties:
@@ -6743,6 +6744,12 @@ components:
           type: integer
           format: int64
           description: Calls that timed out, failed or answered unusably. The document is indexed regardless.
+        rejectedPoolFull:
+          type: integer
+          format: int64
+          description: >
+            Documents whose model call was skipped because every extraction thread was busy - no
+            call was made, the field stayed empty and the document was indexed regardless.
         keywordsAssigned:
           type: integer
           format: int64

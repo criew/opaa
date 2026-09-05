@@ -18,6 +18,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
@@ -164,19 +165,21 @@ public class ModelMetadataExtractor {
    *
    * <p>The call runs on {@link #callExecutor}, never on the common {@code ForkJoinPool}: that pool
    * is shared with everything else in the JVM, and a saturated one would make {@code get(timeout)}
-   * expire on a call that was never started - a counted "failure" no model caused. The executor is
-   * sized for the ingest and hands a rejected task back to the calling thread, so a call is always
-   * made; only the ingest's waiting time is bounded, which is what the timeout is for.
+   * expire on a call that was never started. A rejected task is <b>not</b> run inline either - that
+   * would return only after the model answered - but counted as "Aufruf verworfen (Pool voll)" and
+   * skipped, leaving the field empty and the ingest running.
    *
-   * <p><b>A timed-out call is abandoned, not stopped.</b> {@code cancel(true)} cannot interrupt a
-   * blocking HTTP read, so the abandoned call finishes on its own thread, its answer is dropped and
-   * it is still billed. The field stays empty, the document is indexed regularly and the call is
-   * counted as a failure - never a blocked ingest.
+   * <p><b>A timed-out call is abandoned, not stopped</b> - {@code cancel(true)} cannot interrupt a
+   * blocking HTTP read. What ends it is the request timeout of the client this step resolves
+   * ({@link ActiveChatModelResolver#resolveChatClient(Duration)}, same limit): the abandoned call
+   * fails there at the latest and gives its pool thread back, so a hanging model cannot use up the
+   * pool. Its answer is dropped and it is still billed; the field stays empty, the document is
+   * indexed regularly and the call is counted as a failure.
    */
   private ModelExtractionAnswer askModel(
       String prompt, Document document, ModelExtractionTally tally) {
     try {
-      var chatClient = chatModelResolver.resolveChatClient();
+      var chatClient = chatModelResolver.resolveChatClient(callTimeout);
       CompletableFuture<String> call =
           CompletableFuture.supplyAsync(
               () -> chatClient.prompt().user(prompt).call().content(), callExecutor);
@@ -200,6 +203,14 @@ public class ModelMetadataExtractor {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       tally.countFailure();
+      return null;
+    } catch (RejectedExecutionException e) {
+      // Every ingest thread is already inside a model call: skipped rather than queued or run
+      // inline, both of which would make the ingest wait on a model.
+      tally.countRejectedPoolFull();
+      log.warn(
+          "Model metadata extraction for document {} was skipped: every extraction thread is busy",
+          document.getId());
       return null;
     } catch (ExecutionException | RuntimeException e) {
       tally.countFailure();

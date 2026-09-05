@@ -13,6 +13,7 @@ public final class ModelExtractionTally {
   private long acceptedValues;
   private long keywordsAssigned;
   private boolean failed;
+  private boolean rejectedPoolFull;
   private final List<ModelExtractionRejection> rejections = new ArrayList<>();
 
   /** One discarded value, kept with its confidence so the distribution stays measurable. */
@@ -35,6 +36,15 @@ public final class ModelExtractionTally {
 
   public void countFailure() {
     failed = true;
+  }
+
+  /** No call was made at all: every extraction thread was busy (#1073). */
+  public void countRejectedPoolFull() {
+    rejectedPoolFull = true;
+  }
+
+  public boolean rejectedPoolFull() {
+    return rejectedPoolFull;
   }
 
   public void countRejection(String fieldKey, String proposedValue, Double confidence, Reason why) {

@@ -862,7 +862,8 @@ wird nur ein Code der angebotenen Liste, und ein solcher Wert trägt sichtbar di
 Felder entscheiden sich im Dokumentkopf, der Rest des Textes bewegt die Entscheidung nicht mehr, wohl
 aber Kosten, Laufzeit und die Menge dessen, was das Haus verlässt.
 
-**Übernahme.** Nur bei Konfidenz **≥ 0,80** (Maintainer-Freigabe 05.09.2026, ADR-0012;
+**Übernahme.** Nur bei Konfidenz **≥ 0,80** — vorab festgelegt und committet nach der Regel von
+[ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md), Maintainer-Freigabe 05.09.2026;
 `ModelMetadataExtractor.CONFIDENCE_THRESHOLD`) **und** einem Code aus der angebotenen Liste. Ein Wert
 außerhalb der Liste wird unabhängig von der Konfidenz verworfen — keine Abbildung auf den
 nächstähnlichen Wert. Übernommene Werte tragen `origin = DERIVED`, die gelieferte Konfidenz, die
@@ -875,11 +876,16 @@ Antwort enden gleich: Feld leer, Dokument regulär aufgenommen und durchsuchbar,
 gezählt. Kein Retry, keine Warteschlange. Der Aufruf läuft auf einem **eigenen, beschränkten
 Threadpool** (`modelExtractionTaskExecutor`, so groß wie Indexierungs- und Upload-Pool zusammen),
 nicht auf dem gemeinsamen `ForkJoinPool`: Dessen Auslastung ließe das Zeitlimit an einem Aufruf
-ablaufen, der nie gestartet ist — ein gezählter „Fehler", den kein Modell verursacht hat. Ist der Pool
-dennoch voll, läuft der Aufruf auf dem aufrufenden Faden; es wird also immer aufgerufen. Ein
-überschrittener Aufruf wird **aufgegeben, nicht abgebrochen**: Ein blockierender HTTP-Lesevorgang
-lässt sich nicht unterbrechen, der Aufruf läuft auf seinem Faden zu Ende, seine Antwort wird
-verworfen und er wird abgerechnet. Begrenzt ist die Wartezeit der Aufnahme, nicht der Aufruf.
+ablaufen, der nie gestartet ist — ein gezählter „Fehler", den kein Modell verursacht hat. Ist der
+Pool dennoch voll, wird der Aufruf **übersprungen** (eigener Zähler „übersprungen (ausgelastet)"),
+nicht eingereiht und nicht auf dem aufrufenden Faden ausgeführt: Ein Inline-Aufruf kehrte erst nach
+der Antwort des Modells zurück, das Zeitlimit griffe also gerade dann nicht, wenn es gebraucht wird.
+Das Feld bleibt leer, die Aufnahme läuft weiter. Ein überschrittener Aufruf wird **aufgegeben, nicht
+abgebrochen** — ein blockierender HTTP-Lesevorgang lässt sich nicht unterbrechen. Beendet wird er
+vom **Anfrage-Zeitlimit des Clients**, den dieser Schritt eigens auflöst
+(`ActiveChatModelResolver#resolveChatClient(Duration)`, dieselben 30 s): Spätestens dort scheitert
+der aufgegebene Aufruf und gibt seinen Faden zurück, sodass ein hängendes Modell den Pool nicht
+aufbraucht. Seine Antwort wird verworfen, abgerechnet wird er trotzdem.
 
 **Zählwerk und verworfene Werte.** `metadata_model_extraction_stats` führt je Bibliothek Aufrufe,
 übernommene Werte, verworfen wegen Schwelle, verworfen wegen Vokabular, Fehler, vergebene Schlagworte

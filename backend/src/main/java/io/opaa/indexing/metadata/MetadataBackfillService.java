@@ -321,6 +321,10 @@ public class MetadataBackfillService {
       // show "0 ausstehend" for exactly the libraries whose Altbestand is waiting.
       List<Object> parameters = new ArrayList<>();
       parameters.add(CoreMetadataExtractor.EXTRACTION_VERSION);
+      // "aktuell" is the complement of "ausstehend", not the deterministic version alone: the two
+      // numbers stand next to each other, and "100/100 aktuell" beside "100 ausstehend" would be a
+      // contradiction on the same row.
+      String current = pendingSql("d.", library, parameters);
       parameters.add(CoreMetadataExtractor.EXTRACTION_VERSION);
       String pending = pendingSql("d.", library, parameters);
       parameters.add(CoreMetadataExtractor.EXTRACTION_VERSION);
@@ -328,8 +332,9 @@ public class MetadataBackfillService {
       parameters.add(DocumentStatus.INDEXED.name());
       parameters.add(library.getId());
       jdbcTemplate.query(
-          "SELECT d.library_id, count(*) AS total, count(*) FILTER (WHERE"
-              + " d.metadata_extraction_version >= ?) AS current_count, count(*) FILTER (WHERE "
+          "SELECT d.library_id, count(*) AS total, count(*) FILTER (WHERE NOT "
+              + current
+              + ") AS current_count, count(*) FILTER (WHERE "
               + pending
               + ") AS pending_count, count(*) FILTER (WHERE "
               + pendingAgain

@@ -65,7 +65,7 @@ class MetadataExtractionResponseMapperTest {
                 true,
                 0.8,
                 List.of(new MetadataFieldQuality("document_type", "Dokumentart", 10, 4, 3, 1, 1)),
-                new ModelExtractionStats(LIBRARY_ID, 12, 9, 2, 1, 3, 7, Instant.EPOCH)));
+                new ModelExtractionStats(LIBRARY_ID, 12, 9, 2, 1, 3, 4, 7, Instant.EPOCH)));
 
     assertThat(response.getLibraryId()).isEqualTo(LIBRARY_ID);
     assertThat(response.getTotalDocuments()).isEqualTo(10);

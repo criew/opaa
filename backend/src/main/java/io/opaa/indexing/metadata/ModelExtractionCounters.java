@@ -43,7 +43,8 @@ public class ModelExtractionCounters {
         jdbcTemplate.queryForObject(
             "INSERT INTO metadata_model_extraction_stats (library_id, calls, accepted_values,"
                 + " rejected_below_threshold, rejected_outside_vocabulary, failures,"
-                + " keywords_assigned, last_call_at) VALUES (?, 1, ?, ?, ?, ?, ?, now())"
+                + " rejected_pool_full, keywords_assigned, last_call_at)"
+                + " VALUES (?, 1, ?, ?, ?, ?, ?, ?, now())"
                 + " ON CONFLICT (library_id) DO UPDATE SET"
                 + " calls = metadata_model_extraction_stats.calls + 1,"
                 + " accepted_values = metadata_model_extraction_stats.accepted_values + EXCLUDED.accepted_values,"
@@ -53,6 +54,8 @@ public class ModelExtractionCounters {
                 + " metadata_model_extraction_stats.rejected_outside_vocabulary +"
                 + " EXCLUDED.rejected_outside_vocabulary,"
                 + " failures = metadata_model_extraction_stats.failures + EXCLUDED.failures,"
+                + " rejected_pool_full = metadata_model_extraction_stats.rejected_pool_full +"
+                + " EXCLUDED.rejected_pool_full,"
                 + " keywords_assigned = metadata_model_extraction_stats.keywords_assigned +"
                 + " EXCLUDED.keywords_assigned,"
                 + " last_call_at = now()"
@@ -63,10 +66,8 @@ public class ModelExtractionCounters {
             tally.rejectedBelowThreshold(),
             tally.rejectedOutsideVocabulary(),
             tally.failed() ? 1L : 0L,
+            tally.rejectedPoolFull() ? 1L : 0L,
             tally.keywordsAssigned());
-    if (tally.rejections().isEmpty()) {
-      return;
-    }
     for (ModelExtractionTally.ModelExtractionRejection rejection : tally.rejections()) {
       jdbcTemplate.update(
           "INSERT INTO metadata_model_rejections (id, library_id, document_id, field_key,"
@@ -82,6 +83,8 @@ public class ModelExtractionCounters {
     if (calls == null || calls % ROTATION_INTERVAL != 0) {
       // Rotating after every document would run a 1000-row subquery per document of a Bestandslauf
       // over the whole bestand; the log may exceed its cap by less than one interval in between.
+      // Checked on every call, not only on one that rejected something: a library that stopped
+      // producing rejections would otherwise keep its old ones forever.
       return;
     }
     jdbcTemplate.update(
@@ -116,6 +119,7 @@ public class ModelExtractionCounters {
                   rs.getLong("rejected_below_threshold"),
                   rs.getLong("rejected_outside_vocabulary"),
                   rs.getLong("failures"),
+                  rs.getLong("rejected_pool_full"),
                   rs.getLong("keywords_assigned"),
                   lastCall == null ? null : lastCall.toInstant()));
         },

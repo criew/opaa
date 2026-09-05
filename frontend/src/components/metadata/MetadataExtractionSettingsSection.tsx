@@ -187,7 +187,8 @@ export default function MetadataExtractionSettingsSection({
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
           Modellaufrufe: {stats.calls} · übernommen: {stats.acceptedValues} · verworfen (Konfidenz):{' '}
           {stats.rejectedBelowThreshold} · verworfen (Werteliste): {stats.rejectedOutsideVocabulary}{' '}
-          · Fehler/Zeitüberschreitungen: {stats.failures} · Schlagworte: {stats.keywordsAssigned}
+          · Fehler/Zeitüberschreitungen: {stats.failures} · übersprungen (ausgelastet):{' '}
+          {stats.rejectedPoolFull} · Schlagworte: {stats.keywordsAssigned}
         </Typography>
       )}
     </Box>

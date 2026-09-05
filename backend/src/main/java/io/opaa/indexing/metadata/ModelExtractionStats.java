@@ -16,10 +16,11 @@ public record ModelExtractionStats(
     long rejectedBelowThreshold,
     long rejectedOutsideVocabulary,
     long failures,
+    long rejectedPoolFull,
     long keywordsAssigned,
     Instant lastCallAt) {
 
   public static ModelExtractionStats empty(UUID libraryId) {
-    return new ModelExtractionStats(libraryId, 0, 0, 0, 0, 0, 0, null);
+    return new ModelExtractionStats(libraryId, 0, 0, 0, 0, 0, 0, 0, null);
   }
 }

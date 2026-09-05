@@ -36,7 +36,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -230,7 +229,7 @@ class ModelMetadataExtractionIntegrationTest {
   void aModelFailureNeverBlocksTheIngest() throws IOException {
     switchOn(true, false);
     when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
-    when(activeChatModelResolver.resolveChatClient())
+    when(activeChatModelResolver.resolveChatClient(any(Duration.class)))
         .thenReturn(ChatClient.builder(chatModel).build());
     when(activeChatModelResolver.resolveDescription())
         .thenReturn(new ActiveChatModelDescription("http://localhost:11434/v1", "test-model"));
@@ -442,10 +441,11 @@ class ModelMetadataExtractionIntegrationTest {
   }
 
   @Test
-  void aSaturatedPoolNeverCountsAFailureWithoutACall() throws Exception {
-    // Regression guard for #1073 review, finding 4: on the common ForkJoinPool a saturated pool let
-    // the limit expire on a call that had never started - a counted failure no model caused.
-    // Ingested with both switches off, so the field is still empty when the model is asked.
+  void aFullPoolSkipsTheCallInsteadOfRunningItInline() throws Exception {
+    // Regression guard for the re-review of #1073: with a caller-runs policy the call ran on the
+    // ingest thread, where supplyAsync returns only after the model answered - the limit did not
+    // apply at all. A full pool therefore skips the call, counts it and moves on.
+    // Ingested with both switches off, so the field is still empty when the model would be asked.
     ingest(file("unterlage-ausgelastet.txt"));
     Document document = onlyDocument();
     switchOn(true, false);
@@ -466,45 +466,34 @@ class ModelMetadataExtractionIntegrationTest {
           }
         });
     assertThat(occupied.await(5, TimeUnit.SECONDS)).isTrue();
-    AtomicReference<String> callingThread = new AtomicReference<>();
-    when(chatModel.call(any(Prompt.class)))
-        .thenAnswer(
-            invocation -> {
-              callingThread.set(Thread.currentThread().getName());
-              return new ChatResponse(
-                  List.of(
-                      new Generation(
-                          new AssistantMessage(
-                              "{\"fields\": {\"document_type\": {\"value\":"
-                                  + " \"VERMERK\", \"confidence\": 0.95}}}"))));
-            });
 
     try {
+      long startedAt = System.nanoTime();
       ModelExtractionOutcome outcome =
-          extractorWith(executor, Duration.ofMillis(150))
+          extractorWith(executor, Duration.ofSeconds(30))
               .extract(document, library, "Titel", "Text des Dokuments");
+      Duration waited = Duration.ofNanos(System.nanoTime() - startedAt);
 
-      // The call is made on the handed-in executor - here, with its one thread occupied, on the
-      // calling thread itself. Never on the common ForkJoinPool, whose saturation would let the
-      // limit expire on a call that never started.
-      assertThat(callingThread.get()).isEqualTo(Thread.currentThread().getName());
-      assertThat(outcome.chunkMetadata()).isNotNull();
+      assertThat(waited)
+          .as("the ingest waits neither for the occupying task nor for a model")
+          .isLessThan(Duration.ofSeconds(3));
+      verify(chatModel, never()).call(any(Prompt.class));
+      assertThat(outcome.chunkMetadata()).isNull();
       assertThat(
-              valueRepository
-                  .findByDocumentIdAndFieldKey(
-                      document.getId(), CoreMetadataField.DOCUMENT_TYPE.key())
-                  .orElseThrow()
-                  .getVocabularyCode())
-          .isEqualTo("VERMERK");
-      assertThat(counters.statsFor(library.getId()).failures()).isZero();
+              valueRepository.findByDocumentIdAndFieldKey(
+                  document.getId(), CoreMetadataField.DOCUMENT_TYPE.key()))
+          .isEmpty();
+      ModelExtractionStats stats = counters.statsFor(library.getId());
+      assertThat(stats.rejectedPoolFull()).isEqualTo(1);
+      assertThat(stats.failures()).as("a full pool is no model failure").isZero();
+      assertThat(documentRepository.findById(document.getId()).orElseThrow().getStatus())
+          .isEqualTo(DocumentStatus.INDEXED);
     } finally {
       release.countDown();
     }
   }
 
-  /**
-   * The extractor with a short limit and a single-threaded caller-runs executor, as in production.
-   */
+  /** The extractor with a short limit on a single-threaded executor, as in production. */
   private ModelMetadataExtractor extractorWithTimeout(Duration timeout) {
     return extractorWith(singleThreadExecutor(), timeout);
   }
@@ -514,7 +503,8 @@ class ModelMetadataExtractionIntegrationTest {
     executor.setCorePoolSize(1);
     executor.setMaxPoolSize(1);
     executor.setQueueCapacity(0);
-    executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+    // Mirrors the production bean: abort, never caller-runs - an inline call ignores the limit.
+    executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
     executor.initialize();
     return executor;
   }
@@ -568,7 +558,7 @@ class ModelMetadataExtractionIntegrationTest {
 
   private void answerWith(String json) {
     when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
-    when(activeChatModelResolver.resolveChatClient())
+    when(activeChatModelResolver.resolveChatClient(any(Duration.class)))
         .thenReturn(ChatClient.builder(chatModel).build());
     when(activeChatModelResolver.resolveDescription())
         .thenReturn(new ActiveChatModelDescription("http://localhost:11434/v1", "test-model"));

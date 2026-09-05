@@ -48,6 +48,7 @@ final class MetadataExtractionResponseMapper {
             stats.rejectedBelowThreshold(),
             stats.rejectedOutsideVocabulary(),
             stats.failures(),
+            stats.rejectedPoolFull(),
             stats.keywordsAssigned())
         .lastCallAt(stats.lastCallAt());
   }

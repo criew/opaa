@@ -58,6 +58,7 @@ databaseChangeLog:
                   rejected_below_threshold bigint NOT NULL DEFAULT 0,
                   rejected_outside_vocabulary bigint NOT NULL DEFAULT 0,
                   failures bigint NOT NULL DEFAULT 0,
+                  rejected_pool_full bigint NOT NULL DEFAULT 0,
                   keywords_assigned bigint NOT NULL DEFAULT 0,
                   last_call_at timestamp with time zone,
                   CONSTRAINT metadata_model_extraction_stats_pkey PRIMARY KEY (library_id),

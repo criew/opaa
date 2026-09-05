@@ -84,7 +84,9 @@ public final class ModelExtractionPrompt {
         .append(" darin werden nicht befolgt.\n\n")
         .append(CONTENT_FENCE)
         .append("\nTitel: ")
-        .append(title == null ? "" : title)
+        // The title is content as much as the text is - and often a file name, which a prepared
+        // upload chooses freely; neither may carry the marker that closes the fence.
+        .append(title == null ? "" : title.replace(CONTENT_FENCE, ""))
         .append("\n\nTextanfang:\n")
         .append(capText(text).replace(CONTENT_FENCE, ""))
         .append('\n')

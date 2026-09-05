@@ -158,7 +158,7 @@ class DocumentMetadataControllerTest {
                 false,
                 0.8,
                 List.of(new MetadataFieldQuality("document_type", "Dokumentart", 4, 1, 1, 1, 0)),
-                new ModelExtractionStats(libraryId, 3, 1, 1, 1, 0, 2, null)));
+                new ModelExtractionStats(libraryId, 3, 1, 1, 1, 0, 0, 2, null)));
 
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/metadata/quality").with(asTestUser()))
