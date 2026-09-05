@@ -12,6 +12,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
+
+  /**
+   * Namespace of {@link #lockRoleChanges}'s advisory locks - see {@code
+   * AssetGrantRepository#ASSET_GRANT_MUTATION_LOCK_NAMESPACE} for the list every namespace is
+   * registered in.
+   */
+  int TOKEN_ROLE_CHANGE_LOCK_NAMESPACE = 203;
+
   Optional<User> findBySubjectAndIssuer(String subject, String issuer);
 
   /**
@@ -45,8 +53,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
    */
   @Query(
       value =
-          "SELECT 1 FROM (SELECT pg_advisory_xact_lock(1330, hashtext(CAST(:organizationId AS"
-              + " text)))) acquired",
+          "SELECT 1 FROM (SELECT pg_advisory_xact_lock("
+              + TOKEN_ROLE_CHANGE_LOCK_NAMESPACE
+              + ", hashtext(CAST(:organizationId AS text)))) acquired",
       nativeQuery = true)
   int lockRoleChanges(@Param("organizationId") UUID organizationId);
 

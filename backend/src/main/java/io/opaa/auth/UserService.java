@@ -390,10 +390,12 @@ public class UserService {
         userRepository
             .findByIdAndOrganizationId(userId, actor.organizationId())
             .orElseThrow(() -> new UserNotFoundException("Benutzer nicht gefunden: " + userId));
-    // ADR-0025, Entscheidung 4: a provider with a roles claim is authoritative - a role written
-    // here would be overwritten by the account's next request.
+    // ADR-0025, Entscheidung 4: an enabled provider with a roles claim is authoritative - a role
+    // written here would be overwritten by the account's next request. A disabled provider issues
+    // no more tokens, so its accounts' roles are managed here again.
     providerRepository
         .findByNormalizedIssuerUri(OidcIssuerUris.normalize(user.getIssuer()))
+        .filter(OidcProvider::isEnabled)
         .filter(provider -> provider.getClaimMapping().rolesClaim() != null)
         .ifPresent(
             provider -> {

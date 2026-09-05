@@ -204,7 +204,7 @@ class DirectorySyncPlanExecutor {
           organizationId,
           correlationRef,
           now,
-          DirectorySyncOutcome.ABORTED_EMPTY_RESULT,
+          DirectorySyncOutcome.ABORTED_NO_TRUSTED_PROVIDER,
           message,
           emptyPlan());
     }
@@ -312,7 +312,8 @@ class DirectorySyncPlanExecutor {
   private AuditOutcome toAuditOutcome(DirectorySyncOutcome outcome) {
     return switch (outcome) {
       case APPLIED, DRY_RUN -> AuditOutcome.SUCCESS;
-      case ABORTED_THRESHOLD, ABORTED_EMPTY_RESULT -> AuditOutcome.FAILURE;
+      case ABORTED_THRESHOLD, ABORTED_EMPTY_RESULT, ABORTED_NO_TRUSTED_PROVIDER ->
+          AuditOutcome.FAILURE;
       case UNREACHABLE ->
           throw new IllegalStateException(
               "UNREACHABLE is handled by DirectorySyncService before this class ever runs");

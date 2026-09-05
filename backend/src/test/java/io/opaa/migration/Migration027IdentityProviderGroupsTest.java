@@ -41,7 +41,7 @@ class Migration027IdentityProviderGroupsTest extends AbstractMigrationTest {
   }
 
   @Test
-  void beforeTheMigrationTheKindAndTheCausesAreRejected() {
+  void beforeTheMigrationTheKindIsRejected() {
     assertThatThrownBy(() -> insertGroup("IDENTITY_PROVIDER", "Fachbereich", "oidc:p:Fachbereich"))
         .hasMessageContaining("chk_groups_kind");
   }

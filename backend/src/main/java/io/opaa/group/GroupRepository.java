@@ -11,6 +11,13 @@ import org.springframework.data.repository.query.Param;
 
 public interface GroupRepository extends JpaRepository<Group, UUID> {
 
+  /**
+   * Namespace of {@link #lockIdentityProviderGroups}'s advisory locks - see {@code
+   * AssetGrantRepository#ASSET_GRANT_MUTATION_LOCK_NAMESPACE} for the list every namespace is
+   * registered in.
+   */
+  int IDENTITY_PROVIDER_GROUP_LOCK_NAMESPACE = 204;
+
   List<Group> findByOrganizationId(UUID organizationId);
 
   /**
@@ -63,8 +70,9 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
    */
   @Query(
       value =
-          "SELECT 1 FROM (SELECT pg_advisory_xact_lock(1331, hashtext(CAST(:providerId AS text))))"
-              + " acquired",
+          "SELECT 1 FROM (SELECT pg_advisory_xact_lock("
+              + IDENTITY_PROVIDER_GROUP_LOCK_NAMESPACE
+              + ", hashtext(CAST(:providerId AS text)))) acquired",
       nativeQuery = true)
   int lockIdentityProviderGroups(@Param("providerId") UUID providerId);
 }

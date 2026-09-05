@@ -1,5 +1,7 @@
 package io.opaa.auth;
 
+import io.opaa.auth.oidc.OidcIssuerUris;
+import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -32,13 +34,16 @@ public class InitialAdminPolicy {
         || !initialAdminEmail.equalsIgnoreCase(email)) {
       return false;
     }
-    if (trustedProvider.matches(issuer)) {
+    Optional<String> trusted = trustedProvider.issuer();
+    if (issuer != null
+        && trusted.isPresent()
+        && OidcIssuerUris.normalize(trusted.get()).equals(OidcIssuerUris.normalize(issuer))) {
       return true;
     }
     log.warn(
         "Account with the initial administrator address is created WITHOUT SYSTEM_ADMIN: {}"
             + " (issuer: {}). The rule applies only to the trusted provider.",
-        trustedProvider.issuer().isPresent()
+        trusted.isPresent()
             ? "not the trusted provider's issuer"
             : "no trusted provider exists yet (auth mode '" + authProperties.mode() + "')",
         issuer);

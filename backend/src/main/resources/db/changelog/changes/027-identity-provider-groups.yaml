@@ -1,3 +1,5 @@
+# #1331, ADR-0025 Entscheidung 4: groups whose membership comes from a provider's token. Delta test:
+# backend/src/test/java/io/opaa/migration/Migration027IdentityProviderGroupsTest.java
 databaseChangeLog:
   - changeSet:
       id: 027-groups-kind-identity-provider

@@ -82,10 +82,16 @@ function GroupCard({ group }: { group: GroupListResponse }) {
             {localError}
           </Alert>
         )}
-        {!isAdHoc && (
+        {group.kind === 'ORG_UNIT' && (
           <Alert severity="info" sx={{ mb: 2 }}>
             Organisationseinheiten werden aus dem Verzeichnis synchronisiert und können hier nicht
             bearbeitet werden.
+          </Alert>
+        )}
+        {group.kind === 'IDENTITY_PROVIDER' && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Diese Gruppe stammt aus dem Identitätsanbieter und wird bei jeder Anmeldung abgeglichen;
+            sie kann hier nicht bearbeitet werden.
           </Alert>
         )}
 
