@@ -10,8 +10,10 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -34,6 +36,7 @@ import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.library.ConfluenceSpaceSelection;
@@ -123,17 +126,20 @@ class ConfluenceIndexingExecutorTest {
                 storedPages.stream()
                     .filter(d -> d.getFilePath().equals(inv.getArgument(1)))
                     .findFirst());
+    when(documentRepository.findByLibraryIdAndSourceType(any(), any())).thenReturn(List.of());
     // Mockito invokes the stubbed method with null arguments while a test re-stubs it - such a
     // call must not leave a page without a path behind.
     eventRepository = mock(IndexingRunEventRepository.class);
     storageQuotaService = mock(LibraryStorageQuotaService.class);
     when(storageQuotaService.quotaExceededMessage(any()))
         .thenReturn("Speicherkontingent erschöpft");
-    cleanupService = mock(StaleDocumentCleanupService.class);
+    vectorChunkStore = mock(VectorChunkStore.class);
+    // A spy, not a mock: the reconciliation runs for real over the mocked repository, so what a
+    // run hands over and what the fold-in preserves are both observable.
+    cleanupService = spy(new StaleDocumentCleanupService(documentRepository, vectorChunkStore));
     syncStateRepository = mock(ConfluenceSyncStateRepository.class);
     when(syncStateRepository.findByLibraryId(any())).thenReturn(Optional.empty());
     when(syncStateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    vectorChunkStore = mock(VectorChunkStore.class);
     when(fileProcessingService.processConfluencePage(
             any(), any(), any(), any(), any(), any(), any()))
         .thenAnswer(
@@ -246,14 +252,21 @@ class ConfluenceIndexingExecutorTest {
             properties,
             fileProcessingService,
             attachmentIndexer(),
-            indexingJobService,
             documentRepository,
-            eventRepository,
-            storageQuotaService,
-            cleanupService,
             syncStateRepository,
             vectorChunkStore,
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            runTemplate());
+  }
+
+  /** The real run frame over the mocked job bookkeeping and the spied reconciliation. */
+  private IndexingRunTemplate runTemplate() {
+    return new IndexingRunTemplate(
+        indexingJobService,
+        eventRepository,
+        cleanupService,
+        documentRepository,
+        storageQuotaService);
   }
 
   /** The real generalized attachment path over the mocked processing. */
@@ -328,10 +341,11 @@ class ConfluenceIndexingExecutorTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
     verify(cleanupService, timeout(5000))
-        .cleanupVanished(
+        .reconcile(
             eq(library),
             eq(DocumentSourceType.CONFLUENCE),
             current.capture(),
+            any(),
             any(),
             eq(executor),
             eq(IndexingRunMode.FULL));
@@ -412,7 +426,7 @@ class ConfluenceIndexingExecutorTest {
         .processConfluencePage(any(), eq("Kapitel 1"), any(), any(), any(), any(), any());
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
-    verify(cleanupService).cleanupVanished(any(), any(), current.capture(), any(), any(), any());
+    verify(cleanupService).reconcile(any(), any(), current.capture(), any(), any(), any(), any());
     assertThat(current.getValue()).as("a 404 is no deletion finding").contains(kapitel);
     verify(indexingJobService).completeJob(jobId, 2, 0, 1, 3);
   }
@@ -432,7 +446,7 @@ class ConfluenceIndexingExecutorTest {
                     IndexingEventCategory.REJECTED,
                     "Space SEC " + ConfluenceIndexingExecutor.UNREADABLE_SPACE_SUFFIX,
                     "SEC")));
-    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 3, 0, 0, 4);
     // the run's assessment names the unreadable space, for the warning at the library
     verify(indexingJobService).recordListingAssessment(jobId, false, List.of("SEC"));
@@ -455,7 +469,7 @@ class ConfluenceIndexingExecutorTest {
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
-    verify(cleanupService).cleanupVanished(any(), any(), current.capture(), any(), any(), any());
+    verify(cleanupService).reconcile(any(), any(), current.capture(), any(), any(), any(), any());
     assertThat(current.getValue())
         .doesNotContain(pagePath(edition, "ENG", "101"), pagePath(edition, "HR", "200"))
         .contains(pagePath(edition, "ENG", "100"), pagePath(edition, "ENG", "102"));
@@ -503,7 +517,7 @@ class ConfluenceIndexingExecutorTest {
     assertThat(server.requests())
         .as("no listing with a token the instance did not accept")
         .noneMatch(r -> r.contains("/pages?") || r.contains("/content?"));
-    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(indexingJobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
   }
 
@@ -580,9 +594,15 @@ class ConfluenceIndexingExecutorTest {
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
-    verify(cleanupService).cleanupVanished(any(), any(), current.capture(), any(), any(), any());
-    assertThat(current.getValue())
-        .contains(abschnitt, knownAttachment.getFilePath(), nestedAttachment.getFilePath());
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Set<String>> reprocessed = ArgumentCaptor.forClass(Set.class);
+    verify(cleanupService)
+        .reconcile(any(), any(), current.capture(), reprocessed.capture(), any(), any(), any());
+    // present but not reprocessed, so the reconciliation preserves its attachments from the
+    // database - and indeed removes nothing
+    assertThat(current.getValue()).contains(abschnitt);
+    assertThat(reprocessed.getValue()).doesNotContain(abschnitt);
+    verify(documentRepository, never()).delete(any(Document.class));
   }
 
   private Document confluenceAttachment(String fileName, String filePath, Document parent) {
@@ -617,8 +637,13 @@ class ConfluenceIndexingExecutorTest {
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
-    verify(cleanupService).cleanupVanished(any(), any(), current.capture(), any(), any(), any());
-    assertThat(current.getValue()).contains(knownAttachment.getFilePath());
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Set<String>> reprocessed = ArgumentCaptor.forClass(Set.class);
+    verify(cleanupService)
+        .reconcile(any(), any(), current.capture(), reprocessed.capture(), any(), any(), any());
+    assertThat(current.getValue()).contains(abschnitt);
+    assertThat(reprocessed.getValue()).doesNotContain(abschnitt);
+    verify(documentRepository, never()).delete(any(Document.class));
     verify(fileProcessingService, never())
         .processUrlFile(
             any(), eq("notizen.txt"), any(), any(), anyLong(), any(), any(), any(), any(), any());
@@ -629,8 +654,9 @@ class ConfluenceIndexingExecutorTest {
   void aFailedReconciliationLeavesTheFullSyncOpenAndSaysSo(ConfluenceEdition edition)
       throws Exception {
     start(edition, null, "HR");
-    when(cleanupService.cleanupVanished(any(), any(), any(), any(), any(), any()))
-        .thenThrow(new IllegalStateException("Datenbank nicht erreichbar"));
+    doThrow(new IllegalStateException("Datenbank nicht erreichbar"))
+        .when(cleanupService)
+        .reconcile(any(), any(), any(), any(), any(), any(), any());
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
@@ -723,7 +749,7 @@ class ConfluenceIndexingExecutorTest {
     // the unsupported attachment is still part of the bestand the reconciliation compares against
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
-    verify(cleanupService).cleanupVanished(any(), any(), current.capture(), any(), any(), any());
+    verify(cleanupService).reconcile(any(), any(), current.capture(), any(), any(), any(), any());
     assertThat(current.getValue()).anyMatch(path -> path.endsWith("/werkzeug.exe"));
   }
 
@@ -772,7 +798,7 @@ class ConfluenceIndexingExecutorTest {
         .isNotEmpty()
         .noneMatch(r -> r.contains("body"));
     // "ergänzend": nothing is ever removed for being absent from the window
-    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 2, 0, 0, 2);
     // an incremental run cannot see an unreadable space and never assesses the listing
     verify(indexingJobService, never()).recordListingAssessment(any(), anyBoolean(), any());
@@ -856,14 +882,11 @@ class ConfluenceIndexingExecutorTest {
             smallOverlap,
             fileProcessingService,
             attachmentIndexer(),
-            indexingJobService,
             documentRepository,
-            eventRepository,
-            storageQuotaService,
-            cleanupService,
             syncStateRepository,
             vectorChunkStore,
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            runTemplate());
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
 
     assertThat(withDefaultOverlap - searchWindowMinutes()).isBetween(8L, 10L);
@@ -906,7 +929,7 @@ class ConfluenceIndexingExecutorTest {
       assertThat(newPath).isEqualTo(oldPath);
       verify(documentRepository, never()).delete(any(Document.class));
     }
-    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
   }
 
   @ParameterizedTest
@@ -1027,7 +1050,7 @@ class ConfluenceIndexingExecutorTest {
     assertThat(server.requests())
         .noneMatch(r -> r.contains("search"))
         .noneMatch(r -> r.matches(".*/(content|pages)/100(\\?.*)?$"));
-    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 1, 0, 2, 2);
     // a webhook run fetches named pages only and never judges the listing
     verify(indexingJobService, never()).recordListingAssessment(any(), anyBoolean(), any());
@@ -1141,7 +1164,7 @@ class ConfluenceIndexingExecutorTest {
     // a budget-truncated run has not seen every space and must not overwrite the verdict
     verify(indexingJobService, never()).recordListingAssessment(any(), anyBoolean(), any());
     // no reconciliation on an incomplete listing, and the full sync stays open
-    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     ArgumentCaptor<ConfluenceSyncState> state = ArgumentCaptor.forClass(ConfluenceSyncState.class);
     verify(syncStateRepository, atLeast(1)).save(state.capture());
     assertThat(state.getValue().isFullSyncInterrupted()).isTrue();
@@ -1161,18 +1184,15 @@ class ConfluenceIndexingExecutorTest {
             unbounded,
             fileProcessingService,
             attachmentIndexer(),
-            indexingJobService,
             documentRepository,
-            eventRepository,
-            storageQuotaService,
-            cleanupService,
             syncStateRepository,
             vectorChunkStore,
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            runTemplate());
     UUID second = UUID.randomUUID();
     executor.execute(second, library, IndexingRunMode.FULL);
 
-    verify(cleanupService).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(syncStateRepository, atLeast(2)).save(state.capture());
     assertThat(state.getValue().isFullSyncInterrupted()).isFalse();
     assertThat(state.getValue().getIncrementalAnchor()).isEqualTo(NOW);

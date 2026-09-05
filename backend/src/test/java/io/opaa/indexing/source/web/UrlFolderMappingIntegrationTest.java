@@ -17,16 +17,14 @@ import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.JobTriggerSource;
-import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryFolder;
 import io.opaa.library.LibraryFolderRepository;
 import io.opaa.library.LibraryFolderService;
-import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.organization.Organization;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
@@ -77,9 +75,7 @@ class UrlFolderMappingIntegrationTest {
   @Autowired private IndexingJobService indexingJobService;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private DocumentRepository documentRepository;
-  @Autowired private IndexingRunEventRepository indexingRunEventRepository;
-  @Autowired private LibraryStorageQuotaService storageQuotaService;
-  @Autowired private StaleDocumentCleanupService staleDocumentCleanupService;
+  @Autowired private IndexingRunTemplate indexingRunTemplate;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private LibraryFolderRepository folderRepository;
   @Autowired private LibraryFolderService folderService;
@@ -233,13 +229,10 @@ class UrlFolderMappingIntegrationTest {
         new AutoindexCrawlerService(validator, crawlProperties),
         new BoundedDownloader(validator),
         fileProcessingService,
-        indexingJobService,
         documentRepository,
-        indexingRunEventRepository,
-        storageQuotaService,
-        staleDocumentCleanupService,
         crawlProperties,
-        folderService);
+        folderService,
+        indexingRunTemplate);
   }
 
   /** Runs one full executor pass - synchronous, since the executor is called directly here. */

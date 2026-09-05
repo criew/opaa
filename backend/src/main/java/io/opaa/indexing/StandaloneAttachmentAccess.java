@@ -11,8 +11,7 @@ import org.slf4j.LoggerFactory;
  * re-index ({@code PipelineReindexService}). Events are only logged, progress is a no-op, and
  * {@link #markDeferred()} has no per-run state to suppress - a lost attachment is retried the next
  * time its parent is re-processed (a re-upload, a pipeline re-index). {@code
- * recordIndexedAttachment} keeps its no-op default: neither caller runs {@code
- * StaleDocumentCleanupService#cleanupVanished}.
+ * recordIndexedAttachment} keeps its no-op default: neither caller reconciles by absence.
  */
 record StandaloneAttachmentAccess(KnowledgeLibrary targetLibrary, String logContext)
     implements AttachmentAccess {
@@ -27,7 +26,7 @@ record StandaloneAttachmentAccess(KnowledgeLibrary targetLibrary, String logCont
 
   @Override
   public AttachmentProgressSink progress() {
-    return () -> {};
+    return outcome -> {};
   }
 
   @Override

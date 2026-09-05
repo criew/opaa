@@ -30,6 +30,7 @@ import io.opaa.indexing.IndexingRunEvent;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.SupportedDocumentFormats;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
@@ -148,13 +149,15 @@ class UrlIndexingExecutorExecuteTest {
         new AutoindexCrawlerService(targetAddressValidator, crawlProperties),
         downloader,
         fileProcessingService,
-        indexingJobService,
         documentRepository,
-        indexingRunEventRepository,
-        mock(LibraryStorageQuotaService.class),
-        staleDocumentCleanupService,
         crawlProperties,
-        mock(io.opaa.library.LibraryFolderService.class));
+        mock(io.opaa.library.LibraryFolderService.class),
+        new IndexingRunTemplate(
+            indexingJobService,
+            indexingRunEventRepository,
+            staleDocumentCleanupService,
+            documentRepository,
+            mock(LibraryStorageQuotaService.class)));
   }
 
   @AfterEach
@@ -448,7 +451,7 @@ class UrlIndexingExecutorExecuteTest {
         .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
   }
 
-  // --- StaleDocumentCleanupService is only ever called after a successful, uncapped run --
+  // --- the reconciliation only ever runs after a successful, uncapped crawl --
 
   @Test
   void aSuccessfulUncappedCrawlCallsStaleDocumentCleanupWithTheCrawledUrls() throws IOException {
@@ -476,13 +479,15 @@ class UrlIndexingExecutorExecuteTest {
     execute();
 
     verify(staleDocumentCleanupService, timeout(5000))
-        .cleanupVanished(
+        .reconcile(
             eq(library),
             eq(DocumentSourceType.HTTP_DIRECTORY),
+            eq(Set.of(baseUrl + "/files/bericht.txt")),
             eq(Set.of(baseUrl + "/files/bericht.txt")),
             any(),
             any(),
             any());
+    verify(indexingJobService).recordListingAssessment(any(), eq(true), eq(List.of()));
   }
 
   @Test
@@ -517,6 +522,9 @@ class UrlIndexingExecutorExecuteTest {
     execute();
 
     verifyNoInteractions(staleDocumentCleanupService);
+    // a fully listing connector records the verdict on every run, so the library's assessment
+    // does not hang on the previous run
+    verify(indexingJobService).recordListingAssessment(any(), eq(false), eq(List.of()));
   }
 
   @Test
@@ -557,6 +565,7 @@ class UrlIndexingExecutorExecuteTest {
     verify(indexingRunEventRepository, timeout(5000))
         .save(argThat(categoryIs(IndexingEventCategory.REJECTED)));
     verifyNoInteractions(staleDocumentCleanupService);
+    verify(indexingJobService).recordListingAssessment(any(), eq(false), eq(List.of()));
   }
 
   @Test
@@ -564,7 +573,7 @@ class UrlIndexingExecutorExecuteTest {
     // a root page answering with an empty (but genuinely 200, well-formed) listing -
     // e.g. a maintenance page mistaken for the real directory - must not be read as "every
     // document vanished". The guard against an empty currentUrls lives inside
-    // StaleDocumentCleanupService#cleanupVanished itself (see its own Javadoc), not in this
+    // StaleDocumentCleanupService#reconcile itself (see its own Javadoc), not in this
     // executor - this proves the executor still hands the (empty) set through rather than
     // special-casing it here too.
     serve(
@@ -576,8 +585,14 @@ class UrlIndexingExecutorExecuteTest {
     execute();
 
     verify(staleDocumentCleanupService, timeout(5000))
-        .cleanupVanished(
-            eq(library), eq(DocumentSourceType.HTTP_DIRECTORY), eq(Set.of()), any(), any(), any());
+        .reconcile(
+            eq(library),
+            eq(DocumentSourceType.HTTP_DIRECTORY),
+            eq(Set.of()),
+            eq(Set.of()),
+            any(),
+            any(),
+            any());
   }
 
   @Test
