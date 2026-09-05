@@ -32,8 +32,8 @@ import java.util.regex.Pattern;
  *       at all (#1289): a label line ({@code Formular: RF-KFZ-001}), a quotation and a section
  *       heading name other documents, never the document itself.
  *   <li><b>A {@link DocumentProperties#syntheticName() synthetic name}</b> (an RSS entry's
- *       headline) is no naming convention: it yields neither a Dokumentart nor a Datum. It remains
- *       a title - that is what a headline is.
+ *       headline, a Confluence page title) is no naming convention: it yields neither a Dokumentart
+ *       nor a Datum. It remains a title - that is what a headline is.
  *   <li><b>Datum/Stand</b>: frontmatter {@code stand_datum}/{@code fassung} and the format's own
  *       document date (a mail's Date header), then the first heading (Kopfbereich), then the file
  *       name, then the modified and finally the created property. Within one source every candidate

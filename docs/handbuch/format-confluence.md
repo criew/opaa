@@ -81,10 +81,11 @@ das Dokument und an jeden Chunk. Der **Kontexttitel** für das Embedding ist der
 Space, Gliederungspfad plus Titel („Handbuch / Kapitel 1 / Abschnitt 1.1"), nicht nur der Titel.
 
 **Dokumenteigenschaften** für das [Metadatenschema](metadaten.md): der Seitentitel als Titel.
-Der Seitentitel wird dabei wie ein Dateiname behandelt: Seine Wörter liefern die Dokumentart
-(exakter Vokabularbegriff oder Kompositum-Endung, etwa „Gebührensatzung"), eine Datumsangabe oder
-Jahreszahl im Titel liefert Datum/Stand. Die Versionsnummer ist kein Datum. Eine Titelzeile aus dem
-Seitenkörper wird nicht gelesen.
+Der Seitentitel gilt dabei **nicht** als Dateiname: Weder seine Wörter liefern die Dokumentart noch
+eine Jahreszahl darin den Stand — „Gebührensatzung 2024" ist die Überschrift einer Wiki-Seite über
+Gebühren, keine Satzung mit Stand 2024. Die Versionsnummer ist ebenfalls kein Datum. Eine Titelzeile
+aus dem Seitenkörper wird nicht gelesen. Dokumentart und Datum bleiben damit leer, bis sie von Hand
+gesetzt werden.
 
 ## 5. Fehler
 

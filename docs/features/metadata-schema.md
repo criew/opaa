@@ -471,10 +471,26 @@ eines Dokuments überhaupt ein Dateiname ist. Für einen RSS-Beitrag ist er es n
 geht*, nicht *was das Dokument ist* — „Rat beschließt neue Hundesteuersatzung" ist keine Satzung, und
 „Haushalt 2024 beschlossen" trägt keinen Stand. Für einen solchen synthetischen Namen entfallen
 deshalb **beide** Namensquellen: der Token-Abgleich der Dokumentart (samt Endungsregel) und die
-Datumsangabe aus dem Namen. Als **Titel** bleibt die Überschrift, denn genau das ist sie. Gesetzt wird
-das Kennzeichen an den zwei Stellen, an denen ein RSS-Eintragskörper in die Extraktion geht —
-`FileProcessingService#processRssEntry` im Ingest und `MetadataBackfillService` im Bestandslauf —,
-damit beide Wege dieselben Felder aus derselben Zeile lesen.
+Datumsangabe aus dem Namen. Als **Titel** bleibt der Name, denn genau das ist er.
+
+*Welche Zuflüsse betroffen sind* — vollständige Bestandsaufnahme über alle Quellarten (#1318):
+
+| Zufluss | `file_name` | Name ist ein Dateiname? |
+|---|---|---|
+| Dateisystem, Upload, Webverzeichnis (HTTP) | Name der Datei | ja |
+| Anhang einer Mail, eines Webverzeichnisses oder einer Confluence-Seite | Name des Anhangs | ja |
+| RSS-Eintragskörper | Überschrift des Eintrags, ersatzweise seine URL | **nein** |
+| Confluence-Seite | Seitentitel, ersatzweise seine URL | **nein** |
+
+Ein Seitentitel im Wiki folgt derselben freien Schreibweise wie eine Feed-Überschrift: „Gebührensatzung
+2024" ist die Überschrift einer Wiki-Seite über Gebühren, keine Satzung mit Stand 2024. Beide
+synthetischen Zuflüsse setzen das Kennzeichen im Ingest, in `FileProcessingService#processRssEntry`
+und `#processConfluencePage`. Im **Bestandslauf** gibt es zwei Wege zur selben Regel: Ein
+RSS-Eintragskörper wird in `MetadataBackfillService#advanceRemote` ohne Download aus seiner Zeile neu
+ermittelt und setzt das Kennzeichen dort selbst; eine Confluence-Seite hat keine zeilenweise
+Ersatzquelle (ihr `last_modified_remote` ist die Versionsnummer, kein Datum, und Titelzeile wie
+Überschriften stehen nur im Seitenkörper) und wird deshalb für ihren nächsten Konnektorlauf
+vorgemerkt — der läuft durch `#processConfluencePage` und damit durch dieselbe Regel.
 
 **Dateiformat.** PPTX/ODP → `PRAESENTATION` (die beiden Präsentationsformate, die
 `SupportedDocumentFormats` überhaupt zulässt), als letzte Quelle: Jede Textquelle geht vor, und ein

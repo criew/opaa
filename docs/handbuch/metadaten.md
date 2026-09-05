@@ -118,7 +118,7 @@ Jede Format-Pipeline gibt nur weiter, was ihr Format selbst erklärt; interpreti
 | HTML | `<title>` | | erste `<h1>` | erster Textblock des Hauptinhalts | |
 | E-Mail | Betreff | `Date`-Kopf als Dokumentdatum | | | |
 | Feed-Eintrag | Überschrift des Eintrags | Veröffentlichungsdatum als Dokumentdatum | | | Name gilt nicht als Dateiname |
-| Confluence-Seite | Seitentitel | | | | der Seitentitel wird wie ein Dateiname gelesen (Dokumentart-Token, Datum) |
+| Confluence-Seite | Seitentitel | | | | Name gilt nicht als Dateiname |
 | Tabellen, TXT, DOC | | | | TXT, DOC: erste Textzeile | |
 
 Bei allen Formaten kommt der **Dateiname** hinzu, und die geroutete **Formatkennung** entscheidet
@@ -137,7 +137,10 @@ Dokumentart und liefern nichts.
   Überschrift erster Ebene, die nicht die Titelzeile ist, liefert keine Dokumentart; sie wirkt nur
   als Veto, wenn sie einen anderen Wert nennt als die Titelzeile.
 - **Ein Name, der kein Dateiname ist**, liefert weder Dokumentart noch Datum: Die Überschrift eines
-  Feed-Eintrags („Rat beschließt neue Hundesteuersatzung") ist keine Satzung. Sie bleibt der Titel.
+  Feed-Eintrags („Rat beschließt neue Hundesteuersatzung") ist keine Satzung, und der Titel einer
+  Confluence-Seite („Gebührensatzung 2024") ist weder eine Satzung noch ein Stand. Er bleibt der
+  Titel. Betroffen sind genau diese beiden Zuflüsse; Dateien, Uploads, Dateien eines
+  Webverzeichnisses und jeder Anhang tragen echte Dateinamen.
 - **Datumsschreibweisen**, in dieser Reihenfolge je Quelle: `2026-03-12`, `12.03.2026`, `2026-03`,
   „März 2026", dann ein Jahr 1900 bis 2099. Ein unmögliches Datum (ein Aktenzeichen wie
   `12.34.5678`) wird übersprungen. Ein nacktes Jahr zählt nur im Dateinamen und im Frontmatter; in
@@ -175,7 +178,9 @@ Was ein Lauf tut:
   ohne Download erneut ermittelt. Alles andere Entfernte (Dateien eines Webverzeichnisses,
   Confluence-Seiten, jeder entfernte Anhang samt Elternkette) kann nur der eigene Konnektorlauf neu
   lesen und wird dafür vorgemerkt; es bleibt bis dahin als „wartend auf den nächsten Konnektorlauf"
-  ausgewiesen.
+  ausgewiesen. Für eine Confluence-Seite gelten dabei dieselben Regeln wie beim Aufnehmen, weil
+  genau dieser Weg noch einmal durchlaufen wird — insbesondere gilt ihr Titel auch dort nicht als
+  Dateiname.
 - Anhänge lokaler Quellen werden über ihre Elternkette erneut ausgepackt, wie beim Pipeline-Nachzug.
 - Jeder Aufruf wird auditiert (`INDEXING_METADATA_BACKFILL_TRIGGERED`, ein Eintrag je Aufruf).
 

@@ -1204,9 +1204,11 @@ public class FileProcessingService {
         }
       }
       // The page title is the document's declared title (ADR-0024); the version number is no
-      // date, and a Confluence title follows no file-naming convention.
+      // date. The name of this document is that title (or its URL), never a file name - marked as
+      // such so no naming convention is read out of it (#1263).
+      DocumentProperties properties = parsed.properties().withSyntheticName(true);
       DocumentPipelineResult withTitle =
-          hasTitle ? parsed.withProperties(parsed.properties().withTitle(title)) : parsed;
+          parsed.withProperties(hasTitle ? properties.withTitle(title) : properties);
       if (replacingExistingChunks) {
         // Only now, with the new chunks in hand - see storeChunks' callers (#1268).
         vectorChunkStore.deleteByDocumentId(doc.getId());
