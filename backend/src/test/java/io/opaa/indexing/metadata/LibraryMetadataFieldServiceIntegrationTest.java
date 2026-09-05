@@ -14,6 +14,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -550,7 +551,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   private Document indexed(String fileName) throws IOException {
     Path file = classTempDir.resolve(fileName);
     writePdf(file);
-    assertThat(fileProcessingService.processFile(file, library))
+    assertThat(fileProcessingService.ingest(DocumentIngest.localFile(library, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
     return documentRepository.findAll().stream()
         .filter(document -> fileName.equals(document.getFileName()))

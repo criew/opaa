@@ -3,6 +3,7 @@ package io.opaa.indexing.source.web;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -261,16 +262,15 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       }
       long fileSize = Files.size(tempFile);
       FileProcessingResult result =
-          fileProcessingService.processUrlFile(
-              tempFile,
-              entry.name(),
-              entry.url(),
-              entry.lastModified(),
-              fileSize,
-              targetLibrary,
-              DocumentSourceType.HTTP_DIRECTORY,
-              null,
-              null,
+          fileProcessingService.ingest(
+              DocumentIngest.builder(targetLibrary)
+                  .file(tempFile, fileSize)
+                  .filePath(entry.url())
+                  .fileName(entry.name())
+                  .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                  .context(attachmentAccess.sourceContext())
+                  .changeMarker(entry.lastModified())
+                  .build(),
               attachmentAccess);
       if (run.recordOutcome(result, entry.url())) {
         run.markReprocessed(entry.url());
@@ -311,9 +311,9 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   /**
    * Assigns {@code entryUrl}'s document, and recursively its attachments, to the folder the crawled
    * URL path maps to (ADR-0020), materializing that chain on first use. Runs in the executor rather
-   * than in {@code processUrlFile}, because a folder must also be assigned to an entry this run
-   * never handed over - one skipped as unchanged, or rejected - as long as a document row exists.
-   * Failures are logged, never rethrown.
+   * than in {@code FileProcessingService#ingest}, because a folder must also be assigned to an
+   * entry this run never handed over - one skipped as unchanged, or rejected - as long as a
+   * document row exists. Failures are logged, never rethrown.
    */
   private void mirrorFolder(
       KnowledgeLibrary targetLibrary,

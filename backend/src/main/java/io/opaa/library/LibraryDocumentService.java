@@ -9,10 +9,13 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.AttachmentExtractor;
+import io.opaa.indexing.AttachmentFilePath;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.StandaloneAttachmentAccess;
 import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.attachment.AttachmentProperties;
@@ -61,7 +64,7 @@ import org.springframework.web.multipart.MultipartFile;
  * incoming bytes, computes their checksum and creates the {@code Document} row itself (all three
  * are specific to how this endpoint decides *where* a file goes and whether it is a duplicate
  * *within its target library* - a different question from what {@code
- * FileProcessingService#processFile}'s file-path-keyed dedup answers), then hands off to {@link
+ * FileProcessingService#ingest}'s file-path-keyed dedup answers), then hands off to {@link
  * FileProcessingService#processUploadedFileAsync} for parsing, chunking and vector storage - the
  * same three steps every other ingestion path goes through, so a chat query finds an uploaded
  * document exactly the same way it finds a crawled one.
@@ -297,7 +300,7 @@ public class LibraryDocumentService {
 
       // #434: the row is created - and returned - as PENDING here, before any parsing/embedding
       // has happened. contentType/fileSize are read from the file this class itself just wrote,
-      // mirroring FileProcessingService#processFile's own stat-after-store approach.
+      // mirroring FileProcessingService#ingest's own stat-after-store approach.
       String contentType = Files.probeContentType(storedFile);
       long fileSize = Files.size(storedFile);
       Document document =
@@ -326,7 +329,15 @@ public class LibraryDocumentService {
       try {
         // Parsing/chunking/embedding run on uploadTaskExecutor from here (#434) - this method
         // returns the PENDING row without waiting for that to finish.
-        fileProcessingService.processUploadedFileAsync(document.getId(), storedFile);
+        fileProcessingService.processUploadedFileAsync(
+            DocumentIngest.builder(library)
+                .file(storedFile, fileSize)
+                .filePath(document.getFilePath())
+                .fileName(displayFileName)
+                .sourceType(DocumentSourceType.UPLOAD)
+                .existingRow()
+                .build(),
+            new StandaloneAttachmentAccess(library, "Upload"));
       } catch (TaskRejectedException e) {
         // #589 review, item 2: uploadTaskExecutor's queue is full - it never silently discards the
         // task (see IndexingConfiguration#uploadTaskExecutor; #501 later gave indexingTaskExecutor
@@ -481,10 +492,7 @@ public class LibraryDocumentService {
     return documentRepository
         .findById(document.getParentDocumentId())
         .map(
-            parent ->
-                FileProcessingService.attachmentIndexIn(
-                        parent.getFilePath(), document.getFilePath())
-                    >= 0)
+            parent -> AttachmentFilePath.indexIn(parent.getFilePath(), document.getFilePath()) >= 0)
         .orElse(false);
   }
 
@@ -580,8 +588,7 @@ public class LibraryDocumentService {
             current.getParentDocumentId());
         throw attachmentUnavailable();
       }
-      if (FileProcessingService.attachmentIndexIn(parent.getFilePath(), current.getFilePath())
-          < 0) {
+      if (AttachmentFilePath.indexIn(parent.getFilePath(), current.getFilePath()) < 0) {
         // current has a source identity of its own (a downloaded .eml, itself an attachment of an
         // RSS entry) - it is the root to fetch, its own parent is not part of the extraction.
         break;
@@ -602,7 +609,7 @@ public class LibraryDocumentService {
     List<Integer> indices = new ArrayList<>(chain.size());
     String parentPath = root.getFilePath();
     for (int i = chain.size() - 1; i >= 0; i--) {
-      int index = FileProcessingService.attachmentIndexIn(parentPath, chain.get(i).getFilePath());
+      int index = AttachmentFilePath.indexIn(parentPath, chain.get(i).getFilePath());
       if (index < 0) {
         log.warn(
             "Attachment document {} has a file_path that does not embed its parent's path {}",
@@ -758,11 +765,10 @@ public class LibraryDocumentService {
 
   /**
    * Streams a {@code HTTP_DIRECTORY}/{@code RSS_FEED} document's original from its source URL
-   * (#747) - {@link Document#getFilePath()}, the same identity {@code
-   * FileProcessingService#processUrlFile}/{@code #processRssEntry} dedup by and {@link
-   * Document#getDeepLinkSourceUrl()} already names as this document's own origin. No part of the
-   * request ever influences which URL is fetched - only the value stored on this row at indexing
-   * time, already validated against the target allowlist then (#267).
+   * (#747) - {@link Document#getFilePath()}, the same identity {@code FileProcessingService#ingest}
+   * dedups by and {@link Document#getDeepLinkSourceUrl()} already names as this document's own
+   * origin. No part of the request ever influences which URL is fetched - only the value stored on
+   * this row at indexing time, already validated against the target allowlist then (#267).
    *
    * <p><b>SSRF: the allowlist is checked again here, not just at indexing time (#747 acceptance
    * criteria).</b> {@link BoundedDownloader#downloadStreaming} re-validates {@link

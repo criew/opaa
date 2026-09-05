@@ -3,6 +3,7 @@ package io.opaa.indexing.source.rss;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -10,6 +11,7 @@ import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.IndexingRunEventRecorder;
 import io.opaa.indexing.IndexingRunProgress;
+import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -44,9 +46,9 @@ import org.springframework.scheduling.annotation.Async;
 /**
  * Executes indexing runs for {@link IndexingSourceType#RSS_FEED} (ADR-0017): fetches the feed,
  * resolves every entry's detail page and hands the page's main text - not the whole page - into
- * {@link FileProcessingService#processRssEntry}. Transport, page reduction and attachments belong
- * to {@link FeedFetcher}, {@link DetailPageExtractor} and {@link AttachmentIndexer}; this class
- * keeps the orchestration and the per-run state ({@link RssFeedRunContext}).
+ * {@link FileProcessingService#ingest}. Transport, page reduction and attachments belong to {@link
+ * FeedFetcher}, {@link DetailPageExtractor} and {@link AttachmentIndexer}; this class keeps the
+ * orchestration and the per-run state ({@link RssFeedRunContext}).
  *
  * <p>Change detection is three-staged: a conditional {@code GET} on the feed, each entry's stored
  * {@code pubDate}, then the SHA-256 checksum. <b>No deletion by absence</b> (decision 5): a feed's
@@ -225,13 +227,17 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     }
 
     try {
+      // The entry body never was a file: already-extracted text, its headline as the declared
+      // title and its publication instant as the document's own date (ADR-0017, decision 2).
       FileProcessingResult result =
-          fileProcessingService.processRssEntry(
-              detailPage.mainText(),
-              entry.title(),
-              entryUrl,
-              publishedAt.map(Instant::toString).orElse(null),
-              ctx.targetLibrary());
+          fileProcessingService.ingest(
+              DocumentIngest.text(ctx.targetLibrary(), entryUrl, detailPage.mainText())
+                  .sourceType(DocumentSourceType.RSS_FEED)
+                  .title(entry.title())
+                  .changeMarker(publishedAt.map(Instant::toString).orElse(null))
+                  .documentDate(DocumentProperties.instantToLocalDate(publishedAt.orElse(null)))
+                  .build(),
+              null);
       // A rejected or failed entry's attachments are deliberately not indexed.
       if (run.recordOutcome(result, entryUrl)) {
         log.info("Indexed RSS entry: {}", entryUrl);
