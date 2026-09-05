@@ -142,7 +142,7 @@ public class StoredDocumentSourceAccess {
     List<Integer> indices = new ArrayList<>(chain.size());
     String parentPath = root.getFilePath();
     for (int i = chain.size() - 1; i >= 0; i--) {
-      int index = FileProcessingService.attachmentIndexIn(parentPath, chain.get(i).getFilePath());
+      int index = AttachmentFilePath.indexIn(parentPath, chain.get(i).getFilePath());
       if (index < 0) {
         log.warn(
             "Skipping attachment document {}: file_path {} does not embed its parent's path {}",

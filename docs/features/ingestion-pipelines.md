@@ -241,8 +241,8 @@ das Dokument bis zum nächsten erfolgreichen Lauf ohne Chunks im Bestand — der
 durchsuchbare Stand war verloren, obwohl er fachlich weiterhin der beste verfügbare war. Der
 Pipeline-Nachzug (`PipelineReindexService`) verfuhr schon vorher nach der jetzt allgemeinen Regel.
 
-Welcher Ausgang was bedeutet — für die Konnektorwege (`processFile`, `processUrlFile`,
-`processRssEntry`), die eine geänderte Quelle verarbeiten:
+Welcher Ausgang was bedeutet — für `FileProcessingService#ingest`, die eine Dokumentstrecke aller
+Konnektoren, wenn sie eine geänderte Quelle verarbeitet:
 
 | Ausgang | Alte Chunks | Dokumentzustand |
 |---|---|---|
@@ -257,7 +257,7 @@ null heißt „noch mit dem alten Stand durchsuchbar", null heißt „ohne Chunk
 nicht der Ausgang, sondern ob gelöscht wurde — eine Ausnahme, die erst nach dem Löschen auftritt,
 hinterlässt ebenfalls eine Null.
 
-Auf dem **Nachzugsweg** (`PipelineReindexService` → `reindexStoredDocument`) bleiben auch die leeren
+Auf dem **Nachzugsweg** (`PipelineReindexService`, `DocumentIngest` mit `reindex`) bleiben auch die leeren
 Ausgänge folgenlos: Dort ist die Datei unverändert und nur die Pipeline-Version neu, ein leeres
 Ergebnis sagt also nichts über eine neue Fassung aus. Das Dokument behält seine Chunks und seine
 `INDEXED`-Zeile und wird als nicht nachgezogen zurückgemeldet.
@@ -885,8 +885,9 @@ eine solche Datei stillschweigend über die HTML-Pipeline laufen, ohne dass auch
 `FORMAT_MISMATCH` gemeldet würde.
 
 **Grenze: Feed-Detailseiten laufen weiterhin über die Fallback-Pipeline, nicht über diese.**
-`FileProcessingService#processRssEntry` übergibt den bereits extrahierten Haupttext eines
-RSS-Eintrags direkt an die Tika-Fallback-Pipeline (ADR-0017, Entscheidung 2) — dieser Text war nie
+Der RSS-Konnektor übergibt den bereits extrahierten Haupttext eines RSS-Eintrags als Text an
+`FileProcessingService#ingest`, der ihn direkt an die Tika-Fallback-Pipeline weiterreicht (ADR-0017,
+Entscheidung 2) — dieser Text war nie
 eine Datei und durchläuft das inhaltsbasierte Routing der `DocumentPipelineRegistry` gar nicht, kann
 diese Pipeline also grundsätzlich nicht erreichen. Nur echte `.html`-Dateien — Verzeichnis-Crawl,
 Dateisystem oder ein Anhang eines RSS-Eintrags — profitieren von `HtmlDocumentPipeline`.
@@ -1188,7 +1189,7 @@ sie wird von ihrer URL geholt, statt aus dem Eintrag extrahiert zu werden.
 **Die Rekursionstiefe (Mail-in-Mail) lebt auf dem verallgemeinerten Anhangsweg, nicht mehr in dieser
 Pipeline** (ADR-0022, Entscheidung 6): `AttachmentIndexer` zählt die Verschachtelungstiefe über einen
 threadlokalen Zähler, sobald ein gemeldeter Anhang selbst wieder über `FileProcessingService
-#processUrlFile` verarbeitet wird und dabei erneut Anhänge meldet — dieselbe Rolle, die
+#ingest` verarbeitet wird und dabei erneut Anhänge meldet — dieselbe Rolle, die
 `MailDocumentPipeline`s eigenes `RECURSION_DEPTH`-Feld vor #1183 gespielt hat, jetzt auf der
 gemeinsamen Ebene, weil auch RSS/Confluence-Anhänge grundsätzlich verschachtelt sein können.
 
@@ -1210,7 +1211,7 @@ schützen Platte und nachgelagerte Verarbeitung, nicht den Parse-Vorgang selbst*
 Anhänge eingeschlossen, vollständig im Heap, bevor dieser Code auch nur entscheidet, ob ein Teil ein
 Anhang ist. Die eigentliche Speichergrenze ist eine dritte, neue Eigenschaft: `max-message-bytes`
 (gesetzt 100 MiB) — geprüft gegen die Größe der `.eml`/`.msg`-Datei selbst, bevor überhaupt geparst
-wird, denn `FileProcessingService#processFile` erzwingt keine Einzeldateigrößen-Grenze (nur die
+wird, denn `FileProcessingService#ingest` erzwingt keine Einzeldateigrößen-Grenze (nur die
 Speicherplatz-Quote der Bibliothek insgesamt). Bei MSG bleibt die Anhangsgrenze zusätzlich
 Best-Effort: `MAPIMessage` liest die gesamte Datei samt aller Anhangsbytes vollständig in den Speicher,
 bevor dieser Code sie zu sehen bekommt, sodass `max-attachment-bytes` dort nur noch verhindert, dass
@@ -1246,8 +1247,8 @@ Makro-Inhalt Seiteninhalt ist** und welcher zur Laufzeit aus anderen Quellen zus
 #### Umgesetzt (#1137)
 
 `ConfluenceDocumentPipeline` (`id` `confluence`, Version 1) beansprucht **kein** Format in der
-`DocumentPipelineRegistry` — `FileProcessingService#processConfluencePage` ruft sie über
-`pipelineById` direkt auf, so wie ein Feed-Eintrag den Fallback direkt erhält; ohne registrierte
+`DocumentPipelineRegistry` — der Confluence-Konnektor benennt sie im `DocumentIngest`
+(`pipelineId`), und `FileProcessingService#ingest` ruft sie über `pipelineById` direkt auf, so wie ein Feed-Eintrag den Fallback direkt erhält; ohne registrierte
 Pipeline (reduzierte Testregistry) nimmt der Fallback den Körper als Text. Der Vollabgleich (#1136)
 übergibt den Storage-Körper unverändert; die Pipeline liest ihn mit dem XML-Parser von Jsoup, damit
 die Makro-Elemente erhalten bleiben (der HTML-Parser verwirft namensraum-präfigierte Elemente).
@@ -1284,7 +1285,7 @@ Dokuments; der Seitentitel steht am Chunk als `file_name`), die die Pipeline als
 zitierten Rohtext) ist der Ort der Seite im Space — `[Handbuch / Kapitel 1 / Abschnitt 1.1]` —, nicht
 nur ihr Titel. Die Zitatanzeige liest diese Metadaten noch nicht (siehe Offene Punkte).
 
-**Anhänge** laufen weiter über den bestehenden Anhangsweg (`processUrlFile`, Routing nach Inhalt):
+**Anhänge** laufen weiter über den bestehenden Anhangsweg (`FileProcessingService#ingest`, Routing nach Inhalt):
 ein `.html`-Anhang trifft `HtmlDocumentPipeline`, ein PDF den PDF-Weg; ein nicht unterstützter Typ
 wird als `UNSUPPORTED_FORMAT` sichtbar übersprungen und bleibt Teil der Abgleichsmenge.
 

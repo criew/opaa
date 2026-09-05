@@ -4,6 +4,7 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.AttachmentOutcome;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -12,6 +13,8 @@ import io.opaa.indexing.IndexingRunEventRecorder;
 import io.opaa.indexing.IndexingRunProgress;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -729,16 +732,19 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     boolean pageStored;
     try {
       // The body goes over as it is; ConfluenceDocumentPipeline owns the macro rules and
-      // the structure-preserving cut.
+      // the structure-preserving cut. The version is the change marker, the creation of the
+      // current version the page's Stand (ADR-0023).
       FileProcessingResult result =
-          fileProcessingService.processConfluencePage(
-              storageBody,
-              page.title(),
-              pagePath,
-              version,
-              page.lastModified(),
-              pageContext,
-              run.library);
+          fileProcessingService.ingest(
+              DocumentIngest.text(run.library, pagePath, storageBody)
+                  .sourceType(DocumentSourceType.CONFLUENCE)
+                  .title(page.title())
+                  .context(pageContext)
+                  .changeMarker(version)
+                  .modifiedAt(DocumentProperties.instantToLocalDate(page.lastModified()))
+                  .pipelineId(ConfluenceDocumentPipeline.ID)
+                  .build(),
+              null);
       if (run.frame.recordOutcome(result, pagePath)) {
         log.info("Indexed Confluence page: {}", pagePath);
       }

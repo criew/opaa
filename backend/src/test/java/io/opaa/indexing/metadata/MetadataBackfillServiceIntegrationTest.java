@@ -12,6 +12,8 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
+import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -251,7 +253,8 @@ class MetadataBackfillServiceIntegrationTest {
         Termine werden nach der Dienstanweisung zur Terminvergabe vergeben.
         """);
     for (Path file : List.of(leistung, faq)) {
-      assertThat(fileProcessingService.processFile(file, library))
+      assertThat(
+              fileProcessingService.ingest(DocumentIngest.localFile(library, file).build(), null))
           .isEqualTo(FileProcessingResult.PROCESSED);
     }
     Document leistungDocument = documentNamed("13_fabrikneues-fahrzeug-anmelden.md");
@@ -402,7 +405,8 @@ class MetadataBackfillServiceIntegrationTest {
    * synthetic name it is: it becomes the title, never a Dokumentart and never a Stand.
    */
   @Test
-  void aConfluencePageIsMarkedForItsNextRunAndThatRunReadsItsTitleAsASyntheticName() {
+  void aConfluencePageIsMarkedForItsNextRunAndThatRunReadsItsTitleAsASyntheticName()
+      throws IOException {
     UUID pageId = UUID.randomUUID();
     String pageUrl = "https://wiki.example/pages/viewpage.action?pageId=4711";
     insertRemoteDocument(
@@ -417,15 +421,17 @@ class MetadataBackfillServiceIntegrationTest {
     assertThat(progress().awaitingConnectorRunDocuments()).isEqualTo(1);
 
     assertThat(
-            fileProcessingService.processConfluencePage(
-                "<h1>Uebersicht</h1><p>Die Verwaltung erhebt Entgelte fuer Amtshandlungen im"
-                    + " Buergerbuero.</p>",
-                "Gebuehrensatzung 2024",
-                pageUrl,
-                "7",
-                java.time.Instant.parse("2026-03-12T10:00:00Z"),
-                null,
-                library))
+            fileProcessingService.ingest(
+                DocumentIngests.confluencePage(
+                    library,
+                    "<h1>Uebersicht</h1><p>Die Verwaltung erhebt Entgelte fuer Amtshandlungen im"
+                        + " Buergerbuero.</p>",
+                    "Gebuehrensatzung 2024",
+                    pageUrl,
+                    "7",
+                    java.time.Instant.parse("2026-03-12T10:00:00Z"),
+                    null),
+                null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     CoreMetadata core = documentMetadataService.coreMetadataFor(pageId);
@@ -592,7 +598,8 @@ class MetadataBackfillServiceIntegrationTest {
         Diese Satzung regelt die Befreiung von Gebühren.
         """);
     for (Path file : List.of(dienstanweisung, protokoll, satzung)) {
-      assertThat(fileProcessingService.processFile(file, library))
+      assertThat(
+              fileProcessingService.ingest(DocumentIngest.localFile(library, file).build(), null))
           .isEqualTo(FileProcessingResult.PROCESSED);
     }
     jdbcTemplate.update("DELETE FROM document_metadata_values");

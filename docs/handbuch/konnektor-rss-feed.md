@@ -118,7 +118,10 @@ Drei Stufen, von billig nach teuer:
 2. **Eintragsebene, Veröffentlichungsdatum.** Ein Eintrag, dessen `pubDate` dem gespeicherten
    Wert entspricht und der zuletzt erfolgreich indiziert wurde, wird übersprungen. Ein fehlendes
    Datum gilt als „geändert".
-3. **Prüfsumme** über den extrahierten Text, wie bei jeder Quelle.
+3. **Prüfsumme** über den extrahierten Text, wie bei jeder Quelle. Ein Eintrag mit neuem `pubDate`,
+   aber unverändertem Text behält seine Chunks; das neue Datum wird als Änderungsmarke übernommen
+   und eine geänderte Überschrift als Titel, sodass der nächste Lauf ihn schon in Stufe 2
+   überspringt. Das Dokumentdatum der Kernfelder bleibt bis zur nächsten Inhaltsänderung.
 
 **Zurückstellung.** Der Feed-Zustand aus Stufe 1 wird nur gespeichert, wenn der Lauf
 vollständig war: kein Fehler und kein zurückgestellter Eintrag. Zurückgestellt wird alles, was

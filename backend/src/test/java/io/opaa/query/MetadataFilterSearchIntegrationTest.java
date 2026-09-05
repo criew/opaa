@@ -13,6 +13,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.ChatSource;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -497,7 +498,7 @@ class MetadataFilterSearchIntegrationTest {
   private Document indexed(KnowledgeLibrary target, String fileName) throws IOException {
     Path file = Path.of(target.getSourcePath()).resolve(fileName);
     writePdf(file);
-    assertThat(fileProcessingService.processFile(file, target))
+    assertThat(fileProcessingService.ingest(DocumentIngest.localFile(target, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
     return documentRepository.findAll().stream()
         .filter(document -> fileName.equals(document.getFileName()))

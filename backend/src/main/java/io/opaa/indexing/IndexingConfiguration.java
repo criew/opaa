@@ -114,7 +114,7 @@ public class IndexingConfiguration {
 
   /**
    * Confluence page pipeline (ingestion-pipelines.md, Teil 3, Punkt 6) - claims no format, {@link
-   * FileProcessingService#processConfluencePage} looks it up by id.
+   * FileProcessingService#ingest} looks it up by id.
    */
   @Bean
   ConfluenceDocumentPipeline confluenceDocumentPipeline() {
@@ -280,7 +280,6 @@ public class IndexingConfiguration {
       TaskExecutor embeddingTaskExecutor,
       ObjectProvider<AttachmentIndexer> attachmentIndexer,
       AttachmentDownloadLimits mailAttachmentDownloadLimits,
-      KnowledgeLibraryRepository knowledgeLibraryRepository,
       DocumentMetadataService documentMetadataService) {
     return new FileProcessingService(
         documentPipelineRegistry,
@@ -293,7 +292,6 @@ public class IndexingConfiguration {
         embeddingTaskExecutor,
         attachmentIndexer,
         mailAttachmentDownloadLimits,
-        knowledgeLibraryRepository,
         documentMetadataService);
   }
 

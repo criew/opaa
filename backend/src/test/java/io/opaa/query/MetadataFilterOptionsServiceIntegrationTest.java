@@ -11,6 +11,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
 import io.opaa.group.GroupService;
+import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -289,7 +290,7 @@ class MetadataFilterOptionsServiceIntegrationTest {
       }
       doc.save(file.toFile());
     }
-    assertThat(fileProcessingService.processFile(file, target))
+    assertThat(fileProcessingService.ingest(DocumentIngest.localFile(target, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
   }
 

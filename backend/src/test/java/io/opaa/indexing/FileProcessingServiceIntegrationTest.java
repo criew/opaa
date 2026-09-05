@@ -105,7 +105,8 @@ class FileProcessingServiceIntegrationTest {
               return parsed;
             });
 
-    FileProcessingResult result = fileProcessingService.processFile(file, targetLibrary);
+    FileProcessingResult result =
+        fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
     assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
     assertThat(documentRepository.count())
@@ -127,7 +128,8 @@ class FileProcessingServiceIntegrationTest {
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
     when(documentService.parseDocument(file)).thenReturn(parsed);
 
-    FileProcessingResult result = fileProcessingService.processFile(file, targetLibrary);
+    FileProcessingResult result =
+        fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     assertThat(documentRepository.count()).isEqualTo(1);
@@ -155,7 +157,8 @@ class FileProcessingServiceIntegrationTest {
                 "Befreiung von der Verwaltungsgebühr wegen Bedürftigkeit"));
     when(documentService.parseDocument(file)).thenReturn(parsed);
 
-    FileProcessingResult result = fileProcessingService.processFile(file, targetLibrary);
+    FileProcessingResult result =
+        fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     // Compares the actual sets of chunk ids, not just their counts: equal

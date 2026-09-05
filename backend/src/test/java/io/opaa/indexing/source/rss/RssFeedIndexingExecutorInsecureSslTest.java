@@ -16,6 +16,7 @@ import com.sun.net.httpserver.HttpsServer;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingJobService;
@@ -215,7 +216,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
   }
 
   @BeforeEach
-  void setUp() {
+  void setUp() throws Exception {
     fileProcessingService = mock(FileProcessingService.class);
     indexingJobService = mock(IndexingJobService.class);
     documentRepository = mock(DocumentRepository.class);
@@ -268,7 +269,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
   }
 
   @Test
-  void sourceInsecureSslTrueAcceptsTheSelfSignedCertificateOfTheFeedsOwnOrigin() {
+  void sourceInsecureSslTrueAcceptsTheSelfSignedCertificateOfTheFeedsOwnOrigin() throws Exception {
     executor.execute(
         UUID.randomUUID(),
         library(feedServer.baseUrl() + EMPTY_FEED_PATH, true),
@@ -279,7 +280,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
   }
 
   @Test
-  void sourceInsecureSslFalseStillRejectsTheSelfSignedCertificate() {
+  void sourceInsecureSslFalseStillRejectsTheSelfSignedCertificate() throws Exception {
     executor.execute(
         UUID.randomUUID(),
         library(feedServer.baseUrl() + EMPTY_FEED_PATH, false),
@@ -303,7 +304,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
   }
 
   @Test
-  void sourceInsecureSslTrueDoesNotWeakenValidationForAForeignOriginDetailPage() {
+  void sourceInsecureSslTrueDoesNotWeakenValidationForAForeignOriginDetailPage() throws Exception {
     // feedServer's own certificate is trusted (sourceInsecureSsl: true), but the feed's single
     // entry links to foreignServer - a different origin whose self-signed
     // certificate must still be validated normally, exactly as it would be with
@@ -316,7 +317,6 @@ class RssFeedIndexingExecutorInsecureSslTest {
     // The run still completes - a foreign detail page's TLS failure only skips that one entry, it
     // never fails the whole run (ADR-0017's "Verhalten gegenüber fremden Zielen").
     verify(indexingJobService, timeout(5000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
-    verify(fileProcessingService, never())
-        .processRssEntry(anyString(), anyString(), anyString(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyText(), any());
   }
 }

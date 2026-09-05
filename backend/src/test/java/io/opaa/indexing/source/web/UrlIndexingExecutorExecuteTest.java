@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -21,6 +20,7 @@ import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -161,7 +161,7 @@ class UrlIndexingExecutorExecuteTest {
   }
 
   @AfterEach
-  void tearDown() {
+  void tearDown() throws Exception {
     server.stop(0);
   }
 
@@ -203,32 +203,29 @@ class UrlIndexingExecutorExecuteTest {
         "/files/bescheid.csv",
         "text/csv",
         "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
-            isNull(),
-            isNull(),
+    when(fileProcessingService.ingest(
+            DocumentIngests.that()
+                .file()
+                .in(library)
+                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .foundOn(null)
+                .childOf(null)
+                .match(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute();
 
     verify(fileProcessingService, timeout(5000))
-        .processUrlFile(
-            any(),
-            eq("bescheid.csv"),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
-            isNull(),
-            isNull(),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .named("bescheid.csv")
+                .in(library)
+                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .foundOn(null)
+                .childOf(null)
+                .match(),
             any());
     verify(indexingRunEventRepository, timeout(5000))
         .save(argThat(categoryIs(IndexingEventCategory.FORMAT_MISMATCH)));
@@ -254,8 +251,7 @@ class UrlIndexingExecutorExecuteTest {
 
     execute();
 
-    verify(fileProcessingService, never())
-        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyFile(), any());
     verify(indexingJobService, timeout(5000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
     verify(indexingRunEventRepository, timeout(5000))
         .save(argThat(categoryIs(IndexingEventCategory.UNSUPPORTED_FORMAT)));
@@ -283,32 +279,29 @@ class UrlIndexingExecutorExecuteTest {
                 + "</ul></body></html>")
             .getBytes(StandardCharsets.UTF_8));
     serve("/files/outlook-mail-mit-pdf-anhang.msg", "application/octet-stream", msg);
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
-            isNull(),
-            isNull(),
+    when(fileProcessingService.ingest(
+            DocumentIngests.that()
+                .file()
+                .in(library)
+                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .foundOn(null)
+                .childOf(null)
+                .match(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute();
 
     verify(fileProcessingService, timeout(5000))
-        .processUrlFile(
-            any(),
-            eq("outlook-mail-mit-pdf-anhang.msg"),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
-            isNull(),
-            isNull(),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .named("outlook-mail-mit-pdf-anhang.msg")
+                .in(library)
+                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .foundOn(null)
+                .childOf(null)
+                .match(),
             any());
     verify(indexingRunEventRepository, never())
         .save(argThat(categoryIs(IndexingEventCategory.UNSUPPORTED_FORMAT)));
@@ -346,8 +339,7 @@ class UrlIndexingExecutorExecuteTest {
 
     execute();
 
-    verify(fileProcessingService, never())
-        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyFile(), any());
     verify(indexingRunEventRepository, timeout(5000).times(1))
         .save(argThat(categoryIs(IndexingEventCategory.UNSUPPORTED_FORMAT)));
     verify(indexingJobService, timeout(5000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
@@ -378,35 +370,31 @@ class UrlIndexingExecutorExecuteTest {
         "text/plain",
         "Bericht. ".repeat(40_000).getBytes(StandardCharsets.UTF_8));
     serve("/files/klein.txt", "text/plain", "Kurzer Bericht.".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
-            isNull(),
-            isNull(),
+    when(fileProcessingService.ingest(
+            DocumentIngests.that()
+                .file()
+                .in(library)
+                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .foundOn(null)
+                .childOf(null)
+                .match(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute();
 
     verify(fileProcessingService, never())
-        .processUrlFile(
-            any(), eq("riesig.txt"), any(), any(), anyLong(), any(), any(), any(), any(), any());
+        .ingest(DocumentIngests.that().file().named("riesig.txt").match(), any());
     verify(fileProcessingService, timeout(5000))
-        .processUrlFile(
-            any(),
-            eq("klein.txt"),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
-            isNull(),
-            isNull(),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .named("klein.txt")
+                .in(library)
+                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .foundOn(null)
+                .childOf(null)
+                .match(),
             any());
     verify(indexingRunEventRepository, timeout(5000).times(1))
         .save(
@@ -447,8 +435,7 @@ class UrlIndexingExecutorExecuteTest {
 
     verify(indexingJobService, timeout(5000))
         .failJob(eq(jobId), eq(ProxyAndCredentials.INVALID_PROXY_MESSAGE));
-    verify(fileProcessingService, never())
-        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyFile(), any());
   }
 
   // --- the reconciliation only ever runs after a successful, uncapped crawl --
@@ -463,16 +450,14 @@ class UrlIndexingExecutorExecuteTest {
                 + "</ul></body></html>")
             .getBytes(StandardCharsets.UTF_8));
     serve("/files/bericht.txt", "text/plain", "Inhalt.".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
-            isNull(),
-            isNull(),
+    when(fileProcessingService.ingest(
+            DocumentIngests.that()
+                .file()
+                .in(library)
+                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .foundOn(null)
+                .childOf(null)
+                .match(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
@@ -506,16 +491,14 @@ class UrlIndexingExecutorExecuteTest {
             .getBytes(StandardCharsets.UTF_8));
     serve("/files/eins.txt", "text/plain", "Eins.".getBytes(StandardCharsets.UTF_8));
     serve("/files/zwei.txt", "text/plain", "Zwei.".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
-            isNull(),
-            isNull(),
+    when(fileProcessingService.ingest(
+            DocumentIngests.that()
+                .file()
+                .in(library)
+                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .foundOn(null)
+                .childOf(null)
+                .match(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
@@ -547,16 +530,14 @@ class UrlIndexingExecutorExecuteTest {
           exchange.sendResponseHeaders(500, -1);
           exchange.close();
         });
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
-            isNull(),
-            isNull(),
+    when(fileProcessingService.ingest(
+            DocumentIngests.that()
+                .file()
+                .in(library)
+                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .foundOn(null)
+                .childOf(null)
+                .match(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
@@ -610,16 +591,14 @@ class UrlIndexingExecutorExecuteTest {
                 + "</ul></body></html>")
             .getBytes(StandardCharsets.UTF_8));
     serve("/files/oeffentlich.txt", "text/plain", "Inhalt.".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
-            isNull(),
-            isNull(),
+    when(fileProcessingService.ingest(
+            DocumentIngests.that()
+                .file()
+                .in(library)
+                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .foundOn(null)
+                .childOf(null)
+                .match(),
             any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
