@@ -65,7 +65,7 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   @Override
   public DocumentPipelineResult run(DocumentPipelineSource source) {
     org.jsoup.nodes.Document htmlDoc = parse(source);
-    List<Element> contentRoots = HtmlContentRoots.select(htmlDoc);
+    List<Element> contentRoots = contentRoots(source, htmlDoc);
     if (contentRoots.isEmpty()) {
       return DocumentPipelineResult.noContent();
     }
@@ -98,7 +98,7 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
     try {
       org.jsoup.nodes.Document htmlDoc = parse(source);
       String titleLine = null;
-      for (Element root : HtmlContentRoots.select(htmlDoc)) {
+      for (Element root : contentRoots(source, htmlDoc)) {
         titleLine = DocumentTitleLine.ofEvents(new XhtmlEventBuilder().build(root));
         if (titleLine != null) {
           break;
@@ -108,6 +108,23 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
     } catch (UncheckedIOException e) {
       return DocumentProperties.EMPTY;
     }
+  }
+
+  /**
+   * A file is cut from the content roots {@link HtmlContentRoots} selects. Extracted text is
+   * already the reduced content the connector chose (under its own selector), so it is taken as one
+   * root without a second selection: a header or teaser inside that content is content, and the
+   * conditional chrome stripping must not run against it. Only what is never content is still
+   * removed, which is idempotent on a connector-reduced fragment.
+   */
+  private static List<Element> contentRoots(
+      DocumentPipelineSource source, org.jsoup.nodes.Document htmlDoc) {
+    if (source.file() != null) {
+      return HtmlContentRoots.select(htmlDoc);
+    }
+    htmlDoc.select(HtmlContentRoots.UNCONDITIONAL_BOILERPLATE_SELECTOR).remove();
+    Element body = htmlDoc.body();
+    return body == null ? List.of() : List.of(body);
   }
 
   /**

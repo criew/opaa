@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.web;
 
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.pipeline.Whitespace;
 import io.opaa.indexing.pipeline.html.HtmlContentRoots;
 import io.opaa.indexing.source.attachment.AttachmentCandidate;
 import io.opaa.sourceaccess.BoundedStreams;
@@ -121,7 +122,7 @@ public class DetailPageExtractor {
       for (Element root : roots) {
         attachments.addAll(
             properties.attachmentProfile().findAttachments(root, URI.create(entryUrl)));
-        hasText |= !root.text().isBlank();
+        hasText |= !Whitespace.normalize(root.text()).isBlank();
         html.append(root.outerHtml()).append('\n');
       }
       return new DetailPage(hasText ? html.toString() : "", List.copyOf(attachments));

@@ -328,6 +328,65 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
+  void aConfiguredContentSelectorKeepsHeaderAndTextNextToATeaserThroughThePipeline()
+      throws Exception {
+    // With main-content-selector "#content" the connector's reduction is the only root selection;
+    // the pipeline must not run the default one again (no <main> match -> body fallback, which
+    // would strip the inner header and, via the <article> match, drop the text next to it).
+    executor =
+        newExecutor(new IndexingProperties.Rss(200, 10_000, 10_000, 0, "#content", null, 0, 0));
+    String detailHtml =
+        """
+        <html><body>
+          <nav><a href="/">Startseite</a></nav>
+          <main><p>Nicht der konfigurierte Bereich</p></main>
+          <div id="content">
+            <header><h1>Meldungen der Woche</h1></header>
+            <p>Text neben dem Teaser.</p>
+            <article><p>Teaser der Meldung.</p></article>
+          </div>
+        </body></html>
+        """;
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/woche.html"));
+    serve("/woche.html", 200, "text/html", detailHtml);
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
+    verify(fileProcessingService).ingest(ingest.capture(), any());
+    DocumentPipelineResult cut =
+        new HtmlDocumentPipeline()
+            .run(
+                DocumentPipelineSource.ofExtractedText(
+                    DocumentIngests.textOf(ingest.getValue()), ingest.getValue().fileName()));
+    assertThat(cut.chunks()).hasSize(1);
+    assertThat(cut.chunks().getFirst().getText())
+        .isEqualTo("Meldungen der Woche\n\nText neben dem Teaser.\n\nTeaser der Meldung.")
+        .doesNotContain("Startseite")
+        .doesNotContain("Nicht der konfigurierte Bereich");
+  }
+
+  @Test
+  void aDetailPageWhoseContentIsOnlyNonBreakingSpaceIsSkippedAsHavingNoContent() throws Exception {
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/leer.html"));
+    serve("/leer.html", 200, "text/html", "<html><body><main><p>&nbsp;</p></main></body></html>");
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
+    verify(fileProcessingService, never()).ingest(any(), any());
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.UNSUPPORTED_FORMAT
+                        && "Kein Inhalt extrahierbar".equals(event.getMessage())));
+  }
+
+  @Test
   void constructorNeverAcceptsAStaleDocumentCleanupService() throws Exception {
     // RSS deliberately never cleans up by absence (ADR-0017, decision 5) - a
     // constructor parameter for StaleDocumentCleanupService here would already be a structural

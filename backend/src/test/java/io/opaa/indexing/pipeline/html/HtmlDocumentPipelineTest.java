@@ -501,6 +501,24 @@ class HtmlDocumentPipelineTest {
   }
 
   @Test
+  void extractedTextIsTakenAsTheContentWithoutASecondRootSelection() {
+    // The connector already chose the content under its own selector (here an id, which the
+    // default selector would not match): a header inside it and text next to a teaser article
+    // are content and must not be stripped or dropped by a second selection.
+    DocumentPipelineResult result =
+        pipeline.run(
+            DocumentPipelineSource.ofExtractedText(
+                "<div id=\"content\"><header><h1>Meldungen</h1></header><p>Text daneben.</p>"
+                    + "<article><p>Teaser.</p></article><footer><p>Stand heute</p></footer></div>",
+                "Meldungen"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .isEqualTo("Meldungen\n\nText daneben.\n\nTeaser.\n\nStand heute");
+  }
+
+  @Test
   void aMainContentFragmentWithoutAnEnclosingPageIsCutLikeAWholePage() {
     // The feed connector hands over the already reduced content roots, not a whole page.
     DocumentPipelineResult result =

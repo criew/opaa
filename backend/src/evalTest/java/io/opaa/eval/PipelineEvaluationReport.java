@@ -90,10 +90,6 @@ public record PipelineEvaluationReport(
    * METADATA_FILTER} stage applies it in both search paths. Unlike versions 4 to 7 this is not a
    * fingerprint-only bump: the filter moves the measured selection of the {@code metadata_filter}
    * class, and the {@code verwaltung} baseline was re-drawn.
-   *
-   * <p>Version 10 (issue #1315): {@code HtmlDocumentPipeline#version()} moved 1 → 2 (shared XHTML
-   * event walk, tables and lists keep their structure), shifting the collective fingerprint - a
-   * fingerprint-only bump, no corpus in this repository routes a document through that pipeline.
    */
   public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 10;
 

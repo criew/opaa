@@ -132,6 +132,11 @@ Drei Stufen, von billig nach teuer:
    und eine geänderte Überschrift als Titel, sodass der nächste Lauf ihn schon in Stufe 2
    überspringt. Das Dokumentdatum der Kernfelder bleibt bis zur nächsten Inhaltsänderung.
 
+Bestehende Einträge, die noch mit der Auffang-Pipeline geschnitten wurden, behalten diese Chunks
+bis zur nächsten `pubDate`-Änderung; der Pipeline-Nachzug für `html` (Kapitel
+[Indexierung](indexierung.md), Abschnitt 9) erfasst sie nur, wenn ihr Titel wie ein Dateiname auf
+`.html` endet.
+
 **Zurückstellung.** Der Feed-Zustand aus Stufe 1 wird nur gespeichert, wenn der Lauf
 vollständig war: kein Fehler und kein zurückgestellter Eintrag. Zurückgestellt wird alles, was
 in diesem Lauf nicht verarbeitet werden konnte, obwohl es beim nächsten Mal klappen könnte: eine
