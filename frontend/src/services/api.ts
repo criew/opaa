@@ -78,7 +78,11 @@ import type {
   UpdateLibraryMetadataFieldRequest,
   MetadataFilter,
   MetadataFilterOptionsResponse,
+  LibraryMetadataExtractionSettingsRequest,
+  LibraryMetadataExtractionSettingsResponse,
   LibraryMetadataMaintenanceResponse,
+  LibraryMetadataQualityResponse,
+  LibraryMetadataSampleResponse,
   MetadataValueRequest,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
@@ -1017,6 +1021,65 @@ export async function getLibraryMetadataMaintenance(
   try {
     const { data } = await client.get<LibraryMetadataMaintenanceResponse>(
       `/v1/libraries/${libraryId}/metadata/maintenance`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** the two model-backed extraction switches of a library, with the chat role behind them. */
+export async function getLibraryMetadataExtractionSettings(
+  libraryId: string,
+): Promise<LibraryMetadataExtractionSettingsResponse> {
+  try {
+    const { data } = await client.get<LibraryMetadataExtractionSettingsResponse>(
+      `/v1/libraries/${libraryId}/metadata/extraction-settings`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateLibraryMetadataExtractionSettings(
+  libraryId: string,
+  request: LibraryMetadataExtractionSettingsRequest,
+): Promise<LibraryMetadataExtractionSettingsResponse> {
+  try {
+    const { data } = await client.put<LibraryMetadataExtractionSettingsResponse>(
+      `/v1/libraries/${libraryId}/metadata/extraction-settings`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** the Extraktionsgüte per field plus the Zählwerk of the model-backed extraction. */
+export async function getLibraryMetadataQuality(
+  libraryId: string,
+): Promise<LibraryMetadataQualityResponse> {
+  try {
+    const { data } = await client.get<LibraryMetadataQualityResponse>(
+      `/v1/libraries/${libraryId}/metadata/quality`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** the Stichproben-Export for the Handauswertung; management right. */
+export async function getLibraryMetadataSample(
+  libraryId: string,
+  size = 100,
+): Promise<LibraryMetadataSampleResponse> {
+  try {
+    const { data } = await client.get<LibraryMetadataSampleResponse>(
+      `/v1/libraries/${libraryId}/metadata/sample`,
+      { params: { size } },
     )
     return data
   } catch (err) {

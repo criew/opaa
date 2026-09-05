@@ -2046,6 +2046,132 @@ paths:
               schema:
                 $ref: "#/components/schemas/DocumentTypeVocabularyResponse"
 
+  /api/v1/libraries/{libraryId}/metadata/extraction-settings:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLibraryMetadataExtractionSettings
+      tags: [library]
+      summary: >
+        The two model-backed extraction switches of a library (#1073, metadata-schema.md "Die
+        modellgestützte Extraktion im Betrieb"), both off by default, together with the chat role
+        the extraction would use - Basis-Adresse and Modell-Kennung, never an access key. The
+        endpoint the Datenschutzhinweis at the switch is built from: with an externally operated
+        model, every ingested document leaves the house without a person triggering it. Requires
+        the management right at the library.
+      responses:
+        "200":
+          description: The switches and the active chat role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataExtractionSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updateLibraryMetadataExtractionSettings
+      tags: [library]
+      summary: >
+        Switches the model-backed extraction and the freie Schlagworte of this library on or off
+        (#1073). Takes effect on the next ingest and on the next Bestandslauf call; already stored
+        values are not touched by switching either flag off. Requires the management right at the
+        library.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryMetadataExtractionSettingsRequest"
+      responses:
+        "200":
+          description: The switches after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataExtractionSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata/quality:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLibraryMetadataQuality
+      tags: [library]
+      summary: >
+        The Extraktionsgüte of a library (#1073, metadata-schema.md "Messung und Abnahme", Punkt
+        3): per field the share of deterministically filled, model-filled, manually set, empty and
+        "kein Wert ermittelbar" documents, plus the Zählwerk of the model-backed extraction. Without
+        it, a weak filter result cannot be told apart from a weak extraction. Counted on every
+        request in the rights context of the asking person and never precomputed or cached
+        (metadata-schema.md, Rechte-Invariante); reading needs VIEWER on the library.
+      responses:
+        "200":
+          description: The extraction quality per field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataQualityResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata/sample:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 100
+        description: How many documents the sample covers; 100 is the size the specification fixes.
+
+    get:
+      operationId: getLibraryMetadataSample
+      tags: [library]
+      summary: >
+        A sample of documents with every stored metadata value and its provenance (#1073) - the
+        basis of the handausgewertete Stichprobe of 100 documents the QA role runs before the
+        model-backed extraction is accepted. Deterministically ordered by document id, so a repeat
+        run examines the same documents. Requires the management right at the library.
+      responses:
+        "200":
+          description: The sampled documents with their values
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataSampleResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries/{libraryId}/metadata-fields:
     parameters:
       - name: libraryId
@@ -6518,6 +6644,271 @@ components:
           items:
             $ref: "#/components/schemas/MetadataFieldMaintenanceResponse"
 
+    LibraryMetadataExtractionSettingsRequest:
+      type: object
+      description: >-
+        The two switches of the model-backed extraction (#1073). Both are off by default; switching
+        one off leaves already stored values untouched.
+      required: [modelExtractionEnabled, keywordsEnabled]
+      properties:
+        modelExtractionEnabled:
+          type: boolean
+          description: >
+            Whether the chat role is asked for the unscharfe fields the deterministic extraction
+            left empty (Dokumentart and the library's own SELECT fields).
+        keywordsEnabled:
+          type: boolean
+          description: >
+            Whether the model assigns up to five freie Schlagworte per document. They reach the
+            full-text index and the Kontextpräfix and never filter.
+
+    LibraryMetadataExtractionSettingsResponse:
+      type: object
+      description: >-
+        The stored switches plus the chat role the extraction uses (#1073) - the facts a client
+        needs for the Datenschutzhinweis at the switch.
+      required: [libraryId, modelExtractionEnabled, keywordsEnabled, confidenceThreshold]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        modelExtractionEnabled:
+          type: boolean
+        keywordsEnabled:
+          type: boolean
+        confidenceThreshold:
+          type: number
+          format: double
+          description: >
+            The confidence a model-proposed value must reach to be stored, fixed before the first
+            measurement (ADR-0012). Below it the field stays empty.
+          example: 0.8
+        chatModel:
+          $ref: "#/components/schemas/ActiveChatModelSummaryResponse"
+
+    ActiveChatModelSummaryResponse:
+      type: object
+      description: >-
+        Basis-Adresse and Modell-Kennung of the systemwide active chat role, never an access key
+        (#1073). Absent when no chat model is active at all.
+      required: [baseUrl, modelIdentifier, local]
+      properties:
+        baseUrl:
+          type: string
+          example: https://api.openai.com/v1
+        modelIdentifier:
+          type: string
+          example: gpt-4o-mini
+        local:
+          type: boolean
+          description: >
+            Whether the endpoint is a loopback or private address, i.e. whether the extraction runs
+            without an outgoing connection. Decides which of the two Datenschutzhinweise a client
+            shows.
+
+    MetadataModelExtractionStatsResponse:
+      type: object
+      description: >-
+        The Zählwerk of the model-backed extraction of one library (#1073, metadata-schema.md "Die
+        Zahl der Extraktionsaufrufe wird je Bibliothek geführt"). Without it, the only feedback about
+        the cost of this capability is the model provider's invoice.
+      required:
+        [
+          calls,
+          acceptedValues,
+          rejectedBelowThreshold,
+          rejectedOutsideVocabulary,
+          failures,
+          rejectedPoolFull,
+          keywordsAssigned,
+        ]
+      properties:
+        calls:
+          type: integer
+          format: int64
+          description: Model calls made for this library, successful or not.
+        acceptedValues:
+          type: integer
+          format: int64
+          description: Values stored - confidence at or above the threshold and inside the vocabulary.
+        rejectedBelowThreshold:
+          type: integer
+          format: int64
+        rejectedOutsideVocabulary:
+          type: integer
+          format: int64
+          description: >
+            Values discarded because the answer was not a code of the offered list - discarded
+            regardless of the confidence, never mapped onto the most similar value.
+        failures:
+          type: integer
+          format: int64
+          description: Calls that timed out, failed or answered unusably. The document is indexed regardless.
+        rejectedPoolFull:
+          type: integer
+          format: int64
+          description: >
+            Documents whose model call was skipped because every extraction thread was busy - no
+            call was made, the field stayed empty and the document was indexed regardless.
+        keywordsAssigned:
+          type: integer
+          format: int64
+        lastCallAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    MetadataFieldQualityResponse:
+      type: object
+      description: >-
+        The Extraktionsgüte of one field over one library (#1073): where the values of this field
+        came from, and how much of the bestand carries none.
+      required:
+        [
+          fieldKey,
+          label,
+          totalDocuments,
+          deterministicDocuments,
+          derivedDocuments,
+          manualDocuments,
+          notDeterminableDocuments,
+          emptyDocuments,
+          derivedShare,
+          emptyShare,
+        ]
+      properties:
+        fieldKey:
+          type: string
+          example: document_type
+        label:
+          type: string
+          example: Dokumentart
+        totalDocuments:
+          type: integer
+          format: int64
+        deterministicDocuments:
+          type: integer
+          format: int64
+        derivedDocuments:
+          type: integer
+          format: int64
+          description: Documents whose value came from the model.
+        manualDocuments:
+          type: integer
+          format: int64
+        notDeterminableDocuments:
+          type: integer
+          format: int64
+          description: Documents a person marked as having no value to find.
+        emptyDocuments:
+          type: integer
+          format: int64
+        derivedShare:
+          type: number
+          format: double
+        emptyShare:
+          type: number
+          format: double
+
+    LibraryMetadataQualityResponse:
+      type: object
+      description: >-
+        The extraction quality of one library, one entry per field in schema order, plus the
+        Zählwerk of the model-backed extraction (#1073). Built at query time in the rights context
+        of the asking person and never cached (metadata-schema.md, Rechte-Invariante).
+      required:
+        [
+          libraryId,
+          totalDocuments,
+          modelExtractionEnabled,
+          keywordsEnabled,
+          confidenceThreshold,
+          fields,
+          modelExtraction,
+        ]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        totalDocuments:
+          type: integer
+          format: int64
+        modelExtractionEnabled:
+          type: boolean
+        keywordsEnabled:
+          type: boolean
+        confidenceThreshold:
+          type: number
+          format: double
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataFieldQualityResponse"
+        modelExtraction:
+          $ref: "#/components/schemas/MetadataModelExtractionStatsResponse"
+
+    MetadataSampleValueResponse:
+      type: object
+      description: One stored value of a sampled document, with its provenance (#1073).
+      required: [fieldKey, label, origin]
+      properties:
+        fieldKey:
+          type: string
+        label:
+          type: string
+        value:
+          type: string
+          nullable: true
+          description: The stored value as displayed; null for "kein Wert ermittelbar".
+        origin:
+          $ref: "#/components/schemas/MetadataOrigin"
+        confidence:
+          type: number
+          format: double
+          nullable: true
+          description: Only set for a model-derived value.
+        modelId:
+          type: string
+          nullable: true
+
+    MetadataSampleDocumentResponse:
+      type: object
+      description: One sampled document with every stored value (#1073).
+      required: [documentId, fileName, values]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        title:
+          type: string
+          nullable: true
+          description: The document's Kernfeld Titel, the Titelzeile of the handauswertung.
+        values:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataSampleValueResponse"
+
+    LibraryMetadataSampleResponse:
+      type: object
+      description: >-
+        The Stichproben-Export for the handausgewertete Auswertung of the QA role (#1073), ordered
+        by document id so a repeat run examines the same documents. Freie Schlagworte are not part
+        of it - they carry no claim the product stands behind.
+      required: [libraryId, size, documents]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        size:
+          type: integer
+          description: The requested sample size; fewer documents are returned when the library holds fewer.
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataSampleDocumentResponse"
+
     DocumentTypeVocabularyEntryResponse:
       type: object
       required: [code, label]
@@ -8868,6 +9259,7 @@ components:
           fullTextIndexedChunks,
           fullTextMissingChunks,
           metadataBackfill,
+          modelExtraction,
           contextPrefixRerun,
         ]
       properties:
@@ -8928,6 +9320,8 @@ components:
             The same data source the "Volltextpfad inaktiv oder unvollständig" alarm reads.
         metadataBackfill:
           $ref: "#/components/schemas/MetadataBackfillStatusResponse"
+        modelExtraction:
+          $ref: "#/components/schemas/MetadataModelExtractionStatsResponse"
         contextPrefixRerun:
           $ref: "#/components/schemas/ContextPrefixRerunStatusResponse"
 

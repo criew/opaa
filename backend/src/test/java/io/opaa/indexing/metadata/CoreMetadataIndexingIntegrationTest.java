@@ -72,6 +72,7 @@ class CoreMetadataIndexingIntegrationTest {
   @Autowired private DocumentMetadataService documentMetadataService;
   @Autowired private CitationMetadataReader citationMetadataReader;
   @Autowired private LibraryMetadataFieldRepository libraryFieldRepository;
+  @Autowired private DocumentKeywordRepository keywordRepository;
   @Autowired private LibraryMetadataFieldValueRepository libraryValueRepository;
   @Autowired private DocumentMetadataValueRepository valueRepository;
   @Autowired private DocumentRepository documentRepository;
@@ -567,6 +568,7 @@ class CoreMetadataIndexingIntegrationTest {
               }
             },
             libraryFieldRepository,
+            keywordRepository,
             libraryValueRepository,
             libraryRepository,
             transactionManager);

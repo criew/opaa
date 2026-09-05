@@ -146,7 +146,8 @@ class FileProcessingServiceTest {
         Runnable::run,
         attachmentIndexerProvider,
         new AttachmentLimits(0, 0),
-        TestDocumentMetadataServices.returningEmpty());
+        TestDocumentMetadataServices.returningEmpty(),
+        TestDocumentMetadataServices.notExtracting());
   }
 
   private KnowledgeLibrary library() {
@@ -1084,7 +1085,8 @@ class FileProcessingServiceTest {
               Runnable::run,
               Mockito.mock(ObjectProvider.class),
               new AttachmentLimits(0, 0),
-              metadataService);
+              metadataService,
+              io.opaa.indexing.TestDocumentMetadataServices.notExtracting());
       when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
       when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), ENTRY_URL))
           .thenReturn(Optional.empty());

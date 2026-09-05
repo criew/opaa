@@ -138,7 +138,8 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
         executor,
         org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
         new io.opaa.indexing.source.attachment.AttachmentLimits(0, 0),
-        TestDocumentMetadataServices.returningEmpty());
+        TestDocumentMetadataServices.returningEmpty(),
+        TestDocumentMetadataServices.notExtracting());
   }
 
   private List<org.springframework.ai.document.Document> chunksOf(int count) {

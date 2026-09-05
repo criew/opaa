@@ -109,6 +109,16 @@ export type MetadataFieldMaintenanceResponse =
   components['schemas']['MetadataFieldMaintenanceResponse']
 export type LibraryMetadataMaintenanceResponse =
   components['schemas']['LibraryMetadataMaintenanceResponse']
+export type LibraryMetadataExtractionSettingsResponse =
+  components['schemas']['LibraryMetadataExtractionSettingsResponse']
+export type LibraryMetadataExtractionSettingsRequest =
+  components['schemas']['LibraryMetadataExtractionSettingsRequest']
+export type ActiveChatModelSummaryResponse = components['schemas']['ActiveChatModelSummaryResponse']
+export type MetadataModelExtractionStatsResponse =
+  components['schemas']['MetadataModelExtractionStatsResponse']
+export type MetadataFieldQualityResponse = components['schemas']['MetadataFieldQualityResponse']
+export type LibraryMetadataQualityResponse = components['schemas']['LibraryMetadataQualityResponse']
+export type LibraryMetadataSampleResponse = components['schemas']['LibraryMetadataSampleResponse']
 export type LibraryMetadataFieldType = components['schemas']['LibraryMetadataFieldType']
 export type LibraryMetadataFieldResponse = components['schemas']['LibraryMetadataFieldResponse']
 export type LibraryMetadataFieldsResponse = components['schemas']['LibraryMetadataFieldsResponse']

@@ -832,6 +832,112 @@ Dokumentinhalte an ein Modell übergibt. Er wird deshalb als eigenständig steue
   [Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)). Ohne dieses Zählwerk ist die
   einzige Rückmeldung über die Kosten dieser Fähigkeit die Rechnung des Modellanbieters.
 
+### Umgesetzt (#1073)
+
+Arbeitspaket 7 und 8 — die modellgestützte Extraktion (Schritt 2 der Reihenfolge), die freien
+Schlagworte und die eigenständige Messung der Extraktionsgüte.
+
+**Zwei Schalter je Bibliothek, beide voreingestellt aus** (`knowledge_libraries.model_extraction_enabled`,
+`keywords_enabled`, Migration 028): `GET`/`PUT /api/v1/libraries/{id}/metadata/extraction-settings`
+(Verwaltungsrecht) liefern sie zusammen mit der aktiven Chat-Rolle — Basis-Adresse und
+Modell-Kennung, nie ein Zugangsschlüssel — und der Angabe, ob diese Adresse lokal ist
+(Loopback/privates Netz). Der Schalter in den Bibliothekseinstellungen zeigt daraus zwei
+verschiedene Datenschutzhinweise: Bei einem extern betriebenen Modell benennt er ausdrücklich, dass
+**der Inhalt jedes aufgenommenen Dokuments dauerhaft das Haus verlässt**, ohne dass eine Person den
+Vorgang auslöst; bei einem lokal betriebenen Modell, dass keine ausgehende Verbindung entsteht.
+
+**Was das Modell gefragt wird.** `ModelMetadataExtractor` läuft im Ingest **nach** der
+deterministischen Extraktion und nur für Felder, die keine Zeile tragen — und nur für die unscharfen:
+Kernfeld Dokumentart und die SELECT-Felder der Bibliothek. Titel, Datum/Stand und PATTERN-Felder sind
+deterministisch oder nichts und werden nie gefragt. Ein Aufruf je Dokument über die zentrale
+Chat-Rolle (`ActiveChatModelResolver`, keine eigene Modellrolle), Zeitlimit 30 s. Der Prompt trägt die
+Werteliste mit Codes und deutschen Labels, die Anweisung „nur ein aufgeführter Code, sonst null",
+das Antwortformat `{"fields": {"<feld>": {"value", "confidence"}}, "keywords": [...]}`, die Titelzeile
+und den auf **4.000 Zeichen** gekürzten Textanfang. Titelzeile und Text stehen zwischen Markierungen
+und sind ausdrücklich als Inhalt, nicht als Anweisung deklariert. Das ist eine Minderung, keine
+Zusicherung: Ein präpariertes Dokument kann weiterhin versuchen, sich selbst einen **zulässigen** Code
+mit hoher Konfidenz zuzuweisen. Die bindende Schranke bleibt die serverseitige Prüfung — gespeichert
+wird nur ein Code der angebotenen Liste, und ein solcher Wert trägt sichtbar die Herkunft
+„abgeleitet". Der Deckel ist bewusst klein: Die unscharfen
+Felder entscheiden sich im Dokumentkopf, der Rest des Textes bewegt die Entscheidung nicht mehr, wohl
+aber Kosten, Laufzeit und die Menge dessen, was das Haus verlässt.
+
+**Übernahme.** Nur bei Konfidenz **≥ 0,80** — vorab festgelegt und committet nach der Regel von
+[ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md), Maintainer-Freigabe 05.09.2026;
+`ModelMetadataExtractor.CONFIDENCE_THRESHOLD`) **und** einem Code aus der angebotenen Liste. Ein Wert
+außerhalb der Liste wird unabhängig von der Konfidenz verworfen — keine Abbildung auf den
+nächstähnlichen Wert. Übernommene Werte tragen `origin = DERIVED`, die gelieferte Konfidenz, die
+Modell-Kennung und die Extraktionsversion; ein manueller Wert wird nie berührt. Die Schwelle darf
+nach einer Messung nur gesenkt werden, nie stillschweigend erhöht, und jede Änderung ist ein Commit
+mit Datum und gemessener Verteilung.
+
+**Ein Ausfall blockiert nie die Aufnahme.** Zeitüberschreitung, Transportfehler und unbrauchbare
+Antwort enden gleich: Feld leer, Dokument regulär aufgenommen und durchsuchbar, Aufruf als Fehler
+gezählt. Kein Retry, keine Warteschlange. Der Aufruf läuft auf einem **eigenen, beschränkten
+Threadpool** (`modelExtractionTaskExecutor`, so groß wie Indexierungs- und Upload-Pool zusammen),
+nicht auf dem gemeinsamen `ForkJoinPool`: Dessen Auslastung ließe das Zeitlimit an einem Aufruf
+ablaufen, der nie gestartet ist — ein gezählter „Fehler", den kein Modell verursacht hat. Ist der
+Pool dennoch voll, unterbleibt der Aufruf (eigener Zähler „nicht angefragt (ausgelastet)"; das
+Dokument bekommt dann **keine Abtragsmarke** und bleibt in der Auswahl des Bestandslaufs — anders als
+bei einer Zeitüberschreitung, die bezahlt wurde),
+nicht eingereiht und nicht auf dem aufrufenden Faden ausgeführt: Ein Inline-Aufruf kehrte erst nach
+der Antwort des Modells zurück, das Zeitlimit griffe also gerade dann nicht, wenn es gebraucht wird.
+Das Feld bleibt leer, die Aufnahme läuft weiter. Ein überschrittener Aufruf wird **aufgegeben, nicht
+abgebrochen** — ein blockierender HTTP-Lesevorgang lässt sich nicht unterbrechen. Beendet wird er
+vom **Anfrage-Zeitlimit des Clients**, den dieser Schritt eigens auflöst
+(`ActiveChatModelResolver#resolveChatClient(Duration)`, dieselben 30 s): Spätestens dort scheitert
+der aufgegebene Aufruf und gibt seinen Faden zurück, sodass ein hängendes Modell den Pool nicht
+aufbraucht. Seine Antwort wird verworfen, abgerechnet wird er trotzdem.
+
+**Zählwerk und verworfene Werte.** `metadata_model_extraction_stats` führt je Bibliothek Aufrufe,
+übernommene Werte, verworfen wegen Schwelle, verworfen wegen Vokabular, Fehler, vergebene Schlagworte
+und den letzten Aufruf; es erscheint in den Bibliothekseinstellungen und in derselben
+Zustandsübersicht wie der übrige Indexzustand. `metadata_model_rejections` hält zusätzlich jeden
+verworfenen Wert **mit seiner Konfidenz** (je Bibliothek auf die 1.000 jüngsten Zeilen gedeckelt,
+rotierend) — ohne diese Verteilung ist die Schwelle auf einem echten Bestand nicht kalibrierbar.
+
+**Freie Schlagworte.** Bei eingeschaltetem Schalter liefert dasselbe Antwortobjekt bis zu **fünf**
+Schlagworte je Dokument, je höchstens 40 Zeichen (längere werden verworfen, nicht gekürzt),
+Personennamen sind Prompt-Regel und nicht prüfbar. Sie liegen in einer **eigenen Tabelle**
+(`document_keywords`), nicht in `document_metadata_values`: Jede Zeile dort ist ein typisiertes Feld,
+das ein Filter benennen darf — genau das darf ein Schlagwort nie werden. Sie fließen als **ein
+Segment des Kontextpräfix** (`Schlagworte: …`) durch dasselbe Gate wie jeder andere
+präfixwirksame Wert (`ChunkContextPrefix#forChunk`, #1072) und erreichen darüber **Einbettung und
+Volltextindex** zugleich; der gespeicherte Chunk-Text bleibt unverändert, und ein geänderter
+Schlagwortsatz verändert den Abdruck genau wie ein geänderter Feldwert. Sie tragen **keinen
+Chunk-Schlüssel**, erscheinen **nicht im Beleg** und sind **nicht zu Bibliotheksfeldern beförderbar**;
+ein Filter, der sie benennt, ist ein Aufruferfehler (400). Alle vier Zusagen sind Testfälle, keine
+Absichtserklärungen.
+
+**Bestandslauf.** `documents.model_extraction_version` und `documents.keyword_extraction_version`
+sind die Abtragsmarken — **eine je Fähigkeit** (NULL = nie gelaufen), damit eine Bibliothek, die
+zuerst nur mit Schlagworten lief, ihren Altbestand noch erreicht, wenn die Modell-Extraktion später
+dazukommt. Der Modellschritt trägt eine **eigene Versionsnummer**
+(`ModelMetadataExtractor.EXTRACTION_VERSION`): Eine korrigierte Regex in Schritt 1 macht damit nicht
+jedes Dokument jeder eingeschalteten Bibliothek erneut zu einem bezahlten Modellaufruf. Wird ein
+Schalter eingeschaltet, nimmt der nächste Bestandslauf den Altbestand genau einmal mit; ein Dokument,
+dessen Aufruf nichts ergab, wird kein zweites Mal bezahlt. **Zählung und Auswahl sind dieselbe
+Menge:** Die Fortschrittszahlen der Zustandsübersicht berücksichtigen dieselben Schalter wie die
+Auswahl — sonst zeigte die Seite „0 ausstehend" und keinen Startknopf für genau die Bibliothek,
+deren Altbestand wartet. Der Lauf liest
+den Text aus den vorhandenen Chunks statt neu zu parsen; ein dort vergebenes Schlagwort oder ein dort
+übernommener präfixwirksamer Wert leert den Abdruck und übergibt das Dokument dem
+Kontextpräfix-Nachlauf (#1072) — dieser eine Lauf zahlt das Neu-Einbetten, der Bestandslauf nie.
+
+**Messung der Extraktionsgüte.** `GET /api/v1/libraries/{id}/metadata/quality` (Leserecht, im
+Rechtekontext, nie zwischengespeichert) liefert je Feld die Anteile deterministisch / modellbefüllt /
+manuell / „kein Wert ermittelbar" / leer plus das Zählwerk; die Bibliothekseinstellungen zeigen es
+neben dem Pflege-Anker. `GET /api/v1/libraries/{id}/metadata/sample?size=100` (Verwaltungsrecht)
+liefert die Grundlage der Handauswertung: Dokumente in stabiler Reihenfolge mit Titelzeile und jedem
+Wert samt Herkunft, Konfidenz und Modell — ohne Schlagworte, die keine Aussage tragen, für die das
+Produkt geradesteht. **Offen bleibt die 100er-Handstichprobe der QA-Rolle**; sie läuft auf der
+Demo-Instanz und ist nicht Teil dieses Schnitts.
+
+**Abweichung.** Der Textdeckel (4.000 Zeichen), die Speicherform der Schlagworte (eigene Tabelle),
+der Deckel des Verwerfungsprotokolls (1.000 Zeilen je Bibliothek, rotierend alle 100 Aufrufe) und die
+eigene Versionsnummer des Modellschritts sind Festlegungen dieses Schnitts, keine Vorgaben der
+Spezifikation.
+
 ## Jeder Wert trägt seine Herkunft
 
 Ein Metadatenwert ohne Herkunftsangabe ist nach drei Monaten nicht mehr bewertbar: Niemand weiß, ob

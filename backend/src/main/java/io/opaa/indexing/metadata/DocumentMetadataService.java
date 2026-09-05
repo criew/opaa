@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -46,6 +47,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 public class DocumentMetadataService {
 
+  /** How the freie Schlagworte appear in the Kontextpraefix. */
+  static final String KEYWORD_SEGMENT_PREFIX = "Schlagworte: ";
+
   private static final Logger log = LoggerFactory.getLogger(DocumentMetadataService.class);
 
   private final DocumentMetadataValueRepository valueRepository;
@@ -54,6 +58,7 @@ public class DocumentMetadataService {
   private final DocumentPipelineRegistry pipelineRegistry;
   private final VectorChunkStore vectorChunkStore;
   private final LibraryMetadataFieldRepository libraryFieldRepository;
+  private final DocumentKeywordRepository keywordRepository;
   private final LibraryMetadataFieldValueRepository libraryValueRepository;
   private final KnowledgeLibraryRepository libraryRepository;
   private final TransactionTemplate transactionTemplate;
@@ -65,6 +70,7 @@ public class DocumentMetadataService {
       DocumentPipelineRegistry pipelineRegistry,
       VectorChunkStore vectorChunkStore,
       LibraryMetadataFieldRepository libraryFieldRepository,
+      DocumentKeywordRepository keywordRepository,
       LibraryMetadataFieldValueRepository libraryValueRepository,
       KnowledgeLibraryRepository libraryRepository,
       PlatformTransactionManager transactionManager) {
@@ -74,6 +80,7 @@ public class DocumentMetadataService {
     this.pipelineRegistry = pipelineRegistry;
     this.vectorChunkStore = vectorChunkStore;
     this.libraryFieldRepository = libraryFieldRepository;
+    this.keywordRepository = keywordRepository;
     this.libraryValueRepository = libraryValueRepository;
     this.libraryRepository = libraryRepository;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -145,6 +152,12 @@ public class DocumentMetadataService {
             ? null
             : libraryRepository.findById(document.getLibraryId()).orElse(null);
     List<String> prefixValues = new ArrayList<>();
+    // The freie Schlagworte ride in the Kontextpraefix like every other prefix-effective value
+    // (metadata-schema.md, Teil II (c)): one segment, hashed into the Abdruck with the rest, so a
+    // changed keyword set hands the document to the Nachlauf exactly like a changed field value -
+    // and reaches the full-text index through the same formatter, never through a key a filter
+    // could name.
+    String keywordSegment = keywordSegmentOf(document.getId());
     if (library != null && library.isCoreContextPrefixDocumentType()) {
       addIfSet(prefixValues, core.documentTypeLabel());
     }
@@ -155,6 +168,7 @@ public class DocumentMetadataService {
           MetadataValueDisplay.displayDate(core.documentDate(), core.documentDatePrecision()));
     }
     if (library == null) {
+      addIfSet(prefixValues, keywordSegment);
       return new DocumentChunkMetadata(values, managed, core.title(), prefixValues);
     }
     Map<String, DocumentMetadataValue> byKey = new HashMap<>();
@@ -194,7 +208,19 @@ public class DocumentMetadataService {
           LibraryMetadataFieldKeys.presenceChunkKey(field.getFieldKey()),
           LibraryMetadataFieldKeys.PRESENCE_VALUE);
     }
+    addIfSet(prefixValues, keywordSegment);
     return new DocumentChunkMetadata(values, managed, core.title(), prefixValues);
+  }
+
+  /** The document's freie Schlagworte as one prefix segment, or {@code null} when it has none. */
+  private String keywordSegmentOf(UUID documentId) {
+    List<DocumentKeyword> keywords =
+        keywordRepository.findByDocumentIdOrderByKeywordAsc(documentId);
+    if (keywords.isEmpty()) {
+      return null;
+    }
+    return KEYWORD_SEGMENT_PREFIX
+        + keywords.stream().map(DocumentKeyword::getKeyword).collect(Collectors.joining(", "));
   }
 
   /**
@@ -361,6 +387,56 @@ public class DocumentMetadataService {
     }
     assign.get().accept(target);
     valueRepository.save(target);
+  }
+
+  /**
+   * Stores the values the model-backed extraction accepted (metadata-schema.md, Schritt 2) and
+   * rewrites the document's filterable chunk keys in the same transaction. A field that already
+   * carries a row - of any origin - is skipped: step 2 only ever fills what step 1 left empty, and
+   * a manual correction is never overwritten. Returns the effective chunk metadata afterwards.
+   */
+  public DocumentChunkMetadata applyDerivedValues(
+      Document document, List<DerivedMetadataValue> values) {
+    return transactionTemplate.execute(
+        status -> {
+          for (DerivedMetadataValue value : values) {
+            if (valueRepository
+                .findByDocumentIdAndFieldKey(document.getId(), value.field().key())
+                .isPresent()) {
+              continue;
+            }
+            DocumentMetadataValue row =
+                DocumentMetadataValue.derived(
+                    document.getId(),
+                    value.field().key(),
+                    value.field().libraryFieldId(),
+                    value.modelId(),
+                    value.confidence(),
+                    CoreMetadataExtractor.EXTRACTION_VERSION);
+            if (value.libraryValueId() == null) {
+              row.assignVocabularyCode(value.code());
+            } else {
+              row.assignLibraryValue(value.code(), value.libraryValueId());
+            }
+            valueRepository.save(row);
+          }
+          valueRepository.flush();
+          DocumentChunkMetadata chunkMetadata = chunkMetadataFor(document);
+          vectorChunkStore.updateDocumentMetadata(
+              document.getId(), chunkMetadata.values(), chunkMetadata.managedKeys());
+          markContextPrefixStaleIfChanged(document.getId());
+          return chunkMetadata;
+        });
+  }
+
+  /**
+   * Hands {@code documentId} to the Kontextpraefix-Nachlauf when its prefix changed - the entry
+   * point of the model step, whose freie Schlagworte are a prefix segment (metadata-schema.md, Teil
+   * II (c)). During the ingest this is a no-op in effect: the chunks are written afterwards and
+   * record their own Abdruck.
+   */
+  public void markContextPrefixStale(UUID documentId) {
+    transactionTemplate.executeWithoutResult(status -> markContextPrefixStaleIfChanged(documentId));
   }
 
   /**

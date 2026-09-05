@@ -463,6 +463,30 @@ function getRunningStatus(step: number): IndexingStatusResponse {
  */
 const mockLibraryMetadataFields: Record<string, LibraryMetadataFieldResponse[]> = {}
 
+// the model-backed extraction switches per library, off until a PUT turns them on (#1073).
+const mockExtractionSettings: Record<
+  string,
+  { modelExtractionEnabled: boolean; keywordsEnabled: boolean }
+> = {}
+
+function extractionSettingsOf(libraryId: string) {
+  const stored = mockExtractionSettings[libraryId] ?? {
+    modelExtractionEnabled: false,
+    keywordsEnabled: false,
+  }
+  return {
+    libraryId,
+    modelExtractionEnabled: stored.modelExtractionEnabled,
+    keywordsEnabled: stored.keywordsEnabled,
+    confidenceThreshold: 0.8,
+    chatModel: {
+      baseUrl: 'https://api.openai.com/v1',
+      modelIdentifier: 'gpt-4o-mini',
+      local: false,
+    },
+  }
+}
+
 export const handlers = [
   http.get('/api/health', () => {
     return HttpResponse.json(mockHealthResponse)
@@ -1882,6 +1906,93 @@ export const handlers = [
           notDeterminableDocuments: states.filter((state) => state === 'NOT_DETERMINABLE').length,
         }
       }),
+    })
+  }),
+
+  // the two model-backed extraction switches, kept in memory so the switch reflects its own PUT.
+  http.get('/api/v1/libraries/:libraryId/metadata/extraction-settings', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json(extractionSettingsOf(libraryId))
+  }),
+
+  http.put(
+    '/api/v1/libraries/:libraryId/metadata/extraction-settings',
+    async ({ params, request }) => {
+      const libraryId = String(params.libraryId)
+      if (!mockLibraryDetails[libraryId]) {
+        return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+      }
+      const body = (await request.json()) as {
+        modelExtractionEnabled: boolean
+        keywordsEnabled: boolean
+      }
+      mockExtractionSettings[libraryId] = {
+        modelExtractionEnabled: body.modelExtractionEnabled,
+        keywordsEnabled: body.keywordsEnabled,
+      }
+      return HttpResponse.json(extractionSettingsOf(libraryId))
+    },
+  ),
+
+  // the Extraktionsgüte - counted over the same mock documents the Pflege-Anker uses.
+  http.get('/api/v1/libraries/:libraryId/metadata/quality', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const documents = mockLibraryDocuments[libraryId] ?? []
+    const totalDocuments = documents.length
+    const settings = extractionSettingsOf(libraryId)
+    return HttpResponse.json({
+      libraryId,
+      totalDocuments,
+      modelExtractionEnabled: settings.modelExtractionEnabled,
+      keywordsEnabled: settings.keywordsEnabled,
+      confidenceThreshold: settings.confidenceThreshold,
+      fields: Object.entries(CORE_METADATA_LABELS).map(([fieldKey, label]) => {
+        const values = documents.map((doc) =>
+          (mockDocumentMetadata[doc.id] ?? []).find((field) => field.fieldKey === fieldKey),
+        )
+        const countOf = (origin: string) =>
+          values.filter((value) => value?.state === 'SET' && value.origin === origin).length
+        const deterministicDocuments = countOf('DETERMINISTIC')
+        const derivedDocuments = countOf('DERIVED')
+        const manualDocuments = countOf('MANUAL')
+        const notDeterminableDocuments = values.filter(
+          (value) => value?.state === 'NOT_DETERMINABLE',
+        ).length
+        const emptyDocuments =
+          totalDocuments -
+          deterministicDocuments -
+          derivedDocuments -
+          manualDocuments -
+          notDeterminableDocuments
+        return {
+          fieldKey,
+          label,
+          totalDocuments,
+          deterministicDocuments,
+          derivedDocuments,
+          manualDocuments,
+          notDeterminableDocuments,
+          emptyDocuments,
+          derivedShare: totalDocuments === 0 ? 0 : derivedDocuments / totalDocuments,
+          emptyShare: totalDocuments === 0 ? 0 : emptyDocuments / totalDocuments,
+        }
+      }),
+      modelExtraction: {
+        calls: 12,
+        acceptedValues: 8,
+        rejectedBelowThreshold: 2,
+        rejectedOutsideVocabulary: 1,
+        failures: 1,
+        rejectedPoolFull: 0,
+        keywordsAssigned: 20,
+        lastCallAt: '2026-09-01T06:05:00Z',
+      },
     })
   }),
 

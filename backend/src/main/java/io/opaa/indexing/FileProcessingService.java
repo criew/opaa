@@ -5,6 +5,9 @@ import io.opaa.api.types.DocumentStatus;
 import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
 import io.opaa.indexing.metadata.DocumentChunkMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
+import io.opaa.indexing.metadata.ModelExtractionOutcome;
+import io.opaa.indexing.metadata.ModelExtractionPrompt;
+import io.opaa.indexing.metadata.ModelMetadataExtractor;
 import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
 import io.opaa.indexing.pipeline.DiscoveredAttachment;
 import io.opaa.indexing.pipeline.DocumentPipeline;
@@ -93,6 +96,11 @@ public class FileProcessingService {
   /** The core-field extraction between parsing and {@link #storeChunks} (ADR-0024). */
   private final DocumentMetadataService documentMetadataService;
 
+  /**
+   * Step 2 of the extraction order, after the deterministic one and before the chunks are written.
+   */
+  private final ModelMetadataExtractor modelMetadataExtractor;
+
   public FileProcessingService(
       DocumentPipelineRegistry pipelineRegistry,
       DocumentRepository documentRepository,
@@ -104,7 +112,8 @@ public class FileProcessingService {
       Executor embeddingExecutor,
       ObjectProvider<AttachmentIndexer> attachmentIndexerProvider,
       AttachmentLimits mailAttachmentLimits,
-      DocumentMetadataService documentMetadataService) {
+      DocumentMetadataService documentMetadataService,
+      ModelMetadataExtractor modelMetadataExtractor) {
     this.pipelineRegistry = pipelineRegistry;
     this.documentRepository = documentRepository;
     this.vectorChunkStore = vectorChunkStore;
@@ -117,6 +126,7 @@ public class FileProcessingService {
     this.attachmentIndexerProvider = attachmentIndexerProvider;
     this.mailAttachmentLimits = mailAttachmentLimits;
     this.documentMetadataService = documentMetadataService;
+    this.modelMetadataExtractor = modelMetadataExtractor;
   }
 
   /**
@@ -258,19 +268,18 @@ public class FileProcessingService {
       DocumentChunkMetadata coreMetadata =
           extractCoreMetadata(
               doc, fileName, parsed.withProperties(declaredProperties(parsed, ingest)));
+      String contextTitle = contextTitleFor(ingest);
+      ModelExtractionOutcome modelOutcome = extractWithModel(doc, library, contextTitle, chunks);
+      if (modelOutcome.chunkMetadata() != null) {
+        coreMetadata = modelOutcome.chunkMetadata();
+      }
 
       if (replacingExistingChunks) {
         // Only now, with the new chunks in hand - see this method's own Javadoc.
         vectorChunkStore.deleteByDocumentId(documentId);
         preservingPreviousChunks = false;
       }
-      storeChunks(
-          doc,
-          chunks,
-          contextTitleFor(ingest),
-          pipeline,
-          selection.routingExtension(),
-          coreMetadata);
+      storeChunks(doc, chunks, contextTitle, pipeline, selection.routingExtension(), coreMetadata);
 
       FileProcessingResult result =
           markConnectorIndexed(documentId, chunks.size(), checksum, ingest.changeMarker());
@@ -750,6 +759,39 @@ public class FileProcessingService {
         chunkMetadata.contextPrefixStamp(prefixTitle),
         prefixEligible,
         contextTitle);
+  }
+
+  /**
+   * Step 2 of the extraction order: never fails the ingest - a failure inside the extractor is
+   * already counted there, and anything escaping it leaves the document without derived values
+   * rather than unindexed.
+   */
+  private ModelExtractionOutcome extractWithModel(
+      Document document,
+      KnowledgeLibrary library,
+      String contextTitle,
+      List<org.springframework.ai.document.Document> chunks) {
+    try {
+      return modelMetadataExtractor.extract(document, library, contextTitle, textFor(chunks));
+    } catch (RuntimeException e) {
+      log.warn(
+          "Model metadata extraction failed for {}; indexing without it",
+          document.getFileName(),
+          e);
+      return ModelExtractionOutcome.UNCHANGED;
+    }
+  }
+
+  /** The beginning of the document as the model sees it - the chunks in order, capped. */
+  private static String textFor(List<org.springframework.ai.document.Document> chunks) {
+    StringBuilder text = new StringBuilder();
+    for (org.springframework.ai.document.Document chunk : chunks) {
+      if (text.length() >= ModelExtractionPrompt.TEXT_LIMIT) {
+        break;
+      }
+      text.append(chunk.getText()).append('\n');
+    }
+    return ModelExtractionPrompt.capText(text.toString());
   }
 
   /**

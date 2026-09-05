@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.indexing.metadata.DocumentMetadataService;
+import io.opaa.indexing.metadata.ModelMetadataExtractor;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
@@ -48,6 +49,7 @@ import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.time.Clock;
 import java.util.List;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -280,7 +282,8 @@ public class IndexingConfiguration {
       TaskExecutor embeddingTaskExecutor,
       ObjectProvider<AttachmentIndexer> attachmentIndexer,
       AttachmentLimits mailAttachmentLimits,
-      DocumentMetadataService documentMetadataService) {
+      DocumentMetadataService documentMetadataService,
+      ModelMetadataExtractor modelMetadataExtractor) {
     return new FileProcessingService(
         documentPipelineRegistry,
         documentRepository,
@@ -292,7 +295,8 @@ public class IndexingConfiguration {
         embeddingTaskExecutor,
         attachmentIndexer,
         mailAttachmentLimits,
-        documentMetadataService);
+        documentMetadataService,
+        modelMetadataExtractor);
   }
 
   @Bean
@@ -532,6 +536,30 @@ public class IndexingConfiguration {
     executor.setMaxPoolSize(properties.embeddingConcurrency());
     executor.setQueueCapacity(Integer.MAX_VALUE);
     executor.setThreadNamePrefix("embedding-");
+    executor.initialize();
+    return executor;
+  }
+
+  /**
+   * Backs the model step's one call per document (#1073) - deliberately not the common {@code
+   * ForkJoinPool}: that pool is shared with everything else in the JVM, and a saturated one would
+   * let the 30-second limit expire on a call that never started, counted as a model failure nobody
+   * caused. Sized for every thread that can ingest at once (indexing plus upload pool), so a
+   * rejection means every ingest thread is already inside a model call. {@code AbortPolicy}, never
+   * caller-runs: an inline call would return only after the model answered, which is exactly the
+   * unbounded wait the limit exists to prevent - a rejected call is counted and skipped instead.
+   */
+  @Bean
+  TaskExecutor modelExtractionTaskExecutor(
+      IndexingProperties indexingProperties, UploadProperties uploadProperties) {
+    int concurrency =
+        indexingProperties.threadPool().maxSize() + uploadProperties.threadPool().maxSize();
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(concurrency);
+    executor.setMaxPoolSize(concurrency);
+    executor.setQueueCapacity(0);
+    executor.setThreadNamePrefix("model-extraction-");
+    executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
     executor.initialize();
     return executor;
   }

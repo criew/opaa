@@ -796,3 +796,23 @@ Liste war ebenfalls nicht nachgezogen, sodass Prüfling und Prüfer gemeinsam ve
 jetzt vollständig; ein künftiger Konnektor fällt damit wieder Docker-frei auf statt erst im
 nächtlichen Lauf als „Baseline ungültig". Wie in Entscheidung 30: reine Fixpunkt-Ergänzung ohne
 neuen Messlauf — kein Korpus dieses Repositorys routet ein Dokument durch die Confluence-Pipeline.
+
+### 36. Vorab festgelegte Schwelle: Konfidenz der modellgestützten Metadaten-Extraktion (Issue #1073)
+
+Die Regel dieses ADRs — **jede Schwelle wird vor der Messung festgelegt und committet** — gilt auch
+außerhalb des Harness. Die modellgestützte Metadaten-Extraktion (#1073,
+[metadata-schema.md](../features/metadata-schema.md#die-modellgestützte-extraktion-im-betrieb))
+übernimmt einen vom Modell vorgeschlagenen Wert nur ab einer Konfidenz von **0,80**; darunter bleibt
+das Feld leer und der Wert wird nur protokolliert.
+
+Festgelegt am **05.09.2026**, vor der ersten Messung auf einem echten Bestand, Freigabe durch den
+Maintainer am selben Tag; der Wert steht als `ModelMetadataExtractor.CONFIDENCE_THRESHOLD` im Code.
+Begründung für die Höhe: Der Schaden ist asymmetrisch — ein halluzinierter Metadatenwert wirkt als
+Filter und macht ein Dokument unsichtbar, ein leeres Feld ist ein sichtbarer, behebbarer Zustand.
+
+**Sie darf nach der ersten Messung nur gesenkt werden, nie stillschweigend erhöht**, und jede
+Änderung ist ein Commit mit Datum und der gemessenen Verteilung. Grundlage der Kalibrierung sind die
+protokollierten Verwerfungen mit ihrer Konfidenz (`metadata_model_rejections`) und die
+handausgewertete 100er-Stichprobe der QA-Rolle; liegt dort der Anteil „falsch trotz ≥ 0,80" über
+5 %, steigt die Schwelle. Ein Wert außerhalb des angebotenen Vokabulars wird unabhängig von der
+Konfidenz verworfen — das ist kein Schwellenfall.

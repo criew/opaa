@@ -210,6 +210,22 @@ public class KnowledgeLibrary {
   private boolean diagnosticsLocked = true;
 
   /**
+   * Whether the model-backed extraction (metadata-schema.md, Schritt 2) runs for this library. Off
+   * by default: with an externally operated chat model it makes every ingested document leave the
+   * house without a person triggering it.
+   */
+  @Column(name = "model_extraction_enabled", nullable = false)
+  private boolean modelExtractionEnabled = false;
+
+  /**
+   * Whether the model assigns freie Schlagworte to this library's documents (metadata-schema.md,
+   * Teil II (c)). Off by default, and subject to the same Abfluss as {@link
+   * #modelExtractionEnabled}.
+   */
+  @Column(name = "keywords_enabled", nullable = false)
+  private boolean keywordsEnabled = false;
+
+  /**
    * Whether the Kernfeld Dokumentart belongs into this library's Kontextpraefix. Off by default:
    * the Wirkstelle is a deliberate decision per field, never a default for all of them. The
    * Kernfeld Titel is always prefix-effective and therefore has no flag.
@@ -614,5 +630,20 @@ public class KnowledgeLibrary {
   /** See {@link #diagnosticsLocked} - only the responsible owner reaches this, never an admin. */
   public void setDiagnosticsLocked(boolean diagnosticsLocked) {
     this.diagnosticsLocked = diagnosticsLocked;
+  }
+
+  public boolean isModelExtractionEnabled() {
+    return modelExtractionEnabled;
+  }
+
+  public boolean isKeywordsEnabled() {
+    return keywordsEnabled;
+  }
+
+  /** Sets both model-backed extraction switches; they are changed together or not at all. */
+  public void setModelExtractionSwitches(boolean modelExtractionEnabled, boolean keywordsEnabled) {
+    this.modelExtractionEnabled = modelExtractionEnabled;
+    this.keywordsEnabled = keywordsEnabled;
+    this.updatedAt = Instant.now();
   }
 }

@@ -78,6 +78,14 @@ public class VectorChunkStore {
   }
 
   /**
+   * The stored text of a document, its chunks in order and capped at {@code limit} characters - the
+   * model step's input for a document whose file is not being parsed anyway (the Bestandslauf).
+   */
+  public String documentText(UUID documentId, int limit) {
+    return vectorStoreWriter.documentText(documentId, limit);
+  }
+
+  /**
    * Rewrites document-level metadata keys on every chunk of {@code documentId} without touching
    * content or embedding (ADR-0024) - see {@link VectorStoreWriter#updateDocumentMetadata}. The
    * path a metadata correction and the Bestandslauf take instead of re-indexing.

@@ -25,6 +25,7 @@ import io.opaa.indexing.metadata.CoreMetadataExtractor;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.indexing.metadata.MetadataFieldFill;
+import io.opaa.indexing.metadata.ModelExtractionStats;
 import io.opaa.query.CandidateOutcome;
 import io.opaa.query.CandidateVerdict;
 import io.opaa.query.RetrievalExplanation;
@@ -160,6 +161,7 @@ class SearchAdminResponseMapperTest {
                     new MetadataFieldFill(10, 4, 2),
                     CoreMetadataField.DOCUMENT_DATE,
                     new MetadataFieldFill(10, 6, 0))),
+            new ModelExtractionStats(LIBRARY_ID, 7, 4, 2, 1, 0, 0, 9, Instant.EPOCH),
             new ContextPrefixRerunProgress(LIBRARY_ID, 10, 7, 3, 1));
 
     var response =
@@ -240,6 +242,7 @@ class SearchAdminResponseMapperTest {
                             0,
                             0,
                             MetadataBackfillProgress.empty(LIBRARY_ID),
+                            ModelExtractionStats.empty(LIBRARY_ID),
                             ContextPrefixRerunProgress.empty(LIBRARY_ID)))))
             .getLibraries()
             .get(0);

@@ -59,6 +59,18 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   List<Document> findByLibraryId(UUID libraryId);
 
   /**
+   * The library's indexed documents in stable id order - the selection of the Stichproben-Export
+   * (#1073), so a repeat run examines the same documents rather than a random sample.
+   */
+  @Query(
+      "select d from Document d where d.libraryId = :libraryId and d.status = :status"
+          + " order by d.id")
+  List<Document> findSampleByLibraryId(
+      @Param("libraryId") UUID libraryId,
+      @Param("status") DocumentStatus status,
+      Pageable pageable);
+
+  /**
    * Backs {@link LowChunkDocumentAuditService#findLowChunkDocuments}: one organization's {@link
    * DocumentStatus#INDEXED} documents at or below {@code chunkCountThreshold} chunks, paged. Backed
    * by the partial index {@code idx_documents_indexed_chunk_count} (migration 002).
@@ -364,6 +376,22 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Transactional
   @Query("update Document d set d.metadataExtractionVersion = null where d.id = :id")
   int clearMetadataExtractionVersion(@Param("id") UUID id);
+
+  /**
+   * Records that the model step ran over a document (#1073), whether or not it yielded a value: a
+   * document whose model call produced nothing must not be asked - and paid for - a second time by
+   * the next Bestandslauf call.
+   */
+  @Modifying
+  @Transactional
+  @Query("update Document d set d.modelExtractionVersion = :version where d.id = :id")
+  int updateModelExtractionVersion(@Param("id") UUID id, @Param("version") int version);
+
+  /** The same marking for the freie Schlagworte, which carry their own mark (#1073). */
+  @Modifying
+  @Transactional
+  @Query("update Document d set d.keywordExtractionVersion = :version where d.id = :id")
+  int updateKeywordExtractionVersion(@Param("id") UUID id, @Param("version") int version);
 
   /**
    * Records the Kontextpraefix this document's chunks were just embedded with (#1072) and whether

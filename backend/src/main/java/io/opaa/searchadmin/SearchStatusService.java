@@ -6,6 +6,8 @@ import io.opaa.indexing.FullTextIndexFillState;
 import io.opaa.indexing.FullTextIndexFillStateService;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.indexing.metadata.MetadataBackfillService;
+import io.opaa.indexing.metadata.ModelExtractionCounters;
+import io.opaa.indexing.metadata.ModelExtractionStats;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.EmbeddingInfo;
@@ -86,6 +88,7 @@ public class SearchStatusService {
   private final LibraryDocumentStatsReader documentStatsReader;
   private final FullTextIndexFillStateService fullTextIndexFillStateService;
   private final MetadataBackfillService metadataBackfillService;
+  private final ModelExtractionCounters modelExtractionCounters;
   private final ContextPrefixRerunService contextPrefixRerunService;
   private final QueryProperties queryProperties;
   private final RetrievalPipelineProperties pipelineProperties;
@@ -131,6 +134,7 @@ public class SearchStatusService {
       LibraryDocumentStatsReader documentStatsReader,
       FullTextIndexFillStateService fullTextIndexFillStateService,
       MetadataBackfillService metadataBackfillService,
+      ModelExtractionCounters modelExtractionCounters,
       ContextPrefixRerunService contextPrefixRerunService,
       QueryProperties queryProperties,
       RetrievalPipelineProperties pipelineProperties,
@@ -144,6 +148,7 @@ public class SearchStatusService {
     this.documentStatsReader = documentStatsReader;
     this.fullTextIndexFillStateService = fullTextIndexFillStateService;
     this.metadataBackfillService = metadataBackfillService;
+    this.modelExtractionCounters = modelExtractionCounters;
     this.contextPrefixRerunService = contextPrefixRerunService;
     this.queryProperties = queryProperties;
     this.pipelineProperties = pipelineProperties;
@@ -407,6 +412,8 @@ public class SearchStatusService {
     // run is reported separately, so the display can explain a remainder the run cannot reach.
     Map<UUID, MetadataBackfillProgress> metadataByLibrary =
         metadataBackfillService.progressForLibraries(libraryIds);
+    Map<UUID, ModelExtractionStats> modelExtractionByLibrary =
+        modelExtractionCounters.statsFor(libraryIds);
     Map<UUID, ContextPrefixRerunProgress> contextPrefixByLibrary =
         contextPrefixRerunService.progressForLibraries(libraryIds);
 
@@ -435,6 +442,8 @@ public class SearchStatusService {
               fillState.indexedChunks(),
               fillState.missingChunks(),
               metadataBackfill,
+              modelExtractionByLibrary.getOrDefault(
+                  library.getId(), ModelExtractionStats.empty(library.getId())),
               contextPrefixByLibrary.getOrDefault(
                   library.getId(), ContextPrefixRerunProgress.empty(library.getId()))));
     }

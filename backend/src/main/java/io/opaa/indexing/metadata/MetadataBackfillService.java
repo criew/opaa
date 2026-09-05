@@ -8,6 +8,7 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentBatchLoop;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.StoredDocumentSourceAccess;
+import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -22,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -52,6 +52,15 @@ public class MetadataBackfillService {
   private final StoredDocumentSourceAccess sourceAccess;
   private final ChecksumService checksumService;
   private final MetadataFillCounter fillCounter;
+  private final ModelMetadataExtractor modelMetadataExtractor;
+  private final VectorChunkStore vectorChunkStore;
+
+  /**
+   * The library of the call in flight. The batch loop hands {@link #advance} only a document id,
+   * and re-reading the library per document would be one query per document for a value that is
+   * constant for the whole call; single-instance, single-threaded per call (ADR-0021).
+   */
+  private final ThreadLocal<KnowledgeLibrary> currentLibrary = new ThreadLocal<>();
 
   /** Skipped count of the most recent call per library; process lifetime only (ADR-0021). */
   private final Map<UUID, Integer> lastSkippedByLibrary = new ConcurrentHashMap<>();
@@ -63,7 +72,9 @@ public class MetadataBackfillService {
       DocumentMetadataService documentMetadataService,
       StoredDocumentSourceAccess sourceAccess,
       ChecksumService checksumService,
-      MetadataFillCounter fillCounter) {
+      MetadataFillCounter fillCounter,
+      ModelMetadataExtractor modelMetadataExtractor,
+      VectorChunkStore vectorChunkStore) {
     this.jdbcTemplate = jdbcTemplate;
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
@@ -71,6 +82,8 @@ public class MetadataBackfillService {
     this.sourceAccess = sourceAccess;
     this.checksumService = checksumService;
     this.fillCounter = fillCounter;
+    this.modelMetadataExtractor = modelMetadataExtractor;
+    this.vectorChunkStore = vectorChunkStore;
   }
 
   /**
@@ -89,13 +102,19 @@ public class MetadataBackfillService {
     if (batchSize <= 0) {
       return MetadataBackfillResult.NOTHING_TO_DO;
     }
-    Map<Advance, Integer> counts =
-        DocumentBatchLoop.run(
-            batchSize,
-            Advance.class,
-            Advance.SKIPPED,
-            (limit, offset) -> selectPendingDocuments(library.getId(), limit, offset),
-            this::advance);
+    currentLibrary.set(library);
+    Map<Advance, Integer> counts;
+    try {
+      counts =
+          DocumentBatchLoop.run(
+              batchSize,
+              Advance.class,
+              Advance.SKIPPED,
+              (limit, offset) -> selectPendingDocuments(library, limit, offset),
+              this::advance);
+    } finally {
+      currentLibrary.remove();
+    }
     int skipped = counts.get(Advance.SKIPPED);
     lastSkippedByLibrary.put(library.getId(), skipped);
     return new MetadataBackfillResult(
@@ -130,6 +149,9 @@ public class MetadataBackfillService {
                   documentMetadataService.reextractFromFile(document, file);
                   return true;
                 });
+        if (advanced) {
+          runModelStep(document);
+        }
         return advanced ? Advance.PROCESSED : Advance.SKIPPED;
       }
       Path localFile = sourceAccess.localSourceFile(document);
@@ -151,6 +173,7 @@ public class MetadataBackfillService {
         return Advance.SKIPPED;
       }
       documentMetadataService.reextractFromFile(document, localFile);
+      runModelStep(document);
       return Advance.PROCESSED;
     } catch (RuntimeException | IOException e) {
       log.warn(
@@ -178,11 +201,30 @@ public class MetadataBackfillService {
               .withDocumentDate(
                   DocumentProperties.instantToLocalDate(document.getLastModifiedRemote()));
       documentMetadataService.reextractFromProperties(document, properties);
+      runModelStep(document);
       return Advance.PROCESSED;
     }
     return sourceAccess.markRemoteChainForNextRun(document)
         ? Advance.MARKED_FOR_NEXT_RUN
         : Advance.SKIPPED;
+  }
+
+  /**
+   * Step 2 for one document of the call's library, on the text already in the vector store rather
+   * than on a fresh parse. A value or keyword found here moves the Kontextpräfix, which hands the
+   * document to the Kontextpräfix-Nachlauf; that run pays the re-embedding, this one never does.
+   */
+  private void runModelStep(Document document) {
+    KnowledgeLibrary library = currentLibrary.get();
+    if (library == null || (!library.isModelExtractionEnabled() && !library.isKeywordsEnabled())) {
+      return;
+    }
+    String title =
+        documentMetadataService.coreMetadataFor(document.getId()).title() != null
+            ? documentMetadataService.coreMetadataFor(document.getId()).title()
+            : document.getFileName();
+    String text = vectorChunkStore.documentText(document.getId(), ModelExtractionPrompt.TEXT_LIMIT);
+    modelMetadataExtractor.extract(document, library, title, text);
   }
 
   /** A document below the current extraction version. */
@@ -216,19 +258,46 @@ public class MetadataBackfillService {
    * Advanceable pending documents in stable id order, so the offset scans past what this call
    * already found unadvanceable.
    */
-  private List<UUID> selectPendingDocuments(UUID libraryId, int limit, int offset) {
+  private List<UUID> selectPendingDocuments(KnowledgeLibrary library, int limit, int offset) {
+    List<Object> parameters = new ArrayList<>();
+    parameters.add(library.getId());
+    parameters.add(DocumentStatus.INDEXED.name());
+    parameters.add(CoreMetadataExtractor.EXTRACTION_VERSION);
+    String pending = pendingSql("", library, parameters);
+    parameters.add(offset);
+    parameters.add(limit);
     return jdbcTemplate.query(
         "SELECT id FROM documents WHERE library_id = ? AND status = ? AND "
-            + pendingSql("")
+            + pending
             + " AND "
             + advanceableSql("")
             + " ORDER BY id OFFSET ? LIMIT ?",
         (rs, i) -> (UUID) rs.getObject("id"),
-        libraryId,
-        DocumentStatus.INDEXED.name(),
-        CoreMetadataExtractor.EXTRACTION_VERSION,
-        offset,
-        limit);
+        parameters.toArray());
+  }
+
+  /**
+   * The deterministic pending condition widened by the switched-on model capabilities of {@code
+   * library}, appending their binds to {@code parameters}. Each capability carries its own mark, so
+   * a switch turned on later still reaches the Altbestand the other one already stamped.
+   */
+  private static String pendingSql(
+      String alias, KnowledgeLibrary library, List<Object> parameters) {
+    StringBuilder pending = new StringBuilder("(").append(pendingSql(alias));
+    if (library.isModelExtractionEnabled()) {
+      pending.append(" OR ").append(markPendingSql(alias, "model_extraction_version"));
+      parameters.add(ModelMetadataExtractor.EXTRACTION_VERSION);
+    }
+    if (library.isKeywordsEnabled()) {
+      pending.append(" OR ").append(markPendingSql(alias, "keyword_extraction_version"));
+      parameters.add(ModelMetadataExtractor.EXTRACTION_VERSION);
+    }
+    return pending.append(")").toString();
+  }
+
+  /** A document whose {@code column} mark is missing or below the current extraction version. */
+  private static String markPendingSql(String alias, String column) {
+    return "(" + alias + column + " IS NULL OR " + alias + column + " < ?)";
   }
 
   /**
@@ -246,48 +315,54 @@ public class MetadataBackfillService {
     Map<UUID, Map<String, MetadataFieldFill>> fills = fillCounter.countFor(libraryIds, fieldKeys);
 
     Map<UUID, MetadataBackfillProgress> byLibrary = new HashMap<>();
-    jdbcTemplate.query(
-        "SELECT d.library_id, count(*) AS total, count(*) FILTER (WHERE"
-            + " d.metadata_extraction_version >= ?) AS current_count, count(*) FILTER (WHERE "
-            + pendingSql("d.")
-            + ") AS pending_count, count(*) FILTER (WHERE "
-            + pendingSql("d.")
-            + " AND NOT "
-            + advanceableSql("d.")
-            + ") AS awaiting_count FROM documents d WHERE d.status = ? AND d.library_id IN ("
-            + libraryIds.stream().map(id -> "?").collect(Collectors.joining(", "))
-            + ") GROUP BY d.library_id",
-        rs -> {
-          UUID libraryId = (UUID) rs.getObject("library_id");
-          Map<String, MetadataFieldFill> byKey = fills.getOrDefault(libraryId, Map.of());
-          Map<CoreMetadataField, MetadataFieldFill> byField =
-              new EnumMap<>(CoreMetadataField.class);
-          for (CoreMetadataField field : CoreMetadataField.values()) {
-            byField.put(field, byKey.getOrDefault(field.key(), MetadataFieldFill.EMPTY));
-          }
-          byLibrary.put(
-              libraryId,
-              new MetadataBackfillProgress(
-                  libraryId,
-                  rs.getLong("total"),
-                  rs.getLong("current_count"),
-                  rs.getLong("pending_count"),
-                  rs.getLong("awaiting_count"),
-                  lastSkippedByLibrary.getOrDefault(libraryId, 0),
-                  byField));
-        },
-        parameters(libraryIds));
+    for (KnowledgeLibrary library : libraryRepository.findAllById(libraryIds)) {
+      // Counted with the same condition the call selects by, per library: whether a document is
+      // pending depends on that library's own switches, so a grouped query over all of them would
+      // show "0 ausstehend" for exactly the libraries whose Altbestand is waiting.
+      List<Object> parameters = new ArrayList<>();
+      parameters.add(CoreMetadataExtractor.EXTRACTION_VERSION);
+      // "aktuell" is the complement of "ausstehend", not the deterministic version alone: the two
+      // numbers stand next to each other, and "100/100 aktuell" beside "100 ausstehend" would be a
+      // contradiction on the same row.
+      String current = pendingSql("d.", library, parameters);
+      parameters.add(CoreMetadataExtractor.EXTRACTION_VERSION);
+      String pending = pendingSql("d.", library, parameters);
+      parameters.add(CoreMetadataExtractor.EXTRACTION_VERSION);
+      String pendingAgain = pendingSql("d.", library, parameters);
+      parameters.add(DocumentStatus.INDEXED.name());
+      parameters.add(library.getId());
+      jdbcTemplate.query(
+          "SELECT d.library_id, count(*) AS total, count(*) FILTER (WHERE NOT "
+              + current
+              + ") AS current_count, count(*) FILTER (WHERE "
+              + pending
+              + ") AS pending_count, count(*) FILTER (WHERE "
+              + pendingAgain
+              + " AND NOT "
+              + advanceableSql("d.")
+              + ") AS awaiting_count FROM documents d WHERE d.status = ? AND d.library_id = ?"
+              + " GROUP BY d.library_id",
+          rs -> {
+            UUID libraryId = (UUID) rs.getObject("library_id");
+            Map<String, MetadataFieldFill> byKey = fills.getOrDefault(libraryId, Map.of());
+            Map<CoreMetadataField, MetadataFieldFill> byField =
+                new EnumMap<>(CoreMetadataField.class);
+            for (CoreMetadataField field : CoreMetadataField.values()) {
+              byField.put(field, byKey.getOrDefault(field.key(), MetadataFieldFill.EMPTY));
+            }
+            byLibrary.put(
+                libraryId,
+                new MetadataBackfillProgress(
+                    libraryId,
+                    rs.getLong("total"),
+                    rs.getLong("current_count"),
+                    rs.getLong("pending_count"),
+                    rs.getLong("awaiting_count"),
+                    lastSkippedByLibrary.getOrDefault(libraryId, 0),
+                    byField));
+          },
+          parameters.toArray());
+    }
     return byLibrary;
-  }
-
-  /** The three extraction-version binds, then the status, then one bind per library. */
-  private static Object[] parameters(Collection<UUID> libraryIds) {
-    List<Object> parameters = new ArrayList<>();
-    parameters.add(CoreMetadataExtractor.EXTRACTION_VERSION);
-    parameters.add(CoreMetadataExtractor.EXTRACTION_VERSION);
-    parameters.add(CoreMetadataExtractor.EXTRACTION_VERSION);
-    parameters.add(DocumentStatus.INDEXED.name());
-    parameters.addAll(libraryIds);
-    return parameters.toArray();
   }
 }

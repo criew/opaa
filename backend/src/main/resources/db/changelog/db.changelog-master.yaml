@@ -61,3 +61,5 @@ databaseChangeLog:
       file: db/changelog/changes/025-library-metadata-fields.yaml
   - include:
       file: db/changelog/changes/027-context-prefix-stamp.yaml
+  - include:
+      file: db/changelog/changes/028-model-metadata-extraction.yaml

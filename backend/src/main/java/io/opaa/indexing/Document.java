@@ -147,6 +147,23 @@ public class Document {
   private Integer metadataExtractionVersion;
 
   /**
+   * The extraction version whose model-backed value extraction (metadata-schema.md, Schritt 2) last
+   * ran over this document, or {@code null} when it never did - the drain marker of the
+   * Bestandslauf for that capability, so switching it on hands the Altbestand to it exactly once.
+   * Written only through {@link DocumentRepository#updateModelExtractionVersion}.
+   */
+  @Column(name = "model_extraction_version", insertable = false, updatable = false)
+  private Integer modelExtractionVersion;
+
+  /**
+   * The same marker for the freie Schlagworte, kept apart from {@link #modelExtractionVersion}: a
+   * library that ran with only one of the two capabilities must still reach its Altbestand when the
+   * other one is switched on later.
+   */
+  @Column(name = "keyword_extraction_version", insertable = false, updatable = false)
+  private Integer keywordExtractionVersion;
+
+  /**
    * The fingerprint of the Kontextpraefix this document's chunks were last embedded with (#1072),
    * or {@code null} when it waits for the Nachlauf - which is the run's whole selection. Written
    * only through {@link DocumentRepository#recordContextPrefix} and cleared by exactly the schema
@@ -381,6 +398,14 @@ public class Document {
 
   public Integer getMetadataExtractionVersion() {
     return metadataExtractionVersion;
+  }
+
+  public Integer getModelExtractionVersion() {
+    return modelExtractionVersion;
+  }
+
+  public Integer getKeywordExtractionVersion() {
+    return keywordExtractionVersion;
   }
 
   public String getContextPrefixStamp() {

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.ContextPrefixRerunProgress;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
+import io.opaa.indexing.metadata.ModelExtractionStats;
 import io.opaa.searchadmin.LibrarySearchStatus.IndexCondition;
 import java.time.Instant;
 import java.util.UUID;
@@ -33,6 +34,7 @@ class LibrarySearchStatusTest {
         vectorChunkCount - missing,
         missing,
         MetadataBackfillProgress.empty(LIBRARY_ID),
+        ModelExtractionStats.empty(LIBRARY_ID),
         ContextPrefixRerunProgress.empty(LIBRARY_ID));
   }
 

@@ -3,6 +3,7 @@ package io.opaa.llm;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
 import io.opaa.security.SettingsEncryptor;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -95,6 +96,14 @@ public class ActiveChatModelResolver {
   private final ObjectProvider<ObservationRegistry> observationRegistryProvider;
   private final ObjectProvider<MeterRegistry> meterRegistryProvider;
   private final AtomicReference<Resolved> cache = new AtomicReference<>();
+
+  /**
+   * The same client with a hard request timeout, for the model-backed metadata extraction (#1073):
+   * an abandoned call must end and free its thread. Cached beside {@link #cache} and invalidated
+   * with it; keyed by the timeout, of which there is one in practice.
+   */
+  private final AtomicReference<TimedResolved> timedCache = new AtomicReference<>();
+
   private final AtomicLong generation = new AtomicLong();
   private final AtomicInteger buildCount = new AtomicInteger();
 
@@ -146,6 +155,21 @@ public class ActiveChatModelResolver {
     return new ActiveChatModelDescription(model.getBaseUrl(), model.getModelIdentifier());
   }
 
+  /**
+   * The {@link ChatClient} of the same active model, but with {@code requestTimeout} as a hard
+   * limit on the HTTP request. Without it a hanging model would hold the calling thread forever -
+   * the caller's own {@code Future.get(timeout)} bounds only its waiting, never the request.
+   *
+   * @throws NoActiveChatModelException when {@code llm_models} has no active row
+   */
+  public ChatClient resolveChatClient(Duration requestTimeout) {
+    TimedResolved cached = timedCache.get();
+    if (cached != null && cached.timeout().equals(requestTimeout)) {
+      return cached.chatClient();
+    }
+    return buildAndCacheTimed(requestTimeout).chatClient();
+  }
+
   private Resolved resolve() {
     Resolved cached = cache.get();
     if (cached != null) {
@@ -164,27 +188,9 @@ public class ActiveChatModelResolver {
     long generationAtStart = generation.get();
     LlmModel model = activeModel();
     testRaceWindowHook.run();
-    String apiKey =
-        model.getApiKeyCiphertext() == null
-            ? ""
-            : settingsEncryptor.decrypt(model.getApiKeyCiphertext());
     ObservationRegistry observationRegistry =
         observationRegistryProvider.getIfUnique(() -> ObservationRegistry.NOOP);
-    MeterRegistry meterRegistry = meterRegistryProvider.getIfAvailable();
-    OpenAiChatOptions options =
-        OpenAiChatOptions.builder()
-            .baseUrl(model.getBaseUrl())
-            .apiKey(apiKey)
-            .model(model.getModelIdentifier())
-            .temperature(model.getTemperature().doubleValue())
-            .maxTokens(model.getMaxTokens())
-            .build();
-    OpenAiChatModel chatModel =
-        OpenAiChatModel.builder()
-            .options(options)
-            .observationRegistry(observationRegistry)
-            .meterRegistry(meterRegistry)
-            .build();
+    OpenAiChatModel chatModel = chatModelBuilder(model, observationRegistry, null).build();
     ChatClient chatClient = ChatClient.builder(chatModel, observationRegistry, null, null).build();
     Resolved resolved = new Resolved(chatClient);
     // See this class's own Javadoc ("Race between an in-flight build and a concurrent
@@ -203,6 +209,61 @@ public class ActiveChatModelResolver {
           model.getModelIdentifier());
     }
     return resolved;
+  }
+
+  private synchronized TimedResolved buildAndCacheTimed(Duration requestTimeout) {
+    TimedResolved cached = timedCache.get();
+    if (cached != null && cached.timeout().equals(requestTimeout)) {
+      return cached;
+    }
+    long generationAtStart = generation.get();
+    LlmModel model = activeModel();
+    ObservationRegistry observationRegistry =
+        observationRegistryProvider.getIfUnique(() -> ObservationRegistry.NOOP);
+    OpenAiChatModel chatModel =
+        chatModelBuilder(model, observationRegistry, requestTimeout).build();
+    TimedResolved resolved =
+        new TimedResolved(
+            requestTimeout, ChatClient.builder(chatModel, observationRegistry, null, null).build());
+    // The same commit rule as buildAndCache: a build whose generation changed underneath it is
+    // handed to its own caller but never cached.
+    if (generation.get() == generationAtStart) {
+      timedCache.set(resolved);
+      log.info(
+          "Built chat client with a {} request timeout for active model '{}' at {}",
+          requestTimeout,
+          model.getModelIdentifier(),
+          model.getBaseUrl());
+    }
+    return resolved;
+  }
+
+  /**
+   * The builder both clients share; only {@code requestTimeout} distinguishes them. It goes onto
+   * the options, not onto the HTTP client: the SDK carries a per-request timeout that overrides
+   * whatever the client was built with, so a timeout set there would be ignored.
+   */
+  private OpenAiChatModel.Builder chatModelBuilder(
+      LlmModel model, ObservationRegistry observationRegistry, Duration requestTimeout) {
+    String apiKey =
+        model.getApiKeyCiphertext() == null
+            ? ""
+            : settingsEncryptor.decrypt(model.getApiKeyCiphertext());
+    OpenAiChatOptions.Builder optionsBuilder =
+        OpenAiChatOptions.builder()
+            .baseUrl(model.getBaseUrl())
+            .apiKey(apiKey)
+            .model(model.getModelIdentifier())
+            .temperature(model.getTemperature().doubleValue())
+            .maxTokens(model.getMaxTokens());
+    if (requestTimeout != null) {
+      optionsBuilder.timeout(requestTimeout);
+    }
+    OpenAiChatOptions options = optionsBuilder.build();
+    return OpenAiChatModel.builder()
+        .options(options)
+        .observationRegistry(observationRegistry)
+        .meterRegistry(meterRegistryProvider.getIfAvailable());
   }
 
   private LlmModel activeModel() {
@@ -231,6 +292,7 @@ public class ActiveChatModelResolver {
   void onActiveModelChanged(ActiveChatModelChangedEvent event) {
     generation.incrementAndGet();
     cache.set(null);
+    timedCache.set(null);
     noActiveModelLogged.set(false);
   }
 
@@ -256,6 +318,7 @@ public class ActiveChatModelResolver {
    */
   void resetForTest() {
     cache.set(null);
+    timedCache.set(null);
     buildCount.set(0);
     noActiveModelLogged.set(false);
     testRaceWindowHook = () -> {};
@@ -271,4 +334,6 @@ public class ActiveChatModelResolver {
   }
 
   private record Resolved(ChatClient chatClient) {}
+
+  private record TimedResolved(Duration timeout, ChatClient chatClient) {}
 }

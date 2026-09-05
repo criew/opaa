@@ -23,17 +23,26 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.metadata.BulkMetadataResult;
+import io.opaa.indexing.metadata.ChatRoleSummary;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.DocumentMetadataCorrectionService;
 import io.opaa.indexing.metadata.DocumentMetadataFieldView;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
+import io.opaa.indexing.metadata.LibraryExtractionSettings;
+import io.opaa.indexing.metadata.LibraryMetadataExtractionService;
 import io.opaa.indexing.metadata.LibraryMetadataMaintenance;
 import io.opaa.indexing.metadata.LibraryMetadataMaintenanceService;
+import io.opaa.indexing.metadata.LibraryMetadataQuality;
+import io.opaa.indexing.metadata.LibraryMetadataSample;
 import io.opaa.indexing.metadata.MetadataFieldFill;
 import io.opaa.indexing.metadata.MetadataFieldMaintenance;
+import io.opaa.indexing.metadata.MetadataFieldQuality;
+import io.opaa.indexing.metadata.MetadataSampleDocument;
+import io.opaa.indexing.metadata.MetadataSampleValue;
 import io.opaa.indexing.metadata.MetadataValueInput;
 import io.opaa.indexing.metadata.MetadataValueSnapshot;
 import io.opaa.indexing.metadata.MetadataValueState;
+import io.opaa.indexing.metadata.ModelExtractionStats;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -67,6 +76,7 @@ class DocumentMetadataControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private DocumentMetadataCorrectionService correctionService;
   @MockitoBean private LibraryMetadataMaintenanceService maintenanceService;
+  @MockitoBean private LibraryMetadataExtractionService extractionService;
   @MockitoBean private UserService userService;
 
   private final UUID libraryId = UUID.randomUUID();
@@ -98,6 +108,95 @@ class DocumentMetadataControllerTest {
     } catch (ReflectiveOperationException e) {
       throw new IllegalStateException(e);
     }
+  }
+
+  @Test
+  void theExtractionSwitchesAreReadWithTheChatRoleBehindThem() throws Exception {
+    when(extractionService.settingsOf(libraryId, caller))
+        .thenReturn(
+            new LibraryExtractionSettings(
+                libraryId,
+                true,
+                false,
+                0.8,
+                new ChatRoleSummary("http://localhost:11434/v1", "qwen3:8b", true)));
+
+    mockMvc
+        .perform(
+            get("/api/v1/libraries/" + libraryId + "/metadata/extraction-settings")
+                .with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.modelExtractionEnabled").value(true))
+        .andExpect(jsonPath("$.keywordsEnabled").value(false))
+        .andExpect(jsonPath("$.confidenceThreshold").value(0.8))
+        .andExpect(jsonPath("$.chatModel.modelIdentifier").value("qwen3:8b"))
+        .andExpect(jsonPath("$.chatModel.local").value(true));
+  }
+
+  @Test
+  void switchingWithoutTheManagementRightIsForbidden() throws Exception {
+    when(extractionService.updateSettings(eq(libraryId), eq(true), eq(true), any()))
+        .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
+
+    mockMvc
+        .perform(
+            put("/api/v1/libraries/" + libraryId + "/metadata/extraction-settings")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"modelExtractionEnabled\":true,\"keywordsEnabled\":true}"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void theQualityIsServedPerFieldWithTheZaehlwerk() throws Exception {
+    when(extractionService.qualityOf(libraryId, caller))
+        .thenReturn(
+            new LibraryMetadataQuality(
+                libraryId,
+                4,
+                true,
+                false,
+                0.8,
+                List.of(new MetadataFieldQuality("document_type", "Dokumentart", 4, 1, 1, 1, 0)),
+                new ModelExtractionStats(libraryId, 3, 1, 1, 1, 0, 0, 2, null)));
+
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/metadata/quality").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.fields[0].derivedDocuments").value(1))
+        .andExpect(jsonPath("$.fields[0].emptyDocuments").value(1))
+        .andExpect(jsonPath("$.modelExtraction.calls").value(3))
+        .andExpect(jsonPath("$.modelExtraction.rejectedOutsideVocabulary").value(1));
+  }
+
+  @Test
+  void theSampleDefaultsToOneHundredDocuments() throws Exception {
+    when(extractionService.sampleOf(eq(libraryId), eq(100), any()))
+        .thenReturn(
+            new LibraryMetadataSample(
+                libraryId,
+                100,
+                List.of(
+                    new MetadataSampleDocument(
+                        documentId,
+                        "satzung.pdf",
+                        "Satzung",
+                        List.of(
+                            new MetadataSampleValue(
+                                "document_type",
+                                "Dokumentart",
+                                "Vermerk",
+                                MetadataOrigin.DERIVED,
+                                0.9,
+                                "qwen3:8b"))))));
+
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/metadata/sample").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.size").value(100))
+        .andExpect(jsonPath("$.documents[0].title").value("Satzung"))
+        .andExpect(jsonPath("$.documents[0].values[0].origin").value("DERIVED"))
+        .andExpect(jsonPath("$.documents[0].values[0].confidence").value(0.9));
   }
 
   private String metadataPath() {
