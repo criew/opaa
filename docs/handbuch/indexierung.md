@@ -321,8 +321,9 @@ erkanntes Format behält den roh erkannten Typ. Anhand des erkannten Formats wir
 **Format-Pipeline** gewählt. Für jedes Format gibt es
 genau eine zuständige Pipeline; für alles Unbekannte oder Strukturlose gibt es eine
 Auffang-Pipeline auf Basis von Apache Tika. Zwei Inhalte waren nie eine Datei und überspringen die
-Formaterkennung: Der Text einer Feed-Detailseite geht direkt an die Auffang-Pipeline, der Körper
-einer Confluence-Seite direkt an die [Confluence-Pipeline](format-confluence.md). Zugelassen sind grob: Text und Markdown, PDF, die
+Formaterkennung: Der Hauptinhalt einer Feed-Detailseite geht als HTML direkt an die
+[HTML-Pipeline](format-html.md), der Körper einer Confluence-Seite direkt an die
+[Confluence-Pipeline](format-confluence.md). Zugelassen sind grob: Text und Markdown, PDF, die
 Office-Formate von Microsoft und OpenDocument, Tabellen, HTML und E-Mails. Welche Endungen das
 genau sind, welche Pipeline sie bedient und welche Formate bewusst nicht aufgenommen werden,
 steht in der [Formatübersicht](#anhang-formatübersicht) am Ende dieses Kapitels.
@@ -664,12 +665,12 @@ muss nur als Text erkennbar sein und die Datei muss die Endung selbst tragen.
 | `.ods` | `tabular` | strikt | Blätter, Kopfzeile, Zeilengruppen | [Tabellen](format-tabular.md) |
 | `.odt` | `odt` | strikt | Überschriften bis Ebene 3, Tabellen, Kopf- und Fußzeilen | [OpenDocument Text](format-odt.md) |
 | `.odp` | `odp` | strikt | eine Folie je Chunk, Titel, Notizen, Masterfolie | [OpenDocument Präsentation](format-odp.md) |
-| `.html` | `html` | strikt | Überschriften h1 bis h3, Hauptinhalt ohne Navigation | [HTML](format-html.md) |
+| `.html` | `html` | strikt | Überschriften h1 bis h3, Hauptinhalt ohne Navigation, Tabellen, Listen | [HTML](format-html.md) |
 | `.md` | `markdown` | text-tolerant | Überschriften bis Ebene 3, Frontmatter | [Markdown](format-markdown.md) |
 | `.txt` | `tika-fallback` | text-tolerant | keine, Token-Fenster | [Auffang-Pipeline](format-fallback.md) |
 | `.eml` | `email` | text-tolerant | Kopfdaten, Nachrichtentext, Thread-Segmente, Anhänge | [E-Mail](format-mail.md) |
 | `.msg` | `email` | strikt | wie `.eml` | [E-Mail](format-mail.md) |
-| Feed-Text | `tika-fallback` | entfällt | keine, Token-Fenster | [Auffang-Pipeline](format-fallback.md) |
+| Feed-Detailseite | `html` | entfällt | wie `.html`; der Konnektor übergibt die Inhaltsbereiche als HTML | [HTML](format-html.md) |
 | Confluence-Seite | `confluence` | entfällt | Überschriften h1 bis h3, Tabellen, Listen, Makros nach Regelwerk | [Confluence-Seite](format-confluence.md) |
 
 ### Bewusst nicht zugelassen

@@ -50,7 +50,7 @@ public class FileProcessingService {
   /** The row's {@code error_message} for a document that could not be parsed or embedded. */
   static final String PROCESSING_FAILED_MESSAGE = "Die Datei konnte nicht verarbeitet werden";
 
-  /** Text that never was a file has no detectable media type; every text source delivers HTML. */
+  /** Text that never was a file has no detectable media type; every text source delivers XHTML. */
   private static final String TEXT_CONTENT_TYPE = "text/html";
 
   /**
@@ -305,10 +305,11 @@ public class FileProcessingService {
   /**
    * The pipeline, its source and the row's {@code content_type}: a file is routed by its detected
    * content and typed by the canonical media type of that format (Tika's raw detection only where
-   * no format was decided); text goes to the fallback pipeline; a {@link
-   * DocumentIngest#pipelineId()} names the pipeline directly, a registry without it is a wiring
-   * error. A failure here marks {@code existingRow} {@code FAILED} with its chunks kept, so an
-   * upload never stays {@code PENDING}; a re-index leaves the row alone.
+   * no format was decided); text without a named pipeline goes to the fallback pipeline; a {@link
+   * DocumentIngest#pipelineId()} names the pipeline directly (the HTML pipeline for a feed entry,
+   * the Confluence pipeline for a page), a registry without it is a wiring error. A failure here
+   * marks {@code existingRow} {@code FAILED} with its chunks kept, so an upload never stays {@code
+   * PENDING}; a re-index leaves the row alone.
    */
   private Selection select(DocumentIngest ingest, Document existingRow) {
     String fileName = ingest.fileName();

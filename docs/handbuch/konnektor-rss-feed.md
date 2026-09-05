@@ -21,8 +21,8 @@ flowchart LR
     P --> I{je Eintrag:<br/>pubDate neu?}
     I -- nein --> S[übersprungen]
     I -- ja --> W[Wartezeit, dann<br/>Detailseite laden]
-    W --> H[Boilerplate entfernen,<br/>Hauptinhalt wählen]
-    H --> D[Text als Dokument<br/>durch die Dokumentstrecke]
+    W --> H[Boilerplate entfernen,<br/>Inhaltsbereiche wählen]
+    H --> D[HTML der Inhaltsbereiche<br/>an die HTML-Pipeline]
     H --> A[Anlagen-Links<br/>nach Profil]
     A --> AD[je Anlage: Wartezeit,<br/>Download, eigenes Dokument]
     D --> Z{Lauf vollständig,<br/>nichts zurückgestellt?}
@@ -94,18 +94,27 @@ Namensräumen (etwa `content:encoded`, `media:*`) werden ignoriert. Ein Eintrag 
 entfällt. Bei mehreren Links gewinnt der erste. Ein nicht lesbares `pubDate` gilt als fehlend,
 nicht als Fehler; zweistellige Jahre und die üblichen Zeitzonenkürzel werden verstanden.
 
-Die **Detailseite** wird geladen und in zwei Schritten reduziert:
+Die **Detailseite** wird geladen und nach denselben Regeln reduziert, die die
+[HTML-Pipeline](format-html.md) auf eine Datei anwendet:
 
-1. Navigations- und Rahmenelemente werden entfernt: `nav`, `header`, `footer`, Elemente mit
-   den Rollen navigation, banner und contentinfo, die Klassen `nav`, `navigation`, `menu`,
-   `breadcrumb`, sowie `script`, `style` und `noscript`. Das geschieht **vor** der Auswahl des
-   Hauptinhalts, damit Boilerplate auch innerhalb von `<main>` verschwindet.
-2. Der Hauptinhalt wird über den konfigurierbaren Selektor gewählt (Standard `main, article,
-   [role=main]`), Rückfall ist `body`.
+1. Elemente, die nie Inhalt sind, werden in der ganzen Seite entfernt: Navigation und
+   Seitenleisten (`nav`, `aside`, die Rollen navigation und complementary), die Klassen `nav`,
+   `navigation`, `menu`, `breadcrumb`, `sidebar`, Cookie-Banner sowie `script`, `style` und
+   `noscript` — auch innerhalb von `<main>`.
+2. Die Inhaltsbereiche werden über den konfigurierbaren Selektor gewählt (Standard `main,
+   article, [role=main]`). Jeder Treffer zählt, etwa alle Teaser einer Übersichtsseite; ein
+   Treffer in einem anderen Treffer wird verworfen. Rückfall ist `body`.
+3. Seitenkopf und Seitenfuß (`header`, `footer`, die Rollen banner und contentinfo) werden nur
+   außerhalb der Inhaltsbereiche entfernt; ein Artikel darf einen eigenen Kopf und Fuß haben.
+   Beim Rückfall auf `body` entfallen sie ebenfalls.
 
-Der so gewonnene Text geht ohne Formaterkennung direkt in die Dokumentstrecke; der Titel des
-Eintrags wird als Kontexttitel verwendet. Die Zeichenkodierung folgt dem Server, sonst der
-Erkennung aus der Seite.
+Das HTML der Inhaltsbereiche geht ohne Formaterkennung direkt an die HTML-Pipeline
+(Pipeline-Kennung `html`) und wird dort wie eine HTML-Datei in Abschnitte geschnitten: Eine
+Pressemitteilung mit Zwischenüberschriften ergibt einen Chunk je Abschnitt. Der Titel des
+Eintrags wird als Kontexttitel verwendet; eine Titelzeile aus dem Seiteninhalt wird nicht
+gelesen. Die Zeichenkodierung folgt dem Server, sonst der Erkennung aus der Seite. Ein Eintrag,
+dessen Inhaltsbereiche keinen sichtbaren Text tragen, wird vor der Pipeline übersprungen („Kein
+Inhalt extrahierbar").
 
 ## 6. Änderungserkennung und Zurückstellung
 
@@ -118,10 +127,15 @@ Drei Stufen, von billig nach teuer:
 2. **Eintragsebene, Veröffentlichungsdatum.** Ein Eintrag, dessen `pubDate` dem gespeicherten
    Wert entspricht und der zuletzt erfolgreich indiziert wurde, wird übersprungen. Ein fehlendes
    Datum gilt als „geändert".
-3. **Prüfsumme** über den extrahierten Text, wie bei jeder Quelle. Ein Eintrag mit neuem `pubDate`,
+3. **Prüfsumme** über das reduzierte HTML, wie bei jeder Quelle. Ein Eintrag mit neuem `pubDate`,
    aber unverändertem Text behält seine Chunks; das neue Datum wird als Änderungsmarke übernommen
    und eine geänderte Überschrift als Titel, sodass der nächste Lauf ihn schon in Stufe 2
    überspringt. Das Dokumentdatum der Kernfelder bleibt bis zur nächsten Inhaltsänderung.
+
+Bestehende Einträge, die noch mit der Auffang-Pipeline geschnitten wurden, behalten diese Chunks
+bis zur nächsten `pubDate`-Änderung; der Pipeline-Nachzug für `html` (Kapitel
+[Indexierung](indexierung.md), Abschnitt 9) erfasst sie nur, wenn ihr Titel wie ein Dateiname auf
+`.html` endet.
 
 **Zurückstellung.** Der Feed-Zustand aus Stufe 1 wird nur gespeichert, wenn der Lauf
 vollständig war: kein Fehler und kein zurückgestellter Eintrag. Zurückgestellt wird alles, was

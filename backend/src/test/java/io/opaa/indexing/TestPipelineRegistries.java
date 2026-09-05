@@ -23,6 +23,14 @@ public final class TestPipelineRegistries {
     return new DocumentPipelineRegistry(List.of(fallback), fallback);
   }
 
+  /** The fallback plus the HTML pipeline - for the RSS entry path, which names it by id. */
+  public static DocumentPipelineRegistry fallbackAndHtml(
+      DocumentService documentService, ChunkingService chunkingService) {
+    TikaFallbackPipeline fallback = new TikaFallbackPipeline(documentService, chunkingService);
+    return new DocumentPipelineRegistry(
+        List.of(fallback, new io.opaa.indexing.pipeline.html.HtmlDocumentPipeline()), fallback);
+  }
+
   /** The fallback plus the Confluence page pipeline - for processConfluencePage tests. */
   public static DocumentPipelineRegistry fallbackAndConfluence(
       DocumentService documentService, ChunkingService chunkingService) {

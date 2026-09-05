@@ -18,6 +18,7 @@ import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentService;
@@ -28,6 +29,9 @@ import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.StaleDocumentCleanupService;
+import io.opaa.indexing.pipeline.DocumentPipelineResult;
+import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.attachment.AttachmentProfile;
 import io.opaa.library.KnowledgeLibrary;
@@ -49,19 +53,36 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 /**
  * Exercises {@link RssFeedIndexingExecutor} against a local {@code
  * com.sun.net.httpserver.HttpServer} stub - never a real address, per the issue's acceptance
  * criteria. {@link FileProcessingService} is mocked here: this class's own job is the
- * feed/detail-page fetch, the change checks and the main-text extraction, all of which are
- * independent of how the shared processing chain later stores the result (that chain has its own
- * tests on {@code FileProcessingServiceTest}).
+ * feed/detail-page fetch, the change checks and the reduction to the main content's HTML, all of
+ * which are independent of how the shared processing chain later stores the result (that chain has
+ * its own tests on {@code FileProcessingServiceTest}).
  */
 class RssFeedIndexingExecutorTest {
+
+  /** The handed-over HTML carries {@code content} and none of the {@code boilerplate} texts. */
+  private static Predicate<String> only(String content, String... boilerplate) {
+    return html -> {
+      if (!html.contains(content)) {
+        return false;
+      }
+      for (String text : boilerplate) {
+        if (html.contains(text)) {
+          return false;
+        }
+      }
+      return true;
+    };
+  }
 
   private HttpServer server;
   private String baseUrl;
@@ -242,7 +263,8 @@ class RssFeedIndexingExecutorTest {
         .ingest(
             DocumentIngests.that()
                 .text()
-                .text("Der eigentliche Artikeltext.")
+                .textMatching(only("Der eigentliche Artikeltext.", "Navigation", "Kopf", "Fuss"))
+                .via(HtmlDocumentPipeline.ID)
                 .at(baseUrl + "/a.html")
                 .in(library)
                 .match(),
@@ -251,12 +273,117 @@ class RssFeedIndexingExecutorTest {
         .ingest(
             DocumentIngests.that()
                 .text()
-                .text("Der eigentliche Artikeltext.")
+                .textMatching(only("Der eigentliche Artikeltext.", "Navigation", "Kopf", "Fuss"))
+                .via(HtmlDocumentPipeline.ID)
                 .at(baseUrl + "/b.html")
                 .in(library)
                 .match(),
             any());
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(2), eq(0), eq(0), eq(2));
+  }
+
+  @Test
+  void aDetailPageIsHandedOverAsHtmlThatTheHtmlPipelineCutsIntoSections() throws Exception {
+    // The entry names the HTML pipeline and hands it the main content as HTML, so a press release
+    // with sub-headings ends up in heading sections - the same cut a .html file gets - rather
+    // than in token windows; the page chrome outside <main> never reaches the pipeline.
+    String detailHtml =
+        """
+        <html><head><title>Stadt</title></head><body>
+          <nav><a href="/">Startseite</a></nav>
+          <main>
+            <h1>Rat beschliesst Hundesteuersatzung</h1>
+            <p>Der Rat hat die neue Satzung beschlossen.</p>
+            <h2>Hintergrund</h2>
+            <p>Die alte Satzung stammt aus dem Jahr 2010.</p>
+          </main>
+          <footer><p>Impressum</p></footer>
+        </body></html>
+        """;
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/rat.html"));
+    serve("/rat.html", 200, "text/html", detailHtml);
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
+    verify(fileProcessingService).ingest(ingest.capture(), any());
+    assertThat(ingest.getValue().pipelineId()).isEqualTo(HtmlDocumentPipeline.ID);
+    assertThat(ingest.getValue().title()).isEqualTo("Titel");
+    String handedOver = DocumentIngests.textOf(ingest.getValue());
+    assertThat(handedOver).doesNotContain("Startseite").doesNotContain("Impressum");
+
+    DocumentPipelineResult cut =
+        new HtmlDocumentPipeline()
+            .run(DocumentPipelineSource.ofExtractedText(handedOver, ingest.getValue().fileName()));
+    assertThat(cut.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(cut.chunks())
+        .extracting(chunk -> chunk.getText())
+        .containsExactly(
+            "Rat beschliesst Hundesteuersatzung\n\nDer Rat hat die neue Satzung beschlossen.",
+            "Rat beschliesst Hundesteuersatzung › Hintergrund\n\nDie alte Satzung stammt aus dem"
+                + " Jahr 2010.");
+  }
+
+  @Test
+  void aConfiguredContentSelectorKeepsHeaderAndTextNextToATeaserThroughThePipeline()
+      throws Exception {
+    // With main-content-selector "#content" the connector's reduction is the only root selection;
+    // the pipeline must not run the default one again (no <main> match -> body fallback, which
+    // would strip the inner header and, via the <article> match, drop the text next to it).
+    executor =
+        newExecutor(new IndexingProperties.Rss(200, 10_000, 10_000, 0, "#content", null, 0, 0));
+    String detailHtml =
+        """
+        <html><body>
+          <nav><a href="/">Startseite</a></nav>
+          <main><p>Nicht der konfigurierte Bereich</p></main>
+          <div id="content">
+            <header><h1>Meldungen der Woche</h1></header>
+            <p>Text neben dem Teaser.</p>
+            <article><p>Teaser der Meldung.</p></article>
+          </div>
+        </body></html>
+        """;
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/woche.html"));
+    serve("/woche.html", 200, "text/html", detailHtml);
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
+    verify(fileProcessingService).ingest(ingest.capture(), any());
+    DocumentPipelineResult cut =
+        new HtmlDocumentPipeline()
+            .run(
+                DocumentPipelineSource.ofExtractedText(
+                    DocumentIngests.textOf(ingest.getValue()), ingest.getValue().fileName()));
+    assertThat(cut.chunks()).hasSize(1);
+    assertThat(cut.chunks().getFirst().getText())
+        .isEqualTo("Meldungen der Woche\n\nText neben dem Teaser.\n\nTeaser der Meldung.")
+        .doesNotContain("Startseite")
+        .doesNotContain("Nicht der konfigurierte Bereich");
+  }
+
+  @Test
+  void aDetailPageWhoseContentIsOnlyNonBreakingSpaceIsSkippedAsHavingNoContent() throws Exception {
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/leer.html"));
+    serve("/leer.html", 200, "text/html", "<html><body><main><p>&nbsp;</p></main></body></html>");
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
+    verify(fileProcessingService, never()).ingest(any(), any());
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.UNSUPPORTED_FORMAT
+                        && "Kein Inhalt extrahierbar".equals(event.getMessage())));
   }
 
   @Test
@@ -321,7 +448,8 @@ class RssFeedIndexingExecutorTest {
         .ingest(
             DocumentIngests.that()
                 .text()
-                .text("Eigentlicher Inhalt")
+                .textMatching(only("Eigentlicher Inhalt", "Navigation", "Kopf", "Fuss"))
+                .via(HtmlDocumentPipeline.ID)
                 .at(baseUrl + "/a.html")
                 .in(library)
                 .match(),
@@ -345,7 +473,7 @@ class RssFeedIndexingExecutorTest {
         .ingest(
             DocumentIngests.that()
                 .text()
-                .text("Behörde für Straßenbau")
+                .textContaining("Behörde für Straßenbau")
                 .at(baseUrl + "/a.html")
                 .in(library)
                 .match(),
@@ -1588,7 +1716,8 @@ class RssFeedIndexingExecutorTest {
         .ingest(
             DocumentIngests.that()
                 .text()
-                .text("Der eigentliche Artikeltext.")
+                .textMatching(only("Der eigentliche Artikeltext.", "Navigation", "Kopf", "Fuss"))
+                .via(HtmlDocumentPipeline.ID)
                 .at(baseUrl + "/a.html")
                 .in(library)
                 .match(),

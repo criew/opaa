@@ -12,6 +12,7 @@ import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.IndexingRunEventRecorder;
 import io.opaa.indexing.IndexingRunProgress;
 import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -46,8 +47,9 @@ import org.springframework.scheduling.annotation.Async;
 
 /**
  * Executes indexing runs for {@link IndexingSourceType#RSS_FEED} (ADR-0017): fetches the feed,
- * resolves every entry's detail page and hands the page's main text - not the whole page - into
- * {@link FileProcessingService#ingest}. Transport, page reduction and attachments belong to {@link
+ * resolves every entry's detail page and hands the page's main content - not the whole page - as
+ * HTML into {@link FileProcessingService#ingest}, naming the HTML pipeline, so an entry is cut into
+ * sections like a {@code .html} file. Transport, page reduction and attachments belong to {@link
  * FeedFetcher}, {@link DetailPageExtractor} and {@link AttachmentIndexer}; this class keeps the
  * orchestration and the per-run state ({@link RssFeedRunContext}).
  *
@@ -223,7 +225,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     }
     DetailPageExtractor.DetailPage detailPage = fetched.get();
 
-    if (detailPage.mainText() == null || detailPage.mainText().isBlank()) {
+    if (detailPage.mainHtml().isBlank()) {
       log.warn("RSS detail page yielded no extractable text, skipping: {}", entryUrl);
       events.record(IndexingEventCategory.UNSUPPORTED_FORMAT, "Kein Inhalt extrahierbar", entryUrl);
       progress.recordSkipped();
@@ -232,11 +234,12 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     }
 
     try {
-      // The entry body never was a file: already-extracted text, its headline as the declared
-      // title and its publication instant as the document's own date (ADR-0017, decision 2).
+      // The entry body never was a file: the main content's HTML for the HTML pipeline, its
+      // headline as the declared title and its publication instant as the document's own date.
       FileProcessingResult result =
           fileProcessingService.ingest(
-              DocumentIngest.text(ctx.targetLibrary(), entryUrl, detailPage.mainText())
+              DocumentIngest.text(ctx.targetLibrary(), entryUrl, detailPage.mainHtml())
+                  .pipelineId(HtmlDocumentPipeline.ID)
                   .sourceType(DocumentSourceType.RSS_FEED)
                   .title(entry.title())
                   .changeMarker(publishedAt.map(Instant::toString).orElse(null))

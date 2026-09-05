@@ -396,14 +396,46 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   @Test
-  void anRssFeedDocumentWithAnHtmlLookingFileNameIsNotSelectedByAnHtmlPipelineReindex() {
-    // Regression guard for #1125: an RSS entry's body always goes to the fallback
-    // pipeline (ADR-0017, decision 2), so its file name (title or entry URL) is never a routing
-    // signal - the exact case the "d.source_type <> RSS_FEED" guard exists for. RSS was the
-    // originally reported trigger of the routing-gap blocker; without this test it could return
-    // unnoticed.
+  void anRssEntryBelowTheHtmlPipelineVersionIsMarkedForItsNextRun() {
+    // An RSS entry's body goes through the HTML pipeline, so a raised HTML pipeline version reaches
+    // it like any other remote document: counted stale, handed to the next feed run by clearing
+    // its change markers, and out of the backlog afterwards.
     DocumentPipeline htmlPipeline = htmlPipeline();
-    Document document = persistedRssFeedDocument("https://example.test/feed/artikel.html");
+    Document document =
+        persistedRssFeedDocument("Rat beschliesst Satzung", "https://example.test/feed/rat");
+    seedChunk(
+        document.getId(), "alter chunk", htmlPipeline.id(), (short) (htmlPipeline.version() - 1));
+
+    PipelineVersionProgress progress =
+        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    assertThat(progress.staleChunks()).isEqualTo(1);
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, htmlPipeline.id(), htmlPipeline.version(), 10);
+
+    assertThat(result.markedForNextRun()).isEqualTo(1);
+    assertThat(result.reindexedDocuments()).isZero();
+    Document marked = documentRepository.findById(document.getId()).orElseThrow();
+    assertThat(marked.getChecksum()).isNull();
+    assertThat(marked.getLastModifiedRemote()).isNull();
+    assertThat(
+            reindexService
+                .reindexBatch(
+                    Organization.DEFAULT_ID, htmlPipeline.id(), htmlPipeline.version(), 10)
+                .isEmpty())
+        .isTrue();
+  }
+
+  @Test
+  void anRssEntryStillChunkedByTheFallbackPipelineIsPulledIntoTheHtmlPipelineByItsName() {
+    // No special rule for RSS in the routing comparison any more: an entry left over from the
+    // fallback era is treated like every other fallback-labeled remote document without a routing
+    // key - selected by the file-name approximation and marked for its next run, whose fetch then
+    // hands the body to the HTML pipeline by id.
+    DocumentPipeline htmlPipeline = htmlPipeline();
+    Document document =
+        persistedRssFeedDocument("artikel.html", "https://example.test/feed/artikel.html");
     seedChunk(
         document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
 
@@ -411,18 +443,17 @@ class PipelineReindexServiceIntegrationTest {
         reindexService.reindexBatch(
             Organization.DEFAULT_ID, htmlPipeline.id(), htmlPipeline.version(), 10);
 
-    assertThat(result.isEmpty()).isTrue();
+    assertThat(result.markedForNextRun()).isEqualTo(1);
     assertThat(result.reindexedDocuments()).isZero();
-    assertThat(result.markedForNextRun()).isZero();
-    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackPipeline.ID);
+    assertThat(documentRepository.findById(document.getId()).orElseThrow().getChecksum()).isNull();
   }
 
-  private Document persistedRssFeedDocument(String url) {
-    Document document =
-        new Document("artikel.html", url, "text/html", 1024L, DocumentSourceType.RSS_FEED);
+  private Document persistedRssFeedDocument(String title, String url) {
+    Document document = new Document(title, url, "text/html", 1024L, DocumentSourceType.RSS_FEED);
     document.setLibraryId(library.getId());
     document.setOrganizationId(Organization.DEFAULT_ID);
     document.setChecksum("checksum-rss");
+    document.setLastModifiedRemote("2026-03-12T10:00:00Z");
     return documentRepository.save(document);
   }
 
