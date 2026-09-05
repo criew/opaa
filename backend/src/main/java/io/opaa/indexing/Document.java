@@ -169,7 +169,11 @@ public class Document {
    * by the Nachlauf through {@link ChunkContextPrefix#titleAtRest}, so it reproduces the ingest's
    * own choice instead of deriving a different one.
    */
-  @Column(name = "context_prefix_title", insertable = false, updatable = false, length = 500)
+  @Column(
+      name = "context_prefix_title",
+      insertable = false,
+      updatable = false,
+      columnDefinition = "text")
   private String contextPrefixTitle;
 
   protected Document() {}

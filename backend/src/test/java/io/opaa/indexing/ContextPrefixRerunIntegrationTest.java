@@ -265,6 +265,43 @@ class ContextPrefixRerunIntegrationTest {
   }
 
   @Test
+  void aDeeplyNestedHierarchyPathFitsIntoTheRecordedPrefixTitle() throws IOException {
+    // contextTitleFor joins the whole hierarchy path with the page title; source_hierarchy_path
+    // alone is varchar(2000), so a bounded column here would throw after the chunks were written
+    // and leave the document pending forever, re-embedded by every following run.
+    String hierarchyPath =
+        java.util.stream.IntStream.range(0, 40)
+            .mapToObj(level -> "Abteilung " + level + " mit einem ausfuehrlichen Bereichsnamen")
+            .collect(
+                java.util.stream.Collectors.joining(SourceDocumentContext.HIERARCHY_SEPARATOR));
+    assertThat(hierarchyPath.length()).isGreaterThan(500);
+
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.builder(library)
+                    .text("Für die Ausstellung wird eine Gebühr von 37,00 EUR erhoben.")
+                    .filePath("https://wiki.example.test/tiefe-seite")
+                    .fileName("Gebühren")
+                    .sourceType(DocumentSourceType.CONFLUENCE)
+                    .context(new SourceDocumentContext("RF", hierarchyPath))
+                    .title("Gebühren")
+                    .syntheticName(true)
+                    .build(),
+                null))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document =
+        documentRepository.findAll().stream()
+            .filter(candidate -> "Gebühren".equals(candidate.getFileName()))
+            .findFirst()
+            .orElseThrow();
+    assertThat(document.getContextPrefixTitle()).startsWith(hierarchyPath);
+    assertThat(rerunService.pendingDocuments(library.getId()))
+        .as("the ingest recorded its prefix, so nothing waits for the Nachlauf")
+        .isZero();
+  }
+
+  @Test
   void aBestandslaufThatFirstFillsTheTitleHandsTheDocumentToTheNachlauf() throws IOException {
     Document document = indexed("bestandslauf.md");
     String titleAtIngest = metadataService.coreMetadataFor(document.getId()).title();

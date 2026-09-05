@@ -84,10 +84,6 @@ final class ChatResponseMapper {
         .sourceEntryUrl(source.getSourceEntryUrl())
         .citationValid(source.getCitationValid())
         .chunkLocations(toChunkLocations(source.getChunkLocations()))
-        .mailFrom(source.getMailFrom())
-        .mailTo(source.getMailTo())
-        .mailSubject(source.getMailSubject())
-        .mailDate(source.getMailDate())
         .metadata(toMetadataEntries(source.getMetadata()))
         .metadataFilterMatch(source.getMetadataFilterMatch());
   }
@@ -107,7 +103,8 @@ final class ChatResponseMapper {
                         entry.value(),
                         entry.displayValue(),
                         entry.origin())
-                    .datePrecision(entry.datePrecision()))
+                    .datePrecision(entry.datePrecision())
+                    .detailOnly(entry.detailOnly()))
         .toList();
   }
 

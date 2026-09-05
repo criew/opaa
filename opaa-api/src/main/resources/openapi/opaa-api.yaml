@@ -4377,37 +4377,6 @@ components:
             indexing pipeline could not determine one (plain text without headings, a format without
             page breaks). Absent for a synthetic entry (#386).
 
-        mailFrom:
-          type: string
-          nullable: true
-          description: >-
-            The message's Absender (#1164), read back from the mail_from chunk metadata
-            ChunkMailMetadata declares (Teil 3, Punkt 5 of docs/features/ingestion-pipelines.md).
-            Null for a source that is not an EML/MSG message's own body chunk.
-          example: mueller@stadt.de
-        mailTo:
-          type: string
-          nullable: true
-          description: >-
-            The message's Empfänger (#1164), read back from the mail_to chunk metadata. Null for a
-            source that is not an EML/MSG message's own body chunk.
-          example: poststelle@stadt.de
-        mailSubject:
-          type: string
-          nullable: true
-          description: >-
-            The message's Betreff (#1164), read back from the mail_subject chunk metadata. Null for
-            a source that is not an EML/MSG message's own body chunk.
-          example: Bebauungsplan Nord
-        mailDate:
-          type: string
-          nullable: true
-          description: >-
-            The message's Datum (#1164), read back from the mail_date chunk metadata as the indexing
-            pipeline wrote it (an ISO-8601 instant, truncated to whole seconds so it stays
-            lexicographically sortable). Null for a source that is not an EML/MSG message's own body
-            chunk.
-          example: "2026-03-14T09:15:00Z"
         metadata:
           type: array
           nullable: true
@@ -6100,6 +6069,15 @@ components:
           allOf:
             - $ref: "#/components/schemas/DatePrecision"
           description: Set for a date value only.
+        detailOnly:
+          type: boolean
+          nullable: true
+          default: false
+          description: >-
+            True for a value that belongs into the Beleg detail view but not into the one-line
+            Fundstellenzeile (#1242): a mail's recipient list is unbounded and names nobody useful
+            for identifying the passage, while the line has to stay readable in the flow of an
+            answer. Absent/false for every other entry.
 
     LibraryDocumentResponse:
       type: object
@@ -6555,9 +6533,10 @@ components:
       type: object
       additionalProperties: false
       description: >-
-        A filter on the filterable core fields (#1070, docs/features/metadata-schema.md, Wirkstelle
-        1). Only Dokumentart and Datum/Stand are filterable - the title is not, and free keywords
-        never are; a request naming any other field is rejected with 400. Every condition is
+        A filter on the filterable schema fields (#1070, docs/features/metadata-schema.md,
+        Wirkstelle 1): the core fields Dokumentart and Datum/Stand, a library's own fields and the
+        filterable format fields. The title is not filterable, a display field like a mail's Betreff
+        is not, and free keywords never are; a request naming any other field is rejected with 400. Every condition is
         applied inside both search paths, AND-ed to the permission filter, so a filter can narrow
         the readable set but never widen it. A document without a value for a filtered field is
         not excluded ("Leerwerte schließen nicht aus"); its source entry carries
@@ -6595,10 +6574,20 @@ components:
           type: array
           nullable: true
           description: >-
-            Conditions on library fields (#1071) - the third and last kind of condition a filter
-            can carry. Absent or empty: no condition on any library field.
+            Conditions on library fields (#1071) - the third kind of condition a filter can carry.
+            Absent or empty: no condition on any library field.
           items:
             $ref: "#/components/schemas/MetadataFilterLibraryFieldCondition"
+        formatFields:
+          type: array
+          nullable: true
+          description: >-
+            Conditions on the filterable format fields (#1242) - the fourth and last kind. A format
+            field is built in and only filled where the format declares it (a mail's Absender);
+            naming a field that is not filterable - the Betreff is a display field - or a value the
+            field's pattern does not accept is rejected with 400.
+          items:
+            $ref: "#/components/schemas/MetadataFilterFormatFieldCondition"
 
     MetadataFilterMatch:
       type: string
@@ -6705,6 +6694,12 @@ components:
             each with its own Füllstand, entry condition and occurring values.
           items:
             $ref: "#/components/schemas/MetadataFilterLibraryFieldOption"
+        formatFields:
+          type: array
+          description: >-
+            The filterable format fields with the values occurring in the scope (#1242).
+          items:
+            $ref: "#/components/schemas/MetadataFilterFormatFieldOption"
 
     LibraryMetadataFieldType:
       type: string
@@ -7243,6 +7238,77 @@ components:
         dateMax:
           type: string
           nullable: true
+
+    MetadataFilterFormatFieldCondition:
+      type: object
+      additionalProperties: false
+      required: [fieldKey, values]
+      description: >-
+        One condition on a built-in format field (#1242). The values are matched exactly - the
+        field carries a checked identifier, and a partial match would turn it back into the text
+        search the specification rules out. A document without a value for the field - every
+        document that is not of this format - is not excluded ("Leerwerte schließen nicht aus").
+      properties:
+        fieldKey:
+          type: string
+          description: The field's own key, without the namespace prefix.
+          example: mail_sender
+        values:
+          type: array
+          items:
+            type: string
+          description: >-
+            The values a document may carry; a document matches when its value is one of them or it
+            has none.
+          example: [poststelle@stadt.de]
+
+    MetadataFilterFormatFieldOption:
+      type: object
+      required: [fieldKey, label, filledDocuments, totalDocuments, values, offered]
+      description: >-
+        The values of one filterable format field occurring in the caller's search scope (#1242),
+        and whether the filter interface offers it. Unlike a core or library field, a format field
+        is offered as soon as at least one document of the scope carries a value: it is filled
+        deterministically for every document of its format and structurally absent for every other,
+        so a share over a mixed bestand would measure the format mix, not the metadata quality.
+      properties:
+        fieldKey:
+          type: string
+          example: mail_sender
+        label:
+          type: string
+          example: Absender
+        filledDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents of the scope carrying a value for the field.
+        totalDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents of the scope.
+        values:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataFilterLibraryFieldValueOption"
+          description: >-
+            The values documents in the caller's rights context actually carry, most frequent first
+            and capped at 20: the value set of a format field is open - a postbox has as many
+            senders as correspondents -, and a complete list would be an unbounded response of
+            personal addresses.
+        valuesCapped:
+          type: boolean
+          nullable: true
+          default: false
+          description: >-
+            True when the scope carries more values than the list shows. A client then offers a free
+            input for an exact value beside the list.
+        offered:
+          type: boolean
+          description: >-
+            True as soon as one document of the scope carries a value. Unlike a core or library
+            field there is no Füllstand threshold: the field is filled deterministically for every
+            document of its format and structurally absent for every other, so a share over a mixed
+            bestand would measure the format mix rather than the metadata quality.
 
     DocumentTypeVocabularyResponse:
       type: object

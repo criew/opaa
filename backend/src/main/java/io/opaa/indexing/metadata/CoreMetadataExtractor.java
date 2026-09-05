@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  */
 public final class CoreMetadataExtractor {
 
-  public static final int EXTRACTION_VERSION = 3;
+  public static final int EXTRACTION_VERSION = 4;
 
   static final String FRONTMATTER_TITLE = "titel";
   static final String FRONTMATTER_DOCUMENT_TYPE = "dokumentart";

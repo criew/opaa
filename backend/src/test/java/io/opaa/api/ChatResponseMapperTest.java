@@ -139,11 +139,7 @@ class ChatResponseMapperTest {
             .sourceUrl("https://example.com/readme.md")
             .sourceEntryUrl("https://example.com/feed/entry-1")
             .citationValid(false)
-            .chunkLocations(List.of(new ChatSourceLocation(3).location("S. 2-4")))
-            .mailFrom("mueller@stadt.de")
-            .mailTo("poststelle@stadt.de")
-            .mailSubject("Bebauungsplan Nord")
-            .mailDate("2026-03-14T09:15:00Z");
+            .chunkLocations(List.of(new ChatSourceLocation(3).location("S. 2-4")));
 
     SourceReference response = ChatResponseMapper.toSourceReference(source);
 
@@ -160,10 +156,6 @@ class ChatResponseMapperTest {
     assertThat(response.getChunkLocations()).hasSize(1);
     assertThat(response.getChunkLocations().getFirst().getChunkIndex()).isEqualTo(3);
     assertThat(response.getChunkLocations().getFirst().getLocation()).isEqualTo("S. 2-4");
-    assertThat(response.getMailFrom()).isEqualTo("mueller@stadt.de");
-    assertThat(response.getMailTo()).isEqualTo("poststelle@stadt.de");
-    assertThat(response.getMailSubject()).isEqualTo("Bebauungsplan Nord");
-    assertThat(response.getMailDate()).isEqualTo("2026-03-14T09:15:00Z");
   }
 
   @Test
@@ -262,18 +254,5 @@ class ChatResponseMapperTest {
             ChatResponseMapper.toSourceReference(new ChatSource("readme.md", 0.5, 1, false))
                 .getMetadataFilterMatch())
         .isNull();
-  }
-
-  /** #1164: a non-mail source (no ChatSource#mailFrom etc. ever set) maps to null, not "". */
-  @Test
-  void toSourceReferenceLeavesMailFieldsNullForANonMailSource() {
-    ChatSource source = new ChatSource("readme.md", 0.5, 1, false);
-
-    SourceReference response = ChatResponseMapper.toSourceReference(source);
-
-    assertThat(response.getMailFrom()).isNull();
-    assertThat(response.getMailTo()).isNull();
-    assertThat(response.getMailSubject()).isNull();
-    assertThat(response.getMailDate()).isNull();
   }
 }

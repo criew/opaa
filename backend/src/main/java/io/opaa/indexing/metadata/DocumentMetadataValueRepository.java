@@ -71,6 +71,27 @@ public interface DocumentMetadataValueRepository
       @Param("fieldKey") String fieldKey);
 
   /**
+   * The {@code pageable}-capped variant of {@link #countByLibraryFieldValueInLibraries} - the
+   * offered choices of a field whose value set is <b>open</b> (a mail's Absender): a postbox with
+   * thousands of correspondents must not turn into a response, a cache entry and a popover with
+   * thousands of personal addresses. The order is unchanged, so the cap keeps the most frequent
+   * values.
+   */
+  @Query(
+      "select v.textValue as code, count(v) as documentCount"
+          + " from DocumentMetadataValue v, Document d"
+          + " where d.id = v.documentId and d.libraryId in :libraryIds and d.status = :status"
+          + " and v.fieldKey = :fieldKey"
+          + " and v.state = io.opaa.indexing.metadata.MetadataValueState.SET"
+          + " and v.textValue is not null"
+          + " group by v.textValue order by count(v) desc, v.textValue asc")
+  List<VocabularyCodeCount> countTopValuesInLibraries(
+      @Param("libraryIds") Collection<UUID> libraryIds,
+      @Param("status") DocumentStatus status,
+      @Param("fieldKey") String fieldKey,
+      Pageable pageable);
+
+  /**
    * The counted half of the one Füllstand count: per library, field and state, over the documents
    * of {@code libraryIds} in {@code status}. Core fields and library fields alike - both are rows
    * keyed by field key. The absence of a row is "leer" and is derived by {@link

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.metadata.FormatMetadataField;
 import io.opaa.indexing.pipeline.DiscoveredAttachment;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
@@ -86,43 +87,18 @@ class MailDocumentPipelineTest {
     MailDocumentPipeline pipeline = pipeline(defaultProperties);
     assertThat(pipeline.handledFormats()).containsExactlyInAnyOrder(".eml", ".msg");
     assertThat(pipeline.id()).isEqualTo("email");
-    assertThat(pipeline.version()).isEqualTo((short) 4);
-  }
-
-  @Test
-  void passesThroughLocationAndAllFourMailKopfdatenKeys() {
-    // Neutrality guard: the exact key set FileProcessingService#storeChunks hardcoded before
-    // this pipeline declared its own passthrough keys (the four mail_* lines, plus location).
-    MailDocumentPipeline pipeline = pipeline(defaultProperties);
-    assertThat(pipeline.passthroughMetadataKeys())
-        .containsExactlyInAnyOrder(
-            ChunkingService.LOCATION_METADATA_KEY,
-            ChunkMailMetadata.MAIL_FROM_METADATA_KEY,
-            ChunkMailMetadata.MAIL_TO_METADATA_KEY,
-            ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY,
-            ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
+    assertThat(pipeline.version()).isEqualTo((short) 5);
   }
 
   /**
-   * a Zeitraum filter compares {@code mail_date} lexicographically as text, so the rendered value
-   * must stay sortable across differing sub-second precision - {@link Instant#toString()} alone
-   * does not guarantee that (it omits the fractional part entirely when it is zero, which
-   * mis-orders against a value that does carry one). Without truncating to whole seconds first,
-   * this assertion fails: {@code "2024-01-03T09:15:00.500Z".compareTo("2024-01-03T09:15:00Z")} is
-   * negative (".5" sorts before "Z"), even though the first instant is 500ms <em>after</em> the
-   * second.
+   * regression guard for #1242: the Kopfdaten are schema values of the document, not chunk keys of
+   * this pipeline - only the Fundort passes through, like every other pipeline.
    */
   @Test
-  void rendersMailDateTruncatedToWholeSecondsSoItStaysLexicographicallySortable() {
-    Instant earlier = Instant.parse("2024-01-03T09:15:00Z");
-    Instant laterWithMillis = Instant.parse("2024-01-03T09:15:00.500Z");
-
-    String renderedEarlier = MailDocumentPipeline.renderMailDate(earlier);
-    String renderedLater = MailDocumentPipeline.renderMailDate(laterWithMillis);
-
-    assertThat(renderedEarlier).isEqualTo("2024-01-03T09:15:00Z");
-    assertThat(renderedLater).isEqualTo("2024-01-03T09:15:00Z");
-    assertThat(renderedEarlier.compareTo(renderedLater)).isEqualTo(0);
+  void passesThroughTheFundortAndNoMailSpecificKeyAtAll() {
+    MailDocumentPipeline pipeline = pipeline(defaultProperties);
+    assertThat(pipeline.passthroughMetadataKeys())
+        .containsExactly(ChunkingService.LOCATION_METADATA_KEY);
   }
 
   /**
@@ -149,7 +125,37 @@ class MailDocumentPipelineTest {
     assertThat(properties.title()).isEqualTo("Anfrage Bauantrag");
     assertThat(properties.documentDate()).isEqualTo(java.time.LocalDate.of(2024, 1, 4));
     assertThat(properties.firstHeading()).isNull();
+    // #1242: the Kopfdaten as format field values - the Absender reduced to its bare address.
+    assertThat(properties.formatFields())
+        .containsEntry(FormatMetadataField.MAIL_SENDER.key(), "max@example.org")
+        .containsEntry(
+            FormatMetadataField.MAIL_RECIPIENTS.key(), "Erika Musterfrau <erika@example.org>")
+        .containsEntry(FormatMetadataField.MAIL_SUBJECT.key(), "Anfrage Bauantrag");
     assertThat(pipeline(defaultProperties).run(source).properties()).isEqualTo(properties);
+  }
+
+  /**
+   * regression guard for #1242: a {@code From} header naming two mailboxes is answered by the first
+   * sender, never by the last - and the stored value is lower-cased, so a filter written in any
+   * case matches it.
+   */
+  @Test
+  void theSenderIsTheFirstMailboxOfTheHeaderLowerCased() throws Exception {
+    Path file =
+        writeEml(
+            ("From: Amt Rheinfurt <Amt@Stadt.DE>, Vertretung <vertretung@stadt.de>\n"
+                    + "To: verteiler@example.org\n"
+                    + "Subject: Sammelanschreiben\n"
+                    + "Date: Thu, 12 Mar 2026 09:15:00 +0100\n"
+                    + "Content-Type: text/plain; charset=UTF-8\n\n"
+                    + "Text.\n")
+                .getBytes(StandardCharsets.UTF_8));
+
+    assertThat(
+            pipeline(defaultProperties)
+                .readProperties(DocumentPipelineSource.ofFile(file, "sammel.eml"))
+                .formatFields())
+        .containsEntry(FormatMetadataField.MAIL_SENDER.key(), "amt@stadt.de");
   }
 
   @Test
@@ -171,7 +177,7 @@ class MailDocumentPipelineTest {
   // --- EML: headers as metadata AND as context lines in the chunk text --------
 
   @Test
-  void headersLandAsChunkMetadataAndAsContextLinesInTheChunkText() throws Exception {
+  void headersLandAsFormatFieldValuesAndAsContextLinesInTheChunkText() throws Exception {
     Path file = writeEml(simpleEmlBytes());
 
     DocumentPipelineResult result =
@@ -188,13 +194,13 @@ class MailDocumentPipelineTest {
                 + "An: Erika Musterfrau <erika@example.org>\n"
                 + "\n"
                 + "Bitte pruefen Sie den Antrag.");
-    assertThat(chunk.getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
-        .isEqualTo("Anfrage Bauantrag");
-    assertThat(chunk.getMetadata().get(ChunkMailMetadata.MAIL_FROM_METADATA_KEY))
-        .isEqualTo("Max Mustermann <max@example.org>");
-    assertThat(chunk.getMetadata().get(ChunkMailMetadata.MAIL_TO_METADATA_KEY))
-        .isEqualTo("Erika Musterfrau <erika@example.org>");
-    assertThat(chunk.getMetadata()).containsKey(ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
+    assertThat(result.properties().formatFields())
+        .containsEntry(FormatMetadataField.MAIL_SUBJECT.key(), "Anfrage Bauantrag")
+        .containsEntry(FormatMetadataField.MAIL_SENDER.key(), "max@example.org")
+        .containsEntry(
+            FormatMetadataField.MAIL_RECIPIENTS.key(), "Erika Musterfrau <erika@example.org>");
+    // #1242: no mail-specific chunk key survives - the Kopfdaten hang on the document now.
+    assertThat(chunk.getMetadata().keySet()).doesNotContain("mail_from", "mail_subject");
     // Single message, no thread split: no "Nachricht n von N" location needed.
     assertThat(chunk.getMetadata()).doesNotContainKey(ChunkingService.LOCATION_METADATA_KEY);
     assertThat(result.discoveredAttachments()).isEmpty();
@@ -272,8 +278,8 @@ class MailDocumentPipelineTest {
                 + "Betreff: Leer\n"
                 + "Datum: 03.01.2024 10:15\n"
                 + "An: b@example.org");
-    assertThat(headerChunk.getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
-        .isEqualTo("Leer");
+    assertThat(result.properties().formatFields())
+        .containsEntry(FormatMetadataField.MAIL_SUBJECT.key(), "Leer");
     assertThat(headerChunk.getMetadata()).doesNotContainKey(ChunkingService.LOCATION_METADATA_KEY);
     assertThat(result.discoveredAttachments()).hasSize(1);
     assertThat(result.discoveredAttachments().getFirst().fileName()).isEqualTo("bescheid.csv");
@@ -367,10 +373,9 @@ class MailDocumentPipelineTest {
             .run(DocumentPipelineSource.ofFile(file, "verteiler.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    List<Document> headerChunks =
-        result.chunks().stream()
-            .filter(c -> c.getMetadata().containsKey(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
-            .toList();
+    // The whole message is header block: every chunk is a piece of it (#1242 - the Kopfdaten are
+    // no longer a chunk key one could filter the pieces by).
+    List<Document> headerChunks = result.chunks();
     assertThat(headerChunks).hasSizeGreaterThan(1);
     assertThat(headerChunks)
         .allSatisfy(
@@ -531,8 +536,8 @@ class MailDocumentPipelineTest {
     assertThat(nestedResult.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(nestedResult.chunks().getFirst().getText())
         .contains("Ich beantrage eine Baugenehmigung.");
-    assertThat(nestedResult.chunks().getFirst().getMetadata())
-        .containsEntry(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY, "Urspruengliche Anfrage");
+    assertThat(nestedResult.properties().formatFields())
+        .containsEntry(FormatMetadataField.MAIL_SUBJECT.key(), "Urspruengliche Anfrage");
   }
 
   @Test
@@ -655,9 +660,8 @@ class MailDocumentPipelineTest {
     assertThat(result.chunks().get(1).getText())
         .doesNotContain("Von:")
         .contains("Bitte um Rueckmeldung bis Freitag.");
-    assertThat(
-            result.chunks().get(1).getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
-        .isEqualTo("Terminabstimmung");
+    assertThat(result.properties().formatFields())
+        .containsEntry(FormatMetadataField.MAIL_SUBJECT.key(), "Terminabstimmung");
   }
 
   @Test
@@ -682,17 +686,16 @@ class MailDocumentPipelineTest {
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSizeGreaterThan(1);
-    // Every further-split piece still carries the message's own Kopfdaten and a disambiguating
-    // "Teil j von M" Fundort.
+    // Every further-split piece carries a disambiguating "Teil j von M" Fundort; the Kopfdaten
+    // hang on the document and reach every chunk from there (#1242).
+    assertThat(result.properties().formatFields())
+        .containsEntry(FormatMetadataField.MAIL_SUBJECT.key(), "Langer Rundbrief");
     assertThat(result.chunks())
         .allSatisfy(
-            chunk -> {
-              assertThat(chunk.getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
-                  .isEqualTo("Langer Rundbrief");
-              assertThat(chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
-                  .asString()
-                  .startsWith("Teil ");
-            });
+            chunk ->
+                assertThat(chunk.getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
+                    .asString()
+                    .startsWith("Teil "));
     // The context block itself is subject to the same token splitter - it lands only in the
     // leading part, never repeated onto a later further-split piece.
     assertThat(result.chunks().getFirst().getText()).startsWith("Von: amt@example.org");
@@ -778,12 +781,12 @@ class MailDocumentPipelineTest {
     assertThat(result.chunks()).hasSize(1);
     Document chunk = result.chunks().getFirst();
     assertThat(chunk.getText()).contains("This is a test message.");
-    assertThat(chunk.getMetadata().get(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
-        .isEqualTo("test message");
-    assertThat(chunk.getMetadata().get(ChunkMailMetadata.MAIL_FROM_METADATA_KEY))
-        .isEqualTo("Travis Ferguson");
-    assertThat(chunk.getMetadata().get(ChunkMailMetadata.MAIL_TO_METADATA_KEY))
-        .isEqualTo("travis@overwrittenstack.com");
+    assertThat(result.properties().formatFields())
+        .containsEntry(FormatMetadataField.MAIL_SUBJECT.key(), "test message")
+        .containsEntry(FormatMetadataField.MAIL_RECIPIENTS.key(), "travis@overwrittenstack.com")
+        // A display name without an address is no Absender: the field carries a checkable
+        // identifier or nothing (#1242).
+        .doesNotContainKey(FormatMetadataField.MAIL_SENDER.key());
   }
 
   @Test

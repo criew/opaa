@@ -23,7 +23,7 @@ databaseChangeLog:
               ALTER TABLE public.documents
                 ADD COLUMN context_prefix_stamp varchar(64),
                 ADD COLUMN context_prefix_eligible boolean,
-                ADD COLUMN context_prefix_title varchar(500);
+                ADD COLUMN context_prefix_title text;
               CREATE INDEX idx_documents_library_context_prefix
                 ON public.documents (library_id) WHERE context_prefix_stamp IS NULL;
       rollback:

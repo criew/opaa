@@ -123,6 +123,22 @@ public class DocumentMetadataService {
     CoreMetadata core = toCoreMetadata(rows, vocabularyRepository.snapshot());
     Map<String, Object> values = new LinkedHashMap<>(core.chunkMetadata());
     Set<String> managed = new LinkedHashSet<>(CoreMetadataChunkKeys.ALL);
+    // Format fields are built in and library-independent, so their keys are managed on every
+    // document - a document that stops carrying a value loses them on the next rewrite.
+    managed.addAll(FormatMetadataField.MANAGED_CHUNK_KEYS);
+    for (DocumentMetadataValue row : rows) {
+      FormatMetadataField.fromFieldKey(row.getFieldKey())
+          .filter(FormatMetadataField::isFilterable)
+          .ifPresent(
+              field -> {
+                if (row.getState() == MetadataValueState.SET && row.getTextValue() != null) {
+                  values.put(field.chunkKey(), row.getTextValue());
+                  values.put(field.presenceChunkKey(), FormatMetadataField.PRESENCE_VALUE);
+                }
+              });
+    }
+    // A Format field carries no Kontextpraefix-Wirkstelle: it is built in, so nobody decided it
+    // per library, and the Wirkstelle is never a default (metadata-schema.md, Wirkstelle 2).
     KnowledgeLibrary library =
         document.getLibraryId() == null
             ? null
@@ -272,6 +288,7 @@ public class DocumentMetadataService {
         CoreMetadataField.DOCUMENT_DATE,
         existing,
         extracted.date().map(date -> value -> value.assignDate(date.date(), date.precision())));
+    reconcileFormatFields(documentId, properties, existing);
 
     int updated =
         documentRepository.updateMetadataExtractionVersion(
@@ -285,6 +302,24 @@ public class DocumentMetadataService {
   }
 
   /**
+   * The format fields (metadata-schema.md, Teil II (c)) of the document: whatever the pipeline read
+   * verbatim out of the format, stored as deterministic text values under {@code fmt:<key>}. A
+   * field the format does not declare loses its deterministic row; a manual row stays untouched,
+   * exactly like a core field.
+   */
+  private void reconcileFormatFields(
+      UUID documentId, DocumentProperties properties, Map<String, DocumentMetadataValue> existing) {
+    for (FormatMetadataField field : FormatMetadataField.values()) {
+      Optional<String> value = field.normalize(properties.formatFields().get(field.key()));
+      reconcileValue(
+          documentId,
+          field.documentFieldKey(),
+          existing,
+          value.map(text -> row -> row.assignText(text)));
+    }
+  }
+
+  /**
    * Applies {@code assign} to {@code field}'s row - reusing an existing non-manual row, creating
    * one otherwise. An empty {@code assign} deletes only a {@code DETERMINISTIC} row: a {@code
    * DERIVED} value fills exactly the gap the deterministic step leaves and survives it; a {@code
@@ -295,7 +330,16 @@ public class DocumentMetadataService {
       CoreMetadataField field,
       Map<String, DocumentMetadataValue> existing,
       Optional<Consumer<DocumentMetadataValue>> assign) {
-    DocumentMetadataValue current = existing.get(field.key());
+    reconcileValue(documentId, field.key(), existing, assign);
+  }
+
+  /** The keyed half of {@link #reconcile} - the same rules for a core and a format field. */
+  private void reconcileValue(
+      UUID documentId,
+      String fieldKey,
+      Map<String, DocumentMetadataValue> existing,
+      Optional<Consumer<DocumentMetadataValue>> assign) {
+    DocumentMetadataValue current = existing.get(fieldKey);
     if (current != null && current.getOrigin() == MetadataOrigin.MANUAL) {
       return;
     }
@@ -312,7 +356,7 @@ public class DocumentMetadataService {
     } else {
       target =
           DocumentMetadataValue.deterministic(
-              documentId, field, CoreMetadataExtractor.EXTRACTION_VERSION);
+              documentId, fieldKey, CoreMetadataExtractor.EXTRACTION_VERSION);
     }
     assign.get().accept(target);
     valueRepository.save(target);
