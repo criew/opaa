@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
@@ -27,9 +28,15 @@ import io.opaa.test.OpaaIndexingTestDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -41,6 +48,7 @@ import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
  * Step 2 of the extraction order end to end (#1073): the switches decide whether a model is called
@@ -66,6 +74,9 @@ class ModelMetadataExtractionIntegrationTest {
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private ChatModel chatModel;
   @Autowired private ActiveChatModelResolver activeChatModelResolver;
+  @Autowired private DocumentTypeVocabularyRepository vocabularyRepository;
+  @Autowired private LibraryMetadataFieldRepository libraryFieldRepository;
+  @Autowired private LibraryMetadataFieldValueRepository libraryFieldValueRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private KnowledgeLibrary library;
@@ -321,7 +332,7 @@ class ModelMetadataExtractionIntegrationTest {
         .isNull();
     assertThat(
             documentRepository.findById(document.getId()).orElseThrow().getModelExtractionVersion())
-        .isEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION);
+        .isEqualTo(ModelMetadataExtractor.EXTRACTION_VERSION);
 
     // Drained: a second call finds nothing left, so the same document is not paid for twice.
     assertThat(
@@ -345,6 +356,193 @@ class ModelMetadataExtractionIntegrationTest {
     assertThat(keywordRepository.findByDocumentIdOrderByKeywordAsc(onlyDocument().getId()))
         .extracting(DocumentKeyword::getKeyword)
         .containsExactlyInAnyOrder("eins", "zwei", "drei", "vier", "fuenf");
+  }
+
+  @Test
+  void aSwitchTurnedOnLaterStillReachesTheAltbestandOfTheOtherOne() throws IOException {
+    // Regression guard for #1073 review, finding 2: one drain marker for both capabilities would
+    // let the keyword runs stamp every document, and the Dokumentart of this Altbestand could then
+    // never be filled.
+    switchOn(false, true);
+    answerWith(
+        """
+        {"keywords": ["Radverkehr"]}
+        """);
+    ingest(file("unterlage-nur-schlagworte.txt"));
+    Document document = onlyDocument();
+    assertThat(document.getKeywordExtractionVersion())
+        .isEqualTo(ModelMetadataExtractor.EXTRACTION_VERSION);
+    assertThat(document.getModelExtractionVersion()).isNull();
+
+    switchOn(true, true);
+    answerWith(
+        """
+        {"fields": {"document_type": {"value": "VERMERK", "confidence": 0.95}},
+         "keywords": ["Radverkehr"]}
+        """);
+
+    assertThat(
+            backfillService
+                .backfillBatch(Organization.DEFAULT_ID, library.getId(), 10)
+                .processedDocuments())
+        .isEqualTo(1);
+    assertThat(
+            valueRepository
+                .findByDocumentIdAndFieldKey(
+                    document.getId(), CoreMetadataField.DOCUMENT_TYPE.key())
+                .orElseThrow()
+                .getOrigin())
+        .isEqualTo(MetadataOrigin.DERIVED);
+  }
+
+  @Test
+  void theZustandsuebersichtCountsExactlyWhatABestandslaufCallWouldSelect() throws IOException {
+    // Regression guard for #1073 review, finding 3: the only start button of the page hangs on this
+    // count, so a library whose Altbestand is model-pending must not read as "0 ausstehend".
+    ingest(file("unterlage-zaehlung.txt"));
+    assertThat(pendingDocumentsOfLibrary()).isZero();
+
+    switchOn(true, false);
+
+    assertThat(pendingDocumentsOfLibrary())
+        .as("the count follows the switch, exactly like the selection does")
+        .isEqualTo(1);
+  }
+
+  @Test
+  void aCallOverItsTimeLimitLeavesTheFieldEmptyAndIndexesTheDocumentAnyway() throws IOException {
+    // Regression guard for #1073 review, finding 4: the timeout bounds the ingest's waiting time.
+    // Ingested with both switches off, so the field is still empty when the model is asked.
+    ingest(file("unterlage-langsam.txt"));
+    Document document = onlyDocument();
+    switchOn(true, false);
+    answerWith(
+        """
+        {"fields": {"document_type": {"value": "VERMERK", "confidence": 1.0}}}
+        """);
+    when(chatModel.call(any(Prompt.class)))
+        .thenAnswer(
+            invocation -> {
+              Thread.sleep(2000);
+              return new ChatResponse(
+                  List.of(new Generation(new AssistantMessage("{\"fields\": {}}"))));
+            });
+    ModelMetadataExtractor impatient = extractorWithTimeout(Duration.ofMillis(150));
+
+    long startedAt = System.nanoTime();
+    ModelExtractionOutcome outcome =
+        impatient.extract(document, library, "Titel", "Text des Dokuments");
+    Duration waited = Duration.ofNanos(System.nanoTime() - startedAt);
+
+    assertThat(waited).isLessThan(Duration.ofSeconds(2));
+    assertThat(outcome.keywords()).isEmpty();
+    assertThat(
+            valueRepository.findByDocumentIdAndFieldKey(
+                document.getId(), CoreMetadataField.DOCUMENT_TYPE.key()))
+        .isEmpty();
+    assertThat(documentRepository.findById(document.getId()).orElseThrow().getStatus())
+        .isEqualTo(DocumentStatus.INDEXED);
+    assertThat(counters.statsFor(library.getId()).failures()).isEqualTo(1);
+  }
+
+  @Test
+  void aSaturatedPoolNeverCountsAFailureWithoutACall() throws Exception {
+    // Regression guard for #1073 review, finding 4: on the common ForkJoinPool a saturated pool let
+    // the limit expire on a call that had never started - a counted failure no model caused.
+    // Ingested with both switches off, so the field is still empty when the model is asked.
+    ingest(file("unterlage-ausgelastet.txt"));
+    Document document = onlyDocument();
+    switchOn(true, false);
+    answerWith(
+        """
+        {"fields": {"document_type": {"value": "VERMERK", "confidence": 0.95}}}
+        """);
+    ThreadPoolTaskExecutor executor = singleThreadExecutor();
+    CountDownLatch occupied = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    executor.execute(
+        () -> {
+          occupied.countDown();
+          try {
+            release.await(5, TimeUnit.SECONDS);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+        });
+    assertThat(occupied.await(5, TimeUnit.SECONDS)).isTrue();
+    AtomicReference<String> callingThread = new AtomicReference<>();
+    when(chatModel.call(any(Prompt.class)))
+        .thenAnswer(
+            invocation -> {
+              callingThread.set(Thread.currentThread().getName());
+              return new ChatResponse(
+                  List.of(
+                      new Generation(
+                          new AssistantMessage(
+                              "{\"fields\": {\"document_type\": {\"value\":"
+                                  + " \"VERMERK\", \"confidence\": 0.95}}}"))));
+            });
+
+    try {
+      ModelExtractionOutcome outcome =
+          extractorWith(executor, Duration.ofMillis(150))
+              .extract(document, library, "Titel", "Text des Dokuments");
+
+      // The call is made on the handed-in executor - here, with its one thread occupied, on the
+      // calling thread itself. Never on the common ForkJoinPool, whose saturation would let the
+      // limit expire on a call that never started.
+      assertThat(callingThread.get()).isEqualTo(Thread.currentThread().getName());
+      assertThat(outcome.chunkMetadata()).isNotNull();
+      assertThat(
+              valueRepository
+                  .findByDocumentIdAndFieldKey(
+                      document.getId(), CoreMetadataField.DOCUMENT_TYPE.key())
+                  .orElseThrow()
+                  .getVocabularyCode())
+          .isEqualTo("VERMERK");
+      assertThat(counters.statsFor(library.getId()).failures()).isZero();
+    } finally {
+      release.countDown();
+    }
+  }
+
+  /**
+   * The extractor with a short limit and a single-threaded caller-runs executor, as in production.
+   */
+  private ModelMetadataExtractor extractorWithTimeout(Duration timeout) {
+    return extractorWith(singleThreadExecutor(), timeout);
+  }
+
+  private ThreadPoolTaskExecutor singleThreadExecutor() {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(1);
+    executor.setMaxPoolSize(1);
+    executor.setQueueCapacity(0);
+    executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+    executor.initialize();
+    return executor;
+  }
+
+  private ModelMetadataExtractor extractorWith(Executor executor, Duration timeout) {
+    return new ModelMetadataExtractor(
+        activeChatModelResolver,
+        documentMetadataService,
+        valueRepository,
+        vocabularyRepository,
+        libraryFieldRepository,
+        libraryFieldValueRepository,
+        keywordRepository,
+        counters,
+        documentRepository,
+        executor,
+        timeout);
+  }
+
+  private long pendingDocumentsOfLibrary() {
+    return backfillService
+        .progressForLibraries(List.of(library.getId()))
+        .get(library.getId())
+        .pendingDocuments();
   }
 
   private void switchOn(boolean modelExtraction, boolean keywords) {

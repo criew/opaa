@@ -17,27 +17,24 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 /**
- * Step 2 of the extraction order (metadata-schema.md, "Die Reihenfolge"): asks the systemwide chat
- * role for the unscharfe fields the deterministic step left empty, and for the freie Schlagworte -
- * both only when the library switched them on, both off by default.
+ * Step 2 of the extraction order (metadata-schema.md, "Die Reihenfolge"): one call per document to
+ * the systemwide chat role for the unscharfe fields the deterministic step left empty and for the
+ * freie Schlagworte, each only when the library switched it on.
  *
- * <p>Three rules decide what is stored. A value below {@link #CONFIDENCE_THRESHOLD} is discarded; a
- * value outside the offered vocabulary is discarded regardless of its confidence and never mapped
- * onto the most similar entry; a field that already carries a row is not asked about at all, so no
- * manual correction is ever overwritten. Everything discarded is counted and logged with its
- * confidence ({@link ModelExtractionCounters}), which is what makes the threshold calibratable.
- *
- * <p><b>A failure never blocks the ingest.</b> Timeout, transport error and unusable answer end the
- * same way: the fields stay empty, the document is indexed regularly, the call is counted as a
- * failure. There is no retry and no queue - the Bestandslauf is the only path that fills such a
- * document later.
+ * <p>A value is stored only at {@link #CONFIDENCE_THRESHOLD} or above <b>and</b> as a code of the
+ * offered list; a field that already carries a row is never asked about, so no manual correction is
+ * overwritten. Timeout, transport error and unusable answer all leave the field empty, count as a
+ * failure and never block the ingest - there is no retry and no queue.
  */
 @Service
 public class ModelMetadataExtractor {
@@ -52,6 +49,15 @@ public class ModelMetadataExtractor {
   /** One call per document; longer than this the ingest does not wait for a metadata guess. */
   public static final Duration CALL_TIMEOUT = Duration.ofSeconds(30);
 
+  /**
+   * The version of the model step itself, kept apart from {@link
+   * CoreMetadataExtractor#EXTRACTION_VERSION}: a corrected regular expression in step 1 must not
+   * make every document of every switched-on library worth a paid model call again. Raise it when
+   * the prompt, the threshold or the answer handling changes in a way that would decide a document
+   * differently.
+   */
+  public static final int EXTRACTION_VERSION = 1;
+
   private static final Logger log = LoggerFactory.getLogger(ModelMetadataExtractor.class);
 
   private final ActiveChatModelResolver chatModelResolver;
@@ -63,7 +69,10 @@ public class ModelMetadataExtractor {
   private final DocumentKeywordRepository keywordRepository;
   private final ModelExtractionCounters counters;
   private final DocumentRepository documentRepository;
+  private final Executor callExecutor;
+  private final Duration callTimeout;
 
+  @Autowired
   public ModelMetadataExtractor(
       ActiveChatModelResolver chatModelResolver,
       DocumentMetadataService metadataService,
@@ -73,7 +82,35 @@ public class ModelMetadataExtractor {
       LibraryMetadataFieldValueRepository fieldValueRepository,
       DocumentKeywordRepository keywordRepository,
       ModelExtractionCounters counters,
-      DocumentRepository documentRepository) {
+      DocumentRepository documentRepository,
+      @Qualifier("modelExtractionTaskExecutor") Executor callExecutor) {
+    this(
+        chatModelResolver,
+        metadataService,
+        valueRepository,
+        vocabularyRepository,
+        fieldRepository,
+        fieldValueRepository,
+        keywordRepository,
+        counters,
+        documentRepository,
+        callExecutor,
+        CALL_TIMEOUT);
+  }
+
+  /** The timeout is a parameter only so a test can prove the timeout path without waiting 30 s. */
+  ModelMetadataExtractor(
+      ActiveChatModelResolver chatModelResolver,
+      DocumentMetadataService metadataService,
+      DocumentMetadataValueRepository valueRepository,
+      DocumentTypeVocabularyRepository vocabularyRepository,
+      LibraryMetadataFieldRepository fieldRepository,
+      LibraryMetadataFieldValueRepository fieldValueRepository,
+      DocumentKeywordRepository keywordRepository,
+      ModelExtractionCounters counters,
+      DocumentRepository documentRepository,
+      Executor callExecutor,
+      Duration callTimeout) {
     this.chatModelResolver = chatModelResolver;
     this.metadataService = metadataService;
     this.valueRepository = valueRepository;
@@ -83,6 +120,8 @@ public class ModelMetadataExtractor {
     this.keywordRepository = keywordRepository;
     this.counters = counters;
     this.documentRepository = documentRepository;
+    this.callExecutor = callExecutor;
+    this.callTimeout = callTimeout;
   }
 
   /**
@@ -102,7 +141,7 @@ public class ModelMetadataExtractor {
     if (fields.isEmpty() && !wantsKeywords) {
       // Nothing left for the model to decide: stamped, so the Bestandslauf does not pay for a
       // second look at a document whose unscharfe fields are all filled.
-      stamp(document);
+      stamp(document, true, false);
       return ModelExtractionOutcome.UNCHANGED;
     }
 
@@ -114,18 +153,34 @@ public class ModelMetadataExtractor {
             ? ModelExtractionOutcome.UNCHANGED
             : apply(document, library, fields, answer, wantsKeywords, tally);
     counters.record(library.getId(), document.getId(), tally);
-    stamp(document);
+    // One mark per capability: a library running with only one of them must still hand its
+    // Altbestand to the Bestandslauf when the other is switched on later.
+    stamp(document, wantsValues, wantsKeywords);
     return outcome;
   }
 
-  /** {@code null} on any failure - the one place timeout, transport error and refusal converge. */
+  /**
+   * {@code null} on any failure - the one place timeout, transport error and refusal converge.
+   *
+   * <p>The call runs on {@link #callExecutor}, never on the common {@code ForkJoinPool}: that pool
+   * is shared with everything else in the JVM, and a saturated one would make {@code get(timeout)}
+   * expire on a call that was never started - a counted "failure" no model caused. The executor is
+   * sized for the ingest and hands a rejected task back to the calling thread, so a call is always
+   * made; only the ingest's waiting time is bounded, which is what the timeout is for.
+   *
+   * <p><b>A timed-out call is abandoned, not stopped.</b> {@code cancel(true)} cannot interrupt a
+   * blocking HTTP read, so the abandoned call finishes on its own thread, its answer is dropped and
+   * it is still billed. The field stays empty, the document is indexed regularly and the call is
+   * counted as a failure - never a blocked ingest.
+   */
   private ModelExtractionAnswer askModel(
       String prompt, Document document, ModelExtractionTally tally) {
-    CompletableFuture<String> call = null;
     try {
       var chatClient = chatModelResolver.resolveChatClient();
-      call = CompletableFuture.supplyAsync(() -> chatClient.prompt().user(prompt).call().content());
-      String raw = call.get(CALL_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+      CompletableFuture<String> call =
+          CompletableFuture.supplyAsync(
+              () -> chatClient.prompt().user(prompt).call().content(), callExecutor);
+      String raw = call.get(callTimeout.toMillis(), TimeUnit.MILLISECONDS);
       ModelExtractionAnswer answer = ModelExtractionAnswer.parse(raw);
       if (answer.values().isEmpty() && answer.keywords().isEmpty()) {
         // An answer that carries neither a field nor a keyword is unusable, not an empty result:
@@ -135,11 +190,12 @@ public class ModelMetadataExtractor {
       }
       return answer;
     } catch (TimeoutException e) {
-      // The abandoned call finishes in the background and its result is dropped; the ingest does
-      // not wait for it, and no retry follows.
-      call.cancel(true);
       tally.countFailure();
-      log.warn("Model metadata extraction for document {} timed out", document.getId());
+      log.warn(
+          "Model metadata extraction for document {} exceeded {} - the field stays empty and the"
+              + " document is indexed regardless",
+          document.getId(),
+          callTimeout);
       return null;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -172,12 +228,15 @@ public class ModelMetadataExtractor {
     }
     List<String> keywords = List.of();
     if (wantsKeywords) {
+      List<String> before = storedKeywordsOf(document);
       keywords = storeKeywords(document, library, answer.keywords(), modelId, tally);
-      // A keyword is a segment of the Kontextpraefix, so the document's chunk metadata is re-read
-      // for the caller (the ingest writes its chunks with it) and the stored Abdruck is compared
-      // against the new one, which hands an already indexed document to the Nachlauf.
-      chunkMetadata = metadataService.chunkMetadataFor(document);
-      metadataService.markContextPrefixStale(document.getId());
+      if (!before.equals(keywords)) {
+        // A keyword is a segment of the Kontextpraefix: the caller's chunk metadata is re-read (the
+        // ingest writes its chunks with it) and the stored Abdruck compared against the new one,
+        // which hands an already indexed document to the Nachlauf.
+        chunkMetadata = metadataService.chunkMetadataFor(document);
+        metadataService.markContextPrefixStale(document.getId());
+      }
     }
     return new ModelExtractionOutcome(keywords, chunkMetadata);
   }
@@ -227,6 +286,14 @@ public class ModelMetadataExtractor {
    * DocumentKeyword#MAX_KEYWORD_LENGTH} characters and deduplicated case-insensitively. A keyword
    * over the length limit is dropped, not truncated: half a word helps neither index.
    */
+  /** The keywords currently stored, in the order {@link #storeKeywords} would produce them. */
+  private List<String> storedKeywordsOf(Document document) {
+    return keywordRepository.findByDocumentIdOrderByKeywordAsc(document.getId()).stream()
+        .map(DocumentKeyword::getKeyword)
+        .sorted()
+        .toList();
+  }
+
   private List<String> storeKeywords(
       Document document,
       KnowledgeLibrary library,
@@ -249,14 +316,11 @@ public class ModelMetadataExtractor {
       }
     }
     keywordRepository.deleteByDocumentId(document.getId());
+    keywords = keywords.stream().sorted().toList();
     for (String keyword : keywords) {
       keywordRepository.save(
           new DocumentKeyword(
-              document.getId(),
-              library.getId(),
-              keyword,
-              modelId,
-              CoreMetadataExtractor.EXTRACTION_VERSION));
+              document.getId(), library.getId(), keyword, modelId, EXTRACTION_VERSION));
     }
     tally.countKeywords(keywords.size());
     return keywords;
@@ -319,8 +383,12 @@ public class ModelMetadataExtractor {
     }
   }
 
-  private void stamp(Document document) {
-    documentRepository.updateModelExtractionVersion(
-        document.getId(), CoreMetadataExtractor.EXTRACTION_VERSION);
+  private void stamp(Document document, boolean values, boolean keywords) {
+    if (values) {
+      documentRepository.updateModelExtractionVersion(document.getId(), EXTRACTION_VERSION);
+    }
+    if (keywords) {
+      documentRepository.updateKeywordExtractionVersion(document.getId(), EXTRACTION_VERSION);
+    }
   }
 }

@@ -387,6 +387,12 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Query("update Document d set d.modelExtractionVersion = :version where d.id = :id")
   int updateModelExtractionVersion(@Param("id") UUID id, @Param("version") int version);
 
+  /** The same marking for the freie Schlagworte, which carry their own mark (#1073). */
+  @Modifying
+  @Transactional
+  @Query("update Document d set d.keywordExtractionVersion = :version where d.id = :id")
+  int updateKeywordExtractionVersion(@Param("id") UUID id, @Param("version") int version);
+
   /**
    * Records the Kontextpraefix this document's chunks were just embedded with (#1072) and whether
    * it got one at all. A targeted {@code UPDATE} for the same reason {@link

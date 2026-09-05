@@ -853,7 +853,12 @@ deterministisch oder nichts und werden nie gefragt. Ein Aufruf je Dokument über
 Chat-Rolle (`ActiveChatModelResolver`, keine eigene Modellrolle), Zeitlimit 30 s. Der Prompt trägt die
 Werteliste mit Codes und deutschen Labels, die Anweisung „nur ein aufgeführter Code, sonst null",
 das Antwortformat `{"fields": {"<feld>": {"value", "confidence"}}, "keywords": [...]}`, die Titelzeile
-und den auf **4.000 Zeichen** gekürzten Textanfang. Der Deckel ist bewusst klein: Die unscharfen
+und den auf **4.000 Zeichen** gekürzten Textanfang. Titelzeile und Text stehen zwischen Markierungen
+und sind ausdrücklich als Inhalt, nicht als Anweisung deklariert. Das ist eine Minderung, keine
+Zusicherung: Ein präpariertes Dokument kann weiterhin versuchen, sich selbst einen **zulässigen** Code
+mit hoher Konfidenz zuzuweisen. Die bindende Schranke bleibt die serverseitige Prüfung — gespeichert
+wird nur ein Code der angebotenen Liste, und ein solcher Wert trägt sichtbar die Herkunft
+„abgeleitet". Der Deckel ist bewusst klein: Die unscharfen
 Felder entscheiden sich im Dokumentkopf, der Rest des Textes bewegt die Entscheidung nicht mehr, wohl
 aber Kosten, Laufzeit und die Menge dessen, was das Haus verlässt.
 
@@ -867,7 +872,14 @@ mit Datum und gemessener Verteilung.
 
 **Ein Ausfall blockiert nie die Aufnahme.** Zeitüberschreitung, Transportfehler und unbrauchbare
 Antwort enden gleich: Feld leer, Dokument regulär aufgenommen und durchsuchbar, Aufruf als Fehler
-gezählt. Kein Retry, keine Warteschlange.
+gezählt. Kein Retry, keine Warteschlange. Der Aufruf läuft auf einem **eigenen, beschränkten
+Threadpool** (`modelExtractionTaskExecutor`, so groß wie Indexierungs- und Upload-Pool zusammen),
+nicht auf dem gemeinsamen `ForkJoinPool`: Dessen Auslastung ließe das Zeitlimit an einem Aufruf
+ablaufen, der nie gestartet ist — ein gezählter „Fehler", den kein Modell verursacht hat. Ist der Pool
+dennoch voll, läuft der Aufruf auf dem aufrufenden Faden; es wird also immer aufgerufen. Ein
+überschrittener Aufruf wird **aufgegeben, nicht abgebrochen**: Ein blockierender HTTP-Lesevorgang
+lässt sich nicht unterbrechen, der Aufruf läuft auf seinem Faden zu Ende, seine Antwort wird
+verworfen und er wird abgerechnet. Begrenzt ist die Wartezeit der Aufnahme, nicht der Aufruf.
 
 **Zählwerk und verworfene Werte.** `metadata_model_extraction_stats` führt je Bibliothek Aufrufe,
 übernommene Werte, verworfen wegen Schwelle, verworfen wegen Vokabular, Fehler, vergebene Schlagworte
@@ -889,9 +901,17 @@ Chunk-Schlüssel**, erscheinen **nicht im Beleg** und sind **nicht zu Bibliothek
 ein Filter, der sie benennt, ist ein Aufruferfehler (400). Alle vier Zusagen sind Testfälle, keine
 Absichtserklärungen.
 
-**Bestandslauf.** `documents.model_extraction_version` ist die Abtragsmarke des Modellschritts (NULL =
-nie gelaufen). Wird ein Schalter eingeschaltet, nimmt der nächste Bestandslauf den Altbestand genau
-einmal mit; ein Dokument, dessen Aufruf nichts ergab, wird kein zweites Mal bezahlt. Der Lauf liest
+**Bestandslauf.** `documents.model_extraction_version` und `documents.keyword_extraction_version`
+sind die Abtragsmarken — **eine je Fähigkeit** (NULL = nie gelaufen), damit eine Bibliothek, die
+zuerst nur mit Schlagworten lief, ihren Altbestand noch erreicht, wenn die Modell-Extraktion später
+dazukommt. Der Modellschritt trägt eine **eigene Versionsnummer**
+(`ModelMetadataExtractor.EXTRACTION_VERSION`): Eine korrigierte Regex in Schritt 1 macht damit nicht
+jedes Dokument jeder eingeschalteten Bibliothek erneut zu einem bezahlten Modellaufruf. Wird ein
+Schalter eingeschaltet, nimmt der nächste Bestandslauf den Altbestand genau einmal mit; ein Dokument,
+dessen Aufruf nichts ergab, wird kein zweites Mal bezahlt. **Zählung und Auswahl sind dieselbe
+Menge:** Die Fortschrittszahlen der Zustandsübersicht berücksichtigen dieselben Schalter wie die
+Auswahl — sonst zeigte die Seite „0 ausstehend" und keinen Startknopf für genau die Bibliothek,
+deren Altbestand wartet. Der Lauf liest
 den Text aus den vorhandenen Chunks statt neu zu parsen; ein dort vergebenes Schlagwort oder ein dort
 übernommener präfixwirksamer Wert leert den Abdruck und übergibt das Dokument dem
 Kontextpräfix-Nachlauf (#1072) — dieser eine Lauf zahlt das Neu-Einbetten, der Bestandslauf nie.
@@ -905,9 +925,10 @@ Wert samt Herkunft, Konfidenz und Modell — ohne Schlagworte, die keine Aussage
 Produkt geradesteht. **Offen bleibt die 100er-Handstichprobe der QA-Rolle**; sie läuft auf der
 Demo-Instanz und ist nicht Teil dieses Schnitts.
 
-**Abweichung.** Der Textdeckel (4.000 Zeichen), die Speicherform der Schlagworte (eigene Tabelle) und
-der Deckel des Verwerfungsprotokolls (1.000 Zeilen je Bibliothek, rotierend) sind Festlegungen dieses
-Schnitts, keine Vorgaben der Spezifikation.
+**Abweichung.** Der Textdeckel (4.000 Zeichen), die Speicherform der Schlagworte (eigene Tabelle),
+der Deckel des Verwerfungsprotokolls (1.000 Zeilen je Bibliothek, rotierend alle 100 Aufrufe) und die
+eigene Versionsnummer des Modellschritts sind Festlegungen dieses Schnitts, keine Vorgaben der
+Spezifikation.
 
 ## Jeder Wert trägt seine Herkunft
 

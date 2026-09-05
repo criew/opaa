@@ -49,6 +49,7 @@ import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.time.Clock;
 import java.util.List;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -535,6 +536,29 @@ public class IndexingConfiguration {
     executor.setMaxPoolSize(properties.embeddingConcurrency());
     executor.setQueueCapacity(Integer.MAX_VALUE);
     executor.setThreadNamePrefix("embedding-");
+    executor.initialize();
+    return executor;
+  }
+
+  /**
+   * Backs the model step's one call per document (#1073) - deliberately not the common {@code
+   * ForkJoinPool}: that pool is shared with everything else in the JVM, and a saturated one would
+   * let the 30-second limit expire on a call that never started, counted as a model failure nobody
+   * caused. Sized for every thread that can ingest at once (indexing plus upload pool), and a task
+   * rejected all the same runs on its calling thread, so a call is always made; the timeout bounds
+   * the ingest's waiting time, not the call.
+   */
+  @Bean
+  TaskExecutor modelExtractionTaskExecutor(
+      IndexingProperties indexingProperties, UploadProperties uploadProperties) {
+    int concurrency =
+        indexingProperties.threadPool().maxSize() + uploadProperties.threadPool().maxSize();
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(concurrency);
+    executor.setMaxPoolSize(concurrency);
+    executor.setQueueCapacity(0);
+    executor.setThreadNamePrefix("model-extraction-");
+    executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
     executor.initialize();
     return executor;
   }

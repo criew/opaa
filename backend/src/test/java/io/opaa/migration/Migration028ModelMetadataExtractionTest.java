@@ -117,15 +117,18 @@ class Migration028ModelMetadataExtractionTest extends AbstractMigrationTest {
   }
 
   @Test
-  void theModelExtractionStampStartsEmptyForAnExistingDocument() throws Exception {
+  void bothDrainMarksStartEmptyForAnExistingDocument() throws Exception {
     UUID libraryId = insertLibrary();
     UUID documentId = insertDocument(libraryId);
 
     applyChangelog(connection, CHANGELOG_PATH);
 
+    // One mark per capability: a library that ran with only one of the two switches must still
+    // hand its Altbestand to the Bestandslauf when the other one is switched on later.
     try (PreparedStatement statement =
         connection.prepareStatement(
-            "SELECT model_extraction_version FROM documents WHERE id = ?")) {
+            "SELECT model_extraction_version, keyword_extraction_version FROM documents WHERE"
+                + " id = ?")) {
       statement.setObject(1, documentId);
       try (ResultSet rs = statement.executeQuery()) {
         assertThat(rs.next()).isTrue();
@@ -133,6 +136,8 @@ class Migration028ModelMetadataExtractionTest extends AbstractMigrationTest {
         assertThat(rs.wasNull())
             .as("an Altbestand document has never been through the model step")
             .isTrue();
+        rs.getInt("keyword_extraction_version");
+        assertThat(rs.wasNull()).as("nor through the keyword step").isTrue();
       }
     }
   }

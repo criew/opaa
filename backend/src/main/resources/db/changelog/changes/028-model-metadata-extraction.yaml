@@ -10,11 +10,13 @@ databaseChangeLog:
         a switch without a Zählwerk gives no feedback about its cost but the model provider's
         invoice, and keywords without their own table would have to live in
         document_metadata_values, where every row is a typisiertes Feld a filter may name - exactly
-        what a Schlagwort must never become. documents.model_extraction_version is the drain marker
-        of the Bestandslauf for this step: NULL means the model step never ran for this document,
-        so switching the capability on hands the whole Altbestand to the next Bestandslauf call
-        once, and a document whose model step ran without yielding a value is not asked (and paid
-        for) a second time. metadata_model_extraction_stats holds one counting row per library;
+        what a Schlagwort must never become. documents.model_extraction_version and
+        documents.keyword_extraction_version are the drain markers of the Bestandslauf, one per
+        capability: NULL means that step never ran for this document, so switching one of them on
+        hands the whole Altbestand to the next Bestandslauf call once - and only that one, so a
+        library that ran with keywords alone still reaches its Altbestand when the model-backed
+        value extraction follows later. A document whose call yielded nothing is not asked (and
+        paid for) a second time. metadata_model_extraction_stats holds one counting row per library;
         metadata_model_rejections keeps the discarded values with their confidence, capped per
         library by the application, because the distribution of what the threshold rejects is the
         only way to calibrate it on a real bestand (ADR-0012).
@@ -27,7 +29,8 @@ databaseChangeLog:
                   ADD COLUMN keywords_enabled boolean NOT NULL DEFAULT false;
 
               ALTER TABLE public.documents
-                  ADD COLUMN model_extraction_version integer;
+                  ADD COLUMN model_extraction_version integer,
+                  ADD COLUMN keyword_extraction_version integer;
 
               CREATE TABLE public.document_keywords (
                   id uuid NOT NULL,
@@ -89,7 +92,9 @@ databaseChangeLog:
               DROP TABLE IF EXISTS public.metadata_model_rejections;
               DROP TABLE IF EXISTS public.metadata_model_extraction_stats;
               DROP TABLE IF EXISTS public.document_keywords;
-              ALTER TABLE public.documents DROP COLUMN IF EXISTS model_extraction_version;
+              ALTER TABLE public.documents
+                  DROP COLUMN IF EXISTS keyword_extraction_version,
+                  DROP COLUMN IF EXISTS model_extraction_version;
               ALTER TABLE public.knowledge_libraries
                   DROP COLUMN IF EXISTS keywords_enabled,
                   DROP COLUMN IF EXISTS model_extraction_enabled;

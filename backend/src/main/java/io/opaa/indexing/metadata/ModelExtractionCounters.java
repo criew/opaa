@@ -23,6 +23,11 @@ public class ModelExtractionCounters {
   /** Newest rejections kept per library - enough for a distribution, bounded for a database. */
   static final int REJECTION_CAP = 1000;
 
+  /**
+   * Every so many calls of a library the rejection log is rotated back to {@link #REJECTION_CAP}.
+   */
+  static final int ROTATION_INTERVAL = 100;
+
   private final JdbcTemplate jdbcTemplate;
 
   public ModelExtractionCounters(JdbcTemplate jdbcTemplate) {
@@ -34,28 +39,31 @@ public class ModelExtractionCounters {
    * after the call returned or failed, never before - a call that was never made is not counted.
    */
   public void record(UUID libraryId, UUID documentId, ModelExtractionTally tally) {
-    jdbcTemplate.update(
-        "INSERT INTO metadata_model_extraction_stats (library_id, calls, accepted_values,"
-            + " rejected_below_threshold, rejected_outside_vocabulary, failures,"
-            + " keywords_assigned, last_call_at) VALUES (?, 1, ?, ?, ?, ?, ?, now())"
-            + " ON CONFLICT (library_id) DO UPDATE SET"
-            + " calls = metadata_model_extraction_stats.calls + 1,"
-            + " accepted_values = metadata_model_extraction_stats.accepted_values + EXCLUDED.accepted_values,"
-            + " rejected_below_threshold = metadata_model_extraction_stats.rejected_below_threshold"
-            + " + EXCLUDED.rejected_below_threshold,"
-            + " rejected_outside_vocabulary ="
-            + " metadata_model_extraction_stats.rejected_outside_vocabulary +"
-            + " EXCLUDED.rejected_outside_vocabulary,"
-            + " failures = metadata_model_extraction_stats.failures + EXCLUDED.failures,"
-            + " keywords_assigned = metadata_model_extraction_stats.keywords_assigned +"
-            + " EXCLUDED.keywords_assigned,"
-            + " last_call_at = now()",
-        libraryId,
-        tally.acceptedValues(),
-        tally.rejectedBelowThreshold(),
-        tally.rejectedOutsideVocabulary(),
-        tally.failed() ? 1L : 0L,
-        tally.keywordsAssigned());
+    Long calls =
+        jdbcTemplate.queryForObject(
+            "INSERT INTO metadata_model_extraction_stats (library_id, calls, accepted_values,"
+                + " rejected_below_threshold, rejected_outside_vocabulary, failures,"
+                + " keywords_assigned, last_call_at) VALUES (?, 1, ?, ?, ?, ?, ?, now())"
+                + " ON CONFLICT (library_id) DO UPDATE SET"
+                + " calls = metadata_model_extraction_stats.calls + 1,"
+                + " accepted_values = metadata_model_extraction_stats.accepted_values + EXCLUDED.accepted_values,"
+                + " rejected_below_threshold = metadata_model_extraction_stats.rejected_below_threshold"
+                + " + EXCLUDED.rejected_below_threshold,"
+                + " rejected_outside_vocabulary ="
+                + " metadata_model_extraction_stats.rejected_outside_vocabulary +"
+                + " EXCLUDED.rejected_outside_vocabulary,"
+                + " failures = metadata_model_extraction_stats.failures + EXCLUDED.failures,"
+                + " keywords_assigned = metadata_model_extraction_stats.keywords_assigned +"
+                + " EXCLUDED.keywords_assigned,"
+                + " last_call_at = now()"
+                + " RETURNING calls",
+            Long.class,
+            libraryId,
+            tally.acceptedValues(),
+            tally.rejectedBelowThreshold(),
+            tally.rejectedOutsideVocabulary(),
+            tally.failed() ? 1L : 0L,
+            tally.keywordsAssigned());
     if (tally.rejections().isEmpty()) {
       return;
     }
@@ -70,6 +78,11 @@ public class ModelExtractionCounters {
           truncate(rejection.proposedValue()),
           rejection.confidence(),
           rejection.reason().name());
+    }
+    if (calls == null || calls % ROTATION_INTERVAL != 0) {
+      // Rotating after every document would run a 1000-row subquery per document of a Bestandslauf
+      // over the whole bestand; the log may exceed its cap by less than one interval in between.
+      return;
     }
     jdbcTemplate.update(
         "DELETE FROM metadata_model_rejections WHERE library_id = ? AND id NOT IN"

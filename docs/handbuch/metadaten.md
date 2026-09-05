@@ -195,6 +195,10 @@ zentrale Chat-Rolle, Zeitlimit 30 Sekunden; das Modell bekommt die Werteliste mi
 die Titelzeile und die ersten 4.000 Zeichen des Textes und antwortet je Feld mit einem Code und
 einer Konfidenz zwischen 0 und 1.
 
+Der Dokumenttext steht im Prompt zwischen Markierungen und ist als Inhalt, nicht als Anweisung
+gekennzeichnet; verlassen kann man sich darauf nicht — die verbindliche Schranke ist die Prüfung
+gegen die Werteliste.
+
 Übernommen wird ein Wert nur, wenn seine Konfidenz **mindestens 0,80** beträgt **und** er in der
 Werteliste steht. Alles andere bleibt leer — kein nächstähnlicher Wert, kein Vorgabewert. Übernommene
 Werte tragen die Herkunft **„abgeleitet"** mit Konfidenz und Modell-Kennung; ein von Hand gesetzter
@@ -203,6 +207,9 @@ Wert wird nie überschrieben.
 **Ein Ausfall hält nichts auf.** Zeitüberschreitung, nicht erreichbares Modell oder unbrauchbare
 Antwort: Das Feld bleibt leer, das Dokument wird regulär aufgenommen und ist durchsuchbar. Es gibt
 keinen erneuten Versuch und keine Warteschlange; nachgeholt wird über den Bestandslauf (Abschnitt 6).
+Das Zeitlimit begrenzt die Wartezeit der Aufnahme, nicht den Aufruf selbst: Ein überschrittener
+Aufruf läuft beim Anbieter zu Ende, seine Antwort wird verworfen — und er erscheint auf dessen
+Rechnung.
 
 **Zählwerk.** Je Bibliothek werden Aufrufe, übernommene Werte, wegen Konfidenz und wegen Werteliste
 verworfene Werte, Fehler und vergebene Schlagworte geführt — sichtbar in den Bibliothekseinstellungen
@@ -253,7 +260,10 @@ Was ein Lauf tut:
   bleiben unberührt.
 - **Der Modellschritt läuft mit**, wenn einer der beiden Schalter aus Abschnitt 5.3 an ist: Ein
   eingeschalteter Schalter macht den vorhandenen Bestand genau einmal fällig, und ein Dokument,
-  dessen Aufruf nichts ergab, wird kein zweites Mal bezahlt. Gefragt wird nur für leer gebliebene
+  dessen Aufruf nichts ergab, wird kein zweites Mal bezahlt. Beide Fähigkeiten werden dabei
+  **getrennt geführt** — wer erst die Schlagworte und später die modellgestützte Ermittlung
+  einschaltet, erreicht den Altbestand mit beiden. Die Zahl „ausstehend" auf der Seite „Suche &
+  Indexierung" und damit der Startknopf berücksichtigen diese Schalter. Gefragt wird nur für leer gebliebene
   Felder. Ein dort vergebenes Schlagwort ändert den Kontextpräfix und stellt das Dokument damit in
   den Kontextpräfix-Nachlauf; erst dieser bettet neu ein — der Bestandslauf selbst nie.
 - Eine seit der Indizierung **geänderte Datei** wird übersprungen (Prüfsumme gegen die Zeile): Die
