@@ -1,5 +1,5 @@
 {
-  "measurementContractVersion": 5,
+  "measurementContractVersion": 6,
   "fixedPoints": {
     "embeddingModel": "nomic-embed-text:v1.5",
     "embeddingModelDigest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
@@ -12,31 +12,32 @@
     "searchTopK": 190,
     "productionSimilarityThreshold": 0.3,
     "pgvectorIndexType": "hnsw",
-    "corpusManifestSha256": "e63f373f658aa2627cee5a9753526b7e5b4c56027b9c80de048466a2dc8c398d",
-    "corpusDocumentCount": 70,
+    "corpusManifestSha256": "e129bb86365f08bb553dab2401b91d82233e5efd84516b0b151c25b6e1590480",
+    "corpusDocumentCount": 72,
     "goldenDatasetFile": "eval/golden/verwaltung.json",
-    "goldenDatasetSha256": "1d174133bf692e0aab97b1c47413afabf7e28acd3144efdca08e266dceb89478",
-    "goldenCaseCount": 46,
-    "ingestionPipelineFingerprint": "docx:3,email:4,html:1,markdown:1,odp:2,odt:2,pdf:1,pptx:1,tabular:1,tika-fallback:1"
+    "goldenDatasetSha256": "fd59818058eedb029042b35b595ee4c07c215c03d3932ddbec5349f66d0b6a79",
+    "goldenCaseCount": 49,
+    "ingestionPipelineFingerprint": "confluence:1,docx:3,email:4,html:1,markdown:1,odp:2,odt:2,pdf:1,pptx:1,tabular:1,tika-fallback:1",
+    "metadataFilterEnabled": true
   },
   "groups": {
     "overall": {
-      "n": 46,
-      "hitRateAt5": 0.870,
-      "mrr": 0.695,
-      "ndcgAt10": 0.697,
-      "recallAt10": 0.855,
+      "n": 49,
+      "hitRateAt5": 0.857,
+      "mrr": 0.739,
+      "ndcgAt10": 0.733,
+      "recallAt10": 0.864,
       "recallAt10Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 36,
-      "hitCountAt5": 40,
-      "hitCountAt10": 43,
-      "allExpectedDocumentsHitAt10": 0.783
+      "distinctExpectedDocumentSets": 38,
+      "hitCountAt5": 42,
+      "hitCountAt10": 46,
+      "allExpectedDocumentsHitAt10": 0.796
     },
     "category:compound_word": {
       "n": 9,
       "hitRateAt5": 0.889,
       "mrr": 0.907,
-      "ndcgAt10": 0.849,
+      "ndcgAt10": 0.844,
       "recallAt10": 0.926,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 9,
@@ -58,26 +59,26 @@
     },
     "category:literal_term_weak_embedding": {
       "n": 9,
-      "hitRateAt5": 0.444,
-      "mrr": 0.244,
-      "ndcgAt10": 0.335,
+      "hitRateAt5": 0.333,
+      "mrr": 0.236,
+      "ndcgAt10": 0.325,
       "recallAt10": 0.611,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 6,
-      "hitCountAt5": 4,
+      "hitCountAt5": 3,
       "hitCountAt10": 6,
       "allExpectedDocumentsHitAt10": 0.556
     },
     "category:metadata_filter": {
-      "n": 9,
+      "n": 12,
       "hitRateAt5": 1.000,
-      "mrr": 0.670,
-      "ndcgAt10": 0.753,
+      "mrr": 0.861,
+      "ndcgAt10": 0.897,
       "recallAt10": 1.000,
       "recallAt10Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 9,
-      "hitCountAt5": 9,
-      "hitCountAt10": 9,
+      "distinctExpectedDocumentSets": 11,
+      "hitCountAt5": 12,
+      "hitCountAt10": 12,
       "allExpectedDocumentsHitAt10": 1.000
     },
     "category:multi_hop": {
@@ -107,8 +108,8 @@
     "difficulty:hard": {
       "n": 34,
       "hitRateAt5": 0.824,
-      "mrr": 0.663,
-      "ndcgAt10": 0.644,
+      "mrr": 0.700,
+      "ndcgAt10": 0.671,
       "recallAt10": 0.804,
       "recallAt10Ceiling": 1.0,
       "distinctExpectedDocumentSets": 32,
@@ -117,22 +118,22 @@
       "allExpectedDocumentsHitAt10": 0.706
     },
     "difficulty:medium": {
-      "n": 9,
-      "hitRateAt5": 1.000,
-      "mrr": 0.772,
-      "ndcgAt10": 0.835,
+      "n": 12,
+      "hitRateAt5": 0.917,
+      "mrr": 0.826,
+      "ndcgAt10": 0.871,
       "recallAt10": 1.000,
       "recallAt10Ceiling": 1.0,
-      "distinctExpectedDocumentSets": 8,
-      "hitCountAt5": 9,
-      "hitCountAt10": 9,
+      "distinctExpectedDocumentSets": 10,
+      "hitCountAt5": 11,
+      "hitCountAt10": 12,
       "allExpectedDocumentsHitAt10": 1.000
     }
   },
-  "measuredAt": "2026-09-02",
+  "measuredAt": "2026-09-05",
   "provenance": {
-    "sourceReportRunStartedAt": "2026-09-02T06:05:12.940719300Z",
-    "sourcePullRequest": "#1103 (Registrierung von MarkdownDocumentPipeline, Messvertrags-Änderung)"
+    "sourceReportRunStartedAt": "2026-09-05T06:49:27.881059100Z",
+    "sourcePullRequest": "#1070, Teil 2 (Benchmark-Abnahme des Kernfeld-Filters)"
   },
-  "notes": "Erste Baseline des Rohvektor-Pfads der Verwaltungsdomäne (Issue #1043), gemessen am 2026-09-01 in einem Testcontainer-Lauf auf CPU (pgvector/pgvector:pg18 + ollama/ollama:0.6.5, nomic-embed-text:v1.5 auf dem geprüften Digest) über './gradlew evaluateVerwaltungRetrieval'; Laufzeit des Rohvektor-Pfads einschließlich Indizierung der 70 Dokumente: rund 5,5 Minuten. Aufeinanderfolgende Läufe auf derselben Maschine lieferten identische Gruppenwerte. Die Zahlen sind bewusst niedrig: Diese Domäne ist als Sammlung benannter Fehlerbilder gebaut, nicht als Abdeckungsdomäne — 37 der 46 Fälle sind als known_gap geführt (siehe eval/corpus/verwaltung/MAINTENANCE.md). Die Gruppen category:literal_term_weak_embedding (nDCG@10 0,356) und category:compound_word (AlleThemenGetroffen@10 0,111) beziffern die Lücken, die Roadmap-Phase 1 schließen soll; category:exact_identifier (nDCG@10 0,918) zeigt, dass die Domäne nicht pauschal schwer ist. Die Gruppe language:de fehlt bewusst: In dieser einsprachigen Domäne ist sie fallgleich mit overall, ein zweiter Vergleich derselben Daten ohne zusätzliche Aussage (dieselbe Konsolidierungsentscheidung wie bei comic-characters, Issue #304). Nicht mit eval/baseline/pipeline-verwaltung.json vergleichbar: anderes Fenster, andere Schwellenbehandlung (ADR-0012, Nachtrag Pipeline-Messpfad). Toleranzformel und Fehlerkriterium: ADR-0013, unverändert. Nachgezogen mit Issue #1049: ausschließlich der Fixpunkt goldenDatasetSha256, weil elf Golden-Fälle ihre erwartete Abweichung (expected_state_exception) nachgezogen bekommen haben — jede Zustandspflege ändert den Golden-Hash und ist damit auch für diesen Pfad eine Neuziehung (eval/baseline/README.md). Die provenance nennt bewusst weiterhin den Ursprungslauf vom 2026-08-31: Aus ihm stammen sämtliche Zahlen dieser Datei, und nur so bleibt nachvollziehbar, dass hier nichts neu gezogen, sondern nur ein Fixpunkt nachgeführt wurde. Sämtliche Metrikwerte sind gegenüber dem #1043-Stand unverändert und im selben Lauf vom 2026-09-01 erneut gemessen worden: Der Rohvektor-Pfad misst similaritySearch direkt und kennt den mit #1049 in die Fusion aufgenommenen Volltextpfad nicht — er ist von dieser Änderung konstruktionsbedingt unberührt, und genau das belegen die unveränderten Zahlen. Nachtrag (Issue #1103, 2026-09-02): MarkdownDocumentPipeline registriert statt TikaFallbackPipeline (ADR-0012, Nachtrag 'Strukturbewusstes Markdown-Chunking'). Deutliche Verbesserung über fast alle Gruppen: overall nDCG@10 0,575 → 0,697, hitRateAt5 0,783 → 0,870, hitCountAt10 41 → 43 von 46. Größter Einzelgewinn: category:compound_word (nDCG@10 0,465 → 0,849, AlleThemenGetroffen@10 0,111 → 0,889) und category:metadata_filter (hitRateAt5 0,667 → 1,000). Eine Gruppe fällt: category:literal_term_weak_embedding (nDCG@10 0,356 → 0,335, hitRateAt5 0,556 → 0,444) — diese Klasse misst gezielt schwache Embedding-Übereinstimmung bei wörtlicher Terminologie und bleibt der am wenigsten durch besseres Chunking lösbare Fehlerbild dieser Domäne (siehe eval/corpus/verwaltung/MAINTENANCE.md), ein struktureller Zuschnitt ändert daran wenig. maxChunksPerDocument (EvalDomainConfig) wurde von 6 auf 19 angehoben (neu gemessen: min 10/median 15/max 16 Chunks statt vorher min 3/median 3/max 4), chunkTopK/searchTopK dadurch von 60 auf 190. Lauf: CPU/Testcontainer, Laufzeit 278,1 s. Vollständiger Vorher/Nachher-Vergleich beider Messpfade und aller drei Domänen in der PR-Beschreibung zu #1103. Voraussetzung des Issues (nächtlicher Lauf nach #1049 einmal grün) war zum Zeitpunkt dieser Baseline-Ziehung nicht erfüllt — Maintainer-Entscheidung, ohne diesen Lauf zu mergen; siehe PR-Beschreibung. Nachtrag (Issue #1144, 2026-09-03): ingestionPipelineFingerprint als neuer Fixpunkt aufgenommen (measurementContractVersion 2 -> 3) — ein Sammelabdruck über alle registrierten Ingestion-Pipelines (id:version), der einen Pipelinewechsel vom Retrieval-Vergleich unterscheidbar macht. Reine Fixpunkt-Ergänzung ohne neuen Messlauf: der Korpus dieser Domäne besteht ausschließlich aus Markdown (MarkdownDocumentPipeline:1), die gemessenen Chunks und Zahlen sind unverändert. Nachtrag (Issue #1164/PR #1201, 2026-09-03): ingestionPipelineFingerprint nachgezogen (email:2 -> email:3, measurementContractVersion 3 -> 4) - MailDocumentPipeline#version() stieg mit #1164 (mail_date auf Sekundenpräzision gekürzt, Voraussetzung für einen künftigen Zeitraumfilter). Reine Fixpunkt-Ergänzung ohne neuen Messlauf: der Korpus dieser Domäne besteht ausschließlich aus Markdown, MailDocumentPipeline ist an keinem Chunk beteiligt - die gemessenen Chunks und Zahlen sind unverändert. Nachtrag (Issue #1183, 2026-09-03): ingestionPipelineFingerprint nachgezogen (email:3 -> email:4, measurementContractVersion 4 -> 5) - MailDocumentPipeline#version() stieg mit #1183 (ADR-0022: ein Mail-Anhang wird zu einem eigenen Document statt verschachtelter Chunks). Reine Fixpunkt-Ergänzung ohne neuen Messlauf: der Korpus dieser Domäne besteht ausschließlich aus Markdown, MailDocumentPipeline ist an keinem Chunk beteiligt - die gemessenen Chunks und Zahlen sind unverändert."
+  "notes": "Erste Baseline des Rohvektor-Pfads der Verwaltungsdomäne (Issue #1043), gemessen am 2026-09-01 in einem Testcontainer-Lauf auf CPU (pgvector/pgvector:pg18 + ollama/ollama:0.6.5, nomic-embed-text:v1.5 auf dem geprüften Digest) über './gradlew evaluateVerwaltungRetrieval'; Laufzeit des Rohvektor-Pfads einschließlich Indizierung der 70 Dokumente: rund 5,5 Minuten. Aufeinanderfolgende Läufe auf derselben Maschine lieferten identische Gruppenwerte. Die Zahlen sind bewusst niedrig: Diese Domäne ist als Sammlung benannter Fehlerbilder gebaut, nicht als Abdeckungsdomäne — 37 der 46 Fälle sind als known_gap geführt (siehe eval/corpus/verwaltung/MAINTENANCE.md). Die Gruppen category:literal_term_weak_embedding (nDCG@10 0,356) und category:compound_word (AlleThemenGetroffen@10 0,111) beziffern die Lücken, die Roadmap-Phase 1 schließen soll; category:exact_identifier (nDCG@10 0,918) zeigt, dass die Domäne nicht pauschal schwer ist. Die Gruppe language:de fehlt bewusst: In dieser einsprachigen Domäne ist sie fallgleich mit overall, ein zweiter Vergleich derselben Daten ohne zusätzliche Aussage (dieselbe Konsolidierungsentscheidung wie bei comic-characters, Issue #304). Nicht mit eval/baseline/pipeline-verwaltung.json vergleichbar: anderes Fenster, andere Schwellenbehandlung (ADR-0012, Nachtrag Pipeline-Messpfad). Toleranzformel und Fehlerkriterium: ADR-0013, unverändert. Nachgezogen mit Issue #1049: ausschließlich der Fixpunkt goldenDatasetSha256, weil elf Golden-Fälle ihre erwartete Abweichung (expected_state_exception) nachgezogen bekommen haben — jede Zustandspflege ändert den Golden-Hash und ist damit auch für diesen Pfad eine Neuziehung (eval/baseline/README.md). Die provenance nennt bewusst weiterhin den Ursprungslauf vom 2026-08-31: Aus ihm stammen sämtliche Zahlen dieser Datei, und nur so bleibt nachvollziehbar, dass hier nichts neu gezogen, sondern nur ein Fixpunkt nachgeführt wurde. Sämtliche Metrikwerte sind gegenüber dem #1043-Stand unverändert und im selben Lauf vom 2026-09-01 erneut gemessen worden: Der Rohvektor-Pfad misst similaritySearch direkt und kennt den mit #1049 in die Fusion aufgenommenen Volltextpfad nicht — er ist von dieser Änderung konstruktionsbedingt unberührt, und genau das belegen die unveränderten Zahlen. Nachtrag (Issue #1103, 2026-09-02): MarkdownDocumentPipeline registriert statt TikaFallbackPipeline (ADR-0012, Nachtrag 'Strukturbewusstes Markdown-Chunking'). Deutliche Verbesserung über fast alle Gruppen: overall nDCG@10 0,575 → 0,697, hitRateAt5 0,783 → 0,870, hitCountAt10 41 → 43 von 46. Größter Einzelgewinn: category:compound_word (nDCG@10 0,465 → 0,849, AlleThemenGetroffen@10 0,111 → 0,889) und category:metadata_filter (hitRateAt5 0,667 → 1,000). Eine Gruppe fällt: category:literal_term_weak_embedding (nDCG@10 0,356 → 0,335, hitRateAt5 0,556 → 0,444) — diese Klasse misst gezielt schwache Embedding-Übereinstimmung bei wörtlicher Terminologie und bleibt der am wenigsten durch besseres Chunking lösbare Fehlerbild dieser Domäne (siehe eval/corpus/verwaltung/MAINTENANCE.md), ein struktureller Zuschnitt ändert daran wenig. maxChunksPerDocument (EvalDomainConfig) wurde von 6 auf 19 angehoben (neu gemessen: min 10/median 15/max 16 Chunks statt vorher min 3/median 3/max 4), chunkTopK/searchTopK dadurch von 60 auf 190. Lauf: CPU/Testcontainer, Laufzeit 278,1 s. Vollständiger Vorher/Nachher-Vergleich beider Messpfade und aller drei Domänen in der PR-Beschreibung zu #1103. Voraussetzung des Issues (nächtlicher Lauf nach #1049 einmal grün) war zum Zeitpunkt dieser Baseline-Ziehung nicht erfüllt — Maintainer-Entscheidung, ohne diesen Lauf zu mergen; siehe PR-Beschreibung. Nachtrag (Issue #1144, 2026-09-03): ingestionPipelineFingerprint als neuer Fixpunkt aufgenommen (measurementContractVersion 2 -> 3) — ein Sammelabdruck über alle registrierten Ingestion-Pipelines (id:version), der einen Pipelinewechsel vom Retrieval-Vergleich unterscheidbar macht. Reine Fixpunkt-Ergänzung ohne neuen Messlauf: der Korpus dieser Domäne besteht ausschließlich aus Markdown (MarkdownDocumentPipeline:1), die gemessenen Chunks und Zahlen sind unverändert. Nachtrag (Issue #1164/PR #1201, 2026-09-03): ingestionPipelineFingerprint nachgezogen (email:2 -> email:3, measurementContractVersion 3 -> 4) - MailDocumentPipeline#version() stieg mit #1164 (mail_date auf Sekundenpräzision gekürzt, Voraussetzung für einen künftigen Zeitraumfilter). Reine Fixpunkt-Ergänzung ohne neuen Messlauf: der Korpus dieser Domäne besteht ausschließlich aus Markdown, MailDocumentPipeline ist an keinem Chunk beteiligt - die gemessenen Chunks und Zahlen sind unverändert. Nachtrag (Issue #1183, 2026-09-03): ingestionPipelineFingerprint nachgezogen (email:3 -> email:4, measurementContractVersion 4 -> 5) - MailDocumentPipeline#version() stieg mit #1183 (ADR-0022: ein Mail-Anhang wird zu einem eigenen Document statt verschachtelter Chunks). Reine Fixpunkt-Ergänzung ohne neuen Messlauf: der Korpus dieser Domäne besteht ausschließlich aus Markdown, MailDocumentPipeline ist an keinem Chunk beteiligt - die gemessenen Chunks und Zahlen sind unverändert. Neuziehung (Issue #1070, Teil 2, 2026-09-05): Erster Lauf, in dem der Kernfeld-Filter jedes Golden-Falls tatsächlich angewandt wird — auf diesem Pfad als Filter.Expression an similaritySearch, gebaut über dasselbe MetadataFilterExpressions wie die Produktion. Neuer Fixpunkt metadataFilterEnabled, measurementContractVersion 5 -> 6 (ADR-0012, Nachtrag Metadatenfilter im Messvertrag). Der Korpus wuchs von 70 auf 72 Dokumente (zwei organisationsweite Dokumente mit bewusst leerem Kernfeld für die Leerwert-Regel), das Golden Dataset von 46 auf 49 Fälle (Klasse metadata_filter 9 -> 12); neun Fälle dieser Klasse sind auf solved gewechselt. Gemessene Verschiebung gegenüber der Vorgängerbaseline (Vertragsversion 5, überholt): overall hitRateAt5 0,870 -> 0,857, mrr 0,695 -> 0,739, ndcgAt10 0,697 -> 0,733, recallAt10 0,855 -> 0,864, allExpectedDocumentsHitAt10 0,783 -> 0,796 — die overall-Werte sind wegen der drei zusätzlichen Fälle ohnehin nicht fallweise vergleichbar. Je Klasse: metadata_filter mrr 0,670 -> 0,861 und ndcgAt10 0,753 -> 0,897 (der gemessene Nutzen des Filters); exact_identifier und multi_hop unverändert; compound_word nur ndcgAt10 0,849 -> 0,844; literal_term_weak_embedding hitRateAt5 0,444 -> 0,333, mrr 0,244 -> 0,236, ndcgAt10 0,335 -> 0,325. Die beiden letzten Verschiebungen sind kein Effekt des Filters, sondern des gewachsenen Korpus: Dieser Pfad misst ohne Ähnlichkeitsschwelle bei documentTopK=10, die zwei neuen Dokumente erscheinen deshalb in einzelnen Fenstern und verdrängen bei verw-lit-004 das erwartete Dokument aus dem Top-5-Fenster. Auf dem Pipeline-Pfad, der die Produktionsschwelle 0,30 anwendet, ist keine der vier übrigen Klassen betroffen (Delta exakt 0) — siehe eval/baseline/pipeline-verwaltung.json und eval/corpus/verwaltung/MAINTENANCE.md. Beide Fehlerrichtungen des neuen MetadataFilterAudit sind in diesem Lauf ohne Befund (10 gefilterte Fälle, 7 mit benanntem Verwechslungspartner, 3 Leerwert-Regel-Fälle). Lauf: CPU/Testcontainer, derselbe Lauf wie eval/baseline/pipeline-verwaltung.json. Toleranzformel und Fehlerkriterium: ADR-0013, unverändert."
 }

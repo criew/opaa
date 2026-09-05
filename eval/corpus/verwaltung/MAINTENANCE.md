@@ -26,13 +26,37 @@ Beide Messpfade sind von Anfang an beurteilt: `eval/baseline/verwaltung.json` (R
 `io.opaa.eval.GoldenCaseCurationTest`, das die Kuratierungsregeln und jeden `answer_span` ohne
 Docker prüft.
 
+## Füllstand der Kernfelder auf diesem Korpus (Issue #1070, Teil 2)
+
+Die Eintrittsbedingung des Kernfeld-Filters verlangt einen ausgewiesenen Füllstand
+(`docs/features/metadata-schema.md`, „Eintrittsbedingung für den Kernfeld-Filter"). Für den
+Eval-Korpus misst ihn `io.opaa.eval.VerwaltungCorpusMetadataFillLevelTest` Docker-frei: Jede
+Korpusdatei läuft durch die produktive `MarkdownDocumentPipeline` und den produktiven
+`CoreMetadataExtractor` mit dem ausgelieferten Vokabular — dieselben zwei Schritte wie im
+Indexlauf, nur ohne Datenbank. Die Zahlen sind im Test **festgenagelt**, damit eine Generator- oder
+Extraktoränderung, die sie bewegt, eine bewusste Entscheidung ist:
+
+| Kernfeld | Füllstand | Fehlende |
+|---|---|---|
+| Titel | 72 von 72 (100 %) | — |
+| Dokumentart | 49 von 72 (68 %) | 22 Dokumente mit `formularhinweis`/`vertretungsregelung`/`geschaeftsverteilungsplan` — Werte, die das ausgelieferte Vokabular nicht kennt — plus das Leerwert-Dokument `verwaltung-leitfaden-barrierefreiheit.md` |
+| Datum/Stand | 71 von 72 (99 %) | `verwaltung-dienstanweisung-aktenaufbewahrung.md` (das Leerwert-Dokument) |
+
+**Der Korpus erreicht die committete Schwelle für die Dokumentart bewusst nicht** (0,90; Datum/Stand
+0,75 dagegen deutlich). Das ist eine Aussage über diesen Korpus, nicht über die Extraktion: Er führt
+absichtlich 22 Dokumente einer Art, die das ausgelieferte Vokabular nicht kennt, und ein Dokument
+ganz ohne Art. Die Eintrittsbedingung selbst wird am echten Bestand geprüft, nicht hier — der
+Nachweis auf der Demo-Instanz steht an [#1070](https://github.com/criew/opaa/issues/1070) und in
+[#1065](https://github.com/criew/opaa/issues/1065). Der Benchmark misst unabhängig davon, was der
+Filter tut, wenn er gesetzt ist.
+
 ## Wer pflegt was
 
 | Teil | Pflegeverantwortung | Heutiger Stand |
 |---|---|---|
 | Generator (`generate_verwaltung_corpus.py`) | Wer eine Korpusänderung vornimmt — reguläre Entwickler-Issue-Arbeit, kein dedizierter Owner. Review durch den Code Reviewer wie bei jedem PR. | vorhanden (#1042) |
 | Korpus (`eval/corpus/verwaltung/*.md`, `MANIFEST.sha256`) | Wird nie von Hand editiert — jede Änderung läuft ausschließlich über einen Generator-Lauf, committet als Teil desselben PRs, der den Generator ändert. | vorhanden (#1042) |
-| Golden Dataset (`eval/golden/verwaltung.json`) | QA Engineer (`docs/AGENT-ORGANIZATION.md`, „der QA Engineer ist Eigentümer der RAG-Evaluierung im laufenden Betrieb"). Von Hand kuratiert, kein Generator — die Regeln stehen in `io.opaa.eval.GoldenCaseCuration` und werden von `GoldenCaseCurationTest` auf die committete Datei angewandt. | vorhanden (#1043), 46 Fälle |
+| Golden Dataset (`eval/golden/verwaltung.json`) | QA Engineer (`docs/AGENT-ORGANIZATION.md`, „der QA Engineer ist Eigentümer der RAG-Evaluierung im laufenden Betrieb"). Von Hand kuratiert, kein Generator — die Regeln stehen in `io.opaa.eval.GoldenCaseCuration` und werden von `GoldenCaseCurationTest` auf die committete Datei angewandt. | vorhanden (#1043), 49 Fälle (drei Fälle der Leerwert-Regel kamen mit #1070, Teil 2 hinzu) |
 | Zustandsfelder je Fall (`expected_state`) | Wer eine Zustandsänderung auslöst (ein neuer Retrieval-Baustein), zieht sie im selben PR nach — begründet und datiert; Regel siehe unten. | vorhanden (#1043) |
 | Baselines (`eval/baseline/verwaltung.json`, `eval/baseline/pipeline-verwaltung.json`) | QA Engineer, analog zu `eval/baseline/README.md` für die bestehenden zwei Domänen. | vorhanden (#1043) |
 
@@ -90,13 +114,20 @@ jeder `metadata_filter`-Fall „gelöst", sobald die richtige Fassung irgendwo i
 auch dann, wenn die falsche darüber steht. Genau das ist die Fähigkeit, die diese Klasse messen
 soll.
 
-**`metadata_filter` wird ausnahmslos als `known_gap` geführt** (Entscheidung nach Spezifikation,
-Abschnitt 5e: die Klasse misst „eine heute **nicht vorhandene** Produktfähigkeit"). Vier ihrer neun
-Fälle löst die Rangfolge heute richtig — aber ohne Mechanismus, rein zufällig, weil die richtige
-Fassung eben oben landet. Sie als `solved` zu führen hieße, ein Zufallsergebnis unter
-Regressionsschutz zu stellen: Der nächste Embedding- oder Chunking-Wechsel würde als „Rückschritt"
-gemeldet, obwohl nie eine Fähigkeit existierte, die verloren gehen könnte. Sie bleiben deshalb
-`known_gap` und tragen die Begründung in `expected_state_exception` (siehe unten).
+**`metadata_filter` war bis #1070 ausnahmslos `known_gap`** (Entscheidung nach Spezifikation,
+Abschnitt 5e: die Klasse maß „eine heute **nicht vorhandene** Produktfähigkeit"). Vier ihrer neun
+Fälle löste die Rangfolge schon damals richtig — aber ohne Mechanismus, rein zufällig, weil die
+richtige Fassung eben oben landete; sie als `solved` zu führen hätte ein Zufallsergebnis unter
+Regressionsschutz gestellt.
+
+**Seit #1070 (Teil 2) gibt es den Mechanismus**, und neun der zwölf Fälle sind mit ihm auf beiden
+Messpfaden gelöst (Stand 2026-09-05): `verw-meta-002/004/006/007/008/009` über Datumsfenster bzw.
+Dokumentart, `verw-meta-010/011/012` über die Leerwert-Regel. Sie stehen deshalb auf `solved` — was
+sie jetzt schützt, ist eine geprüfte Fähigkeit, kein Zufall. `known_gap` bleiben drei:
+`verw-meta-003`/`-005` (die Frage „derzeit gültig"/„gilt heute" ist eine Gültigkeitsaussage, die
+kein Kernfeld ausdrückt — sie tragen deshalb `filter: null` mit `filter_note` und warten auf das
+Bibliotheksfeld aus #1071) und `verw-meta-001`, bei dem der Filter greift, aber die Rangfolge des
+Rohvektor-Pfads zwei gleich datierte Dienstanweisungen vor das erwartete Dokument stellt.
 
 ### Erwartete Abweichungen (`expected_state_exception`)
 
@@ -105,14 +136,12 @@ gemessene Lage dauerhaft von der deklarierten abweicht. Das Audit führt solche 
 den Befunden; nur unerklärte Abweichungen gelten als Befund. Ohne diese Trennung stünde in jedem
 Lauf dieselbe erwartete Meldung in der Fundliste — und niemand läse sie nach dem dritten Mal noch.
 
-Derzeit 15 Fälle:
+Derzeit 11 Fälle:
 
 | Fall | Grund |
 |---|---|
-| `verw-meta-005`, `verw-meta-007`, `verw-meta-009` | Heute auf beiden Pfaden gelöst, aber ohne den geprüften Mechanismus (siehe oben). |
-| `verw-meta-003` | Seit #1049 in die andere Richtung asymmetrisch: auf dem Rohvektor-Pfad gelöst, auf dem Pipeline-Pfad nicht mehr, weil dort ein lexikalischer Treffer den ersten Rang belegt. Bleibt `known_gap` — gelöst war er ohnehin nur ohne den geprüften Mechanismus. |
 | `verw-lit-006`, `verw-lit-008`, `verw-comp-002`, `verw-comp-003`, `verw-comp-008`, `verw-comp-009`, `verw-hop-002`, `verw-hop-005`, `verw-hop-007`, `verw-hop-009` | Pfad-Asymmetrie in die andere Richtung, seit Issue #1049: auf dem **Pipeline**-Pfad durch den lexikalischen Pfad in der Fusion gelöst, auf dem Rohvektor-Pfad strukturell nicht lösbar — dieser misst `similaritySearch` direkt und kennt den Volltextpfad nicht. Bleiben `known_gap` nach derselben Regel wie `verw-comp-006`. |
-| `verw-meta-001` | Seit #1049 auf dem Pipeline-Pfad gelöst, aber ohne den geprüften Mechanismus — dieselbe Begründung wie bei den vier `metadata_filter`-Fällen darüber. |
+| `verw-meta-001` | Seit #1070 auf dem Pipeline-Pfad **mit** dem geprüften Mechanismus gelöst, auf dem Rohvektor-Pfad nicht: Der Filter hält den Verwechslungspartner aus beiden Fenstern, aber die Einbettungsähnlichkeit stellt dort zwei gleich datierte Dienstanweisungen vor die erwartete Satzung. |
 
 > **Offene Frage an die Spezifikation.** Zehn dieser Ausnahmen entstehen daraus, dass ein Fall erst
 > als gelöst gilt, wenn ihn *beide* Messpfade lösen. Diese Definition stammt aus #1043, als beide
@@ -130,7 +159,13 @@ Zustandswechsel eine menschliche ist.
 
 ## `known_gap`-Fälle
 
-**36 von 46 Fällen**, Stand 2026-09-01. Mit Issue #1049 hat sich genau **ein** Zustand geändert:
+**30 von 49 Fällen**, Stand 2026-09-05. Mit Issue #1070 (Teil 2) sind neun Fälle der Klasse
+`metadata_filter` auf `solved` gewechselt — der erste Zustandswechsel dieser Klasse überhaupt, und
+der Beleg dafür, dass der Kernfeld-Filter geliefert hat, was er versprochen hat (Einzelbegründung je
+Fall im Datensatz, Zusammenfassung oben). Die Angaben des folgenden Absatzes beschreiben den Stand
+davor.
+
+**Stand vor #1070: 36 von 46 Fällen**, 2026-09-01. Mit Issue #1049 hatte sich genau **ein** Zustand geändert:
 `verw-comp-006` ist von `known_gap` auf `solved` gewechselt — er ist der einzige Fall, den seither
 **beide** Messpfade lösen, und damit der einzige, der die Solved-Definition erfüllt. Elf weitere
 Fälle löst nur der Pipeline-Pfad; sie bleiben `known_gap` und haben ihre Pfad-Asymmetrie als
@@ -145,7 +180,7 @@ Mangel: „Ein Fall, den heute keine Variante löst, ist der wertvollste im Date
 | `exact_identifier` | 10 | 2 | Schutz unzerlegter Kennungs-Tokens (Roadmap 1a) |
 | `compound_word` | 9 | 8 | Komposita-Zerlegung (Roadmap 1a) |
 | `multi_hop` | 9 | 8 | Zusammenführung mehrgliedriger Ketten (Messgrundlage für Roadmap 3c) |
-| `metadata_filter` | 9 | 9 | Metadatenfilter in der Suche (Roadmap 2f) |
+| `metadata_filter` | 12 | 3 | für `verw-meta-003`/`-005`: Bibliotheksfeld Gültigkeit (#1071); für `verw-meta-001`: kein fehlender Baustein, sondern die Rangfolge des Rohvektor-Pfads |
 
 Der Befund der ersten Kuratierung (Stand vor #1049): `literal_term_weak_embedding` war
 **vollständig** ungelöst (0 von 9), obwohl der Anfragebegriff wörtlich im Zieldokument steht —
@@ -223,24 +258,41 @@ offene Frage oben). Die Klassenwerte der Baseline bewegen sich unabhängig davon
 | `verw-hop-008` | außerhalb des Fensters: verwaltung-vertretungsregelung.md |
 | `verw-hop-009` | gelöst auf dem Pipeline-Pfad seit #1049 **(erwartete Abweichung: Pfad-Asymmetrie)** |
 
-### metadata_filter (9 Fälle)
+### metadata_filter (3 Fälle, Stand 2026-09-05 nach #1070)
 
-| Fall | Symptom im Lauf vom 2026-09-01 (Pipeline-Pfad, nach #1049) |
+| Fall | Symptom im Abnahmelauf vom 2026-09-05 (beide Messpfade, mit Kernfeld-Filter) |
 |---|---|
-| `verw-meta-001` | richtige Fassung auf Rang 1 seit #1049, ohne dass ein Metadatenfilter beteiligt war **(erwartete Abweichung)** |
-| `verw-meta-002` | außerhalb des Fensters: verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md |
-| `verw-meta-003` | seit #1049 im Fenster, aber Rang 1 lexikalisch belegt; auf dem Rohvektor-Pfad weiterhin richtige Fassung auf Rang 1 **(erwartete Abweichung)** |
-| `verw-meta-004` | außerhalb des Fensters: verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md |
-| `verw-meta-005` | richtige Fassung auf Rang 1, ohne dass ein Metadatenfilter beteiligt war **(erwartete Abweichung)** |
-| `verw-meta-006` | im Fenster, aber Rang 1: verwaltung-0004_dienstanweisung-sozialamt-1-2023.md |
-| `verw-meta-007` | richtige Fassung auf Rang 1, ohne dass ein Metadatenfilter beteiligt war **(erwartete Abweichung)** |
-| `verw-meta-008` | im Fenster, aber Rang 1: verwaltung-0021_dienstanweisung-ordnungsamt-1-2024.md |
-| `verw-meta-009` | richtige Fassung auf Rang 1, ohne dass ein Metadatenfilter beteiligt war **(erwartete Abweichung)** |
+| `verw-meta-001` | Filter greift (Fassung 2023 in keinem Fenster), aber auf dem Rohvektor-Pfad belegen zwei gleich datierte Dienstanweisungen des Sozialamts die Ränge 1 und 2 **(erwartete Abweichung: Pfad-Asymmetrie)** |
+| `verw-meta-003` | ohne Kernfeld-Filter gemessen (`filter: null`, siehe `filter_note`): Rang 1 belegt verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md — braucht #1071 |
+| `verw-meta-005` | ohne Kernfeld-Filter gemessen: Rang 1 belegt verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md — braucht #1071 |
 
 Die Einschätzung aus dem #1042-Stand dieser Datei — die `metadata_filter`-Fälle würden zunächst
 vollständig als `known_gap` erwartet — hat sich in der Sache bestätigt, wenn auch aus einem anderen
-Grund als vermutet: Nicht weil die Rangfolge sie alle verfehlt (vier von neun trifft sie), sondern
-weil ohne Filtermechanismus auch ein Treffer keine Fähigkeit belegt.
+Grund als vermutet: Nicht weil die Rangfolge sie alle verfehlte (vier von neun traf sie), sondern
+weil ohne Filtermechanismus auch ein Treffer keine Fähigkeit belegte. Mit #1070 ist genau das
+nachgeholt: Die neun gelösten Fälle sind es **mit** dem Mechanismus, und die beiden Fehlerrichtungen
+des Filters (`MetadataFilterAudit`) sind auf beiden Pfaden ohne Befund.
+
+### Was der Abnahmelauf an den übrigen vier Klassen bewegt hat
+
+Die zwei Leerwert-Dokumente vergrößern den Korpus von 70 auf 72 Dateien; kein Fall außerhalb von
+`metadata_filter` trägt einen Filter, ihr Delta ist die Selbstprüfung dieser Neuziehung. Auf dem
+**Pipeline-Pfad ist es exakt null** — jede Zahl der vier Klassen ist unverändert (dort greift die
+Produktionsschwelle 0,30, die beiden neuen Dokumente erreichen sie bei keiner ihrer Fragen). Auf dem
+**Rohvektor-Pfad**, der ohne Schwelle bei `documentTopK=10` misst, tauchen sie in einzelnen Fenstern
+auf und verschieben zwei Werte:
+
+| Klasse | Kennzahl | vorher | nachher |
+|---|---|---|---|
+| `literal_term_weak_embedding` | HitRate@5 | 0,444 | 0,333 |
+| `literal_term_weak_embedding` | MRR / nDCG@10 | 0,244 / 0,335 | 0,236 / 0,325 |
+| `compound_word` | nDCG@10 | 0,849 | 0,844 |
+
+Ein einziger Fall (`verw-lit-004`) verliert seinen Top-5-Treffer: Beide neuen Dokumente stehen dort
+im Fenster (Ränge 1 und 4) und schieben das erwartete Dokument auf Rang 9. `exact_identifier` und
+`multi_hop` sind unverändert. Das wird hier benannt
+statt geglättet: Ein größerer Korpus kann auf dem schwellenlosen Messpfad jedes Fenster verschieben —
+wer die beiden Dokumente entfernte, verlöre dafür die Messbarkeit der Leerwert-Regel.
 
 ## Overfitting-Risiko
 
