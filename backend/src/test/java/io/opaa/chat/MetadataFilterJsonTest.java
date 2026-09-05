@@ -2,6 +2,7 @@ package io.opaa.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.indexing.metadata.FormatFieldCondition;
 import io.opaa.indexing.metadata.LibraryFieldCondition;
 import io.opaa.indexing.metadata.MetadataFilter;
 import java.time.LocalDate;
@@ -43,6 +44,19 @@ class MetadataFilterJsonTest {
     String json = MetadataFilterJson.write(filter);
 
     assertThat(json).contains("\"libraryFields\"").contains(libraryId.toString());
+    assertThat(MetadataFilterJson.read(json)).isEqualTo(filter);
+  }
+
+  /** #1242: a format-field condition survives the round trip with its values. */
+  @Test
+  void roundTripsAFormatFieldCondition() {
+    MetadataFilter filter =
+        MetadataFilter.NONE.withFormatFields(
+            List.of(FormatFieldCondition.parse("mail_sender", List.of("max@stadt.de"))));
+
+    String json = MetadataFilterJson.write(filter);
+
+    assertThat(json).contains("\"formatFields\"").contains("max@stadt.de");
     assertThat(MetadataFilterJson.read(json)).isEqualTo(filter);
   }
 

@@ -2,8 +2,8 @@ package io.opaa.query;
 
 import io.opaa.chat.ChatService;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.metadata.CitationMetadataReader;
 import io.opaa.indexing.metadata.DocumentMetadataService;
-import io.opaa.indexing.metadata.LibraryCitationMetadataReader;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -49,7 +49,7 @@ public record QueryServiceDependencies(
     RerankModelRole rerankModelRole,
     DocumentMetadataService documentMetadataService,
     MetadataFilterValidator metadataFilterValidator,
-    LibraryCitationMetadataReader citationMetadataReader) {
+    CitationMetadataReader citationMetadataReader) {
 
   public static QueryServiceDependencies fromContext(ApplicationContext context) {
     return new QueryServiceDependencies(
@@ -67,7 +67,7 @@ public record QueryServiceDependencies(
         context.getBean(RerankModelRole.class),
         context.getBean(DocumentMetadataService.class),
         context.getBean(MetadataFilterValidator.class),
-        context.getBean(LibraryCitationMetadataReader.class));
+        context.getBean(CitationMetadataReader.class));
   }
 
   public QueryService buildQueryService(QueryProperties queryProperties) {

@@ -29,10 +29,10 @@ import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.common.ConflictException;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.metadata.CitationMetadataReader;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
-import io.opaa.indexing.metadata.LibraryCitationMetadataReader;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -139,7 +139,7 @@ class QueryServiceTest {
         disabledRerankRole(),
         documentMetadataService,
         mock(MetadataFilterValidator.class),
-        mock(LibraryCitationMetadataReader.class));
+        mock(CitationMetadataReader.class));
   }
 
   /**
@@ -461,81 +461,6 @@ class QueryServiceTest {
             .findFirst()
             .orElseThrow();
     assertThat(plainSource.getMetadata()).isNull();
-  }
-
-  /**
-   * #1164: a mail chunk's mail_* metadata (ChunkMailMetadata) rides along on its ChatSource, so the
-   * Fundstellen-Anzeige can show Absender/Betreff/Datum without the caller re-fetching the
-   * document. A non-mail source's fields stay null (see the mixed-scope assertions below) - the
-   * regression guard this test doubles as: before #1164, QueryService#mapSources never read these
-   * keys at all, so every source's mail fields were null regardless of the chunk's metadata.
-   */
-  @Test
-  void queryCarriesTheMailKopfdatenOfARetrievedMailChunk() {
-    when(chatMemory.get(any())).thenReturn(List.of());
-    UUID mailDocumentId = UUID.randomUUID();
-    UUID plainDocumentId = UUID.randomUUID();
-    var mailChunk =
-        Document.builder()
-            .text("Bitte pruefen Sie den Antrag.")
-            .metadata(
-                Map.of(
-                    "file_name",
-                    "anfrage.eml",
-                    "document_id",
-                    mailDocumentId.toString(),
-                    "chunk_index",
-                    0,
-                    "mail_from",
-                    "mueller@stadt.de",
-                    "mail_to",
-                    "poststelle@stadt.de",
-                    "mail_subject",
-                    "Bebauungsplan Nord",
-                    "mail_date",
-                    "2026-03-14T09:15:00Z"))
-            .score(0.9)
-            .build();
-    var plainChunk =
-        Document.builder()
-            .text("Ein normales Dokument.")
-            .metadata(
-                Map.of(
-                    "file_name",
-                    "anweisung.md",
-                    "document_id",
-                    plainDocumentId.toString(),
-                    "chunk_index",
-                    0))
-            .score(0.5)
-            .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
-        .thenReturn(List.of(mailChunk, plainChunk));
-    when(documentRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
-    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
-    when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
-
-    QueryResult response = queryService.query("Question", null, caller, true, List.of());
-
-    assertThat(response.getSources()).hasSize(2);
-    ChatSource mailSource =
-        response.getSources().stream()
-            .filter(source -> source.getFileName().equals("anfrage.eml"))
-            .findFirst()
-            .orElseThrow();
-    assertThat(mailSource.getMailFrom()).isEqualTo("mueller@stadt.de");
-    assertThat(mailSource.getMailTo()).isEqualTo("poststelle@stadt.de");
-    assertThat(mailSource.getMailSubject()).isEqualTo("Bebauungsplan Nord");
-    assertThat(mailSource.getMailDate()).isEqualTo("2026-03-14T09:15:00Z");
-    ChatSource plainSource =
-        response.getSources().stream()
-            .filter(source -> source.getFileName().equals("anweisung.md"))
-            .findFirst()
-            .orElseThrow();
-    assertThat(plainSource.getMailFrom()).isNull();
-    assertThat(plainSource.getMailTo()).isNull();
-    assertThat(plainSource.getMailSubject()).isNull();
-    assertThat(plainSource.getMailDate()).isNull();
   }
 
   /** #667: the "Durchsucht wurden" line names the effective scope, by library name, sorted. */
@@ -2382,7 +2307,7 @@ class QueryServiceTest {
           disabledRerankRole(),
           documentMetadataService,
           mock(MetadataFilterValidator.class),
-          mock(LibraryCitationMetadataReader.class));
+          mock(CitationMetadataReader.class));
     }
 
     /**

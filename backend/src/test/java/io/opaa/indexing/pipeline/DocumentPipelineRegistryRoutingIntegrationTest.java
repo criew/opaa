@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
-import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
 import io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.util.Map;
@@ -118,14 +117,7 @@ class DocumentPipelineRegistryRoutingIntegrationTest {
                     ChunkingService.LOCATION_METADATA_KEY,
                     ConfluenceDocumentPipeline.SPACE_METADATA_KEY,
                     ConfluenceDocumentPipeline.HIERARCHY_METADATA_KEY)),
-            Map.entry(
-                "email",
-                Set.of(
-                    ChunkingService.LOCATION_METADATA_KEY,
-                    ChunkMailMetadata.MAIL_FROM_METADATA_KEY,
-                    ChunkMailMetadata.MAIL_TO_METADATA_KEY,
-                    ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY,
-                    ChunkMailMetadata.MAIL_DATE_METADATA_KEY)));
+            Map.entry("email", Set.of(ChunkingService.LOCATION_METADATA_KEY)));
 
     assertThat(registry.pipelines())
         .extracting(DocumentPipeline::id)

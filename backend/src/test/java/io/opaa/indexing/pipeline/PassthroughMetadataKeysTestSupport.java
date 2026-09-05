@@ -1,7 +1,6 @@
 package io.opaa.indexing.pipeline;
 
 import io.opaa.indexing.ChunkingService;
-import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
 import java.util.Set;
 
 /**
@@ -16,13 +15,7 @@ import java.util.Set;
  */
 public final class PassthroughMetadataKeysTestSupport {
 
-  public static final Set<String> REGISTRY_UNION =
-      Set.of(
-          ChunkingService.LOCATION_METADATA_KEY,
-          ChunkMailMetadata.MAIL_FROM_METADATA_KEY,
-          ChunkMailMetadata.MAIL_TO_METADATA_KEY,
-          ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY,
-          ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
+  public static final Set<String> REGISTRY_UNION = Set.of(ChunkingService.LOCATION_METADATA_KEY);
 
   private PassthroughMetadataKeysTestSupport() {}
 }

@@ -69,6 +69,11 @@ const NOTE_RULES: NoteRule[] = [
     german: (m) => `Metadatenfilter: Bibliotheksfeld ${m[1]} der Bibliothek ${m[2]} ${m[3]}.`,
   },
   {
+    name: 'METADATA_FILTER_FORMAT_FIELD',
+    pattern: /^metadata filter: format field (.+?) in \[(.*)\]$/s,
+    german: (m) => `Metadatenfilter: Formatfeld ${m[1]} in [${m[2]}]`,
+  },
+  {
     name: 'METADATA_FILTER_SUBORDINATE',
     pattern:
       /^metadata filter applied inside both search paths, AND-ed to the permission filter; a document without a value for a filtered field is kept$/,

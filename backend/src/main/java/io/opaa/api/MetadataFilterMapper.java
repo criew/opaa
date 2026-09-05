@@ -1,6 +1,8 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.MetadataFilterFormatFieldCondition;
 import io.opaa.api.dto.MetadataFilterLibraryFieldCondition;
+import io.opaa.indexing.metadata.FormatFieldCondition;
 import io.opaa.indexing.metadata.LibraryFieldCondition;
 import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.ArrayList;
@@ -33,9 +35,17 @@ final class MetadataFilterMapper {
                 condition.getValue()));
       }
     }
+    List<FormatFieldCondition> formatConditions = new ArrayList<>();
+    if (request.getFormatFields() != null) {
+      for (MetadataFilterFormatFieldCondition condition : request.getFormatFields()) {
+        formatConditions.add(
+            FormatFieldCondition.parse(condition.getFieldKey(), condition.getValues()));
+      }
+    }
     return MetadataFilter.parse(
             request.getDocumentTypes(), request.getDocumentDateFrom(), request.getDocumentDateTo())
-        .withLibraryFields(conditions);
+        .withLibraryFields(conditions)
+        .withFormatFields(formatConditions);
   }
 
   /**
@@ -63,7 +73,19 @@ final class MetadataFilterMapper {
                 ? null
                 : filter.libraryFields().stream()
                     .map(MetadataFilterMapper::toConditionResponse)
+                    .toList())
+        .formatFields(
+            filter.formatFields().isEmpty()
+                ? null
+                : filter.formatFields().stream()
+                    .map(MetadataFilterMapper::toConditionResponse)
                     .toList());
+  }
+
+  private static MetadataFilterFormatFieldCondition toConditionResponse(
+      FormatFieldCondition condition) {
+    return new MetadataFilterFormatFieldCondition(
+        condition.fieldKey(), condition.values().stream().sorted().toList());
   }
 
   private static MetadataFilterLibraryFieldCondition toConditionResponse(
