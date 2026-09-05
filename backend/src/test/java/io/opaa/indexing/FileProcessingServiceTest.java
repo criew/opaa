@@ -593,7 +593,7 @@ class FileProcessingServiceTest {
 
       FileProcessingResult result =
           service.ingest(
-              DocumentIngests.rssEntry(targetLibrary, "text", "Titel", ENTRY_URL, PUBLISHED_AT),
+              DocumentIngests.extractedText(targetLibrary, "text", "Titel", ENTRY_URL, PUBLISHED_AT),
               null);
 
       assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
@@ -883,7 +883,7 @@ class FileProcessingServiceTest {
       when(chunkingService.chunkDocuments(anyString(), any())).thenReturn(chunks("neuer Inhalt"));
 
       service.ingest(
-          DocumentIngests.rssEntry(
+          DocumentIngests.extractedText(
               targetLibrary, newContent, "Neuer Titel", ENTRY_URL, PUBLISHED_AT),
           null);
 
@@ -911,7 +911,7 @@ class FileProcessingServiceTest {
 
       FileProcessingResult result =
           service.ingest(
-              DocumentIngests.rssEntry(
+              DocumentIngests.extractedText(
                   targetLibrary,
                   "neuer, groesserer Inhalt",
                   "Neuer Titel",
@@ -1007,7 +1007,7 @@ class FileProcessingServiceTest {
 
       FileProcessingResult result =
           service.ingest(
-              DocumentIngests.rssEntry(
+              DocumentIngests.extractedText(
                   targetLibrary, "entry main text", "Titel", ENTRY_URL, PUBLISHED_AT),
               null);
 
@@ -1026,6 +1026,41 @@ class FileProcessingServiceTest {
       verify(documentRepository)
           .markIndexedFromSource(
               eq(saved.getId()), eq(1), any(), eq("sha256-of-entry"), eq(PUBLISHED_AT));
+    }
+
+    @Test
+    void anRssEntryRunsThroughTheHtmlPipelineByIdAndItsChunksNameIt() throws IOException {
+      // The feed connector names the HTML pipeline for the detail page's main content: the cut
+      // follows the headings (no mocked chunking) and every chunk is attributed to that pipeline.
+      when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
+      when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), ENTRY_URL))
+          .thenReturn(Optional.empty());
+      when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+      FileProcessingResult result =
+          serviceWith(TestPipelineRegistries.fallbackAndHtml(documentService, chunkingService))
+              .ingest(
+                  DocumentIngests.rssEntry(
+                      targetLibrary,
+                      "<main><h1>Meldung</h1><p>Einleitung.</p><h2>Details</h2><p>Mehr.</p>"
+                          + "</main>",
+                      "Titel",
+                      ENTRY_URL,
+                      PUBLISHED_AT),
+                  null);
+
+      assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
+      verify(documentService, never()).parseDocument(any());
+      verify(chunkingService, never()).chunkDocuments(anyString(), any());
+      List<org.springframework.ai.document.Document> stored = storedChunks();
+      assertThat(stored).hasSize(2);
+      assertThat(stored.get(0).getText()).isEqualTo("Meldung\n\nEinleitung.");
+      assertThat(stored.get(1).getText()).isEqualTo("Meldung › Details\n\nMehr.");
+      assertThat(stored.get(0).getMetadata())
+          .containsEntry("pipeline_id", "html")
+          .containsEntry("file_name", "Titel")
+          .doesNotContainKey(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY);
+      assertThat(savedDocument().getContentType()).isEqualTo("text/html");
     }
 
     @Test
@@ -1056,7 +1091,7 @@ class FileProcessingServiceTest {
       when(chunkingService.chunkDocuments(anyString(), any())).thenReturn(chunks("chunk1"));
 
       probing.ingest(
-          DocumentIngests.rssEntry(
+          DocumentIngests.extractedText(
               targetLibrary, "entry main text", "Titel", ENTRY_URL, PUBLISHED_AT),
           null);
 
@@ -1082,7 +1117,7 @@ class FileProcessingServiceTest {
           .thenReturn(chunks("first chunk text", "second chunk text"));
 
       service.ingest(
-          DocumentIngests.rssEntry(
+          DocumentIngests.extractedText(
               targetLibrary, "entry main text", headline, ENTRY_URL, PUBLISHED_AT),
           null);
 
@@ -1102,7 +1137,7 @@ class FileProcessingServiceTest {
           .thenReturn(chunks("first chunk text", "second chunk text"));
 
       service.ingest(
-          DocumentIngests.rssEntry(targetLibrary, "entry main text", null, ENTRY_URL, PUBLISHED_AT),
+          DocumentIngests.extractedText(targetLibrary, "entry main text", null, ENTRY_URL, PUBLISHED_AT),
           null);
 
       assertThat(savedDocument().getFileName()).isEqualTo(ENTRY_URL);
@@ -1199,7 +1234,7 @@ class FileProcessingServiceTest {
       when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
       serviceWithFakePipeline.ingest(
-          DocumentIngests.rssEntry(
+          DocumentIngests.extractedText(
               targetLibrary, "entry main text", "Titel", ENTRY_URL, PUBLISHED_AT),
           null);
 
@@ -1253,7 +1288,7 @@ class FileProcessingServiceTest {
       AttachmentAccess access = Mockito.mock(AttachmentAccess.class);
 
       serviceWithFakePipeline.ingest(
-          DocumentIngests.rssEntry(
+          DocumentIngests.extractedText(
               targetLibrary, "entry main text", "Titel", ENTRY_URL, PUBLISHED_AT),
           access);
 
@@ -1522,7 +1557,7 @@ class FileProcessingServiceTest {
       stubTextRow();
 
       serviceWithFakePipeline.ingest(
-          DocumentIngests.rssEntry(
+          DocumentIngests.extractedText(
               targetLibrary, "entry main text", "Titel", ENTRY_URL, PUBLISHED_AT),
           null);
 
@@ -1550,7 +1585,7 @@ class FileProcessingServiceTest {
       stubTextRow();
 
       serviceWithFakePipeline.ingest(
-          DocumentIngests.rssEntry(
+          DocumentIngests.extractedText(
               targetLibrary, "entry main text", "Titel", ENTRY_URL, PUBLISHED_AT),
           null);
 
@@ -1627,7 +1662,7 @@ class FileProcessingServiceTest {
       stubTextRow();
 
       serviceWithFakePipeline.ingest(
-          DocumentIngests.rssEntry(
+          DocumentIngests.extractedText(
               targetLibrary, "entry main text", "Titel", ENTRY_URL, PUBLISHED_AT),
           null);
 

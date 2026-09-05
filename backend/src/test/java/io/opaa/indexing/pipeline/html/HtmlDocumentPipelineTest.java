@@ -18,8 +18,9 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * The HTML pipeline (ingestion-pipelines.md Teil 3, Punkt 4): boilerplate outside the chosen
  * content area never reaches a chunk, the cut follows h1-h3 with every chunk carrying its heading
- * path (in text and metadata alike), and an oversized section is split further at block boundaries
- * rather than growing a single chunk without bound.
+ * path (in text and metadata alike), tables and lists keep their structure through the shared
+ * {@code XhtmlEventBuilder}, and an oversized section is split further at block boundaries rather
+ * than growing a single chunk without bound.
  */
 class HtmlDocumentPipelineTest {
 
@@ -31,7 +32,7 @@ class HtmlDocumentPipelineTest {
   void claimsExactlyHtml() {
     assertThat(pipeline.handledFormats()).containsExactly(".html");
     assertThat(pipeline.id()).isEqualTo("html");
-    assertThat(pipeline.version()).isEqualTo((short) 1);
+    assertThat(pipeline.version()).isEqualTo((short) 2);
   }
 
   /** ADR-0024: the page title and the first h1 are the HTML format's declared properties. */
@@ -346,6 +347,62 @@ class HtmlDocumentPipelineTest {
     assertThat(result.chunks().getFirst().getText()).contains("Personal ausweis");
   }
 
+  // --- tables, lists, preformatted text: the structure the shared walker keeps --------------
+
+  @Test
+  void tablesBecomeOneLinePerRowWithSeparatedCells() throws IOException {
+    String page =
+        """
+        <html><body><main>
+          <h1>Gebuehren</h1>
+          <table>
+            <tr><th>Leistung</th><th>Betrag</th></tr>
+            <tr><td>Personalausweis</td><td>37,00 EUR</td></tr>
+            <tr><td>Reisepass</td><td>70,00 EUR</td></tr>
+          </table>
+        </main></body></html>
+        """;
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(page));
+
+    assertThat(result.chunks()).hasSize(1);
+    assertThat(result.chunks().getFirst().getText())
+        .isEqualTo(
+            "Gebuehren\n\nLeistung | Betrag\n\nPersonalausweis | 37,00 EUR\n\n"
+                + "Reisepass | 70,00 EUR");
+  }
+
+  @Test
+  void listsKeepOneLinePerItemWithNestingCarriedByTheMarker() throws IOException {
+    String page =
+        """
+        <html><body><main>
+          <h1>Unterlagen</h1>
+          <ul><li>Lichtbild</li><li>Nachweise<ul><li>Meldebescheinigung</li></ul></li></ul>
+          <ol><li>Termin buchen</li><li>Vorsprechen</li></ol>
+        </main></body></html>
+        """;
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(page));
+
+    assertThat(result.chunks().getFirst().getText())
+        .isEqualTo(
+            "Unterlagen\n\n• Lichtbild\n\n• Nachweise\n\n◦ Meldebescheinigung\n\n"
+                + "1. Termin buchen\n\n2. Vorsprechen");
+  }
+
+  @Test
+  void preformattedTextKeepsItsLineBreaksAndNonBreakingSpacesCollapse() throws IOException {
+    String page =
+        "<html><body><main><h1>T</h1><pre>Zeile 1\n  Zeile 2</pre>"
+            + "<p>Frist:&nbsp;14&nbsp;Tage</p><p>&nbsp;</p></main></body></html>";
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(page));
+
+    assertThat(result.chunks().getFirst().getText())
+        .isEqualTo("T\n\nZeile 1\n  Zeile 2\n\nFrist: 14 Tage");
+  }
+
   // --- Grenzfall: eine Seite, die ausschliesslich aus Boilerplate besteht --------------------
 
   @Test
@@ -419,8 +476,7 @@ class HtmlDocumentPipelineTest {
     assertThat(text).endsWith("[…gekürzt]");
   }
 
-  // --- Formaterkennung: das Routing landet auf dieser Pipeline für sowohl Datei als auch bereits
-  // extrahierten Text (letzteres nur zu Testzwecken - der reguläre Weg liefert immer eine Datei) --
+  // --- extracted text: a feed entry's main content arrives as HTML without a file -------------
 
   @Test
   void runsAgainstExtractedTextToo() {
@@ -433,6 +489,23 @@ class HtmlDocumentPipelineTest {
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(1);
     assertThat(result.chunks().getFirst().getText()).contains("Inhalt.");
+  }
+
+  @Test
+  void aMainContentFragmentWithoutAnEnclosingPageIsCutLikeAWholePage() {
+    // The feed connector hands over the already reduced content roots, not a whole page.
+    DocumentPipelineResult result =
+        pipeline.run(
+            DocumentPipelineSource.ofExtractedText(
+                "<main><h1>Pressemitteilung</h1><p>Einleitung.</p><h2>Hintergrund</h2>"
+                    + "<p>Details.</p></main>",
+                "Pressemitteilung"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).extracting(d -> d.getText())
+        .containsExactly(
+            "Pressemitteilung\n\nEinleitung.",
+            "Pressemitteilung › Hintergrund\n\nDetails.");
   }
 
   private DocumentPipelineSource sourceFor(String html) throws IOException {

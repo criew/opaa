@@ -55,22 +55,24 @@ class PipelinePathIsolationTest {
                 + "committed raw-vector baselines' measurementContractVersion or "
                 + "BaselineComparator's fixed-point list being updated to match — reconcile all "
                 + "four rather than adjusting only this assertion")
-        .isEqualTo(7);
+        .isEqualTo(8);
   }
 
   @Test
   void pipelinePathCountsItsOwnContractVersionSeparately() {
-    // Version 9: 3 from issue #1049 (the lexical path's switch and the measured library's
+    // Version 10: 3 from issue #1049 (the lexical path's switch and the measured library's
     // full-text index state), plus 1 from issue #1144 (ingestionPipelineFingerprint), plus 1
     // from issue #1164/PR #1201 (MailDocumentPipeline#version() moved 2 -> 3, shifting the
     // collective fingerprint), plus 1 from issue #1183 (MailDocumentPipeline#version() moved 3 ->
     // 4, ADR-0022), plus 1 from issue #1270 (fullTextBackfillComplete renamed to
     // fullTextIndexComplete), plus 1 from issue #1070 (metadataFilterEnabled, the golden filters
     // carried into the pipeline run), plus 1 from issue #1242 (MailDocumentPipeline#version()
-    // moved 4 -> 5, shifting the collective fingerprint again) — counted independently of the
-    // raw-vector path above, whose own count (2 plus the same #1144/#1164/#1183/#1070/#1242
-    // bumps) moves for unrelated reasons at unrelated points in its history.
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(9);
+    // moved 4 -> 5, shifting the collective fingerprint again), plus 1 from issue #1315
+    // (HtmlDocumentPipeline#version() moved 1 -> 2, shared XHTML event walk) — counted
+    // independently of the raw-vector path above, whose own count (2 plus the same
+    // #1144/#1164/#1183/#1070/#1242/#1315 bumps) moves for unrelated reasons at unrelated points
+    // in its history.
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(10);
   }
 
   @Test

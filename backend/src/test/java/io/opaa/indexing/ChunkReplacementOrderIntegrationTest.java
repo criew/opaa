@@ -312,10 +312,15 @@ class ChunkReplacementOrderIntegrationTest {
     UUID documentId = onlyDocumentId();
     assertThat(vectorChunks(documentId)).isPositive();
 
+    // a page whose main content is nothing but chrome yields no chunk in the HTML pipeline
     assertThat(
             fileProcessingService.ingest(
                 DocumentIngests.rssEntry(
-                    targetLibrary, "x", "Meldung", "https://example.test/1", null),
+                    targetLibrary,
+                    "<html><body><nav>x</nav></body></html>",
+                    "Meldung",
+                    "https://example.test/1",
+                    null),
                 null))
         .isEqualTo(FileProcessingResult.NO_EXTRACTABLE_TEXT);
 

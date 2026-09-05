@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
+import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
 import io.opaa.library.KnowledgeLibrary;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -21,19 +22,37 @@ public final class DocumentIngests {
 
   private DocumentIngests() {}
 
-  /** An RSS entry's body the way {@code RssFeedIndexingExecutor} hands it over. */
+  /**
+   * An RSS entry the way {@code RssFeedIndexingExecutor} hands it over: the detail page's main
+   * content as HTML, run through the HTML pipeline by id.
+   */
   public static DocumentIngest rssEntry(
       KnowledgeLibrary library,
-      String mainText,
+      String mainHtml,
       String title,
       String entryUrl,
       String publishedAt) {
-    return DocumentIngest.text(library, entryUrl, mainText)
+    return extractedTextBuilder(library, mainHtml, title, entryUrl, publishedAt)
+        .pipelineId(HtmlDocumentPipeline.ID)
+        .build();
+  }
+
+  /**
+   * Text that never was a file, without a pipeline of its own - the shape the service-level tests
+   * use to exercise the text path against the registry's fallback pipeline.
+   */
+  public static DocumentIngest extractedText(
+      KnowledgeLibrary library, String text, String title, String filePath, String changeMarker) {
+    return extractedTextBuilder(library, text, title, filePath, changeMarker).build();
+  }
+
+  private static DocumentIngest.Builder extractedTextBuilder(
+      KnowledgeLibrary library, String text, String title, String filePath, String changeMarker) {
+    return DocumentIngest.text(library, filePath, text)
         .sourceType(DocumentSourceType.RSS_FEED)
         .title(title)
-        .changeMarker(publishedAt)
-        .documentDate(DocumentProperties.instantToLocalDate(publishedAt))
-        .build();
+        .changeMarker(changeMarker)
+        .documentDate(DocumentProperties.instantToLocalDate(changeMarker));
   }
 
   /** A Confluence page's storage body the way {@code ConfluenceIndexingExecutor} hands it over. */
@@ -163,6 +182,11 @@ public final class DocumentIngests {
 
     public Matcher from(DocumentSourceType sourceType) {
       return and(ingest -> sourceType == ingest.sourceType());
+    }
+
+    /** Named the pipeline {@code pipelineId} directly instead of being routed. */
+    public Matcher via(String pipelineId) {
+      return and(ingest -> Objects.equals(pipelineId, ingest.pipelineId()));
     }
 
     public Matcher foundOn(String sourceEntryUrl) {
