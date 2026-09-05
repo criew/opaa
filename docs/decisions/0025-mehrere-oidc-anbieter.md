@@ -82,6 +82,10 @@ Clients, app-eigene Sitzung mit Refresh-Ledger), sondern bleibt bei der Architek
   OPAA speichert keine Tokens und prägt keine eigenen.
 - **`azp` wird geprüft, `aud` nicht.** Trägt ein Token einen `azp`-Claim (authorized party),
   muss er der `client_id` der Anbieterzeile entsprechen; fehlt der Claim, gilt keine Prüfung.
+  Einzige Ausnahme: Nennt `aud` die `client_id`, hat der Anbieter das Token ausdrücklich für
+  diese Anwendung ausgestellt (Audience-Mapper an einem anderen Client — etwa einem
+  Dienst-Client, der wie der Demo-Seed im Namen der Anwendung arbeitet), dieselbe
+  Vertrauensentscheidung wie das Anlegen des Clients selbst; ein solches Token passiert.
   Keycloak setzt `azp` immer auf den anfragenden Client, andere Anbieter (Entra ID ab v2.0)
   ebenfalls, ältere Formate nutzen abweichende Claims — daher die Regel „fehlt der Claim, gilt keine
   Prüfung". Die Prüfung bricht also keine bestehende Installation, und sie ist bei einem Public Client die einzige Kontrolle
@@ -381,7 +385,8 @@ nichts über Konten. Dieselbe Abwägung wie beim Branding (#583).
 - **Keine Kontenzusammenführung**, weder automatisch noch manuell — zwei Anbieter, zwei Konten.
 - **Nur Public Clients mit PKCE.** Ein Anbieter, der für SPAs kein PKCE oder keinen Public Client
   zulässt, ist nicht anbindbar; ein Confidential-Client-Modus wäre Variante B.
-- **Keine `aud`-Prüfung**, wie heute; `azp` wird geprüft, sofern vorhanden (Entscheidung 1).
+- **Keine `aud`-Prüfung**, wie heute; `azp` wird geprüft, sofern vorhanden — ein abweichendes `azp`
+  passiert nur, wenn `aud` die `client_id` nennt (Entscheidung 1).
 - **Die Erstadministrator-Regel** bleibt auf der Vertrauensstellung des Standardanbieters
   gegründet (Entscheidung 3).
 - **Der letzte `AUDITOR` ist nicht geschützt** (Entscheidung 4); die `OPAA_OIDC_*`-Variablen
