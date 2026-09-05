@@ -277,6 +277,10 @@ describe('metadata detail entries', () => {
     expect(formatMetadataLine(source)).toBe('max@stadt.de')
   })
 
+  test('leaves a detail-only value out of the accessible name of the line', () => {
+    expect(describeMetadata(source)).toBe('Absender: max@stadt.de')
+  })
+
   test('shows the detail-only values labelled, for the Belegfenster alone', () => {
     expect(formatMetadataDetails(source)).toBe('An: a@x.de; b@y.de')
     expect(formatMetadataDetails({ ...source, metadata: [] })).toBeUndefined()

@@ -307,7 +307,7 @@ class MetadataFilterOptionsServiceIntegrationTest {
             + "Date: Thu, 12 Mar 2026 09:15:00 +0100\n"
             + "Content-Type: text/plain; charset=UTF-8\n\n"
             + "Diese Unterlage regelt die Nutzung der IT.\n");
-    assertThat(fileProcessingService.processFile(file, target))
+    assertThat(fileProcessingService.ingest(DocumentIngest.localFile(target, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
   }
 

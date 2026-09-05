@@ -141,6 +141,38 @@ class ChatSourceMetadataEntryTest {
     assertThat(entries).singleElement().satisfies(entry -> assertThat(entry.detailOnly()).isTrue());
   }
 
+  /**
+   * regression guard for #1242: the Belegzeile carries at most two non-core entries, and a value
+   * dropped as a duplicate of the Titel must not cost the place a library field could have had -
+   * deduplication runs first, the cap second. A detail-only entry is not on the line and does not
+   * count either.
+   */
+  @Test
+  void deduplicatesBeforeCappingTheLineAndDoesNotCountDetailOnlyEntries() {
+    CoreMetadata core =
+        new CoreMetadata(
+            "Bebauungsplan Nord", MetadataOrigin.DETERMINISTIC, null, null, null, null, null, null);
+    List<CitationFieldValue> fields =
+        List.of(
+            citation("fmt:mail_subject", "Betreff", "Bebauungsplan Nord", false),
+            citation("fmt:mail_recipients", "An", "a@x.de; b@y.de", true),
+            citation("fmt:mail_sender", "Absender", "max@stadt.de", false),
+            citation("lib:fassung", "Fassung", "Fassung 2026", false),
+            citation("lib:projekt", "Projekt", "Nordspange", false));
+
+    List<ChatSourceMetadataEntry> entries = ChatSourceMetadataEntry.from(core, fields);
+
+    assertThat(entries)
+        .extracting(ChatSourceMetadataEntry::label)
+        .containsExactly("Titel", "An", "Absender", "Fassung");
+  }
+
+  private static CitationFieldValue citation(
+      String fieldKey, String label, String value, boolean detailOnly) {
+    return new CitationFieldValue(
+        fieldKey, label, value, value, MetadataOrigin.DETERMINISTIC, null, detailOnly);
+  }
+
   @Test
   void displaysADateAtItsOwnPrecisionNeverAsAPaddedDay() {
     assertThat(ChatSourceMetadataEntry.displayDate(LocalDate.of(2026, 3, 12), DatePrecision.DAY))

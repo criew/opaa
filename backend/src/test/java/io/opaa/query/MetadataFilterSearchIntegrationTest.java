@@ -520,7 +520,7 @@ class MetadataFilterSearchIntegrationTest {
             + "Date: Thu, 12 Mar 2026 09:15:00 +0100\n"
             + "Content-Type: text/plain; charset=UTF-8\n\n"
             + "Diese Unterlage regelt die Nutzung der IT.\n");
-    fileProcessingService.processFile(file, target);
+    fileProcessingService.ingest(DocumentIngest.localFile(target, file).build(), null);
     return documentRepository.findAll().stream()
         .filter(document -> fileName.equals(document.getFileName()))
         .findFirst()

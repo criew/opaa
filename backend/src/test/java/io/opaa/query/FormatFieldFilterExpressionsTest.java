@@ -75,14 +75,16 @@ class FormatFieldFilterExpressionsTest {
     assertThat(combined.type()).isEqualTo(Filter.ExpressionType.AND);
     assertThat(combined.left()).isSameAs(LIBRARY_FILTER);
     String rendered = jsonPath(combined);
-    // Without the inner group the converter renders "… && $.ff_mail_sender ?(…) || …", and a
-    // document without a sender would slip past the Dokumentart condition entirely. subordinateTo's
-    // own group would hide that, hence the assertion on the inner "((".
+    // The whole OR-chain is rendered inside one pair of parentheses. Asserting that exact
+    // shape rather than a prefix: subordinateTo wraps the metadata expression in a group of
+    // its own, so a leading "&& ((" would also hold without formatFieldOp's own group - and
+    // without it the OR-chain would render unbracketed beside the Dokumentart condition, which
+    // every document without a sender would then slip past.
     assertThat(rendered)
         .as("the whole format-field condition is one bracketed operand: %s", rendered)
-        .contains("&& ((")
-        .contains("ff_mail_sender")
-        .contains("ffs_mail_sender");
+        .contains(
+            "(($.\"ff_mail_sender\" == \"max@stadt.de\")"
+                + " || !($.\"ffs_mail_sender\" == \"SET\"))");
   }
 
   /**

@@ -17,17 +17,16 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * The non-core half of a Beleg (metadata-schema.md Wirkstelle 3): per document, its format field
  * values (a mail's Absender, An, Betreff) followed by the values of its library's fields that carry
- * a citation position - in that position's order and at most two of them, so the Belegzeile stays a
- * line one can read in the flow of an answer. An empty field produces no entry at all.
+ * a citation position, in that position's order. An empty field produces no entry at all. The cap
+ * that keeps the Belegzeile readable is applied where the line is assembled ({@code
+ * ChatSourceMetadataEntry#from}) - only there is a duplicate of a core field already known, and a
+ * dropped duplicate must not cost a place.
  *
  * <p>Two queries for a whole answer's sources, not one per document: the citation fields of the
  * involved libraries and the values of the involved documents.
  */
 @Component
 public class CitationMetadataReader {
-
-  /** metadata-schema.md: "höchstens zwei Bibliotheksfelder" beside the core fields. */
-  static final int MAX_CITATION_FIELDS = 2;
 
   private final LibraryMetadataFieldRepository fieldRepository;
   private final LibraryMetadataFieldValueRepository valueRepository;
@@ -81,19 +80,12 @@ public class CitationMetadataReader {
           citationFields.getOrDefault(document.getLibraryId(), List.of());
       List<CitationFieldValue> entries =
           formatEntries(rowsByDocument.getOrDefault(document.getId(), Map.of()));
-      // The cap counts every non-core entry the Belegzeile shows, format fields included: the line
-      // is the scarce resource, not the field kind. A detail-only entry is not on the line.
-      int lineEntries = (int) entries.stream().filter(entry -> !entry.detailOnly()).count();
       for (LibraryMetadataField field : fields) {
-        if (lineEntries >= MAX_CITATION_FIELDS) {
-          break;
-        }
         DocumentMetadataValue row =
             rowsByDocument.getOrDefault(document.getId(), Map.of()).get(field.documentFieldKey());
         if (row == null || row.getState() != MetadataValueState.SET) {
           continue;
         }
-        lineEntries++;
         if (row.getDateValue() != null) {
           entries.add(
               new CitationFieldValue(

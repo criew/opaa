@@ -77,10 +77,19 @@ public record ChatSourceMetadataEntry(
   }
 
   /**
+   * metadata-schema.md: "höchstens zwei Bibliotheksfelder" beside the core fields - the cap of the
+   * Belegzeile, counted over every non-core entry it actually shows.
+   */
+  public static final int MAX_LINE_FIELDS = 2;
+
+  /**
    * The core fields of {@code core} followed by {@code citationFields} - a document's format fields
-   * and then the library fields with a citation position. A field whose display text a preceding
-   * entry already shows verbatim is left out: a mail's Betreff is also its Titel, and a Belegzeile
-   * that says the same thing twice reads worse, not richer.
+   * and then the library fields with a citation position. Two rules, in this order: a field whose
+   * display text a preceding entry already shows verbatim is left out (a mail's Betreff is also its
+   * Titel, and a Belegzeile that says the same thing twice reads worse, not richer), and only then
+   * does the cap of {@link #MAX_LINE_FIELDS} non-core entries take effect - a dropped duplicate
+   * must not cost the place a library field could have had. A {@code detailOnly} entry is not on
+   * the line and does not count against the cap.
    */
   public static List<ChatSourceMetadataEntry> from(
       CoreMetadata core, List<CitationFieldValue> citationFields) {
@@ -88,11 +97,18 @@ public record ChatSourceMetadataEntry(
     if (citationFields == null) {
       return entries;
     }
+    int lineFields = 0;
     for (CitationFieldValue field : citationFields) {
       if (entries.stream()
           .anyMatch(
               entry -> java.util.Objects.equals(entry.displayValue(), field.displayValue()))) {
         continue;
+      }
+      if (!field.detailOnly()) {
+        if (lineFields >= MAX_LINE_FIELDS) {
+          continue;
+        }
+        lineFields++;
       }
       entries.add(
           new ChatSourceMetadataEntry(

@@ -225,7 +225,7 @@ export function metadataFilterMatchLabel(source: SourceReference | undefined): s
  * reader hears what a sighted reader infers from the value alone.
  */
 export function describeMetadata(source: SourceReference | undefined): string | undefined {
-  const entries = source?.metadata
-  if (!entries || entries.length === 0) return undefined
+  const entries = (source?.metadata ?? []).filter((entry) => !entry.detailOnly)
+  if (entries.length === 0) return undefined
   return entries.map((entry) => `${entry.label}: ${entry.displayValue}`).join(', ')
 }

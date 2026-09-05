@@ -632,7 +632,9 @@ class CoreMetadataIndexingIntegrationTest {
         Bitte pruefen Sie den Bebauungsplan Nord bis Freitag.
         """);
 
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
