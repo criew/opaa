@@ -87,9 +87,8 @@ final class ConfluenceAttachmentIndexing {
 
   /**
    * The download is bounded by {@link ConfluenceProperties#maxAttachmentSizeBytes()} before the
-   * path ever sees the bytes, and one attachment is handed over per call (the request budget
-   * bounds a run, not a per-page cap) - so the shared attachment limits apply, none of Confluence's
-   * own.
+   * path ever sees the bytes, and one attachment is handed over per call (the request budget bounds
+   * a run, not a per-page cap) - so the shared attachment limits apply, none of Confluence's own.
    */
   private void indexAttachment(
       ConfluenceRun run,

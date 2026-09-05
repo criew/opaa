@@ -1,8 +1,8 @@
 package io.opaa.indexing.pipeline.mail;
 
+import io.opaa.sourceaccess.BoundedStreams;
 import java.io.IOException;
 import java.io.InputStream;
-import io.opaa.sourceaccess.BoundedStreams;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.nio.file.Files;

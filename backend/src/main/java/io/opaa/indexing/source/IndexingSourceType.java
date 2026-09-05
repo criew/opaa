@@ -7,8 +7,8 @@ import io.opaa.api.types.DocumentSourceType;
  * than {@link DocumentSourceType}: {@code UPLOAD} is a document's origin, not a run type - it has
  * no {@link SourceIndexingExecutor} and must never be requestable via {@code
  * /api/v1/indexing/trigger}. Every value here has exactly one registered executor (see {@link
- * IndexingSourceExecutorRegistry}), and every {@link DocumentSourceType#hasIndexingRun() run-bearing}
- * document source type has exactly one value here, under the same name.
+ * IndexingSourceExecutorRegistry}), and every {@link DocumentSourceType#hasIndexingRun()
+ * run-bearing} document source type has exactly one value here, under the same name.
  */
 public enum IndexingSourceType {
   FILESYSTEM,

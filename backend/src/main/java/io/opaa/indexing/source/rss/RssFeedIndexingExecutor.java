@@ -20,8 +20,8 @@ import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.indexing.source.attachment.AttachmentCandidate;
-import io.opaa.indexing.source.attachment.AttachmentLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
+import io.opaa.indexing.source.attachment.AttachmentLimits;
 import io.opaa.indexing.source.attachment.AttachmentSource;
 import io.opaa.indexing.source.web.DetailPageExtractor;
 import io.opaa.library.KnowledgeLibrary;
@@ -84,7 +84,11 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     this.properties = properties.rss();
     this.feedFetcher =
         new FeedFetcher(
-            targetAddressValidator, feedStateRepository, feedParser, this.properties, requestPolicy);
+            targetAddressValidator,
+            feedStateRepository,
+            feedParser,
+            this.properties,
+            requestPolicy);
     this.detailPageExtractor =
         new DetailPageExtractor(targetAddressValidator, this.properties, requestPolicy);
     this.attachmentIndexer = attachmentIndexer;

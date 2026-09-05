@@ -51,11 +51,11 @@ Detailseiten abruft und dass der Betreiber des Feeds bestimmt, welche Adressen d
 
 | Eigenschaft | Verhalten |
 |---|---|
-| User-Agent | konfigurierbar, Standard `OPAA-Indexer/1.0`. Bewusst wahrheitsgemäß, keine Browser-Imitation. |
+| User-Agent | gemeinsam für alle Netzkonnektoren konfigurierbar (`opaa.indexing.http.user-agent`), Standard `OPAA-Indexer/1.0`. Bewusst wahrheitsgemäß, keine Browser-Imitation. |
 | Zugangsdaten und ausgesetzte Zertifikatsprüfung | wirken **nur auf dem Ursprung des Feeds**. Eine Detailseite oder Anlage auf einem anderen Host bekommt weder Zugangsdaten noch gelockerte Prüfung. |
 | Wartezeit | konfigurierbar, Standard eine Sekunde vor jeder Detailseite und vor jedem Anlagen-Download. Nicht vor dem Feed selbst. |
 | Timeouts | 30 s Verbindungsaufbau, 60 s Feed, 30 s Detailseite, 120 s Anlage |
-| Wiederholung | keine innerhalb des Laufs; stattdessen der Zurückstellungsmechanismus (Abschnitt 6) |
+| Wiederholung | nur bei HTTP 429: Feed, Detailseite und Anlage warten die in `Retry-After` genannte Zeit (gedeckelt auf `opaa.indexing.http.max-retry-after`, ohne Header fünf Sekunden) und wiederholen bis zu `opaa.indexing.http.max-rate-limit-retries`-mal; erst danach greift die Zurückstellung (Abschnitt 6). Jeder andere Fehlschlag wird nicht wiederholt, sondern zurückgestellt |
 | Weiterleitungen | Feed: bis zu fünf, fremder Ursprung ohne Zugangsdaten. Detailseite und Anlage: ein fremder Ursprung wird gar nicht kontaktiert. |
 
 Die Wartezeit bestimmt die Laufzeit: Bei 200 Einträgen mit je einer Seite und bis zu zehn
@@ -234,13 +234,14 @@ Alle Schlüssel unter `opaa.indexing.rss.*`, Umgebungsvariablen als `OPAA_INDEXI
 | `max-feed-size-bytes` | 10485760 (10 MiB) | darüber scheitert der Lauf |
 | `max-page-size-bytes` | 5242880 (5 MiB) | darüber entfällt der Eintrag |
 | `request-delay-ms` | 1000 | Wartezeit vor jeder Detailseite und Anlage; 0 schaltet ab |
-| `user-agent` | `OPAA-Indexer/1.0` | für Feed, Detailseite und Anlagen |
 | `main-content-selector` | `main, article, [role=main]` | Jsoup-Selektor für den Hauptinhalt, Rückfall `body` |
 | `attachment-profile` | `GENERIC` | `GENERIC` oder `GSB`, gilt für die ganze Installation |
 | `max-attachments-per-entry` | 10 | Anlagen je Eintrag |
 | `max-attachment-size-bytes` | 20971520 (20 MiB) | darüber entfällt die Anlage |
 
-Nicht konfigurierbar: Verschachtelungstiefe der Anlagen (5), Timeouts. Zieladressprüfung,
+`User-Agent` und 429-Wartezeit kommen aus dem gemeinsamen Block `opaa.indexing.http.*`
+(`user-agent`, `max-rate-limit-retries`, `max-retry-after`; siehe [Deployment](deployment.md)).
+Nicht konfigurierbar: Timeouts. Verschachtelungstiefe der Anlagen, Zieladressprüfung,
 Thread-Pool, Kontingent und Chunking wie in den anderen Kapiteln.
 
 Der Speicherbedarf im Lauf liegt bei bis zu einer Anlagengröße je gleichzeitig verarbeiteter

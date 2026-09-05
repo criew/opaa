@@ -58,9 +58,9 @@ import org.springframework.stereotype.Service;
  * request carries the shared {@link SourceRequestPolicy}'s {@code User-Agent} (a {@code 429} is not
  * waited out - a person is waiting), and the response body is bounded through the same {@link
  * BoundedStreams} the runs use - {@link IndexingProperties.Rss#maxPageSizeBytes()} for the
- * HTTP_DIRECTORY listing page, {@link IndexingProperties.Rss#maxFeedSizeBytes()} for the
- * RSS feed (PR #537 review, finding 2: an unbounded read here let an authenticated caller crash the
- * whole backend with a single request against an endless or multi-gigabyte response). {@code
+ * HTTP_DIRECTORY listing page, {@link IndexingProperties.Rss#maxFeedSizeBytes()} for the RSS feed
+ * (PR #537 review, finding 2: an unbounded read here let an authenticated caller crash the whole
+ * backend with a single request against an endless or multi-gigabyte response). {@code
  * RssFeedIndexingExecutor} applies proxy/credentials to its own feed, detail-page and attachment
  * requests too (#505) - restricted to the feed's own origin for the latter two (PR #642 review,
  * finding 1); this test, having no entries or attachments to consider, always applies them for the

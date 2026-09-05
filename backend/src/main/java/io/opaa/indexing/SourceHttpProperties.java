@@ -14,9 +14,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * @param userAgent the {@code User-Agent} header sent with every request. Truthful by default;
  *     impersonating a browser is out of scope. Default {@code OPAA-Indexer/1.0}.
- * @param maxRateLimitRetries how many consecutive {@code 429} responses one request waits out
- *     (each after {@code Retry-After}, five seconds without it) before the last {@code 429} reaches
- *     the caller. Default 6. Confluence keeps its own value ({@code
+ * @param maxRateLimitRetries how many consecutive {@code 429} responses one request waits out (each
+ *     after {@code Retry-After}, five seconds without it) before the last {@code 429} reaches the
+ *     caller. Default 6. Confluence keeps its own value ({@code
  *     opaa.indexing.confluence.max-rate-limit-retries}).
  * @param maxRetryAfter the longest single wait honoured from a {@code Retry-After}; a longer value
  *     is capped to this. Default 2 minutes. Confluence keeps its own value ({@code
@@ -33,6 +33,9 @@ public record SourceHttpProperties(
     if (maxRateLimitRetries < 0) {
       throw new IllegalArgumentException(
           "maxRateLimitRetries must not be negative, got " + maxRateLimitRetries);
+    }
+    if (maxRateLimitRetries == 0) {
+      maxRateLimitRetries = SourceRequestPolicy.DEFAULT_MAX_RATE_LIMIT_RETRIES;
     }
     if (maxRetryAfter == null || maxRetryAfter.isZero() || maxRetryAfter.isNegative()) {
       maxRetryAfter = SourceRequestPolicy.DEFAULT_MAX_RETRY_AFTER;

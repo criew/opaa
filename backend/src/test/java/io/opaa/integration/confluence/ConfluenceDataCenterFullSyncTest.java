@@ -71,7 +71,7 @@ class ConfluenceDataCenterFullSyncTest {
   @BeforeAll
   static void start() {
     confluence = ConfluenceDataCenterFixture.get();
-    properties = new ConfluenceProperties(25, null, null, 0, null, 0, 0, null, 0, null, null, 0);
+    properties = new ConfluenceProperties(25, null, null, 0, null, 0, 0, 0, null, null, 0);
     factory = new ConfluenceClientFactory(properties, TargetAddressValidator.disabled());
   }
 
@@ -100,7 +100,7 @@ class ConfluenceDataCenterFullSyncTest {
                 new BoundedDownloader(TargetAddressValidator.disabled()),
                 fileProcessingService,
                 mock(LibraryStorageQuotaService.class),
-                new io.opaa.indexing.source.attachment.AttachmentProperties(5)),
+                new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0)),
             documentRepository,
             syncStateRepository,
             mock(VectorChunkStore.class),

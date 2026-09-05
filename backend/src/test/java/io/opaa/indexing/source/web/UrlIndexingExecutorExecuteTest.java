@@ -35,12 +35,15 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
+import io.opaa.sourceaccess.RateLimitPolicy;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -130,9 +133,23 @@ class UrlIndexingExecutorExecuteTest {
    * #setUp}'s generous default.
    */
   private UrlIndexingExecutor buildExecutor(CrawlProperties crawlProperties) {
+    return buildExecutor(crawlProperties, requestPolicy("OPAA-Indexer/test"));
+  }
+
+  /** The waits the shared rate-limit handling asked for, in order - never slept for real. */
+  private final List<Duration> sleeps = new CopyOnWriteArrayList<>();
+
+  /** The shared request policy under test: {@code userAgent}, two retries, no real sleeping. */
+  private SourceRequestPolicy requestPolicy(String userAgent) {
+    return new SourceRequestPolicy(
+        userAgent, RateLimitPolicy.of(2, Duration.ofMinutes(2)), sleeps::add);
+  }
+
+  private UrlIndexingExecutor buildExecutor(
+      CrawlProperties crawlProperties, SourceRequestPolicy requestPolicy) {
     // A spy over the real downloader, not a mock: every test still performs genuine transfers, but
     // the temp files handed back can be checked for deletion after the run.
-    downloader = spy(new BoundedDownloader(targetAddressValidator));
+    downloader = spy(new BoundedDownloader(targetAddressValidator, requestPolicy));
     try {
       doAnswer(
               invocation -> {
@@ -146,7 +163,7 @@ class UrlIndexingExecutorExecuteTest {
       throw new IllegalStateException(e);
     }
     return new UrlIndexingExecutor(
-        new AutoindexCrawlerService(targetAddressValidator, crawlProperties),
+        new AutoindexCrawlerService(targetAddressValidator, crawlProperties, requestPolicy),
         downloader,
         fileProcessingService,
         documentRepository,
@@ -184,6 +201,97 @@ class UrlIndexingExecutorExecuteTest {
     executor.execute(jobId, library, IndexingRunMode.FULL);
     verify(indexingJobService, timeout(5000))
         .completeJob(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
+  }
+
+  /**
+   * Like {@link #serve}, but the first {@code throttled} requests answer {@code 429} with {@code
+   * Retry-After: 1} - the shape a throttling source has, which the run must wait out.
+   */
+  private void serveThrottled(String path, int throttled, String contentType, byte[] body) {
+    AtomicInteger hits = new AtomicInteger();
+    server.createContext(
+        path,
+        exchange -> {
+          if (hits.getAndIncrement() < throttled) {
+            exchange.getResponseHeaders().set("Retry-After", "1");
+            exchange.sendResponseHeaders(429, -1);
+            exchange.close();
+            return;
+          }
+          exchange.getResponseHeaders().set("Content-Type", contentType);
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+  }
+
+  private static final byte[] LISTING_WITH_ONE_PDF =
+      ("<html><head><title>Index of /files/</title></head><body><ul>"
+              + "<li><a href=\"bericht.pdf\">bericht.pdf</a></li>"
+              + "</ul></body></html>")
+          .getBytes(StandardCharsets.UTF_8);
+
+  private static final byte[] PDF_BODY =
+      "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection".getBytes(StandardCharsets.UTF_8);
+
+  @Test
+  void directoryPageAndFileRequestsCarryTheSharedUserAgent() throws IOException {
+    executor = buildExecutor(new CrawlProperties(0, 0, 0), requestPolicy("OPAA-Indexer/web-test"));
+    List<String> userAgents = new CopyOnWriteArrayList<>();
+    server.createContext(
+        "/files/",
+        exchange -> {
+          userAgents.add(exchange.getRequestHeaders().getFirst("User-Agent"));
+          exchange.getResponseHeaders().set("Content-Type", "text/html");
+          exchange.sendResponseHeaders(200, LISTING_WITH_ONE_PDF.length);
+          exchange.getResponseBody().write(LISTING_WITH_ONE_PDF);
+          exchange.close();
+        });
+    server.createContext(
+        "/files/bericht.pdf",
+        exchange -> {
+          userAgents.add(exchange.getRequestHeaders().getFirst("User-Agent"));
+          exchange.getResponseHeaders().set("Content-Type", "application/pdf");
+          exchange.sendResponseHeaders(200, PDF_BODY.length);
+          exchange.getResponseBody().write(PDF_BODY);
+          exchange.close();
+        });
+    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute();
+
+    // the listing page, the detection prefix and the full download
+    assertThat(userAgents).hasSize(3).containsOnly("OPAA-Indexer/web-test");
+  }
+
+  @Test
+  void aThrottledDirectoryPageIsWaitedOutAndThenCrawled() throws IOException {
+    serveThrottled("/files/", 1, "text/html", LISTING_WITH_ONE_PDF);
+    serve("/files/bericht.pdf", "application/pdf", PDF_BODY);
+    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute();
+
+    verify(fileProcessingService, timeout(5000))
+        .ingest(DocumentIngests.that().file().named("bericht.pdf").in(library).match(), any());
+    assertThat(sleeps).containsExactly(Duration.ofSeconds(1));
+  }
+
+  @Test
+  void aThrottledFileDownloadIsWaitedOutInsteadOfFailingTheEntry() throws IOException {
+    serve("/files/", "text/html", LISTING_WITH_ONE_PDF);
+    serveThrottled("/files/bericht.pdf", 1, "application/pdf", PDF_BODY);
+    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute();
+
+    verify(fileProcessingService, timeout(5000))
+        .ingest(DocumentIngests.that().file().named("bericht.pdf").in(library).match(), any());
+    verify(indexingJobService).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    assertThat(sleeps).containsExactly(Duration.ofSeconds(1));
   }
 
   @Test

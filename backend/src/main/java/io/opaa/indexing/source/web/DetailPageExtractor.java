@@ -15,7 +15,6 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -188,10 +187,11 @@ public class DetailPageExtractor {
 
   /**
    * Thrown when the remote end itself declined to hand over a detail page (403, a 429 past every
-   * retry, a redirect to a foreign host, or a refused protocol downgrade) - kept distinct from an ordinary {@link
-   * IOException} so the caller can log and count it separately from a processing failure. {@link
-   * #userMessage()} is a German, cause-specific, sanitized run-log text, distinct from this
-   * exception's own message, which stays the unsanitized, developer-facing detail for the log only.
+   * retry, a redirect to a foreign host, or a refused protocol downgrade) - kept distinct from an
+   * ordinary {@link IOException} so the caller can log and count it separately from a processing
+   * failure. {@link #userMessage()} is a German, cause-specific, sanitized run-log text, distinct
+   * from this exception's own message, which stays the unsanitized, developer-facing detail for the
+   * log only.
    */
   public static final class RejectedByRemoteException extends RuntimeException {
     private final String userMessage;

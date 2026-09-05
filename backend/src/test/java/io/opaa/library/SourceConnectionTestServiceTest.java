@@ -20,6 +20,7 @@ import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedParser;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -79,6 +80,7 @@ class SourceConnectionTestServiceTest {
             libraryAccessService,
             new IndexingProperties(1000, 0, 50, null, null, null, null, 0),
             TargetAddressValidator.disabled(),
+            SourceRequestPolicy.defaults(),
             org.mockito.Mockito.mock(ConfluenceConnectionService.class));
   }
 
@@ -458,11 +460,12 @@ class SourceConnectionTestServiceTest {
                 0,
                 50,
                 null,
-                new IndexingProperties.Rss(200, 10, 10, 0, null, null, null, 0, 0),
+                new IndexingProperties.Rss(200, 10, 10, 0, null, null, 0, 0),
                 null,
                 null,
                 0),
             TargetAddressValidator.disabled(),
+            SourceRequestPolicy.defaults(),
             org.mockito.Mockito.mock(ConfluenceConnectionService.class));
     String html = "<table>" + "x".repeat(100) + "</table>";
     server.createContext(
@@ -597,11 +600,12 @@ class SourceConnectionTestServiceTest {
                 0,
                 50,
                 null,
-                new IndexingProperties.Rss(1, 0, 0, 0, null, null, null, 0, 0),
+                new IndexingProperties.Rss(1, 0, 0, 0, null, null, 0, 0),
                 null,
                 null,
                 0),
             TargetAddressValidator.disabled(),
+            SourceRequestPolicy.defaults(),
             org.mockito.Mockito.mock(ConfluenceConnectionService.class));
     String rss =
         """
@@ -652,11 +656,12 @@ class SourceConnectionTestServiceTest {
                 0,
                 50,
                 null,
-                new IndexingProperties.Rss(200, 10, 10, 0, null, null, null, 0, 0),
+                new IndexingProperties.Rss(200, 10, 10, 0, null, null, 0, 0),
                 null,
                 null,
                 0),
             TargetAddressValidator.disabled(),
+            SourceRequestPolicy.defaults(),
             org.mockito.Mockito.mock(ConfluenceConnectionService.class));
     String rss =
         "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel>"

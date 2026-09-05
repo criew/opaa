@@ -237,6 +237,8 @@ opaa:
     # applied by AttachmentIndexer regardless of which connector discovered the attachment.
     attachments:
       max-depth: ${OPAA_INDEXING_ATTACHMENTS_MAX_DEPTH:5}
+      max-per-parent: ${OPAA_INDEXING_ATTACHMENTS_MAX_PER_PARENT:10}
+      max-size-bytes: ${OPAA_INDEXING_ATTACHMENTS_MAX_SIZE_BYTES:20971520}
     # #267: SSRF hardening for HTTP_DIRECTORY/RSS_FEED fetches - see
     # io.opaa.sourceaccess.TargetAddressValidator.
     target-validation:

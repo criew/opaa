@@ -45,8 +45,8 @@ public record SourceRequestPolicy(String userAgent, RateLimitPolicy rateLimit, S
   }
 
   /**
-   * The headers every fetch starts from: {@code User-Agent}, plus {@code Authorization} when
-   * {@code authHeader} is non-null. A fresh, mutable map, so a caller adds its own.
+   * The headers every fetch starts from: {@code User-Agent}, plus {@code Authorization} when {@code
+   * authHeader} is non-null. A fresh, mutable map, so a caller adds its own.
    */
   public Map<String, String> headers(String authHeader) {
     Map<String, String> headers = new LinkedHashMap<>();

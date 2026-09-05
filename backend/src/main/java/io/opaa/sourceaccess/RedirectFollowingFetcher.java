@@ -109,8 +109,7 @@ public final class RedirectFollowingFetcher {
     for (int attempt = 0; ; attempt++) {
       HttpResponse<InputStream> response =
           sendOnce(httpClient, url, timeout, headers, targetAddressValidator, policy);
-      if (response.statusCode() != TOO_MANY_REQUESTS
-          || attempt >= rateLimitPolicy.maxRetries()) {
+      if (response.statusCode() != TOO_MANY_REQUESTS || attempt >= rateLimitPolicy.maxRetries()) {
         return response;
       }
       Duration wait = rateLimitPolicy.waitFor(response);

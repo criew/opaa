@@ -63,7 +63,11 @@ public final class OdfContentXml {
       } catch (BoundedStreams.LimitExceededException e) {
         // the decompressed entry is capped while it streams - a zip bomb never reaches the heap
         throw new IOException(
-            "ODF " + entryName + " exceeds the configured size limit of " + maxEntryBytes + " bytes",
+            "ODF "
+                + entryName
+                + " exceeds the configured size limit of "
+                + maxEntryBytes
+                + " bytes",
             e);
       }
       return true;

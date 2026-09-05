@@ -21,7 +21,9 @@ import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -73,6 +75,11 @@ class RssFeedIndexingExecutorTargetValidationTest {
           null,
           false);
 
+  /** The shared request policy: a test user agent, no retries, no real sleeping. */
+  private static SourceRequestPolicy requestPolicy() {
+    return new SourceRequestPolicy("OPAA-Indexer/test", RateLimitPolicy.NONE, duration -> {});
+  }
+
   @BeforeEach
   void setUp() throws IOException {
     server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -93,7 +100,7 @@ class RssFeedIndexingExecutorTargetValidationTest {
     TargetAddressValidator enabledValidator =
         new TargetAddressValidator(true, List.of("127.0.0.1"));
     IndexingProperties.Rss rss =
-        new IndexingProperties.Rss(200, 10_000, 10_000, 0, "OPAA-Indexer/test", null, null, 0, 0);
+        new IndexingProperties.Rss(200, 10_000, 10_000, 0, null, null, 0, 0);
     IndexingProperties properties = new IndexingProperties(0, 0, 0, null, rss, null, null, 0);
     executor =
         new RssFeedIndexingExecutor(
@@ -105,9 +112,10 @@ class RssFeedIndexingExecutorTargetValidationTest {
                 new BoundedDownloader(enabledValidator),
                 fileProcessingService,
                 mock(LibraryStorageQuotaService.class),
-                new io.opaa.indexing.source.attachment.AttachmentProperties(5)),
+                new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0)),
             properties,
             enabledValidator,
+            requestPolicy(),
             new IndexingRunTemplate(
                 indexingJobService,
                 indexingRunEventRepository,

@@ -59,9 +59,9 @@ Verwaltende sichtbar; das Laufprotokoll ebenso, weil es die URLs enthält.
 | Eigenschaft | Verhalten |
 |---|---|
 | Authentifizierung | Basic Auth, präemptiv bereits im ersten Request |
-| User-Agent | keiner gesetzt |
+| User-Agent | gemeinsam für alle Netzkonnektoren konfigurierbar (`opaa.indexing.http.user-agent`), Standard `OPAA-Indexer/1.0`; wahrheitsgemäß, keine Browser-Imitation |
 | Timeouts | 30 s Verbindungsaufbau, 60 s je Verzeichnisseite, 120 s je Datei |
-| Wiederholung | keine; ein Fehlschlag ist für diesen Lauf endgültig |
+| Wiederholung | nur bei HTTP 429: Verzeichnisseite wie Datei warten die in `Retry-After` genannte Zeit (gedeckelt auf `opaa.indexing.http.max-retry-after`, ohne Header fünf Sekunden) und wiederholen bis zu `opaa.indexing.http.max-rate-limit-retries`-mal; danach gilt die Anfrage als gescheitert. Jeder andere Fehlschlag ist für diesen Lauf endgültig |
 | Wartezeit zwischen Anfragen | keine |
 | Weiterleitungen | höchstens fünf; Details in Abschnitt 4 |
 
@@ -246,6 +246,9 @@ Unauthorized, check credentials" oder „HTTP 503 for URL …".
 | `opaa.indexing.crawl.max-depth` | `OPAA_INDEXING_CRAWL_MAX_DEPTH` | 10 | Verzeichnistiefe, Wurzel ist 0; 0 bedeutet Standard |
 | `opaa.indexing.crawl.max-entries` | `OPAA_INDEXING_CRAWL_MAX_ENTRIES` | 50000 | Dateien und besuchte Verzeichnisse zusammen |
 | `opaa.indexing.crawl.max-file-size-bytes` | `OPAA_INDEXING_CRAWL_MAX_FILE_SIZE_BYTES` | 104857600 (100 MiB) | Obergrenze je Datei |
+| `opaa.indexing.http.user-agent` | `OPAA_INDEXING_HTTP_USER_AGENT` | `OPAA-Indexer/1.0` | `User-Agent` aller Anfragen, gemeinsam mit Feed- und Confluence-Konnektor |
+| `opaa.indexing.http.max-rate-limit-retries` | `OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_RETRIES` | 6 | aufeinanderfolgende 429-Antworten, die eine Anfrage abwartet |
+| `opaa.indexing.http.max-retry-after` | `OPAA_INDEXING_HTTP_MAX_RETRY_AFTER` | 2m | Obergrenze einer einzelnen Wartezeit aus `Retry-After` |
 | `opaa.indexing.target-validation.enabled` | `OPAA_INDEXING_TARGET_VALIDATION_ENABLED` | `true` | Zieladressprüfung |
 | `opaa.indexing.target-validation.allowlist` | `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | leer | Hostnamen, die trotz privater Adresse zulässig sind |
 | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | | | Schlüssel für gespeicherte Zugangsdaten |
@@ -255,9 +258,8 @@ Thread-Pool, Kontingent, Mail-Grenzen und Chunking wie im Kapitel [Indexierung](
 
 ## 13. Nicht gebaut
 
-- Konfigurierbarer User-Agent und Wartezeit zwischen Anfragen; beides gibt es nur beim
-  Feed-Konnektor
-- Wiederholungsversuche und Backoff
+- Wartezeit zwischen Anfragen; die gibt es nur beim Feed-Konnektor
+- Wiederholungsversuche und Backoff über die 429-Wartezeit (Abschnitt 3) hinaus
 - Bedingte Anfragen mit ETag
 - Schonzeitraum, Rechteübernahme, ereignisgesteuerte Aktualisierung, Drosselung nach
   wiederholtem Scheitern

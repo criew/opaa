@@ -26,6 +26,7 @@ import io.opaa.indexing.source.confluence.ConfluenceSpace;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedParser;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.net.URI;
 import java.util.List;
@@ -69,6 +70,7 @@ class SourceConnectionTestServiceConfluenceTest {
             libraryAccessService,
             new IndexingProperties(1000, 0, 50, null, null, null, null, 0),
             TargetAddressValidator.disabled(),
+            SourceRequestPolicy.defaults(),
             confluenceConnectionService);
   }
 
