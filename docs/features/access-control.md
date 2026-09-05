@@ -188,6 +188,23 @@ des Verzeichnisses nur unter dessen Konten auf (ein gleichnamiges Subject eines 
 erbt keine Mitgliedschaft) und verwaltet ausschließlich Organisationseinheiten; ohne
 Standardanbieter bricht ein Lauf ohne Änderungen ab.
 
+**Anmeldeseite mit mehreren Anbietern (gebaut, #1332).** `GET /api/v1/auth/config` liefert ohne
+Anmeldung die aktivierten Anbieter, deren Schlüssel das Backend abrufen konnte — Anzeigename,
+Issuer-URI (zugleich die Authority des Anmeldeflusses), Client-ID, Standard-Kennzeichen und
+Reihenfolge, nichts über Claim-Zuordnung oder Konten. Die Anmeldeseite zeigt je Anbieter eine
+Schaltfläche in der konfigurierten Reihenfolge; vorgeschlagen (die eine primäre Schaltfläche)
+wird der zuletzt im Browser benutzte Anbieter, sonst der Standardanbieter, sonst der erste. Mit
+genau einem Anbieter bleibt es beim direkten Einstieg. „Mit anderem Konto anmelden" schickt
+`prompt=login` an den vorgeschlagenen Anbieter. Die SPA hält je Anbieter einen eigenen
+OIDC-Client; der Anbieter des laufenden Flusses und der aktiven Sitzung ist je Tab gemerkt
+(`sessionStorage`), der zuletzt benutzte nur als Vorschlag (`localStorage`). Der Callback
+`<Origin>/auth/callback` ist für alle Anbieter derselbe; wurde der Anbieter während des Flusses
+deaktiviert, erklärt die Seite das und führt zurück zur Anmeldung. Die Abmeldung ist ein
+RP-initiierter Logout beim Anbieter der aktiven Sitzung; ein Anbieter ohne
+`end_session_endpoint` endet in einer lokalen Abmeldung mit Hinweis. Antwortet das Backend auf
+ein Token mit `unknown_issuer` (Anbieter deaktiviert oder gelöscht), wird die Sitzung ohne
+Erneuerungsversuch beendet und der Grund benannt. Die Verwaltungsoberfläche (#1333) folgt.
+
 ---
 
 ## Verzeichnisdienst: Synchronisation und Kontenlebenszyklus

@@ -2,12 +2,23 @@ import Alert from '@mui/material/Alert'
 import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
+import Stack from '@mui/material/Stack'
+import Typography from '@mui/material/Typography'
 import LoginIcon from '@mui/icons-material/Login'
 import { Navigate, useLocation } from 'react-router'
 import BrandMark from '../components/BrandMark'
-import { useAuthStore } from '../stores/authStore'
+import { LAST_PROVIDER_STORAGE_KEY, useAuthStore } from '../stores/authStore'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { navyRoles, radius } from '../theme/tokens'
+
+function lastUsedProviderId(): string | null {
+  try {
+    return localStorage.getItem(LAST_PROVIDER_STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
 
 export default function LoginPage() {
   const location = useLocation()
@@ -17,6 +28,12 @@ export default function LoginPage() {
   const error = useAuthStore((s) => s.error)
   const isLoading = useAuthStore((s) => s.isLoading)
   const loginOidc = useAuthStore((s) => s.loginOidc)
+  const providers = useAuthStore((s) => s.providers)
+  const suggestedProvider = useAuthStore((s) => s.suggestedProvider)
+  // ADR-0025: the provider used last is proposed, else the default, else the first - it gets the
+  // one primary button of this surface (guidelines 5.1); the others are secondary
+  const suggested = suggestedProvider()
+  const lastUsedId = lastUsedProviderId()
 
   if (isAuthenticated) {
     const from =
@@ -69,17 +86,51 @@ export default function LoginPage() {
           </Alert>
         )}
 
-        {mode === 'oidc' && (
-          <Button
-            variant="contained"
-            fullWidth
-            onClick={loginOidc}
-            disabled={isLoading}
-            startIcon={<LoginIcon />}
-            sx={{ py: 1.375 }}
-          >
-            {isLoading ? 'Anmeldung läuft …' : 'Anmelden über den Verzeichnisdienst'}
-          </Button>
+        {mode === 'oidc' && providers.length > 0 && (
+          <Stack spacing={1.25} component="nav" aria-label="Anmeldung">
+            {providers.map((provider) => {
+              const isSuggested = provider.id === suggested?.id
+              const showsLastUsed = providers.length > 1 && provider.id === lastUsedId
+              return (
+                <Button
+                  key={provider.id}
+                  variant={isSuggested ? 'contained' : 'outlined'}
+                  fullWidth
+                  onClick={() => void loginOidc(provider.id)}
+                  disabled={isLoading}
+                  startIcon={<LoginIcon />}
+                  endIcon={
+                    showsLastUsed ? (
+                      <Chip label="Zuletzt verwendet" size="small" component="span" />
+                    ) : undefined
+                  }
+                  sx={{ py: 1.375 }}
+                >
+                  {isLoading && isSuggested
+                    ? 'Anmeldung läuft …'
+                    : `Anmelden über ${provider.displayName}`}
+                </Button>
+              )
+            })}
+            {suggested && (
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => void loginOidc(suggested.id, { switchAccount: true })}
+                disabled={isLoading}
+                sx={{ alignSelf: 'center' }}
+              >
+                {providers.length > 1
+                  ? `Mit anderem Konto bei ${suggested.displayName} anmelden`
+                  : 'Mit anderem Konto anmelden'}
+              </Button>
+            )}
+            {providers.length > 1 && (
+              <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
+                Wählen Sie den Identitätsanbieter, bei dem Sie ein Konto haben.
+              </Typography>
+            )}
+          </Stack>
         )}
       </Box>
     </Box>

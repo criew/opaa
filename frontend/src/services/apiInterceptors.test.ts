@@ -82,4 +82,34 @@ describe('setupAuthInterceptors', () => {
     expect(renewToken).toHaveBeenCalledTimes(1)
     expect(onSessionExpired).toHaveBeenCalledTimes(1)
   })
+
+  // ADR-0025: unknown_issuer means the provider of this session was disabled or deleted - a
+  // renewed token would carry the same issuer, so no renew is attempted and the reason is passed
+  // on for the matching explanation.
+  it('expires the session without a renew when the 401 names an unknown issuer', async () => {
+    server.use(
+      http.get(
+        '/api/test-unknown-issuer',
+        () =>
+          new HttpResponse(null, {
+            status: 401,
+            headers: {
+              'WWW-Authenticate':
+                'Bearer error="invalid_token", error_description="unknown_issuer"',
+            },
+          }),
+      ),
+    )
+
+    const client = axios.create({ baseURL: '/api' })
+    const renewToken = vi.fn(async () => true)
+    const onSessionExpired = vi.fn()
+
+    setupAuthInterceptors(client, () => 'token', renewToken, onSessionExpired)
+
+    await expect(client.get('/test-unknown-issuer')).rejects.toThrow()
+
+    expect(renewToken).not.toHaveBeenCalled()
+    expect(onSessionExpired).toHaveBeenCalledWith('unknown_issuer')
+  })
 })
