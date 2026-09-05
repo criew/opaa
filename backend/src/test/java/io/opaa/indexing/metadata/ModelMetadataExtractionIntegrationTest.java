@@ -141,7 +141,12 @@ class ModelMetadataExtractionIntegrationTest {
     assertThat(value.getVocabularyCode()).isEqualTo("SATZUNG_ORDNUNG");
     assertThat(value.getConfidence()).isEqualTo(0.93);
     assertThat(value.getModelId()).isEqualTo("test-model");
-    assertThat(value.getExtractionVersion()).isEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION);
+    // The version names the producer of the value: the model step's own, never step 1's - raising
+    // a regular expression there must not make a model-filled value claim a prompt it never saw.
+    assertThat(value.getExtractionVersion()).isEqualTo(ModelMetadataExtractor.EXTRACTION_VERSION);
+    assertThat(ModelMetadataExtractor.EXTRACTION_VERSION)
+        .as("the two versions are separate counters, so this assertion has something to say")
+        .isNotEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION);
     ModelExtractionStats stats = counters.statsFor(library.getId());
     assertThat(stats.calls()).isEqualTo(1);
     assertThat(stats.acceptedValues()).isEqualTo(1);
