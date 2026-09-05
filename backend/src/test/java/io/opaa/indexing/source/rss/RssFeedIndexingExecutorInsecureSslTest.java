@@ -21,6 +21,7 @@ import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.IndexingRunEventRepository;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -233,7 +234,6 @@ class RssFeedIndexingExecutorInsecureSslTest {
         new RssFeedIndexingExecutor(
             new RssFeedParser(),
             fileProcessingService,
-            indexingJobService,
             documentRepository,
             feedStateRepository,
             new io.opaa.indexing.source.attachment.AttachmentIndexer(
@@ -242,9 +242,13 @@ class RssFeedIndexingExecutorInsecureSslTest {
                 mock(LibraryStorageQuotaService.class),
                 new io.opaa.indexing.source.attachment.AttachmentProperties(5)),
             properties,
-            indexingRunEventRepository,
             targetAddressValidator,
-            mock(LibraryStorageQuotaService.class));
+            new IndexingRunTemplate(
+                indexingJobService,
+                indexingRunEventRepository,
+                mock(io.opaa.indexing.StaleDocumentCleanupService.class),
+                documentRepository,
+                mock(LibraryStorageQuotaService.class)));
   }
 
   private KnowledgeLibrary library(String feedUrl, boolean sourceInsecureSsl) {

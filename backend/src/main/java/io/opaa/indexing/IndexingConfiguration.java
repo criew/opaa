@@ -18,6 +18,7 @@ import io.opaa.indexing.pipeline.office.PptxDocumentPipeline;
 import io.opaa.indexing.pipeline.pdf.PdfDocumentPipeline;
 import io.opaa.indexing.pipeline.tabular.TabularDocumentPipeline;
 import io.opaa.indexing.pipeline.tabular.TabularProperties;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
@@ -322,15 +323,29 @@ public class IndexingConfiguration {
     return new ConfluenceClientFactory(confluenceProperties, targetAddressValidator);
   }
 
-  /**
-   * Shared by every {@link SourceIndexingExecutor} bean below that runs a full, "vollständig
-   * auflistend" crawl (FILESYSTEM, HTTP_DIRECTORY) - {@code RssFeedIndexingExecutor} deliberately
-   * does not depend on this (ADR-0017 decision 5).
-   */
   @Bean
   StaleDocumentCleanupService staleDocumentCleanupService(
       DocumentRepository documentRepository, VectorChunkStore vectorChunkStore) {
     return new StaleDocumentCleanupService(documentRepository, vectorChunkStore);
+  }
+
+  /**
+   * The run frame every {@link SourceIndexingExecutor} bean below runs inside: job bookkeeping,
+   * protocol, result mapping, reconciliation and cost, once for all connectors.
+   */
+  @Bean
+  IndexingRunTemplate indexingRunTemplate(
+      IndexingJobService indexingJobService,
+      IndexingRunEventRepository indexingRunEventRepository,
+      StaleDocumentCleanupService staleDocumentCleanupService,
+      DocumentRepository documentRepository,
+      LibraryStorageQuotaService libraryStorageQuotaService) {
+    return new IndexingRunTemplate(
+        indexingJobService,
+        indexingRunEventRepository,
+        staleDocumentCleanupService,
+        documentRepository,
+        libraryStorageQuotaService);
   }
 
   // Declared as SourceIndexingExecutor, not the concrete executor type: all three beans below
@@ -341,23 +356,15 @@ public class IndexingConfiguration {
   SourceIndexingExecutor asyncIndexingExecutor(
       DocumentService documentService,
       FileProcessingService fileProcessingService,
-      IndexingJobService indexingJobService,
       FilesystemPathAllowlist filesystemPathAllowlist,
-      IndexingRunEventRepository indexingRunEventRepository,
-      LibraryStorageQuotaService libraryStorageQuotaService,
       LibraryFolderService libraryFolderService,
-      StaleDocumentCleanupService staleDocumentCleanupService,
-      DocumentRepository documentRepository) {
+      IndexingRunTemplate indexingRunTemplate) {
     return new AsyncIndexingExecutor(
         documentService,
         fileProcessingService,
-        indexingJobService,
         filesystemPathAllowlist,
-        indexingRunEventRepository,
-        libraryStorageQuotaService,
         libraryFolderService,
-        staleDocumentCleanupService,
-        documentRepository);
+        indexingRunTemplate);
   }
 
   @Bean
@@ -376,24 +383,18 @@ public class IndexingConfiguration {
       AutoindexCrawlerService autoindexCrawlerService,
       BoundedDownloader boundedDownloader,
       FileProcessingService fileProcessingService,
-      IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
-      IndexingRunEventRepository indexingRunEventRepository,
-      LibraryStorageQuotaService libraryStorageQuotaService,
-      StaleDocumentCleanupService staleDocumentCleanupService,
       CrawlProperties crawlProperties,
-      LibraryFolderService libraryFolderService) {
+      LibraryFolderService libraryFolderService,
+      IndexingRunTemplate indexingRunTemplate) {
     return new UrlIndexingExecutor(
         autoindexCrawlerService,
         boundedDownloader,
         fileProcessingService,
-        indexingJobService,
         documentRepository,
-        indexingRunEventRepository,
-        libraryStorageQuotaService,
-        staleDocumentCleanupService,
         crawlProperties,
-        libraryFolderService);
+        libraryFolderService,
+        indexingRunTemplate);
   }
 
   @Bean
@@ -405,25 +406,21 @@ public class IndexingConfiguration {
   SourceIndexingExecutor rssFeedIndexingExecutor(
       RssFeedParser rssFeedParser,
       FileProcessingService fileProcessingService,
-      IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
       RssFeedStateRepository rssFeedStateRepository,
       AttachmentIndexer attachmentIndexer,
       IndexingProperties properties,
-      IndexingRunEventRepository indexingRunEventRepository,
       TargetAddressValidator targetAddressValidator,
-      LibraryStorageQuotaService libraryStorageQuotaService) {
+      IndexingRunTemplate indexingRunTemplate) {
     return new RssFeedIndexingExecutor(
         rssFeedParser,
         fileProcessingService,
-        indexingJobService,
         documentRepository,
         rssFeedStateRepository,
         attachmentIndexer,
         properties,
-        indexingRunEventRepository,
         targetAddressValidator,
-        libraryStorageQuotaService);
+        indexingRunTemplate);
   }
 
   /**
@@ -438,26 +435,20 @@ public class IndexingConfiguration {
       ConfluenceProperties confluenceProperties,
       FileProcessingService fileProcessingService,
       AttachmentIndexer attachmentIndexer,
-      IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
-      IndexingRunEventRepository indexingRunEventRepository,
-      LibraryStorageQuotaService libraryStorageQuotaService,
-      StaleDocumentCleanupService staleDocumentCleanupService,
       ConfluenceSyncStateRepository confluenceSyncStateRepository,
-      VectorChunkStore vectorChunkStore) {
+      VectorChunkStore vectorChunkStore,
+      IndexingRunTemplate indexingRunTemplate) {
     return new ConfluenceIndexingExecutor(
         confluenceClientFactory,
         confluenceProperties,
         fileProcessingService,
         attachmentIndexer,
-        indexingJobService,
         documentRepository,
-        indexingRunEventRepository,
-        libraryStorageQuotaService,
-        staleDocumentCleanupService,
         confluenceSyncStateRepository,
         vectorChunkStore,
-        Clock.systemUTC());
+        Clock.systemUTC(),
+        indexingRunTemplate);
   }
 
   /**

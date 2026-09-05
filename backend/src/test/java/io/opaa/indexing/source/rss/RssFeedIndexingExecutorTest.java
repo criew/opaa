@@ -28,6 +28,7 @@ import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.StaleDocumentCleanupService;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.attachment.AttachmentProfile;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -127,7 +128,6 @@ class RssFeedIndexingExecutorTest {
     return new RssFeedIndexingExecutor(
         new RssFeedParser(),
         fileProcessingService,
-        indexingJobService,
         documentRepository,
         feedStateRepository,
         new io.opaa.indexing.source.attachment.AttachmentIndexer(
@@ -136,9 +136,13 @@ class RssFeedIndexingExecutorTest {
             storageQuotaService,
             new io.opaa.indexing.source.attachment.AttachmentProperties(5)),
         properties,
-        indexingRunEventRepository,
         targetAddressValidator,
-        storageQuotaService);
+        new IndexingRunTemplate(
+            indexingJobService,
+            indexingRunEventRepository,
+            mock(StaleDocumentCleanupService.class),
+            documentRepository,
+            storageQuotaService));
   }
 
   @AfterEach
@@ -1133,6 +1137,11 @@ class RssFeedIndexingExecutorTest {
     // documentsIndexedTotal counts the entry's own document plus its attachment (2), while
     // documentsProcessed still counts only the one feed entry.
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(2));
+    // and the run's cost carries the attachment share, like every connector's - requests and
+    // throttles stay 0, a feed run has no meter for them
+    verify(indexingJobService)
+        .recordRunMetrics(
+            any(), eq(new io.opaa.indexing.IndexingRunCost(0, 0, 0L, 1, 0, 0, false)));
   }
 
   @Test

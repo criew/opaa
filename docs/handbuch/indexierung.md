@@ -237,6 +237,15 @@ beginnt:
   oder eine bedingte HTTP-Anfrage, und sich den Download sparen. Das ist eine Optimierung; die
   verbindliche Entscheidung trifft immer die Prüfsumme in der Dokumentstrecke.
 
+Alles Übrige ist nicht Sache des Konnektors, sondern eines **gemeinsamen Laufrahmens**, in dem
+jeder Konnektor läuft: das Anlegen von Zählern und Protokoll, die Prüfung der Betriebsart, die
+Zuordnung jedes Elementergebnisses zu Zähler und Protokolleintrag (Abschnitt 8.1), die Buchführung
+über Anhänge, die Bereinigung verschwundener Dokumente nach vollständiger Aufzählung (Abschnitt 7),
+die Kennzahlen des Laufs (Abschnitt 8.3) und die Übersetzung von Abbrüchen in eine verständliche
+Fehlermeldung. Deshalb lauten die Meldungen eines Laufabbruchs bei allen Konnektoren gleich, etwa
+„Lauf unterbrochen" oder „Die Bibliothek wurde während des Laufs gelöscht.", und ein neuer Konnektor bringt nur die drei oben
+genannten Dinge mit.
+
 > Welche Mechanismen und Grenzwerte das je Quelle konkret sind, steht in den Kapiteln
 > [Verzeichnis im Dateisystem](konnektor-filesystem.md),
 > [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md) und
@@ -526,9 +535,11 @@ MANAGER an der Bibliothek, weil sie interne Pfade und URLs der Quellkonfiguratio
 Scheitern zwei geplante Läufe hintereinander, zeigt die Bibliothek ein Warnbanner. Manuelle
 Versuche zählen dafür nicht mit, damit ein Testlauf den Befund nicht überschreibt.
 
-Bei Confluence zeigt jeder Lauf zusätzlich seine Betriebsart, das Kennzeichen „unvollständig,
-wird fortgesetzt" und eine Kennzahlenzeile (Anfragen, Drosselungen, Anhänge, Dauer); eine
-unvollständige Auflistung bleibt dauerhaft an der Bibliothek sichtbar.
+Jeder Lauf zeigt zusätzlich eine Kennzahlenzeile mit Anhängen (indiziert, übersprungen,
+fehlgeschlagen) und Dauer. Anfragen an die Quelle und Drosselungen erscheinen nur bei Confluence,
+dem einzigen Konnektor, der sie zählt. Bei Confluence kommen außerdem die Betriebsart und das
+Kennzeichen „unvollständig, wird fortgesetzt" hinzu; eine unvollständige Auflistung bleibt
+dauerhaft an der Bibliothek sichtbar.
 
 Systemweit sieht ein Systemadministrator zusätzlich eine Liste der Dokumente **ohne einen
 einzigen Chunk**, der typische Befund für eingescannte PDFs, sowie den Pipeline-Versionsstand je

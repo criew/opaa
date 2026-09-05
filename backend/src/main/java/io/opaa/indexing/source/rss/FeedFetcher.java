@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.rss;
 
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.IndexingRunProgress;
+import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.ByteArrayInputStream;
@@ -52,17 +52,12 @@ class FeedFetcher {
       HttpResponse<InputStream> feedResponse, List<RssFeedEntry> entries, boolean truncated) {}
 
   /**
-   * Fetches, reads and parses {@code feedUrl} in one step, returning {@link Optional#empty()} once
-   * the run is already terminal (unchanged {@code 304}, transport error, unparseable/oversized
-   * feed) - {@code progress} has already been failed/completed in that case, and the caller just
-   * returns.
+   * Fetches, reads and parses {@code feedUrl} in one step. An unchanged feed ({@code 304}) returns
+   * {@link Optional#empty()} - the run ends with nothing to do; an HTTP error, an unparseable or an
+   * oversized feed ends the run with a German message ({@link IndexingRunFailedException}).
    */
   Optional<LoadedFeed> fetchAndParse(
-      HttpClient httpClient,
-      UUID libraryId,
-      String feedUrl,
-      String authHeader,
-      IndexingRunProgress progress)
+      HttpClient httpClient, UUID libraryId, String feedUrl, String authHeader)
       throws IOException, InterruptedException {
     Optional<RssFeedState> feedState = findState(libraryId, feedUrl);
     HttpResponse<InputStream> feedResponse = fetchFeed(httpClient, feedUrl, feedState, authHeader);
@@ -70,15 +65,12 @@ class FeedFetcher {
     if (feedResponse.statusCode() == 304) {
       closeQuietly(feedResponse.body());
       log.info("RSS feed unchanged (304), ending run: {}", feedUrl);
-      progress.setTotal(0);
-      progress.complete();
       return Optional.empty();
     }
     if (feedResponse.statusCode() != 200) {
       closeQuietly(feedResponse.body());
-      progress.fail(
+      throw new IndexingRunFailedException(
           "Der RSS-Feed konnte nicht abgerufen werden: HTTP " + feedResponse.statusCode());
-      return Optional.empty();
     }
 
     List<RssFeedEntry> entries;
@@ -88,14 +80,12 @@ class FeedFetcher {
     } catch (RssFeedParseException e) {
       // German, user-facing message straight from the parser.
       log.warn("RSS feed did not parse: {}", feedUrl, e);
-      progress.fail(e.getMessage());
-      return Optional.empty();
+      throw new IndexingRunFailedException(e.getMessage(), e);
     } catch (FeedTooLargeException e) {
-      progress.fail(
+      throw new IndexingRunFailedException(
           "Der RSS-Feed überschreitet die zulässige Größe von "
               + properties.maxFeedSizeBytes()
               + " Byte.");
-      return Optional.empty();
     }
 
     // Whether entries were deferred (truncated below, or skipped because the remote end

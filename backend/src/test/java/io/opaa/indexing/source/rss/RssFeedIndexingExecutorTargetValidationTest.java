@@ -17,6 +17,7 @@ import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.IndexingRunEventRepository;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
@@ -98,7 +99,6 @@ class RssFeedIndexingExecutorTargetValidationTest {
         new RssFeedIndexingExecutor(
             new RssFeedParser(),
             fileProcessingService,
-            indexingJobService,
             documentRepository,
             feedStateRepository,
             new io.opaa.indexing.source.attachment.AttachmentIndexer(
@@ -107,9 +107,13 @@ class RssFeedIndexingExecutorTargetValidationTest {
                 mock(LibraryStorageQuotaService.class),
                 new io.opaa.indexing.source.attachment.AttachmentProperties(5)),
             properties,
-            indexingRunEventRepository,
             enabledValidator,
-            org.mockito.Mockito.mock(io.opaa.library.LibraryStorageQuotaService.class));
+            new IndexingRunTemplate(
+                indexingJobService,
+                indexingRunEventRepository,
+                mock(io.opaa.indexing.StaleDocumentCleanupService.class),
+                documentRepository,
+                mock(LibraryStorageQuotaService.class)));
   }
 
   @AfterEach
