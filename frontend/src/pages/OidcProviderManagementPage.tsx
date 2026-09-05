@@ -278,6 +278,14 @@ export default function OidcProviderManagementPage() {
         </Alert>
       )}
 
+      {!isLoading && providers.length > 0 && !providers.some((p) => p.isDefault) && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Kein Anbieter ist Standardanbieter – die Erstadministrator-Regel und der
+          Verzeichnisabgleich greifen nicht. Machen Sie einen aktivierten, erreichbaren Anbieter zum
+          Standard oder stellen Sie den Umgebungsanbieter mit OPAA_OIDC_BOOTSTRAP=force wieder her.
+        </Alert>
+      )}
+
       {isLoading ? (
         <Typography color="text.secondary">Anbieter werden geladen …</Typography>
       ) : providers.length === 0 ? (
@@ -307,9 +315,9 @@ export default function OidcProviderManagementPage() {
         key={dialog.opening}
         open={dialog.open}
         provider={dialog.provider}
-        onClose={() => setDialog((d) => ({ open: false, opening: d.opening }))}
+        onClose={() => setDialog((d) => ({ ...d, open: false }))}
         onSaved={(saved) => {
-          setDialog((d) => ({ open: false, opening: d.opening }))
+          setDialog((d) => ({ ...d, open: false }))
           notify(`„${saved.displayName}“ wurde gespeichert.`, 'success')
         }}
       />

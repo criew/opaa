@@ -25,6 +25,8 @@ export const ROLES_CLAIM_CONFIRMATION =
   'führend: Rollen werden bei jeder Anmeldung aus dem Token übernommen, die manuelle Rollenvergabe ' +
   'für Konten dieses Anbieters ist gesperrt. Der letzte Systemverwalter bleibt geschützt. Möchten ' +
   'Sie den Rollen-Claim setzen?'
+export const ROLES_CLAIM_NO_VALUES_WARNING =
+  'Ohne Rollenwerte entzieht der Anbieter allen seinen Konten SYSTEM_ADMIN und AUDITOR.'
 const REQUIRED_FIELDS_HINT = 'Anzeigename, Issuer-URI und Client-ID sind erforderlich.'
 
 interface OidcProviderDraft {
@@ -123,7 +125,8 @@ export default function OidcProviderFormDialog({
   const [submitting, setSubmitting] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
-  const [rolesConfirmation, setRolesConfirmation] = useState(false)
+  // "the confirmation is being asked" - never "it was given": only the confirmation button saves
+  const [rolesConfirmationOpen, setRolesConfirmationOpen] = useState(false)
 
   const isValid =
     draft.displayName.trim() !== '' && draft.issuerUri.trim() !== '' && draft.clientId.trim() !== ''
@@ -175,12 +178,14 @@ export default function OidcProviderFormDialog({
       setError(REQUIRED_FIELDS_HINT)
       return
     }
-    if (introducesRolesClaim && !rolesConfirmation) {
-      setRolesConfirmation(true)
+    if (introducesRolesClaim) {
+      setRolesConfirmationOpen(true)
       return
     }
     void save()
   }
+
+  const noRoleValues = draft.systemAdminRole.trim() === '' && draft.auditorRole.trim() === ''
 
   const title = provider ? `„${provider.displayName}“ bearbeiten` : 'Identitätsanbieter anlegen'
 
@@ -198,24 +203,36 @@ export default function OidcProviderFormDialog({
             {testResult.message}
           </Alert>
         )}
-        {rolesConfirmation && (
+        {rolesConfirmationOpen && (
+          // a live region (MUI's default role="alert"): announced without a focus move, and the
+          // confirming button takes the focus so the answer is one keystroke away
           <Alert
             severity="warning"
             sx={{ mb: 2 }}
-            role="alertdialog"
-            aria-label="Rollen-Claim bestätigen"
             action={
               <Stack direction="row" spacing={1}>
-                <Button size="small" onClick={() => setRolesConfirmation(false)}>
+                <Button
+                  size="small"
+                  onClick={() => setRolesConfirmationOpen(false)}
+                  disabled={submitting}
+                >
                   Abbrechen
                 </Button>
-                <Button size="small" variant="contained" onClick={() => void save()}>
+                <Button
+                  // eslint-disable-next-line jsx-a11y-x/no-autofocus
+                  autoFocus
+                  size="small"
+                  variant="contained"
+                  onClick={() => void save()}
+                  disabled={submitting}
+                >
                   Rollen-Claim setzen
                 </Button>
               </Stack>
             }
           >
             {ROLES_CLAIM_CONFIRMATION}
+            {noRoleValues ? ` ${ROLES_CLAIM_NO_VALUES_WARNING}` : ''}
           </Alert>
         )}
         <Stack spacing={2} sx={{ mt: 1 }}>
@@ -338,9 +355,11 @@ export default function OidcProviderFormDialog({
         >
           {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
         </Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={submitting || !isValid}>
-          {submitting ? 'Wird gespeichert …' : provider ? 'Speichern' : 'Anlegen'}
-        </Button>
+        {!rolesConfirmationOpen && (
+          <Button variant="contained" onClick={handleSubmit} disabled={submitting || !isValid}>
+            {submitting ? 'Wird gespeichert …' : provider ? 'Speichern' : 'Anlegen'}
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   )
