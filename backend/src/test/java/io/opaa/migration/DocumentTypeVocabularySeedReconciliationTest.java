@@ -10,7 +10,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -53,10 +52,11 @@ class DocumentTypeVocabularySeedReconciliationTest extends AbstractMigrationTest
     // reach this comparison too.
     applyChangelog(connection, MASTER_CHANGELOG_PATH);
 
+    // Compared in order, unsorted on purpose: TestVocabularies promises to list the entries in
+    // sort_order, and a snapshot listing them in a different one would mismatch the repository.
     assertThat(readSeededVocabulary())
         .containsExactlyElementsOf(
             TestVocabularies.deliveredEntries().stream()
-                .sorted(Comparator.comparingInt(DocumentTypeVocabularyEntry::getSortOrder))
                 .map(DocumentTypeVocabularySeedReconciliationTest::render)
                 .toList());
   }
@@ -69,7 +69,7 @@ class DocumentTypeVocabularySeedReconciliationTest extends AbstractMigrationTest
     try (Statement statement = connection.createStatement();
         ResultSet rs =
             statement.executeQuery(
-                "SELECT code, label, sort_order FROM document_type_vocabulary ORDER BY sort_order")) {
+                "SELECT code, label, sort_order FROM document_type_vocabulary ORDER BY sort_order, code")) {
       while (rs.next()) {
         String code = rs.getString("code");
         rendered.add(
