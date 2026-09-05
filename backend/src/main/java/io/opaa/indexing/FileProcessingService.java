@@ -15,7 +15,7 @@ import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
-import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
+import io.opaa.indexing.source.attachment.AttachmentLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.attachment.AttachmentSource;
 import io.opaa.library.KnowledgeLibrary;
@@ -87,7 +87,7 @@ public class FileProcessingService {
   private final ObjectProvider<AttachmentIndexer> attachmentIndexerProvider;
 
   /** The generalized attachment path's limits for a Mail attachment - see its own Javadoc. */
-  private final AttachmentDownloadLimits mailAttachmentLimits;
+  private final AttachmentLimits mailAttachmentLimits;
 
   /** The core-field extraction between parsing and {@link #storeChunks} (ADR-0024). */
   private final DocumentMetadataService documentMetadataService;
@@ -102,7 +102,7 @@ public class FileProcessingService {
       IndexingProperties indexingProperties,
       Executor embeddingExecutor,
       ObjectProvider<AttachmentIndexer> attachmentIndexerProvider,
-      AttachmentDownloadLimits mailAttachmentLimits,
+      AttachmentLimits mailAttachmentLimits,
       DocumentMetadataService documentMetadataService) {
     this.pipelineRegistry = pipelineRegistry;
     this.documentRepository = documentRepository;

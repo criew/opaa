@@ -1,6 +1,6 @@
 package io.opaa.indexing.pipeline.office;
 
-import java.io.FilterInputStream;
+import io.opaa.sourceaccess.BoundedStreams;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -49,7 +49,7 @@ public final class OdfContentXml {
       if (entry == null) {
         return false;
       }
-      try (InputStream in = boundedStream(zip.getInputStream(entry), entryName, maxEntryBytes)) {
+      try (InputStream in = BoundedStreams.input(zip.getInputStream(entry), maxEntryBytes)) {
         SAXParserFactory factory = SAXParserFactory.newInstance();
         factory.setNamespaceAware(false);
         factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
@@ -60,43 +60,15 @@ public final class OdfContentXml {
         factory.setXIncludeAware(false);
         SAXParser parser = factory.newSAXParser();
         parser.parse(in, handler);
+      } catch (BoundedStreams.LimitExceededException e) {
+        // the decompressed entry is capped while it streams - a zip bomb never reaches the heap
+        throw new IOException(
+            "ODF " + entryName + " exceeds the configured size limit of " + maxEntryBytes + " bytes",
+            e);
       }
       return true;
     } catch (ParserConfigurationException | SAXException e) {
       throw new IOException("Could not parse ODF " + entryName + " of " + file.getFileName(), e);
     }
-  }
-
-  /** Wraps {@code in} so reading past {@code maxBytes} fails loudly instead of exhausting heap. */
-  private static InputStream boundedStream(InputStream in, String entryName, long maxBytes) {
-    return new FilterInputStream(in) {
-      private long total;
-
-      @Override
-      public int read() throws IOException {
-        int b = super.read();
-        if (b != -1) {
-          checkLimit(++total);
-        }
-        return b;
-      }
-
-      @Override
-      public int read(byte[] b, int off, int len) throws IOException {
-        int n = super.read(b, off, len);
-        if (n > 0) {
-          total += n;
-          checkLimit(total);
-        }
-        return n;
-      }
-
-      private void checkLimit(long readSoFar) throws IOException {
-        if (readSoFar > maxBytes) {
-          throw new IOException(
-              "ODF " + entryName + " exceeds the configured size limit of " + maxBytes + " bytes");
-        }
-      }
-    };
   }
 }

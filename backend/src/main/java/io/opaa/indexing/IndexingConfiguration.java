@@ -21,7 +21,7 @@ import io.opaa.indexing.pipeline.tabular.TabularProperties;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
-import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
+import io.opaa.indexing.source.attachment.AttachmentLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
@@ -44,6 +44,7 @@ import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.UploadProperties;
 import io.opaa.observability.IndexingMetrics;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.time.Clock;
 import java.util.List;
@@ -258,14 +259,13 @@ public class IndexingConfiguration {
   /**
    * The generalized attachment path's limits for a Mail attachment (ADR-0022, Entscheidung 6):
    * {@code maxAttachmentsPerMessage}/{@code maxAttachmentBytes} mirror {@code MailProperties}' own
-   * parse-time ceilings, while {@code requestDelayMs}/{@code userAgent} are unused for the {@code
-   * AttachmentSource.LocalFile} a Mail attachment always is. The nesting depth is {@link
-   * AttachmentIndexer}'s, one value for every connector.
+   * parse-time ceilings. The nesting depth is {@link AttachmentIndexer}'s, one value for every
+   * connector.
    */
   @Bean
-  AttachmentDownloadLimits mailAttachmentDownloadLimits(MailProperties mailProperties) {
-    return new AttachmentDownloadLimits(
-        mailProperties.maxAttachmentsPerMessage(), mailProperties.maxAttachmentBytes(), 0L, "");
+  AttachmentLimits mailAttachmentLimits(MailProperties mailProperties) {
+    return new AttachmentLimits(
+        mailProperties.maxAttachmentsPerMessage(), mailProperties.maxAttachmentBytes());
   }
 
   @Bean
@@ -279,7 +279,7 @@ public class IndexingConfiguration {
       IndexingProperties indexingProperties,
       TaskExecutor embeddingTaskExecutor,
       ObjectProvider<AttachmentIndexer> attachmentIndexer,
-      AttachmentDownloadLimits mailAttachmentDownloadLimits,
+      AttachmentLimits mailAttachmentLimits,
       DocumentMetadataService documentMetadataService) {
     return new FileProcessingService(
         documentPipelineRegistry,
@@ -291,7 +291,7 @@ public class IndexingConfiguration {
         indexingProperties,
         embeddingTaskExecutor,
         attachmentIndexer,
-        mailAttachmentDownloadLimits,
+        mailAttachmentLimits,
         documentMetadataService);
   }
 
@@ -312,13 +312,26 @@ public class IndexingConfiguration {
   }
 
   /**
-   * Builds per-library Confluence clients (ADR-0023); shares the target validation every other
-   * outbound source fetch uses.
+   * What every request to a source OPAA does not operate carries and tolerates ({@code
+   * opaa.indexing.http}) - one instance, so every connector identifies itself and waits out a
+   * {@code 429} the same way.
+   */
+  @Bean
+  SourceRequestPolicy sourceRequestPolicy(SourceHttpProperties sourceHttpProperties) {
+    return sourceHttpProperties.toRequestPolicy();
+  }
+
+  /**
+   * Builds per-library Confluence clients (ADR-0023); shares the target validation and the request
+   * policy every other outbound source fetch uses.
    */
   @Bean
   ConfluenceClientFactory confluenceClientFactory(
-      ConfluenceProperties confluenceProperties, TargetAddressValidator targetAddressValidator) {
-    return new ConfluenceClientFactory(confluenceProperties, targetAddressValidator);
+      ConfluenceProperties confluenceProperties,
+      TargetAddressValidator targetAddressValidator,
+      SourceRequestPolicy sourceRequestPolicy) {
+    return new ConfluenceClientFactory(
+        confluenceProperties, targetAddressValidator, sourceRequestPolicy);
   }
 
   @Bean
@@ -367,13 +380,17 @@ public class IndexingConfiguration {
 
   @Bean
   AutoindexCrawlerService autoindexCrawlerService(
-      TargetAddressValidator targetAddressValidator, CrawlProperties crawlProperties) {
-    return new AutoindexCrawlerService(targetAddressValidator, crawlProperties);
+      TargetAddressValidator targetAddressValidator,
+      CrawlProperties crawlProperties,
+      SourceRequestPolicy sourceRequestPolicy) {
+    return new AutoindexCrawlerService(
+        targetAddressValidator, crawlProperties, sourceRequestPolicy);
   }
 
   @Bean
-  BoundedDownloader boundedDownloader(TargetAddressValidator targetAddressValidator) {
-    return new BoundedDownloader(targetAddressValidator);
+  BoundedDownloader boundedDownloader(
+      TargetAddressValidator targetAddressValidator, SourceRequestPolicy sourceRequestPolicy) {
+    return new BoundedDownloader(targetAddressValidator, sourceRequestPolicy);
   }
 
   @Bean
@@ -409,6 +426,7 @@ public class IndexingConfiguration {
       AttachmentIndexer attachmentIndexer,
       IndexingProperties properties,
       TargetAddressValidator targetAddressValidator,
+      SourceRequestPolicy sourceRequestPolicy,
       IndexingRunTemplate indexingRunTemplate) {
     return new RssFeedIndexingExecutor(
         rssFeedParser,
@@ -418,6 +436,7 @@ public class IndexingConfiguration {
         attachmentIndexer,
         properties,
         targetAddressValidator,
+        sourceRequestPolicy,
         indexingRunTemplate);
   }
 

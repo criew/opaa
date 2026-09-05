@@ -1,7 +1,9 @@
 package io.opaa.indexing.source.web;
 
+import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -42,15 +43,25 @@ public class AutoindexCrawlerService {
 
   private final TargetAddressValidator targetAddressValidator;
   private final CrawlProperties crawlProperties;
+  private final SourceRequestPolicy requestPolicy;
 
   public AutoindexCrawlerService(TargetAddressValidator targetAddressValidator) {
     this(targetAddressValidator, new CrawlProperties(0, 0, 0));
   }
 
+  /** With {@link SourceRequestPolicy#defaults()}. */
   public AutoindexCrawlerService(
       TargetAddressValidator targetAddressValidator, CrawlProperties crawlProperties) {
+    this(targetAddressValidator, crawlProperties, SourceRequestPolicy.defaults());
+  }
+
+  public AutoindexCrawlerService(
+      TargetAddressValidator targetAddressValidator,
+      CrawlProperties crawlProperties,
+      SourceRequestPolicy requestPolicy) {
     this.targetAddressValidator = targetAddressValidator;
     this.crawlProperties = crawlProperties;
+    this.requestPolicy = requestPolicy;
   }
 
   public record CrawledFileEntry(
@@ -301,22 +312,23 @@ public class AutoindexCrawlerService {
    */
   static final int MAX_LISTING_BYTES = 8 * 1024 * 1024;
 
+  /**
+   * Fetches one directory page with the shared {@code User-Agent}, waiting out a {@code 429} under
+   * the shared {@link SourceRequestPolicy}. A directory page is read under a fixed cap, never
+   * unbounded: an oversized page is an {@link IOException} like any other fetch failure, so a
+   * subdirectory is marked incomplete and the root fails the run with a message.
+   */
   String fetchPage(HttpClient httpClient, String authHeader, String url)
       throws IOException, InterruptedException {
-
-    Map<String, String> headers = new LinkedHashMap<>();
-    if (authHeader != null) {
-      headers.put("Authorization", authHeader);
-    }
-
     HttpResponse<InputStream> response =
         RedirectFollowingFetcher.sendFollowingRedirects(
             httpClient,
             url,
             Duration.ofSeconds(60),
-            headers,
+            requestPolicy.headers(authHeader),
             targetAddressValidator,
-            RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN);
+            RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
+            requestPolicy.rateLimitHandling());
 
     try (InputStream body = response.body()) {
       if (response.statusCode() == 401) {
@@ -325,13 +337,10 @@ public class AutoindexCrawlerService {
       if (response.statusCode() != 200) {
         throw new IOException("HTTP " + response.statusCode() + " for URL: " + url);
       }
-      // a directory page is read under a fixed cap, never unbounded - a
-      // remote end streaming an endless text/html would otherwise grow the heap until an
-      // OutOfMemoryError kills the whole run instead of skipping one directory. An oversized page
-      // is an IOException like any other fetch failure: a subdirectory is then marked incomplete,
-      // the root fails the run with a message.
-      byte[] page = body.readNBytes(MAX_LISTING_BYTES + 1);
-      if (page.length > MAX_LISTING_BYTES) {
+      byte[] page;
+      try {
+        page = BoundedStreams.readFully(body, MAX_LISTING_BYTES);
+      } catch (BoundedStreams.LimitExceededException e) {
         throw new IOException(
             "Verzeichnisseite überschreitet die zulässige Größe von "
                 + (MAX_LISTING_BYTES / (1024 * 1024))

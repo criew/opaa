@@ -18,7 +18,9 @@ import org.slf4j.LoggerFactory;
  * redirect implementation every source-access caller uses, since every client this package builds
  * uses {@code Redirect.NEVER}. A protocol downgrade is never followed; an origin change is governed
  * by {@link RedirectPolicy}. {@code targetAddressValidator} runs against the current URI at the top
- * of every iteration, before a single further byte is requested.
+ * of every iteration, before a single further byte is requested. A {@code 429} is waited out and
+ * retried under the caller's {@link RateLimitHandling}; once its retries are spent, the last {@code
+ * 429} is returned as-is.
  *
  * <p>Only under {@link RedirectPolicy#REJECT_OFF_ORIGIN} is the response actually received also
  * checked against the original URL, closing the gap a caller-supplied auto-following {@link
@@ -35,6 +37,9 @@ public final class RedirectFollowingFetcher {
    * bounding how many requests a misbehaving server can force per fetch.
    */
   public static final int MAX_REDIRECTS = 5;
+
+  /** The status a source answers with when it throttles - the one status that is waited out. */
+  public static final int TOO_MANY_REQUESTS = 429;
 
   private RedirectFollowingFetcher() {}
 
@@ -58,19 +63,72 @@ public final class RedirectFollowingFetcher {
   }
 
   /**
+   * {@link #sendFollowingRedirects(HttpClient, String, Duration, Map, TargetAddressValidator,
+   * RedirectPolicy, RateLimitHandling)} without rate-limit retries - a {@code 429} is returned
+   * as-is, for an interactive caller that must not keep a person waiting.
+   */
+  public static HttpResponse<InputStream> sendFollowingRedirects(
+      HttpClient httpClient,
+      String url,
+      Duration timeout,
+      Map<String, String> headers,
+      TargetAddressValidator targetAddressValidator,
+      RedirectPolicy policy)
+      throws IOException, InterruptedException {
+    return sendFollowingRedirects(
+        httpClient, url, timeout, headers, targetAddressValidator, policy, RateLimitHandling.NONE);
+  }
+
+  /**
    * Sends a GET request to {@code url} and manually follows up to {@link #MAX_REDIRECTS} redirects.
    * {@code headers} - most importantly {@code Authorization} - is sent again on every hop, subject
    * to {@code policy} once a hop leaves the original origin. An over-long chain, or a redirect
-   * without a {@code Location}, ends the loop and returns that response as-is.
+   * without a {@code Location}, ends the loop and returns that response as-is. A {@code 429} is
+   * waited out ({@link RateLimitPolicy#waitFor}) and the whole fetch retried from {@code url}, up
+   * to {@link RateLimitPolicy#maxRetries()} times; {@code rateLimit}'s listener is told before
+   * every wait and before every retry.
    *
    * @throws RedirectRejectedException (an {@link IOException}) under {@link
    *     RedirectPolicy#REJECT_OFF_ORIGIN}, when a redirect would leave the original URL's origin or
    *     downgrade the protocol from {@code https} to {@code http}.
    * @throws IOException under {@link RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN}, when a redirect
    *     would downgrade the protocol from {@code https} to {@code http} - refused unconditionally
-   *     regardless of policy, only the exception shape differs.
+   *     regardless of policy, only the exception shape differs; or whatever {@link
+   *     RateLimitListener#retrying()} threw to abort a retry.
    */
   public static HttpResponse<InputStream> sendFollowingRedirects(
+      HttpClient httpClient,
+      String url,
+      Duration timeout,
+      Map<String, String> headers,
+      TargetAddressValidator targetAddressValidator,
+      RedirectPolicy policy,
+      RateLimitHandling rateLimit)
+      throws IOException, InterruptedException {
+    RateLimitPolicy rateLimitPolicy = rateLimit.policy();
+    for (int attempt = 0; ; attempt++) {
+      HttpResponse<InputStream> response =
+          sendOnce(httpClient, url, timeout, headers, targetAddressValidator, policy);
+      if (response.statusCode() != TOO_MANY_REQUESTS
+          || attempt >= rateLimitPolicy.maxRetries()) {
+        return response;
+      }
+      Duration wait = rateLimitPolicy.waitFor(response);
+      closeQuietly(response.body());
+      log.info(
+          "Rate limited (HTTP {}) by {} - waiting {} before retry {}/{}",
+          response.statusCode(),
+          sanitizedOrigin(response.uri()),
+          wait,
+          attempt + 1,
+          rateLimitPolicy.maxRetries());
+      rateLimit.listener().throttled(response.statusCode(), wait);
+      rateLimit.sleeper().sleep(wait);
+      rateLimit.listener().retrying();
+    }
+  }
+
+  private static HttpResponse<InputStream> sendOnce(
       HttpClient httpClient,
       String url,
       Duration timeout,

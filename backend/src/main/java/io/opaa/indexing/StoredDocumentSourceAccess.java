@@ -63,9 +63,7 @@ public class StoredDocumentSourceAccess {
    */
   public static boolean isRemote(Document document) {
     DocumentSourceType sourceType = document.getSourceType();
-    return sourceType == DocumentSourceType.HTTP_DIRECTORY
-        || sourceType == DocumentSourceType.RSS_FEED
-        || sourceType == DocumentSourceType.CONFLUENCE;
+    return sourceType != null && sourceType.isRemote();
   }
 
   /**
@@ -86,10 +84,15 @@ public class StoredDocumentSourceAccess {
       log.warn("Document {} has a file path that is not a local path", document.getId(), e);
       return null;
     }
+    if (isRemote(document)) {
+      return null;
+    }
     return switch (document.getSourceType()) {
       case FILESYSTEM -> filesystemFileWithinConfiguredDirectory(document, candidate);
       case UPLOAD -> uploadedFileWithinManagedStorage(document, candidate);
-      case HTTP_DIRECTORY, RSS_FEED, CONFLUENCE -> null;
+      default ->
+          throw new IllegalStateException(
+              "local source type without a file resolution: " + document.getSourceType());
     };
   }
 
@@ -123,10 +126,9 @@ public class StoredDocumentSourceAccess {
       current = parent;
     }
     Document root = current;
-    if (root.getSourceType() != DocumentSourceType.FILESYSTEM
-        && root.getSourceType() != DocumentSourceType.UPLOAD) {
+    if (isRemote(root)) {
       log.info(
-          "Skipping attachment document {}: only FILESYSTEM and UPLOAD parents support"
+          "Skipping attachment document {}: only a parent with a local file supports"
               + " re-extraction",
           document.getId());
       return false;

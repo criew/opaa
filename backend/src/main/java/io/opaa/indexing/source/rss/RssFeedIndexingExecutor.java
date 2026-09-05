@@ -20,7 +20,7 @@ import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.indexing.source.attachment.AttachmentCandidate;
-import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
+import io.opaa.indexing.source.attachment.AttachmentLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.attachment.AttachmentSource;
 import io.opaa.indexing.source.web.DetailPageExtractor;
@@ -28,6 +28,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.RequestPoliteness;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.net.URI;
@@ -65,7 +66,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private final FeedFetcher feedFetcher;
   private final DetailPageExtractor detailPageExtractor;
   private final AttachmentIndexer attachmentIndexer;
-  private final AttachmentDownloadLimits attachmentLimits;
+  private final AttachmentLimits attachmentLimits;
   private final IndexingRunTemplate runTemplate;
 
   public RssFeedIndexingExecutor(
@@ -76,20 +77,20 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
       AttachmentIndexer attachmentIndexer,
       IndexingProperties properties,
       TargetAddressValidator targetAddressValidator,
+      SourceRequestPolicy requestPolicy,
       IndexingRunTemplate runTemplate) {
     this.fileProcessingService = fileProcessingService;
     this.documentRepository = documentRepository;
     this.properties = properties.rss();
     this.feedFetcher =
-        new FeedFetcher(targetAddressValidator, feedStateRepository, feedParser, this.properties);
-    this.detailPageExtractor = new DetailPageExtractor(targetAddressValidator, this.properties);
+        new FeedFetcher(
+            targetAddressValidator, feedStateRepository, feedParser, this.properties, requestPolicy);
+    this.detailPageExtractor =
+        new DetailPageExtractor(targetAddressValidator, this.properties, requestPolicy);
     this.attachmentIndexer = attachmentIndexer;
     this.attachmentLimits =
-        new AttachmentDownloadLimits(
-            this.properties.maxAttachmentsPerEntry(),
-            this.properties.maxAttachmentSizeBytes(),
-            this.properties.requestDelayMs(),
-            this.properties.userAgent());
+        new AttachmentLimits(
+            this.properties.maxAttachmentsPerEntry(), this.properties.maxAttachmentSizeBytes());
     this.runTemplate = runTemplate;
   }
 
@@ -296,7 +297,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
                             candidate.url(),
                             candidate.suggestedFileName(),
                             ctx.httpClientFor(candidate.url()),
-                            ctx.authHeaderFor(candidate.url())))
+                            ctx.authHeaderFor(candidate.url()),
+                            properties.requestDelayMs()))
             .toList();
     attachmentIndexer.indexAll(
         ctx,

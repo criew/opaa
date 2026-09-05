@@ -334,8 +334,7 @@ public class PipelineReindexService {
    * events are only logged and no progress counted.
    */
   private static AttachmentAccess attachmentAccessFor(Document document, KnowledgeLibrary library) {
-    if (document.getSourceType() != DocumentSourceType.FILESYSTEM
-        && document.getSourceType() != DocumentSourceType.UPLOAD) {
+    if (StoredDocumentSourceAccess.isRemote(document)) {
       return null;
     }
     return new StandaloneAttachmentAccess(library, "Pipeline re-index");
@@ -365,6 +364,17 @@ public class PipelineReindexService {
             ChunkPipelineMetadata.LEGACY_PIPELINE_ID,
             documentId.toString());
     return pipelineIds.contains(fallbackId);
+  }
+
+  /**
+   * The SQL literal list of every {@link DocumentSourceType} whose file this machine can re-read -
+   * derived from the enum, so a new source type is never missed here.
+   */
+  static String localSourceTypeSqlList() {
+    return java.util.Arrays.stream(DocumentSourceType.values())
+        .filter(type -> !type.isRemote())
+        .map(type -> "'" + type.name() + "'")
+        .collect(Collectors.joining(", "));
   }
 
   private List<UUID> selectStaleDocuments(
@@ -415,7 +425,9 @@ public class PipelineReindexService {
             // run can do; keeping it selected would make every further batch report the same
             // document as newly marked and never drain.
             + "  AND (d.id IS NULL "
-            + "       OR d.source_type IN ('FILESYSTEM', 'UPLOAD') "
+            + "       OR d.source_type IN ("
+            + localSourceTypeSqlList()
+            + ") "
             + "       OR d.checksum IS NOT NULL) "
             // Stable order so the offset below actually scans past the documents this call already
             // found unadvanceable, instead of reshuffling them back into view.

@@ -1,34 +1,45 @@
 package io.opaa.indexing.source.confluence;
 
+import io.opaa.sourceaccess.Sleeper;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.net.http.HttpClient;
 
 /**
  * Builds the {@link ConfluenceClient} for a library's {@link ConfluenceConnection} - the adapter is
  * chosen by the connection's edition, never by inspecting the address - and the credential-free
- * {@link ConfluenceEditionDetector}. Shares the target validation every other outbound source fetch
- * uses, so a private on-premises address is rejected here exactly as it is for a web directory,
- * with the allowlist hint appended to the message.
+ * {@link ConfluenceEditionDetector}. Shares the target validation and the request policy every
+ * other outbound source fetch uses, so a private on-premises address is rejected here exactly as it
+ * is for a web directory, with the allowlist hint appended to the message.
  */
 public class ConfluenceClientFactory {
 
   private final ConfluenceProperties properties;
   private final TargetAddressValidator targetAddressValidator;
-  private final Sleeper sleeper;
+  private final SourceRequestPolicy requestPolicy;
 
+  /** With {@link SourceRequestPolicy#defaults()}. */
   public ConfluenceClientFactory(
       ConfluenceProperties properties, TargetAddressValidator targetAddressValidator) {
-    this(properties, targetAddressValidator, Sleeper.threadSleep());
+    this(properties, targetAddressValidator, SourceRequestPolicy.defaults());
   }
 
+  /** Defaults, waiting through {@code sleeper} - for tests that must not sleep for real. */
   ConfluenceClientFactory(
       ConfluenceProperties properties,
       TargetAddressValidator targetAddressValidator,
       Sleeper sleeper) {
+    this(properties, targetAddressValidator, SourceRequestPolicy.defaults().withSleeper(sleeper));
+  }
+
+  public ConfluenceClientFactory(
+      ConfluenceProperties properties,
+      TargetAddressValidator targetAddressValidator,
+      SourceRequestPolicy requestPolicy) {
     this.properties = properties;
     this.targetAddressValidator = targetAddressValidator;
-    this.sleeper = sleeper;
+    this.requestPolicy = requestPolicy;
   }
 
   /**
@@ -71,7 +82,7 @@ public class ConfluenceClientFactory {
             connection,
             properties,
             targetAddressValidator,
-            sleeper,
+            requestPolicy,
             new ConfluenceRequestMeter(),
             null,
             requestBudget);
@@ -82,6 +93,6 @@ public class ConfluenceClientFactory {
   }
 
   public ConfluenceEditionDetector editionDetector() {
-    return new ConfluenceEditionDetector(properties, targetAddressValidator, sleeper);
+    return new ConfluenceEditionDetector(properties, targetAddressValidator, requestPolicy);
   }
 }

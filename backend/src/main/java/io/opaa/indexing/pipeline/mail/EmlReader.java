@@ -2,6 +2,7 @@ package io.opaa.indexing.pipeline.mail;
 
 import java.io.IOException;
 import java.io.InputStream;
+import io.opaa.sourceaccess.BoundedStreams;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.nio.file.Files;
@@ -245,17 +246,18 @@ final class EmlReader {
     Path tempFile = materialize ? MailAttachmentIo.createTempFile(fileName) : null;
     try (OutputStream out =
         tempFile != null ? Files.newOutputStream(tempFile) : OutputStream.nullOutputStream()) {
+      // bounded while the attachment is written, never after the fact; the partial temp file is
+      // deleted below
       if (nestedMessage) {
         new DefaultMessageWriter()
             .writeMessage(
-                (Message) body,
-                MailAttachmentIo.boundedOutputStream(out, properties.maxAttachmentBytes()));
+                (Message) body, BoundedStreams.output(out, properties.maxAttachmentBytes()));
       } else {
         try (InputStream in = ((SingleBody) body).getInputStream()) {
-          MailAttachmentIo.copyBounded(in, out, properties.maxAttachmentBytes());
+          BoundedStreams.copy(in, out, properties.maxAttachmentBytes());
         }
       }
-    } catch (MailAttachmentIo.AttachmentTooLargeException e) {
+    } catch (BoundedStreams.LimitExceededException e) {
       log.warn(
           "Skipping mail attachment {} exceeding the size limit of {} bytes",
           fileName,

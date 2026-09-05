@@ -22,7 +22,6 @@ import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
-import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.attachment.AttachmentSource;
 import io.opaa.library.ConfluenceSpaceSelection;
@@ -95,7 +94,6 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
    * own - the request budget bounds a run), and a nested attachment (a {@code .eml} attached to a
    * page) descends as deep as every other source.
    */
-  private final AttachmentDownloadLimits attachmentLimits;
 
   public ConfluenceIndexingExecutor(
       ConfluenceClientFactory clientFactory,
@@ -116,9 +114,6 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     this.vectorChunkStore = vectorChunkStore;
     this.clock = clock;
     this.runTemplate = runTemplate;
-    this.attachmentLimits =
-        new AttachmentDownloadLimits(
-            1, properties.maxAttachmentSizeBytes(), 0L, properties.userAgent());
   }
 
   @Override
@@ -880,8 +875,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
                   String.valueOf(attachment.version()))),
           pageDocumentId,
           pagePath,
-          DocumentSourceType.CONFLUENCE,
-          attachmentLimits);
+          DocumentSourceType.CONFLUENCE);
     } catch (BoundedDownloader.AttachmentTooLargeException e) {
       run.events.record(
           IndexingEventCategory.REJECTED, "Anhang überschreitet die Größengrenze", path);
