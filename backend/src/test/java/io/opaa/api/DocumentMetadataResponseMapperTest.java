@@ -56,7 +56,8 @@ class DocumentMetadataResponseMapperTest {
 
     DocumentMetadataFieldResponse response =
         DocumentMetadataResponseMapper.toFieldResponse(
-            DocumentMetadataFieldView.ofCore(CoreMetadataField.DOCUMENT_DATE, snapshot, "03/2024", "Erika"));
+            DocumentMetadataFieldView.ofCore(
+                CoreMetadataField.DOCUMENT_DATE, snapshot, "03/2024", "Erika"));
 
     assertThat(response.getFieldKey()).isEqualTo("document_date");
     assertThat(response.getLabel()).isEqualTo("Datum/Stand");
@@ -111,7 +112,8 @@ class DocumentMetadataResponseMapperTest {
 
     DocumentMetadataFieldResponse response =
         DocumentMetadataResponseMapper.toFieldResponse(
-            DocumentMetadataFieldView.ofCore(CoreMetadataField.DOCUMENT_DATE, snapshot, null, "Erika"));
+            DocumentMetadataFieldView.ofCore(
+                CoreMetadataField.DOCUMENT_DATE, snapshot, null, "Erika"));
 
     assertThat(response.getState()).isEqualTo(MetadataFieldState.NOT_DETERMINABLE);
     assertThat(response.getValue()).isNull();
@@ -145,9 +147,18 @@ class DocumentMetadataResponseMapperTest {
                 libraryId,
                 10,
                 List.of(
-                    new MetadataFieldMaintenance(CoreMetadataField.TITLE.key(), CoreMetadataField.TITLE.label(), new MetadataFieldFill(10, 10, 0)),
-                    new MetadataFieldMaintenance(CoreMetadataField.DOCUMENT_TYPE.key(), CoreMetadataField.DOCUMENT_TYPE.label(), new MetadataFieldFill(10, 4, 2)),
-                    new MetadataFieldMaintenance(CoreMetadataField.DOCUMENT_DATE.key(), CoreMetadataField.DOCUMENT_DATE.label(), new MetadataFieldFill(10, 0, 0)))));
+                    new MetadataFieldMaintenance(
+                        CoreMetadataField.TITLE.key(),
+                        CoreMetadataField.TITLE.label(),
+                        new MetadataFieldFill(10, 10, 0)),
+                    new MetadataFieldMaintenance(
+                        CoreMetadataField.DOCUMENT_TYPE.key(),
+                        CoreMetadataField.DOCUMENT_TYPE.label(),
+                        new MetadataFieldFill(10, 4, 2)),
+                    new MetadataFieldMaintenance(
+                        CoreMetadataField.DOCUMENT_DATE.key(),
+                        CoreMetadataField.DOCUMENT_DATE.label(),
+                        new MetadataFieldFill(10, 0, 0)))));
 
     assertThat(response.getLibraryId()).isEqualTo(libraryId);
     assertThat(response.getTotalDocuments()).isEqualTo(10);

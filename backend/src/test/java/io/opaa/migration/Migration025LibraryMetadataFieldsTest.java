@@ -22,7 +22,8 @@ import org.junit.jupiter.api.Test;
  */
 class Migration025LibraryMetadataFieldsTest extends AbstractMigrationTest {
 
-  private static final String CHANGELOG_PATH = "db/changelog/changes/025-library-metadata-fields.yaml";
+  private static final String CHANGELOG_PATH =
+      "db/changelog/changes/025-library-metadata-fields.yaml";
   private static final String CORE_FIELDS_CHANGELOG_PATH =
       "db/changelog/changes/018-document-metadata-core-fields.yaml";
   private static final UUID ORGANIZATION_ID =
@@ -90,7 +91,8 @@ class Migration025LibraryMetadataFieldsTest extends AbstractMigrationTest {
     UUID valueId = insertValue(fieldId, "FASSUNG_2026");
     UUID documentId = insertDocument(libraryId);
 
-    assertThatThrownBy(() -> insertDocumentValue(documentId, "lib:fassung", fieldId, UUID.randomUUID()))
+    assertThatThrownBy(
+            () -> insertDocumentValue(documentId, "lib:fassung", fieldId, UUID.randomUUID()))
         .hasMessageContaining("fk_document_metadata_values_library_value");
     // The namespace and the field reference are pinned to each other in both directions.
     assertThatThrownBy(() -> insertDocumentValue(documentId, "fassung", fieldId, valueId))

@@ -97,7 +97,8 @@ class MetadataValueInputTest {
     }
     assertThatThrownBy(
             () ->
-                new MetadataValueInput(MetadataValueState.NOT_DETERMINABLE, "Titel", null, null, null, null)
+                new MetadataValueInput(
+                        MetadataValueState.NOT_DETERMINABLE, "Titel", null, null, null, null)
                     .validatedFor(CoreMetadataField.TITLE, VOCABULARY))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("ohne Wert");

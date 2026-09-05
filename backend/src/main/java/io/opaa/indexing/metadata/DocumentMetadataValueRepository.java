@@ -99,9 +99,9 @@ public interface DocumentMetadataValueRepository
   }
 
   /**
-   * Per field and state over a whole search scope at once - the Füllstand the filter
-   * interface shows (#1070), built over exactly the libraries the asking person's next question
-   * would search. Never precomputed (metadata-schema.md, Rechte-Invariante).
+   * Per field and state over a whole search scope at once - the Füllstand the filter interface
+   * shows (#1070), built over exactly the libraries the asking person's next question would search.
+   * Never precomputed (metadata-schema.md, Rechte-Invariante).
    */
   @Query(
       "select v.fieldKey as fieldKey, v.state as state, count(v) as documentCount"

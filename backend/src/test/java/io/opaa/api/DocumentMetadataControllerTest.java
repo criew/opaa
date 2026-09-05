@@ -124,8 +124,10 @@ class DocumentMetadataControllerTest {
         .thenReturn(
             List.of(
                 DocumentMetadataFieldView.ofCore(CoreMetadataField.TITLE, null, null, null),
-                DocumentMetadataFieldView.ofCore(CoreMetadataField.DOCUMENT_TYPE, manual, "Vermerk", "Test User"),
-                DocumentMetadataFieldView.ofCore(CoreMetadataField.DOCUMENT_DATE, null, null, null)));
+                DocumentMetadataFieldView.ofCore(
+                    CoreMetadataField.DOCUMENT_TYPE, manual, "Vermerk", "Test User"),
+                DocumentMetadataFieldView.ofCore(
+                    CoreMetadataField.DOCUMENT_DATE, null, null, null)));
 
     mockMvc
         .perform(get(metadataPath()).with(asTestUser()))
@@ -160,7 +162,8 @@ class DocumentMetadataControllerTest {
     when(correctionService.setValue(
             eq(libraryId), eq(documentId), eq("document_date"), any(), eq(caller)))
         .thenReturn(
-            DocumentMetadataFieldView.ofCore(CoreMetadataField.DOCUMENT_DATE, after, "2024", "Test User"));
+            DocumentMetadataFieldView.ofCore(
+                CoreMetadataField.DOCUMENT_DATE, after, "2024", "Test User"));
 
     mockMvc
         .perform(
@@ -315,7 +318,8 @@ class DocumentMetadataControllerTest {
     when(correctionService.setValue(
             eq(libraryId), eq(documentId), eq("document_date"), any(), eq(caller)))
         .thenReturn(
-            DocumentMetadataFieldView.ofCore(CoreMetadataField.DOCUMENT_DATE, after, null, "Test User"));
+            DocumentMetadataFieldView.ofCore(
+                CoreMetadataField.DOCUMENT_DATE, after, null, "Test User"));
 
     mockMvc
         .perform(
@@ -343,9 +347,18 @@ class DocumentMetadataControllerTest {
                 libraryId,
                 10,
                 List.of(
-                    new MetadataFieldMaintenance(CoreMetadataField.TITLE.key(), CoreMetadataField.TITLE.label(), new MetadataFieldFill(10, 10, 0)),
-                    new MetadataFieldMaintenance(CoreMetadataField.DOCUMENT_TYPE.key(), CoreMetadataField.DOCUMENT_TYPE.label(), new MetadataFieldFill(10, 4, 2)),
-                    new MetadataFieldMaintenance(CoreMetadataField.DOCUMENT_DATE.key(), CoreMetadataField.DOCUMENT_DATE.label(), new MetadataFieldFill(10, 0, 0)))));
+                    new MetadataFieldMaintenance(
+                        CoreMetadataField.TITLE.key(),
+                        CoreMetadataField.TITLE.label(),
+                        new MetadataFieldFill(10, 10, 0)),
+                    new MetadataFieldMaintenance(
+                        CoreMetadataField.DOCUMENT_TYPE.key(),
+                        CoreMetadataField.DOCUMENT_TYPE.label(),
+                        new MetadataFieldFill(10, 4, 2)),
+                    new MetadataFieldMaintenance(
+                        CoreMetadataField.DOCUMENT_DATE.key(),
+                        CoreMetadataField.DOCUMENT_DATE.label(),
+                        new MetadataFieldFill(10, 0, 0)))));
 
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/metadata/maintenance").with(asTestUser()))

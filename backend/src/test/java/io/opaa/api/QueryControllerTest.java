@@ -332,7 +332,8 @@ class QueryControllerTest {
                         CoreMetadataField.DOCUMENT_DATE, 2, 4, 0.75)),
                 List.of(new MetadataFilterOptions.DocumentTypeOption("VERMERK", "Vermerk", 4)),
                 LocalDate.of(2024, 1, 1),
-                LocalDate.of(2024, 12, 31), List.of()));
+                LocalDate.of(2024, 12, 31),
+                List.of()));
 
     mockMvc
         .perform(
