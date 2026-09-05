@@ -1010,24 +1010,56 @@ Um OIDC-Authentifizierung mit dem gebündelten Keycloak zu aktivieren:
 docker compose --profile oidc up --build
 ```
 
-Erforderliche Variablen in `.env.docker`:
+Erforderliche Variablen in `.env.docker` (siehe [„Bestandsübernahme"](#bestandsübernahme-aus-opaa_oidc_) unten für ihre Rolle):
 
 ```env
 SPRING_PROFILES_ACTIVE=docker,oidc
+OPAA_OIDC_ISSUER_URI=http://localhost:8180/realms/opaa
+OPAA_OIDC_CLIENT_ID=opaa-frontend
 OPAA_OIDC_JWK_SET_URI=http://keycloak:8180/realms/opaa/protocol/openid-connect/certs
+OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
 ```
 
-> **Wichtig:** `OPAA_OIDC_JWK_SET_URI` muss den Docker-internen Hostnamen `keycloak` (nicht `localhost`) verwenden, weil der Backend-Container JWT-Tokens verifiziert, indem er Schlüssel von Keycloak abruft. `OPAA_OIDC_ISSUER_URI` und `OPAA_OIDC_AUTHORITY` sollten `http://localhost:8180/...` bleiben, da der Browser diese URLs verwendet. `OPAA_OIDC_ISSUER_URI`, `OPAA_OIDC_CLIENT_ID` und `OPAA_OIDC_JWK_SET_URI` müssen gesetzt sein — sie haben seit #1329 keine Vorgabewerte mehr (`.env.docker.example` führt sie) und sind die Bootstrap-Werte der Anbieterzeile; `OPAA_OIDC_AUTHORITY` ist seit #1332 ohne Wirkung (die Anmeldeseite nutzt die Issuer-URI der Anbieterzeile als Authority).
+> **Wichtig:** `OPAA_OIDC_JWK_SET_URI` muss den Docker-internen Hostnamen `keycloak` (nicht `localhost`) verwenden, weil der Backend-Container JWT-Tokens verifiziert, indem er Schlüssel von Keycloak abruft. `OPAA_OIDC_ISSUER_URI` bleibt `http://localhost:8180/...`, da der Browser diese Adresse verwendet — sie ist zugleich die Authority des Anmeldeflusses. `OPAA_OIDC_AUTHORITY` ist seit #1332 ohne Wirkung und kann entfallen. Ohne `OPAA_CSP_CONNECT_SRC_EXTRA` blockiert die Content-Security-Policy des Frontend-nginx den Aufruf gegen Keycloak stillschweigend, siehe [„Sicherheits-Header und `Strict-Transport-Security`"](#sicherheits-header-und-strict-transport-security) oben; mehrere Origins werden durch Leerzeichen getrennt, und eine Änderung wirkt erst nach einem Neustart des Frontend-Containers.
 
-> **Seit #1329 (ADR-0025) sind die `OPAA_OIDC_*`-Variablen Bootstrap-Werte:** Beim ersten Start im `oidc`-Modus übernimmt OPAA sie einmalig als ersten, aktivierten Standardanbieter „Verzeichnisdienst" in die Anbieterverwaltung (`/api/v1/admin/oidc-providers`, nur `SYSTEM_ADMIN`). Danach führt die Datenbank; eine Änderung der Variablen wirkt nicht mehr — außer mit `OPAA_OIDC_BOOTSTRAP=force`, das den Umgebungsanbieter einmalig wiederherstellt. Die Variablen bleiben trotzdem gesetzt: Sie sind der Notanker und ihre Adressen sind für die Adressprüfung immer erlaubt. Das ausführliche Kapitel zur Anbieterverwaltung folgt mit #1334.
+Vorkonfiguriert sind zwei Realms ([`keycloak/realm-export.json`](../../keycloak/realm-export.json), [`keycloak/realm-partner-export.json`](../../keycloak/realm-partner-export.json)): Der Realm `opaa` mit dem Client `opaa-frontend` ist der beim Start übernommene Standardanbieter; der Realm `partner` mit dem Client `opaa-partner` ist ein zweiter Anbieter auf demselben Origin, den die Systemverwaltung über die Anbieterverwaltung anlegt (so, wie ein Betreiber den Anbieter eines Partners anbindet) — er dient dem Demo-Smoke-Lauf und lokalen Versuchen mit mehreren Anbietern. Ein Testbenutzer im Realm `opaa`: `testuser`/`testpass`. Die Keycloak-Admin-Konsole ist unter http://localhost:8180 verfügbar (admin/admin).
 
-> **Ebenfalls erforderlich:** `OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180` (in `.env.docker.example` auskommentiert, da der Compose-Standardfall `docker,dev` keinen Keycloak startet — beim Wechsel zu `docker,oidc` die Zeile einkommentieren) — ohne diese Variable blockiert die Content-Security-Policy des Frontend-nginx den Aufruf gegen die Keycloak-Authority stillschweigend, siehe [„Sicherheits-Header und `Strict-Transport-Security`"](#sicherheits-header-und-strict-transport-security) oben. Bei einem produktiven Identitätsanbieter auf eigener Adresse (Entra ID, ein hausweiter Keycloak) tritt dessen Origin hier an die Stelle von `http://localhost:8180`; mehrere Origins werden durch Leerzeichen getrennt.
+#### Anbieterverwaltung ([ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md))
 
-Ein Testbenutzer ist im Keycloak-Realm vorkonfiguriert:
-- **Benutzername:** `testuser`
-- **Passwort:** `testpass`
+OPAA akzeptiert Anmeldungen von **mehreren OIDC-Anbietern**. Die Anbieter liegen in der Datenbank und werden unter **Administration → Identitätsanbieter** (nur `SYSTEM_ADMIN`; API `/api/v1/admin/oidc-providers`) gepflegt; jede Änderung wirkt ohne Neustart. Je Anbieter:
 
-Die Keycloak-Admin-Konsole ist unter http://localhost:8180 verfügbar (admin/admin).
+| Feld | Bedeutung |
+|------|-----------|
+| Anzeigename | Beschriftung der Schaltfläche auf der Anmeldeseite („Anmelden bei …") |
+| Issuer-URI | Der `iss`-Claim seiner Tokens, byteweise wie der Anbieter ihn prägt (bei Keycloak die Realm-Adresse, bei Auth0 mit abschließendem Schrägstrich); zugleich die Adresse, an der der Browser die Anmeldung startet. Eindeutig je Anbieter |
+| Client-ID | Der beim Anbieter angelegte **öffentliche** Client (Authorization Code Flow mit PKCE, **kein Secret** — die SPA kann keines geheim halten) |
+| JWK-Set-Adresse | Optional: die Backend-seitige Adresse des JWK-Sets, wenn das Backend den Anbieter unter einer anderen Adresse erreicht als der Browser (Compose: `keycloak` statt `localhost`). Ohne Angabe liest das Backend die Adresse aus dem Discovery-Dokument des Issuers. Sie ist der **Vertrauensanker** jedes Kontos dieses Anbieters |
+| Claim-Zuordnung | Aus welchen Token-Claims E-Mail und Anzeigename gelesen werden (Vorgaben `email`/`name`, Rückfall `preferred_username`) und optional Rollen- und Gruppen-Claim, siehe unten |
+| Reihenfolge, Standard, aktiviert | Reihenfolge der Anmeldeseite; genau ein **Standardanbieter**; ein deaktivierter Anbieter wird ab dem nächsten Token abgewiesen |
+
+**Beim Anbieter einzutragen** (die Verwaltungsoberfläche zeigt die Werte mit dem eigenen Origin an): Weiterleitungs-URI `<Origin>/auth/callback` (für alle Anbieter dieselbe), erlaubter Web-Origin und Abmelde-Weiterleitung `<Origin>`. Zusätzlich im Betrieb: den Origin des Anbieters in `OPAA_CSP_CONNECT_SRC_EXTRA` aufnehmen und den Frontend-Container neu starten, und — wenn der Anbieter in einem privaten Netz liegt — seinen Host in `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` (siehe unten). Der **Verbindungstest** im Formular prüft Discovery-Dokument und JWK-Set vor dem Speichern; ist die Issuer-URI vom Backend aus nicht erreichbar (Compose-Aufteilung), prüft er das JWK-Set über die Backend-seitige Adresse und sagt das.
+
+**Standardanbieter.** Der erste Anbieter ist automatisch der Standard; er kann weder deaktiviert noch gelöscht werden, bevor ein anderer aktivierter, erreichbarer Anbieter Standard ist — es gibt keinen Zustand ohne anmeldefähigen Anbieter. Nur über ihn gilt `OPAA_INITIAL_ADMIN_EMAIL` (die Erstadministrator-Regel greift beim ersten Anmelden dieser Adresse, und nur über den Standardanbieter), und nur seine Konten löst der Verzeichnisabgleich auf.
+
+**Konten.** Die Identität eines Kontos ist das Paar (Issuer, Subject). Dieselbe Person bei zwei Anbietern hat **zwei Konten** — eine Zusammenführung über die E-Mail findet nie statt. Wird ein Anbieter gelöscht, bleiben seine Konten und werden wieder nutzbar, sobald ein Anbieter mit derselben Issuer-URI existiert; die Issuer-URI eines Anbieters, über den bereits Konten angelegt wurden, ist deshalb nicht änderbar (409). Konten eines deaktivierten Anbieters können sich nicht mehr anmelden; laufende Sitzungen enden mit der nächsten Anfrage (`unknown_issuer`).
+
+**Rollen und Gruppen aus dem Token** (optional, je Anbieter). Ist ein **Rollen-Claim** gesetzt (Pfad in Punktnotation, z. B. `realm_access.roles`, mit den Rollenwerten für `SYSTEM_ADMIN` und `AUDITOR`), ist der Anbieter für diese Systemrollen führend: Die Rolle wird bei jeder Anfrage aus dem Token übernommen, die manuelle Rollenvergabe ist für Konten dieses Anbieters gesperrt, und der letzte `SYSTEM_ADMIN` der Installation wird nie per Token entzogen (der abgelehnte Entzug wird protokolliert und auditiert). Das Setzen des Rollen-Claims verlangt in der Oberfläche eine Bestätigung. Ist ein **Gruppen-Claim** gesetzt, werden die Gruppennamen des Tokens bei jeder Anmeldung zu Mitgliedschaften in Gruppen der Art „Gruppe aus dem Identitätsanbieter" im Namensraum dieses Anbieters — gleichnamige Gruppen zweier Anbieter sind zwei Gruppen; diese Gruppen sind in der Gruppenverwaltung schreibgeschützt und nicht Gegenstand des Verzeichnisabgleichs. Details: [`docs/features/access-control.md`](../features/access-control.md).
+
+#### Bestandsübernahme aus `OPAA_OIDC_*`
+
+Die Variablen `OPAA_OIDC_ISSUER_URI`, `OPAA_OIDC_CLIENT_ID` und `OPAA_OIDC_JWK_SET_URI` sind **Bootstrap-Werte**: Beim ersten Start im `oidc`-Modus übernimmt OPAA sie einmalig als ersten, aktivierten Standardanbieter „Verzeichnisdienst" — vor dem Start des Webservers, sodass keine Anmeldung der Übernahme zuvorkommt. Danach führt die Datenbank; eine Änderung der Variablen wirkt nicht mehr. Eine Bestandsinstallation, deren Konten unter diesem Issuer angelegt wurden, behält damit jedes Konto (kein Eingriff an `users`). Fehlt beim Start eine der drei Variablen oder ist die Issuer-URI keine http(s)-Adresse, wird nichts übernommen, das Backend protokolliert, was zu setzen ist, und holt die Übernahme beim nächsten Start nach.
+
+**Die Variablen bleiben gesetzt.** Sie sind der Notanker: `OPAA_OIDC_BOOTSTRAP=force` stellt den Anbieter aus der Umgebung einmalig wieder her (Zeile mit diesem Issuer überschrieben bzw. angelegt, aktiviert, Standard) — der dokumentierte Weg zurück aus einer vertippten Issuer-URI des einzigen Anbieters. Die Variable danach wieder entfernen; jeder weitere Start würde die Anbieterverwaltung erneut überschreiben. Außerdem sind die **Adressen** der beiden Variablen (Schema, Host und Port von Issuer-URI und JWK-Set-Adresse) für die Adressprüfung immer erlaubt.
+
+**Adressprüfung.** Jede von der Systemverwaltung eingegebene Issuer- und JWK-Set-Adresse durchläuft dieselbe Prüfung gegen private Netzbereiche wie die Datenquellen (SSRF-Schutz), mit eigener Konfiguration `OPAA_OIDC_TARGET_VALIDATION_ENABLED` (Vorgabe `true`) und `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` (Hosts, kommagetrennt). Ein hausinterner Anbieter mit privater Adresse gehört in die Allowlist; die Bootstrap-Adressen brauchen keinen Eintrag. Discovery-Dokument und JWK-Set werden vom Backend selbst abgerufen, ohne Weiterleitungen zu folgen.
+
+#### Grenzen
+
+- **Keine Kontenzusammenführung:** Zwei Anbieter, dieselbe E-Mail — zwei Konten mit getrennten Rechten. Wer eine Person von einem Anbieter zum anderen umzieht, vergibt ihre Rechte neu.
+- **Kein SAML, kein reines OAuth2:** Ausschließlich OpenID Connect mit Discovery-Dokument und Authorization Code Flow (PKCE, öffentlicher Client).
+- **Ein Verzeichnisabgleich je Installation:** Der Abgleich ist an den Standardanbieter gebunden; Gruppen anderer Anbieter kommen nur über deren Gruppen-Claim.
+- **`AUDITOR` ist nicht geschützt:** Ein per Token entzogener letzter Prüfer ist nur im Anbieter wiederherstellbar.
+- **Eine Organisation:** Alle Anbieter provisionieren in dieselbe Organisation.
 
 ### Testkonten im Überblick
 
@@ -1040,6 +1072,7 @@ und folgt dessen jeweils eigenem Mechanismus:
 | Entwicklungsnutzer des `dev`-Profils (`opaa.auth.dev.users`) | Lokale Entwicklung, `dev`-Auth-Modus (siehe [„Entwicklungsmodus (dev)"](#entwicklungsmodus-dev) oben) | `dev-admin` (`admin@opaa.local`, `SYSTEM_ADMIN`), `dev-user` (regulärer Nutzer) |
 | Keycloak-Realm-Nutzer (`keycloak/realm-export.json`) | `oidc`-Auth-Modus mit dem gebündelten Keycloak (siehe [„OIDC (Keycloak)"](#oidc-keycloak) oben) | `testuser`/`testpass` (E-Mail `test@opaa.local`) — wird zum `SYSTEM_ADMIN`, sobald `OPAA_INITIAL_ADMIN_EMAIL` in der lokalen `.env.docker` auf dieselbe Adresse gesetzt ist, sonst ein regulärer Nutzer |
 | Demo-Realm-Nutzer (`keycloak/realm-export.json`, Issue #712) | Demo-Instanz „Stadt Rheinfurt" (`--profile demo`, siehe [`demo/README.md`](../../demo/README.md), Abschnitt „Seed ausführen") | `demo-admin` (`admin@stadt-rheinfurt.example`, `SYSTEM_ADMIN` bei entsprechend gesetztem `OPAA_INITIAL_ADMIN_EMAIL`), `maria.weber`, `selin.kaya`, `thomas.klein`, `andrea.vogt` — alle mit dem offenen Demo-Passwort `RheinfurtDemo!2026`, siehe `demo/README.md`, Abschnitt „Nutzerkonten". Zusätzlich der Client `opaa-seed` (Resource Owner Password Grant, `directAccessGrantsEnabled: true`) — ausschließlich für `demo/seed/seed.py`, nie für eine reguläre Anmeldung |
+| Partner-Realm-Nutzer (`keycloak/realm-partner-export.json`, ADR-0025 / #1334) | Zweiter Identitätsanbieter (Realm `partner`, Client `opaa-partner`) auf demselben Keycloak — nicht beim Start übernommen, sondern über die Anbieterverwaltung anzulegen (der Demo-Smoke-Lauf tut genau das) | `maria.weber` mit **derselben E-Mail** wie im Realm `opaa` und dem Demo-Passwort `RheinfurtDemo!2026` — ein eigenes, zweites Konto ohne die Rechte der Demo-Maria: der Nachweis, dass Konten zweier Anbieter nie zusammengeführt werden |
 | E2E-Suite (`e2e/e2e.env`, `e2e/docker-compose.e2e.yml`) | Playwright-Suite (siehe [`e2e/README.md`](../../e2e/README.md), Abschnitt „Vier Testnutzer") | Wiederverwendet `dev-admin` und `dev-user` aus dem `dev`-Profil, ergänzt um `dev-outsider` und `dev-format-pipelines` (nur für diese Suite, über `OPAA_AUTH_DEV_USERS_*` hinzugefügt) |
 | Quellenzugangsdaten (`sourceCredentials`, siehe [„Zugangsdaten-Verschlüsselung"](#zugangsdaten-verschlüsselung-483) oben) | Kein Testkonto für OPAA selbst — Basic-Auth-Zugangsdaten (`user:password`), mit denen eine `HTTP_DIRECTORY`- oder `RSS_FEED`-Bibliothek eine *externe* Dokumentenquelle abruft | Kein fester Beispielwert; frei je Bibliothek |
 
