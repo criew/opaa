@@ -211,7 +211,8 @@ Ein überschrittener Aufruf wird aufgegeben: Seine Antwort wird verworfen, beim 
 Ende und erscheint auf dessen Rechnung; spätestens nach denselben 30 Sekunden bricht die Verbindung
 ab. Sind alle Fäden der Ermittlung belegt, unterbleibt der Aufruf ganz („nicht angefragt
 (ausgelastet)") statt eingereiht zu werden — auch das steht im Zählwerk, damit ein Engpass nicht wie
-ein Modellausfall aussieht.
+ein Modellausfall aussieht. Ein so übergangenes Dokument gilt weiterhin als offen und wird beim
+nächsten Bestandslauf erneut angefasst.
 
 **Zählwerk.** Je Bibliothek werden Aufrufe, übernommene Werte, wegen Konfidenz und wegen Werteliste
 verworfene Werte, Fehler, nicht angefragte Dokumente und vergebene Schlagworte geführt — sichtbar in den Bibliothekseinstellungen

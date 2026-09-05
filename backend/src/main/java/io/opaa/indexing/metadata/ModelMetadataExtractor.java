@@ -154,9 +154,12 @@ public class ModelMetadataExtractor {
             ? ModelExtractionOutcome.UNCHANGED
             : apply(document, library, fields, answer, wantsKeywords, tally);
     counters.record(library.getId(), document.getId(), tally);
-    // One mark per capability: a library running with only one of them must still hand its
-    // Altbestand to the Bestandslauf when the other is switched on later.
-    stamp(document, wantsValues, wantsKeywords);
+    if (!tally.rejectedPoolFull()) {
+      // One mark per capability: a library running with only one of them must still hand its
+      // Altbestand to the Bestandslauf when the other is switched on later. A document that was
+      // never asked about is not marked at all - unlike a timeout, which was paid for.
+      stamp(document, wantsValues, wantsKeywords);
+    }
     return outcome;
   }
 

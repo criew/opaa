@@ -109,7 +109,7 @@ class ActiveChatModelResolverIntegrationTest {
   }
 
   @Test
-  void aClientWithARequestTimeoutGivesUpOnAModelThatNeverAnswers() throws IOException {
+  void aClientWithARequestTimeoutGivesUpOnAModelThatNeverAnswers() throws Exception {
     // #1073: the model step's abandoned calls must end and give their thread back - the caller's
     // own Future.get(timeout) bounds only its waiting, never the request. Without the timeout this
     // call would sit on the socket until the SDK's own default (minutes), which is exactly the
@@ -135,6 +135,10 @@ class ActiveChatModelResolverIntegrationTest {
       long startedAt = System.nanoTime();
       assertThatThrownBy(() -> client.prompt().user("Frage").call().content()).isNotNull();
       Duration waited = Duration.ofNanos(System.nanoTime() - startedAt);
+
+      assertThat(requestArrived.await(5, TimeUnit.SECONDS))
+          .as("the request reached the server and hung there - not a connection error")
+          .isTrue();
 
       assertThat(waited)
           .as("the request itself is bounded, not just the caller's waiting")

@@ -486,8 +486,17 @@ class ModelMetadataExtractionIntegrationTest {
       ModelExtractionStats stats = counters.statsFor(library.getId());
       assertThat(stats.rejectedPoolFull()).isEqualTo(1);
       assertThat(stats.failures()).as("a full pool is no model failure").isZero();
-      assertThat(documentRepository.findById(document.getId()).orElseThrow().getStatus())
-          .isEqualTo(DocumentStatus.INDEXED);
+      Document afterwards = documentRepository.findById(document.getId()).orElseThrow();
+      assertThat(afterwards.getStatus()).isEqualTo(DocumentStatus.INDEXED);
+      // Never asked means never marked: an unasked document must stay on the Bestandslauf's
+      // selection, or a run under load would silently lose part of its Altbestand.
+      assertThat(afterwards.getModelExtractionVersion()).isNull();
+      assertThat(
+              backfillService
+                  .backfillBatch(Organization.DEFAULT_ID, library.getId(), 10)
+                  .processedDocuments())
+          .as("the next Bestandslauf call picks it up again")
+          .isEqualTo(1);
     } finally {
       release.countDown();
     }
