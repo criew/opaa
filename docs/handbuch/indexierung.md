@@ -315,8 +315,10 @@ Die Formaterkennung schaut in den **Inhalt** (Magic Bytes), nicht auf die Dateie
 überein, wird das Dokument trotzdem indiziert, aber ein Protokolleintrag „Formatabweichung"
 gesetzt, damit der Fall auffällt.
 
-Der erkannte Medientyp wird als Inhaltstyp des Dokuments gespeichert. Anhand des erkannten
-Formats wird eine **Format-Pipeline** gewählt. Für jedes Format gibt es
+Als Inhaltstyp des Dokuments wird der kanonische Medientyp des erkannten Formats gespeichert (etwa
+`text/markdown` für Markdown, auch wenn die Byte-Erkennung nur „Text" sagt); nur ein Dokument ohne
+erkanntes Format behält den roh erkannten Typ. Anhand des erkannten Formats wird eine
+**Format-Pipeline** gewählt. Für jedes Format gibt es
 genau eine zuständige Pipeline; für alles Unbekannte oder Strukturlose gibt es eine
 Auffang-Pipeline auf Basis von Apache Tika. Zwei Inhalte waren nie eine Datei und überspringen die
 Formaterkennung: Der Text einer Feed-Detailseite geht direkt an die Auffang-Pipeline, der Körper

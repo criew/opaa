@@ -409,6 +409,32 @@ class FileProcessingServiceTest {
           .isInstanceOf(IllegalStateException.class)
           .hasMessageContaining("confluence");
       verify(documentRepository, never()).save(any(Document.class));
+      verify(documentRepository, never()).markFailed(any(), any());
+    }
+
+    @Test
+    void aRoutingFailureOnAnExistingRowMarksItFailedInsteadOfLeavingItPending() {
+      // An upload's row is already PENDING when the pipeline is chosen - a wiring error there
+      // must still reach a terminal status, with the row's chunks (none, for an upload) kept.
+      Document existing =
+          new Document("seite.html", PAGE_URL, "text/html", 40L, DocumentSourceType.UPLOAD);
+      when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256");
+      when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), PAGE_URL))
+          .thenReturn(Optional.of(existing));
+      DocumentIngest page =
+          DocumentIngest.text(targetLibrary, PAGE_URL, "<p>Text</p>")
+              .fileName("seite.html")
+              .sourceType(DocumentSourceType.UPLOAD)
+              .pipelineId("confluence")
+              .existingRow()
+              .build();
+
+      assertThatThrownBy(() -> service.ingest(page, null))
+          .isInstanceOf(IllegalStateException.class);
+      verify(documentRepository)
+          .markFailed(existing.getId(), FileProcessingService.PROCESSING_FAILED_MESSAGE);
+      verify(vectorStore, never()).delete(any(Filter.Expression.class));
+      assertThat(counter("failed")).isEqualTo(1.0);
     }
   }
 
@@ -452,6 +478,22 @@ class FileProcessingServiceTest {
               ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY,
               (int) TikaFallbackPipeline.VERSION)
           .containsEntry(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY, ".txt");
+    }
+
+    @Test
+    void theRowsContentTypeIsTheCanonicalTypeOfTheRoutedFormatNotTikasRawDetection()
+        throws IOException {
+      // Tika sees a Markdown file as text/plain; the row must say text/markdown, the type the
+      // download endpoint serves and the preview renders Markdown for.
+      Path file = fileNamed("notizen.md", "# Notizen\n\nInhalt");
+      stubNewRow(file, "sha256-md");
+      stubParsedInto(file, chunks("chunk1"));
+
+      service.ingest(localFile(file), null);
+
+      assertThat(savedDocument().getContentType()).isEqualTo("text/markdown");
+      assertThat(storedChunks().getFirst().getMetadata())
+          .containsEntry(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY, ".md");
     }
 
     @Test
@@ -550,6 +592,37 @@ class FileProcessingServiceTest {
               null);
 
       assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+      verify(documentRepository, never())
+          .markIndexedFromSource(any(), anyInt(), any(), any(), any());
+      verify(documentRepository, never())
+          .refreshConnectorTitleAndContext(any(), any(), any(), any());
+      verify(documentRepository, never()).save(any(Document.class));
+    }
+
+    @Test
+    void anUnchangedDownloadedFileUnderTheSameMarkerWritesNothing() throws IOException {
+      // The HTTP directory run hands over SourceDocumentContext.NONE and the listing's marker: a
+      // re-seen, unchanged file must cost no UPDATE at all.
+      Path file = fileNamed("unchanged-url.pdf", "pdf content");
+      String url = "https://example.com/docs/unchanged-url.pdf";
+      Document existing =
+          new Document("unchanged-url.pdf", url, null, 1024L, DocumentSourceType.HTTP_DIRECTORY);
+      existing.setChecksum("same-sha256");
+      existing.setStatus(DocumentStatus.INDEXED);
+      existing.setLastModifiedRemote("2025-06-15 10:30");
+      when(checksumService.computeSha256(file)).thenReturn("same-sha256");
+      when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), url))
+          .thenReturn(Optional.of(existing));
+
+      FileProcessingResult result =
+          service.ingest(
+              DocumentIngests.downloadedFile(
+                      targetLibrary, file, "unchanged-url.pdf", url, "2025-06-15 10:30", 1024)
+                  .build(),
+              null);
+
+      assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
+      verify(documentService, never()).parseDocument(any());
       verify(documentRepository, never())
           .markIndexedFromSource(any(), anyInt(), any(), any(), any());
       verify(documentRepository, never())
@@ -1128,6 +1201,26 @@ class FileProcessingServiceTest {
       // One save only - the size override never ran - and the runner still removed the temp file.
       verify(documentRepository, times(1)).save(any(Document.class));
       assertThat(savedDocument().getFileSize()).isEqualTo((long) "entry main text".length());
+      assertThat(Files.exists(attachmentTempFile)).isFalse();
+    }
+
+    @Test
+    void withoutAnAttachmentAccessAFileKeepsItsSizeToo() throws IOException {
+      // The same rule on the file path: no access, no size override, one save.
+      Path file = fileNamed("mail.eml", "From: a@example.org\r\n\r\nInhalt");
+      Path attachmentTempFile = fileNamed("discovered-attachment.tmp", "attachment bytes");
+      var attachment =
+          new DiscoveredAttachment("anlage.pdf", attachmentTempFile, "application/pdf");
+      var fakePipeline =
+          new FakeDiscoveringPipeline(chunks("chunk1"), List.of(attachment), Optional.of(3L));
+      FileProcessingService serviceWithFakePipeline =
+          serviceWith(new DocumentPipelineRegistry(List.of(fakePipeline), fakePipeline));
+      stubNewRow(file, "sha256-of-mail");
+
+      serviceWithFakePipeline.ingest(localFile(file), null);
+
+      verify(documentRepository, times(1)).save(any(Document.class));
+      assertThat(savedDocument().getFileSize()).isEqualTo(Files.size(file));
       assertThat(Files.exists(attachmentTempFile)).isFalse();
     }
 

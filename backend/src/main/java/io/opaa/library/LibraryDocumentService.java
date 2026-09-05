@@ -298,9 +298,9 @@ public class LibraryDocumentService {
         }
       }
 
-      // #434: the row is created - and returned - as PENDING here, before any parsing/embedding
-      // has happened. contentType/fileSize are read from the file this class itself just wrote,
-      // mirroring FileProcessingService#ingest's own stat-after-store approach.
+      // The row is created - and returned - as PENDING here, before any parsing/embedding has
+      // happened. contentType/fileSize are read from the file this class itself just wrote; the
+      // connector paths store the canonical type of the routed format instead.
       String contentType = Files.probeContentType(storedFile);
       long fileSize = Files.size(storedFile);
       Document document =
@@ -522,13 +522,12 @@ public class LibraryDocumentService {
       throw new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");
     }
 
-    // #742 review, finding 1: document.getContentType() is itself set from Files.probeContentType
-    // at index time (see the extension-based decision this class and FileProcessingService already
-    // make and document as intentional, #404's decideForFileName) - taking it as the primary source
-    // here keeps a single decision point instead of a second, independent guess made from the bytes
-    // at serve time, which could disagree with what was actually indexed. DocumentController's
-    // Content-Security-Policy and X-Content-Type-Options headers are what keep that extension-based
-    // guess from becoming a script execution vector, not this choice of source.
+    // document.getContentType() is decided at index time - the canonical type of the routed
+    // format on the connector paths, Files.probeContentType for an upload - and is the primary
+    // source here, so serving never makes a second, independent guess from the bytes that could
+    // disagree with what was actually indexed. DocumentController's Content-Security-Policy and
+    // X-Content-Type-Options headers are what keep that type from becoming a script execution
+    // vector, not this choice of source.
     String contentType = document.getContentType();
     if (contentType == null || contentType.isBlank()) {
       try {
@@ -841,8 +840,7 @@ public class LibraryDocumentService {
               authHeader,
               Duration.ofSeconds(remoteContentProperties.timeoutSeconds()));
 
-      // #742 review, finding 1/#748 review, finding 2: document.getContentType() - itself set from
-      // Files.probeContentType/the RSS feed's own declared type at index time - is the primary
+      // document.getContentType() - decided at index time, see loadOriginal - is the primary
       // source here too, mirroring the local-file branch of loadContent above; the remote-declared
       // Content-Type is only a fallback, normalized to type/subtype (no parameters) so a stray
       // parameter cannot smuggle a value past a caller comparing it verbatim (frontend #743 SVG

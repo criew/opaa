@@ -168,7 +168,7 @@ public class FileProcessingService {
       }
       doc = existing.get();
       replacingExistingChunks = true;
-      selection = select(ingest);
+      selection = select(ingest, doc);
     } else if (existing.isPresent()) {
       Document existingDoc = existing.get();
       if (checksum.equals(existingDoc.getChecksum())
@@ -185,7 +185,7 @@ public class FileProcessingService {
       if (storageQuotaService.wouldExceedQuota(library.getId(), byteSize - previousSize)) {
         return quotaExceeded(filePath, library);
       }
-      selection = select(ingest);
+      selection = select(ingest, existingDoc);
       replacingExistingChunks = true;
       existingDoc.setFileName(fileName);
       existingDoc.setContentType(selection.contentType());
@@ -195,7 +195,7 @@ public class FileProcessingService {
       if (storageQuotaService.wouldExceedQuota(library.getId(), byteSize)) {
         return quotaExceeded(filePath, library);
       }
-      selection = select(ingest);
+      selection = select(ingest, null);
       replacingExistingChunks = false;
       Document created =
           new Document(fileName, filePath, selection.contentType(), byteSize, ingest.sourceType());
@@ -302,37 +302,49 @@ public class FileProcessingService {
   }
 
   /**
-   * The pipeline, the source it is handed and what routing learned on the way: a file is routed by
-   * its detected content (its media type becomes the row's {@code content_type}), text goes to the
-   * fallback pipeline; a {@link DocumentIngest#pipelineId()} names the pipeline directly, and a
-   * registry without it is a wiring error.
+   * The pipeline, its source and the row's {@code content_type}: a file is routed by its detected
+   * content and typed by the canonical media type of that format (Tika's raw detection only where
+   * no format was decided); text goes to the fallback pipeline; a {@link
+   * DocumentIngest#pipelineId()} names the pipeline directly, a registry without it is a wiring
+   * error. A failure here marks {@code existingRow} {@code FAILED} with its chunks kept, so an
+   * upload never stays {@code PENDING}; a re-index leaves the row alone.
    */
-  private Selection select(DocumentIngest ingest) {
+  private Selection select(DocumentIngest ingest, Document existingRow) {
     String fileName = ingest.fileName();
-    return switch (ingest.content()) {
-      case DocumentIngest.File file -> {
-        DocumentPipelineRegistry.Routed routed =
-            pipelineRegistry.routedPipelineFor(file.path(), fileName);
-        DocumentPipeline pipeline =
-            ingest.pipelineId() == null ? routed.pipeline() : pipelineById(ingest.pipelineId());
-        yield new Selection(
-            pipeline,
-            DocumentPipelineSource.ofFile(file.path(), fileName, routed.detectedExtension()),
-            routingExtensionFor(routed),
-            routed.detectedMediaType());
+    try {
+      return switch (ingest.content()) {
+        case DocumentIngest.File file -> {
+          DocumentPipelineRegistry.Routed routed =
+              pipelineRegistry.routedPipelineFor(file.path(), fileName);
+          DocumentPipeline pipeline =
+              ingest.pipelineId() == null ? routed.pipeline() : pipelineById(ingest.pipelineId());
+          String canonicalType =
+              SupportedDocumentFormats.contentTypeForExtension(routed.detectedExtension());
+          yield new Selection(
+              pipeline,
+              DocumentPipelineSource.ofFile(file.path(), fileName, routed.detectedExtension()),
+              routingExtensionFor(routed),
+              canonicalType != null ? canonicalType : routed.detectedMediaType());
+        }
+        case DocumentIngest.Text text -> {
+          DocumentPipeline pipeline =
+              ingest.pipelineId() == null
+                  ? pipelineRegistry.fallbackPipeline()
+                  : pipelineById(ingest.pipelineId());
+          yield new Selection(
+              pipeline,
+              DocumentPipelineSource.ofExtractedText(text.text(), fileName),
+              Optional.empty(),
+              TEXT_CONTENT_TYPE);
+        }
+      };
+    } catch (RuntimeException | Error e) {
+      if (existingRow != null && !ingest.reindex()) {
+        markConnectorFailedAfterException(existingRow.getId(), true);
       }
-      case DocumentIngest.Text text -> {
-        DocumentPipeline pipeline =
-            ingest.pipelineId() == null
-                ? pipelineRegistry.fallbackPipeline()
-                : pipelineById(ingest.pipelineId());
-        yield new Selection(
-            pipeline,
-            DocumentPipelineSource.ofExtractedText(text.text(), fileName),
-            Optional.empty(),
-            TEXT_CONTENT_TYPE);
-      }
-    };
+      metrics.recordFailed();
+      throw e;
+    }
   }
 
   private record Selection(
@@ -366,9 +378,8 @@ public class FileProcessingService {
   }
 
   /**
-   * Same content under a new marker, title, place or folder (a title-only edit, a move, a renamed
-   * ancestor): the chunks stay, but the provenance moves with the row, so the next run's pre-fetch
-   * check skips the document again and every view shows its current title and place.
+   * Same content under a new marker, title, place or folder: the chunks stay, but the provenance
+   * moves with the row, so the next run's pre-fetch check skips the document again.
    */
   private void refreshProvenance(Document existing, DocumentIngest ingest, String checksum) {
     String marker = ingest.changeMarker();
@@ -394,9 +405,8 @@ public class FileProcessingService {
   }
 
   /**
-   * Puts the document's source context onto every chunk of a pipeline that declares the context
-   * keys as passthrough - the container and the hierarchy path are not in the body, so the pipeline
-   * cannot set them itself, and {@link #storeChunks} keeps declared keys only.
+   * Puts the source context onto every chunk of a pipeline that declares the context keys as
+   * passthrough - they are not in the body, so the pipeline cannot set them itself.
    */
   private static void attachSourceContext(
       List<org.springframework.ai.document.Document> chunks,
@@ -418,10 +428,7 @@ public class FileProcessingService {
     chunks.forEach(chunk -> chunk.getMetadata().putAll(contextKeys));
   }
 
-  /**
-   * What the source declares about the document (ADR-0024), laid over what the format declared: a
-   * headline or page title, the name being free text, a publication or version instant.
-   */
+  /** What the source declares about the document (ADR-0024), laid over what the format found. */
   private static DocumentProperties declaredProperties(
       DocumentPipelineResult parsed, DocumentIngest ingest) {
     DocumentProperties properties = parsed.properties();
@@ -442,9 +449,8 @@ public class FileProcessingService {
 
   /**
    * The chunk-context prefix (ingestion-pipelines.md, Querschnittsregel (b)): a file name is
-   * humanized by {@link ChunkContextTitle}; a synthetic name is the declared title verbatim, behind
-   * its ancestor titles (root first) where the document has a hierarchy path, and {@code null}
-   * without a title - a URL fallback would share a prefix across every document of the same source.
+   * humanized by {@link ChunkContextTitle}; a synthetic name is the declared title verbatim behind
+   * its hierarchy path, and {@code null} without a title - a URL fallback would share a prefix.
    */
   private static String contextTitleFor(DocumentIngest ingest) {
     if (!ingest.syntheticName()) {
@@ -462,10 +468,9 @@ public class FileProcessingService {
   }
 
   /**
-   * Removes the chunks of a document being replaced on the outcomes where the new version is
-   * legitimately without content: "parsed and empty" ({@code NO_CONTENT}/{@code
-   * NO_EXTRACTABLE_TEXT}) is a statement about the new content, so the old chunks must not survive
-   * it (ingestion-pipelines.md, "Übergabepunkt"). A no-op when there were no chunks.
+   * Removes a replaced document's chunks on the outcomes where the new version is legitimately
+   * empty: "parsed and empty" is a statement about the new content, so the old chunks must not
+   * survive it (ingestion-pipelines.md, "Übergabepunkt").
    */
   private void deletePreviousChunks(boolean replacingExistingChunks, UUID documentId) {
     if (replacingExistingChunks) {
