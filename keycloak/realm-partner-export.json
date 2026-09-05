@@ -10,13 +10,19 @@
   "clients": [
     {
       "clientId": "opaa-partner",
-      "description": "Zweiter Public Client auf demselben Origin (ADR-0025, #1334): der zweite Identitaetsanbieter des Demo-Smoke-Laufs und des lokalen oidc-Stacks. Wird nicht beim Start uebernommen, sondern von der Systemverwaltung ueber die Anbieterverwaltung angelegt.",
+      "description": "Zweiter Public Client auf demselben Origin (ADR-0025, #1334): zweiter Identitaetsanbieter fuer Demo-Smoke und lokalen oidc-Stack. Nicht beim Start uebernommen - die Systemverwaltung legt ihn ueber die Anbieterverwaltung an.",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
-      "redirectUris": ["http://localhost:5173/*", "http://localhost:3000/*"],
-      "webOrigins": ["http://localhost:5173", "http://localhost:3000"],
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://localhost:3000"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256"
       }
