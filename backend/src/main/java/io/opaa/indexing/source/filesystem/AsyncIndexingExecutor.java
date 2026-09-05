@@ -36,31 +36,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 
 /**
- * Executes indexing runs for {@link IndexingSourceType#FILESYSTEM} (ADR-0017). Since ADR-0018, the
- * directory to crawl is the library's own {@link KnowledgeLibrary#getSourcePath()} - not a single,
- * application-wide path, so different FILESYSTEM libraries can watch different directories.
+ * Executes indexing runs for {@link IndexingSourceType#FILESYSTEM} (ADR-0017) over the library's
+ * own {@link KnowledgeLibrary#getSourcePath()} (ADR-0018). Every discovered file's directory is
+ * mirrored into {@code library_folders} (ADR-0020) before the file is processed.
  *
- * <p>Every discovered file's directory under {@code sourcePath} is mirrored into {@code
- * library_folders} via {@link LibraryFolderService#materializeFolderPath} before it is handed to
- * {@link FileProcessingService#processFile(Path, KnowledgeLibrary, UUID)} (ADR-0020) - the
- * read-only counterpart to the CRUD-managed folders of an {@code UPLOAD} library. Once every
- * discovered file has been processed, {@link StaleDocumentCleanupService#cleanupVanished} removes
- * every {@code FILESYSTEM} document of this library whose path was not rediscovered - it no longer
- * exists under {@code sourcePath} (#886) - and only then does {@link
- * LibraryFolderService#pruneOrphanedFolders} remove any folder this run never touched and that
- * holds no document, directly or transitively: that order lets a folder emptied by the cleanup
- * above be pruned in this same run instead of lagging one run behind. Both are only reached on this
- * method's own success path (never from a {@code catch} block), so a failed or crashed run never
- * deletes anything; {@code discoverFiles} walks the whole tree with no truncation limit, so -
- * unlike {@code UrlIndexingExecutor} - there is no capped-run case to guard against here. It does,
- * however, throw when {@code sourcePath} itself does not currently exist or is not a directory
- * (#886 review) - an unmounted network share or a moved directory fails this run instead of
- * silently reporting an empty, "successful" bestand that {@link
- * StaleDocumentCleanupService#cleanupVanished} would otherwise read as "every document vanished".
- * {@code cleanupVanished}'s own {@code currentFilePaths} is built from every physically found file,
- * not only the indexable ones - an unreadable file ({@link
- * DocumentService.DiscoveredFiles#rejected}) is still present at the source, just not indexable,
- * and must not be treated as vanished either.
+ * <p>After every file has been processed, {@link StaleDocumentCleanupService#cleanupVanished}
+ * removes what was not rediscovered, and only then does {@link
+ * LibraryFolderService#pruneOrphanedFolders} run, so a folder emptied by that cleanup is pruned in
+ * the same run. Both are reached on the success path only, and {@code currentFilePaths} covers
+ * every physically found file, not only the indexable ones. A missing or non-directory {@code
+ * sourcePath} fails the run instead of reporting an empty, "successful" bestand.
  */
 public class AsyncIndexingExecutor implements SourceIndexingExecutor {
 
@@ -197,7 +182,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       Set<String> reprocessedFilePaths = new HashSet<>();
 
       // Mirrors this run's directory structure into library_folders and remembers which folders
-      // it actually used - the same helper UrlIndexingExecutor drives (ADR-0020, #1277).
+      // it actually used - the same helper UrlIndexingExecutor drives (ADR-0020).
       var folderMirror = new SourceFolderMirror(folderService, targetLibrary);
 
       for (Path file : files) {
@@ -218,10 +203,9 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
                 fileName);
             progress.recordSkipped();
           } else if (result == FileProcessingResult.NO_EXTRACTABLE_TEXT) {
-            // See io.opaa.indexing.pipeline.TikaFallbackPipeline#isTextlessPdf and
-            // FileProcessingResult#NO_EXTRACTABLE_TEXT: the
-            // document was already rejected and marked FAILED with the user-facing message below -
-            // reported the same way QUOTA_EXCEEDED is, not silently counted as processed.
+            // See FileProcessingResult#NO_EXTRACTABLE_TEXT: the document was already rejected
+            // and marked FAILED with the user-facing message below - reported the same way
+            // QUOTA_EXCEEDED is, not silently counted as processed.
             events.record(
                 IndexingEventCategory.REJECTED,
                 DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE,
@@ -230,7 +214,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
           } else if (result == FileProcessingResult.FAILED) {
             // See DocumentPipelineResult.Outcome#PARSE_FAILED/#NO_CONTENT: the pipeline could
             // not parse the document, or read it and found it empty - the same failure the catch
-            // block below reports, only reached without throwing (#1108).
+            // block below reports, only reached without throwing.
             events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", fileName);
             progress.recordFailed();
           } else if (result == FileProcessingResult.SKIPPED) {
@@ -249,11 +233,11 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
       }
 
       // Reached only once every discovered file has been accounted for above - see this class'
-      // own Javadoc on why that makes this call safe (#886). Runs before pruneOrphanedFolders
+      // own Javadoc on why that makes this call safe. Runs before pruneOrphanedFolders
       // below so a folder that only held a now-vanished document can already be pruned in this
       // same run, instead of lagging one run behind.
       try {
-        // #886 review: "physically found", not "indexable" - an unreadable/unsupported-format
+        // "physically found", not "indexable" - an unreadable/unsupported-format
         // file is still present at the source and must not be treated as vanished.
         Set<String> currentFilePaths =
             Stream.concat(files.stream(), discovered.rejected().stream())

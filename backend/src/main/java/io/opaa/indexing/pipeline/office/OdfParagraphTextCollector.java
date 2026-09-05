@@ -5,17 +5,14 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 
 /**
- * Shared {@code text:h}/{@code text:p} text accumulation for the {@code styles.xml} handlers
- * ({@link OdtDocumentPipeline.OdtStylesHandler}, {@link OdpDocumentPipeline.OdpStylesHandler}):
- * {@code text:s}/{@code text:tab}/{@code text:line-break} rendering and the character budget guard,
- * mirroring the corresponding {@code content.xml} handlers' own logic. A caller drives it by
- * forwarding every SAX callback and routes the paragraph text {@link #endElement} returns to its
- * own role tracking (header/footer, master page) and deduplication.
+ * Shared {@code text:h}/{@code text:p} text accumulation for the {@code styles.xml} handlers of
+ * {@link OdtDocumentPipeline} and {@link OdpDocumentPipeline}: {@code text:s}/{@code
+ * text:tab}/{@code text:line-break} rendering and the character budget guard. A caller forwards
+ * every SAX callback and routes the text {@link #endElement} returns to its own role tracking and
+ * deduplication.
  *
- * <p>Text inside a known ODF field element ({@link #FIELD_ELEMENTS}, e.g. {@code text:page-number})
- * is never collected - a field's cached last-computed value (the page number that happened to be
- * current when the file was last saved) is not document content, and is wrong for every page but
- * the one it was computed on.
+ * <p>Text inside a known ODF field element ({@link #FIELD_ELEMENTS}) is never collected - a field's
+ * cached value is wrong for every page but the one it was computed on.
  */
 final class OdfParagraphTextCollector {
 

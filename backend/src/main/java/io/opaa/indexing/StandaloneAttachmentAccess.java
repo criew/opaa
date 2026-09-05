@@ -6,11 +6,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link AttachmentAccess} for a caller with no run/job of its own (#1218): a single document
- * upload ({@code FileProcessingService#processUploadedFileAsync}) and the operator-triggered
- * pipeline re-index ({@code PipelineReindexService}). Events are only logged, progress is a no-op,
- * and {@link #markDeferred()} has no per-run state to suppress - a lost attachment is retried the
- * next time its parent is re-processed (a re-upload, a pipeline re-index). {@code
+ * The {@link AttachmentAccess} for a caller with no run/job of its own: a single document upload
+ * ({@code FileProcessingService#processUploadedFileAsync}) and the operator-triggered pipeline
+ * re-index ({@code PipelineReindexService}). Events are only logged, progress is a no-op, and
+ * {@link #markDeferred()} has no per-run state to suppress - a lost attachment is retried the next
+ * time its parent is re-processed (a re-upload, a pipeline re-index). {@code
  * recordIndexedAttachment} keeps its no-op default: neither caller runs {@code
  * StaleDocumentCleanupService#cleanupVanished}.
  */

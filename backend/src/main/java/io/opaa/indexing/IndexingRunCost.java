@@ -1,9 +1,9 @@
 package io.opaa.indexing;
 
 /**
- * What one run cost and how much of it was attachments (#1141) - recorded once, at the end of a
- * run, by the executors that can measure it (today the Confluence executor); {@code null} on a job
- * means the run did not report them.
+ * What one run cost and how much of it was attachments - recorded once, at the end of a run, by the
+ * executors that can measure it (today the Confluence executor); {@code null} on a job means the
+ * run did not report them.
  *
  * @param requestsSent requests the run sent to its source, retries included
  * @param throttleCount how often the source answered 429 and the run waited

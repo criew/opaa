@@ -13,7 +13,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ai.document.Document;
 
 /**
- * #1181 review: {@link DocumentPipelineRunner} is the single choke point every caller of {@link
+ * {@link DocumentPipelineRunner} is the single choke point every caller of {@link
  * DocumentPipeline#run} goes through - covering it here once replaces exercising the same cleanup
  * contract at every one of its call sites.
  */
@@ -99,7 +99,7 @@ class DocumentPipelineRunnerTest {
 
   @Test
   void aFailureToDeleteATempFileNeverTurnsASuccessfulResultIntoAFailure() throws IOException {
-    // #1181 review, finding 1: cleanup catches IOException *and* RuntimeException - deleting a
+    // cleanup catches IOException *and* RuntimeException - deleting a
     // non-empty directory throws DirectoryNotEmptyException (an IOException), the closest
     // reachable stand-in for "deletion fails for a reason unrelated to the pipeline's own result".
     Path directoryTempFile = tempDir.resolve("not-actually-a-file");

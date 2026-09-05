@@ -6,6 +6,6 @@
  * single source's own package. {@code source.rss} is the first consumer ({@link
  * io.opaa.indexing.source.attachment.AttachmentProfile} decides which links on an RSS detail page
  * are attachments, {@code RssFeedRunContext} implements {@code AttachmentAccess} directly); Mail
- * (#1183) and Confluence (#1137) are meant to follow the same shape.
+ * and Confluence are meant to follow the same shape.
  */
 package io.opaa.indexing.source.attachment;

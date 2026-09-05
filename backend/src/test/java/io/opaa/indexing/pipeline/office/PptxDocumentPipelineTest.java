@@ -26,9 +26,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The PPTX pipeline (#1061; ingestion-pipelines.md Teil 2: "PPTX | Eine Folie = ein Chunk"): every
- * slide with text becomes exactly one chunk, carrying its title and slide number as location; a
- * blank slide alongside others still yields a (near-empty) chunk, but a presentation where no slide
+ * The PPTX pipeline (ingestion-pipelines.md Teil 2: "PPTX | Eine Folie = ein Chunk"): every slide
+ * with text becomes exactly one chunk, carrying its title and slide number as location; a blank
+ * slide alongside others still yields a (near-empty) chunk, but a presentation where no slide
  * carries any text at all is rejected as NO_EXTRACTABLE_TEXT rather than silently indexed.
  */
 class PptxDocumentPipelineTest {
@@ -102,7 +102,7 @@ class PptxDocumentPipelineTest {
 
   @Test
   void aPresentationWhereNoSlideHasAnyTextIsRejectedAsNoExtractableText() throws IOException {
-    // #1104 review, wichtig 4: without this guard the #1055 "silent empty index" failure mode
+    // without this guard the "silent empty index" failure mode
     // returns for PPTX - N content-free "Folie n" chunks would look like a successful index.
     Path file = tempDir.resolve("nur-bilder.pptx");
     try (XMLSlideShow show = new XMLSlideShow()) {
@@ -165,7 +165,7 @@ class PptxDocumentPipelineTest {
 
   @Test
   void theTitleShapeIsExcludedByIdentityNotByTextEquality() throws IOException {
-    // #1104 review, Nit 7: a body shape that happens to repeat the title's exact wording must not
+    // a body shape that happens to repeat the title's exact wording must not
     // also be silently dropped by a text-equality check.
     Path file = tempDir.resolve("wiederholter-titel.pptx");
     try (XMLSlideShow show = new XMLSlideShow()) {
@@ -190,7 +190,7 @@ class PptxDocumentPipelineTest {
 
   @Test
   void aNotesTextBoxWithoutAPlaceholderTypeIsIncludedWithoutThrowing() throws IOException {
-    // #1104 review round 2, wichtig 2: XSLFTextShape#getTextType() returns null for an ordinary
+    // XSLFTextShape#getTextType() returns null for an ordinary
     // text box that is not inherited from a notes-master placeholder - the existing notes tests
     // only ever hit placeholders, so this NPE (Set.of(...)#contains(null)) went unnoticed and
     // crashed the whole presentation, not just this one slide.
@@ -258,7 +258,7 @@ class PptxDocumentPipelineTest {
 
   /**
    * ADR-0024: the core properties and the first slide's title reach the extractor from the same
-   * single parse {@code run} takes; {@code readProperties} is the chunk-free path of #1067.
+   * single parse {@code run} takes; {@code readProperties} is the chunk-free path.
    */
   @Test
   void readsCorePropertiesAndTheFirstSlideTitleAsDocumentProperties() throws IOException {

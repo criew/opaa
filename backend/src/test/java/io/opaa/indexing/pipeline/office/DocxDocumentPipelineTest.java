@@ -28,8 +28,8 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTSimpleField;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.STFldCharType;
 
 /**
- * The DOCX pipeline (#1061; ingestion-pipelines.md Teil 2): the cut follows heading levels taken
- * from a paragraph's own formatting (built-in style or direct outline level), mirroring
+ * The DOCX pipeline (ingestion-pipelines.md Teil 2): the cut follows heading levels taken from a
+ * paragraph's own formatting (built-in style or direct outline level), mirroring
  * MarkdownDocumentPipelineTest/HtmlDocumentPipelineTest for the same section-building rules.
  */
 class DocxDocumentPipelineTest {
@@ -104,7 +104,7 @@ class DocxDocumentPipelineTest {
 
   @Test
   void aTableIsReadCellByCellAndAddedAsBodyText() throws IOException {
-    // Gebührenverzeichnisse und Formulare sind praktisch immer Tabellen (#1104 review, wichtig 2)
+    // Gebührenverzeichnisse und Formulare sind praktisch immer Tabellen
     // - getBodyElements() must not silently drop them the way getParagraphs() alone would.
     Path file = tempDir.resolve("gebuehrenverzeichnis.docx");
     try (XWPFDocument doc = new XWPFDocument()) {
@@ -130,7 +130,7 @@ class DocxDocumentPipelineTest {
 
   @Test
   void aGermanStyleIdIsRecognizedAsAHeading() throws IOException {
-    // #1104 review, Nit 5: the styleId is not reliably English regardless of authoring locale -
+    // the styleId is not reliably English regardless of authoring locale -
     // LibreOffice/some German Word templates export "berschrift1" ("Ü" stripped by the OOXML
     // styleId sanitizer).
     Path file = tempDir.resolve("deutsche-formatvorlage.docx");
@@ -182,12 +182,11 @@ class DocxDocumentPipelineTest {
 
   @Test
   void headerTextAloneDoesNotDefeatTheScanEmptyDeckGuard() throws IOException {
-    // regression guard for #1145 second review, finding 3: a scanned authority letter carries its
+    // regression guard for #1145: a scanned authority letter carries its
     // letterhead in the Kopf-/Fusszeile just like a text-layer document, so header/footer text is
-    // no evidence this document itself has extractable content. An earlier version of this
-    // pipeline added the header/footer chunk before the guard check, so this reported CHUNKED
-    // instead of NO_CONTENT - reopening the #1055 stille-Leer-Index-Fehlfunktion this guard exists
-    // to prevent, silently, because there is no telltale empty-slide chunk to notice.
+    // no evidence this document itself has extractable content. Adding the header/footer chunk
+    // before the guard check would report CHUNKED instead of NO_CONTENT - silently reopening the
+    // stille-Leer-Index-Fehlfunktion this guard exists to prevent.
     Path file = tempDir.resolve("nur-kopfzeile.docx");
     try (XWPFDocument doc = new XWPFDocument()) {
       XWPFHeaderFooterPolicy policy = doc.createHeaderFooterPolicy();
@@ -205,7 +204,7 @@ class DocxDocumentPipelineTest {
 
   @Test
   void identicalHeaderVariantsContributeOnlyOnce() throws IOException {
-    // regression guard for #1145 review, B2: reading every header/footer part (not just the
+    // regression guard for #1145: reading every header/footer part (not just the
     // default one, see aFirstPageOnlyHeaderIsStillIndexed below) must not duplicate text that
     // several variants happen to share verbatim.
     Path file = tempDir.resolve("kopfzeile-varianten.docx");
@@ -237,11 +236,10 @@ class DocxDocumentPipelineTest {
 
   @Test
   void aFirstPageOnlyHeaderIsStillIndexed() throws IOException {
-    // regression guard for #1145 review, B4: "Erste Seite anders" (w:titlePg) is the common
+    // regression guard for #1145: "Erste Seite anders" (w:titlePg) is the common
     // German-authority-letterhead layout - the letterhead lives exclusively in the FIRST header
-    // part, never in DEFAULT. An earlier version of this pipeline read only
-    // XWPFHeaderFooterPolicy#getDefaultHeader() and therefore missed exactly the case #1145 was
-    // filed to fix.
+    // part, never in DEFAULT. A handler reading only
+    // XWPFHeaderFooterPolicy#getDefaultHeader() would miss exactly that case.
     Path file = tempDir.resolve("nur-erste-seite.docx");
     try (XWPFDocument doc = new XWPFDocument()) {
       XWPFHeaderFooterPolicy policy = doc.createHeaderFooterPolicy();
@@ -264,7 +262,7 @@ class DocxDocumentPipelineTest {
 
   @Test
   void aPageFieldsCachedValueIsExcludedButSurroundingTextIsKept() throws IOException {
-    // regression guard for #1145 review, B3: a Word field's cached last-computed value (the
+    // regression guard for #1145: a Word field's cached last-computed value (the
     // separate/end run sequence) is wrong for every page but the one it was current on and must
     // not become indexed content; the static text around it is real content and must survive.
     Path file = tempDir.resolve("seitenzahl-fusszeile.docx");
@@ -292,7 +290,7 @@ class DocxDocumentPipelineTest {
 
   @Test
   void aFooterThatIsOnlyAPageFieldContributesNoLeadingChunkAtAll() throws IOException {
-    // regression guard for #1145 review, B3 (the safety net): once the field value is excluded,
+    // regression guard for #1145: once the field value is excluded,
     // nothing but digits/whitespace is left - RepeatingHeaderChunk's letter check must reject it
     // rather than index a chunk of pure noise.
     Path file = tempDir.resolve("nur-seitenzahl.docx");
@@ -319,7 +317,7 @@ class DocxDocumentPipelineTest {
 
   @Test
   void aRunWithSeveralWTChildrenIsRenderedInFullNotJustItsFirstWT() throws IOException {
-    // regression guard for #1145 second review, finding 1: Word routinely writes a tab-separated
+    // regression guard for #1145: Word routinely writes a tab-separated
     // multi-column letterhead ("Stadt Musterstadt<TAB>Az. 12-34/2026") as one run with several
     // w:t/w:tab children, not one run per column - built here directly at the CT level (not via
     // XWPFRun#setText, which always produces the single-w:t form and would hide this bug).
@@ -348,7 +346,7 @@ class DocxDocumentPipelineTest {
   @Test
   void trackedChangesDeletionTextIsExcludedEvenThoughXWPFRunTextDoesNotExcludeIt()
       throws IOException {
-    // regression guard for #1145 third review, finding 1: XWPFRun#text() excludes w:instrText but
+    // regression guard for #1145: XWPFRun#text() excludes w:instrText but
     // not w:delText - the delText exclusion is carried entirely by this pipeline's own
     // ctr.sizeOfDelTextArray() check, not by POI. Without it, a header/footer run holding
     // tracked-changes deletion text (deleted but pending review) would be indexed as if it were
@@ -381,7 +379,7 @@ class DocxDocumentPipelineTest {
 
   @Test
   void aFldSimpleFieldsCachedValueIsExcluded() throws IOException {
-    // regression guard for #1145 second review, finding 2: w:fldSimple (LibreOffice's .docx
+    // regression guard for #1145: w:fldSimple (LibreOffice's .docx
     // export form for a page number, as opposed to Word's own begin/separate/end run sequence) is
     // exposed by POI as an XWPFFieldRun that carries neither w:fldChar nor w:instrText, so the
     // begin/separate/end state machine alone never sees it - built here via CTP#addNewFldSimple()
@@ -451,7 +449,7 @@ class DocxDocumentPipelineTest {
   @Test
   void aFieldNestedInsideAnOuterFieldsInstructionPartHasBothCachedValuesExcluded()
       throws IOException {
-    // regression guard for #1162 review, follow-up 1: a field nested inside its outer field's
+    // regression guard for #1162: a field nested inside its outer field's
     // own instruction part (BEGIN outer/instr/BEGIN inner/instr/SEPARATE innerValue END/SEPARATE
     // outerValue END), as opposed to being nested inside the outer field's result - both the
     // inner and the outer cached value must be excluded. Locks in the stack's frame-per-BEGIN
@@ -489,7 +487,7 @@ class DocxDocumentPipelineTest {
 
   @Test
   void anEndWithNoOpenFieldDoesNotSwallowSubsequentText() throws IOException {
-    // Robustness property from the #1162 fix: an END with no matching BEGIN must not drive the
+    // Robustness property: an END with no matching BEGIN must not drive the
     // frame stack into a state where it later excludes real text.
     Path file = tempDir.resolve("end-ohne-begin.docx");
     try (XWPFDocument doc = new XWPFDocument()) {
@@ -512,7 +510,7 @@ class DocxDocumentPipelineTest {
 
   @Test
   void anUnclosedFieldOnlySwallowsTheRestOfItsOwnParagraph() throws IOException {
-    // Robustness property from the #1162 fix: an unbalanced BEGIN/SEPARATE with no matching END
+    // Robustness property: an unbalanced BEGIN/SEPARATE with no matching END
     // resets at the next paragraph rather than leaking into it - the frame stack is local to each
     // paragraph's own call of paragraphTextExcludingFieldValues.
     Path file = tempDir.resolve("unbalanciertes-feld.docx");
@@ -542,7 +540,7 @@ class DocxDocumentPipelineTest {
 
   @Test
   void aNonBreakingSpaceVariantIsDeduplicatedAgainstThePlainSpaceVariant() throws IOException {
-    // regression guard for #1145 second review, nit: a non-breaking space (U+00A0) is routine in
+    // regression guard for #1145: a non-breaking space (U+00A0) is routine in
     // an authority letterhead's column separators; \s alone does not match it, so a variant using
     // NBSP and the default using a plain space would otherwise both survive deduplication.
     Path file = tempDir.resolve("geschuetztes-leerzeichen.docx");

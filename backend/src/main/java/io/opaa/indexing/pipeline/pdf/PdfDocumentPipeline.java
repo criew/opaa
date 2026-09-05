@@ -27,18 +27,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 
 /**
- * The PDF pipeline (docs/features/ingestion-pipelines.md, Teil 1). Reads directly through Apache
- * PDFBox rather than Spring AI's PDF readers, both absent from this project's classpath.
+ * The PDF pipeline (ingestion-pipelines.md, Teil 1), reading through PDFBox rather than Spring AI's
+ * PDF readers, which are absent from this classpath. With a resolvable outline every entry becomes
+ * a heading of its own nesting level, cut without a depth cap - a legal text commonly nests § and
+ * Absatz as two separately citable levels - and several entries on one page split that page's text
+ * between their titles. Without an outline, chunking falls back to one chunk per non-blank page.
  *
- * <p>When the PDF catalog (outline/bookmarks) is present, every outline entry that resolves to a
- * page becomes a heading of its own nesting level, cut without a depth cap (unlike Markdown/DOCX) -
- * a legal text's catalog commonly nests § and Absatz as two levels, each citable on its own.
- * Several outline entries sharing one page split that page's text between their titles rather than
- * each claiming the whole page. Without a resolvable outline, chunking falls back to one chunk per
- * non-blank page.
- *
- * <p>Scan detection (#1055) is answered from this pipeline's own PDFBox extraction: a PDF whose
- * extracted text is entirely blank is rejected as {@code NO_EXTRACTABLE_TEXT}.
+ * <p>Scan detection is answered from this pipeline's own extraction: a PDF whose text is entirely
+ * blank is rejected as {@code NO_EXTRACTABLE_TEXT}.
  */
 public class PdfDocumentPipeline implements DocumentPipeline {
 
@@ -86,8 +82,8 @@ public class PdfDocumentPipeline implements DocumentPipeline {
 
   /**
    * The Info dictionary's Title/CreationDate/ModDate, the first top-level outline entry as the
-   * first heading (ADR-0024) and the opening of the first page's text as the head text (#1263) -
-   * the only page whose text is extracted here.
+   * first heading (ADR-0024) and the opening of the first page's text as the head text - the only
+   * page whose text is extracted here.
    */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
@@ -103,9 +99,9 @@ public class PdfDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * The first page's text as the head area (#1263), or {@code null} when it cannot be extracted -
-   * never a failure. Read on both paths, so {@link #run} and {@link #readProperties} declare the
-   * same head for the same file.
+   * The first page's text as the head area, or {@code null} when it cannot be extracted - never a
+   * failure. Read on both paths, so {@link #run} and {@link #readProperties} declare the same head
+   * for the same file.
    */
   private static String firstPageText(PDDocument doc) {
     try {
@@ -211,10 +207,9 @@ public class PdfDocumentPipeline implements DocumentPipeline {
       Attribution attribution = splitAmongSiblingTitles(rangeText, run);
       if (!attribution.head().isBlank()) {
         // Text before the run's first title belongs to whichever section is still open when
-        // this run starts - the preamble (first run) or the previous run's last entry (#1104
-        // review round 2, wichtig 1). Added before this run's own Heading events, so
-        // HeadingSectionSplitter#chunk folds it into that still-open section rather than
-        // dropping it.
+        // this run starts - the preamble (first run) or the previous run's last entry. Added
+        // before this run's own Heading events, so HeadingSectionSplitter#chunk folds it into
+        // that still-open section rather than dropping it.
         events.add(new HeadingSectionSplitter.Paragraph(attribution.head().strip()));
       }
       for (int k = 0; k < run.size(); k++) {

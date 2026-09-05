@@ -5,11 +5,11 @@ import io.opaa.common.ValidationException;
 import java.time.LocalDate;
 
 /**
- * The value a person sets for one core field (#1068): either a value - exactly one of {@code
- * textValue}, {@code vocabularyCode} or {@code dateValue}+{@code datePrecision} - or the third
- * state "kein Wert ermittelbar" ({@link MetadataValueState#NOT_DETERMINABLE}, #1069), which carries
- * no value at all. {@link #validatedFor} checks the input against the field's type and the
- * vocabulary and normalises the date to the first day of what its precision leaves unknown.
+ * The value a person sets for one core field: either a value - exactly one of {@code textValue},
+ * {@code vocabularyCode} or {@code dateValue}+{@code datePrecision} - or the third state "kein Wert
+ * ermittelbar" ({@link MetadataValueState#NOT_DETERMINABLE}), which carries no value at all. {@link
+ * #validatedFor} checks the input against the field's type and the vocabulary and normalises the
+ * date to the first day of what its precision leaves unknown.
  */
 public record MetadataValueInput(
     MetadataValueState state,

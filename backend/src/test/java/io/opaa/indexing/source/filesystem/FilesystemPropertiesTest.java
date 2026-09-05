@@ -8,8 +8,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 /**
- * #1271: {@link FilesystemProperties} binds under {@code opaa.indexing.filesystem.allowlist} - the
- * old, flat {@code opaa.indexing.filesystem-allowlist} key (pre-#1271) no longer has any effect.
+ * {@link FilesystemProperties} binds under {@code opaa.indexing.filesystem.allowlist} - the old,
+ * flat {@code opaa.indexing.filesystem-allowlist} key no longer has any effect.
  */
 class FilesystemPropertiesTest {
 

@@ -11,10 +11,10 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /**
- * The routing contract of {@link DocumentPipelineRegistry} (#1056, ingestion-pipelines.md Teil 1):
- * the pipeline follows the <em>detected content</em>, the Markdown/Klartext special rule (content
- * and extension) still applies, and everything without its own pipeline keeps going through the
- * Tika fallback - which is what makes the abstraction verhaltensneutral for the existing bestand.
+ * The routing contract of {@link DocumentPipelineRegistry} (ingestion-pipelines.md Teil 1): the
+ * pipeline follows the <em>detected content</em>, the Markdown/Klartext special rule (content and
+ * extension) still applies, and everything without its own pipeline keeps going through the Tika
+ * fallback - which is what makes the abstraction verhaltensneutral for the existing bestand.
  */
 class DocumentPipelineRegistryTest {
 
@@ -136,7 +136,8 @@ class DocumentPipelineRegistryTest {
     DocumentPipeline pdfPipeline = new FakePipeline("pdf", (short) 1, Set.of(".pdf"));
     DocumentPipelineRegistry registry = registryWith(pdfPipeline);
 
-    // The core #404 rule carried into routing: a PDF misnamed .docx in a gewachsene Ablage still
+    // Content-based admission carried into routing: a PDF misnamed .docx in a gewachsene Ablage
+    // still
     // reaches the PDF pipeline, and a DOCX misnamed .pdf never does.
     assertThat(registry.pipelineFor("eigentlich-ein.docx", PDF)).isSameAs(pdfPipeline);
     assertThat(registry.pipelineFor("eigentlich-ein.pdf", DOCX)).isSameAs(fallback);
@@ -152,7 +153,7 @@ class DocumentPipelineRegistryTest {
     // exactly the admission rule, reused rather than re-implemented.
     assertThat(registry.pipelineFor("handbuch.md", PLAIN_TEXT)).isSameAs(markdownPipeline);
     assertThat(registry.pipelineFor("handbuch.txt", PLAIN_TEXT)).isSameAs(textPipeline);
-    // CSV is admitted in its own right since #1058, but no pipeline in this registry claims
+    // CSV is admitted in its own right, but no pipeline in this registry claims
     // ".csv" - it falls back exactly like any other admitted format without a specialized
     // pipeline (see aFormatWithoutItsOwnPipelineKeepsUsingTheFallback below).
     assertThat(registry.pipelineFor("export.csv", PLAIN_TEXT)).isSameAs(fallback);
@@ -168,7 +169,7 @@ class DocumentPipelineRegistryTest {
 
   @Test
   void aFileThatCannotBeReadForDetectionFallsBackWithFormatDetectionFailedSet() {
-    // Regression guard for the #1165 review: a read failure (deleted, permission-denied, briefly
+    // Regression guard for #1165: a read failure (deleted, permission-denied, briefly
     // locked) must not be indistinguishable from a content decision that admits nothing -
     // FileProcessingService relies on formatDetectionFailed() to avoid persisting a routing key
     // for a chunk this method never actually routed on content.

@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Derives the folder path a crawled entry maps to (ADR-0020 Nachtrag, #1277): the entry's URL path
+ * Derives the folder path a crawled entry maps to (ADR-0020 Nachtrag): the entry's URL path
  * relative to the normalized start URL, segment by segment percent-decoded, without the entry's own
  * file name and without any query string or fragment on either side.
  *
@@ -33,12 +33,10 @@ public record UrlFolderPath(List<String> segments, String rejectedSegment) {
   }
 
   /**
-   * {@code startUrl} is treated as a directory prefix ({@code AutoindexCrawlerService#resolveUrl}
-   * builds every entry URL by appending to it the same way), and both sides are {@link
-   * URI#normalize() normalized} before comparing so a {@code ../} an entry's href resolved through
-   * is collapsed rather than compared literally. An entry that does not sit under {@code startUrl}
-   * at all maps to the root without a rejection - it is not a broken folder name, it is simply not
-   * part of this tree.
+   * {@code startUrl} is treated as a directory prefix, and both sides are {@link URI#normalize()
+   * normalized} before comparing, so a {@code ../} an entry's href resolved through is collapsed
+   * rather than compared literally. An entry not under {@code startUrl} maps to the root without a
+   * rejection - it is not a broken folder name, it is simply not part of this tree.
    */
   public static UrlFolderPath of(String startUrl, String entryUrl) {
     // The start URL is stripped too, not only the entry URL: a configured source URL may carry a

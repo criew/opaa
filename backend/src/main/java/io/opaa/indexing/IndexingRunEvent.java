@@ -12,20 +12,13 @@ import org.springframework.data.domain.Persistable;
 
 /**
  * A single skipped/rejected item or error an indexing run recorded - the "why" behind a lower
- * documentsSkipped/documentsFailed count than the number of items the source offered, which
- * otherwise is only visible in the backend log.
+ * documentsSkipped/documentsFailed count than the number of items the source offered.
  *
- * <p>Every event belongs to exactly one {@link IndexingJob} via {@code jobId} - not a JPA
- * {@code @ManyToOne}, mirroring {@link IndexingJob#getLibraryId()}'s own plain-UUID style, since
- * nothing here ever needs to navigate back to the job entity itself. Rows are deleted in bulk by
- * {@code fk_indexing_run_events_job}'s {@code ON DELETE CASCADE} whenever {@link
- * IndexingJobService} prunes an old run.
- *
- * <p>Implements {@link Persistable} with {@link #isNew()} always {@code true} - the same reason and
- * pattern as {@code io.opaa.audit.AuditLogEntry}: {@code id} is client-generated in the
- * constructor, never database-assigned, so without this Spring Data JPA would treat every {@code
- * save} as an update candidate and route it through {@code EntityManager#merge} - an extra {@code
- * SELECT} before every insert, on the hot path of every executor's per-item skip/error recording.
+ * <p>Belongs to exactly one {@link IndexingJob} via a plain {@code jobId}, deleted in bulk by
+ * {@code fk_indexing_run_events_job}'s {@code ON DELETE CASCADE}. Implements {@link Persistable}
+ * with {@link #isNew()} always {@code true}, like {@code io.opaa.audit.AuditLogEntry}: the id is
+ * client-generated, so without it every {@code save} would take an extra {@code SELECT} through
+ * {@code merge} on the hot path of every per-item recording.
  */
 @Entity
 @Table(name = "indexing_run_events")

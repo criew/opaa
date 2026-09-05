@@ -5,10 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * DoS-hardening limits {@link OdtDocumentPipeline}/{@link OdpDocumentPipeline} apply against a
  * pathological ODT/ODP file - the same style of operator-tunable ceiling {@link
- * io.opaa.indexing.pipeline.tabular.TabularProperties} already carries for {@code
- * TabularDocumentPipeline}'s ODS reader, deliberately its own property block for the same reason (a
- * concern specific to these two pipelines, not a fit for {@link
- * io.opaa.indexing.IndexingProperties}'s many positional-record call sites).
+ * io.opaa.indexing.pipeline.tabular.TabularProperties} carries for the ODS reader.
  *
  * <p>Unlike the ODS reader, neither {@code table:number-columns-repeated} nor {@code
  * table:number-rows-repeated} is expanded here - a table inside a text document or a slide is read
@@ -30,18 +27,17 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     #maxOdtParagraphs}, with the same styles.xml exception. Default 5 000.
  * @param maxSpaceRepeat the maximum number of spaces a single {@code text:s} element expands to -
  *     without this, {@code text:c} lets a few bytes of markup request an arbitrarily large
- *     in-memory string (mirrors {@code TabularProperties#maxOdsCellRepeat}'s reasoning for the ODS
- *     reader's own repeat attribute). Applies to {@code content.xml} and {@code styles.xml} alike.
+ *     in-memory string, exactly as {@code TabularProperties#maxOdsCellRepeat} bounds the ODS
+ *     reader's own repeat attribute. Applies to {@code content.xml} and {@code styles.xml} alike.
  *     Default 1 000.
  * @param maxTextCharacters the maximum number of characters accumulated into a paragraph/cell text
  *     buffer before parsing aborts - {@link #maxSpaceRepeat} bounds one {@code text:s} element, but
  *     a paragraph resets its buffer only once per {@code text:h}/{@code text:p} and can carry an
  *     unbounded number of {@code text:s} elements, so the per-element cap alone does not bound
- *     total memory use (mirrors {@code TabularProperties#maxOdsRows}'s cumulative, rather than
- *     per-row, reasoning). <b>Counted separately per handler, not shared</b>: {@code content.xml}'s
- *     own handler and a {@code styles.xml} handler each start their own counter at zero, so this is
- *     a per-entry budget, not a total-document one, the same as {@link #maxContentXmlBytes}.
- *     Default 10 000 000.
+ *     total memory use - a cumulative bound, like {@code TabularProperties#maxOdsRows}. <b>Counted
+ *     separately per handler, not shared</b>: {@code content.xml}'s own handler and a {@code
+ *     styles.xml} handler each start their own counter at zero, so this is a per-entry budget, not
+ *     a total-document one, the same as {@link #maxContentXmlBytes}. Default 10 000 000.
  */
 @ConfigurationProperties(prefix = "opaa.indexing.odf")
 public record OdfProperties(

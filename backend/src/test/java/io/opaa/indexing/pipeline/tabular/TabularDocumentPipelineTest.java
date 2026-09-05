@@ -28,9 +28,9 @@ import org.junit.jupiter.api.io.TempDir;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * The XLSX/CSV/ODS pipeline (#1058, #1057; ingestion-pipelines.md Teil 3, Punkt 3): tabular
- * structure - not flattened prose - survives the cut, headers repeat in every chunk, and
- * blatt/tabelle show up as structural context.
+ * The XLSX/CSV/ODS pipeline (ingestion-pipelines.md Teil 3, Punkt 3): tabular structure - not
+ * flattened prose - survives the cut, headers repeat in every chunk, and blatt/tabelle show up as
+ * structural context.
  */
 class TabularDocumentPipelineTest {
 
@@ -138,7 +138,7 @@ class TabularDocumentPipelineTest {
   @Test
   void aSoleRowWithMultipleColumnsIsIndexedAsItsOwnChunkNotDiscardedAsAnEmptyHeader()
       throws IOException {
-    // #1096 review, finding 9: a sheet that never had more than one row has no header/data split
+    // a sheet that never had more than one row has no header/data split
     // to make - the sole row is Nutzdaten (e.g. a one-line summary table), not an empty header,
     // and must not be discarded.
     Path file = tempDir.resolve("eine-zeile.xlsx");
@@ -183,7 +183,7 @@ class TabularDocumentPipelineTest {
 
   @Test
   void aFormulaCellRendersItsCachedValueNotTheFormulaText() throws IOException {
-    // #1096 review, finding 4: without setUseCachedValuesForFormulaCells, DataFormatter renders
+    // without setUseCachedValuesForFormulaCells, DataFormatter renders
     // the formula text itself ("100+1140") rather than the value a spreadsheet application shows.
     Path file = tempDir.resolve("formel.xlsx");
     try (XSSFWorkbook workbook = new XSSFWorkbook()) {
@@ -208,7 +208,7 @@ class TabularDocumentPipelineTest {
 
   @Test
   void xlsxRowsWiderThanTheConfiguredLimitAreTruncatedNotCrashed() throws IOException {
-    // #1096 review, finding 10: the column-width cap applies symmetrically to XLSX, not just ODS.
+    // the column-width cap applies symmetrically to XLSX, not just ODS.
     TabularDocumentPipeline narrowPipeline =
         new TabularDocumentPipeline(new TabularProperties(3, 0, 0, 0));
     Path file = tempDir.resolve("breit.xlsx");
@@ -231,7 +231,7 @@ class TabularDocumentPipelineTest {
 
   @Test
   void aGenuineXlsxMisnamedCsvIsRoutedByDetectedContentNotByItsName() throws IOException {
-    // #1096 review, finding 3: the pipeline dispatches on the detected extension the registry
+    // the pipeline dispatches on the detected extension the registry
     // resolved, not on the (possibly misleading) file name - a real XLSX renamed .csv must still
     // be read as XLSX rather than fed to the CSV parser, which would fail on binary content.
     Path file = tempDir.resolve("bericht.csv");
@@ -247,7 +247,7 @@ class TabularDocumentPipelineTest {
 
   @Test
   void anOdsMisnamedXlsxIsRoutedByDetectedContentNotByItsName() throws IOException {
-    // #1096 review, finding 3, the reverse direction: an ODS renamed .xlsx must not be handed to
+    // an ODS renamed .xlsx must not be handed to
     // POI, which cannot open it at all.
     Path file = tempDir.resolve("bericht.xlsx");
     writeOds(file, odsTable("Bericht", odsRow("Posten", "Betrag"), odsRow("Straßenbau", "1240")));
@@ -343,7 +343,7 @@ class TabularDocumentPipelineTest {
 
   @Test
   void aWindowsCp1252EncodedCsvIsDecodedCorrectly() throws IOException {
-    // #1096 review, finding 1: German Excel's own default CSV export encoding - not valid UTF-8
+    // German Excel's own default CSV export encoding - not valid UTF-8
     // for any text containing an umlaut or the Euro sign.
     Path file = tempDir.resolve("strassen.csv");
     byte[] bytes = "Name;Straße\nMüller;Königsallee\n".getBytes(Charset.forName("windows-1252"));
@@ -379,7 +379,7 @@ class TabularDocumentPipelineTest {
 
   @Test
   void aQuotedFieldContainingAnotherDelimiterDoesNotConfuseDetection() throws IOException {
-    // #1096 review, finding 2: raw character counting used to tie (one comma, one semicolon) and
+    // raw character counting ties (one comma, one semicolon) and
     // always resolve ties to comma - splitting the quoted field and failing the row. The real
     // delimiter (semicolon) must win because it is the one that actually produces columns once
     // quoting is respected.
@@ -456,7 +456,7 @@ class TabularDocumentPipelineTest {
 
   @Test
   void aRowExceedingTheHardCharacterCeilingIsTruncatedWithAVisibleMarker() throws IOException {
-    // #1096 review, finding 12: MAX_CHUNK_CHARS alone does not bound a single, giant row - without
+    // MAX_CHUNK_CHARS alone does not bound a single, giant row - without
     // a hard ceiling it would be handed to the embedding model unbounded and fail there instead.
     String hugeValue = "x".repeat(30_000);
     Path file = tempDir.resolve("riesig.csv");
@@ -480,7 +480,7 @@ class TabularDocumentPipelineTest {
     assertThat(result.chunks().getFirst().getText()).contains("Müller | Bauamt");
   }
 
-  // --- ODS (#1057 admits .ods; POI does not read OpenDocument, see readOds) --------------------
+  // --- ODS (POI does not read OpenDocument, see readOds) --------------------
 
   @Test
   void aSingleOdsSheetProducesOneChunkWithRepeatedHeaderAndSheetContext() throws IOException {
@@ -627,7 +627,7 @@ class TabularDocumentPipelineTest {
 
   @Test
   void aZipWithoutAContentXmlEntryIsAParseFailure() throws IOException {
-    // #1108 review, finding 7: mirrors OdtDocumentPipelineTest/OdpDocumentPipelineTest's identical
+    // mirrors OdtDocumentPipelineTest/OdpDocumentPipelineTest's identical
     // case - not a genuine ODF ZIP, the same "could not be parsed" failure as a corrupt ZIP, not
     // the "parsed, but empty" NO_EXTRACTABLE_TEXT a well-formed empty spreadsheet gets below.
     Path file = tempDir.resolve("ohne-content-xml.ods");
@@ -645,7 +645,7 @@ class TabularDocumentPipelineTest {
 
   @Test
   void odsRowNumbersAdvanceByTheFullRepeatSpanOfARepeatedBlankRow() throws IOException {
-    // #1096 review, finding 11: table:number-rows-repeated must advance the running row counter
+    // table:number-rows-repeated must advance the running row counter
     // by the full repeat span, not by one, so a citation's "Zeile n" is correct for every row
     // after a filler gap.
     Path file = tempDir.resolve("zeilennummern.ods");
@@ -673,7 +673,7 @@ class TabularDocumentPipelineTest {
   @Test
   void anOdsContentXmlExceedingTheByteLimitIsRejectedRatherThanExhaustingMemory()
       throws IOException {
-    // #1096 review, finding 6: the zip-bomb guard on content.xml's decompressed byte stream.
+    // the zip-bomb guard on content.xml's decompressed byte stream.
     TabularDocumentPipeline tinyLimitPipeline =
         new TabularDocumentPipeline(new TabularProperties(0, 0, 50, 0));
     Path file = tempDir.resolve("gross.ods");
@@ -687,7 +687,7 @@ class TabularDocumentPipelineTest {
 
   @Test
   void theOdsByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit() throws IOException {
-    // #1108 review, finding 4: the pipeline's own catch-all collapses every parse failure into
+    // the pipeline's own catch-all collapses every parse failure into
     // the same NO_CONTENT outcome, so a wrong-reason failure would stay green there. This test
     // goes straight at OdfContentXml.parse instead, the one place the byte limit's own message
     // survives.
@@ -702,7 +702,7 @@ class TabularDocumentPipelineTest {
   @Test
   void anOdsSpreadsheetExceedingTheRowLimitIsRejectedRatherThanExhaustingMemory()
       throws IOException {
-    // #1096 review, finding 6: the second, row-count-based zip-bomb guard - a small, repetitive
+    // the second, row-count-based zip-bomb guard - a small, repetitive
     // content.xml could stay under the byte limit while still describing too many rows.
     TabularDocumentPipeline tinyLimitPipeline =
         new TabularDocumentPipeline(new TabularProperties(0, 0, 0, 2));

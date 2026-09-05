@@ -2,10 +2,8 @@ package io.opaa.indexing.pipeline.mail;
 
 /**
  * Caps how many attachments a single {@link EmlReader}/{@link MsgReader} extraction pass creates a
- * temp file for - enforced in the extraction loop itself (#1101 review, finding 3c), not
- * afterwards: an earlier version let both readers create a temp file for every attachment a message
- * carried and only discarded the surplus in {@link MailDocumentPipeline}, so a message with
- * thousands of attachments still paid for every one of them before any limit applied.
+ * temp file for. Enforced inside the extraction loop, never afterwards: a message with thousands of
+ * attachments must not pay for a temp file per attachment before the limit applies.
  */
 final class AttachmentBudget {
 

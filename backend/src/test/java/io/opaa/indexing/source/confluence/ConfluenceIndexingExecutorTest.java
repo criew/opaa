@@ -60,12 +60,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
 
 /**
- * The full sync (#1136) end to end against {@link FakeConfluenceServer}, for both editions: the
- * access layer and the generalized attachment path ({@link AttachmentIndexer}) are real, everything
- * behind them (processing, job bookkeeping, repositories, the reconciliation) is mocked and
- * asserted on. Mirrors {@code UrlIndexingExecutorExecuteTest}'s pattern; {@code execute} is called
- * directly, so no {@code timeout()} is needed for the assertions, only for the asynchronous habit's
- * sake.
+ * The full sync end to end against {@link FakeConfluenceServer}, for both editions: the access
+ * layer and the generalized attachment path ({@link AttachmentIndexer}) are real, everything behind
+ * them (processing, job bookkeeping, repositories, the reconciliation) is mocked and asserted on.
+ * Mirrors {@code UrlIndexingExecutorExecuteTest}'s pattern; {@code execute} is called directly, so
+ * no {@code timeout()} is needed for the assertions, only for the asynchronous habit's sake.
  */
 class ConfluenceIndexingExecutorTest {
 
@@ -99,7 +98,7 @@ class ConfluenceIndexingExecutorTest {
    */
   private final List<Document> storedPages = new ArrayList<>();
 
-  /** #1141: the request budget the executor under test runs with; 0 (the default) is unbounded. */
+  /** the request budget the executor under test runs with; 0 (the default) is unbounded. */
   private int requestBudget;
 
   private ConfluenceIndexingExecutor executor;
@@ -257,13 +256,12 @@ class ConfluenceIndexingExecutorTest {
             Clock.fixed(NOW, ZoneOffset.UTC));
   }
 
-  /** The real generalized attachment path over the mocked processing (#1137). */
+  /** The real generalized attachment path over the mocked processing. */
   private AttachmentIndexer attachmentIndexer() {
     return new AttachmentIndexer(
         new BoundedDownloader(TargetAddressValidator.disabled()),
         fileProcessingService,
         storageQuotaService,
-        documentRepository,
         new io.opaa.indexing.source.attachment.AttachmentProperties(5));
   }
 
@@ -288,7 +286,7 @@ class ConfluenceIndexingExecutorTest {
             eq("Abschnitt 1.1"),
             eq(abschnitt),
             eq("1"),
-            // The page version's instant is the document's Stand (#1318) - the title supplies no
+            // The page version's instant is the document's Stand - the title supplies no
             // date, so this is the only date source a page has.
             eq(SEEDED_AT),
             eq(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1")),
@@ -304,7 +302,7 @@ class ConfluenceIndexingExecutorTest {
             eq(library));
     verify(fileProcessingService, never())
         .processConfluencePage(any(), eq("Streng geheim"), any(), any(), any(), any(), any());
-    // ADR-0022 (#1137): the attachment goes the generalized path - a child of the page's own row,
+    // ADR-0022: the attachment goes the generalized path - a child of the page's own row,
     // with the page's place as its context and the version as its change marker
     ArgumentCaptor<String> attachmentPath = ArgumentCaptor.forClass(String.class);
     verify(fileProcessingService)
@@ -345,7 +343,7 @@ class ConfluenceIndexingExecutorTest {
             pagePath(edition, "HR", "200"),
             attachmentPath.getValue());
     verify(indexingJobService).completeJob(jobId, 4, 0, 0, 5);
-    // #1191: a complete listing records a positive assessment, clearing any earlier warning
+    // a complete listing records a positive assessment, clearing any earlier warning
     verify(indexingJobService).recordListingAssessment(jobId, true, List.of());
 
     ArgumentCaptor<ConfluenceSyncState> state = ArgumentCaptor.forClass(ConfluenceSyncState.class);
@@ -401,7 +399,7 @@ class ConfluenceIndexingExecutorTest {
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
     String kapitel = pagePath(edition, "ENG", "101");
-    // #1138: the protocol names space and title, not just a URL
+    // the protocol names space and title, not just a URL
     verify(eventRepository)
         .save(
             argThat(
@@ -436,7 +434,7 @@ class ConfluenceIndexingExecutorTest {
                     "SEC")));
     verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 3, 0, 0, 4);
-    // #1191: the run's assessment names the unreadable space, for the warning at the library
+    // the run's assessment names the unreadable space, for the warning at the library
     verify(indexingJobService).recordListingAssessment(jobId, false, List.of("SEC"));
     ArgumentCaptor<ConfluenceSyncState> state = ArgumentCaptor.forClass(ConfluenceSyncState.class);
     verify(syncStateRepository, timeout(5000).atLeast(1)).save(state.capture());
@@ -559,9 +557,9 @@ class ConfluenceIndexingExecutorTest {
   @MethodSource("editions")
   void attachmentsOfAPageThisRunCouldNotProcessStayInTheReconciliationSet(ConfluenceEdition edition)
       throws Exception {
-    // #1179 review, CRITICAL: a page that cannot be fetched (404) or stored (quota) is no finding
-    // about its attachments - their known documents must not look vanished to the cleanup. Since
-    // #1137 the attachments hang on the page by parent_document_id and are preserved from the
+    // a page that cannot be fetched (404) or stored (quota) is no finding
+    // about its attachments - their known documents must not look vanished to the cleanup. The
+    // attachments hang on the page by parent_document_id and are preserved from the
     // database (ADR-0022, Entscheidung 3), the attachment of an attachment included.
     start(edition, null, "ENG");
     String abschnitt = pagePath(edition, "ENG", "102");
@@ -678,7 +676,7 @@ class ConfluenceIndexingExecutorTest {
 
   @org.junit.jupiter.api.Test
   void bothEditionsHandTheSamePageBodyToTheSamePipeline() throws Exception {
-    // #1137: the preparation works on the storage body, which both adapters deliver alike - the
+    // the preparation works on the storage body, which both adapters deliver alike - the
     // pipeline behind processConfluencePage therefore sees the same input for Cloud and Data Center
     java.util.Map<ConfluenceEdition, String> bodies =
         new java.util.EnumMap<>(ConfluenceEdition.class);
@@ -729,7 +727,7 @@ class ConfluenceIndexingExecutorTest {
     assertThat(current.getValue()).anyMatch(path -> path.endsWith("/werkzeug.exe"));
   }
 
-  // ---- incremental run (#1139) ----------------------------------------------------------------
+  // ---- incremental run ----------------------------------------------------------------
 
   private ConfluenceSyncState completedFullSync(Instant anchor) {
     ConfluenceSyncState state = new ConfluenceSyncState(library.getId());
@@ -776,7 +774,7 @@ class ConfluenceIndexingExecutorTest {
     // "ergänzend": nothing is ever removed for being absent from the window
     verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 2, 0, 0, 2);
-    // #1191: an incremental run cannot see an unreadable space and never assesses the listing
+    // an incremental run cannot see an unreadable space and never assesses the listing
     verify(indexingJobService, never()).recordListingAssessment(any(), anyBoolean(), any());
     // the anchor moves to this run's start, not its end
     assertThat(state.getIncrementalAnchor()).isEqualTo(NOW);
@@ -966,7 +964,7 @@ class ConfluenceIndexingExecutorTest {
         .as("older than the weekly interval")
         .isEqualTo(IndexingRunMode.FULL);
 
-    // #1200: the library's own rhythm takes precedence over the instance-wide default - the same
+    // the library's own rhythm takes precedence over the instance-wide default - the same
     // 8-day-old state reads as recent under a 30-day rhythm ...
     library.updateConfluenceFullSyncIntervalDays(30);
     assertThat(executor.defaultRunMode(library))
@@ -984,7 +982,7 @@ class ConfluenceIndexingExecutorTest {
   @MethodSource("editions")
   void aWebhookRunFetchesExactlyTheNamedPagesAndNeverListsOrReconciles(ConfluenceEdition edition)
       throws Exception {
-    // #1140: the notification named Kapitel 1 (changed), Abschnitt 1.1 (known and unchanged) and
+    // the notification named Kapitel 1 (changed), Abschnitt 1.1 (known and unchanged) and
     // a page in a space the library does not select; nothing else is touched.
     start(edition, null, "ENG");
     ConfluenceSyncState state = completedFullSync(NOW.minus(Duration.ofHours(2)));
@@ -1031,7 +1029,7 @@ class ConfluenceIndexingExecutorTest {
         .noneMatch(r -> r.matches(".*/(content|pages)/100(\\?.*)?$"));
     verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 1, 0, 2, 2);
-    // #1191: a webhook run fetches named pages only and never judges the listing
+    // a webhook run fetches named pages only and never judges the listing
     verify(indexingJobService, never()).recordListingAssessment(any(), anyBoolean(), any());
     // the heartbeat moves with every page, so the stale-run sweep never mistakes a long batch
     verify(indexingJobService, atLeast(3))
@@ -1120,7 +1118,7 @@ class ConfluenceIndexingExecutorTest {
   @MethodSource("editions")
   void anExhaustedBudgetEndsTheFullSyncOrderlyAndTheNextRunContinues(ConfluenceEdition edition)
       throws Exception {
-    // #1141: verify (1) + list ENG (2 pages of 2 = 2) + 3 pages x (fetch + attachments) ... the
+    // verify (1) + list ENG (2 pages of 2 = 2) + 3 pages x (fetch + attachments) ... the
     // budget of 6 runs out inside ENG; the run ends COMPLETED and incomplete, not FAILED.
     requestBudget = 6;
     start(edition, null, "ENG", "HR");
@@ -1140,7 +1138,7 @@ class ConfluenceIndexingExecutorTest {
     verify(indexingJobService).recordRunMetrics(eq(jobId), metrics.capture());
     assertThat(metrics.getValue().incomplete()).isTrue();
     assertThat(metrics.getValue().requestsSent()).isEqualTo(6);
-    // #1191: a budget-truncated run has not seen every space and must not overwrite the verdict
+    // a budget-truncated run has not seen every space and must not overwrite the verdict
     verify(indexingJobService, never()).recordListingAssessment(any(), anyBoolean(), any());
     // no reconciliation on an incomplete listing, and the full sync stays open
     verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
@@ -1229,7 +1227,7 @@ class ConfluenceIndexingExecutorTest {
   @MethodSource("editions")
   void aResumedFullSyncSpendsNothingOnPagesAlreadyStoredAndConverges(ConfluenceEdition edition)
       throws Exception {
-    // #1141: the first run stores Handbuch (100) and Kapitel 1 (101) and runs out of budget; the
+    // the first run stores Handbuch (100) and Kapitel 1 (101) and runs out of budget; the
     // second run, resumed with the same budget, must not spend a call on those two pages - not even
     // for their attachment lists - and therefore reaches the rest and completes.
     requestBudget = 7;

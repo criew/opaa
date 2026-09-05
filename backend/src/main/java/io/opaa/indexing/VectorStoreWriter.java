@@ -18,21 +18,15 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * Writes already-embedded chunks into {@code vector_store} and {@code chunk_full_text} in a single
- * transaction - deliberately a plain JDBC upsert mirroring {@code PgVectorStore#doAdd}'s own SQL,
- * not a call to {@link org.springframework.ai.vectorstore.VectorStore#add}: that call embeds
- * <em>and</em> writes in one step, which would hold the connection this transaction needs for the
- * whole embedding HTTP round trip. {@link VectorChunkStore#addChunks} embeds first, outside any
- * transaction, and only calls into this class afterwards - so the connection this class checks out
- * is held for a handful of local {@code INSERT}s, never for a network call. Without that split,
- * {@code embeddingConcurrency} sub-batches (up to 32, see {@code IndexingProperties}) each holding
- * a connection for the duration of an embedding call can exceed HikariCP's default {@code
- * maximum-pool-size} of 10, starving the query path of connections.
+ * transaction - a plain JDBC upsert mirroring {@code PgVectorStore#doAdd}, not {@link
+ * org.springframework.ai.vectorstore.VectorStore#add}, which embeds and writes in one step and
+ * would hold the connection for the whole embedding round trip. {@link VectorChunkStore#addChunks}
+ * embeds first, outside any transaction, so the connection here is held for a few local inserts.
+ * Without that split, concurrent sub-batches could exceed HikariCP's pool and starve the query
+ * path.
  *
- * <p>Schema/table name are read from the same {@code spring.ai.vectorstore.pgvector.*} properties
- * {@code PgVectorStore} itself binds, with the same defaults ({@code public}/{@code vector_store})
- * - mirrors {@code io.opaa.query.ChunkEmbeddingLookup}'s own pattern for the same reason (never
- * hardcoded independently of that configuration). {@code id-type} is assumed {@code UUID}, exactly
- * as {@code ChunkEmbeddingLookup} already assumes - this project never overrides it.
+ * <p>Schema and table name come from the same {@code spring.ai.vectorstore.pgvector.*} properties
+ * {@code PgVectorStore} binds; {@code id-type} is assumed {@code UUID}, as elsewhere.
  */
 @Component
 public class VectorStoreWriter {
@@ -106,9 +100,8 @@ public class VectorStoreWriter {
   }
 
   /**
-   * Rewrites document-level keys on every chunk of {@code documentId} in place (ADR-0024): first
-   * removes every key in {@code keysToClear}, then merges {@code values} - so a key absent from
-   * {@code values} but present in {@code keysToClear} disappears. Touches neither content nor
+   * Rewrites document-level keys on every chunk of {@code documentId} in place (ADR-0024): removes
+   * every key in {@code keysToClear} first, then merges {@code values}. Touches neither content nor
    * embedding nor {@code chunk_full_text}, which is what lets a metadata correction skip
    * re-embedding entirely.
    *

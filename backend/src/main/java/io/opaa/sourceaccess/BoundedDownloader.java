@@ -27,21 +27,11 @@ public class BoundedDownloader {
   }
 
   /**
-   * Downloads a file from the given URL using the provided HTTP client and auth header. Returns the
-   * path to a temporary file. The caller is responsible for deleting the temp file.
-   *
-   * <p>Follows a redirect off the original URL's own origin ({@link
-   * RedirectFollowingFetcher.RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN}) - {@code Authorization}
-   * (built from the source configuration's own credentials) is dropped the moment a hop leaves that
-   * origin, but the crawl itself keeps following. Used for {@code HTTP_DIRECTORY} crawls of an
-   * address the system administration chose deliberately - unlike {@link #downloadBounded}, used
-   * for a feed/page-supplied attachment URL this system does not vouch for.
-   *
-   * <p>Capped at {@code maxBytes} while streaming to disk (#1236): a response is cut off the moment
-   * it exceeds the limit, before the excess bytes are written, so one entry can never fill the temp
-   * partition - not even one that is rejected right afterwards. A {@code Content-Length} above the
-   * limit is refused before the body is read at all; a missing or understated one is caught by the
-   * bounded copy itself.
+   * Downloads {@code fileUrl} into a temp file <b>the caller must delete</b>, capped at {@code
+   * maxBytes} while streaming, so one entry can never fill the temp partition. Follows an
+   * off-origin redirect under {@link
+   * RedirectFollowingFetcher.RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN}: an admin chose this
+   * URL.
    *
    * @throws AttachmentTooLargeException if the response body exceeds {@code maxBytes}; the partial
    *     temp file is deleted before it is thrown
@@ -90,22 +80,11 @@ public class BoundedDownloader {
   }
 
   /**
-   * Reads at most {@code maxBytes} of {@code fileUrl}'s response body, for content detection alone
-   * - never written to disk, held entirely in memory since {@code
-   * SupportedDocumentFormats#detectMediaType(byte[])} needs only a bounded sample. {@code
-   * UrlIndexingExecutor} calls this before {@link #download}, so a directory listing entry this
-   * system ends up rejecting is normally settled by this bounded read alone (see the exception
-   * below). Follows redirects exactly like {@link #download} via the same {@link
-   * RedirectFollowingFetcher#sendFollowingRedirects}.
-   *
-   * <p>Costs a second request for every entry this system ends up indexing (one bounded read here,
-   * one full transfer via {@link #download} once accepted) - accepted deliberately in favour of the
-   * simpler two-step shape over streaming a single connection through both phases.
-   *
-   * <p>A rejected entry costs only this bounded read, with one exception: content whose leading
-   * bytes identify a container Tika cannot resolve from the sample carries no verdict, so {@code
-   * SupportedDocumentFormats#decideForPrefix} fetches it in full via {@link #download} before
-   * deciding - and may still reject it afterwards.
+   * Reads at most {@code maxBytes} of {@code fileUrl}'s body for content detection alone, in
+   * memory, never on disk, so a rejected listing entry normally costs only this bounded read -
+   * except for an unresolved container, which {@code SupportedDocumentFormats#decideForPrefix} then
+   * fetches in full. An accepted entry costs two requests, deliberately preferred over streaming
+   * one connection through both phases.
    */
   public byte[] downloadPrefix(
       HttpClient httpClient, String authHeader, String fileUrl, int maxBytes)
@@ -136,17 +115,10 @@ public class BoundedDownloader {
   }
 
   /**
-   * Downloads a file from {@code fileUrl}, capped at {@code maxBytes} while streaming - the
-   * response body is read in a bounded chunk rather than handed straight to {@link
-   * HttpResponse.BodyHandlers#ofFile}, so a remote end that keeps sending past the configured limit
-   * is cut off before the bytes ever reach disk.
-   *
-   * <p>Used for RSS entry attachments, whose remote end (like a detail page's) is a feed operator
-   * OPAA does not control - unlike {@link #download}, used for {@code HTTP_DIRECTORY} crawls of an
-   * address the system administration chose deliberately. Follows a redirect only within {@code
-   * fileUrl}'s own origin ({@link RedirectFollowingFetcher.RedirectPolicy#REJECT_OFF_ORIGIN}) -
-   * {@code Authorization} is therefore never resent past a foreign-host redirect, since that hop is
-   * refused outright before its request is ever built.
+   * Downloads {@code fileUrl} capped at {@code maxBytes} while streaming, so a remote end sending
+   * past the limit is cut off before the bytes reach disk. Used for attachments a feed operator
+   * controls, so unlike {@link #download} it follows a redirect only within {@code fileUrl}'s own
+   * origin ({@link RedirectFollowingFetcher.RedirectPolicy#REJECT_OFF_ORIGIN}).
    *
    * @param userAgent the {@code User-Agent} header value to send, or {@code null} to send none
    * @param authHeader the {@code Authorization} header value to send (e.g. {@code Basic ...}), or
@@ -228,22 +200,11 @@ public class BoundedDownloader {
   }
 
   /**
-   * Streams {@code fileUrl} without ever buffering the full response body in heap or on disk - the
-   * counterpart to {@link #downloadBounded} for a caller-facing, synchronous, click-driven path
-   * ({@code LibraryDocumentService#loadRemoteContent}) rather than a background indexing run:
-   * {@code downloadBounded} reads the entire response into a {@code byte[]} up to {@code maxBytes}
-   * before returning, which - unlike a single indexing run - a viewer can trigger arbitrarily often
-   * and in parallel. Redirects are followed the same restricted way {@link #downloadBounded} does,
-   * and {@code perRequestTimeout} is a caller-supplied, deliberately short timeout instead of
-   * {@link #downloadBounded}'s fixed 120s background-run timeout.
-   *
-   * <p>The returned {@link DownloadedStream#stream()} is the live, still-open HTTP response body,
-   * wrapped so that a further read past {@code maxBytes} throws {@link IOException} instead of
-   * silently continuing - the caller is responsible for closing it. When the response declares a
-   * {@code Content-Length} larger than {@code maxBytes} up front, this method rejects the request
-   * before returning at all ({@link AttachmentTooLargeException}); a source that omits or
-   * understates {@code Content-Length} is instead caught by the bounded stream once the body is
-   * actually read past the limit.
+   * Streams {@code fileUrl} without ever buffering the full body, for a click-driven path a viewer
+   * can trigger arbitrarily often, with a caller-supplied short {@code perRequestTimeout};
+   * redirects are restricted as in {@link #downloadBounded}. The returned {@link
+   * DownloadedStream#stream()} is the live body, wrapped so a read past {@code maxBytes} throws and
+   * closed by the caller; an over-large declared {@code Content-Length} is rejected up front.
    */
   public DownloadedStream downloadStreaming(
       HttpClient httpClient,

@@ -122,8 +122,8 @@ public class DocumentMetadataValue {
   }
 
   /**
-   * Re-labels an existing row as set by hand by {@code actorUserId} (#1068): origin {@code MANUAL},
-   * no confidence, model or extraction version - from now on no extraction touches it.
+   * Re-labels an existing row as set by hand by {@code actorUserId}: origin {@code MANUAL}, no
+   * confidence, model or extraction version - from now on no extraction touches it.
    */
   void markManual(UUID actorUserId) {
     this.origin = MetadataOrigin.MANUAL;
@@ -164,8 +164,8 @@ public class DocumentMetadataValue {
   }
 
   /**
-   * Records that a person found there is no value to find (#1069): the row stays, carries no value
-   * and is only storable with origin {@code MANUAL} ({@code
+   * Records that a person found there is no value to find: the row stays, carries no value and is
+   * only storable with origin {@code MANUAL} ({@code
    * chk_document_metadata_values_not_determinable_is_manual}) - package-private, so only {@link
    * MetadataValueInput}'s manual path reaches it. No automatic extraction ever writes or clears it
    * - {@link DocumentMetadataService} leaves every {@code MANUAL} row alone.

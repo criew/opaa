@@ -6,20 +6,14 @@ import java.util.regex.Pattern;
 
 /**
  * Derives the human-readable title {@link FileProcessingService#chunkEmbedFormatterWithPrefix}
- * prepends to a multi-chunk document's chunk embeddings (#933, "Contextual Chunking"), for a
- * filesystem-style {@code file_name} ({@code "NNN_slug.ext"} - see {@link
- * FileProcessingService#deriveContextTitle} for the RSS-headline/URL exception). Contract: strip a
- * trailing extension ({@code \.[A-Za-z0-9]{1,5}$} - only a suffix that actually looks like one, so
- * a sentence-like name is never truncated at an unrelated period), strip a leading run of purely
- * structural tokens (a numbering scheme like {@code "001_"}, or a short tag-plus-number pair like
- * {@code "city-0022_"}), replace the remaining {@code _}/{@code -} separators with spaces, and cap
- * the result at {@value #MAX_TITLE_TOKENS} tokens.
- *
- * <ul>
- *   <li>{@code "001_personalausweis.md"} → {@code "personalausweis"}
- *   <li>{@code "city-0022_prag.md"} → {@code "prag"}
- *   <li>{@code "report.pdf"} → {@code "report"} (nothing structural to strip)
- * </ul>
+ * prepends to a multi-chunk document's chunk embeddings ("Contextual Chunking"), from a
+ * filesystem-style {@code file_name}. Contract: strip a trailing suffix that actually looks like an
+ * extension, strip a leading run of purely structural tokens (a numbering scheme like {@code
+ * "001_"}, a short tag-plus-number pair like {@code "city-0022_"}), turn the remaining {@code
+ * _}/{@code -} separators into spaces, and cap at {@value #MAX_TITLE_TOKENS} tokens - so {@code
+ * "001_personalausweis.md"} becomes {@code "personalausweis"} and {@code "report.pdf"} becomes
+ * {@code "report"}. An RSS headline or URL takes a different route; see {@code
+ * FileProcessingService#deriveContextTitle}.
  */
 public final class ChunkContextTitle {
 

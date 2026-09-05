@@ -30,7 +30,7 @@ class RepeatingHeaderChunkTest {
 
   @Test
   void textWithoutAnySingleLetterYieldsNoChunk() {
-    // regression guard for #1145 review, B3 (the safety net): a field's cached value (e.g. a page
+    // regression guard for #1145: a field's cached value (e.g. a page
     // number) can slip past a caller's own field filtering; a chunk of nothing but digits is noise.
     assertThat(RepeatingHeaderChunk.ofOrNull("Kopf-/Fußzeile", "1")).isNull();
     assertThat(RepeatingHeaderChunk.ofOrNull("Kopf-/Fußzeile", "12 / 34")).isNull();

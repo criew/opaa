@@ -11,10 +11,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * #501: {@link IndexingJobRecoveryScheduler} only wires {@link IndexingJobService}'s two recovery
- * methods to the right trigger (application startup vs. a periodic sweep) - the actual recovery
- * logic (which rows get failed, with what message) is {@link IndexingJobServiceTest}'s
- * responsibility.
+ * {@link IndexingJobRecoveryScheduler} only wires {@link IndexingJobService}'s two recovery methods
+ * to the right trigger (application startup vs. a periodic sweep) - the actual recovery logic
+ * (which rows get failed, with what message) is {@link IndexingJobServiceTest}'s responsibility.
  */
 @ExtendWith(MockitoExtension.class)
 class IndexingJobRecoverySchedulerTest {

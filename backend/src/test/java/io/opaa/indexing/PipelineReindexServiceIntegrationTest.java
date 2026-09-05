@@ -44,9 +44,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The selective re-index by pipeline version (#1056, ingestion-pipelines.md cross-cutting rule
- * (d)): every chunk below version N of one pipeline must be triggerable, resumable, and its
- * progress queryable per library.
+ * The selective re-index by pipeline version (ingestion-pipelines.md cross-cutting rule (d)): every
+ * chunk below version N of one pipeline must be triggerable, resumable, and its progress queryable
+ * per library.
  *
  * <p>Chunks are seeded directly through {@link VectorStore#add} without the pipeline metadata -
  * that is exactly the state of every chunk written before the abstraction existed, the corpus the
@@ -156,7 +156,7 @@ class PipelineReindexServiceIntegrationTest {
 
   @Test
   void aDocumentMisroutedToTheFallbackPipelineIsSelectableAndReportedAsStale() throws IOException {
-    // Simulates the routing gap (#1105): the PDF pipeline was registered after this document was
+    // Simulates the routing gap: the PDF pipeline was registered after this document was
     // indexed, so its chunks still carry tika-fallback at the fallback's own current version - a
     // state no version-only comparison against either pipeline can ever call stale.
     DocumentPipeline pdfPipeline = pdfPipeline();
@@ -187,10 +187,10 @@ class PipelineReindexServiceIntegrationTest {
   @Test
   void aChunkWithNoResolvedRoutingExtensionIsCompleteEvenWhenItsFileNameClaimsAStrictPipeline()
       throws IOException {
-    // Closes gap (a) of #1126: bericht.pdf with genuine plain-text content resolves no extension
+    // Closes gap (a): bericht.pdf with genuine plain-text content resolves no extension
     // at all (SupportedDocumentFormats#decideForFileName), so a forward-written chunk carries
     // ChunkPipelineMetadata#NO_ROUTING_EXTENSION rather than a guess from the file name. Without
-    // the routing key (the pre-#1126 approximation the other misrouted tests exercise), the same
+    // the routing key (the earlier approximation the other misrouted tests exercise), the same
     // file name would make this chunk permanently stale - the exact gap this key closes.
     Document document =
         persistedFilesystemTextDocumentNamedLikePdf(
@@ -214,7 +214,7 @@ class PipelineReindexServiceIntegrationTest {
   @Test
   void aChunkWithARoutingExtensionIsSelectableEvenWithoutAMatchingFileNameExtension()
       throws IOException {
-    // Closes gap (b) of #1126: a document with no extension the registry can recognize
+    // Closes gap (b): a document with no extension the registry can recognize
     // ("download.aspx") has no file-name-based way back into a specialized pipeline once its
     // chunks are fallback-labeled (#currentPipelineIdForFileName never matches it). A forward-
     // written routing key sidesteps the file name entirely - the same misrouted branch now
@@ -259,13 +259,13 @@ class PipelineReindexServiceIntegrationTest {
   @Test
   void aChunkAlreadyNamingASpecializedPipelineIsNotPulledBackByAnUnrelatedPipelineReindex()
       throws IOException {
-    // Regression guard for the #1125 review, for a chunk without a routing key (#1126): the
+    // Regression guard for #1125, for a chunk without a routing key: the
     // heuristic branch of the misrouted predicate only targets chunks still naming the fallback
     // pipeline (see #misroutedPredicateFor). A chunk that already names a different specialized
     // pipeline must stay excluded even though its file name matches another pipeline's claimed
     // extension - widening the file-name guess to "<> pipelineId" would pull such a chunk back
     // into a pipeline it was never routed to, and could never converge (see
-    // #currentPipelineIdForFileName's own Javadoc). The exact branch below (#1167) is what makes
+    // #currentPipelineIdForFileName's own Javadoc). The exact branch below is what makes
     // this direction reachable for a chunk that does carry a routing key.
     DocumentPipeline pdfPipeline = pdfPipeline();
     Document document = persistedFilesystemPdfDocument("x.pdf");
@@ -283,9 +283,9 @@ class PipelineReindexServiceIntegrationTest {
   @Test
   void aChunkNamingAnotherSpecializedPipelineIsPulledIntoTheOneItsRoutingKeyClaimsToday()
       throws IOException {
-    // Reproduces #1167 finding 1: the routing gap (#1105) was only ever closed in the direction
+    // The routing gap was only ever closed in the direction
     // "out of the fallback pipeline". A document whose chunks already name one specialized
-    // pipeline ("html") but whose forward-written routing key (#1126) now resolves to another
+    // pipeline ("html") but whose forward-written routing key now resolves to another
     // ("pdf") was unreachable before this fix, because #misroutedPredicateFor required the stored
     // pipeline_id to equal the fallback's own id. With the exact routing key, no such restriction
     // is needed: the extension-to-pipeline mapping is unique, so the corrected chunk always ends
@@ -317,12 +317,12 @@ class PipelineReindexServiceIntegrationTest {
   @Test
   void aChunkNamingAPipelineNoLongerRegisteredIsStaleRatherThanInvisibleWhenItHasARoutingKey()
       throws IOException {
-    // Reproduces #1167 finding 2, the renaming case: the chunk's routing key (".pdf") is still
+    // The renaming case: the chunk's routing key (".pdf") is still
     // claimed today, just by a pipeline registered under a different id than the one stored on the
-    // chunk. progressForOrganization used to skip a chunk whose pipeline_id has no entry in
+    // chunk. progressForOrganization must not skip a chunk whose pipeline_id has no entry in
     // currentVersions (a pipeline this deployment no longer registers under that id) entirely -
     // counted in the total only, so a library holding only such chunks falsely reported
-    // isComplete() as true. With the routing key (#1126), the chunk's target pipeline is resolved
+    // isComplete() as true. With the routing key, the chunk's target pipeline is resolved
     // from the key itself and never needs to look the stored pipeline_id up in currentVersions -
     // and selectStaleDocuments reaches it the same way, symmetric to the counting fix.
     DocumentPipeline pdfPipeline = pdfPipeline();
@@ -360,7 +360,7 @@ class PipelineReindexServiceIntegrationTest {
   @Test
   void aChunkNamingADeinstalledPipelineWhoseFormatNooneClaimsIsPulledIntoTheFallbackPipeline()
       throws IOException {
-    // Reproduces #1167 review finding: the deinstallation case (not the renaming case above) - the
+    // The deinstallation case (not the renaming case above) - the
     // chunk's routing key names an extension no registered pipeline claims at all today, so its
     // target is the fallback pipeline itself. Before this fix, misroutedPredicateFor returned FALSE
     // unconditionally for a fallback target, so this chunk was counted stale by
@@ -397,7 +397,7 @@ class PipelineReindexServiceIntegrationTest {
 
   @Test
   void anRssFeedDocumentWithAnHtmlLookingFileNameIsNotSelectedByAnHtmlPipelineReindex() {
-    // Regression guard for the #1125 review: an RSS entry's body always goes to the fallback
+    // Regression guard for #1125: an RSS entry's body always goes to the fallback
     // pipeline (ADR-0017, decision 2), so its file name (title or entry URL) is never a routing
     // signal - the exact case the "d.source_type <> RSS_FEED" guard exists for. RSS was the
     // originally reported trigger of the routing-gap blocker; without this test it could return
@@ -459,7 +459,7 @@ class PipelineReindexServiceIntegrationTest {
   @Test
   void aGenuineFallbackDocumentIsNotSelectedByAnUnrelatedSpecializedPipelineReindex()
       throws IOException {
-    // Regression guard for the #1105 review, blocker finding 1: the misrouted branch must stay
+    // Regression guard for #1105: the misrouted branch must stay
     // scoped to the one gap it exists for. A .txt document with no specialized pipeline of its own
     // is correctly fallback-labeled forever and must never be pulled into an unrelated pipeline's
     // batch just because that pipeline happens to be registered.
@@ -480,7 +480,7 @@ class PipelineReindexServiceIntegrationTest {
   @Test
   void aDocumentThatStaysMisroutedAfterReindexTerminatesInsteadOfLoopingForever()
       throws IOException {
-    // Regression guard for the #1105 review, blocker finding 1: reindexStoredDocument routes on
+    // Regression guard for #1105: reindexStoredDocument routes on
     // re-detected content (DocumentPipelineRegistry#routedPipelineFor), not on the file name
     // selectStaleDocuments guessed the candidate from. A document named like the target pipeline's
     // format but whose real content never resolves to it stays fallback-labeled after every
@@ -510,12 +510,13 @@ class PipelineReindexServiceIntegrationTest {
 
   @Test
   void aDocumentThatStaysMisroutedIsNotReparsedOnASubsequentReindexCall() throws IOException {
-    // Closes gap (c) of #1126: FileProcessingService#storeChunks now writes
+    // Closes gap (c): FileProcessingService#storeChunks now writes
     // ChunkPipelineMetadata#NO_ROUTING_EXTENSION onto the chunks reindexStoredDocument just wrote
     // for a document that still resolves to the fallback pipeline. #misroutedPredicateFor's exact
     // branch then excludes those chunks outright (routing_extension "" never matches a pipeline's
     // own extension list) instead of relying on the file-name heuristic that kept re-selecting
-    // them - so a second call must not touch this document's chunks at all, unlike before #1126
+    // them - so a second call must not touch this document's chunks at all, unlike an Altbestand
+    // chunk
     // (see PipelineReindexResult#skippedDocuments's own Javadoc on this exact, previously accepted
     // cost).
     DocumentPipeline pdfPipeline = pdfPipeline();
@@ -545,10 +546,10 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   /**
-   * #1270 Nachreview: a document selected purely for its stale lexical index is reported as
-   * re-indexed even when its rewritten chunks still name the fallback pipeline - it was genuinely
-   * repaired, and the loop protection that counts such a document as skipped exists for the routing
-   * gap, which is not why this one was selected.
+   * A document selected purely for its stale lexical index is reported as re-indexed even when its
+   * rewritten chunks still name the fallback pipeline - it was genuinely repaired, and the loop
+   * protection that counts such a document as skipped exists for the routing gap, which is not why
+   * this one was selected.
    */
   @Test
   void aDocumentRepairedOnlyForItsStaleFullTextRowsCountsAsReindexedNotSkipped()
@@ -611,8 +612,8 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   /**
-   * #1270: raising FullTextChunkStore#CURRENT_TSV_VERSION raises no DocumentPipeline#version(), so
-   * a selection tied to the pipeline version alone would report "nothing to do" for exactly the
+   * raising FullTextChunkStore#CURRENT_TSV_VERSION raises no DocumentPipeline#version(), so a
+   * selection tied to the pipeline version alone would report "nothing to do" for exactly the
    * situation the documented recovery path names. The document is selected on its stale full-text
    * row, and afterwards every chunk of it carries a row at the current version.
    */
@@ -730,7 +731,7 @@ class PipelineReindexServiceIntegrationTest {
 
   @Test
   void aConfluencePageIsMarkedForItsNextRunAndLosesItsVersionMarker() {
-    // #1137 (Querschnittsregel (d)): a Confluence page has no local file to re-read, like an RSS
+    // Querschnittsregel (d): a Confluence page has no local file to re-read, like an RSS
     // entry or a crawled file - so a pipeline version bump hands it to the next run, and clearing
     // the version marker is what makes the executor's pre-fetch check see "changed".
     Document document =
@@ -928,7 +929,7 @@ class PipelineReindexServiceIntegrationTest {
 
   @Test
   void aMalformedDocumentIdInChunkMetadataDoesNotFailProgressOrReindexBatch() throws IOException {
-    // Regression guard for the #1125 review: document_id is a text-typed jsonb field, so nothing
+    // Regression guard for #1125: document_id is a text-typed jsonb field, so nothing
     // stops a chunk from carrying a value that is not a well-formed UUID. Both
     // progressForOrganization (pre-existing text-comparison join) and selectStaleDocuments (this
     // round's fix, replacing an unguarded ::uuid cast) must tolerate such a chunk rather than fail
@@ -965,7 +966,7 @@ class PipelineReindexServiceIntegrationTest {
   @Test
   void aMailVersionReindexCreatesTheAttachmentAsItsOwnDocumentInsteadOfLosingIt() throws Exception {
     // ADR-0022, Entscheidung 3's rule for every path that replaces a parent document, applied to
-    // the operator-driven email-v4 bestandsmigration (#1183): re-running the mail pipeline over an
+    // the operator-driven email-v4 bestandsmigration: re-running the mail pipeline over an
     // old, pre-ADR-0022 mail (whose attachment was an inline chunk, now no longer produced) must
     // hand the re-discovered attachment to the generalized attachment path - otherwise the
     // re-index deletes the old inline attachment chunks and creates nothing in their place, and
@@ -1015,7 +1016,7 @@ class PipelineReindexServiceIntegrationTest {
 
   @Test
   void aPdfPipelineVersionBumpReachesAPdfAttachmentInsideAMail() throws Exception {
-    // The core case of #1130 Befund 2 (acceptance criterion 2 of #1183): an attachment document's
+    // The core case: an attachment document's
     // file_path is synthetic and resolves to no file of its own - the re-index re-extracts its
     // bytes from the root mail file via the positional index in the path, so a raised PDF pipeline
     // version reaches a PDF inside a mail without the mail file itself having changed.
@@ -1080,7 +1081,7 @@ class PipelineReindexServiceIntegrationTest {
 
   @Test
   void aPdfPipelineVersionBumpReachesAPdfAttachmentInsideAnUploadedMail() throws Exception {
-    // #1218: the UPLOAD counterpart of aPdfPipelineVersionBumpReachesAPdfAttachmentInsideAMail -
+    // the UPLOAD counterpart of aPdfPipelineVersionBumpReachesAPdfAttachmentInsideAMail -
     // an attachment of an uploaded mail is re-extracted from the managed-storage mail file, so
     // attachmentAccessFor/reindexAttachmentDocument must accept UPLOAD roots instead of skipping.
     DocumentPipeline pdfPipeline = pdfPipeline();
@@ -1138,7 +1139,7 @@ class PipelineReindexServiceIntegrationTest {
 
   @Test
   void aRemoteAttachmentDocumentMarksItsWholeParentChainForTheNextRun() {
-    // #1219: a remote (HTTP_DIRECTORY) attachment can only be re-extracted by its parent's own
+    // a remote (HTTP_DIRECTORY) attachment can only be re-extracted by its parent's own
     // connector run. Marking only the attachment row would never converge - the unchanged parent
     // would be skipped by the run's change check and the attachment never re-parsed - so the
     // whole chain, root included, has its change markers cleared.
@@ -1175,7 +1176,7 @@ class PipelineReindexServiceIntegrationTest {
 
   @Test
   void anIndexShiftedAttachmentIsSkippedInsteadOfReindexedWithForeignBytes() throws Exception {
-    // Review round 2, finding 2: positional indices are only stable while the parent file is
+    // Positional indices are only stable while the parent file is
     // unchanged. If the mail was edited since indexing (an attachment removed, order shifted),
     // today's attachment at the row's index carries DIFFERENT bytes - re-indexing them under this
     // row would put foreign content under a foreign name into search and citations. The checksum
@@ -1291,7 +1292,7 @@ class PipelineReindexServiceIntegrationTest {
     return documentRepository.save(document);
   }
 
-  /** A Confluence page row as the full sync writes it (#1136): identity URL, version as marker. */
+  /** A Confluence page row as the full sync writes it: identity URL, version as marker. */
   private Document persistedConfluenceDocument(String url) {
     Document document =
         new Document("Abschnitt 1.1", url, "text/html", 1024L, DocumentSourceType.CONFLUENCE);
@@ -1313,9 +1314,9 @@ class PipelineReindexServiceIntegrationTest {
 
   /**
    * Like the four-argument overload, additionally seeding {@link
-   * ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} (#1126) - {@code null} omits the key
-   * entirely (the pre-#1126 Altbestand this class's other tests already cover), matching a
-   * forward-written chunk otherwise.
+   * ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} - {@code null} omits the key entirely
+   * (the earlier Altbestand this class's other tests already cover), matching a forward-written
+   * chunk otherwise.
    */
   private UUID seedChunk(
       UUID documentId,
@@ -1339,7 +1340,7 @@ class PipelineReindexServiceIntegrationTest {
         new org.springframework.ai.document.Document(text, metadata);
     vectorStore.add(List.of(chunk));
     // Mirrors the production write path, which fills chunk_full_text in the same transaction: a
-    // chunk without a current-version row is stale for the re-index in its own right (#1270), and
+    // chunk without a current-version row is stale for the re-index in its own right, and
     // this class's other tests are about pipeline routing, not about that.
     insertFullTextRow(
         UUID.fromString(chunk.getId()),

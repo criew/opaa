@@ -16,27 +16,13 @@ import org.apache.tika.mime.MediaType;
 import org.apache.tika.mime.MediaTypeRegistry;
 
 /**
- * The single place that decides which documents this system accepts for indexing, and decides it
- * from the file's actual content rather than its name.
+ * The single place that decides which documents this system accepts for indexing, from the file's
+ * actual content rather than its name: the filesystem path and the network path both ask {@link
+ * #decideForFileName} what {@link #detectMediaType} reports for these bytes. A claimed extension
+ * that does not match is reported as a mismatch, never silently corrected or used to reject.
  *
- * <p>Both the filesystem path ({@link DocumentService}) and the network path ({@link
- * UrlIndexingExecutor}/{@code RssFeedIndexingExecutor}) ask this class the same question the same
- * way: what does {@link #detectMediaType} report for these bytes, not what does the file happen to
- * be named. {@link #decideForFileName} accepts a Tika-detected media type {@link #EXTENSIONS}
- * covers regardless of what the file is named; a claimed extension that does not match the detected
- * content is reported as a mismatch (see {@link ContentDecision#extensionMismatch()}), not silently
- * corrected or rejected.
- *
- * <p>{@code .doc} is part of the list because the extractor in use handles it: Tika's {@code
- * AutoDetectParser} on this classpath reports {@code application/msword} among its supported media
- * types (via {@code tika-parser-microsoft-module} and {@code poi-scratchpad}).
- *
- * <p>Upload path: {@link #contentMatchesExtension} still backs {@code
- * io.opaa.library.LibraryDocumentService#uploadDocument}'s own check, where a mismatch is rejected
- * outright rather than merely reported - a person uploading a file chose both the file and its name
- * in the same action, so a mismatch is more likely an honest mistake worth catching immediately
- * than an old archive's quirk. {@link #decideForFileName} reuses the same per-extension matching
- * {@link #contentMatchesExtension} exposes, just tolerating rather than rejecting a mismatch.
+ * <p>The upload path uses {@link #contentMatchesExtension} directly and rejects a mismatch
+ * outright: whoever uploads chose file and name in one action.
  */
 public final class SupportedDocumentFormats {
 
@@ -72,30 +58,11 @@ public final class SupportedDocumentFormats {
           Map.entry("text/html", ".html"));
 
   /**
-   * Extensions whose content is only checked for being text at all - {@code .md}, {@code .txt} and
-   * {@code .csv} are barely distinguishable by content alone (a CSV file is valid Markdown and vice
-   * versa), so demanding Tika detect one specific media type among them would produce false
-   * positives on legitimate files far more often than it would catch a real mismatch. {@code .csv}
-   * joins {@code .md}/{@code .txt} here for the same reason (ingestion-pipelines.md, Teil 3, Punkt
-   * 3): content alone cannot tell a comma- or semicolon-separated export apart from a Markdown
-   * table or plain text, so a CSV file is only accepted once its own extension already claims it.
-   *
-   * <p>{@code .eml} joins this set (#1101 review) rather than the strict one below, for a reason
-   * specific to Tika's own {@code message/rfc822} detector: it is a loose textual heuristic (looks
-   * for header-shaped lines such as {@code Date:}/{@code Subject:}/{@code To:}/{@code From:} near
-   * the top of the content), not a fixed byte signature the way a PDF header or an OLE2/ZIP
-   * container is - {@code message/rfc822} is registered in Tika's own media type hierarchy as a
-   * specialization of {@code text/plain} (confirmed empirically), so it is exactly as ambiguous by
-   * content alone as Markdown or plain text: a log file with {@code Date:}/{@code Status:} lines, a
-   * changelog with {@code To:}/{@code From:} lines, or a CSV export with {@code Date:}/{@code
-   * Subject:} columns can trip the same heuristic. Treating {@code message/rfc822} as strictly
-   * detected content (as an earlier version of this class did) would route such files into the mail
-   * pipeline with no mismatch reported at all, and - the mirror failure - reject a genuine {@code
-   * .eml} whose first header line does not match the heuristic (e.g. a leading {@code
-   * Authentication-Results:} or a German {@code Von:}/{@code An:} pair) outright. Requiring the
-   * file's own {@code .eml} extension in addition to "looks like text" fixes both: an unrelated
-   * text file never gets routed as mail regardless of what its content resembles, and a genuine
-   * {@code .eml} is admitted regardless of which header happens to come first.
+   * Extensions whose content is only checked for being text at all. {@code .md}, {@code .txt} and
+   * {@code .csv} are barely distinguishable by content (a CSV file is valid Markdown), and Tika's
+   * {@code message/rfc822} detector is a textual heuristic rather than a byte signature, so {@code
+   * .eml} joins them: requiring the file's own extension in addition to "looks like text" keeps an
+   * unrelated text file out of the mail pipeline and still admits a genuine {@code .eml}.
    */
   private static final Set<String> TEXT_TOLERANT_EXTENSIONS = Set.of(".md", ".txt", ".csv", ".eml");
 
@@ -168,18 +135,11 @@ public final class SupportedDocumentFormats {
   }
 
   /**
-   * Whether Tika's magic-byte-detected {@code detectedMimeType} is consistent with a file claiming
-   * to be {@code extension}. {@code extension} must already be one of {@link #EXTENSIONS} ({@link
-   * #isSupported} already returned {@code true} for the file name it was matched from); an
-   * extension outside that set returns {@code false}, same as a {@code null} detection result.
-   *
-   * <p>{@link #TEXT_TOLERANT_EXTENSIONS} only demand the content look like text at all - not
-   * literally {@code text/*} (that would reject, say, an XML-formatted .txt export), but anything
-   * {@link MediaTypeRegistry#isInstanceOf} recognizes as {@code text/plain} or one of its declared
-   * specializations in Tika's own media type hierarchy. {@code application/pdf} and the ZIP/OLE2-
-   * based office types are not declared as such a specialization, so they are still rejected. Every
-   * other supported extension demands one of the specific media types {@link
-   * #STRICT_CONTENT_TYPES_BY_EXTENSION} lists for it.
+   * Whether Tika's detected {@code detectedMimeType} is consistent with a file claiming to be
+   * {@code extension}; an extension outside {@link #EXTENSIONS} returns {@code false}, like a
+   * {@code null} detection. {@link #TEXT_TOLERANT_EXTENSIONS} only demand anything {@link
+   * MediaTypeRegistry#isInstanceOf} recognizes as {@code text/plain}, which PDF and the ZIP/OLE2
+   * office types are not; every other extension demands a specific media type.
    */
   public static boolean contentMatchesExtension(String extension, String detectedMimeType) {
     if (detectedMimeType == null) {
@@ -216,13 +176,11 @@ public final class SupportedDocumentFormats {
   public static final int DETECTION_PREFIX_BYTES = 65_536;
 
   /**
-   * Detects a media type from a leading byte sample alone - the network path's own counterpart to
-   * {@link #detectMediaType(Path)}, used before a file behind a listing is downloaded in full:
-   * {@code UrlIndexingExecutor} reads at most {@link #DETECTION_PREFIX_BYTES} to decide whether an
-   * entry is worth downloading at all, so an arbitrarily large file linked from a directory listing
-   * never has to be written to disk in full only to be rejected afterwards - except when the sample
-   * yields an {@link #isUnresolvedContainerType unresolved container type}, which is no verdict at
-   * all and makes {@link #decideForPrefix} fetch the complete file to decide.
+   * Detects a media type from a leading byte sample alone - the network path's counterpart to
+   * {@link #detectMediaType(Path)}, so an arbitrarily large file behind a listing is never written
+   * to disk in full only to be rejected. The exception is an {@link #isUnresolvedContainerType
+   * unresolved container type}, which is no verdict and makes {@link #decideForPrefix} fetch the
+   * complete file.
    */
   public static String detectMediaType(byte[] contentPrefix) {
     try {
@@ -236,11 +194,9 @@ public final class SupportedDocumentFormats {
 
   /**
    * The generic container types Tika reports when it recognizes the container but not the format
-   * inside it. A detection over a bounded prefix ({@link #DETECTION_PREFIX_BYTES}) runs into this
-   * routinely: an OLE2 file's directory sector - the part naming the streams that identify a {@code
-   * .msg} or {@code .doc} - can sit anywhere in the file, so any OLE2 document larger than the
-   * sample detects as {@code application/x-tika-msoffice} there while its complete bytes detect as
-   * the specific type. {@code application/x-tika-ooxml} is the same situation for a ZIP container.
+   * inside it. A bounded prefix runs into this routinely: an OLE2 file's directory sector can sit
+   * anywhere in the file, so any OLE2 document larger than the sample detects as {@code
+   * application/x-tika-msoffice} there. {@code application/x-tika-ooxml} is the ZIP equivalent.
    */
   private static final Set<String> UNRESOLVED_CONTAINER_TYPES =
       Set.of("application/x-tika-msoffice", "application/x-tika-ooxml");
@@ -265,23 +221,11 @@ public final class SupportedDocumentFormats {
   }
 
   /**
-   * The decision for a file whose bytes are, at first, only available as a leading prefix - the
-   * network path's counterpart to calling {@link #decideForFileName} on a complete file.
-   *
-   * <p>The prefix decides on its own unless it detected one of {@link #UNRESOLVED_CONTAINER_TYPES}
-   * and was not accepted: that outcome says the sample ended before the container revealed which
-   * format it holds, not that the file is unsupported, so {@code completeContent} is fetched and
-   * decides instead. Every other detection - a resolved type, or content Tika could not place at
-   * all - is final on the prefix alone, so an entry this system does not want still costs a bounded
-   * read rather than a full transfer.
-   *
-   * <p>The fallback does not resolve every container either: Tika's own {@code
-   * POIFSContainerDetector} reads at most its {@code markLimit} (128 MiB by default) before
-   * reporting the unresolved type again, so an OLE2 document larger than that stays rejected even
-   * with its complete bytes at hand. On the network path the fetch itself is capped ({@code
-   * CrawlProperties#maxFileSizeBytes}, #1236), by default below that limit - such an entry is then
-   * rejected while streaming rather than after a full transfer; an installation raising the cap
-   * past 128 MiB brings the case back.
+   * The decision for a file whose bytes are, at first, only available as a leading prefix. The
+   * prefix decides on its own unless it detected one of {@link #UNRESOLVED_CONTAINER_TYPES} without
+   * being accepted - the sample then ended before the container revealed its format, so {@code
+   * completeContent} is fetched and decides instead. Tika's {@code markLimit} leaves an OLE2
+   * document past 128 MiB unresolved even then; the network path's size cap rejects it earlier.
    */
   public static ContentDecision decideForPrefix(
       String fileName, byte[] prefix, CompleteContent completeContent)
@@ -295,18 +239,11 @@ public final class SupportedDocumentFormats {
   }
 
   /**
-   * The extension in {@link #STRICT_CONTENT_TYPES_BY_EXTENSION} whose specific media type Tika's
-   * {@code detectedMimeType} matches, or {@code null} when the content is not one of those - the
-   * content-only counterpart to {@link #extensionForContentType}, which instead resolves a
-   * declared, not detected, {@code Content-Type} header.
-   *
-   * <p>Deliberately excludes {@link #TEXT_TOLERANT_EXTENSIONS}: content alone cannot tell a
-   * Markdown file apart from a CSV export, a log file or a piece of source code - treating any
-   * plain-text content as an accepted "text document" regardless of what it is named would silently
-   * widen this system's accepted Bestand. {@link #decideForFileName} is where the two are combined:
-   * unambiguous content (this method) decides on its own; ambiguous, text-tolerant content only
-   * counts once the file's own extension already says which of the text-tolerant types it claims to
-   * be.
+   * The extension in {@link #STRICT_CONTENT_TYPES_BY_EXTENSION} whose media type {@code
+   * detectedMimeType} matches, or {@code null} otherwise - the content-only counterpart to {@link
+   * #extensionForContentType}. Deliberately excludes {@link #TEXT_TOLERANT_EXTENSIONS}: accepting
+   * any plain-text content as a "text document" regardless of its name would silently widen the
+   * accepted Bestand. {@link #decideForFileName} combines the two.
    */
   public static String extensionForDetectedContent(String detectedMimeType) {
     if (detectedMimeType == null) {
@@ -318,16 +255,6 @@ public final class SupportedDocumentFormats {
       }
     }
     return null;
-  }
-
-  /**
-   * Whether {@code detectedMimeType} is Tika-detected PDF content - used by {@code
-   * io.opaa.indexing.pipeline.TikaFallbackPipeline#isTextlessPdf} to tell a scan PDF
-   * (ingestion-pipelines.md, Teil 3, Punkt 1 "Scan-Erkennung und Bestandsprüfung") apart from any
-   * other format that happens to also yield blank extracted text.
-   */
-  public static boolean isPdfContent(String detectedMimeType) {
-    return ".pdf".equals(extensionForDetectedContent(detectedMimeType));
   }
 
   /**
@@ -346,8 +273,8 @@ public final class SupportedDocumentFormats {
 
   /**
    * Whether a document is accepted for indexing and, if so, whether {@code fileName}'s own claimed
-   * extension actually matches the detected content (a mismatch is reported, not silently corrected
-   * or used to reject an otherwise-readable file).
+   * extension actually matches the detected content (a mismatch is reported, never silently
+   * corrected, and never a reason to reject an otherwise-readable file).
    */
   public record ContentDecision(
       boolean supported, String detectedExtension, boolean extensionMismatch) {
@@ -356,42 +283,11 @@ public final class SupportedDocumentFormats {
   }
 
   /**
-   * The single decision both indexing paths make once a file's bytes are available.
-   *
-   * <p>The Markdown/Klartext/CSV special rule ({@link #TEXT_TOLERANT_EXTENSIONS}) is checked
-   * <b>first</b>, ahead of any strict detection - not just as a fallback for content a strict
-   * detection could not resolve at all. {@code text/html} is registered in Tika's own {@code
-   * tika-mimetypes.xml} as a specialization of {@code text/plain} (confirmed empirically, see
-   * {@code SupportedDocumentFormatsTest}), so a Markdown file that happens to open with a raw
-   * {@code <div>}/{@code <h1>} detects as {@code text/html}, an otherwise-strict type (#1059
-   * review, finding 1) - the special rule must still win, per ingestion-pipelines.md, Teil 1 ("gilt
-   * für das Routing unverändert weiter"), or such a file would be silently routed to the HTML
-   * pipeline with no {@code FORMAT_MISMATCH} even reported (the same content that makes the
-   * text-tolerant match succeed also makes the strict branch's own mismatch check come out {@code
-   * false}).
-   *
-   * <p>The same precedence is what makes {@code .eml} admission correct for a message whose HTML
-   * body happens to be detected as {@code text/html} content (#1101 review): {@code text/html} is
-   * {@code isInstanceOf text/plain} (see {@link #TEXT_TOLERANT_EXTENSIONS}'s own Javadoc on why
-   * {@code .eml} joined this set), so such a file matches the text-tolerant branch on its own
-   * {@code .eml} extension before the strict branch ever gets a say - the extension decides, not
-   * the content, exactly as for the Markdown-detected-as-HTML case above. A file actually named
-   * {@code .html} with the same content still takes the strict branch (its own extension is not
-   * text-tolerant) and is routed to the HTML pipeline as normal; only a file already claiming
-   * {@code .eml} benefits from this priority.
-   *
-   * <p>Once that is ruled out, an unambiguous, {@link #extensionForDetectedContent strictly
-   * detected} type is accepted outright, regardless of what the file is named - {@code fileName}'s
-   * own claimed extension only decides whether the caller needs to report a mismatch, never whether
-   * the file is indexed. A text-tolerant name over genuinely non-text content (e.g. a PDF misnamed
-   * {@code .csv}) never satisfies the first check above (PDF is not an {@code isInstanceOf
-   * text/plain}), so it still falls through to this strict branch and is reported as a mismatch
-   * there, exactly as before this method's own text-tolerant priority check existed.
-   *
-   * <p>Content that is neither a text-tolerant match nor a strict detection is unsupported -
-   * content alone cannot tell a Markdown file apart from a CSV export or a source file, so an
-   * ambiguous, text-tolerant detection is only ever accepted under one of {@link
-   * #TEXT_TOLERANT_EXTENSIONS}, never as a mismatch, and never for any other or missing extension.
+   * The single decision both indexing paths make once a file's bytes are available. {@link
+   * #TEXT_TOLERANT_EXTENSIONS} is checked <b>first</b>, since {@code text/html} is a Tika
+   * specialization of {@code text/plain} and a Markdown file opening with a raw {@code <div>} would
+   * otherwise reach the HTML pipeline unreported. Otherwise a {@link #extensionForDetectedContent
+   * strictly detected} type is accepted whatever the name; anything else is unsupported.
    */
   public static ContentDecision decideForFileName(String fileName, String detectedMimeType) {
     if (detectedMimeType == null) {

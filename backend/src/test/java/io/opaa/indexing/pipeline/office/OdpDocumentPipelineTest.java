@@ -20,10 +20,9 @@ import org.junit.jupiter.api.io.TempDir;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * The ODP pipeline (#1110; ingestion-pipelines.md Teil 3 Punkt 2: "eine Folie = ein Chunk"):
- * mirrors PptxDocumentPipelineTest for the per-slide chunking rules, plus the ODS-style
- * XXE/zip-bomb guards {@code TabularDocumentPipelineTest} exercises for its own {@code content.xml}
- * reader.
+ * The ODP pipeline (ingestion-pipelines.md Teil 3 Punkt 2: "eine Folie = ein Chunk"): mirrors
+ * PptxDocumentPipelineTest for the per-slide chunking rules, plus the ODS-style XXE/zip-bomb guards
+ * {@code TabularDocumentPipelineTest} exercises for its own {@code content.xml} reader.
  */
 class OdpDocumentPipelineTest {
 
@@ -100,7 +99,7 @@ class OdpDocumentPipelineTest {
   void masterSlideTextFromStylesXmlBecomesOneDeduplicatedLeadingChunk() throws IOException {
     // regression guard for #1145: an authority name/Aktenzeichen placed exclusively on the
     // Masterfolie must still be lexically searchable, and only once - not per slide and not
-    // dropped, as it was after #1110 stopped reading styles.xml at all.
+    // dropped, as it would be without reading styles.xml at all.
     Path file = tempDir.resolve("mit-masterfolie.odp");
     writeOdpWithStyles(
         file,
@@ -121,12 +120,10 @@ class OdpDocumentPipelineTest {
 
   @Test
   void masterSlideTextAloneDoesNotDefeatTheScanEmptyDeckGuard() throws IOException {
-    // regression guard for #1145 review, B1: an earlier version of this pipeline's guard read
-    // "(no slide chunks or no slide has text) AND no master-slide chunk", so a scan-only
-    // presentation whose master slide carried a Behoerdenname (the normal case for any authority
-    // template) reported CHUNKED with N-1 empty "Folie n" chunks plus the master chunk instead of
-    // NO_EXTRACTABLE_TEXT - reopening exactly the #1055 stille-Leer-Index-Fehlfunktion the guard
-    // exists to prevent.
+    // regression guard for #1145: a guard reading "(no slide chunks or no slide has text) AND no
+    // master-slide chunk" would report a scan-only presentation whose master slide carries a
+    // Behoerdenname - the normal case for any authority template - as CHUNKED instead of
+    // NO_EXTRACTABLE_TEXT, reopening the stille-Leer-Index-Fehlfunktion this guard prevents.
     Path file = tempDir.resolve("nur-masterfolie.odp");
     writeOdpWithStyles(
         file,
@@ -143,7 +140,7 @@ class OdpDocumentPipelineTest {
 
   @Test
   void multipleMasterPagesWithAnIdenticalTextContributeOnlyOnce() throws IOException {
-    // regression guard for #1145 review, B2.
+    // regression guard for #1145.
     Path file = tempDir.resolve("mehrere-masterfolien.odp");
     String masterPagesXml =
         "<style:master-page style:name=\"Standard\">"
@@ -169,7 +166,7 @@ class OdpDocumentPipelineTest {
 
   @Test
   void aNonBreakingSpaceVariantIsDeduplicatedAgainstThePlainSpaceVariant() throws IOException {
-    // regression guard for #1145 second review, nit: a non-breaking space (U+00A0) is routine in
+    // regression guard for #1145: a non-breaking space (U+00A0) is routine in
     // an authority letterhead's column separators; \s alone does not match it, so a master page
     // using NBSP and another using a plain space would otherwise both survive deduplication.
     Path file = tempDir.resolve("geschuetztes-leerzeichen.odp");
@@ -196,7 +193,7 @@ class OdpDocumentPipelineTest {
 
   @Test
   void aPageNumberFieldOnTheMasterSlideIsExcludedButSurroundingTextIsKept() throws IOException {
-    // regression guard for #1145 review, B3.
+    // regression guard for #1145.
     Path file = tempDir.resolve("seitenzahl-masterfolie.odp");
     writeOdpWithStyles(
         file,
@@ -214,7 +211,7 @@ class OdpDocumentPipelineTest {
 
   @Test
   void aNonContentPlaceholderClassOnTheMasterSlideIsExcluded() throws IOException {
-    // regression guard for #1145 review, W3: OdpStylesHandler must apply the same
+    // regression guard for #1145: OdpStylesHandler must apply the same
     // NON_CONTENT_PLACEHOLDER_CLASSES filter OdpContentHandler already applies to notes, or an
     // outline scaffolding prompt ("Mastertextformat bearbeiten") ends up indexed as if it were
     // authored content.
@@ -240,7 +237,7 @@ class OdpDocumentPipelineTest {
   @Test
   void aStylesXmlWithADoctypeOnlyForfeitsTheMasterSlideChunkNotTheWholePresentation()
       throws IOException {
-    // regression guard for #1145 review, W2.
+    // regression guard for #1145.
     Path file = tempDir.resolve("xxe-styles.odp");
     String maliciousStyles =
         "<?xml version=\"1.0\"?>"
@@ -382,9 +379,7 @@ class OdpDocumentPipelineTest {
   void aPresentationWithoutAnySlideIsRejectedAsNoExtractableText() throws IOException {
     // A well-formed but empty <office:presentation/> is a parsed document with nothing to chunk,
     // not an unparseable one - distinct from aZipWithoutAContentXmlEntryIsAParseFailure below.
-    // Matches
-    // the NO_EXTRACTABLE_TEXT outcome TikaFallbackPipeline reported for this exact case before this
-    // pipeline existed (#1057).
+    // Same NO_EXTRACTABLE_TEXT outcome TikaFallbackPipeline reports for this case.
     Path file = tempDir.resolve("keine-folien.odp");
     writeOdp(file, "");
 
@@ -474,7 +469,7 @@ class OdpDocumentPipelineTest {
 
   @Test
   void theByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit() throws IOException {
-    // #1108 review, finding 4: the pipeline's own catch-all collapses every parse failure into the
+    // the pipeline's own catch-all collapses every parse failure into the
     // same NO_CONTENT outcome, so a wrong-reason failure would stay green there. This test goes
     // straight at OdfContentXml.parse instead, the one place the byte limit's own message survives.
     Path file = tempDir.resolve("gross-direkt.odp");

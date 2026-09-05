@@ -7,9 +7,9 @@ import io.opaa.library.KnowledgeLibrary;
 import java.util.Set;
 
 /**
- * {@link AsyncIndexingExecutor}'s own {@link AttachmentAccess} (#1183) - the FILESYSTEM counterpart
- * of {@code RssFeedRunContext}. {@link #markDeferred()} is a no-op: unlike RSS's conditional-GET
- * feed state, a FILESYSTEM run has no per-run state whose persistence a lost attachment needs to
+ * {@link AsyncIndexingExecutor}'s own {@link AttachmentAccess} - the FILESYSTEM counterpart of
+ * {@code RssFeedRunContext}. {@link #markDeferred()} is a no-op: unlike RSS's conditional-GET feed
+ * state, a FILESYSTEM run has no per-run state whose persistence a lost attachment needs to
  * suppress. A lost attachment is, however, only retried once its parent mail file's own checksum
  * changes (or an operator triggers a pipeline re-index) - an unchanged parent is skipped without
  * re-extracting its attachments, so the next scheduled run does <em>not</em> retry it by itself.

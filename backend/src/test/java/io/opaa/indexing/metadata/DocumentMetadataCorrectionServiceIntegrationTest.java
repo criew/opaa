@@ -45,10 +45,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Manual metadata correction end to end (#1068): rights at the document-editing threshold, the
- * MANUAL origin with actor, the audit event per document and field with old and new value, the
- * chunk rewrite, the Sammelzuweisung with rejected foreign ids - and the promise that a manual
- * value survives the deterministic Bestandslauf.
+ * Manual metadata correction end to end: rights at the document-editing threshold, the MANUAL
+ * origin with actor, the audit event per document and field with old and new value, the chunk
+ * rewrite, the Sammelzuweisung with rejected foreign ids - and the promise that a manual value
+ * survives the deterministic Bestandslauf.
  */
 @OpaaIndexingIntegrationTest
 class DocumentMetadataCorrectionServiceIntegrationTest {

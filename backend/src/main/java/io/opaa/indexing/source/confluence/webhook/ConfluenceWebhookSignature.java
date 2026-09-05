@@ -9,11 +9,11 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * Authenticates a webhook notification against the library's own secret (#1140), for both ways a
- * sender can carry it: Confluence Data Center signs the raw body with HMAC-SHA256 and sends the hex
- * digest as {@code X-Hub-Signature: sha256=<hex>}; a Confluence Cloud Automation rule ("Send web
- * request") cannot sign, so it sends the secret itself in {@value #SHARED_SECRET_HEADER}. Both
- * comparisons are constant-time; a request carrying neither header, or an unparseable one, is not
+ * Authenticates a webhook notification against the library's own secret, for both ways a sender can
+ * carry it: Confluence Data Center signs the raw body with HMAC-SHA256 and sends the hex digest as
+ * {@code X-Hub-Signature: sha256=<hex>}; a Confluence Cloud Automation rule ("Send web request")
+ * cannot sign, so it sends the secret itself in {@value #SHARED_SECRET_HEADER}. Both comparisons
+ * are constant-time; a request carrying neither header, or an unparseable one, is not
  * authenticated. A signature is verified over the bytes exactly as received - the body is never
  * re-serialised before the comparison.
  */

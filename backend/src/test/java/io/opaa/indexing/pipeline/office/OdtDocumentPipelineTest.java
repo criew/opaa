@@ -20,8 +20,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * The ODT pipeline (#1110; ingestion-pipelines.md Teil 3 Punkt 2): the cut follows {@code text:h}'s
- * own {@code text:outline-level}, mirroring DocxDocumentPipelineTest for the same section-building
+ * The ODT pipeline (ingestion-pipelines.md Teil 3 Punkt 2): the cut follows {@code text:h}'s own
+ * {@code text:outline-level}, mirroring DocxDocumentPipelineTest for the same section-building
  * rules, plus the ODS-style XXE/zip-bomb guards {@code TabularDocumentPipelineTest} exercises for
  * its own {@code content.xml} reader.
  */
@@ -202,7 +202,7 @@ class OdtDocumentPipelineTest {
   void headerAndFooterTextFromStylesXmlBecomeOneDeduplicatedLeadingChunk() throws IOException {
     // regression guard for #1145: an authority name/Aktenzeichen placed exclusively in the
     // Kopf-/Fußzeile must still be lexically searchable, and only once - not per page and not
-    // dropped, as it was after #1110 stopped reading styles.xml at all.
+    // dropped, as it would be without reading styles.xml at all.
     Path file = tempDir.resolve("mit-kopfzeile.odt");
     writeOdtWithStyles(
         file,
@@ -225,10 +225,9 @@ class OdtDocumentPipelineTest {
 
   @Test
   void identicalHeaderVariantsContributeOnlyOnce() throws IOException {
-    // regression guard for #1145 review, B2: an earlier version of this handler concatenated every
-    // header/footer variant's text unconditionally, so the same authority name repeated across
-    // default/left/first variants would have diluted the embedding just one level higher than the
-    // -left/-first exclusion it replaced.
+    // regression guard for #1145: a handler concatenating every header/footer variant's text
+    // unconditionally would dilute the embedding with the same authority name repeated across the
+    // default/left/first variants.
     Path file = tempDir.resolve("kopfzeile-varianten.odt");
     writeOdtWithStyles(
         file,
@@ -249,7 +248,7 @@ class OdtDocumentPipelineTest {
 
   @Test
   void aNonBreakingSpaceVariantIsDeduplicatedAgainstThePlainSpaceVariant() throws IOException {
-    // regression guard for #1145 second review, nit: a non-breaking space (U+00A0) is routine in
+    // regression guard for #1145: a non-breaking space (U+00A0) is routine in
     // an authority letterhead's column separators; \s alone does not match it, so a variant using
     // NBSP and the default using a plain space would otherwise both survive deduplication.
     Path file = tempDir.resolve("geschuetztes-leerzeichen.odt");
@@ -270,10 +269,10 @@ class OdtDocumentPipelineTest {
 
   @Test
   void aFirstPageOnlyHeaderIsStillIndexed() throws IOException {
-    // regression guard for #1145 review, B4: "Erste Seite anders" (w:titlePg's ODF counterpart) is
+    // regression guard for #1145: "Erste Seite anders" (w:titlePg's ODF counterpart) is
     // the common German-authority-letterhead layout - the letterhead lives exclusively in
-    // style:header-first, never in style:header. An earlier version of this handler read only
-    // style:header and therefore missed exactly the case #1145 was filed to fix.
+    // style:header-first, never in style:header. A handler reading only style:header would miss
+    // exactly that case.
     Path file = tempDir.resolve("nur-erste-seite.odt");
     writeOdtWithStyles(
         file,
@@ -290,7 +289,7 @@ class OdtDocumentPipelineTest {
 
   @Test
   void multipleMasterPagesWithAnIdenticalFooterContributeOnlyOnce() throws IOException {
-    // regression guard for #1145 review, B2: "Erste Seite" and "Standard" master pages sharing the
+    // regression guard for #1145: "Erste Seite" and "Standard" master pages sharing the
     // same footer text is the common case a real ODT template produces.
     Path file = tempDir.resolve("mehrere-seitenvorlagen.odt");
     String masterStyles =
@@ -315,7 +314,7 @@ class OdtDocumentPipelineTest {
 
   @Test
   void aPageNumberFieldInTheFooterIsExcludedButSurroundingTextIsKept() throws IOException {
-    // regression guard for #1145 review, B3: a field's cached last-computed value (here the page
+    // regression guard for #1145: a field's cached last-computed value (here the page
     // number) is wrong for every page but the one it was current on, and must not become indexed
     // content - the surrounding static text ("Seite ") is real content and must survive.
     Path file = tempDir.resolve("seitenzahl-fusszeile.odt");
@@ -334,7 +333,7 @@ class OdtDocumentPipelineTest {
 
   @Test
   void aFooterThatIsOnlyAPageNumberFieldContributesNoLeadingChunkAtAll() throws IOException {
-    // regression guard for #1145 review, B3 (the safety net): once the field value is excluded,
+    // regression guard for #1145: once the field value is excluded,
     // nothing but digits/whitespace is left - RepeatingHeaderChunk's letter check must reject it
     // rather than index a chunk of pure noise.
     Path file = tempDir.resolve("nur-seitenzahl.odt");
@@ -353,12 +352,11 @@ class OdtDocumentPipelineTest {
 
   @Test
   void headerFooterTextAloneDoesNotDefeatTheScanEmptyDeckGuard() throws IOException {
-    // regression guard for #1145 second review, finding 3: a scanned authority letter carries its
+    // regression guard for #1145: a scanned authority letter carries its
     // letterhead in the Kopf-/Fusszeile just like a text-layer document, so header/footer text is
-    // no evidence this document itself has extractable content. An earlier version of this
-    // pipeline added the header/footer chunk before the guard check, so this reported CHUNKED
-    // instead of NO_EXTRACTABLE_TEXT - reopening the #1055 stille-Leer-Index-Fehlfunktion this
-    // guard exists to prevent, silently, because there is no telltale "Folie n" chunk to notice.
+    // no evidence this document itself has extractable content. Adding the header/footer chunk
+    // before the guard check would report CHUNKED instead of NO_EXTRACTABLE_TEXT - silently
+    // reopening the stille-Leer-Index-Fehlfunktion this guard exists to prevent.
     Path file = tempDir.resolve("nur-kopfzeile.odt");
     writeOdtWithStyles(file, "", "<style:header><text:p>Stadt Musterstadt</text:p></style:header>");
 
@@ -374,7 +372,7 @@ class OdtDocumentPipelineTest {
       throws IOException {
     // XXE hardening applies to styles.xml exactly as it does to content.xml - but unlike
     // content.xml, styles.xml is supplementary: a rejected styles.xml must not fail a document
-    // whose content.xml parsed successfully (#1145 review, W2).
+    // whose content.xml parsed successfully.
     Path file = tempDir.resolve("xxe-styles.odt");
     String maliciousStyles =
         "<?xml version=\"1.0\"?>"
@@ -400,7 +398,7 @@ class OdtDocumentPipelineTest {
   @Test
   void aStylesXmlExceedingTheByteLimitOnlyForfeitsTheHeaderFooterChunkNotTheWholeDocument()
       throws IOException {
-    // regression guard for #1145 review, W2.
+    // regression guard for #1145.
     OdtDocumentPipeline tinyStylesLimitPipeline =
         new OdtDocumentPipeline(new OdfProperties(500, 0, 0, 0, 0));
     Path file = tempDir.resolve("grosse-styles.odt");
@@ -448,9 +446,9 @@ class OdtDocumentPipelineTest {
   @Test
   void aDocumentWithoutAnyTextIsRejectedAsNoExtractableText() throws IOException {
     // A well-formed but empty <office:text/> is a parsed document with nothing to chunk, not an
-    // unparseable one - distinct from aZipWithoutAContentXmlEntryIsAParseFailure below. Matches the
-    // NO_EXTRACTABLE_TEXT outcome TikaFallbackPipeline reported for this exact case before this
-    // pipeline existed (#1057), so an empty document's skipped-not-failed treatment is unchanged.
+    // unparseable one - distinct from aZipWithoutAContentXmlEntryIsAParseFailure below. Same
+    // NO_EXTRACTABLE_TEXT outcome TikaFallbackPipeline reports for this case, so an empty
+    // document stays skipped rather than failed.
     Path file = tempDir.resolve("leer.odt");
     writeOdt(file, "");
 
@@ -526,7 +524,7 @@ class OdtDocumentPipelineTest {
 
   @Test
   void theByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit() throws IOException {
-    // #1108 review, finding 4: the pipeline's own catch-all collapses every parse failure into the
+    // the pipeline's own catch-all collapses every parse failure into the
     // same NO_CONTENT outcome, so a wrong-reason failure would stay green there. This test goes
     // straight at OdfContentXml.parse instead, the one place the byte limit's own message survives.
     Path file = tempDir.resolve("gross-direkt.odt");

@@ -14,9 +14,9 @@ import java.util.Set;
  * The controlled Dokumentart vocabulary as an in-memory snapshot (metadata-schema.md, Teil II (a)).
  * {@link #resolve} maps a term to a code only on an exact, case- and umlaut-insensitive match of
  * the code, the label or a seeded synonym - never on similarity. {@link #resolveToken} adds the
- * seeded Kompositum rule (#1263) for a token read out of a file name or a Dokumentkopf, and is
- * therefore <b>not</b> used for a declared or manually entered value, which must name a vocabulary
- * term itself. A term matching nothing yields {@link Optional#empty()}, and the field stays empty.
+ * seeded Kompositum rule for a token read out of a file name or a Dokumentkopf, and is therefore
+ * <b>not</b> used for a declared or manually entered value, which must name a vocabulary term
+ * itself. A term matching nothing yields {@link Optional#empty()}, and the field stays empty.
  */
 public final class DocumentTypeVocabulary {
 

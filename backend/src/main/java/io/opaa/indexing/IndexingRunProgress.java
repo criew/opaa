@@ -24,7 +24,7 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
    */
   private int documentsIndexedTotal;
 
-  /** The attachment share of the counters above (#1141) - see {@link #recordAttachment}. */
+  /** The attachment share of the counters above - see {@link #recordAttachment}. */
   private int attachmentsProcessed;
 
   private int attachmentsSkipped;
@@ -81,7 +81,7 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
     skipped++;
   }
 
-  /** The outcome of one attachment (#1141). */
+  /** The outcome of one attachment. */
   public enum AttachmentOutcome {
     PROCESSED,
     SKIPPED,

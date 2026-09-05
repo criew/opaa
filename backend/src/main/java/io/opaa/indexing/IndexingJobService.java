@@ -76,14 +76,11 @@ public class IndexingJobService {
   }
 
   /**
-   * Keeps only the {@value #MAX_RETAINED_RUNS_PER_LIBRARY} most recent runs for {@code libraryId},
-   * deleting every older one - {@code fk_indexing_run_events_job}'s {@code ON DELETE CASCADE}
-   * removes each pruned run's own {@link IndexingRunEvent}s along with it. Called from {@link
-   * #startJob} so the newly started run is always counted among the retained ones.
-   *
-   * <p>The most recent run that assessed its listing (#1191) is always kept, even beyond the cap:
-   * the library's incomplete-listing warning hangs on that row, and a burst of webhook runs (which
-   * never assess) must not prune it away before the next full sync replaces the verdict.
+   * Keeps only the {@value #MAX_RETAINED_RUNS_PER_LIBRARY} most recent runs for {@code libraryId};
+   * {@code fk_indexing_run_events_job}'s {@code ON DELETE CASCADE} removes each pruned run's events
+   * with it. Called from {@link #startJob}, so the new run counts among the retained ones. The most
+   * recent run that assessed its listing is always kept, even beyond the cap - the library's
+   * incomplete-listing warning hangs on that row.
    */
   private void pruneOldRuns(UUID libraryId) {
     List<IndexingJob> runs = indexingJobRepository.findByLibraryIdOrderByStartedAtDesc(libraryId);
@@ -165,13 +162,10 @@ public class IndexingJobService {
   }
 
   /**
-   * Reports progress and touches {@link IndexingJob#getLastProgressAt()} - the heartbeat {@link
-   * #recoverStaleJobs} compares against its cutoff. Called once per file/entry an active run
-   * processes ({@link IndexingRunProgress#report}), so a genuinely active run's heartbeat never
-   * falls behind, however long the run's total wall-clock age grows.
-   *
-   * <p>A no-op once the job is no longer {@link JobStatus#RUNNING} - mirrors {@link #completeJob}'s
-   * and {@link #failJob}'s conditional-update guard.
+   * Reports progress and touches {@link IndexingJob#getLastProgressAt()}, the heartbeat {@link
+   * #recoverStaleJobs} compares against. Called once per file or entry an active run processes, so
+   * a genuinely active run's heartbeat never falls behind however long the run grows. A no-op once
+   * the job is no longer {@link JobStatus#RUNNING}.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void updateProgress(
@@ -196,9 +190,9 @@ public class IndexingJobService {
   }
 
   /**
-   * Records the run's cost figures and its incomplete flag (#1141) - called once by an executor
-   * right before {@link #completeJob}, so a COMPLETED row either carries them or never will. A
-   * no-op once the job is no longer {@link JobStatus#RUNNING}, like {@link #updateProgress}.
+   * Records the run's cost figures and its incomplete flag - called once by an executor right
+   * before {@link #completeJob}, so a COMPLETED row either carries them or never will. A no-op once
+   * the job is no longer {@link JobStatus#RUNNING}, like {@link #updateProgress}.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void recordRunMetrics(UUID jobId, IndexingRunCost metrics) {
@@ -215,8 +209,8 @@ public class IndexingJobService {
 
   /**
    * Records whether {@code jobId}'s run assessed its source listing as complete and, if not, which
-   * spaces it could not read (#1191) - called at most once per run, by a successful Confluence full
-   * sync that was not cut short by its budget. A no-op once the job is no longer {@link
+   * spaces it could not read - called at most once per run, by a successful Confluence full sync
+   * that was not cut short by its budget. A no-op once the job is no longer {@link
    * JobStatus#RUNNING}, like {@link #recordRunMetrics}.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -233,9 +227,9 @@ public class IndexingJobService {
   }
 
   /**
-   * The most recent run for {@code libraryId} that assessed its source listing (#1191), or empty
-   * while none has. This - not the most recent run overall - is what the library's warning about an
-   * incomplete listing hangs on; see {@link
+   * The most recent run for {@code libraryId} that assessed its source listing, or empty while none
+   * has. This - not the most recent run overall - is what the library's warning about an incomplete
+   * listing hangs on; see {@link
    * IndexingJobRepository#findTopByLibraryIdAndOrganizationIdAndListingCompleteIsNotNullOrderByStartedAtDesc}.
    */
   @Transactional(readOnly = true)
@@ -276,11 +270,9 @@ public class IndexingJobService {
 
   /**
    * The last {@value #MAX_RETAINED_RUNS_PER_LIBRARY} runs for {@code libraryId}, newest first.
-   * {@link #pruneOldRuns} keeps at most that many rows for a library going forward, but a
-   * pre-existing library can still carry more historical rows until its next run prunes them -
-   * {@link IndexingJobRepository#findTop10ByLibraryIdAndOrganizationIdOrderByStartedAtDesc} is what
-   * actually bounds this query, not the unbounded {@code findByLibraryIdOrderByStartedAtDesc}
-   * {@link #pruneOldRuns} itself uses.
+   * {@link #pruneOldRuns} keeps at most that many going forward, but an older library can still
+   * carry more rows until its next run prunes them - the bound on this query is {@link
+   * IndexingJobRepository#findTop10ByLibraryIdAndOrganizationIdOrderByStartedAtDesc}.
    */
   @Transactional(readOnly = true)
   public List<IndexingJob> getRecentJobs(UUID libraryId, UUID organizationId) {
@@ -318,12 +310,9 @@ public class IndexingJobService {
 
   /**
    * Fails every row still {@link JobStatus#RUNNING} from a previous application run. Called once at
-   * startup ({@code IndexingJobRecoveryScheduler#recoverOnStartup}): a fresh JVM cannot be running
-   * the {@code @Async} task any such row refers to, so every one of them is orphaned by definition
-   * - unlike {@link #recoverStaleJobs}, no age threshold applies here.
-   *
-   * <p>Assumes exactly one backend process; under genuine multi-instance operation this would abort
-   * another, still-running instance's legitimate jobs on restart. See ADR-0021.
+   * startup: a fresh JVM cannot be running the {@code @Async} task such a row refers to, so no age
+   * threshold applies, unlike {@link #recoverStaleJobs}. Assumes exactly one backend process; under
+   * genuine multi-instance operation this would abort another instance's live jobs (ADR-0021).
    *
    * @return the number of rows recovered
    */
@@ -334,14 +323,9 @@ public class IndexingJobService {
 
   /**
    * Fails every row still {@link JobStatus#RUNNING} whose {@link IndexingJob#getLastProgressAt()}
-   * heartbeat is older than {@code staleAfter}. Called periodically while the application keeps
-   * running ({@code IndexingJobRecoveryScheduler#recoverStaleRunningJobs}) - the only guard against
-   * a run orphaned without a restart, e.g. a task a full queue silently dropped, or one truly hung
-   * well past its last recorded progress.
-   *
-   * <p>Compares against {@code lastProgressAt}, not {@code startedAt}: a large corpus can genuinely
-   * take longer than {@code staleAfter} in total wall-clock age while still actively processing
-   * files - {@code startedAt} alone cannot tell that apart from a run that has actually stopped.
+   * heartbeat is older than {@code staleAfter} - the only guard against a run orphaned without a
+   * restart. Compares against {@code lastProgressAt}, not {@code startedAt}, since a large corpus
+   * can genuinely exceed {@code staleAfter} in wall-clock age while still processing files.
    *
    * @return the number of rows recovered
    */

@@ -21,9 +21,11 @@ public class Document {
   private String fileName;
 
   /**
-   * Polymorphic by {@link #sourceType} (#877, not resolved yet): a local filesystem/storage path
-   * for {@code FILESYSTEM}/{@code UPLOAD}, a remote URL for {@code HTTP_DIRECTORY}/{@code
-   * RSS_FEED}.
+   * Polymorphic by {@link #sourceType}: a local filesystem/storage path for {@code
+   * FILESYSTEM}/{@code UPLOAD}, a remote URL for {@code HTTP_DIRECTORY}/{@code RSS_FEED}/{@code
+   * CONFLUENCE}. An attachment carries the synthetic path {@code
+   * FileProcessingService#attachmentFilePath} builds from its parent's own (ADR-0022, Entscheidung
+   * 2). Unique per library ({@code uk_documents_library_path}).
    */
   @Column(name = "file_path", nullable = false, length = 2000)
   private String filePath;
@@ -55,12 +57,10 @@ public class Document {
   private String lastModifiedRemote;
 
   /**
-   * The knowledge library this document belongs to - every document belongs to exactly one library,
-   * enforced as {@code NOT NULL} with {@code fk_documents_library}. Not part of the constructors
-   * (unlike {@code fileName}/{@code filePath}): callers set it explicitly after construction, the
-   * same way {@code checksum} and {@code status} are set. A directory or URL indexing run always
-   * targets a library the caller chose and holds at least {@code EDITOR} on ({@code
-   * FileProcessingService#processFile}/{@code #processUrlFile}).
+   * The knowledge library this document belongs to - exactly one, enforced as {@code NOT NULL} with
+   * {@code fk_documents_library}. Not part of the constructors, unlike {@code fileName}/{@code
+   * filePath}: callers set it after construction, the same way {@code checksum} and {@code status}
+   * are set.
    */
   @Column(name = "library_id")
   private UUID libraryId;
@@ -76,9 +76,9 @@ public class Document {
 
   /**
    * The user who uploaded this document via the REST upload endpoint, or {@code null} for every
-   * other {@link #sourceType} (directory crawl, URL indexing) and for documents that predate this
-   * column. Kept separate from {@link #libraryId}'s owner: a library's owner and the person who
-   * happened to upload a given file into it are frequently different once a library is shared.
+   * other {@link #sourceType}. Kept separate from {@link #libraryId}'s owner: a library's owner and
+   * the person who happened to upload a given file into it are frequently different once a library
+   * is shared.
    */
   @Column(name = "uploaded_by_user_id")
   private UUID uploadedByUserId;
@@ -105,13 +105,9 @@ public class Document {
 
   /**
    * The row this document is an attachment of (ADR-0022, Entscheidung 4), or {@code null} for a
-   * document that is not an attachment. Generalizes {@link #sourceEntryUrl}'s RSS-only, path-string
-   * reference into a real FK usable by every attachment source - RSS, mail, future Confluence. No
-   * {@code @ManyToOne}, the same convention {@link #libraryId} follows: callers that need the
-   * parent row look it up through {@code DocumentRepository} themselves. {@code
-   * fk_documents_parent} carries no {@code ON DELETE CASCADE} - deleting a parent document stays
-   * application code, since a DB-side cascade would orphan the parent's pgvector chunks (migration
-   * 011).
+   * document that is not one. No {@code @ManyToOne}, following {@link #libraryId}'s convention: a
+   * caller needing the parent row looks it up itself. {@code fk_documents_parent} carries no {@code
+   * ON DELETE CASCADE}, since a DB-side cascade would orphan the parent's pgvector chunks.
    */
   @Column(name = "parent_document_id")
   private UUID parentDocumentId;
@@ -144,8 +140,8 @@ public class Document {
 
   /**
    * The {@code CoreMetadataExtractor#EXTRACTION_VERSION} that last ran over this document (ADR-
-   * 0024), or {@code null} when none ever did - the selection key of the Bestandslauf (#1067).
-   * Written only through {@link DocumentRepository#updateMetadataExtractionVersion}.
+   * 0024), or {@code null} when none ever did - the selection key of the Bestandslauf. Written only
+   * through {@link DocumentRepository#updateMetadataExtractionVersion}.
    */
   @Column(name = "metadata_extraction_version", insertable = false, updatable = false)
   private Integer metadataExtractionVersion;
@@ -193,10 +189,9 @@ public class Document {
   }
 
   /**
-   * Backs {@code FileProcessingService#processRssEntry}'s update-in-place path (#1182): a changed
-   * RSS entry keeps its row's identity so {@link #getId()} - and therefore any attachment's {@link
-   * #parentDocumentId} pointing at it - stays valid, instead of the delete-and-recreate every other
-   * connector path uses when a document's content changes.
+   * Backs the connector paths' update-in-place: a changed document keeps its row's identity, so
+   * {@link #getId()} - and therefore any attachment's {@link #parentDocumentId} pointing at it -
+   * stays valid.
    */
   public void setFileName(String fileName) {
     this.fileName = fileName;
@@ -347,16 +342,10 @@ public class Document {
 
   /**
    * The deep link target for a document with no local file: {@link #getFilePath()} holds the remote
-   * URL itself for {@code HTTP_DIRECTORY} and {@code RSS_FEED} - the same identity {@code
-   * FileProcessingService#processUrlFile} deduplicates by - but the server-local storage path for
-   * {@code UPLOAD}/{@code FILESYSTEM}, which must stay internal. Shared between {@code
-   * io.opaa.api.LibraryDocumentResponseMapper} (library listing) and {@code QueryService} (citation
-   * deep links) so both compute the identical value from a single place.
-   *
-   * <p>Unlike {@code LibraryResponse.sourceUrl}, which is masked below MANAGER, this value is
-   * deliberately visible to every VIEWER - the masked field is the library's own source
-   * configuration (crawl target, proxy, credentials), while this one names only a single document's
-   * own origin URL, the same visibility {@code sourceEntryUrl} has.
+   * URL itself for {@code HTTP_DIRECTORY} and {@code RSS_FEED}, but a server-local storage path for
+   * {@code UPLOAD}/{@code FILESYSTEM}, which must stay internal. Shared by the library listing and
+   * the citation deep links, so both compute it from one place. Deliberately visible to every
+   * VIEWER: it names one document's origin, not the library's source configuration.
    */
   public String getDeepLinkSourceUrl() {
     if (sourceType == DocumentSourceType.HTTP_DIRECTORY

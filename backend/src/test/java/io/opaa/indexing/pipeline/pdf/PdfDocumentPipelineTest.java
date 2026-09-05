@@ -25,9 +25,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The PDF pipeline (#1061; ingestion-pipelines.md, Teil 1's parsing table and Teil 2): when the
- * catalog carries an outline, the cut follows it (every level, not just three); a document without
- * a resolvable outline falls back to one chunk per page.
+ * The PDF pipeline (ingestion-pipelines.md, Teil 1's parsing table and Teil 2): when the catalog
+ * carries an outline, the cut follows it (every level, not just three); a document without a
+ * resolvable outline falls back to one chunk per page.
  */
 class PdfDocumentPipelineTest {
 
@@ -130,7 +130,7 @@ class PdfDocumentPipelineTest {
 
   @Test
   void leadTextBeforeARunsFirstTitleStaysFindableInThePrecedingSection() throws IOException {
-    // #1104 review round 2, wichtig 1: § 1's own body continues onto the page § 2/§ 3 are
+    // § 1's own body continues onto the page § 2/§ 3 are
     // bookmarked to (the run's shared page) before either title appears - that lead text must
     // stay attached to § 1, not vanish because it sits ahead of the run's first title.
     Path file = tempDir.resolve("fortlaufender-paragraph.pdf");

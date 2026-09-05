@@ -11,7 +11,7 @@ import java.nio.file.Path;
  *     that cannot resolve one names it itself, so {@code SupportedDocumentFormats} always has
  *     something to classify)
  * @param tempFile the extracted bytes - {@code null} only inside a reader, for an attachment
- *     selective extraction merely counted instead of writing (#1243); no such instance ever reaches
- *     {@link ParsedMailMessage#attachments()}
+ *     selective extraction merely counted instead of writing; no such instance ever reaches {@link
+ *     ParsedMailMessage#attachments()}
  */
 record ParsedMailAttachment(String fileName, Path tempFile) {}

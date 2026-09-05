@@ -27,7 +27,7 @@ class ConfluenceHttpTest {
 
   @Test
   void cqlAsksForChangedPagesInAWindowRelativeToTheInstanceClock() {
-    // #1199 review: an absolute UTC timestamp would be read in the instance's own time zone; the
+    // an absolute UTC timestamp would be read in the instance's own time zone; the
     // relative form lets the instance evaluate the window itself. N is rounded up so the window
     // never starts after the requested instant.
     Instant since = Instant.now().minus(Duration.ofMinutes(90)).minusSeconds(30);

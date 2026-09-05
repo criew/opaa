@@ -11,7 +11,7 @@ class IndexingRunProgressTest {
 
   @Test
   void attachmentOutcomesCountSeparatelyAndOnlyAProcessedOneBecomesADocument() {
-    // #1141: the attachment share is its own set of counters; the document counters keep their
+    // the attachment share is its own set of counters; the document counters keep their
     // established meaning (an indexed attachment is a document, a skipped or failed one is not).
     IndexingJobService jobService = mock(IndexingJobService.class);
     UUID jobId = UUID.randomUUID();

@@ -8,6 +8,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * Configuration properties for the document indexing pipeline.
  *
+ * <p>A concern specific to a single pipeline, connector or crawl path lives in a property block of
+ * its own ({@code CrawlProperties}, {@code TabularProperties}, {@code OdfProperties}, {@code
+ * ConfluenceProperties}, ...) rather than as a component here: this record is bound positionally by
+ * many call sites, and every added component touches all of them.
+ *
  * @param chunkSize target token count per chunk. Default 1000: balances sufficient context per
  *     chunk against retrieval granularity. Valid range: 1–10 000.
  * @param chunkOverlap number of tokens each chunk repeats from the end of its predecessor, so that

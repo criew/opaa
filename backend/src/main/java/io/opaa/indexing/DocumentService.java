@@ -17,11 +17,10 @@ public class DocumentService {
   private static final Logger log = LoggerFactory.getLogger(DocumentService.class);
 
   /**
-   * The user-facing message a document is rejected with when {@code
-   * io.opaa.indexing.pipeline.TikaFallbackPipeline} detects it carries no extractable text -
-   * ingestion-pipelines.md, Teil 3, Punkt 1 "Scan-Erkennung und Bestandsprüfung". Shared by every
-   * caller that needs to both set it as {@link Document#getErrorMessage()} and report the same
-   * wording as an {@link IndexingRunEvent}, so the two never drift apart.
+   * The user-facing message a document is rejected with when a pipeline finds no extractable text
+   * (ingestion-pipelines.md, Teil 3, Punkt 1 "Scan-Erkennung und Bestandsprüfung"). Shared by every
+   * caller that both sets it as {@link Document#getErrorMessage()} and reports it as an {@link
+   * IndexingRunEvent}, so the two never drift apart.
    */
   public static final String NO_EXTRACTABLE_TEXT_MESSAGE =
       "Enthält keinen extrahierbaren Text, vermutlich ein Scan; für diese Datei ist"
@@ -51,10 +50,9 @@ public class DocumentService {
 
   /**
    * @throws IOException if {@code directory} does not exist or is not a directory - a missing
-   *     source path (an unmounted network share, a moved/renamed directory) must fail this run, not
-   *     report an empty, successful bestand (#886 review): {@code AsyncIndexingExecutor}'s own
-   *     stale-document cleanup would otherwise read that empty bestand as "every previously indexed
-   *     document vanished" and delete the whole library's content.
+   *     source path must fail the run rather than report an empty, successful bestand, which {@code
+   *     AsyncIndexingExecutor}'s stale-document cleanup would read as "every indexed document
+   *     vanished" and act on by deleting the whole library's content.
    */
   public DiscoveredFiles discoverFiles(Path directory) throws IOException {
     if (!Files.exists(directory)) {
@@ -93,15 +91,11 @@ public class DocumentService {
   }
 
   /**
-   * Whether {@code file} is accepted for indexing, decided from its actual content - see {@link
-   * SupportedDocumentFormats#decideForFileName}. A file that cannot even be read for detection
-   * (deleted or permission-denied between {@link #discoverFiles}'s own walk and this call) is
-   * treated as unsupported rather than propagating the {@link IOException}.
+   * Decides acceptance from the file's actual content ({@link
+   * SupportedDocumentFormats#decideForFileName}). A file that cannot be read for detection at all
+   * (deleted or permission-denied between the walk and this call) counts as unsupported rather than
+   * propagating the {@link IOException}.
    */
-  boolean isSupportedFormat(Path file) {
-    return classify(file).supported();
-  }
-
   private SupportedDocumentFormats.ContentDecision classify(Path file) {
     try {
       String detectedMimeType = SupportedDocumentFormats.detectMediaType(file);

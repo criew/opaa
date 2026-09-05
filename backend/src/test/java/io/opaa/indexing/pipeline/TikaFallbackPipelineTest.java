@@ -9,7 +9,6 @@ import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.IndexingProperties;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -21,10 +20,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * The fallback pipeline reproduces the pre-abstraction ingest exactly (#1056): the same Tika
- * reader, the same token splitter with the same globally configured chunk size, and the same three
- * outcomes {@code FileProcessingService} used to decide itself - now decided by the pipeline, so a
- * format-specific pipeline can decide them differently for its own format.
+ * The fallback pipeline reproduces the pre-abstraction ingest exactly: the same Tika reader, the
+ * same token splitter with the same globally configured chunk size, and the same three outcomes the
+ * pipeline decides, not {@code FileProcessingService}, so a format-specific pipeline can decide
+ * them differently for its own format.
  */
 class TikaFallbackPipelineTest {
 
@@ -100,7 +99,7 @@ class TikaFallbackPipelineTest {
         .isInstanceOf(IllegalArgumentException.class);
   }
 
-  // --- #1057: ODF routes through this same fallback (no dedicated pipeline exists yet for its
+  // --- ODF routes through this same fallback (no dedicated pipeline exists yet for its
   // Microsoft-format counterparts either), so the fallback's Tika reader is the actual extractor
   // exercised for ODT/ODS/ODP -----------------------------------------------------------------
 
@@ -133,7 +132,7 @@ class TikaFallbackPipelineTest {
   @ValueSource(strings = {"odt", "ods", "odp"})
   void anEmptyOdfDocumentIsReportedAsHavingNoExtractableTextRatherThanIndexedWithZeroChunks(
       String extension) throws IOException {
-    // #1055 guard: a format that parses successfully but yields no usable content must not end up
+    // Guard: a format that parses successfully but yields no usable content must not end up
     // INDEXED with zero chunks - it must be rejected the same way a scan PDF is.
     Path file = copyTestResource("empty-document." + extension, "leer." + extension);
 
@@ -142,52 +141,6 @@ class TikaFallbackPipelineTest {
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.NO_EXTRACTABLE_TEXT);
     assertThat(result.chunks()).isEmpty();
-  }
-
-  // --- #1055/#1117: scan-PDF detection, moved here from DocumentServiceTest along with
-  // isTextlessPdf itself (only this pipeline ever asks it) ------------------------------------
-
-  @Test
-  void isTextlessPdfDetectsAPdfWhoseParsedDocumentsCarryOnlyBlankText() throws IOException {
-    Path file = tempDir.resolve("scan.pdf");
-    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
-
-    var parsed = List.of(new org.springframework.ai.document.Document(""));
-
-    assertThat(pipeline.isTextlessPdf(file, parsed)).isTrue();
-  }
-
-  @Test
-  void isTextlessPdfDetectsAPdfWithNoParsedDocumentsAtAll() throws IOException {
-    Path file = tempDir.resolve("empty-parse.pdf");
-    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
-
-    assertThat(pipeline.isTextlessPdf(file, List.of())).isTrue();
-  }
-
-  @Test
-  void isTextlessPdfIsFalseWhenAtLeastOneParsedDocumentCarriesText() throws IOException {
-    Path file = tempDir.resolve("has-text.pdf");
-    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
-
-    var parsed =
-        List.of(
-            new org.springframework.ai.document.Document(""),
-            new org.springframework.ai.document.Document("actual content"));
-
-    assertThat(pipeline.isTextlessPdf(file, parsed)).isFalse();
-  }
-
-  @Test
-  void isTextlessPdfIsFalseForATextlessNonPdfFile() throws IOException {
-    // The rule is scoped to PDF (ingestion-pipelines.md, Teil 3, Punkt 1) - blank text from any
-    // other format is left to the existing generic "no content extracted" handling.
-    Path file = tempDir.resolve("blank.txt");
-    Files.writeString(file, "", StandardCharsets.UTF_8);
-
-    var parsed = List.of(new org.springframework.ai.document.Document(""));
-
-    assertThat(pipeline.isTextlessPdf(file, parsed)).isFalse();
   }
 
   private Path copyTestResource(String resourceName, String targetFileName) throws IOException {

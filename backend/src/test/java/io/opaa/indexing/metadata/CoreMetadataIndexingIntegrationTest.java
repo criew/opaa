@@ -51,12 +51,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 
 /**
- * The core fields end to end (#1066, ADR-0024): a PDF, a DOCX and a Markdown file with frontmatter
- * go through {@link FileProcessingService#processFile}; their values land at the document with
- * origin and extraction version, their filterable keys on every chunk, and a manual value survives
- * a re-extraction that rewrites the chunk metadata without touching the chunks. Since #1263 also
- * the three further Dokumentart sources against the seeded vocabulary of the database: the
- * Kompositum ending in a file name, the document head, and the file format.
+ * The core fields end to end (ADR-0024): a PDF, a DOCX and a Markdown file with frontmatter go
+ * through {@link FileProcessingService#processFile}; their values land at the document with origin
+ * and extraction version, their filterable keys on every chunk, and a manual value survives a
+ * re-extraction that rewrites the chunk metadata without touching the chunks. Also the three
+ * further Dokumentart sources against the seeded vocabulary of the database: the Kompositum ending
+ * in a file name, the document head, and the file format.
  */
 @OpaaIndexingIntegrationTest
 class CoreMetadataIndexingIntegrationTest {
@@ -204,8 +204,8 @@ class CoreMetadataIndexingIntegrationTest {
   }
 
   /**
-   * #1263: the demo's Satzungen carry the Dokumentart as a Kompositum in the file name - the exact
-   * token match of #1066 does not see it, the seeded ending of migration 020 does.
+   * the demo's Satzungen carry the Dokumentart as a Kompositum in the file name - the exact token
+   * match does not see it, the seeded ending of migration 020 does.
    */
   @Test
   void aKompositumInTheFileNameNamesTheDokumentart() throws IOException {
@@ -222,7 +222,7 @@ class CoreMetadataIndexingIntegrationTest {
   }
 
   /**
-   * #1263: the demo's Dienstanweisungen are named after their subject, not their Dokumentart - the
+   * the demo's Dienstanweisungen are named after their subject, not their Dokumentart - the
    * document head is the source that carries it.
    */
   @Test
@@ -246,8 +246,8 @@ class CoreMetadataIndexingIntegrationTest {
   }
 
   /**
-   * #1289: the demo's Leistungsbeschreibungen carry the Formular they point to as a label line
-   * right below their title - a reference, never a self-designation.
+   * the demo's Leistungsbeschreibungen carry the Formular they point to as a label line right below
+   * their title - a reference, never a self-designation.
    */
   @Test
   void aLabelLineBelowTheTitleNeverNamesTheDokumentart() throws IOException {
@@ -274,8 +274,8 @@ class CoreMetadataIndexingIntegrationTest {
   }
 
   /**
-   * #1289: a level-1 heading from inside the document is no title line - a section naming the
-   * Formular a service needs is the same reference as the label line above.
+   * a level-1 heading from inside the document is no title line - a section naming the Formular a
+   * service needs is the same reference as the label line above.
    */
   @Test
   void aSectionHeadingFromInsideTheDocumentNeverNamesTheDokumentart() throws IOException {
@@ -301,8 +301,8 @@ class CoreMetadataIndexingIntegrationTest {
   }
 
   /**
-   * #1289: a FAQ that cites a Dienstanweisung in its opening text is none - below the title line
-   * the head is not read for the Dokumentart.
+   * a FAQ that cites a Dienstanweisung in its opening text is none - below the title line the head
+   * is not read for the Dokumentart.
    */
   @Test
   void aQuotationBelowTheTitleLineNeverNamesTheDokumentart() throws IOException {
@@ -325,7 +325,7 @@ class CoreMetadataIndexingIntegrationTest {
         .isNull();
   }
 
-  /** #1263: a presentation is a Präsentation - the format is the last source, and a sure one. */
+  /** a presentation is a Präsentation - the format is the last source, and a sure one. */
   @Test
   void aPresentationGetsItsDokumentartFromTheFormatAlone() throws IOException {
     Path file = classTempDir.resolve("21_onboarding-buergerbuero.pptx");
@@ -345,8 +345,8 @@ class CoreMetadataIndexingIntegrationTest {
   }
 
   /**
-   * #1263: an RSS entry names other documents than itself - neither its body text (no Kopfbereich)
-   * nor its headline (no file name) may become a Dokumentart, and its headline is no Stand either.
+   * an RSS entry names other documents than itself - neither its body text (no Kopfbereich) nor its
+   * headline (no file name) may become a Dokumentart, and its headline is no Stand either.
    */
   @Test
   void anRssEntryNeitherReadsItsBodyAsAKopfbereichNorItsHeadlineAsAFileName() {
@@ -373,8 +373,8 @@ class CoreMetadataIndexingIntegrationTest {
   }
 
   /**
-   * #1318: a Confluence page title is free text, not a file name - "Gebuehrensatzung 2024" is
-   * neither a Dokumentart nor a Stand, exactly as an RSS headline is not. It stays the title.
+   * A Confluence page title is free text, not a file name - "Gebuehrensatzung 2024" is neither a
+   * Dokumentart nor a Stand, exactly as an RSS headline is not. It stays the title.
    */
   @Test
   void aConfluencePageTitleIsNoFileNameSoItYieldsNeitherDokumentartNorDatum() {
@@ -401,8 +401,8 @@ class CoreMetadataIndexingIntegrationTest {
   }
 
   /**
-   * #1318: the Stand of a page is when its current version was written - the one date Confluence
-   * itself declares, and the reason the title never has to supply one.
+   * The Stand of a page is when its current version was written - the one date Confluence itself
+   * declares, and the reason the title never has to supply one.
    */
   @Test
   void aConfluencePageTakesItsStandFromThePageVersionNotFromItsTitle() {
@@ -510,8 +510,8 @@ class CoreMetadataIndexingIntegrationTest {
   }
 
   /**
-   * Review B2: document values and the chunk-key propagation are one transaction - a failing chunk
-   * update leaves the document's rows and its extraction version exactly as they were.
+   * Document values and the chunk-key propagation are one transaction - a failing chunk update
+   * leaves the document's rows and its extraction version exactly as they were.
    */
   @Test
   void aFailingChunkUpdateLeavesTheDocumentValuesAndExtractionVersionUntouched()
@@ -557,7 +557,7 @@ class CoreMetadataIndexingIntegrationTest {
   }
 
   /**
-   * Review S2: a model-derived value fills exactly the gap the deterministic step leaves - an empty
+   * A model-derived value fills exactly the gap the deterministic step leaves - an empty
    * deterministic result must not delete it, only a real result replaces it.
    */
   @Test
@@ -603,7 +603,7 @@ class CoreMetadataIndexingIntegrationTest {
     return new tools.jackson.databind.ObjectMapper().readValue(json, Map.class);
   }
 
-  /** A PDF whose first page carries {@code lines} as separate text lines (#1289). */
+  /** A PDF whose first page carries {@code lines} as separate text lines. */
   private static void writePdfPage(Path file, List<String> lines) throws IOException {
     try (PDDocument doc = new PDDocument()) {
       PDPage page = new PDPage(PDRectangle.A4);
@@ -654,7 +654,7 @@ class CoreMetadataIndexingIntegrationTest {
     }
   }
 
-  /** A DOCX whose Dokumentart stands in its first lines and nowhere else (#1263). */
+  /** A DOCX whose Dokumentart stands in its first lines and nowhere else. */
   private static void writeDocxWithHead(Path file, String head, String body) throws IOException {
     try (XWPFDocument doc = new XWPFDocument()) {
       for (String text : List.of(head, body)) {

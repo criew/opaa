@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
  * instance per indexing run, shared by the {@code FILESYSTEM} and {@code HTTP_DIRECTORY} executors
  * so both drive {@link LibraryFolderService#materializeFolderPath}/{@link
  * LibraryFolderService#pruneOrphanedFolders} through the same cache-and-prune sequence instead of
- * two copies of it (#1277).
+ * two copies of it.
  *
  * <p>Not thread-safe and deliberately not a bean: it carries the state of exactly one run (which
  * path segments were already resolved, which folders that run actually used).

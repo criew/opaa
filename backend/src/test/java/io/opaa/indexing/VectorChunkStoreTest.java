@@ -19,12 +19,12 @@ import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 
 /**
- * #838: {@link VectorChunkStore} builds its delete filter via {@link FilterExpressionBuilder}
- * rather than string concatenation - these tests pin the exact {@link Filter.Expression} passed to
- * {@link VectorStore#delete(Filter.Expression)}. Since #1047, also pins that {@link
- * VectorChunkStore#addChunks} embeds before handing the result to {@link VectorStoreWriter} (never
- * calling {@link VectorStore#add} directly - see both classes' own Javadoc for why) and that both
- * delete methods cascade to {@link FullTextChunkStore}.
+ * {@link VectorChunkStore} builds its delete filter via {@link FilterExpressionBuilder} rather than
+ * string concatenation - these tests pin the exact {@link Filter.Expression} passed to {@link
+ * VectorStore#delete(Filter.Expression)}. Also pins that {@link VectorChunkStore#addChunks} embeds
+ * before handing the result to {@link VectorStoreWriter} (never calling {@link VectorStore#add}
+ * directly - see both classes' own Javadoc for why) and that both delete methods cascade to {@link
+ * FullTextChunkStore}.
  */
 class VectorChunkStoreTest {
 

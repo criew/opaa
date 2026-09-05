@@ -10,22 +10,15 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Detects the edition behind an address without credentials (ADR-0023, Entscheidung 2):
+ * Detects the edition behind an address without credentials (ADR-0023, Entscheidung 2): {@code GET
+ * <host root>/_edge/tenant_info} identifies Cloud, which alone answers it with a {@code cloudId};
+ * otherwise {@code GET <base>/status} or {@code GET <base>/rest/api/space?limit=1} identifies Data
+ * Center. The Cloud content endpoints are unusable as a signature, since unauthenticated they
+ * answer {@code 404} like any nonexistent path.
  *
- * <ol>
- *   <li>{@code GET <host root>/_edge/tenant_info} - every Cloud site answers {@code 200} with a
- *       JSON object carrying {@code cloudId}; Data Center has no such path. The Cloud content
- *       endpoints are unusable as a signature: unauthenticated they answer {@code 404},
- *       indistinguishable from a path that does not exist.
- *   <li>Otherwise {@code GET <base>/status} ({@code {"state":"RUNNING"}}) or {@code GET
- *       <base>/rest/api/space?limit=1} ({@code 200}/{@code 401} with a JSON body) identifies Data
- *       Center.
- * </ol>
- *
- * The host name is never consulted: Cloud can sit behind a custom domain, Data Center behind any. A
- * probe that fails at the connection level (a redirect off to an SSO login on another host, a
- * refused connection) counts as "signature not met" and is named in the final message - except a
- * target-validation rejection, which is a configuration problem of its own and surfaces as such.
+ * <p>The host name is never consulted - either edition can sit behind any domain. A probe failing
+ * at the connection level counts as "signature not met" and is named in the final message, except a
+ * target-validation rejection, which surfaces as the configuration problem it is.
  */
 public final class ConfluenceEditionDetector {
 

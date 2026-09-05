@@ -25,37 +25,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The selective re-index by pipeline version (docs/features/ingestion-pipelines.md, cross-cutting
- * rule (d)): every chunk below version N of one pipeline, triggerable, resumable, and with progress
- * queryable per library.
+ * The selective re-index by pipeline version (ingestion-pipelines.md, Querschnittsregel (d)): every
+ * chunk below version N of one pipeline, triggerable, resumable, with progress queryable per
+ * library. Also the only repair path for a chunk whose {@code chunk_full_text} row is missing or
+ * older than {@link FullTextChunkStore#CURRENT_TSV_VERSION}, at the price of re-embedding.
  *
- * <p><b>Also the recovery path of the lexical index (#1270).</b> A chunk whose {@code
- * chunk_full_text} row is missing or was built under an older {@link
- * FullTextChunkStore#CURRENT_TSV_VERSION} is selected too, independently of any pipeline version -
- * since the full-text backfill was removed, nothing else brings such a row up to date. The price is
- * stated where it is paid: unlike the removed backfill, this path re-parses, re-chunks and
- * <b>re-embeds</b> the document.
- *
- * <p><b>Resumable by construction, not through a cursor table.</b> The remaining work is always
- * re-derived from the chunk metadata itself: a chunk rewritten at the current version is no longer
- * selected, so a run interrupted at any point simply continues where it stood on the next call.
- *
- * <p><b>Every call terminates and every call makes progress.</b> A candidate that cannot be
- * advanced right now - its file is outside what this deployment is allowed to read, or the pipeline
- * could not parse it this time - stays in the candidate set on purpose (nothing about it is
- * falsified in the database to hide it). {@link #reindexBatch} therefore scans past such a
- * candidate using an offset rather than reselecting it forever, and reports it under {@link
- * PipelineReindexResult#skippedDocuments()}. A call that advanced nothing at all is the signal to
- * stop; the chunks left behind stay visible in {@link #progressForOrganization}, never silently
- * reported as done.
- *
- * <p><b>Never scheduled.</b> Whether a corpus is caught up at all, and when, is deliberately left
- * open in the specification - so this is only ever driven by an explicit admin call ({@code
- * IndexingAdminController}), never by a background tick that would re-index a whole corpus the
- * moment a version is raised.
- *
- * <p>Table/schema name come from the same {@code spring.ai.vectorstore.pgvector.*} properties
- * {@code PgVectorStore} itself binds, never hardcoded independently of that configuration.
+ * <p>Resumable by construction - the remaining work is re-derived from the chunk metadata - and
+ * every call terminates and makes progress: a candidate that cannot be advanced stays in the set
+ * and is scanned past by an offset rather than hidden by a write, and is reported as skipped. Only
+ * an explicit admin call ever drives this, never a background tick.
  */
 public class PipelineReindexService {
 
@@ -100,11 +78,9 @@ public class PipelineReindexService {
 
   /**
    * The pipeline-version fill state of every library of {@code organizationId} that has at least
-   * one chunk, computed from a single grouped query over the chunk metadata rather than one query
-   * per library or per pipeline.
-   *
-   * <p>Reads {@code vector_store} with a {@code metadata->>...} predicate that no expression index
-   * backs - an accepted cost at today's data volumes.
+   * one chunk, from a single grouped query over the chunk metadata rather than one query per
+   * library. Reads {@code vector_store} with a {@code metadata->>...} predicate that no expression
+   * index backs - an accepted cost at today's data volumes.
    */
   public List<PipelineVersionProgress> progressForOrganization(UUID organizationId) {
     Map<String, Short> currentVersions = currentVersionsById();
@@ -122,9 +98,8 @@ public class PipelineReindexService {
             + ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY
             + "' AS routing_extension, "
             + "       count(*) AS chunk_count, "
-            // Chunks whose lexical index entry is missing or built under an older tsv version
-            // (#1270): stale for this display too, even when their pipeline version is current -
-            // see #selectStaleDocuments for why this re-index is the only path that repairs them.
+            // Chunks whose lexical index entry is missing or built under an older tsv version are
+            // stale for this display too, even when their pipeline version is current.
             + "       count(*) FILTER (WHERE f.chunk_id IS NULL) AS tsv_stale_count "
             + "FROM "
             + vectorStoreTable
@@ -156,11 +131,10 @@ public class PipelineReindexService {
           counters[0] += count;
           boolean isRss = DocumentSourceType.RSS_FEED.name().equals(sourceType);
           if (routingExtension != null) {
-            // Exact via pipelineIdForRoutingExtension (#1126): stale in both directions - out of
-            // the fallback, out of another specialized pipeline, or out of a pipeline_id this
-            // deployment no longer registers at all (#1167) - since resolving the target needs
-            // only the stored routing key, never currentVersions. Never for an RSS entry (ADR-0017,
-            // decision 2).
+            // Exact via pipelineIdForRoutingExtension: stale in both directions - out of the
+            // fallback, out of another specialized pipeline, or out of a pipeline_id this
+            // deployment does not register at all - since resolving the target needs only the
+            // stored routing key. Never for an RSS entry (ADR-0017, decision 2).
             String targetPipelineId =
                 pipelineRegistry.pipelineIdForRoutingExtension(routingExtension);
             if (!isRss && !pipelineId.equals(targetPipelineId)) {
@@ -169,9 +143,9 @@ public class PipelineReindexService {
             }
             Short currentVersion = currentVersions.get(pipelineId);
             if (currentVersion == null) {
-              // Routing-current but a pipeline_id this deployment no longer registers - only
-              // reachable here for an RSS entry, which the check above never routes elsewhere for.
-              // Counted in the total only, so it is visible without being promised.
+              // Routing-current but a pipeline_id this deployment does not register - only
+              // reachable for an RSS entry. Counted in the total only, so it is visible without
+              // being promised.
               return;
             }
             if (version >= currentVersion) {
@@ -182,9 +156,8 @@ public class PipelineReindexService {
             }
             return;
           }
-          // Altbestand without a routing key (pre-#1126): unchanged fallback+file-name
-          // approximation (#1105), narrower than the exact branch above - see
-          // #currentPipelineIdForFileName's own Javadoc for why it cannot widen safely.
+          // Altbestand without a routing key: the fallback+file-name approximation, narrower than
+          // the exact branch above - see #currentPipelineIdForFileName on why it cannot widen.
           Short currentVersion = currentVersions.get(pipelineId);
           if (currentVersion == null) {
             // A chunk naming a pipeline this deployment does not have, with no routing key to
@@ -220,23 +193,10 @@ public class PipelineReindexService {
 
   /**
    * Advances up to {@code batchSize} documents of {@code organizationId} that still hold chunks
-   * from {@code pipelineId} below {@code belowVersion}. Call repeatedly until the result {@link
-   * PipelineReindexResult#isEmpty() is empty}.
-   *
-   * <p>A document whose source file is locally readable <em>and</em> passes the same runtime
-   * containment checks a download of that file would (see {@link
-   * StoredDocumentSourceAccess#localSourceFile}) is re-read, re-chunked and stored again <b>under
-   * its own document id</b>, so citations and deep links into it survive. A document whose source
-   * is remote can only be re-read by its own connector run and is marked for it instead ({@link
-   * DocumentRepository#markForReindexOnNextRun}). Anything else is counted as skipped and scanned
-   * past.
-   *
-   * <p>Deliberately not {@code @Transactional}: one batch re-indexes several documents, each of
-   * which embeds (a network round trip) and writes through {@link VectorChunkStore}'s own
-   * transaction. Holding one transaction across the whole batch would keep a pooled connection open
-   * for every embedding call in it, the very failure {@link VectorStoreWriter} exists to avoid. The
-   * consequence is intended: an interrupted batch keeps whatever documents it already finished, and
-   * the next call simply picks up the rest.
+   * from {@code pipelineId} below {@code belowVersion}; call repeatedly until the result is empty.
+   * A source that passes {@link StoredDocumentSourceAccess#localSourceFile} is rewritten under its
+   * own id, a remote one marked for its next run, anything else skipped. Deliberately not
+   * {@code @Transactional}: one transaction would pin a connection for every embedding call.
    */
   public PipelineReindexResult reindexBatch(
       UUID organizationId, String pipelineId, int belowVersion, int batchSize) {
@@ -338,21 +298,14 @@ public class PipelineReindexService {
     if (!advanced) {
       return Advance.SKIPPED;
     }
-    // Loop protection for the file-name-approximation branch of the routing gap (#1105): a
-    // candidate selected that way was picked purely on its file name, which content-based routing
-    // (see DocumentPipelineRegistry#routedPipelineFor) does not have to agree with. If the
-    // just-written chunks still name the fallback pipeline, re-selecting this document for the same
-    // pipelineId would never converge - counted as skipped so the offset scans past it instead. Not
-    // needed for either exact routing-key branch (#1126, #1167): DocumentPipelineRegistry maps each
-    // extension to at most one pipeline, so a freshly written routing key never again satisfies the
-    // predicate that selected this candidate for pipelineId - even though the fresh write may
-    // resolve to a different extension than the one stored before, or write no key at all when
-    // detection fails transiently.
-    // Not applied to a document that was selected for its stale or missing lexical index (#1270):
-    // that document was genuinely repaired - its rows now carry the current version - and reporting
-    // it as skipped would understate what the call did. It cannot loop either: with the gap closed,
-    // the lexical-index branch no longer selects it, and if the routing gap alone still did, the
-    // next attempt takes the branch below and scans past it.
+    // Loop protection for the file-name-approximation branch: such a candidate was picked purely
+    // on its file name, which content-based routing does not have to agree with. If the
+    // just-written chunks still name the fallback pipeline, re-selecting this document for the
+    // same pipelineId would never converge - counted as skipped so the offset scans past it. Not
+    // needed for the exact routing-key branches: DocumentPipelineRegistry maps each extension to at
+    // most one pipeline, so a freshly written key never satisfies the selecting predicate again.
+    // Not applied to a document selected for its stale or missing lexical index either: that
+    // document was genuinely repaired, and reporting it as skipped would understate the call.
     if (!hadFullTextGap && stillFallbackLabeledAfterReindex(documentId, pipelineId)) {
       return Advance.SKIPPED;
     }
@@ -377,10 +330,8 @@ public class PipelineReindexService {
   /**
    * The {@link AttachmentAccess} a re-index hands to {@code
    * FileProcessingService#reindexStoredDocument} so attachments a re-run pipeline discovers reach
-   * the generalized attachment path - FILESYSTEM and, since #1218, UPLOAD (the two source types
-   * whose files this machine can re-read, see {@link StoredDocumentSourceAccess#localSourceFile}).
-   * There is no job or run here, so events are only logged and no progress is counted ({@link
-   * StandaloneAttachmentAccess}).
+   * the generalized attachment path - FILESYSTEM and UPLOAD, the two source types whose files this
+   * machine can re-read. There is no job here, so events are only logged and no progress counted.
    */
   private AttachmentAccess attachmentAccessFor(Document document) {
     if ((document.getSourceType() != DocumentSourceType.FILESYSTEM
@@ -403,10 +354,9 @@ public class PipelineReindexService {
   private boolean stillFallbackLabeledAfterReindex(UUID documentId, String pipelineId) {
     String fallbackId = pipelineRegistry.fallbackPipeline().id();
     if (pipelineId.equals(fallbackId)) {
-      // The fallback-target branch of #misroutedPredicateFor is exact, not a guess (#1167): a
-      // re-index writes pipeline_id=fallback whenever content still resolves to no claimed
-      // extension, exactly the condition that selected the candidate, so it converges without this
-      // protection the same way the other exact branch does.
+      // The fallback-target branch of #misroutedPredicateFor is exact, not a guess: a re-index
+      // writes pipeline_id=fallback whenever content still resolves to no claimed extension,
+      // exactly the condition that selected the candidate, so it converges without this guard.
       return false;
     }
     List<String> pipelineIds =
@@ -448,29 +398,19 @@ public class PipelineReindexService {
             + "        AND COALESCE((v.metadata->>'"
             + ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY
             + "')::int, ?) < ?)"
-            // The routing gap: a document whose routing key (#1126) or, absent that, its file
-            // name (#1105) names pipelineId as claiming it today, but whose chunks still carry a
-            // different pipeline_id - stale regardless of the stored pipeline's own version, since
-            // no request naming that stored pipeline would ever select it. See
-            // #misroutedPredicateFor
-            // for the exact-key and file-name-approximation branches this expands into. Also
-            // excludes RSS_FEED: its body is always handed to the fallback pipeline regardless of
-            // its file name (ADR-0017, decision 2), so an entry whose title or URL happens to look
-            // like a claimed extension is not a routing gap - selecting it would just mark it for
-            // its next connector run forever.
+            // The routing gap: a document whose routing key or, absent that, its file name names
+            // pipelineId as claiming it today, but whose chunks still carry a different
+            // pipeline_id - stale regardless of the stored pipeline's own version, since no request
+            // naming that stored pipeline would select it. Excludes RSS_FEED, whose body always
+            // goes to the fallback pipeline regardless of its name (ADR-0017, decision 2).
             + "       OR ("
             + misrouted.sql()
             + "            AND COALESCE(d.source_type, '') <> 'RSS_FEED')"
-            // The lexical-index gap (#1270): a chunk without a chunk_full_text row at the current
-            // FullTextChunkStore#CURRENT_TSV_VERSION is invisible to the lexical search path, and
-            // since the full-text backfill was removed this re-index is the only thing that
-            // repairs it. Deliberately independent of pipelineId and belowVersion: raising
-            // CURRENT_TSV_VERSION raises no DocumentPipeline#version(), so a selection tied to the
-            // pipeline version would report "nothing to do" for exactly the situation the
-            // documented recovery path names. The re-index rewrites a document through whichever
-            // pipeline claims it today anyway, so selecting it under another pipeline's request
-            // still writes the correct chunks - and it converges, because the rewritten rows carry
-            // the current version.
+            // The lexical-index gap: a chunk without a chunk_full_text row at the current
+            // FullTextChunkStore#CURRENT_TSV_VERSION is invisible to lexical search, and this
+            // re-index is the only thing that repairs it. Deliberately independent of pipelineId
+            // and belowVersion - raising CURRENT_TSV_VERSION raises no DocumentPipeline#version().
+            // It converges, because the rewritten rows carry the current version.
             + "       OR NOT EXISTS ("
             + "            SELECT 1 FROM chunk_full_text f "
             + "            WHERE f.chunk_id = v.id AND f.content_tsv_version = ?)"
@@ -512,21 +452,10 @@ public class PipelineReindexService {
 
   /**
    * Whether a chunk belongs to {@code pipelineId} today but is not stored under it - exactly, via
-   * its own {@link ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} where present (#1126), or
-   * the file-name approximation {@link #currentPipelineIdForFileName} mirrors in Java for {@link
-   * #progressForOrganization} where it is not (a chunk written before #1126). Expressed in SQL so
-   * {@link #selectStaleDocuments} can keep filtering (and paginating) in the database instead of
-   * scanning every document of the organization.
-   *
-   * <p>The exact branch compares in every direction, including into the fallback pipeline itself
-   * (#1167: {@link #misroutedPredicateForFallback}, e.g. a specialized pipeline was deinstalled) -
-   * it converges regardless of the stored value, because a re-index writes the routing key fresh
-   * from re-detected content, and {@link DocumentPipelineRegistry#pipelineIdForRoutingExtension}
-   * maps each extension to at most one pipeline, so a chunk selected this way is never selected
-   * again for the same {@code pipelineId}. The heuristic branch stays narrower - a specialized
-   * {@code pipelineId} only, and only a chunk still labeled with the fallback pipeline (#1105) -
-   * because it only guesses from the file name; a wider heuristic condition could disagree with the
-   * content-based re-routing on every call and never converge.
+   * its {@link ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY}, or via the file-name
+   * approximation where that key is absent. Expressed in SQL so {@link #selectStaleDocuments} can
+   * filter and paginate in the database. The exact branch compares in every direction and always
+   * converges; the heuristic one stays narrow, or it could disagree on every call and never do.
    */
   private MisroutedPredicate misroutedPredicateFor(String pipelineId) {
     String fallbackId = pipelineRegistry.fallbackPipeline().id();
@@ -560,9 +489,8 @@ public class PipelineReindexService {
     List<Object> exactParams = new ArrayList<>(extensions);
     exactParams.add(ChunkPipelineMetadata.LEGACY_PIPELINE_ID);
     exactParams.add(pipelineId);
-    // Heuristic branch: only reached for a chunk that never had the key written at all (#1125's
-    // pre-#1126 approximation, kept unchanged as the Altbestand path), and only while it is still
-    // fallback-labeled (see this method's own Javadoc for why).
+    // Heuristic branch: only reached for a chunk that never had the routing key written at all,
+    // and only while it is still fallback-labeled (see this method's own Javadoc for why).
     String heuristicSql =
         extensions.stream()
             .map(extension -> "LOWER(d.file_name) LIKE ?")
@@ -590,13 +518,11 @@ public class PipelineReindexService {
   }
 
   /**
-   * The fallback-target counterpart of {@link #misroutedPredicateFor}'s exact branch (#1167): a
-   * chunk whose routing key (#1126) names an extension no registered pipeline claims today - {@link
-   * DocumentPipelineRegistry#pipelineIdForRoutingExtension} would resolve it to {@code fallbackId}
-   * - but whose stored {@code pipeline_id} still names something else, typically a specialized
-   * pipeline that has since been deinstalled. No heuristic counterpart: a chunk without the routing
-   * key has no way to tell "no pipeline claims this extension" from "the file-name approximation
-   * just does not recognize it", so it stays on the Altbestand path unchanged.
+   * The fallback-target counterpart of {@link #misroutedPredicateFor}'s exact branch: a chunk whose
+   * routing key names an extension no registered pipeline claims today, but whose stored {@code
+   * pipeline_id} still names something else - typically a since-deinstalled specialized pipeline.
+   * No heuristic counterpart: without the routing key there is no way to tell "no pipeline claims
+   * this extension" from "the file-name approximation does not recognize it".
    */
   private MisroutedPredicate misroutedPredicateForFallback(String fallbackId) {
     Set<String> claimedExtensions =
@@ -629,31 +555,10 @@ public class PipelineReindexService {
 
   /**
    * The id of the pipeline that would claim {@code fileName} today, purely by its extension - the
-   * java-side counterpart {@link #progressForOrganization} needs for the same routing-gap check
-   * {@link #misroutedPredicateFor} expresses in SQL for {@link #selectStaleDocuments}, for a chunk
-   * that has no {@link ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} of its own (written
-   * before #1126) - the exact comparison in both callers is tried first and only falls back to this
-   * method when that key is absent.
-   *
-   * <p><b>A deliberately narrower approximation of routing, not a second implementation of it.</b>
-   * The actual routing contract - {@link DocumentPipelineRegistry}, this package's own {@code
-   * package-info.java}, {@code docs/features/ingestion-pipelines.md} - is never on the file
-   * extension alone, precisely because grown file shares carry wrong extensions routinely. This
-   * method exists only to catch up the one gap version comparison alone cannot see (#1105: a chunk
-   * still naming the fallback pipeline whose format a pipeline registered after it was indexed); it
-   * is not a claim that the extension is trustworthy in general, and {@link #selectStaleDocuments}
-   * re-routes on re-detected content on every actual re-index (see {@code
-   * FileProcessingService#reindexStoredDocument}), never on this guess.
-   *
-   * <p>Known gaps this approximation does not close for a chunk without a routing key, all
-   * read-only consequences (a chunk stays where it is, never mis-embedded): an RSS entry's chunk
-   * names {@code tika-fallback} by design (ADR-0017, routing is skipped for extracted entry text)
-   * with {@code fileName} its title or URL - an incidental {@code .html} there is not a routing
-   * signal. A document already re-indexed under a <em>specialized</em> pipeline whose file name no
-   * longer matches that pipeline's own extensions (renamed since, or the extension never matched
-   * the true content) is likewise left alone here - {@link #misroutedPredicateFor} only re-examines
-   * chunks still naming the fallback pipeline. A chunk written since #1126 does not carry these
-   * gaps at all, since it is never compared through this method in the first place.
+   * Java counterpart of {@link #misroutedPredicateFor}'s heuristic branch, for a chunk without a
+   * routing key. A deliberately narrower approximation of routing, not a second implementation: an
+   * actual re-index always re-routes on re-detected content, so every gap left open here is
+   * read-only and merely leaves a chunk where it is.
    */
   private String currentPipelineIdForFileName(String fileName) {
     String lowerCased = fileName.toLowerCase(Locale.ROOT);

@@ -14,34 +14,15 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Triggers a due connector library's indexing run automatically, on the schedule stored on the
- * library itself. A periodic tick, following {@code io.opaa.audit.AuditRetentionScheduler} - not a
- * per-library dynamically registered trigger: {@code KnowledgeLibraryRepository} already tells this
- * class which libraries are due on every tick, so there is nothing to keep in sync when a schedule
- * changes, a library is deleted, or the application restarts.
+ * Triggers a due connector library's indexing run on the schedule stored on the library itself. A
+ * periodic tick, not a per-library registered trigger, so nothing has to be kept in sync when a
+ * schedule changes or the application restarts. No leader election: {@code
+ * uk_indexing_jobs_library_running} already makes a concurrent trigger safe, and ADR-0021 assumes
+ * one backend process.
  *
- * <p>No leader election, no distributed lock: multiple backend instances ticking the same due
- * library at the same minute would race to insert a {@code RUNNING} row; {@code
- * uk_indexing_jobs_library_running} already makes that race safe - the loser's {@link
- * IndexingJobService#startJob(java.util.UUID, java.util.UUID, JobTriggerSource,
- * io.opaa.api.types.IndexingRunMode)} call fails with the same 409 a second concurrent manual
- * trigger gets: no new run, one {@link IndexingEventCategory#SCHEDULE_SKIPPED} event on the run
- * that is already going. Assumes exactly one backend process overall; see ADR-0021.
- *
- * <p>Never disables a schedule on failure: a run that fails leaves the schedule as-is; it tries
- * again at the next due time. {@code KnowledgeLibraryService#toLibraryResponse} is what makes
- * repeated failure visible in the UI (via {@code lastScheduledRunsFailed}), not this class turning
- * the schedule off.
- *
- * <p>Missed due times are skipped, not caught up: a due time that falls while the application is
- * not running at all is simply never fired - {@link #lastTickAt} resets to {@code null} on every
- * restart, so the very next tick only ever looks one tick-interval into the past (see {@link
- * #determineWindowStart}). Catching up every missed run after a longer outage would risk a burst of
- * simultaneous triggers across every schedule-enabled library at once - an operator who needs the
- * latest content after maintenance still has the manual "Jetzt indizieren" trigger. What this field
- * does guard against is in-process jitter between two consecutive ticks: without it, a fixed
- * one-minute look-back window anchored purely on "now minus 60s" can develop a gap between two
- * ticks that fired more than 60s apart, silently dropping a due time that fell exactly in that gap.
+ * <p>A failed run never disables its schedule, and a missed due time is skipped rather than caught
+ * up. {@link #lastTickAt} closes the in-process gap a window anchored purely on "now minus 60s"
+ * would leave between two ticks more than 60s apart.
  */
 @Component
 public class LibraryIndexingScheduler {
@@ -62,11 +43,9 @@ public class LibraryIndexingScheduler {
 
   /**
    * The {@code now} of the previous successful tick, {@code null} before the first tick since
-   * application start (see the class Javadoc's "missed due times" paragraph). An {@link
-   * AtomicReference}, not a plain field, purely for its safe-publication guarantee across the
-   * scheduler thread - {@code @Scheduled} methods on the default single-threaded {@code
-   * TaskScheduler} never actually run concurrently with each other, so no compare-and-set semantics
-   * are needed, only visibility.
+   * application start. An {@link AtomicReference} purely for safe publication across the scheduler
+   * thread - {@code @Scheduled} methods on the default single-threaded {@code TaskScheduler} never
+   * run concurrently, so only visibility is needed, not compare-and-set.
    */
   private final AtomicReference<Instant> lastTickAt = new AtomicReference<>();
 
@@ -84,15 +63,11 @@ public class LibraryIndexingScheduler {
   }
 
   /**
-   * Runs at the top of every minute (the finest grain any of the four intervalstufen needs), server
-   * local time ({@link Clock#getZone()} of the injected {@link Clock}, see {@code
-   * io.opaa.indexing.IndexingConfiguration#schedulingClock}). A library is due when its stored cron
-   * expression has a fire time in the window between the previous tick and now - see {@link
-   * #determineWindowStart} and {@link #isDueNow}.
-   *
-   * <p>{@link #isDueNow} - and therefore the cron parse it performs - runs inside this loop's own
-   * per-library {@code try/catch}, not before it: one library with an undecodable stored cron
-   * expression must not abort the whole tick and leave every other due library untouched.
+   * Runs at the top of every minute, the finest grain any intervalstufe needs, in the injected
+   * {@link Clock}'s zone. A library is due when its stored cron expression has a fire time between
+   * the previous tick and now (see {@link #determineWindowStart} and {@link #isDueNow}). The cron
+   * parse runs inside the per-library {@code try/catch}, so one undecodable expression cannot abort
+   * the tick and leave every other due library untouched.
    */
   @Scheduled(cron = "0 * * * * *")
   public void triggerDueLibraries() {
@@ -116,12 +91,10 @@ public class LibraryIndexingScheduler {
   }
 
   /**
-   * The start of the window {@link #isDueNow} checks a schedule against - the previous tick's
-   * {@code now} when known, so consecutive windows are contiguous with no gap regardless of how
-   * late a tick actually fired (see the class Javadoc). Falls back to exactly one {@link
-   * #TICK_INTERVAL_SECONDS} before {@code now} before the first tick (or after a restart, since
-   * {@link #lastTickAt} does not survive one) - deliberately not further back, see the class
-   * Javadoc's "missed due times are skipped, not caught up" paragraph.
+   * The start of the window {@link #isDueNow} checks a schedule against: the previous tick's {@code
+   * now} when known, so consecutive windows are contiguous however late a tick fired. Falls back to
+   * exactly one {@link #TICK_INTERVAL_SECONDS} before {@code now} on the first tick after a start -
+   * deliberately not further back, since missed due times are skipped, not caught up.
    */
   private Instant determineWindowStart(Instant now) {
     Instant previous = lastTickAt.get();

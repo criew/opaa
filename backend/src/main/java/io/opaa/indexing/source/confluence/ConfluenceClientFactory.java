@@ -40,10 +40,9 @@ public class ConfluenceClientFactory {
   }
 
   /**
-   * A client for one indexing run (#1141): bounded by {@link
-   * ConfluenceProperties#requestBudgetPerRun} so the run ends in an orderly way as incomplete once
-   * the budget is spent. The wizard's probes and the edition detection use {@link #create} - they
-   * have no run to continue in.
+   * A client for one indexing run: bounded by {@link ConfluenceProperties#requestBudgetPerRun} so
+   * the run ends in an orderly way as incomplete once the budget is spent. The wizard's probes and
+   * the edition detection use {@link #create} - they have no run to continue in.
    */
   public ConfluenceClient createForRun(ConfluenceConnection connection)
       throws ConfluenceAccessException {

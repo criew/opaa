@@ -16,27 +16,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Reads an Outlook MSG message's Kopfdaten, body and attachments via Apache POI's HSMF module
- * (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5) - the same header/body/attachment split
- * {@link EmlReader} makes for EML, using the MAPI-native reader instead of Tika's flattening one.
+ * Reads an Outlook MSG message's Kopfdaten, body and attachments via POI's HSMF module
+ * (ingestion-pipelines.md, Teil 3, Punkt 5) - the same split {@link EmlReader} makes for EML, over
+ * the MAPI-native reader instead of Tika's flattening one.
  *
- * <p>Attachment size bounding is best-effort, unlike {@link EmlReader}'s: {@link MAPIMessage} loads
- * the whole compound file, attachments included, into memory before this class ever sees it, so an
- * oversized attachment is only skipped post-hoc rather than never streamed to disk. {@link
- * MailProperties#maxMessageBytes()} remains the actual memory bound, checked by the caller before
- * this reader ever runs.
- *
- * <p>An embedded Outlook item attachment (a message attached as its own MAPI object, not as bytes)
- * is skipped, not recursed into - POI offers no public writer to reconstruct a standalone {@code
- * .msg} from it.
- *
- * <p><b>Selective extraction</b> (#1243): with a {@code wantedIndex}, every attachment is still
- * classified in the same order, but only the one at that position is written to a temp file.
- * Positions are counted exactly as an unfiltered run does: an attachment that is skipped entirely -
- * an embedded Outlook item, an unreadable chunk, one over the size limit - consumes no position,
- * because it would not appear in the unfiltered run's attachment list either. The returned {@link
- * ParsedMailMessage} then carries the wanted attachment alone, or none; a negative {@code
- * wantedIndex} materializes nothing at all.
+ * <p>Attachment size bounding is best-effort: {@link MAPIMessage} loads the whole compound file
+ * into memory first, so an oversized attachment is skipped post-hoc and {@link
+ * MailProperties#maxMessageBytes()} is the real memory bound. An embedded Outlook item is skipped,
+ * not recursed into. With a {@code wantedIndex} only that attachment is materialized, and positions
+ * are counted exactly as an unfiltered run counts them - a skipped attachment consumes none.
  */
 final class MsgReader {
 
@@ -89,7 +77,7 @@ final class MsgReader {
       for (AttachmentChunks chunk : chunks) {
         if (!budget.hasCapacity()) {
           // Not extracted at all - no temp file is ever created for an attachment beyond the
-          // configured limit (#1101 review, finding 3c).
+          // configured limit.
           continue;
         }
         budget.reserve();

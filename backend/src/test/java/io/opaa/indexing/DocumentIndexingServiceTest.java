@@ -40,11 +40,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.task.TaskRejectedException;
 
 /**
- * #478/ADR-0018: triggering an indexing run reduces to "index this library" - type and
- * configuration are read from the library itself, and concurrency is tracked per library instead of
- * globally. Supersedes the pre-#478 {@code DocumentIndexingServiceTest}, which pinned the old
- * {@code IndexingTriggerRequest}-based entry point and its ADR-0017 fallback/contradiction checks -
- * both gone with this issue (ADR-0018, Entscheidung 2).
+ * ADR-0018: triggering an indexing run reduces to "index this library" - type and configuration are
+ * read from the library itself, and concurrency is tracked per library instead of globally.
+ * Supersedes the earlier {@code DocumentIndexingServiceTest}, which pinned the old {@code
+ * IndexingTriggerRequest}-based entry point and its ADR-0017 fallback/contradiction checks - both
+ * gone with this issue (ADR-0018, Entscheidung 2).
  */
 @ExtendWith(MockitoExtension.class)
 class DocumentIndexingServiceTest {
@@ -72,7 +72,7 @@ class DocumentIndexingServiceTest {
     when(urlIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.HTTP_DIRECTORY);
     when(rssFeedIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.RSS_FEED);
     when(confluenceIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.CONFLUENCE);
-    // ADR-0023, Entscheidung 4 (#1139): without a requested mode the executor decides; the mocks
+    // ADR-0023, Entscheidung 4: without a requested mode the executor decides; the mocks
     // answer like the one-mode executors do
     lenient().when(asyncIndexingExecutor.defaultRunMode(any())).thenReturn(IndexingRunMode.FULL);
     lenient().when(urlIndexingExecutor.defaultRunMode(any())).thenReturn(IndexingRunMode.FULL);
@@ -129,7 +129,7 @@ class DocumentIndexingServiceTest {
 
   @Test
   void triggerIndexingWithAViewerOnlyGrantFailsWithForbiddenAndDoesNotStartAJob() {
-    // Some access (a real VIEWER grant), just not enough - #436 keeps this at 403, distinct from
+    // Some access (a real VIEWER grant), just not enough - this stays at 403, distinct from
     // "no access at all" (see aSystemAdminWithoutAGrantOnAnOrdinaryLibraryIsStillRejected below).
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.EDITOR))
@@ -190,11 +190,11 @@ class DocumentIndexingServiceTest {
   @Test
   void aSystemAdminWithoutAGrantOnAnOrdinaryLibraryIsStillRejected() {
     // ADR-0018, Entscheidung 2: requireRole must be consulted with systemAdmin=false regardless of
-    // the caller's real role - a system admin without any grant must not silently gain EDITOR. #521
-    // removed the one carve-out that used to exist here (the well-known SYSTEM-owned library,
+    // the caller's real role - a system admin without any grant must not silently gain EDITOR.
+    // leaves no carve-out here (the well-known SYSTEM-owned library,
     // seeded with no owner and no grants, which a system admin could target without a grant) - this
     // also pins that requireRole is now consulted unconditionally, the same as for any other
-    // library. #436: no grant at all now answers 404, not 403 - a system admin's own missing grant
+    // A library with no grant at all answers 404, not 403 - a system admin's own missing grant
     // must not be distinguishable from the library not existing.
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, systemAdminCaller.id(), false, AssetRole.EDITOR))
@@ -220,10 +220,10 @@ class DocumentIndexingServiceTest {
   }
 
   /**
-   * #501: a full {@code indexingTaskExecutor} queue must not leave the job row this call just
-   * inserted stuck at {@code RUNNING} forever - {@code AbortPolicy} throws {@link
-   * TaskRejectedException} synchronously from {@code executor.execute}, and this asserts the job is
-   * failed (not left {@code RUNNING}) and the caller gets a 503, not a misleading 202/500.
+   * a full {@code indexingTaskExecutor} queue must not leave the job row this call just inserted
+   * stuck at {@code RUNNING} forever - {@code AbortPolicy} throws {@link TaskRejectedException}
+   * synchronously from {@code executor.execute}, and this asserts the job is failed (not left
+   * {@code RUNNING}) and the caller gets a 503, not a misleading 202/500.
    */
   @Test
   void triggerIndexingRejectedByAFullQueueFailsTheJobAndReturnsServiceUnavailable() {
@@ -243,7 +243,7 @@ class DocumentIndexingServiceTest {
 
   @Test
   void triggerIndexingOfADifferentLibraryIsNotBlockedByAnUnrelatedRunningJob() {
-    // #478 acceptance criteria: concurrency is per library - isJobRunning is only ever asked about
+    // Concurrency is per library - isJobRunning is only ever asked about
     // *this* library's id, never a global flag.
     stubEditableLibrary();
     var job = new IndexingJob(JobStatus.RUNNING);
@@ -435,7 +435,7 @@ class DocumentIndexingServiceTest {
 
   @Test
   void getStatusReportsCanSeeErrorDetailOnlyForAManagerOrAbove() {
-    // #507/#659: getStatus's caller (LibraryController) decides whether to shorten a FAILED job's
+    // getStatus's caller (LibraryController) decides whether to shorten a FAILED job's
     // raw error message based on this flag - pinned here independently of that shortening so a
     // regression in either place fails the layer it actually belongs to.
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
@@ -453,7 +453,7 @@ class DocumentIndexingServiceTest {
 
   @Test
   void getStatusWithoutAnyGrantFailsWithNotFound() {
-    // #436: no grant at all answers 404, not 403 - the same "does not exist" GET
+    // no grant at all answers 404, not 403 - the same "does not exist" GET
     // /libraries/{id} already answers for the same caller and library.
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, caller.id(), false, AssetRole.VIEWER))
@@ -480,7 +480,7 @@ class DocumentIndexingServiceTest {
         .isInstanceOf(NotFoundException.class);
   }
 
-  // --- getRecentRuns (#513, PR #604 review finding 1) ---
+  // --- getRecentRuns ---
 
   @Test
   void getRecentRunsWithManageAccessReturnsTheLibrarysRuns() {
@@ -501,11 +501,11 @@ class DocumentIndexingServiceTest {
   /**
    * A mere {@code VIEWER} (only {@code canRead}, not {@code canManage}) must not see the run
    * protocol - {@link IndexingRunEvent#getReference()} routinely carries the library's own {@code
-   * sourcePath}/{@code sourceUrl}, exactly the internal-path leak #507 exists to close for the
-   * source configuration display itself (PR #604 review, finding 1). Kept as its own test distinct
-   * from {@link #getStatusWithoutReadAccessFailsWithForbidden} - that one only proves the
-   * *narrower* {@code canRead} bar is enforced; this one proves the *stricter* {@code canManage}
-   * bar applies here even when {@code canRead} would have passed.
+   * sourcePath}/{@code sourceUrl}, exactly the internal-path leak this exists to close for the
+   * source configuration display itself. Kept as its own test distinct from {@link
+   * #getStatusWithoutReadAccessFailsWithForbidden} - that one only proves the *narrower* {@code
+   * canRead} bar is enforced; this one proves the *stricter* {@code canManage} bar applies here
+   * even when {@code canRead} would have passed.
    */
   @Test
   void getRecentRunsWithOnlyReadAccessFailsWithForbidden() {

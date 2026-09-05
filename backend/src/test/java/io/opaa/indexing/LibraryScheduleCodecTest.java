@@ -10,8 +10,8 @@ import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 
 /**
- * #485: {@link LibraryScheduleCodec} is the single place that turns the four UI intervalstufen into
- * a cron expression and back - every case here is a round trip (encode then decode reaches the same
+ * {@link LibraryScheduleCodec} is the single place that turns the four UI intervalstufen into a
+ * cron expression and back - every case here is a round trip (encode then decode reaches the same
  * shape again), the property {@link LibraryScheduleCodec#parse}'s own Javadoc relies on.
  */
 class LibraryScheduleCodecTest {
@@ -108,7 +108,7 @@ class LibraryScheduleCodecTest {
     assertThat(next).isEqualTo(Instant.parse("2026-08-21T11:00:00Z"));
   }
 
-  // PR #705 review, blocker 3: an undecodable/defective stored cron expression must not crash
+  // An undecodable/defective stored cron expression must not crash
   // GET/PUT /api/v1/libraries/{id} (KnowledgeLibraryService#toLibraryResponse) or the scheduler
   // tick (LibraryIndexingScheduler) - nextRunAt degrades to "never due" instead of throwing.
   @Test

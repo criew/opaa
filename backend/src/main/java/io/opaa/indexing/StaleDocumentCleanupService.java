@@ -20,29 +20,13 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Removes documents - and their chunks - that a source no longer contains once an indexing run has
- * finished successfully (#886). A document whose {@code filePath} is missing from {@code
- * currentFilePaths} was not rediscovered by this run, so it no longer exists at the source. Scoped
- * to a single {@code (library, sourceType)} pair (#877): only documents of the source type the
- * caller just ran a full crawl for are considered, and only within that library.
+ * finished successfully: a document whose {@code filePath} is missing from {@code currentFilePaths}
+ * was not rediscovered. Scoped to one {@code (library, sourceType)} pair.
  *
- * <p><b>Callers carry the "successful, uncapped run" invariant, not this class.</b> {@code
- * currentFilePaths} is trusted to be the complete bestand a run discovered; a run that failed, was
- * cancelled, or was truncated by a configured limit (see {@code
- * AutoindexCrawlerService.CrawlResult#truncated}/{@code #incomplete}) must never call {@link
- * #cleanupVanished} at all - its {@code currentFilePaths} would be incomplete, and every document
- * beyond the cut would look vanished. {@code AsyncIndexingExecutor} and {@code UrlIndexingExecutor}
- * enforce this by only calling in on their own success path, after every discovered file has been
- * accounted for. {@code RssFeedIndexingExecutor} deliberately never calls this - an RSS entry
- * scrolling out of the feed's window is not evidence the entry itself is gone (ADR-0017, decision
- * 5).
- *
- * <p><b>An empty {@code currentFilePaths} never deletes anything</b> (#886 review): a run that
- * discovered zero files is indistinguishable here from an unreachable/misconfigured source (an
- * unmounted network share {@code discoverFiles} failed to catch, a web server answering with a
- * maintenance page instead of the real listing) that a caller's own bug let through despite the
- * "successful run" invariant above. Deleting a library's entire bestand on that single,
- * cheap-to-get- wrong signal is not a risk worth taking for the rare case of a genuinely emptied
- * source - this class fails safe instead, and the next run with a real bestand catches up normally.
+ * <p><b>Callers carry the "successful, uncapped run" invariant.</b> A run that failed, was
+ * cancelled or was truncated must never call {@link #cleanupVanished}; {@code
+ * RssFeedIndexingExecutor} never calls it at all (ADR-0017, decision 5). An empty {@code
+ * currentFilePaths} deletes nothing either - it is indistinguishable from an unreachable source.
  */
 public class StaleDocumentCleanupService {
 
@@ -61,15 +45,9 @@ public class StaleDocumentCleanupService {
 
   /**
    * Deletes every {@code sourceType} document of {@code library} whose {@code filePath} is not in
-   * {@code currentFilePaths} - a no-op if {@code currentFilePaths} is empty (see the class
-   * Javadoc). Chunks are deleted before the row, mirroring the re-index cleanup order {@link
-   * FileProcessingService#processFile}/{@code #processUrlFile} already use for a changed document -
-   * deliberately not {@link io.opaa.library.LibraryDocumentService#deleteDocument}'s row-before-
-   * chunks order (#614): that order exists to close a race with a concurrent {@code
-   * uploadTaskExecutor} task re-reading and re-writing the very same row, which cannot happen here
-   * - a connector document is never written by that executor. Each removed document is recorded as
-   * its own {@link IndexingEventCategory#REMOVED} event via {@code events}, so the run's own
-   * protocol names what was removed and not just how many (#886 review).
+   * {@code currentFilePaths}, and nothing at all when that set is empty. Chunks go before the row,
+   * unlike {@code LibraryDocumentService#deleteDocument}, whose race with a concurrent upload
+   * cannot occur here. Each removal is its own {@link IndexingEventCategory#REMOVED} event.
    *
    * @return the number of documents removed
    */
@@ -109,10 +87,9 @@ public class StaleDocumentCleanupService {
     // fk_documents_parent (ADR-0022, Entscheidung 4): an attachment removed in the same batch as
     // its own now-vanished parent must be deleted first, or the parent's own delete fails the FK
     // check. findByLibraryIdAndSourceType carries no ORDER BY that would guarantee this on its own
-    // - sorted here instead, deepest nesting level first (#1183): a grandchild (a Mail-in-Mail
+    // - sorted here instead, deepest nesting level first: a grandchild (a Mail-in-Mail
     // attachment's own attachment) is deleted before its intermediate parent, which is deleted
-    // before the outermost parent, generalizing the one-level-deep "children before parents" sort
-    // this method used before #1183 introduced multi-level parent chains.
+    // before the outermost parent.
     existing = sortedDeepestFirst(existing);
     int removed = 0;
     for (Document document : existing) {
@@ -135,15 +112,11 @@ public class StaleDocumentCleanupService {
   }
 
   /**
-   * Folds into {@code currentFilePaths} the {@code file_path} of every existing attachment row
-   * whose parent is present this run ({@code currentFilePaths}) but was <em>not</em> re-parsed
-   * ({@code reprocessedPaths}) - the Nachtragsfall of ADR-0022, Entscheidung 3, applied
-   * breadth-first from the roots down so a grandchild of an unchanged (or merely
-   * checksum-confirmed) ancestor is preserved deterministically, regardless of row order. A child
-   * of a re-parsed parent is only present via the attachment path's own recording; one it did not
-   * re-report stays out and is cleaned up as vanished. Shared by every executor that pairs the
-   * generalized attachment path with {@link #cleanupVanished} - FILESYSTEM (#1183) and
-   * HTTP_DIRECTORY (#1219) today.
+   * Folds into {@code currentFilePaths} the {@code file_path} of every existing attachment whose
+   * parent is present this run but was not re-parsed - the Nachtragsfall of ADR-0022, Entscheidung
+   * 3, applied breadth-first from the roots so a grandchild of an unchanged ancestor is preserved
+   * regardless of row order. A child of a re-parsed parent survives only if that parent re-reported
+   * it. Shared by every executor that pairs the attachment path with {@link #cleanupVanished}.
    */
   public static void foldInPreservedAttachmentPaths(
       List<Document> existingDocuments,
@@ -180,14 +153,10 @@ public class StaleDocumentCleanupService {
   }
 
   /**
-   * Sorts {@code documents} by nesting depth, deepest first (#1183 review, generalizing the
-   * one-level {@code Comparator.comparing(Document::getParentDocumentId, ...)} pass this method
-   * used before): a document with no parent (or whose parent is not itself in {@code documents} -
-   * scoped to one {@code (library, sourceType)} pair, so a cross-source-type parent, none exist
-   * today, would look like a root here too) has depth 0; every other document's depth is one more
-   * than its own parent's. Ties (siblings at the same depth) are left in whatever order {@link
-   * #depthOf} happens to visit them - {@code fk_documents_parent} only requires a child before its
-   * own parent, not a total order across unrelated documents.
+   * Sorts {@code documents} by nesting depth, deepest first: a document with no parent in {@code
+   * documents} has depth 0, every other document's depth is one more than its parent's. Ties are
+   * left in visiting order - {@code fk_documents_parent} only requires a child before its own
+   * parent, not a total order across unrelated documents.
    */
   private static List<Document> sortedDeepestFirst(List<Document> documents) {
     Map<UUID, Document> byId = new HashMap<>();
@@ -202,11 +171,9 @@ public class StaleDocumentCleanupService {
 
   /**
    * The nesting depth of {@code document} within {@code byId} (see {@link #sortedDeepestFirst}),
-   * memoized in {@code depthCache} so a chain shared by several documents (e.g. every grandchild of
-   * the same Mail-in-Mail root) is only walked once. {@code visiting} guards against a cyclic
-   * {@code parentDocumentId} chain - never expected from well-formed data, but a corrupt or
-   * adversarial one must terminate rather than stack-overflow; a document on a detected cycle is
-   * treated as its own root (depth 0) rather than propagating the cycle further.
+   * memoized in {@code depthCache} so a shared chain is walked once. {@code visiting} guards a
+   * cyclic {@code parentDocumentId} chain - never expected from well-formed data, but a corrupt one
+   * must terminate rather than overflow the stack; a document on a cycle counts as its own root.
    */
   private static int depthOf(
       Document document, Map<UUID, Document> byId, Map<UUID, Integer> depthCache) {

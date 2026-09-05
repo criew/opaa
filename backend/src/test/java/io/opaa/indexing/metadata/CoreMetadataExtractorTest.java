@@ -11,9 +11,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 /**
- * The deterministic rules of metadata-schema.md, Teil III step 1 (#1066): file-name conventions,
- * German date notations, the vocabulary boundary and the title source order - every case pinned
- * against the delivered vocabulary, no model, no similarity.
+ * The deterministic rules of metadata-schema.md, Teil III step 1: file-name conventions, German
+ * date notations, the vocabulary boundary and the title source order - every case pinned against
+ * the delivered vocabulary, no model, no similarity.
  */
 class CoreMetadataExtractorTest {
 
@@ -65,7 +65,7 @@ class CoreMetadataExtractorTest {
       assertThat(extract("Protokoll_31.02.2026.pdf", DocumentProperties.EMPTY).date()).isEmpty();
     }
 
-    // Review S1: an invalid candidate (an Aktenzeichen that looks like a date, an impossible ISO
+    // An invalid candidate (an Aktenzeichen that looks like a date, an impossible ISO
     // month) must not end the search - the next candidate of the same notation still counts.
     @Test
     void anInvalidCandidateBeforeAValidDateIsSkipped() {
@@ -77,7 +77,7 @@ class CoreMetadataExtractorTest {
           .contains(ExtractedDate.day(LocalDate.of(2026, 3, 5)));
     }
 
-    // Review S5: no two-letter synonym - a lower-cased "DA" is indistinguishable from the German
+    // No two-letter synonym - a lower-cased "DA" is indistinguishable from the German
     // filler word, and a second code would empty an otherwise unambiguous Dokumentart.
     @Test
     void theFillerWordDaNeverCountsAsADokumentart() {
@@ -118,7 +118,7 @@ class CoreMetadataExtractorTest {
     }
   }
 
-  /** #1263: the Kompositum ending rule seeded per vocabulary value in migration 020. */
+  /** the Kompositum ending rule seeded per vocabulary value in migration 020. */
   @Nested
   class KompositumEndings {
 
@@ -188,8 +188,8 @@ class CoreMetadataExtractorTest {
   }
 
   /**
-   * #1263, #1289: the title line as the third source of the Dokumentart - the first heading, else
-   * the first line of the text, and nothing below it.
+   * the title line as the third source of the Dokumentart - the first heading, else the first line
+   * of the text, and nothing below it.
    */
   @Nested
   class TitleLineSource {
@@ -385,7 +385,7 @@ class CoreMetadataExtractorTest {
     }
   }
 
-  /** #1263: the file format as the last source. */
+  /** the file format as the last source. */
   @Nested
   class SyntheticName {
 
@@ -431,7 +431,7 @@ class CoreMetadataExtractorTest {
     }
   }
 
-  /** #1263: the file format as the last source. */
+  /** the file format as the last source. */
   @Nested
   class FileFormatSource {
 
@@ -611,7 +611,7 @@ class CoreMetadataExtractorTest {
       assertThat(extract("da.pdf", DocumentProperties.EMPTY).date()).isEmpty();
     }
 
-    // Review B1: a bare four-digit number in free heading text is an amount, a paragraph number or
+    // A bare four-digit number in free heading text is an amount, a paragraph number or
     // a threshold - never a Stand. Only an anchored year ("Stand 2026", "Fassung 2024") counts.
     @Test
     void aBareNumberInTheHeadingIsNeverADate() {

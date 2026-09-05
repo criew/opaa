@@ -48,10 +48,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The deterministic backfill over an Altbestand (#1067): documents are indexed normally, then reset
- * to the state of a bestand indexed before ADR-0024 (no extraction version, no values, no chunk
- * keys), and the backfill has to restore all three in batches from the original files - without
- * touching a single chunk, idempotently, and past a document it cannot read.
+ * The deterministic backfill over an Altbestand: documents are indexed normally, then reset to the
+ * state of a bestand indexed before ADR-0024 (no extraction version, no values, no chunk keys), and
+ * the backfill has to restore all three in batches from the original files - without touching a
+ * single chunk, idempotently, and past a document it cannot read.
  */
 @OpaaIndexingIntegrationTest
 class MetadataBackfillServiceIntegrationTest {
@@ -194,9 +194,9 @@ class MetadataBackfillServiceIntegrationTest {
   }
 
   /**
-   * A raised {@link CoreMetadataExtractor#EXTRACTION_VERSION} (#1263 lifted it to 2) is what draws
-   * an already extracted bestand back into the selection - the mechanism the new Dokumentart
-   * sources rely on to reach documents extracted by an older version.
+   * A raised {@link CoreMetadataExtractor#EXTRACTION_VERSION} is what draws an already extracted
+   * bestand back into the selection - the mechanism the new Dokumentart sources rely on to reach
+   * documents extracted by an older version.
    */
   @Test
   void aDocumentBelowTheCurrentExtractionVersionIsSelectedAgain() throws IOException {
@@ -226,9 +226,9 @@ class MetadataBackfillServiceIntegrationTest {
   }
 
   /**
-   * #1289: the Version-2-Bestand carries wrong DETERMINISTIC Dokumentart values from the old head
-   * rule (a label line, a quotation). The rerun has to remove them where nothing is left to
-   * extract, and to leave a manual correction untouched.
+   * the Version-2-Bestand carries wrong DETERMINISTIC Dokumentart values from the old head rule (a
+   * label line, a quotation). The rerun has to remove them where nothing is left to extract, and to
+   * leave a manual correction untouched.
    */
   @Test
   void aWrongDeterministicValueOfAnOlderVersionIsRemovedWhileAManualOneSurvives()
@@ -356,7 +356,7 @@ class MetadataBackfillServiceIntegrationTest {
     assertThat(result.markedForNextRun()).isZero();
     CoreMetadata core = documentMetadataService.coreMetadataFor(entryId);
     assertThat(core.title()).isEqualTo("Gebührensatzung tritt in Kraft");
-    // The stored file_name is the headline, not a file name (#1263): the backfill must read no
+    // The stored file_name is the headline, not a file name: the backfill must read no
     // naming convention out of it, exactly as the ingest does not.
     assertThat(core.documentTypeCode()).isNull();
     assertThat(core.documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
@@ -398,9 +398,9 @@ class MetadataBackfillServiceIntegrationTest {
   }
 
   /**
-   * #1318: a Confluence page has no local file and no row-only extraction - the backfill marks it
-   * for its next connector run, and that run extracts it. Both ways therefore read the page title
-   * as the synthetic name it is: it becomes the title, never a Dokumentart and never a Stand.
+   * A Confluence page has no local file and no row-only extraction - the backfill marks it for its
+   * next connector run, and that run extracts it. Both ways therefore read the page title as the
+   * synthetic name it is: it becomes the title, never a Dokumentart and never a Stand.
    */
   @Test
   void aConfluencePageIsMarkedForItsNextRunAndThatRunReadsItsTitleAsASyntheticName() {
@@ -439,9 +439,9 @@ class MetadataBackfillServiceIntegrationTest {
   }
 
   /**
-   * Review B1: the chunks were cut from the bytes read at indexing time. A file replaced since then
-   * would put the core fields of a different text onto those chunks - the same rule the attachment
-   * path applies via its checksum - so the document is skipped and left to its next connector run.
+   * The chunks were cut from the bytes read at indexing time. A file replaced since then would put
+   * the core fields of a different text onto those chunks - the same rule the attachment path
+   * applies via its checksum - so the document is skipped and left to its next connector run.
    */
   @Test
   void aFileChangedSinceIndexingIsSkippedSoNewFieldsNeverLandOnOldChunks() throws IOException {
@@ -467,9 +467,9 @@ class MetadataBackfillServiceIntegrationTest {
   }
 
   /**
-   * Review S5: an attachment document has no file of its own - its bytes are re-extracted from the
-   * parent mail along the chain, and the core fields come from that re-extracted file (here: the
-   * attachment's own file-name convention), while its chunks stay exactly as they were.
+   * An attachment document has no file of its own - its bytes are re-extracted from the parent mail
+   * along the chain, and the core fields come from that re-extracted file (here: the attachment's
+   * own file-name convention), while its chunks stay exactly as they were.
    */
   @Test
   void aLocalMailAttachmentIsReextractedFromItsParentMailWithoutTouchingItsChunks()
@@ -524,9 +524,7 @@ class MetadataBackfillServiceIntegrationTest {
     assertThat(progress().isComplete()).isTrue();
   }
 
-  /**
-   * Review S5: a remote attachment marks its whole chain, root included, and then drains (#1219).
-   */
+  /** A remote attachment marks its whole chain, root included, and then drains. */
   @Test
   void aRemoteAttachmentMarksItsWholeParentChainForTheNextRunAndDropsOutOfTheSelection() {
     UUID mailId = UUID.randomUUID();

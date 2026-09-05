@@ -40,13 +40,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * End-to-end coverage of #1219 (ADR-0022 for HTTP_DIRECTORY): an {@code .eml} served from a web
- * directory has its attachments indexed as their own {@code Document} rows through the generalized
- * attachment path, and {@code cleanupVanished}'s attachment bookkeeping holds across changed,
- * unchanged and nested mails. Drives the real, Spring-wired {@link FileProcessingService} bean
- * graph against a loopback {@code com.sun.net.httpserver.HttpServer}; only the executor itself is
- * hand-built, so the crawler/downloader can use {@link TargetAddressValidator#disabled()} (the
- * loopback stub would otherwise be blocked) without a context-splitting property override.
+ * End-to-end coverage (ADR-0022 for HTTP_DIRECTORY): an {@code .eml} served from a web directory
+ * has its attachments indexed as their own {@code Document} rows through the generalized attachment
+ * path, and {@code cleanupVanished}'s attachment bookkeeping holds across changed, unchanged and
+ * nested mails. Drives the real, Spring-wired {@link FileProcessingService} bean graph against a
+ * loopback {@code com.sun.net.httpserver.HttpServer}; only the executor itself is hand-built, so
+ * the crawler/downloader can use {@link TargetAddressValidator#disabled()} (the loopback stub would
+ * otherwise be blocked) without a context-splitting property override.
  */
 @io.opaa.test.OpaaIndexingIntegrationTest
 class UrlAttachmentIndexingIntegrationTest {
@@ -154,7 +154,7 @@ class UrlAttachmentIndexingIntegrationTest {
   @AfterEach
   void tearDown() {
     server.stop(0);
-    // Library-scoped cleanup, deepest-first for fk_documents_parent (#1217: no TRUNCATE on shared
+    // Library-scoped cleanup, deepest-first for fk_documents_parent (no TRUNCATE on shared
     // tables).
     List<Document> documents =
         documentRepository.findByLibraryIdAndSourceType(
@@ -208,7 +208,7 @@ class UrlAttachmentIndexingIntegrationTest {
     assertThat(attachment.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     // ADR-0022, Entscheidung 2: the attachment's file_path embeds the parent's URL.
     assertThat(attachment.getFilePath()).startsWith(mail.getFilePath() + "/");
-    // #1130 Befund 2, structurally fixed on this path too: the attachment's chunks carry its own
+    // Structurally fixed on this path too: the attachment's chunks carry its own
     // pipeline's id (Tika fallback for plain text), the mail's carry the mail pipeline's.
     assertThat(chunkPipelineIds(attachment.getId())).containsExactly("tika-fallback");
     assertThat(chunkPipelineIds(mail.getId())).containsExactly("email");

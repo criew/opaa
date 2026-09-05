@@ -10,8 +10,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
  * Verifies that {@code uploadTaskExecutor} and {@code indexingTaskExecutor} are sized from two
- * genuinely independent property blocks (#614, PR #589 second review round, finding 1) - before
- * this fix, both beans read {@link IndexingProperties#threadPool()}, so an operator raising {@code
+ * genuinely independent property blocks - before this fix, both beans read {@link
+ * IndexingProperties#threadPool()}, so an operator raising {@code
  * opaa.indexing.thread-pool.max-size} to cap total indexing concurrency actually doubled it,
  * because the upload pool grew by the same amount unnoticed.
  */
@@ -39,13 +39,13 @@ class IndexingConfigurationThreadPoolTest {
     assertThat(indexing.getMaxPoolSize()).isEqualTo(20);
 
     // The upload pool keeps its own, much smaller configuration - unaffected by the indexing
-    // pool's much larger one above, unlike before #614 where both read the same properties.
+    // pool's much larger one above; the two read different properties.
     assertThat(upload.getCorePoolSize()).isEqualTo(1);
     assertThat(upload.getMaxPoolSize()).isEqualTo(2);
     assertThat(upload.getQueueCapacity()).isEqualTo(3);
   }
 
-  // #735 review, nit 7: embeddingTaskExecutor's own wiring (core == max == embeddingConcurrency,
+  // embeddingTaskExecutor's own wiring (core == max == embeddingConcurrency,
   // an effectively unbounded queue) never had a direct test - IndexingConfigurationThreadPoolTest
   // is the established home for exactly this kind of bean-wiring assertion.
   @Test

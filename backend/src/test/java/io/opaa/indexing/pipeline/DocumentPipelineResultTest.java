@@ -46,7 +46,7 @@ class DocumentPipelineResultTest {
 
   @Test
   void noExtractableTextWithAttachmentsCarriesTheAttachmentsButNoChunks() {
-    // ADR-0022, part 4 (#1183): the case DocumentPipelineResult's own Javadoc reserves for the
+    // ADR-0022, part 4: the case DocumentPipelineResult's own Javadoc reserves for the
     // generalized attachment path - a message with nothing chunk-worthy of its own but at least
     // one attachment still reports that attachment here.
     var attachment =

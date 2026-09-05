@@ -48,10 +48,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The Pflege-Anker and the third state "kein Wert ermittelbar" end to end (#1069): what the anchor
- * counts, that it is built in the rights context of the asking person, that the anchor's list holds
- * exactly the counted documents, and that no automatic extraction ever writes or clears the third
- * state - while filters and the Beleg see it as empty.
+ * The Pflege-Anker and the third state "kein Wert ermittelbar" end to end: what the anchor counts,
+ * that it is built in the rights context of the asking person, that the anchor's list holds exactly
+ * the counted documents, and that no automatic extraction ever writes or clears the third state -
+ * while filters and the Beleg see it as empty.
  */
 @OpaaIndexingIntegrationTest
 class LibraryMetadataMaintenanceServiceIntegrationTest {

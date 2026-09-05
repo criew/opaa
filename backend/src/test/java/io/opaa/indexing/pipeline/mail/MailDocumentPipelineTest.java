@@ -30,15 +30,15 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.ai.document.Document;
 
 /**
- * The EML/MSG pipeline (#1060, ingestion-pipelines.md Teil 3, Punkt 5): Kopfdaten land as chunk
- * metadata rather than chunk text, one chunk per message (or per thread segment). Since #1183
- * (ADR-0022, Entscheidung 10) an attachment is no longer recursively processed by this class - it
- * is reported via {@link DocumentPipelineResult#discoveredAttachments()} instead, for the
- * generalized attachment path ({@code io.opaa.indexing.source.attachment.AttachmentIndexer}, driven
- * by {@code FileProcessingService}) to turn into its own {@code Document}. Recursion
- * (Mail-in-Mail), attachment-count/depth limits and format admission for an attachment therefore
- * all live one level up - see {@code AttachmentIndexerTest}/{@code FileProcessingServiceTest} for
- * that coverage instead.
+ * The EML/MSG pipeline (ingestion-pipelines.md Teil 3, Punkt 5): Kopfdaten land as chunk metadata
+ * rather than chunk text, one chunk per message (or per thread segment). An attachment is never
+ * recursively processed by this class (ADR-0022, Entscheidung 10) - it is reported via {@link
+ * DocumentPipelineResult#discoveredAttachments()} instead, for the generalized attachment path
+ * ({@code io.opaa.indexing.source.attachment.AttachmentIndexer}, driven by {@code
+ * FileProcessingService}) to turn into its own {@code Document}. Recursion (Mail-in-Mail),
+ * attachment-count/depth limits and format admission for an attachment therefore all live one level
+ * up - see {@code AttachmentIndexerTest}/{@code FileProcessingServiceTest} for that coverage
+ * instead.
  *
  * <p>EML fixtures are built at test time through mime4j's own writer ({@link DefaultMessageWriter})
  * - a real, spec-shaped MIME message rather than a hand-computed byte literal, mirroring how {@code
@@ -53,17 +53,17 @@ class MailDocumentPipelineTest {
   private final MailProperties defaultProperties = new MailProperties(0, 0, 0);
 
   /**
-   * A fixed non-UTC zone (winter CET, UTC+1) - #1130 Befund 1 review, finding 2: the leading
-   * context line's Datum must render in this zone, not UTC, or a message sent at German local time
-   * gets a silently wrong hour in embedding, full-text index and cited Beleg alike.
+   * A fixed non-UTC zone (winter CET, UTC+1): the leading context line's Datum must render in this
+   * zone, not UTC, or a message sent at German local time gets a silently wrong hour in embedding,
+   * full-text index and cited Beleg alike.
    */
   private static final Clock TEST_CLOCK = Clock.fixed(Instant.EPOCH, ZoneId.of("Europe/Berlin"));
 
   /**
    * A generous but still meaningfully tight upper bound for one chunk under the 1000-token {@code
    * opaa.indexing.chunk-size} the round-mail tests configure - well under the ~19354 characters an
-   * unbounded header block produced before #1130 Befund 1's review round 3 fix, but well above an
-   * ordinary chunk, so it fails only on an actually unbounded chunk, not on chunk-size noise.
+   * unbounded header block would produce, but well above an ordinary chunk, so it fails only on an
+   * actually unbounded chunk, not on chunk-size noise.
    */
   private static final int MAX_CHUNK_CHARS_FOR_CONFIGURED_SIZE = 6000;
 
@@ -90,8 +90,8 @@ class MailDocumentPipelineTest {
 
   @Test
   void passesThroughLocationAndAllFourMailKopfdatenKeys() {
-    // #1107 neutrality guard: the exact key set FileProcessingService#storeChunks hardcoded before
-    // this pipeline declared its own passthrough keys (#1101's four mail_* lines, plus location).
+    // Neutrality guard: the exact key set FileProcessingService#storeChunks hardcoded before
+    // this pipeline declared its own passthrough keys (the four mail_* lines, plus location).
     MailDocumentPipeline pipeline = pipeline(defaultProperties);
     assertThat(pipeline.passthroughMetadataKeys())
         .containsExactlyInAnyOrder(
@@ -103,9 +103,9 @@ class MailDocumentPipelineTest {
   }
 
   /**
-   * #1164: a Zeitraum filter compares {@code mail_date} lexicographically as text, so the rendered
-   * value must stay sortable across differing sub-second precision - {@link Instant#toString()}
-   * alone does not guarantee that (it omits the fractional part entirely when it is zero, which
+   * a Zeitraum filter compares {@code mail_date} lexicographically as text, so the rendered value
+   * must stay sortable across differing sub-second precision - {@link Instant#toString()} alone
+   * does not guarantee that (it omits the fractional part entirely when it is zero, which
    * mis-orders against a value that does carry one). Without truncating to whole seconds first,
    * this assertion fails: {@code "2024-01-03T09:15:00.500Z".compareTo("2024-01-03T09:15:00Z")} is
    * negative (".5" sorts before "Z"), even though the first instant is 500ms <em>after</em> the
@@ -167,7 +167,7 @@ class MailDocumentPipelineTest {
         .isEqualTo(io.opaa.indexing.pipeline.DocumentProperties.EMPTY);
   }
 
-  // --- EML: headers as metadata AND as context lines in the chunk text (#1130 Befund 1) --------
+  // --- EML: headers as metadata AND as context lines in the chunk text --------
 
   @Test
   void headersLandAsChunkMetadataAndAsContextLinesInTheChunkText() throws Exception {
@@ -240,9 +240,9 @@ class MailDocumentPipelineTest {
   }
 
   /**
-   * #1130 Befund 1: a blank body must not drop its Kopfdaten when the message carries an attachment
-   * - the common "Anbei der Bescheid" mail - or the attachment would be indexed while sender and
-   * Betreff are lost entirely.
+   * A blank body must not drop its Kopfdaten when the message carries an attachment - the common
+   * "Anbei der Bescheid" mail - or the attachment would be indexed while sender and Betreff are
+   * lost entirely.
    */
   @Test
   void aBlankBodyWithAnAttachmentGetsAHeaderOnlyChunk() throws Exception {
@@ -279,10 +279,10 @@ class MailDocumentPipelineTest {
   }
 
   /**
-   * #1130 Befund 1, review round 3 decision 3: without any attachment, a blank body carries nothing
-   * of its own - its Kopfdaten are then template text like a repeating page header, not evidence of
-   * content, and must not rescue the document from {@code NO_EXTRACTABLE_TEXT} (mirrors {@code
-   * DocxDocumentPipeline}'s "header/footer text never rescues this outcome").
+   * Without any attachment, a blank body carries nothing of its own - its Kopfdaten are then
+   * template text like a repeating page header, not evidence of content, and must not rescue the
+   * document from {@code NO_EXTRACTABLE_TEXT} (mirrors {@code DocxDocumentPipeline}'s
+   * "header/footer text never rescues this outcome").
    */
   @Test
   void aBlankBodyWithKopfdatenButNoAttachmentHasNoExtractableText() throws Exception {
@@ -299,8 +299,8 @@ class MailDocumentPipelineTest {
   }
 
   /**
-   * #1183: a message with neither body text nor Kopfdaten, but at least one attachment, still
-   * reports that attachment - {@code DocumentPipelineResult}'s own contract reserves {@code
+   * a message with neither body text nor Kopfdaten, but at least one attachment, still reports that
+   * attachment - {@code DocumentPipelineResult}'s own contract reserves {@code
    * CHUNKED}-with-empty-chunks for the generalized attachment path, not this pipeline, but {@code
    * noExtractableText(List)} still carries the attachment for that path to pick up.
    */
@@ -329,10 +329,10 @@ class MailDocumentPipelineTest {
   }
 
   /**
-   * The cross case the review's own probe measured directly against this branch: a blank body, a
-   * PDF attachment, and hundreds of recipients - the header-only chunk must run through the same
-   * token splitter as every other header-bearing chunk, not bypass it (#1130 Befund 1, review round
-   * 3 finding 1). Before the fix this produced one 19354-character chunk.
+   * The cross case measured directly against this branch: a blank body, a PDF attachment, and
+   * hundreds of recipients - the header-only chunk must run through the same token splitter as
+   * every other header-bearing chunk, not bypass it - unsplit, this block produces one
+   * 19354-character chunk.
    */
   @Test
   void aBlankBodyWithAnAttachmentAndHundredsOfRecipientsSplitsTheHeaderOnlyChunk()
@@ -380,7 +380,7 @@ class MailDocumentPipelineTest {
     assertThat(result.discoveredAttachments()).hasSize(1);
   }
 
-  // --- EML: attachments are reported, not processed inline (#1183) --------------------------
+  // --- EML: attachments are reported, not processed inline --------------------------
 
   @Test
   void aPdfAttachmentIsReportedAsDiscoveredNotProcessedInline() throws Exception {
@@ -402,7 +402,7 @@ class MailDocumentPipelineTest {
         pipeline(defaultProperties).run(DocumentPipelineSource.ofFile(file, "mit-anlage.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    // Only the mail body's own chunk - the attachment is no longer merged in (#1183).
+    // Only the mail body's own chunk - the attachment is no longer merged in.
     assertThat(result.chunks()).hasSize(1);
     Document bodyChunk = result.chunks().getFirst();
     assertThat(bodyChunk.getText()).contains("Anbei der Antrag.");
@@ -415,7 +415,7 @@ class MailDocumentPipelineTest {
 
   @Test
   void anAttachmentOfAnUnsupportedFormatIsStillReportedHere() throws Exception {
-    // #1183: format admission is no longer this pipeline's job - AttachmentIndexer decides that
+    // format admission is no longer this pipeline's job - AttachmentIndexer decides that
     // once, for every attachment path, instead of this class pre-filtering with duplicate logic.
     Message message =
         newMessageBuilder("Mit unbekanntem Anhang", "max@example.org", "erika@example.org")
@@ -442,7 +442,7 @@ class MailDocumentPipelineTest {
     assertThat(result.discoveredAttachments().getFirst().fileName()).isEqualTo("programm.exe");
   }
 
-  // --- EML: a nested EML-in-EML attachment is reported, not recursed into here (#1183) --------
+  // --- EML: a nested EML-in-EML attachment is reported, not recursed into here --------
 
   @Test
   void aNestedEmlAttachmentIsReportedAsDiscoveredNotRecursedIntoHere() throws Exception {
@@ -470,7 +470,7 @@ class MailDocumentPipelineTest {
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(1);
     assertThat(result.chunks().getFirst().getText()).contains("Zur Kenntnis.");
-    // Mail-in-Mail recursion is the generalized attachment path's job now (#1183): running the
+    // Mail-in-Mail recursion is the generalized attachment path's job now: running the
     // reported attachment's own bytes back through this same pipeline is exactly what
     // FileProcessingService#processUrlFile does once AttachmentIndexer routes it there.
     assertThat(result.discoveredAttachments()).hasSize(1);
@@ -488,7 +488,7 @@ class MailDocumentPipelineTest {
 
   @Test
   void attachmentsBeyondTheConfiguredCountPerMessageAreNeverExtractedAtAll() throws Exception {
-    // The per-message extraction cap stays EmlReader's own job (unchanged by #1183) - only the
+    // The per-message extraction cap stays EmlReader's own job (unchanged here) - only the
     // recursion-depth cap moved to the generalized attachment path (ADR-0022, Entscheidung 6).
     MultipartBuilder multipart = MultipartBuilder.create("mixed");
     multipart.addTextPart("Drei Anhaenge, aber nur zwei erlaubt.", StandardCharsets.UTF_8);
@@ -538,13 +538,13 @@ class MailDocumentPipelineTest {
     assertThat(result.discoveredAttachments()).isEmpty();
   }
 
-  // --- EML: an unbounded header block is bounded by the token splitter (#1130 Befund 1) -------
+  // --- EML: an unbounded header block is bounded by the token splitter -------
 
   /**
-   * Review finding 1: {@link ParsedMailMessage#to()} is unbounded - a round mail to hundreds of
-   * recipients must not grow the first chunk past the configured chunk-size. Prepending the context
-   * block before {@link ChunkingService#chunkDocuments} runs, rather than after, lets the same
-   * splitter cut it like any other text.
+   * {@link ParsedMailMessage#to()} is unbounded - a round mail to hundreds of recipients must not
+   * grow the first chunk past the configured chunk-size. Prepending the context block before {@link
+   * ChunkingService#chunkDocuments} runs, rather than after, lets the same splitter cut it like any
+   * other text.
    */
   @Test
   void aRoundMailWithHundredsOfRecipientsDoesNotGrowOneChunkUnboundedly() throws Exception {
@@ -569,9 +569,9 @@ class MailDocumentPipelineTest {
             .run(DocumentPipelineSource.ofFile(file, "rundschreiben.eml"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    // #1130 Befund 1, review round 3: a bound against the configured chunk-size, not merely against
+    // A bound against the configured chunk-size, not merely against
     // the unbounded recipient list itself - a weaker bound let a several-thousand-character chunk
-    // through undetected (review round 3, finding 1).
+    // through undetected.
     assertThat(result.chunks()).hasSizeGreaterThan(1);
     assertThat(result.chunks())
         .allSatisfy(
@@ -598,8 +598,8 @@ class MailDocumentPipelineTest {
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     assertThat(result.chunks()).hasSize(2);
-    // The context block lands only on the first chunk (#1130 Befund 1) - not repeated onto the
-    // second thread segment, the Verwässerungsproblem #1145 already avoided for a page header.
+    // The context block lands only on the first chunk - not repeated onto the
+    // second thread segment, the Verwässerungsproblem a repeated page header shows.
     assertThat(result.chunks().get(0).getText()).endsWith("\n\nPasst, danke.");
     assertThat(result.chunks().get(0).getMetadata().get(ChunkingService.LOCATION_METADATA_KEY))
         .isEqualTo("Nachricht 1 von 2");
@@ -614,7 +614,7 @@ class MailDocumentPipelineTest {
   @Test
   void aSegmentTooLongForOneChunkFallsBackToTokenSplittingWithoutFailingTheDocument()
       throws Exception {
-    // #1101 review, finding 2: a long body with no recognizable quote separator must not become
+    // a long body with no recognizable quote separator must not become
     // one unboundedly large chunk - a tiny configured chunk-size here stands in for "a real
     // newsletter exceeding the embedding model's own token limit" without needing a multi-MB
     // fixture.
@@ -644,9 +644,8 @@ class MailDocumentPipelineTest {
                   .asString()
                   .startsWith("Teil ");
             });
-    // The context block itself is subject to the same token splitter (#1130 Befund 1, review
-    // finding 1) - it lands only in the leading part, never repeated onto a later further-split
-    // piece.
+    // The context block itself is subject to the same token splitter - it lands only in the
+    // leading part, never repeated onto a later further-split piece.
     assertThat(result.chunks().getFirst().getText()).startsWith("Von: amt@example.org");
     assertThat(result.chunks().subList(1, result.chunks().size()))
         .allSatisfy(chunk -> assertThat(chunk.getText()).doesNotContain("Von:", "Betreff:"));
@@ -665,7 +664,7 @@ class MailDocumentPipelineTest {
     assertThat(result.chunks()).hasSize(1);
   }
 
-  // --- Message-size cap (#1101 review, finding 3b) --------------------------------------------
+  // --- Message-size cap --------------------------------------------
 
   @Test
   void aMessageFileExceedingTheConfiguredSizeLimitIsSkippedBeforeParsing() throws Exception {
@@ -693,8 +692,8 @@ class MailDocumentPipelineTest {
 
   @Test
   void anAttachmentWithAnUnsafeFileNameIsStillNotExtracted() throws Exception {
-    // #1101 review, finding 4c: a colon is invalid in a Windows temp-file suffix - EmlReader's own
-    // extraction (unchanged by #1183) still declines to create a temp file for it, so it never
+    // a colon is invalid in a Windows temp-file suffix - EmlReader's own
+    // extraction (unchanged here) still declines to create a temp file for it, so it never
     // reaches discoveredAttachments at all, but must not fail the whole message either.
     Message message =
         newMessageBuilder("Mit unsicherem Dateinamen", "a@example.org", "b@example.org")
@@ -754,13 +753,13 @@ class MailDocumentPipelineTest {
         .anySatisfy(attachment -> assertThat(attachment.fileName()).startsWith("smbprn"));
   }
 
-  // --- #1243: selective extraction materializes one attachment, not the whole message --------
+  // --- selective extraction materializes one attachment, not the whole message --------
 
   /**
-   * #1243: an "Im Dokument oeffnen" click re-extracts one attachment, and used to pay for every
-   * attachment of the message in temporary files. With {@code attachmentIndex} set, exactly one
-   * temp file is written - proven by counting this reader's own {@code opaa-mail-} files while the
-   * result is still alive, before {@code DocumentPipelineRunner} deletes anything.
+   * an "Im Dokument oeffnen" click re-extracts one attachment without paying for every attachment
+   * of the message in temporary files. With {@code attachmentIndex} set, exactly one temp file is
+   * written - proven by counting this reader's own {@code opaa-mail-} files while the result is
+   * still alive, before {@code DocumentPipelineRunner} deletes anything.
    */
   @Test
   void aFilteredRunWritesATempFileForTheRequestedAttachmentOnly() throws Exception {
@@ -815,11 +814,11 @@ class MailDocumentPipelineTest {
   }
 
   /**
-   * #1243: the extraction position is what an attachment row's own {@code file_path} stores - the
-   * list position in {@code discoveredAttachments} - so a filtered run must number attachments
-   * exactly as an unfiltered one does. An attachment the unfiltered run would not report at all
-   * (here: one over {@code max-attachment-bytes}) therefore consumes no position, and position 1 is
-   * the third part of this message, not the second.
+   * the extraction position is what an attachment row's own {@code file_path} stores - the list
+   * position in {@code discoveredAttachments} - so a filtered run must number attachments exactly
+   * as an unfiltered one does. An attachment the unfiltered run would not report at all (here: one
+   * over {@code max-attachment-bytes}) therefore consumes no position, and position 1 is the third
+   * part of this message, not the second.
    */
   @Test
   void aFilteredRunNumbersAttachmentsLikeAnUnfilteredOneIncludingSkippedOnes() throws Exception {
@@ -848,7 +847,7 @@ class MailDocumentPipelineTest {
   }
 
   /**
-   * #1243: {@link MsgReader} counts positions in its own, separate loop, so the rule that a skipped
+   * {@link MsgReader} counts positions in its own, separate loop, so the rule that a skipped
    * attachment consumes no position is nailed down for MSG as well - this fixture's embedded
    * Outlook item is skipped entirely (POI offers no writer for it), so the PDF behind it sits at
    * position 0, not 1.
@@ -884,7 +883,7 @@ class MailDocumentPipelineTest {
   }
 
   /**
-   * #1243: {@code readProperties} needs only the Kopfdaten and never runs through {@code
+   * {@code readProperties} needs only the Kopfdaten and never runs through {@code
    * DocumentPipelineRunner}, so any temp file it caused a reader to write would leak - it therefore
    * materializes no attachment at all.
    */

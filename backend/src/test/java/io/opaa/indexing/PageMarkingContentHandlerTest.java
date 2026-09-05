@@ -6,9 +6,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.xml.sax.helpers.AttributesImpl;
 
-/**
- * #667: Tika's {@code <div class="page">} boundaries survive as form feeds in the extracted text.
- */
+/** Tika's {@code <div class="page">} boundaries survive as form feeds in the extracted text. */
 class PageMarkingContentHandlerTest {
 
   private static final String XHTML = "http://www.w3.org/1999/xhtml";

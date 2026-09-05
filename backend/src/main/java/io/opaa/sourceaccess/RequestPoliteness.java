@@ -3,9 +3,8 @@ package io.opaa.sourceaccess;
 /**
  * The politeness delay every connector that scrapes a remote source it does not operate applies
  * before a request - OPAA is a guest on the servers an RSS feed, a Confluence instance, or an
- * attachment link points at. Formerly RSS-only ({@code RssPoliteness}); moved here (#1182) so
- * {@code io.opaa.indexing.source.attachment.AttachmentIndexer} can use it without depending on
- * RSS's own package.
+ * attachment link points at - shared by every connector, so none has to reach into another's
+ * package for it.
  */
 public final class RequestPoliteness {
 

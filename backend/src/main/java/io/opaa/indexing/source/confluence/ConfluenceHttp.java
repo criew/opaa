@@ -90,7 +90,7 @@ final class ConfluenceHttp {
   }
 
   /**
-   * {@code requestBudget} &gt; 0 bounds the calls this client may make (#1141) - set by {@link
+   * {@code requestBudget} &gt; 0 bounds the calls this client may make - set by {@link
    * ConfluenceClientFactory#createForRun} for a run's client, never for the wizard's probes and the
    * edition detection, which have no run to continue in. Counted are calls, not wire requests: a
    * redirect chain the fetcher follows counts once.
@@ -168,7 +168,7 @@ final class ConfluenceHttp {
     }
     int attempt = 0;
     while (true) {
-      // #1141: the budget counts every call, retries after a 429 included - the meter is per
+      // the budget counts every call, retries after a 429 included - the meter is per
       // client, a client is per run, so this is the run's bound.
       chargeBudget();
       meter.recordRequest();
@@ -228,7 +228,7 @@ final class ConfluenceHttp {
       throws ConfluenceAccessException, InterruptedException {
     String authHeader =
         connection.credentials() == null ? null : connection.credentials().authorizationHeader();
-    // #1141: a download is a call to the instance like any other - it counts against the budget
+    // a download is a call to the instance like any other - it counts against the budget
     chargeBudget();
     meter.recordRequest();
     try {
