@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { User } from 'oidc-client-ts'
+import { User, UserManager } from 'oidc-client-ts'
 import { server } from '../mocks/server'
 import { useAuthStore } from './authStore'
 import { useSpaceStore } from './spaceStore'
@@ -11,6 +11,7 @@ import { useChatListStore } from './chatListStore'
 import { useDocumentStore } from './documentStore'
 import { useGrantStore } from './grantStore'
 import { useIndexingStore } from './indexingStore'
+import { useNotificationStore } from './notificationStore'
 
 describe('authStore', () => {
   beforeEach(() => {
@@ -22,8 +23,11 @@ describe('authStore', () => {
       isAuthenticated: false,
       isLoading: true,
       error: null,
+      providers: [],
       userManager: null,
+      activeProviderId: null,
     })
+    localStorage.clear()
   })
 
   it('initializes with loading state', () => {
@@ -216,8 +220,16 @@ describe('authStore', () => {
       http.get('/api/v1/auth/config', () =>
         HttpResponse.json({
           mode: 'oidc',
-          authority: 'https://idp.example.test/realms/opaa',
-          clientId: 'opaa-frontend',
+          providers: [
+            {
+              id: 'p-opaa',
+              displayName: 'Verzeichnisdienst',
+              issuerUri: 'https://idp.example.test/realms/opaa',
+              clientId: 'opaa-frontend',
+              isDefault: true,
+              sortOrder: 0,
+            },
+          ],
         }),
       ),
     )
@@ -242,8 +254,16 @@ describe('authStore', () => {
         http.get('/api/v1/auth/config', () =>
           HttpResponse.json({
             mode: 'oidc',
-            authority: 'https://idp.example.test/realms/opaa',
-            clientId: 'opaa-frontend',
+            providers: [
+              {
+                id: 'p-opaa',
+                displayName: 'Verzeichnisdienst',
+                issuerUri: 'https://idp.example.test/realms/opaa',
+                clientId: 'opaa-frontend',
+                isDefault: true,
+                sortOrder: 0,
+              },
+            ],
           }),
         ),
       )
@@ -326,8 +346,16 @@ describe('authStore', () => {
         http.get('/api/v1/auth/config', () =>
           HttpResponse.json({
             mode: 'oidc',
-            authority: 'https://idp.example.test/realms/opaa',
-            clientId: 'opaa-frontend',
+            providers: [
+              {
+                id: 'p-opaa',
+                displayName: 'Verzeichnisdienst',
+                issuerUri: 'https://idp.example.test/realms/opaa',
+                clientId: 'opaa-frontend',
+                isDefault: true,
+                sortOrder: 0,
+              },
+            ],
           }),
         ),
       )
@@ -393,8 +421,16 @@ describe('authStore', () => {
         http.get('/api/v1/auth/config', () =>
           HttpResponse.json({
             mode: 'oidc',
-            authority: 'https://idp.example.test/realms/opaa',
-            clientId: 'opaa-frontend',
+            providers: [
+              {
+                id: 'p-opaa',
+                displayName: 'Verzeichnisdienst',
+                issuerUri: 'https://idp.example.test/realms/opaa',
+                clientId: 'opaa-frontend',
+                isDefault: true,
+                sortOrder: 0,
+              },
+            ],
           }),
         ),
       )
@@ -414,8 +450,16 @@ describe('authStore', () => {
         http.get('/api/v1/auth/config', () =>
           HttpResponse.json({
             mode: 'oidc',
-            authority: 'https://idp.example.test/realms/opaa',
-            clientId: 'opaa-frontend',
+            providers: [
+              {
+                id: 'p-opaa',
+                displayName: 'Verzeichnisdienst',
+                issuerUri: 'https://idp.example.test/realms/opaa',
+                clientId: 'opaa-frontend',
+                isDefault: true,
+                sortOrder: 0,
+              },
+            ],
           }),
         ),
       )
@@ -454,6 +498,188 @@ describe('authStore', () => {
       expect(signinSilent).toHaveBeenCalledTimes(2)
       resolveSignin(null)
       await expect(third).resolves.toBe(false)
+    })
+  })
+
+  // ADR-0025, Entscheidung 5: one UserManager per enabled provider, the flow's provider
+  // remembered per tab, the last used one proposed for the next sign-in.
+  describe('several providers (#1332)', () => {
+    const twoProviders = {
+      mode: 'oidc',
+      providers: [
+        {
+          id: 'p-opaa',
+          displayName: 'Verzeichnisdienst',
+          issuerUri: 'https://idp.example.test/realms/opaa',
+          clientId: 'opaa-frontend',
+          isDefault: true,
+          sortOrder: 0,
+        },
+        {
+          id: 'p-partner',
+          displayName: 'Partnerportal',
+          issuerUri: 'https://partner.example.test/realms/extern',
+          clientId: 'opaa-partner',
+          isDefault: false,
+          sortOrder: 1,
+        },
+      ],
+    }
+
+    async function initializeWithTwoProviders() {
+      server.use(http.get('/api/v1/auth/config', () => HttpResponse.json(twoProviders)))
+      await useAuthStore.getState().initialize()
+    }
+
+    it('lists the providers and proposes the default one without a remembered choice', async () => {
+      await initializeWithTwoProviders()
+
+      const state = useAuthStore.getState()
+      expect(state.providers.map((p) => p.id)).toEqual(['p-opaa', 'p-partner'])
+      expect(state.suggestedProvider()?.id).toBe('p-opaa')
+      // the suggested provider's manager stands ready, but nothing is pinned for this tab yet
+      expect(state.activeProviderId).toBe('p-opaa')
+      expect(sessionStorage.getItem('opaa.oidc.flowProvider')).toBeNull()
+    })
+
+    it('proposes the provider used last and starts the flow at the chosen provider', async () => {
+      await initializeWithTwoProviders()
+      localStorage.setItem('opaa.oidc.lastProvider', 'p-partner')
+      expect(useAuthStore.getState().suggestedProvider()?.id).toBe('p-partner')
+
+      const redirect = vi
+        .spyOn(UserManager.prototype, 'signinRedirect')
+        .mockResolvedValue(undefined)
+      try {
+        await useAuthStore.getState().loginOidc('p-partner')
+
+        expect(redirect).toHaveBeenCalledTimes(1)
+        const manager = redirect.mock.instances[0] as UserManager
+        expect(manager.settings.authority).toBe('https://partner.example.test/realms/extern')
+        expect(manager.settings.client_id).toBe('opaa-partner')
+        expect(sessionStorage.getItem('opaa.oidc.flowProvider')).toBe('p-partner')
+        expect(localStorage.getItem('opaa.oidc.lastProvider')).toBe('p-partner')
+        expect(useAuthStore.getState().activeProviderId).toBe('p-partner')
+      } finally {
+        redirect.mockRestore()
+      }
+    })
+
+    it('sends prompt=login when signing in with another account', async () => {
+      await initializeWithTwoProviders()
+      const redirect = vi
+        .spyOn(UserManager.prototype, 'signinRedirect')
+        .mockResolvedValue(undefined)
+      try {
+        await useAuthStore.getState().loginOidc('p-opaa', { switchAccount: true })
+        expect(redirect).toHaveBeenCalledWith({ prompt: 'login' })
+      } finally {
+        redirect.mockRestore()
+      }
+    })
+
+    it('completes the callback with the manager of the provider that started the flow', async () => {
+      sessionStorage.setItem('opaa.oidc.flowProvider', 'p-partner')
+      await initializeWithTwoProviders()
+      expect(useAuthStore.getState().activeProviderId).toBe('p-partner')
+
+      const callbackUser = new User({
+        access_token: 'partner-token',
+        token_type: 'Bearer',
+        profile: {
+          sub: 'user-9',
+          iss: 'https://partner.example.test/realms/extern',
+          aud: 'opaa-partner',
+          exp: Math.floor(Date.now() / 1000) + 900,
+          iat: Math.floor(Date.now() / 1000),
+        },
+        expires_at: Math.floor(Date.now() / 1000) + 900,
+      })
+      const callback = vi
+        .spyOn(UserManager.prototype, 'signinRedirectCallback')
+        .mockResolvedValue(callbackUser)
+      try {
+        await useAuthStore.getState().handleOidcCallback()
+
+        const manager = callback.mock.instances[0] as UserManager
+        expect(manager.settings.authority).toBe('https://partner.example.test/realms/extern')
+        expect(useAuthStore.getState().isAuthenticated).toBe(true)
+        expect(useAuthStore.getState().token).toBe('partner-token')
+      } finally {
+        callback.mockRestore()
+      }
+    })
+
+    it('explains a provider that was disabled while the flow was under way', async () => {
+      sessionStorage.setItem('opaa.oidc.flowProvider', 'p-gone')
+      await initializeWithTwoProviders()
+
+      await useAuthStore.getState().handleOidcCallback()
+
+      const state = useAuthStore.getState()
+      expect(state.isAuthenticated).toBe(false)
+      expect(state.error).toMatch(/nicht mehr zur Verfügung/)
+      expect(sessionStorage.getItem('opaa.oidc.flowProvider')).toBeNull()
+    })
+
+    it('reports when no provider is available at all', async () => {
+      server.use(
+        http.get('/api/v1/auth/config', () => HttpResponse.json({ mode: 'oidc', providers: [] })),
+      )
+
+      await useAuthStore.getState().initialize()
+
+      const state = useAuthStore.getState()
+      expect(state.isLoading).toBe(false)
+      expect(state.error).toMatch(/kein Identitätsanbieter/i)
+    })
+
+    it('signs out at the provider of the active session', async () => {
+      sessionStorage.setItem('opaa.oidc.flowProvider', 'p-partner')
+      await initializeWithTwoProviders()
+      useAuthStore.setState({ isAuthenticated: true, token: 't' })
+      const signout = vi
+        .spyOn(UserManager.prototype, 'signoutRedirect')
+        .mockResolvedValue(undefined)
+      try {
+        await useAuthStore.getState().logout()
+
+        const manager = signout.mock.instances[0] as UserManager
+        expect(manager.settings.authority).toBe('https://partner.example.test/realms/extern')
+        expect(sessionStorage.getItem('opaa.oidc.flowProvider')).toBeNull()
+      } finally {
+        signout.mockRestore()
+      }
+    })
+
+    it('falls back to a local sign-out when the provider offers no end session endpoint', async () => {
+      sessionStorage.setItem('opaa.oidc.flowProvider', 'p-opaa')
+      await initializeWithTwoProviders()
+      useAuthStore.setState({ isAuthenticated: true, token: 't' })
+      const signout = vi
+        .spyOn(UserManager.prototype, 'signoutRedirect')
+        .mockRejectedValue(new Error('No end session endpoint'))
+      const removeUser = vi.spyOn(UserManager.prototype, 'removeUser').mockResolvedValue()
+      try {
+        await useAuthStore.getState().logout()
+
+        expect(removeUser).toHaveBeenCalled()
+        expect(useAuthStore.getState().isAuthenticated).toBe(false)
+        expect(useNotificationStore.getState().queue.at(-1)?.message).toMatch(
+          /nur in dieser Anwendung/,
+        )
+      } finally {
+        signout.mockRestore()
+        removeUser.mockRestore()
+      }
+    })
+
+    it('explains an unknown_issuer expiry differently from an expired token', () => {
+      useAuthStore.setState({ mode: 'oidc', isAuthenticated: true, token: 't' })
+
+      useAuthStore.getState().expireSession('unknown_issuer')
+
+      expect(useAuthStore.getState().error).toMatch(/nicht mehr zugelassen/)
     })
   })
 })

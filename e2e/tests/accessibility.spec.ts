@@ -20,14 +20,22 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       route.fulfill({
         json: {
           mode: "oidc",
-          authority: "http://localhost/oidc-stub",
-          clientId: "e2e",
+          providers: [
+            {
+              id: "00000000-0000-0000-0000-00000000e2e1",
+              displayName: "Verzeichnisdienst",
+              issuerUri: "http://localhost/oidc-stub",
+              clientId: "e2e",
+              isDefault: true,
+              sortOrder: 0,
+            },
+          ],
         },
       }),
     );
     await page.goto("/login");
     await expect(
-      page.getByRole("button", { name: "Anmelden über den Verzeichnisdienst" }),
+      page.getByRole("button", { name: "Anmelden über Verzeichnisdienst" }),
     ).toBeVisible();
 
     await expectNoSeriousA11yViolations(page, "Anmeldeseite");

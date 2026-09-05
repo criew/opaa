@@ -3928,17 +3928,39 @@ components:
 
     AuthConfigResponse:
       type: object
+      required: [mode, providers]
       properties:
         mode:
           type: string
           description: Active authentication mode; "oidc" in production, "dev" for local development and tests
           example: oidc
-        authority:
+        providers:
+          type: array
+          description: >
+            The enabled identity providers a sign-in can start at right now, in sign-in page order
+            (ADR-0025). Only what the sign-in page shows anyway - no claim mapping, nothing about
+            accounts. Empty in the dev mode.
+          items:
+            $ref: "#/components/schemas/OidcSignInProvider"
+
+    OidcSignInProvider:
+      type: object
+      required: [id, displayName, issuerUri, clientId, isDefault, sortOrder]
+      properties:
+        id:
           type: string
-          nullable: true
+          format: uuid
+        displayName:
+          type: string
+        issuerUri:
+          type: string
+          description: The authority the browser starts the authorization code flow (PKCE) at.
         clientId:
           type: string
-          nullable: true
+        isDefault:
+          type: boolean
+        sortOrder:
+          type: integer
 
     UserInfoResponse:
       type: object
