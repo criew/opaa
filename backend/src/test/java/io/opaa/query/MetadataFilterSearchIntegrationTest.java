@@ -20,6 +20,8 @@ import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataCorrectionService;
 import io.opaa.indexing.metadata.DocumentMetadataService;
+import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
+import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataValueInput;
 import io.opaa.library.AssetGrant;
@@ -82,6 +84,7 @@ class MetadataFilterSearchIntegrationTest {
   @Autowired private FileProcessingService fileProcessingService;
   @Autowired private DocumentMetadataService documentMetadataService;
   @Autowired private DocumentMetadataCorrectionService correctionService;
+  @Autowired private DocumentTypeVocabularyRepository vocabularyRepository;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private AssetGrantRepository grantRepository;
@@ -334,8 +337,13 @@ class MetadataFilterSearchIntegrationTest {
     assertThat(unfiltered.stream().filter(c -> "VERMERK".equals(c.getMetadata().get("doc_type"))))
         .as("the post-filter over the fetch-k window is empty")
         .isEmpty();
+    List<String> vocabularyCodes =
+        vocabularyRepository.findAllByOrderBySortOrderAsc().stream()
+            .map(DocumentTypeVocabularyEntry::getCode)
+            .toList();
     List<org.springframework.ai.document.Document> filtered =
-        fullTextChunkSearch.search("Nutzung", Set.of(library.getId()), filter, fetchK);
+        fullTextChunkSearch.search(
+            "Nutzung", Set.of(library.getId()), filter, vocabularyCodes, fetchK);
     assertThat(filtered)
         .extracting(c -> c.getMetadata().get("document_id"))
         .containsExactly(wanted);

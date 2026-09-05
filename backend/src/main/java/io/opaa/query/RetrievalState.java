@@ -31,6 +31,9 @@ import org.springframework.ai.vectorstore.filter.Filter;
  *     stage AND-s it to {@link #libraryFilter}.
  * @param metadataFilterExpression the vector-path form of {@link #metadataFilter}; {@code null}
  *     exactly when that filter is empty.
+ * @param metadataFilterVocabularyCodes the Dokumentart vocabulary snapshot both filter forms say
+ *     "no value" over, read once by {@link RetrievalStageName#METADATA_FILTER} so every sub-query
+ *     of the lexical path filters against the same set as the vector path; empty without a filter.
  * @param candidateLists the lists currently in flight - one per search query and search path until
  *     fusion collapses them to one.
  * @param candidatePool every candidate any search stage returned in this run, in the order the
@@ -43,6 +46,7 @@ public record RetrievalState(
     Filter.Expression libraryFilter,
     MetadataFilter metadataFilter,
     Filter.Expression metadataFilterExpression,
+    List<String> metadataFilterVocabularyCodes,
     List<CandidateList> candidateLists,
     List<Document> candidatePool,
     boolean halted) {
@@ -50,6 +54,10 @@ public record RetrievalState(
   public RetrievalState {
     searchQueries = List.copyOf(searchQueries);
     metadataFilter = metadataFilter == null ? MetadataFilter.NONE : metadataFilter;
+    metadataFilterVocabularyCodes =
+        metadataFilterVocabularyCodes == null
+            ? List.of()
+            : List.copyOf(metadataFilterVocabularyCodes);
     candidateLists = List.copyOf(candidateLists);
     candidatePool = List.copyOf(candidatePool);
   }
@@ -57,7 +65,7 @@ public record RetrievalState(
   /** The state a run starts in: no queries, no filter, no candidates. */
   public static RetrievalState initial() {
     return new RetrievalState(
-        List.of(), null, MetadataFilter.NONE, null, List.of(), List.of(), false);
+        List.of(), null, MetadataFilter.NONE, null, List.of(), List.of(), List.of(), false);
   }
 
   public RetrievalState withSearchQueries(List<String> queries) {
@@ -66,6 +74,7 @@ public record RetrievalState(
         libraryFilter,
         metadataFilter,
         metadataFilterExpression,
+        metadataFilterVocabularyCodes,
         candidateLists,
         candidatePool,
         halted);
@@ -77,18 +86,28 @@ public record RetrievalState(
         filter,
         metadataFilter,
         metadataFilterExpression,
+        metadataFilterVocabularyCodes,
         candidateLists,
         candidatePool,
         halted);
   }
 
   /**
-   * Carries the metadata filter into the run, in both forms the two search paths need - what {@link
-   * RetrievalStageName#METADATA_FILTER} does. The permission filter is untouched.
+   * Carries the metadata filter into the run, in both forms the two search paths need plus the
+   * vocabulary snapshot they were built over - what {@link RetrievalStageName#METADATA_FILTER}
+   * does. The permission filter is untouched.
    */
-  public RetrievalState withMetadataFilter(MetadataFilter filter, Filter.Expression expression) {
+  public RetrievalState withMetadataFilter(
+      MetadataFilter filter, Filter.Expression expression, List<String> vocabularyCodes) {
     return new RetrievalState(
-        searchQueries, libraryFilter, filter, expression, candidateLists, candidatePool, halted);
+        searchQueries,
+        libraryFilter,
+        filter,
+        expression,
+        vocabularyCodes,
+        candidateLists,
+        candidatePool,
+        halted);
   }
 
   /**
@@ -101,6 +120,7 @@ public record RetrievalState(
         libraryFilter,
         metadataFilter,
         metadataFilterExpression,
+        metadataFilterVocabularyCodes,
         lists,
         candidatePool,
         halted);
@@ -121,6 +141,7 @@ public record RetrievalState(
         libraryFilter,
         metadataFilter,
         metadataFilterExpression,
+        metadataFilterVocabularyCodes,
         mergedLists,
         extendedPool,
         halted);
@@ -133,6 +154,7 @@ public record RetrievalState(
         libraryFilter,
         metadataFilter,
         metadataFilterExpression,
+        metadataFilterVocabularyCodes,
         candidateLists,
         candidatePool,
         true);

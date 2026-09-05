@@ -82,6 +82,30 @@ class MetadataFilterExpressionsTest {
     assertThat(metadataPart).contains(") && (");
   }
 
+  /**
+   * The bracket under the permission filter does not depend on a Dokumentart condition being
+   * present: with a date-only filter the whole OR-composed date window is still one bracketed
+   * operand, and the permission filter still binds to all of it - the group comes from {@link
+   * MetadataFilterExpressions#subordinateTo} alone.
+   */
+  @Test
+  void aDateOnlyFilterIsBracketedUnderThePermissionFilterAsAWhole() {
+    MetadataFilter dateOnly =
+        MetadataFilter.ofDateWindow(LocalDate.of(2023, 1, 1), LocalDate.of(2023, 12, 31));
+    Filter.Expression combined =
+        MetadataFilterExpressions.subordinateTo(
+            LIBRARY_FILTER, MetadataFilterExpressions.vectorExpression(dateOnly, VOCABULARY));
+    String rendered = jsonPath(combined);
+
+    assertThat(combined.right()).isInstanceOf(Filter.Group.class);
+    String permission = jsonPath(LIBRARY_FILTER).replace("'::jsonpath", "");
+    assertThat(rendered).startsWith(permission + " && (");
+    String metadataPart = rendered.substring(permission.length());
+    assertThat(topLevelOrCount(metadataPart)).isZero();
+    // Every precision branch of the window sits inside that one bracket.
+    assertThat(metadataPart).contains("DAY").contains("MONTH").contains("YEAR");
+  }
+
   private static int topLevelOrCount(String jsonPath) {
     int depth = 0;
     int count = 0;

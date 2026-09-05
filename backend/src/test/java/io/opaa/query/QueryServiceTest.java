@@ -2404,7 +2404,7 @@ class QueryServiceTest {
               .score(0.09)
               .build();
       when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(vectorChunk));
-      when(fullTextChunkSearch.search(any(), any(), any(), anyInt()))
+      when(fullTextChunkSearch.search(any(), any(), any(), any(), anyInt()))
           .thenReturn(List.of(lexicalChunk));
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
       when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
@@ -2431,7 +2431,7 @@ class QueryServiceTest {
       var chunkOfB = chunkOf("b.md", "doc-b", "B, einziger Abschnitt", 0.8);
       when(vectorStore.similaritySearch(any(SearchRequest.class)))
           .thenReturn(List.of(firstChunkOfA, secondChunkOfA, chunkOfB));
-      when(fullTextChunkSearch.search(any(), any(), any(), anyInt())).thenReturn(List.of());
+      when(fullTextChunkSearch.search(any(), any(), any(), any(), anyInt())).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
       when(answerGenerationService.generateAnswer(any(), any(), any())).thenReturn(chatResponse);
 
