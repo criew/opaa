@@ -11,6 +11,7 @@ import io.opaa.auth.OidcSecurityConfig;
 import io.opaa.auth.UserService;
 import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
+import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -20,7 +21,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -55,7 +56,9 @@ class ConfluenceWebhookPublicAccessTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private ConfluenceWebhookService webhookService;
   @MockitoBean private UserService userService;
-  @MockitoBean private JwtDecoder jwtDecoder;
+
+  @MockitoBean
+  private AuthenticationManagerResolver<HttpServletRequest> oidcAuthenticationManagerResolver;
 
   @Test
   void anAnonymousNotificationReachesTheIntakeWithItsRawBodyAndHeaders() throws Exception {

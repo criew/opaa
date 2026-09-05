@@ -1,0 +1,59 @@
+databaseChangeLog:
+  - changeSet:
+      id: 026-oidc-providers
+      author: opaa
+      comment: >-
+        #1329, ADR-0025: the identity providers a deployment accepts sign-ins from, replacing the
+        single issuer configured through OPAA_OIDC_*. issuer_uri is unique - a token's "iss" claim
+        must identify exactly one provider, and users(subject, issuer) stays the account identity,
+        so a provider deleted and re-created under the same issuer keeps every account. Public
+        clients only (PKCE in the SPA, ADR-0025 Entscheidung 1): there is no client-secret column.
+        jwk_set_uri optionally overrides the JWK set found through discovery - the backend-side
+        address of the same instance the browser reaches under issuer_uri (Compose: keycloak:8180
+        vs. localhost:8180), exactly what OPAA_OIDC_JWK_SET_URI used to be. The claim mapping
+        columns (email_claim, display_name_claim, roles_claim, system_admin_role, auditor_role,
+        groups_claim) are read by #1331; their Keycloak-shaped defaults make a row created without
+        them behave like today's single issuer. At most one row is the default provider
+        (ux_oidc_providers_single_default, a partial unique index) - the one
+        opaa.auth.initial-admin-email applies to. oidc_provider_seed_marker records that the
+        one-time takeover of OPAA_OIDC_* was attempted, the same singleton shape as
+        llm_model_seed_marker: the seeder must run at most once, ever, not once per empty table.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.oidc_providers (
+                  id uuid NOT NULL,
+                  display_name character varying(120) NOT NULL,
+                  enabled boolean DEFAULT true NOT NULL,
+                  is_default boolean DEFAULT false NOT NULL,
+                  sort_order integer DEFAULT 0 NOT NULL,
+                  issuer_uri character varying(500) NOT NULL,
+                  client_id character varying(255) NOT NULL,
+                  jwk_set_uri character varying(500),
+                  email_claim character varying(100) DEFAULT 'email' NOT NULL,
+                  display_name_claim character varying(100) DEFAULT 'name' NOT NULL,
+                  roles_claim character varying(200),
+                  system_admin_role character varying(255),
+                  auditor_role character varying(255),
+                  groups_claim character varying(200),
+                  created_at timestamp with time zone DEFAULT now() NOT NULL,
+                  updated_at timestamp with time zone DEFAULT now() NOT NULL,
+                  CONSTRAINT oidc_providers_pkey PRIMARY KEY (id),
+                  CONSTRAINT uq_oidc_providers_issuer_uri UNIQUE (issuer_uri)
+              );
+
+              CREATE UNIQUE INDEX ux_oidc_providers_single_default
+                  ON public.oidc_providers (is_default) WHERE is_default;
+
+              CREATE TABLE public.oidc_provider_seed_marker (
+                  id integer NOT NULL,
+                  seeded_at timestamp with time zone NOT NULL,
+                  CONSTRAINT oidc_provider_seed_marker_pkey PRIMARY KEY (id),
+                  CONSTRAINT chk_oidc_provider_seed_marker_singleton CHECK ((id = 1))
+              );
+      rollback:
+        - sql:
+            sql: |
+              DROP TABLE IF EXISTS public.oidc_provider_seed_marker;
+              DROP TABLE IF EXISTS public.oidc_providers;
