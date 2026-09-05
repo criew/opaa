@@ -2,7 +2,7 @@
 
 > **Entwurf.** Dieses Kapitel beschreibt die drei Kernfelder, die jedes Dokument trägt, woher ihre
 > Werte kommen, wie sie gepflegt werden und was sie in Suche und Beleg bewirken. Die
-> Struktur-Metadaten je Chunk (Ortsangabe, Mail-Kopfdaten, Space und Gliederungspfad) sind etwas
+> Struktur-Metadaten je Chunk (Ortsangabe, Space und Gliederungspfad) sind etwas
 > anderes und stehen im Kapitel [Indexierung](indexierung.md), Schritt 5.
 
 ## 1. Wofür Metadaten hier gedacht sind
@@ -40,6 +40,26 @@ wird als Jahr gespeichert und als „2024" angezeigt, nie als „01.01.2024".
 
 Ein Wert hängt am **Dokument**, nicht am Chunk; alle Chunks eines Dokuments tragen dieselben Werte.
 Eine Korrektur findet an genau einer Stelle statt.
+
+### 2a. Formatfelder
+
+Neben den Kernfeldern gibt es einen kleinen, fest eingebauten Kreis von **Formatfeldern**: Felder,
+die nur bestimmte Formate erklären und deshalb nur von deren Pipeline befüllt werden. Sie werden
+gelesen, nicht gedeutet, und tragen deshalb immer die Herkunft „deterministisch".
+
+| Feld | Format | Typ | Filterbar |
+|---|---|---|---|
+| **Absender** | E-Mail | Kennung nach Muster (E-Mail-Adresse) | ja, als Genau-Treffer |
+| **An** | E-Mail | Text, auf 200 Zeichen gekürzt | nein |
+| **Betreff** | E-Mail | Text | nein |
+
+Ein Formatfeld hängt wie ein Kernfeld am Dokument; der filterbare Absender wird zusätzlich an alle
+seine Chunks vererbt, damit beide Suchpfade dieselbe Bedingung tragen. Ein Dokument eines anderen
+Formats hat schlicht keinen Wert und wird von einem Filter darauf nie ausgeschlossen — und auch
+nicht als „ohne Angabe" gekennzeichnet, weil die Frage nach seinem Absender nie gestellt war. Der Absender wird auf die reine Adresse reduziert und kleingeschrieben, damit
+„genau diese Adresse" prüfbar bleibt. Betreff und An sind **Anzeigefelder**: Sie stehen im Beleg,
+filtern aber nie — ein Teilstring-Filter würde aus einem prüfbaren Feld wieder eine Textsuche
+machen, und die leistet die Volltextsuche über den Kopfblock im Chunk-Text ohnehin.
 
 ## 3. Das Vokabular der Dokumentart
 
@@ -116,7 +136,7 @@ Jede Format-Pipeline gibt nur weiter, was ihr Format selbst erklärt; interpreti
 | ODT, ODP | `meta.xml` | Erstellung, Änderung | ODT: erste Überschrift 1 | ODT: erster Absatz | |
 | Markdown | Frontmatter `titel` | Frontmatter `stand_datum`, `fassung` | erste `#`-Überschrift | erste Zeile nach dem Frontmatter | Frontmatter `dokumentart` |
 | HTML | `<title>` | | erste `<h1>` | erster Textblock des Hauptinhalts | |
-| E-Mail | Betreff | `Date`-Kopf als Dokumentdatum | | | |
+| E-Mail | Betreff | `Date`-Kopf als Dokumentdatum | | | Absender, An und Betreff als Formatfelder (Abschnitt 2a) |
 | Feed-Eintrag | Überschrift des Eintrags | Veröffentlichungsdatum als Dokumentdatum | | | Name gilt nicht als Dateiname |
 | Confluence-Seite | Seitentitel | Zeitpunkt der aktuellen Seitenversion als Änderungsdatum | | | Name gilt nicht als Dateiname |
 | Tabellen, TXT, DOC | | | | TXT, DOC: erste Textzeile | |
@@ -245,8 +265,15 @@ Neben den Suchbereichs-Chips steht **„Filter"**. Das Popover zeigt je Kernfeld
   das Popover sagt warum. Ein Filter auf ein zu 12 % befülltes Feld sähe aus wie eine Einschränkung
   des Bestands und wäre keine.
 
+Dazu kommt das Formatfeld **Absender** mit den im Suchbereich vorkommenden Adressen und ihrer
+Anzahl — höchstens den **20 häufigsten**, denn ein Postfach hat so viele Absender wie Korrespondenten;
+daneben steht ein Eingabefeld für genau eine weitere Adresse. Das Feld wird angeboten, sobald
+mindestens ein Dokument des Suchbereichs einen Absender trägt — ein Anteil am gemischten Bestand
+würde dort die Formatverteilung messen, nicht die Metadatenqualität. Ein Suchbereich ohne Mails zeigt
+den Abschnitt gar nicht.
+
 Der aktive Filter erscheint als entfernbare Chips („Dokumentart: Vermerk", „Datum: 01.01.2024 –
-31.12.2024") und bleibt am Chat gespeichert. Die Werte setzt die Person; aus der Frage wird kein
+31.12.2024", „Absender: poststelle@stadt.de") und bleibt am Chat gespeichert. Die Werte setzt die Person; aus der Frage wird kein
 Filter abgeleitet.
 
 Was der Filter tut:
@@ -270,8 +297,11 @@ Rechteänderung, die die Person betrifft, verworfen.
 
 Die Fundstellenzeile und das Belegfenster einer Antwort zeigen Titel, Dokumentart und Datum/Stand
 des zitierten Dokuments, mit „ · " verbunden; ein leeres Feld erscheint gar nicht, ein abgeleiteter
-Wert ist als „(abgeleitet)" gekennzeichnet. Die Ortsangabe im Dokument bleibt daneben bestehen. Bei
-E-Mails stehen zusätzlich die vier Kopfdaten (siehe [E-Mail](format-mail.md)).
+Wert ist als „(abgeleitet)" gekennzeichnet. Die Ortsangabe im Dokument bleibt daneben bestehen. Die
+Formatfelder eines Dokuments stehen als weitere Einträge derselben Liste dahinter; ein Wert, den der
+Titel bereits wörtlich zeigt — bei einer Mail der Betreff —, wird nicht zweimal aufgeführt. Der
+Empfänger einer Mail erscheint **nur im Belegfenster**, nicht in der Fundstellenzeile: Eine
+Verteilerliste ist lang und ordnet die Fundstelle nicht ein.
 
 ## 10. Rechte und Sichtbarkeit
 
@@ -315,8 +345,6 @@ konfigurierbar.
 
 - **Bibliotheksfelder** (bis zu fünf eigene typisierte Felder je Bibliothek, etwa Fassung und
   Rechtsebene) und deren Verwaltung in den Bibliothekseinstellungen (Ticket #1071)
-- **Mail-Kopfdaten als Schemafelder**; heute stehen sie als eigene Anzeigefelder am Beleg
-  (Ticket #1242)
 - **Metadaten im Kontextpräfix** des Embeddings (Ticket #1072)
 - **Modellgestützte Ermittlung** mit Konfidenz und **freie Schlagworte**, je Bibliothek
   einschaltbar, voreingestellt aus (Ticket #1073); die Herkunft „abgeleitet" ist dafür vorgesehen

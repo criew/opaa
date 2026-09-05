@@ -13,7 +13,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import type { CitationIndex } from './citations'
 import {
   describeMetadata,
-  formatMailSummary,
+  formatMetadataDetails,
   formatMetadataLine,
   metadataFilterMatchLabel,
 } from './citations'
@@ -63,12 +63,12 @@ interface EvidenceDoc {
    *  LibraryDocumentResponse.sourceUrl (#738) - shown as secondary information alongside the
    *  documentId deep link above, not itself the primary way to open the original any more. */
   sourceUrl?: string | null
-  /** #1164: "Mail von …, TT.MM.JJJJ — Betreff", undefined for a non-mail source. */
-  mailSummary?: string
   /** #1066: the schema metadata line, undefined when the document carries no value. */
   metadataLine?: string
   /** #1066: "Label: Wert, …" - the accessible name of {@link metadataLine}. */
   metadataDescription?: string
+  /** #1242: the values only the detail view shows ("An: …"), undefined when there are none. */
+  metadataDetails?: string
   /** #1070: "ohne Angabe" for a hit the Leerwert rule kept under an active filter. */
   filterMatchLabel?: string
 }
@@ -123,9 +123,9 @@ export default function SourceEvidenceDrawer({
       documentId: doc.source?.documentId,
       sourceType: doc.source?.sourceType,
       sourceUrl: doc.source?.sourceUrl,
-      mailSummary: formatMailSummary(doc.source),
       metadataLine: formatMetadataLine(doc.source),
       metadataDescription: describeMetadata(doc.source),
+      metadataDetails: formatMetadataDetails(doc.source),
       filterMatchLabel: metadataFilterMatchLabel(doc.source),
     }))
     const uncited: EvidenceDoc[] = citations.uncited.map((source) => ({
@@ -140,9 +140,9 @@ export default function SourceEvidenceDrawer({
       documentId: source.documentId,
       sourceType: source.sourceType,
       sourceUrl: source.sourceUrl,
-      mailSummary: formatMailSummary(source),
       metadataLine: formatMetadataLine(source),
       metadataDescription: describeMetadata(source),
+      metadataDetails: formatMetadataDetails(source),
       filterMatchLabel: metadataFilterMatchLabel(source),
     }))
     // #1102: never order by relevanceScore - a persisted message's snapshot may still carry the
@@ -329,6 +329,17 @@ export default function SourceEvidenceDrawer({
                   {doc.metadataLine}
                 </Typography>
               )}
+              {/* #1242: values that belong into the detail view but not into the one-line Beleg -
+                  a mail's recipient list identifies no passage and would crowd out what does. */}
+              {doc.metadataDetails && (
+                <Typography
+                  component="span"
+                  data-testid="source-metadata-details"
+                  sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
+                >
+                  {doc.metadataDetails}
+                </Typography>
+              )}
               {/* #1070: the Leerwert mark of a hit kept under an active filter. */}
               {doc.filterMatchLabel && (
                 <Typography
@@ -338,17 +349,6 @@ export default function SourceEvidenceDrawer({
                   sx={{ display: 'block', fontSize: 11, color: 'text.secondary', mt: 0.25 }}
                 >
                   {doc.filterMatchLabel}
-                </Typography>
-              )}
-              {/* #1164: the mail Kopfdaten summary ("Mail von …, TT.MM.JJJJ — Betreff"), only for a
-                  source whose retrieved chunk carried mail_* metadata. */}
-              {doc.mailSummary && (
-                <Typography
-                  component="span"
-                  data-testid="source-mail-summary"
-                  sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
-                >
-                  {doc.mailSummary}
                 </Typography>
               )}
               <Box

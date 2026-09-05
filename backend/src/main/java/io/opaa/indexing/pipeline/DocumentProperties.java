@@ -40,6 +40,10 @@ import java.util.TreeMap;
  *     its URL as a fallback. A naming convention can only be read out of a real file name; a
  *     headline names what a document is <em>about</em>.
  * @param frontmatter a Markdown YAML frontmatter's scalar entries, verbatim, keys lower-cased
+ * @param formatFields values of the built-in format fields ({@code
+ *     io.opaa.indexing.metadata.FormatMetadataField}) the format itself declares - a mail's
+ *     Absender, Empfänger and Betreff -, keyed by the field's own key. Read verbatim, never
+ *     interpreted, and therefore stored as deterministic values of those fields.
  */
 public record DocumentProperties(
     String title,
@@ -50,7 +54,8 @@ public record DocumentProperties(
     String titleLine,
     String formatExtension,
     boolean syntheticName,
-    Map<String, String> frontmatter) {
+    Map<String, String> frontmatter,
+    Map<String, String> formatFields) {
 
   /**
    * Upper bound of {@link #titleLine}, in characters - a "line" a format hands over without any
@@ -59,7 +64,7 @@ public record DocumentProperties(
   public static final int MAX_TITLE_LINE_LENGTH = 300;
 
   public static final DocumentProperties EMPTY =
-      new DocumentProperties(null, null, null, null, null, null, null, false, Map.of());
+      new DocumentProperties(null, null, null, null, null, null, null, false, Map.of(), Map.of());
 
   public DocumentProperties {
     title = blankToNull(title);
@@ -76,6 +81,7 @@ public record DocumentProperties(
           });
     }
     frontmatter = Map.copyOf(normalized);
+    formatFields = formatFields == null ? Map.of() : Map.copyOf(formatFields);
   }
 
   public DocumentProperties withTitle(String title) {
@@ -115,6 +121,11 @@ public record DocumentProperties(
     return toBuilder().frontmatter(frontmatter).build();
   }
 
+  /** The same properties with the format fields {@code formatFields} declared. */
+  public DocumentProperties withFormatFields(Map<String, String> formatFields) {
+    return toBuilder().formatFields(formatFields).build();
+  }
+
   /** An empty builder; every field a pipeline does not set stays absent. */
   public static Builder builder() {
     return new Builder();
@@ -131,7 +142,8 @@ public record DocumentProperties(
         .titleLine(titleLine)
         .formatExtension(formatExtension)
         .syntheticName(syntheticName)
-        .frontmatter(frontmatter);
+        .frontmatter(frontmatter)
+        .formatFields(formatFields);
   }
 
   /**
@@ -150,6 +162,7 @@ public record DocumentProperties(
     private String formatExtension;
     private boolean syntheticName;
     private Map<String, String> frontmatter = Map.of();
+    private Map<String, String> formatFields = Map.of();
 
     private Builder() {}
 
@@ -198,6 +211,11 @@ public record DocumentProperties(
       return this;
     }
 
+    public Builder formatFields(Map<String, String> formatFields) {
+      this.formatFields = formatFields;
+      return this;
+    }
+
     public DocumentProperties build() {
       return new DocumentProperties(
           title,
@@ -208,7 +226,8 @@ public record DocumentProperties(
           titleLine,
           formatExtension,
           syntheticName,
-          frontmatter);
+          frontmatter,
+          formatFields);
     }
   }
 

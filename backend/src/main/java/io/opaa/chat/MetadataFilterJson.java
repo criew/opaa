@@ -1,5 +1,6 @@
 package io.opaa.chat;
 
+import io.opaa.indexing.metadata.FormatFieldCondition;
 import io.opaa.indexing.metadata.LibraryFieldCondition;
 import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.ArrayList;
@@ -47,6 +48,18 @@ final class MetadataFilterJson {
       entry.put("value", condition.value());
       libraryFields.add(entry);
     }
+    List<Map<String, Object>> formatFields = new ArrayList<>();
+    for (FormatFieldCondition condition : filter.formatFields()) {
+      Map<String, Object> entry = new LinkedHashMap<>();
+      entry.put("fieldKey", condition.fieldKey());
+      entry.put("values", condition.values().stream().sorted().toList());
+      formatFields.add(entry);
+    }
+    if (!formatFields.isEmpty()) {
+      // Omitted when empty, for the same reason libraryFields is: a row written before #1242
+      // reads back identically.
+      json.put("formatFields", formatFields);
+    }
     if (!libraryFields.isEmpty()) {
       // Omitted when empty, so a filter on core fields alone keeps the exact shape it had before
       //  - a stored row written by an older release reads back identically either way.
@@ -86,13 +99,27 @@ final class MetadataFilterJson {
         }
       }
     }
+    List<FormatFieldCondition> formatConditions = new ArrayList<>();
+    if (object.get("formatFields") instanceof List<?> entries) {
+      for (Object entry : entries) {
+        if (entry instanceof Map<?, ?> map) {
+          List<String> values = new ArrayList<>();
+          if (map.get("values") instanceof List<?> list) {
+            list.forEach(value -> values.add(String.valueOf(value)));
+          }
+          formatConditions.add(
+              FormatFieldCondition.parse(String.valueOf(map.get("fieldKey")), values));
+        }
+      }
+    }
     return MetadataFilter.parse(
             codes,
             object.get("documentDateFrom") == null
                 ? null
                 : object.get("documentDateFrom").toString(),
             object.get("documentDateTo") == null ? null : object.get("documentDateTo").toString())
-        .withLibraryFields(conditions);
+        .withLibraryFields(conditions)
+        .withFormatFields(formatConditions);
   }
 
   private static String text(Object value) {
