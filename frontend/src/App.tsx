@@ -25,12 +25,14 @@ import { useUiStore } from './stores/uiStore'
 import { resolveThemeMode } from './theme/colorScheme'
 import BrandingSettingsPage from './pages/BrandingSettingsPage'
 import LlmModelManagementPage from './pages/LlmModelManagementPage'
+import OidcProviderManagementPage from './pages/OidcProviderManagementPage'
 import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
 
 const ADMIN_SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },
   { label: 'Benutzer & Gruppen', to: '/admin/groups' },
   { label: 'Modelle', to: '/admin/models' },
+  { label: 'Identitätsanbieter', to: '/admin/identity-providers' },
   { label: 'Suche & Indexierung', to: '/admin/search' },
 ]
 
@@ -114,6 +116,7 @@ export default function App() {
                 <Route path="admin/groups" element={<GroupManagementPage />} />
                 <Route path="admin/branding" element={<BrandingSettingsPage />} />
                 <Route path="admin/models" element={<LlmModelManagementPage />} />
+                <Route path="admin/identity-providers" element={<OidcProviderManagementPage />} />
                 <Route path="admin/search" element={<SearchIndexingAdminPage />} />
               </Route>
               {/* Mockup 2c (#788): the user settings render in the bare global frame -
