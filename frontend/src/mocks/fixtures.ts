@@ -595,6 +595,28 @@ function initialOidcProviders(): OidcProviderResponse[] {
       createdAt: '2026-09-02T08:00:00Z',
       updatedAt: '2026-09-02T08:00:00Z',
     },
+    {
+      id: 'oidc-provider-land',
+      displayName: 'Landesportal',
+      enabled: true,
+      isDefault: false,
+      sortOrder: 2,
+      issuerUri: 'https://land.example/realms/verwaltung',
+      clientId: 'opaa-land',
+      jwkSetUri: null,
+      claimMapping: {
+        emailClaim: 'email',
+        displayNameClaim: 'name',
+        rolesClaim: null,
+        systemAdminRole: null,
+        auditorRole: null,
+        groupsClaim: null,
+      },
+      registryState: 'READY',
+      registryMessage: null,
+      createdAt: '2026-09-03T08:00:00Z',
+      updatedAt: '2026-09-03T08:00:00Z',
+    },
   ]
 }
 

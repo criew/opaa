@@ -49,6 +49,7 @@ describe('OidcProviderManagementPage', () => {
     expect(cards.map((c) => within(c).getByRole('heading', { level: 2 }).textContent)).toEqual([
       'Verzeichnisdienst',
       'Partnerportal',
+      'Landesportal',
     ])
     expect(within(cards[0]).getByLabelText('Standardanbieter')).toBeInTheDocument()
     expect(within(cards[0]).getByText('Erreichbar')).toBeInTheDocument()
@@ -102,7 +103,7 @@ describe('OidcProviderManagementPage', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
     // nothing is saved yet: the confirmation is owed first
-    expect(await within(dialog).findByRole('alertdialog')).toHaveTextContent(/führend/)
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(/führend/)
     expect(
       useOidcProviderStore.getState().providers.find((p) => p.displayName === 'Verzeichnisdienst')
         ?.claimMapping.rolesClaim,
@@ -116,6 +117,80 @@ describe('OidcProviderManagementPage', () => {
           ?.claimMapping,
       ).toMatchObject({ rolesClaim: 'realm_access.roles', systemAdminRole: 'opaa-admin' })
     })
+  })
+
+  /** ADR-0025: the confirmation is answered by its own button only - a second click on the
+   * footer button cannot stand in for it, and editing without a new roles claim needs none. */
+  it('cannot be bypassed by a second click and is not asked when the roles claim is unchanged', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+    await user.click((await screen.findAllByRole('button', { name: 'Bearbeiten' }))[0])
+    const dialog = await screen.findByRole('dialog')
+
+    await user.type(within(dialog).getByLabelText(/^Rollen-Claim/), 'realm_access.roles')
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+    // while the question is open the footer button is gone: no way to save past it, and the
+    // confirming button holds the focus
+    expect(within(dialog).queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Rollen-Claim setzen' })).toHaveFocus()
+    // both role values empty: the consequence is spelled out
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(/allen seinen Konten/)
+    await user.click(
+      within(within(dialog).getByRole('alert')).getByRole('button', { name: 'Abbrechen' }),
+    )
+    expect(
+      useOidcProviderStore.getState().providers.find((p) => p.displayName === 'Verzeichnisdienst')
+        ?.claimMapping.rolesClaim,
+    ).toBeNull()
+
+    // a rename alone: saved without any question
+    await user.clear(within(dialog).getByLabelText(/^Rollen-Claim/))
+    const name = within(dialog).getByRole('textbox', { name: /^Anzeigename\s*\*?$/ })
+    await user.clear(name)
+    await user.type(name, 'Verzeichnisdienst (Haus)')
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+    await waitFor(() => {
+      expect(useOidcProviderStore.getState().providers.map((p) => p.displayName)).toContain(
+        'Verzeichnisdienst (Haus)',
+      )
+    })
+  })
+
+  it('makes a reachable provider the default with a consequence hint, and refuses an unreachable one', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+    const cards = await screen.findAllByRole('article')
+    const partner = cards[1]
+    const land = cards[2]
+
+    await user.click(within(partner).getByRole('button', { name: 'Zum Standard machen' }))
+    expect(confirm).toHaveBeenLastCalledWith(
+      expect.stringMatching(/weder deaktiviert noch gelöscht/),
+    )
+    // the mock mirrors OidcProviderService#makeDefault: an unreachable provider is refused
+    expect(await within(partner).findByText(/nicht abrufbar/)).toBeInTheDocument()
+    expect(within(cards[0]).getByLabelText('Standardanbieter')).toBeInTheDocument()
+
+    await user.click(within(land).getByRole('button', { name: 'Zum Standard machen' }))
+    await waitFor(() => {
+      expect(within(land).getByLabelText('Standardanbieter')).toBeInTheDocument()
+    })
+    expect(within(cards[0]).queryByLabelText('Standardanbieter')).not.toBeInTheDocument()
+    expect(within(cards[0]).getByRole('button', { name: 'Deaktivieren' })).toBeInTheDocument()
+  })
+
+  it('warns when no provider is the default', async () => {
+    signInAs('SYSTEM_ADMIN')
+    server.use(
+      http.get('/api/v1/admin/oidc-providers', () =>
+        HttpResponse.json(mockOidcProviders.map((p) => ({ ...p, isDefault: false }))),
+      ),
+    )
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+    expect(await screen.findByText(/Kein Anbieter ist Standardanbieter/)).toBeInTheDocument()
   })
 
   it('runs the connection test from the dialog and shows the outcome', async () => {

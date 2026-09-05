@@ -36,7 +36,9 @@ export default function OidcProviderSetupInstructions() {
         <Typography variant="body2" color="text.secondary">
           Der Verbindungstest im Formular prüft Discovery-Dokument und JWK-Set vor dem Speichern.
           Ein Anbieter, dessen Schlüssel das Backend nicht abrufen kann, wird hier als „nicht
-          erreichbar“ angezeigt und erscheint nicht auf der Anmeldeseite.
+          erreichbar“ angezeigt. Er bleibt auf der Anmeldeseite sichtbar – das Backend versucht den
+          Aufbau bei der nächsten Anmeldung erneut –, Anmeldungen über ihn schlagen aber fehl, bis
+          die Verbindung steht. Wer das vermeiden will, deaktiviert ihn.
         </Typography>
       </Stack>
     </Paper>

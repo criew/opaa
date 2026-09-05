@@ -12,14 +12,15 @@ describe('oidcProviderStore', () => {
     expect(useOidcProviderStore.getState().providers.map((p) => p.displayName)).toEqual([
       'Verzeichnisdienst',
       'Partnerportal',
+      'Landesportal',
     ])
   })
 
   it('moves the default flag in one step and keeps the list sorted', async () => {
     await useOidcProviderStore.getState().loadProviders()
-    await useOidcProviderStore.getState().makeProviderDefault('oidc-provider-partner')
+    await useOidcProviderStore.getState().makeProviderDefault('oidc-provider-land')
     const providers = useOidcProviderStore.getState().providers
-    expect(providers.filter((p) => p.isDefault).map((p) => p.id)).toEqual(['oidc-provider-partner'])
+    expect(providers.filter((p) => p.isDefault).map((p) => p.id)).toEqual(['oidc-provider-land'])
   })
 
   it('swaps positions when moving and ignores a move past the ends', async () => {
@@ -30,6 +31,7 @@ describe('oidcProviderStore', () => {
     expect(useOidcProviderStore.getState().providers.map((p) => p.id)).toEqual([
       'oidc-provider-partner',
       'oidc-provider-beschaeftigte',
+      'oidc-provider-land',
     ])
     expect(mockOidcProviders.find((p) => p.id === 'oidc-provider-partner')?.sortOrder).toBe(0)
   })
@@ -39,6 +41,7 @@ describe('oidcProviderStore', () => {
     await useOidcProviderStore.getState().deleteExistingProvider('oidc-provider-partner')
     expect(useOidcProviderStore.getState().providers.map((p) => p.id)).toEqual([
       'oidc-provider-beschaeftigte',
+      'oidc-provider-land',
     ])
   })
 })

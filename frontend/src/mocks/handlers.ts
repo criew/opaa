@@ -463,6 +463,8 @@ function getRunningStatus(step: number): IndexingStatusResponse {
  */
 const mockLibraryMetadataFields: Record<string, LibraryMetadataFieldResponse[]> = {}
 
+const disabledRegistryStates = new Map<string, OidcProviderResponse['registryState']>()
+
 export const handlers = [
   http.get('/api/health', () => {
     return HttpResponse.json(mockHealthResponse)
@@ -1124,6 +1126,7 @@ export const handlers = [
   }),
 
   // identity providers (ADR-0025, #1329 admin API) - public clients, no secret in any payload;
+  // (disabledRegistryStates remembers a disabled provider's decoder state until it is re-enabled)
   // the same invariants as OidcProviderService: the default is neither disable- nor deletable,
   // a duplicate issuer is a conflict.
   http.get('/api/v1/admin/oidc-providers', () => {
@@ -1244,8 +1247,9 @@ export const handlers = [
       return HttpResponse.json({ error: 'Anbieter nicht gefunden' }, { status: 404 })
     }
     provider.enabled = true
-    provider.registryState = 'READY'
-    provider.registryMessage = null
+    // the decoder state a re-enabled provider comes back with is whatever it was before
+    provider.registryState = disabledRegistryStates.get(provider.id) ?? 'READY'
+    provider.registryMessage = provider.registryState === 'READY' ? null : provider.registryMessage
     return HttpResponse.json(provider)
   }),
 
@@ -1261,8 +1265,8 @@ export const handlers = [
       )
     }
     provider.enabled = false
+    disabledRegistryStates.set(provider.id, provider.registryState)
     provider.registryState = 'DISABLED'
-    provider.registryMessage = null
     return HttpResponse.json(provider)
   }),
 
@@ -1274,6 +1278,18 @@ export const handlers = [
     if (!provider.enabled) {
       return HttpResponse.json(
         { error: 'Ein deaktivierter Anbieter kann nicht Standardanbieter werden.' },
+        { status: 409 },
+      )
+    }
+    // OidcProviderService#makeDefault: the default must be reachable, there is no state without
+    // a sign-in-capable provider
+    if (provider.registryState !== 'READY') {
+      return HttpResponse.json(
+        {
+          error:
+            'Ein Anbieter, dessen Schlüssel nicht abrufbar sind, kann nicht Standardanbieter' +
+            ` werden: ${provider.registryMessage ?? ''}. Beheben Sie die Verbindung zuerst.`,
+        },
         { status: 409 },
       )
     }
