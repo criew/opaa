@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.api.types.PermissionSubjectType;
 import io.opaa.group.GroupMembershipChangeListener;
+import io.opaa.indexing.metadata.LibraryMetadataSchemaChanged;
 import io.opaa.library.GrantChanged;
 import io.opaa.library.LibraryChanged;
 import java.util.Collection;
@@ -75,6 +76,17 @@ public class MetadataFilterOptionsCache implements GroupMembershipChangeListener
     } else {
       invalidateAll();
     }
+  }
+
+  /**
+   * A library's metadata field schema changed (#1071): the offered fields and their value lists are
+   * derived from it, so every entry that could contain the library is stale. Emptying the whole
+   * cache is the cheap and provably complete answer - the entries are rebuilt from the bestand on
+   * the next opening of the filter interface, in each person's own rights context.
+   */
+  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION, fallbackExecution = true)
+  public void onLibraryMetadataSchemaChanged(LibraryMetadataSchemaChanged event) {
+    invalidateAll();
   }
 
   /** A library's visibility (or existence) changed: that reaches every person's scope. */

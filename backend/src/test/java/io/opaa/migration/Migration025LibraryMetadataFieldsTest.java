@@ -98,6 +98,12 @@ class Migration025LibraryMetadataFieldsTest extends AbstractMigrationTest {
     assertThatThrownBy(() -> insertDocumentValue(documentId, "fassung", fieldId, valueId))
         .hasMessageContaining("chk_document_metadata_values_library_field");
 
+    // A list entry of another field is not storable either - the foreign key is composite.
+    UUID otherFieldId = insertField(libraryId, "gremium", true, false, null);
+    UUID otherValueId = insertValue(otherFieldId, "HAUPTAUSSCHUSS");
+    assertThatThrownBy(() -> insertDocumentValue(documentId, "lib:fassung", fieldId, otherValueId))
+        .hasMessageContaining("fk_document_metadata_values_library_value");
+
     insertDocumentValue(documentId, "lib:fassung", fieldId, valueId);
     assertThatThrownBy(() -> deleteValue(valueId))
         .as("a value a document still carries is only removable together with a mapping")

@@ -123,14 +123,15 @@ public class DocumentMetadataService {
     for (LibraryMetadataField field :
         libraryFieldRepository.findByLibraryIdOrderBySortOrderAscFieldKeyAsc(
             document.getLibraryId())) {
-      if (!field.isFilterEnabled()) {
-        continue;
-      }
+      // Owned regardless of the field's current Wirkstelle: the managed set is what a rewrite may
+      // remove, so a field that stopped filtering loses its keys on the next rewrite instead of
+      // leaving a stale "has a value" marker behind that a later filter would exclude the document
+      // by. Only a filterable field ever gets a value written.
       managed.add(field.chunkKey());
       managed.add(LibraryMetadataFieldKeys.precisionChunkKey(field.getFieldKey()));
       managed.add(LibraryMetadataFieldKeys.presenceChunkKey(field.getFieldKey()));
       DocumentMetadataValue row = byKey.get(field.documentFieldKey());
-      if (row == null || row.getState() != MetadataValueState.SET) {
+      if (!field.isFilterEnabled() || row == null || row.getState() != MetadataValueState.SET) {
         continue;
       }
       if (row.getDateValue() != null) {

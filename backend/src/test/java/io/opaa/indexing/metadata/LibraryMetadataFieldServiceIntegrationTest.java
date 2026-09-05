@@ -23,6 +23,8 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.organization.Organization;
+import io.opaa.query.MetadataFilterOptions;
+import io.opaa.query.MetadataFilterOptionsService;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import io.opaa.test.OpaaIndexingTestDirectory;
 import java.io.IOException;
@@ -30,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -63,6 +66,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private LibraryAccessService accessService;
+  @Autowired private MetadataFilterOptionsService filterOptionsService;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private KnowledgeLibrary library;
@@ -290,6 +294,142 @@ class LibraryMetadataFieldServiceIntegrationTest {
     assertThat(citationReader.forDocuments(List.of(document)).get(document.getId()))
         .extracting(CitationFieldValue::fieldKey)
         .containsExactly("lib:fassung");
+  }
+
+  /**
+   * The chunk keys of a field are owned by every rewrite, not only while the field filters: a field
+   * that lost its Wirkstelle - or was deleted and re-created under the same key - must leave no
+   * "has a value" marker behind, or a later filter would exclude a document that carries no value
+   * at all, against the Leerwert rule.
+   */
+  @Test
+  void aFieldThatStopsFilteringLosesItsChunkKeysAndANewFieldOfTheSameKeyStartsClean()
+      throws IOException {
+    fieldService.createField(
+        library.getId(),
+        input("fassung", LibraryMetadataFieldType.SELECT, true, false, null),
+        owner);
+    Document document = indexed("satzung.pdf");
+    setLibraryValue(document, "A");
+    assertThat(chunkMetadata(document.getId()))
+        .allSatisfy(metadata -> assertThat(metadata).containsKey("lfs_fassung"));
+
+    fieldService.updateField(library.getId(), "fassung", "Fassung", false, true, null, owner);
+    assertThat(chunkMetadata(document.getId()))
+        .as("a field that no longer filters leaves no key on the chunks")
+        .allSatisfy(
+            metadata ->
+                assertThat(metadata)
+                    .doesNotContainKey("lf_fassung")
+                    .doesNotContainKey("lfs_fassung"));
+
+    fieldService.deleteField(library.getId(), "fassung", owner);
+    fieldService.createField(
+        library.getId(),
+        input("fassung", LibraryMetadataFieldType.SELECT, true, false, null),
+        owner);
+
+    assertThat(chunkMetadata(document.getId()))
+        .as("the document carries no value for the new field and no leftover marker either")
+        .allSatisfy(
+            metadata ->
+                assertThat(metadata)
+                    .doesNotContainKey("lf_fassung")
+                    .doesNotContainKey("lfs_fassung"));
+  }
+
+  /**
+   * The management right is no trust boundary - every user may create a library and owns it - so a
+   * field pattern is user input. A pattern whose evaluation explodes is refused where it is written
+   * instead of binding a request thread when a value is set; every value check runs under the same
+   * step budget, which is what bounds the patterns a probe would miss.
+   */
+  @Test
+  void aPatternWithCatastrophicBacktrackingIsRefused() {
+    assertThatThrownBy(
+            () ->
+                fieldService.createField(
+                    library.getId(),
+                    new LibraryMetadataFieldInput(
+                        "aktenzeichen",
+                        "Aktenzeichen",
+                        LibraryMetadataFieldType.PATTERN,
+                        "(.*a){20}b",
+                        true,
+                        false,
+                        null,
+                        List.of()),
+                    owner))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("aufwendig");
+
+    // A linear pattern of the same shape stays usable.
+    assertThat(
+            fieldService
+                .createField(
+                    library.getId(),
+                    new LibraryMetadataFieldInput(
+                        "aktenzeichen",
+                        "Aktenzeichen",
+                        LibraryMetadataFieldType.PATTERN,
+                        "^AZ-[0-9]{1,6}$",
+                        true,
+                        false,
+                        null,
+                        List.of()),
+                    owner)
+                .field()
+                .getValuePattern())
+        .isEqualTo("^AZ-[0-9]{1,6}$");
+  }
+
+  /**
+   * The filter options are derived from the schema, so a schema change has to reach them - the
+   * per-person cache would otherwise offer a removed value (400 when chosen) or hide a new field
+   * for up to its TTL.
+   */
+  @Test
+  void aSchemaChangeReachesTheFilterOptionsImmediately() throws IOException {
+    Document document = indexed("satzung.pdf");
+    assertThat(
+            filterOptionsService
+                .optionsForScope(viewer.id(), Set.of(library.getId()))
+                .libraryFields())
+        .isEmpty();
+
+    fieldService.createField(
+        library.getId(),
+        input("fassung", LibraryMetadataFieldType.SELECT, true, false, null),
+        owner);
+    setLibraryValue(document, "A");
+
+    assertThat(
+            filterOptionsService
+                .optionsForScope(viewer.id(), Set.of(library.getId()))
+                .libraryFields())
+        .as("a freshly defined field is offered without waiting for the cache to expire")
+        .extracting(MetadataFilterOptions.LibraryFieldOption::fieldKey)
+        .containsExactly("fassung");
+    assertThat(
+            filterOptionsService
+                .optionsForScope(viewer.id(), Set.of(library.getId()))
+                .libraryFields()
+                .getFirst()
+                .values())
+        .extracting(MetadataFilterOptions.LibraryFieldValueOption::code)
+        .containsExactly("A");
+
+    fieldService.remapValue(library.getId(), "fassung", "A", "B", owner);
+
+    assertThat(
+            filterOptionsService
+                .optionsForScope(viewer.id(), Set.of(library.getId()))
+                .libraryFields()
+                .getFirst()
+                .values())
+        .as("the removed value is gone from the offered values right away")
+        .extracting(MetadataFilterOptions.LibraryFieldValueOption::code)
+        .containsExactly("B");
   }
 
   private LibraryMetadataFieldInput input(

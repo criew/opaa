@@ -89,6 +89,9 @@ databaseChangeLog:
               CREATE UNIQUE INDEX uk_library_metadata_field_values_code
                   ON public.library_metadata_field_values USING btree (field_id, code);
 
+              ALTER TABLE public.library_metadata_field_values
+                  ADD CONSTRAINT uk_library_metadata_field_values_id_field UNIQUE (id, field_id);
+
               ALTER TABLE public.document_metadata_values
                   ADD COLUMN library_field_id uuid,
                   ADD COLUMN library_value_id uuid;
@@ -98,8 +101,9 @@ databaseChangeLog:
                       FOREIGN KEY (library_field_id)
                       REFERENCES public.library_metadata_fields(id) ON DELETE CASCADE,
                   ADD CONSTRAINT fk_document_metadata_values_library_value
-                      FOREIGN KEY (library_value_id)
-                      REFERENCES public.library_metadata_field_values(id) ON DELETE RESTRICT,
+                      FOREIGN KEY (library_value_id, library_field_id)
+                      REFERENCES public.library_metadata_field_values(id, field_id)
+                      ON DELETE RESTRICT,
                   ADD CONSTRAINT chk_document_metadata_values_library_field
                       CHECK (((library_field_id IS NOT NULL) = (field_key LIKE 'lib:%'))),
                   ADD CONSTRAINT chk_document_metadata_values_library_value

@@ -1,6 +1,7 @@
 package io.opaa.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.DatePrecision;
 import io.opaa.indexing.metadata.LibraryFieldCondition;
@@ -86,19 +87,47 @@ class LibraryFieldFilterExpressionsTest {
         .contains(DatePrecision.YEAR.name(), "2024-01-01", "2024-06-15", "2024-08-31");
   }
 
+  /**
+   * jsonpath binds {@code &&} tighter than {@code ||}. A library-field condition sits beside other
+   * conditions, so its own OR-chain must be bracketed as a whole: unbracketed, {@code (typ) && a ||
+   * b || c} would let a document without a value for the library field slip past the Dokumentart
+   * condition. Asserted with a second condition beside it, because {@code subordinateTo} brackets
+   * the metadata expression as a whole and would hide a missing inner group on its own.
+   */
   @Test
-  void thePermissionFilterStaysTheOuterOperandOfTheWholeLibraryFieldCondition() {
+  void aLibraryFieldConditionIsBracketedBesideAnotherCondition() {
     MetadataFilter filter =
-        MetadataFilter.NONE.withLibraryFields(
-            List.of(LibraryFieldCondition.ofCodes(LIBRARY_ID, "fassung", List.of("A"))));
+        MetadataFilter.ofDocumentTypes(List.of("VERMERK"))
+            .withLibraryFields(
+                List.of(LibraryFieldCondition.ofCodes(LIBRARY_ID, "fassung", List.of("A"))));
     Filter.Expression combined =
         MetadataFilterExpressions.subordinateTo(
-            LIBRARY_FILTER, MetadataFilterExpressions.vectorExpression(filter, VOCABULARY));
+            LIBRARY_FILTER,
+            MetadataFilterExpressions.vectorExpression(
+                filter, List.of("VERMERK", "PROTOKOLL", "SATZUNG_ORDNUNG")));
 
     assertThat(combined.type()).isEqualTo(Filter.ExpressionType.AND);
     assertThat(combined.left()).isSameAs(LIBRARY_FILTER);
-    // jsonpath binds && tighter than ||, so the whole OR-condition must be bracketed - otherwise
-    // the permission filter would only tie to its first branch.
-    assertThat(jsonPath(combined)).contains("&& (");
+    String rendered = jsonPath(combined);
+    // The library-field OR-chain follows the Dokumentart term behind a "&& (" that opens its own
+    // group. Without the inner group the converter would render "… && !($.library_id == …) || …",
+    // and a document without a value for the library field would slip past the Dokumentart
+    // condition entirely.
+    assertThat(rendered)
+        .as("the whole library-field condition is one bracketed operand: %s", rendered)
+        .contains("&& (!(")
+        .doesNotContain("&& !(");
+  }
+
+  /** Two conditions on the same field would only ever contradict each other - rejected (400). */
+  @Test
+  void twoConditionsOnTheSameFieldAreRejected() {
+    assertThatThrownBy(
+            () ->
+                MetadataFilter.NONE.withLibraryFields(
+                    List.of(
+                        LibraryFieldCondition.ofCodes(LIBRARY_ID, "fassung", List.of("A")),
+                        LibraryFieldCondition.ofCodes(LIBRARY_ID, "fassung", List.of("B")))))
+        .isInstanceOf(io.opaa.common.ValidationException.class);
   }
 }

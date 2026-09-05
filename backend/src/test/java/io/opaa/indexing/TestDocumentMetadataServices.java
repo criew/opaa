@@ -1,13 +1,14 @@
 package io.opaa.indexing;
 
 import io.opaa.indexing.metadata.CoreMetadata;
+import io.opaa.indexing.metadata.DocumentChunkMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
 import org.mockito.Mockito;
 
 /**
  * A {@link DocumentMetadataService} stand-in for the mock-based {@code FileProcessingService}
- * tests: every extraction answers {@link CoreMetadata#EMPTY} instead of Mockito's {@code null}, so
- * {@code storeChunks} sees the same shape it sees for a document without core fields.
+ * tests: every extraction answers the empty shape instead of Mockito's {@code null}, so {@code
+ * storeChunks} sees what it sees for a document without any schema values.
  */
 public final class TestDocumentMetadataServices {
 
@@ -16,9 +17,15 @@ public final class TestDocumentMetadataServices {
   public static DocumentMetadataService returningEmpty() {
     return Mockito.mock(
         DocumentMetadataService.class,
-        invocation ->
-            invocation.getMethod().getReturnType() == CoreMetadata.class
-                ? CoreMetadata.EMPTY
-                : Mockito.RETURNS_DEFAULTS.answer(invocation));
+        invocation -> {
+          Class<?> returnType = invocation.getMethod().getReturnType();
+          if (returnType == CoreMetadata.class) {
+            return CoreMetadata.EMPTY;
+          }
+          if (returnType == DocumentChunkMetadata.class) {
+            return DocumentChunkMetadata.EMPTY;
+          }
+          return Mockito.RETURNS_DEFAULTS.answer(invocation);
+        });
   }
 }

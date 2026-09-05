@@ -3,7 +3,8 @@ package io.opaa.query;
 import io.opaa.chat.ChatService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.metadata.DocumentMetadataService;
-import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.indexing.metadata.LibraryCitationMetadataReader;
+import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
@@ -47,7 +48,8 @@ public record QueryServiceDependencies(
     KnowledgeLibraryRepository knowledgeLibraryRepository,
     RerankModelRole rerankModelRole,
     DocumentMetadataService documentMetadataService,
-    DocumentTypeVocabularyRepository vocabularyRepository) {
+    MetadataFilterValidator metadataFilterValidator,
+    LibraryCitationMetadataReader citationMetadataReader) {
 
   public static QueryServiceDependencies fromContext(ApplicationContext context) {
     return new QueryServiceDependencies(
@@ -64,7 +66,8 @@ public record QueryServiceDependencies(
         context.getBean(KnowledgeLibraryRepository.class),
         context.getBean(RerankModelRole.class),
         context.getBean(DocumentMetadataService.class),
-        context.getBean(DocumentTypeVocabularyRepository.class));
+        context.getBean(MetadataFilterValidator.class),
+        context.getBean(LibraryCitationMetadataReader.class));
   }
 
   public QueryService buildQueryService(QueryProperties queryProperties) {
@@ -83,6 +86,7 @@ public record QueryServiceDependencies(
         knowledgeLibraryRepository,
         rerankModelRole,
         documentMetadataService,
-        vocabularyRepository);
+        metadataFilterValidator,
+        citationMetadataReader);
   }
 }

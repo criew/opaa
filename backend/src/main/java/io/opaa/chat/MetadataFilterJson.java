@@ -47,7 +47,11 @@ final class MetadataFilterJson {
       entry.put("value", condition.value());
       libraryFields.add(entry);
     }
-    json.put("libraryFields", libraryFields);
+    if (!libraryFields.isEmpty()) {
+      // Omitted when empty, so a filter on core fields alone keeps the exact shape it had before
+      // #1071 - a stored row written by an older release reads back identically either way.
+      json.put("libraryFields", libraryFields);
+    }
     return MAPPER.writeValueAsString(json);
   }
 

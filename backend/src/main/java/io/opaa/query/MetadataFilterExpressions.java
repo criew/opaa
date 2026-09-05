@@ -288,8 +288,10 @@ public final class MetadataFilterExpressions {
     Object libraryId = metadata.get(VectorChunkStore.LIBRARY_ID_METADATA_KEY);
     for (LibraryFieldCondition condition : filter.libraryFields()) {
       if (libraryId == null || !condition.libraryId().toString().equals(libraryId.toString())) {
-        // A document of another library carries no value for this field at all.
-        return true;
+        // A document of another library was never in this field's scope: it is neither matched nor
+        // "kept without a value", and counting it as the latter would inflate the protocol note
+        // with every document the condition was never about.
+        continue;
       }
       if (metadata.get(LibraryMetadataFieldKeys.presenceChunkKey(condition.fieldKey())) == null) {
         return true;

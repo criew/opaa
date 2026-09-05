@@ -42,8 +42,16 @@ public interface DocumentMetadataValueRepository
   List<UUID> findDocumentIdsByLibraryValueId(
       @Param("libraryValueId") UUID libraryValueId, Pageable pageable);
 
-  /** Every stored value of one library field - what deleting the field removes. */
-  List<DocumentMetadataValue> findByLibraryFieldId(UUID libraryFieldId);
+  /**
+   * The documents carrying a value of {@code libraryFieldId}, in stable id order and in pages - the
+   * selection of the two schema cleanup runs (field deletion, chunk rewrite after a Wirkstelle
+   * change), which page like the value mapping rather than loading a whole library's rows at once.
+   */
+  @Query(
+      "select v.documentId from DocumentMetadataValue v where v.libraryFieldId = :libraryFieldId"
+          + " order by v.documentId")
+  List<UUID> findDocumentIdsByLibraryFieldId(
+      @Param("libraryFieldId") UUID libraryFieldId, Pageable pageable);
 
   /**
    * The values of {@code fieldKey} at least one document of the scope carries, with their document

@@ -1909,6 +1909,52 @@ export const handlers = [
     return HttpResponse.json(field, { status: 201 })
   }),
 
+  http.put(
+    '/api/v1/libraries/:libraryId/metadata-fields/:fieldKey',
+    async ({ params, request }) => {
+      const body = (await request.json()) as {
+        label: string
+        filter?: boolean
+        contextPrefix?: boolean
+        citationPosition?: number | null
+      }
+      const field = (mockLibraryMetadataFields[String(params.libraryId)] ?? []).find(
+        (candidate) => candidate.fieldKey === String(params.fieldKey),
+      )
+      if (!field) {
+        return HttpResponse.json({ error: 'Metadatenfeld nicht gefunden' }, { status: 404 })
+      }
+      if (!body.filter && !body.contextPrefix) {
+        return HttpResponse.json(
+          { error: 'Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken' },
+          { status: 400 },
+        )
+      }
+      field.label = body.label
+      field.filter = body.filter ?? false
+      field.contextPrefix = body.contextPrefix ?? false
+      field.citationPosition = body.citationPosition ?? null
+      return HttpResponse.json(field)
+    },
+  ),
+
+  http.patch(
+    '/api/v1/libraries/:libraryId/metadata-fields/:fieldKey/values/:code',
+    async ({ params, request }) => {
+      const body = (await request.json()) as { label: string }
+      const field = (mockLibraryMetadataFields[String(params.libraryId)] ?? []).find(
+        (candidate) => candidate.fieldKey === String(params.fieldKey),
+      )
+      if (!field) {
+        return HttpResponse.json({ error: 'Metadatenfeld nicht gefunden' }, { status: 404 })
+      }
+      field.values = field.values.map((value) =>
+        value.code === String(params.code) ? { ...value, label: body.label } : value,
+      )
+      return HttpResponse.json(field)
+    },
+  ),
+
   http.delete('/api/v1/libraries/:libraryId/metadata-fields/:fieldKey', ({ params }) => {
     const libraryId = String(params.libraryId)
     const fields = mockLibraryMetadataFields[libraryId] ?? []

@@ -24,7 +24,9 @@ import {
   getLibraryMetadataFieldUsage,
   getLibraryMetadataFieldValueUsage,
   listLibraryMetadataFields,
+  relabelLibraryMetadataFieldValue,
   remapLibraryMetadataFieldValue,
+  updateLibraryMetadataField,
 } from '../../services/api'
 import type { LibraryMetadataFieldResponse, LibraryMetadataFieldType } from '../../types/api'
 
@@ -70,6 +72,8 @@ export default function LibraryMetadataFieldsSection({
   const [remapTarget, setRemapTarget] = useState<string>('')
   const [deleteField, setDeleteField] = useState<LibraryMetadataFieldResponse | null>(null)
   const [deleteUsage, setDeleteUsage] = useState<number | null>(null)
+  const [editField, setEditField] = useState<LibraryMetadataFieldResponse | null>(null)
+  const [valueLabel, setValueLabel] = useState('')
 
   const reload = useCallback(async () => {
     try {
@@ -107,6 +111,7 @@ export default function LibraryMetadataFieldsSection({
     setRemapCode(code)
     setRemapTarget('')
     setRemapUsage(null)
+    setValueLabel(field.values.find((value) => value.code === code)?.label ?? '')
     try {
       const usage = await getLibraryMetadataFieldValueUsage(libraryId, field.fieldKey, code)
       setRemapUsage(usage.documentCount)
@@ -132,6 +137,21 @@ export default function LibraryMetadataFieldsSection({
       onFieldsChanged?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Die Abbildung ist fehlgeschlagen')
+    }
+  }
+
+  async function saveValueLabel() {
+    if (!remapField || !remapCode) return
+    try {
+      await relabelLibraryMetadataFieldValue(libraryId, remapField.fieldKey, remapCode, valueLabel)
+      setRemapField(null)
+      setRemapCode(null)
+      await reload()
+      onFieldsChanged?.()
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Die Bezeichnung konnte nicht geändert werden',
+      )
     }
   }
 
@@ -201,7 +221,21 @@ export default function LibraryMetadataFieldsSection({
                   <Chip key={chip} size="small" label={chip} />
                 ))}
                 {canManageSchema && (
-                  <Button size="small" color="error" onClick={() => void openDelete(field)}>
+                  <Button
+                    size="small"
+                    onClick={() => setEditField(field)}
+                    aria-label={`Feld ${field.label} bearbeiten`}
+                  >
+                    Bearbeiten
+                  </Button>
+                )}
+                {canManageSchema && (
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => void openDelete(field)}
+                    aria-label={`Feld ${field.label} löschen`}
+                  >
                     Löschen
                   </Button>
                 )}
@@ -219,13 +253,12 @@ export default function LibraryMetadataFieldsSection({
                       size="small"
                       variant="outlined"
                       label={`${value.label} (${value.code})`}
-                      onDelete={
+                      clickable={canManageSchema}
+                      onClick={
                         canManageSchema ? () => void openRemap(field, value.code) : undefined
                       }
-                      deleteIcon={
-                        <span role="button" aria-label={`Wert ${value.label} entfernen`}>
-                          ×
-                        </span>
+                      aria-label={
+                        canManageSchema ? `Wert ${value.label} bearbeiten` : undefined
                       }
                     />
                   ))}
@@ -257,8 +290,20 @@ export default function LibraryMetadataFieldsSection({
       />
 
       <Dialog open={remapField != null} onClose={() => setRemapField(null)} fullWidth maxWidth="sm">
-        <DialogTitle>Wert entfernen</DialogTitle>
+        <DialogTitle>Wert bearbeiten</DialogTitle>
         <DialogContent>
+          <Stack direction="row" spacing={1} sx={{ mb: 2, mt: 1, alignItems: 'flex-start' }}>
+            <TextField
+              size="small"
+              fullWidth
+              label="Bezeichnung"
+              helperText="Der Code bleibt; eine Bezeichnung zu korrigieren hat keine Rückwirkung."
+              value={valueLabel}
+              onChange={(e) => setValueLabel(e.target.value)}
+            />
+            <Button onClick={() => void saveValueLabel()}>Bezeichnung speichern</Button>
+          </Stack>
+          <Divider sx={{ mb: 2 }} />
           <Typography variant="body2" sx={{ mb: 2 }}>
             {remapUsage == null
               ? 'Betroffene Dokumente werden ermittelt …'
@@ -294,6 +339,18 @@ export default function LibraryMetadataFieldsSection({
           </Button>
         </DialogActions>
       </Dialog>
+
+      <EditFieldDialog
+        libraryId={libraryId}
+        field={editField}
+        onClose={() => setEditField(null)}
+        onSaved={() => {
+          setEditField(null)
+          void reload()
+          onFieldsChanged?.()
+        }}
+        onError={setError}
+      />
 
       <Dialog open={deleteField != null} onClose={() => setDeleteField(null)}>
         <DialogTitle>Feld löschen</DialogTitle>
@@ -524,6 +581,109 @@ function CreateFieldDialog({
         <Button onClick={onClose}>Abbrechen</Button>
         <Button variant="contained" disabled={noEffect} onClick={() => void submit()}>
           Anlegen
+        </Button>
+      </DialogActions>
+    </Dialog>
+  )
+}
+
+/**
+ * Label, Wirkstellen and citation position of an existing field. Type, key and value list stay -
+ * the type is what every stored value was checked against, and the value list has its own
+ * operations with the confirmed mapping.
+ */
+function EditFieldDialog({
+  libraryId,
+  field,
+  onClose,
+  onSaved,
+  onError,
+}: {
+  libraryId: string
+  field: LibraryMetadataFieldResponse | null
+  onClose: () => void
+  onSaved: () => void
+  onError: (message: string) => void
+}) {
+  const [label, setLabel] = useState('')
+  const [filter, setFilter] = useState(false)
+  const [contextPrefix, setContextPrefix] = useState(false)
+  const [citationPosition, setCitationPosition] = useState('')
+
+  useEffect(() => {
+    if (field === null) return
+    setLabel(field.label)
+    setFilter(field.filter)
+    setContextPrefix(field.contextPrefix)
+    setCitationPosition(field.citationPosition == null ? '' : String(field.citationPosition))
+  }, [field])
+
+  const noEffect = !filter && !contextPrefix
+
+  async function submit() {
+    if (!field) return
+    try {
+      await updateLibraryMetadataField(libraryId, field.fieldKey, {
+        label,
+        filter,
+        contextPrefix,
+        citationPosition: citationPosition === '' ? null : Number(citationPosition),
+      })
+      onSaved()
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Das Feld konnte nicht geändert werden')
+    }
+  }
+
+  return (
+    <Dialog open={field !== null} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>Metadatenfeld bearbeiten</DialogTitle>
+      <DialogContent>
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          <TextField
+            size="small"
+            label="Feldname"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+          />
+          <FormControlLabel
+            control={<Checkbox checked={filter} onChange={(e) => setFilter(e.target.checked)} />}
+            label="Wirkt im Filter"
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={contextPrefix}
+                onChange={(e) => setContextPrefix(e.target.checked)}
+              />
+            }
+            label="Wirkt im Kontextpräfix"
+          />
+          <FormControl fullWidth size="small">
+            <InputLabel id="edit-citation-position-label">Zitierposition</InputLabel>
+            <Select
+              labelId="edit-citation-position-label"
+              label="Zitierposition"
+              value={citationPosition}
+              onChange={(e) => setCitationPosition(e.target.value)}
+            >
+              <MenuItem value="">nicht in der Belegzeile</MenuItem>
+              <MenuItem value="1">1</MenuItem>
+              <MenuItem value="2">2</MenuItem>
+            </Select>
+          </FormControl>
+          {noEffect && (
+            <Alert severity="warning">
+              Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken; „nur Beleg-Anzeige“
+              genügt nicht.
+            </Alert>
+          )}
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Abbrechen</Button>
+        <Button variant="contained" disabled={noEffect} onClick={() => void submit()}>
+          Speichern
         </Button>
       </DialogActions>
     </Dialog>

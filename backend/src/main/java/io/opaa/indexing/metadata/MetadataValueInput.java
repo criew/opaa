@@ -6,8 +6,6 @@ import io.opaa.common.ValidationException;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 /**
  * The value a person sets for one core field (#1068): either a value - exactly one of {@code
@@ -162,7 +160,8 @@ public record MetadataValueInput(
                   + MAX_LIBRARY_TEXT_LENGTH
                   + " Zeichen lang sein");
         }
-        if (!compile(field).matcher(value).matches()) {
+        if (!BoundedRegex.matchesWithinBudget(
+            BoundedRegex.compile(field), value, field.getLabel())) {
           throw new ValidationException(
               "Der Wert „"
                   + value
@@ -175,20 +174,6 @@ public record MetadataValueInput(
         yield text(value);
       }
     };
-  }
-
-  /**
-   * The field's pattern, anchored by {@code matches()}. A stored pattern that no longer compiles is
-   * a validation error rather than a 500 - the field is unusable until corrected, and no value gets
-   * through unchecked.
-   */
-  private static Pattern compile(LibraryMetadataField field) {
-    try {
-      return Pattern.compile(field.getValuePattern());
-    } catch (PatternSyntaxException e) {
-      throw new ValidationException(
-          "Das Muster des Feldes " + field.getLabel() + " ist ungültig: " + e.getDescription());
-    }
   }
 
   private static void requireLibraryOnly(

@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -75,6 +76,7 @@ public class LibraryMetadataFieldService {
   private final DocumentMetadataService metadataService;
   private final DocumentMetadataCorrectionService correctionService;
   private final DocumentTypeVocabularyRepository vocabularyRepository;
+  private final ApplicationEventPublisher eventPublisher;
 
   public LibraryMetadataFieldService(
       KnowledgeLibraryRepository libraryRepository,
@@ -85,7 +87,8 @@ public class LibraryMetadataFieldService {
       DocumentRepository documentRepository,
       DocumentMetadataService metadataService,
       DocumentMetadataCorrectionService correctionService,
-      DocumentTypeVocabularyRepository vocabularyRepository) {
+      DocumentTypeVocabularyRepository vocabularyRepository,
+      ApplicationEventPublisher eventPublisher) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
     this.fieldRepository = fieldRepository;
@@ -95,6 +98,7 @@ public class LibraryMetadataFieldService {
     this.metadataService = metadataService;
     this.correctionService = correctionService;
     this.vocabularyRepository = vocabularyRepository;
+    this.eventPublisher = eventPublisher;
   }
 
   /** The library's fields with their configured value lists; readable with {@code VIEWER}. */
@@ -180,6 +184,7 @@ public class LibraryMetadataFieldService {
     } else if (!input.values().isEmpty()) {
       throw new ValidationException("Nur ein Auswahlfeld führt eine Werteliste");
     }
+    schemaChanged(library);
     return new LibraryMetadataFieldDefinition(field, values);
   }
 
@@ -212,6 +217,7 @@ public class LibraryMetadataFieldService {
       // them, one that started filtering must gain them on the documents that carry a value.
       rewriteChunksOf(field);
     }
+    schemaChanged(library);
     return new LibraryMetadataFieldDefinition(field, valuesOfField(field.getId()));
   }
 
@@ -232,14 +238,42 @@ public class LibraryMetadataFieldService {
     KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.MANAGER);
     LibraryMetadataField field = requireField(library, fieldKey);
     MetadataFieldRef ref = MetadataFieldRef.of(field);
-    for (DocumentMetadataValue value :
-        documentValueRepository.findByLibraryFieldId(field.getId())) {
-      metadataService.deleteValue(value.getDocumentId(), ref);
-    }
+    // While the field still exists, its chunk keys are part of what a rewrite owns - so deleting
+    // the value of every document that carries one strips those keys along the way. Paged like the
+    // value mapping rather than loaded at once.
+    forEachDocumentWithAValue(
+        field, false, documentId -> metadataService.deleteValue(documentId, ref));
     valueRepository.deleteByFieldId(field.getId());
     fieldRepository.delete(field);
-    // The keys of the now unknown field are still on the chunks of documents that carried a value;
-    // deleteValue above already rewrote those, so nothing is left to strip here.
+    schemaChanged(library);
+  }
+
+  /**
+   * Every document carrying a value of {@code field}, in pages of {@link #REMAP_BATCH_SIZE} rather
+   * than in one list - the same memory bound the value mapping keeps.
+   *
+   * @param rowsSurvive whether {@code action} leaves the value row in place. It does for a chunk
+   *     rewrite, which then has to page forward; a deletion instead shrinks the selection, so the
+   *     next page is again the first one.
+   */
+  private void forEachDocumentWithAValue(
+      LibraryMetadataField field, boolean rowsSurvive, java.util.function.Consumer<UUID> action) {
+    int page = 0;
+    while (true) {
+      List<UUID> documentIds =
+          documentValueRepository.findDocumentIdsByLibraryFieldId(
+              field.getId(), PageRequest.of(page, REMAP_BATCH_SIZE));
+      if (documentIds.isEmpty()) {
+        return;
+      }
+      documentIds.forEach(action);
+      if (documentIds.size() < REMAP_BATCH_SIZE) {
+        return;
+      }
+      if (rowsSurvive) {
+        page++;
+      }
+    }
   }
 
   /** Adds one entry to a SELECT field's value list - no effect on any stored value, no Nachlauf. */
@@ -259,6 +293,7 @@ public class LibraryMetadataFieldService {
     valueRepository.save(
         new LibraryMetadataFieldValue(
             field.getId(), validCode, requireLabel(label, "Die Wertebezeichnung"), sortOrder));
+    schemaChanged(library);
     return new LibraryMetadataFieldDefinition(field, valuesOfField(field.getId()));
   }
 
@@ -274,6 +309,7 @@ public class LibraryMetadataFieldService {
     LibraryMetadataFieldValue value = requireValue(field, code);
     value.relabel(requireLabel(label, "Die Wertebezeichnung"));
     valueRepository.save(value);
+    schemaChanged(library);
     return new LibraryMetadataFieldDefinition(field, valuesOfField(field.getId()));
   }
 
@@ -346,7 +382,17 @@ public class LibraryMetadataFieldService {
     }
 
     valueRepository.delete(removed);
+    schemaChanged(library);
     return new LibraryFieldValueRemapResult(remapped, cleared, correlationRef);
+  }
+
+  /**
+   * Announces the schema change so every derived view is rebuilt - today the per-person filter
+   * options cache, whose entries would otherwise offer a removed value (or hide a new field) for up
+   * to its TTL. Published on the transaction, delivered after it completes.
+   */
+  private void schemaChanged(KnowledgeLibrary library) {
+    eventPublisher.publishEvent(new LibraryMetadataSchemaChanged(library.getId()));
   }
 
   /**
@@ -384,12 +430,13 @@ public class LibraryMetadataFieldService {
   }
 
   private void rewriteChunksOf(LibraryMetadataField field) {
-    for (DocumentMetadataValue value :
-        documentValueRepository.findByLibraryFieldId(field.getId())) {
-      documentRepository
-          .findById(value.getDocumentId())
-          .ifPresent(metadataService::rewriteChunkMetadata);
-    }
+    forEachDocumentWithAValue(
+        field,
+        true,
+        documentId ->
+            documentRepository
+                .findById(documentId)
+                .ifPresent(metadataService::rewriteChunkMetadata));
   }
 
   private List<LibraryMetadataFieldDefinition> definitionsOf(UUID libraryId) {
@@ -539,11 +586,16 @@ public class LibraryMetadataFieldService {
     if (value.length() > 200) {
       throw new ValidationException("Das Muster darf höchstens 200 Zeichen lang sein");
     }
+    Pattern compiled;
     try {
-      Pattern.compile(value);
+      compiled = Pattern.compile(value);
     } catch (PatternSyntaxException e) {
       throw new ValidationException("Das Muster ist ungültig: " + e.getDescription());
     }
+    // The management right is no trust boundary - every user may create a library and owns it - so
+    // a pattern is user input and is refused here if it cannot be evaluated within the step budget
+    // (BoundedRegex). Every value check runs under the same budget.
+    BoundedRegex.requireEvaluableWithinBudget(value, compiled);
     return value;
   }
 }

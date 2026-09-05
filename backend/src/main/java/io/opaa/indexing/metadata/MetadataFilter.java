@@ -41,6 +41,15 @@ public record MetadataFilter(
         libraryFields == null
             ? List.of()
             : libraryFields.stream().filter(condition -> !condition.isEmpty()).toList();
+    // One condition per field: two of them would be AND-ed and could only ever contradict each
+    // other, which reads to the asking person like "the filter found nothing".
+    java.util.Set<String> seen = new java.util.HashSet<>();
+    for (LibraryFieldCondition condition : libraryFields) {
+      if (!seen.add(condition.libraryId() + "/" + condition.fieldKey())) {
+        throw new ValidationException(
+            "Für das Feld " + condition.fieldKey() + " steht mehr als eine Bedingung im Filter");
+      }
+    }
     if (documentDateFrom != null
         && documentDateTo != null
         && documentDateTo.isBefore(documentDateFrom)) {
