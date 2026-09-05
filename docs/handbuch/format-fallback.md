@@ -53,8 +53,8 @@ Die Ortsangabe wird nachträglich aus dem flachen Text rekonstruiert:
 Die Ortsangabe beschreibt den Beginn des Chunks vor der Überlappung. Die Seitenmarker werden
 vor dem Speichern und Embedden wieder entfernt.
 
-**Dokumenteigenschaften:** keine. Für `.txt` und `.doc` stehen dem Metadatenschema nur
-Dateiname und Struktur zur Verfügung.
+**Dokumenteigenschaften:** nur die erste Textzeile als Titelzeile. Für `.txt` und `.doc` stehen
+dem [Metadatenschema](metadaten.md) sonst nur Dateiname und Struktur zur Verfügung.
 
 ## 5. Scans und Fehler
 

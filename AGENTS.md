@@ -282,7 +282,7 @@ wiederkehrende Quelle verlorener Wartezeit erwiesen.
 - `docs/AGENT-ORGANIZATION.md` — Agenten-Rollen, Idee-bis-Merge-Workflow und Kollaborationsregeln
 - `docs/decisions/` — Architecture Decision Records (ADRs), u. a. [ADR-0021](docs/decisions/0021-single-instance-betrieb.md) zur Single-Instance-Annahme des Backends
 - `docs/features/` — Feature-Spezifikationen
-- `docs/handbuch/` — Betriebshandbücher des gebauten Produkts (`deployment.md`, `confluence.md`)
+- `docs/handbuch/` — Produkthandbuch des gebauten Ist-Stands (`deployment.md`, `indexierung.md` mit je einem Kapitel pro Konnektor und Format, `metadaten.md`); Regeln der Kapitel in Issue #1282
 - `.github/ISSUE_TEMPLATE/` — Issue-Templates
 - `.github/PULL_REQUEST_TEMPLATE.md` — PR-Template
 - `CONTRIBUTING.md` — Leitfaden für Beitragende
