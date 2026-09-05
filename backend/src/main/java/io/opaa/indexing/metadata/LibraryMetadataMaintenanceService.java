@@ -1,15 +1,13 @@
 package io.opaa.indexing.metadata;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.api.types.DocumentStatus;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
-import io.opaa.indexing.DocumentRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import java.util.ArrayList;
-import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -17,32 +15,33 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The Pflege-Anker per library and core field (metadata-schema.md "Der Pflege-Anker"): "N Dokumente
- * ohne Wert", absolute and as a share of the library's indexed bestand. Reading it needs no more
- * than the right to read the library ({@link AssetRole#VIEWER}) - whoever knows the bestand should
- * see its gaps, while correcting a value stays behind the editing right.
+ * The Pflege-Anker per library and field (metadata-schema.md "Der Pflege-Anker"): "N Dokumente ohne
+ * Wert", absolute and as a share of the library's indexed bestand, for the three core fields and
+ * for the library's own fields alike. Reading it needs no more than the right to read the library
+ * ({@link AssetRole#VIEWER}) - whoever knows the bestand should see its gaps, while correcting a
+ * value keeps the editing right of .
  *
- * <p>Every figure is counted when asked, over exactly the library the caller may read, and nothing
- * is stored or cached: an aggregate over documents only ever exists in the rights context of the
- * person asking (metadata-schema.md, Rechte-Invariante).
+ * <p>Every figure is counted when asked through {@link MetadataFillCounter}, over exactly the
+ * library the caller may read, and nothing is stored or cached: an aggregate over documents only
+ * ever exists in the rights context of the person asking (metadata-schema.md, Rechte-Invariante).
  */
 @Service
 public class LibraryMetadataMaintenanceService {
 
   private final KnowledgeLibraryRepository libraryRepository;
   private final LibraryAccessService accessService;
-  private final DocumentRepository documentRepository;
-  private final DocumentMetadataValueRepository valueRepository;
+  private final LibraryMetadataFieldRepository fieldRepository;
+  private final MetadataFillCounter fillCounter;
 
   public LibraryMetadataMaintenanceService(
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService accessService,
-      DocumentRepository documentRepository,
-      DocumentMetadataValueRepository valueRepository) {
+      LibraryMetadataFieldRepository fieldRepository,
+      MetadataFillCounter fillCounter) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
-    this.documentRepository = documentRepository;
-    this.valueRepository = valueRepository;
+    this.fieldRepository = fieldRepository;
+    this.fillCounter = fillCounter;
   }
 
   /**
@@ -59,28 +58,23 @@ public class LibraryMetadataMaintenanceService {
             .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
 
-    long total =
-        documentRepository.countByLibraryIdAndStatus(library.getId(), DocumentStatus.INDEXED);
-    Map<CoreMetadataField, Long> filled = new EnumMap<>(CoreMetadataField.class);
-    Map<CoreMetadataField, Long> notDeterminable = new EnumMap<>(CoreMetadataField.class);
-    for (DocumentMetadataValueRepository.FieldStateCount count :
-        valueRepository.countByFieldAndState(library.getId(), DocumentStatus.INDEXED)) {
-      CoreMetadataField.fromKey(count.getFieldKey())
-          .ifPresent(
-              field ->
-                  (count.getState() == MetadataValueState.NOT_DETERMINABLE
-                          ? notDeterminable
-                          : filled)
-                      .merge(field, count.getDocumentCount(), Long::sum));
-    }
-    List<MetadataFieldMaintenance> fields = new ArrayList<>();
+    Map<String, String> labelsByKey = new LinkedHashMap<>();
     for (CoreMetadataField field : CoreMetadataField.values()) {
-      fields.add(
-          new MetadataFieldMaintenance(
-              field,
-              total,
-              filled.getOrDefault(field, 0L),
-              notDeterminable.getOrDefault(field, 0L)));
+      labelsByKey.put(field.key(), field.label());
+    }
+    for (LibraryMetadataField field :
+        fieldRepository.findByLibraryIdOrderBySortOrderAscFieldKeyAsc(library.getId())) {
+      labelsByKey.put(field.documentFieldKey(), field.getLabel());
+    }
+    Map<String, MetadataFieldFill> fills =
+        fillCounter.countFor(library.getId(), List.copyOf(labelsByKey.keySet()));
+
+    long total =
+        fills.values().stream().findFirst().map(MetadataFieldFill::totalDocuments).orElse(0L);
+    List<MetadataFieldMaintenance> fields = new ArrayList<>();
+    for (Map.Entry<String, String> entry : labelsByKey.entrySet()) {
+      MetadataFieldFill fill = fills.getOrDefault(entry.getKey(), MetadataFieldFill.EMPTY);
+      fields.add(new MetadataFieldMaintenance(entry.getKey(), entry.getValue(), fill));
     }
     return new LibraryMetadataMaintenance(library.getId(), total, fields);
   }

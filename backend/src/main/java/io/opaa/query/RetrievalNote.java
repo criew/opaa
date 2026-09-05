@@ -21,6 +21,7 @@ enum RetrievalNote {
   METADATA_FILTER_DATE_WINDOW(
       "metadata filter: document date from %s to %s, a value counting for the whole span its"
           + " precision leaves open"),
+  METADATA_FILTER_LIBRARY_FIELD("metadata filter: library field %s of library %s %s"),
   METADATA_FILTER_SUBORDINATE(
       "metadata filter applied inside both search paths, AND-ed to the permission filter; a"
           + " document without a value for a filtered field is kept"),

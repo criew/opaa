@@ -32,6 +32,8 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.indexing.metadata.LibraryCitationMetadataReader;
+import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -136,7 +138,8 @@ class QueryServiceTest {
         knowledgeLibraryRepository,
         disabledRerankRole(),
         documentMetadataService,
-        mock(DocumentTypeVocabularyRepository.class));
+        mock(MetadataFilterValidator.class),
+        mock(LibraryCitationMetadataReader.class));
   }
 
   /**
@@ -2378,7 +2381,8 @@ class QueryServiceTest {
           knowledgeLibraryRepository,
           disabledRerankRole(),
           documentMetadataService,
-          mock(DocumentTypeVocabularyRepository.class));
+          mock(MetadataFilterValidator.class),
+          mock(LibraryCitationMetadataReader.class));
     }
 
     /**

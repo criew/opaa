@@ -5,8 +5,8 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationRepository;
@@ -85,7 +85,7 @@ public class ChatService {
   private final ObjectMapper objectMapper;
   private final ChatMessageWriter chatMessageWriter;
   private final ChatTitleGenerationService chatTitleGenerationService;
-  private final DocumentTypeVocabularyRepository vocabularyRepository;
+  private final MetadataFilterValidator metadataFilterValidator;
 
   public ChatService(
       ChatRepository chatRepository,
@@ -97,8 +97,8 @@ public class ChatService {
       ObjectMapper objectMapper,
       ChatMessageWriter chatMessageWriter,
       ChatTitleGenerationService chatTitleGenerationService,
-      DocumentTypeVocabularyRepository vocabularyRepository) {
-    this.vocabularyRepository = vocabularyRepository;
+      MetadataFilterValidator metadataFilterValidator) {
+    this.metadataFilterValidator = metadataFilterValidator;
     this.chatRepository = chatRepository;
     this.chatMessageRepository = chatMessageRepository;
     this.spaceRepository = spaceRepository;
@@ -135,18 +135,23 @@ public class ChatService {
             useKnowledge == null || useKnowledge,
             referencedLibraryIds);
     if (creation.getMetadataFilter() != null) {
-      chat.applyMetadataFilter(validatedMetadataFilter(creation.getMetadataFilter()));
+      chat.applyMetadataFilter(
+          validatedMetadataFilter(
+              creation.getMetadataFilter(), authorId, space.getOrganizationId()));
     }
     Chat saved = chatRepository.save(chat);
     return toConversation(saved);
   }
 
   /**
-   * A chat's filter is checked against the Dokumentart vocabulary when it is set, not when it is
-   * applied - a code no document can carry would otherwise sit silently on every later question.
+   * A chat's filter is checked against the schema when it is set, not when it is applied - a code
+   * no document can carry would otherwise sit silently on every later question. A library field is
+   * resolved within the author's readable libraries only ({@link MetadataFilterValidator}).
    */
-  private MetadataFilter validatedMetadataFilter(MetadataFilter filter) {
-    return filter.validatedAgainst(vocabularyRepository.snapshot());
+  private MetadataFilter validatedMetadataFilter(
+      MetadataFilter filter, UUID authorId, UUID organizationId) {
+    return metadataFilterValidator.validate(
+        filter, libraryAccessService.readableLibraryIds(authorId, organizationId));
   }
 
   @Transactional(readOnly = true)
@@ -178,7 +183,8 @@ public class ChatService {
     MetadataFilter metadataFilter =
         patch.getMetadataFilter() == null
             ? null
-            : validatedMetadataFilter(patch.getMetadataFilter());
+            : validatedMetadataFilter(
+                patch.getMetadataFilter(), authorId, chat.getOrganizationId());
     chat.applyUpdate(
         patch.getTitle(), patch.getUseKnowledge(), referencedLibraryIds, metadataFilter);
     return toConversation(chatRepository.save(chat));

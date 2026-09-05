@@ -2,6 +2,7 @@ package io.opaa.indexing.pipeline;
 
 import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
+import io.opaa.indexing.metadata.LibraryMetadataFieldKeys;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -76,15 +77,17 @@ public class DocumentPipelineRegistry {
         throw new IllegalStateException(
             "Document pipeline " + pipeline.id() + " returned null from passthroughMetadataKeys()");
       }
-      // The core-field keys hang on the document (ADR-0024, Entscheidung 5) and are written by
-      // FileProcessingService#storeChunks alone - a pipeline declaring one is a contract breach,
-      // caught at startup rather than silently winning on a chunk whose document has no value.
+      // The schema keys hang on the document (ADR-0024, Entscheidung 5;  for the library
+      // fields) and are written by FileProcessingService#storeChunks alone - a pipeline declaring
+      // one is a contract breach, caught at startup rather than silently winning on a chunk whose
+      // document has no value.
       for (String key : declared) {
-        if (CoreMetadataChunkKeys.ALL.contains(key)) {
+        if (CoreMetadataChunkKeys.ALL.contains(key)
+            || LibraryMetadataFieldKeys.isLibraryChunkKey(key)) {
           throw new IllegalStateException(
               "Document pipeline "
                   + pipeline.id()
-                  + " declares the document-level core metadata key "
+                  + " declares the document-level schema metadata key "
                   + key
                   + " as a passthrough key");
         }

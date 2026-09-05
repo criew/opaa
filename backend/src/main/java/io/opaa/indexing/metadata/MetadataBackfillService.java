@@ -5,6 +5,7 @@ import io.opaa.api.types.DocumentStatus;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentBatchLoop;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.StoredDocumentSourceAccess;
 import io.opaa.indexing.pipeline.DocumentProperties;
@@ -13,6 +14,7 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -43,17 +45,13 @@ public class MetadataBackfillService {
 
   private static final Logger log = LoggerFactory.getLogger(MetadataBackfillService.class);
 
-  /**
-   * Same bound as {@code PipelineReindexService}: how far past skipped candidates one call scans.
-   */
-  private static final int MAX_SKIP_SCAN_FACTOR = 10;
-
   private final JdbcTemplate jdbcTemplate;
   private final DocumentRepository documentRepository;
   private final KnowledgeLibraryRepository libraryRepository;
   private final DocumentMetadataService documentMetadataService;
   private final StoredDocumentSourceAccess sourceAccess;
   private final ChecksumService checksumService;
+  private final MetadataFillCounter fillCounter;
 
   /** Skipped count of the most recent call per library; process lifetime only (ADR-0021). */
   private final Map<UUID, Integer> lastSkippedByLibrary = new ConcurrentHashMap<>();
@@ -64,13 +62,15 @@ public class MetadataBackfillService {
       KnowledgeLibraryRepository libraryRepository,
       DocumentMetadataService documentMetadataService,
       StoredDocumentSourceAccess sourceAccess,
-      ChecksumService checksumService) {
+      ChecksumService checksumService,
+      MetadataFillCounter fillCounter) {
     this.jdbcTemplate = jdbcTemplate;
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
     this.documentMetadataService = documentMetadataService;
     this.sourceAccess = sourceAccess;
     this.checksumService = checksumService;
+    this.fillCounter = fillCounter;
   }
 
   /**
@@ -89,38 +89,17 @@ public class MetadataBackfillService {
     if (batchSize <= 0) {
       return MetadataBackfillResult.NOTHING_TO_DO;
     }
-    int processed = 0;
-    int marked = 0;
-    int skipped = 0;
-    int maxSkips = batchSize * MAX_SKIP_SCAN_FACTOR;
-
-    while (processed + marked < batchSize && skipped < maxSkips) {
-      List<UUID> candidates = selectPendingDocuments(library.getId(), batchSize, skipped);
-      if (candidates.isEmpty()) {
-        break;
-      }
-      boolean exhausted = true;
-      for (UUID documentId : candidates) {
-        if (processed + marked >= batchSize) {
-          exhausted = false;
-          break;
-        }
-        switch (advance(documentId)) {
-          case PROCESSED -> processed++;
-          case MARKED_FOR_NEXT_RUN -> marked++;
-          case SKIPPED -> skipped++;
-        }
-        if (skipped >= maxSkips) {
-          exhausted = false;
-          break;
-        }
-      }
-      if (exhausted && candidates.size() < batchSize) {
-        break;
-      }
-    }
+    Map<Advance, Integer> counts =
+        DocumentBatchLoop.run(
+            batchSize,
+            Advance.class,
+            Advance.SKIPPED,
+            (limit, offset) -> selectPendingDocuments(library.getId(), limit, offset),
+            this::advance);
+    int skipped = counts.get(Advance.SKIPPED);
     lastSkippedByLibrary.put(library.getId(), skipped);
-    return new MetadataBackfillResult(processed, marked, skipped);
+    return new MetadataBackfillResult(
+        counts.get(Advance.PROCESSED), counts.get(Advance.MARKED_FOR_NEXT_RUN), skipped);
   }
 
   private enum Advance {
@@ -253,70 +232,38 @@ public class MetadataBackfillService {
   }
 
   /**
-   * The extraction state of every library in {@code libraryIds}, from one grouped query over the
-   * {@code INDEXED} documents joined to their core-field rows (one row per document and field, so
-   * the joins never multiply). A library without indexed documents is absent from the result.
+   * The extraction state of every library in {@code libraryIds}: the version counts from one
+   * grouped query over the {@code INDEXED} documents, the per-field Füllstand from the one counter
+   * the Pflege-Anker shares ({@link MetadataFillCounter},). A library without indexed documents is
+   * absent from the result.
    */
   public Map<UUID, MetadataBackfillProgress> progressForLibraries(Collection<UUID> libraryIds) {
     if (libraryIds.isEmpty()) {
       return Map.of();
     }
-    CoreMetadataField[] fields = CoreMetadataField.values();
-    StringBuilder sql =
-        new StringBuilder(
-            "SELECT d.library_id, count(*) AS total, count(*) FILTER (WHERE"
-                + " d.metadata_extraction_version >= ?) AS current_count, count(*) FILTER (WHERE "
-                + pendingSql("d.")
-                + ") AS pending_count, count(*) FILTER (WHERE "
-                + pendingSql("d.")
-                + " AND NOT "
-                + advanceableSql("d.")
-                + ") AS awaiting_count");
-    List<Object> params = new ArrayList<>();
-    params.add(CoreMetadataExtractor.EXTRACTION_VERSION);
-    params.add(CoreMetadataExtractor.EXTRACTION_VERSION);
-    params.add(CoreMetadataExtractor.EXTRACTION_VERSION);
-    for (int i = 0; i < fields.length; i++) {
-      sql.append(", count(f")
-          .append(i)
-          .append(".document_id) FILTER (WHERE f")
-          .append(i)
-          .append(".value_state = 'SET') AS filled_")
-          .append(i)
-          .append(", count(f")
-          .append(i)
-          .append(".document_id) FILTER (WHERE f")
-          .append(i)
-          .append(".value_state = 'NOT_DETERMINABLE') AS undeterminable_")
-          .append(i);
-    }
-    sql.append(" FROM documents d");
-    for (int i = 0; i < fields.length; i++) {
-      sql.append(" LEFT JOIN document_metadata_values f")
-          .append(i)
-          .append(" ON f")
-          .append(i)
-          .append(".document_id = d.id AND f")
-          .append(i)
-          .append(".field_key = ?");
-      params.add(fields[i].key());
-    }
-    sql.append(" WHERE d.status = ? AND d.library_id IN (")
-        .append(libraryIds.stream().map(id -> "?").collect(Collectors.joining(", ")))
-        .append(") GROUP BY d.library_id");
-    params.add(DocumentStatus.INDEXED.name());
-    params.addAll(libraryIds);
+    List<String> fieldKeys =
+        Arrays.stream(CoreMetadataField.values()).map(CoreMetadataField::key).toList();
+    Map<UUID, Map<String, MetadataFieldFill>> fills = fillCounter.countFor(libraryIds, fieldKeys);
 
     Map<UUID, MetadataBackfillProgress> byLibrary = new HashMap<>();
     jdbcTemplate.query(
-        sql.toString(),
+        "SELECT d.library_id, count(*) AS total, count(*) FILTER (WHERE"
+            + " d.metadata_extraction_version >= ?) AS current_count, count(*) FILTER (WHERE "
+            + pendingSql("d.")
+            + ") AS pending_count, count(*) FILTER (WHERE "
+            + pendingSql("d.")
+            + " AND NOT "
+            + advanceableSql("d.")
+            + ") AS awaiting_count FROM documents d WHERE d.status = ? AND d.library_id IN ("
+            + libraryIds.stream().map(id -> "?").collect(Collectors.joining(", "))
+            + ") GROUP BY d.library_id",
         rs -> {
           UUID libraryId = (UUID) rs.getObject("library_id");
-          Map<CoreMetadataField, Long> filled = new EnumMap<>(CoreMetadataField.class);
-          Map<CoreMetadataField, Long> notDeterminable = new EnumMap<>(CoreMetadataField.class);
-          for (int i = 0; i < fields.length; i++) {
-            filled.put(fields[i], rs.getLong("filled_" + i));
-            notDeterminable.put(fields[i], rs.getLong("undeterminable_" + i));
+          Map<String, MetadataFieldFill> byKey = fills.getOrDefault(libraryId, Map.of());
+          Map<CoreMetadataField, MetadataFieldFill> byField =
+              new EnumMap<>(CoreMetadataField.class);
+          for (CoreMetadataField field : CoreMetadataField.values()) {
+            byField.put(field, byKey.getOrDefault(field.key(), MetadataFieldFill.EMPTY));
           }
           byLibrary.put(
               libraryId,
@@ -327,10 +274,20 @@ public class MetadataBackfillService {
                   rs.getLong("pending_count"),
                   rs.getLong("awaiting_count"),
                   lastSkippedByLibrary.getOrDefault(libraryId, 0),
-                  filled,
-                  notDeterminable));
+                  byField));
         },
-        params.toArray());
+        parameters(libraryIds));
     return byLibrary;
+  }
+
+  /** The three extraction-version binds, then the status, then one bind per library. */
+  private static Object[] parameters(Collection<UUID> libraryIds) {
+    List<Object> parameters = new ArrayList<>();
+    parameters.add(CoreMetadataExtractor.EXTRACTION_VERSION);
+    parameters.add(CoreMetadataExtractor.EXTRACTION_VERSION);
+    parameters.add(CoreMetadataExtractor.EXTRACTION_VERSION);
+    parameters.add(DocumentStatus.INDEXED.name());
+    parameters.addAll(libraryIds);
+    return parameters.toArray();
   }
 }

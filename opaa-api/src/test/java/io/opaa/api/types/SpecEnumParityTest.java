@@ -83,7 +83,8 @@ class SpecEnumParityTest {
         Arguments.of("ScheduleFrequency", ScheduleFrequency.values()),
         Arguments.of("ScheduleWeekday", ScheduleWeekday.values()),
         Arguments.of("ConfluenceEdition", ConfluenceEdition.values()),
-        Arguments.of("IndexingRunMode", IndexingRunMode.values()));
+        Arguments.of("IndexingRunMode", IndexingRunMode.values()),
+        Arguments.of("LibraryMetadataFieldType", LibraryMetadataFieldType.values()));
   }
 
   @ParameterizedTest(name = "{0}")

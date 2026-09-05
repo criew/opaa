@@ -140,7 +140,9 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
         .isEmpty();
     List<DocumentMetadataFieldView> fields =
         correctionService.fieldsOf(library.getId(), document.getId(), viewer);
-    assertThat(fields).extracting(view -> view.field()).containsExactly(CoreMetadataField.values());
+    assertThat(fields)
+        .extracting(DocumentMetadataFieldView::fieldKey)
+        .containsExactly("title", "document_type", "document_date");
     assertThat(fields.get(1).value()).isNull();
     assertThat(fields.get(0).value().origin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
   }

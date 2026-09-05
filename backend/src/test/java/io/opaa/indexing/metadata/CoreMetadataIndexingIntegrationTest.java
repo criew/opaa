@@ -66,6 +66,7 @@ class CoreMetadataIndexingIntegrationTest {
 
   @Autowired private FileProcessingService fileProcessingService;
   @Autowired private DocumentMetadataService documentMetadataService;
+  @Autowired private LibraryMetadataFieldRepository libraryFieldRepository;
   @Autowired private DocumentMetadataValueRepository valueRepository;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private DocumentTypeVocabularyRepository vocabularyRepository;
@@ -538,6 +539,7 @@ class CoreMetadataIndexingIntegrationTest {
                 throw new IllegalStateException("simulated chunk update failure");
               }
             },
+            libraryFieldRepository,
             transactionManager);
 
     assertThatThrownBy(() -> withFailingChunkUpdate.reextractFromFile(renamed, file))

@@ -109,6 +109,24 @@ export type MetadataFieldMaintenanceResponse =
   components['schemas']['MetadataFieldMaintenanceResponse']
 export type LibraryMetadataMaintenanceResponse =
   components['schemas']['LibraryMetadataMaintenanceResponse']
+export type LibraryMetadataFieldType = components['schemas']['LibraryMetadataFieldType']
+export type LibraryMetadataFieldResponse = components['schemas']['LibraryMetadataFieldResponse']
+export type LibraryMetadataFieldsResponse = components['schemas']['LibraryMetadataFieldsResponse']
+export type LibraryMetadataFieldValueResponse =
+  components['schemas']['LibraryMetadataFieldValueResponse']
+export type CreateLibraryMetadataFieldRequest =
+  components['schemas']['CreateLibraryMetadataFieldRequest']
+export type UpdateLibraryMetadataFieldRequest =
+  components['schemas']['UpdateLibraryMetadataFieldRequest']
+export type LibraryMetadataFieldValueRequest =
+  components['schemas']['LibraryMetadataFieldValueRequest']
+export type MetadataFieldUsageResponse = components['schemas']['MetadataFieldUsageResponse']
+export type RemapLibraryMetadataFieldValueResponse =
+  components['schemas']['RemapLibraryMetadataFieldValueResponse']
+export type MetadataFilterLibraryFieldCondition =
+  components['schemas']['MetadataFilterLibraryFieldCondition']
+export type MetadataFilterLibraryFieldOption =
+  components['schemas']['MetadataFilterLibraryFieldOption']
 
 export type LibraryFolderListItem = components['schemas']['LibraryFolderListItem']
 export type LibraryFolderBreadcrumbItem = components['schemas']['LibraryFolderBreadcrumbItem']
