@@ -6,6 +6,14 @@ Akzeptiert. Überarbeitet mit Issue #323: Die ursprüngliche Festlegung auf drei
 (`mock`, `basic`, `oidc`) ist zugunsten von zwei Modi (`oidc`, `dev`) aufgehoben — siehe
 [Historie](#historie-warum-mock-und-basic-entfielen).
 
+**Nachtrag mit [ADR-0025](0025-mehrere-oidc-anbieter.md) (Epic #1294):** Der `oidc`-Modus kennt
+mehrere Anbieter gleichzeitig. Die Anbieter liegen in der Datenbank statt in `OPAA_OIDC_*` (die
+Umgebung sät nur noch den ersten Anbieter einmalig), das Backend prüft Tokens über einen
+Multi-Issuer-Resolver, die SPA führt den Code-Flow gegen den gewählten Anbieter. Zustandslosigkeit,
+Public Clients ohne Secret und die Identität `(issuer, subject)` bleiben; ADR-0025 präzisiert die
+Erstadministrator-Regel, die Abmeldung und die Annahme unter „Neutral", dass `DirectorySyncService`
+einen einzelnen Issuer voraussetzt.
+
 ## Kontext
 
 OPAA braucht Benutzeridentität als Grundlage für Spaces und Zugangskontrolle (Epic #107).
@@ -154,7 +162,8 @@ OIDC-Konfiguration zurück. Das Frontend bestimmt daraus, welchen Anmeldeweg es 
 ### Neutral
 
 - Kerberos wird über eine Keycloak-Föderation abgebildet, sodass OPAA nur OIDC spricht.
-- `DirectorySyncService` setzt einen einzelnen OIDC-Issuer je Organisation voraus.
+- `DirectorySyncService` setzt einen einzelnen OIDC-Issuer je Organisation voraus — seit
+  [ADR-0025](0025-mehrere-oidc-anbieter.md): den Issuer des Standardanbieters.
 
 ## Historie: warum `mock` und `basic` entfielen
 
