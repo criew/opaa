@@ -69,7 +69,11 @@ class DocumentControllerTest {
         .thenReturn(user);
     expectedCaller =
         CurrentUser.of(
-            currentUserId, user.getOrganizationId(), SystemRole.USER, user.getDisplayName());
+            currentUserId,
+            user.getOrganizationId(),
+            SystemRole.USER,
+            user.getDisplayName(),
+            user.getEmail());
   }
 
   private RequestPostProcessor asTestUser() {
