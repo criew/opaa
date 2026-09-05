@@ -13,6 +13,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   Optional<User> findBySubjectAndIssuer(String subject, String issuer);
 
   /**
+   * How many accounts were provisioned through {@code issuer} - what {@code
+   * io.opaa.auth.oidc.OidcProviderService} refuses to cut off by changing a provider's issuer
+   * (ADR-0025, Entscheidung 2).
+   */
+  long countByIssuer(String issuer);
+
+  /**
    * Used by {@code AuditIncidentScopeService#request} (#393 code review, finding 8) to reject an
    * anlassbezogene Klärung named against a person outside the requester's own organization before a
    * grant row - and later, at query time, a pseudonym - is ever created for them.

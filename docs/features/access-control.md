@@ -128,10 +128,42 @@ Die Mandantengrenze gilt auch für die Anmeldung: Eine Identität gehört zu **g
 Es gibt kein Konto, das mehrere Mandanten sieht, und keinen Wechsel zwischen ihnen innerhalb einer
 Sitzung.
 
-> **Backlog-Notiz:** Mehrere OIDC-Anbieter gleichzeitig als Anmeldeweg anbieten (z. B. keycloak1,
-> keycloak2, … zur Auswahl). Steht im Spannungsverhältnis zur heutigen Annahme eines einzelnen
-> OIDC-Issuers je Organisation (`DirectorySyncService`, siehe
-> [ADR-0005](../decisions/0005-authentication-strategy.md)) und ist noch nicht spezifiziert.
+> **Mehrere OIDC-Anbieter** (Epic #1294): Eine Installation kann mehrere Identitätsanbieter
+> gleichzeitig anbieten — die Anmeldeseite zeigt sie zur Auswahl. Die Architektur legt
+> [ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md) fest: Anbieter in der Datenbank mit
+> Admin-Oberfläche, Identität strikt als `(Issuer, Subject)` ohne Zusammenführung über die E-Mail,
+> Erstadministrator-Regel nur für den Standardanbieter, Verzeichnisabgleich an den Standardanbieter
+> gebunden. Der Ist-Stand der Umsetzung steht im Epic.
+
+**Anbieterverwaltung (gebaut, #1329).** Die Identitätsanbieter liegen in der Tabelle
+`oidc_providers` und werden über die Admin-API `/api/v1/admin/oidc-providers` (nur `SYSTEM_ADMIN`)
+gepflegt: Anzeigename, Issuer-URI (eindeutig), Client-ID, optional die Backend-seitige
+JWK-Set-Adresse, die Claim-Zuordnung, Reihenfolge, Standardanbieter, aktiviert/deaktiviert. Jede
+Änderung ist ein Audit-Ereignis (`OIDC_PROVIDER_*`) und wirkt ohne Neustart des Backends: Das
+Backend prüft jedes Token gegen den Anbieter seines Issuers, ein deaktivierter Anbieter wird ab dem
+nächsten Token abgewiesen (`unknown_issuer`). Der erste Anbieter ist automatisch der Standardanbieter;
+er kann weder deaktiviert noch gelöscht werden, bevor ein anderer aktivierter Anbieter Standard ist.
+Die Issuer-URI eines Anbieters, über den bereits Konten angelegt wurden, ist nicht änderbar. Beim
+ersten Start im `oidc`-Modus übernimmt OPAA den bisherigen `OPAA_OIDC_*`-Anbieter einmalig als
+Standardanbieter „Verzeichnisdienst"; `OPAA_OIDC_BOOTSTRAP=force` stellt ihn im Notfall wieder
+her. Vom Betreiber eingegebene Adressen durchlaufen eine eigene Adressprüfung
+(`OPAA_OIDC_TARGET_VALIDATION_*`); die Bootstrap-Adressen sind immer erlaubt. Ein Verbindungstest
+prüft Discovery-Dokument und JWK-Set vor dem Speichern. Die Anmeldeseite (#1332) und die
+Verwaltungsoberfläche (#1333) folgen.
+
+**Kontenmodell je Anbieter (gebaut, #1330).** Die Identität eines Kontos ist das Paar
+`(Issuer, Subject)`. Dieselbe Person bei zwei Anbietern hat zwei Konten mit getrennten
+persönlichen Spaces, Systemrollen und Space-Rechten — eine Zusammenführung über die E-Mail findet
+nie statt, auch nicht stillschweigend bei gleicher Adresse (Anbieter B kann kein Konto aus Anbieter
+A übernehmen). Die Bindung des Verzeichnisabgleichs an den Standardanbieter kommt mit #1331; bis
+dahin löst der Abgleich Mitglieder noch ohne Issuer auf, und ein zweiter Anbieter ist erst danach
+betriebsreif. Die Erstadministrator-Regel (`OPAA_INITIAL_ADMIN_EMAIL`) greift nur beim Anlegen
+eines Kontos und nur über den **Standardanbieter** (im `dev`-Modus: den Dev-Issuer); dieselbe
+Adresse aus einem zweiten Anbieter ergibt einen regulären Nutzer, ebenso ein Konto, das angelegt
+wird, solange noch kein Standardanbieter existiert — beides wird als Warnung protokolliert, da die
+Regel nur einmal, beim Anlegen, greift. Ein Token eines deaktivierten oder gelöschten Anbieters wird
+mit `401` und `error_description="unknown_issuer"` abgewiesen, sodass die Oberfläche den Fall vom
+abgelaufenen Token unterscheiden kann.
 
 ---
 

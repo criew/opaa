@@ -59,6 +59,7 @@ class UserProvisioningFilterTest {
                 provisioned.getId(),
                 provisioned.getOrganizationId(),
                 provisioned.getSystemRole(),
-                provisioned.getDisplayName()));
+                provisioned.getDisplayName(),
+                provisioned.getEmail()));
   }
 }

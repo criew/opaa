@@ -611,6 +611,266 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /api/v1/admin/oidc-providers:
+    get:
+      operationId: listOidcProviders
+      tags: [admin]
+      summary: List the identity providers (system admin only)
+      description: >
+        ADR-0025 (#1329): every provider a deployment accepts sign-ins from, in sign-in page order.
+        Providers are public clients - there is no secret to carry or to hide. registryState says
+        whether the backend could build the provider's token decoder (READY), could not
+        (UNAVAILABLE - discovery unreachable, address blocked; registryMessage says why) or did
+        not try because the provider is disabled (DISABLED).
+      responses:
+        "200":
+          description: List of identity providers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OidcProviderResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    post:
+      operationId: createOidcProvider
+      tags: [admin]
+      summary: Create an identity provider (system admin only)
+      description: >
+        Created enabled. The very first provider becomes the default provider automatically. The
+        issuer must be unique (409 otherwise); issuer and JWK set address must pass the sign-in's
+        address policy (400 with the allowlist variable named otherwise). Effective without a
+        backend restart.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcProviderRequest"
+      responses:
+        "201":
+          description: Identity provider created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/oidc-providers/order:
+    put:
+      operationId: reorderOidcProviders
+      tags: [admin]
+      summary: Set the sign-in page order of the identity providers (system admin only)
+      description: providerIds must name every provider exactly once (400 otherwise).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcProviderOrderRequest"
+      responses:
+        "200":
+          description: Providers in their new order
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OidcProviderResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/oidc-providers/test:
+    post:
+      operationId: testOidcProvider
+      tags: [admin]
+      summary: Probe an identity provider before saving it (system admin only)
+      description: >
+        Fetches the discovery document under the issuer, checks that it names the same issuer,
+        then fetches the JWK set (jwkSetUri if given, else the discovered one) and counts its
+        keys. Every address passes the sign-in's address policy first; nothing is stored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcProviderTestRequest"
+      responses:
+        "200":
+          description: Outcome of the probe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderTestResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/oidc-providers/{providerId}:
+    parameters:
+      - name: providerId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getOidcProvider
+      tags: [admin]
+      summary: Read one identity provider (system admin only)
+      responses:
+        "200":
+          description: Identity provider
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updateOidcProvider
+      tags: [admin]
+      summary: Update an identity provider's editable fields (system admin only)
+      description: >
+        A full replacement of every editable field; enabled, isDefault and sortOrder change only
+        through their own operations. Changing jwkSetUri changes which keys attest the tokens of
+        this issuer - the trust anchor of every account of the provider.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcProviderRequest"
+      responses:
+        "200":
+          description: Identity provider updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    delete:
+      operationId: deleteOidcProvider
+      tags: [admin]
+      summary: Delete an identity provider (system admin only)
+      description: >
+        Accounts provisioned through the provider remain; only their sign-in stops. Rejected with
+        409 for the default provider - make another provider the default first.
+      responses:
+        "204":
+          description: Identity provider deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/oidc-providers/{providerId}/enable:
+    post:
+      operationId: enableOidcProvider
+      tags: [admin]
+      summary: Enable an identity provider (system admin only)
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Identity provider enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/oidc-providers/{providerId}/disable:
+    post:
+      operationId: disableOidcProvider
+      tags: [admin]
+      summary: Disable an identity provider (system admin only)
+      description: >
+        Its tokens are refused from the commit on; sessions of its users end with the next
+        request. Rejected with 409 for the default provider.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Identity provider disabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/admin/oidc-providers/{providerId}/default:
+    post:
+      operationId: makeOidcProviderDefault
+      tags: [admin]
+      summary: Make an identity provider the default provider (system admin only)
+      description: >
+        Moves the default flag from the previous default. The default provider is the one
+        opaa.auth.initial-admin-email applies to and the one the directory synchronisation is
+        bound to (ADR-0025). Rejected with 409 for a disabled provider.
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Identity provider is now the default
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OidcProviderResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /api/v1/admin/indexing/low-chunk-documents:
     get:
       operationId: listLowChunkDocuments
@@ -7681,6 +7941,11 @@ components:
           INDEXING_METADATA_BACKFILL_TRIGGERED,
           DOCUMENT_METADATA_CHANGED,
           BRANDING_SETTINGS_CHANGED,
+          OIDC_PROVIDER_CREATED,
+          OIDC_PROVIDER_CHANGED,
+          OIDC_PROVIDER_DELETED,
+          OIDC_PROVIDER_ENABLED,
+          OIDC_PROVIDER_DISABLED,
           LLM_MODEL_CREATED,
           LLM_MODEL_CHANGED,
           LLM_MODEL_DELETED,
@@ -8382,6 +8647,174 @@ components:
           type: integer
           description: Vector dimensionality of the configured pgvector store.
           example: 1536
+
+    OidcClaimMappingDto:
+      type: object
+      description: >
+        Which token claims a provider's users are read from (ADR-0025, Entscheidung 4). Omitted
+        or blank fields take the Keycloak defaults (email, name); rolesClaim/groupsClaim absent
+        means the provider derives no roles / no groups from its tokens.
+      properties:
+        emailClaim:
+          type: string
+          maxLength: 100
+          example: email
+        displayNameClaim:
+          type: string
+          maxLength: 100
+          example: name
+        rolesClaim:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: Dot-separated path to the roles claim, e.g. realm_access.roles.
+          example: realm_access.roles
+        systemAdminRole:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: The token role value that grants SYSTEM_ADMIN.
+        auditorRole:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: The token role value that grants AUDITOR.
+        groupsClaim:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: Dot-separated path to the groups claim, e.g. groups.
+
+    OidcProviderRegistryState:
+      type: string
+      description: >
+        Whether the backend holds a working token decoder for the provider: READY, UNAVAILABLE
+        (could not be built - see registryMessage; retried automatically) or DISABLED (not
+        attempted, the provider is disabled).
+      enum: [READY, UNAVAILABLE, DISABLED]
+      example: READY
+
+    OidcProviderResponse:
+      type: object
+      description: An identity provider (ADR-0025, #1329). A public client - there is no secret.
+      required:
+        [
+          id,
+          displayName,
+          enabled,
+          isDefault,
+          sortOrder,
+          issuerUri,
+          clientId,
+          claimMapping,
+          registryState,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          example: Beschäftigte (Keycloak)
+        enabled:
+          type: boolean
+        isDefault:
+          type: boolean
+          description: The one provider opaa.auth.initial-admin-email applies to.
+        sortOrder:
+          type: integer
+        issuerUri:
+          type: string
+          description: The token issuer and, for the SPA, the authority of the code flow.
+          example: https://idp.behoerde.example/realms/mitarbeitende
+        clientId:
+          type: string
+          example: opaa-frontend
+        jwkSetUri:
+          type: string
+          nullable: true
+          description: >
+            Backend-side override of the JWK set address found through discovery - the trust
+            anchor of every account of this issuer; null when discovery is used.
+        claimMapping:
+          $ref: "#/components/schemas/OidcClaimMappingDto"
+        registryState:
+          $ref: "#/components/schemas/OidcProviderRegistryState"
+        registryMessage:
+          type: string
+          nullable: true
+          description: Why the decoder could not be built, German, when registryState is UNAVAILABLE.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OidcProviderRequest:
+      type: object
+      description: Used for both create and update; a full replacement of every editable field.
+      required: [displayName, issuerUri, clientId]
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        issuerUri:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Absolute http(s) URI; a trailing slash is stripped. Must pass the address policy.
+        clientId:
+          type: string
+          minLength: 1
+          maxLength: 255
+        jwkSetUri:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: Optional override of the discovered JWK set address. Must pass the address policy.
+        claimMapping:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/OidcClaimMappingDto"
+
+    OidcProviderOrderRequest:
+      type: object
+      required: [providerIds]
+      properties:
+        providerIds:
+          type: array
+          description: Every provider id exactly once, in sign-in page order.
+          items:
+            type: string
+            format: uuid
+
+    OidcProviderTestRequest:
+      type: object
+      required: [issuerUri]
+      properties:
+        issuerUri:
+          type: string
+          minLength: 1
+          maxLength: 500
+        jwkSetUri:
+          type: string
+          nullable: true
+          maxLength: 500
+
+    OidcProviderTestResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+          description: German, user-facing outcome.
+          example: "Anbieter erreichbar: Discovery-Dokument gefunden, JWK-Set mit 2 Schlüsseln."
 
     SearchModelRole:
       type: string
