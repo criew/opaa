@@ -22,6 +22,7 @@ import io.opaa.indexing.metadata.DocumentMetadataCorrectionService;
 import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.indexing.metadata.FormatFieldCondition;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataValueInput;
 import io.opaa.library.AssetGrant;
@@ -376,6 +377,33 @@ class MetadataFilterSearchIntegrationTest {
         .containsExactlyInAnyOrder(foreign, selected);
   }
 
+  /**
+   * #1242: the Absender of a mail is a filterable format field, and both paths carry the identical
+   * condition inside their query - a mail of another sender is out, a document that is no mail at
+   * all has no value and stays in (Leerwert-Regel).
+   */
+  @Test
+  void bothPathsApplyTheSameFormatFieldConditionAndKeepDocumentsWithoutASender()
+      throws IOException {
+    Document fromMueller = indexedMail(library, "anfrage.eml", "Max Mueller <max@stadt.de>");
+    Document fromSchmidt = indexedMail(library, "hinweis.eml", "schmidt@kreis.de");
+    Document noMail = indexed(library, "2024-03-12_Vermerk_Nutzung.pdf");
+    indexedMail(forbiddenLibrary, "fremd.eml", "max@stadt.de");
+
+    MetadataFilter filter =
+        MetadataFilter.NONE.withFormatFields(
+            List.of(FormatFieldCondition.parse("mail_sender", List.of("max@stadt.de"))));
+    RetrievalPipelineResult result = run(filter, Set.of(library.getId()));
+
+    Set<String> expected = Set.of(fromMueller.getId().toString(), noMail.getId().toString());
+    assertThat(documentKeys(result, RetrievalStageName.VECTOR_SEARCH)).isEqualTo(expected);
+    assertThat(documentKeys(result, RetrievalStageName.FULL_TEXT_SEARCH)).isEqualTo(expected);
+    assertThat(documentKeys(result, RetrievalStageName.VECTOR_SEARCH))
+        .doesNotContain(fromSchmidt.getId().toString());
+    assertThat(stage(result, RetrievalStageName.METADATA_FILTER).notes())
+        .contains("metadata filter: format field mail_sender in [max@stadt.de]");
+  }
+
   private RetrievalPipelineResult run(MetadataFilter filter, Set<UUID> scope) {
     return retrievalPipeline.run(
         new RetrievalContext(
@@ -470,6 +498,26 @@ class MetadataFilterSearchIntegrationTest {
     return documentRepository.findAll().stream()
         .filter(document -> fileName.equals(document.getFileName()))
         .filter(document -> target.getId().equals(document.getLibraryId()))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  /** An indexed mail of {@code sender}, whose body carries the query term of every run here. */
+  private Document indexedMail(KnowledgeLibrary target, String fileName, String sender)
+      throws IOException {
+    Path file =
+        classTempDir.resolve(target == library ? "readable" : "forbidden").resolve(fileName);
+    Files.writeString(
+        file,
+        "From: "
+            + sender
+            + "\nTo: poststelle@stadt.de\nSubject: Nutzung der IT\n"
+            + "Date: Thu, 12 Mar 2026 09:15:00 +0100\n"
+            + "Content-Type: text/plain; charset=UTF-8\n\n"
+            + "Diese Unterlage regelt die Nutzung der IT.\n");
+    fileProcessingService.processFile(file, target);
+    return documentRepository.findAll().stream()
+        .filter(document -> fileName.equals(document.getFileName()))
         .findFirst()
         .orElseThrow();
   }

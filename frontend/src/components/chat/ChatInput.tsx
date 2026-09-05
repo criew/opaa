@@ -26,9 +26,11 @@ import type { LibraryListResponse } from '../../types/api'
 import MetadataFilterPopover from './MetadataFilterPopover'
 import {
   dateChipLabel,
+  formatFieldChipLabel,
   libraryFieldChipLabel,
   withoutDateWindow,
   withoutDocumentTypes,
+  withoutFormatField,
   withoutLibraryField,
 } from './metadataFilterText'
 
@@ -503,6 +505,25 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
                 }
                 aria-label={`Filter nach ${condition.fieldKey} entfernen`}
                 data-testid="metadata-filter-chip-library-field"
+              />
+            ))}
+            {(metadataFilter?.formatFields ?? []).map((condition) => (
+              <Chip
+                key={condition.fieldKey}
+                label={formatFieldChipLabel(condition, filterOptions)}
+                size="small"
+                variant="outlined"
+                color="secondary"
+                onDelete={
+                  disabled
+                    ? undefined
+                    : () => {
+                        if (metadataFilter)
+                          setMetadataFilter(withoutFormatField(metadataFilter, condition))
+                      }
+                }
+                aria-label={`Filter nach ${condition.fieldKey} entfernen`}
+                data-testid="metadata-filter-chip-format-field"
               />
             ))}
             <MetadataFilterPopover

@@ -182,38 +182,6 @@ export function citationRowId(messageId: string, docIndex: number): string {
 }
 
 /**
- * #1164: "Mail von mueller@stadt.de, 14.03.2026 — Bebauungsplan Nord" - the Fundstellen-Anzeige's
- * mail summary line, shared between {@code SourceFootnotes} and {@code SourceEvidenceDrawer}.
- * `undefined` for a non-mail source (every mail field absent) so callers can omit the line
- * entirely rather than rendering an empty "Mail von …".
- *
- * `mailTo` is read into the presence guard below (a source with only a recipient still counts as
- * a mail source) but deliberately never rendered in the summary itself - a distribution list can
- * be long and names no one useful for identifying the passage, unlike sender/date/subject.
- *
- * The date renders in the browser's local time zone (`Date`/`toLocaleDateString` both resolve
- * against it), not UTC - deliberate, since a person reading "14.03.2026" expects their own day
- * boundary, not the server's. A near-midnight UTC mail_date can therefore show the following (or
- * preceding) calendar day depending on the reader's offset; #1211's server-side range filter must
- * account for this mismatch explicitly rather than assume the displayed date and the filtered
- * range agree bit-for-bit.
- */
-export function formatMailSummary(source: SourceReference | undefined): string | undefined {
-  if (!source?.mailFrom && !source?.mailTo && !source?.mailDate && !source?.mailSubject) {
-    return undefined
-  }
-  const datePart = source.mailDate
-    ? new Date(source.mailDate).toLocaleDateString('de-DE', { dateStyle: 'medium' })
-    : undefined
-  const senderAndDate = [source.mailFrom, datePart].filter(Boolean).join(', ')
-  const segments = [
-    senderAndDate.length > 0 ? `von ${senderAndDate}` : undefined,
-    source.mailSubject,
-  ].filter((segment): segment is string => Boolean(segment))
-  return segments.length > 0 ? `Mail ${segments.join(' — ')}` : undefined
-}
-
-/**
  * #1066 (ADR-0024; Maintainer-Beschluss vom 04.09.2026 am Epic #1065): the Beleg's metadata line
  * ("Dienstanweisung IT-Nutzung · Dienstanweisung · 12.03.2026"), rendered from the generic
  * field-value list without any field knowledge - the backend supplies label, display text and

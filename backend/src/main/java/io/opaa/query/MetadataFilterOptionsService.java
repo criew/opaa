@@ -10,6 +10,7 @@ import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.DocumentMetadataValueRepository;
 import io.opaa.indexing.metadata.DocumentTypeVocabulary;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.indexing.metadata.FormatMetadataField;
 import io.opaa.indexing.metadata.LibraryMetadataField;
 import io.opaa.indexing.metadata.LibraryMetadataFieldDefinition;
 import io.opaa.indexing.metadata.LibraryMetadataFieldService;
@@ -100,7 +101,8 @@ public class MetadataFilterOptionsService {
   /** Four independent read queries over the scope; nothing here needs one transaction. */
   MetadataFilterOptions compute(Set<UUID> scope) {
     if (scope.isEmpty()) {
-      return new MetadataFilterOptions(0, fields(0, 0, 0), List.of(), null, null, List.of());
+      return new MetadataFilterOptions(
+          0, fields(0, 0, 0), List.of(), null, null, List.of(), List.of());
     }
     long total = documentRepository.countByLibraryIdInAndStatus(scope, DocumentStatus.INDEXED);
     long typeFilled = 0;
@@ -134,7 +136,8 @@ public class MetadataFilterOptionsService {
         types,
         span == null ? null : span.getMinDate(),
         span == null ? null : span.getMaxDate(),
-        libraryFields(scope));
+        libraryFields(scope),
+        formatFields(scope, total));
   }
 
   /**
@@ -211,6 +214,31 @@ public class MetadataFilterOptionsService {
                 min,
                 max));
       }
+    }
+    return options;
+  }
+
+  /**
+   * The filterable format fields with the values occurring in the scope - the addresses the asking
+   * person's own documents carry, never a global list (metadata-schema.md, Rechte-Invariante).
+   */
+  private List<MetadataFilterOptions.FormatFieldOption> formatFields(Set<UUID> scope, long total) {
+    List<MetadataFilterOptions.FormatFieldOption> options = new ArrayList<>();
+    for (FormatMetadataField field : FormatMetadataField.values()) {
+      if (!field.isFilterable()) {
+        continue;
+      }
+      List<MetadataFilterOptions.LibraryFieldValueOption> values = new ArrayList<>();
+      long filled = 0;
+      for (DocumentMetadataValueRepository.VocabularyCodeCount count :
+          valueRepository.countByLibraryFieldValueInLibraries(
+              scope, DocumentStatus.INDEXED, field.documentFieldKey())) {
+        values.add(
+            new MetadataFilterOptions.LibraryFieldValueOption(
+                count.getCode(), count.getCode(), count.getDocumentCount()));
+        filled += count.getDocumentCount();
+      }
+      options.add(new MetadataFilterOptions.FormatFieldOption(field, filled, total, values));
     }
     return options;
   }

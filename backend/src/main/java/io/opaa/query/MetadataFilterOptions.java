@@ -2,6 +2,7 @@ package io.opaa.query;
 
 import io.opaa.api.types.LibraryMetadataFieldType;
 import io.opaa.indexing.metadata.CoreMetadataField;
+import io.opaa.indexing.metadata.FormatMetadataField;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -25,12 +26,32 @@ public record MetadataFilterOptions(
     List<DocumentTypeOption> documentTypes,
     LocalDate documentDateMin,
     LocalDate documentDateMax,
-    List<LibraryFieldOption> libraryFields) {
+    List<LibraryFieldOption> libraryFields,
+    List<FormatFieldOption> formatFields) {
 
   public MetadataFilterOptions {
     fields = List.copyOf(fields);
     documentTypes = List.copyOf(documentTypes);
     libraryFields = libraryFields == null ? List.of() : List.copyOf(libraryFields);
+    formatFields = formatFields == null ? List.of() : List.copyOf(formatFields);
+  }
+
+  /** The shape without format field options - a scope whose documents carry none. */
+  public MetadataFilterOptions(
+      long totalDocuments,
+      List<FieldOption> fields,
+      List<DocumentTypeOption> documentTypes,
+      LocalDate documentDateMin,
+      LocalDate documentDateMax,
+      List<LibraryFieldOption> libraryFields) {
+    this(
+        totalDocuments,
+        fields,
+        documentTypes,
+        documentDateMin,
+        documentDateMax,
+        libraryFields,
+        List.of());
   }
 
   /**
@@ -90,4 +111,26 @@ public record MetadataFilterOptions(
 
   /** One value of a library field that occurs in the scope, with how many documents carry it. */
   public record LibraryFieldValueOption(String code, String label, long documentCount) {}
+
+  /**
+   * One filterable format field with the values the scope's documents actually carry. It is offered
+   * as soon as one document carries a value: a format field is filled deterministically for every
+   * document of its format and structurally absent for every other, so a share over a mixed bestand
+   * would measure the format mix rather than the metadata quality. The counts stay in the response
+   * so a person sees how large the filterable part of the scope is.
+   */
+  public record FormatFieldOption(
+      FormatMetadataField field,
+      long filledDocuments,
+      long totalDocuments,
+      List<LibraryFieldValueOption> values) {
+
+    public FormatFieldOption {
+      values = List.copyOf(values);
+    }
+
+    public boolean offered() {
+      return !values.isEmpty();
+    }
+  }
 }

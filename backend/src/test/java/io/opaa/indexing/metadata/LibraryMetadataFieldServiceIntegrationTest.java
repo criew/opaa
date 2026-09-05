@@ -58,7 +58,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   @Autowired private LibraryMetadataFieldService fieldService;
   @Autowired private DocumentMetadataCorrectionService correctionService;
   @Autowired private LibraryMetadataMaintenanceService maintenanceService;
-  @Autowired private LibraryCitationMetadataReader citationReader;
+  @Autowired private CitationMetadataReader citationReader;
   @Autowired private FileProcessingService fileProcessingService;
   @Autowired private DocumentMetadataValueRepository valueRepository;
   @Autowired private LibraryMetadataFieldValueRepository fieldValueRepository;

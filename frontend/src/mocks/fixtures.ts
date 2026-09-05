@@ -148,18 +148,37 @@ export const mockQueryResponses: QueryResponse[] = [
         citationValid: true,
       },
       {
-        // #1164: an uncited mail source (VITE_ENABLE_MOCKS=true), so the mocked frontend shows
-        // the Fundstellen mail summary line without needing a matching citation marker above.
+        // #1242: an uncited mail source (VITE_ENABLE_MOCKS=true) whose Kopfdaten arrive as
+        // ordinary entries of the generic metadata list, like every other schema field.
         fileName: 'anfrage-bauantrag.eml',
         relevanceScore: 0.2,
         matchCount: 1,
         indexedAt: '2025-01-16T09:15:00Z',
         cited: false,
         citationValid: true,
-        mailFrom: 'mueller@stadt.de',
-        mailTo: 'poststelle@stadt.de',
-        mailSubject: 'Bebauungsplan Nord',
-        mailDate: '2026-03-14T09:15:00Z',
+        metadata: [
+          {
+            fieldKey: 'title',
+            label: 'Titel',
+            value: 'Bebauungsplan Nord',
+            displayValue: 'Bebauungsplan Nord',
+            origin: 'DETERMINISTIC',
+          },
+          {
+            fieldKey: 'fmt:mail_sender',
+            label: 'Absender',
+            value: 'mueller@stadt.de',
+            displayValue: 'mueller@stadt.de',
+            origin: 'DETERMINISTIC',
+          },
+          {
+            fieldKey: 'fmt:mail_recipients',
+            label: 'An',
+            value: 'poststelle@stadt.de',
+            displayValue: 'poststelle@stadt.de',
+            origin: 'DETERMINISTIC',
+          },
+        ],
       },
       {
         // #1066: an uncited source with core metadata (VITE_ENABLE_MOCKS=true), so the mocked
@@ -1294,6 +1313,19 @@ export const mockMetadataFilterOptions: MetadataFilterOptionsResponse = {
   ],
   documentDateMin: '2019-01-01',
   documentDateMax: '2026-03-12',
+  formatFields: [
+    {
+      fieldKey: 'mail_sender',
+      label: 'Absender',
+      filledDocuments: 3,
+      totalDocuments: 40,
+      offered: true,
+      values: [
+        { code: 'mueller@stadt.de', label: 'mueller@stadt.de', documentCount: 2 },
+        { code: 'poststelle@kreis.de', label: 'poststelle@kreis.de', documentCount: 1 },
+      ],
+    },
+  ],
 }
 
 export const mockDocumentTypeVocabulary: DocumentTypeVocabularyEntryResponse[] = [

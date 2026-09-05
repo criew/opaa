@@ -40,6 +40,10 @@ import java.util.TreeMap;
  *     its URL as a fallback. A naming convention can only be read out of a real file name; a
  *     headline names what a document is <em>about</em>.
  * @param frontmatter a Markdown YAML frontmatter's scalar entries, verbatim, keys lower-cased
+ * @param formatFields values of the built-in format fields ({@code
+ *     io.opaa.indexing.metadata.FormatMetadataField}) the format itself declares - a mail's
+ *     Absender, Empfänger and Betreff -, keyed by the field's own key. Read verbatim, never
+ *     interpreted, and therefore stored as deterministic values of those fields.
  */
 public record DocumentProperties(
     String title,
@@ -50,7 +54,8 @@ public record DocumentProperties(
     String titleLine,
     String formatExtension,
     boolean syntheticName,
-    Map<String, String> frontmatter) {
+    Map<String, String> frontmatter,
+    Map<String, String> formatFields) {
 
   /**
    * Upper bound of {@link #titleLine}, in characters - a "line" a format hands over without any
@@ -59,7 +64,31 @@ public record DocumentProperties(
   public static final int MAX_TITLE_LINE_LENGTH = 300;
 
   public static final DocumentProperties EMPTY =
-      new DocumentProperties(null, null, null, null, null, null, null, false, Map.of());
+      new DocumentProperties(null, null, null, null, null, null, null, false, Map.of(), Map.of());
+
+  /** The shape without format fields - what a pipeline that declares none builds. */
+  public DocumentProperties(
+      String title,
+      LocalDate createdAt,
+      LocalDate modifiedAt,
+      LocalDate documentDate,
+      String firstHeading,
+      String titleLine,
+      String formatExtension,
+      boolean syntheticName,
+      Map<String, String> frontmatter) {
+    this(
+        title,
+        createdAt,
+        modifiedAt,
+        documentDate,
+        firstHeading,
+        titleLine,
+        formatExtension,
+        syntheticName,
+        frontmatter,
+        Map.of());
+  }
 
   public DocumentProperties {
     title = blankToNull(title);
@@ -76,6 +105,7 @@ public record DocumentProperties(
           });
     }
     frontmatter = Map.copyOf(normalized);
+    formatFields = formatFields == null ? Map.of() : Map.copyOf(formatFields);
   }
 
   public DocumentProperties withTitle(String title) {
@@ -88,7 +118,8 @@ public record DocumentProperties(
         titleLine,
         formatExtension,
         syntheticName,
-        frontmatter);
+        frontmatter,
+        formatFields);
   }
 
   public DocumentProperties withCreatedAt(LocalDate createdAt) {
@@ -101,7 +132,8 @@ public record DocumentProperties(
         titleLine,
         formatExtension,
         syntheticName,
-        frontmatter);
+        frontmatter,
+        formatFields);
   }
 
   public DocumentProperties withModifiedAt(LocalDate modifiedAt) {
@@ -114,7 +146,8 @@ public record DocumentProperties(
         titleLine,
         formatExtension,
         syntheticName,
-        frontmatter);
+        frontmatter,
+        formatFields);
   }
 
   public DocumentProperties withDocumentDate(LocalDate documentDate) {
@@ -127,7 +160,8 @@ public record DocumentProperties(
         titleLine,
         formatExtension,
         syntheticName,
-        frontmatter);
+        frontmatter,
+        formatFields);
   }
 
   public DocumentProperties withFirstHeading(String firstHeading) {
@@ -140,7 +174,8 @@ public record DocumentProperties(
         titleLine,
         formatExtension,
         syntheticName,
-        frontmatter);
+        frontmatter,
+        formatFields);
   }
 
   public DocumentProperties withTitleLine(String titleLine) {
@@ -153,7 +188,8 @@ public record DocumentProperties(
         titleLine,
         formatExtension,
         syntheticName,
-        frontmatter);
+        frontmatter,
+        formatFields);
   }
 
   /** Marks the document's name as free text rather than a file name. */
@@ -167,7 +203,8 @@ public record DocumentProperties(
         titleLine,
         formatExtension,
         syntheticName,
-        frontmatter);
+        frontmatter,
+        formatFields);
   }
 
   public DocumentProperties withFormatExtension(String formatExtension) {
@@ -180,7 +217,23 @@ public record DocumentProperties(
         titleLine,
         formatExtension,
         syntheticName,
-        frontmatter);
+        frontmatter,
+        formatFields);
+  }
+
+  /** The same properties with the format fields {@code formatFields} declared. */
+  public DocumentProperties withFormatFields(Map<String, String> formatFields) {
+    return new DocumentProperties(
+        title,
+        createdAt,
+        modifiedAt,
+        documentDate,
+        firstHeading,
+        titleLine,
+        formatExtension,
+        syntheticName,
+        frontmatter,
+        formatFields);
   }
 
   public DocumentProperties withFrontmatter(Map<String, String> frontmatter) {
@@ -193,7 +246,8 @@ public record DocumentProperties(
         titleLine,
         formatExtension,
         syntheticName,
-        frontmatter);
+        frontmatter,
+        formatFields);
   }
 
   /** A format's {@link Calendar} property (PDFBox) as the calendar's own local date. */

@@ -2,6 +2,7 @@ package io.opaa.indexing.metadata;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.LibraryVisibility;
@@ -66,6 +67,7 @@ class CoreMetadataIndexingIntegrationTest {
 
   @Autowired private FileProcessingService fileProcessingService;
   @Autowired private DocumentMetadataService documentMetadataService;
+  @Autowired private CitationMetadataReader citationMetadataReader;
   @Autowired private LibraryMetadataFieldRepository libraryFieldRepository;
   @Autowired private DocumentMetadataValueRepository valueRepository;
   @Autowired private DocumentRepository documentRepository;
@@ -584,6 +586,78 @@ class CoreMetadataIndexingIntegrationTest {
     CoreMetadata afterRealResult = documentMetadataService.reextractFromFile(renamed, file);
     assertThat(afterRealResult.documentTypeCode()).isEqualTo("PROTOKOLL");
     assertThat(afterRealResult.documentTypeOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+  }
+
+  /**
+   * #1242: a mail's Kopfdaten are schema values of the document, not chunk keys of their own - the
+   * Absender rides on every chunk because it filters, the Betreff does not because it only shows,
+   * and the Beleg reads all of them through the generic field-value list.
+   */
+  @Test
+  void mailKopfdatenBecomeFormatFieldValuesAtTheDocumentAndOnlyTheAbsenderRidesOnTheChunks()
+      throws IOException {
+    Path file = classTempDir.resolve("bebauungsplan.eml");
+    Files.writeString(
+        file,
+        """
+        From: Max Mustermann <Max.Mueller@Stadt.de>
+        To: poststelle@stadt.de
+        Subject: Bebauungsplan Nord
+        Date: Thu, 12 Mar 2026 09:15:00 +0100
+        Content-Type: text/plain; charset=UTF-8
+
+        Bitte pruefen Sie den Bebauungsplan Nord bis Freitag.
+        """);
+
+    assertThat(fileProcessingService.processFile(file, targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    Map<String, DocumentMetadataValue> byKey = new java.util.HashMap<>();
+    valueRepository
+        .findByDocumentId(document.getId())
+        .forEach(value -> byKey.put(value.getFieldKey(), value));
+    assertThat(byKey)
+        .containsKeys(
+            FormatMetadataField.MAIL_SENDER.documentFieldKey(),
+            FormatMetadataField.MAIL_RECIPIENTS.documentFieldKey(),
+            FormatMetadataField.MAIL_SUBJECT.documentFieldKey());
+    DocumentMetadataValue sender = byKey.get(FormatMetadataField.MAIL_SENDER.documentFieldKey());
+    assertThat(sender.getTextValue()).isEqualTo("max.mueller@stadt.de");
+    assertThat(sender.getOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+    assertThat(sender.getExtractionVersion()).isEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION);
+    assertThat(byKey.get(FormatMetadataField.MAIL_SUBJECT.documentFieldKey()).getTextValue())
+        .isEqualTo("Bebauungsplan Nord");
+    assertThat(byKey.get(FormatMetadataField.MAIL_RECIPIENTS.documentFieldKey()).getTextValue())
+        .isEqualTo("poststelle@stadt.de");
+
+    assertThat(chunkMetadata(document.getId()))
+        .isNotEmpty()
+        .allSatisfy(
+            metadata -> {
+              assertThat(metadata)
+                  .containsEntry(FormatMetadataField.MAIL_SENDER.chunkKey(), "max.mueller@stadt.de")
+                  .containsEntry(
+                      FormatMetadataField.MAIL_SENDER.presenceChunkKey(),
+                      FormatMetadataField.PRESENCE_VALUE)
+                  .containsEntry("doc_date", "2026-03-12");
+              assertThat(metadata.keySet())
+                  .doesNotContain(
+                      FormatMetadataField.MAIL_SUBJECT.chunkKey(),
+                      "mail_from",
+                      "mail_to",
+                      "mail_subject",
+                      "mail_date");
+            });
+
+    List<CitationFieldValue> citation =
+        citationMetadataReader.forDocuments(List.of(document)).get(document.getId());
+    assertThat(citation)
+        .extracting(CitationFieldValue::label, CitationFieldValue::value)
+        .containsExactly(
+            tuple("Absender", "max.mueller@stadt.de"),
+            tuple("An", "poststelle@stadt.de"),
+            tuple("Betreff", "Bebauungsplan Nord"));
   }
 
   private List<Map<String, Object>> chunkMetadata(UUID documentId) {

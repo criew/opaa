@@ -850,6 +850,28 @@ class ChatServiceIntegrationTest {
     assertThat(source.getChunkLocations().getFirst().getLocation()).isEqualTo("S. 2-4");
   }
 
+  /**
+   * regression guard for #1242: {@code chat_messages.sources} written before the mail Kopfdaten
+   * became schema fields still carries mailFrom/mailTo/mailSubject/mailDate. A stored turn must
+   * keep reading - the four fields are gone from {@link ChatSource}, and the application mapper
+   * tolerates a JSON field it no longer declares.
+   */
+  @Test
+  void sourcesJsonWithTheRemovedMailFieldsStillDeserializes() throws Exception {
+    String legacyJson =
+        "[{\"fileName\":\"anfrage.eml\",\"relevanceScore\":0.9,\"matchCount\":1,"
+            + "\"cited\":true,\"mailFrom\":\"mueller@stadt.de\","
+            + "\"mailTo\":\"poststelle@stadt.de\",\"mailSubject\":\"Bebauungsplan Nord\","
+            + "\"mailDate\":\"2026-03-14T09:15:00Z\"}]";
+
+    List<ChatSource> parsed =
+        objectMapper.readValue(legacyJson, new TypeReference<List<ChatSource>>() {});
+
+    assertThat(parsed).hasSize(1);
+    assertThat(parsed.getFirst().getFileName()).isEqualTo("anfrage.eml");
+    assertThat(parsed.getFirst().getCited()).isTrue();
+  }
+
   private void associateLibrary(UUID spaceId, UUID libraryId, UUID createdByUserId) {
     jdbcTemplate.update(
         "INSERT INTO space_asset_associations"

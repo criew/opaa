@@ -1,6 +1,7 @@
 package io.opaa.indexing.pipeline.mail;
 
 import io.opaa.indexing.ChunkingService;
+import io.opaa.indexing.metadata.FormatMetadataField;
 import io.opaa.indexing.pipeline.DiscoveredAttachment;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
@@ -11,11 +12,10 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Clock;
-import java.time.Instant;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -26,11 +26,11 @@ import org.springframework.ai.document.Document;
 
 /**
  * The EML/MSG pipeline (ingestion-pipelines.md, Teil 3, Punkt 5): separates Kopfdaten, body and
- * attachment text, which Tika's native parse flattens into one block. Kopfdaten land as chunk
- * metadata ({@link ChunkMailMetadata}) and as German-labeled context lines prepended to the first
- * body text <b>before</b> chunking, so an unbounded {@code An} line is cut by the same splitter. A
- * blank body with an attachment still gets a header-only chunk; without one it stays {@code
- * NO_EXTRACTABLE_TEXT}.
+ * attachment text, which Tika's native parse flattens into one block. Kopfdaten land as values of
+ * the built-in format fields ({@link FormatMetadataField}) on the document and as German-labeled
+ * context lines prepended to the first body text <b>before</b> chunking, so an unbounded {@code An}
+ * line is cut by the same splitter. A blank body with an attachment still gets a header-only chunk;
+ * without one it stays {@code NO_EXTRACTABLE_TEXT}.
  *
  * <p>This class never processes an attachment itself (ADR-0022, Entscheidung 10) - it reports each
  * via {@link DocumentPipelineResult#discoveredAttachments()}, and recursion and the count/depth
@@ -42,7 +42,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
 
   static final String ID = "email";
 
-  static final short VERSION = 4;
+  static final short VERSION = 5;
 
   /**
    * Renders {@link ParsedMailMessage#date()} in the leading context line, in {@link #clock}'s own
@@ -77,22 +77,6 @@ public class MailDocumentPipeline implements DocumentPipeline {
   @Override
   public Set<String> handledFormats() {
     return Set.of(".eml", ".msg");
-  }
-
-  /**
-   * Adds {@link ChunkMailMetadata}'s Kopfdaten keys to the default {@link
-   * DocumentPipeline#passthroughMetadataKeys()} - set only on a message's own body chunks (see
-   * {@link #bodyChunks}); an attachment no longer produces a chunk of this pipeline's own at all ,
-   * so there is no longer a recursively-produced chunk to exclude here.
-   */
-  @Override
-  public Set<String> passthroughMetadataKeys() {
-    return Set.of(
-        ChunkingService.LOCATION_METADATA_KEY,
-        ChunkMailMetadata.MAIL_FROM_METADATA_KEY,
-        ChunkMailMetadata.MAIL_TO_METADATA_KEY,
-        ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY,
-        ChunkMailMetadata.MAIL_DATE_METADATA_KEY);
   }
 
   /**
@@ -166,7 +150,10 @@ public class MailDocumentPipeline implements DocumentPipeline {
    */
   private static final int MATERIALIZE_NO_ATTACHMENT = -1;
 
-  /** Betreff as the title and the Date header as the document's own date (ADR-0024). */
+  /**
+   * Betreff as the title, the Date header as the document's own date (ADR-0024) and the Kopfdaten
+   * as format field values (metadata-schema.md, Teil II (c)).
+   */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
     if (source.file() == null) {
@@ -191,7 +178,40 @@ public class MailDocumentPipeline implements DocumentPipeline {
     return DocumentProperties.EMPTY
         .withTitle(message.subject())
         .withDocumentDate(
-            message.date() == null ? null : message.date().atZone(clock.getZone()).toLocalDate());
+            message.date() == null ? null : message.date().atZone(clock.getZone()).toLocalDate())
+        .withFormatFields(formatFields(message));
+  }
+
+  /**
+   * The Kopfdaten as format field values: the Absender reduced to its bare address, lower-cased,
+   * because it is the field's filterable identifier and {@code Max Mueller <max@stadt.de>} and
+   * {@code max@stadt.de} are the same sender. A header that names no address at all (an MSG display
+   * name) yields no Absender rather than a guessed one.
+   */
+  private static Map<String, String> formatFields(ParsedMailMessage message) {
+    Map<String, String> fields = new LinkedHashMap<>();
+    put(fields, FormatMetadataField.MAIL_SENDER, senderAddress(message.from()));
+    put(fields, FormatMetadataField.MAIL_RECIPIENTS, message.to());
+    put(fields, FormatMetadataField.MAIL_SUBJECT, message.subject());
+    return fields;
+  }
+
+  private static void put(Map<String, String> fields, FormatMetadataField field, String rawValue) {
+    field.normalize(rawValue).ifPresent(value -> fields.put(field.key(), value));
+  }
+
+  /** The address inside {@code Name <address>}, or the value itself, lower-cased. */
+  private static String senderAddress(String from) {
+    if (from == null) {
+      return null;
+    }
+    String value = from.strip();
+    int open = value.lastIndexOf('<');
+    int close = value.lastIndexOf('>');
+    if (open >= 0 && close > open) {
+      value = value.substring(open + 1, close).strip();
+    }
+    return value.toLowerCase(Locale.ROOT);
   }
 
   private static String resolveExtension(DocumentPipelineSource source) {
@@ -204,8 +224,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
 
   /**
    * One chunk per message, or one per thread segment when {@link MailThreadSplitter} finds a quoted
-   * reply chain, every segment carrying the same single set of Kopfdaten metadata. {@code
-   * headerContext} is prepended to the first non-blank segment before {@link
+   * reply chain. {@code headerContext} is prepended to the first non-blank segment before {@link
    * ChunkingService#chunkDocuments} runs, never onto a later one; an over-long segment falls back
    * to the token splitter. A blank body yields a header-only chunk only if an attachment exists.
    */
@@ -225,7 +244,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
       }
       List<Document> parts = chunkingService.chunkDocuments(fileName, List.of(new Document(text)));
       for (int j = 0; j < parts.size(); j++) {
-        Map<String, Object> metadata = kopfdatenMetadata(message);
+        Map<String, Object> metadata = new HashMap<>();
         String location = locationFor(i, segments.size(), j, parts.size());
         if (location != null) {
           metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
@@ -237,7 +256,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
       List<Document> headerParts =
           chunkingService.chunkDocuments(fileName, List.of(new Document(headerContext)));
       for (int j = 0; j < headerParts.size(); j++) {
-        Map<String, Object> metadata = kopfdatenMetadata(message);
+        Map<String, Object> metadata = new HashMap<>();
         String location = locationFor(0, 1, j, headerParts.size());
         if (location != null) {
           metadata.put(ChunkingService.LOCATION_METADATA_KEY, location);
@@ -246,34 +265,6 @@ public class MailDocumentPipeline implements DocumentPipeline {
       }
     }
     return chunks;
-  }
-
-  private static Map<String, Object> kopfdatenMetadata(ParsedMailMessage message) {
-    Map<String, Object> metadata = new HashMap<>();
-    if (message.subject() != null) {
-      metadata.put(ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY, message.subject());
-    }
-    if (message.from() != null) {
-      metadata.put(ChunkMailMetadata.MAIL_FROM_METADATA_KEY, message.from());
-    }
-    if (message.to() != null) {
-      metadata.put(ChunkMailMetadata.MAIL_TO_METADATA_KEY, message.to());
-    }
-    if (message.date() != null) {
-      metadata.put(ChunkMailMetadata.MAIL_DATE_METADATA_KEY, renderMailDate(message.date()));
-    }
-    return metadata;
-  }
-
-  /**
-   * Renders {@code date} for {@link ChunkMailMetadata#MAIL_DATE_METADATA_KEY}, truncated to whole
-   * seconds first: {@link Instant#toString()} omits a zero fractional part, so two messages a
-   * millisecond apart would otherwise produce strings that do not compare correctly as text once a
-   * Zeitraum filter compares {@code mail_date}. Only {@link MsgReader} can deliver sub-second
-   * precision at all.
-   */
-  static String renderMailDate(Instant date) {
-    return date.truncatedTo(ChronoUnit.SECONDS).toString();
   }
 
   /**

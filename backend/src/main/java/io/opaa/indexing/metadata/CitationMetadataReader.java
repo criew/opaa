@@ -15,16 +15,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The library-field half of a Beleg (metadata-schema.md Wirkstelle 3): per document, the values of
- * its library's fields that carry a citation position, in that position's order and at most two -
- * the Belegzeile stays a line one can read in the flow of an answer. An empty field produces no
- * entry at all.
+ * The non-core half of a Beleg (metadata-schema.md Wirkstelle 3): per document, its format field
+ * values (a mail's Absender, An, Betreff) followed by the values of its library's fields that carry
+ * a citation position - in that position's order and at most two of them, so the Belegzeile stays a
+ * line one can read in the flow of an answer. An empty field produces no entry at all.
  *
  * <p>Two queries for a whole answer's sources, not one per document: the citation fields of the
  * involved libraries and the values of the involved documents.
  */
 @Component
-public class LibraryCitationMetadataReader {
+public class CitationMetadataReader {
 
   /** metadata-schema.md: "höchstens zwei Bibliotheksfelder" beside the core fields. */
   static final int MAX_CITATION_FIELDS = 2;
@@ -33,7 +33,7 @@ public class LibraryCitationMetadataReader {
   private final LibraryMetadataFieldValueRepository valueRepository;
   private final DocumentMetadataValueRepository documentValueRepository;
 
-  public LibraryCitationMetadataReader(
+  public CitationMetadataReader(
       LibraryMetadataFieldRepository fieldRepository,
       LibraryMetadataFieldValueRepository valueRepository,
       DocumentMetadataValueRepository documentValueRepository) {
@@ -64,9 +64,6 @@ public class LibraryCitationMetadataReader {
         citationFields.computeIfAbsent(field.getLibraryId(), id -> new ArrayList<>()).add(field);
       }
     }
-    if (citationFields.isEmpty()) {
-      return result;
-    }
     citationFields
         .values()
         .forEach(
@@ -82,9 +79,11 @@ public class LibraryCitationMetadataReader {
     for (Document document : documents) {
       List<LibraryMetadataField> fields =
           citationFields.getOrDefault(document.getLibraryId(), List.of());
-      List<CitationFieldValue> entries = new ArrayList<>();
+      List<CitationFieldValue> entries =
+          formatEntries(rowsByDocument.getOrDefault(document.getId(), Map.of()));
+      int formatEntryCount = entries.size();
       for (LibraryMetadataField field : fields) {
-        if (entries.size() >= MAX_CITATION_FIELDS) {
+        if (entries.size() - formatEntryCount >= MAX_CITATION_FIELDS) {
           break;
         }
         DocumentMetadataValue row =
@@ -118,6 +117,29 @@ public class LibraryCitationMetadataReader {
       }
     }
     return result;
+  }
+
+  /**
+   * The format field values of one document's rows, in the schema's own field order - built in and
+   * always shown in the Beleg, since a format field only exists where the format declares it.
+   */
+  private static List<CitationFieldValue> formatEntries(Map<String, DocumentMetadataValue> rows) {
+    List<CitationFieldValue> entries = new ArrayList<>();
+    for (FormatMetadataField field : FormatMetadataField.values()) {
+      DocumentMetadataValue row = rows.get(field.documentFieldKey());
+      if (row == null || row.getState() != MetadataValueState.SET || row.getTextValue() == null) {
+        continue;
+      }
+      entries.add(
+          new CitationFieldValue(
+              field.documentFieldKey(),
+              field.label(),
+              row.getTextValue(),
+              row.getTextValue(),
+              row.getOrigin(),
+              null));
+    }
+    return entries;
   }
 
   private Map<String, String> valueLabels(Map<UUID, List<LibraryMetadataField>> citationFields) {

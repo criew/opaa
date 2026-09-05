@@ -65,8 +65,10 @@ public record ChatSourceMetadataEntry(
   }
 
   /**
-   * The core fields of {@code core} followed by the library fields of {@code citationFields} - at
-   * most two, in their configured citation order, empty ones absent.
+   * The core fields of {@code core} followed by {@code citationFields} - a document's format fields
+   * and then the library fields with a citation position. A field whose display text a preceding
+   * entry already shows verbatim is left out: a mail's Betreff is also its Titel, and a Belegzeile
+   * that says the same thing twice reads worse, not richer.
    */
   public static List<ChatSourceMetadataEntry> from(
       CoreMetadata core, List<CitationFieldValue> citationFields) {
@@ -75,6 +77,11 @@ public record ChatSourceMetadataEntry(
       return entries;
     }
     for (CitationFieldValue field : citationFields) {
+      if (entries.stream()
+          .anyMatch(
+              entry -> java.util.Objects.equals(entry.displayValue(), field.displayValue()))) {
+        continue;
+      }
       entries.add(
           new ChatSourceMetadataEntry(
               field.fieldKey(),

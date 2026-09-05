@@ -301,6 +301,34 @@ class QueryControllerTest {
     verifyNoInteractions(queryService);
   }
 
+  /**
+   * #1242: the Betreff is a display field of the Aufnahmestrecke - a filter naming it is refused,
+   * not silently dropped, and an unknown format field likewise.
+   */
+  @Test
+  void aFilterOnANonFilterableFormatFieldIsRejectedWith400() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/query")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"question\": \"Was gilt?\", \"metadataFilter\": {\"formatFields\":"
+                        + " [{\"fieldKey\": \"mail_subject\", \"values\":"
+                        + " [\"Bebauungsplan\"]}]}}"))
+        .andExpect(status().isBadRequest());
+    mockMvc
+        .perform(
+            post("/api/v1/query")
+                .with(asTestUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"question\": \"Was gilt?\", \"metadataFilter\": {\"formatFields\":"
+                        + " [{\"fieldKey\": \"mail_zeichen\", \"values\": [\"X\"]}]}}"))
+        .andExpect(status().isBadRequest());
+    verifyNoInteractions(queryService);
+  }
+
   @Test
   void anImpossibleFilterDateIsRejectedWith400() throws Exception {
     mockMvc

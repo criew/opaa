@@ -3,8 +3,10 @@ package io.opaa.api;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.MetadataFilterFieldOption;
+import io.opaa.api.dto.MetadataFilterFormatFieldOption;
 import io.opaa.api.dto.MetadataFilterOptionsResponse;
 import io.opaa.indexing.metadata.CoreMetadataField;
+import io.opaa.indexing.metadata.FormatMetadataField;
 import io.opaa.query.MetadataFilterOptions;
 import java.time.LocalDate;
 import java.util.List;
@@ -50,6 +52,58 @@ class MetadataFilterOptionsResponseMapperTest {
     assertThat(date.getFieldKey()).isEqualTo("document_date");
     assertThat(date.getFillShare()).isEqualTo(0.5);
     assertThat(date.getOffered()).isFalse();
+  }
+
+  /**
+   * #1242: a filterable format field reaches the response with the addresses occurring in the
+   * scope, and it is offered exactly when at least one document carries one.
+   */
+  @Test
+  void copiesTheFormatFieldOptionsAndTheirOfferState() {
+    MetadataFilterOptions withSenders =
+        new MetadataFilterOptions(
+            20,
+            List.of(),
+            List.of(),
+            null,
+            null,
+            List.of(),
+            List.of(
+                new MetadataFilterOptions.FormatFieldOption(
+                    FormatMetadataField.MAIL_SENDER,
+                    3,
+                    20,
+                    List.of(
+                        new MetadataFilterOptions.LibraryFieldValueOption(
+                            "max@stadt.de", "max@stadt.de", 3)))));
+
+    MetadataFilterFormatFieldOption field =
+        MetadataFilterOptionsResponseMapper.toResponse(withSenders).getFormatFields().getFirst();
+
+    assertThat(field.getFieldKey()).isEqualTo("mail_sender");
+    assertThat(field.getLabel()).isEqualTo("Absender");
+    assertThat(field.getFilledDocuments()).isEqualTo(3);
+    assertThat(field.getTotalDocuments()).isEqualTo(20);
+    assertThat(field.getOffered()).isTrue();
+    assertThat(field.getValues().getFirst().getCode()).isEqualTo("max@stadt.de");
+
+    MetadataFilterOptions withoutSenders =
+        new MetadataFilterOptions(
+            20,
+            List.of(),
+            List.of(),
+            null,
+            null,
+            List.of(),
+            List.of(
+                new MetadataFilterOptions.FormatFieldOption(
+                    FormatMetadataField.MAIL_SENDER, 0, 20, List.of())));
+    assertThat(
+            MetadataFilterOptionsResponseMapper.toResponse(withoutSenders)
+                .getFormatFields()
+                .getFirst()
+                .getOffered())
+        .isFalse();
   }
 
   @Test

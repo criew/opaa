@@ -175,7 +175,9 @@ Antwort mit Beleg            → 3. Beleg-Anzeige: „§ 3 Verwaltungsgebührens
 ## Drei Arten von Metadaten
 
 Das Schema kennt drei Arten, und sie unterscheiden sich nicht im Format, sondern in **wer sie
-festlegt** und **wie viel sie dürfen**.
+festlegt** und **wie viel sie dürfen**. Seit #1242 tritt ein vierter, bewusst kleiner Kreis daneben:
+die [Formatfelder](#formatfelder-der-aufnahmestrecke-1242) — fest eingebaut wie die Kernfelder, aber
+nur von der Pipeline eines bestimmten Formats befüllt.
 
 | | (a) Kernfelder | (b) Bibliotheksfelder | (c) Freie Schlagworte |
 |---|---|---|---|
@@ -407,6 +409,58 @@ des Suchbereichs an.
 **Bewusst nicht gebaut.** Kein geführter Assistent (Teil V, spätere Ausbaustufe); keine automatische
 Befüllung eines Bibliotheksfeldes; keine Umbenennung eines Wertecodes im Bestand (das ist eine
 Entfernung mit Abbildung); kein Freitextfeld.
+
+## Formatfelder der Aufnahmestrecke (#1242)
+
+Manche Formate erklären eine Angabe, die kein anderes Format kennt: eine Mail nennt ihren Absender,
+ihre Empfänger und ihren Betreff. Ein Kernfeld ist das nicht — es gilt nicht für jedes Dokument —,
+und ein Bibliotheksfeld auch nicht: Niemand konfiguriert es, es entsteht beim Lesen. Deshalb gibt es
+einen dritten, fest eingebauten Feldkreis mit eigenem Schlüsselraum (`fmt:<key>` in
+`document_metadata_values`):
+
+| Feld | Format | Typ | Wirkstellen |
+|---|---|---|---|
+| `mail_sender` („Absender") | E-Mail | Kennung nach Muster (E-Mail-Adresse) | Filter + Beleg |
+| `mail_recipients` („An") | E-Mail | Text, auf 200 Zeichen gekürzt | nur Beleg |
+| `mail_subject` („Betreff") | E-Mail | Text | nur Beleg |
+
+Vier Festlegungen (Maintainer-Entscheidung vom 04.09.2026 an #1242, Option 1):
+
+- **Der Absender ist eine Kennung, kein Freitext.** Er wird auf die reine Adresse reduziert und
+  kleingeschrieben (`Max Mustermann <Max.Mueller@Stadt.de>` → `max.mueller@stadt.de`) und gegen ein
+  Muster geprüft; ein `From`-Kopf ohne Adresse (eine MSG mit reinem Anzeigenamen) ergibt **keinen**
+  Wert. Gefiltert wird auf den **ganzen** Wert, nie auf einen Teilstring — dieselbe Regel wie beim
+  PATTERN-Bibliotheksfeld und aus demselben Grund.
+- **Betreff und Empfänger sind Anzeigefelder.** Sie stehen im Beleg und filtern nie. Damit bleibt die
+  Regel „Freitextfelder gibt es nicht" unverändert: Es wird kein Teilstring-Filtertyp eingeführt. Ein
+  Filter auf ein Anzeigefeld ist ein Aufrufer-Fehler (400), keine still verworfene Bedingung. Die
+  Betreffsuche deckt die Volltextsuche ab — der Betreff steht im deutsch beschrifteten Kopfblock des
+  Chunk-Textes.
+- **„Nur Beleg-Anzeige" ist hier zulässig**, anders als bei einem Bibliotheksfeld. Die
+  [Aufnahmeregel](#die-aufnahmeregel) ist gegen ein wachsendes, von Hand gepflegtes Schema gerichtet;
+  ein Formatfeld legt niemand an, es kostet keine Pflege und kann nicht wuchern.
+- **Ein Wert wird gelesen, nicht gedeutet**, und trägt deshalb immer Herkunft `DETERMINISTIC` mit
+  Extraktionsversion — dieselbe Reihenfolge und derselbe Schutz manuell gesetzter Werte wie bei den
+  Kernfeldern. Das Datum einer Mail bleibt das **Kernfeld** Datum/Stand (der `Date`-Kopf ist seine
+  ranghöchste Quelle), kein eigenes Formatfeld.
+
+**Wirkung.** Der Absender rides wie ein filterbares Bibliotheksfeld auf jedem Chunk (`ff_mail_sender`,
+Präsenzmarke `ffs_mail_sender`) und wird in beiden Suchpfaden nach denselben Regeln übersetzt —
+Leerwert-Regel, Nachordnung unter den Rechtefilter, explizite Klammerung. Eine Bibliotheksgrenze
+braucht die Bedingung nicht: Ein Formatfeld bedeutet überall dasselbe, und ein Dokument, das keine
+Mail ist, hat schlicht keinen Wert. Im Filter-Popover erscheint „Absender" mit den im Suchbereich
+**vorkommenden** Adressen; angeboten wird das Feld, sobald mindestens ein Dokument einen Wert trägt —
+ein Füllstandsanteil am gemischten Bestand misst dort die Formatverteilung, nicht die
+Metadatenqualität. Im Beleg stehen die Formatfelder hinter den Kernfeldern und vor den
+Bibliotheksfeldern; ein Wert, den der Titel bereits wörtlich zeigt (bei einer Mail der Betreff, der
+zugleich Titelquelle ist), erscheint nicht zweimal.
+
+**Abgelöst.** Die mail-eigenen Chunk-Schlüssel `mail_from`/`mail_to`/`mail_subject`/`mail_date`, die
+vier Felder `mailFrom`/`mailTo`/`mailSubject`/`mailDate` am `SourceReference` und `formatMailSummary`
+im Frontend sind entfallen — kein Parallelbetrieb. Ein Chat, dessen gespeicherte Belege die alten
+Felder noch tragen, bleibt lesbar (unbekannte JSON-Felder werden ignoriert, Test). Ein vor #1242
+indizierter Mail-Bestand zieht über den Pipeline-Reindex (Mail-Pipeline-Version 5) oder den
+Bestandslauf nach; bis dahin zeigt er Fundstelle und Dateiname wie bisher.
 
 ## (c) Freie Schlagworte
 
@@ -978,7 +1032,7 @@ definiert den Übergabepunkt. Die Trennung ist scharf und in beide Richtungen ge
 
 | | Struktur-Metadaten (Aufnahmestrecke) | Schema-Metadaten (dieses Dokument) |
 |---|---|---|
-| **Beispiele** | Gliederungspfad, Überschriftenpfad, Foliennummer, Blattname, Mail-Kopfdaten, Seitenzahl | Dokumentart, Datum/Stand, Fassung, Rechtsebene, Projekt |
+| **Beispiele** | Gliederungspfad, Überschriftenpfad, Foliennummer, Blattname, Seitenzahl | Dokumentart, Datum/Stand, Fassung, Rechtsebene, Projekt, Mail-Kopfdaten (#1242) |
 | **Entstehung** | **abgeleitet** — aus dem Dokument selbst, während der Reader es strukturiert vor sich hat | **interpretiert** — deterministisch, wo möglich; sonst Modell mit Konfidenz |
 | **Geltung** | je Chunk | je Dokument, an alle seine Chunks vererbt |
 | **Kann fehlschlagen** | nein, nur fehlen | ja — deshalb Konfidenz, Herkunft und Leerwert |
@@ -1007,8 +1061,8 @@ Volltextpfad tragen ihn identisch — dasselbe Prinzip und derselbe Grund wie be
 obwohl passende Dokumente im Bestand liegen: Der Filter hat dann nicht die Menge eingeschränkt,
 sondern das bereits gezogene Fenster leergeräumt.
 
-**Nur (a) und (b) filtern.** Freie Schlagworte nicht — siehe oben, und dies ist die Stelle, an der die
-Zusage eingelöst wird.
+**Nur (a), (b) und die filterbaren Formatfelder filtern.** Freie Schlagworte nicht und ein
+Anzeigefeld auch nicht — siehe oben, und dies ist die Stelle, an der die Zusage eingelöst wird.
 
 **Der Filter ist dem Rechtefilter nachgeordnet, nie nebengeordnet.** Metadaten sind eine
 Komfort-Einschränkung, Rechte sind eine Zusicherung. Ein Metadatenfilter kann die lesbare Menge
@@ -1133,8 +1187,9 @@ erscheint als entfernbare Chips („Dokumentart: Vermerk", „Datum: 01.01.2024 
 bleibt am Chat. Die Optionen werden bei jedem Öffnen für den aktuellen Suchbereich geladen.
 
 **Zu #1211 (Mail-Filter).** Der Zeitraumfilter für Mails ist damit abgedeckt, sofern das Mail-Datum
-als Kernfeld Datum/Stand extrahiert ist (#1066 tut das); Absender kommt mit #1242 als typisiertes
-Feld, der Betreff bleibt nach Maintainer-Entscheidung ein Anzeigefeld. Das Datumsfenster vergleicht
+als Kernfeld Datum/Stand extrahiert ist (#1066 tut das); der Absender ist mit #1242 als Formatfeld
+filterbar (Genau-Treffer statt des dort vorgeschlagenen Teilstrings), der Betreff bleibt nach
+Maintainer-Entscheidung ein Anzeigefeld. Das Datumsfenster vergleicht
 Kalendertage des gespeicherten Werts, nicht UTC-Zeitstempel — die in #1211 genannte
 Lokaltag-Abweichung entsteht hier nicht, weil `doc_date` bereits ein Kalendertag ist.
 
@@ -1232,8 +1287,8 @@ nachher:  § 3 Verwaltungsgebührensatzung, Fassung 2026 — Seite 4
 
 Drei Regeln:
 
-- **Der Beleg zeigt nur, was das Produkt verantworten kann.** Kernfelder und Bibliotheksfelder mit der
-  Wirkstelle „Beleg-Anzeige"; keine Schlagworte.
+- **Der Beleg zeigt nur, was das Produkt verantworten kann.** Kernfelder, Formatfelder und
+  Bibliotheksfelder mit der Wirkstelle „Beleg-Anzeige"; keine Schlagworte.
 - **Die Belegzeile bleibt lesbar: höchstens zwei Bibliotheksfelder** neben den Kernfeldern und der
   Fundstelle. Ein Beleg ist eine Zeile, die im Lesefluss der Antwort steht; trägt sie fünf Angaben,
   liest sie niemand mehr, und die eine Angabe, auf die es ankommt — die Fassung — geht in der

@@ -894,14 +894,15 @@ aus Kopfdaten, Text und Anhangstext.
 
 Die Pipeline trennt drei Dinge:
 
-- **Kopfdaten landen sowohl als Metadaten als auch als Kontextzeilen im Text des ersten Chunks.** Von,
-  An, Betreff, Datum werden auf jeden Kopfdaten tragenden Chunk als Metadatenfeld geschrieben — seit
-  #1164 mit Leser: `QueryService#mapSources` liest sie zurück und reicht sie bis in die
-  Fundstellen-Anzeige durch (Beleganzeige; die strukturierte Filterung nach Absender/Zeitraum/Betreff
-  selbst steht noch aus, siehe Issue #1211) — und zusätzlich
-  einmalig, deutsch beschriftet, vor den Nachrichtentext des jeweils ersten erzeugten Chunks gesetzt —
-  nicht wiederholt auf jedes Thread-Segment oder jedes weiter zerlegte Teilstück, sonst würde derselbe
-  Verteilerkopf jeden Chunk eines langen Threads verwässern (#1130 Befund 1).
+- **Kopfdaten landen sowohl als Schemafelder am Dokument als auch als Kontextzeilen im Text des
+  ersten Chunks.** Absender, An und Betreff sind seit #1242 **Formatfelder des Metadatenschemas**
+  (`metadata-schema.md`, „Formatfelder der Aufnahmestrecke"), das Datum ist die ranghöchste Quelle
+  des Kernfelds Datum/Stand; die Pipeline liefert sie über `DocumentProperties`, nicht mehr über
+  eigene `mail_*`-Chunk-Schlüssel. Der filterbare Absender erreicht die Chunks von dort aus wie jedes
+  andere filterbare Schemafeld. Zusätzlich stehen dieselben Kopfdaten einmalig, deutsch beschriftet,
+  vor dem Nachrichtentext des jeweils ersten erzeugten Chunks — nicht wiederholt auf jedes
+  Thread-Segment oder jedes weiter zerlegte Teilstück, sonst würde derselbe Verteilerkopf jeden Chunk
+  eines langen Threads verwässern (#1130 Befund 1).
 - **Ein Chunk je Nachricht**, bei langen Threads je Nachricht im Thread. Ein Thread ist kein Dokument,
   sondern eine Folge von Dokumenten.
 - **Ein Anhang ist ein eigenes Dokument, das durch die Pipeline seines eigenen Typs läuft** (ADR-0022,
@@ -989,21 +990,18 @@ werden müssen, statt in einen Block zu fließen:
 - **MSG** über Apache POI HSMF (`org.apache.poi.hsmf.MAPIMessage`, `poi-scratchpad` jetzt direkt
   referenziert): liest Betreff/Von/An/Datum/Text sowie `AttachmentChunks` für Anhänge.
 
-**Kopfdaten landen als Chunk-Metadaten** — `ChunkMailMetadata` definiert
-`mail_from`/`mail_to`/`mail_subject`/`mail_date`, deklariert über
-`MailDocumentPipeline#passthroughMetadataKeys()` (#1107); `FileProcessingService#storeChunks` kopiert
-sie auf den gespeicherten Chunk, genau wie es das schon für `location` tut (Teil 5, Übergabepunkt).
-Seit #1164 (PR #1201) haben diese Felder einen Leser: `QueryService#mapSources` liest sie zurück, die
-Fundstellen-Anzeige zeigt Absender/Datum/Betreff. Die strukturierte Filterung nach
-Absender/Zeitraum/Betreff selbst steht noch aus (Issue #1211, keine Fehlmodellierung — siehe
-`ChunkMailMetadata`-Javadoc). `mail_date` wird seit PR #1201 auf Sekundenpräzision gekürzt
-geschrieben (`MailDocumentPipeline#renderMailDate`), damit ein künftiger Zeitraumfilter
-lexikografisch sortieren kann — `Instant#toString()` allein wäre das nicht zuverlässig (siehe
-`ChunkMailMetadata`-Javadoc). `MailDocumentPipeline#version()` stieg dafür 2 → 3; ein bereits
-indizierter Mail-Bestand unterhalb dieser Version trägt weiterhin den alten, potenziell nicht
-sortierbaren `mail_date`-Wert, bis die Betreiberin ihn über die vorhandenen
-Administrationsendpunkte (`GET /pipeline-versions`, `POST /pipeline-reindex`) nachzieht — Regel (d):
-„Ausgelöst wird nichts von selbst", unverändert.
+**Kopfdaten landen als Schemafelder am Dokument (#1242).** `FormatMetadataField` definiert die drei
+Formatfelder `mail_sender`/`mail_recipients`/`mail_subject`; die Pipeline liefert sie über
+`DocumentProperties#formatFields`, `DocumentMetadataService` schreibt sie wie ein Kernfeld
+(deterministisch, mit Extraktionsversion, manuell gesetzte Werte unangetastet), und der filterbare
+Absender reist als `ff_mail_sender` mit Präsenzmarke `ffs_mail_sender` auf jedem Chunk mit — auf
+demselben Weg, den auch Dokumentart und Datum nehmen. Das Mail-Datum bleibt das Kernfeld
+Datum/Stand. Die früheren Sonderschlüssel `mail_from`/`mail_to`/`mail_subject`/`mail_date`
+(`ChunkMailMetadata`) und die vier gleichnamigen Felder am `SourceReference` sind entfallen; die
+Beleg-Anzeige liest die Kopfdaten über die generische Feld-Wert-Liste aus #1066.
+`MailDocumentPipeline#version()` stieg dafür 4 → 5; ein Altbestand unterhalb dieser Version trägt die
+Kopfdaten erst nach einem Pipeline-Reindex (`GET /pipeline-versions`, `POST /pipeline-reindex`) oder
+dem Bestandslauf des Metadatenschemas — Regel (d): „Ausgelöst wird nichts von selbst", unverändert.
 
 **Dieselben Kopfdaten landen zusätzlich, deutsch beschriftet, als Kontextzeilen vor dem
 Nachrichtentext** (#1130 Befund 1, entschieden gegen die zuvor offene Formfrage aus Teil 5, Punkt 1)
@@ -1618,13 +1616,15 @@ Hier wird nur der **Übergabepunkt** definiert:
    `MailDocumentPipeline` nutzte ausschließlich eigene Metadatenfelder (`mail_from` usw.), während
    `TabularDocumentPipeline`/`HtmlDocumentPipeline`/`PptxDocumentPipeline` ihren Strukturkontext in den
    Chunk-Text backen (`location` plus eine Kontextzeile). **Entschieden mit #1130 Befund 1: beides.**
-   Die Metadatenfelder bleiben — seit #1164 (PR #1201) gelesen für die Fundstellen-Anzeige, als
-   Grundlage einer künftigen strukturierten Filterung nach Absender/Zeitraum/Betreff (Issue #1211)
-   noch offen —, zusätzlich trägt `MailDocumentPipeline` dieselben Kopfdaten jetzt auch als deutsch
-   beschriftete Kontextzeilen in den Chunk-Text, einmalig auf dem ersten erzeugten Chunk, damit sie
-   Embedding und Volltextindex tatsächlich erreichen. Ein Metadatenfeld ohne Leser ist wirkungslos —
-   zum Zeitpunkt dieser Entscheidung galt das noch für beide Wege: Die Textform war die einzige, die
-   vor Retrieval-Filterung/Beleganzeige in Suchtreffern ankam.
+   Die Kontextzeilen der Mail-Kopfdaten bleiben — deutsch beschriftet, einmalig auf dem ersten
+   erzeugten Chunk, damit sie Embedding und Volltextindex erreichen. Die *Metadaten*-Hälfte hat
+   dagegen mit **#1242** die Seite gewechselt: Absender, Empfänger und Betreff sind keine eigenen
+   Chunk-Schlüssel dieser Pipeline mehr, sondern Formatfelder des Metadatenschemas am Dokument
+   (`metadata-schema.md`, „Formatfelder der Aufnahmestrecke"), das Datum ist Kernfeld. Damit bleibt
+   `passthroughMetadataKeys()` der offene Mechanismus für echten *Chunk*-Kontext — heute die
+   Ortsangabe und der Confluence-Space —, und eine Angabe, die für das ganze Dokument gilt, nimmt
+   den Schemaweg. Ein Metadatenfeld ohne Leser ist wirkungslos; genau daran ist die frühere
+   Doppelung gescheitert.
 2. Struktur-Metadaten sind **abgeleitet, nicht geraten**. Sie stammen aus dem Dokument selbst
    (Gliederung, Folienzähler, Blattname, Mail-Header). Inhaltlich interpretierende Felder — Dokumentart,
    Fassung, Thema — entstehen hier ausdrücklich nicht; sie gehören in die Metadaten-Spezifikation, mit

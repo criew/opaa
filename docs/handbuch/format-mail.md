@@ -67,24 +67,38 @@ Das ist der einzige Größenparameter dieser Pipeline.
 dem Kopfblock. So bleibt „Von wem kam der Bescheid und wann?" beantwortbar. Eine leere Mail
 ohne Anhänge wird dagegen als „kein extrahierbarer Text" abgewiesen.
 
-## 4. Metadaten am Chunk
+## 4. Kopfdaten als Metadaten
 
-Die Mail-Pipeline ist die einzige mit zusätzlichen Metadatenfeldern:
+Am Chunk trägt die Mail-Pipeline nur die Ortsangabe wie jede andere Pipeline:
 
 | Feld | Inhalt |
 |---|---|
 | `location` | `Nachricht 2 von 4`, `Teil 3 von 7` oder `Nachricht 2 von 4 · Teil 3 von 7`; bei einer ungeteilten Nachricht leer |
-| `mail_from` | Absender als `Name <adresse>` |
-| `mail_to` | alle Empfänger, mit `; ` getrennt |
-| `mail_subject` | Betreff |
-| `mail_date` | Zeitstempel in ISO-Form, auf ganze Sekunden gekürzt, damit die Sortierung stabil ist |
 
-Diese Felder erscheinen in der Fundstellenanzeige der Antwort. Eine Filterung nach Absender oder
-Betreff in der Suche gibt es noch nicht; nach dem Zeitraum lässt sich über das Kernfeld Datum/Stand
-filtern, das aus dem `Date`-Kopf ermittelt wird (siehe [Metadaten](metadaten.md)).
+Die Kopfdaten selbst sind seit #1242 **Werte des Metadatenschemas am Dokument**, keine
+mail-eigenen Chunk-Schlüssel mehr — dieselbe Mechanik wie bei den Kernfeldern, mit Herkunft
+„deterministisch" und Extraktionsversion (siehe [Metadaten](metadaten.md), Abschnitt 2a):
+
+| Feld | Inhalt | Filterbar |
+|---|---|---|
+| **Absender** | die reine Adresse des `From`-Kopfs, kleingeschrieben (`Max Mustermann <Max.Mueller@Stadt.de>` → `max.mueller@stadt.de`) | ja, als Genau-Treffer |
+| **An** | alle Empfänger, mit `; ` getrennt, auf 200 Zeichen gekürzt | nein |
+| **Betreff** | Betreff der Nachricht | nein |
+| **Datum/Stand** | Kalendertag aus dem `Date`-Kopf (Kernfeld) | ja, als Zeitraum |
+
+Ein `From`-Kopf ohne Adresse — bei MSG kann dort nur ein Anzeigename stehen — ergibt **keinen**
+Absender; geraten wird nichts. Die Suche bietet den Absender im Filter-Popover mit den im
+Suchbereich vorkommenden Adressen an; ein Dokument ohne Absender bleibt gefunden
+(Leerwert-Regel). Nach dem Betreff wird nicht gefiltert — er steht im Kopfblock des Chunk-Textes
+und damit in der Volltextsuche.
 
 **Dokumenteigenschaften:** Betreff als Titel, der `Date`-Kopf als Dokumentdatum mit höchstem
-Rang für das Metadatenschema.
+Rang für das Metadatenschema. Weil der Betreff zugleich der Titel ist, zeigt die Belegzeile ihn
+nur einmal.
+
+**Altbestand.** Eine vor #1242 indizierte Mail trägt die Kopfdaten noch nicht als Schemafelder.
+Sie kommen mit dem nächsten Lauf über das Dokument: Pipeline-Reindex (die Pipeline-Version ist
+auf 5 gestiegen) oder Bestandslauf des Metadatenschemas.
 
 ## 5. Anhänge
 
@@ -141,5 +155,7 @@ selbst.
 - Verschlüsselte oder signierte Nachrichten (S/MIME, PGP) werden weder entschlüsselt noch geprüft
 - Kopfdaten außer den vieren: kein Cc, Bcc, Reply-To, Message-ID
 - Echte Thread-Verkettung über `References`; nur die Texterkennung der Trennzeilen
-- Der Kopfblock steht nur im ersten Chunk. Ein späterer Chunk trägt den Kontext nur in den
-  `mail_*`-Metadaten, nicht im Text. Bewusst in Kauf genommen.
+- Der Kopfblock steht nur im ersten Chunk. Ein späterer Chunk trägt die Kopfdaten nur über die
+  Metadaten des Dokuments, nicht im Text. Bewusst in Kauf genommen.
+- Ein Filter auf den Betreff; er ist ein Anzeigefeld, und Teilstring-Filter gibt es im Schema
+  nicht (Maintainer-Entscheidung 04.09.2026)

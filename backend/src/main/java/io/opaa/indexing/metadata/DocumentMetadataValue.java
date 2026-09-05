@@ -100,7 +100,13 @@ public class DocumentMetadataValue {
   /** A fresh deterministic row for {@code field}; the value itself is set via {@code assign*}. */
   static DocumentMetadataValue deterministic(
       UUID documentId, CoreMetadataField field, int extractionVersion) {
-    DocumentMetadataValue value = new DocumentMetadataValue(documentId, field.key(), null);
+    return deterministic(documentId, field.key(), extractionVersion);
+  }
+
+  /** A fresh deterministic row for a namespaced key - a format field's {@code fmt:<key>}. */
+  static DocumentMetadataValue deterministic(
+      UUID documentId, String fieldKey, int extractionVersion) {
+    DocumentMetadataValue value = new DocumentMetadataValue(documentId, fieldKey, null);
     value.markDeterministic(extractionVersion);
     return value;
   }

@@ -11,12 +11,7 @@ import CloseIcon from '@mui/icons-material/Close'
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import type { CitationIndex } from './citations'
-import {
-  describeMetadata,
-  formatMailSummary,
-  formatMetadataLine,
-  metadataFilterMatchLabel,
-} from './citations'
+import { describeMetadata, formatMetadataLine, metadataFilterMatchLabel } from './citations'
 import type { DocumentSourceType } from '../../types/api'
 import type { OpenableDocument } from '../../hooks/useDocumentPreview'
 import { fontFamily } from '../../theme/tokens'
@@ -63,8 +58,6 @@ interface EvidenceDoc {
    *  LibraryDocumentResponse.sourceUrl (#738) - shown as secondary information alongside the
    *  documentId deep link above, not itself the primary way to open the original any more. */
   sourceUrl?: string | null
-  /** #1164: "Mail von …, TT.MM.JJJJ — Betreff", undefined for a non-mail source. */
-  mailSummary?: string
   /** #1066: the schema metadata line, undefined when the document carries no value. */
   metadataLine?: string
   /** #1066: "Label: Wert, …" - the accessible name of {@link metadataLine}. */
@@ -123,7 +116,6 @@ export default function SourceEvidenceDrawer({
       documentId: doc.source?.documentId,
       sourceType: doc.source?.sourceType,
       sourceUrl: doc.source?.sourceUrl,
-      mailSummary: formatMailSummary(doc.source),
       metadataLine: formatMetadataLine(doc.source),
       metadataDescription: describeMetadata(doc.source),
       filterMatchLabel: metadataFilterMatchLabel(doc.source),
@@ -140,7 +132,6 @@ export default function SourceEvidenceDrawer({
       documentId: source.documentId,
       sourceType: source.sourceType,
       sourceUrl: source.sourceUrl,
-      mailSummary: formatMailSummary(source),
       metadataLine: formatMetadataLine(source),
       metadataDescription: describeMetadata(source),
       filterMatchLabel: metadataFilterMatchLabel(source),
@@ -338,17 +329,6 @@ export default function SourceEvidenceDrawer({
                   sx={{ display: 'block', fontSize: 11, color: 'text.secondary', mt: 0.25 }}
                 >
                   {doc.filterMatchLabel}
-                </Typography>
-              )}
-              {/* #1164: the mail Kopfdaten summary ("Mail von …, TT.MM.JJJJ — Betreff"), only for a
-                  source whose retrieved chunk carried mail_* metadata. */}
-              {doc.mailSummary && (
-                <Typography
-                  component="span"
-                  data-testid="source-mail-summary"
-                  sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
-                >
-                  {doc.mailSummary}
                 </Typography>
               )}
               <Box

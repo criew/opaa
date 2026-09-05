@@ -1,5 +1,6 @@
 import type {
   MetadataFilter,
+  MetadataFilterFormatFieldCondition,
   MetadataFilterLibraryFieldCondition,
   MetadataFilterOptionsResponse,
 } from '../../types/api'
@@ -52,12 +53,20 @@ function libraryFieldsOf(filter: MetadataFilter) {
     : {}
 }
 
+/** The format-field conditions of a filter, carried along by every chip removal. */
+function formatFieldsOf(filter: MetadataFilter) {
+  return filter.formatFields && filter.formatFields.length > 0
+    ? { formatFields: filter.formatFields }
+    : {}
+}
+
 /** The filter without its Dokumentart condition - what removing that chip leaves. */
 export function withoutDocumentTypes(filter: MetadataFilter): MetadataFilter {
   return {
     ...(filter.documentDateFrom ? { documentDateFrom: filter.documentDateFrom } : {}),
     ...(filter.documentDateTo ? { documentDateTo: filter.documentDateTo } : {}),
     ...libraryFieldsOf(filter),
+    ...formatFieldsOf(filter),
   }
 }
 
@@ -68,6 +77,7 @@ export function withoutDateWindow(filter: MetadataFilter): MetadataFilter {
       ? { documentTypes: filter.documentTypes }
       : {}),
     ...libraryFieldsOf(filter),
+    ...formatFieldsOf(filter),
   }
 }
 
@@ -113,5 +123,36 @@ export function withoutLibraryField(
     ...(filter.documentDateFrom ? { documentDateFrom: filter.documentDateFrom } : {}),
     ...(filter.documentDateTo ? { documentDateTo: filter.documentDateTo } : {}),
     ...(remaining.length > 0 ? { libraryFields: remaining } : {}),
+    ...formatFieldsOf(filter),
+  }
+}
+
+/** "Absender: max@stadt.de" - one chip per format-field condition. */
+export function formatFieldChipLabel(
+  condition: MetadataFilterFormatFieldCondition,
+  options: MetadataFilterOptionsResponse | null,
+): string {
+  const field = (options?.formatFields ?? []).find(
+    (candidate) => candidate.fieldKey === condition.fieldKey,
+  )
+  return `${field?.label ?? condition.fieldKey}: ${condition.values.join(', ')}`
+}
+
+/** The filter without one format-field condition - what removing its chip leaves. */
+export function withoutFormatField(
+  filter: MetadataFilter,
+  condition: MetadataFilterFormatFieldCondition,
+): MetadataFilter {
+  const remaining = (filter.formatFields ?? []).filter(
+    (candidate) => candidate.fieldKey !== condition.fieldKey,
+  )
+  return {
+    ...(filter.documentTypes && filter.documentTypes.length > 0
+      ? { documentTypes: filter.documentTypes }
+      : {}),
+    ...(filter.documentDateFrom ? { documentDateFrom: filter.documentDateFrom } : {}),
+    ...(filter.documentDateTo ? { documentDateTo: filter.documentDateTo } : {}),
+    ...libraryFieldsOf(filter),
+    ...(remaining.length > 0 ? { formatFields: remaining } : {}),
   }
 }

@@ -325,36 +325,6 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(within(drawer).queryByText('Beleg nicht bestätigt')).not.toBeInTheDocument()
   })
 
-  // #1164: a source whose retrieved chunk carried mail_* metadata shows a summary line; a
-  // non-mail source (the default `message()` fixture) shows none.
-  it('shows the mail Kopfdaten summary for a source with mail metadata', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(
-      <MessageBubble
-        message={{
-          id: 'ev-mail',
-          role: 'assistant',
-          content: 'Beleg【source: a#0 | anfrage.eml】.',
-          sources: [
-            source('anfrage.eml', true, 1, true, {
-              mailFrom: 'mueller@stadt.de',
-              mailDate: '2026-03-14T09:15:00Z',
-              mailSubject: 'Bebauungsplan Nord',
-            }),
-          ],
-          timestamp: new Date('2026-08-21T09:00:00'),
-        }}
-      />,
-    )
-    await user.click(screen.getByRole('button', { name: 'Alle als Liste im Belegfenster öffnen' }))
-    const drawer = await screen.findByRole('dialog', { name: 'Belege dieser Antwort' })
-
-    const doc = within(drawer).getByTestId('evidence-doc')
-    expect(within(doc).getByTestId('source-mail-summary')).toHaveTextContent(
-      'Mail von mueller@stadt.de, 14.03.2026 — Bebauungsplan Nord',
-    )
-  })
-
   // #1066: the Belegfenster row carries the same generic metadata line as the Fundstellen block.
   it('shows the metadata line of a source, rendered from the generic list', async () => {
     const user = userEvent.setup()
