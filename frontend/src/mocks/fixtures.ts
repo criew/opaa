@@ -355,7 +355,7 @@ export const mockErrorResponse = {
   timestamp: '2025-01-15T10:30:00Z',
 }
 
-export const mockAuthConfig: AuthConfig = { mode: 'dev' }
+export const mockAuthConfig: AuthConfig = { mode: 'dev', providers: [] }
 
 /**
  * Mutable so the handlers can reflect a PUT back on the next GET - the branding form's whole point

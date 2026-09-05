@@ -87,7 +87,8 @@ public class DiagnosticImpersonationGrantService {
             .orElseThrow(() -> new NotFoundException("Organisationseinheit nicht gefunden"));
     if (scope.getKind() != GroupKind.ORG_UNIT) {
       throw new ValidationException(
-          "Der Geltungsbereich muss eine Organisationseinheit sein, keine Ad-hoc-Gruppe");
+          "Der Geltungsbereich muss eine Organisationseinheit sein - keine Ad-hoc-Gruppe und"
+              + " keine Gruppe aus dem Identitätsanbieter");
     }
 
     DiagnosticImpersonationGrant saved =

@@ -371,19 +371,25 @@ spring:
   config:
     activate:
       on-profile: oidc
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: ${OPAA_OIDC_JWK_SET_URI:http://localhost:8180/realms/opaa/protocol/openid-connect/certs}
-          issuer-uri: ${OPAA_OIDC_ISSUER_URI:http://localhost:8180/realms/opaa}
 
 opaa:
   auth:
     mode: oidc
+    # Bootstrap block (ADR-0025): read once, on the first start, to create the first provider row
+    # (io.opaa.auth.oidc.OidcProviderSeeder); afterwards the database leads and these values are
+    # not evaluated again - except by the address policy, whose allowlist always includes the
+    # hosts named here. OPAA_OIDC_BOOTSTRAP=force restores the environment provider once.
+    # Deliberately without defaults: a fresh installation that sets nothing must not seed an
+    # unreachable localhost provider that then cannot be disabled or deleted.
     oidc:
-      authority: ${OPAA_OIDC_AUTHORITY:http://localhost:8180/realms/opaa}
-      client-id: ${OPAA_OIDC_CLIENT_ID:opaa-frontend}
+      authority: ${OPAA_OIDC_AUTHORITY:}
+      client-id: ${OPAA_OIDC_CLIENT_ID:}
+      issuer-uri: ${OPAA_OIDC_ISSUER_URI:}
+      jwk-set-uri: ${OPAA_OIDC_JWK_SET_URI:}
+      bootstrap: ${OPAA_OIDC_BOOTSTRAP:}
+      target-validation:
+        enabled: ${OPAA_OIDC_TARGET_VALIDATION_ENABLED:true}
+        allowlist: ${OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST:}
 
 ---
 # Development and test profile: no credential check at all. Requests are

@@ -251,7 +251,7 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   (derzeit: Kontrast der Akzentfarbe, #634 — suite-weit für gefüllte primäre Buttons/Chips,
   auf der Einstellungsseite zusätzlich seitenlokal für Akzent-Links). Die Anmeldeseite ist im dev-Auth-Modus nur sichtbar,
   wenn `/api/v1/auth/config` per `page.route` eine OIDC-Konfiguration zurückgibt — die
-  erfundene Authority wird dabei nie kontaktiert. Das dunkle Farbschema wird über
+  erfundene Anbieterzeile (Issuer-URI) wird dabei nie kontaktiert. Das dunkle Farbschema wird über
   `page.emulateMedia({ colorScheme: 'dark' })` aktiviert (die Voreinstellung „System" folgt
   `prefers-color-scheme`). Die Szenarien verändern keinen geteilten Zustand und sind daher von
   der Reihenfolge der Suite unabhängig. Der Durchklick durch die Admin-Sekundärspalte liegt
