@@ -1,5 +1,7 @@
 package io.opaa.eval;
 
+import io.opaa.indexing.metadata.DocumentTypeVocabulary;
+import io.opaa.indexing.metadata.TestVocabularies;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -33,7 +35,8 @@ import java.util.TreeMap;
  *       #SINGLE_DOCUMENT_ANSWER_SPAN_RULE}.
  *   <li><b>Unique ids and unique queries</b>, and every case in the domain the dataset belongs to.
  *   <li><b>Filter fields consistent</b> (issue #1070) - see {@link #METADATA_FILTER_CASE_RULE},
- *       {@link #FILTER_WITHOUT_CONDITION_RULE} and {@link #NO_VALUE_FIELDS}.
+ *       {@link #FILTER_WITHOUT_CONDITION_RULE} and {@link #NO_VALUE_FIELDS}; a Dokumentart code
+ *       outside the delivered vocabulary is refused here, where production refuses it with a 400.
  * </ul>
  *
  * <p>Deliberately a validator over an already-written dataset rather than a generator: these cases
@@ -121,6 +124,15 @@ public final class GoldenCaseCuration {
 
   /** The two filterable core fields a Leerwert-Regel case may name (issue #1070). */
   public static final List<String> NO_VALUE_FIELDS = List.of("documentType", "documentDate");
+
+  /**
+   * The delivered Dokumentart vocabulary a golden filter's codes must come from. In production a
+   * code outside it is a 400 at the endpoint; the harness bypasses the endpoint, and a misspelled
+   * code would silently invert the filter - {@code MetadataFilterExpressions} builds its "no value"
+   * condition as NOT IN over every known code, so a filter that selects none of them keeps exactly
+   * the documents without a Dokumentart.
+   */
+  private static final DocumentTypeVocabulary DELIVERED_VOCABULARY = TestVocabularies.delivered();
 
   private GoldenCaseCuration() {}
 
@@ -271,6 +283,13 @@ public final class GoldenCaseCuration {
         filtered = !goldenCase.metadataFilter().isEmpty();
         if (!filtered) {
           violations.add(new Violation(id, FILTER_WITHOUT_CONDITION_RULE));
+        }
+        for (String code : goldenCase.metadataFilter().documentTypes()) {
+          if (!DELIVERED_VOCABULARY.containsCode(code)) {
+            violations.add(
+                new Violation(
+                    id, "filter documentType '" + code + "' is not a delivered vocabulary code"));
+          }
         }
       } catch (RuntimeException e) {
         violations.add(new Violation(id, "filter is invalid: " + e.getMessage()));

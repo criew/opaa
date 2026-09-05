@@ -594,12 +594,24 @@ class VerwaltungRetrievalEvaluationHarnessTest {
         vocabularyRepository.findAllByOrderBySortOrderAsc().stream()
             .map(DocumentTypeVocabularyEntry::getCode)
             .toList();
+    // Issue #1070: counted, not assumed - the fixed point metadataFilterEnabled below is "every
+    // filtered case was searched with its filter", derived from these two. A filter that
+    // constrains nothing (a Dokumentart selection covering the whole vocabulary) yields no
+    // expression and rightly counts as not applied; GoldenCaseCuration refuses such a filter.
+    int filteredCases = 0;
+    int appliedFilters = 0;
     for (GoldenCase goldenCase : goldenCases) {
       // Issue #1070: the case's core-field filter, built by the same MetadataFilterExpressions
       // the production vector path uses and applied inside similaritySearch - null, i.e. no
       // condition, for every case without a filter.
       Filter.Expression metadataFilterExpression =
           MetadataFilterExpressions.vectorExpression(goldenCase.metadataFilter(), vocabularyCodes);
+      if (goldenCase.isFiltered()) {
+        filteredCases++;
+      }
+      if (metadataFilterExpression != null) {
+        appliedFilters++;
+      }
       List<org.springframework.ai.document.Document> hits =
           vectorStore.similaritySearch(
               SearchRequest.builder()
@@ -645,7 +657,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
     EvaluationReport.DocumentWindowCoverageResult documentWindowCoverage =
         new EvaluationReport.DocumentWindowCoverageResult(
             windowResults.size(), queriesBelowDocumentTopK, minDistinctDocumentsReached);
-    // This corpus (70 documents) is the smallest of the three but still comfortably larger than
+    // This corpus (72 documents) is the smallest of the three but still comfortably larger than
     // documentTopK=10, so every query's chunk-bound search must reach the full document window — a
     // query that does not would mean either a corpus/index problem or an undersized chunkTopK, not
     // a fact about this domain the harness should silently accept.
@@ -808,8 +820,9 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             GoldenDataset.sha256(goldenFile),
             goldenCases.size(),
             ingestionPipelineFingerprint,
-            // Issue #1070: every golden case's filter is applied inside similaritySearch below.
-            true,
+            // Issue #1070: derived from the run above - true exactly when every filtered case
+            // reached similaritySearch with its filter expression.
+            appliedFilters == filteredCases,
             runStart.toString(),
             Duration.between(runStart, Instant.now()).toMillis() / 1000.0,
             EvalOllamaEndpoint.isExternal());
@@ -935,7 +948,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
   }
 
   /**
-   * Waits for the corpus to finish indexing. 70 documents at 3 to 4 chunks each is the smallest
+   * Waits for the corpus to finish indexing. 72 documents at 3 to 4 chunks each is the smallest
    * indexing job of the three domains — roughly a seventh of {@code city-landmarks}' 200
    * multi-chunk documents, for which a GitHub Actions runner needed about 115 minutes at the
    * measured rate recorded in {@link CityLandmarksRetrievalEvaluationHarnessTest}. Extrapolated

@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 
@@ -193,6 +194,10 @@ public final class PipelineHarnessSupport {
       List<GoldenCase> goldenCases,
       Instant pipelineRunStart) {
     Set<UUID> searchScope = Set.of(evalLibraryId);
+    // Issue #1070: counted, not assumed - the fixed point metadataFilterEnabled below is "every
+    // filtered case reached the pipeline with its filter", derived from this counter and the
+    // dataset's own count of filtered cases.
+    AtomicInteger appliedFilters = new AtomicInteger();
     List<PipelineRetrievalEvaluator.CaseOutcome> outcomes =
         PipelineRetrievalEvaluator.evaluateAll(
             goldenCases,
@@ -200,6 +205,9 @@ public final class PipelineHarnessSupport {
             // no chat to resolve a follow-up against. The case's filter (#1070) is carried in as
             // given, where the METADATA_FILTER stage applies it in both search paths.
             (query, metadataFilter) -> {
+              if (!metadataFilter.isEmpty()) {
+                appliedFilters.incrementAndGet();
+              }
               QueryService.RetrievalWithDecomposition retrieval =
                   queryService.retrieveRelevantChunksInGivenScopeWithDecomposition(
                       query, List.of(), searchScope, metadataFilter);
@@ -222,6 +230,7 @@ public final class PipelineHarnessSupport {
             indexingProperties,
             goldenCases.size(),
             searchScope.size(),
+            appliedFilters.get() == goldenCases.stream().filter(GoldenCase::isFiltered).count(),
             pipelineRunStart));
   }
 
@@ -355,6 +364,7 @@ public final class PipelineHarnessSupport {
       IndexingProperties indexingProperties,
       int goldenCaseCount,
       int searchScopeLibraryCount,
+      boolean metadataFilterEnabled,
       Instant pipelineRunStart) {
     return new PipelineEvaluationReport.PipelineRunConfiguration(
         domain.name(),
@@ -389,9 +399,7 @@ public final class PipelineHarnessSupport {
         identity.goldenDatasetSha256(),
         goldenCaseCount,
         identity.ingestionPipelineFingerprint(),
-        // Every case's filter is carried into the run by measure() above - unconditionally, so
-        // this is a statement about this code, not about a switch.
-        true,
+        metadataFilterEnabled,
         searchScopeLibraryCount,
         SEARCH_SCOPE_NOTE,
         pipelineRunStart.toString(),

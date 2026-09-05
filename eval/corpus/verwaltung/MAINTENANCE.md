@@ -129,6 +129,15 @@ kein Kernfeld ausdrückt — sie tragen deshalb `filter: null` mit `filter_note`
 Bibliotheksfeld aus #1071) und `verw-meta-001`, bei dem der Filter greift, aber die Rangfolge des
 Rohvektor-Pfads zwei gleich datierte Dienstanweisungen vor das erwartete Dokument stellt.
 
+**Einordnung gegen Abschnitt 6 der Spezifikation** („Die Fallklasse zu einem Baustein MUSS
+committet und kuratiert sein, bevor das Bau-Issue eröffnet wird"): Die Klasse `metadata_filter` war
+das — seit #1043, vor dem Bau des Filters, und sie hat die Lücke vorher beziffert. Die drei Fälle
+der Leerwert-Regel (`verw-meta-010/011/012`) sind dagegen **nach** dem Bau entstanden, weil erst der
+gebaute Filter eine Leerwert-Regel hat, die man verfehlen kann; sie messen nicht die Lücke, sondern
+eine Zusicherung des Ergebnisses. Diese Ausnahme ist bewusst und vom Koordinator am 04.09.2026 so
+beauftragt (Kommentar an #1070) — sie taugt nicht als Vorbild für einen Fall, der eine noch
+ungebaute Fähigkeit misst.
+
 ### Erwartete Abweichungen (`expected_state_exception`)
 
 Ein Fall darf einen vierten, optionalen Text tragen: die committete Begründung, **warum** seine

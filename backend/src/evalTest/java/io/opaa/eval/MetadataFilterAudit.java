@@ -6,26 +6,20 @@ import java.util.Locale;
 
 /**
  * Measures whether the core-field filter itself worked, per case and per measurement path (issue
- * #1070, metadata-schema.md "Messung und Abnahme", point 2) - next to, never instead of, {@link
- * ExpectedStateAudit}: that audit asks "is the case solved", this one asks "did the filter
- * mechanism do what it is for". The two error directions are reported <b>separately</b>, because a
- * combined score would average them away:
+ * #1070) - next to, never instead of, {@link ExpectedStateAudit}: that audit asks "is the case
+ * solved", this one asks "did the filter mechanism do what it is for". The two error directions are
+ * counted <b>separately</b>, because a combined score would average them away:
  *
  * <ul>
- *   <li><b>"Filter greift nicht"</b> - the case's {@link GoldenCase#confusableDocument()} (the
- *       other Fassung, the wrong Dokumentart) is still inside the path's window although the filter
- *       should have excluded it. Only measurable for a case that names its confusable, so "the
- *       filter did not exclude" and "no filter was evaluated" cannot be confused.
- *   <li><b>"Filter greift zu stark"</b> - a case whose {@link GoldenCase#noValueField()} marks it
- *       as a Leerwert-Regel case (the expected document has no value for the filtered field) does
- *       not have every expected document in the window: the filter dropped what the rule says it
- *       must keep. Honest limit: on the pipeline path the similarity threshold can also drop the
- *       document; the raw-vector path, which applies no threshold, separates the two.
+ *   <li><b>"Filter greift nicht"</b> - the case's {@link GoldenCase#confusableDocument()} is still
+ *       inside the path's window although the filter should have excluded it.
+ *   <li><b>"Filter greift zu stark"</b> - a case marked by {@link GoldenCase#noValueField()} lost
+ *       an expected document the Leerwert rule says the filter must keep.
  * </ul>
  *
- * <p>Both measurement paths compute it at their own window, from the same per-case inputs, and both
- * JSON reports and both Markdown delta tables carry it - the reach every other finding of the
- * benchmark has. Like the state audit it reports and does not fail the run.
+ * <p>Both directions are bounded by the path's window: a confusable that ranks beyond it, or an
+ * expected document the pipeline path's similarity threshold drops, is invisible here. Like the
+ * state audit this one reports and never fails the run.
  */
 public final class MetadataFilterAudit {
 

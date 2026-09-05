@@ -55,9 +55,12 @@ Dokumente im Fenster **und** ein erwartetes Dokument auf Rang 1 — und zwar auf
 Messpfaden. Die Rang-1-Bedingung ist nicht Kosmetik: Beide Fassungen einer Satzung sind inhaltlich
 nahezu identisch und ranken deshalb nebeneinander, sodass „die richtige Fassung liegt irgendwo im
 Fenster" auch dann erfüllt ist, wenn die falsche obenauf steht — genau die Fähigkeit, die
-`metadata_filter` messen soll. Ohne die Zusatzbedingung wären 9 von 9 Fällen dieser Klasse
-„gelöst", mit ihr sind es 4 — und auch diese vier werden als `known_gap` geführt, weil ein Treffer
-ohne Filtermechanismus keine Fähigkeit belegt (Begründung in
+`metadata_filter` messen soll. Vor #1070 wären ohne die Zusatzbedingung 9 von 9 Fällen dieser
+Klasse „gelöst" gewesen, mit ihr waren es 4 — und auch diese vier wurden als `known_gap` geführt,
+weil ein Treffer ohne Filtermechanismus keine Fähigkeit belegt. Genau diese Strenge macht den
+heutigen Stand aussagekräftig: Seit dem Kernfeld-Filter (#1070, Teil 2) sind 9 der 12 Fälle
+`solved`, und zwar auf beiden Messpfaden und mit dem geprüften Mechanismus (Begründung je Fall im
+Datensatz, Zusammenfassung in
 [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)).
 
 Der Bericht beider Pfade führt in jedem Lauf einen Abschnitt „Zustandsfelder", der die deklarierten

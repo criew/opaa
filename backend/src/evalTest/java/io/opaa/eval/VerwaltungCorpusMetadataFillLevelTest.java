@@ -98,5 +98,39 @@ class VerwaltungCorpusMetadataFillLevelTest {
     // The two Leerwert documents of #1070 are the ones the Leerwert-Regel cases point at.
     assertThat(withoutDate).containsExactly(WITHOUT_DATE);
     assertThat(withoutType).contains(WITHOUT_DOCUMENT_TYPE);
+
+    assertEveryNoValueCaseExpectsADocumentWithoutThatField(withoutType, withoutDate);
+  }
+
+  /**
+   * A {@code no_value_field} case only measures "Filter greift zu stark" if its expected document
+   * really has no value for that field. Checked against the extraction measured above, not against
+   * an assumption: a case pointing at a filled document would be tautologically green.
+   */
+  private static void assertEveryNoValueCaseExpectsADocumentWithoutThatField(
+      List<String> withoutType, List<String> withoutDate) throws IOException {
+    List<GoldenCase> cases =
+        GoldenDataset.load(
+            RepoPaths.evalDir()
+                .resolve("golden")
+                .resolve(EvalDomainConfig.VERWALTUNG.goldenDatasetFileName()));
+    int checked = 0;
+    for (GoldenCase goldenCase : cases) {
+      if (goldenCase.noValueField() == null) {
+        continue;
+      }
+      checked++;
+      List<String> withoutValue =
+          "documentType".equals(goldenCase.noValueField()) ? withoutType : withoutDate;
+      assertThat(withoutValue)
+          .as(
+              "%s declares no_value_field '%s', so its expected documents must carry no value "
+                  + "for that field",
+              goldenCase.id(), goldenCase.noValueField())
+          .containsAll(goldenCase.expectedDocuments());
+    }
+    assertThat(checked)
+        .as("the Leerwert-Regel cases of issue #1070 are still in the dataset")
+        .isEqualTo(3);
   }
 }

@@ -595,12 +595,24 @@ class RetrievalEvaluationHarnessTest {
         vocabularyRepository.findAllByOrderBySortOrderAsc().stream()
             .map(DocumentTypeVocabularyEntry::getCode)
             .toList();
+    // Issue #1070: counted, not assumed - the fixed point metadataFilterEnabled below is "every
+    // filtered case was searched with its filter", derived from these two. A filter that
+    // constrains nothing (a Dokumentart selection covering the whole vocabulary) yields no
+    // expression and rightly counts as not applied; GoldenCaseCuration refuses such a filter.
+    int filteredCases = 0;
+    int appliedFilters = 0;
     for (GoldenCase goldenCase : goldenCases) {
       // Issue #1070: the case's core-field filter, built by the same MetadataFilterExpressions
       // the production vector path uses and applied inside similaritySearch - null, i.e. no
       // condition, for every case without a filter.
       Filter.Expression metadataFilterExpression =
           MetadataFilterExpressions.vectorExpression(goldenCase.metadataFilter(), vocabularyCodes);
+      if (goldenCase.isFiltered()) {
+        filteredCases++;
+      }
+      if (metadataFilterExpression != null) {
+        appliedFilters++;
+      }
       List<org.springframework.ai.document.Document> hits =
           vectorStore.similaritySearch(
               SearchRequest.builder()
@@ -806,8 +818,9 @@ class RetrievalEvaluationHarnessTest {
             GoldenDataset.sha256(goldenFile),
             goldenCases.size(),
             ingestionPipelineFingerprint,
-            // Issue #1070: every golden case's filter is applied inside similaritySearch below.
-            true,
+            // Issue #1070: derived from the run above - true exactly when every filtered case
+            // reached similaritySearch with its filter expression.
+            appliedFilters == filteredCases,
             runStart.toString(),
             Duration.between(runStart, Instant.now()).toMillis() / 1000.0,
             EvalOllamaEndpoint.isExternal());
