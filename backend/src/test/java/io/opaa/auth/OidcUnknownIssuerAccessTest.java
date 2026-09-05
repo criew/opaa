@@ -131,12 +131,15 @@ class OidcUnknownIssuerAccessTest {
     mockMvc
         .perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token(DISABLED_ISSUER)))
         .andExpect(status().isUnauthorized())
-        .andExpect(header().string("WWW-Authenticate", containsString("invalid_token")))
-        .andExpect(header().string("WWW-Authenticate", containsString("unknown_issuer")));
+        .andExpect(header().string("WWW-Authenticate", containsString("error=\"invalid_token\"")))
+        .andExpect(
+            header()
+                .string(
+                    "WWW-Authenticate", containsString("error_description=\"unknown_issuer\"")));
   }
 
   @Test
-  void aTokenWithoutAnyIssuerIsRefusedWithoutReachingTheRegistry() throws Exception {
+  void aTokenWithoutAnyIssuerIsRefused() throws Exception {
     mockMvc
         .perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token(null)))
         .andExpect(status().isUnauthorized());
