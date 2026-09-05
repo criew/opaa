@@ -81,9 +81,11 @@ public class CitationMetadataReader {
           citationFields.getOrDefault(document.getLibraryId(), List.of());
       List<CitationFieldValue> entries =
           formatEntries(rowsByDocument.getOrDefault(document.getId(), Map.of()));
-      int formatEntryCount = entries.size();
+      // The cap counts every non-core entry the Belegzeile shows, format fields included: the line
+      // is the scarce resource, not the field kind. A detail-only entry is not on the line.
+      int lineEntries = (int) entries.stream().filter(entry -> !entry.detailOnly()).count();
       for (LibraryMetadataField field : fields) {
-        if (entries.size() - formatEntryCount >= MAX_CITATION_FIELDS) {
+        if (lineEntries >= MAX_CITATION_FIELDS) {
           break;
         }
         DocumentMetadataValue row =
@@ -91,6 +93,7 @@ public class CitationMetadataReader {
         if (row == null || row.getState() != MetadataValueState.SET) {
           continue;
         }
+        lineEntries++;
         if (row.getDateValue() != null) {
           entries.add(
               new CitationFieldValue(
@@ -137,7 +140,8 @@ public class CitationMetadataReader {
               row.getTextValue(),
               row.getTextValue(),
               row.getOrigin(),
-              null));
+              null,
+              field.isDetailOnly()));
     }
     return entries;
   }

@@ -653,11 +653,14 @@ class CoreMetadataIndexingIntegrationTest {
     List<CitationFieldValue> citation =
         citationMetadataReader.forDocuments(List.of(document)).get(document.getId());
     assertThat(citation)
-        .extracting(CitationFieldValue::label, CitationFieldValue::value)
+        .extracting(
+            CitationFieldValue::label, CitationFieldValue::value, CitationFieldValue::detailOnly)
         .containsExactly(
-            tuple("Absender", "max.mueller@stadt.de"),
-            tuple("An", "poststelle@stadt.de"),
-            tuple("Betreff", "Bebauungsplan Nord"));
+            tuple("Absender", "max.mueller@stadt.de", false),
+            // The recipient list belongs into the Beleg detail view, never into the one line
+            // (#1242): it is unbounded and identifies no passage.
+            tuple("An", "poststelle@stadt.de", true),
+            tuple("Betreff", "Bebauungsplan Nord", false));
   }
 
   private List<Map<String, Object>> chunkMetadata(UUID documentId) {

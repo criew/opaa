@@ -1,6 +1,7 @@
 package io.opaa.indexing.pipeline;
 
 import java.nio.file.Path;
+import java.util.Locale;
 
 /**
  * What a {@link DocumentPipeline} is handed: either a file on disk, or text that was already
@@ -55,6 +56,24 @@ public record DocumentPipelineSource(
    */
   public DocumentPipelineSource withAttachmentIndex(int index) {
     return new DocumentPipelineSource(fileName, file, extractedText, detectedExtension, index);
+  }
+
+  /**
+   * The extension a pipeline handling several formats dispatches on: {@link #detectedExtension()}
+   * where the registry resolved one, the file name's own lower-cased suffix only where it did not,
+   * and {@code null} when there is neither. Trusting the name over the detected content would
+   * reintroduce what content-based admission prevents - an XLSX misnamed {@code .csv} parsed as
+   * CSV.
+   */
+  public String effectiveExtension() {
+    if (detectedExtension != null) {
+      return detectedExtension;
+    }
+    if (fileName == null) {
+      return null;
+    }
+    int dot = fileName.lastIndexOf('.');
+    return dot < 0 ? null : fileName.substring(dot).toLowerCase(Locale.ROOT);
   }
 
   /** Convenience for callers that have no detected extension to hand over (most test code). */

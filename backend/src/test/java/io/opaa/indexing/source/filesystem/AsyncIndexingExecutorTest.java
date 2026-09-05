@@ -7,7 +7,10 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -16,6 +19,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.indexing.AttachmentOutcome;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.Document;
@@ -27,11 +31,13 @@ import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.IndexingRunCost;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.TestPipelineRegistries;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.VectorStoreWriter;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
@@ -48,13 +54,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DataIntegrityViolationException;
 
 /**
  * Unit-level coverage of {@link AsyncIndexingExecutor} (FILESYSTEM). Uses a real {@link
  * DocumentService} against a real {@code @TempDir} - {@code discoverFiles} is a plain filesystem
  * walk, cheaper to run for real than to mock - while {@link FileProcessingService} stays mocked:
  * this class's own job is discovering files and reacting to what {@code processFile} reports, not
- * re-testing parsing/chunking/embedding (that belongs to {@code FileProcessingServiceTest}).
+ * re-testing parsing/chunking/embedding (that belongs to {@code FileProcessingServiceTest}). The
+ * reconciliation is a spy over the real service, so what the executor hands over and what the
+ * service preserves from the database are both observable.
  */
 class AsyncIndexingExecutorTest {
 
@@ -77,11 +86,10 @@ class AsyncIndexingExecutorTest {
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
     storageQuotaService = mock(LibraryStorageQuotaService.class);
     folderService = mock(LibraryFolderService.class);
-    staleDocumentCleanupService = mock(StaleDocumentCleanupService.class);
     documentRepository = mock(DocumentRepository.class);
-    // the deepest-first attachment-path fold every successful run performs before
-    // cleanupVanished - an empty bestand for a library with no Mail attachments of its own.
     when(documentRepository.findByLibraryIdAndSourceType(any(), any())).thenReturn(List.of());
+    staleDocumentCleanupService =
+        spy(new StaleDocumentCleanupService(documentRepository, mock(VectorChunkStore.class)));
     FilesystemPathAllowlist allowlist = mock(FilesystemPathAllowlist.class);
     when(allowlist.isAllowed(any())).thenReturn(true);
 
@@ -104,20 +112,23 @@ class AsyncIndexingExecutorTest {
         new AsyncIndexingExecutor(
             new DocumentService(),
             fileProcessingService,
-            indexingJobService,
             allowlist,
-            indexingRunEventRepository,
-            storageQuotaService,
             folderService,
-            staleDocumentCleanupService,
-            documentRepository);
+            runTemplate(storageQuotaService, documentRepository));
+  }
+
+  private IndexingRunTemplate runTemplate(
+      LibraryStorageQuotaService quotaService, DocumentRepository repository) {
+    return new IndexingRunTemplate(
+        indexingJobService,
+        indexingRunEventRepository,
+        staleDocumentCleanupService,
+        repository,
+        quotaService);
   }
 
   @Test
   void aFileOverTheLibraryStorageQuotaIsSkippedAndRecordedAsARejectedEvent() throws IOException {
-    // The QUOTA_EXCEEDED branch is identical in shape to
-    // RssFeedIndexingExecutorTest's own coverage of the same FileProcessingResult, exercised here
-    // for the FILESYSTEM connector specifically.
     Path file = documentDir.resolve("over-quota.txt");
     Files.writeString(file, "content");
 
@@ -165,9 +176,8 @@ class AsyncIndexingExecutorTest {
   @Test
   void aFileThePipelineCannotParseAtAllIsCountedAsFailedAndRecordedAsAnErrorEvent()
       throws IOException {
-    // FileProcessingResult#FAILED (NO_CONTENT - the pipeline could not
-    // parse the document at all) must be reported like the catch block's own ERROR event, not
-    // silently counted as processed the way it was before this fix.
+    // FileProcessingResult#FAILED (NO_CONTENT - the pipeline could not parse the document at all)
+    // is reported like the catch block's own ERROR event, never silently counted as processed.
     Path file = documentDir.resolve("corrupt.txt");
     Files.writeString(file, "content");
 
@@ -176,8 +186,8 @@ class AsyncIndexingExecutorTest {
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
-    // eq(0) on documentsIndexedTotal, not anyInt(): the claim under test is that a document the
-    // pipeline could not parse at all must not inflate the run's indexed-total either.
+    // eq(0) on documentsIndexedTotal, not anyInt(): a document the pipeline could not parse at
+    // all must not inflate the run's indexed-total either.
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(1), eq(0), eq(0));
     verify(indexingRunEventRepository, timeout(2000))
         .save(
@@ -191,11 +201,10 @@ class AsyncIndexingExecutorTest {
   @Test
   void aRealScanPdfEndToEndIsRejectedWithoutMockingTheFileProcessingServiceSeam()
       throws IOException {
-    // aScanPdfWithoutExtractableTextIsSkippedAndRecordedAsARejectedEvent
-    // above mocks both sides of the FileProcessingService seam (what it returns and how the
-    // executor reacts) - this test instead wires a real FileProcessingService (only its own
-    // dependencies mocked, same pattern as FileProcessingServiceTest's scan-detection test) so the
-    // real NO_EXTRACTABLE_TEXT return value is exercised, not just asserted-away by a stub.
+    // aScanPdfWithoutExtractableTextIsSkippedAndRecordedAsARejectedEvent above mocks both sides
+    // of the FileProcessingService seam - this test instead wires a real FileProcessingService
+    // (only its own dependencies mocked, same pattern as FileProcessingServiceTest's scan-detection
+    // test) so the real NO_EXTRACTABLE_TEXT return value is exercised, not just asserted-away.
     Path file = documentDir.resolve("scan.pdf");
     Files.writeString(file, "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection");
 
@@ -250,13 +259,9 @@ class AsyncIndexingExecutorTest {
         new AsyncIndexingExecutor(
             new DocumentService(),
             realFileProcessingService,
-            indexingJobService,
             realFlowAllowlist,
-            indexingRunEventRepository,
-            realFlowQuotaService,
             folderService,
-            staleDocumentCleanupService,
-            realFlowDocumentRepository);
+            runTemplate(realFlowQuotaService, realFlowDocumentRepository));
 
     realFlowExecutor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
@@ -288,8 +293,7 @@ class AsyncIndexingExecutorTest {
   void aRemovedAttachmentOfAReprocessedMailIsCleanedUpAsVanished() throws IOException {
     // ADR-0022, Entscheidung 3: for a mail that was actually re-parsed this run, only the
     // attachments the attachment path re-reported count as present - a bestand row of a since-
-    // removed attachment must NOT be folded into currentFilePaths just because its parent's file
-    // still exists, or it would never fall away.
+    // removed attachment must NOT survive just because its parent's file still exists.
     Path mailFile = documentDir.resolve("mail.eml");
     Files.writeString(mailFile, "mail content");
     String mailPath = mailFile.toAbsolutePath().toString();
@@ -316,15 +320,19 @@ class AsyncIndexingExecutorTest {
     Set<String> currentFilePaths = capturedCurrentFilePaths();
     assertThat(currentFilePaths).contains(mailPath, keptPath);
     assertThat(currentFilePaths).doesNotContain(removedPath);
+    assertThat(capturedReprocessedPaths()).contains(mailPath, keptPath);
+    verify(documentRepository).delete(removedDoc);
+    verify(documentRepository, never()).delete(keptDoc);
+    verify(documentRepository, never()).delete(mailDoc);
   }
 
   @Test
   void attachmentsOfAChecksumSkippedMailArePreservedRecursivelyFromTheDatabase()
       throws IOException {
     // The Nachtragsfall of ADR-0022, Entscheidung 3: an unchanged (checksum-skipped) mail is
-    // never re-parsed, so its attachment rows - including a grandchild of a nested mail - must be
-    // folded in from the database, deterministically regardless of the rows' iteration order (the
-    // bestand list below deliberately lists the grandchild before its own parent).
+    // never re-parsed, so the executor reports it present but not reprocessed - and the
+    // reconciliation preserves its attachment rows, including a grandchild of a nested mail,
+    // from the database regardless of row order.
     Path mailFile = documentDir.resolve("unveraendert.eml");
     Files.writeString(mailFile, "mail content");
     String mailPath = mailFile.toAbsolutePath().toString();
@@ -344,14 +352,16 @@ class AsyncIndexingExecutorTest {
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
-    assertThat(capturedCurrentFilePaths()).contains(mailPath, innerMailPath, grandchildPath);
+    assertThat(capturedCurrentFilePaths()).contains(mailPath);
+    assertThat(capturedReprocessedPaths()).doesNotContain(mailPath);
+    verify(documentRepository, never()).delete(any(Document.class));
   }
 
   @Test
   void aGrandchildOfAnUnchangedInnerMailSurvivesTheOuterMailsReprocessing() throws IOException {
     // The mixed case: the outer mail was re-parsed (its direct attachment set is authoritative
     // from the attachment path's own recording), but the inner, nested mail was merely confirmed
-    // unchanged by checksum - so ITS children were not rediscovered and must be preserved from the
+    // unchanged by checksum - so ITS children were not rediscovered and are preserved from the
     // database, again independent of row order.
     Path mailFile = documentDir.resolve("aussen.eml");
     Files.writeString(mailFile, "mail content");
@@ -378,7 +388,56 @@ class AsyncIndexingExecutorTest {
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
-    assertThat(capturedCurrentFilePaths()).contains(mailPath, innerMailPath, grandchildPath);
+    assertThat(capturedCurrentFilePaths()).contains(mailPath, innerMailPath);
+    assertThat(capturedReprocessedPaths()).contains(mailPath).doesNotContain(innerMailPath);
+    verify(documentRepository, never()).delete(any(Document.class));
+  }
+
+  @Test
+  void aLibraryDeletedDuringTheRunFailsWithAGermanMessageNotTheJdbcOne() throws IOException {
+    // A foreign key to the library breaking mid-run - simulated at the first job write, the
+    // earliest point the frame sees such a failure - is translated by the frame, the same for
+    // every connector.
+    Files.writeString(documentDir.resolve("datei.txt"), "content");
+    UUID jobId = UUID.randomUUID();
+    doThrow(
+            new DataIntegrityViolationException(
+                "insert or update on table \"documents\" violates foreign key constraint"
+                    + " \"fk_documents_library\""))
+        .when(indexingJobService)
+        .setTotalDocuments(eq(jobId), anyInt());
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService, timeout(2000))
+        .failJob(jobId, "Die Bibliothek wurde während des Laufs gelöscht.");
+    verify(indexingJobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
+  }
+
+  @Test
+  void attachmentOutcomesOfAMailAreRecordedInTheRunsCost() throws IOException {
+    // A FILESYSTEM run writes its cost like every connector: the attachment share comes from what
+    // the attachment path counted, requests and throttles stay 0 for a source without a meter.
+    Path mailFile = documentDir.resolve("mail.eml");
+    Files.writeString(mailFile, "mail content");
+    UUID jobId = UUID.randomUUID();
+    when(fileProcessingService.processFile(eq(mailFile), eq(library), isNull(), any()))
+        .thenAnswer(
+            invocation -> {
+              AttachmentAccess access = invocation.getArgument(3);
+              access.progress().recordAttachment(AttachmentOutcome.PROCESSED);
+              access.progress().recordAttachment(AttachmentOutcome.PROCESSED);
+              access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
+              access.progress().recordAttachment(AttachmentOutcome.FAILED);
+              return FileProcessingResult.PROCESSED;
+            });
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    ArgumentCaptor<IndexingRunCost> cost = ArgumentCaptor.forClass(IndexingRunCost.class);
+    verify(indexingJobService, timeout(2000)).recordRunMetrics(eq(jobId), cost.capture());
+    assertThat(cost.getValue()).isEqualTo(new IndexingRunCost(0, 0, 0L, 2, 1, 1, false));
+    verify(indexingJobService).completeJob(jobId, 1, 0, 0, 3);
   }
 
   private Document filesystemDocument(String fileName, String filePath, UUID parentDocumentId) {
@@ -392,9 +451,25 @@ class AsyncIndexingExecutorTest {
   private Set<String> capturedCurrentFilePaths() {
     ArgumentCaptor<Set<String>> pathsCaptor = ArgumentCaptor.forClass(Set.class);
     verify(staleDocumentCleanupService, timeout(2000))
-        .cleanupVanished(
+        .reconcile(
             eq(library),
             eq(DocumentSourceType.FILESYSTEM),
+            pathsCaptor.capture(),
+            any(),
+            any(),
+            any(),
+            any());
+    return pathsCaptor.getValue();
+  }
+
+  @SuppressWarnings("unchecked")
+  private Set<String> capturedReprocessedPaths() {
+    ArgumentCaptor<Set<String>> pathsCaptor = ArgumentCaptor.forClass(Set.class);
+    verify(staleDocumentCleanupService, timeout(2000))
+        .reconcile(
+            eq(library),
+            eq(DocumentSourceType.FILESYSTEM),
+            any(),
             pathsCaptor.capture(),
             any(),
             any(),

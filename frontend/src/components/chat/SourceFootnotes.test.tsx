@@ -115,6 +115,7 @@ describe('SourceFootnotes', () => {
               value: 'Dienstanweisung IT-Nutzung',
               displayValue: 'Dienstanweisung IT-Nutzung',
               origin: 'DETERMINISTIC',
+              detailOnly: false,
             },
             {
               fieldKey: 'document_type',
@@ -122,6 +123,7 @@ describe('SourceFootnotes', () => {
               value: 'DIENSTANWEISUNG',
               displayValue: 'Dienstanweisung',
               origin: 'DETERMINISTIC',
+              detailOnly: false,
             },
             {
               fieldKey: 'document_date',
@@ -130,6 +132,7 @@ describe('SourceFootnotes', () => {
               displayValue: '12.03.2026',
               origin: 'DETERMINISTIC',
               datePrecision: 'DAY',
+              detailOnly: false,
             },
           ],
         }),
@@ -157,6 +160,7 @@ describe('SourceFootnotes', () => {
               displayValue: '2024',
               origin: 'DERIVED',
               datePrecision: 'YEAR',
+              detailOnly: false,
             },
           ],
         }),

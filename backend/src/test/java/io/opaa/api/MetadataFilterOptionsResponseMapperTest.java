@@ -75,7 +75,8 @@ class MetadataFilterOptionsResponseMapperTest {
                     20,
                     List.of(
                         new MetadataFilterOptions.LibraryFieldValueOption(
-                            "max@stadt.de", "max@stadt.de", 3)))));
+                            "max@stadt.de", "max@stadt.de", 3)),
+                    true)));
 
     MetadataFilterFormatFieldOption field =
         MetadataFilterOptionsResponseMapper.toResponse(withSenders).getFormatFields().getFirst();
@@ -86,6 +87,8 @@ class MetadataFilterOptionsResponseMapperTest {
     assertThat(field.getTotalDocuments()).isEqualTo(20);
     assertThat(field.getOffered()).isTrue();
     assertThat(field.getValues().getFirst().getCode()).isEqualTo("max@stadt.de");
+    // The value set of a format field is open, so the response says when it was capped (#1242).
+    assertThat(field.getValuesCapped()).isTrue();
 
     MetadataFilterOptions withoutSenders =
         new MetadataFilterOptions(
@@ -97,7 +100,7 @@ class MetadataFilterOptionsResponseMapperTest {
             List.of(),
             List.of(
                 new MetadataFilterOptions.FormatFieldOption(
-                    FormatMetadataField.MAIL_SENDER, 0, 20, List.of())));
+                    FormatMetadataField.MAIL_SENDER, 0, 20, List.of(), false)));
     assertThat(
             MetadataFilterOptionsResponseMapper.toResponse(withoutSenders)
                 .getFormatFields()

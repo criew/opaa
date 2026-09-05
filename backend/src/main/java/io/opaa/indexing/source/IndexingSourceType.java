@@ -13,5 +13,10 @@ public enum IndexingSourceType {
   FILESYSTEM,
   HTTP_DIRECTORY,
   RSS_FEED,
-  CONFLUENCE
+  CONFLUENCE;
+
+  /** The origin every document a run of this type stores carries - the same name, by contract. */
+  public DocumentSourceType documentSourceType() {
+    return DocumentSourceType.valueOf(name());
+  }
 }

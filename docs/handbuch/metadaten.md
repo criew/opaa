@@ -53,9 +53,10 @@ gelesen, nicht gedeutet, und tragen deshalb immer die Herkunft „deterministisc
 | **An** | E-Mail | Text, auf 200 Zeichen gekürzt | nein |
 | **Betreff** | E-Mail | Text | nein |
 
-Ein Formatfeld hängt wie ein Kernfeld am Dokument und wird an alle seine Chunks vererbt; ein
-Dokument eines anderen Formats hat schlicht keinen Wert und wird von einem Filter darauf nie
-ausgeschlossen. Der Absender wird auf die reine Adresse reduziert und kleingeschrieben, damit
+Ein Formatfeld hängt wie ein Kernfeld am Dokument; der filterbare Absender wird zusätzlich an alle
+seine Chunks vererbt, damit beide Suchpfade dieselbe Bedingung tragen. Ein Dokument eines anderen
+Formats hat schlicht keinen Wert und wird von einem Filter darauf nie ausgeschlossen — und auch
+nicht als „ohne Angabe" gekennzeichnet, weil die Frage nach seinem Absender nie gestellt war. Der Absender wird auf die reine Adresse reduziert und kleingeschrieben, damit
 „genau diese Adresse" prüfbar bleibt. Betreff und An sind **Anzeigefelder**: Sie stehen im Beleg,
 filtern aber nie — ein Teilstring-Filter würde aus einem prüfbaren Feld wieder eine Textsuche
 machen, und die leistet die Volltextsuche über den Kopfblock im Chunk-Text ohnehin.
@@ -265,8 +266,11 @@ Neben den Suchbereichs-Chips steht **„Filter"**. Das Popover zeigt je Kernfeld
   des Bestands und wäre keine.
 
 Dazu kommt das Formatfeld **Absender** mit den im Suchbereich vorkommenden Adressen und ihrer
-Anzahl. Es wird angeboten, sobald mindestens ein Dokument des Suchbereichs einen Absender trägt —
-ein Anteil am gemischten Bestand würde dort die Formatverteilung messen, nicht die Metadatenqualität.
+Anzahl — höchstens den **20 häufigsten**, denn ein Postfach hat so viele Absender wie Korrespondenten;
+daneben steht ein Eingabefeld für genau eine weitere Adresse. Das Feld wird angeboten, sobald
+mindestens ein Dokument des Suchbereichs einen Absender trägt — ein Anteil am gemischten Bestand
+würde dort die Formatverteilung messen, nicht die Metadatenqualität. Ein Suchbereich ohne Mails zeigt
+den Abschnitt gar nicht.
 
 Der aktive Filter erscheint als entfernbare Chips („Dokumentart: Vermerk", „Datum: 01.01.2024 –
 31.12.2024", „Absender: poststelle@stadt.de") und bleibt am Chat gespeichert. Die Werte setzt die Person; aus der Frage wird kein
@@ -294,9 +298,10 @@ Rechteänderung, die die Person betrifft, verworfen.
 Die Fundstellenzeile und das Belegfenster einer Antwort zeigen Titel, Dokumentart und Datum/Stand
 des zitierten Dokuments, mit „ · " verbunden; ein leeres Feld erscheint gar nicht, ein abgeleiteter
 Wert ist als „(abgeleitet)" gekennzeichnet. Die Ortsangabe im Dokument bleibt daneben bestehen. Die
-Formatfelder eines Dokuments (bei E-Mails Absender, An und Betreff) stehen als weitere Einträge
-derselben Liste dahinter; ein Wert, den der Titel bereits wörtlich zeigt — bei einer Mail der
-Betreff —, wird nicht zweimal aufgeführt.
+Formatfelder eines Dokuments stehen als weitere Einträge derselben Liste dahinter; ein Wert, den der
+Titel bereits wörtlich zeigt — bei einer Mail der Betreff —, wird nicht zweimal aufgeführt. Der
+Empfänger einer Mail erscheint **nur im Belegfenster**, nicht in der Fundstellenzeile: Eine
+Verteilerliste ist lang und ordnet die Fundstelle nicht ein.
 
 ## 10. Rechte und Sichtbarkeit
 

@@ -1,27 +1,24 @@
 package io.opaa.indexing.source.web;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.IndexingRunEventRecorder;
-import io.opaa.indexing.IndexingRunEventRepository;
-import io.opaa.indexing.IndexingRunProgress;
-import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.SupportedDocumentFormats;
+import io.opaa.indexing.source.IndexingRun;
+import io.opaa.indexing.source.IndexingRunFailedException;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceType;
+import io.opaa.indexing.source.ListingOutcome;
+import io.opaa.indexing.source.ReconcilingAttachmentAccess;
 import io.opaa.indexing.source.SourceFolderMirror;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
-import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
@@ -30,14 +27,11 @@ import java.io.IOException;
 import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -45,13 +39,12 @@ import org.springframework.scheduling.annotation.Async;
 /**
  * Executes indexing runs for {@link IndexingSourceType#HTTP_DIRECTORY} via Apache mod_autoindex
  * crawling (ADR-0017). The crawled directory structure is mirrored into {@code library_folders}
- * (ADR-0020) through the same {@link io.opaa.indexing.source.SourceFolderMirror} the FILESYSTEM
- * executor uses.
+ * (ADR-0020) through the same {@link SourceFolderMirror} the FILESYSTEM executor uses.
  *
- * <p>{@link StaleDocumentCleanupService#cleanupVanished} then removes every document this run did
- * not meet - skipped entirely, like the folder pruning that follows it, when the crawl was {@link
- * AutoindexCrawlerService.CrawlResult#truncated()} or {@link
- * AutoindexCrawlerService.CrawlResult#incomplete()}, and only ever reached on the success path.
+ * <p>The listing is complete only when the crawl was neither {@link
+ * AutoindexCrawlerService.CrawlResult#truncated()} nor {@link
+ * AutoindexCrawlerService.CrawlResult#incomplete()}; only then does the run frame reconcile, and
+ * only then are the folders pruned afterwards.
  */
 public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
@@ -60,35 +53,26 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   private final AutoindexCrawlerService crawlerService;
   private final BoundedDownloader downloader;
   private final FileProcessingService fileProcessingService;
-  private final IndexingJobService indexingJobService;
   private final DocumentRepository documentRepository;
-  private final IndexingRunEventRepository indexingRunEventRepository;
-  private final LibraryStorageQuotaService storageQuotaService;
-  private final StaleDocumentCleanupService staleDocumentCleanupService;
   private final CrawlProperties crawlProperties;
   private final LibraryFolderService folderService;
+  private final IndexingRunTemplate runTemplate;
 
   public UrlIndexingExecutor(
       AutoindexCrawlerService crawlerService,
       BoundedDownloader downloader,
       FileProcessingService fileProcessingService,
-      IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
-      IndexingRunEventRepository indexingRunEventRepository,
-      LibraryStorageQuotaService storageQuotaService,
-      StaleDocumentCleanupService staleDocumentCleanupService,
       CrawlProperties crawlProperties,
-      LibraryFolderService folderService) {
+      LibraryFolderService folderService,
+      IndexingRunTemplate runTemplate) {
     this.crawlerService = crawlerService;
     this.downloader = downloader;
     this.fileProcessingService = fileProcessingService;
-    this.indexingJobService = indexingJobService;
     this.documentRepository = documentRepository;
-    this.indexingRunEventRepository = indexingRunEventRepository;
-    this.storageQuotaService = storageQuotaService;
-    this.staleDocumentCleanupService = staleDocumentCleanupService;
     this.crawlProperties = crawlProperties;
     this.folderService = folderService;
+    this.runTemplate = runTemplate;
   }
 
   @Override
@@ -105,324 +89,222 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   @Override
   @Async("indexingTaskExecutor")
   public void execute(UUID jobId, KnowledgeLibrary targetLibrary, IndexingRunMode runMode) {
+    runTemplate.run(jobId, targetLibrary, runMode, this, this::crawlDirectory);
+  }
+
+  private ListingOutcome crawlDirectory(IndexingRun run) throws IOException, InterruptedException {
+    KnowledgeLibrary targetLibrary = run.library();
     UrlIndexingRequest request = toUrlIndexingRequest(targetLibrary);
-    var progress = new IndexingRunProgress(indexingJobService, jobId);
-    var events =
-        new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId);
-    if (!runModes().containsKey(runMode)) {
-      progress.fail("Betriebsart " + runMode + " wird für diesen Quellentyp nicht unterstützt");
+    ProxyAndCredentials config;
+    try {
+      config = ProxyAndCredentials.parse(request.proxy(), request.credentials());
+    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
+      throw new IndexingRunFailedException(e.getMessage());
+    }
+    String proxyHost = config.proxyHost();
+    int proxyPort = config.proxyPort();
+
+    String url = request.url();
+    if (!url.endsWith("/") && !hasFileExtension(url)) {
+      url = url + "/";
+    }
+    log.info("Starting URL crawl of: {}", url);
+
+    AutoindexCrawlerService.CrawlResult crawlResult =
+        crawlerService.crawl(
+            url, proxyHost, proxyPort, config.username(), config.password(), request.insecureSsl());
+    List<AutoindexCrawlerService.CrawledFileEntry> allFiles = crawlResult.entries();
+    log.info("Discovered {} files for URL indexing", allFiles.size());
+
+    // A crawl capped by a configured limit, or one with a subtree it could not fetch, is visible
+    // in the run's own protocol - either way the run's bestand is incomplete.
+    if (crawlResult.truncated()) {
+      run.events()
+          .record(
+              IndexingEventCategory.REJECTED,
+              "Crawl wurde durch ein konfiguriertes Limit abgeschnitten (Tiefe oder Anzahl"
+                  + " Einträge)",
+              url);
+    }
+    if (crawlResult.incomplete()) {
+      run.events()
+          .record(
+              IndexingEventCategory.REJECTED,
+              "Mindestens ein Unterverzeichnis konnte nicht abgerufen werden - der Bestand dieses"
+                  + " Laufs ist unvollständig",
+              url);
+    }
+    // A link a directory page carried but the crawler refused to follow (foreign origin, or an
+    // ascent above the start URL) - one event per link, so an operator can see what was left out.
+    for (String rejectedLink : crawlResult.rejectedLinks()) {
+      run.events()
+          .record(
+              IndexingEventCategory.REJECTED,
+              "Link führt aus dem Verzeichnis der Quelle heraus (fremder Ursprung oder Pfad"
+                  + " außerhalb der Start-URL) und wurde nicht verfolgt",
+              rejectedLink);
+    }
+
+    run.progress().setTotal(allFiles.size());
+    run.progress().report();
+
+    HttpClient httpClient =
+        SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, request.insecureSsl());
+    String authHeader =
+        SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
+    ReconcilingAttachmentAccess attachmentAccess = run.attachmentAccess();
+    var folderMirror = new SourceFolderMirror(folderService, targetLibrary);
+    String normalizedUrl = url;
+
+    for (AutoindexCrawlerService.CrawledFileEntry entry : allFiles) {
+      run.markPresent(entry.url());
+      processEntry(
+          run, entry, httpClient, authHeader, attachmentAccess, folderMirror, normalizedUrl);
+      run.progress().report();
+    }
+
+    if (crawlResult.truncated() || crawlResult.incomplete()) {
+      return ListingOutcome.incomplete(List.of());
+    }
+    // After the document cleanup: a folder left holding only a now-removed document is pruned in
+    // this same run.
+    run.afterReconciliation(reconciled -> folderMirror.prune());
+    return ListingOutcome.complete();
+  }
+
+  /**
+   * One crawled entry. Whether it is indexed at all is decided from its actual content, not from
+   * its name in the listing - but only a bounded prefix is read to decide, never the whole file: a
+   * directory listing routinely sits next to files nobody meant for indexing, and downloading each
+   * of those in full before rejecting them would fill the temp partition. The one exception is a
+   * prefix that ended inside an unresolved container, which carries no verdict at all - see {@link
+   * SupportedDocumentFormats#decideForPrefix}; that transfer, like every other one here, is capped
+   * at {@link CrawlProperties#maxFileSizeBytes()}.
+   */
+  private void processEntry(
+      IndexingRun run,
+      AutoindexCrawlerService.CrawledFileEntry entry,
+      HttpClient httpClient,
+      String authHeader,
+      ReconcilingAttachmentAccess attachmentAccess,
+      SourceFolderMirror folderMirror,
+      String normalizedUrl) {
+    KnowledgeLibrary targetLibrary = run.library();
+    // Checked before any download; a document indexed before folders existed still picks up its
+    // folder without being re-indexed.
+    if (run.isUnchanged(entry.url(), entry.lastModified())) {
+      log.info("Skipping unchanged URL document: {}", entry.name());
+      mirrorFolder(targetLibrary, entry.url(), normalizedUrl, folderMirror);
+      run.progress().recordSkipped();
       return;
     }
 
+    Path tempFile = null;
     try {
-      // Parsing goes through the shared ProxyAndCredentials rather than an inline copy, mirroring
-      // RssFeedIndexingExecutor#execute - an invalid sourceProxy port gets an understandable
-      // German message here instead of the JDK's raw NumberFormatException text.
-      ProxyAndCredentials config;
+      log.info("Processing URL document: {} ({})", entry.name(), entry.url());
+      byte[] prefix =
+          downloader.downloadPrefix(
+              httpClient, authHeader, entry.url(), SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
+      // Holds whatever the decision below had to download in full to reach a verdict, so the
+      // finally block deletes it even when detection on it fails - and so an accepted entry is
+      // not transferred a second time.
+      Path[] downloadedForDecision = new Path[1];
+      SupportedDocumentFormats.ContentDecision decision;
       try {
-        config = ProxyAndCredentials.parse(request.proxy(), request.credentials());
-      } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-        progress.fail(e.getMessage());
-        return;
-      }
-      String proxyHost = config.proxyHost();
-      int proxyPort = config.proxyPort();
-      String username = config.username();
-      String password = config.password();
-
-      // Normalize URL
-      String url = request.url();
-      if (!url.endsWith("/") && !hasFileExtension(url)) {
-        url = url + "/";
-      }
-
-      log.info("Starting URL crawl of: {}", url);
-
-      // Step 1: Crawl directory listing
-      AutoindexCrawlerService.CrawlResult crawlResult =
-          crawlerService.crawl(
-              url, proxyHost, proxyPort, username, password, request.insecureSsl());
-      List<AutoindexCrawlerService.CrawledFileEntry> allFiles = crawlResult.entries();
-
-      log.info("Discovered {} files for URL indexing", allFiles.size());
-
-      // A run capped by CrawlProperties' depth or entry limit is only visible in the application
-      // log otherwise - recorded as REJECTED so the run's own protocol in the UI can tell a
-      // truncated crawl apart from a genuinely complete one.
-      if (crawlResult.truncated()) {
-        events.record(
-            IndexingEventCategory.REJECTED,
-            "Crawl wurde durch ein konfiguriertes Limit abgeschnitten (Tiefe oder Anzahl Einträge)",
-            url);
-      }
-      // a subtree this run could not fetch at all is a different reason than a
-      // configured limit, but has the same consequence for stale-document cleanup below - the
-      // run's own bestand is incomplete either way.
-      if (crawlResult.incomplete()) {
-        events.record(
-            IndexingEventCategory.REJECTED,
-            "Mindestens ein Unterverzeichnis konnte nicht abgerufen werden - der Bestand dieses"
-                + " Laufs ist unvollständig",
-            url);
-      }
-      // A link a directory page carried but the crawler refused to follow (fremder Ursprung oder
-      // Aufstieg über die Start-URL hinaus, siehe AutoindexCrawlerService#staysUnderBase) is
-      // otherwise only visible in the application log - recorded here, one event per link, so an
-      // operator can see what the crawler silently left out.
-      for (String rejectedLink : crawlResult.rejectedLinks()) {
-        events.record(
-            IndexingEventCategory.REJECTED,
-            "Link führt aus dem Verzeichnis der Quelle heraus (fremder Ursprung oder Pfad"
-                + " außerhalb der Start-URL) und wurde nicht verfolgt",
-            rejectedLink);
-      }
-
-      progress.setTotal(allFiles.size());
-      progress.report();
-
-      // Build shared HttpClient and auth header for downloads
-      HttpClient httpClient =
-          SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, request.insecureSsl());
-      String authHeader = SourceHttpClientFactory.buildAuthHeader(username, password);
-
-      // What the attachment path created or confirmed this run, and which of those were actually
-      // re-parsed - feeds the vanished-cleanup bookkeeping below (ADR-0022, Entscheidung 3),
-      // mirroring AsyncIndexingExecutor's FILESYSTEM counterpart.
-      Set<String> indexedAttachmentPaths = new HashSet<>();
-      Set<String> reprocessedAttachmentPaths = new HashSet<>();
-      var attachmentAccess =
-          new WebAttachmentAccess(
-              targetLibrary, events, progress, indexedAttachmentPaths, reprocessedAttachmentPaths);
-      // Entries whose content was actually (re-)parsed this run - their attachment set was freshly
-      // enumerated, so only the attachment paths recorded above count for them.
-      Set<String> reprocessedEntryUrls = new HashSet<>();
-
-      // Mirrors the crawled directory structure into library_folders (ADR-0020) - the same
-      // helper AsyncIndexingExecutor drives for FILESYSTEM. normalizedUrl is the path every entry
-      // URL is made relative to.
-      var folderMirror = new SourceFolderMirror(folderService, targetLibrary);
-      String normalizedUrl = url;
-
-      // Step 2: Process each file. Whether a file is indexed at all is decided from its actual
-      // content, not from its name in the listing - but only a bounded prefix is read to decide,
-      // never the whole file: a directory listing routinely sits next to files nobody meant for
-      // indexing at all, and downloading each of those in full before rejecting them would fill
-      // the temp partition. The one exception is a prefix that ended inside an unresolved
-      // container, which carries no verdict at all - see SupportedDocumentFormats#decideForPrefix;
-      // that transfer, like every other one here, is capped at CrawlProperties#maxFileSizeBytes.
-      for (AutoindexCrawlerService.CrawledFileEntry entry : allFiles) {
-        // Check if document is unchanged before downloading (saves bandwidth)
-        if (isUnchanged(entry.url(), entry.lastModified(), targetLibrary)) {
-          log.info("Skipping unchanged URL document: {}", entry.name());
-          // Runs even here, before the download is skipped: a document indexed before this
-          // column existed (or
-          // one whose directory moved) picks up its folder without being re-indexed.
-          mirrorFolder(targetLibrary, entry.url(), normalizedUrl, folderMirror);
-          progress.recordSkipped();
-          progress.report();
-          continue;
-        }
-
-        Path tempFile = null;
-        try {
-          log.info("Processing URL document: {} ({})", entry.name(), entry.url());
-
-          byte[] prefix =
-              downloader.downloadPrefix(
-                  httpClient,
-                  authHeader,
-                  entry.url(),
-                  SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
-          // Holds whatever the decision below had to download in full to reach a verdict, so the
-          // finally block deletes it even when detection on it fails - and so an accepted entry is
-          // not transferred a second time.
-          Path[] downloadedForDecision = new Path[1];
-          SupportedDocumentFormats.ContentDecision decision;
-          try {
-            decision =
-                decideForEntry(
-                    prefix,
-                    entry.name(),
-                    () ->
-                        downloadedForDecision[0] =
-                            downloader.download(
-                                httpClient,
-                                authHeader,
-                                entry.url(),
-                                entry.name(),
-                                crawlProperties.maxFileSizeBytes()));
-          } finally {
-            tempFile = downloadedForDecision[0];
-          }
-          if (!decision.supported()) {
-            // Rejected documents are part of the job, not invisible - each one becomes its own
-            // UNSUPPORTED_FORMAT event. Reached before the full transfer for every entry the
-            // prefix alone could decide, which is all but the unresolved-container case above.
-            log.info(
-                "Rejecting URL document with an unsupported format: {} ({})",
+        decision =
+            decideForEntry(
+                prefix,
                 entry.name(),
-                entry.url());
-            events.record(
+                () ->
+                    downloadedForDecision[0] =
+                        downloader.download(
+                            httpClient,
+                            authHeader,
+                            entry.url(),
+                            entry.name(),
+                            crawlProperties.maxFileSizeBytes()));
+      } finally {
+        tempFile = downloadedForDecision[0];
+      }
+      if (!decision.supported()) {
+        log.info(
+            "Rejecting URL document with an unsupported format: {} ({})",
+            entry.name(),
+            entry.url());
+        run.events()
+            .record(
                 IndexingEventCategory.UNSUPPORTED_FORMAT,
                 "Dateiformat wird nicht unterstützt",
                 entry.url());
-            progress.recordSkipped();
-            progress.report();
-            continue;
-          }
-          if (decision.extensionMismatch()) {
-            // Indexed anyway, only reported.
-            events.record(
+        run.progress().recordSkipped();
+        return;
+      }
+      if (decision.extensionMismatch()) {
+        // Indexed anyway, only reported.
+        run.events()
+            .record(
                 IndexingEventCategory.FORMAT_MISMATCH,
                 "Dateiendung passt nicht zum erkannten Inhalt (erkannt: "
                     + decision.detectedExtension()
                     + ")",
                 entry.url());
-          }
-
-          if (tempFile == null) {
-            tempFile =
-                downloader.download(
-                    httpClient,
-                    authHeader,
-                    entry.url(),
-                    entry.name(),
-                    crawlProperties.maxFileSizeBytes());
-          }
-          long fileSize = Files.size(tempFile);
-          FileProcessingResult result =
-              fileProcessingService.processUrlFile(
-                  tempFile,
-                  entry.name(),
-                  entry.url(),
-                  entry.lastModified(),
-                  fileSize,
-                  targetLibrary,
-                  DocumentSourceType.HTTP_DIRECTORY,
-                  null,
-                  null,
-                  attachmentAccess);
-
-          if (result == FileProcessingResult.QUOTA_EXCEEDED) {
-            // See AsyncIndexingExecutor's own handling of this outcome.
-            events.record(
-                IndexingEventCategory.REJECTED,
-                storageQuotaService.quotaExceededMessage(targetLibrary.getId()),
-                entry.url());
-            progress.recordSkipped();
-          } else if (result == FileProcessingResult.NO_EXTRACTABLE_TEXT) {
-            // See AsyncIndexingExecutor's own handling of this outcome.
-            events.record(
-                IndexingEventCategory.REJECTED,
-                DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE,
-                entry.url());
-            progress.recordSkipped();
-          } else if (result == FileProcessingResult.FAILED) {
-            // See AsyncIndexingExecutor's own handling of this outcome.
-            events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", entry.url());
-            progress.recordFailed();
-          } else if (result == FileProcessingResult.SKIPPED) {
-            progress.recordSkipped();
-          } else {
-            reprocessedEntryUrls.add(entry.url());
-            progress.recordProcessed();
-            log.info("Indexed URL document: {}", entry.name());
-          }
-        } catch (BoundedDownloader.AttachmentTooLargeException e) {
-          // the transfer was cut off at the configured cap, so no bytes past it ever
-          // reached the temp partition. Skipped, not failed - an entry too large for this
-          // installation is a rejection like any other on this path, and the run continues.
-          log.warn(
-              "Rejecting URL document exceeding the size limit of {} bytes: {}",
-              crawlProperties.maxFileSizeBytes(),
-              entry.url());
-          events.record(IndexingEventCategory.REJECTED, tooLargeMessage(), entry.url());
-          progress.recordSkipped();
-        } catch (TargetAddressValidator.TargetAddressBlockedException e) {
-          // e.getMessage() is already German, user-facing (see TargetAddressValidator's Javadoc).
-          // Treated as skipped, not failed - mirrors RssFeedIndexingExecutor's identical policy
-          // rejections, which are the remote/policy declining a target, not a processing error.
-          log.warn("URL document target rejected: {} ({})", entry.url(), e.getMessage());
-          events.record(IndexingEventCategory.REJECTED, e.getMessage(), entry.url());
-          progress.recordSkipped();
-        } catch (Exception e) {
-          log.error("Failed to process URL document: {} ({})", entry.name(), entry.url(), e);
-          events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", entry.url());
-          progress.recordFailed();
-        } catch (Error e) {
-          log.error(
-              "Fatal error while processing URL document: {} ({})", entry.name(), entry.url(), e);
-          events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", entry.url());
-          progress.recordFailed();
-        } finally {
-          if (tempFile != null) {
-            try {
-              Files.deleteIfExists(tempFile);
-            } catch (IOException e) {
-              log.warn("Failed to delete temp file: {}", tempFile, e);
-            }
-          }
-          // In the finally block, not after it: every early `continue` above (unsupported format,
-          // rejected target, oversized entry) must still assign the folder of an entry that
-          // already has a document row from an earlier run.
-          mirrorFolder(targetLibrary, entry.url(), normalizedUrl, folderMirror);
-        }
-        progress.report();
       }
 
-      // See this class' own Javadoc: skipped for a truncated or incomplete crawl, only reached
-      // on the success path. An empty currentUrls is guarded inside cleanupVanished itself.
-      if (!crawlResult.truncated() && !crawlResult.incomplete()) {
+      if (tempFile == null) {
+        tempFile =
+            downloader.download(
+                httpClient,
+                authHeader,
+                entry.url(),
+                entry.name(),
+                crawlProperties.maxFileSizeBytes());
+      }
+      long fileSize = Files.size(tempFile);
+      FileProcessingResult result =
+          fileProcessingService.processUrlFile(
+              tempFile,
+              entry.name(),
+              entry.url(),
+              entry.lastModified(),
+              fileSize,
+              targetLibrary,
+              DocumentSourceType.HTTP_DIRECTORY,
+              null,
+              null,
+              attachmentAccess);
+      if (run.recordOutcome(result, entry.url())) {
+        run.markReprocessed(entry.url());
+        log.info("Indexed URL document: {}", entry.name());
+      }
+    } catch (BoundedDownloader.AttachmentTooLargeException e) {
+      // Cut off at the configured cap, so no bytes past it ever reached the temp partition.
+      // Skipped, not failed - a rejection like any other on this path, and the run continues.
+      log.warn(
+          "Rejecting URL document exceeding the size limit of {} bytes: {}",
+          crawlProperties.maxFileSizeBytes(),
+          entry.url());
+      run.events().record(IndexingEventCategory.REJECTED, tooLargeMessage(), entry.url());
+      run.progress().recordSkipped();
+    } catch (TargetAddressValidator.TargetAddressBlockedException e) {
+      // e.getMessage() is already German, user-facing. Skipped, not failed: the policy declining a
+      // target is not a processing error.
+      log.warn("URL document target rejected: {} ({})", entry.url(), e.getMessage());
+      run.events().record(IndexingEventCategory.REJECTED, e.getMessage(), entry.url());
+      run.progress().recordSkipped();
+    } catch (Exception | Error e) {
+      run.recordFailure(entry.url(), e);
+    } finally {
+      if (tempFile != null) {
         try {
-          Set<String> currentUrls =
-              allFiles.stream()
-                  .map(AutoindexCrawlerService.CrawledFileEntry::url)
-                  .collect(Collectors.toCollection(HashSet::new));
-          // ADR-0022, Entscheidung 3, mirroring AsyncIndexingExecutor: an attachment
-          // counts as present this run either because the attachment path itself
-          // created/confirmed it while its parent was re-parsed (indexedAttachmentPaths), or -
-          // the Nachtragsfall - because its parent still exists but was NOT re-parsed this run
-          // (unchanged, checksum-skipped, rejected, failed), so its existing attachment rows must
-          // be preserved from the database. An attachment of a re-parsed parent that was NOT
-          // re-reported is genuinely gone (removed from the mail) and is deliberately not folded
-          // in, so cleanupVanished below removes it. A truncated or incomplete crawl skips this
-          // whole block, attachments included - their parents' presence is unknowable then too.
-          currentUrls.addAll(indexedAttachmentPaths);
-          Set<String> reprocessedPaths = new HashSet<>(reprocessedEntryUrls);
-          reprocessedPaths.addAll(reprocessedAttachmentPaths);
-          List<Document> existingHttpDocuments =
-              documentRepository.findByLibraryIdAndSourceType(
-                  targetLibrary.getId(), DocumentSourceType.HTTP_DIRECTORY);
-          StaleDocumentCleanupService.foldInPreservedAttachmentPaths(
-              existingHttpDocuments, currentUrls, reprocessedPaths);
-          staleDocumentCleanupService.cleanupVanished(
-              targetLibrary, DocumentSourceType.HTTP_DIRECTORY, currentUrls, events, this, runMode);
-        } catch (Exception e) {
-          log.warn(
-              "Failed to clean up vanished HTTP_DIRECTORY documents for library {}",
-              targetLibrary.getId(),
-              e);
+          Files.deleteIfExists(tempFile);
+        } catch (IOException e) {
+          log.warn("Failed to delete temp file: {}", tempFile, e);
         }
-        // After the document cleanup, mirroring AsyncIndexingExecutor's order: a folder left
-        // holding only a now-removed document is pruned in this same run. Inside the
-        // complete-run guard, so a truncated or incomplete crawl never removes a folder whose
-        // documents it simply never saw.
-        folderMirror.prune();
       }
-
-      events.finalizeRun();
-      progress.complete();
-    } catch (IOException | InterruptedException e) {
-      log.error("URL indexing failed", e);
-      events.finalizeRun();
-      progress.fail(e.getMessage());
-      if (e instanceof InterruptedException) {
-        Thread.currentThread().interrupt();
-      }
-    } catch (Exception e) {
-      log.error("URL indexing failed unexpectedly", e);
-      events.finalizeRun();
-      progress.fail(e.getMessage());
+      // In the finally block, not after it: every early return above (unsupported format,
+      // rejected target, oversized entry) must still assign the folder of an entry that already
+      // has a document row from an earlier run.
+      mirrorFolder(targetLibrary, entry.url(), normalizedUrl, folderMirror);
     }
   }
 
@@ -513,28 +395,9 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Whether a URL document exists and is unchanged per the listing's {@code lastModified}, so an
-   * unchanged file is never downloaded; the SHA-256 checksum verifies content afterwards. A blank
-   * {@code lastModified} means "unknown", not "unchanged" - the {@code <ul>}-based layouts carry no
-   * date at all, and treating two empty strings as equal would fetch such a source exactly once.
-   * The lookup is scoped to {@code targetLibrary}, so another library's document never matches.
-   */
-  public boolean isUnchanged(
-      String remoteUrl, String lastModified, KnowledgeLibrary targetLibrary) {
-    if (lastModified == null || lastModified.isBlank()) {
-      return false;
-    }
-    Optional<Document> existing =
-        documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), remoteUrl);
-    return existing.isPresent()
-        && lastModified.equals(existing.get().getLastModifiedRemote())
-        && existing.get().getStatus() == DocumentStatus.INDEXED;
-  }
-
-  /**
    * Decides whether a crawled entry is supported from its content, never from {@code entryName} -
-   * the same decision {@link #execute} makes. A leading byte sample normally settles it; only a
-   * prefix ending inside an unresolved container makes {@code completeContent} download in full.
+   * the same decision {@link #processEntry} makes. A leading byte sample normally settles it; only
+   * a prefix ending inside an unresolved container makes {@code completeContent} download in full.
    * Public so the cross-package parity test exercises this call rather than a reimplementation.
    */
   public static SupportedDocumentFormats.ContentDecision decideForEntry(

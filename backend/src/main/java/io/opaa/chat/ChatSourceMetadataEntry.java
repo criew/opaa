@@ -23,7 +23,19 @@ public record ChatSourceMetadataEntry(
     String value,
     String displayValue,
     MetadataOrigin origin,
-    DatePrecision datePrecision) {
+    DatePrecision datePrecision,
+    boolean detailOnly) {
+
+  /** An entry the Fundstellenzeile shows - every core field and most other fields. */
+  public ChatSourceMetadataEntry(
+      String fieldKey,
+      String label,
+      String value,
+      String displayValue,
+      MetadataOrigin origin,
+      DatePrecision datePrecision) {
+    this(fieldKey, label, value, displayValue, origin, datePrecision, false);
+  }
 
   /** The core fields of {@code core} in schema order; empty (not null-padded) for absent fields. */
   public static List<ChatSourceMetadataEntry> fromCore(CoreMetadata core) {
@@ -89,7 +101,8 @@ public record ChatSourceMetadataEntry(
               field.value(),
               field.displayValue(),
               field.origin(),
-              field.datePrecision()));
+              field.datePrecision(),
+              field.detailOnly()));
     }
     return entries;
   }

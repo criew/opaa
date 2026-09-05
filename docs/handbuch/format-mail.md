@@ -82,12 +82,12 @@ mail-eigenen Chunk-Schlüssel mehr — dieselbe Mechanik wie bei den Kernfeldern
 | Feld | Inhalt | Filterbar |
 |---|---|---|
 | **Absender** | die reine Adresse des `From`-Kopfs, kleingeschrieben (`Max Mustermann <Max.Mueller@Stadt.de>` → `max.mueller@stadt.de`) | ja, als Genau-Treffer |
-| **An** | alle Empfänger, mit `; ` getrennt, auf 200 Zeichen gekürzt | nein |
+| **An** | alle Empfänger, mit `; ` getrennt, auf 200 Zeichen gekürzt; nur im Belegfenster, nicht in der Fundstellenzeile | nein |
 | **Betreff** | Betreff der Nachricht | nein |
 | **Datum/Stand** | Kalendertag aus dem `Date`-Kopf (Kernfeld) | ja, als Zeitraum |
 
 Ein `From`-Kopf ohne Adresse — bei MSG kann dort nur ein Anzeigename stehen — ergibt **keinen**
-Absender; geraten wird nichts. Die Suche bietet den Absender im Filter-Popover mit den im
+Absender; geraten wird nichts. Nennt der Kopf mehrere Postfächer, zählt das erste. Die Suche bietet den Absender im Filter-Popover mit den im
 Suchbereich vorkommenden Adressen an; ein Dokument ohne Absender bleibt gefunden
 (Leerwert-Regel). Nach dem Betreff wird nicht gefiltert — er steht im Kopfblock des Chunk-Textes
 und damit in der Volltextsuche.

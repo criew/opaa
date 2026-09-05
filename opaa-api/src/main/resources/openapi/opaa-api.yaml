@@ -5938,6 +5938,15 @@ components:
           allOf:
             - $ref: "#/components/schemas/DatePrecision"
           description: Set for a date value only.
+        detailOnly:
+          type: boolean
+          nullable: true
+          default: false
+          description: >-
+            True for a value that belongs into the Beleg detail view but not into the one-line
+            Fundstellenzeile (#1242): a mail's recipient list is unbounded and names nobody useful
+            for identifying the passage, while the line has to stay readable in the flow of an
+            answer. Absent/false for every other entry.
 
     LibraryDocumentResponse:
       type: object
@@ -6964,10 +6973,24 @@ components:
           items:
             $ref: "#/components/schemas/MetadataFilterLibraryFieldValueOption"
           description: >-
-            The values documents in the caller's rights context actually carry, most frequent
-            first.
+            The values documents in the caller's rights context actually carry, most frequent first
+            and capped at 20: the value set of a format field is open - a postbox has as many
+            senders as correspondents -, and a complete list would be an unbounded response of
+            personal addresses.
+        valuesCapped:
+          type: boolean
+          nullable: true
+          default: false
+          description: >-
+            True when the scope carries more values than the list shows. A client then offers a free
+            input for an exact value beside the list.
         offered:
           type: boolean
+          description: >-
+            True as soon as one document of the scope carries a value. Unlike a core or library
+            field there is no Füllstand threshold: the field is filled deterministically for every
+            document of its format and structurally absent for every other, so a share over a mixed
+            bestand would measure the format mix rather than the metadata quality.
 
     DocumentTypeVocabularyResponse:
       type: object

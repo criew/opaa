@@ -9,6 +9,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -23,6 +25,8 @@ import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.StaleDocumentCleanupService;
+import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -42,11 +46,11 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 
 /**
- * Unit-level coverage of {@link UrlIndexingExecutor}'s attachment bookkeeping for {@code
- * StaleDocumentCleanupService#cleanupVanished} (ADR-0022 Entscheidung 3) - the HTTP_DIRECTORY
- * mirror of {@code AsyncIndexingExecutorTest}'s attachment cases, with {@link
- * AutoindexCrawlerService}/{@link BoundedDownloader} mocked the way {@code
- * UrlIndexingExecutorQuotaTest} already does.
+ * Unit-level coverage of {@link UrlIndexingExecutor}'s attachment bookkeeping for the run frame's
+ * reconciliation (ADR-0022 Entscheidung 3) - the HTTP_DIRECTORY mirror of {@code
+ * AsyncIndexingExecutorTest}'s attachment cases, with {@link AutoindexCrawlerService}/{@link
+ * BoundedDownloader} mocked the way {@code UrlIndexingExecutorQuotaTest} already does and the
+ * reconciliation a spy over the real service.
  */
 class UrlIndexingExecutorAttachmentBookkeepingTest {
 
@@ -66,7 +70,8 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
     BoundedDownloader downloader = mock(BoundedDownloader.class);
     fileProcessingService = mock(FileProcessingService.class);
     documentRepository = mock(DocumentRepository.class);
-    staleDocumentCleanupService = mock(StaleDocumentCleanupService.class);
+    staleDocumentCleanupService =
+        spy(new StaleDocumentCleanupService(documentRepository, mock(VectorChunkStore.class)));
     when(documentRepository.findByLibraryIdAndFilePath(any(), anyString()))
         .thenReturn(Optional.empty());
 
@@ -104,13 +109,15 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
             crawlerService,
             downloader,
             fileProcessingService,
-            mock(IndexingJobService.class),
             documentRepository,
-            mock(IndexingRunEventRepository.class),
-            mock(LibraryStorageQuotaService.class),
-            staleDocumentCleanupService,
             new CrawlProperties(0, 0, 0),
-            mock(io.opaa.library.LibraryFolderService.class));
+            mock(io.opaa.library.LibraryFolderService.class),
+            new IndexingRunTemplate(
+                mock(IndexingJobService.class),
+                mock(IndexingRunEventRepository.class),
+                staleDocumentCleanupService,
+                documentRepository,
+                mock(LibraryStorageQuotaService.class)));
   }
 
   private void stubProcessUrlFile(org.mockito.stubbing.Answer<FileProcessingResult> answer)
@@ -133,7 +140,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
   void aRemovedAttachmentOfAReprocessedMailIsCleanedUpAsVanished() throws IOException {
     // ADR-0022, Entscheidung 3: for a mail actually re-parsed this run, only the attachments the
     // attachment path re-reported count as present - a bestand row of a since-removed attachment
-    // must NOT be folded into currentUrls just because its parent's URL is still listed.
+    // must NOT survive just because its parent's URL is still listed.
     String keptPath = MAIL_URL + "/0/behalten.pdf";
     String removedPath = MAIL_URL + "/1/entfernt.pdf";
     Document mailDoc = httpDocument("mail.eml", MAIL_URL, null);
@@ -155,14 +162,18 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
     Set<String> currentUrls = capturedCurrentUrls();
     assertThat(currentUrls).contains(MAIL_URL, keptPath);
     assertThat(currentUrls).doesNotContain(removedPath);
+    assertThat(capturedReprocessedUrls()).contains(MAIL_URL, keptPath);
+    verify(documentRepository).delete(removedDoc);
+    verify(documentRepository, never()).delete(keptDoc);
+    verify(documentRepository, never()).delete(mailDoc);
   }
 
   @Test
   void attachmentsOfAChecksumSkippedMailArePreservedRecursivelyFromTheDatabase()
       throws IOException {
     // The Nachtragsfall of ADR-0022, Entscheidung 3: an unchanged (checksum-skipped) mail is
-    // never re-parsed, so its attachment rows - including a grandchild of a nested mail - must be
-    // folded in from the database, regardless of the rows' iteration order.
+    // never re-parsed, so it is reported present but not reprocessed - and the reconciliation
+    // preserves its attachment rows, including a grandchild of a nested mail, from the database.
     String innerMailPath = MAIL_URL + "/0/weitergeleitet.eml";
     String grandchildPath = innerMailPath + "/0/anlage.pdf";
     Document mailDoc = httpDocument("mail.eml", MAIL_URL, null);
@@ -176,16 +187,17 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
-    assertThat(capturedCurrentUrls()).contains(MAIL_URL, innerMailPath, grandchildPath);
+    assertThat(capturedCurrentUrls()).contains(MAIL_URL);
+    assertThat(capturedReprocessedUrls()).doesNotContain(MAIL_URL);
+    verify(documentRepository, never()).delete(any(Document.class));
   }
 
   @Test
   void aTransientlyFailedAttachmentOfAReprocessedMailIsPreservedNotCleanedUp() throws IOException {
-    // The semantics carried over to HTTP_DIRECTORY: an attachment the attachment
-    // path reported as present-but-not-reprocessed (quota, transient read error - see
-    // AttachmentIndexer#storeAttachment's recordIndexedAttachment(path, false) calls) must stay in
-    // currentUrls, and - because it was not re-parsed - its own children are preserved from the
-    // database too.
+    // An attachment the attachment path reported as present-but-not-reprocessed (quota, transient
+    // read error - see AttachmentIndexer#storeAttachment's recordIndexedAttachment(path, false)
+    // calls) stays present, and - because it was not re-parsed - its own children are preserved
+    // from the database too.
     String failedPath = MAIL_URL + "/0/voruebergehend-defekt.eml";
     String childOfFailedPath = failedPath + "/0/anlage.pdf";
     Document mailDoc = httpDocument("mail.eml", MAIL_URL, null);
@@ -204,7 +216,9 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
-    assertThat(capturedCurrentUrls()).contains(MAIL_URL, failedPath, childOfFailedPath);
+    assertThat(capturedCurrentUrls()).contains(MAIL_URL, failedPath);
+    assertThat(capturedReprocessedUrls()).contains(MAIL_URL).doesNotContain(failedPath);
+    verify(documentRepository, never()).delete(any(Document.class));
   }
 
   private Document httpDocument(String fileName, String filePath, UUID parentDocumentId) {
@@ -219,9 +233,25 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
   private Set<String> capturedCurrentUrls() {
     ArgumentCaptor<Set<String>> urlsCaptor = ArgumentCaptor.forClass(Set.class);
     verify(staleDocumentCleanupService, timeout(2000))
-        .cleanupVanished(
+        .reconcile(
             eq(library),
             eq(DocumentSourceType.HTTP_DIRECTORY),
+            urlsCaptor.capture(),
+            any(),
+            any(),
+            any(),
+            any());
+    return urlsCaptor.getValue();
+  }
+
+  @SuppressWarnings("unchecked")
+  private Set<String> capturedReprocessedUrls() {
+    ArgumentCaptor<Set<String>> urlsCaptor = ArgumentCaptor.forClass(Set.class);
+    verify(staleDocumentCleanupService, timeout(2000))
+        .reconcile(
+            eq(library),
+            eq(DocumentSourceType.HTTP_DIRECTORY),
+            any(),
             urlsCaptor.capture(),
             any(),
             any(),

@@ -81,6 +81,30 @@ export function withoutDateWindow(filter: MetadataFilter): MetadataFilter {
   }
 }
 
+/** The German label of a library field, falling back to its key when the options are absent. */
+export function libraryFieldLabel(
+  condition: MetadataFilterLibraryFieldCondition,
+  options: MetadataFilterOptionsResponse | null,
+): string {
+  return (
+    (options?.libraryFields ?? []).find(
+      (candidate) =>
+        candidate.libraryId === condition.libraryId && candidate.fieldKey === condition.fieldKey,
+    )?.label ?? condition.fieldKey
+  )
+}
+
+/** The German label of a format field, falling back to its key when the options are absent. */
+export function formatFieldLabel(
+  condition: MetadataFilterFormatFieldCondition,
+  options: MetadataFilterOptionsResponse | null,
+): string {
+  return (
+    (options?.formatFields ?? []).find((candidate) => candidate.fieldKey === condition.fieldKey)
+      ?.label ?? condition.fieldKey
+  )
+}
+
 /**
  * "Fassung: Fassung 2026" - one chip per library-field condition. A condition names its
  * library, so two libraries with the same field key stay distinguishable in the chip bar.
@@ -93,7 +117,7 @@ export function libraryFieldChipLabel(
     (candidate) =>
       candidate.libraryId === condition.libraryId && candidate.fieldKey === condition.fieldKey,
   )
-  const label = field?.label ?? condition.fieldKey
+  const label = libraryFieldLabel(condition, options)
   if (condition.value) return `${label}: ${condition.value}`
   if (condition.dateFrom || condition.dateTo) {
     if (condition.dateFrom && condition.dateTo)
@@ -132,10 +156,7 @@ export function formatFieldChipLabel(
   condition: MetadataFilterFormatFieldCondition,
   options: MetadataFilterOptionsResponse | null,
 ): string {
-  const field = (options?.formatFields ?? []).find(
-    (candidate) => candidate.fieldKey === condition.fieldKey,
-  )
-  return `${field?.label ?? condition.fieldKey}: ${condition.values.join(', ')}`
+  return `${formatFieldLabel(condition, options)}: ${condition.values.join(', ')}`
 }
 
 /** The filter without one format-field condition - what removing its chip leaves. */

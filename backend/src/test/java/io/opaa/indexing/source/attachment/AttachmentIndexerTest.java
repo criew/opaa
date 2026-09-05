@@ -16,6 +16,7 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.indexing.AttachmentOutcome;
 import io.opaa.indexing.AttachmentProgressSink;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -175,6 +176,8 @@ class AttachmentIndexerTest {
     AttachmentAccess access = mock(AttachmentAccess.class);
     when(access.targetLibrary()).thenReturn(filesystemLibrary);
     when(access.events()).thenReturn((category, message, reference) -> {});
+    AttachmentProgressSink progress = mock(AttachmentProgressSink.class);
+    when(access.progress()).thenReturn(progress);
     Path extracted = tempDir.resolve("anlage.txt");
     Files.writeString(extracted, "Anhangsinhalt");
     when(fileProcessingService.processUrlFile(
@@ -191,10 +194,12 @@ class AttachmentIndexerTest {
             DocumentSourceType.FILESYSTEM,
             limits);
 
-    // Not part of the created/confirmed return value - but reported as present.
+    // Not part of the created/confirmed return value - but reported as present, and counted as
+    // failed: an attempt was made and is retried next time.
     assertThat(indexed).isEmpty();
     verify(access).recordIndexedAttachment("/mail.eml/0/anlage.txt", false);
     verify(access).markDeferred();
+    verify(progress).recordAttachment(AttachmentOutcome.FAILED);
   }
 
   @Test
@@ -345,7 +350,8 @@ class AttachmentIndexerTest {
     AttachmentAccess access = mock(AttachmentAccess.class);
     when(access.targetLibrary()).thenReturn(confluenceLibrary);
     when(access.events()).thenReturn((category, message, reference) -> {});
-    when(access.progress()).thenReturn(() -> {});
+    AttachmentProgressSink progress = mock(AttachmentProgressSink.class);
+    when(access.progress()).thenReturn(progress);
     when(access.sourceContext()).thenReturn(pageContext);
     Path downloaded = tempDir.resolve("notizen.txt");
     Files.writeString(downloaded, "Notizen");
@@ -381,5 +387,63 @@ class AttachmentIndexerTest {
             eq(parentDocumentId),
             eq(access));
     verify(access).recordIndexedAttachment("https://wiki.example/download/900/notizen.txt", true);
+    verify(progress).recordAttachment(AttachmentOutcome.PROCESSED);
+  }
+
+  @Test
+  void everyOutcomeOfALocalAttachmentIsCountedExactlyOnce() throws IOException {
+    // The attachment path counts each attachment itself, so every connector's cost carries the
+    // same attachment share: a document created is processed, a confirmed-unchanged or text-free
+    // one skipped, a quota refusal or a failed pipeline failed.
+    AttachmentAccess access = mock(AttachmentAccess.class);
+    when(access.targetLibrary()).thenReturn(ctx.targetLibrary());
+    when(access.events()).thenReturn((category, message, reference) -> {});
+    AttachmentProgressSink progress = mock(AttachmentProgressSink.class);
+    when(access.progress()).thenReturn(progress);
+    Path file = tempDir.resolve("anlage.txt");
+    Files.writeString(file, "Anhangsinhalt");
+    AttachmentSource.LocalFile source =
+        new AttachmentSource.LocalFile(file, "anlage.txt", "/mail.eml/0/anlage.txt");
+
+    for (FileProcessingResult result : FileProcessingResult.values()) {
+      when(fileProcessingService.processUrlFile(
+              any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any()))
+          .thenReturn(result);
+      indexer.indexAll(
+          access,
+          List.of(source),
+          parentDocumentId,
+          "/mail.eml",
+          DocumentSourceType.FILESYSTEM,
+          limits);
+    }
+
+    verify(progress, org.mockito.Mockito.times(1)).recordAttachment(AttachmentOutcome.PROCESSED);
+    verify(progress, org.mockito.Mockito.times(2)).recordAttachment(AttachmentOutcome.SKIPPED);
+    verify(progress, org.mockito.Mockito.times(2)).recordAttachment(AttachmentOutcome.FAILED);
+    verify(access, org.mockito.Mockito.times(5))
+        .recordIndexedAttachment(eq("/mail.eml/0/anlage.txt"), anyBoolean());
+  }
+
+  @Test
+  void anUnsupportedLocalAttachmentIsCountedAsSkipped() throws IOException {
+    AttachmentAccess access = mock(AttachmentAccess.class);
+    when(access.targetLibrary()).thenReturn(ctx.targetLibrary());
+    when(access.events()).thenReturn((category, message, reference) -> {});
+    AttachmentProgressSink progress = mock(AttachmentProgressSink.class);
+    when(access.progress()).thenReturn(progress);
+    Path file = tempDir.resolve("werkzeug.exe");
+    Files.write(file, new byte[] {0x4d, 0x5a, 0, 0, 1, 2});
+
+    indexer.indexAll(
+        access,
+        List.of(new AttachmentSource.LocalFile(file, "werkzeug.exe", "/mail.eml/0/werkzeug.exe")),
+        parentDocumentId,
+        "/mail.eml",
+        DocumentSourceType.FILESYSTEM,
+        limits);
+
+    verify(progress).recordAttachment(AttachmentOutcome.SKIPPED);
+    verifyNoInteractions(fileProcessingService);
   }
 }

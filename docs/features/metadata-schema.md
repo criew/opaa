@@ -453,7 +453,11 @@ Mail ist, hat schlicht keinen Wert. Im Filter-Popover erscheint „Absender" mit
 ein Füllstandsanteil am gemischten Bestand misst dort die Formatverteilung, nicht die
 Metadatenqualität. Im Beleg stehen die Formatfelder hinter den Kernfeldern und vor den
 Bibliotheksfeldern; ein Wert, den der Titel bereits wörtlich zeigt (bei einer Mail der Betreff, der
-zugleich Titelquelle ist), erscheint nicht zweimal.
+zugleich Titelquelle ist), erscheint nicht zweimal. **Der Empfänger steht nur im Belegfenster, nicht
+in der Fundstellenzeile**: Eine Verteilerliste ist unbegrenzt lang und benennt niemanden, der die
+Fundstelle einordnet — sie würde genau die Angaben aus der einen Zeile verdrängen, die es tun. Die
+Obergrenze von zwei Nicht-Kernfeldern der Belegzeile zählt die Formatfelder mit; knapp ist die
+Zeile, nicht die Feldart.
 
 **Abgelöst.** Die mail-eigenen Chunk-Schlüssel `mail_from`/`mail_to`/`mail_subject`/`mail_date`, die
 vier Felder `mailFrom`/`mailTo`/`mailSubject`/`mailDate` am `SourceReference` und `formatMailSummary`

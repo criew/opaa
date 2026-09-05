@@ -26,6 +26,7 @@ import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
@@ -102,14 +103,16 @@ class ConfluenceDataCenterFullSyncTest {
                 fileProcessingService,
                 mock(LibraryStorageQuotaService.class),
                 new io.opaa.indexing.source.attachment.AttachmentProperties(5)),
-            indexingJobService,
             documentRepository,
-            eventRepository,
-            mock(LibraryStorageQuotaService.class),
-            cleanupService,
             syncStateRepository,
             mock(VectorChunkStore.class),
-            Clock.systemUTC());
+            Clock.systemUTC(),
+            new IndexingRunTemplate(
+                indexingJobService,
+                eventRepository,
+                cleanupService,
+                documentRepository,
+                mock(LibraryStorageQuotaService.class)));
   }
 
   private KnowledgeLibrary library(String token, String... spaceKeys) {
@@ -179,10 +182,11 @@ class ConfluenceDataCenterFullSyncTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
     verify(cleanupService)
-        .cleanupVanished(
+        .reconcile(
             eq(library),
             eq(DocumentSourceType.CONFLUENCE),
             current.capture(),
+            any(),
             any(),
             eq(executor),
             eq(IndexingRunMode.FULL));
@@ -206,11 +210,11 @@ class ConfluenceDataCenterFullSyncTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> limitedSet = ArgumentCaptor.forClass(Set.class);
     verify(cleanupService)
-        .cleanupVanished(eq(limited), any(), limitedSet.capture(), any(), any(), any());
+        .reconcile(eq(limited), any(), limitedSet.capture(), any(), any(), any(), any());
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> adminSet = ArgumentCaptor.forClass(Set.class);
     verify(cleanupService)
-        .cleanupVanished(eq(admin), any(), adminSet.capture(), any(), any(), any());
+        .reconcile(eq(admin), any(), adminSet.capture(), any(), any(), any(), any());
 
     assertThat(limitedSet.getValue())
         .contains(pagePath("Handbuch"))
@@ -233,7 +237,7 @@ class ConfluenceDataCenterFullSyncTest {
                 (IndexingRunEvent event) ->
                     event.getCategory() == IndexingEventCategory.REJECTED
                         && "SEC".equals(event.getReference())));
-    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(eq(jobId), anyInt(), eq(0), anyInt(), anyInt());
   }
 
@@ -291,7 +295,7 @@ class ConfluenceDataCenterFullSyncTest {
             any(),
             any(),
             eq(library));
-    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(indexingJobService, never()).failJob(eq(jobId), any());
   }
 
@@ -307,6 +311,6 @@ class ConfluenceDataCenterFullSyncTest {
     assertThat(message.getValue()).contains("anonym").doesNotContain("kein-gueltiges-token");
     verify(fileProcessingService, never())
         .processConfluencePage(any(), any(), any(), any(), any(), any(), any());
-    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
   }
 }

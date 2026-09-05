@@ -16,6 +16,7 @@ import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.DocumentMetadataCorrectionService;
+import io.opaa.indexing.metadata.FormatMetadataField;
 import io.opaa.indexing.metadata.MetadataValueInput;
 import io.opaa.library.AssetGrant;
 import io.opaa.library.AssetGrantRepository;
@@ -199,6 +200,32 @@ class MetadataFilterOptionsServiceIntegrationTest {
         .isEqualTo(3);
   }
 
+  /**
+   * regression guard for #1242: the value set of a format field is open - a postbox has as many
+   * senders as correspondents. The options carry at most the twenty most frequent addresses and say
+   * that they were capped, so the interface can offer a free input for the rest instead of
+   * rendering a personal address list of unbounded length.
+   */
+  @Test
+  void theSenderOptionsAreCappedAtTwentyValuesAndSayThatTheyWere() throws IOException {
+    for (int i = 0; i < 21; i++) {
+      indexedMail(libraryA, "mail-" + i + ".eml", "absender" + i + "@stadt.de");
+    }
+    cache.invalidateAll();
+
+    MetadataFilterOptions options = optionsService.optionsFor(onlyA, null, true, List.of());
+    MetadataFilterOptions.FormatFieldOption sender =
+        options.formatFields().stream()
+            .filter(field -> field.field() == FormatMetadataField.MAIL_SENDER)
+            .findFirst()
+            .orElseThrow();
+
+    assertThat(sender.offered()).isTrue();
+    assertThat(sender.filledDocuments()).isEqualTo(21);
+    assertThat(sender.values()).hasSize(MetadataFilterOptions.FormatFieldOption.MAX_OFFERED_VALUES);
+    assertThat(sender.valuesCapped()).isTrue();
+  }
+
   private static MetadataFilterOptions.FieldOption field(
       MetadataFilterOptions options, CoreMetadataField field) {
     return options.fields().stream().filter(f -> f.field() == field).findFirst().orElseThrow();
@@ -262,6 +289,23 @@ class MetadataFilterOptionsServiceIntegrationTest {
       }
       doc.save(file.toFile());
     }
+    assertThat(fileProcessingService.processFile(file, target))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+  }
+
+  /** An indexed mail of {@code sender} - the only source of the format field Absender. */
+  private void indexedMail(KnowledgeLibrary target, String fileName, String sender)
+      throws IOException {
+    Path file = Path.of(target.getSourcePath()).resolve(fileName);
+    Files.createDirectories(file.getParent());
+    Files.writeString(
+        file,
+        "From: "
+            + sender
+            + "\nTo: poststelle@stadt.de\nSubject: Nutzung der IT\n"
+            + "Date: Thu, 12 Mar 2026 09:15:00 +0100\n"
+            + "Content-Type: text/plain; charset=UTF-8\n\n"
+            + "Diese Unterlage regelt die Nutzung der IT.\n");
     assertThat(fileProcessingService.processFile(file, target))
         .isEqualTo(FileProcessingResult.PROCESSED);
   }

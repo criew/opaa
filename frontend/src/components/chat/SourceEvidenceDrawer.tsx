@@ -11,7 +11,12 @@ import CloseIcon from '@mui/icons-material/Close'
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import type { CitationIndex } from './citations'
-import { describeMetadata, formatMetadataLine, metadataFilterMatchLabel } from './citations'
+import {
+  describeMetadata,
+  formatMetadataDetails,
+  formatMetadataLine,
+  metadataFilterMatchLabel,
+} from './citations'
 import type { DocumentSourceType } from '../../types/api'
 import type { OpenableDocument } from '../../hooks/useDocumentPreview'
 import { fontFamily } from '../../theme/tokens'
@@ -62,6 +67,8 @@ interface EvidenceDoc {
   metadataLine?: string
   /** #1066: "Label: Wert, …" - the accessible name of {@link metadataLine}. */
   metadataDescription?: string
+  /** #1242: the values only the detail view shows ("An: …"), undefined when there are none. */
+  metadataDetails?: string
   /** #1070: "ohne Angabe" for a hit the Leerwert rule kept under an active filter. */
   filterMatchLabel?: string
 }
@@ -118,6 +125,7 @@ export default function SourceEvidenceDrawer({
       sourceUrl: doc.source?.sourceUrl,
       metadataLine: formatMetadataLine(doc.source),
       metadataDescription: describeMetadata(doc.source),
+      metadataDetails: formatMetadataDetails(doc.source),
       filterMatchLabel: metadataFilterMatchLabel(doc.source),
     }))
     const uncited: EvidenceDoc[] = citations.uncited.map((source) => ({
@@ -134,6 +142,7 @@ export default function SourceEvidenceDrawer({
       sourceUrl: source.sourceUrl,
       metadataLine: formatMetadataLine(source),
       metadataDescription: describeMetadata(source),
+      metadataDetails: formatMetadataDetails(source),
       filterMatchLabel: metadataFilterMatchLabel(source),
     }))
     // #1102: never order by relevanceScore - a persisted message's snapshot may still carry the
@@ -318,6 +327,17 @@ export default function SourceEvidenceDrawer({
                   sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
                 >
                   {doc.metadataLine}
+                </Typography>
+              )}
+              {/* #1242: values that belong into the detail view but not into the one-line Beleg -
+                  a mail's recipient list identifies no passage and would crowd out what does. */}
+              {doc.metadataDetails && (
+                <Typography
+                  component="span"
+                  data-testid="source-metadata-details"
+                  sx={{ display: 'block', fontSize: 11.5, color: 'text.secondary', mt: 0.25 }}
+                >
+                  {doc.metadataDetails}
                 </Typography>
               )}
               {/* #1070: the Leerwert mark of a hit kept under an active filter. */}

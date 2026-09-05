@@ -402,6 +402,10 @@ class MetadataFilterSearchIntegrationTest {
         .doesNotContain(fromSchmidt.getId().toString());
     assertThat(stage(result, RetrievalStageName.METADATA_FILTER).notes())
         .contains("metadata filter: format field mail_sender in [max@stadt.de]");
+    // The PDF is kept by the Leerwert rule but is not "ohne Angabe": the sender was never a
+    // question its format could answer (#1242). Only a mail without a sender would be.
+    assertThat(stage(result, RetrievalStageName.VECTOR_SEARCH).notes())
+        .contains(RetrievalNote.METADATA_FILTER_NO_VALUE_CANDIDATES.format(0, 2));
   }
 
   private RetrievalPipelineResult run(MetadataFilter filter, Set<UUID> scope) {

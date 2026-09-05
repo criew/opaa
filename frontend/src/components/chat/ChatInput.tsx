@@ -27,7 +27,9 @@ import MetadataFilterPopover from './MetadataFilterPopover'
 import {
   dateChipLabel,
   formatFieldChipLabel,
+  formatFieldLabel,
   libraryFieldChipLabel,
+  libraryFieldLabel,
   withoutDateWindow,
   withoutDocumentTypes,
   withoutFormatField,
@@ -503,7 +505,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
                           setMetadataFilter(withoutLibraryField(metadataFilter, condition))
                       }
                 }
-                aria-label={`Filter nach ${condition.fieldKey} entfernen`}
+                aria-label={`Filter nach ${libraryFieldLabel(condition, filterOptions)} entfernen`}
                 data-testid="metadata-filter-chip-library-field"
               />
             ))}
@@ -522,7 +524,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
                           setMetadataFilter(withoutFormatField(metadataFilter, condition))
                       }
                 }
-                aria-label={`Filter nach ${condition.fieldKey} entfernen`}
+                aria-label={`Filter nach ${formatFieldLabel(condition, filterOptions)} entfernen`}
                 data-testid="metadata-filter-chip-format-field"
               />
             ))}

@@ -39,15 +39,21 @@ public record FormatFieldCondition(FormatMetadataField field, Set<String> values
     Set<String> accepted = new LinkedHashSet<>();
     if (values != null) {
       for (String value : values) {
-        String stripped = value == null ? null : value.strip();
-        if (stripped == null || stripped.isEmpty()) {
+        if (value == null || value.isBlank()) {
           continue;
         }
-        if (!field.accepts(stripped)) {
-          throw new ValidationException(
-              "Ungültiger Wert im Filter auf " + field.label() + ": " + stripped);
-        }
-        accepted.add(stripped);
+        // The same normalization the stored value went through - otherwise a filter on
+        // "Max.Mueller@Stadt.de" would silently match nothing at all.
+        accepted.add(
+            field
+                .normalize(value)
+                .orElseThrow(
+                    () ->
+                        new ValidationException(
+                            "Ungültiger Wert im Filter auf "
+                                + field.label()
+                                + ": "
+                                + value.strip())));
       }
     }
     return new FormatFieldCondition(field, accepted);

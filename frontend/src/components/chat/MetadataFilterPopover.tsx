@@ -93,6 +93,7 @@ export default function MetadataFilterPopover({
   const [draftFormatFields, setDraftFormatFields] = useState<Record<string, string[]>>(
     formatValuesByKey(filter),
   )
+  const [draftFormatInput, setDraftFormatInput] = useState<Record<string, string>>({})
   const popoverId = useId()
 
   const options = useMetadataFilterOptionsStore((s) => s.options)
@@ -162,9 +163,18 @@ export default function MetadataFilterPopover({
       ...(filter?.formatFields ?? []).filter(
         (condition) => !offeredFormatKeys.has(condition.fieldKey),
       ),
-      ...Object.entries(draftFormatFields)
-        .filter(([key, values]) => offeredFormatKeys.has(key) && values.length > 0)
-        .map(([fieldKey, values]) => ({ fieldKey, values })),
+      ...formatFields
+        .filter((field) => field.offered)
+        .map((field) => ({
+          fieldKey: field.fieldKey,
+          values: [
+            ...(draftFormatFields[field.fieldKey] ?? []),
+            ...((draftFormatInput[field.fieldKey] ?? '').trim() === ''
+              ? []
+              : [(draftFormatInput[field.fieldKey] ?? '').trim()]),
+          ],
+        }))
+        .filter((condition) => condition.values.length > 0),
     ]
     if (formatConditions.length > 0) next.formatFields = formatConditions
     return Object.keys(next).length === 0 ? null : next
@@ -175,6 +185,7 @@ export default function MetadataFilterPopover({
     draftTypes,
     draftLibraryFields,
     draftFormatFields,
+    draftFormatInput,
     filter,
     formatFields,
     libraryFields,
@@ -187,6 +198,7 @@ export default function MetadataFilterPopover({
     setDraftTo(filter?.documentDateTo ?? '')
     setDraftLibraryFields(conditionsByKey(filter))
     setDraftFormatFields(formatValuesByKey(filter))
+    setDraftFormatInput({})
     setAnchorEl(event.currentTarget)
   }
 
@@ -343,55 +355,60 @@ export default function MetadataFilterPopover({
                 )
               )}
             </Box>
-            {formatFields.map((field) => (
-              <Box key={field.fieldKey} data-testid="filter-format-field">
-                <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{field.label}</Typography>
-                {field.offered ? (
-                  <>
-                    <Typography variant="caption" color="text.secondary" component="p">
-                      {`${field.label} bei ${field.filledDocuments} von ${field.totalDocuments} Dokumenten vorhanden`}
-                    </Typography>
-                    <FormGroup aria-label={field.label}>
-                      {field.values.map((value) => (
-                        <FormControlLabel
-                          key={value.code}
-                          control={
-                            <Checkbox
-                              size="small"
-                              checked={(draftFormatFields[field.fieldKey] ?? []).includes(
-                                value.code,
-                              )}
-                              onChange={(e) =>
-                                setDraftFormatFields((current) => {
-                                  const values = current[field.fieldKey] ?? []
-                                  return {
-                                    ...current,
-                                    [field.fieldKey]: e.target.checked
-                                      ? [...values, value.code]
-                                      : values.filter((code) => code !== value.code),
-                                  }
-                                })
-                              }
-                            />
-                          }
-                          label={`${value.label} (${value.documentCount})`}
-                          slotProps={{ typography: { sx: { fontSize: 13 } } }}
-                        />
-                      ))}
-                    </FormGroup>
-                  </>
-                ) : (
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    component="p"
-                    data-testid="filter-field-not-offered"
-                  >
-                    {`${field.label} wird nicht angeboten: Im Suchbereich trägt kein Dokument diesen Wert.`}
+            {/* A format field only exists where its format does: a scope without a single mail
+                shows no Absender section at all rather than a permanent "not offered" note. */}
+            {formatFields
+              .filter((field) => field.offered)
+              .map((field) => (
+                <Box key={field.fieldKey} data-testid="filter-format-field">
+                  <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{field.label}</Typography>
+                  <Typography variant="caption" color="text.secondary" component="p">
+                    {`${field.label} bei ${field.filledDocuments} von ${field.totalDocuments} Dokumenten vorhanden`}
+                    {field.valuesCapped && ` · die ${field.values.length} häufigsten Werte`}
                   </Typography>
-                )}
-              </Box>
-            ))}
+                  <FormGroup aria-label={field.label}>
+                    {field.values.map((value) => (
+                      <FormControlLabel
+                        key={value.code}
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={(draftFormatFields[field.fieldKey] ?? []).includes(value.code)}
+                            onChange={(e) =>
+                              setDraftFormatFields((current) => {
+                                const values = current[field.fieldKey] ?? []
+                                return {
+                                  ...current,
+                                  [field.fieldKey]: e.target.checked
+                                    ? [...values, value.code]
+                                    : values.filter((code) => code !== value.code),
+                                }
+                              })
+                            }
+                          />
+                        }
+                        label={`${value.label} (${value.documentCount})`}
+                        slotProps={{ typography: { sx: { fontSize: 13 } } }}
+                      />
+                    ))}
+                  </FormGroup>
+                  {/* The value set is open - whoever looks for an address outside the offered
+                      ones types it exactly; a value the field's pattern rejects is a 400. */}
+                  <TextField
+                    label={`${field.label} genau`}
+                    size="small"
+                    fullWidth
+                    helperText="Genau dieser Wert, kein Teiltreffer."
+                    value={draftFormatInput[field.fieldKey] ?? ''}
+                    onChange={(e) =>
+                      setDraftFormatInput((current) => ({
+                        ...current,
+                        [field.fieldKey]: e.target.value,
+                      }))
+                    }
+                  />
+                </Box>
+              ))}
             {libraryFields.map((field) => (
               <Box key={libraryFieldKey(field)} data-testid="filter-library-field">
                 <Typography sx={{ fontSize: 13, fontWeight: 500 }}>

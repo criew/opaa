@@ -40,17 +40,18 @@ final class MetadataFilterOptionsResponseMapper {
   private static MetadataFilterFormatFieldOption toFormatField(
       MetadataFilterOptions.FormatFieldOption field) {
     return new MetadataFilterFormatFieldOption(
-        field.field().key(),
-        field.field().label(),
-        field.filledDocuments(),
-        field.totalDocuments(),
-        field.values().stream()
-            .map(
-                value ->
-                    new MetadataFilterLibraryFieldValueOption(
-                        value.code(), value.label(), value.documentCount()))
-            .toList(),
-        field.offered());
+            field.field().key(),
+            field.field().label(),
+            field.filledDocuments(),
+            field.totalDocuments(),
+            field.values().stream()
+                .map(
+                    value ->
+                        new MetadataFilterLibraryFieldValueOption(
+                            value.code(), value.label(), value.documentCount()))
+                .toList(),
+            field.offered())
+        .valuesCapped(field.valuesCapped());
   }
 
   private static MetadataFilterLibraryFieldOption toLibraryField(

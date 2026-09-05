@@ -192,11 +192,22 @@ export function citationRowId(messageId: string, docIndex: number): string {
  * and {@code SourceEvidenceDrawer}.
  */
 export function formatMetadataLine(source: SourceReference | undefined): string | undefined {
-  const entries = source?.metadata
-  if (!entries || entries.length === 0) return undefined
+  const entries = (source?.metadata ?? []).filter((entry) => !entry.detailOnly)
+  if (entries.length === 0) return undefined
   return entries
     .map((entry) => `${entry.displayValue}${entry.origin === 'DERIVED' ? ' (abgeleitet)' : ''}`)
     .join(' · ')
+}
+
+/**
+ * #1242: the entries the one-line Beleg deliberately leaves out - a mail's recipient list is
+ * unbounded and identifies no passage - as labelled "Label: Wert" pairs for the detail view.
+ * `undefined` when the source carries none.
+ */
+export function formatMetadataDetails(source: SourceReference | undefined): string | undefined {
+  const entries = (source?.metadata ?? []).filter((entry) => entry.detailOnly)
+  if (entries.length === 0) return undefined
+  return entries.map((entry) => `${entry.label}: ${entry.displayValue}`).join(' · ')
 }
 
 /**

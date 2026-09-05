@@ -170,7 +170,7 @@ Anhangs-Einträge (nicht unterstützt, Formatabweichung, nicht lesbar, Verarbeit
 | Freigabeliste nachträglich verengt | nächster Lauf endet sofort mit „Allowlist" |
 | Datei zwischen Aufzählung und Verarbeitung gelöscht oder gesperrt | Eintrag „Format nicht unterstützt" oder „Fehler", Lauf läuft weiter |
 | Datei nach Normalisierung außerhalb des Quellpfads | Warnung im Log, Datei wird der Wurzel zugeordnet |
-| Bibliothek während des Laufs gelöscht | Lauf endet mit Fehler |
+| Bibliothek während des Laufs gelöscht | Lauf `FAILED` mit „Die Bibliothek wurde während des Laufs gelöscht." |
 
 ## 12. Konfiguration
 

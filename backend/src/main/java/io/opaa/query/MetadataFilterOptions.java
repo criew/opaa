@@ -123,14 +123,24 @@ public record MetadataFilterOptions(
       FormatMetadataField field,
       long filledDocuments,
       long totalDocuments,
-      List<LibraryFieldValueOption> values) {
+      List<LibraryFieldValueOption> values,
+      boolean valuesCapped) {
+
+    /**
+     * How many values of an open-ended field the options ever carry. A postbox has as many senders
+     * as it has correspondents; a complete list would be an unbounded response of personal
+     * addresses, a cache entry per person and a popover nobody can read. The interface offers a
+     * free input for an exact value beside the list.
+     */
+    public static final int MAX_OFFERED_VALUES = 20;
 
     public FormatFieldOption {
       values = List.copyOf(values);
     }
 
+    /** Offered as soon as one document of the scope carries a value. */
     public boolean offered() {
-      return !values.isEmpty();
+      return filledDocuments > 0;
     }
   }
 }

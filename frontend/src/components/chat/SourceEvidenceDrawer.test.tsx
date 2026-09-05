@@ -343,6 +343,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
                   value: 'DIENSTANWEISUNG',
                   displayValue: 'Dienstanweisung',
                   origin: 'DETERMINISTIC',
+                  detailOnly: false,
                 },
                 {
                   fieldKey: 'document_date',
@@ -351,6 +352,7 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
                   displayValue: '03/2026',
                   origin: 'MANUAL',
                   datePrecision: 'MONTH',
+                  detailOnly: false,
                 },
               ],
             }),
@@ -373,12 +375,6 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     const { drawer } = await openDrawer()
 
     expect(within(drawer).queryByTestId('source-metadata')).not.toBeInTheDocument()
-  })
-
-  it('shows no mail summary for a source without mail metadata', async () => {
-    const { drawer } = await openDrawer()
-
-    expect(within(drawer).queryByTestId('source-mail-summary')).not.toBeInTheDocument()
   })
 
   it('closes on Escape and returns focus to the trigger', async () => {

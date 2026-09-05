@@ -8,6 +8,7 @@ import io.opaa.indexing.metadata.FormatMetadataField;
 import io.opaa.indexing.metadata.LibraryFieldCondition;
 import io.opaa.indexing.metadata.LibraryMetadataFieldKeys;
 import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -339,7 +340,14 @@ public final class MetadataFilterExpressions {
         return true;
       }
     }
+    Object pipelineId = metadata.get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY);
     for (FormatFieldCondition condition : filter.formatFields()) {
+      // A document of another format was never in this field's scope: it is neither matched nor
+      // "kept without a value", and marking every PDF of the bestand as "ohne Angabe" would say
+      // nothing about the sender it never could have had.
+      if (pipelineId == null || !condition.field().pipelineId().equals(pipelineId.toString())) {
+        continue;
+      }
       if (metadata.get(condition.presenceChunkKey()) == null) {
         return true;
       }

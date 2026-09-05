@@ -75,9 +75,12 @@ class FormatFieldFilterExpressionsTest {
     assertThat(combined.type()).isEqualTo(Filter.ExpressionType.AND);
     assertThat(combined.left()).isSameAs(LIBRARY_FILTER);
     String rendered = jsonPath(combined);
+    // Without the inner group the converter renders "… && $.ff_mail_sender ?(…) || …", and a
+    // document without a sender would slip past the Dokumentart condition entirely. subordinateTo's
+    // own group would hide that, hence the assertion on the inner "((".
     assertThat(rendered)
         .as("the whole format-field condition is one bracketed operand: %s", rendered)
-        .contains("&& (")
+        .contains("&& ((")
         .contains("ff_mail_sender")
         .contains("ffs_mail_sender");
   }
@@ -115,6 +118,27 @@ class FormatFieldFilterExpressionsTest {
     assertThatThrownBy(() -> FormatFieldCondition.parse("mail_sender", List.of("Max Mueller")))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Absender");
+  }
+
+  /**
+   * regression guard for #1242: an address is one address however it is written. The stored value
+   * is lower-cased, so a filter value must go through the same normalization - otherwise the
+   * condition matches nothing and only the Leerwert rule keeps anything in the result.
+   */
+  @Test
+  void aFilterValueIsNormalizedLikeTheStoredValue() {
+    FormatFieldCondition condition =
+        FormatFieldCondition.parse("mail_sender", List.of(" Max.Mueller@Stadt.de "));
+
+    assertThat(condition.values()).containsExactly("max.mueller@stadt.de");
+    assertThat(condition.matches("max.mueller@stadt.de")).isTrue();
+    assertThat(jsonPath(MetadataFilterExpressions.vectorExpression(condition(), VOCABULARY)))
+        .contains("max.mueller@stadt.de");
+  }
+
+  private static MetadataFilter condition() {
+    return MetadataFilter.NONE.withFormatFields(
+        List.of(FormatFieldCondition.parse("mail_sender", List.of("Max.Mueller@Stadt.de"))));
   }
 
   /** An exact match, never a substring: the field exists so an address is checkable. */

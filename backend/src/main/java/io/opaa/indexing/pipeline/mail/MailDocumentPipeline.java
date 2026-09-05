@@ -116,15 +116,27 @@ public class MailDocumentPipeline implements DocumentPipeline {
     ParsedMailMessage message;
     try {
       message =
-          ".msg".equals(resolveExtension(source))
+          ".msg".equals(source.effectiveExtension())
               ? MsgReader.read(source.file(), properties, source.attachmentIndex())
               : EmlReader.read(source.file(), properties, source.attachmentIndex());
     } catch (IOException e) {
       throw new UncheckedIOException("Could not read mail document " + source.fileName(), e);
     }
 
+    try {
+      return resultOf(message, source.fileName());
+    } catch (RuntimeException e) {
+      // The readers have already written every attachment to a temp file; a failure from here on
+      // never reaches a result that could carry them, and DocumentPipelineRunner only deletes what
+      // a result reports - so this is the last owner of those files.
+      deleteTempFiles(message.attachments());
+      throw e;
+    }
+  }
+
+  private DocumentPipelineResult resultOf(ParsedMailMessage message, String fileName) {
     String headerContext = headerContextText(message);
-    List<Document> chunks = bodyChunks(message, source.fileName(), headerContext);
+    List<Document> chunks = bodyChunks(message, fileName, headerContext);
     List<DiscoveredAttachment> discovered = discoveredAttachments(message.attachments());
 
     if (chunks.isEmpty()) {
@@ -164,7 +176,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
         return DocumentProperties.EMPTY;
       }
       ParsedMailMessage message =
-          ".msg".equals(resolveExtension(source))
+          ".msg".equals(source.effectiveExtension())
               ? MsgReader.read(source.file(), properties, MATERIALIZE_NO_ATTACHMENT)
               : EmlReader.read(source.file(), properties, MATERIALIZE_NO_ATTACHMENT);
       return properties(message);
@@ -200,26 +212,27 @@ public class MailDocumentPipeline implements DocumentPipeline {
     field.normalize(rawValue).ifPresent(value -> fields.put(field.key(), value));
   }
 
-  /** The address inside {@code Name <address>}, or the value itself, lower-cased. */
+  /**
+   * The address of the <b>first</b> mailbox of a {@code From} header ({@link EmlReader} renders
+   * several as {@code A <a@x.de>; B <b@y.de>}), or the value itself when it carries no angle
+   * brackets. A header naming more than one sender is answered by the first one, never by the last
+   * - and never by a joined string no address filter could match.
+   */
   private static String senderAddress(String from) {
     if (from == null) {
       return null;
     }
     String value = from.strip();
-    int open = value.lastIndexOf('<');
-    int close = value.lastIndexOf('>');
+    int separator = value.indexOf(';');
+    if (separator >= 0) {
+      value = value.substring(0, separator).strip();
+    }
+    int open = value.indexOf('<');
+    int close = value.indexOf('>', open + 1);
     if (open >= 0 && close > open) {
       value = value.substring(open + 1, close).strip();
     }
-    return value.toLowerCase(Locale.ROOT);
-  }
-
-  private static String resolveExtension(DocumentPipelineSource source) {
-    if (source.detectedExtension() != null) {
-      return source.detectedExtension();
-    }
-    String fileName = source.fileName() == null ? "" : source.fileName().toLowerCase(Locale.ROOT);
-    return fileName.endsWith(".msg") ? ".msg" : ".eml";
+    return value;
   }
 
   /**
@@ -328,5 +341,22 @@ public class MailDocumentPipeline implements DocumentPipeline {
       discovered.add(new DiscoveredAttachment(attachment.fileName(), attachment.tempFile(), null));
     }
     return discovered;
+  }
+
+  /**
+   * Deletes what the readers already extracted, for the failure path that never reaches a result
+   * reporting them - deletion failures are logged, never raised over the failure being handled.
+   */
+  private static void deleteTempFiles(List<ParsedMailAttachment> attachments) {
+    for (ParsedMailAttachment attachment : attachments) {
+      if (attachment.tempFile() == null) {
+        continue;
+      }
+      try {
+        Files.deleteIfExists(attachment.tempFile());
+      } catch (IOException | RuntimeException e) {
+        log.warn("Failed to delete extracted mail attachment {}", attachment.tempFile(), e);
+      }
+    }
   }
 }

@@ -1,5 +1,6 @@
 package io.opaa.indexing.metadata;
 
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -16,9 +17,9 @@ import java.util.regex.Pattern;
  * a PATTERN library field follows.
  */
 public enum FormatMetadataField {
-  MAIL_SENDER("mail_sender", "Absender", true, "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"),
-  MAIL_RECIPIENTS("mail_recipients", "An", false, null),
-  MAIL_SUBJECT("mail_subject", "Betreff", false, null);
+  MAIL_SENDER("mail_sender", "Absender", "email", true, false, "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"),
+  MAIL_RECIPIENTS("mail_recipients", "An", "email", false, true, null),
+  MAIL_SUBJECT("mail_subject", "Betreff", "email", false, false, null);
 
   /** The {@code document_metadata_values.field_key} namespace of every format field. */
   public static final String FIELD_KEY_PREFIX = "fmt:";
@@ -50,13 +51,23 @@ public enum FormatMetadataField {
 
   private final String key;
   private final String label;
+  private final String pipelineId;
   private final boolean filterable;
+  private final boolean detailOnly;
   private final Pattern valuePattern;
 
-  FormatMetadataField(String key, String label, boolean filterable, String valuePattern) {
+  FormatMetadataField(
+      String key,
+      String label,
+      String pipelineId,
+      boolean filterable,
+      boolean detailOnly,
+      String valuePattern) {
     this.key = key;
     this.label = label;
+    this.pipelineId = pipelineId;
     this.filterable = filterable;
+    this.detailOnly = detailOnly;
     this.valuePattern = valuePattern == null ? null : Pattern.compile(valuePattern);
   }
 
@@ -90,6 +101,24 @@ public enum FormatMetadataField {
     return filterable;
   }
 
+  /**
+   * The pipeline whose format declares this field - the only documents the field is ever about. A
+   * document of any other pipeline has no value for it by construction, which is not the same as
+   * "value missing".
+   */
+  public String pipelineId() {
+    return pipelineId;
+  }
+
+  /**
+   * Whether the value belongs into the Beleg detail view only, not into the one-line
+   * Fundstellenzeile: an unbounded recipient list identifies no passage and would push the fields
+   * that do out of a line meant to be read in the flow of an answer.
+   */
+  public boolean isDetailOnly() {
+    return detailOnly;
+  }
+
   public Pattern valuePattern() {
     return valuePattern;
   }
@@ -110,9 +139,11 @@ public enum FormatMetadataField {
   }
 
   /**
-   * The storable form of {@code raw}, or empty when this field carries no value for it: a
-   * filterable field accepts only a value its pattern matches whole, a display field cuts an
-   * over-long value back to {@link #MAX_VALUE_LENGTH}.
+   * The storable form of {@code raw}, or empty when this field carries no value for it. The same
+   * method runs on the value read out of a document and on a filter value, so both sides of a
+   * comparison are normalized identically - a field with a pattern is an identifier and
+   * case-insensitive (an address is one address however it is written), a display field is only cut
+   * back to {@link #MAX_VALUE_LENGTH}.
    */
   public Optional<String> normalize(String raw) {
     if (raw == null) {
@@ -123,7 +154,8 @@ public enum FormatMetadataField {
       return Optional.empty();
     }
     if (valuePattern != null) {
-      return accepts(value) ? Optional.of(value) : Optional.empty();
+      String identifier = value.toLowerCase(Locale.ROOT);
+      return accepts(identifier) ? Optional.of(identifier) : Optional.empty();
     }
     return Optional.of(
         value.length() <= MAX_VALUE_LENGTH
@@ -131,7 +163,7 @@ public enum FormatMetadataField {
             : value.substring(0, MAX_VALUE_LENGTH - 1).stripTrailing() + "…");
   }
 
-  /** Whether {@code value} is a filter-worthy value of this field - checked against the pattern. */
+  /** Whether {@code value} is a storable value of this field - checked against the pattern. */
   public boolean accepts(String value) {
     return value != null
         && !value.isBlank()

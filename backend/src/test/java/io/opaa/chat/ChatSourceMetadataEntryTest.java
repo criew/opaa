@@ -119,6 +119,28 @@ class ChatSourceMetadataEntryTest {
             org.assertj.core.groups.Tuple.tuple("Absender", "max@stadt.de"));
   }
 
+  /**
+   * regression guard for #1242: an entry marked detail-only travels to the client like every other
+   * one - only the client's one-line Beleg leaves it out. The flag must survive the mapping.
+   */
+  @Test
+  void carriesTheDetailOnlyFlagOfAnEntry() {
+    List<ChatSourceMetadataEntry> entries =
+        ChatSourceMetadataEntry.from(
+            CoreMetadata.EMPTY,
+            List.of(
+                new CitationFieldValue(
+                    "fmt:mail_recipients",
+                    "An",
+                    "a@x.de; b@y.de",
+                    "a@x.de; b@y.de",
+                    MetadataOrigin.DETERMINISTIC,
+                    null,
+                    true)));
+
+    assertThat(entries).singleElement().satisfies(entry -> assertThat(entry.detailOnly()).isTrue());
+  }
+
   @Test
   void displaysADateAtItsOwnPrecisionNeverAsAPaddedDay() {
     assertThat(ChatSourceMetadataEntry.displayDate(LocalDate.of(2026, 3, 12), DatePrecision.DAY))

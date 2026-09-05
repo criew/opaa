@@ -9,6 +9,12 @@
  * orchestration and the services shared across all of them stay in the core {@code
  * io.opaa.indexing} package.
  *
+ * <p>Every executor runs its body inside {@link io.opaa.indexing.source.IndexingRunTemplate}: the
+ * frame owns progress, protocol, result mapping, failure translation, reconciliation by absence and
+ * the run's cost, and a body only enumerates its source, hands each item to processing through
+ * {@link io.opaa.indexing.source.IndexingRun} and reports a {@link
+ * io.opaa.indexing.source.ListingOutcome}.
+ *
  * <p>Types here and in the subpackages are public only because the executors and their helpers span
  * sibling packages; none of it is a cross-module API surface.
  */

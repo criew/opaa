@@ -1,15 +1,18 @@
 package io.opaa.indexing.pipeline;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.ai.document.Document;
 
 /**
@@ -83,18 +86,45 @@ class DocumentPipelineRunnerTest {
     assertThat(Files.exists(attachmentTempFile)).isFalse();
   }
 
-  @Test
-  void aPipelineThatThrowsPropagatesWithNothingToCleanUp() {
-    // No result was ever produced, so there is nothing DocumentPipelineRunner could have cleaned
-    // up - the exception must reach the caller exactly as the pipeline threw it.
-    var toThrow = new IllegalStateException("simulated pipeline failure");
+  /**
+   * Every exception a format's parser can raise is the same answer - "could not be read" - and is
+   * mapped here rather than in each pipeline, so no caller has to defend against both an outcome
+   * and an exception for it.
+   */
+  @ParameterizedTest
+  @MethodSource("pipelineExceptions")
+  void anExceptionOutOfAPipelineBecomesAParseFailure(RuntimeException toThrow) {
     var pipeline = new ThrowingPipeline(toThrow);
 
-    assertThatThrownBy(
-            () ->
-                DocumentPipelineRunner.run(
-                    pipeline, DocumentPipelineSource.ofExtractedText("text", "f")))
-        .isSameAs(toThrow);
+    DocumentPipelineResult result =
+        DocumentPipelineRunner.run(pipeline, DocumentPipelineSource.ofExtractedText("text", "f"));
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
+    assertThat(result.chunks()).isEmpty();
+    assertThat(result.discoveredAttachments()).isEmpty();
+  }
+
+  private static List<RuntimeException> pipelineExceptions() {
+    // One per way a pipeline reports a parse failure today: the unchecked wrapper the file-reading
+    // pipelines throw (PDF, DOCX, PPTX, ODT, ODP, Tabular), the one HTML/Markdown/Confluence throw
+    // for an unreadable source, and an arbitrary runtime failure out of a parser library.
+    return List.of(
+        new UncheckedIOException(new IOException("corrupt container")),
+        new UncheckedIOException("Could not read Markdown document f", new IOException("gone")),
+        new IllegalStateException("simulated parser failure"));
+  }
+
+  @Test
+  void aParseFailureStillReachesTheResultHandler() {
+    var pipeline = new ThrowingPipeline(new IllegalStateException("simulated parser failure"));
+    List<DocumentPipelineResult> handled = new ArrayList<>();
+
+    DocumentPipelineResult result =
+        DocumentPipelineRunner.run(
+            pipeline, DocumentPipelineSource.ofExtractedText("text", "f"), handled::add);
+
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
+    assertThat(handled).containsExactly(result);
   }
 
   @Test

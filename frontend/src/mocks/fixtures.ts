@@ -163,6 +163,7 @@ export const mockQueryResponses: QueryResponse[] = [
             value: 'Bebauungsplan Nord',
             displayValue: 'Bebauungsplan Nord',
             origin: 'DETERMINISTIC',
+            detailOnly: false,
           },
           {
             fieldKey: 'fmt:mail_sender',
@@ -170,6 +171,7 @@ export const mockQueryResponses: QueryResponse[] = [
             value: 'mueller@stadt.de',
             displayValue: 'mueller@stadt.de',
             origin: 'DETERMINISTIC',
+            detailOnly: false,
           },
           {
             fieldKey: 'fmt:mail_recipients',
@@ -177,6 +179,7 @@ export const mockQueryResponses: QueryResponse[] = [
             value: 'poststelle@stadt.de',
             displayValue: 'poststelle@stadt.de',
             origin: 'DETERMINISTIC',
+            detailOnly: false,
           },
         ],
       },
@@ -196,6 +199,7 @@ export const mockQueryResponses: QueryResponse[] = [
             value: 'Dienstanweisung zur IT-Nutzung',
             displayValue: 'Dienstanweisung zur IT-Nutzung',
             origin: 'DETERMINISTIC',
+            detailOnly: false,
           },
           {
             fieldKey: 'document_type',
@@ -203,6 +207,7 @@ export const mockQueryResponses: QueryResponse[] = [
             value: 'DIENSTANWEISUNG',
             displayValue: 'Dienstanweisung',
             origin: 'DETERMINISTIC',
+            detailOnly: false,
           },
           {
             fieldKey: 'document_date',
@@ -211,6 +216,7 @@ export const mockQueryResponses: QueryResponse[] = [
             displayValue: '12.03.2026',
             origin: 'DETERMINISTIC',
             datePrecision: 'DAY',
+            detailOnly: false,
           },
         ],
       },
@@ -1320,6 +1326,7 @@ export const mockMetadataFilterOptions: MetadataFilterOptionsResponse = {
       filledDocuments: 3,
       totalDocuments: 40,
       offered: true,
+      valuesCapped: false,
       values: [
         { code: 'mueller@stadt.de', label: 'mueller@stadt.de', documentCount: 2 },
         { code: 'poststelle@kreis.de', label: 'poststelle@kreis.de', documentCount: 1 },

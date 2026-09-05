@@ -2,6 +2,7 @@ package io.opaa.indexing.pipeline.mail;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.IndexingProperties;
@@ -131,6 +132,29 @@ class MailDocumentPipelineTest {
             FormatMetadataField.MAIL_RECIPIENTS.key(), "Erika Musterfrau <erika@example.org>")
         .containsEntry(FormatMetadataField.MAIL_SUBJECT.key(), "Anfrage Bauantrag");
     assertThat(pipeline(defaultProperties).run(source).properties()).isEqualTo(properties);
+  }
+
+  /**
+   * regression guard for #1242: a {@code From} header naming two mailboxes is answered by the first
+   * sender, never by the last - and the stored value is lower-cased, so a filter written in any
+   * case matches it.
+   */
+  @Test
+  void theSenderIsTheFirstMailboxOfTheHeaderLowerCased() throws Exception {
+    Message message =
+        newMessageBuilder(
+                "Sammelanschreiben",
+                "Amt Rheinfurt <Amt@Stadt.DE>; Vertretung <vertretung@stadt.de>",
+                "verteiler@example.org")
+            .setBody("Text.", StandardCharsets.UTF_8)
+            .build();
+    Path file = writeEml(DefaultMessageWriter.asBytes(message));
+
+    assertThat(
+            pipeline(defaultProperties)
+                .readProperties(DocumentPipelineSource.ofFile(file, "sammel.eml"))
+                .formatFields())
+        .containsEntry(FormatMetadataField.MAIL_SENDER.key(), "amt@stadt.de");
   }
 
   @Test
@@ -392,6 +416,54 @@ class MailDocumentPipelineTest {
     assertThat(attachment.fileName()).isEqualTo("antrag.pdf");
     assertThat(Files.exists(attachment.tempFile())).isTrue();
     assertThat(Files.readAllBytes(attachment.tempFile())).isEqualTo(pdfBytes);
+  }
+
+  @Test
+  void aFailureAfterExtractionDeletesTheAttachmentsTempFiles() throws Exception {
+    // The readers have already written every attachment to disk by then, and a thrown failure
+    // reaches DocumentPipelineRunner as a result without attachments - nothing else would ever
+    // delete those files.
+    byte[] pdfBytes = readTestResource("test-document.pdf");
+    Message message =
+        newMessageBuilder("Anfrage mit Anlage", "max@example.org", "erika@example.org")
+            .setBody(
+                MultipartBuilder.create("mixed")
+                    .addTextPart("Anbei der Antrag.", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        BodyPartBuilder.create()
+                            .setBody(pdfBytes, "application/pdf")
+                            .setContentDisposition("attachment", "antrag.pdf"))
+                    .build())
+            .build();
+    Path file = writeEml(DefaultMessageWriter.asBytes(message));
+    Set<Path> mailTempFilesBefore = mailAttachmentTempFiles();
+    ChunkingService throwingChunking =
+        new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, null, 1)) {
+          @Override
+          public List<Document> chunkDocuments(String fileName, List<Document> documents) {
+            throw new IllegalStateException("Chunking kaputt");
+          }
+        };
+
+    assertThatThrownBy(
+            () ->
+                pipeline(defaultProperties, throwingChunking)
+                    .run(DocumentPipelineSource.ofFile(file, "mit-anlage.eml")))
+        .isInstanceOf(IllegalStateException.class);
+
+    assertThat(mailAttachmentTempFiles()).isSubsetOf(mailTempFilesBefore);
+  }
+
+  /**
+   * The files {@code MailAttachmentIo} writes, by its own prefix - a set difference rather than a
+   * count, so a file another test writes in parallel cannot decide this assertion.
+   */
+  private static Set<Path> mailAttachmentTempFiles() throws IOException {
+    try (var entries = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
+      return entries
+          .filter(path -> path.getFileName().toString().startsWith("opaa-mail-"))
+          .collect(java.util.stream.Collectors.toSet());
+    }
   }
 
   @Test

@@ -103,7 +103,8 @@ final class ChatResponseMapper {
                         entry.value(),
                         entry.displayValue(),
                         entry.origin())
-                    .datePrecision(entry.datePrecision()))
+                    .datePrecision(entry.datePrecision())
+                    .detailOnly(entry.detailOnly()))
         .toList();
   }
 

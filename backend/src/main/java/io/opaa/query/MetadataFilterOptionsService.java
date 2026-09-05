@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 /**
@@ -107,6 +108,7 @@ public class MetadataFilterOptionsService {
     long total = documentRepository.countByLibraryIdInAndStatus(scope, DocumentStatus.INDEXED);
     long typeFilled = 0;
     long dateFilled = 0;
+    Map<String, Long> filledByFieldKey = new HashMap<>();
     for (DocumentMetadataValueRepository.FieldStateCount count :
         valueRepository.countByFieldAndStateInLibraries(scope, DocumentStatus.INDEXED)) {
       // A value and the mark "kein Wert ermittelbar" both count as answered for the Füllstand.
@@ -115,6 +117,7 @@ public class MetadataFilterOptionsService {
       } else if (CoreMetadataField.DOCUMENT_DATE.key().equals(count.getFieldKey())) {
         dateFilled += count.getDocumentCount();
       }
+      filledByFieldKey.merge(count.getFieldKey(), count.getDocumentCount(), Long::sum);
     }
     DocumentTypeVocabulary vocabulary = vocabularyRepository.snapshot();
     List<MetadataFilterOptions.DocumentTypeOption> types = new ArrayList<>();
@@ -137,7 +140,7 @@ public class MetadataFilterOptionsService {
         span == null ? null : span.getMinDate(),
         span == null ? null : span.getMaxDate(),
         libraryFields(scope),
-        formatFields(scope, total));
+        formatFields(scope, total, filledByFieldKey));
   }
 
   /**
@@ -222,23 +225,34 @@ public class MetadataFilterOptionsService {
    * The filterable format fields with the values occurring in the scope - the addresses the asking
    * person's own documents carry, never a global list (metadata-schema.md, Rechte-Invariante).
    */
-  private List<MetadataFilterOptions.FormatFieldOption> formatFields(Set<UUID> scope, long total) {
+  private List<MetadataFilterOptions.FormatFieldOption> formatFields(
+      Set<UUID> scope, long total, Map<String, Long> filledByFieldKey) {
     List<MetadataFilterOptions.FormatFieldOption> options = new ArrayList<>();
     for (FormatMetadataField field : FormatMetadataField.values()) {
       if (!field.isFilterable()) {
         continue;
       }
+      long filled = filledByFieldKey.getOrDefault(field.documentFieldKey(), 0L);
+      // One row beyond the cap, so "there are more values" is known without a second query.
+      List<DocumentMetadataValueRepository.VocabularyCodeCount> counts =
+          valueRepository.countTopValuesInLibraries(
+              scope,
+              DocumentStatus.INDEXED,
+              field.documentFieldKey(),
+              PageRequest.of(0, MetadataFilterOptions.FormatFieldOption.MAX_OFFERED_VALUES + 1));
+      boolean capped = counts.size() > MetadataFilterOptions.FormatFieldOption.MAX_OFFERED_VALUES;
       List<MetadataFilterOptions.LibraryFieldValueOption> values = new ArrayList<>();
-      long filled = 0;
       for (DocumentMetadataValueRepository.VocabularyCodeCount count :
-          valueRepository.countByLibraryFieldValueInLibraries(
-              scope, DocumentStatus.INDEXED, field.documentFieldKey())) {
+          counts.subList(
+              0,
+              Math.min(
+                  counts.size(), MetadataFilterOptions.FormatFieldOption.MAX_OFFERED_VALUES))) {
         values.add(
             new MetadataFilterOptions.LibraryFieldValueOption(
                 count.getCode(), count.getCode(), count.getDocumentCount()));
-        filled += count.getDocumentCount();
       }
-      options.add(new MetadataFilterOptions.FormatFieldOption(field, filled, total, values));
+      options.add(
+          new MetadataFilterOptions.FormatFieldOption(field, filled, total, values, capped));
     }
     return options;
   }

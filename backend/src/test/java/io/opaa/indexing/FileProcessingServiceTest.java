@@ -2054,19 +2054,16 @@ class FileProcessingServiceTest {
     when(documentService.parseDocument(file)).thenReturn(parsed);
     when(chunkingService.chunkDocuments(eq("upload-that-fails-later.pdf"), eq(parsed)))
         .thenThrow(new RuntimeException("chunking blew up"));
-    when(documentRepository.markFailedWithoutChunks(
-            doc.getId(), "Die Datei konnte nicht verarbeitet werden"))
+    when(documentRepository.markFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden"))
         .thenReturn(1);
 
     service.processUploadedFileAsync(doc.getId(), file);
 
-    verify(documentRepository)
-        .markFailedWithoutChunks(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
-    // The catch block's vectorStore.delete call is made unconditionally, the same way
-    // processFile/processUrlFile's own re-index paths always do regardless of whether there was
-    // anything to remove (chunkDocuments itself threw here, before storeChunks could run).
+    // Anything a pipeline throws is one answer - PARSE_FAILED, mapped by DocumentPipelineRunner -
+    // so the upload ends FAILED with the parse-failure message and keeps whatever chunks the
+    // document had, since nothing is known about the new version.
+    verify(documentRepository).markFailed(doc.getId(), "Die Datei konnte nicht verarbeitet werden");
     verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
-    verify(vectorStore).delete(documentIdFilter(doc.getId()));
     // The row survives a failed upload - it is never deleted.
     verify(documentRepository, never()).delete(any(Document.class));
   }
