@@ -331,6 +331,22 @@ public class MailDocumentPipeline implements DocumentPipeline {
    * makes that admission decision itself, exactly once. Both readers already cap the count at
    * {@link MailProperties#maxAttachmentsPerMessage()} in their own extraction loop.
    */
+  private static List<DiscoveredAttachment> discoveredAttachments(
+      List<ParsedMailAttachment> attachments) {
+    if (attachments.isEmpty()) {
+      return List.of();
+    }
+    List<DiscoveredAttachment> discovered = new ArrayList<>(attachments.size());
+    for (ParsedMailAttachment attachment : attachments) {
+      discovered.add(new DiscoveredAttachment(attachment.fileName(), attachment.tempFile(), null));
+    }
+    return discovered;
+  }
+
+  /**
+   * Deletes what the readers already extracted, for the failure path that never reaches a result
+   * reporting them - deletion failures are logged, never raised over the failure being handled.
+   */
   private static void deleteTempFiles(List<ParsedMailAttachment> attachments) {
     for (ParsedMailAttachment attachment : attachments) {
       if (attachment.tempFile() == null) {
@@ -342,17 +358,5 @@ public class MailDocumentPipeline implements DocumentPipeline {
         log.warn("Failed to delete extracted mail attachment {}", attachment.tempFile(), e);
       }
     }
-  }
-
-  private static List<DiscoveredAttachment> discoveredAttachments(
-      List<ParsedMailAttachment> attachments) {
-    if (attachments.isEmpty()) {
-      return List.of();
-    }
-    List<DiscoveredAttachment> discovered = new ArrayList<>(attachments.size());
-    for (ParsedMailAttachment attachment : attachments) {
-      discovered.add(new DiscoveredAttachment(attachment.fileName(), attachment.tempFile(), null));
-    }
-    return discovered;
   }
 }
