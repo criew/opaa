@@ -45,9 +45,10 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     // The second provider brings the "Zuletzt verwendet" hint and the secondary button variant
     // onto the page (ADR-0025, #1332) - both must pass the contrast check like the single-provider
     // page does.
-    await page.addInitScript(() => {
-      window.localStorage.setItem("opaa.oidc.lastProvider", "00000000-0000-0000-0000-00000000e2e2");
-    });
+    // A string script: the E2E suite compiles without DOM typings, so `window` is unknown here.
+    await page.addInitScript(
+      "window.localStorage.setItem('opaa.oidc.lastProvider', '00000000-0000-0000-0000-00000000e2e2')",
+    );
     await page.route("**/api/v1/auth/config", (route) =>
       route.fulfill({
         json: {
