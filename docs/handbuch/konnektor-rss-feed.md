@@ -51,11 +51,11 @@ Detailseiten abruft und dass der Betreiber des Feeds bestimmt, welche Adressen d
 
 | Eigenschaft | Verhalten |
 |---|---|
-| User-Agent | konfigurierbar, Standard `OPAA-Indexer/1.0`. Bewusst wahrheitsgemäß, keine Browser-Imitation. |
+| User-Agent | gemeinsam für alle Netzkonnektoren konfigurierbar (`opaa.indexing.http.user-agent`), Standard `OPAA-Indexer/1.0`. Bewusst wahrheitsgemäß, keine Browser-Imitation. |
 | Zugangsdaten und ausgesetzte Zertifikatsprüfung | wirken **nur auf dem Ursprung des Feeds**. Eine Detailseite oder Anlage auf einem anderen Host bekommt weder Zugangsdaten noch gelockerte Prüfung. |
 | Wartezeit | konfigurierbar, Standard eine Sekunde vor jeder Detailseite und vor jedem Anlagen-Download. Nicht vor dem Feed selbst. |
 | Timeouts | 30 s Verbindungsaufbau, 60 s Feed, 30 s Detailseite, 120 s Anlage |
-| Wiederholung | keine innerhalb des Laufs; stattdessen der Zurückstellungsmechanismus (Abschnitt 6) |
+| Wiederholung | nur bei HTTP 429: Feed, Detailseite und Anlage warten die in `Retry-After` genannte Zeit (gedeckelt auf `opaa.indexing.http.max-retry-after`, ohne Header fünf Sekunden) und wiederholen bis zu `opaa.indexing.http.max-rate-limit-retries`-mal; erst danach greift die Zurückstellung (Abschnitt 6). Jeder andere Fehlschlag wird nicht wiederholt, sondern zurückgestellt |
 | Weiterleitungen | Feed: bis zu fünf, fremder Ursprung ohne Zugangsdaten. Detailseite und Anlage: ein fremder Ursprung wird gar nicht kontaktiert. |
 
 Die Wartezeit bestimmt die Laufzeit: Bei 200 Einträgen mit je einer Seite und bis zu zehn
@@ -181,7 +181,7 @@ ist als künftiger Mechanismus benannt, aber nicht gebaut.
 |---|---|---|
 | abgewiesen | Verknüpfung mit nicht unterstütztem Schema abgelehnt | Link ist nicht http/https |
 | abgewiesen | Verknüpfung mit ungültiger URL abgelehnt | Link syntaktisch kaputt |
-| abgewiesen | Vom Quellserver abgewiesen (HTTP 403 / 429) | Bot-Schutz oder Ratenbegrenzung der Detailseite; Eintrag zurückgestellt |
+| abgewiesen | Vom Quellserver abgewiesen (HTTP 403 / 429) | Bot-Schutz oder Ratenbegrenzung der Detailseite (429 erst nach erschöpften Wiederholungen); Eintrag zurückgestellt |
 | abgewiesen | Weiterleitung auf einen fremden Host abgelehnt (Ziel: …) | Detailseite leitet auf fremden Ursprung |
 | abgewiesen | Weiterleitung von https auf http abgelehnt (Protokoll-Downgrade) | |
 | abgewiesen | Zieladresse liegt in einem gesperrten Adressbereich | Zieladressprüfung |
@@ -218,7 +218,7 @@ HTTP-Code, kein gültiges XML, kein RSS-Feed (etwa Atom), Feed zu groß, Proxy-F
 | Feed unverändert (304) | Lauf erfolgreich mit null Elementen nach einer Anfrage |
 | Feed nicht erreichbar, HTTP-Fehler, kein XML, Atom, zu groß | Lauf `FAILED`, Bestand unverändert |
 | Feed hat mehr als 200 Einträge | Rest abgeschnitten, Lauf erfolgreich, Zustand nicht gespeichert, nächster Lauf holt vollständig |
-| Detailseite 403 oder 429 | Eintrag abgewiesen und zurückgestellt, Lauf läuft weiter, nächster Lauf versucht es erneut |
+| Detailseite 403, oder 429 nach erschöpften Wiederholungen | Eintrag abgewiesen und zurückgestellt, Lauf läuft weiter, nächster Lauf versucht es erneut |
 | Detailseite leitet auf fremden Host | abgelehnt, bevor der fremde Server kontaktiert wird |
 | Detailseite liefert PDF statt HTML | Eintrag „Format nicht unterstützt" |
 | Bibliothek während des Laufs gelöscht | Lauf `FAILED` mit verständlicher Meldung |
@@ -234,13 +234,14 @@ Alle Schlüssel unter `opaa.indexing.rss.*`, Umgebungsvariablen als `OPAA_INDEXI
 | `max-feed-size-bytes` | 10485760 (10 MiB) | darüber scheitert der Lauf |
 | `max-page-size-bytes` | 5242880 (5 MiB) | darüber entfällt der Eintrag |
 | `request-delay-ms` | 1000 | Wartezeit vor jeder Detailseite und Anlage; 0 schaltet ab |
-| `user-agent` | `OPAA-Indexer/1.0` | für Feed, Detailseite und Anlagen |
 | `main-content-selector` | `main, article, [role=main]` | Jsoup-Selektor für den Hauptinhalt, Rückfall `body` |
 | `attachment-profile` | `GENERIC` | `GENERIC` oder `GSB`, gilt für die ganze Installation |
 | `max-attachments-per-entry` | 10 | Anlagen je Eintrag |
 | `max-attachment-size-bytes` | 20971520 (20 MiB) | darüber entfällt die Anlage |
 
-Nicht konfigurierbar: Verschachtelungstiefe der Anlagen (5), Timeouts. Zieladressprüfung,
+`User-Agent` und 429-Wartezeit kommen aus dem gemeinsamen Block `opaa.indexing.http.*`
+(`user-agent`, `max-rate-limit-retries`, `max-retry-after`; siehe [Deployment](deployment.md)).
+Nicht konfigurierbar: Timeouts. Verschachtelungstiefe der Anlagen, Zieladressprüfung,
 Thread-Pool, Kontingent und Chunking wie in den anderen Kapiteln.
 
 Der Speicherbedarf im Lauf liegt bei bis zu einer Anlagengröße je gleichzeitig verarbeiteter

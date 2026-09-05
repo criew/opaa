@@ -2,7 +2,9 @@ package io.opaa.indexing.source.web;
 
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.source.attachment.AttachmentCandidate;
+import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -11,10 +13,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -32,11 +32,15 @@ public class DetailPageExtractor {
 
   private final TargetAddressValidator targetAddressValidator;
   private final IndexingProperties.Rss properties;
+  private final SourceRequestPolicy requestPolicy;
 
   public DetailPageExtractor(
-      TargetAddressValidator targetAddressValidator, IndexingProperties.Rss properties) {
+      TargetAddressValidator targetAddressValidator,
+      IndexingProperties.Rss properties,
+      SourceRequestPolicy requestPolicy) {
     this.targetAddressValidator = targetAddressValidator;
     this.properties = properties;
+    this.requestPolicy = requestPolicy;
   }
 
   /** An entry's detail page, reduced to its main content's text and attachment candidates. */
@@ -48,8 +52,9 @@ public class DetailPageExtractor {
    * entry's {@code <link>} is content the feed operator controls, so a redirect leaving that origin
    * is refused outright rather than followed anonymized.
    *
-   * @throws RejectedByRemoteException if the remote end declined outright (403/429) or a redirect
-   *     would leave {@code entryUrl}'s own origin or downgrade the protocol
+   * @throws RejectedByRemoteException if the remote end declined outright (403, or 429 past the
+   *     {@link SourceRequestPolicy}'s retries) or a redirect would leave {@code entryUrl}'s own
+   *     origin or downgrade the protocol
    * @throws UnsupportedContentTypeException if the response's {@code Content-Type} is not HTML
    * @throws IOException if the page exceeds {@link IndexingProperties.Rss#maxPageSizeBytes()} or
    *     any other transport failure
@@ -83,8 +88,9 @@ public class DetailPageExtractor {
 
       byte[] pageBytes;
       try {
-        pageBytes = readBounded(body);
-      } catch (PageTooLargeException e) {
+        // bounded while streaming, never after the whole response has been downloaded
+        pageBytes = BoundedStreams.readFully(body, properties.maxPageSizeBytes());
+      } catch (BoundedStreams.LimitExceededException e) {
         throw new IOException(
             "Detail page exceeds the configured limit of "
                 + properties.maxPageSizeBytes()
@@ -128,24 +134,20 @@ public class DetailPageExtractor {
    *
    * <p>{@code authHeader} is sent on every hop this loop reaches - a foreign host is always
    * rejected before its request is built, so the header is never resent outside {@code entryUrl}'s
-   * own origin.
+   * own origin. A {@code 429} is waited out under the shared {@link SourceRequestPolicy}.
    */
   private HttpResponse<InputStream> sendDetailPageRequest(
       HttpClient httpClient, String entryUrl, String authHeader)
       throws IOException, InterruptedException {
-    Map<String, String> headers = new LinkedHashMap<>();
-    headers.put("User-Agent", properties.userAgent());
-    if (authHeader != null) {
-      headers.put("Authorization", authHeader);
-    }
     try {
       return RedirectFollowingFetcher.sendFollowingRedirects(
           httpClient,
           entryUrl,
           Duration.ofSeconds(30),
-          headers,
+          requestPolicy.headers(authHeader),
           targetAddressValidator,
-          RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN);
+          RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN,
+          requestPolicy.rateLimitHandling());
     } catch (RedirectFollowingFetcher.RedirectRejectedException e) {
       throw new RejectedByRemoteException(e.getMessage(), e.userMessage());
     }
@@ -184,29 +186,12 @@ public class DetailPageExtractor {
   }
 
   /**
-   * Reads at most {@link IndexingProperties.Rss#maxPageSizeBytes()} from {@code in}, throwing
-   * {@link PageTooLargeException} the moment a further byte would exceed the limit - enforced while
-   * streaming, not after the full response has already been downloaded.
-   */
-  private byte[] readBounded(InputStream in) throws IOException {
-    byte[] probe =
-        in.readNBytes(
-            Math.toIntExact(Math.min(properties.maxPageSizeBytes() + 1, Integer.MAX_VALUE)));
-    if (probe.length > properties.maxPageSizeBytes()) {
-      throw new PageTooLargeException();
-    }
-    return probe;
-  }
-
-  /** Thrown by {@link #readBounded} when the configured byte limit is exceeded while streaming. */
-  private static final class PageTooLargeException extends RuntimeException {}
-
-  /**
-   * Thrown when the remote end itself declined to hand over a detail page (403/429, a redirect to a
-   * foreign host, or a refused protocol downgrade) - kept distinct from an ordinary {@link
-   * IOException} so the caller can log and count it separately from a processing failure. {@link
-   * #userMessage()} is a German, cause-specific, sanitized run-log text, distinct from this
-   * exception's own message, which stays the unsanitized, developer-facing detail for the log only.
+   * Thrown when the remote end itself declined to hand over a detail page (403, a 429 past every
+   * retry, a redirect to a foreign host, or a refused protocol downgrade) - kept distinct from an
+   * ordinary {@link IOException} so the caller can log and count it separately from a processing
+   * failure. {@link #userMessage()} is a German, cause-specific, sanitized run-log text, distinct
+   * from this exception's own message, which stays the unsanitized, developer-facing detail for the
+   * log only.
    */
   public static final class RejectedByRemoteException extends RuntimeException {
     private final String userMessage;

@@ -34,12 +34,17 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
+import io.opaa.sourceaccess.RateLimitPolicy;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -112,13 +117,24 @@ class RssFeedIndexingExecutorTest {
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
     storageQuotaService = mock(LibraryStorageQuotaService.class);
 
-    executor =
-        newExecutor(
-            new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, "OPAA-Indexer/test", null, null, 0, 0));
+    executor = newExecutor(new IndexingProperties.Rss(200, 10_000, 10_000, 0, null, null, 0, 0));
+  }
+
+  /** Every wait the shared rate-limit handling asked for, in order - never slept for real. */
+  private final List<Duration> sleeps = new ArrayList<>();
+
+  /** The shared request policy under test: a test user agent, two retries, no real sleeping. */
+  private SourceRequestPolicy requestPolicy() {
+    return new SourceRequestPolicy(
+        "OPAA-Indexer/test", RateLimitPolicy.of(2, Duration.ofSeconds(1)), sleeps::add);
   }
 
   private RssFeedIndexingExecutor newExecutor(IndexingProperties.Rss rss) {
+    return newExecutor(rss, requestPolicy());
+  }
+
+  private RssFeedIndexingExecutor newExecutor(
+      IndexingProperties.Rss rss, SourceRequestPolicy requestPolicy) {
     IndexingProperties properties = new IndexingProperties(0, 0, 0, null, rss, null, null, 0);
     // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest,
     // RssFeedIndexingExecutorTargetValidationTest) - disabled here since every stub server this
@@ -131,12 +147,13 @@ class RssFeedIndexingExecutorTest {
         documentRepository,
         feedStateRepository,
         new io.opaa.indexing.source.attachment.AttachmentIndexer(
-            new BoundedDownloader(targetAddressValidator),
+            new BoundedDownloader(targetAddressValidator, requestPolicy),
             fileProcessingService,
             storageQuotaService,
-            new io.opaa.indexing.source.attachment.AttachmentProperties(5)),
+            new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0)),
         properties,
         targetAddressValidator,
+        requestPolicy,
         new IndexingRunTemplate(
             indexingJobService,
             indexingRunEventRepository,
@@ -498,7 +515,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -555,7 +572,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -938,7 +955,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void feedExceedingTheSizeLimitFailsTheJobInstead() throws Exception {
-    executor = newExecutor(new IndexingProperties.Rss(200, 10, 10_000, 0, null, null, null, 0, 0));
+    executor = newExecutor(new IndexingProperties.Rss(200, 10, 10_000, 0, null, null, 0, 0));
     serve(
         "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
 
@@ -949,7 +966,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void detailPageExceedingTheSizeLimitIsSkippedAndTheRunContinues() throws Exception {
-    executor = newExecutor(new IndexingProperties.Rss(200, 10_000, 10, 0, null, null, null, 0, 0));
+    executor = newExecutor(new IndexingProperties.Rss(200, 10_000, 10, 0, null, null, 0, 0));
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serve(
         "/a.html",
@@ -975,8 +992,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void entryCountBeyondTheConfiguredLimitIsTruncated() throws Exception {
-    executor =
-        newExecutor(new IndexingProperties.Rss(1, 10_000, 10_000, 0, null, null, null, 0, 0));
+    executor = newExecutor(new IndexingProperties.Rss(1, 10_000, 10_000, 0, null, null, 0, 0));
     serve(
         "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
@@ -1005,8 +1021,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void feedStateIsNotPersistedWhenEntriesWereTruncatedByTheMaxEntriesLimit() throws Exception {
-    executor =
-        newExecutor(new IndexingProperties.Rss(1, 10_000, 10_000, 0, null, null, null, 0, 0));
+    executor = newExecutor(new IndexingProperties.Rss(1, 10_000, 10_000, 0, null, null, 0, 0));
     serveFeedWithEtag(
         "/feed.xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"), "\"etag-truncated\"");
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
@@ -1064,7 +1079,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1115,7 +1130,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1166,7 +1181,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1215,7 +1230,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1261,7 +1276,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\"https://anderes-beispiel.gov/anlage.pdf\">Fremd</a></main></body></html>";
@@ -1284,7 +1299,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GSB, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GSB, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1321,8 +1336,7 @@ class RssFeedIndexingExecutorTest {
   void withoutAConfiguredProfileGenericIsUsed() throws IOException {
     // The default in IndexingProperties.Rss's compact constructor, exercised end to end.
     executor =
-        newExecutor(
-            new IndexingProperties.Rss(200, 10_000, 10_000, 0, null, null, null, 10, 10_000));
+        newExecutor(new IndexingProperties.Rss(200, 10_000, 10_000, 0, null, null, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1366,7 +1380,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1415,7 +1429,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1442,7 +1456,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1470,7 +1484,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 1, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 1, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1529,7 +1543,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1605,7 +1619,7 @@ class RssFeedIndexingExecutorTest {
       executor =
           newExecutor(
               new IndexingProperties.Rss(
-                  200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                  200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
       String detailHtml =
           "<html><body><main>Text"
               + "<a href=\""
@@ -1633,21 +1647,15 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void attachmentDownloadSendsTheConfiguredUserAgent() throws IOException {
-    // the feed and every detail page already send the configured
-    // User-Agent - an attachment request left it out entirely.
+  void attachmentDownloadSendsTheSharedUserAgent() throws IOException {
+    // the feed and every detail page send the shared User-Agent - an attachment request must not
+    // leave it out.
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200,
-                10_000,
-                10_000,
-                0,
-                "OPAA-Indexer/attachment-test",
-                null,
-                AttachmentProfile.GENERIC,
-                10,
-                10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000),
+            new SourceRequestPolicy(
+                "OPAA-Indexer/attachment-test", RateLimitPolicy.NONE, sleeps::add));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1676,6 +1684,112 @@ class RssFeedIndexingExecutorTest {
     verify(fileProcessingService, timeout(2000))
         .ingest(DocumentIngests.that().file().in(library).match(), any());
     assertThat(userAgent.get()).isEqualTo("OPAA-Indexer/attachment-test");
+  }
+
+  /**
+   * Serves {@code path} with one {@code 429} ({@code Retry-After: 1}) before the ordinary answer -
+   * the shape a throttling source has, which the run must wait out rather than defer.
+   */
+  private void serveThrottledOnce(String path, String contentType, String body) {
+    AtomicInteger hits = new AtomicInteger();
+    server.createContext(
+        path,
+        exchange -> {
+          if (hits.getAndIncrement() == 0) {
+            exchange.getResponseHeaders().set("Retry-After", "1");
+            exchange.sendResponseHeaders(429, -1);
+            exchange.close();
+            return;
+          }
+          byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", contentType);
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+  }
+
+  @Test
+  void aThrottledFeedIsWaitedOutAndThenProcessed() throws Exception {
+    serveThrottledOnce("/feed.xml", "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    verify(fileProcessingService)
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/a.html").in(library).match(), any());
+    assertThat(sleeps).containsExactly(Duration.ofSeconds(1));
+  }
+
+  @Test
+  void aThrottledDetailPageIsWaitedOutInsteadOfDeferringTheEntry() throws Exception {
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serveThrottledOnce("/a.html", "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    verify(fileProcessingService)
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/a.html").in(library).match(), any());
+    verify(indexingRunEventRepository, never())
+        .save(argThat(event -> event.getCategory() == IndexingEventCategory.REJECTED));
+    assertThat(sleeps).containsExactly(Duration.ofSeconds(1));
+  }
+
+  @Test
+  void aThrottledAttachmentIsWaitedOutAndThenIndexed() throws Exception {
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve(
+        "/a.html",
+        200,
+        "text/html",
+        "<html><body><main>Text<a href=\""
+            + baseUrl
+            + "/downloads/anlage.pdf\">Anlage</a></main></body></html>");
+    serveThrottledOnce("/downloads/anlage.pdf", "application/pdf", "%PDF-1.4 not real content");
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+    when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(fileProcessingService, timeout(2000))
+        .ingest(DocumentIngests.that().file().in(library).match(), any());
+    assertThat(sleeps).containsExactly(Duration.ofSeconds(1));
+  }
+
+  @Test
+  void aDetailPageThrottledPastEveryRetryIsDeferredLikeAnyOtherRejection() throws Exception {
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    server.createContext(
+        "/a.html",
+        exchange -> {
+          exchange.getResponseHeaders().set("Retry-After", "1");
+          exchange.sendResponseHeaders(429, -1);
+          exchange.close();
+        });
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
+    verify(fileProcessingService, never()).ingest(any(), any());
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && "Vom Quellserver abgewiesen (HTTP 429)".equals(event.getMessage())));
+    assertThat(sleeps).as("two retries, then deferred").hasSize(2);
   }
 
   // --- sourceCredentials/sourceProxy applied to the feed fetch, detail pages and
@@ -1735,7 +1849,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1835,7 +1949,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     HttpServer foreignServer = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
     foreignServer.start();
     String foreignBaseUrl = "http://localhost:" + foreignServer.getAddress().getPort();
@@ -1911,7 +2025,7 @@ class RssFeedIndexingExecutorTest {
       executor =
           newExecutor(
               new IndexingProperties.Rss(
-                  200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                  200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
       String detailHtml =
           "<html><body><main>Text"
               + "<a href=\""

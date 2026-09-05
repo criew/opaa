@@ -21,6 +21,8 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -224,7 +226,6 @@ class BoundedDownloaderTest {
                       baseUrl + "/anlage.pdf",
                       "anlage.pdf",
                       10_000,
-                      null,
                       null))
           .isInstanceOf(RedirectFollowingFetcher.RedirectRejectedException.class);
     } finally {
@@ -258,7 +259,6 @@ class BoundedDownloaderTest {
             baseUrl + "/anlage.pdf",
             "anlage.pdf",
             10_000,
-            null,
             null);
     try {
       assertThat(Files.readString(result.path())).isEqualTo("content");
@@ -280,8 +280,7 @@ class BoundedDownloaderTest {
         });
 
     BoundedDownloader.DownloadedFile result =
-        downloader.downloadBounded(
-            httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, "OPAA-Indexer/test", null);
+        downloader.downloadBounded(httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, null);
 
     try {
       assertThat(result.contentType()).isEqualTo("application/pdf");
@@ -291,25 +290,145 @@ class BoundedDownloaderTest {
     }
   }
 
+  /** The waits the policy under test asked for; never slept for real. */
+  private final List<Duration> sleeps = new ArrayList<>();
+
+  private BoundedDownloader downloaderWith(String userAgent, RateLimitPolicy rateLimit) {
+    return new BoundedDownloader(
+        TargetAddressValidator.disabled(),
+        new SourceRequestPolicy(userAgent, rateLimit, sleeps::add));
+  }
+
   @Test
-  void downloadBoundedSendsTheGivenUserAgent() throws IOException, InterruptedException {
-    AtomicReference<String> userAgent = new AtomicReference<>();
+  void everyDownloadSendsThePolicysUserAgent() throws IOException, InterruptedException {
+    List<String> userAgents = new ArrayList<>();
     server.createContext(
         "/anlage.pdf",
         exchange -> {
-          userAgent.set(exchange.getRequestHeaders().getFirst("User-Agent"));
+          userAgents.add(exchange.getRequestHeaders().getFirst("User-Agent"));
           byte[] bytes = "content".getBytes(StandardCharsets.UTF_8);
           exchange.sendResponseHeaders(200, bytes.length);
           exchange.getResponseBody().write(bytes);
           exchange.close();
         });
+    BoundedDownloader downloader = downloaderWith("OPAA-Indexer/test", RateLimitPolicy.NONE);
+    String url = baseUrl + "/anlage.pdf";
+
+    Files.deleteIfExists(downloader.download(httpClient, null, url, "anlage.pdf", 10_000));
+    downloader.downloadPrefix(httpClient, null, url, 100);
+    Files.deleteIfExists(
+        downloader.downloadBounded(httpClient, url, "anlage.pdf", 10_000, null).path());
+    try (InputStream stream =
+        downloader
+            .downloadStreaming(httpClient, url, 10_000, null, Duration.ofSeconds(5))
+            .stream()) {
+      stream.readAllBytes();
+    }
+
+    assertThat(userAgents).hasSize(4).containsOnly("OPAA-Indexer/test");
+  }
+
+  /** Answers {@code 429} with {@code Retry-After: 2} for the first {@code throttled} requests. */
+  private void serveThrottled(String path, int throttled, String body) {
+    java.util.concurrent.atomic.AtomicInteger hits =
+        new java.util.concurrent.atomic.AtomicInteger();
+    server.createContext(
+        path,
+        exchange -> {
+          if (hits.getAndIncrement() < throttled) {
+            exchange.getResponseHeaders().set("Retry-After", "2");
+            exchange.sendResponseHeaders(429, -1);
+            exchange.close();
+            return;
+          }
+          byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+  }
+
+  @Test
+  void downloadBoundedWaitsOutARateLimitAndThenDownloads()
+      throws IOException, InterruptedException {
+    serveThrottled("/anlage.pdf", 1, "content");
+    BoundedDownloader downloader =
+        downloaderWith("OPAA-Indexer/test", RateLimitPolicy.of(3, Duration.ofMinutes(2)));
 
     BoundedDownloader.DownloadedFile result =
-        downloader.downloadBounded(
-            httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, "OPAA-Indexer/test", null);
+        downloader.downloadBounded(httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, null);
+    try {
+      assertThat(Files.readString(result.path())).isEqualTo("content");
+    } finally {
+      Files.deleteIfExists(result.path());
+    }
+    assertThat(sleeps).containsExactly(Duration.ofSeconds(2));
+  }
 
-    Files.deleteIfExists(result.path());
-    assertThat(userAgent.get()).isEqualTo("OPAA-Indexer/test");
+  @Test
+  void downloadReturnsTheLastRateLimitAsAStatusOnceRetriesAreSpent() {
+    serveThrottled("/anlage.pdf", 10, "content");
+    BoundedDownloader downloader =
+        downloaderWith("OPAA-Indexer/test", RateLimitPolicy.of(2, Duration.ofMinutes(2)));
+
+    assertThatThrownBy(
+            () ->
+                downloader.download(
+                    httpClient, null, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000))
+        .isInstanceOf(BoundedDownloader.HttpStatusException.class)
+        .satisfies(
+            e ->
+                assertThat(((BoundedDownloader.HttpStatusException) e).statusCode())
+                    .isEqualTo(429));
+    assertThat(sleeps).hasSize(2);
+  }
+
+  @Test
+  void downloadStreamingNeverWaitsOutARateLimit() {
+    serveThrottled("/anlage.pdf", 1, "content");
+    BoundedDownloader downloader =
+        downloaderWith("OPAA-Indexer/test", RateLimitPolicy.of(3, Duration.ofMinutes(2)));
+
+    assertThatThrownBy(
+            () ->
+                downloader.downloadStreaming(
+                    httpClient, baseUrl + "/anlage.pdf", 10_000, null, Duration.ofSeconds(5)))
+        .isInstanceOf(BoundedDownloader.HttpStatusException.class);
+    assertThat(sleeps).isEmpty();
+  }
+
+  @Test
+  void downloadBoundedAbortsAChunkedOversizedResponseWhileStreamingAndLeavesNoTempFile()
+      throws IOException {
+    List<Path> before = probeTempFiles();
+    byte[] chunk = "y".repeat(8_192).getBytes(StandardCharsets.UTF_8);
+    server.createContext(
+        "/chunked-anlage" + CAP_TEST_SUFFIX,
+        exchange -> {
+          exchange.sendResponseHeaders(200, 0);
+          try (var out = exchange.getResponseBody()) {
+            for (int i = 0; i < 50; i++) {
+              out.write(chunk);
+              out.flush();
+            }
+          } catch (IOException expected) {
+            // The client cuts the connection at the cap - that abort is the point of this test.
+          }
+          exchange.close();
+        });
+
+    assertThatThrownBy(
+            () ->
+                downloader.downloadBounded(
+                    httpClient,
+                    baseUrl + "/chunked-anlage" + CAP_TEST_SUFFIX,
+                    "chunked-anlage" + CAP_TEST_SUFFIX,
+                    4_096L,
+                    null))
+        .isInstanceOf(BoundedDownloader.AttachmentTooLargeException.class);
+    assertThat(probeTempFiles())
+        .as("an aborted transfer must not leave its temp file behind")
+        .containsExactlyInAnyOrderElementsOf(before);
   }
 
   @Test
@@ -329,7 +448,7 @@ class BoundedDownloaderTest {
 
     BoundedDownloader.DownloadedFile result =
         downloader.downloadBounded(
-            httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, null, "Basic dGVzdDp0ZXN0");
+            httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, "Basic dGVzdDp0ZXN0");
 
     Files.deleteIfExists(result.path());
     assertThat(authorization.get()).isEqualTo("Basic dGVzdDp0ZXN0");
@@ -347,9 +466,7 @@ class BoundedDownloaderTest {
         });
 
     assertThatThrownBy(
-            () ->
-                downloader.downloadBounded(
-                    httpClient, baseUrl + "/big.pdf", "big.pdf", 10, null, null))
+            () -> downloader.downloadBounded(httpClient, baseUrl + "/big.pdf", "big.pdf", 10, null))
         .isInstanceOf(BoundedDownloader.AttachmentTooLargeException.class);
   }
 
@@ -365,7 +482,7 @@ class BoundedDownloaderTest {
     assertThatThrownBy(
             () ->
                 downloader.downloadBounded(
-                    httpClient, baseUrl + "/missing.pdf", "missing.pdf", 10_000, null, null))
+                    httpClient, baseUrl + "/missing.pdf", "missing.pdf", 10_000, null))
         .isInstanceOf(IOException.class)
         .hasMessageContaining("HTTP 404");
   }
@@ -401,7 +518,7 @@ class BoundedDownloaderTest {
       assertThatThrownBy(
               () ->
                   downloader.downloadBounded(
-                      httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, null, null))
+                      httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, null))
           .isInstanceOf(RedirectFollowingFetcher.RedirectRejectedException.class);
     } finally {
       foreignServer.stop(0);
@@ -438,7 +555,6 @@ class BoundedDownloaderTest {
                     baseUrl + "/anlage.pdf",
                     "anlage.pdf",
                     10_000,
-                    null,
                     null))
         .isInstanceOf(RedirectFollowingFetcher.RedirectRejectedException.class);
   }
@@ -716,7 +832,7 @@ class BoundedDownloaderTest {
     assertThatThrownBy(
             () ->
                 downloader.downloadBounded(
-                    httpClient, "https://example.com/anlage.pdf", "anlage.pdf", 10_000, null, null))
+                    httpClient, "https://example.com/anlage.pdf", "anlage.pdf", 10_000, null))
         .isInstanceOf(RedirectFollowingFetcher.RedirectRejectedException.class)
         .hasMessageContaining("protocol downgrade");
   }
@@ -754,12 +870,7 @@ class BoundedDownloaderTest {
 
     BoundedDownloader.DownloadedFile result =
         downloader.downloadBounded(
-            httpClient,
-            "http://example.com/anlage.pdf",
-            "anlage.pdf",
-            10_000,
-            null,
-            "Basic geheim");
+            httpClient, "http://example.com/anlage.pdf", "anlage.pdf", 10_000, "Basic geheim");
 
     assertThat(result.contentType()).isEqualTo("application/pdf");
     ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);

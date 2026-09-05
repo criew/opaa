@@ -2,6 +2,7 @@ package io.opaa.indexing.source.confluence;
 
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -26,15 +27,15 @@ public final class ConfluenceEditionDetector {
 
   private final ConfluenceProperties properties;
   private final TargetAddressValidator targetAddressValidator;
-  private final Sleeper sleeper;
+  private final SourceRequestPolicy requestPolicy;
 
   ConfluenceEditionDetector(
       ConfluenceProperties properties,
       TargetAddressValidator targetAddressValidator,
-      Sleeper sleeper) {
+      SourceRequestPolicy requestPolicy) {
     this.properties = properties;
     this.targetAddressValidator = targetAddressValidator;
-    this.sleeper = sleeper;
+    this.requestPolicy = requestPolicy;
   }
 
   /** The detected edition and the base URL normalised for it. */
@@ -66,7 +67,7 @@ public final class ConfluenceEditionDetector {
             cloud,
             properties,
             targetAddressValidator,
-            sleeper,
+            requestPolicy,
             meter,
             properties.detectionTimeout());
     ProbeOutcome tenant = probe(cloudHttp, hostRoot(cloudBase) + "/_edge/tenant_info", resource);
@@ -85,7 +86,7 @@ public final class ConfluenceEditionDetector {
             dataCenter,
             properties,
             targetAddressValidator,
-            sleeper,
+            requestPolicy,
             meter,
             properties.detectionTimeout());
     ProbeOutcome status = probe(dcHttp, dataCenter.url("/status"), resource);
@@ -149,7 +150,7 @@ public final class ConfluenceEditionDetector {
             connection,
             properties,
             targetAddressValidator,
-            sleeper,
+            requestPolicy,
             meter,
             properties.detectionTimeout());
     if (expected == ConfluenceEdition.CLOUD) {

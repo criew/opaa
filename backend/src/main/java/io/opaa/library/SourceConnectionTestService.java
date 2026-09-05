@@ -15,9 +15,11 @@ import io.opaa.indexing.source.rss.RssFeedParseException;
 import io.opaa.indexing.source.rss.RssFeedParser;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
 import io.opaa.indexing.source.web.UrlIndexingExecutor;
+import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -33,7 +35,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -53,12 +54,13 @@ import org.springframework.stereotype.Service;
  *
  * <p><b>Same building blocks as the real runs, deliberately</b> (issue #514): {@link
  * SourceHttpClientFactory#buildHttpClient} and {@link SourceHttpClientFactory#buildAuthHeader} are
- * the exact methods {@code UrlIndexingExecutor} and {@code RssFeedIndexingExecutor} use, and the
- * response body is bounded exactly the way {@code FeedFetcher#readFeedBody} and {@code
- * BoundedDownloader#readBounded} bound theirs - {@link IndexingProperties.Rss#maxPageSizeBytes()}
- * for the HTTP_DIRECTORY listing page, {@link IndexingProperties.Rss#maxFeedSizeBytes()} for the
- * RSS feed (PR #537 review, finding 2: an unbounded read here let an authenticated caller crash the
- * whole backend with a single request against an endless or multi-gigabyte response). {@code
+ * the exact methods {@code UrlIndexingExecutor} and {@code RssFeedIndexingExecutor} use, the
+ * request carries the shared {@link SourceRequestPolicy}'s {@code User-Agent} (a {@code 429} is not
+ * waited out - a person is waiting), and the response body is bounded through the same {@link
+ * BoundedStreams} the runs use - {@link IndexingProperties.Rss#maxPageSizeBytes()} for the
+ * HTTP_DIRECTORY listing page, {@link IndexingProperties.Rss#maxFeedSizeBytes()} for the RSS feed
+ * (PR #537 review, finding 2: an unbounded read here let an authenticated caller crash the whole
+ * backend with a single request against an endless or multi-gigabyte response). {@code
  * RssFeedIndexingExecutor} applies proxy/credentials to its own feed, detail-page and attachment
  * requests too (#505) - restricted to the feed's own origin for the latter two (PR #642 review,
  * finding 1); this test, having no entries or attachments to consider, always applies them for the
@@ -115,7 +117,7 @@ public class SourceConnectionTestService {
   private final FilesystemPathAllowlist filesystemAllowlist;
   private final KnowledgeLibraryRepository libraryRepository;
   private final LibraryAccessService libraryAccessService;
-  private final String rssUserAgent;
+  private final SourceRequestPolicy requestPolicy;
   private final long maxPageSizeBytes;
   private final long maxFeedSizeBytes;
   private final int maxFeedEntries;
@@ -131,6 +133,7 @@ public class SourceConnectionTestService {
       LibraryAccessService libraryAccessService,
       IndexingProperties properties,
       TargetAddressValidator targetAddressValidator,
+      SourceRequestPolicy requestPolicy,
       ConfluenceConnectionService confluenceConnectionService) {
     this.documentService = documentService;
     this.crawlerService = crawlerService;
@@ -138,7 +141,7 @@ public class SourceConnectionTestService {
     this.filesystemAllowlist = filesystemAllowlist;
     this.libraryRepository = libraryRepository;
     this.libraryAccessService = libraryAccessService;
-    this.rssUserAgent = properties.rss().userAgent();
+    this.requestPolicy = requestPolicy;
     this.maxPageSizeBytes = properties.rss().maxPageSizeBytes();
     this.maxFeedSizeBytes = properties.rss().maxFeedSizeBytes();
     this.maxFeedEntries = properties.rss().maxEntries();
@@ -414,11 +417,7 @@ public class SourceConnectionTestService {
             Boolean.TRUE.equals(request.sourceInsecureSsl()));
     String authHeader =
         SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
-
-    Map<String, String> headers = new LinkedHashMap<>();
-    if (authHeader != null) {
-      headers.put("Authorization", authHeader);
-    }
+    Map<String, String> headers = requestPolicy.headers(authHeader);
 
     try {
       // PR #699 review, "vorbestehend": sourceProxy is exactly as caller-controlled as the target
@@ -452,8 +451,8 @@ public class SourceConnectionTestService {
         }
         byte[] bytes;
         try {
-          bytes = readBounded(body, maxPageSizeBytes);
-        } catch (ResponseTooLargeException e) {
+          bytes = BoundedStreams.readFully(body, maxPageSizeBytes);
+        } catch (BoundedStreams.LimitExceededException e) {
           return unreachable(
               "Die Verzeichnisseite überschreitet die zulässige Größe von "
                   + maxPageSizeBytes
@@ -516,12 +515,7 @@ public class SourceConnectionTestService {
             Boolean.TRUE.equals(request.sourceInsecureSsl()));
     String authHeader =
         SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
-
-    Map<String, String> headers = new LinkedHashMap<>();
-    headers.put("User-Agent", rssUserAgent);
-    if (authHeader != null) {
-      headers.put("Authorization", authHeader);
-    }
+    Map<String, String> headers = requestPolicy.headers(authHeader);
 
     try {
       // PR #699 review, "vorbestehend" - see testHttpDirectory's identical call above.
@@ -545,8 +539,8 @@ public class SourceConnectionTestService {
         }
         byte[] bytes;
         try {
-          bytes = readBounded(body, maxFeedSizeBytes);
-        } catch (ResponseTooLargeException e) {
+          bytes = BoundedStreams.readFully(body, maxFeedSizeBytes);
+        } catch (BoundedStreams.LimitExceededException e) {
           return unreachable(
               "Der RSS-Feed überschreitet die zulässige Größe von " + maxFeedSizeBytes + " Byte.");
         }
@@ -670,22 +664,6 @@ public class SourceConnectionTestService {
   private static String blankToNull(String value) {
     return value == null || value.isBlank() ? null : value.trim();
   }
-
-  /**
-   * Reads at most {@code maxBytes} from {@code in}, throwing {@link ResponseTooLargeException} the
-   * moment a further byte would exceed the limit - enforced while streaming, mirroring {@code
-   * FeedFetcher#readFeedBody}/{@code BoundedDownloader#readBounded} (PR #537 review, finding 2).
-   */
-  private static byte[] readBounded(InputStream in, long maxBytes) throws IOException {
-    byte[] probe = in.readNBytes(Math.toIntExact(Math.min(maxBytes + 1, Integer.MAX_VALUE)));
-    if (probe.length > maxBytes) {
-      throw new ResponseTooLargeException();
-    }
-    return probe;
-  }
-
-  /** Thrown by {@link #readBounded} when the configured byte limit is exceeded while streaming. */
-  private static final class ResponseTooLargeException extends RuntimeException {}
 
   /**
    * Parses {@code sourceProxy} (host:port) and {@code sourceCredentials} (user:password) via the

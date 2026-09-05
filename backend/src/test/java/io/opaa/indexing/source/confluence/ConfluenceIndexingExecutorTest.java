@@ -239,7 +239,6 @@ class ConfluenceIndexingExecutorTest {
             Duration.ofSeconds(2),
             0,
             0,
-            null,
             0,
             FULL_SYNC_INTERVAL,
             OVERLAP,
@@ -275,7 +274,7 @@ class ConfluenceIndexingExecutorTest {
         new BoundedDownloader(TargetAddressValidator.disabled()),
         fileProcessingService,
         storageQuotaService,
-        new io.opaa.indexing.source.attachment.AttachmentProperties(5));
+        new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0));
   }
 
   private String pagePath(ConfluenceEdition edition, String spaceKey, String id) {
@@ -877,7 +876,6 @@ class ConfluenceIndexingExecutorTest {
             Duration.ofSeconds(2),
             0,
             0,
-            null,
             0,
             FULL_SYNC_INTERVAL,
             Duration.ofMinutes(1),
@@ -1191,7 +1189,7 @@ class ConfluenceIndexingExecutorTest {
     sleeps.clear();
     ConfluenceProperties unbounded =
         new ConfluenceProperties(
-            2, null, null, 3, Duration.ofSeconds(2), 0, 0, null, 0, FULL_SYNC_INTERVAL, OVERLAP, 0);
+            2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, FULL_SYNC_INTERVAL, OVERLAP, 0);
     executor =
         new ConfluenceIndexingExecutor(
             new ConfluenceClientFactory(unbounded, TargetAddressValidator.disabled(), sleeps::add),

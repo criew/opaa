@@ -416,11 +416,6 @@ public class Document {
    * VIEWER: it names one document's origin, not the library's source configuration.
    */
   public String getDeepLinkSourceUrl() {
-    if (sourceType == DocumentSourceType.HTTP_DIRECTORY
-        || sourceType == DocumentSourceType.RSS_FEED
-        || sourceType == DocumentSourceType.CONFLUENCE) {
-      return filePath;
-    }
-    return null;
+    return sourceType != null && sourceType.isRemote() ? filePath : null;
   }
 }

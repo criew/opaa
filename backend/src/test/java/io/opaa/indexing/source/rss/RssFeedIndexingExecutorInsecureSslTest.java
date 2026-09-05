@@ -27,6 +27,8 @@ import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.RateLimitPolicy;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.File;
 import java.io.IOException;
@@ -215,6 +217,11 @@ class RssFeedIndexingExecutorInsecureSslTest {
         });
   }
 
+  /** The shared request policy: a test user agent, no retries, no real sleeping. */
+  private static SourceRequestPolicy requestPolicy() {
+    return new SourceRequestPolicy("OPAA-Indexer/test", RateLimitPolicy.NONE, duration -> {});
+  }
+
   @BeforeEach
   void setUp() throws Exception {
     fileProcessingService = mock(FileProcessingService.class);
@@ -226,7 +233,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
 
     IndexingProperties.Rss rss =
-        new IndexingProperties.Rss(200, 10_000, 10_000, 0, "OPAA-Indexer/test", null, null, 0, 0);
+        new IndexingProperties.Rss(200, 10_000, 10_000, 0, null, null, 0, 0);
     IndexingProperties properties = new IndexingProperties(0, 0, 0, null, rss, null, null, 0);
     // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest) -
     // disabled here since every server this class talks to is deliberately loopback.
@@ -241,9 +248,10 @@ class RssFeedIndexingExecutorInsecureSslTest {
                 new BoundedDownloader(targetAddressValidator),
                 fileProcessingService,
                 mock(LibraryStorageQuotaService.class),
-                new io.opaa.indexing.source.attachment.AttachmentProperties(5)),
+                new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0)),
             properties,
             targetAddressValidator,
+            requestPolicy(),
             new IndexingRunTemplate(
                 indexingJobService,
                 indexingRunEventRepository,

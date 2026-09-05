@@ -70,9 +70,24 @@ public class AttachmentIndexer {
   }
 
   /**
-   * Indexes every attachment {@code sources} lists, up to {@link
-   * AttachmentDownloadLimits#maxPerParent()}. The politeness delay applies before each {@link
-   * AttachmentSource.Download} and is a no-op before an {@link AttachmentSource.LocalFile}.
+   * {@link #indexAll(AttachmentAccess, List, UUID, String, DocumentSourceType, AttachmentLimits)}
+   * under the shared {@link AttachmentProperties#limits()} - for a connector without attachment
+   * numbers of its own.
+   */
+  public List<String> indexAll(
+      AttachmentAccess access,
+      List<AttachmentSource> sources,
+      UUID parentDocumentId,
+      String parentPath,
+      DocumentSourceType sourceType) {
+    return indexAll(
+        access, sources, parentDocumentId, parentPath, sourceType, attachmentProperties.limits());
+  }
+
+  /**
+   * Indexes every attachment {@code sources} lists, up to {@link AttachmentLimits#maxPerParent()}.
+   * A {@link AttachmentSource.Download}'s own politeness delay applies before it; an {@link
+   * AttachmentSource.LocalFile} makes no request.
    *
    * @param parentDocumentId the row every indexed attachment becomes a child of
    * @param parentPath the parent document's own {@code file_path} - recorded on every attachment
@@ -86,7 +101,7 @@ public class AttachmentIndexer {
       UUID parentDocumentId,
       String parentPath,
       DocumentSourceType sourceType,
-      AttachmentDownloadLimits limits) {
+      AttachmentLimits limits) {
     if (sources.isEmpty()) {
       return List.of();
     }
@@ -121,8 +136,8 @@ public class AttachmentIndexer {
       RECURSION_DEPTH.set(depth + 1);
       try {
         for (AttachmentSource source : sources.subList(0, limit)) {
-          if (source instanceof AttachmentSource.Download) {
-            RequestPoliteness.delayBeforeRequest(limits.requestDelayMs());
+          if (source instanceof AttachmentSource.Download download) {
+            RequestPoliteness.delayBeforeRequest(download.requestDelayMs());
           }
           indexOne(access, source, parentDocumentId, parentPath, sourceType, limits)
               .ifPresent(indexedPaths::add);
@@ -150,7 +165,7 @@ public class AttachmentIndexer {
       UUID parentDocumentId,
       String parentPath,
       DocumentSourceType sourceType,
-      AttachmentDownloadLimits limits) {
+      AttachmentLimits limits) {
     return switch (source) {
       case AttachmentSource.Download download ->
           indexDownload(access, download, parentDocumentId, parentPath, sourceType, limits);
@@ -165,7 +180,7 @@ public class AttachmentIndexer {
       UUID parentDocumentId,
       String parentPath,
       DocumentSourceType sourceType,
-      AttachmentDownloadLimits limits) {
+      AttachmentLimits limits) {
     BoundedDownloader.DownloadedFile downloaded = null;
     try {
       downloaded =
@@ -173,8 +188,7 @@ public class AttachmentIndexer {
               download.httpClient(),
               download.url(),
               download.suggestedFileName(),
-              limits.maxAttachmentSizeBytes(),
-              limits.userAgent(),
+              limits.maxSizeBytes(),
               download.authHeader());
 
       String contentType = downloaded.contentType();
@@ -269,7 +283,7 @@ public class AttachmentIndexer {
     } catch (BoundedDownloader.AttachmentTooLargeException e) {
       log.warn(
           "Skipping attachment exceeding the size limit of {} bytes: {} (from {})",
-          limits.maxAttachmentSizeBytes(),
+          limits.maxSizeBytes(),
           download.url(),
           parentPath);
       access

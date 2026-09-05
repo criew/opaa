@@ -130,8 +130,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
             mock(LibraryStorageQuotaService.class));
     run = new ConfluenceRun(frame, client);
     ConfluenceProperties properties =
-        new ConfluenceProperties(
-            2, null, null, 3, Duration.ofSeconds(2), 0, 0, null, 0, null, null, 0);
+        new ConfluenceProperties(2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, null, null, 0);
     executor =
         new ConfluenceIndexingExecutor(
             mock(ConfluenceClientFactory.class),

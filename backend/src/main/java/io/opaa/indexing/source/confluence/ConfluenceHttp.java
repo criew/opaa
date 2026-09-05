@@ -1,7 +1,10 @@
 package io.opaa.indexing.source.confluence;
 
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.RateLimitListener;
+import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,33 +15,22 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.Instant;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import javax.net.ssl.SSLException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The one place both adapters send requests through: adds {@code Authorization}, {@code Accept} and
- * {@code User-Agent}, follows redirects under the shared target validation, honours {@code 429}/
- * {@code Retry-After} by waiting and retrying, bounds every response body, and maps every failure
- * to a {@link ConfluenceAccessException} whose message names resource and status but never a header
+ * the shared {@code User-Agent}, follows redirects under the shared target validation, waits out
+ * {@code 429}/{@code Retry-After} under Confluence's own rate-limit numbers while charging every
+ * attempt to the run's budget and meter, bounds every response body, and maps every failure to a
+ * {@link ConfluenceAccessException} whose message names resource and status but never a header
  * value or a raw upstream body.
  */
 final class ConfluenceHttp {
-
-  private static final Logger log = LoggerFactory.getLogger(ConfluenceHttp.class);
-
-  /** Wait applied to a {@code 429} without a usable {@code Retry-After}. */
-  static final Duration DEFAULT_RETRY_AFTER = Duration.ofSeconds(5);
 
   /**
    * Appended to the target-validation rejection so whoever configures an on-premises instance
@@ -54,19 +46,37 @@ final class ConfluenceHttp {
   private final ConfluenceProperties properties;
   private final Duration requestTimeout;
   private final TargetAddressValidator targetAddressValidator;
+  private final SourceRequestPolicy requestPolicy;
   private final BoundedDownloader downloader;
-  private final Sleeper sleeper;
   private final ConfluenceRequestMeter meter;
   private final int requestBudget;
+
+  /**
+   * Every attempt after a {@code 429} is a call to the instance like the first: charged to the
+   * budget and counted on the meter, which also records the wait.
+   */
+  private final RateLimitListener budgetedRetries =
+      new RateLimitListener() {
+        @Override
+        public void throttled(int statusCode, Duration wait) {
+          meter.recordThrottle(wait);
+        }
+
+        @Override
+        public void retrying() throws IOException {
+          chargeBudget();
+          meter.recordRequest();
+        }
+      };
 
   ConfluenceHttp(
       HttpClient httpClient,
       ConfluenceConnection connection,
       ConfluenceProperties properties,
       TargetAddressValidator targetAddressValidator,
-      Sleeper sleeper,
+      SourceRequestPolicy requestPolicy,
       ConfluenceRequestMeter meter) {
-    this(httpClient, connection, properties, targetAddressValidator, sleeper, meter, null);
+    this(httpClient, connection, properties, targetAddressValidator, requestPolicy, meter, null);
   }
 
   /** {@code requestTimeout} overrides the configured per-request timeout when non-null. */
@@ -75,7 +85,7 @@ final class ConfluenceHttp {
       ConfluenceConnection connection,
       ConfluenceProperties properties,
       TargetAddressValidator targetAddressValidator,
-      Sleeper sleeper,
+      SourceRequestPolicy requestPolicy,
       ConfluenceRequestMeter meter,
       Duration requestTimeout) {
     this(
@@ -83,7 +93,7 @@ final class ConfluenceHttp {
         connection,
         properties,
         targetAddressValidator,
-        sleeper,
+        requestPolicy,
         meter,
         requestTimeout,
         0);
@@ -93,14 +103,16 @@ final class ConfluenceHttp {
    * {@code requestBudget} &gt; 0 bounds the calls this client may make - set by {@link
    * ConfluenceClientFactory#createForRun} for a run's client, never for the wizard's probes and the
    * edition detection, which have no run to continue in. Counted are calls, not wire requests: a
-   * redirect chain the fetcher follows counts once.
+   * redirect chain the fetcher follows counts once, a retry after a {@code 429} counts again.
+   * {@code requestPolicy} contributes {@code User-Agent} and sleeper; the rate-limit numbers are
+   * {@code properties}' own.
    */
   ConfluenceHttp(
       HttpClient httpClient,
       ConfluenceConnection connection,
       ConfluenceProperties properties,
       TargetAddressValidator targetAddressValidator,
-      Sleeper sleeper,
+      SourceRequestPolicy requestPolicy,
       ConfluenceRequestMeter meter,
       Duration requestTimeout,
       int requestBudget) {
@@ -110,8 +122,10 @@ final class ConfluenceHttp {
     this.connection = connection;
     this.properties = properties;
     this.targetAddressValidator = targetAddressValidator;
-    this.downloader = new BoundedDownloader(targetAddressValidator);
-    this.sleeper = sleeper;
+    this.requestPolicy =
+        requestPolicy.withRateLimit(
+            RateLimitPolicy.of(properties.maxRateLimitRetries(), properties.maxRetryAfter()));
+    this.downloader = new BoundedDownloader(targetAddressValidator, this.requestPolicy);
     this.meter = meter;
   }
 
@@ -119,6 +133,10 @@ final class ConfluenceHttp {
     if (requestBudget > 0 && meter.requests() >= requestBudget) {
       throw new ConfluenceAccessException.BudgetExhausted(requestBudget);
     }
+  }
+
+  private String authorizationHeader() {
+    return connection.credentials() == null ? null : connection.credentials().authorizationHeader();
   }
 
   /** A raw response: status and a bounded body. */
@@ -157,65 +175,42 @@ final class ConfluenceHttp {
   /**
    * GET {@code url} and return whatever came back (after rate-limit retries) - for probes that read
    * the status themselves. Connection-level failures still become {@link
-   * ConfluenceAccessException}.
+   * ConfluenceAccessException}; a {@code 429} that outlasted every retry becomes {@link
+   * ConfluenceAccessException.RateLimited}.
    */
   Response get(String url, String resource) throws ConfluenceAccessException, InterruptedException {
-    Map<String, String> headers = new LinkedHashMap<>();
+    Map<String, String> headers = requestPolicy.headers(authorizationHeader());
     headers.put("Accept", "application/json");
-    headers.put("User-Agent", properties.userAgent());
-    if (connection.credentials() != null) {
-      headers.put("Authorization", connection.credentials().authorizationHeader());
+    // the budget counts every call, retries after a 429 included (budgetedRetries) - the meter is
+    // per client, a client is per run, so this is the run's bound.
+    chargeBudget();
+    meter.recordRequest();
+    HttpResponse<InputStream> response;
+    try {
+      response =
+          RedirectFollowingFetcher.sendFollowingRedirects(
+              httpClient,
+              url,
+              requestTimeout,
+              headers,
+              targetAddressValidator,
+              RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN,
+              requestPolicy.rateLimitHandling(budgetedRetries));
+    } catch (ConfluenceAccessException e) {
+      throw e;
+    } catch (IOException e) {
+      throw connectionFailure(e, resource);
     }
-    int attempt = 0;
-    while (true) {
-      // the budget counts every call, retries after a 429 included - the meter is per
-      // client, a client is per run, so this is the run's bound.
-      chargeBudget();
-      meter.recordRequest();
-      HttpResponse<InputStream> response;
-      try {
-        response =
-            RedirectFollowingFetcher.sendFollowingRedirects(
-                httpClient,
-                url,
-                requestTimeout,
-                headers,
-                targetAddressValidator,
-                RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN);
-      } catch (IOException e) {
-        throw connectionFailure(e, resource);
-      }
-      byte[] body;
-      try (InputStream in = response.body()) {
-        body = in.readNBytes(boundedResponseBytes());
-      } catch (IOException e) {
-        throw connectionFailure(e, resource);
-      }
-      if (!isThrottled(response.statusCode())) {
-        return new Response(response.statusCode(), body);
-      }
-      attempt++;
-      if (attempt > properties.maxRateLimitRetries()) {
-        throw new ConfluenceAccessException.RateLimited(
-            "Confluence begrenzt die Anfragerate (HTTP "
-                + response.statusCode()
-                + "); nach "
-                + properties.maxRateLimitRetries()
-                + " Wartezyklen für "
-                + resource
-                + " aufgegeben.");
-      }
-      Duration wait = retryAfter(response);
-      log.info(
-          "Confluence rate limit (HTTP {}) for {} - waiting {} before retry {}/{}",
-          response.statusCode(),
-          connection.baseUrl().getHost(),
-          wait,
-          attempt,
-          properties.maxRateLimitRetries());
-      meter.recordThrottle(wait);
-      sleeper.sleep(wait);
+    byte[] body;
+    try (InputStream in = response.body()) {
+      body = in.readNBytes(boundedResponseBytes());
+    } catch (IOException e) {
+      throw connectionFailure(e, resource);
     }
+    if (response.statusCode() == RedirectFollowingFetcher.TOO_MANY_REQUESTS) {
+      throw rateLimited(resource);
+    }
+    return new Response(response.statusCode(), body);
   }
 
   /**
@@ -226,8 +221,7 @@ final class ConfluenceHttp {
    */
   BoundedDownloader.DownloadedFile download(String url, String fileName, long maxBytes)
       throws ConfluenceAccessException, InterruptedException {
-    String authHeader =
-        connection.credentials() == null ? null : connection.credentials().authorizationHeader();
+    String resource = "der Anhang " + fileName;
     // a download is a call to the instance like any other - it counts against the budget
     chargeBudget();
     meter.recordRequest();
@@ -237,15 +231,20 @@ final class ConfluenceHttp {
           url,
           fileName,
           maxBytes,
-          properties.userAgent(),
-          authHeader,
-          RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN);
+          authorizationHeader(),
+          RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
+          budgetedRetries);
     } catch (BoundedDownloader.AttachmentTooLargeException e) {
       throw e;
+    } catch (ConfluenceAccessException e) {
+      throw e;
     } catch (BoundedDownloader.HttpStatusException e) {
-      throw failure(e.statusCode(), "der Anhang " + fileName);
+      if (e.statusCode() == RedirectFollowingFetcher.TOO_MANY_REQUESTS) {
+        throw rateLimited(resource);
+      }
+      throw failure(e.statusCode(), resource);
     } catch (IOException e) {
-      throw connectionFailure(e, "der Anhang " + fileName);
+      throw connectionFailure(e, resource);
     }
   }
 
@@ -279,10 +278,6 @@ final class ConfluenceHttp {
     return (int) Math.min(Integer.MAX_VALUE, properties.maxResponseBytes());
   }
 
-  private static boolean isThrottled(int status) {
-    return status == 429;
-  }
-
   JsonNode parse(Response response, String resource) throws ConfluenceAccessException {
     try {
       return JSON.readTree(response.body());
@@ -309,6 +304,17 @@ final class ConfluenceHttp {
           new ConfluenceAccessException(
               "Confluence antwortete für " + resource + " mit HTTP " + status + ".");
     };
+  }
+
+  private ConfluenceAccessException.RateLimited rateLimited(String resource) {
+    return new ConfluenceAccessException.RateLimited(
+        "Confluence begrenzt die Anfragerate (HTTP "
+            + RedirectFollowingFetcher.TOO_MANY_REQUESTS
+            + "); nach "
+            + properties.maxRateLimitRetries()
+            + " Wartezyklen für "
+            + resource
+            + " aufgegeben.");
   }
 
   private ConfluenceAccessException connectionFailure(IOException e, String resource) {
@@ -339,38 +345,6 @@ final class ConfluenceHttp {
             + e.getClass().getSimpleName()
             + ").",
         e);
-  }
-
-  /** {@code Retry-After} as seconds or HTTP-date, defaulted and capped by configuration. */
-  Duration retryAfter(HttpResponse<?> response) {
-    Duration wait =
-        response
-            .headers()
-            .firstValue("Retry-After")
-            .map(ConfluenceHttp::parseRetryAfter)
-            .orElse(null);
-    if (wait == null || wait.isNegative() || wait.isZero()) {
-      wait = DEFAULT_RETRY_AFTER;
-    }
-    if (wait.compareTo(properties.maxRetryAfter()) > 0) {
-      wait = properties.maxRetryAfter();
-    }
-    return wait;
-  }
-
-  static Duration parseRetryAfter(String value) {
-    String trimmed = value.strip();
-    try {
-      return Duration.ofSeconds(Long.parseLong(trimmed));
-    } catch (NumberFormatException ignored) {
-      // not a delta-seconds value; try HTTP-date
-    }
-    try {
-      Instant at = ZonedDateTime.parse(trimmed, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant();
-      return Duration.between(Instant.now(), at);
-    } catch (DateTimeParseException e) {
-      return null;
-    }
   }
 
   /**
