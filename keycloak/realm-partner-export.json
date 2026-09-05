@@ -34,7 +34,7 @@
       "enabled": true,
       "email": "maria.weber@stadt-rheinfurt.example",
       "firstName": "Maria",
-      "lastName": "Weber (Partnerportal)",
+      "lastName": "Weber",
       "credentials": [
         {
           "type": "password",
