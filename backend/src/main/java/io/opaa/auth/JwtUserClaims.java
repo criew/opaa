@@ -15,12 +15,4 @@ final class JwtUserClaims {
     }
     return issuer;
   }
-
-  static String displayName(Jwt jwt) {
-    String displayName = jwt.getClaimAsString("name");
-    if (displayName == null || displayName.isBlank()) {
-      return jwt.getClaimAsString("preferred_username");
-    }
-    return displayName;
-  }
 }

@@ -2,7 +2,8 @@ package io.opaa.group;
 
 /**
  * The operation that opened or closed a {@link GroupMembershipHistory} interval (#238). Mirrored by
- * the database check constraint {@code chk_group_membership_history_cause} (migration 018).
+ * the database check constraint {@code chk_group_membership_history_cause} (baseline, widened by
+ * changeset 027).
  *
  * <p>The directory-sync causes exist separately from the manual ones because a synchronisation run
  * has no acting user and is, per
@@ -22,6 +23,12 @@ public enum GroupMembershipHistoryCause {
 
   /** A directory sync run removed a membership ({@code DirectorySyncPlanExecutor#applyPlan}). */
   DIRECTORY_SYNC_REMOVED,
+
+  /** A sign-in's groups claim added a membership ({@code TokenGroupSynchronizer}, ADR-0025). */
+  IDENTITY_PROVIDER_ADDED,
+
+  /** A sign-in's groups claim no longer listed the group ({@code TokenGroupSynchronizer}). */
+  IDENTITY_PROVIDER_REMOVED,
 
   /**
    * The interval was written by migration 018's backfill changeSet for a membership that already

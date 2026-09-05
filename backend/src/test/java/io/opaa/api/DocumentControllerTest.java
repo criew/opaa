@@ -1,7 +1,6 @@
 package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -65,11 +64,17 @@ class DocumentControllerTest {
     User user = new User(TEST_SUBJECT, TEST_ISSUER, "test@example.com", "Test User");
     user.setSystemRole(SystemRole.USER);
     setId(user, currentUserId);
-    when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
+    when(userService.provisionFromToken(
+            org.mockito.ArgumentMatchers.argThat(
+                token -> token != null && TEST_SUBJECT.equals(token.getSubject()))))
         .thenReturn(user);
     expectedCaller =
         CurrentUser.of(
-            currentUserId, user.getOrganizationId(), SystemRole.USER, user.getDisplayName());
+            currentUserId,
+            user.getOrganizationId(),
+            SystemRole.USER,
+            user.getDisplayName(),
+            user.getEmail());
   }
 
   private RequestPostProcessor asTestUser() {
