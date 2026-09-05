@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: 026-context-prefix-stamp
+      id: 027-context-prefix-stamp
       author: opaa
       comment: >-
         #1072 (metadata-schema.md, Wirkstelle 2): what makes the Kontextpraefix Nachlauf selective.
@@ -22,7 +22,8 @@ databaseChangeLog:
                 ADD COLUMN core_context_prefix_document_date boolean NOT NULL DEFAULT false;
               ALTER TABLE public.documents
                 ADD COLUMN context_prefix_stamp varchar(64),
-                ADD COLUMN context_prefix_eligible boolean;
+                ADD COLUMN context_prefix_eligible boolean,
+                ADD COLUMN context_prefix_title varchar(500);
               CREATE INDEX idx_documents_library_context_prefix
                 ON public.documents (library_id) WHERE context_prefix_stamp IS NULL;
       rollback:
@@ -31,6 +32,7 @@ databaseChangeLog:
             sql: |
               DROP INDEX IF EXISTS public.idx_documents_library_context_prefix;
               ALTER TABLE public.documents
+                DROP COLUMN IF EXISTS context_prefix_title,
                 DROP COLUMN IF EXISTS context_prefix_eligible,
                 DROP COLUMN IF EXISTS context_prefix_stamp;
               ALTER TABLE public.knowledge_libraries

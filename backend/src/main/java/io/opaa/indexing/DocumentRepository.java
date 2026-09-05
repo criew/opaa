@@ -374,10 +374,13 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   @Modifying
   @Transactional
   @Query(
-      "update Document d set d.contextPrefixStamp = :stamp, d.contextPrefixEligible = :eligible"
-          + " where d.id = :id")
+      "update Document d set d.contextPrefixStamp = :stamp, d.contextPrefixEligible = :eligible,"
+          + " d.contextPrefixTitle = :title where d.id = :id")
   int recordContextPrefix(
-      @Param("id") UUID id, @Param("stamp") String stamp, @Param("eligible") boolean eligible);
+      @Param("id") UUID id,
+      @Param("stamp") String stamp,
+      @Param("eligible") boolean eligible,
+      @Param("title") String title);
 
   /**
    * Hands a document to the Kontextpraefix-Nachlauf - the one marking every prefix-effective change

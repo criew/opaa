@@ -12,15 +12,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Delta test for {@code changes/026-context-prefix-stamp.yaml} (#1072): what the
+ * Delta test for {@code changes/027-context-prefix-stamp.yaml} (#1072): what the
  * Kontextpräfix-Nachlauf selects by. An existing library starts with both switchable core-field
  * Wirkstellen off - the Wirkstelle is a deliberate decision per field, never a default for all -
  * and an existing document reads {@code NULL}, which is what puts the whole Altbestand into the
  * run's selection until it has been embedded once under a recorded prefix.
  */
-class Migration026ContextPrefixStampTest extends AbstractMigrationTest {
+class Migration027ContextPrefixStampTest extends AbstractMigrationTest {
 
-  private static final String CHANGELOG_PATH = "db/changelog/changes/026-context-prefix-stamp.yaml";
+  private static final String CHANGELOG_PATH = "db/changelog/changes/027-context-prefix-stamp.yaml";
   private static final UUID ORGANIZATION_ID =
       UUID.fromString("00000000-0000-0000-0000-000000000001");
 

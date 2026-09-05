@@ -163,6 +163,15 @@ public class Document {
   @Column(name = "context_prefix_eligible", insertable = false, updatable = false)
   private Boolean contextPrefixEligible;
 
+  /**
+   * The title the ingest put into this document's Kontextpraefix (#1072) - a Confluence hierarchy
+   * path, a humanised file name, an RSS headline - or {@code null} when it got no prefix. Read back
+   * by the Nachlauf through {@link ChunkContextPrefix#titleAtRest}, so it reproduces the ingest's
+   * own choice instead of deriving a different one.
+   */
+  @Column(name = "context_prefix_title", insertable = false, updatable = false, length = 500)
+  private String contextPrefixTitle;
+
   protected Document() {}
 
   public Document(String fileName, String filePath, String contentType, Long fileSize) {
@@ -376,6 +385,10 @@ public class Document {
 
   public Boolean getContextPrefixEligible() {
     return contextPrefixEligible;
+  }
+
+  public String getContextPrefixTitle() {
+    return contextPrefixTitle;
   }
 
   /**
