@@ -595,9 +595,11 @@ class VerwaltungRetrievalEvaluationHarnessTest {
             .map(DocumentTypeVocabularyEntry::getCode)
             .toList();
     // Issue #1070: counted, not assumed - the fixed point metadataFilterEnabled below is "every
-    // filtered case was searched with its filter", derived from these two. A filter that
-    // constrains nothing (a Dokumentart selection covering the whole vocabulary) yields no
-    // expression and rightly counts as not applied; GoldenCaseCuration refuses such a filter.
+    // filtered case was searched with its filter", derived from these two counters. Counted at the
+    // handover to similaritySearch, not where the expression is built: what the fixed point claims
+    // is that the search saw the filter. A filter that constrains nothing - a Dokumentart selection
+    // covering the whole vocabulary, which every document satisfies or lacks alike - yields no
+    // expression and therefore counts as not applied; no golden case carries one.
     int filteredCases = 0;
     int appliedFilters = 0;
     for (GoldenCase goldenCase : goldenCases) {
@@ -606,20 +608,20 @@ class VerwaltungRetrievalEvaluationHarnessTest {
       // condition, for every case without a filter.
       Filter.Expression metadataFilterExpression =
           MetadataFilterExpressions.vectorExpression(goldenCase.metadataFilter(), vocabularyCodes);
+      SearchRequest request =
+          SearchRequest.builder()
+              .query(goldenCase.query())
+              .topK(DOMAIN.chunkTopK())
+              .similarityThreshold(0.0)
+              .filterExpression(metadataFilterExpression)
+              .build();
       if (goldenCase.isFiltered()) {
         filteredCases++;
       }
-      if (metadataFilterExpression != null) {
+      if (request.getFilterExpression() != null) {
         appliedFilters++;
       }
-      List<org.springframework.ai.document.Document> hits =
-          vectorStore.similaritySearch(
-              SearchRequest.builder()
-                  .query(goldenCase.query())
-                  .topK(DOMAIN.chunkTopK())
-                  .similarityThreshold(0.0)
-                  .filterExpression(metadataFilterExpression)
-                  .build());
+      List<org.springframework.ai.document.Document> hits = vectorStore.similaritySearch(request);
       List<String> rankedChunkFileNames =
           hits.stream()
               .map(h -> h.getMetadata().get("file_name"))

@@ -451,6 +451,25 @@ class GoldenCaseCurationTest {
         .contains("confusable_document is itself an expected document");
   }
 
+  /**
+   * A Dokumentart code outside the delivered vocabulary is a violation, not a filter on nothing:
+   * {@code MetadataFilterExpressions} builds its "no value" branch as NOT IN over every known code,
+   * so such a filter would silently keep exactly the documents without a Dokumentart.
+   */
+  @Test
+  void rejectsAFilterDocumentTypeOutsideTheDeliveredVocabulary() {
+    GoldenCase.Filter misspelled = new GoldenCase.Filter(List.of("DIENSTANWEISUNGEN"), null, null);
+
+    assertThat(validate(filterCase("a", misspelled, null, null, null)))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .contains("filter documentType 'DIENSTANWEISUNGEN' is not a delivered vocabulary code");
+
+    GoldenCase.Filter delivered = new GoldenCase.Filter(List.of("DIENSTANWEISUNG"), null, null);
+    assertThat(validate(filterCase("a", delivered, null, null, null)))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .noneMatch(rule -> rule.contains("delivered vocabulary code"));
+  }
+
   /** A Leerwert-Regel marker without a filter on that very field would measure nothing. */
   @Test
   void rejectsANoValueFieldThatIsNotTheFilteredOne() {
