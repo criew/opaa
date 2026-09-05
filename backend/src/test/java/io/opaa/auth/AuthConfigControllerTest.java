@@ -7,7 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import io.opaa.auth.oidc.OidcClaimMapping;
 import io.opaa.auth.oidc.OidcProvider;
-import io.opaa.auth.oidc.OidcProviderRegistry;
+import io.opaa.auth.oidc.OidcProviderRepository;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,8 +18,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * {@code GET /api/v1/auth/config} (#1332, ADR-0025 Entscheidung 5): the mode, and in the {@code
- * oidc} mode the ready providers in sign-in page order with exactly the fields the sign-in page
- * shows - nothing else about a provider leaves the backend unauthenticated.
+ * oidc} mode every enabled provider in sign-in page order - whether or not the backend's decoder
+ * for it is ready yet - with exactly the fields the sign-in page shows; nothing else about a
+ * provider leaves the backend unauthenticated.
  */
 @WebMvcTest(AuthConfigController.class)
 @Import(TestSecurityConfig.class)
@@ -27,7 +28,7 @@ class AuthConfigControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private AuthProperties authProperties;
-  @MockitoBean private OidcProviderRegistry providerRegistry;
+  @MockitoBean private OidcProviderRepository providerRepository;
 
   // TestSecurityConfig's UserProvisioningFilter needs a UserService bean even though this
   // unauthenticated endpoint never calls it.
@@ -45,7 +46,7 @@ class AuthConfigControllerTest {
   }
 
   @Test
-  void inTheOidcModeTheReadyProvidersAreListedInSignInOrderWithTheirPublicFields()
+  void inTheOidcModeEveryEnabledProviderIsListedInSignInOrderWithItsPublicFields()
       throws Exception {
     when(authProperties.mode()).thenReturn("oidc");
     OidcProvider standard =
@@ -64,7 +65,9 @@ class AuthConfigControllerTest {
             null,
             OidcClaimMapping.keycloakDefaults());
     partner.setSortOrder(1);
-    when(providerRegistry.enabledProviders()).thenReturn(List.of(standard, partner));
+    // the partner's decoder is not built yet (its IdP may still be starting) - it is listed anyway
+    when(providerRepository.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc())
+        .thenReturn(List.of(standard, partner));
 
     mockMvc
         .perform(get("/api/v1/auth/config"))

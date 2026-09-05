@@ -389,7 +389,7 @@ describe('authStore', () => {
       useAuthStore.getState().expireSession()
 
       expect(useAuthStore.getState().error).toBe(
-        'Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.',
+        'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.',
       )
     })
 
@@ -671,6 +671,94 @@ describe('authStore', () => {
       } finally {
         signout.mockRestore()
         removeUser.mockRestore()
+      }
+    })
+
+    it('keeps the providers and drops the stored session when /auth/me answers unknown_issuer', async () => {
+      sessionStorage.setItem('opaa.oidc.flowProvider', 'p-partner')
+      const storedUser = new User({
+        access_token: 'stale-partner-token',
+        token_type: 'Bearer',
+        profile: {
+          sub: 'user-9',
+          iss: 'https://partner.example.test/realms/extern',
+          aud: 'opaa-partner',
+          exp: Math.floor(Date.now() / 1000) + 900,
+          iat: Math.floor(Date.now() / 1000),
+        },
+        expires_at: Math.floor(Date.now() / 1000) + 900,
+      })
+      const getUser = vi.spyOn(UserManager.prototype, 'getUser').mockResolvedValue(storedUser)
+      const removeUser = vi.spyOn(UserManager.prototype, 'removeUser').mockResolvedValue()
+      server.use(
+        http.get('/api/v1/auth/config', () => HttpResponse.json(twoProviders)),
+        http.get(
+          '/api/v1/auth/me',
+          () =>
+            new HttpResponse(null, {
+              status: 401,
+              headers: {
+                'WWW-Authenticate':
+                  'Bearer error="invalid_token", error_description="unknown_issuer"',
+              },
+            }),
+        ),
+      )
+      try {
+        await useAuthStore.getState().initialize()
+
+        const state = useAuthStore.getState()
+        expect(state.mode).toBe('oidc')
+        expect(state.providers).toHaveLength(2)
+        expect(state.isAuthenticated).toBe(false)
+        expect(state.error).toMatch(/nicht mehr zugelassen/)
+        expect(sessionStorage.getItem('opaa.oidc.flowProvider')).toBeNull()
+        expect(removeUser).toHaveBeenCalled()
+      } finally {
+        getUser.mockRestore()
+        removeUser.mockRestore()
+      }
+    })
+
+    it('reloads the providers and forgets the suggestion after an unknown_issuer expiry', async () => {
+      sessionStorage.setItem('opaa.oidc.flowProvider', 'p-partner')
+      localStorage.setItem('opaa.oidc.lastProvider', 'p-partner')
+      await initializeWithTwoProviders()
+      useAuthStore.setState({ isAuthenticated: true, token: 't' })
+      // the partner was disabled meanwhile: the next configuration no longer lists it
+      server.use(
+        http.get('/api/v1/auth/config', () =>
+          HttpResponse.json({ mode: 'oidc', providers: [twoProviders.providers[0]] }),
+        ),
+      )
+
+      useAuthStore.getState().expireSession('unknown_issuer')
+
+      await vi.waitFor(() => {
+        expect(useAuthStore.getState().providers.map((p) => p.id)).toEqual(['p-opaa'])
+      })
+      const state = useAuthStore.getState()
+      expect(state.error).toMatch(/nicht mehr zugelassen/)
+      expect(state.suggestedProvider()?.id).toBe('p-opaa')
+      expect(localStorage.getItem('opaa.oidc.lastProvider')).toBeNull()
+      expect(sessionStorage.getItem('opaa.oidc.flowProvider')).toBeNull()
+    })
+
+    it('reports a sign-in that could not be started instead of failing silently', async () => {
+      await initializeWithTwoProviders()
+      const redirect = vi
+        .spyOn(UserManager.prototype, 'signinRedirect')
+        .mockRejectedValue(new Error('Failed to fetch'))
+      try {
+        await useAuthStore.getState().loginOidc('p-partner')
+
+        const state = useAuthStore.getState()
+        expect(state.isSigningIn).toBe(false)
+        expect(state.error).toMatch(/Anmeldung bei Partnerportal konnte nicht gestartet werden/)
+        expect(state.error).toMatch(/Failed to fetch/)
+        expect(sessionStorage.getItem('opaa.oidc.flowProvider')).toBeNull()
+      } finally {
+        redirect.mockRestore()
       }
     })
 

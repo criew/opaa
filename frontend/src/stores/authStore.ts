@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { UserManager, WebStorageStateStore } from 'oidc-client-ts'
 import type { AuthMode, AuthUser, SignInProvider } from '../types/auth'
-import { getAuthConfig, getMe } from '../services/authApi'
+import { getAuthConfig, getMe, UnknownIssuerError } from '../services/authApi'
 import { clearDevUser, resolveDevUser } from '../services/devAuth'
 import type { SessionExpiredReason } from '../services/apiInterceptors'
 import { notify } from './notificationStore'
@@ -11,22 +11,30 @@ import { resetAllStores } from './resettableStores'
  * Sign-in with several identity providers (ADR-0025, Entscheidung 1 and 5): one UserManager per
  * enabled provider, all sharing the redirect URI `<origin>/auth/callback`. The provider of the
  * running flow - and of the active session afterwards - is remembered per tab in sessionStorage,
- * next to oidc-client-ts's own state; the provider used last is remembered in localStorage only as
- * the suggestion for the next sign-in. Everything token-related (renewal, 401 handling, logout)
- * works on the active session's manager.
+ * where oidc-client-ts keeps both its user and its sign-in state (PKCE verifier included) for
+ * these managers; the provider used last is remembered in localStorage only as the suggestion
+ * for the next sign-in. Everything token-related (renewal, 401 handling, logout) works on the
+ * active session's manager.
  */
 export const FLOW_PROVIDER_STORAGE_KEY = 'opaa.oidc.flowProvider'
 export const LAST_PROVIDER_STORAGE_KEY = 'opaa.oidc.lastProvider'
 
+export const CONFIG_UNAVAILABLE_MESSAGE =
+  'Die Authentifizierungskonfiguration konnte nicht geladen werden.'
 export const NO_PROVIDER_MESSAGE =
   'Es ist kein Identitätsanbieter für die Anmeldung verfügbar. Bitte wenden Sie sich an die Systemverwaltung.'
 export const PROVIDER_GONE_MESSAGE =
   'Der gewählte Identitätsanbieter steht nicht mehr zur Verfügung. Bitte melden Sie sich über einen anderen Anbieter an.'
 export const UNKNOWN_ISSUER_MESSAGE =
   'Der Identitätsanbieter Ihrer Anmeldung ist nicht mehr zugelassen. Bitte melden Sie sich erneut an.'
-export const SESSION_EXPIRED_MESSAGE = 'Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.'
+export const SESSION_EXPIRED_MESSAGE =
+  'Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.'
 export const LOCAL_LOGOUT_MESSAGE =
-  'Der Identitätsanbieter bietet keine Abmeldung an. Sie wurden nur in dieser Anwendung abgemeldet.'
+  'Sie wurden nur in dieser Anwendung abgemeldet; die Sitzung beim Identitätsanbieter besteht möglicherweise weiter.'
+
+export function signInFailedMessage(providerName: string, detail: string): string {
+  return `Die Anmeldung bei ${providerName} konnte nicht gestartet werden: ${detail}`
+}
 
 interface AuthState {
   mode: AuthMode | null
@@ -34,6 +42,8 @@ interface AuthState {
   token: string | null
   isAuthenticated: boolean
   isLoading: boolean
+  /** A sign-in redirect is being prepared (discovery fetch) - the page shows it as such. */
+  isSigningIn: boolean
   error: string | null
   /** The enabled providers in sign-in page order (oidc mode); empty otherwise. */
   providers: SignInProvider[]
@@ -89,41 +99,34 @@ function writeStorage(storage: Storage, key: string, value: string | null) {
   }
 }
 
-function createUserManager(provider: SignInProvider): UserManager {
-  return new UserManager({
-    authority: provider.issuerUri,
-    client_id: provider.clientId,
-    redirect_uri: `${window.location.origin}/auth/callback`,
-    post_logout_redirect_uri: window.location.origin,
-    response_type: 'code',
-    scope: 'openid profile email',
-    userStore: new WebStorageStateStore({ store: sessionStorage }),
-    // #737: oidc-client-ts renews the access token in the background via the refresh
-    // token once it is close to expiring - explicit here rather than relying on the
-    // library default, and *not* an iframe-based silent renew (automaticSilentRenew alone
-    // never opens one; that only happens if code elsewhere calls signinSilent with an
-    // iframe request type). An iframe renew would fail regardless: frontend/nginx.conf sets
-    // `frame-ancestors 'none'`.
-    automaticSilentRenew: true,
-    accessTokenExpiringNotificationTimeInSeconds: 60,
-  })
-}
-
 export const useAuthStore = create<AuthState>((set, get) => {
-  /**
-   * Makes `providerId`'s manager the active one and wires the session events to it. `remember`
-   * pins the provider for this tab (a flow started, a session found); the pre-activation of the
-   * suggested provider before any flow leaves nothing behind.
-   */
-  function activate(providerId: string, remember: boolean): UserManager | null {
-    const userManager = userManagers.get(providerId) ?? null
-    if (!userManager) return null
-    if (remember) writeStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY, providerId)
-    if (get().userManager === userManager) return userManager
+  /** One manager per provider, its session events wired exactly once. */
+  function createUserManager(provider: SignInProvider): UserManager {
+    const userManager = new UserManager({
+      authority: provider.issuerUri,
+      client_id: provider.clientId,
+      redirect_uri: `${window.location.origin}/auth/callback`,
+      post_logout_redirect_uri: window.location.origin,
+      response_type: 'code',
+      scope: 'openid profile email',
+      userStore: new WebStorageStateStore({ store: sessionStorage }),
+      // the sign-in state (PKCE verifier) stays in this tab too, next to the flow's provider
+      stateStore: new WebStorageStateStore({ store: sessionStorage }),
+      // #737: oidc-client-ts renews the access token in the background via the refresh
+      // token once it is close to expiring - explicit here rather than relying on the
+      // library default, and *not* an iframe-based silent renew (automaticSilentRenew alone
+      // never opens one; that only happens if code elsewhere calls signinSilent with an
+      // iframe request type). An iframe renew would fail regardless: frontend/nginx.conf sets
+      // `frame-ancestors 'none'`.
+      automaticSilentRenew: true,
+      accessTokenExpiringNotificationTimeInSeconds: 60,
+    })
     // #737: keep the store's token current for the lifetime of the session - UserLoaded also
     // fires after every automatic silent renew, which is exactly the event that used to go
-    // unnoticed.
+    // unnoticed. Only the active manager ever loads a user, so listening on every manager is
+    // harmless and saves re-wiring on activation.
     userManager.events.addUserLoaded((user) => {
+      if (get().userManager !== userManager) return
       set((state) => ({
         token: user.access_token,
         // #737 review: a background silent renew can still resolve after expireSession() has
@@ -135,6 +138,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       }))
     })
     userManager.events.addUserUnloaded(() => {
+      if (get().userManager !== userManager) return
       set({ token: null, isAuthenticated: false })
     })
     userManager.events.addSilentRenewError((err) => {
@@ -148,8 +152,27 @@ export const useAuthStore = create<AuthState>((set, get) => {
       const message = err instanceof Error ? err.message : String(err)
       console.error('Silent token renew failed', message)
     })
+    return userManager
+  }
+
+  /**
+   * Makes `providerId`'s manager the active one. `remember` pins the provider for this tab (a
+   * flow started, a session found); the pre-activation of the suggested provider before any flow
+   * leaves nothing behind.
+   */
+  function activate(providerId: string, remember: boolean): UserManager | null {
+    const userManager = userManagers.get(providerId) ?? null
+    if (!userManager) return null
+    if (remember) writeStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY, providerId)
     set({ userManager, activeProviderId: providerId })
     return userManager
+  }
+
+  /** Drops the local session of the active manager (never the provider's own session). */
+  function dropLocalSession() {
+    const { userManager } = get()
+    writeStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY, null)
+    void userManager?.removeUser()
   }
 
   return {
@@ -158,62 +181,16 @@ export const useAuthStore = create<AuthState>((set, get) => {
     token: null,
     isAuthenticated: false,
     isLoading: true,
+    isSigningIn: false,
     error: null,
     providers: [],
     userManager: null,
     activeProviderId: null,
 
     initialize: async () => {
+      let config
       try {
-        const config = await getAuthConfig()
-        set({ mode: config.mode, providers: config.providers ?? [] })
-
-        if (config.mode === 'dev') {
-          // No login and no token: the backend authenticates every request as the selected dev
-          // user. The user is still fetched so the UI shows a real identity and system role.
-          resolveDevUser()
-          const me = await getMe(null)
-          set({ user: me, isAuthenticated: true, isLoading: false })
-          return
-        }
-
-        if (config.mode === 'oidc') {
-          const providers = config.providers ?? []
-          userManagers = new Map(providers.map((p) => [p.id, createUserManager(p)]))
-          if (providers.length === 0) {
-            set({ isLoading: false, error: NO_PROVIDER_MESSAGE })
-            return
-          }
-          // the session (or the flow under way) belongs to the provider this tab remembers; a
-          // provider disabled in the meantime is simply no longer there, and the tab starts over
-          const remembered = readStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY)
-          const active =
-            remembered && userManagers.has(remembered) ? activate(remembered, true) : null
-          if (!active && remembered) {
-            writeStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY, null)
-          }
-          if (!active) {
-            // no session and no flow under way: the suggested provider's manager stands ready,
-            // so token plumbing (renew, expiry) has a manager to talk to from the first moment
-            const suggested = get().suggestedProvider()
-            if (suggested) activate(suggested.id, false)
-          }
-          const oidcUser = active ? await active.getUser() : null
-          if (oidcUser && !oidcUser.expired) {
-            const me = await getMe(oidcUser.access_token)
-            set({
-              token: oidcUser.access_token,
-              user: me,
-              isAuthenticated: true,
-              isLoading: false,
-            })
-          } else {
-            set({ isLoading: false })
-          }
-          return
-        }
-
-        set({ isLoading: false })
+        config = await getAuthConfig()
       } catch {
         // Deliberately no fallback to an authenticated-looking state: a failing
         // /api/v1/auth/config used to leave the user in a signed-in-looking but entirely
@@ -225,7 +202,78 @@ export const useAuthStore = create<AuthState>((set, get) => {
           token: null,
           isAuthenticated: false,
           isLoading: false,
-          error: 'Die Authentifizierungskonfiguration konnte nicht geladen werden.',
+          error: CONFIG_UNAVAILABLE_MESSAGE,
+        })
+        return
+      }
+      const providers = config.providers ?? []
+      set({ mode: config.mode, providers })
+
+      if (config.mode === 'dev') {
+        // No login and no token: the backend authenticates every request as the selected dev
+        // user. The user is still fetched so the UI shows a real identity and system role.
+        resolveDevUser()
+        try {
+          const me = await getMe(null)
+          set({ user: me, isAuthenticated: true, isLoading: false })
+        } catch {
+          set({ isAuthenticated: false, isLoading: false, error: CONFIG_UNAVAILABLE_MESSAGE })
+        }
+        return
+      }
+
+      if (config.mode !== 'oidc') {
+        set({ isLoading: false })
+        return
+      }
+
+      userManagers = new Map(providers.map((p) => [p.id, createUserManager(p)]))
+      // a suggestion for a provider that no longer exists would propose a dead end
+      const last = readStorage(localStorage, LAST_PROVIDER_STORAGE_KEY)
+      if (last && !userManagers.has(last)) {
+        writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, null)
+      }
+      if (providers.length === 0) {
+        set({
+          userManager: null,
+          activeProviderId: null,
+          isLoading: false,
+          error: NO_PROVIDER_MESSAGE,
+        })
+        return
+      }
+      // the session (or the flow under way) belongs to the provider this tab remembers; a
+      // provider disabled in the meantime is simply no longer there, and the tab starts over
+      const remembered = readStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY)
+      const active = remembered && userManagers.has(remembered) ? activate(remembered, true) : null
+      if (!active && remembered) {
+        writeStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY, null)
+      }
+      if (!active) {
+        // no session and no flow under way: the suggested provider's manager stands ready,
+        // so token plumbing (renew, expiry) has a manager to talk to from the first moment
+        const suggested = get().suggestedProvider()
+        if (suggested) activate(suggested.id, false)
+      }
+      const oidcUser = active ? await active.getUser() : null
+      if (!oidcUser || oidcUser.expired) {
+        set({ isLoading: false })
+        return
+      }
+      try {
+        const me = await getMe(oidcUser.access_token)
+        set({ token: oidcUser.access_token, user: me, isAuthenticated: true, isLoading: false })
+      } catch (err) {
+        // the stored session is worthless when its provider was disabled - drop it, keep the
+        // sign-in page armed with the providers just loaded
+        dropLocalSession()
+        set({
+          token: null,
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          error:
+            err instanceof UnknownIssuerError ? UNKNOWN_ISSUER_MESSAGE : SESSION_EXPIRED_MESSAGE,
         })
       }
     },
@@ -241,13 +289,28 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
     loginOidc: async (providerId, options) => {
       const chosen = providerId ?? get().suggestedProvider()?.id
+      const provider = get().providers.find((p) => p.id === chosen)
       const userManager = chosen ? activate(chosen, true) : null
-      if (!chosen || !userManager) {
+      if (!chosen || !provider || !userManager) {
         set({ error: PROVIDER_GONE_MESSAGE })
         return
       }
       writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, chosen)
-      await userManager.signinRedirect(options?.switchAccount ? { prompt: 'login' } : undefined)
+      set({ isSigningIn: true, error: null })
+      try {
+        await userManager.signinRedirect(options?.switchAccount ? { prompt: 'login' } : undefined)
+      } catch (err) {
+        // discovery unreachable (CSP not yet widened, DNS, provider down): say so instead of a
+        // click that visibly does nothing
+        writeStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY, null)
+        set({
+          isSigningIn: false,
+          error: signInFailedMessage(
+            provider.displayName,
+            err instanceof Error ? err.message : String(err),
+          ),
+        })
+      }
     },
 
     handleOidcCallback: async () => {
@@ -269,6 +332,11 @@ export const useAuthStore = create<AuthState>((set, get) => {
           isLoading: false,
         })
       } catch (err) {
+        if (err instanceof UnknownIssuerError) {
+          dropLocalSession()
+          set({ error: UNKNOWN_ISSUER_MESSAGE, isLoading: false })
+          return
+        }
         set({
           error: err instanceof Error ? err.message : 'OIDC-Rückmeldung fehlgeschlagen',
           isLoading: false,
@@ -289,7 +357,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
           // the RP-initiated logout at the provider of the active session (ADR-0025)
           await userManager.signoutRedirect()
         } catch {
-          // no end_session_endpoint at this provider: a local sign-out is all there is
+          // no end_session_endpoint at this provider, or it could not be reached: a local
+          // sign-out is all there is, and the person is told exactly that
           await userManager.removeUser()
           notify(LOCAL_LOGOUT_MESSAGE, 'info')
         }
@@ -341,13 +410,17 @@ export const useAuthStore = create<AuthState>((set, get) => {
     },
 
     expireSession: (reason) => {
-      const { userManager } = get()
       // Same store reset as logout() (#440), but deliberately without signoutRedirect(): the IdP
       // session must survive so a fresh signinRedirect() (or a manual reload) does not force the
       // user to re-enter credentials for what was just an access-token hiccup.
       resetAllStores()
       clearDevUser()
-      writeStorage(sessionStorage, FLOW_PROVIDER_STORAGE_KEY, null)
+      // #737 review: also drop the local OIDC session - removeUser() fires UserUnloaded (redundant
+      // with the reset below, harmless) and stops oidc-client-ts's automatic-silent-renew timer, so
+      // a background renewal already scheduled cannot resurrect the session this just tore down.
+      // Local-only: it clears the WebStorageStateStore entry in sessionStorage, not the IdP session
+      // itself - a fresh signinRedirect() still won't force new credentials.
+      dropLocalSession()
       set({
         token: null,
         user: null,
@@ -359,12 +432,17 @@ export const useAuthStore = create<AuthState>((set, get) => {
         // expired token - it gets its own explanation.
         error: reason === 'unknown_issuer' ? UNKNOWN_ISSUER_MESSAGE : SESSION_EXPIRED_MESSAGE,
       })
-      // #737 review: also drop the local OIDC session - removeUser() fires UserUnloaded (redundant
-      // with the reset above, harmless) and stops oidc-client-ts's automatic-silent-renew timer, so
-      // a background renewal already scheduled cannot resurrect the session this just tore down.
-      // Local-only: it clears the WebStorageStateStore entry in sessionStorage, not the IdP session
-      // itself - a fresh signinRedirect() still won't force new credentials.
-      void userManager?.removeUser()
+      if (reason === 'unknown_issuer') {
+        // the provider list is stale by definition now: reload it, so the sign-in page neither
+        // proposes nor lists the provider that was just refused (ADR-0025: no sign-in loop)
+        const stale = get().activeProviderId
+        if (stale && readStorage(localStorage, LAST_PROVIDER_STORAGE_KEY) === stale) {
+          writeStorage(localStorage, LAST_PROVIDER_STORAGE_KEY, null)
+        }
+        void get()
+          .initialize()
+          .then(() => set({ error: UNKNOWN_ISSUER_MESSAGE }))
+      }
     },
   }
 })

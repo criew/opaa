@@ -85,7 +85,7 @@ describe('LoginPage', () => {
     useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst] })
     renderWithProviders(<LoginPage />, { withRouter: true })
     expect(
-      screen.getByRole('button', { name: /anmelden über verzeichnisdienst/i }),
+      screen.getByRole('button', { name: /anmelden bei verzeichnisdienst/i }),
     ).toBeInTheDocument()
     expect(screen.getByText('Fragen. Belegen. Entscheiden.')).toBeInTheDocument()
   })
@@ -123,7 +123,7 @@ describe('LoginPage', () => {
       renderWithProviders(<LoginPage />, { withRouter: true })
       expect(screen.getAllByRole('button')).toHaveLength(2)
       expect(
-        screen.getByRole('button', { name: /anmelden über verzeichnisdienst/i }),
+        screen.getByRole('button', { name: /anmelden bei verzeichnisdienst/i }),
       ).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Mit anderem Konto anmelden' })).toBeInTheDocument()
       expect(screen.queryByText('Zuletzt verwendet')).not.toBeInTheDocument()
@@ -134,10 +134,10 @@ describe('LoginPage', () => {
       useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst, partner], loginOidc })
       renderWithProviders(<LoginPage />, { withRouter: true })
 
-      const buttons = screen.getAllByRole('button', { name: /anmelden über/i })
+      const buttons = screen.getAllByRole('button', { name: /anmelden bei/i })
       expect(buttons.map((b) => b.textContent)).toEqual([
-        'Anmelden über Verzeichnisdienst',
-        'Anmelden über Partnerportal',
+        'Anmelden bei Verzeichnisdienst',
+        'Anmelden bei Partnerportal',
       ])
       // the default is the one primary (contained) button
       expect(buttons[0].className).toMatch(/MuiButton-contained/)
@@ -153,11 +153,11 @@ describe('LoginPage', () => {
       useAuthStore.setState({ mode: 'oidc', providers: [verzeichnisdienst, partner], loginOidc })
       renderWithProviders(<LoginPage />, { withRouter: true })
 
-      const partnerButton = screen.getByRole('button', { name: /anmelden über partnerportal/i })
+      const partnerButton = screen.getByRole('button', { name: /anmelden bei partnerportal/i })
       expect(partnerButton.className).toMatch(/MuiButton-contained/)
       expect(screen.getByText('Zuletzt verwendet')).toBeInTheDocument()
       expect(
-        screen.getByRole('button', { name: /anmelden über verzeichnisdienst/i }).className,
+        screen.getByRole('button', { name: /anmelden bei verzeichnisdienst/i }).className,
       ).toMatch(/MuiButton-outlined/)
 
       await userEvent.click(
@@ -173,7 +173,7 @@ describe('LoginPage', () => {
         error: 'Es ist kein Identitätsanbieter für die Anmeldung verfügbar.',
       })
       renderWithProviders(<LoginPage />, { withRouter: true })
-      expect(screen.queryByRole('button', { name: /anmelden über/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /anmelden bei/i })).not.toBeInTheDocument()
       expect(screen.getByText(/kein Identitätsanbieter/)).toBeInTheDocument()
     })
   })

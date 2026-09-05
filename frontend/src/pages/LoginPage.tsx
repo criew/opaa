@@ -2,7 +2,6 @@ import Alert from '@mui/material/Alert'
 import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import LoginIcon from '@mui/icons-material/Login'
@@ -27,6 +26,7 @@ export default function LoginPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const error = useAuthStore((s) => s.error)
   const isLoading = useAuthStore((s) => s.isLoading)
+  const isSigningIn = useAuthStore((s) => s.isSigningIn)
   const loginOidc = useAuthStore((s) => s.loginOidc)
   const providers = useAuthStore((s) => s.providers)
   const suggestedProvider = useAuthStore((s) => s.suggestedProvider)
@@ -87,29 +87,38 @@ export default function LoginPage() {
         )}
 
         {mode === 'oidc' && providers.length > 0 && (
-          <Stack spacing={1.25} component="nav" aria-label="Anmeldung">
+          <Stack spacing={1.25} role="group" aria-label="Anmeldung">
             {providers.map((provider) => {
               const isSuggested = provider.id === suggested?.id
               const showsLastUsed = providers.length > 1 && provider.id === lastUsedId
+              const lastUsedHintId = `login-${provider.id}-last-used`
               return (
-                <Button
-                  key={provider.id}
-                  variant={isSuggested ? 'contained' : 'outlined'}
-                  fullWidth
-                  onClick={() => void loginOidc(provider.id)}
-                  disabled={isLoading}
-                  startIcon={<LoginIcon />}
-                  endIcon={
-                    showsLastUsed ? (
-                      <Chip label="Zuletzt verwendet" size="small" component="span" />
-                    ) : undefined
-                  }
-                  sx={{ py: 1.375 }}
-                >
-                  {isLoading && isSuggested
-                    ? 'Anmeldung läuft …'
-                    : `Anmelden über ${provider.displayName}`}
-                </Button>
+                <Box key={provider.id}>
+                  <Button
+                    variant={isSuggested ? 'contained' : 'outlined'}
+                    fullWidth
+                    onClick={() => void loginOidc(provider.id)}
+                    disabled={isLoading || isSigningIn}
+                    aria-describedby={showsLastUsed ? lastUsedHintId : undefined}
+                    startIcon={<LoginIcon />}
+                    sx={{ py: 1.375 }}
+                  >
+                    {isSigningIn && isSuggested
+                      ? 'Anmeldung läuft …'
+                      : `Anmelden bei ${provider.displayName}`}
+                  </Button>
+                  {showsLastUsed && (
+                    <Typography
+                      id={lastUsedHintId}
+                      variant="caption"
+                      color="text.secondary"
+                      component="p"
+                      sx={{ mt: 0.5, mb: 0, textAlign: 'center' }}
+                    >
+                      Zuletzt verwendet
+                    </Typography>
+                  )}
+                </Box>
               )
             })}
             {suggested && (
@@ -117,7 +126,7 @@ export default function LoginPage() {
                 variant="text"
                 size="small"
                 onClick={() => void loginOidc(suggested.id, { switchAccount: true })}
-                disabled={isLoading}
+                disabled={isLoading || isSigningIn}
                 sx={{ alignSelf: 'center' }}
               >
                 {providers.length > 1
