@@ -9,10 +9,13 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.AttachmentExtractor;
+import io.opaa.indexing.AttachmentFilePath;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.StandaloneAttachmentAccess;
 import io.opaa.indexing.SupportedDocumentFormats;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.attachment.AttachmentProperties;
@@ -61,7 +64,7 @@ import org.springframework.web.multipart.MultipartFile;
  * incoming bytes, computes their checksum and creates the {@code Document} row itself (all three
  * are specific to how this endpoint decides *where* a file goes and whether it is a duplicate
  * *within its target library* - a different question from what {@code
- * FileProcessingService#processFile}'s file-path-keyed dedup answers), then hands off to {@link
+ * FileProcessingService#ingest}'s file-path-keyed dedup answers), then hands off to {@link
  * FileProcessingService#processUploadedFileAsync} for parsing, chunking and vector storage - the
  * same three steps every other ingestion path goes through, so a chat query finds an uploaded
  * document exactly the same way it finds a crawled one.
@@ -295,9 +298,9 @@ public class LibraryDocumentService {
         }
       }
 
-      // #434: the row is created - and returned - as PENDING here, before any parsing/embedding
-      // has happened. contentType/fileSize are read from the file this class itself just wrote,
-      // mirroring FileProcessingService#processFile's own stat-after-store approach.
+      // The row is created - and returned - as PENDING here, before any parsing/embedding has
+      // happened. contentType/fileSize are read from the file this class itself just wrote; the
+      // connector paths store the canonical type of the routed format instead.
       String contentType = Files.probeContentType(storedFile);
       long fileSize = Files.size(storedFile);
       Document document =
@@ -326,7 +329,15 @@ public class LibraryDocumentService {
       try {
         // Parsing/chunking/embedding run on uploadTaskExecutor from here (#434) - this method
         // returns the PENDING row without waiting for that to finish.
-        fileProcessingService.processUploadedFileAsync(document.getId(), storedFile);
+        fileProcessingService.processUploadedFileAsync(
+            DocumentIngest.builder(library)
+                .file(storedFile, fileSize)
+                .filePath(document.getFilePath())
+                .fileName(displayFileName)
+                .sourceType(DocumentSourceType.UPLOAD)
+                .existingRow()
+                .build(),
+            new StandaloneAttachmentAccess(library, "Upload"));
       } catch (TaskRejectedException e) {
         // #589 review, item 2: uploadTaskExecutor's queue is full - it never silently discards the
         // task (see IndexingConfiguration#uploadTaskExecutor; #501 later gave indexingTaskExecutor
@@ -481,10 +492,7 @@ public class LibraryDocumentService {
     return documentRepository
         .findById(document.getParentDocumentId())
         .map(
-            parent ->
-                FileProcessingService.attachmentIndexIn(
-                        parent.getFilePath(), document.getFilePath())
-                    >= 0)
+            parent -> AttachmentFilePath.indexIn(parent.getFilePath(), document.getFilePath()) >= 0)
         .orElse(false);
   }
 
@@ -514,13 +522,12 @@ public class LibraryDocumentService {
       throw new NotFoundException("Für dieses Dokument steht kein Originaldokument zur Verfügung");
     }
 
-    // #742 review, finding 1: document.getContentType() is itself set from Files.probeContentType
-    // at index time (see the extension-based decision this class and FileProcessingService already
-    // make and document as intentional, #404's decideForFileName) - taking it as the primary source
-    // here keeps a single decision point instead of a second, independent guess made from the bytes
-    // at serve time, which could disagree with what was actually indexed. DocumentController's
-    // Content-Security-Policy and X-Content-Type-Options headers are what keep that extension-based
-    // guess from becoming a script execution vector, not this choice of source.
+    // document.getContentType() is decided at index time - the canonical type of the routed
+    // format on the connector paths, Files.probeContentType for an upload - and is the primary
+    // source here, so serving never makes a second, independent guess from the bytes that could
+    // disagree with what was actually indexed. DocumentController's Content-Security-Policy and
+    // X-Content-Type-Options headers are what keep that type from becoming a script execution
+    // vector, not this choice of source.
     String contentType = document.getContentType();
     if (contentType == null || contentType.isBlank()) {
       try {
@@ -580,8 +587,7 @@ public class LibraryDocumentService {
             current.getParentDocumentId());
         throw attachmentUnavailable();
       }
-      if (FileProcessingService.attachmentIndexIn(parent.getFilePath(), current.getFilePath())
-          < 0) {
+      if (AttachmentFilePath.indexIn(parent.getFilePath(), current.getFilePath()) < 0) {
         // current has a source identity of its own (a downloaded .eml, itself an attachment of an
         // RSS entry) - it is the root to fetch, its own parent is not part of the extraction.
         break;
@@ -602,7 +608,7 @@ public class LibraryDocumentService {
     List<Integer> indices = new ArrayList<>(chain.size());
     String parentPath = root.getFilePath();
     for (int i = chain.size() - 1; i >= 0; i--) {
-      int index = FileProcessingService.attachmentIndexIn(parentPath, chain.get(i).getFilePath());
+      int index = AttachmentFilePath.indexIn(parentPath, chain.get(i).getFilePath());
       if (index < 0) {
         log.warn(
             "Attachment document {} has a file_path that does not embed its parent's path {}",
@@ -758,11 +764,10 @@ public class LibraryDocumentService {
 
   /**
    * Streams a {@code HTTP_DIRECTORY}/{@code RSS_FEED} document's original from its source URL
-   * (#747) - {@link Document#getFilePath()}, the same identity {@code
-   * FileProcessingService#processUrlFile}/{@code #processRssEntry} dedup by and {@link
-   * Document#getDeepLinkSourceUrl()} already names as this document's own origin. No part of the
-   * request ever influences which URL is fetched - only the value stored on this row at indexing
-   * time, already validated against the target allowlist then (#267).
+   * (#747) - {@link Document#getFilePath()}, the same identity {@code FileProcessingService#ingest}
+   * dedups by and {@link Document#getDeepLinkSourceUrl()} already names as this document's own
+   * origin. No part of the request ever influences which URL is fetched - only the value stored on
+   * this row at indexing time, already validated against the target allowlist then (#267).
    *
    * <p><b>SSRF: the allowlist is checked again here, not just at indexing time (#747 acceptance
    * criteria).</b> {@link BoundedDownloader#downloadStreaming} re-validates {@link
@@ -835,8 +840,7 @@ public class LibraryDocumentService {
               authHeader,
               Duration.ofSeconds(remoteContentProperties.timeoutSeconds()));
 
-      // #742 review, finding 1/#748 review, finding 2: document.getContentType() - itself set from
-      // Files.probeContentType/the RSS feed's own declared type at index time - is the primary
+      // document.getContentType() - decided at index time, see loadOriginal - is the primary
       // source here too, mirroring the local-file branch of loadContent above; the remote-declared
       // Content-Type is only a fallback, normalized to type/subtype (no parameters) so a stray
       // parameter cannot smuggle a value past a caller comparing it verbatim (frontend #743 SVG

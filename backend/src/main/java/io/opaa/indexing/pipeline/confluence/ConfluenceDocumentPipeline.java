@@ -29,7 +29,7 @@ import org.springframework.ai.document.Document;
  * Turns a Confluence page's storage-format body (XHTML with {@code ac:}/{@code ri:} macro elements,
  * identical for Cloud and Data Center) into heading-section chunks (ADR-0023;
  * ingestion-pipelines.md, Teil 3, Punkt 6). Not a file format: the pipeline claims no extension and
- * is invoked by {@code FileProcessingService#processConfluencePage} directly.
+ * is invoked by {@code FileProcessingService#ingest} directly.
  *
  * <p>{@link ConfluenceMacroRules} decides which macros stay: statically embedded content does,
  * view-time content does not. Headings, tables, lists, code blocks and task lists keep their

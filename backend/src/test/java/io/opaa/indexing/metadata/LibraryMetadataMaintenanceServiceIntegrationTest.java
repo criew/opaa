@@ -14,6 +14,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -421,7 +422,7 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
   private Document indexedIn(KnowledgeLibrary target, String fileName) throws IOException {
     Path file = Path.of(target.getSourcePath()).resolve(fileName);
     writePdf(file, fileName.replace(".pdf", "").replace('_', ' '));
-    assertThat(fileProcessingService.processFile(file, target))
+    assertThat(fileProcessingService.ingest(DocumentIngest.localFile(target, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
     return documentRepository.findAll().stream()
         .filter(document -> fileName.equals(document.getFileName()))

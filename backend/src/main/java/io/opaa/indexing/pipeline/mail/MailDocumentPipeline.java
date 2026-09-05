@@ -115,7 +115,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
       if (Files.size(source.file()) > properties.maxMessageBytes()) {
         // Checked before either reader ever runs - both build the message's full DOM in memory
         // (see MailProperties's own Javadoc), so this is the actual memory bound, not
-        // maxAttachmentBytes further down. FileProcessingService#processFile enforces no
+        // maxAttachmentBytes further down. FileProcessingService#ingest enforces no
         // per-file size limit of its own (only the library's total storage quota).
         log.warn(
             "Skipping {}: {} bytes exceeds the configured limit of {} bytes"

@@ -155,7 +155,9 @@ Zwei Stufen:
    Dokument zuletzt erfolgreich indiziert, wird die Datei ohne Download übersprungen. Ein
    fehlendes Datum gilt als „unbekannt", nicht als „unverändert". Sonst würde eine `<ul>`-Liste
    nur beim ersten Mal geladen.
-2. **Prüfsumme** nach dem Download, wie bei jeder Quelle.
+2. **Prüfsumme** nach dem Download, wie bei jeder Quelle. Eine Datei mit neuem Änderungsdatum,
+   aber unveränderter Prüfsumme behält ihre Chunks; das neue Datum wird trotzdem gespeichert, sodass
+   der nächste Lauf sie schon in Stufe 1 überspringt.
 
 Bedingte HTTP-Anfragen mit ETag oder If-Modified-Since nutzt dieser Konnektor nicht.
 

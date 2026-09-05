@@ -137,7 +137,6 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
         executor,
         org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
         new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, ""),
-        org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
         TestDocumentMetadataServices.returningEmpty());
   }
 
@@ -167,7 +166,8 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     RecordingVectorStoreWriter writer = new RecordingVectorStoreWriter(null);
     FileProcessingService service = service(writer, 1, 2);
 
-    FileProcessingResult result = service.processFile(file, targetLibrary);
+    FileProcessingResult result =
+        service.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     assertThat(writer.writeCalls).hasSize(1);
@@ -194,7 +194,8 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     RecordingVectorStoreWriter writer = new RecordingVectorStoreWriter(concurrencyProof);
     FileProcessingService service = service(writer, 3, 2);
 
-    FileProcessingResult result = service.processFile(file, targetLibrary);
+    FileProcessingResult result =
+        service.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     assertThat(writer.writeCalls).hasSize(3);
@@ -226,7 +227,8 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     RecordingVectorStoreWriter writer = new RecordingVectorStoreWriter(null);
     FileProcessingService service = service(writer, 8, 50);
 
-    FileProcessingResult result = service.processFile(file, targetLibrary);
+    FileProcessingResult result =
+        service.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     assertThat(writer.writeCalls).hasSize(1);
@@ -248,7 +250,8 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     RecordingVectorStoreWriter writer = new RecordingVectorStoreWriter(null);
     FileProcessingService service = service(writer, 3, 50);
 
-    FileProcessingResult result = service.processFile(file, targetLibrary);
+    FileProcessingResult result =
+        service.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     assertThat(writer.writeCalls).hasSize(3);
@@ -266,12 +269,13 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
 
     FileProcessingService service = service(new FailingVectorStoreWriter(), 2, 2);
 
-    assertThatThrownBy(() -> service.processFile(file, targetLibrary))
+    assertThatThrownBy(
+            () -> service.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isInstanceOf(RuntimeException.class)
         .hasMessage("embedding call blew up");
 
     verify(documentRepository)
-        .markFailedWithoutChunks(any(), org.mockito.ArgumentMatchers.isNull());
+        .markFailedWithoutChunks(any(), eq(FileProcessingService.PROCESSING_FAILED_MESSAGE));
   }
 
   /**

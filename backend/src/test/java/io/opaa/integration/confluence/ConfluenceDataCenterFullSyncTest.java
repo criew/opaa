@@ -3,7 +3,6 @@ package io.opaa.integration.confluence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -16,6 +15,7 @@ import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -78,11 +78,9 @@ class ConfluenceDataCenterFullSyncTest {
   @BeforeEach
   void setUp() throws Exception {
     fileProcessingService = mock(FileProcessingService.class);
-    when(fileProcessingService.processConfluencePage(
-            any(), any(), any(), any(), any(), any(), any()))
+    when(fileProcessingService.ingest(DocumentIngests.anyText(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
-    when(fileProcessingService.processUrlFile(
-            any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any()))
+    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
     indexingJobService = mock(IndexingJobService.class);
     DocumentRepository documentRepository = mock(DocumentRepository.class);
@@ -151,29 +149,33 @@ class ConfluenceDataCenterFullSyncTest {
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
     verify(fileProcessingService)
-        .processConfluencePage(
-            argThat(text -> text.contains("Zuständigkeiten") && text.contains("Bauantrag")),
-            eq("Abschnitt 1.1"),
-            eq(pagePath("Abschnitt 1.1")),
-            eq("1"),
-            any(),
-            eq(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1")),
-            eq(library));
+        .ingest(
+            DocumentIngests.that()
+                .text()
+                .textMatching(
+                    text -> text.contains("Zuständigkeiten") && text.contains("Bauantrag"))
+                .titled("Abschnitt 1.1")
+                .at(pagePath("Abschnitt 1.1"))
+                .marked("1")
+                .withContext(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1"))
+                .in(library)
+                .match(),
+            any());
     verify(fileProcessingService, never())
-        .processConfluencePage(any(), eq("Nur Admin"), any(), any(), any(), any(), any());
+        .ingest(DocumentIngests.that().text().titled("Nur Admin").match(), any());
     verify(fileProcessingService, never())
-        .processConfluencePage(any(), eq("Alt"), any(), any(), any(), any(), any());
+        .ingest(DocumentIngests.that().text().titled("Alt").match(), any());
     verify(fileProcessingService)
-        .processUrlFile(
-            any(),
-            eq("notizen.txt"),
-            argThat(path -> path.endsWith("/notizen.txt")),
-            eq("1"),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.CONFLUENCE),
-            eq(pagePath("Abschnitt 1.1")),
-            any(),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .named("notizen.txt")
+                .atPathMatching(path -> path.endsWith("/notizen.txt"))
+                .marked("1")
+                .in(library)
+                .from(DocumentSourceType.CONFLUENCE)
+                .foundOn(pagePath("Abschnitt 1.1"))
+                .match(),
             argThat(
                 access ->
                     new SourceDocumentContext("ENG", "Handbuch / Kapitel 1 / Abschnitt 1.1")
@@ -287,14 +289,16 @@ class ConfluenceDataCenterFullSyncTest {
     executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
 
     verify(fileProcessingService)
-        .processConfluencePage(
-            argThat(text -> text.contains("aktualisiert am Tag zwei")),
-            eq("Onboarding"),
-            eq(pagePath("Onboarding")),
-            eq("2"),
-            any(),
-            any(),
-            eq(library));
+        .ingest(
+            DocumentIngests.that()
+                .text()
+                .textMatching(text -> text.contains("aktualisiert am Tag zwei"))
+                .titled("Onboarding")
+                .at(pagePath("Onboarding"))
+                .marked("2")
+                .in(library)
+                .match(),
+            any());
     verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(indexingJobService, never()).failJob(eq(jobId), any());
   }
@@ -309,8 +313,7 @@ class ConfluenceDataCenterFullSyncTest {
     ArgumentCaptor<String> message = ArgumentCaptor.forClass(String.class);
     verify(indexingJobService).failJob(eq(jobId), message.capture());
     assertThat(message.getValue()).contains("anonym").doesNotContain("kein-gueltiges-token");
-    verify(fileProcessingService, never())
-        .processConfluencePage(any(), any(), any(), any(), any(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyText(), any());
     verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
   }
 }
