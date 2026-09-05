@@ -12,10 +12,10 @@ import java.util.List;
 
 /**
  * One metadata value of a cited document as persisted on a chat turn's source snapshot (ADR-0024;
- * Maintainer-Beschluss vom 04.09.2026 am Epic #1065): self-describing - German label, display text,
+ * Maintainer-Beschluss vom 04.09.2026 am Epic): self-describing - German label, display text,
  * machine-readable value, origin - so the Beleg renders it without any field knowledge, and a
- * library field (#1071) is just another entry. The chat's own copy: a later change to the indexing
- * record never rewrites what {@code chat_messages.sources} already holds.
+ * library field is just another entry. The chat's own copy: a later change to the indexing record
+ * never rewrites what {@code chat_messages.sources} already holds.
  */
 public record ChatSourceMetadataEntry(
     String fieldKey,
@@ -65,8 +65,8 @@ public record ChatSourceMetadataEntry(
   }
 
   /**
-   * The core fields of {@code core} followed by the library fields of {@code citationFields}
-   * (#1071) - at most two, in their configured citation order, empty ones absent.
+   * The core fields of {@code core} followed by the library fields of {@code citationFields} - at
+   * most two, in their configured citation order, empty ones absent.
    */
   public static List<ChatSourceMetadataEntry> from(
       CoreMetadata core, List<CitationFieldValue> citationFields) {

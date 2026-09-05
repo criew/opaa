@@ -32,7 +32,7 @@ final class DataCenterConfluenceClient extends AbstractConfluenceClient {
   @Override
   public void verifyCredentials() throws ConfluenceAccessException, InterruptedException {
     // Data Center does not refuse an unknown or revoked token: it serves the request anonymously
-    // with HTTP 200 (seen against the real instance, #1171) - a space listing would simply be
+    // with HTTP 200 (seen against the real instance) - a space listing would simply be
     // empty. Only the current-user resource tells who the token actually is.
     String resource = "das angemeldete Benutzerkonto";
     ConfluenceHttp.Response response = http.get(base() + REST + "/user/current", resource);

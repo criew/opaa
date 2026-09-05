@@ -16,11 +16,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Covers #836: {@link AutoindexCrawlerService#crawl} must terminate on a cyclic directory structure
- * instead of recursing without bound - the visited-URL guard (a genuine cycle back to an
- * already-crawled URL), the depth limit (a same-origin cycle that never repeats a URL exactly, e.g.
- * a symlink loop growing the path by one segment per hop) and the entry limit (both for the file
- * count itself and, since the #836 PR review, for the number of directories visited) are each
+ * Terminates on a cyclic directory structure - {@link AutoindexCrawlerService#crawl} must terminate
+ * on a cyclic directory structure instead of recursing without bound - the visited-URL guard (a
+ * genuine cycle back to an already-crawled URL), the depth limit (a same-origin cycle that never
+ * repeats a URL exactly, e.g. a symlink loop growing the path by one segment per hop) and the entry
+ * limit (both for the file count itself and for the number of directories visited) are each
  * exercised against a stub {@link HttpServer}.
  */
 class AutoindexCrawlerServiceCrawlLimitsTest {
@@ -80,7 +80,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
 
   @Test
   void anOversizedRootListingFailsTheCrawlInsteadOfGrowingTheHeapWithoutBound() {
-    // #1236 review, finding 7: fetchPage used to read the page with readAllBytes(), so an endless
+    // fetchPage must not read the page with readAllBytes(), or an endless
     // text/html response grew the heap until an OutOfMemoryError - an Error the run's own error
     // handling does not catch. It is now a plain IOException with a German message.
     server.createContext(
@@ -182,7 +182,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
     // One file discovered per visited directory level (0..maxDepth), then truncated.
     assertThat(result.entries()).hasSize(maxDepth + 1);
     assertThat(result.depthLimitReached()).isTrue();
-    // #836 PR review, finding 2: depth and entry-count truncation used to share a single "already
+    // Depth and entry-count truncation must not share a single "already
     // logged" flag - this asserts they are now tracked (and reported back to the caller)
     // independently: this scenario never comes close to the (much larger) entry limit.
     assertThat(result.entryLimitReached()).isFalse();
@@ -192,7 +192,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
   @Test
   void entryLimitTruncatesFileCountAcrossTwoLevelsWithoutException()
       throws IOException, InterruptedException {
-    // #836 PR review, finding 3: the entry (file-count) limit itself was untested. The root
+    // The entry (file-count) limit itself was untested. The root
     // listing carries three files and a subdirectory; the subdirectory carries three more files -
     // five in total spread over two levels, well above maxEntries=2.
     AtomicInteger subRequestCount = new AtomicInteger();
@@ -245,7 +245,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
   @Test
   void anUnreachableSubdirectoryMarksTheResultIncompleteWithoutFailingTheWholeCrawl()
       throws IOException, InterruptedException {
-    // #886 review: distinct from depthLimitReached/entryLimitReached - neither limit is hit here,
+    // distinct from depthLimitReached/entryLimitReached - neither limit is hit here,
     // but "sub/" answering 500 still means entries is missing content this crawl never saw, which
     // StaleDocumentCleanupService's caller must treat the same way as a limit (never delete by
     // absence on an incomplete bestand).

@@ -170,4 +170,122 @@ describe('MetadataFilterPopover (#1070)', () => {
       'Dokumentart wird nicht angeboten: nur bei 12 % der Dokumente vorhanden (Schwelle 90 %).',
     )
   })
+
+  const LIBRARY_A = '11111111-1111-1111-1111-111111111111'
+  const LIBRARY_B = '22222222-2222-2222-2222-222222222222'
+
+  function withLibraryFields(offeredB = true) {
+    return http.get('/api/v1/search/metadata-filter-options', () =>
+      HttpResponse.json({
+        ...mockMetadataFilterOptions,
+        libraryFields: [
+          {
+            libraryId: LIBRARY_A,
+            libraryName: 'Satzungen',
+            fieldKey: 'fassung',
+            label: 'Fassung',
+            type: 'SELECT',
+            filledDocuments: 10,
+            totalDocuments: 10,
+            fillShare: 1,
+            threshold: 0.75,
+            offered: true,
+            values: [
+              { code: 'F2026', label: 'Fassung 2026', documentCount: 4 },
+              { code: 'F2027', label: 'Fassung 2027', documentCount: 2 },
+            ],
+          },
+          {
+            libraryId: LIBRARY_B,
+            libraryName: 'Projekte',
+            fieldKey: 'fassung',
+            label: 'Projektstand',
+            type: 'SELECT',
+            filledDocuments: offeredB ? 10 : 2,
+            totalDocuments: 10,
+            fillShare: offeredB ? 1 : 0.2,
+            threshold: 0.75,
+            offered: offeredB,
+            values: [{ code: 'P1', label: 'Planung', documentCount: 1 }],
+          },
+          {
+            libraryId: LIBRARY_A,
+            libraryName: 'Satzungen',
+            fieldKey: 'paragraf',
+            label: 'Paragraf',
+            type: 'PATTERN',
+            filledDocuments: 10,
+            totalDocuments: 10,
+            fillShare: 1,
+            threshold: 0.75,
+            offered: true,
+            values: [],
+          },
+        ],
+      }),
+    )
+  }
+
+  /** The field identity is (library, key): the same key in two libraries is two fields (#1071). */
+  it('offers a library field per library and applies the chosen values with their library', async () => {
+    server.use(withLibraryFields())
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    renderWithProviders(<MetadataFilterPopover scope={SCOPE} filter={null} onChange={onChange} />)
+
+    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    expect(await screen.findByText('Fassung · Satzungen')).toBeVisible()
+    expect(screen.getByText('Projektstand · Projekte')).toBeVisible()
+
+    await user.click(screen.getByRole('checkbox', { name: 'Fassung 2026 (4)' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Planung (1)' }))
+    await user.click(screen.getByRole('button', { name: 'Anwenden' }))
+
+    expect(onChange).toHaveBeenCalledWith({
+      libraryFields: [
+        { libraryId: LIBRARY_A, fieldKey: 'fassung', codes: ['F2026'] },
+        { libraryId: LIBRARY_B, fieldKey: 'fassung', codes: ['P1'] },
+      ],
+    })
+  })
+
+  it('takes an identifier as an exact value and never as a fragment', async () => {
+    server.use(withLibraryFields())
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    renderWithProviders(<MetadataFilterPopover scope={SCOPE} filter={null} onChange={onChange} />)
+
+    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    await user.type(await screen.findByLabelText('Kennung'), 'AZ-42')
+    await user.click(screen.getByRole('button', { name: 'Anwenden' }))
+
+    expect(onChange).toHaveBeenCalledWith({
+      libraryFields: [{ libraryId: LIBRARY_A, fieldKey: 'paragraf', value: 'AZ-42' }],
+    })
+    expect(screen.queryByText(/Teiltreffer/)).not.toBeInTheDocument()
+  })
+
+  it('carries a condition of a library field below the threshold through untouched', async () => {
+    server.use(withLibraryFields(false))
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    renderWithProviders(
+      <MetadataFilterPopover
+        scope={SCOPE}
+        filter={{ libraryFields: [{ libraryId: LIBRARY_B, fieldKey: 'fassung', codes: ['P1'] }] }}
+        onChange={onChange}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Fassung 2026 (4)' }))
+    await user.click(screen.getByRole('button', { name: 'Anwenden' }))
+
+    expect(onChange).toHaveBeenCalledWith({
+      libraryFields: [
+        { libraryId: LIBRARY_B, fieldKey: 'fassung', codes: ['P1'] },
+        { libraryId: LIBRARY_A, fieldKey: 'fassung', codes: ['F2026'] },
+      ],
+    })
+  })
 })

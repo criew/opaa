@@ -28,8 +28,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * End-to-end coverage of #824 (Epic #520 Phase 4, ADR-0020): a FILESYSTEM library's real directory
- * structure mirrored into {@code library_folders} by {@link AsyncIndexingExecutor}/{@link
+ * End-to-end coverage (ADR-0020): a FILESYSTEM library's real directory structure mirrored into
+ * {@code library_folders} by {@link AsyncIndexingExecutor}/{@link
  * io.opaa.library.LibraryFolderService#materializeFolderPath}, kept in sync by {@link
  * io.opaa.library.LibraryFolderService#pruneOrphanedFolders}. Runs against the real Liquibase
  * schema (AGENTS.md "Reproduktionsnachweis" - {@code fk_documents_folder}/{@code
@@ -193,8 +193,9 @@ class FilesystemFolderMappingIntegrationTest {
 
   @Test
   void backfillsFolderIdOnADocumentIndexedBeforeFolderMappingExisted() throws IOException {
-    // Simulates a document row created before #824: its file already sits under a subdirectory,
-    // but folder_id is still NULL (the state every pre-#824 document is in). The next run must
+    // Simulates a document row created before folder mapping existed: its file already sits under a
+    // subdirectory,
+    // but folder_id is still NULL (the state every earlier document is in). The next run must
     // not touch its content (same checksum, still INDEXED - a real re-index would be a regression
     // here) but must backfill folder_id, per docs/features/knowledge-sources.md's "Ordner in
     // FILESYSTEM-Bibliotheken".
@@ -236,7 +237,7 @@ class FilesystemFolderMappingIntegrationTest {
   @Test
   void removesAnOrphanedEmptyFolderChainOnceItsDirectoriesAndDocumentAreAllGone()
       throws IOException {
-    // #824 review, Befund 3: a two-level chain (Temp/2025/datei.txt), not a single folder - the
+    // a two-level chain (Temp/2025/datei.txt), not a single folder - the
     // mock-only unit coverage (LibraryFolderServiceTest#
     // pruneOrphanedFoldersRemovesAnOrphanedParentOnlyAfterItsOwnEmptyOrphanedChild) proves the
     // leaf-first *order* pruneRecursive walks in, but only the real Liquibase schema can prove
@@ -250,7 +251,7 @@ class FilesystemFolderMappingIntegrationTest {
     LibraryFolder temp = findFolder(null, "Temp").orElseThrow();
     LibraryFolder temp2025 = findFolder(temp.getId(), "2025").orElseThrow();
 
-    // Since #886, AsyncIndexingExecutor's own StaleDocumentCleanupService call would remove this
+    // AsyncIndexingExecutor's own StaleDocumentCleanupService call would remove this
     // document automatically on the next run - deleted here directly instead, to isolate and
     // exercise pruneOrphanedFolders's own folder-pruning behaviour on its own.
     Files.delete(classTempDir.resolve("Temp/2025/datei.txt"));

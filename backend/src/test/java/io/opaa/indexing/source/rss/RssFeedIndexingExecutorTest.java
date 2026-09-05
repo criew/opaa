@@ -49,7 +49,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Exercises {@link RssFeedIndexingExecutor} against a local {@code
- * com.sun.net.httpserver.HttpServer} stub (#467) - never a real address, per the issue's acceptance
+ * com.sun.net.httpserver.HttpServer} stub - never a real address, per the issue's acceptance
  * criteria. {@link FileProcessingService} is mocked here: this class's own job is the
  * feed/detail-page fetch, the change checks and the main-text extraction, all of which are
  * independent of how the shared processing chain later stores the result (that chain has its own
@@ -68,7 +68,7 @@ class RssFeedIndexingExecutorTest {
   private LibraryStorageQuotaService storageQuotaService;
   private RssFeedIndexingExecutor executor;
 
-  // #478: sourceUrl is mutated in place per test via execute(String) below
+  // sourceUrl is mutated in place per test via execute(String) below
   // (updateSourceConfiguration)
   // rather than replacing the reference, so every eq(library) verification below - written against
   // this one field - still matches after the URL changes.
@@ -96,7 +96,7 @@ class RssFeedIndexingExecutorTest {
     fileProcessingService = mock(FileProcessingService.class);
     indexingJobService = mock(IndexingJobService.class);
     documentRepository = mock(DocumentRepository.class);
-    // #1182: every successfully processed entry now looks its own row back up (by file_path) to
+    // every successfully processed entry now looks its own row back up (by file_path) to
     // become parentDocumentId for its attachments - a fresh, PENDING placeholder here is enough for
     // every test that does not care about the entry's own persisted state (isUnchanged still sees
     // PENDING, never INDEXED, so this default never makes an entry look unchanged on its own).
@@ -121,7 +121,7 @@ class RssFeedIndexingExecutorTest {
     IndexingProperties properties = new IndexingProperties(0, 0, 0, null, rss, null, null, 0);
     // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest,
     // RssFeedIndexingExecutorTargetValidationTest) - disabled here since every stub server this
-    // class talks to is deliberately loopback (com.sun.net.httpserver.HttpServer, #467's own
+    // class talks to is deliberately loopback (com.sun.net.httpserver.HttpServer,
     // acceptance criteria), which an enabled validator would reject by default.
     TargetAddressValidator targetAddressValidator = TargetAddressValidator.disabled();
     return new RssFeedIndexingExecutor(
@@ -134,7 +134,6 @@ class RssFeedIndexingExecutorTest {
             new BoundedDownloader(targetAddressValidator),
             fileProcessingService,
             storageQuotaService,
-            documentRepository,
             new io.opaa.indexing.source.attachment.AttachmentProperties(5)),
         properties,
         indexingRunEventRepository,
@@ -194,7 +193,7 @@ class RssFeedIndexingExecutorTest {
 
   /**
    * Like {@link #execute(String)}, but also configures the library's own
-   * sourceProxy/sourceCredentials (#505).
+   * sourceProxy/sourceCredentials.
    */
   private void execute(String feedUrl, String proxy, String credentials) {
     library.updateSourceConfiguration(null, feedUrl, proxy, credentials, false);
@@ -238,7 +237,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void constructorNeverAcceptsAStaleDocumentCleanupService() {
-    // #886 review: RSS deliberately never cleans up by absence (ADR-0017, decision 5) - a
+    // RSS deliberately never cleans up by absence (ADR-0017, decision 5) - a
     // constructor parameter for StaleDocumentCleanupService here would already be a structural
     // regression before any test exercises behavior, so this guards the constructor's own shape
     // rather than relying solely on a mocked-collaborator interaction test below.
@@ -251,7 +250,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void anEntryScrolledOutOfTheFeedWindowIsNeverDeleted() {
-    // #886: unlike AsyncIndexingExecutor/UrlIndexingExecutor, RSS never deletes by absence
+    // unlike AsyncIndexingExecutor/UrlIndexingExecutor, RSS never deletes by absence
     // (ADR-0017, decision 5) - an entry missing from this run's own feed fetch only means it fell
     // out of the feed's window, not that its source vanished. The feed shrinks from two entries to
     // one between two runs; documentRepository.delete must never be called for the missing one (or
@@ -279,7 +278,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void boilerplateIsStrippedEvenWithoutAMainElement_fallsBackToBody() {
-    // #490 review, finding 5: without a <main>/<article>, the selector matches nothing and the
+    // without a <main>/<article>, the selector matches nothing and the
     // executor falls back to <body> - this is the only case that actually exercises the
     // nav/header/footer .remove() call, since a matched <main> would exclude siblings anyway.
     String detailHtml =
@@ -303,7 +302,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void detailPageCharsetFromContentTypeIsHonouredInsteadOfHardcodedUtf8() {
-    // #490 review, finding 1: an ISO-8859-1 page hardcoded as UTF-8 turns "Behörde für
+    // an ISO-8859-1 page hardcoded as UTF-8 turns "Behörde für
     // Straßenbau" into U+FFFD replacement characters, silently, while still ending up INDEXED.
     String html = "<html><body><main>Behörde für Straßenbau</main></body></html>";
     byte[] isoBytes = html.getBytes(StandardCharsets.ISO_8859_1);
@@ -322,7 +321,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void detailPageWithNonHtmlContentTypeIsSkippedAndTheRunContinues() {
-    // #490 review, finding 2: a <link> pointing straight at a PDF must never be pushed through
+    // a <link> pointing straight at a PDF must never be pushed through
     // Jsoup and indexed as garbled binary text.
     serve(
         "/feed.xml",
@@ -369,7 +368,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void conditionalGetHeadersAreSentWhenFeedStateExists() {
-    // #490 review, finding 6: the previous 304 test never actually exercised sending
+    // the previous 304 test never actually exercised sending
     // If-None-Match/If-Modified-Since, because the repository stub returned empty.
     RssFeedState state =
         new RssFeedState(
@@ -396,13 +395,13 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void aStateSavedForAnotherLibraryIsNeverSentAsConditionalHeadersForThisOne() {
-    // #646, PR #665 review "should" finding 2: the actual regression guard for the read path this
+    // The actual regression guard for the read path this
     // issue fixed - RssFeedState is now looked up by (libraryId, feedUrl), not feedUrl alone.
     // feedStateRepository is a plain mock here, so stubbing findByLibraryIdAndFeedUrl for a
     // *different* UUID than library.getId() (the setUp() stub for library.getId() itself still
     // returns Optional.empty()) is exactly what a real, library-scoped repository would also
     // return: no row for this library, regardless of what another library's row holds for the
-    // same feedUrl. Before #646 this executor called the equivalent of
+    // same feedUrl. This executor must not call the equivalent of
     // feedStateRepository.findByFeedUrl(feedUrl) - unaware of *which* library was running - so it
     // would have found the foreign library's ETag here and sent it, ending the run with a false
     // 304 instead of processing the entry below.
@@ -447,7 +446,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void unchangedEntryWithAttachmentsAlreadyIndexedSkipsTheDetailPageFetchEntirely() {
-    // #492 review, finding 1: the cheap path only stays cheap once attachments already exist for
+    // the cheap path only stays cheap once attachments already exist for
     // this entry in this run's own library - existsBySourceEntryUrlAndLibraryId(true) is exactly
     // that case.
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
@@ -478,7 +477,7 @@ class RssFeedIndexingExecutorTest {
   @Test
   void unchangedEntryWithoutAttachmentsYetFetchesTheDetailPageAndBackfillsThem()
       throws IOException {
-    // #492 review, finding 1: an entry indexed before attachment support existed must still get
+    // an entry indexed before attachment support existed must still get
     // its attachments backfilled - existsBySourceEntryUrlAndLibraryId(false) is that case, and the
     // entry's own pubDate stays unchanged (its main text is never reprocessed), only the
     // attachment is new.
@@ -537,7 +536,7 @@ class RssFeedIndexingExecutorTest {
     // The entry's own main text was never reprocessed - only its attachment was backfilled.
     verify(fileProcessingService, never())
         .processRssEntry(anyString(), any(), eq(baseUrl + "/a.html"), any(), any());
-    // #518: the backfilled attachment still adds to documentsIndexedTotal even though the entry
+    // the backfilled attachment still adds to documentsIndexedTotal even though the entry
     // itself counts as skipped (unchanged), not processed.
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(1));
   }
@@ -545,7 +544,7 @@ class RssFeedIndexingExecutorTest {
   @Test
   void anotherLibraryAlreadyHavingTheAttachmentDoesNotSuppressThisLibrarysOwnBackfill()
       throws IOException {
-    // #877 review, finding 1: existsBySourceEntryUrlAndLibraryId is scoped to this run's own
+    // existsBySourceEntryUrlAndLibraryId is scoped to this run's own
     // library - another library already holding an attachment document for the same entry URL
     // must not suppress this library's own backfill. Stubbing a different library id to answer
     // true (while this run's own library answers false, as it genuinely has none yet) makes the
@@ -609,10 +608,10 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void anEntryAlreadyIndexedIntoAnotherLibraryDoesNotSuppressProcessingForThisLibrary() {
-    // #877 (Epic #826, Befund B6): isUnchanged's lookup is scoped to the run's own target
+    // isUnchanged's lookup is scoped to the run's own target
     // library (findByLibraryIdAndFilePath) - an entry another library already indexed under the
     // same URL is simply never found here, so its unchanged pubDate there cannot suppress
-    // processing here, the same outcome the pre-#877 library-equality check used to guarantee.
+    // processing here.
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
     when(fileProcessingService.processRssEntry(
@@ -623,7 +622,7 @@ class RssFeedIndexingExecutorTest {
 
     verify(fileProcessingService, timeout(2000))
         .processRssEntry(anyString(), anyString(), eq(baseUrl + "/a.html"), any(), eq(library));
-    // Twice, not once (#1182): isUnchanged's own change-detection lookup, plus the post-processing
+    // Twice, not once: isUnchanged's own change-detection lookup, plus the post-processing
     // lookup that resolves the entry's own row as parentDocumentId for its attachments.
     verify(documentRepository, timeout(2000).times(2))
         .findByLibraryIdAndFilePath(library.getId(), baseUrl + "/a.html");
@@ -663,7 +662,7 @@ class RssFeedIndexingExecutorTest {
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
-    // #513 (motivating BMF case, PR #604 review nit d): a bot-protection rejection is not just
+    // A bot-protection rejection is not just
     // counted as skipped - it becomes its own REJECTED IndexingRunEvent, without which nobody can
     // tell 19 skipped-because-rejected entries apart from any other reason for a lower count than
     // the feed offered.
@@ -674,14 +673,14 @@ class RssFeedIndexingExecutorTest {
                     event.getCategory() == IndexingEventCategory.REJECTED
                         && (baseUrl + "/forbidden.html").equals(event.getReference())
                         // Must never leak the raw HTTP status/exception text alone - a German,
-                        // human-readable reason instead (#513 acceptance criteria).
+                        // human-readable reason instead.
                         && event.getMessage() != null
                         && event.getMessage().contains("abgewiesen")));
   }
 
   @Test
   void anEntryOverTheLibraryStorageQuotaIsSkippedAndRecordedAsARejectedEvent() {
-    // #119: the connector run protocol (#604) must show why a document stopped being added, not
+    // the connector run protocol must show why a document stopped being added, not
     // just count it as skipped - QUOTA_EXCEEDED becomes its own REJECTED event with the exact
     // wording LibraryStorageQuotaService produces.
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/over-quota.html"));
@@ -709,7 +708,7 @@ class RssFeedIndexingExecutorTest {
   @Test
   void anEntryRejectedForHavingNoUsableTextIsRecordedAndItsAttachmentsAreNotIndexed()
       throws Exception {
-    // NO_EXTRACTABLE_TEXT became reachable on this path with #1056 (processRssEntry now honours the
+    // NO_EXTRACTABLE_TEXT is reachable on this path (processRssEntry honours the
     // pipeline outcome instead of indexing zero chunks). Without its own branch it would fall into
     // the else: counted as processed and logged as "Indexed RSS entry" although the document is
     // FAILED - and the attachments of a rejected entry would be indexed as if it had succeeded.
@@ -743,7 +742,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void aFailedEventWriteNeverPreventsTheRunFromCompleting() {
-    // #513, PR #604 review finding 2: a DB hiccup while writing the protocol must never leave the
+    // A DB hiccup while writing the protocol must never leave the
     // job stuck RUNNING - uk_indexing_jobs_library_running (migration 028) would then permanently
     // block every future run of this library. IndexingRunEventRecorder must swallow this itself.
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/forbidden.html"));
@@ -769,7 +768,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void anEntryWithASyntacticallyInvalidLinkIsSkippedAndTheRunContinues() {
-    // #651: isHttpOrHttps only checks the scheme prefix - an http(s)-prefixed link with an
+    // isHttpOrHttps only checks the scheme prefix - an http(s)-prefixed link with an
     // embedded space is still syntactically invalid and makes URI.create(entryUrl), called deep
     // inside fetchDetailPage, throw IllegalArgumentException. Before this fix, that exception was
     // caught by none of processEntry's catch clauses and propagated out to execute()'s outer catch
@@ -804,7 +803,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void anEntryLinkWithAHostUriCannotParseIsSkippedAndTheRunContinues() {
-    // PR #664 review, finding 1a: URI.create itself accepts a link whose host it cannot parse
+    // URI.create itself accepts a link whose host it cannot parse
     // (e.g. one containing an underscore) without throwing at all - isValidUri's original
     // URI.create(url) call therefore let this link straight through, both isHttpOrHttps and
     // isValidUri passed, and only the later HttpRequest.newBuilder().uri(...) inside
@@ -836,7 +835,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void aDetailPageRedirectToAnUnresolvableLocationIsSkippedAndTheRunContinues() {
-    // PR #664 review, finding 1b: a redirect hop's own Location header is server-controlled input
+    // A redirect hop's own Location header is server-controlled input
     // no pre-validation of entryUrl can cover - sendDetailPageRequest's
     // currentUri.resolve(location) can itself throw IllegalArgumentException for a Location value
     // that is not a valid relative/absolute reference at all (here: a space inside the authority).
@@ -874,7 +873,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void aDetailPageRedirectedToAHostUriCannotParseIsRejectedAndTheRunContinues() {
-    // PR #664 review, finding 3: the RSS variant of isForeignHostRedirect had no dedicated test -
+    // The RSS variant of isForeignHostRedirect had no dedicated test -
     // a detail-page redirect whose target host URI cannot parse (here: an underscore) must be
     // rejected as foreign (RejectedByRemoteException -> REJECTED event, entry skipped), not crash
     // the run and not be treated as same-origin.
@@ -906,9 +905,9 @@ class RssFeedIndexingExecutorTest {
                 event ->
                     event.getCategory() == IndexingEventCategory.REJECTED
                         && (baseUrl + "/a.html").equals(event.getReference())
-                        // Maintainer nachtrag to #693 (21.08.2026): a rejected redirect gets its
+                        // A rejected redirect gets its
                         // own, distinguishable message ("...auf einen fremden Host abgelehnt"),
-                        // not the generic HTTP-status wording ("abgewiesen") #513 introduced for
+                        // not the generic HTTP-status wording ("abgewiesen") used for
                         // a 403/429 response.
                         && event.getMessage() != null
                         && event.getMessage().contains("fremden Host")));
@@ -916,10 +915,10 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void aRejectedRedirectsMessageNeverCarriesTheFullTargetUrlOnlyItsSanitizedOrigin() {
-    // Maintainer nachtrag to #693 (21.08.2026): the redirect's own Location header is
+    // The redirect's own Location header is
     // server-controlled input that can carry a token or other sensitive query parameter - the
     // run-log message must name only the rejected target's scheme and host, never its path or
-    // query. The pre-existing #513 comment on isForeignHostRedirect ("must never reach the UI")
+    // query. The comment on isForeignHostRedirect ("must never reach the UI")
     // is about the *unsanitized* raw target this test's foreign server URL below stands in for.
     serve(
         "/feed.xml",
@@ -1012,7 +1011,7 @@ class RssFeedIndexingExecutorTest {
         .processRssEntry(anyString(), any(), eq(baseUrl + "/b.html"), any(), any());
   }
 
-  // --- #490 review, finding 3: feed-state persistence must not hide deferred entries ---
+  // --- feed-state persistence must not hide deferred entries ---
 
   @Test
   void feedStateIsNotPersistedWhenAnEntryWasRejectedByTheRemoteEnd() {
@@ -1059,7 +1058,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void aTargetLibraryDeletedDuringTheRunSurfacesAsAGermanRunFailureNotARawJdbcMessage() {
-    // #646, PR #665 review, optional finding 6: fk_rss_feed_state_library (migration 045) turns
+    // fk_rss_feed_state_library (migration 045) turns
     // the delete-during-run race into a DataIntegrityViolationException the moment saveFeedState
     // tries to write - simulated here by making the repository throw exactly that, since actually
     // racing KnowledgeLibraryService#deleteLibrary against this executor would need a second,
@@ -1081,7 +1080,7 @@ class RssFeedIndexingExecutorTest {
         .failJob(any(), eq("Die Bibliothek wurde während des Laufs gelöscht."));
   }
 
-  // --- #468: attachments ---
+  // --- attachments ---
 
   @Test
   void genericProfileFindsAndIndexesAPdfAttachmentInTheMainContent() throws IOException {
@@ -1131,7 +1130,7 @@ class RssFeedIndexingExecutorTest {
             eq(baseUrl + "/a.html"),
             any(),
             any());
-    // #518: documentsIndexedTotal counts the entry's own document plus its attachment (2), while
+    // documentsIndexedTotal counts the entry's own document plus its attachment (2), while
     // documentsProcessed still counts only the one feed entry.
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(2));
   }
@@ -1139,9 +1138,9 @@ class RssFeedIndexingExecutorTest {
   @Test
   void genericProfileAcceptsAPdfLinkedUnderAnUnrecognizedExtensionAndReportsTheMismatch()
       throws IOException {
-    // #404 review, finding 2: the core case #404 exists for, now proven on the RSS attachment
+    // the core case content-based admission exists for, now proven on the RSS attachment
     // path too - a document linked under an extension SupportedDocumentFormats does not recognize
-    // ("bescheid.csv") used to never even become a candidate, and is now accepted from its actual
+    // ("bescheid.csv") must still become a candidate, and is accepted from its actual
     // content, with the deviation reported instead of hidden.
     executor =
         newExecutor(
@@ -1200,12 +1199,12 @@ class RssFeedIndexingExecutorTest {
   @Test
   void anAttachmentOverTheLibraryStorageQuotaIsSkippedRecordedAsRejectedAndDefersTheFeedEtag()
       throws IOException {
-    // #119, PR #700 review finding 4: the attachment branch is the one QUOTA_EXCEEDED handler
+    // The attachment branch is the one QUOTA_EXCEEDED handler
     // that behaves differently from the other three (AsyncIndexingExecutor, UrlIndexingExecutor,
     // RssFeedIndexingExecutor's own entry-level handling just above) - it never calls
     // progress.recordSkipped() (an attachment was never counted as a discrete unit of the run's
-    // total to begin with, see #518) and instead sets anyEntryDeferred, the same deliberate "try
-    // this attachment again next run" behaviour #492's lost-attachment handling already uses.
+    // total to begin with) and instead sets anyEntryDeferred, the same deliberate "try
+    // this attachment again next run" behaviour the lost-attachment handling already uses.
     executor =
         newExecutor(
             new IndexingProperties.Rss(
@@ -1262,7 +1261,7 @@ class RssFeedIndexingExecutorTest {
   @Test
   void anEntryWithMultipleAttachmentsIncreasesTheDocumentCounterForEachAttachment()
       throws IOException {
-    // #518 acceptance criteria: a feed entry carrying several attachments must increase the
+    // A feed entry carrying several attachments must increase the
     // document counter (documentsIndexedTotal) by one for every attachment indexed, not just for
     // the entry itself - documentsProcessed stays at one feed entry regardless of how many
     // attachments it carries.
@@ -1346,7 +1345,7 @@ class RssFeedIndexingExecutorTest {
   @Test
   void gsbProfileFindsAQueryParameterAttachmentAndDerivesAFileNameFromContentType()
       throws IOException {
-    // Generic reproduction of the Government Site Builder pattern (#468) - a fictional
+    // Generic reproduction of the Government Site Builder pattern - a fictional
     // example.gov-style address, never a real institution's.
     executor =
         newExecutor(
@@ -1449,7 +1448,7 @@ class RssFeedIndexingExecutorTest {
   @Test
   void theSameAttachmentLinkedFromTwoEntriesIsProcessedForEachEntryItAppearsOn()
       throws IOException {
-    // #468 acceptance criteria: the same attachment linked from two entries becomes one document
+    // The same attachment linked from two entries becomes one document
     // - identity is by the attachment's own URL (file_path), the same deduplication
     // FileProcessingService#processUrlFile already applies for HTTP_DIRECTORY files (see
     // FileProcessingServiceTest#processUrlFileSkipsUnchangedDocument). This test exercises the
@@ -1540,7 +1539,7 @@ class RssFeedIndexingExecutorTest {
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     verify(fileProcessingService, never())
         .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
-    // #492 review, finding 2: a lost attachment must defer the feed's ETag persistence the same
+    // a lost attachment must defer the feed's ETag persistence the same
     // way a lost entry does - otherwise a future 304 would permanently suppress a retry.
     verify(feedStateRepository, never()).save(any());
   }
@@ -1648,7 +1647,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void anAttachmentAnsweringWithHtmlInsteadOfTheExpectedFormatIsSkipped() throws IOException {
-    // #492 review, finding 3: a bot-protection challenge or 200-status error page served for a
+    // a bot-protection challenge or 200-status error page served for a
     // link a profile identified via its .pdf extension must never be trusted just because the URL
     // carried a supported extension.
     executor =
@@ -1677,7 +1676,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void detailPageFollowsASameOriginRedirect() {
-    // #538 follow-up review, finding 4: sendDetailPageRequest's own manual redirect loop needs a
+    // sendDetailPageRequest's own manual redirect loop needs a
     // same-origin positive test - buildHttpClient no longer auto-follows this at the JDK level
     // (Redirect.NEVER), so a legitimate redirect (e.g. a trailing-slash or path normalization) must
     // still be chased by sendDetailPageRequest itself.
@@ -1710,7 +1709,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void anAttachmentRedirectedToAForeignHostIsSkipped() throws IOException {
-    // #492 review, finding 4: a same-host link a profile already vetted must not silently end up
+    // a same-host link a profile already vetted must not silently end up
     // downloading from, and being recorded as originating from, an address the profile never
     // approved - mirrors fetchDetailPage's own isForeignHostRedirect check.
     // "localhost", not 127.0.0.1 - see BoundedDownloaderTest's identical comment.
@@ -1762,7 +1761,7 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void attachmentDownloadSendsTheConfiguredUserAgent() throws IOException {
-    // #492 review, finding 6: the feed and every detail page already send the configured
+    // the feed and every detail page already send the configured
     // User-Agent - an attachment request left it out entirely.
     executor =
         newExecutor(
@@ -1827,7 +1826,7 @@ class RssFeedIndexingExecutorTest {
     assertThat(userAgent.get()).isEqualTo("OPAA-Indexer/attachment-test");
   }
 
-  // --- #505: sourceCredentials/sourceProxy applied to the feed fetch, detail pages and
+  // --- sourceCredentials/sourceProxy applied to the feed fetch, detail pages and
   // attachments, mirroring UrlIndexingExecutor ---
 
   private static String expectedBasicAuth(String credentials) {
@@ -1956,7 +1955,7 @@ class RssFeedIndexingExecutorTest {
     verify(indexingJobService, timeout(2000)).failJob(any(), any());
   }
 
-  // --- PR #642 review, finding 1: the feed's own origin, not just the redirect chain ---
+  // --- the feed's own origin, not just the redirect chain ---
 
   @Test
   void aFeedEntryOnAForeignHostNeverReceivesTheAuthorizationHeader() throws IOException {
@@ -2002,7 +2001,7 @@ class RssFeedIndexingExecutorTest {
     // AttachmentProfile.GENERIC only ever proposes candidates same-origin to the detail page (see
     // aLinkToAForeignHostIsNeverTreatedAsAnAttachment above), so an attachment foreign to the
     // *feed*
-    // but same-origin to a foreign *detail page* is exactly the gap PR #642 review finding 1
+    // but same-origin to a foreign *detail page* is exactly the gap this test
     // describes one level down from the entry itself.
     executor =
         newExecutor(
@@ -2074,7 +2073,7 @@ class RssFeedIndexingExecutorTest {
     }
   }
 
-  // --- PR #642 review, finding 2: a cross-origin redirect never leaks a *configured* header ---
+  // --- a cross-origin redirect never leaks a *configured* header ---
 
   @Test
   void anAttachmentRedirectedToAForeignHostWithCredentialsConfiguredNeverLeaksTheHeader()
@@ -2136,10 +2135,10 @@ class RssFeedIndexingExecutorTest {
 
   @Test
   void anInvalidSourceProxyPortFailsTheJobWithAGermanMessage() {
-    // PR #642 review, finding 4: reusing the shared ProxyAndCredentials.parse means an invalid
+    // Reusing the shared ProxyAndCredentials.parse means an invalid
     // port now fails with the same German message SourceConnectionTestService already gave,
     // instead of the JDK's own NumberFormatException text leaking into progress.fail via the
-    // outer catch (Exception e) this used to fall through to.
+    // outer catch (Exception e).
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
 
     execute(baseUrl + "/feed.xml", "127.0.0.1:not-a-port", null);

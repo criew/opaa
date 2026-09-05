@@ -26,32 +26,15 @@ import org.springframework.ai.document.Document;
 
 /**
  * Turns a Confluence page's storage-format body (XHTML with {@code ac:}/{@code ri:} macro elements,
- * identical for Cloud and Data Center) into heading-section chunks (#1137, ADR-0023;
- * docs/features/ingestion-pipelines.md, Teil 3, Punkt 6). Not a file format: the pipeline claims no
- * extension and is invoked by {@code FileProcessingService#processConfluencePage} directly, the way
- * an RSS entry's text goes to the fallback pipeline - the executor hands the body over as extracted
- * text.
+ * identical for Cloud and Data Center) into heading-section chunks (ADR-0023;
+ * ingestion-pipelines.md, Teil 3, Punkt 6). Not a file format: the pipeline claims no extension and
+ * is invoked by {@code FileProcessingService#processConfluencePage} directly.
  *
- * <p><b>Macro rules</b> ({@link ConfluenceMacroRules}): content that is embedded statically in the
- * page - panels, notes, expands, page properties, code blocks, status lozenges, excerpts - stays;
- * content that Confluence renders at view time from elsewhere - tables of contents, child lists,
- * Jira tables, label reports, includes, charts, calendars - is dropped, because it is either a
- * navigation aid or a copy of data that lives in another system (the epic keeps macros with their
- * own data store out of scope). Macro <em>parameters</em> never become text except where a
- * parameter <em>is</em> the visible content (a status lozenge's title, a panel's title).
- *
- * <p><b>Structure</b>: h1-h6 become headings ({@link #MAX_CUTTING_LEVEL} h1-h3 cut a chunk, deeper
- * headings fold into the text like every other outline-driven pipeline); tables become one line per
- * row with cells separated by " | "; lists become one line per item with a marker (•, ◦, ▪ by
- * nesting depth, or a nested number such as "2.1."); code and {@code noformat} blocks keep their
- * line breaks; task lists keep their state; link texts stay, link targets and images do not. The
- * heading path in effect at each cut is written as the chunk's first line and as its {@code
- * location} metadata (Fundort), shared with the other pipelines via {@link HeadingSectionSplitter}.
- *
- * <p><b>Context</b>: the space key and the page's hierarchy path are not in the body - the caller
- * knows them and writes them onto every chunk under {@link #SPACE_METADATA_KEY} and {@link
- * #HIERARCHY_METADATA_KEY}, which this pipeline declares as passthrough keys so {@code
- * FileProcessingService#storeChunks} keeps them.
+ * <p>{@link ConfluenceMacroRules} decides which macros stay: statically embedded content does,
+ * view-time content does not. Headings, tables, lists, code blocks and task lists keep their
+ * structure ({@link #MAX_CUTTING_LEVEL} h1-h3 cut a chunk), and the heading path becomes the
+ * chunk's first line and its {@code location}. Space key and hierarchy path come from the caller,
+ * declared here as passthrough keys.
  */
 public class ConfluenceDocumentPipeline implements DocumentPipeline {
 

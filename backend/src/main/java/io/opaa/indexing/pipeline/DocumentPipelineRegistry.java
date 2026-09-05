@@ -16,22 +16,14 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Routes an admitted document to the {@link DocumentPipeline} responsible for its format
- * (docs/features/ingestion-pipelines.md, Teil 1).
+ * (ingestion-pipelines.md, Teil 1).
  *
- * <p><b>Routing follows the detected content, not the file extension</b> - the same rule and the
- * same code path {@link SupportedDocumentFormats#decideForFileName} already applies to the
- * admission decision (#404), and for the same reason: in grown file shares documents routinely
- * carry the wrong extension. The text-tolerant special case for Markdown and Klartext (content
- * <em>and</em> extension must agree, because the two cannot be told apart by content alone)
- * therefore holds for routing too - it is not re-implemented here, it is inherited by asking {@link
- * SupportedDocumentFormats} the one question it already answers.
- *
- * <p><b>No second admission list.</b> A document that {@link SupportedDocumentFormats} does not
- * admit never reaches this class; a document it admits always gets a pipeline, the fallback one if
- * no specialized pipeline claimed its format.
- *
- * <p>Two pipelines claiming the same format is a wiring mistake, not a precedence question, and
- * fails at context startup rather than silently letting bean ordering decide.
+ * <p>Routing follows the detected content, not the file extension - the same question {@link
+ * SupportedDocumentFormats#decideForFileName} already answers for admission, so the text-tolerant
+ * special case for Markdown and Klartext is inherited rather than re-implemented. There is no
+ * second admission list: an admitted document always gets a pipeline, the fallback one if no
+ * specialized pipeline claimed its format. Two pipelines claiming the same format fail at context
+ * startup rather than letting bean ordering decide.
  */
 public class DocumentPipelineRegistry {
 
@@ -85,7 +77,7 @@ public class DocumentPipelineRegistry {
         throw new IllegalStateException(
             "Document pipeline " + pipeline.id() + " returned null from passthroughMetadataKeys()");
       }
-      // The schema keys hang on the document (ADR-0024, Entscheidung 5; #1071 for the library
+      // The schema keys hang on the document (ADR-0024, Entscheidung 5;  for the library
       // fields) and are written by FileProcessingService#storeChunks alone - a pipeline declaring
       // one is a contract breach, caught at startup rather than silently winning on a chunk whose
       // document has no value.
@@ -118,8 +110,8 @@ public class DocumentPipelineRegistry {
    *     see {@link #pipelineFor(String, String)})
    * @param formatDetectionFailed {@code true} only when {@code file}'s bytes could not be read for
    *     detection at all (deleted, permission-denied, briefly locked) - distinct from a content
-   *     decision that admits nothing: a caller persisting {@code detectedExtension} (#1126) must
-   *     not treat this transient case as a confirmed "no extension".
+   *     decision that admits nothing: a caller persisting {@code detectedExtension} must not treat
+   *     this transient case as a confirmed "no extension".
    */
   public record Routed(
       DocumentPipeline pipeline, String detectedExtension, boolean formatDetectionFailed) {
@@ -178,18 +170,17 @@ public class DocumentPipelineRegistry {
 
   /**
    * The registered pipeline with {@code id}, for a caller that invokes a pipeline directly instead
-   * of routing by format - the Confluence page pipeline claims no format at all (#1137).
+   * of routing by format - the Confluence page pipeline claims no format at all.
    */
   public java.util.Optional<DocumentPipeline> pipelineById(String id) {
     return all.stream().filter(pipeline -> pipeline.id().equals(id)).findFirst();
   }
 
   /**
-   * The id of the pipeline that claims {@code routingExtension} today - the exact counterpart of
-   * {@link #pipelineFor(String, String)} for a chunk's own {@link
-   * ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} instead of a freshly detected media type
-   * (#1126). Used by {@code io.opaa.indexing.PipelineReindexService} to tell whether a chunk is
-   * still routed the way it would be today, without re-reading or re-detecting its source file.
+   * The id of the pipeline that claims {@code routingExtension} today - the counterpart of {@link
+   * #pipelineFor(String, String)} for a chunk's stored routing key rather than a freshly detected
+   * media type, so {@code PipelineReindexService} can tell whether a chunk is still routed the way
+   * it would be today without re-reading its source file.
    *
    * @param routingExtension {@code null} or {@link ChunkPipelineMetadata#NO_ROUTING_EXTENSION} for
    *     a chunk whose routing never resolved an extension - resolves to {@link #fallbackPipeline()}
@@ -209,12 +200,10 @@ public class DocumentPipelineRegistry {
 
   /**
    * The union of every registered pipeline's {@link DocumentPipeline#passthroughMetadataKeys()},
-   * computed once here rather than read per-chunk from the pipeline that produced a given result.
-   * {@code FileProcessingService#storeChunks} filters against this union, not against the single
-   * pipeline it was called with - a nested pipeline (an attachment routed through {@code
-   * DocumentPipelineRegistry} by {@code MailDocumentPipeline}, for example) produces chunks that
-   * are ultimately stored under the outer pipeline's id, so a key only the inner pipeline declares
-   * must still pass through.
+   * computed once rather than read per chunk. {@code FileProcessingService#storeChunks} filters
+   * against this union, not against the single pipeline it was called with: chunks from a nested
+   * pipeline are stored under the outer pipeline's id, so a key only the inner one declares must
+   * still pass through.
    */
   public Set<String> allPassthroughMetadataKeys() {
     return allPassthroughMetadataKeys;

@@ -57,13 +57,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * End-to-end coverage of #1277 (ADR-0020 Nachtrag): an {@code HTTP_DIRECTORY} library mirrors the
- * crawled directory structure into {@code library_folders}, with the same materialize/prune rules
- * {@code FILESYSTEM} already follows - pruning only after a complete run. Drives the real,
- * Spring-wired bean graph against a loopback {@code com.sun.net.httpserver.HttpServer} serving a
- * {@code <ul>}-style autoindex; only the executor itself is hand-built, so crawler and downloader
- * can use {@link TargetAddressValidator#disabled()} without a context-splitting property override
- * (mirrors {@link UrlAttachmentIndexingIntegrationTest}).
+ * End-to-end coverage (ADR-0020 Nachtrag): an {@code HTTP_DIRECTORY} library mirrors the crawled
+ * directory structure into {@code library_folders}, with the same materialize/prune rules {@code
+ * FILESYSTEM} already follows - pruning only after a complete run. Drives the real, Spring-wired
+ * bean graph against a loopback {@code com.sun.net.httpserver.HttpServer} serving a {@code
+ * <ul>}-style autoindex; only the executor itself is hand-built, so crawler and downloader can use
+ * {@link TargetAddressValidator#disabled()} without a context-splitting property override (mirrors
+ * {@link UrlAttachmentIndexingIntegrationTest}).
  *
  * <p>{@code servedFiles} is keyed by the <em>raw</em> (still percent-encoded) path below the start
  * URL, and the stub answers on {@code getRawPath()}: only that way can a directory name whose
@@ -138,7 +138,7 @@ class UrlFolderMappingIntegrationTest {
   @AfterEach
   void tearDown() {
     server.stop(0);
-    // Library-scoped cleanup, deepest-first for fk_documents_parent (#1217: no TRUNCATE on shared
+    // Library-scoped cleanup, deepest-first for fk_documents_parent (no TRUNCATE on shared
     // tables); folders only after their documents, for fk_documents_folder.
     List<Document> documents =
         documentRepository.findByLibraryIdAndSourceType(
@@ -364,10 +364,10 @@ class UrlFolderMappingIntegrationTest {
 
   @Test
   void aSegmentThatDecodesToATraversalOrSeparatorIsNeverDiscoveredAtAll() {
-    // #1287: "%2E%2E" and "a%2Fb" survive URI#normalize() and only become a traversal segment or
+    // "%2E%2E" and "a%2Fb" survive URI#normalize() and only become a traversal segment or
     // a path separator once decoded - AutoindexCrawlerService#staysUnderBase now rejects the link
     // before it is ever followed, so these files are not merely mapped to the library root (the
-    // pre-#1287 behaviour), they are never discovered at all.
+    // earlier behaviour), they are never discovered at all.
     servedFiles.put("%2E%2E/gefahr.txt", "Aufsteigend.".getBytes(StandardCharsets.UTF_8));
     servedFiles.put("a%2Fb/trenner.txt", "Trenner.".getBytes(StandardCharsets.UTF_8));
 
@@ -386,7 +386,8 @@ class UrlFolderMappingIntegrationTest {
 
   @Test
   void backfillsFolderIdOnADocumentIndexedBeforeFolderMappingExisted() {
-    // AK 5: a row from before #1277 - correct content, folder_id still NULL. The next run must
+    // AK 5: a row from before folder mirroring existed - correct content, folder_id still NULL. The
+    // next run must
     // assign the folder without re-indexing the document.
     byte[] content = "Protokoll aus 2025.".getBytes(StandardCharsets.UTF_8);
     servedFiles.put("archiv/2025/protokoll.txt", content);

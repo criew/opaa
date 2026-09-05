@@ -4,10 +4,10 @@ import io.opaa.api.types.LibraryMetadataFieldType;
 import java.util.List;
 
 /**
- * What a person states when defining a library field (#1071). {@code filter} and {@code
- * contextPrefix} are the two retrieval effects, at least one of which must be named - the
- * Aufnahmeregel of metadata-schema.md; {@code citationPosition} (1 or 2, or {@code null}) is the
- * optional Beleg-Anzeige, never a field's only effect.
+ * What a person states when defining a library field. {@code filter} and {@code contextPrefix} are
+ * the two retrieval effects, at least one of which must be named - the Aufnahmeregel of
+ * metadata-schema.md; {@code citationPosition} (1 or 2, or {@code null}) is the optional
+ * Beleg-Anzeige, never a field's only effect.
  *
  * @param valuePattern required for {@link LibraryMetadataFieldType#PATTERN}, rejected otherwise
  * @param values the initial value list of a SELECT field, rejected for the other two types

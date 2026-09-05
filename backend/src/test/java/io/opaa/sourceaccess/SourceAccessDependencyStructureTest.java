@@ -15,14 +15,11 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 
 /**
- * #876 (Epic #826, finding B7): {@code io.opaa.sourceaccess} is meant to depend on neither {@code
- * io.opaa.library} nor {@code io.opaa.library}/{@code io.opaa.api} - a source-access primitive
- * (HTTP client construction, redirect following, target-address validation, bounded downloads) has
- * no business knowing about a knowledge library, indexing-internal types or a generated DTO. The PR
- * 1 extraction relied on that being true only by review; this test makes the invariant
- * self-checking before PR 2 (the {@code RssFeedIndexingExecutor} decomposition) can unknowingly
- * reintroduce a dependency the same way {@link io.opaa.audit.AuditFunnelStructureTest} guards the
- * audit funnel.
+ * {@code io.opaa.sourceaccess} is meant to depend on neither {@code io.opaa.library} nor {@code
+ * io.opaa.library}/{@code io.opaa.api} - a source-access primitive (HTTP client construction,
+ * redirect following, target-address validation, bounded downloads) has no business knowing about a
+ * knowledge library, indexing-internal types or a generated DTO. This test makes that invariant
+ * self-checking, so a later change cannot reintroduce such a dependency unnoticed.
  *
  * <p>Modeled after {@link io.opaa.audit.AuditFunnelStructureTest}: reflection over every class this
  * package declares (top-level and nested), checking every field, constructor/method parameter,
@@ -53,7 +50,7 @@ class SourceAccessDependencyStructureTest {
     assertThat(offenses)
         .as(
             "io.opaa.sourceaccess must not reference io.opaa.indexing, io.opaa.library or"
-                + " io.opaa.api in any field/parameter/return type (#876) - a source-access"
+                + " io.opaa.api in any field/parameter/return type - a source-access"
                 + " primitive has no business knowing about a knowledge library, indexing"
                 + " internals or a generated DTO")
         .isEmpty();

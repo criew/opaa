@@ -7,12 +7,11 @@ import io.opaa.library.KnowledgeLibrary;
 import java.util.Set;
 
 /**
- * {@link UrlIndexingExecutor}'s own {@link AttachmentAccess} (#1219) - the HTTP_DIRECTORY
- * counterpart of {@code FilesystemAttachmentAccess}, with the same contract: {@link
- * #markDeferred()} is a no-op because an HTTP_DIRECTORY run keeps no per-run state whose
- * persistence a lost attachment would need to suppress; a lost attachment is only retried once its
- * parent mail file's own {@code Last-Modified}/checksum changes (or an operator triggers a pipeline
- * re-index).
+ * {@link UrlIndexingExecutor}'s own {@link AttachmentAccess} - the HTTP_DIRECTORY counterpart of
+ * {@code FilesystemAttachmentAccess}, with the same contract: {@link #markDeferred()} is a no-op
+ * because an HTTP_DIRECTORY run keeps no per-run state whose persistence a lost attachment would
+ * need to suppress; a lost attachment is only retried once its parent mail file's own {@code
+ * Last-Modified}/checksum changes (or an operator triggers a pipeline re-index).
  *
  * <p>{@code indexedAttachmentPaths}/{@code reprocessedAttachmentPaths} collect what {@link
  * #recordIndexedAttachment} reports across all nesting depths - the executor folds them into its

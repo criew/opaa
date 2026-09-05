@@ -15,8 +15,8 @@ import io.opaa.indexing.metadata.LibraryMetadataFieldValue;
 import java.util.List;
 
 /**
- * Maps the library metadata field schema (#1071) onto its generated API types and the request
- * bodies onto the domain input records (#860: the domain services never see a DTO).
+ * Maps the library metadata field schema onto its generated API types and the request bodies onto
+ * the domain input records (: the domain services never see a DTO).
  */
 final class LibraryMetadataFieldResponseMapper {
 

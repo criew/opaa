@@ -6,18 +6,14 @@ import org.springframework.ai.document.Document;
 
 /**
  * What a {@link DocumentPipeline} produced for one document: its chunks, plus the reason there are
- * none when a pipeline could not turn the source into anything indexable.
- *
- * <p>The outcomes are decided by the format-specific pipeline instead of by the caller re-deciding
- * for every format (the open-closed criterion of docs/features/ingestion-pipelines.md, Teil 1): a
- * scan PDF is {@code NO_EXTRACTABLE_TEXT} because the PDF pipeline says so, not because the caller
- * knows about PDFs.
+ * none when a pipeline could not turn the source into anything indexable. The outcome is decided by
+ * the format-specific pipeline, not by a caller re-deciding per format.
  *
  * <p>{@link Outcome#PARSE_FAILED} versus {@link Outcome#NO_CONTENT}/{@link
- * Outcome#NO_EXTRACTABLE_TEXT} is the distinction "the source could not be read" versus "the source
- * was read and is empty", and it is load-bearing for the caller: a document being re-indexed keeps
- * its previous chunks on a parse failure and loses them on a legitimately empty new version
- * (#1268). A pipeline that cannot tell the two apart reports {@code PARSE_FAILED}.
+ * Outcome#NO_EXTRACTABLE_TEXT} is "could not be read" versus "was read and is empty", and it is
+ * load-bearing: a document being re-indexed keeps its previous chunks on a parse failure and loses
+ * them on a legitimately empty new version. A pipeline that cannot tell the two apart reports
+ * {@code PARSE_FAILED}.
  *
  * @param chunks never {@code null}; empty for every outcome other than {@link Outcome#CHUNKED}
  * @param discoveredAttachments embedded objects (e.g. mail/archive attachments) this pipeline found
@@ -56,23 +52,15 @@ public record DocumentPipelineResult(
     NO_CONTENT,
     /**
      * The source could not be read at all - a corrupt container, a rejected XXE attempt, a
-     * DoS-hardening limit, a file the format's reader refuses. Distinct from {@link #NO_CONTENT}
-     * because nothing is known about the document's actual content: the caller must therefore not
-     * treat it as "the new version is empty".
-     *
-     * <p>A pipeline reports this by catching every {@link java.io.IOException}/{@link
-     * RuntimeException} its own parser can throw and returning {@link #parseFailed()} with a single
-     * {@code log.warn} naming the document - never by letting the exception propagate out of {@link
-     * DocumentPipeline#run}. PDF, DOCX, PPTX, ODT, ODP and the XLSX/CSV/ODS pipeline (tabular)
-     * follow this contract (#1108); HTML, Markdown and the Tika fallback pipeline (the catch-all
-     * for every format none of those claim, so a corrupt file is likeliest to reach it) still
-     * propagate an unchecked exception on a parse failure instead - a known, pre-existing gap, but
-     * one the caller handles identically since #1268.
+     * DoS-hardening limit. Distinct from {@link #NO_CONTENT}, since nothing is known about the
+     * content, so the caller must not treat it as "the new version is empty". A pipeline reports it
+     * by catching what its parser can throw; HTML, Markdown and the Tika fallback still propagate
+     * an unchecked exception instead - a known gap the caller handles identically.
      */
     PARSE_FAILED,
     /**
-     * The document parsed, but carries no usable text - a PDF without a text layer (see {@link
-     * TikaFallbackPipeline#isTextlessPdf}), or text that chunked down to nothing. Maps to {@code
+     * The document parsed, but carries no usable text - a PDF without a text layer, or text that
+     * chunked down to nothing. Maps to {@code
      * io.opaa.indexing.DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE}.
      */
     NO_EXTRACTABLE_TEXT

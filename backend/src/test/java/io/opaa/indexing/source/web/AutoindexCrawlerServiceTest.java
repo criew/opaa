@@ -57,9 +57,9 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void derivesNameFromHrefWhenTheDisplayedNameIsTruncatedInHtmlTableLayout() {
-    // #229 (validating the Rheinfurt demo corpus - realistic, long, hyphenated file names - against
+    // (validating the Rheinfurt demo corpus - realistic, long, hyphenated file names - against
     // this format, docs/features/demo-instance.md's own "erprobte Empfehlung") surfaced that the
-    // #550 review, finding 4 fix (see derivesNameFromHrefWhenTheDisplayedNameIsTruncated above) was
+    // The fix (see derivesNameFromHrefWhenTheDisplayedNameIsTruncated above) was
     // only ever applied to the link-based layouts (parseLinkBasedLayout) - Apache's "IndexOptions
     // FancyIndexing HTMLTable" truncates the *displayed* name exactly the same way (rendered with a
     // "..&gt;" suffix) and was never covered: parseHtmlTableLayout used the anchor's link text
@@ -140,7 +140,7 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void skipsAbsoluteUrlsOnAForeignOrigin() {
-    // #550 review, finding 2: an absolute href pointing at a different origin must never be
+    // an absolute href pointing at a different origin must never be
     // followed - the Authorization header (built from this source configuration's own
     // credentials) would otherwise be sent to a host it was never meant for.
     String html =
@@ -184,7 +184,7 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void tableLayoutSkipsAPercentEncodedParentSegmentInAnAbsoluteUrl() {
-    // The same percent-encoded traversal segment #1287 blocks for a relative href must also be
+    // The same percent-encoded traversal segment blocked for a relative href must also be
     // blocked when it arrives via an already-absolute, same-origin href.
     String html =
         """
@@ -323,12 +323,12 @@ class AutoindexCrawlerServiceTest {
     assertThat(entries).isEmpty();
   }
 
-  // --- #550: link-based layouts (Apache without HTMLTable, nginx, <ul>) --------------------
+  // --- link-based layouts (Apache without HTMLTable, nginx, <ul>) --------------------
 
   @Test
   void parsesApacheModAutoindexPreLayoutWithoutHtmlTable() {
     // Standard Apache mod_autoindex output when "IndexOptions HTMLTable" is NOT set - a <pre>
-    // block with one icon+link per line, followed by date and size as trailing text (#550).
+    // block with one icon+link per line, followed by date and size as trailing text.
     String html =
         """
         <html><head><title>Index of /files/</title></head><body>
@@ -361,7 +361,7 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void parsesNginxAutoindexPreLayout() {
-    // nginx "autoindex on" - a <pre> block without icons, parent link rendered as "../" (#550).
+    // nginx "autoindex on" - a <pre> block without icons, parent link rendered as "../".
     String html =
         """
         <html><head><title>Index of /files/</title></head>
@@ -388,7 +388,7 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void parsesApacheFancyIndexingOffUlLayout() {
-    // Apache "IndexOptions -FancyIndexing" - a plain <ul> of links, no date/size at all (#550).
+    // Apache "IndexOptions -FancyIndexing" - a plain <ul> of links, no date/size at all.
     String html =
         """
         <html><head><title>Index of /files/</title></head><body>
@@ -414,7 +414,7 @@ class AutoindexCrawlerServiceTest {
   @Test
   void parsesPythonHttpServerUlLayout() {
     // Python's http.server directory listing - a plain <ul>, page title "Directory listing
-    // for ..." instead of Apache/nginx's "Index of ..." (#550).
+    // for ..." instead of Apache/nginx's "Index of ...".
     String html =
         """
         <!DOCTYPE HTML>
@@ -445,7 +445,7 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void ordinaryHomepageIsNotTreatedAsADirectoryListing() {
-    // #550 review, finding 1: without this gate, an ordinary homepage would be crawled as a
+    // without this gate, an ordinary homepage would be crawled as a
     // directory too - every trailing-slash link becomes a DIR entry crawl() then recurses into,
     // unbounded, so a same-origin navigation cycle (a page linking back to a variant of itself)
     // would recurse forever.
@@ -466,7 +466,7 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void linkBasedLayoutSkipsLinksOutsideBaseUrlAndForeignOrigins() {
-    // #550 review, findings 1 and 2 together: the link-based fallback only trusts a link if it
+    // the link-based fallback only trusts a link if it
     // both stays on baseUrl's origin (no credential leak to a foreign host) and resolves
     // underneath baseUrl itself (no wandering into unrelated same-origin pages a listing happens
     // to link to, which is exactly what would let an ordinary page slip past the listing gate and
@@ -490,7 +490,7 @@ class AutoindexCrawlerServiceTest {
     assertThat(entries.getFirst().name()).isEqualTo("readme.txt");
   }
 
-  // --- #836 PR review ("Mitnahme"): relative hrefs must not escape above baseUrl -------------
+  // --- relative hrefs must not escape above baseUrl -------------
 
   @Test
   void tableLayoutDoesNotEscapeAboveBaseUrlViaARelativeParentLink() {
@@ -516,7 +516,7 @@ class AutoindexCrawlerServiceTest {
   @Test
   void linkBasedLayoutDoesNotEscapeAboveBaseUrlViaARelativePathThatNormalizesOutside() {
     // A relative href's *raw* resolved URL always starts with baseUrl by construction (resolveUrl
-    // simply concatenates), no matter how many ".." segments it carries - so the pre-#836
+    // simply concatenates), no matter how many ".." segments it carries - so the earlier
     // startsWith(normalizedBaseUrl) check on that raw string was vacuous for every relative href.
     // Only normalizing first (staysUnderBase) actually catches an escape like this one.
     String html =
@@ -536,12 +536,12 @@ class AutoindexCrawlerServiceTest {
     assertThat(entries.getFirst().name()).isEqualTo("readme.txt");
   }
 
-  // --- #1287: percent-encoded ".." segments must not bypass staysUnderBase -------------------
+  // --- percent-encoded ".." segments must not bypass staysUnderBase -------------------
 
   @Test
   void tableLayoutDoesNotFollowAPercentEncodedParentSegment() {
     // A raw "%2E%2E/" href never contains a literal ".." segment, so URI#normalize() (which only
-    // collapses literal "."/".." segments) leaves it untouched and the pre-#1287 prefix check on
+    // collapses literal "."/".." segments) leaves it untouched and the earlier prefix check on
     // the normalized string passed - even though a web server decodes the path before resolving it
     // and would actually serve the parent directory's contents.
     String html =
@@ -642,7 +642,7 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void derivesNameFromHrefWhenTheDisplayedNameIsTruncated() {
-    // #550 review, finding 4: Apache's "IndexOptions NameWidth" truncates only the *displayed*
+    // Apache's "IndexOptions NameWidth" truncates only the *displayed*
     // name (rendered with a ".." suffix); the href always carries the full, URL-encoded file
     // name - using the link text here would lose the file extension and drop the entry from
     // SupportedDocumentFormats.
@@ -663,10 +663,10 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void preservesALiteralPlusInAFileNameInsteadOfDecodingItToASpace() {
-    // #229 review, klein 6: URLDecoder.decode is built for application/x-www-form-urlencoded
+    // URLDecoder.decode is built for application/x-www-form-urlencoded
     // (query strings), where '+' means a space - but a listing's href is a URL *path* segment,
     // where a literal '+' has no such meaning and can be an ordinary character in a real file
-    // name. Before the fix, "bericht+final.pdf" surfaced here as "bericht final.pdf".
+    // name: "bericht+final.pdf" must not surface here as "bericht final.pdf".
     String html =
         """
         <html><head><title>Index of /files/</title></head><body>
@@ -736,7 +736,7 @@ class AutoindexCrawlerServiceTest {
     assertThat(entries.getFirst().name()).isEqualTo("file.txt");
   }
 
-  // --- #693: isRedirectOriginTrusted's http->https upgrade exception -------------------------
+  // --- isRedirectOriginTrusted's http->https upgrade exception -------------------------
 
   @Test
   void redirectOriginTrusted_allowsASameHostUpgradeAtBothDefaultPorts() {
@@ -757,7 +757,7 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void redirectOriginTrusted_allowsAnUpgradeWhereOnlyTheHttpSideNamesTheStandardPortExplicitly() {
-    // PR #699 review, finding 1: the original raw getPort() comparison missed this - an explicit
+    // The original raw getPort() comparison missed this - an explicit
     // ":80" on the http side compared unequal to the https side's unspecified (-1) port, even
     // though both are the standard port for their own scheme.
     assertThat(
@@ -768,7 +768,7 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void redirectOriginTrusted_allowsAnUpgradeWhereOnlyTheHttpsSideNamesTheStandardPortExplicitly() {
-    // PR #699 review, finding 1: the mirror image - a server that writes the standard https port
+    // The mirror image - a server that writes the standard https port
     // explicitly into its own Location header.
     assertThat(
             RedirectFollowingFetcher.isRedirectOriginTrusted(
@@ -778,7 +778,7 @@ class AutoindexCrawlerServiceTest {
 
   @Test
   void redirectOriginTrusted_rejectsAnUpgradeWithDifferingExplicitPorts() {
-    // #693's Soll-Zustand is deliberately narrow: "Standard-Ports (80->443) bzw. explizit
+    // The Soll-Zustand is deliberately narrow: "Standard-Ports (80->443) bzw. explizit
     // gleicher Port" - an explicit http port that differs from an explicit https port is not
     // covered, even though both individually look plausible.
     assertThat(
@@ -816,7 +816,7 @@ class AutoindexCrawlerServiceTest {
         .isTrue();
   }
 
-  // --- maintainer nachtrag to #693 (21.08.2026): distinguishable, sanitized messages ---------
+  // --- distinguishable, sanitized messages ---------------------------------------------------
 
   @Test
   void redirectRejectionMessage_forForeignHostNeverCarriesPathQueryOrCredentials() {

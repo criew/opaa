@@ -46,16 +46,16 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 /**
- * #637: {@link RssFeedIndexingExecutor} must honour {@code targetLibrary.isSourceInsecureSsl()} for
- * its own feed fetch exactly like {@link UrlIndexingExecutor} already does for its crawl (#505) -
- * {@link io.opaa.sourceaccess.SourceHttpClientFactory#buildHttpClient} used to be called with a
- * hardcoded {@code false} here, so a RSS_FEED library configured with {@code sourceInsecureSsl:
- * true} still rejected a self-signed certificate.
+ * {@link RssFeedIndexingExecutor} must honour {@code targetLibrary.isSourceInsecureSsl()} for its
+ * own feed fetch exactly like {@link UrlIndexingExecutor} already does for its crawl - {@link
+ * io.opaa.sourceaccess.SourceHttpClientFactory#buildHttpClient} must not be called with a hardcoded
+ * {@code false} here, or an RSS_FEED library configured with {@code sourceInsecureSsl: true} would
+ * still reject a self-signed certificate.
  *
- * <p><b>Not a blanket bypass (#663 review, finding 1).</b> {@code sourceInsecureSsl} must only
- * relax certificate validation for the feed's own origin, never for a foreign one an entry's {@code
- * <link>} (or an attachment URL) happens to point at - the feed operator controls that content, not
- * the library owner who configured {@code sourceInsecureSsl}.
+ * <p><b>Not a blanket bypass.</b> {@code sourceInsecureSsl} must only relax certificate validation
+ * for the feed's own origin, never for a foreign one an entry's {@code <link>} (or an attachment
+ * URL) happens to point at - the feed operator controls that content, not the library owner who
+ * configured {@code sourceInsecureSsl}.
  *
  * <p>Runs against real {@code com.sun.net.httpserver.HttpsServer} instances, each serving a freshly
  * generated, genuinely self-signed certificate (produced via {@code keytool} into a throwaway
@@ -173,7 +173,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
             .redirectErrorStream(true)
             .start();
     String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-    // #663 review, finding 3: never wait unboundedly on an external process - a hung keytool would
+    // never wait unboundedly on an external process - a hung keytool would
     // otherwise hang the whole build instead of failing this test with a clear cause.
     boolean finishedInTime = process.waitFor(30, TimeUnit.SECONDS);
     if (!finishedInTime) {
@@ -240,7 +240,6 @@ class RssFeedIndexingExecutorInsecureSslTest {
                 new BoundedDownloader(targetAddressValidator),
                 fileProcessingService,
                 mock(LibraryStorageQuotaService.class),
-                documentRepository,
                 new io.opaa.indexing.source.attachment.AttachmentProperties(5)),
             properties,
             indexingRunEventRepository,
@@ -285,9 +284,9 @@ class RssFeedIndexingExecutorInsecureSslTest {
     ArgumentCaptor<String> errorMessage = ArgumentCaptor.forClass(String.class);
     verify(indexingJobService, timeout(5000)).failJob(any(), errorMessage.capture());
     verify(indexingJobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
-    // Pins the failure down to the TLS certificate check this test is actually about (#663 review,
-    // finding 2) - a failJob(...) call for any other reason (e.g. a typo in the feed URL) must not
-    // leave this test green.
+    // Pins the failure down to the TLS certificate check this test is actually about - a
+    // failJob(...) call for any other reason (e.g. a typo in the feed URL) must not leave this
+    // test green.
     String lowerCased = errorMessage.getValue().toLowerCase(Locale.ROOT);
     assertThat(
             lowerCased.contains("pkix")
@@ -302,7 +301,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
   @Test
   void sourceInsecureSslTrueDoesNotWeakenValidationForAForeignOriginDetailPage() {
     // feedServer's own certificate is trusted (sourceInsecureSsl: true), but the feed's single
-    // entry links to foreignServer - a different origin (#663 review, finding 1) whose self-signed
+    // entry links to foreignServer - a different origin whose self-signed
     // certificate must still be validated normally, exactly as it would be with
     // sourceInsecureSsl: false.
     executor.execute(

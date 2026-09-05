@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-/** #667: the Fundort derived from headings and page breaks. */
+/** the Fundort derived from headings and page breaks. */
 class ChunkLocationResolverTest {
 
   @Test

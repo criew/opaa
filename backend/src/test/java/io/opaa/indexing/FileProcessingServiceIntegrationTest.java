@@ -24,13 +24,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
- * Reproduces the deletion-window bug #632 fixes against the real Liquibase schema, not just {@link
+ * Reproduces the deletion window against the real Liquibase schema, not just {@link
  * FileProcessingServiceTest}'s mocked {@link DocumentRepository}: a connector document is deleted
  * (e.g. by {@code LibraryDocumentService#deleteDocument}, or a whole connector library being
  * removed) after {@link FileProcessingService#processFile}/{@code #processUrlFile}/{@code
  * #processRssEntry} have already inserted the row and started parsing, but before the final status
- * transition runs. Before the fix, that transition was a plain {@code documentRepository.save(doc)}
- * on a detached, already-deleted entity - {@link Document} assigns its own id and carries no
+ * transition runs. That transition must not be a plain {@code documentRepository.save(doc)} on a
+ * detached, already-deleted entity - {@link Document} assigns its own id and carries no
  * {@code @Version}, so Hibernate silently re-{@code INSERT}s it as a zombie row, and any chunks
  * {@code storeChunks} already wrote survive as orphans.
  *
@@ -100,7 +100,7 @@ class FileProcessingServiceIntegrationTest {
             inv -> {
               // Simulates a concurrent LibraryDocumentService#deleteDocument (or a connector
               // library delete) landing right after processFile's own initial insert, before the
-              // status transition below ever runs - the exact window #632 closes.
+              // status transition below ever runs - the exact window this ordering closes.
               documentRepository.deleteAll();
               return parsed;
             });
@@ -139,10 +139,10 @@ class FileProcessingServiceIntegrationTest {
   }
 
   /**
-   * #1047 (docs/features/hybrid-retrieval.md, "Arbeitspaket 2": "Der Volltextindex entsteht beim
-   * Schreiben des Chunks, in derselben Transaktion wie Text und Vektor") - a newly written chunk
-   * always gets both rows, never one without the other, and the full-text row is actually
-   * searchable through the GIN index, not merely present.
+   * docs/features/hybrid-retrieval.md, "Arbeitspaket 2" ("Der Volltextindex entsteht beim Schreiben
+   * des Chunks, in derselben Transaktion wie Text und Vektor"): a newly written chunk always gets
+   * both rows, never one without the other, and the full-text row is actually searchable through
+   * the GIN index, not merely present.
    */
   @Test
   void everyNewlyWrittenChunkAlsoGetsItsFullTextRowInTheSameWrite() throws IOException {
@@ -158,7 +158,7 @@ class FileProcessingServiceIntegrationTest {
     FileProcessingResult result = fileProcessingService.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    // Compares the actual sets of chunk ids, not just their counts (#1047 review, finding 8): equal
+    // Compares the actual sets of chunk ids, not just their counts: equal
     // counts alone would not catch a bug where chunk_full_text ends up populated for the right
     // number of rows but the wrong ids.
     List<java.util.UUID> vectorChunkIds =

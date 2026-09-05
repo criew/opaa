@@ -98,7 +98,7 @@ const SUPPORTED_DOCUMENT_EXTENSIONS = [
 ]
 const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024
 const documentPollCounts = new Map<string, number>()
-// Upload ids that should resolve to FAILED (#434/#614), not INDEXED, the next time the documents
+// Upload ids that should resolve to FAILED, not INDEXED, the next time the documents
 // GET handler below advances them past PENDING - see the POST handler's isEmptyContent check.
 const documentsPendingFailure = new Set<string>()
 const EMPTY_CONTENT_ERROR_MESSAGE = 'Aus der Datei konnte kein Text extrahiert werden'
@@ -111,7 +111,7 @@ export function resetDocumentMockState() {
   resetMockDocumentMetadata()
 }
 
-// #1068: the three core fields of a document, empty ones included (mirrors
+// the three core fields of a document, empty ones included (mirrors
 // DocumentMetadataCorrectionService#fieldsOf).
 const CORE_METADATA_LABELS: Record<string, string> = {
   title: 'Titel',
@@ -154,7 +154,7 @@ function mockManualField(
     actorDisplayName: mockUser.displayName,
     updatedAt: new Date().toISOString(),
   }
-  // #1069: the third state is the same operation without a value, for every core field.
+  // the third state is the same operation without a value, for every core field.
   if (value.state === 'NOT_DETERMINABLE') {
     if (value.textValue || value.vocabularyCode || value.dateValue) {
       return `„Kein Wert ermittelbar“ wird ohne Wert gesetzt (Feld ${label})`
@@ -196,7 +196,7 @@ function storeMockMetadataField(documentId: string, field: DocumentMetadataField
   mockDocumentMetadata[documentId] = [...current, field]
 }
 
-// #822: every descendant folder id of `folderId` (inclusive) - a folder's own documentCount
+// every descendant folder id of `folderId` (inclusive) - a folder's own documentCount
 // (LibraryFolderListItem/LibraryFolderResponse) counts documents recursively, and a folder delete
 // removes its whole subtree, not just its own direct children.
 function collectMockFolderSubtreeIds(libraryId: string, folderId: string): Set<string> {
@@ -248,7 +248,7 @@ function buildMockBreadcrumb(
   return chain
 }
 
-// #822 review, finding 6b: the real backend derives folderPath from the full folder chain (e.g.
+//  review, finding 6b: the real backend derives folderPath from the full folder chain (e.g.
 // "Protokolle/2026"), not just the immediate folder's own name - reuses buildMockBreadcrumb above
 // so the two never drift apart.
 //
@@ -261,14 +261,14 @@ export function buildMockFolderPath(libraryId: string, folderId: string | null):
   return chain.length > 0 ? chain.map((item) => item.name).join('/') : null
 }
 
-// #823: mirrors LibraryFolderService#resolveOrCreateFolderPath - idempotently materializes the
+// mirrors LibraryFolderService#resolveOrCreateFolderPath - idempotently materializes the
 // folder chain a dragged-and-dropped/webkitdirectory-selected upload's folderPath describes,
 // relative to baseFolderId, reusing an existing folder of the same name at each level rather than
 // creating a duplicate.
 //
 // Exported for the same reason as buildMockFolderPath above: handlers.test.ts cannot exercise a
 // real multipart upload request in this project's jsdom test environment.
-// Mirrors LibraryFolderService's MAX_DEPTH (#823 review, Befund 5d) - root counts as depth 1.
+// Mirrors LibraryFolderService's MAX_DEPTH ( review, Befund 5d) - root counts as depth 1.
 const MOCK_MAX_FOLDER_DEPTH = 10
 
 export function resolveOrCreateMockFolderPath(
@@ -278,7 +278,7 @@ export function resolveOrCreateMockFolderPath(
 ): { folderId: string | null } | { error: string; status: number } {
   const segments = folderPath.split('/').filter((segment) => segment.trim() !== '')
 
-  // #823 review, Befund 1/5d: every segment (and the resulting depth) is validated in this own
+  //  review, Befund 1/5d: every segment (and the resulting depth) is validated in this own
   // upfront pass, before any folder is created - mirrors LibraryFolderService#
   // resolveOrCreateFolderPath's identical two-pass structure (validate the whole chain, then
   // materialize it), so an invalid later segment or a depth overrun never leaves an earlier,
@@ -287,7 +287,7 @@ export function resolveOrCreateMockFolderPath(
   let depth = baseFolderId ? buildMockBreadcrumb(libraryId, baseFolderId).length : 0
   for (const rawSegment of segments) {
     const name = rawSegment.trim()
-    // Mirrors LibraryFolderService#validatePathSegment (#823): trimmed, no further separator, no
+    // Mirrors LibraryFolderService#validatePathSegment: trimmed, no further separator, no
     // relative-path traversal segment.
     if (name.length === 0 || name.length > 255) {
       return { error: 'name darf höchstens 255 Zeichen umfassen', status: 400 }
@@ -342,7 +342,7 @@ function toMockFolderResponse(libraryId: string, folder: MockLibraryFolder) {
 
 /**
  * Mirrors ChatRepository#deriveTitleFromFirstQuestionIfAbsent/#applyGeneratedTitleIfGenerated
- * (#557): if the chat exists and has no title yet, derives one (mock stand-in for the real LLM
+ *: if the chat exists and has no title yet, derives one (mock stand-in for the real LLM
  * title) and persists it on the mock chat; an existing title - whether user-set or already
  * derived - is never overwritten. Returns null for a chatId with no matching mock chat (an
  * ephemeral query).
@@ -389,7 +389,7 @@ function isMockGrantActiveOwner(grant: { role: AssetRole; expiresAt?: string | n
 
 /**
  * Mirrors AssetGrantRepository#countOtherActiveOwnerGrants - how many *other* active OWNER grants
- * a library has besides the one being changed or removed, used by both the #423 code review's
+ * a library has besides the one being changed or removed, used by both the  code review's
  * nit-4 guards below (409 "last active OWNER" on downgrade and on revoke).
  */
 function countOtherActiveMockOwnerGrants(libraryId: string, excludingGrantId: string): number {
@@ -453,7 +453,7 @@ function getRunningStatus(step: number): IndexingStatusResponse {
 }
 
 /**
- * #1071: the library metadata field schema per library, in memory for the mock session - the
+ * the library metadata field schema per library, in memory for the mock session - the
  * settings section writes it and the value-mapping dialog reads it back.
  */
 const mockLibraryMetadataFields: Record<string, LibraryMetadataFieldResponse[]> = {}
@@ -463,7 +463,7 @@ export const handlers = [
     return HttpResponse.json(mockHealthResponse)
   }),
 
-  // #478: the trigger reduces to "index this library" - libraryId is a path variable, not a
+  // the trigger reduces to "index this library" - libraryId is a path variable, not a
   // request body field, and sourceType/configuration come from the library itself (ADR-0018).
   http.post('/api/v1/libraries/:libraryId/indexing', ({ params }) => {
     const libraryId = params.libraryId as string
@@ -478,7 +478,7 @@ export const handlers = [
         { status: 404 },
       )
     }
-    // Mirrors DocumentIndexingService#toIndexingSourceType (#500 review, finding 5): UPLOAD has no
+    // Mirrors DocumentIndexingService#toIndexingSourceType ( review, finding 5): UPLOAD has no
     // run type at all - the library is a valid indexing target, it simply has nothing to run.
     if (library.sourceType === 'UPLOAD') {
       return HttpResponse.json(
@@ -509,7 +509,7 @@ export const handlers = [
     )
   }),
 
-  // #1140: the webhook secret is shown once; the mock keeps the yes/no on the library detail.
+  // the webhook secret is shown once; the mock keeps the yes/no on the library detail.
   http.post('/api/v1/libraries/:libraryId/confluence-webhook-secret', ({ params }) => {
     const libraryId = params.libraryId as string
     const library = mockLibraryDetails[libraryId]
@@ -588,13 +588,13 @@ export const handlers = [
       )
     }
     const chatId = body.chatId ?? crypto.randomUUID()
-    // Mirrors ChatService#appendTurn (#557): a title is only ever derived once - never overwriting
+    // Mirrors ChatService#appendTurn: a title is only ever derived once - never overwriting
     // one already present, whether that is a CUSTOM title the user set or a title a previous turn
     // already derived.
     const chatTitle = applyMockChatTitle(chatId, body.question)
-    // Mirrors QueryService (#526): useKnowledge=false with no (or only unreadable) libraryIds
+    // Mirrors QueryService: useKnowledge=false with no (or only unreadable) libraryIds
     // performs no retrieval - without this branch, mock/dev mode could never show the "answered
-    // without knowledge" hint that #528 added to the chat UI.
+    // without knowledge" hint that  added to the chat UI.
     if (body.useKnowledge === false && (!body.libraryIds || body.libraryIds.length === 0)) {
       return HttpResponse.json({
         answer: 'Dazu liegt mir kein Wissen aus den referenzierten Bibliotheken vor.',
@@ -617,7 +617,7 @@ export const handlers = [
     })
   }),
 
-  // Mirrors ChatController/ChatService (#525): chats are author-exclusive, listed per space and
+  // Mirrors ChatController/ChatService: chats are author-exclusive, listed per space and
   // sorted by last use - mockChatsForSpace already returns them sorted by updatedAt desc.
   http.get('/api/v1/spaces/:spaceId/chats', ({ params }) => {
     const spaceId = String(params.spaceId)
@@ -674,7 +674,7 @@ export const handlers = [
     if (body.referencedLibraryIds !== undefined && body.referencedLibraryIds !== null) {
       chat.referencedLibraryIds = body.referencedLibraryIds
     }
-    // #1070: omitted/null leaves the filter unchanged, an object without any condition clears it.
+    // omitted/null leaves the filter unchanged, an object without any condition clears it.
     if (body.metadataFilter !== undefined && body.metadataFilter !== null) {
       const filter = body.metadataFilter
       const empty =
@@ -744,7 +744,7 @@ export const handlers = [
     return HttpResponse.json(space)
   }),
 
-  // #144: restricted to ADMIN, owner and system admin - the mock's single authenticated user is
+  // restricted to ADMIN, owner and system admin - the mock's single authenticated user is
   // always the system admin (see mockUser), but its own membership role in this space still gates
   // the list, mirroring SpaceService#listMembers/#requireMemberListViewer.
   http.get('/api/v1/spaces/:spaceId/members', ({ params }) => {
@@ -763,8 +763,8 @@ export const handlers = [
     return HttpResponse.json(members)
   }),
 
-  // #782/#783: mockSpaceLibraryAssociations has an entry only for curated spaces - every other
-  // space id (uncurated, per the #706 "no association at all" transition rule) falls back to an
+  // mockSpaceLibraryAssociations has an entry only for curated spaces - every other
+  // space id (uncurated, per the  "no association at all" transition rule) falls back to an
   // empty, hasAssociations: false response rather than a 404, mirroring the real endpoint's
   // behaviour for any space the caller may see (it never 404s just for lacking curation).
   http.get('/api/v1/spaces/:spaceId/libraries', ({ params }) => {
@@ -878,7 +878,7 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  // #543: archives a space instead of deleting it - idempotent, same as SpaceService#archiveSpace.
+  // archives a space instead of deleting it - idempotent, same as SpaceService#archiveSpace.
   http.post('/api/v1/spaces/:spaceId/archive', ({ params }) => {
     const spaceId = String(params.spaceId)
     const space = mockSpaceDetails[spaceId]
@@ -895,7 +895,7 @@ export const handlers = [
     return HttpResponse.json(mockUsers)
   }),
 
-  // #777: GET /v1/users, reachable for any authenticated user (unlike /v1/admin/users above),
+  // GET /v1/users, reachable for any authenticated user (unlike /v1/admin/users above),
   // powers the member/grant pickers - returns id/email/displayName, no systemRole.
   http.get('/api/v1/users', () => {
     return HttpResponse.json(
@@ -1002,7 +1002,7 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  // #759: managed chat models (#757's admin API). apiKey is never echoed back - only apiKeySet,
+  // managed chat models ('s admin API). apiKey is never echoed back - only apiKeySet,
   // mirroring LlmModelController/LlmModelResponse in the backend.
   http.get('/api/v1/admin/models', () => {
     return HttpResponse.json(mockLlmModels)
@@ -1308,7 +1308,7 @@ export const handlers = [
     }
     if (body.sourceType === 'CONFLUENCE') {
       // Mirrors KnowledgeLibraryService#validateConfluenceConfiguration just enough for the
-      // wizard tests; the full flow arrives with #1135.
+      // wizard tests; the full flow arrives with .
       if (!body.sourceUrl) {
         return HttpResponse.json(
           { error: 'sourceUrl ist erforderlich, wenn sourceType CONFLUENCE ist' },
@@ -1407,7 +1407,7 @@ export const handlers = [
     return HttpResponse.json(detail, { status: 201 })
   }),
 
-  // #1134: the Confluence spaces the mock token may read - a fixed, searchable set for the wizard.
+  // the Confluence spaces the mock token may read - a fixed, searchable set for the wizard.
   http.post('/api/v1/libraries/confluence/spaces', async ({ request }) => {
     const body = (await request.json()) as {
       sourceUrl?: string
@@ -1430,7 +1430,7 @@ export const handlers = [
     return HttpResponse.json({ spaces: mockConfluenceSpaces })
   }),
 
-  // #514: mirrors SourceConnectionTestService's per-type validation just enough that the mock
+  // mirrors SourceConnectionTestService's per-type validation just enough that the mock
   // dialog's "Verbindung testen" button gets a plausible response in mock mode instead of an
   // unhandled request (onUnhandledRequest: 'bypass' would otherwise leave it hanging forever).
   http.post('/api/v1/libraries/source-test', async ({ request }) => {
@@ -1557,7 +1557,7 @@ export const handlers = [
         hour: body.schedule.hour ?? null,
         minute: body.schedule.minute ?? null,
         weekday: body.schedule.weekday ?? undefined,
-        // #485: a mock-plausible next run - not a real cron evaluation, just "soon" so the UI has
+        // a mock-plausible next run - not a real cron evaluation, just "soon" so the UI has
         // something non-null to render when a schedule is enabled.
         nextRunAt:
           body.schedule.frequency === 'DISABLED'
@@ -1572,7 +1572,7 @@ export const handlers = [
     return HttpResponse.json(library)
   }),
 
-  // #1257: mirrors LibraryDiagnosticsLockService#setLocked - only a real OWNER grant may
+  // mirrors LibraryDiagnosticsLockService#setLocked - only a real OWNER grant may
   // toggle the lock, the exact 403 message the backend sends when that is not the case.
   http.put('/api/v1/libraries/:libraryId/diagnostics-lock', async ({ params, request }) => {
     const libraryId = String(params.libraryId)
@@ -1580,7 +1580,7 @@ export const handlers = [
     if (!library) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
-    // #1278 review: mirrors diagnosticsLockToggleable, not myRole - myRole alone would let a
+    //  review: mirrors diagnosticsLockToggleable, not myRole - myRole alone would let a
     // mocked system-admin bypass (myRole 'OWNER' without an independent grant) through.
     if (!library.diagnosticsLockToggleable) {
       return HttpResponse.json(
@@ -1632,7 +1632,7 @@ export const handlers = [
       }
     })
 
-    // Mirrors LibraryController#listDocuments / KnowledgeLibraryService#listDocuments (#517): page/
+    // Mirrors LibraryController#listDocuments / KnowledgeLibraryService#listDocuments: page/
     // size/q query params, a case-insensitive substring match on fileName, and the paged response
     // envelope { items, page, size, totalElements }.
     const url = new URL(request.url)
@@ -1642,7 +1642,7 @@ export const handlers = [
     const folderIdParam = url.searchParams.get('folderId')
     const missingMetadataField = url.searchParams.get('missingMetadataField')
 
-    // #822: folderId is validated with or without q, mirroring GET .../folders/{folderId}'s own
+    // folderId is validated with or without q, mirroring GET .../folders/{folderId}'s own
     // unknown/foreign-folder 404 (ADR-0020).
     if (
       folderIdParam &&
@@ -1651,7 +1651,7 @@ export const handlers = [
       return HttpResponse.json({ error: 'Ordner nicht gefunden' }, { status: 404 })
     }
 
-    // #1184 (ADR-0022, Entscheidung 5): attachments (parentDocumentId set) never page, sort or
+    //  (ADR-0022, Entscheidung 5): attachments (parentDocumentId set) never page, sort or
     // count on their own - paging operates on top-level documents, and each returned top-level
     // document brings its complete (transitive) attachment subtree along, right after itself.
     const descendantsOf = (parentId: string): LibraryDocumentResponse[] =>
@@ -1666,7 +1666,7 @@ export const handlers = [
     let responseFolderId: string | null
 
     if (missingMetadataField) {
-      // #1069: the Pflege-Anker's list - bibliotheksweit like a search, one entry per document row
+      // the Pflege-Anker's list - bibliotheksweit like a search, one entry per document row
       // without a value for the field (a "kein Wert ermittelbar" mark is not empty), attachments
       // in their own right rather than grouped, so the list length equals the anchor's number.
       const isEmptyFor = (doc: LibraryDocumentResponse) =>
@@ -1688,7 +1688,7 @@ export const handlers = [
     } else if (q) {
       // Search is always bibliotheksweit, regardless of folderId (ADR-0020, Entscheidung 4) -
       // folders/breadcrumb stay empty, folderId is echoed back as null. A hit on an attachment's
-      // file name surfaces its top-level parent with the whole group (#1184).
+      // file name surfaces its top-level parent with the whole group.
       const matches = (doc: LibraryDocumentResponse) =>
         doc.fileName.toLowerCase().includes(q.toLowerCase())
       filtered = topLevelDocuments.filter(
@@ -1726,7 +1726,7 @@ export const handlers = [
     if (!canManageMockLibrary(libraryId)) {
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
     }
-    // Mirrors LibraryDocumentService#requireUploadLibrary (#479, ADR-0018 Entscheidung 1): only a
+    // Mirrors LibraryDocumentService#requireUploadLibrary (ADR-0018 Entscheidung 1): only a
     // UPLOAD library accepts manually uploaded files - a connector library's content comes
     // exclusively from its own indexing run.
     if (mockLibraryDetails[libraryId]?.sourceType !== 'UPLOAD') {
@@ -1743,7 +1743,7 @@ export const handlers = [
     if (!(file instanceof File) || file.size === 0) {
       return HttpResponse.json({ error: 'Datei ist erforderlich' }, { status: 400 })
     }
-    // #822: an omitted/empty folderId means the library's root, mirroring GET on this same path.
+    // an omitted/empty folderId means the library's root, mirroring GET on this same path.
     const folderIdField = formData.get('folderId')
     const folderId = typeof folderIdField === 'string' && folderIdField ? folderIdField : null
     if (
@@ -1752,7 +1752,7 @@ export const handlers = [
     ) {
       return HttpResponse.json({ error: 'Ordner nicht gefunden' }, { status: 404 })
     }
-    // #823: folderPath (if given) is relative to folderId - its intermediate folders are created
+    // folderPath (if given) is relative to folderId - its intermediate folders are created
     // idempotently, mirroring LibraryDocumentService#uploadDocument/LibraryFolderService#
     // resolveOrCreateFolderPath.
     const folderPathField = formData.get('folderPath')
@@ -1783,7 +1783,7 @@ export const handlers = [
       )
     }
     // Mirrors FileProcessingService#processUploadedFileAsync finding no extractable content
-    // (#434/#614): since the upload endpoint moved off the request thread, this is no longer a
+    //: since the upload endpoint moved off the request thread, this is no longer a
     // synchronous 422 - the row is returned PENDING like any other upload and only turns FAILED
     // once the (simulated) asynchronous processing below resolves it, with the same German
     // errorMessage the real endpoint records.
@@ -1830,7 +1830,7 @@ export const handlers = [
     return HttpResponse.json(document, { status: 201 })
   }),
 
-  // #1069: the Pflege-Anker of a library - counted over its mock documents on every call.
+  // the Pflege-Anker of a library - counted over its mock documents on every call.
   http.get('/api/v1/libraries/:libraryId/metadata/maintenance', ({ params }) => {
     const libraryId = String(params.libraryId)
     if (!mockLibraryDetails[libraryId]) {
@@ -1861,7 +1861,7 @@ export const handlers = [
     })
   }),
 
-  // #1071: the library's own metadata fields. Kept in memory so the settings section, the
+  // the library's own metadata fields. Kept in memory so the settings section, the
   // Abbildungsdialog and the filter popover all read the same schema in dev mode.
   http.get('/api/v1/libraries/:libraryId/metadata-fields', ({ params }) => {
     const libraryId = String(params.libraryId)
@@ -2005,12 +2005,12 @@ export const handlers = [
     },
   ),
 
-  // #1068: manual metadata correction - read, set, delete, bulk, plus the vocabulary.
+  // manual metadata correction - read, set, delete, bulk, plus the vocabulary.
   http.get('/api/v1/metadata/document-types', () =>
     HttpResponse.json({ items: mockDocumentTypeVocabulary }),
   ),
 
-  // #1070: the Füllstand and the occurring values of the filterable core fields for the caller's
+  // the Füllstand and the occurring values of the filterable core fields for the caller's
   // search scope. The mock's bestand offers the Dokumentart (above the 0.90 threshold) but not
   // the date (below 0.75), so both states of the filter interface are exercised in dev mode.
   http.get('/api/v1/search/metadata-filter-options', () =>
@@ -2141,7 +2141,7 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  // #822/#820: folder CRUD - EDITOR role or above required (canManageMockLibrary, the same
+  // folder CRUD - EDITOR role or above required (canManageMockLibrary, the same
   // threshold document upload/delete already use), mirroring LibraryFolderController.
   http.post('/api/v1/libraries/:libraryId/folders', async ({ params, request }) => {
     const libraryId = String(params.libraryId)
@@ -2151,7 +2151,7 @@ export const handlers = [
     if (!canManageMockLibrary(libraryId)) {
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
     }
-    // #822 review, finding 6b: matches LibraryFolderService#requireUploadLibrary's own message and
+    //  review, finding 6b: matches LibraryFolderService#requireUploadLibrary's own message and
     // status (409, not 400 - a well-formed request that simply conflicts with the library's fixed
     // source type), applied to create/rename/delete alike (ADR-0020: folders exist only for UPLOAD
     // libraries).
@@ -2217,7 +2217,7 @@ export const handlers = [
     if (!canManageMockLibrary(libraryId)) {
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
     }
-    // #822 review, finding 6b: mirrors the same check on POST .../folders above - rename is
+    //  review, finding 6b: mirrors the same check on POST .../folders above - rename is
     // rejected for a connector library too, not just creation.
     if (mockLibraryDetails[libraryId]?.sourceType !== 'UPLOAD') {
       return HttpResponse.json(
@@ -2264,7 +2264,7 @@ export const handlers = [
     if (!canManageMockLibrary(libraryId)) {
       return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
     }
-    // #822 review, finding 6b: mirrors the same check on POST/PATCH .../folders above - deletion is
+    //  review, finding 6b: mirrors the same check on POST/PATCH .../folders above - deletion is
     // rejected for a connector library too.
     if (mockLibraryDetails[libraryId]?.sourceType !== 'UPLOAD') {
       return HttpResponse.json(
@@ -2280,7 +2280,7 @@ export const handlers = [
     if (!folder) {
       return HttpResponse.json({ error: 'Ordner nicht gefunden' }, { status: 404 })
     }
-    // #822/ADR-0020 Entscheidung 5: recursively removes the folder's whole subtree and every
+    // /ADR-0020 Entscheidung 5: recursively removes the folder's whole subtree and every
     // document within it (chunks/stored file cleanup is the real backend's job - the mock only
     // needs to keep documentCount/list state consistent).
     const subtreeIds = collectMockFolderSubtreeIds(libraryId, folderId)
@@ -2305,7 +2305,7 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  // #738: streams a document's original file - mirrors DocumentController's own 404 for a document
+  // streams a document's original file - mirrors DocumentController's own 404 for a document
   // whose sourceType carries no local file (HTTP_DIRECTORY/RSS_FEED) or that cannot be found across
   // every mocked library at all. UPLOAD/FILESYSTEM answer with a small fake payload plus the same
   // Content-Disposition shape the real endpoint sets, so getDocumentContent's filename parsing has
@@ -2376,7 +2376,7 @@ export const handlers = [
       const existingGrant = existing[existingIndex]
       // Mirrors AssetGrantService#requireCallerCanTouchExistingGrant (escalation guard, half 2):
       // the caller may never touch a grant that already carries a role higher than their own,
-      // independent of whether they could have granted that role in the first place (#423 code
+      // independent of whether they could have granted that role in the first place ( code
       // review, nit 4 - previously only the *requested* role above was capped).
       const existingRoleIndex = ASSET_ROLE_ORDER.indexOf(existingGrant.role)
       if (existingRoleIndex > callerRoleIndex) {
@@ -2446,7 +2446,7 @@ export const handlers = [
     }
     const grant = existing[idx]
     // Mirrors AssetGrantService#requireCallerCanTouchExistingGrant, the same escalation guard
-    // half 2 as the POST update path above (#423 code review, nit 4).
+    // half 2 as the POST update path above ( code review, nit 4).
     const callerRoleIndex = ASSET_ROLE_ORDER.indexOf(library.myRole)
     const grantRoleIndex = ASSET_ROLE_ORDER.indexOf(grant.role)
     if (grantRoleIndex > callerRoleIndex) {
@@ -2482,13 +2482,13 @@ export const handlers = [
     return HttpResponse.json(mockAuthConfig)
   }),
 
-  // #583: readable without authentication, like the real endpoint - the sign-in page renders
+  // readable without authentication, like the real endpoint - the sign-in page renders
   // before there is a session and still shows the operator's mark.
   http.get('/api/v1/branding', () => {
     return HttpResponse.json(mockBranding)
   }),
 
-  // Mirrors the backend's replace-everything semantics (#582): a field that arrives empty or
+  // Mirrors the backend's replace-everything semantics: a field that arrives empty or
   // absent means "back to the OPAA default", not "leave the current value alone".
   http.put('/api/v1/system/branding', async ({ request }) => {
     const body = (await request.json()) as BrandingUpdateRequest

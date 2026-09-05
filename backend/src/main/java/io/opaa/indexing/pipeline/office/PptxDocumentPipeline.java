@@ -30,17 +30,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 
 /**
- * The PPTX pipeline (docs/features/ingestion-pipelines.md, Teil 2: eine Folie = ein Chunk). Reads
- * directly through Apache POI's {@link XMLSlideShow}, since no framework returns a per-slide
- * document and Tika flattens every slide into one text block.
+ * The PPTX pipeline (ingestion-pipelines.md, Teil 2: eine Folie = ein Chunk), reading through POI's
+ * {@link XMLSlideShow}, since no framework returns a per-slide document and Tika flattens every
+ * slide into one block. Every slide with text becomes exactly one chunk, a heading-only slide
+ * included, so the slide numbering a citation relies on stays contiguous; a presentation whose
+ * slides carry no text at all is rejected as {@code NO_EXTRACTABLE_TEXT}.
  *
- * <p>Every slide with any text becomes exactly one chunk, including a heading-only slide, so the
- * slide numbering a citation relies on stays contiguous. A presentation where no slide carries any
- * text at all is rejected as {@code NO_EXTRACTABLE_TEXT} rather than silently indexed as N
- * content-free chunks. The title placeholder (if any) becomes the chunk's leading line and its
- * {@link ChunkingService#LOCATION_METADATA_KEY location}; every other shape's text follows in shape
- * order, descending into a {@link XSLFGroupShape} recursively and reading a {@link XSLFTable} row
- * by row. Speaker notes, if any, are appended as a final labeled paragraph.
+ * <p>The title placeholder becomes the chunk's leading line and its {@link
+ * ChunkingService#LOCATION_METADATA_KEY location}, every other shape's text follows in shape order,
+ * and speaker notes are appended as a final labeled paragraph.
  */
 public class PptxDocumentPipeline implements DocumentPipeline {
 
@@ -238,7 +236,7 @@ public class PptxDocumentPipeline implements DocumentPipeline {
 
   /**
    * Non-content placeholders (slide number, date, footer/header) inherited from the notes master
-   * are excluded - they are layout scaffolding, never meaningful body text (#1104 review, Nit 7).
+   * are excluded - they are layout scaffolding, never meaningful body text.
    */
   private static final Set<Placeholder> NON_CONTENT_NOTES_PLACEHOLDERS =
       Set.of(
@@ -256,7 +254,7 @@ public class PptxDocumentPipeline implements DocumentPipeline {
       }
       // getTextType() is null for an ordinary text box that is not inherited from a notes-master
       // placeholder - Set.of(...)#contains(null) throws rather than returning false, so the null
-      // case must short-circuit before it (#1104 review round 2, wichtig 2).
+      // case must short-circuit before it.
       Placeholder textType = textShape.getTextType();
       if (textType != null && NON_CONTENT_NOTES_PLACEHOLDERS.contains(textType)) {
         continue;

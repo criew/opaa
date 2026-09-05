@@ -21,48 +21,28 @@ import org.springframework.stereotype.Component;
 public class FullTextChunkStore {
 
   /**
-   * The PostgreSQL text-search configuration every {@code content_tsv} value is built with (docs/
-   * features/hybrid-retrieval.md, "Arbeitspaket 2: Der lexikalische Suchpfad" - German stemming and
-   * stopwords). Public so the lexical search path ({@code io.opaa.query.FullTextChunkSearch})
-   * builds a matching {@code to_tsquery(TEXT_SEARCH_CONFIGURATION, ...)} call instead of hardcoding
-   * {@code "german"} independently - a second, drifting copy of this value is exactly the kind of
-   * mismatch that would silently break matching.
-   *
-   * <p>No compound splitting is layered on top of it, deliberately: the specification makes that an
-   * outcome of the benchmark's {@code compound_word} segment, not a precaution taken in advance.
+   * The PostgreSQL text-search configuration every {@code content_tsv} value is built with
+   * (docs/features/hybrid-retrieval.md, "Arbeitspaket 2"). Public so the lexical search path builds
+   * a matching {@code to_tsquery} call instead of hardcoding {@code "german"} independently, which
+   * would be exactly the kind of drift that silently breaks matching. No compound splitting is
+   * layered on top: the specification makes that an outcome of the benchmark, not a precaution.
    */
   public static final String TEXT_SEARCH_CONFIGURATION = "german";
 
   /**
    * The {@code content_tsv} weight the undecomposed identifier lexemes carry. {@code A} is the
-   * highest of PostgreSQL's four weights ({@code ts_rank}'s default weights are {@code {D, C, B, A}
-   * = {0.1, 0.2, 0.4, 1.0}}), and body text carries the default {@code D}: a chunk that matches the
-   * exact identifier therefore outranks one that merely matches the bare number the German analysis
-   * chain left behind - which is what keeps "§ 34" and "§ 35" apart in the ranking and not only in
-   * the match.
+   * highest of PostgreSQL's four weights and body text carries the default {@code D}, so a chunk
+   * matching the exact identifier outranks one matching only the bare number the German analysis
+   * chain left behind - which keeps "§ 34" and "§ 35" apart in the ranking, not only in the match.
    */
   static final String IDENTIFIER_LEXEME_WEIGHT = "A";
 
   /**
    * The {@code content_tsv_version} every row written by {@link #indexChunks} carries. <b>Raise it
-   * whenever the lexemes this class stores change</b> - a row written under an older version
-   * carries different lexemes and would silently answer the new queries wrongly. Rows at an older
-   * version are consequently invisible to the lexical search path and counted as missing by {@link
-   * FullTextIndexFillStateService}, which is what makes the gap a visible operational state on the
-   * administration page.
-   *
-   * <p><b>Since #1270 a bump is not repaired by any background job.</b> The one path that brings
-   * existing rows up to the new version is the pipeline re-index ({@link
-   * PipelineReindexService#reindexBatch}, driven by the admin endpoint): it selects a chunk whose
-   * row is missing or below this version regardless of pipeline version. That path re-parses,
-   * re-chunks and re-embeds the document, which the removed backfill did not - the accepted price
-   * of having no second write path for {@code content_tsv} (docs/features/hybrid-retrieval.md,
-   * "Arbeitspaket 2a"). Until it has run, the affected chunks are invisible to the lexical search
-   * path and the library reads {@code INCOMPLETE} on the administration page.
-   *
-   * <p>Public for the same reason {@link #TEXT_SEARCH_CONFIGURATION} is: the lexical search path
-   * ({@code io.opaa.query.FullTextChunkSearch}) must restrict its query to rows built under this
-   * version, or it would read a row whose lexemes were built by a different chain.
+   * whenever the lexemes this class stores change</b>: rows at an older version are invisible to
+   * the lexical search path, counted as missing by {@link FullTextIndexFillStateService}, and
+   * brought up to date only by {@link PipelineReindexService#reindexBatch}, never by a background
+   * job. Public because the query path must restrict itself to rows built under this version.
    */
   public static final short CURRENT_TSV_VERSION = 4;
 
@@ -73,34 +53,11 @@ public class FullTextChunkStore {
   }
 
   /**
-   * Inserts one {@code chunk_full_text} row per chunk, keyed by {@link
-   * org.springframework.ai.document.Document#getId()} - the same id {@link
-   * org.springframework.ai.vectorstore.VectorStore#add} persists as {@code vector_store.id}. Each
-   * chunk must already carry {@link VectorChunkStore#DOCUMENT_ID_METADATA_KEY}/{@link
-   * VectorChunkStore#LIBRARY_ID_METADATA_KEY} metadata (see {@code
-   * FileProcessingService#storeChunks} - every caller of this method already goes through that
-   * path).
-   *
-   * <p>The stored vector is the German analysis chain's output <b>concatenated with the
-   * undecomposed identifier lexemes</b> of {@link FullTextIdentifiers}, weighted {@link
-   * #IDENTIFIER_LEXEME_WEIGHT}. The {@code simple} configuration is what keeps them undecomposed:
-   * it lowercases and does not stem, and the lexemes are ASCII-alphanumeric by construction, so
-   * each one survives as exactly one lexeme - the whole point, since a paragraph reference must
-   * survive a chain that would otherwise split it at the {@code §} and stem what is left.
-   *
-   * <p>Deliberately not {@code array_to_tsvector}, which would be the more direct way to insert
-   * lexemes verbatim: it produces a vector without position information, and {@code setweight}
-   * writes weights into positions - on a positionless vector it is silently a no-op and every
-   * identifier lexeme would rank at the default weight {@code D} like ordinary body text.
-   *
-   * <p>{@code ON CONFLICT (chunk_id) DO UPDATE} - not {@code DO NOTHING} - makes a repeated call
-   * idempotent while still updating a row that already exists at an older {@link
-   * #CURRENT_TSV_VERSION}: a chunk id already present here at the current version is overwritten
-   * with the same values (a genuine no-op), and one present at an older version is brought up to
-   * date. {@code DO NOTHING} would have been wrong here: after a raised {@link
-   * #CURRENT_TSV_VERSION} it would leave a stale row in place while reporting success, so a reindex
-   * would never actually bring the row up to the current version. Mirrors the vector upsert {@link
-   * VectorStoreWriter#writeEmbeddedChunks} already performs on an {@code id} conflict.
+   * Inserts one {@code chunk_full_text} row per chunk, keyed by the id {@code VectorStore#add}
+   * persists as {@code vector_store.id}: the German analysis chain's output concatenated with
+   * {@link FullTextIdentifiers}' undecomposed lexemes at weight {@link #IDENTIFIER_LEXEME_WEIGHT}.
+   * Built with {@code to_tsvector}, never the positionless {@code array_to_tsvector} that would
+   * make {@code setweight} a no-op; {@code ON CONFLICT DO UPDATE} brings an older row up to date.
    */
   void indexChunks(List<org.springframework.ai.document.Document> chunks) {
     if (chunks.isEmpty()) {

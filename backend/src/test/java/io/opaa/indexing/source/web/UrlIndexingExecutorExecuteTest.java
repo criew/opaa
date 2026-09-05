@@ -59,11 +59,11 @@ import org.junit.jupiter.api.Test;
  * here, only {@link FileProcessingService}/{@link IndexingJobService}/{@link DocumentRepository}/
  * {@link IndexingRunEventRepository} are mocked.
  *
- * <p>Covers #404 review, finding 1 (the BLOCKER): a crawled entry this run ends up rejecting must
- * never reach {@link FileProcessingService#processUrlFile} and must count as skipped, not failed -
- * {@code BoundedDownloaderTest} already proves the underlying {@code downloadPrefix} call itself
- * never reads more than its cap; this class proves the executor actually uses that bounded read to
- * decide before ever calling the unbounded {@code download}.
+ * <p>A crawled entry this run ends up rejecting must never reach {@link
+ * FileProcessingService#processUrlFile} and must count as skipped, not failed - {@code
+ * BoundedDownloaderTest} already proves the underlying {@code downloadPrefix} call itself never
+ * reads more than its cap; this class proves the executor actually uses that bounded read to decide
+ * before ever calling the unbounded {@code download}.
  */
 class UrlIndexingExecutorExecuteTest {
 
@@ -186,7 +186,8 @@ class UrlIndexingExecutorExecuteTest {
   @Test
   void acceptsAMislabeledPdfAndReportsTheMismatchInsteadOfRejectingItByExtension()
       throws IOException {
-    // The core case #404 exists for, now proven on a real request/response round trip rather than
+    // The core case content-based admission exists for, now proven on a real request/response round
+    // trip rather than
     // only through UrlIndexingExecutor#decideForEntry in isolation.
     serve(
         "/files/",
@@ -233,9 +234,8 @@ class UrlIndexingExecutorExecuteTest {
   @Test
   void rejectsUnsupportedContentWithoutEverCallingFileProcessingServiceAndCountsItSkippedNotFailed()
       throws IOException {
-    // #404 review, finding 1 (BLOCKER): before the fix, this entry would have been fully
-    // downloaded (unbounded) before being rejected; a network hiccup mid-transfer would then have
-    // counted it as ERROR instead of the clean "skipped" a name-based pre-filter used to produce.
+    // An entry rejected on its content must not be fully downloaded first: a network hiccup
+    // mid-transfer would count it as ERROR instead of the clean "skipped" it is.
     serve(
         "/files/",
         "text/html",
@@ -263,7 +263,7 @@ class UrlIndexingExecutorExecuteTest {
     // Regression guard for #1229: an OLE2 file's directory sector may sit past the bounded
     // detection prefix, so a genuine .msg larger than SupportedDocumentFormats
     // #DETECTION_PREFIX_BYTES detects only as the generic application/x-tika-msoffice there. That
-    // generic type is deliberately not an accepted .msg content, so the entry used to be rejected
+    // generic type is deliberately not an accepted .msg content, so a prefix-only decision rejects
     // as an unsupported format - while the very same file is indexed fine via upload/FILESYSTEM,
     // which always detect on the complete file. The server's own Content-Type never enters the
     // decision; application/octet-stream (Apache's default for .msg) is served here to prove it.
@@ -322,7 +322,7 @@ class UrlIndexingExecutorExecuteTest {
   @Test
   void deletesTheFallbackDownloadAndReportsOneRejectionWhenTheCompleteFileIsUnsupported()
       throws IOException {
-    // The other half of #1229's new lifecycle: an OLE2 container that is neither .msg nor .doc
+    // The other half of the lifecycle: an OLE2 container that is neither .msg nor .doc
     // (an .xls, .ppt or any other legacy Office file next to the bestand) also detects as the
     // generic application/x-tika-msoffice, so it takes the same fallback download - and is then
     // rejected on its complete bytes. The temp file must not survive that, and the entry must
@@ -358,7 +358,7 @@ class UrlIndexingExecutorExecuteTest {
 
   @Test
   void anEntryAboveTheSizeCapIsRejectedAsSkippedWhileTheRestOfTheRunContinues() throws IOException {
-    // #1236: the entry's transfer is cut off at CrawlProperties#maxFileSizeBytes, so it never
+    // the entry's transfer is cut off at CrawlProperties#maxFileSizeBytes, so it never
     // reaches processUrlFile, counts as skipped rather than failed, leaves no temp file behind -
     // and the next entry of the same run is still indexed.
     executor = buildExecutor(new CrawlProperties(10, 5000, 100_000L));
@@ -431,10 +431,10 @@ class UrlIndexingExecutorExecuteTest {
 
   @Test
   void anInvalidSourceProxyPortFailsTheJobWithAGermanMessage() throws IOException {
-    // Issue #839: proxy/credentials parsing goes through the shared ProxyAndCredentials.parse
+    // Proxy/credentials parsing goes through the shared ProxyAndCredentials.parse
     // rather than an inline copy - an invalid port now fails with the same understandable German
     // message RssFeedIndexingExecutorTest#anInvalidSourceProxyPortFailsTheJobWithAGermanMessage
-    // already proves for the RSS path (PR #642 review, finding 4), instead of the JDK's own raw
+    // already proves for the RSS path, instead of the JDK's own raw
     // NumberFormatException message.
     library.updateSourceConfiguration(
         null, baseUrl + "/files/", "127.0.0.1:not-a-port", null, false);
@@ -448,7 +448,7 @@ class UrlIndexingExecutorExecuteTest {
         .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
   }
 
-  // --- #886: StaleDocumentCleanupService is only ever called after a successful, uncapped run --
+  // --- StaleDocumentCleanupService is only ever called after a successful, uncapped run --
 
   @Test
   void aSuccessfulUncappedCrawlCallsStaleDocumentCleanupWithTheCrawledUrls() throws IOException {
@@ -487,7 +487,7 @@ class UrlIndexingExecutorExecuteTest {
 
   @Test
   void aTruncatedCrawlNeverCallsStaleDocumentCleanup() throws IOException {
-    // #836/#851: a run capped by the configured entry limit must not clean up - its own
+    // a run capped by the configured entry limit must not clean up - its own
     // currentUrls would not be the source's complete bestand, so anything beyond the cut would
     // incorrectly look vanished.
     executor = buildExecutor(new CrawlProperties(10, 1, 0));
@@ -521,7 +521,7 @@ class UrlIndexingExecutorExecuteTest {
 
   @Test
   void aCrawlWithAnUnreachableSubdirectoryNeverCallsStaleDocumentCleanup() throws IOException {
-    // #886 review: a subdirectory AutoindexCrawlerService could not fetch at all (transient 5xx)
+    // a subdirectory AutoindexCrawlerService could not fetch at all (transient 5xx)
     // leaves the crawl's own entries incomplete, even though depthLimitReached/entryLimitReached
     // both stay false - a distinct reason from truncation with the same consequence for cleanup.
     serve(
@@ -561,7 +561,7 @@ class UrlIndexingExecutorExecuteTest {
 
   @Test
   void aRootListingWithZeroEntriesStillCallsCleanupButWithAnEmptySet() throws IOException {
-    // #886 review: a root page answering with an empty (but genuinely 200, well-formed) listing -
+    // a root page answering with an empty (but genuinely 200, well-formed) listing -
     // e.g. a maintenance page mistaken for the real directory - must not be read as "every
     // document vanished". The guard against an empty currentUrls lives inside
     // StaleDocumentCleanupService#cleanupVanished itself (see its own Javadoc), not in this

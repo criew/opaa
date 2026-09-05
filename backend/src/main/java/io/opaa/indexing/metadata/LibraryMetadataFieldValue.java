@@ -7,11 +7,11 @@ import jakarta.persistence.Table;
 import java.util.UUID;
 
 /**
- * One entry of a SELECT field's controlled value list (#1071, metadata-schema.md "Kontrolliertes
- * Vokabular statt Freitext"). The {@link #getCode()} is stable and never rewritten in place: a
- * label may be corrected freely, while removing or replacing a code takes the confirmed mapping,
- * which is what keeps "Dokument trägt einen Wert, den es im Schema nicht mehr gibt" unreachable -
- * the document rows reference this row by foreign key with {@code ON DELETE RESTRICT}.
+ * One entry of a SELECT field's controlled value list (metadata-schema.md "Kontrolliertes Vokabular
+ * statt Freitext"). The {@link #getCode()} is stable and never rewritten in place: a label may be
+ * corrected freely, while removing or replacing a code takes the confirmed mapping, which is what
+ * keeps "Dokument trägt einen Wert, den es im Schema nicht mehr gibt" unreachable - the document
+ * rows reference this row by foreign key with {@code ON DELETE RESTRICT}.
  */
 @Entity
 @Table(name = "library_metadata_field_values")

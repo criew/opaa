@@ -7,10 +7,10 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * What the filter interface needs for one person and one search scope (#1070): the Füllstand per
- * filterable core field with the entry condition applied, the Dokumentart values occurring in that
- * scope and the span of its Datum/Stand values. Built in the rights context of the asking person
- * over the libraries the next question would search - never a global aggregate (metadata-schema.md,
+ * What the filter interface needs for one person and one search scope: the Füllstand per filterable
+ * core field with the entry condition applied, the Dokumentart values occurring in that scope and
+ * the span of its Datum/Stand values. Built in the rights context of the asking person over the
+ * libraries the next question would search - never a global aggregate (metadata-schema.md,
  * Rechte-Invariante).
  *
  * @param totalDocuments indexed documents of the scope, the base of every share.
@@ -54,12 +54,12 @@ public record MetadataFilterOptions(
   public record DocumentTypeOption(String code, String label, long documentCount) {}
 
   /**
-   * One filterable library field of the scope (#1071), with its own Füllstand and the values its
-   * documents actually carry. The base of {@link LibraryFieldOption#fillShare()} is the field's own
-   * library, not the whole scope: the field exists only there, and measuring it against libraries
-   * that cannot carry it would keep a well-maintained field of a small library permanently below
-   * the threshold. The offered values are an aggregate over documents and are therefore built in
-   * the rights context of the asking person - unlike the configured list, which is schema.
+   * One filterable library field of the scope, with its own Füllstand and the values its documents
+   * actually carry. The base of {@link LibraryFieldOption#fillShare()} is the field's own library,
+   * not the whole scope: the field exists only there, and measuring it against libraries that
+   * cannot carry it would keep a well-maintained field of a small library permanently below the
+   * threshold. The offered values are an aggregate over documents and are therefore built in the
+   * rights context of the asking person - unlike the configured list, which is schema.
    */
   public record LibraryFieldOption(
       UUID libraryId,

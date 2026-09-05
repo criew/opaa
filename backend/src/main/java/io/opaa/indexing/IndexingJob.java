@@ -34,11 +34,9 @@ public class IndexingJob {
   private int documentsSkipped;
 
   /**
-   * The true count of documents indexed by this run - equals {@code documentsProcessed} for
-   * FILESYSTEM/HTTP_DIRECTORY runs (one processed file is exactly one document), but exceeds it for
-   * an RSS_FEED run whose entries carry attachments: every attachment indexed for an entry adds to
-   * this count without adding another processed entry. {@link IndexingRunProgress#recordProcessed}
-   * increments this alongside {@code documentsProcessed}; {@link
+   * The true count of documents indexed by this run - equal to {@code documentsProcessed} for
+   * FILESYSTEM/HTTP_DIRECTORY runs, but higher for an RSS_FEED run whose entries carry attachments,
+   * since every attachment adds here without adding a processed entry. {@link
    * IndexingRunProgress#recordDocumentIndexed} increments only this one.
    */
   @Column(name = "documents_indexed_total")
@@ -113,31 +111,31 @@ public class IndexingJob {
   private IndexingRunMode runMode = IndexingRunMode.FULL;
 
   /**
-   * #1141: a COMPLETED run that stopped in an orderly way before covering everything (its request
-   * budget ran out) and is continued by the next run - distinct from FAILED, which means the run
-   * itself broke. Never {@code true} on a FAILED or RUNNING row.
+   * a COMPLETED run that stopped in an orderly way before covering everything (its request budget
+   * ran out) and is continued by the next run - distinct from FAILED, which means the run itself
+   * broke. Never {@code true} on a FAILED or RUNNING row.
    */
   @Column(name = "incomplete", nullable = false)
   private boolean incomplete;
 
   /**
-   * #1191 (ADR-0023, Entscheidung 4): whether this run assessed its source listing. {@code null}
-   * for every run that did not - incremental, webhook, failed or budget-truncated runs, other
-   * source types - so the library view can hold on to the most recent actual assessment instead of
-   * the most recent run. Only a successful Confluence full sync writes {@code true}/{@code false}.
+   * ADR-0023, Entscheidung 4: whether this run assessed its source listing. {@code null} for every
+   * run that did not - incremental, webhook, failed or budget-truncated runs, other source types -
+   * so the library view can hold on to the most recent actual assessment instead of the most recent
+   * run. Only a successful Confluence full sync writes {@code true}/{@code false}.
    */
   @Column(name = "listing_complete")
   private Boolean listingComplete;
 
   /**
-   * #1191: the comma-separated Confluence space keys behind {@code listingComplete == false} - the
-   * spaces this run could not read or list completely, named so the warning at the library can say
-   * which bestand may be stale. {@code null} whenever the assessment is absent or complete.
+   * the comma-separated Confluence space keys behind {@code listingComplete == false} - the spaces
+   * this run could not read or list completely, named so the warning at the library can say which
+   * bestand may be stale. {@code null} whenever the assessment is absent or complete.
    */
   @Column(name = "unreadable_space_keys")
   private String unreadableSpaceKeys;
 
-  /** #1141: the run's own cost figures; {@code null} until the executor records them at the end. */
+  /** the run's own cost figures; {@code null} until the executor records them at the end. */
   @Column(name = "requests_sent")
   private Integer requestsSent;
 
@@ -297,15 +295,13 @@ public class IndexingJob {
     return List.of(unreadableSpaceKeys.split(","));
   }
 
-  /**
-   * Records this run's listing assessment (#1191); {@code keys} must be empty for a complete one.
-   */
+  /** Records this run's listing assessment; {@code keys} must be empty for a complete one. */
   public void recordListingAssessment(boolean complete, List<String> keys) {
     this.listingComplete = complete;
     this.unreadableSpaceKeys = complete || keys.isEmpty() ? null : String.join(",", keys);
   }
 
-  /** The metrics the run recorded, or {@code null} when it recorded none (#1141). */
+  /** The metrics the run recorded, or {@code null} when it recorded none. */
   public IndexingRunCost getMetrics() {
     if (requestsSent == null) {
       return null;

@@ -83,7 +83,7 @@ class ConfluenceClientContractTest {
     return factory(properties, validator).create(connection(deployment.edition(), credentials));
   }
 
-  /** A run's client (#1141): bounded by the properties' request budget. */
+  /** A run's client: bounded by the properties' request budget. */
   private ConfluenceClient runClient(Deployment deployment, int requestBudget) throws IOException {
     server = new FakeConfluenceServer(deployment.edition(), deployment.contextPath());
     seed(server);
@@ -142,7 +142,7 @@ class ConfluenceClientContractTest {
   @MethodSource("deployments")
   void theRequestBudgetCountsEveryRequestAndEndsTheClientOrderly(Deployment deployment)
       throws Exception {
-    // #1141: the budget is the run's own bound - after three calls the next one is refused before
+    // the budget is the run's own bound - after three calls the next one is refused before
     // it is sent, as BudgetExhausted rather than a failure of the instance.
     ConfluenceClient client = runClient(deployment, 3);
 

@@ -1,14 +1,10 @@
 package io.opaa.indexing.pipeline.tabular;
 
-import io.opaa.indexing.IndexingProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * DoS-hardening limits {@link TabularDocumentPipeline} (#1058) applies against a pathological
- * XLSX/CSV/ODS file - deliberately its own property block rather than a component of {@link
- * IndexingProperties} (mirrors {@code CrawlProperties}'s own reasoning): adding these here would
- * touch every one of {@link IndexingProperties}'s many positional-record call sites for a concern
- * specific to this one pipeline.
+ * DoS-hardening limits {@link TabularDocumentPipeline} applies against a pathological XLSX/CSV/ODS
+ * file.
  *
  * <p>Deliberately separate from the pipeline's chunk-size constants ({@code MAX_ROWS_PER_CHUNK}/
  * {@code MAX_CHUNK_CHARS}), which stay hardcoded: those are the Zuschnitt itself

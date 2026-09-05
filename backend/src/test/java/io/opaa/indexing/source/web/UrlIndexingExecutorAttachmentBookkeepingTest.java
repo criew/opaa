@@ -43,8 +43,8 @@ import org.mockito.ArgumentCaptor;
 
 /**
  * Unit-level coverage of {@link UrlIndexingExecutor}'s attachment bookkeeping for {@code
- * StaleDocumentCleanupService#cleanupVanished} (#1219, ADR-0022 Entscheidung 3) - the
- * HTTP_DIRECTORY mirror of {@code AsyncIndexingExecutorTest}'s #1183 cases, with {@link
+ * StaleDocumentCleanupService#cleanupVanished} (ADR-0022 Entscheidung 3) - the HTTP_DIRECTORY
+ * mirror of {@code AsyncIndexingExecutorTest}'s attachment cases, with {@link
  * AutoindexCrawlerService}/{@link BoundedDownloader} mocked the way {@code
  * UrlIndexingExecutorQuotaTest} already does.
  */
@@ -181,7 +181,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
 
   @Test
   void aTransientlyFailedAttachmentOfAReprocessedMailIsPreservedNotCleanedUp() throws IOException {
-    // The #1214-Runde-2 semantics carried over to HTTP_DIRECTORY: an attachment the attachment
+    // The semantics carried over to HTTP_DIRECTORY: an attachment the attachment
     // path reported as present-but-not-reprocessed (quota, transient read error - see
     // AttachmentIndexer#storeAttachment's recordIndexedAttachment(path, false) calls) must stay in
     // currentUrls, and - because it was not re-parsed - its own children are preserved from the

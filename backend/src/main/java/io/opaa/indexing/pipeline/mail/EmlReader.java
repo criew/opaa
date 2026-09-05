@@ -27,28 +27,15 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Reads an EML message's Kopfdaten, body and attachments via {@code org.apache.james.mime4j.dom}
- * (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5) - the header/body/attachment-text split
- * Tika's own RFC822 parser does not make.
+ * (ingestion-pipelines.md, Teil 3, Punkt 5) - the split Tika's own RFC822 parser does not make. The
+ * first {@code text/plain} part is the body, a lone {@code text/html} alternative only if none
+ * exists; every other leaf part is an attachment, and a nested {@code message/rfc822} is
+ * re-serialized and read again one recursion level deeper.
  *
- * <p>Body selection: the first {@code text/plain} part found is the body; a lone {@code text/html}
- * alternative is used only if no {@code text/plain} exists. Every other leaf part - {@code
- * Content-Disposition: attachment}, or any part carrying a file name at all - is an attachment,
- * extracted to its own temp file. A nested {@code message/rfc822} attachment (an EML-in-EML
- * forward) is re-serialized into a standalone temp file, read again by this same class one
- * recursion level deeper.
- *
- * <p>{@link MailProperties#maxAttachmentBytes()} bounds what this class writes to disk, not the
- * in-memory parse itself - mime4j already holds the whole message in memory by the time a part is
- * classified as an attachment, so {@link MailProperties#maxMessageBytes()} is the actual memory
- * guard, checked by the caller before this class ever runs.
- *
- * <p><b>Selective extraction</b> (#1243): with a {@code wantedIndex}, every attachment is still
- * read in exactly the same order, but only the one at that position is written to a temp file;
- * every other one is streamed into a discarding sink under the same size bound. Positions are
- * counted exactly as an unfiltered run does: an attachment that could not be read at all - too
- * large, or a decode failure - consumes no position, because it would not appear in the unfiltered
- * run's attachment list either. The returned {@link ParsedMailMessage} then carries the wanted
- * attachment alone, or none; a negative {@code wantedIndex} materializes nothing at all.
+ * <p>{@link MailProperties#maxAttachmentBytes()} bounds what reaches disk, not the parse itself -
+ * mime4j holds the whole message in memory, so {@link MailProperties#maxMessageBytes()} is the
+ * memory guard and is checked by the caller. With a {@code wantedIndex} only that one attachment is
+ * materialized; positions are counted exactly as an unfiltered run counts them.
  */
 final class EmlReader {
 
@@ -82,7 +69,7 @@ final class EmlReader {
       walk(message, collector, attachments, properties, budget, position);
     } catch (IOException | RuntimeException e) {
       // Whatever this pass already extracted must not leak as an orphaned temp file just because a
-      // later part in the same message failed to read (#1101 review, finding 4b) - the caller never
+      // later part in the same message failed to read - the caller never
       // gets a ParsedMailMessage to clean these up itself, since this call never returns one.
       for (ParsedMailAttachment attachment : attachments) {
         deleteQuietly(attachment.tempFile());
@@ -165,7 +152,7 @@ final class EmlReader {
     if (isAttachment(entity)) {
       if (!budget.hasCapacity()) {
         // Not extracted at all - no temp file is ever created for an attachment beyond the
-        // configured limit (#1101 review, finding 3c).
+        // configured limit.
         return;
       }
       budget.reserve();
@@ -235,8 +222,8 @@ final class EmlReader {
    * Extracts one attachment to its own temp file (or, with {@code materialize} {@code false},
    * merely reads it under the same size bound without writing it anywhere), or {@code null} when it
    * could not be read at all - a malformed part (mime4j throwing while decoding it) must only cost
-   * this one attachment, never the whole message's extraction (#1101 review, finding 4a). A {@code
-   * null} return also skips an extraction position, exactly as it did before selective extraction.
+   * this one attachment, never the whole message's extraction. A {@code null} return also skips an
+   * extraction position, exactly as it did before selective extraction.
    */
   private static ReadAttachment extractAttachment(
       Entity entity, MailProperties properties, boolean materialize) throws IOException {

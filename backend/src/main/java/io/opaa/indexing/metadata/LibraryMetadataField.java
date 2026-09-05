@@ -11,11 +11,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * One field a library defines beside the built-in core fields (#1071, metadata-schema.md Teil II
- * (b)): its stable key, German label, type and the Wirkstellen it serves. The Aufnahmeregel is an
- * invariant of this entity and of the table beneath it - a field that serves neither the filter nor
- * the Kontextpräfix does not exist; "nur Beleg-Anzeige" is not a storable state. At most two fields
- * of a library carry a {@link #getCitationPosition()} (1 or 2), which is what keeps the Belegzeile
+ * One field a library defines beside the built-in core fields (metadata-schema.md Teil II (b)): its
+ * stable key, German label, type and the Wirkstellen it serves. The Aufnahmeregel is an invariant
+ * of this entity and of the table beneath it - a field that serves neither the filter nor the
+ * Kontextpräfix does not exist; "nur Beleg-Anzeige" is not a storable state. At most two fields of
+ * a library carry a {@link #getCitationPosition()} (1 or 2), which is what keeps the Belegzeile
  * readable.
  */
 @Entity

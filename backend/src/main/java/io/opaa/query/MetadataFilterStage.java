@@ -10,8 +10,8 @@ import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.stereotype.Component;
 
 /**
- * Carries the caller-supplied core-field filter into the run (#1070, metadata-schema.md Wirkstelle
- * 1): translates {@link RetrievalContext#metadataFilter()} once into the vector-path expression and
+ * Carries the caller-supplied core-field filter into the run (metadata-schema.md Wirkstelle 1):
+ * translates {@link RetrievalContext#metadataFilter()} once into the vector-path expression and
  * hands both forms on in the state, so {@link VectorSearchStage} and {@link FullTextSearchStage}
  * apply the identical condition inside their queries.
  *

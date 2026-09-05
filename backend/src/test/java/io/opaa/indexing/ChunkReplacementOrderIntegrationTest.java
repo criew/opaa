@@ -31,9 +31,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /**
- * The order in which a changed document's chunks are exchanged (#1268): the previous chunks survive
- * until the new version has actually parsed and chunked, and both chunk stores ({@code
- * vector_store}, {@code chunk_full_text}) always agree on the result.
+ * The order in which a changed document's chunks are exchanged: the previous chunks survive until
+ * the new version has actually parsed and chunked, and both chunk stores ({@code vector_store},
+ * {@code chunk_full_text}) always agree on the result.
  *
  * <p>Two ways a parse can fail are covered, because the caller must handle both identically: a
  * pipeline that reports {@code PARSE_FAILED} without throwing (the corrupt PDF below) and one that

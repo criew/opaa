@@ -12,7 +12,7 @@ import java.util.UUID;
  * its old fields.
  *
  * <p>The per-field figures are {@link MetadataFieldFill}s, the same record the Pflege-Anker of the
- * library's own settings carries (#1305) - one definition of "ohne Wert", two rights contexts.
+ * library's own settings carries - one definition of "ohne Wert", two rights contexts.
  *
  * @param pendingDocuments every indexed document below the current version - including the ones a
  *     backfill call no longer selects because they wait for their connector run
@@ -69,7 +69,7 @@ public record MetadataBackfillProgress(
     return fillOf(field).notDeterminableDocuments();
   }
 
-  /** The Pflege-Anker of this library and field (#1069), counted in the administrative context. */
+  /** The Pflege-Anker of this library and field, counted in the administrative context. */
   public long documentsWithoutValue(CoreMetadataField field) {
     return fillOf(field).documentsWithoutValue();
   }

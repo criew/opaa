@@ -15,11 +15,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The Pflege-Anker per library and field (#1069, metadata-schema.md "Der Pflege-Anker"): "N
- * Dokumente ohne Wert", absolute and as a share of the library's indexed bestand, for the three
- * core fields and for the library's own fields (#1071) alike. Reading it needs no more than the
- * right to read the library ({@link AssetRole#VIEWER}) - whoever knows the bestand should see its
- * gaps, while correcting a value keeps the editing right of #1068.
+ * The Pflege-Anker per library and field (metadata-schema.md "Der Pflege-Anker"): "N Dokumente ohne
+ * Wert", absolute and as a share of the library's indexed bestand, for the three core fields and
+ * for the library's own fields alike. Reading it needs no more than the right to read the library
+ * ({@link AssetRole#VIEWER}) - whoever knows the bestand should see its gaps, while correcting a
+ * value keeps the editing right of .
  *
  * <p>Every figure is counted when asked through {@link MetadataFillCounter}, over exactly the
  * library the caller may read, and nothing is stored or cached: an aggregate over documents only

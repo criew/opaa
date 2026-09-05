@@ -319,6 +319,33 @@ Fremdschlüssels. Die Zahl der betroffenen Dokumente steht vorher fest
 (`GET …/metadata-fields/{fieldKey}/usage`). Ein Wert **hinzufügen** ist jederzeit möglich und ohne
 Nachlauf; ein Label korrigieren ebenso, weil die Dokumente den Code tragen, nicht das Label.
 
+**Ein Wert bleibt nur so lange am Chunk, wie sein Feld ihn tragen darf.** Die drei Chunk-Schlüssel
+eines Bibliotheksfeldes gehören zu jedem Nachzug des Dokuments, unabhängig davon, ob das Feld gerade
+filtert. Nimmt eine Verwalterin die Filter-Wirkstelle heraus oder löscht sie das Feld, verschwinden
+die Schlüssel beim nächsten Schreiben — sonst bliebe eine „hat einen Wert"-Marke liegen, und ein
+später unter demselben Schlüssel angelegtes Feld schlösse ein Dokument aus, das gar keinen Wert
+trägt. Genau das wäre ein Bruch der Leerwert-Regel, und ein Test spielt die Kette (abschalten →
+löschen → neu anlegen) durch.
+
+**Das Muster eines `PATTERN`-Feldes wird unter einem Schrittbudget ausgewertet.** Das Verwaltungsrecht
+ist keine Vertrauensgrenze: Jede angemeldete Person darf eine Bibliothek anlegen und ist deren
+Eigentümerin, ein Feldmuster ist also Nutzereingabe. `java.util.regex` kennt kein Zeitlimit, deshalb
+liest der Matcher seine Eingabe über eine Zeichenfolge, die seine Schritte zählt und nach dem Budget
+abbricht — beim Setzen eines Wertes und, gegen selbst erzeugte Worst-Case-Eingaben, schon beim
+Anlegen des Feldes. Ein Muster, das daran scheitert, wird mit 400 abgewiesen.
+
+**Eine Schemaänderung erreicht die Filteroptionen sofort.** Jede Operation an Feldern und Wertelisten
+meldet die Änderung nach dem Commit; der nutzerbezogene Zwischenspeicher der Filteroptionen wird
+dabei vollständig verworfen. Ohne das böte das Popover einen entfernten Wert bis zu fünf Minuten
+weiter an — und wies ihn beim Anwenden mit 400 ab —, während ein frisch angelegtes Feld ebenso lange
+unsichtbar bliebe.
+
+**Nicht mitabgebildet wird der klebende Filter eines Chats.** Trägt ein Chat einen Filter auf einen
+Wert, der gerade abgebildet wurde, scheitert seine nächste Frage mit einer Meldung, und die fragende
+Person entfernt den Chip. Das ist bewusst so: Ein Chat gehört seiner Autorin, und ihn im Zuge einer
+fremden Schemaänderung still umzuschreiben hieße, den Suchbereich einer Frage zu ändern, ohne dass
+jemand es sieht. Der sichtbare, korrigierbare Weg ist der bessere.
+
 **Rechte.** Schema ändern — Feld anlegen, ändern, löschen, Werteliste pflegen, Abbildung bestätigen —
 verlangt das **Verwaltungsrecht an der Bibliothek** (`MANAGER`), dieselbe Schranke wie jede andere
 Bibliothekseinstellung. Einen Wert an einem Dokument setzen bleibt beim **Bearbeitungsrecht**
@@ -370,7 +397,8 @@ das ist der Preis dafür, die Wirkstellen vollständig am Feld zu führen, statt
 
 **Oberfläche.** In den Bibliothekseinstellungen steht der Abschnitt „Metadatenfelder": die Liste mit
 Typ, Wirkstellen und Werteliste, das Anlegen (mit der Pflicht, Filter oder Kontextpräfix zu wählen),
-Bearbeiten, Löschen mit Folgekostenanzeige, das Pflegen der Werteliste und der Abbildungsdialog
+das Bearbeiten von Feldname, Wirkstellen und Zitierposition, das Löschen mit Folgekostenanzeige, das
+Pflegen der Werteliste samt Korrektur einer Bezeichnung und der Abbildungsdialog
 („N Dokumente tragen ‚X' → auf … / leer abbilden"). Der Hinweis auf schutzbedürftige Bezeichnungen
 steht dort, wo die Werteliste gepflegt wird. Metadatenansicht und Sammelzuweisung (#1068) sowie der
 Pflege-Anker (#1069) zeigen die Bibliotheksfelder mit; das Filter-Popover bietet sie je Bibliothek

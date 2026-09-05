@@ -1,6 +1,5 @@
 package io.opaa.indexing.source.attachment;
 
-import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.SupportedDocumentFormats;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -11,33 +10,23 @@ import java.util.Set;
 import org.jsoup.nodes.Element;
 
 /**
- * Describes which links on an RSS entry's detail page count as attachments - a named, configurable
- * answer to "which of this page's links are documents", kept as an explicit code construct instead
- * of an {@code if} chain inside {@code RssFeedIndexingExecutor}: a second CMS with a different
- * attachment pattern becomes a third enum constant. Selected per deployment via {@code
- * opaa.indexing.rss.attachment-profile} ({@link IndexingProperties.Rss#attachmentProfile()}), not
- * per run and not by guessing the CMS from the feed's address.
+ * Describes which links on an RSS entry's detail page count as attachments - an explicit code
+ * construct rather than an {@code if} chain, so a second CMS with a different pattern becomes a
+ * third constant. Selected per deployment via {@code opaa.indexing.rss.attachment-profile}, never
+ * by guessing the CMS from the feed's address.
  *
- * <p>Both profiles search only inside the same content area {@code RssFeedIndexingExecutor} already
- * extracts the article text from ({@code opaa.indexing.rss.main-content-selector}). A link outside
- * that area (site navigation, a footer's imprint link) is never an attachment under either profile,
- * and neither profile ever considers a link to a different host than the detail page's own.
+ * <p>Both profiles search only inside the content area the article text is extracted from, so a
+ * navigation or footer link is never an attachment, and neither ever considers a link to a
+ * different host than the detail page's own.
  */
 public enum AttachmentProfile {
 
   /**
-   * The default profile: a link is a candidate attachment when it carries some file extension at
-   * all and stays on the detail page's own host - {@code fileHasSomeExtension} below, not {@link
-   * SupportedDocumentFormats#isSupported}.
-   *
-   * <p>Deliberately not filtered down to {@link SupportedDocumentFormats}'s own six extensions
-   * here: this method only ever sees a URL, never the bytes behind it - {@code
-   * AttachmentIndexer#indexOne} is the one place that actually downloads a candidate and decides
-   * acceptance from its content via {@link SupportedDocumentFormats#decideForFileName}. Filtering
-   * candidates down to the six recognized extensions here would have silently excluded a document
-   * linked under the wrong extension (a PDF published as {@code bescheid.csv}). "Carries some
-   * extension" still excludes ordinary navigation links that a CMS routinely renders without one -
-   * the structural signal "this looks like a file, not a page", not a content-type whitelist.
+   * The default profile: a link is a candidate when it carries some file extension at all and stays
+   * on the detail page's own host - {@code fileHasSomeExtension}, not {@link
+   * SupportedDocumentFormats#isSupported}, because this method only ever sees a URL. Filtering to
+   * the recognized extensions here would silently exclude a document linked under the wrong one (a
+   * PDF published as {@code bescheid.csv}); acceptance is decided later, from the bytes.
    */
   GENERIC {
     @Override
@@ -162,12 +151,9 @@ public enum AttachmentProfile {
 
   /**
    * Whether {@code fileName}'s last path segment carries a file extension at all - a dot that is
-   * neither the first nor the last character. Used by {@link #GENERIC} as the structural "this
-   * looks like a file" signal instead of {@link SupportedDocumentFormats#isSupported}.
-   * Package-visible so {@code AttachmentIndexer#resolveFileName} can apply the identical rule when
-   * deciding whether a GENERIC candidate's name already carries a real extension that must be kept
-   * verbatim, rather than one only {@link AttachmentProfile#GSB}'s extension-less candidates need
-   * synthesized.
+   * neither the first nor the last character. The structural "this looks like a file" signal {@link
+   * #GENERIC} uses instead of {@link SupportedDocumentFormats#isSupported}. Package-visible so
+   * {@code AttachmentIndexer#resolveFileName} applies the identical rule.
    */
   static boolean fileHasSomeExtension(String fileName) {
     if (fileName == null || fileName.isBlank()) {

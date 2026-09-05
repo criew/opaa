@@ -54,7 +54,7 @@ class ChunkContextTitleTest {
 
   @Test
   void doesNotTreatAnInteriorPeriodAsTheExtensionBoundary() {
-    // #940 review, finding 2: only a trailing, extension-shaped suffix is stripped - an interior
+    // only a trailing, extension-shaped suffix is stripped - an interior
     // period (not itself immediately followed by 1-5 alphanumeric characters at the string's end)
     // stays part of the title instead of being mistaken for the extension separator.
     assertThat(ChunkContextTitle.deriveTitle("001_bericht.januar.pdf")).isEqualTo("bericht.januar");

@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
-/** The field-aware validation of a manual value (#1068): nothing is guessed or mapped. */
+/** The field-aware validation of a manual value: nothing is guessed or mapped. */
 class MetadataValueInputTest {
 
   private static final DocumentTypeVocabulary VOCABULARY =

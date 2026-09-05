@@ -6,7 +6,6 @@ import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.DocumentTitleLine;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
-import io.opaa.indexing.pipeline.TikaFallbackPipeline;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -22,21 +21,15 @@ import java.util.regex.Pattern;
 import org.springframework.ai.document.Document;
 
 /**
- * The Markdown pipeline (docs/features/ingestion-pipelines.md, Teil 2: Überschriftenabschnitt,
- * Ebene 1-3). Cuts along ATX headings ({@code # Heading} through {@code ### Heading}) via {@link
- * HeadingSectionSplitter}. A heading line is only recognized outside a fenced code block ({@code
- * ```}), so a commented-out {@code #} line inside an embedded shell snippet is not cut on.
+ * The Markdown pipeline (ingestion-pipelines.md, Teil 2): cuts along ATX headings level 1-3 via
+ * {@link HeadingSectionSplitter}, recognizing a heading line only outside a fenced code block, so a
+ * commented-out {@code #} line in an embedded snippet is not cut on.
  *
- * <p>A YAML frontmatter block ({@code ---} ... {@code ---}) at the very start of the file, before
- * any heading, is metadata rather than content and is dropped instead of becoming a headingless
- * leading chunk; a {@code ---} anywhere else (e.g. a horizontal rule mid-document, or an
- * unterminated block at the start) is ordinary content. Frontmatter fields are handed over
- * uninterpreted via {@link DocumentProperties#frontmatter()} (ADR-0024).
- *
- * <p>Registered as a {@code DocumentPipeline} bean since #1103, replacing {@link
- * TikaFallbackPipeline} for {@code .md}: the retrieval-quality evaluation corpus is entirely
- * Markdown, so this routing change is also a measurement-contract change for the eval domains (see
- * {@code EvalDomainConfig}).
+ * <p>A YAML frontmatter block at the very start, before any heading, is metadata and is dropped
+ * rather than becoming a headingless leading chunk; a {@code ---} anywhere else is content. Its
+ * fields are handed over uninterpreted via {@link DocumentProperties#frontmatter()} (ADR-0024). The
+ * evaluation corpus is entirely Markdown, so this pipeline's cut is also the eval domains'
+ * measurement contract.
  */
 public class MarkdownDocumentPipeline implements DocumentPipeline {
 
@@ -91,9 +84,8 @@ public class MarkdownDocumentPipeline implements DocumentPipeline {
 
   /**
    * The frontmatter's scalar entries verbatim, the first level-1 heading (ADR-0024) and the opening
-   * of the text after the frontmatter (#1263) - the eval corpus' {@code titel}/{@code
-   * dokumentart}/{@code stand_datum}/{@code fassung} keys reach the extractor this way,
-   * uninterpreted.
+   * of the text after the frontmatter - the eval corpus' {@code titel}/{@code dokumentart}/{@code
+   * stand_datum}/{@code fassung} keys reach the extractor this way, uninterpreted.
    */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {

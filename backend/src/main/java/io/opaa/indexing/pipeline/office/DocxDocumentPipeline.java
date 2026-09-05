@@ -38,33 +38,16 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 
 /**
- * The DOCX pipeline (docs/features/ingestion-pipelines.md, Teil 2). Reads a {@code .docx} directly
- * through Apache POI's {@link XWPFDocument} rather than Tika, since Tika's flattened text
- * extraction discards the paragraph-format heading levels this pipeline cuts on.
+ * The DOCX pipeline (ingestion-pipelines.md, Teil 2), reading {@code .docx} through POI's {@link
+ * XWPFDocument} rather than Tika, whose flattened extraction discards the heading levels this
+ * pipeline cuts on. Heading level comes from a built-in Word heading style (English or localized)
+ * or its own {@code w:outlineLvl}; cutting stops at {@link #MAX_CUTTING_LEVEL}, a table becomes one
+ * text block, and the legacy binary {@code .doc} stays with the Tika fallback.
  *
- * <p>Heading level comes from the paragraph's own formatting: a built-in Word heading style
- * (English or localized, e.g. {@code Ueberschrift1}), falling back to the paragraph's direct
- * outline level ({@code w:outlineLvl}). A paragraph with neither is body text. Cutting stops at
- * level 3 ({@link #MAX_CUTTING_LEVEL}). Tables are read cell by cell into one paragraph-level text
- * block per table (never a heading). Only {@code .docx} is handled - the legacy binary {@code .doc}
- * keeps running through the Tika fallback pipeline.
- *
- * <p><b>Every header/footer part</b> - {@link XWPFDocument#getHeaderList()}/{@link
- * XWPFDocument#getFooterList()}, the union across every section and every default/first/even
- * variant a multi-section document can carry - becomes one deduplicated leading chunk (location
- * "Kopf-/Fußzeile") rather than being repeated per page or dropped, since none of it is part of
- * {@link XWPFDocument#getBodyElements()}; see {@link RepeatingHeaderChunk}. Two paragraphs whose
- * whitespace-normalized text is equal contribute only once. A field's cached value (e.g. a page
- * number computed the last time the file was saved, correct for at most one page) is excluded
- * rather than indexed as if it were static text.
- *
- * <p><b>Header/footer text never rescues an otherwise body-less document from {@code NO_CONTENT}/
- * {@code NO_EXTRACTABLE_TEXT}.</b> It is template text - present on a scan-only document exactly as
- * much as on one with a text layer - and is therefore no evidence that this document itself carries
- * content; a scanned letter must stay visible as OCR-needing, the single most expensive failure an
- * ingestion pipeline can make (docs/features/ingestion-pipelines.md). The guard is evaluated purely
- * against the body text {@link XWPFDocument#getBodyElements()} yields, before the header/footer
- * chunk is ever added to the result.
+ * <p>Every header/footer part becomes one deduplicated leading chunk (see {@link
+ * RepeatingHeaderChunk}), since none is part of {@link XWPFDocument#getBodyElements()}; a field's
+ * cached value is excluded rather than indexed as static text. That chunk never rescues a body-less
+ * document from {@code NO_CONTENT}/{@code NO_EXTRACTABLE_TEXT} - a scan must stay OCR-needing.
  */
 public class DocxDocumentPipeline implements DocumentPipeline {
 
@@ -136,7 +119,7 @@ public class DocxDocumentPipeline implements DocumentPipeline {
 
   /**
    * The OOXML core properties (dc:title, created, modified), the first level-1 heading (ADR-0024)
-   * and the opening of the body text (#1263), read without building the chunk stream.
+   * and the opening of the body text, read without building the chunk stream.
    */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
@@ -234,39 +217,18 @@ public class DocxDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * A Word complex field (e.g. "Seitenzahl einfügen") is stored as a run sequence: a {@code begin}
-   * marker, the field's instruction code ({@code w:instrText}, e.g. {@code " PAGE "} - never
-   * content), a {@code separate} marker, then one or more runs holding the field's cached
-   * last-computed display value, then an {@code end} marker. The cached value is excluded here - it
-   * is correct for at most one page/moment, not document content. Nested fields (a field whose
-   * cached value itself contains another field, e.g. {@code IF} wrapping {@code PAGE}) are tracked
-   * with a stack of open-field frames rather than a single counter: each {@code BEGIN} pushes an
-   * unseparated frame, each {@code SEPARATE} marks the top frame separated, each {@code END} pops
-   * it. A run is inside a field's result exactly when the stack holds at least one separated frame
-   * - so a nested field with no result part of its own ({@code BEGIN}/{@code instrText}/{@code
-   * END}, never updated) pops its own, still-unseparated frame without ending the exclusion of an
-   * outer field's separated frame further down the stack. An {@code END} with no open frame is a
-   * no-op rather than driving the stack negative; an unbalanced {@code BEGIN}/{@code SEPARATE} with
-   * no matching {@code END} can swallow at most the rest of this paragraph, since the stack is
-   * local to each call of this method. The mirror case - a {@code SEPARATE} with no open frame,
-   * because its {@code BEGIN} was in a previous paragraph - is likewise a no-op rather than an
-   * error; the field's cached value that follows is then no longer recognized as inside a result
-   * and is included rather than excluded. Accepted: over-collection, not text loss, and a field
-   * split across paragraphs is rare in header/footer content.
+   * The paragraph's text without any complex field's cached display value - that value is correct
+   * for at most one page or moment, not document content. Nested fields are tracked with a stack of
+   * open-field frames: a run is inside a result exactly when the stack holds at least one separated
+   * frame, so an inner field with no result of its own does not end an outer field's exclusion. An
+   * unbalanced marker is a no-op, never an error; the stack is local to this call, so the worst
+   * case is over-collection within one paragraph, never text loss. A {@code w:fldSimple} field
+   * (LibreOffice's export form) is excluded by run type instead.
    *
-   * <p>A {@code w:fldSimple} field (LibreOffice's export form, as opposed to Word's begin/separate
-   * /end form above) is a distinct POI run type ({@code XWPFFieldRun}) that carries neither {@code
-   * w:fldChar} nor {@code w:instrText} on its own {@link org.apache.poi.xwpf.usermodel.XWPFRun
-   * #getCTR()} - it is excluded by type rather than by the state machine above.
-   *
-   * <p>{@link XWPFRun#getText(int)} returns only a run's <em>first</em> {@code w:t} child; a
-   * tab-separated multi-column letterhead ("Stadt Musterstadt&lt;tab&gt;Az. 12-34/2026") is
-   * routinely one run with several {@code w:t}/{@code w:tab} children, so {@link XWPFRun#text()} is
-   * used instead - it renders every child in order, including tabs/breaks as characters, and
-   * already excludes {@code w:instrText} itself (POI's own {@code _getText} skips it) - but not
-   * {@code w:delText}. A run holding tracked-changes deletion text is therefore excluded by this
-   * method's own check ({@code ctr.sizeOfDelTextArray() > 0} below), not by {@link XWPFRun#text()}
-   * - the same exclusion {@link XWPFParagraph#getText()} applies to the body.
+   * <p>Uses {@link XWPFRun#text()}, not {@link XWPFRun#getText(int)}: the latter returns only a
+   * run's first {@code w:t} child, while a tab-separated letterhead is routinely one run with
+   * several. It already skips {@code w:instrText} but not {@code w:delText}, so tracked-changes
+   * deletions are excluded by this method's own check below.
    */
   private static String paragraphTextExcludingFieldValues(XWPFParagraph paragraph) {
     StringBuilder text = new StringBuilder();

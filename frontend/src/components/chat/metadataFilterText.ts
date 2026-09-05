@@ -5,7 +5,7 @@ import type {
 } from '../../types/api'
 import { formatShare } from '../../utils/labels'
 
-/** "Datum/Stand bei 92 % der Dokumente vorhanden" - the Füllstand line under each field (#1070). */
+/** "Datum/Stand bei 92 % der Dokumente vorhanden" - the Füllstand line under each field. */
 export function fillLevelText(field: {
   label: string
   filledDocuments: number
@@ -16,7 +16,7 @@ export function fillLevelText(field: {
   return `${field.label} bei ${formatShare(field.filledDocuments / field.totalDocuments)} der Dokumente vorhanden`
 }
 
-/** Why a field is not offered - the entry condition, stated with its numbers (#1070). */
+/** Why a field is not offered - the entry condition, stated with its numbers. */
 export function notOfferedText(field: {
   label: string
   filledDocuments: number
@@ -45,7 +45,7 @@ export function dateChipLabel(filter: MetadataFilter): string | undefined {
   return undefined
 }
 
-/** The library-field conditions of a filter, carried along by every chip removal (#1071). */
+/** The library-field conditions of a filter, carried along by every chip removal. */
 function libraryFieldsOf(filter: MetadataFilter) {
   return filter.libraryFields && filter.libraryFields.length > 0
     ? { libraryFields: filter.libraryFields }
@@ -72,7 +72,7 @@ export function withoutDateWindow(filter: MetadataFilter): MetadataFilter {
 }
 
 /**
- * "Fassung: Fassung 2026" - one chip per library-field condition (#1071). A condition names its
+ * "Fassung: Fassung 2026" - one chip per library-field condition. A condition names its
  * library, so two libraries with the same field key stay distinguishable in the chip bar.
  */
 export function libraryFieldChipLabel(

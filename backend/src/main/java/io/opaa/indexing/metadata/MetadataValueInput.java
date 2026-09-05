@@ -8,11 +8,11 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * The value a person sets for one core field (#1068): either a value - exactly one of {@code
- * textValue}, {@code vocabularyCode} or {@code dateValue}+{@code datePrecision} - or the third
- * state "kein Wert ermittelbar" ({@link MetadataValueState#NOT_DETERMINABLE}, #1069), which carries
- * no value at all. {@link #validatedFor} checks the input against the field's type and the
- * vocabulary and normalises the date to the first day of what its precision leaves unknown.
+ * The value a person sets for one core field: either a value - exactly one of {@code textValue},
+ * {@code vocabularyCode} or {@code dateValue}+{@code datePrecision} - or the third state "kein Wert
+ * ermittelbar" ({@link MetadataValueState#NOT_DETERMINABLE}), which carries no value at all. {@link
+ * #validatedFor} checks the input against the field's type and the vocabulary and normalises the
+ * date to the first day of what its precision leaves unknown.
  */
 public record MetadataValueInput(
     MetadataValueState state,
@@ -104,12 +104,12 @@ public record MetadataValueInput(
   }
 
   /**
-   * The same input, checked and normalised for the library field {@code field} (#1071): a SELECT
-   * value must name an entry of {@code valuesByCode} - nothing is mapped to a near match, and the
-   * resolved entry id is what the database checks; a DATE value follows the core date rules; a
-   * PATTERN value must match the pattern the field definition carries, which is the whole reason
-   * the pattern belongs to the definition. "Kein Wert ermittelbar" is valid for a library field
-   * exactly as for a core field.
+   * The same input, checked and normalised for the library field {@code field}: a SELECT value must
+   * name an entry of {@code valuesByCode} - nothing is mapped to a near match, and the resolved
+   * entry id is what the database checks; a DATE value follows the core date rules; a PATTERN value
+   * must match the pattern the field definition carries, which is the whole reason the pattern
+   * belongs to the definition. "Kein Wert ermittelbar" is valid for a library field exactly as for
+   * a core field.
    */
   public MetadataValueInput validatedForLibraryField(
       LibraryMetadataField field, Map<String, LibraryMetadataFieldValue> valuesByCode) {

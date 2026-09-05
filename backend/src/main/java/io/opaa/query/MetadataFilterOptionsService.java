@@ -29,8 +29,8 @@ import org.springframework.stereotype.Service;
 
 /**
  * The Füllstand and the offered values of the filterable core fields for one person's search scope
- * (#1070, metadata-schema.md "Eintrittsbedingung für den Kernfeld-Filter"): the scope is resolved
- * exactly as {@link QueryService#query} resolves it - from the chat's own settings, or from {@code
+ * (metadata-schema.md "Eintrittsbedingung für den Kernfeld-Filter"): the scope is resolved exactly
+ * as {@link QueryService#query} resolves it - from the chat's own settings, or from {@code
  * useKnowledge}/{@code libraryIds}, always narrowed to what the caller may read - and every number
  * is counted over that scope only. No aggregate here ever exceeds the rights context of the asking
  * person; the cache in front keeps the same key.
@@ -138,9 +138,9 @@ public class MetadataFilterOptionsService {
   }
 
   /**
-   * The filterable library fields of the scope (#1071). Every figure is counted over the field's
-   * own library within the scope, and the listed values are the ones the caller's documents
-   * actually carry - never the configured list, which a client reads from the library's schema
+   * The filterable library fields of the scope. Every figure is counted over the field's own
+   * library within the scope, and the listed values are the ones the caller's documents actually
+   * carry - never the configured list, which a client reads from the library's schema
    * (metadata-schema.md, Rechte-Invariante).
    */
   private List<MetadataFilterOptions.LibraryFieldOption> libraryFields(Set<UUID> scope) {

@@ -79,7 +79,7 @@ class AsyncIndexingExecutorTest {
     folderService = mock(LibraryFolderService.class);
     staleDocumentCleanupService = mock(StaleDocumentCleanupService.class);
     documentRepository = mock(DocumentRepository.class);
-    // #1183: the deepest-first attachment-path fold every successful run performs before
+    // the deepest-first attachment-path fold every successful run performs before
     // cleanupVanished - an empty bestand for a library with no Mail attachments of its own.
     when(documentRepository.findByLibraryIdAndSourceType(any(), any())).thenReturn(List.of());
     FilesystemPathAllowlist allowlist = mock(FilesystemPathAllowlist.class);
@@ -115,7 +115,7 @@ class AsyncIndexingExecutorTest {
 
   @Test
   void aFileOverTheLibraryStorageQuotaIsSkippedAndRecordedAsARejectedEvent() throws IOException {
-    // #119, PR #700 review finding 4: the QUOTA_EXCEEDED branch is identical in shape to
+    // The QUOTA_EXCEEDED branch is identical in shape to
     // RssFeedIndexingExecutorTest's own coverage of the same FileProcessingResult, exercised here
     // for the FILESYSTEM connector specifically.
     Path file = documentDir.resolve("over-quota.txt");
@@ -142,7 +142,7 @@ class AsyncIndexingExecutorTest {
 
   @Test
   void aScanPdfWithoutExtractableTextIsSkippedAndRecordedAsARejectedEvent() throws IOException {
-    // #1055: FileProcessingResult#NO_EXTRACTABLE_TEXT is reported the same way QUOTA_EXCEEDED is -
+    // FileProcessingResult#NO_EXTRACTABLE_TEXT is reported the same way QUOTA_EXCEEDED is -
     // counted as skipped, not as processed, and logged by name like any other rejected file.
     Path file = documentDir.resolve("scan.txt");
     Files.writeString(file, "content");
@@ -165,7 +165,7 @@ class AsyncIndexingExecutorTest {
   @Test
   void aFileThePipelineCannotParseAtAllIsCountedAsFailedAndRecordedAsAnErrorEvent()
       throws IOException {
-    // #1108 review, blocker 1: FileProcessingResult#FAILED (NO_CONTENT - the pipeline could not
+    // FileProcessingResult#FAILED (NO_CONTENT - the pipeline could not
     // parse the document at all) must be reported like the catch block's own ERROR event, not
     // silently counted as processed the way it was before this fix.
     Path file = documentDir.resolve("corrupt.txt");
@@ -191,7 +191,7 @@ class AsyncIndexingExecutorTest {
   @Test
   void aRealScanPdfEndToEndIsRejectedWithoutMockingTheFileProcessingServiceSeam()
       throws IOException {
-    // #1090 review finding 3: aScanPdfWithoutExtractableTextIsSkippedAndRecordedAsARejectedEvent
+    // aScanPdfWithoutExtractableTextIsSkippedAndRecordedAsARejectedEvent
     // above mocks both sides of the FileProcessingService seam (what it returns and how the
     // executor reacts) - this test instead wires a real FileProcessingService (only its own
     // dependencies mocked, same pattern as FileProcessingServiceTest's scan-detection test) so the
@@ -215,8 +215,7 @@ class AsyncIndexingExecutorTest {
 
     // Only #parseDocument is stubbed - real Tika parsing of a not-structurally-valid PDF would
     // throw, which is irrelevant to what this test exercises (see FileProcessingServiceTest's own
-    // identical spy for the same reasoning). #isTextlessPdf and its underlying content-type
-    // detection run for real, against the file's actual bytes on disk.
+    // identical spy for the same reasoning). Everything after parsing runs for real.
     DocumentService scanDetectingDocumentService = org.mockito.Mockito.spy(new DocumentService());
     org.mockito.Mockito.doReturn(List.of(new org.springframework.ai.document.Document("")))
         .when(scanDetectingDocumentService)

@@ -18,16 +18,16 @@ import java.nio.file.Path;
  *     did not resolve one (detection failed, or this source never went through the registry at all
  *     - the RSS entry body's {@link #ofExtractedText}). A pipeline handling more than one format
  *     (e.g. {@code TabularDocumentPipeline}'s XLSX/CSV/ODS) dispatches on this, not on {@code
- *     fileName}'s own suffix - a document is admitted and routed by its <em>detected</em> content
- *     (#404), and a pipeline that re-derived the format from the name alone would silently
- *     reintroduce the name-trusting bug the registry exists to avoid (a genuine XLSX misnamed
- *     {@code .csv} routes here on content, but would mis-parse as CSV if this field were ignored).
+ *     fileName}'s own suffix - a document is admitted and routed by its <em>detected</em> content ,
+ *     and a pipeline that re-derived the format from the name alone would silently reintroduce the
+ *     name-trusting bug the registry exists to avoid (a genuine XLSX misnamed {@code .csv} routes
+ *     here on content, but would mis-parse as CSV if this field were ignored).
  * @param attachmentIndex the 0-based extraction position of the single attachment this run is
- *     interested in, or {@code null} for an ordinary run that wants all of them (#1243). A pipeline
- *     that reports {@link DocumentPipelineResult#discoveredAttachments()} must honour it: it
- *     numbers attachments exactly as an unfiltered run would - so an attachment that run would not
- *     have reported at all (skipped for its size, or unreadable) consumes no position here either -
- *     but materializes a temporary file for the wanted one alone, and reports it as the result's
+ *     interested in, or {@code null} for an ordinary run that wants all of them. A pipeline that
+ *     reports {@link DocumentPipelineResult#discoveredAttachments()} must honour it: it numbers
+ *     attachments exactly as an unfiltered run would - so an attachment that run would not have
+ *     reported at all (skipped for its size, or unreadable) consumes no position here either - but
+ *     materializes a temporary file for the wanted one alone, and reports it as the result's
  *     <b>only</b> discovered attachment (an empty list when there is none at that position). Bounds
  *     the temporary disk a single re-extraction costs to one attachment instead of a whole
  *     message's worth.

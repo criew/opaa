@@ -7,8 +7,8 @@ import java.util.Objects;
  * One embedded object a {@link DocumentPipeline} found while parsing its own document but did not
  * itself turn into chunks - reported via {@link DocumentPipelineResult#discoveredAttachments()}
  * instead (ADR-0022, part 2). {@code tempFile} is not yet owned by any attachment path (that is
- * part 3, #1182): whoever calls {@link DocumentPipeline#run} through {@link DocumentPipelineRunner}
- * gets it deleted for them once this result is returned, whether or not it goes on to process the
+ * part 3): whoever calls {@link DocumentPipeline#run} through {@link DocumentPipelineRunner} gets
+ * it deleted for them once this result is returned, whether or not it goes on to process the
  * attachment.
  *
  * @param fileName the attachment's own name, as carried by the parsed document - never blank

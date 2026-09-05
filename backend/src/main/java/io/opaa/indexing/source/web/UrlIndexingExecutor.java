@@ -44,33 +44,14 @@ import org.springframework.scheduling.annotation.Async;
 
 /**
  * Executes indexing runs for {@link IndexingSourceType#HTTP_DIRECTORY} via Apache mod_autoindex
- * crawling (ADR-0017).
+ * crawling (ADR-0017). The crawled directory structure is mirrored into {@code library_folders}
+ * (ADR-0020) through the same {@link io.opaa.indexing.source.SourceFolderMirror} the FILESYSTEM
+ * executor uses.
  *
- * <p>The crawled directory structure is mirrored into {@code library_folders} (ADR-0020, #1277)
- * through the same {@link io.opaa.indexing.source.SourceFolderMirror} the FILESYSTEM executor uses:
- * a document's folder path is its URL path relative to the normalized start URL, see {@link
- * UrlFolderPath}. Folders are pruned under the very same completeness condition as the document
- * cleanup below, and only after it.
- *
- * <p>Once every crawled entry has been processed, {@link
- * StaleDocumentCleanupService#cleanupVanished} removes every {@code HTTP_DIRECTORY} document of
- * this library whose URL was not in this run's own crawl result - it no longer exists at the source
- * (#886). This method skips the call entirely when either of the following holds, since each one
- * means {@code allFiles} is not a trustworthy stand-in for the source's complete bestand:
- *
- * <ul>
- *   <li>{@link AutoindexCrawlerService.CrawlResult#truncated()} - a depth/entry limit cut the crawl
- *       short, so anything beyond the cut would incorrectly look vanished.
- *   <li>{@link AutoindexCrawlerService.CrawlResult#incomplete()} - at least one subdirectory could
- *       not be fetched at all (#886 review); every document under that subtree would otherwise look
- *       vanished even though the crawl simply never reached it.
- * </ul>
- *
- * {@code cleanupVanished} itself additionally refuses an empty {@code currentUrls} (#886 review) -
- * a root page answering with zero entries is indistinguishable here from an unreachable or
- * misconfigured source (a maintenance page returning {@code 200}, a misconfigured redirect target),
- * so this guard lives in the shared service rather than being duplicated per executor. Also only
- * reached on this method's own success path, so a failed or crashed run never deletes anything.
+ * <p>{@link StaleDocumentCleanupService#cleanupVanished} then removes every document this run did
+ * not meet - skipped entirely, like the folder pruning that follows it, when the crawl was {@link
+ * AutoindexCrawlerService.CrawlResult#truncated()} or {@link
+ * AutoindexCrawlerService.CrawlResult#incomplete()}, and only ever reached on the success path.
  */
 public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
@@ -174,7 +155,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
             "Crawl wurde durch ein konfiguriertes Limit abgeschnitten (Tiefe oder Anzahl Einträge)",
             url);
       }
-      // #886 review: a subtree this run could not fetch at all is a different reason than a
+      // a subtree this run could not fetch at all is a different reason than a
       // configured limit, but has the same consequence for stale-document cleanup below - the
       // run's own bestand is incomplete either way.
       if (crawlResult.incomplete()) {
@@ -206,7 +187,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
       // What the attachment path created or confirmed this run, and which of those were actually
       // re-parsed - feeds the vanished-cleanup bookkeeping below (ADR-0022, Entscheidung 3),
-      // mirroring AsyncIndexingExecutor's FILESYSTEM counterpart (#1219).
+      // mirroring AsyncIndexingExecutor's FILESYSTEM counterpart.
       Set<String> indexedAttachmentPaths = new HashSet<>();
       Set<String> reprocessedAttachmentPaths = new HashSet<>();
       var attachmentAccess =
@@ -216,7 +197,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       // enumerated, so only the attachment paths recorded above count for them.
       Set<String> reprocessedEntryUrls = new HashSet<>();
 
-      // Mirrors the crawled directory structure into library_folders (ADR-0020, #1277) - the same
+      // Mirrors the crawled directory structure into library_folders (ADR-0020) - the same
       // helper AsyncIndexingExecutor drives for FILESYSTEM. normalizedUrl is the path every entry
       // URL is made relative to.
       var folderMirror = new SourceFolderMirror(folderService, targetLibrary);
@@ -233,7 +214,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
         // Check if document is unchanged before downloading (saves bandwidth)
         if (isUnchanged(entry.url(), entry.lastModified(), targetLibrary)) {
           log.info("Skipping unchanged URL document: {}", entry.name());
-          // Runs even here, before the download is skipped: a document indexed before #1277 (or
+          // Runs even here, before the download is skipped: a document indexed before this
+          // column existed (or
           // one whose directory moved) picks up its folder without being re-indexed.
           mirrorFolder(targetLibrary, entry.url(), normalizedUrl, folderMirror);
           progress.recordSkipped();
@@ -347,7 +329,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
             log.info("Indexed URL document: {}", entry.name());
           }
         } catch (BoundedDownloader.AttachmentTooLargeException e) {
-          // #1236: the transfer was cut off at the configured cap, so no bytes past it ever
+          // the transfer was cut off at the configured cap, so no bytes past it ever
           // reached the temp partition. Skipped, not failed - an entry too large for this
           // installation is a rejection like any other on this path, and the run continues.
           log.warn(
@@ -388,16 +370,15 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
         progress.report();
       }
 
-      // See this class' own Javadoc: skipped for a truncated or incomplete crawl (#886/#886
-      // review), only reached on the success path. An empty currentUrls is additionally guarded
-      // inside cleanupVanished itself, not duplicated here.
+      // See this class' own Javadoc: skipped for a truncated or incomplete crawl, only reached
+      // on the success path. An empty currentUrls is guarded inside cleanupVanished itself.
       if (!crawlResult.truncated() && !crawlResult.incomplete()) {
         try {
           Set<String> currentUrls =
               allFiles.stream()
                   .map(AutoindexCrawlerService.CrawledFileEntry::url)
                   .collect(Collectors.toCollection(HashSet::new));
-          // ADR-0022, Entscheidung 3, mirroring AsyncIndexingExecutor (#1219): an attachment
+          // ADR-0022, Entscheidung 3, mirroring AsyncIndexingExecutor: an attachment
           // counts as present this run either because the attachment path itself
           // created/confirmed it while its parent was re-parsed (indexedAttachmentPaths), or -
           // the Nachtragsfall - because its parent still exists but was NOT re-parsed this run
@@ -446,20 +427,11 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Assigns {@code entryUrl}'s document (and, recursively, its attachments - ADR-0022: an
-   * attachment belongs into its parent mail's folder) to the folder the crawled URL path maps to
-   * (ADR-0020, #1277), materializing that folder chain on first use.
-   *
-   * <p>Runs in the executor rather than inside {@code FileProcessingService#processUrlFile}: the
-   * folder must also be assigned to an entry this run never handed to that method at all - one
-   * skipped undownloaded because {@code Last-Modified} was unchanged, or one rejected for its
-   * format, target or size - as long as an earlier run left a document row behind. That is the same
-   * nachtrag {@code AsyncIndexingExecutor} gets from {@code processFile}'s own SKIPPED branch.
-   * Without a document row nothing is materialized, so a directory holding only never-indexed
-   * entries produces no folder.
-   *
-   * <p>Failures are logged, never rethrown - a folder assignment must not fail an entry whose
-   * content was indexed successfully.
+   * Assigns {@code entryUrl}'s document, and recursively its attachments, to the folder the crawled
+   * URL path maps to (ADR-0020), materializing that chain on first use. Runs in the executor rather
+   * than in {@code processUrlFile}, because a folder must also be assigned to an entry this run
+   * never handed over - one skipped as unchanged, or rejected - as long as a document row exists.
+   * Failures are logged, never rethrown.
    */
   private void mirrorFolder(
       KnowledgeLibrary targetLibrary,
@@ -523,13 +495,10 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Returns true if the URL's last path segment contains a dot (i.e. looks like a file with an
-   * extension). Query strings and fragments are stripped before checking. Avoids regex to prevent
-   * StackOverflowError on long URLs.
-   *
-   * <p>{@code public}, not package-private: {@code SourceConnectionTestService} reuses this exact
-   * check so a URL like {@code https://host/dateien/index.html} is normalised identically for the
-   * test and for the run it is testing.
+   * Whether the URL's last path segment contains a dot, i.e. looks like a file with an extension;
+   * query and fragment are stripped first, and no regex is used, so a long URL cannot overflow the
+   * stack. {@code public} because {@code SourceConnectionTestService} reuses this exact check, so a
+   * URL is normalised identically for the test and for the run it tests.
    */
   public static boolean hasFileExtension(String url) {
     int queryStart = url.indexOf('?');
@@ -544,20 +513,11 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Checks if a URL document exists and is unchanged based on the lastModified date from the
-   * directory listing. This avoids downloading the file when it hasn't changed. After download, the
-   * SHA-256 checksum provides an additional content-based verification layer.
-   *
-   * <p>A blank {@code lastModified} means "unknown", not "unchanged": the {@code <ul>}-based
-   * autoindex layouts ({@code IndexOptions -FancyIndexing}, Python's {@code http.server}) never
-   * carry a date at all, so {@link AutoindexCrawlerService} reports it as an empty string every
-   * run. Treating two empty strings as equal would mean such a source is fetched once and never
-   * re-fetched again.
-   *
-   * <p>The lookup is scoped to {@code targetLibrary} (#877): the same URL indexed into a different
-   * library is an independent document, so this never reports "unchanged" for a document that
-   * belongs to another library. The RSS path ({@code RssFeedIndexingExecutor#isUnchanged}) mirrors
-   * this too.
+   * Whether a URL document exists and is unchanged per the listing's {@code lastModified}, so an
+   * unchanged file is never downloaded; the SHA-256 checksum verifies content afterwards. A blank
+   * {@code lastModified} means "unknown", not "unchanged" - the {@code <ul>}-based layouts carry no
+   * date at all, and treating two empty strings as equal would fetch such a source exactly once.
+   * The lookup is scoped to {@code targetLibrary}, so another library's document never matches.
    */
   public boolean isUnchanged(
       String remoteUrl, String lastModified, KnowledgeLibrary targetLibrary) {
@@ -572,12 +532,10 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Decides whether a crawled entry is supported from its content, never from {@code entryName}
-   * alone - the same decision {@link #execute} makes before an entry enters the pipeline. Normally
-   * a leading byte sample settles it; only a prefix that ended inside an unresolved container makes
-   * {@code completeContent} download the entry in full to decide (see {@link
-   * SupportedDocumentFormats#decideForPrefix}). Public so the cross-package parity test exercises
-   * this exact call instead of a reimplementation that could silently drift from it.
+   * Decides whether a crawled entry is supported from its content, never from {@code entryName} -
+   * the same decision {@link #execute} makes. A leading byte sample normally settles it; only a
+   * prefix ending inside an unresolved container makes {@code completeContent} download in full.
+   * Public so the cross-package parity test exercises this call rather than a reimplementation.
    */
   public static SupportedDocumentFormats.ContentDecision decideForEntry(
       byte[] prefix, String entryName, SupportedDocumentFormats.CompleteContent completeContent)
@@ -586,16 +544,11 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
-   * Extracts this executor's own configuration ({@code sourceUrl}/{@code sourceProxy}/{@code
-   * sourceCredentials}/{@code sourceInsecureSsl}) from {@code targetLibrary} (ADR-0018) - the
-   * library's persisted quellkonfiguration, not a per-request field. {@code
-   * targetLibrary.getSourceCredentials()} is already plaintext at this point regardless of whether
-   * the underlying row is encrypted - {@code SourceCredentialsConverter} decrypts transparently
-   * when the entity is loaded.
-   *
-   * <p>Package-private (not {@code private}) solely so {@code UrlIndexingExecutorCredentialsTest}
-   * can assert on it directly with a library entity freshly reloaded from the database, the same
-   * decryption path a real run takes.
+   * Extracts this executor's own configuration from {@code targetLibrary} (ADR-0018) - the
+   * library's persisted quellkonfiguration, not a per-request field. {@code getSourceCredentials()}
+   * is already plaintext here, since {@code SourceCredentialsConverter} decrypts on load.
+   * Package-private so {@code UrlIndexingExecutorCredentialsTest} can assert on it with a freshly
+   * reloaded entity, over the same decryption path a real run takes.
    */
   static UrlIndexingRequest toUrlIndexingRequest(KnowledgeLibrary targetLibrary) {
     return new UrlIndexingRequest(

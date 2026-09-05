@@ -168,12 +168,20 @@ den es im Schema nicht mehr gibt" wird dort ausgeschlossen, wo er nicht vergesse
 bestätigte Abbildung entfernt; die Abbildung selbst läuft in einer Transaktion und zieht die
 Chunk-Schlüssel darin mit.
 
-**Am Chunk trägt ein filterbares Bibliotheksfeld drei Schlüssel** statt einem: `lf_<key>` (Wert),
+**Am Chunk trägt ein Bibliotheksfeld drei Schlüssel** statt einem: `lf_<key>` (Wert),
 `lfp_<key>` (Genauigkeit eines Datums) und `lfs_<key>` (Präsenzmarke). Die dritte ist nötig, weil
 beide Suchpfade „kein Wert" als `NOT IN` über eine **geschlossene** Wertemenge ausdrücken
 (Entscheidung 5; der pgvector-Konverter kennt kein `IS NULL`) — die Werte eines Auswahl- oder
 Kennungsfeldes sind zur Abfragezeit keine geschlossene Menge, die Präsenzmarke mit ihrem einen Wert
-ist es.
+ist es. Die drei Schlüssel gehören zu jedem Nachzug des Dokuments, **auch wenn das Feld gerade nicht
+filtert** — sonst überlebte eine Präsenzmarke das Abschalten oder Löschen des Feldes und schlösse ein
+Dokument ohne Wert von einem späteren Filter aus.
+
+**Das Muster eines Kennungsfeldes ist Nutzereingabe und wird unter einem Schrittbudget ausgewertet.**
+Das Verwaltungsrecht an einer Bibliothek ist keine Vertrauensgrenze, weil jede angemeldete Person
+eine Bibliothek anlegen und besitzen kann. Da `java.util.regex` kein Zeitlimit kennt, zählt eine
+begrenzende Zeichenfolge die Schritte des Matchers und bricht ab — beim Setzen eines Wertes und, gegen
+erzeugte Worst-Case-Eingaben, beim Anlegen des Feldes.
 
 ## Konsequenzen
 

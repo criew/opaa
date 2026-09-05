@@ -4,9 +4,9 @@ import java.util.List;
 
 /**
  * Builds the {@link DocumentProperties#titleLine()} of a document: the first non-blank line of its
- * body text, taken from whatever block a pipeline has first at hand (#1289). Only that one line is
- * ever a self-designation of the document; a label line or a quotation below it names another
- * document. The cut to {@link DocumentProperties#MAX_TITLE_LINE_LENGTH} belongs to {@link
+ * body text, taken from whatever block a pipeline has first at hand. Only that one line is ever a
+ * self-designation of the document; a label line or a quotation below it names another document.
+ * The cut to {@link DocumentProperties#MAX_TITLE_LINE_LENGTH} belongs to {@link
  * DocumentProperties}, which enforces it for every source.
  */
 public final class DocumentTitleLine {

@@ -16,13 +16,13 @@ package io.opaa.indexing;
  *     underneath its library's configured directory), the pipeline failed to produce chunks for
  *     them this time, or the document was re-indexed but its chunks still name the fallback
  *     pipeline - re-selecting it under the same {@code pipelineId} would never converge (loop
- *     protection for #1105), so it is counted here instead of as {@link #reindexedDocuments()}. For
- *     the first two causes, nothing about the document is changed - in particular a working
- *     document keeps its existing chunks rather than being emptied. The third cause has already
- *     read the file, replaced the chunks and paid for new embeddings; a persistent case of it (a
- *     document whose format claims a specialized pipeline but whose content keeps routing to the
- *     fallback) is re-parsed and re-embedded on every call that requests that pipeline, since
- *     {@code reindexBatch} always starts scanning from offset zero and the stable {@code ORDER BY}
+ *     protection), so it is counted here instead of as {@link #reindexedDocuments()}. For the first
+ *     two causes, nothing about the document is changed - in particular a working document keeps
+ *     its existing chunks rather than being emptied. The third cause has already read the file,
+ *     replaced the chunks and paid for new embeddings; a persistent case of it (a document whose
+ *     format claims a specialized pipeline but whose content keeps routing to the fallback) is
+ *     re-parsed and re-embedded on every call that requests that pipeline, since {@code
+ *     reindexBatch} always starts scanning from offset zero and the stable {@code ORDER BY}
  *     resurfaces it first. Regardless of cause, their chunks stay visible as outstanding in {@link
  *     PipelineReindexService#progressForOrganization}
  * @param removedOrphanChunkSets chunk sets whose document row no longer exists at all; deleted

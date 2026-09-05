@@ -13,13 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The one Füllstand count behind the Pflege-Anker of a library and the Zustandsübersicht of the
- * organization (#1305). Both asked the same question of the same rows through two different
- * queries; they now ask it once, over exactly the libraries the caller hands in - which is what
- * keeps the aggregate inside the caller's rights context (metadata-schema.md, Rechte-Invariante).
+ * organization. Both asked the same question of the same rows through two different queries; they
+ * now ask it once, over exactly the libraries the caller hands in - which is what keeps the
+ * aggregate inside the caller's rights context (metadata-schema.md, Rechte-Invariante).
  *
- * <p>Counted on every call, never precomputed and never cached. Core fields and library fields
- * (#1071) are the same question: both are rows in {@code document_metadata_values} keyed by field
- * key.
+ * <p>Counted on every call, never precomputed and never cached. Core fields and library fields are
+ * the same question: both are rows in {@code document_metadata_values} keyed by field key.
  */
 @Component
 public class MetadataFillCounter {

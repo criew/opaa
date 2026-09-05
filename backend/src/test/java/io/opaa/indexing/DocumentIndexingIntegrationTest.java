@@ -74,7 +74,7 @@ class DocumentIndexingIntegrationTest {
   @Autowired private QueryService queryService;
   @Autowired private ChatModel chatModel;
 
-  // #758: AnswerGenerationService now resolves its ChatClient via ActiveChatModelResolver on every
+  // AnswerGenerationService now resolves its ChatClient via ActiveChatModelResolver on every
   // call rather than holding one built once at startup - stubbed below to always hand back a
   // ChatClient wrapping the chatModel mock above.
   @Autowired private ActiveChatModelResolver activeChatModelResolver;
@@ -112,10 +112,10 @@ class DocumentIndexingIntegrationTest {
       }
     }
 
-    // #419: every trigger needs a caller-chosen library and a caller who actually holds at least
-    // EDITOR on it - a system admin is NOT bypassed for an ordinary library any more (PR #431
-    // review, Befund 2: the /trigger endpoint already requires SYSTEM_ADMIN, so bypassing the
-    // EDITOR check for that flag too would make it unreachable in practice). userId is granted
+    // every trigger needs a caller-chosen library and a caller who actually holds at least
+    // EDITOR on it - a system admin is not bypassed for an ordinary library (the /trigger
+    // endpoint already requires SYSTEM_ADMIN, so bypassing the EDITOR check for that flag too
+    // would make it unreachable in practice). userId is granted
     // OWNER on its own library explicitly below, exactly like a real KnowledgeLibraryService
     // library creation would. The previous run's library is deleted first -
     // fk_knowledge_libraries_owner_user is RESTRICT, so the user row cannot go while it still owns
@@ -191,7 +191,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(documents).allMatch(d -> d.getIndexedAt() != null);
     assertThat(documents).allMatch(d -> d.getChunkCount() > 0);
     assertThat(documents).allMatch(d -> d.getChecksum() != null && d.getChecksum().length() == 64);
-    // #201: every document belongs to exactly one library - against the real Liquibase schema,
+    // every document belongs to exactly one library - against the real Liquibase schema,
     // not just the mocked FileProcessingServiceTest, so a missing fk_documents_library_organization
     // constraint or a NULL library_id would fail this insert, not just this assertion.
     assertThat(documents).allMatch(d -> targetLibraryId.equals(d.getLibraryId()));
@@ -226,13 +226,13 @@ class DocumentIndexingIntegrationTest {
     // Only .txt is a supported format, .xyz is rejected by the shared format list.
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(1);
     assertThat(completedJob.getDocumentsFailed()).isZero();
-    // Issue #375: a rejected document must be reported, not silently dropped. Both files were
+    // A rejected document must be reported, not silently dropped. Both files were
     // found, so both are part of the job's total, and the rejected one shows up as skipped —
     // otherwise whoever runs the installation never learns that part of the stock went unindexed.
     assertThat(completedJob.getDocumentsTotal()).isEqualTo(2);
     assertThat(completedJob.getDocumentsSkipped()).isEqualTo(1);
 
-    // #513: the run's own protocol names *why* the file was skipped, not just that it was -
+    // the run's own protocol names *why* the file was skipped, not just that it was -
     // without this, a rejected format is indistinguishable from any other skip reason once the
     // run has finished.
     List<IndexingRunEvent> events =
@@ -251,11 +251,11 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void retainsOnlyTheLastTenRunsPerLibraryAndPrunesTheirEvents() throws IOException {
-    // #513, Umfangserweiterung (Maintainer-Ergaenzung 20.08.2026): only the last 10 runs of a
+    // Umfangserweiterung (Maintainer-Anweisung 20.08.2026): only the last 10 runs of a
     // library stay around - older ones, and their own events, are pruned once an 11th run starts.
     Files.writeString(classTempDir.resolve("bad.xyz"), "a,b,c");
 
-    // #604 review, nit (d): a second library's own single run, untouched by the first library's
+    // a second library's own single run, untouched by the first library's
     // eleven-run pruning below - proves retention is scoped per library, not to the first 10 rows
     // of indexing_jobs overall (which pruneOldRuns' own libraryId-scoped query would satisfy even
     // if it silently reverted to a global limit by mistake, unless another library's run is a
@@ -341,7 +341,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(results).isNotEmpty();
     assertThat(results).allMatch(r -> r.getText() != null && !r.getText().isBlank());
 
-    // #1096/#1100 Hausstandard: pipeline_id at the stored chunk proves each file actually ran
+    // pipeline_id at the stored chunk proves each file actually ran
     // through its own dedicated pipeline (PdfDocumentPipeline/DocxDocumentPipeline), not merely
     // through Tika - both would produce a non-empty, non-blank result above.
     assertThat(
@@ -364,9 +364,9 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void indexesOdfDocuments() throws IOException {
-    // #1057: ODT/ODS/ODP are admitted the exact same way as their Microsoft counterparts (Teil 3,
+    // ODT/ODS/ODP are admitted the exact same way as their Microsoft counterparts (Teil 3,
     // Punkt 2). ODT and ODP resolve to their own OdtDocumentPipeline/OdpDocumentPipeline since
-    // #1110; ODS resolves to TabularDocumentPipeline since #1058 - see
+    // ODS resolves to TabularDocumentPipeline - see
     // indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline for the assertion that it actually
     // reads the file structurally rather than through the fallback.
     copyTestResource("test-documents/test-document.odt", "satzung.odt");
@@ -390,7 +390,7 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline() throws IOException {
-    // #1096 review, finding 8: an end-to-end proof that XLSX/CSV/ODS actually flow through
+    // an end-to-end proof that XLSX/CSV/ODS actually flow through
     // TabularDocumentPipeline (admission -> registry -> pipeline -> stored chunk), not just the
     // pipeline's own unit tests - mirrors indexesPdfAndDocxDocuments's own end-to-end shape, with
     // the pipeline_id assertion the real point of this test.
@@ -434,7 +434,7 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void indexesHtmlDocumentsThroughTheHtmlPipeline() throws IOException {
-    // #1059 review, finding 9: an end-to-end proof that .html actually flows through
+    // an end-to-end proof that .html actually flows through
     // HtmlDocumentPipeline (admission -> registry -> pipeline -> stored chunk), not just the
     // pipeline's own unit tests - mirrors indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline's
     // own shape, with the pipeline_id and location assertions the real point of this test.
@@ -479,7 +479,7 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void indexesPptxDocumentsThroughTheDedicatedPipeline() throws IOException {
-    // #1109 (Epic #1054/#1110 review, E3): PPTX was the only supported format never exercised
+    // PPTX was the only supported format never exercised
     // end-to-end at this layer (admission -> registry -> pipeline -> stored chunk) - only its own
     // unit test covered it. Mirrors indexesXlsxCsvAndOdsDocumentsThroughTheTabularPipeline's shape.
     try (XMLSlideShow ppt = new XMLSlideShow()) {
@@ -527,7 +527,7 @@ class DocumentIndexingIntegrationTest {
   @Test
   void indexesEmlDocumentWithAttachmentAsItsOwnDocumentThroughTheGeneralizedAttachmentPath()
       throws Exception {
-    // #1109 (Epic #1054/#1110 review, E3), rewritten for #1183 (ADR-0022, the #1130 Befund 2
+    // ADR-0022 (the structural fix
     // structural fix): an attachment is no longer merged into its Mail parent's own chunks - it is
     // its own Document row, indexed through the generalized attachment path
     // (io.opaa.indexing.source.attachment.AttachmentIndexer), with the correct pipeline id of its
@@ -604,7 +604,7 @@ class DocumentIndexingIntegrationTest {
                 .similarityThreshold(0.0)
                 .build());
     assertThat(attachmentResults).isNotEmpty();
-    // #1130 Befund 2, the structural fix: the attachment's own chunk carries its own pipeline's id
+    // The attachment's own chunk carries its own pipeline's id
     // (the Tika fallback for a plain-text file), never the outer mail pipeline's.
     assertThat(attachmentResults)
         .anyMatch(
@@ -615,7 +615,7 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void anEmptyOdfDocumentIsRejectedInsteadOfIndexedWithZeroChunks() throws IOException {
-    // #1055 guard carried over to ODF (#1057): a document that parses without error but yields no
+    // Guard carried over to ODF: a document that parses without error but yields no
     // usable text must be reported as skipped, the same way a scan PDF is - never silently INDEXED
     // with zero chunks.
     copyTestResource("test-documents/empty-document.odt", "leer.odt");
@@ -640,7 +640,7 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void anEmptyOdpPresentationIsRejectedInsteadOfIndexedWithZeroChunks() throws IOException {
-    // Same #1057 guard as anEmptyOdfDocumentIsRejectedInsteadOfIndexedWithZeroChunks above, for the
+    // Same guard as anEmptyOdfDocumentIsRejectedInsteadOfIndexedWithZeroChunks above, for the
     // ODP counterpart: a <office:presentation/> without any draw:page must be reported as skipped,
     // not counted as failed.
     copyTestResource("test-documents/empty-document.odp", "leer.odp");
@@ -696,7 +696,7 @@ class DocumentIndexingIntegrationTest {
     assertThat(reindexedDoc.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(reindexedDoc.getIndexedAt()).isNotNull();
     assertThat(reindexedDoc.getChecksum()).isNotEqualTo(initialDoc.getChecksum());
-    // #201 acceptance criteria: re-indexing keeps the library assignment.
+    // Re-indexing keeps the library assignment.
     assertThat(reindexedDoc.getLibraryId()).isEqualTo(targetLibraryId);
 
     // Verify chunk text was updated via similarity search
@@ -714,9 +714,9 @@ class DocumentIndexingIntegrationTest {
   @Test
   void indexingTheSameSourcePathIntoASecondLibraryLeavesTheFirstLibrarysChunksUntouched()
       throws IOException {
-    // #877 (Epic #826, Befund B6): document identity is scoped to (library_id, file_path) -
+    // Document identity is scoped to (library_id, file_path) -
     // indexing the same path into a second library must create an independent document with its
-    // own chunks, never delete the first library's document/chunks the way the pre-#877 global
+    // own chunks, never delete the first library's document/chunks the way the earlier global
     // findByFilePath lookup did. Real Postgres/pgvector schema, not a mocked VectorStore, so the
     // library_id filter is actually exercised against real rows, not a string handed to a mock.
     // Same sourcePath as targetLibraryId's FILESYSTEM configuration (setUp) - both libraries watch
@@ -796,10 +796,10 @@ class DocumentIndexingIntegrationTest {
   @Test
   void aUserWithAGrantOnTheTargetLibraryFindsTheDocumentAndAUserWithoutOneDoesNot()
       throws IOException {
-    // PR #431 review, Befund 3: closes the gap between "indexed through the real pipeline" and
+    // Closes the gap between "indexed through the real pipeline" and
     // "findable through /api/v1/query" - QueryIntegrationTest inserts its chunks by hand and never
     // exercises FileProcessingService at all, so this is the only test proving the two are
-    // actually connected for a document that carries a caller-chosen library (#419).
+    // actually connected for a document that carries a caller-chosen library.
     when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
     when(activeChatModelResolver.resolveChatClient())
         .thenReturn(ChatClient.builder(chatModel).build());
@@ -847,7 +847,7 @@ class DocumentIndexingIntegrationTest {
         .anyMatch(source -> "findable.txt".equals(source.getFileName()));
 
     // A second user in the same organization with no grant on targetLibraryId - but not with an
-    // empty readableLibraryIds altogether. Coordinator follow-up on the review: a stranger with
+    // empty readableLibraryIds altogether. A stranger with
     // zero grants anywhere would let QueryService short-circuit on an empty readable-library set
     // before ever issuing the vector search, which would pass this assertion for the wrong reason
     // (no readable library at all, not "library_id filtered it out"). Granting the stranger a
@@ -917,7 +917,7 @@ class DocumentIndexingIntegrationTest {
 
   @Test
   void triggerIndexingFailsTheJobWhenSourcePathIsOutsideTheConfiguredAllowlist() {
-    // #484/ADR-0018 Entscheidung 6: the allowlist is enforced again at run time
+    // ADR-0018 Entscheidung 6: the allowlist is enforced again at run time
     // (AsyncIndexingExecutor),
     // not only at library creation/update time - a Bestandsbibliothek whose sourcePath the
     // operator's
@@ -962,17 +962,16 @@ class DocumentIndexingIntegrationTest {
     libraryRepository.deleteById(outsideAllowlistLibrary.getId());
   }
 
-  // --- #401: indexing_jobs organization boundary, exercised against two real organizations ---
+  // --- indexing_jobs organization boundary, exercised against two real organizations ---
 
   /**
-   * #401 acceptance criteria: the status query answers only with the caller's own organization's
-   * runs. Proven at two independent layers against a real, two-organization database - not just the
-   * pre-existing library-ownership check ({@code
-   * DocumentIndexingService#loadLibraryInOrganization}, which already 404s a foreign library) but
-   * the {@code indexing_jobs} row's own {@code organization_id} (migration 049): {@link
-   * IndexingJobService#getLatestJob} for organization B asking about organization A's library must
-   * come back empty, exactly as if that library had never run at all - not merely blocked one layer
-   * up.
+   * The status query answers only with the caller's own organization's runs. Proven at two
+   * independent layers against a real, two-organization database - not just the pre-existing
+   * library-ownership check ({@code DocumentIndexingService#loadLibraryInOrganization}, which
+   * already 404s a foreign library) but the {@code indexing_jobs} row's own {@code organization_id}
+   * (migration 049): {@link IndexingJobService#getLatestJob} for organization B asking about
+   * organization A's library must come back empty, exactly as if that library had never run at all
+   * - not merely blocked one layer up.
    */
   @Test
   void statusQueryOnlyEverReturnsRunsBelongingToTheCallersOwnOrganization() throws IOException {
@@ -998,7 +997,7 @@ class DocumentIndexingIntegrationTest {
                 .map(IndexingJob::getId))
         .contains(job.getId());
     // The same library, asked about by a user of a genuinely different organization: 404, not
-    // merely a different (empty) status - #436's "no grant at all looks like not found" applies
+    // merely a different (empty) status - "no grant at all looks like not found" applies
     // here too, since organization B never held any grant on organization A's library.
     assertThatThrownBy(
             () ->
@@ -1006,7 +1005,7 @@ class DocumentIndexingIntegrationTest {
                     libraryInOrganizationA.getId(), asCaller(userInOrganizationB, organizationB)))
         .isInstanceOf(NotFoundException.class);
 
-    // The second, independent guard this issue adds at the indexing_jobs row itself (#401): even
+    // The second, independent guard this issue adds at the indexing_jobs row itself: even
     // asked directly, bypassing the library-ownership check above entirely, the same libraryId
     // under the wrong organizationId comes back empty rather than leaking organization A's job.
     assertThat(indexingJobService.getLatestJob(libraryInOrganizationA.getId(), organizationB))
@@ -1027,10 +1026,9 @@ class DocumentIndexingIntegrationTest {
   }
 
   /**
-   * #401 acceptance criteria: a running indexing job in one organization must not block a trigger
-   * in a different organization. #478 already scoped concurrency per library rather than globally,
-   * but that guarantee was previously only ever exercised with two libraries in the *same*
-   * organization (see {@code
+   * A running indexing job in one organization must not block a trigger in a different
+   * organization. Concurrency is scoped per library, not globally, but that guarantee was
+   * previously only ever exercised with two libraries in the *same* organization (see {@code
    * LibraryIndexingAuthorizationIntegrationTest#aSecondTriggerOfTheSameLibraryWhileRunningIsRejectedButAnotherLibraryRunsInParallel}).
    * This proves it holds across a genuine organization boundary too.
    */

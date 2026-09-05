@@ -9,20 +9,13 @@ import org.springframework.stereotype.Component;
 
 /**
  * Reclaims {@code indexing_jobs} rows stuck at {@link JobStatus#RUNNING} with no {@code @Async}
- * task left to ever complete them. A {@code RUNNING} row is not merely stale bookkeeping - the
- * partial unique index locks its one library out of every future trigger (409, {@code
- * IndexingJobService#isJobRunning}), with no way to resolve it from the UI. Two independent
- * recovery paths cover the two ways a row gets orphaned:
+ * task left to complete them. Such a row is not merely stale bookkeeping: the partial unique index
+ * locks its library out of every future trigger, with no way to resolve it from the UI.
  *
- * <ul>
- *   <li>{@link #recoverOnStartup()} - a fresh JVM cannot possibly still be running the task any
- *       {@code RUNNING} row refers to, so every one of them is orphaned the moment the application
- *       comes back up, whether the previous process crashed mid-run or the task was silently
- *       discarded by a full queue. Assumes exactly one backend process; see ADR-0021.
- *   <li>{@link #recoverStaleRunningJobs()} - catches everything that does not involve a restart at
- *       all: a task silently dropped while the application kept running, or a run that is still
- *       technically in progress but has been for implausibly long.
- * </ul>
+ * <p>{@link #recoverOnStartup()} covers the restart case - a fresh JVM cannot be running any task a
+ * {@code RUNNING} row refers to (ADR-0021 assumes one process) - and {@link
+ * #recoverStaleRunningJobs()} covers everything without a restart: a task dropped while the
+ * application kept running, or a run implausibly long in progress.
  */
 @Component
 public class IndexingJobRecoveryScheduler {

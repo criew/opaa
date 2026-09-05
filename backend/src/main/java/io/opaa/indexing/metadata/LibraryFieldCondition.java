@@ -9,11 +9,10 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * One condition of a {@link MetadataFilter} on a library field (#1071). The field identity is the
- * pair {@code (libraryId, fieldKey)}, never the key alone: two libraries may each define {@code
- * fassung} with their own value lists, and those are two fields - a condition that named only the
- * key would silently filter a foreign library's documents by a list they were never checked
- * against.
+ * One condition of a {@link MetadataFilter} on a library field. The field identity is the pair
+ * {@code (libraryId, fieldKey)}, never the key alone: two libraries may each define {@code fassung}
+ * with their own value lists, and those are two fields - a condition that named only the key would
+ * silently filter a foreign library's documents by a list they were never checked against.
  *
  * <p>Exactly one shape is populated, following the field's type: {@code codes} for SELECT, the
  * inclusive window for DATE (identical span semantics to the Kernfeld Datum/Stand, see {@link

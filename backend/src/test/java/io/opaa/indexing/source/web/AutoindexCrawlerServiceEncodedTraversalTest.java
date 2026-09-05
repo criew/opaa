@@ -17,15 +17,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Covers #1287/#1300 end to end against a real {@link HttpServer}: a directory page carrying a link
- * that only resolves outside the start URL once percent-decoded must never cause a request for the
- * path it decodes to - for both the HTMLTable and the link-based layout, and for both a relative
- * and an already-absolute href. {@code com.sun.net.httpserver.HttpServer} itself routes purely on
- * the raw (still-encoded) request path prefix, so a plain {@code /intern/} context would never be
- * hit by a request the crawler sends as {@code /dokumente/%2E%2E/intern/} - {@link
- * #decodedNormalizedPath} decodes and normalizes every request the single {@code /dokumente/}
- * context actually receives, so the assertion is on the real target the request addresses, not on
- * which context happened to answer it.
+ * End-to-end coverage against a real {@link HttpServer}: a directory page carrying a link that only
+ * resolves outside the start URL once percent-decoded must never cause a request for the path it
+ * decodes to - for both the HTMLTable and the link-based layout, and for both a relative and an
+ * already-absolute href. {@code com.sun.net.httpserver.HttpServer} itself routes purely on the raw
+ * (still-encoded) request path prefix, so a plain {@code /intern/} context would never be hit by a
+ * request the crawler sends as {@code /dokumente/%2E%2E/intern/} - {@link #decodedNormalizedPath}
+ * decodes and normalizes every request the single {@code /dokumente/} context actually receives, so
+ * the assertion is on the real target the request addresses, not on which context happened to
+ * answer it.
  */
 class AutoindexCrawlerServiceEncodedTraversalTest {
 

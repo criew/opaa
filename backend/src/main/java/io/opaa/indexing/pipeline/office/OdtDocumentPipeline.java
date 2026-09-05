@@ -23,34 +23,16 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 /**
- * The ODT pipeline (docs/features/ingestion-pipelines.md, Teil 3 Punkt 2) - the ODT counterpart of
- * {@link DocxDocumentPipeline}, reading {@code content.xml} directly through a hardened SAX parser
- * ({@link OdfContentXml}), since Apache POI never reads OpenDocument. Heading level comes from
- * {@code text:h}'s own {@code text:outline-level} (default 1); cutting stops at level 3 ({@link
- * #MAX_CUTTING_LEVEL}), mirroring {@link DocxDocumentPipeline}. A {@code table:table} is read cell
- * by cell into one paragraph-level text block; a table nested inside a cell keeps the outer table's
- * rows intact, but the nested table's own content is discarded entirely - it never reaches the
- * carrier cell either, an accepted narrow gap (docs/features/ingestion-pipelines.md). {@code
- * text:tracked-changes} (deleted text pending review) is skipped entirely.
+ * The ODT pipeline (ingestion-pipelines.md, Teil 3, Punkt 2) - the ODT counterpart of {@link
+ * DocxDocumentPipeline}, reading {@code content.xml} through the hardened SAX parser {@link
+ * OdfContentXml}, since POI never reads OpenDocument. Heading level comes from {@code text:h}'s
+ * {@code text:outline-level}; cutting stops at {@link #MAX_CUTTING_LEVEL}. A table becomes one text
+ * block, a table nested in a cell is discarded, {@code text:tracked-changes} is skipped.
  *
- * <p><b>{@code styles.xml}'s master page {@code style:header}/{@code style:footer} text</b> is read
- * through the same hardened reader and, if present, becomes one deduplicated leading chunk
- * (location "Kopf-/Fußzeile") rather than being repeated per page or dropped - see {@link
- * RepeatingHeaderChunk}. Every header/footer variant ({@code style:header}, {@code
- * style:header-left}, {@code style:header-first} and their footer counterparts) is read, since a
- * document with "different first page" set (the common German-authority-letterhead case) carries
- * its letterhead only in the first-page variant; two variants whose text is equal after whitespace
- * normalization contribute only once. A malformed/oversized/malicious {@code styles.xml} only
- * forfeits this leading chunk; the document's own body content, once successfully parsed, is still
- * indexed.
- *
- * <p><b>Header/footer text never rescues an otherwise body-less document from {@code
- * NO_EXTRACTABLE_TEXT}.</b> It is template text - present on a scan-only document exactly as much
- * as on one with a text layer - and is therefore no evidence that this document itself carries
- * content; a scanned letter must stay visible as OCR-needing, the single most expensive failure an
- * ingestion pipeline can make (docs/features/ingestion-pipelines.md). The guard is evaluated purely
- * against the body {@code content.xml} yields, before the header/footer chunk is ever added to the
- * result.
+ * <p>{@code styles.xml}'s header/footer text, every variant of it, becomes one deduplicated leading
+ * chunk (see {@link RepeatingHeaderChunk}); a malformed {@code styles.xml} forfeits only that
+ * chunk. It never rescues a body-less document from {@code NO_EXTRACTABLE_TEXT}: template text is
+ * no evidence of content, and a scanned letter must stay visible as OCR-needing.
  */
 public class OdtDocumentPipeline implements DocumentPipeline {
 
@@ -120,7 +102,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
     if (chunks.isEmpty()) {
       // Covers both a genuinely empty <office:text/> and text that chunked down to nothing - the
       // same NO_EXTRACTABLE_TEXT outcome TikaFallbackPipeline reported for either case before this
-      // pipeline existed (#1057), so an already-empty document's user-facing treatment (skipped,
+      // pipeline existed, so an already-empty document's user-facing treatment (skipped,
       // not failed) does not change with the routing. Header/footer text never rescues this
       // outcome - see this class's own Javadoc on why the guard ignores it entirely.
       return DocumentPipelineResult.noExtractableText();
@@ -140,7 +122,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
 
   /**
    * {@code meta.xml}'s title/dates, the first level-1 {@code text:h} (ADR-0024) and the opening of
-   * the body text (#1263).
+   * the body text.
    */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
@@ -428,11 +410,10 @@ public class OdtDocumentPipeline implements DocumentPipeline {
    * styles.xml}'s master page(s) via {@link OdfParagraphTextCollector}. Every variant ({@code
    * style:header}, {@code style:header-left}, {@code style:header-first} and their footer
    * counterparts) is read - a document with "different first page" set carries its letterhead only
-   * in the first-page variant, so skipping it (as an earlier version of this handler did) would
-   * miss the exact case motivating this class. Two paragraphs whose whitespace-normalized text is
-   * equal (the common case of the same header/footer repeated verbatim across variants or master
-   * pages) contribute only once, keeping the header role and the footer role each a single
-   * deduplicated block.
+   * in the first-page variant, which is exactly the case this class exists for. Two paragraphs
+   * whose whitespace-normalized text is equal (the common case of the same header/footer repeated
+   * verbatim across variants or master pages) contribute only once, keeping the header role and the
+   * footer role each a single deduplicated block.
    */
   static final class OdtStylesHandler extends DefaultHandler {
 

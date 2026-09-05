@@ -4,16 +4,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
 import LibraryMetadataFieldsSection from './LibraryMetadataFieldsSection'
 
-const { mockList, mockCreate, mockDelete, mockFieldUsage, mockValueUsage, mockRemap } = vi.hoisted(
-  () => ({
-    mockList: vi.fn(),
-    mockCreate: vi.fn(),
-    mockDelete: vi.fn(),
-    mockFieldUsage: vi.fn(),
-    mockValueUsage: vi.fn(),
-    mockRemap: vi.fn(),
-  }),
-)
+const {
+  mockList,
+  mockCreate,
+  mockDelete,
+  mockFieldUsage,
+  mockValueUsage,
+  mockRemap,
+  mockUpdate,
+  mockRelabel,
+} = vi.hoisted(() => ({
+  mockList: vi.fn(),
+  mockCreate: vi.fn(),
+  mockDelete: vi.fn(),
+  mockFieldUsage: vi.fn(),
+  mockValueUsage: vi.fn(),
+  mockRemap: vi.fn(),
+  mockUpdate: vi.fn(),
+  mockRelabel: vi.fn(),
+}))
 
 vi.mock('../../services/api', async () => {
   const actual = await vi.importActual<typeof import('../../services/api')>('../../services/api')
@@ -25,6 +34,8 @@ vi.mock('../../services/api', async () => {
     getLibraryMetadataFieldUsage: mockFieldUsage,
     getLibraryMetadataFieldValueUsage: mockValueUsage,
     remapLibraryMetadataFieldValue: mockRemap,
+    updateLibraryMetadataField: mockUpdate,
+    relabelLibraryMetadataFieldValue: mockRelabel,
   }
 })
 
@@ -85,7 +96,7 @@ describe('LibraryMetadataFieldsSection', () => {
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
     await screen.findByText('Fassung 2026 (F2026)')
-    await user.click(screen.getByRole('button', { name: 'Wert Fassung 2026 entfernen' }))
+    await user.click(screen.getByRole('button', { name: 'Wert Fassung 2026 bearbeiten' }))
 
     expect(await screen.findByText(/3 Dokument\(e\) tragen „F2026“/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Abbildung bestätigen' }))
@@ -96,7 +107,7 @@ describe('LibraryMetadataFieldsSection', () => {
     const user = userEvent.setup()
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
 
-    await user.click(await screen.findByRole('button', { name: 'Löschen' }))
+    await user.click(await screen.findByRole('button', { name: 'Feld Fassung löschen' }))
 
     expect(
       await screen.findByText(/4 Dokument\(e\) tragen einen Wert für „Fassung“/),
@@ -112,7 +123,49 @@ describe('LibraryMetadataFieldsSection', () => {
 
     await screen.findByText('Fassung')
     expect(screen.queryByRole('button', { name: 'Feld anlegen' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Löschen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Feld Fassung löschen' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Feld Fassung bearbeiten' }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Wert ergänzen' })).not.toBeInTheDocument()
+  })
+
+  it('changes label, Wirkstellen and citation position of an existing field', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
+
+    await user.click(await screen.findByRole('button', { name: 'Feld Fassung bearbeiten' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.clear(within(dialog).getByLabelText('Feldname'))
+    await user.type(within(dialog).getByLabelText('Feldname'), 'Fassung/Stand')
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Wirkt im Kontextpräfix' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    expect(mockUpdate).toHaveBeenCalledWith('library-team', 'fassung', {
+      label: 'Fassung/Stand',
+      filter: true,
+      contextPrefix: true,
+      citationPosition: 1,
+    })
+  })
+
+  it('corrects the label of a value without touching the documents that carry its code', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
+
+    await screen.findByText('Fassung 2026 (F2026)')
+    await user.click(screen.getByRole('button', { name: 'Wert Fassung 2026 bearbeiten' }))
+    const label = await screen.findByLabelText('Bezeichnung')
+    await user.clear(label)
+    await user.type(label, 'Fassung 2026 (neu)')
+    await user.click(screen.getByRole('button', { name: 'Bezeichnung speichern' }))
+
+    expect(mockRelabel).toHaveBeenCalledWith(
+      'library-team',
+      'fassung',
+      'F2026',
+      'Fassung 2026 (neu)',
+    )
+    expect(mockRemap).not.toHaveBeenCalled()
   })
 })

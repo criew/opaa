@@ -29,14 +29,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Manual correction of a document's schema fields (#1068, erweitert um Bibliotheksfelder in #1071;
- * metadata-schema.md "Manuelle Korrektur ist Teil des ersten Schnitts"): rights, validation and the
- * audit event around {@link DocumentMetadataService}'s row writes. Whoever may edit the library's
- * documents ({@link AssetRole#EDITOR}) may correct their metadata - no management right; changing
- * the <em>schema</em> is the management right and lives in {@link LibraryMetadataFieldService}.
- * Every change writes one {@code DOCUMENT_METADATA_CHANGED} event per document and field with old
- * and new value, so the manual values of a library can be rebuilt from the audit log after a
- * restore.
+ * Manual correction of a document's schema fields (metadata-schema.md "Manuelle Korrektur ist Teil
+ * des ersten Schnitts"): rights, validation and the audit event around {@link
+ * DocumentMetadataService}'s row writes. Whoever may edit the library's documents ({@link
+ * AssetRole#EDITOR}) may correct their metadata - no management right; changing the <em>schema</em>
+ * needs it and lives in {@link LibraryMetadataFieldService}. Every change writes one {@code
+ * DOCUMENT_METADATA_CHANGED} event per document and field with old and new value, so the manual
+ * values of a library can be rebuilt from the audit log after a restore.
  */
 @Service
 public class DocumentMetadataCorrectionService {
@@ -88,7 +87,7 @@ public class DocumentMetadataCorrectionService {
 
   /**
    * Every schema field of the document - the three core fields followed by the library's own fields
-   * (#1071), empty ones included - for anyone who may read the library.
+   * , empty ones included - for anyone who may read the library.
    */
   @Transactional(readOnly = true)
   public List<DocumentMetadataFieldView> fieldsOf(

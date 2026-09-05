@@ -27,9 +27,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The schema configuration of a library's own metadata fields (#1071, metadata-schema.md Teil II
- * (b) and Teil V "Der erste Schnitt"). Two rules of the specification live here and are what this
- * service exists for:
+ * The schema configuration of a library's own metadata fields (metadata-schema.md Teil II (b) and
+ * Teil V "Der erste Schnitt"). Two rules of the specification live here and are what this service
+ * exists for:
  *
  * <ul>
  *   <li><b>Aufnahmeregel</b> - a field is only accepted when it serves the filter or the
@@ -43,13 +43,13 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><b>Rights.</b> Changing the schema needs the management right at the library ({@link
  * AssetRole#MANAGER}) - the same bar as changing the library's other settings - while setting a
- * value stays at the editing right of #1068. Reading the schema, including the configured value
- * lists, needs only {@link AssetRole#VIEWER}: the list is schema, not an aggregate over documents
+ * value stays at the editing right of . Reading the schema, including the configured value lists,
+ * needs only {@link AssetRole#VIEWER}: the list is schema, not an aggregate over documents
  * (metadata-schema.md, Rechte-Invariante), which is also why a value list must never carry
  * schutzbedürftige Bezeichnungen.
  *
  * <p><b>Kontextpräfix.</b> The flag is stored here; the prefix itself is built by the following
- * work package (#1072), which is also where the re-index a changed prefix costs is paid.
+ * work package, which is also where the re-index a changed prefix costs is paid.
  */
 @Service
 public class LibraryMetadataFieldService {
@@ -108,7 +108,7 @@ public class LibraryMetadataFieldService {
     return definitionsOf(library.getId());
   }
 
-  /** The fields of several libraries at once - the filter interface's own read (#1070/#1071). */
+  /** The fields of several libraries at once - the filter interface's own read. */
   @Transactional(readOnly = true)
   public Map<UUID, List<LibraryMetadataFieldDefinition>> fieldsOfLibraries(Set<UUID> libraryIds) {
     Map<UUID, List<LibraryMetadataFieldDefinition>> byLibrary = new LinkedHashMap<>();
@@ -330,7 +330,7 @@ public class LibraryMetadataFieldService {
    * targetCode} or - when that is {@code null} - onto "leer". One transaction: the list entry is
    * gone exactly when every document has been rewritten, so "Dokument trägt einen Wert, den es im
    * Schema nicht mehr gibt" never exists, not even briefly. Every document gets its own audit event
-   * with its old value, all sharing one correlationRef, exactly like a Sammelzuweisung (#1068).
+   * with its old value, all sharing one correlationRef, exactly like a Sammelzuweisung.
    */
   @Transactional
   public LibraryFieldValueRemapResult remapValue(
@@ -352,7 +352,7 @@ public class LibraryMetadataFieldService {
     DocumentTypeVocabulary vocabulary = vocabularyRepository.snapshot();
     UUID removedId = removed.getId();
 
-    // The same chargen loop the Bestandslauf and the pipeline re-index run on (#1305), driven until
+    // The same chargen loop the Bestandslauf and the pipeline re-index run on, driven until
     // no document carries the value any more: every advanced document loses the reference and
     // leaves the selection, so the offset stays 0 and the outer loop terminates by construction.
     // The list entry is deleted only afterwards and in the same transaction - that ordering is what

@@ -37,7 +37,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * TransactionTemplate} rather than {@code @Transactional}, so {@link #reextractFromFile} can parse
  * outside and then clamp values and chunk propagation into one transaction without a
  * self-invocation. A system process within the ingest - no person's rights context is consulted
- * (Epic #1065, Beschluss 1).
+ * (ADR-0024).
  */
 @Service
 public class DocumentMetadataService {
@@ -86,8 +86,8 @@ public class DocumentMetadataService {
 
   /**
    * Every filterable value of {@code document} plus the complete key set its library manages - core
-   * fields (ADR-0024) and the library's own filterable fields (#1071). Read whenever chunks are
-   * written or rewritten, so a re-index never drops a library field a person set by hand.
+   * fields (ADR-0024) and the library's own filterable fields. Read whenever chunks are written or
+   * rewritten, so a re-index never drops a library field a person set by hand.
    */
   @Transactional(readOnly = true)
   public DocumentChunkMetadata chunkMetadataFor(Document document) {
@@ -96,8 +96,8 @@ public class DocumentMetadataService {
 
   /**
    * Rewrites the managed chunk keys of {@code document} from its stored values - the path a schema
-   * change takes that moves no value but changes which keys the chunks must carry (#1071: a field
-   * that starts or stops filtering).
+   * change takes that moves no value but changes which keys the chunks must carry (: a field that
+   * starts or stops filtering).
    */
   public int rewriteChunkMetadata(Document document) {
     return transactionTemplate.execute(
@@ -152,13 +152,11 @@ public class DocumentMetadataService {
   }
 
   /**
-   * Re-reads the core fields of an already indexed document from its original file - routing to the
-   * same pipeline the ingest used, reading only its {@link
-   * io.opaa.indexing.pipeline.DocumentPipeline#readProperties} - then stores the values and
-   * rewrites the filterable keys on the document's existing chunks. Parsing happens outside any
-   * transaction (no pooled connection is held over PDFBox/POI); value rows and chunk propagation
-   * are one transaction, so a failed chunk update leaves the document exactly as it was. No
-   * chunking, no embedding: the unit of work the Bestandslauf (#1067) repeats per document.
+   * Re-reads an already indexed document's core fields from its original file, routing to the same
+   * pipeline the ingest used and reading only its {@code readProperties}, then stores the values
+   * and rewrites the filterable keys on the existing chunks. Parsing happens outside any
+   * transaction; value rows and chunk propagation are one, so a failed chunk update leaves the
+   * document as it was. No chunking, no embedding.
    */
   public CoreMetadata reextractFromFile(Document document, Path file) {
     DocumentPipelineRegistry.Routed routed =
@@ -170,7 +168,7 @@ public class DocumentMetadataService {
                 DocumentPipelineSource.ofFile(
                     file, document.getFileName(), routed.detectedExtension()))
             // Attached here for the same reason DocumentPipelineRunner attaches it on the ingest
-            // path (#1263): the routed format is a source of the Dokumentart, not a pipeline's
+            // path: the routed format is a source of the Dokumentart, not a pipeline's
             // finding.
             .withFormatExtension(routed.detectedExtension());
     return reextractFromProperties(document, properties);

@@ -5,25 +5,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Records a single run's protocol of skipped/rejected items and errors, one instance per run -
- * mirrors {@link IndexingRunProgress}'s own per-run instantiation pattern, held locally by each
- * {@code SourceIndexingExecutor} for the duration of its {@code execute} call. Every executor runs
- * on exactly one thread (its own {@code @Async} invocation), so the in-memory counter below needs
- * no synchronization.
+ * Records one run's protocol of skipped/rejected items and errors, one instance per run, held by
+ * the executor for the duration of its {@code execute} call. Every executor runs on a single
+ * thread, so the counter below needs no synchronization.
  *
- * <p>Capped at {@link #MAX_EVENTS_PER_RUN}: a run that skips thousands of items must not turn its
- * own protocol into an unbounded table scan or an unusable page - events beyond the cap are
- * counted, not persisted; {@link #finalizeRun} writes that count once, at the end of the run, to
- * {@link IndexingJob#getEventsTruncatedCount()}, so the UI can render "… und N weitere" without
- * listing them.
- *
- * <p>Never breaks the run it protocols: both {@link #record} and {@link #finalizeRun} swallow any
- * exception the persistence layer throws, logging it instead of propagating it - a run's own
- * outcome (processed/skipped/failed counters, {@link JobStatus}) must never depend on whether its
- * protocol could be written. A propagated failure would prevent {@link
- * IndexingJobService#completeJob}/{@code failJob} from ever running, leaving the job stuck {@link
- * JobStatus#RUNNING} forever and permanently blocking every future run of that library. Centralized
- * here rather than in each executor's own call sites, so every executor is covered by construction.
+ * <p>Capped at {@link #MAX_EVENTS_PER_RUN}: events beyond the cap are counted, not persisted, and
+ * {@link #finalizeRun} writes that count to {@link IndexingJob#getEventsTruncatedCount()}. Both
+ * methods swallow persistence failures - a propagated one would keep {@code completeJob}/{@code
+ * failJob} from running and leave the job stuck {@link JobStatus#RUNNING}, blocking every future
+ * run of that library.
  */
 public final class IndexingRunEventRecorder implements IndexingEventSink {
 

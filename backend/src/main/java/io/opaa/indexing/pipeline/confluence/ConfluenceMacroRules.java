@@ -3,9 +3,9 @@ package io.opaa.indexing.pipeline.confluence;
 import java.util.Set;
 
 /**
- * The rule set per macro class (#1137, ADR-0023) - the one place that decides what of a Confluence
- * macro becomes indexed text. Documented in docs/features/ingestion-pipelines.md, Teil 3, Punkt 6;
- * every class has a test in {@code ConfluenceDocumentPipelineTest}.
+ * The rule set per macro class (ADR-0023) - the one place that decides what of a Confluence macro
+ * becomes indexed text. Documented in docs/features/ingestion-pipelines.md, Teil 3, Punkt 6; every
+ * class has a test in {@code ConfluenceDocumentPipelineTest}.
  *
  * <p>The dividing line is <em>where the content lives</em>: text an author typed into the page (a
  * note, a panel, an expand, a code block) is page content and stays; what Confluence assembles at

@@ -15,10 +15,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The library-field half of a Beleg (#1071, metadata-schema.md Wirkstelle 3): per document, the
- * values of its library's fields that carry a citation position, in that position's order and at
- * most two - the Belegzeile stays a line one can read in the flow of an answer. An empty field
- * produces no entry at all.
+ * The library-field half of a Beleg (metadata-schema.md Wirkstelle 3): per document, the values of
+ * its library's fields that carry a citation position, in that position's order and at most two -
+ * the Belegzeile stays a line one can read in the flow of an answer. An empty field produces no
+ * entry at all.
  *
  * <p>Two queries for a whole answer's sources, not one per document: the citation fields of the
  * involved libraries and the values of the involved documents.

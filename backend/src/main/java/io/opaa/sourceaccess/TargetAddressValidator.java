@@ -10,37 +10,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Rejects a fetch target whose scheme is not {@code http}/{@code https}, or whose resolved IP
- * address(es) fall inside a loopback, link-local (including {@code 169.254.169.254}, the common
- * cloud metadata address), private or otherwise non-routable range - both IPv4 and IPv6, including
- * ranges no plain {@link InetAddress} predicate recognizes on its own: Carrier-Grade NAT ({@code
- * 100.64.0.0/10}), the reserved block and broadcast address ({@code 240.0.0.0/4}, {@code
- * 255.255.255.255}), IETF Protocol Assignments ({@code 192.0.0.0/24}), benchmarking ({@code
- * 198.18.0.0/15}), IPv6 unique local addresses ({@code fc00::/7}, not covered by {@link
- * InetAddress#isSiteLocalAddress()}), the IPv6 NAT64 prefix ({@code 64:ff9b::/96}) and both
- * IPv4-embedded IPv6 forms - {@code ::ffff:a.b.c.d} (mapped) and the deprecated {@code ::a.b.c.d}
- * (compatible) - checked against the embedded IPv4 address.
+ * Rejects a fetch target whose scheme is not {@code http}/{@code https}, or whose resolved
+ * address(es) fall into a loopback, link-local ({@code 169.254.169.254} included), private or
+ * otherwise non-routable range - IPv4 and IPv6 alike, CGNAT, reserved, benchmarking, unique local
+ * and NAT64 included. Checked before the first request and again on every redirect hop. {@code
+ * enabled} is the operator's off switch, {@code allowlist} the per-host exception.
  *
- * <p>Checked before the first request of every crawl/RSS/attachment fetch and again on every
- * redirect hop ({@link RedirectFollowingFetcher#sendFollowingRedirects}, {@link
- * BoundedDownloader#downloadBounded}), so a redirect chain - or a link a crawled directory listing
- * or RSS feed itself carries - cannot walk a legitimately public start address onto an internal
- * one. {@code io.opaa.library.SourceConnectionTestService} applies the identical check to the
- * synchronous connection test.
- *
- * <p>Configurable, default active: {@code enabled} is the operator's off switch for a deployment
- * with legitimate internal document sources; {@code allowlist} lets specific hostnames stay
- * reachable without disabling the check for every other target. Both are supplied by the caller
- * (bound from {@code opaa.indexing.target-validation} in {@code
- * io.opaa.indexing.IndexingProperties} - this class deliberately takes primitives rather than that
- * configuration type, so this package never depends on {@code io.opaa.indexing}).
- *
- * <p>DNS rebinding is a documented, accepted limitation: the address checked here and the address
- * {@code HttpClient} eventually connects to both come from resolving the same hostname, but not
- * atomically. {@code java.net.http.HttpClient} offers no supported hook to pin a single request's
- * connection to an address already resolved and vetted here - closing this gap completely is
- * therefore not achievable on this HTTP client. This is hardening against naheliegende Fehlgriffe
- * and casual misuse, not an airtight guarantee.
+ * <p>DNS rebinding is an accepted limitation: the vetted address and the one the client connects to
+ * come from two resolutions of the same name, and the JDK client offers no hook to pin one.
  */
 public class TargetAddressValidator {
 
@@ -89,13 +66,10 @@ public class TargetAddressValidator {
   }
 
   /**
-   * Validates a bare hostname with no scheme: an HTTP(S) proxy's own address (from {@code
-   * sourceProxy}) is exactly as caller-controlled as the target URL itself and determines where the
-   * TCP connection - and any credentials sent over it - actually goes, but carries no scheme of its
-   * own to run {@link #validate}'s scheme check against. Applies the identical address-range check
-   * {@link #validate} applies to a URI's host; a no-op when {@code host} is {@code null} (no proxy
-   * configured - unlike {@link #validate}, a missing proxy host is not itself an error) or checking
-   * is disabled.
+   * Validates a bare hostname with no scheme: a proxy address is exactly as caller-controlled as
+   * the target URL and decides where the connection - and any credentials on it - actually goes,
+   * but carries no scheme to run {@link #validate}'s scheme check against. Applies the identical
+   * address-range check; a {@code null} host is a no-op, since a missing proxy is not an error.
    *
    * @throws TargetAddressBlockedException (an {@link IOException}) with a German, user-facing
    *     message when the host is rejected.
@@ -194,12 +168,10 @@ public class TargetAddressValidator {
   }
 
   /**
-   * IPv4 ranges none of {@link InetAddress}'s own {@code isXxxAddress} predicates recognize at all:
-   * the reserved {@code 240.0.0.0/4} block - which also covers the broadcast address {@code
-   * 255.255.255.255}, neither multicast nor "any local" to {@link InetAddress} - Carrier-Grade NAT
-   * ({@code 100.64.0.0/10}, RFC 6598), the IETF Protocol Assignments block ({@code 192.0.0.0/24})
-   * and the benchmarking range ({@code 198.18.0.0/15}, RFC 2544). None of these are meant to be
-   * reachable from outside the network that assigned them.
+   * IPv4 ranges none of {@link InetAddress}'s own predicates recognize: the reserved {@code
+   * 240.0.0.0/4} block including the broadcast address, Carrier-Grade NAT ({@code 100.64.0.0/10}),
+   * the IETF Protocol Assignments block ({@code 192.0.0.0/24}) and the benchmarking range ({@code
+   * 198.18.0.0/15}). None are meant to be reachable from outside the assigning network.
    */
   private static boolean isAdditionalBlockedIpv4Range(byte[] ipv4Bytes) {
     int first = ipv4Bytes[0] & 0xFF;
@@ -217,12 +189,10 @@ public class TargetAddressValidator {
   }
 
   /**
-   * Whether {@code bytes} (16 bytes, an IPv6 address) only carries an embedded IPv4 address -
-   * either {@code ::ffff:a.b.c.d} (IPv4-mapped, RFC 4291) or the older, deprecated {@code
-   * ::a.b.c.d} (IPv4-compatible) - both {@code ::/96} prefixes that differ only in the two bytes
-   * right before the embedded address. Treating both alike closes a gap the mapped-only check would
-   * leave: {@code ::7f00:1} (IPv4-compatible for {@code 127.0.0.1}) is not itself recognized as
-   * loopback by {@link InetAddress#isLoopbackAddress()} - only literal {@code ::1} is.
+   * Whether {@code bytes} (an IPv6 address) only carries an embedded IPv4 address - {@code
+   * ::ffff:a.b.c.d} (mapped) or the deprecated {@code ::a.b.c.d} (compatible). Treating both alike
+   * closes a gap a mapped-only check would leave: {@code ::7f00:1}, compatible-form {@code
+   * 127.0.0.1}, is not recognized by {@link InetAddress#isLoopbackAddress()}.
    */
   private static boolean isIpv4EmbeddedIpv6(byte[] bytes) {
     if (bytes.length != 16) {

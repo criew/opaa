@@ -11,10 +11,10 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The persisted form of a chat's sticky {@link MetadataFilter} in {@code chats.metadata_filter}
- * (#1070, um Bibliotheksfelder erweitert in #1071): the filter's conditions as a small JSON object
- * with ISO dates, {@code null} for no filter - the same shape the API carries, so a stored row
- * reads back into the same record.
+ * The persisted form of a chat's sticky {@link MetadataFilter} in {@code chats.metadata_filter} (um
+ * Bibliotheksfelder erweitert in): the filter's conditions as a small JSON object with ISO dates,
+ * {@code null} for no filter - the same shape the API carries, so a stored row reads back into the
+ * same record.
  */
 final class MetadataFilterJson {
 
@@ -49,7 +49,7 @@ final class MetadataFilterJson {
     }
     if (!libraryFields.isEmpty()) {
       // Omitted when empty, so a filter on core fields alone keeps the exact shape it had before
-      // #1071 - a stored row written by an older release reads back identically either way.
+      //  - a stored row written by an older release reads back identically either way.
       json.put("libraryFields", libraryFields);
     }
     return MAPPER.writeValueAsString(json);

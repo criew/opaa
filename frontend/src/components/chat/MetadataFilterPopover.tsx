@@ -61,7 +61,7 @@ function isEmptyCondition(condition: MetadataFilterLibraryFieldCondition): boole
 }
 
 /**
- * #1070: the filter popover next to the chip bar. Per filterable core field it shows the
+ * the filter popover next to the chip bar. Per filterable core field it shows the
  * Füllstand in the person's own search scope and offers the field only above the committed
  * threshold (metadata-schema.md, "Eintrittsbedingung für den Kernfeld-Filter"); the Dokumentart
  * choices are the values that actually occur in that scope, never the whole vocabulary. Nothing is
@@ -105,16 +105,17 @@ export default function MetadataFilterPopover({
   const dateField = optionsCurrent ? fieldOf(options, 'document_date') : undefined
   const dateInvalid = draftFrom !== '' && draftTo !== '' && draftTo < draftFrom
 
-  const libraryFields: MetadataFilterLibraryFieldOption[] = optionsCurrent
-    ? (options.libraryFields ?? [])
-    : []
+  const libraryFields: MetadataFilterLibraryFieldOption[] = useMemo(
+    () => (optionsCurrent ? (options?.libraryFields ?? []) : []),
+    [options, optionsCurrent],
+  )
   const anyOffered =
     (typeField?.offered ?? false) ||
     (dateField?.offered ?? false) ||
     libraryFields.some((field) => field.offered)
 
   // A field below the threshold is not offered, but a condition already set on it stays in force
-  // (Koordinator-Festlegung an #1070): its existing value is carried through untouched, and only
+  // (Koordinator-Festlegung an): its existing value is carried through untouched, and only
   // its chip removes it.
   const draftFilter = useMemo((): MetadataFilter | null => {
     const next: MetadataFilter = {}
@@ -137,7 +138,6 @@ export default function MetadataFilterPopover({
     const conditions = [...carried, ...chosen]
     if (conditions.length > 0) next.libraryFields = conditions
     return Object.keys(next).length === 0 ? null : next
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     dateField?.offered,
     draftFrom,
@@ -145,7 +145,7 @@ export default function MetadataFilterPopover({
     draftTypes,
     draftLibraryFields,
     filter,
-    optionsScopeKey,
+    libraryFields,
     typeField?.offered,
   ])
 

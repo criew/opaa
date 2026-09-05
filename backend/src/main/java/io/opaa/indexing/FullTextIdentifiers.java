@@ -11,41 +11,14 @@ import java.util.regex.Pattern;
 /**
  * The curated pattern list behind the lexical path's identifier protection
  * (docs/features/hybrid-retrieval.md, "Die deutschen Besonderheiten"): paragraph references, file
- * numbers and Erlass-/Drucksachen numbers are identifiers, not words, and are carried as
- * <b>undecomposed lexemes</b> next to the German analysis chain so that stemming and tokenization
- * cannot destroy them. "§ 34" and "§ 35" stay distinguishable; without this, both reduce to the
- * bare number and the whole path is worthless for its main purpose.
+ * numbers and Erlass-/Drucksachen numbers become <b>undecomposed lexemes</b>, so "§ 34" and "§ 35"
+ * stay distinguishable under stemming. Write and query path call this same method, or the two sides
+ * would build different lexemes and never match.
  *
- * <p><b>Deliberately a closed list, not a general identifier guess.</b> A wrongly recognized
- * identifier produces a lexeme nobody ever searches for; an unrecognized one is the failure that
- * hurts. Both the write path ({@link FullTextChunkStore#indexChunks}) and the query path ({@code
- * io.opaa.query.FullTextChunkSearch}) call this same method, so a pattern added here takes effect
- * on both sides at once - a lexeme produced from a chunk and a lexeme produced from a question are
- * built by the identical code, or they would never match.
- *
- * <p><b>Every lexeme is lowercase ASCII alphanumeric with a {@code x…} type prefix</b> ({@code
- * xpar}, {@code xakz}, {@code xnr}). Two properties follow from that, and both are load-bearing:
- * such a string can never collide with a German lexeme the stemmer produces, and it passes unquoted
- * through {@code to_tsquery} without carrying any operator character into the query.
- *
- * <p>A paragraph reference always yields its bare form ({@code xpar34}) in addition to any more
- * specific one ({@code xpar34baugb}, {@code xpar3abs2}). The specific lexeme is what separates two
- * documents that both mention § 3; the bare one is what still matches when only one side names the
- * law or the Absatz.
- *
- * <p><b>Symmetry is the property everything else hangs on.</b> The same identifier must produce the
- * same lexeme whether it appears in a chunk or in a question - and the two are worded differently:
- * a document writes "Dienstanweisung mit dem Aktenzeichen BAU-DA-2/2024", a person asks "Was regelt
- * die Dienstanweisung BAU-DA-2/2024?". A pattern that needs the keyword therefore only ever fires
- * on one of the two sides, and the protection silently does nothing. Every keyword-led pattern here
- * consequently has a keyword-free structural counterpart, and {@code FullTextIdentifiersTest} pins
- * both wordings of one identifier against each other.
- *
- * <p><b>A candidate is only accepted as an identifier if it is structurally one</b> ({@link
- * #looksLikeIdentifier}: at least one digit and at least one separator). Without that requirement
- * "Aktenzeichen der Satzung" yields the lexeme {@code xakzder}, which then sits at weight {@code A}
- * on every ordinary prose chunk that happens to contain the same phrase - noise at the top of the
- * ranking, produced by the very mechanism meant to sharpen it.
+ * <p>Every lexeme is lowercase ASCII alphanumeric with an {@code x…} type prefix, so it can neither
+ * collide with a stemmer lexeme nor carry an operator into {@code to_tsquery}. Every keyword-led
+ * pattern has a keyword-free counterpart, and a candidate must satisfy {@link
+ * #looksLikeIdentifier}.
  */
 public final class FullTextIdentifiers {
 
@@ -102,14 +75,10 @@ public final class FullTextIdentifiers {
 
   /**
    * The keyword-free counterpart of {@link #KEYWORD_FILE_NUMBER}: the shape administrative file,
-   * Dienstanweisungs- and Formularnummern actually have - an uppercase department or form
-   * abbreviation followed by hyphen-separated parts, optionally with a year ({@code BAU-DA-2/2024},
-   * {@code SOZ-DA-1/2023}, {@code KAE-07}, {@code BUE-08}).
-   *
-   * <p>This is the pattern that makes the protection work at all on the question side: a question
-   * names the number bare ("Was regelt die Dienstanweisung BAU-DA-2/2024?"), the document names it
-   * behind a keyword. {@link #looksLikeIdentifier} keeps it from firing on ordinary hyphenated
-   * uppercase abbreviations, which carry no digit.
+   * Dienstanweisungs- and Formularnummern actually have - an uppercase abbreviation followed by
+   * hyphen-separated parts, optionally with a year. This is what makes the protection work on the
+   * question side, which names the number bare while the document names it behind a keyword. {@link
+   * #looksLikeIdentifier} keeps it off ordinary hyphenated abbreviations, which carry no digit.
    */
   private static final Pattern STRUCTURED_FILE_NUMBER =
       Pattern.compile("\\b([A-Z]{2,4}(?:-[A-Z0-9]{1,4})+(?:/\\d{2,4})?)\\b");
@@ -125,24 +94,11 @@ public final class FullTextIdentifiers {
               + "(\\d{1,6}\\s*[-/]\\s*\\d{1,6}(?:\\s*[-/]\\s*\\d{1,6})?)");
 
   /**
-   * An email address (#1130 Befund 1, Querschnittsregel a). PostgreSQL's own parser already keeps
-   * an email address as one {@code email}-class token in {@code to_tsvector} - the gap this pattern
-   * closes is on the <em>question</em> side: {@code io.opaa.query.FullTextChunkSearch#wordTokens}
-   * splits a question at every non-alphanumeric character, so "max.mustermann@example.org" asked
-   * back becomes four separate word tokens that never match the one token the chunk carries
-   * (confirmed against a live PostgreSQL: {@code to_tsvector('german', '...
-   * max.mustermann@example.org ...') @@ to_tsquery('german', 'max|mustermann|example|org')} is
-   * {@code false} when none of the four also occurs as an ordinary word). Carrying the address as
-   * an undecomposed lexeme on both sides restores the match, the same fix this class already
-   * applies to §-references and file numbers.
-   *
-   * <p><b>ASCII-only local part and domain</b> - an umlaut is neither letter nor separator to this
-   * pattern, so it ends the match early rather than including it: {@code jörg@stadt.de} yields
-   * {@code xmailrgstadtde} (the match starts at "rg@stadt.de", the leading "j" and "ö" are outside
-   * it), and {@code info@köln.de} yields no lexeme at all (no ASCII run reaches a literal "."
-   * before the umlaut). Both sides of the write/query symmetry apply this same pattern, so this is
-   * a coverage gap, not a mismatch - it never produces a false positive, only a missed address
-   * around an umlaut.
+   * An email address (ingestion-pipelines.md, Querschnittsregel (a)). PostgreSQL keeps one as a
+   * single {@code email} token already; the gap is on the question side, where {@code
+   * FullTextChunkSearch#wordTokens} splits it at every non-alphanumeric character. Local part and
+   * domain are ASCII-only, so an umlaut ends the match early - a missed address, never a false
+   * positive, and symmetric because both sides apply this same pattern.
    */
   private static final Pattern EMAIL_ADDRESS =
       Pattern.compile("\\b([A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\\.[A-Za-z]{2,})\\b");

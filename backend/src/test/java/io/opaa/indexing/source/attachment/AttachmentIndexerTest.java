@@ -17,8 +17,6 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.AttachmentProgressSink;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
@@ -48,7 +46,7 @@ import org.junit.jupiter.api.io.TempDir;
  * BoundedDownloader}) - here {@link BoundedDownloader} and {@link FileProcessingService} are both
  * mocked, isolating the one branch that needs its own targeted proof. Uses {@link
  * RssFeedRunContext} as its {@link AttachmentAccess} - the same context RSS itself supplies since
- * #1182 generalized this class away from a direct RSS dependency.
+ * This class carries no direct RSS dependency.
  */
 class AttachmentIndexerTest {
 
@@ -58,7 +56,6 @@ class AttachmentIndexerTest {
   private FileProcessingService fileProcessingService;
   private IndexingJobService indexingJobService;
   private IndexingRunEventRepository indexingRunEventRepository;
-  private DocumentRepository documentRepository;
   private AttachmentIndexer indexer;
   private RssFeedRunContext ctx;
   private AttachmentDownloadLimits limits;
@@ -69,14 +66,12 @@ class AttachmentIndexerTest {
     attachmentDownloader = mock(BoundedDownloader.class);
     fileProcessingService = mock(FileProcessingService.class);
     LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
-    documentRepository = mock(DocumentRepository.class);
     limits = new AttachmentDownloadLimits(10, 5_242_880L, 0, "opaa-test-agent");
     indexer =
         new AttachmentIndexer(
             attachmentDownloader,
             fileProcessingService,
             storageQuotaService,
-            documentRepository,
             new AttachmentProperties(5));
     parentDocumentId = UUID.randomUUID();
 
@@ -113,7 +108,7 @@ class AttachmentIndexerTest {
   @Test
   void anAttachmentThePipelineCannotParseAtAllIsRecordedAsAnErrorButNeverCountedAsARunEntry()
       throws IOException, InterruptedException {
-    // #1108 review: unlike AsyncIndexingExecutor/UrlIndexingExecutor/RssFeedIndexingExecutor's own
+    // unlike AsyncIndexingExecutor/UrlIndexingExecutor/RssFeedIndexingExecutor's own
     // entry-level FAILED handling (recordFailed() + ERROR event), an attachment is not a discrete
     // unit of the run's own processed/failed/skipped counters - so FAILED here must only defer the
     // feed's ETag persistence (anyEntryDeferred) and log an ERROR event, never call recordFailed().
@@ -157,7 +152,7 @@ class AttachmentIndexerTest {
   @Test
   void aTransientlyFailingAttachmentIsStillReportedAsPresentAndNotLeftToVanish()
       throws IOException {
-    // Review round 2, finding 1: recordIndexedAttachment must also fire on the failure branches.
+    // recordIndexedAttachment must also fire on the failure branches.
     // A still-present, earlier-indexed attachment of a re-parsed parent that fails transiently
     // (quota momentarily full, temp read error) would otherwise appear in neither the recorded
     // paths nor the caller's database fold-in (the parent counts as reprocessed) - cleanupVanished
@@ -205,7 +200,7 @@ class AttachmentIndexerTest {
   @Test
   void theSameConfiguredDepthGovernsBothMailInMailAndFeedAttachmentChains()
       throws IOException, InterruptedException {
-    // #1269: the recursion-depth cutoff moved out of AttachmentDownloadLimits (a per-source,
+    // the recursion-depth cutoff moved out of AttachmentDownloadLimits (a per-source,
     // per-connector record) into AttachmentProperties, one value AttachmentIndexer applies
     // regardless of which connector's own, differently-shaped AttachmentDownloadLimits (count,
     // size, politeness, user agent) a given call carries.
@@ -214,7 +209,6 @@ class AttachmentIndexerTest {
             attachmentDownloader,
             fileProcessingService,
             mock(LibraryStorageQuotaService.class),
-            documentRepository,
             new AttachmentProperties(1));
 
     // Mail-in-Mail: a LocalFile attachment whose own processing reports one more nested LocalFile
@@ -329,25 +323,8 @@ class AttachmentIndexerTest {
   }
 
   @Test
-  void existingAttachmentPathsReadsThemBackByParentDocumentId() {
-    // ADR-0022, Entscheidung 3's Nachtragsfall: a parent skipped as unchanged is never re-parsed,
-    // so indexAll never rediscovers its attachments this run - a caller that folds attachment paths
-    // into currentFilePaths must instead read the already-persisted ones back by parentDocumentId.
-    Document attachmentOne =
-        new Document("erste.pdf", "https://example.org/erste.pdf", "application/pdf", 10L);
-    Document attachmentTwo =
-        new Document("zweite.pdf", "https://example.org/zweite.pdf", "application/pdf", 20L);
-    when(documentRepository.findByParentDocumentId(parentDocumentId))
-        .thenReturn(List.of(attachmentOne, attachmentTwo));
-
-    assertThat(indexer.existingAttachmentPaths(parentDocumentId))
-        .containsExactlyInAnyOrder(
-            "https://example.org/erste.pdf", "https://example.org/zweite.pdf");
-  }
-
-  @Test
   void aLocalFileCarriesItsSourcesVersionAndTheAccessCarriesTheParentsContext() throws IOException {
-    // #1137: a Confluence attachment reaches this path as a LocalFile (the edition-aware client
+    // a Confluence attachment reaches this path as a LocalFile (the edition-aware client
     // downloaded it) - its version must land in last_modified_remote so the executor's
     // pre-download check can skip it next run, and the page's context travels via the access.
     KnowledgeLibrary confluenceLibrary =

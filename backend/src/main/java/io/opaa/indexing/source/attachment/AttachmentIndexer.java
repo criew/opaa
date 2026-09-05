@@ -1,8 +1,6 @@
 package io.opaa.indexing.source.attachment;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -27,26 +25,14 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Indexes the attachments of a parent document into their own {@link io.opaa.indexing.Document}
- * rows (ADR-0022) - generalized (#1182) from an RSS-only implementation detail into the shared
- * attachment path every connector uses: RSS ({@code RssFeedIndexingExecutor}), Mail (#1183) and
- * Confluence (#1137, {@code ConfluenceIndexingExecutor}). Carries no dependency on any single
- * connector's package - a caller supplies an {@link AttachmentAccess} (library, event log,
- * progress, deferred-marking) and a list of {@link AttachmentSource} (a download job or an
- * already-extracted local file) instead.
+ * rows (ADR-0022) - the shared path RSS, Mail and Confluence all use. It depends on no connector
+ * package: a caller supplies an {@link AttachmentAccess} and a list of {@link AttachmentSource}.
  *
- * <p>Never lets an attachment failure propagate to the caller: a lost attachment (too large,
- * unreachable, rejected, unsupported format, or cut off by {@link
- * AttachmentDownloadLimits#maxPerParent()}) is logged and skipped, with no effect on the parent
- * document's own processed/skipped/failed outcome - but marks {@link
- * AttachmentAccess#markDeferred()}, so a future run's conditional {@code GET} (where the caller has
- * one) is not allowed to suppress a retry of the lost attachment.
- *
- * <p>Every attachment successfully created or confirmed unchanged is set as a child of {@code
- * parentDocumentId} ({@link io.opaa.indexing.Document#getParentDocumentId()}, ADR-0022 Entscheidung
- * 4) and its {@code file_path} is returned to the caller (ADR-0022 Entscheidung 3) - needed for a
- * caller that folds attachment paths into its own {@code currentFilePaths} for {@code
- * StaleDocumentCleanupService}; RSS itself never calls that service (ADR-0017 decision 5) and
- * simply ignores the returned paths.
+ * <p>An attachment failure never propagates: a lost attachment is logged and skipped with no effect
+ * on the parent's outcome, but marks {@link AttachmentAccess#markDeferred()} so a later conditional
+ * {@code GET} cannot suppress the retry. Every attachment created or confirmed unchanged becomes a
+ * child of {@code parentDocumentId} (Entscheidung 4) and its {@code file_path} is returned, for a
+ * caller that folds those paths into its own {@code currentFilePaths} (Entscheidung 3).
  */
 public class AttachmentIndexer {
 
@@ -56,52 +42,31 @@ public class AttachmentIndexer {
    * How many levels of attachment-in-attachment recursion the current thread is at - {@code null}
    * outside of any {@link #indexAll} call. An attachment whose own pipeline reports further {@code
    * discoveredAttachments} (e.g. a nested {@code .eml}) re-enters this class synchronously, through
-   * {@code FileProcessingService#processUrlFile}'s own attachment handling, on the same thread -
-   * mirrors {@code MailDocumentPipeline}'s pre-#1183 {@code RECURSION_DEPTH} field, moved here as
-   * part of ADR-0022 Entscheidung 6.
+   * {@code FileProcessingService#processUrlFile}'s own attachment handling, on the same thread. The
+   * depth cutoff is this class's alone (ADR-0022, Entscheidung 6), never a pipeline's.
    */
   private static final ThreadLocal<Integer> RECURSION_DEPTH = new ThreadLocal<>();
 
   private final BoundedDownloader attachmentDownloader;
   private final FileProcessingService fileProcessingService;
   private final LibraryStorageQuotaService storageQuotaService;
-  private final DocumentRepository documentRepository;
   private final AttachmentProperties attachmentProperties;
 
   public AttachmentIndexer(
       BoundedDownloader attachmentDownloader,
       FileProcessingService fileProcessingService,
       LibraryStorageQuotaService storageQuotaService,
-      DocumentRepository documentRepository,
       AttachmentProperties attachmentProperties) {
     this.attachmentDownloader = attachmentDownloader;
     this.fileProcessingService = fileProcessingService;
     this.storageQuotaService = storageQuotaService;
-    this.documentRepository = documentRepository;
     this.attachmentProperties = attachmentProperties;
   }
 
   /**
-   * The Nachtragsfall of ADR-0022, Entscheidung 3: a parent document a caller skipped as unchanged
-   * is never re-parsed, so its attachments are never rediscovered by {@link #indexAll} this run -
-   * their paths must still be folded into {@code currentFilePaths}, or a caller that calls {@code
-   * StaleDocumentCleanupService#cleanupVanished} would wrongly remove them despite parent and
-   * attachments both unchanged. Backed by {@link DocumentRepository#findByParentDocumentId}
-   * (ADR-0022 Entscheidung 4) - RSS itself never calls {@code cleanupVanished} (ADR-0017 decision
-   * 5) and so never needs this method, but a future caller that does (Confluence, #1137) does.
-   */
-  public List<String> existingAttachmentPaths(UUID parentDocumentId) {
-    return documentRepository.findByParentDocumentId(parentDocumentId).stream()
-        .map(Document::getFilePath)
-        .toList();
-  }
-
-  /**
    * Indexes every attachment {@code sources} lists, up to {@link
-   * AttachmentDownloadLimits#maxPerParent()}. The politeness delay ({@link
-   * AttachmentDownloadLimits#requestDelayMs()}) applies before each {@link
-   * AttachmentSource.Download} - a no-op before an {@link AttachmentSource.LocalFile}, which makes
-   * no request of its own.
+   * AttachmentDownloadLimits#maxPerParent()}. The politeness delay applies before each {@link
+   * AttachmentSource.Download} and is a no-op before an {@link AttachmentSource.LocalFile}.
    *
    * @param parentDocumentId the row every indexed attachment becomes a child of
    * @param parentPath the parent document's own {@code file_path} - recorded on every attachment
@@ -356,10 +321,9 @@ public class AttachmentIndexer {
   }
 
   /**
-   * Indexes an attachment whose bytes are already on disk - the case Mail (#1183) and Confluence
-   * (#1137) need, no download step involved here. {@code localFile.filePathIdentity()} is this
-   * attachment's {@code file_path} (ADR-0022, Entscheidung 2); {@code localFile.fileName()} is only
-   * its display name.
+   * Indexes an attachment whose bytes are already on disk - the case Mail and Confluence need, no
+   * download step involved here. {@code localFile.filePathIdentity()} is this attachment's {@code
+   * file_path} (ADR-0022, Entscheidung 2); {@code localFile.fileName()} is only its display name.
    */
   private Optional<String> indexLocalFile(
       AttachmentAccess access,
@@ -516,20 +480,11 @@ public class AttachmentIndexer {
   }
 
   /**
-   * Appends an extension derived from {@code contentType} when {@code suggestedFileName} carries no
-   * extension at all (the Government Site Builder profile's case) - a no-op for {@link
-   * AttachmentProfile#GENERIC} candidates, which always already carry one. Checks {@code
-   * AttachmentProfile.fileHasSomeExtension}, not {@link SupportedDocumentFormats#isSupported}: a
-   * GENERIC candidate can carry an extension {@link SupportedDocumentFormats} does not recognize
-   * (e.g. {@code bescheid.csv}), and must not get a second, content-type-derived extension appended
-   * on top. Only a name with no extension whatsoever gets one synthesized here; from here on, only
-   * the actually detected content - never this declared, server-asserted {@code contentType} -
-   * decides acceptance.
-   *
-   * <p>Known gap: a GSB attachment (no URL extension) that mislabels a non-text response as {@code
-   * Content-Type: text/plain} is still trusted for the text-tolerant acceptance branch of {@link
-   * SupportedDocumentFormats#decideForFileName}, since the declared header is the only hint
-   * available for an extension-less address.
+   * Appends an extension derived from {@code contentType} when {@code suggestedFileName} carries
+   * none at all - the Government Site Builder case, a no-op for {@link AttachmentProfile#GENERIC}.
+   * Checks {@code AttachmentProfile.fileHasSomeExtension}, not {@link
+   * SupportedDocumentFormats#isSupported}, so a candidate with an unrecognized extension gets no
+   * second one. From here on only the detected content decides acceptance.
    */
   private static String resolveFileName(String suggestedFileName, String contentType) {
     if (AttachmentProfile.fileHasSomeExtension(suggestedFileName)) {

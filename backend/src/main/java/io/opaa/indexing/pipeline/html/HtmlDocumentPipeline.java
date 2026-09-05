@@ -23,22 +23,15 @@ import org.jsoup.select.NodeVisitor;
 import org.springframework.ai.document.Document;
 
 /**
- * The HTML pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 4): strips boilerplate
- * (navigation, footer, cookie notice, sidebar) that Tika's reader otherwise leaves in the chunk as
- * if it were content, then cuts along h1-h3 using the same section-emission logic as the other
- * heading-driven pipelines ({@link HeadingSectionSplitter}). Reads the page with Jsoup directly,
- * not Spring AI's HTML reader (absent from this project's classpath).
+ * The HTML pipeline (ingestion-pipelines.md, Teil 3, Punkt 4): strips boilerplate (navigation,
+ * footer, cookie notice, sidebar) that Tika's reader would leave in the chunk as content, then cuts
+ * along h1-h3 via {@link HeadingSectionSplitter}. Reads with Jsoup, since Spring AI's HTML reader
+ * is not on this classpath.
  *
- * <p>Each chunk's heading path travels both as its Fundort metadata and as a leading line of the
- * chunk's own text, repeated on every further-split sub-chunk of an oversized section. h4-h6 stay
- * inside their enclosing section's text rather than cutting a further chunk. A genuinely empty
- * section still becomes a one-line chunk rather than being silently dropped; an ordinary title
- * heading immediately followed by its first subsection heading is not treated as empty, since its
- * title already opens the descendant section's own heading path.
- *
- * <p>Feed detail pages are a named exception: an RSS entry's already-extracted main text goes
- * straight to the Tika fallback pipeline (ADR-0017, decision 2) and never reaches this class. Only
- * genuine {@code .html} files are routed here.
+ * <p>Each chunk's heading path travels as Fundort metadata and as a leading text line, repeated on
+ * every further-split sub-chunk; h4-h6 stay inside their section. An empty section still becomes a
+ * one-line chunk. An RSS entry's extracted text never reaches this class (ADR-0017, decision 2) -
+ * only genuine {@code .html} files are routed here.
  */
 public class HtmlDocumentPipeline implements DocumentPipeline {
 
@@ -48,8 +41,8 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   /**
    * Boilerplate that is only ever boilerplate, never legitimate content - removed everywhere,
    * including inside the chosen content root: navigation, sidebar, cookie consent and
-   * script/style/noscript sit in a content wrapper often enough (#1059 review, follow-up finding 2)
-   * that they cannot be treated the same way as {@link #CONDITIONAL_BOILERPLATE_SELECTOR}.
+   * script/style/noscript sit in a content wrapper often enough that they cannot be treated the
+   * same way as {@link #CONDITIONAL_BOILERPLATE_SELECTOR}.
    */
   private static final String UNCONDITIONAL_BOILERPLATE_SELECTOR =
       "nav, aside, [role=navigation], [role=complementary], .nav, .navigation, .menu,"
@@ -58,11 +51,10 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
 
   /**
    * Boilerplate stripped only when it sits <em>outside</em> every chosen content root (see {@link
-   * #selectContentRoots}) - a standard CMS article/section legitimately nests its own {@code
-   * <header>} (title, Stand-Datum) or {@code <footer>} (author, tags), and stripping those away
-   * would silently drop real content along with the surrounding page chrome (#1059 review, finding
-   * 4). Mirrors the set {@code DetailPageExtractor} uses for an RSS detail page, minus the elements
-   * moved to {@link #UNCONDITIONAL_BOILERPLATE_SELECTOR} above.
+   * #selectContentRoots}): a standard CMS article legitimately nests its own {@code <header>} or
+   * {@code <footer>}, and stripping those would drop real content along with the page chrome. Same
+   * set {@code DetailPageExtractor} uses, minus what {@link #UNCONDITIONAL_BOILERPLATE_SELECTOR}
+   * already covers.
    */
   private static final String CONDITIONAL_BOILERPLATE_SELECTOR =
       "header, footer, [role=banner], [role=contentinfo]";
@@ -93,12 +85,10 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
           "article");
 
   /**
-   * Soft budget a section's rendered body text is grouped into before another chunk starts -
-   * delegates to {@link HeadingSectionSplitter#SOFT_CHUNK_CHAR_LIMIT}, the shared value {@link
-   * #flushSection} (via {@link HeadingSectionSplitter#flushSection}) actually applies; kept as its
-   * own named constant here because {@code HtmlDocumentPipelineTest} references it by this class's
-   * name. <b>Gesetzt, nicht gemessen</b> (ingestion-pipelines.md, "Chunk-Größen") - the evaluation
-   * corpus contains no HTML documents at all, so there is nothing to measure a value against yet.
+   * Soft budget a section's body text is grouped into before another chunk starts - delegates to
+   * {@link HeadingSectionSplitter#SOFT_CHUNK_CHAR_LIMIT}, the shared value actually applied, and is
+   * kept as its own constant only because the test references it by this class's name. <b>Gesetzt,
+   * nicht gemessen</b>: the evaluation corpus contains no HTML documents to measure against.
    */
   static final int SOFT_CHUNK_CHAR_LIMIT = HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT;
 
@@ -147,10 +137,9 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * The {@code <title>}, the first {@code <h1>} (ADR-0024) and the title line of the content
-   * (#1263, #1289). {@link #selectContentRoots} runs here too, so the title line is read from the
-   * same boilerplate-stripped view {@link #run} sees - a navigation label must not become a
-   * Dokumentart.
+   * The {@code <title>}, the first {@code <h1>} (ADR-0024) and the title line of the content .
+   * {@link #selectContentRoots} runs here too, so the title line is read from the same
+   * boilerplate-stripped view {@link #run} sees - a navigation label must not become a Dokumentart.
    */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
@@ -172,8 +161,8 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * The first text block of the content (#1289) - a page has no line breaks of its own, so the
-   * block boundaries of {@link #BLOCK_TAGS} and the headings are what a title line ends at.
+   * The first text block of the content - a page has no line breaks of its own, so the block
+   * boundaries of {@link #BLOCK_TAGS} and the headings are what a title line ends at.
    */
   private static String titleLine(List<Element> contentRoots) {
     for (Element root : contentRoots) {
@@ -219,18 +208,11 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * The content root(s) this document is cut from, and the boilerplate-stripping side effect that
-   * has to happen relative to them.
-   *
-   * <p>{@link #UNCONDITIONAL_BOILERPLATE_SELECTOR} is removed first, document-wide, regardless of
-   * where the content area ends up - it is never legitimate content anywhere.
-   *
-   * <p>Every {@link #MAIN_CONTENT_SELECTOR} match is processed, not just the first (#1059 review,
-   * finding 5) - an overview page routinely lists several {@code <article>} teasers, and taking
-   * only the first would silently drop every other one. A match nested inside another match (e.g.
-   * {@code <main><article>…</article></main>}, both matching the selector) is dropped in favour of
-   * its outer match rather than kept as a second, overlapping root - otherwise the same content
-   * would be cut and stored twice (#1059 review, follow-up finding 1).
+   * The content root(s) this document is cut from, plus the boilerplate stripping that has to
+   * happen relative to them: {@link #UNCONDITIONAL_BOILERPLATE_SELECTOR} goes document-wide first,
+   * since it is never content anywhere. Every {@link #MAIN_CONTENT_SELECTOR} match is a root, not
+   * just the first - an overview page routinely lists several teasers - except a match nested in
+   * another, which is dropped in favour of its outer one so no content is cut and stored twice.
    */
   private static List<Element> selectContentRoots(org.jsoup.nodes.Document htmlDoc) {
     htmlDoc.select(UNCONDITIONAL_BOILERPLATE_SELECTOR).remove();
@@ -252,9 +234,8 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * {@code candidates} with every match dropped that is itself a descendant of another match - the
-   * fix for {@code <main><article>…</article></main>} both matching {@link #MAIN_CONTENT_SELECTOR}
-   * (#1059 review, follow-up finding 1).
+   * {@code candidates} with every match dropped that is itself a descendant of another match, so
+   * {@code <main><article>…</article></main>} yields one root rather than two overlapping ones.
    */
   private static List<Element> topLevelOnly(Elements candidates) {
     List<Element> roots = new ArrayList<>();
@@ -299,12 +280,10 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * Walks {@code root} in document order via {@link Node#traverse}, so a nested section (e.g.
-   * {@code <section><h2>…</h2><section><h3>…</h3>…</section></section>}) is handled correctly
-   * regardless of how deep the heading actually sits in the DOM - a flat sibling-based scan would
-   * miss that case. A chunk is flushed every time an h1-h3 element opens; a document's own text
-   * appearing before the first heading (an intro paragraph) becomes its own chunk with no heading
-   * path, exactly like a Markdown document with a lead paragraph before its first heading.
+   * Walks {@code root} in document order via {@link Node#traverse}, so a nested section is handled
+   * however deep its heading sits - a flat sibling scan would miss that. A chunk is flushed
+   * whenever an h1-h3 opens; text before the first heading becomes its own chunk without a heading
+   * path, exactly like a Markdown lead paragraph.
    */
   private static List<Document> buildChunks(Element root) {
     List<Document> chunks = new ArrayList<>();
@@ -363,8 +342,7 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   /**
    * Accumulates one section's body text as a list of already-whitespace-normalized blocks (one per
    * {@link #BLOCK_TAGS} boundary), each built by {@link InlineTextAccumulator} so inline markup
-   * inside a block (e.g. {@code <b>Personal</b>ausweis}) re-joins without an artificial space
-   * (#1059 review, finding 7).
+   * inside a block (e.g. {@code <b>Personal</b>ausweis}) re-joins without an artificial space .
    */
   private static final class SectionAccumulator {
     private final List<String> blocks = new ArrayList<>();
@@ -398,10 +376,9 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
    * (leading/trailing whitespace on either fragment, or a whitespace-only fragment between them).
    * Two fragments with no whitespace anywhere at their boundary re-join directly instead: {@code
    * <b>Personal</b>ausweis} must read "Personalausweis", not "Personal ausweis" - the bug a blanket
-   * "always insert a separator" rule produced (#1059 review, finding 7). Mirrors what {@link
-   * Element#text()} already does correctly for a single element (confirmed empirically); this
-   * pipeline needs its own equivalent because it accumulates text across an explicit block
-   * boundary, not a whole subtree in one call.
+   * "always insert a separator" rule produced. Mirrors what {@link Element#text()} already does
+   * correctly for a single element (confirmed empirically); this pipeline needs its own equivalent
+   * because it accumulates text across an explicit block boundary, not a whole subtree in one call.
    */
   private static final class InlineTextAccumulator {
     private final StringBuilder text = new StringBuilder();

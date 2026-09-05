@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 /**
- * Compiles and applies the regular expression of a PATTERN field (#1071) under a hard step budget.
+ * Compiles and applies the regular expression of a PATTERN field under a hard step budget.
  *
  * <p>The management right at a library is <b>not</b> a trust boundary: every authenticated person
  * may create a library and is its OWNER, so a field pattern is user input like any other. A pattern

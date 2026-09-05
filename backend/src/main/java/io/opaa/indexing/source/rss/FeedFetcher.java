@@ -132,11 +132,10 @@ class FeedFetcher {
 
   /**
    * Fetches {@code feedUrl}, carrying {@code feedState}'s {@code ETag}/{@code Last-Modified} as a
-   * conditional {@code GET} when present - a {@code 304} response then ends the caller's run early
-   * without a body ever being read. Follows redirects that leave the feed's own origin ({@link
-   * RedirectFollowingFetcher.RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN}), dropping {@code
-   * Authorization} the moment a hop stops matching - a redirect chain a feed's own hosting provider
-   * sets up (e.g. onto a CDN) must not leak the feed's credentials to it.
+   * conditional {@code GET}, so a {@code 304} ends the caller's run without a body being read.
+   * Follows redirects that leave the feed's own origin ({@link
+   * RedirectFollowingFetcher.RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN}) but drops {@code
+   * Authorization} at that hop, so a provider's CDN redirect cannot leak the feed's credentials.
    */
   private HttpResponse<InputStream> fetchFeed(
       HttpClient httpClient, String feedUrl, Optional<RssFeedState> feedState, String authHeader)

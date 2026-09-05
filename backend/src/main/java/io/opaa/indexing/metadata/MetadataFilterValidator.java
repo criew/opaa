@@ -13,10 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Checks a {@link MetadataFilter} against the schema before it is stored on a chat or applied to a
- * question (#1070/#1071): an unknown Dokumentart code, an unknown library field, a condition whose
- * shape does not fit the field's type and a SELECT code outside the field's configured list are
- * caller errors (400). Nothing is mapped to a near match - a filter on a value no document can
- * carry would silently keep exactly the documents without one.
+ * question: an unknown Dokumentart code, an unknown library field, a condition whose shape does not
+ * fit the field's type and a SELECT code outside the field's configured list are caller errors
+ * (400). Nothing is mapped to a near match - a filter on a value no document can carry would
+ * silently keep exactly the documents without one.
  *
  * <p>A library field is resolved only within the libraries the caller may read. A condition naming
  * any other library is rejected with the same message an unknown field gets, so the answer does not

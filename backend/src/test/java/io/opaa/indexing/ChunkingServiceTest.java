@@ -68,9 +68,9 @@ class ChunkingServiceTest {
   }
 
   /**
-   * Issue #374: without overlap a statement that straddles a chunk boundary is cut in half, and
-   * neither half carries the full claim. Every chunk after the first must therefore re-open with
-   * text that already appeared at the end of its predecessor.
+   * Without overlap a statement that straddles a chunk boundary is cut in half, and neither half
+   * carries the full claim. Every chunk after the first must therefore re-open with text that
+   * already appeared at the end of its predecessor.
    */
   @Test
   void everyChunkRepeatsTheTailOfItsPredecessor() {
@@ -124,7 +124,7 @@ class ChunkingServiceTest {
         .isZero();
   }
 
-  /** #667: every chunk carries the Fundort derived from the headings in effect where it starts. */
+  /** every chunk carries the Fundort derived from the headings in effect where it starts. */
   @Test
   void stampsChunksWithTheirHeadingPath() {
     var service = new ChunkingService(new IndexingProperties(60, 0, 50, null, null, null, null, 0));
@@ -146,9 +146,7 @@ class ChunkingServiceTest {
             ChunkingService.LOCATION_METADATA_KEY, "Abschn. Dienstanweisung › 5 Zuständigkeit");
   }
 
-  /**
-   * #667: the overlap prefix carried over from the predecessor must not shift a chunk's location.
-   */
+  /** the overlap prefix carried over from the predecessor must not shift a chunk's location. */
   @Test
   void locatesAChunkByItsOwnTextNotByTheOverlapPrefix() {
     var service =
@@ -162,7 +160,7 @@ class ChunkingServiceTest {
         .containsEntry(ChunkingService.LOCATION_METADATA_KEY, "Abschn. Beta");
   }
 
-  /** #667: page-break markers become "S. n" locations and never reach the stored chunk text. */
+  /** page-break markers become "S. n" locations and never reach the stored chunk text. */
   @Test
   void turnsPageBreaksIntoPageLocationsAndStripsThem() {
     var service =

@@ -71,17 +71,17 @@ public class DocumentMetadataValue {
   private Instant updatedAt;
 
   /**
-   * The library field this row belongs to (#1071), {@code null} for a core field. Set exactly when
-   * {@link #getFieldKey()} carries the {@code lib:} namespace (database CHECK), and the reference
-   * that lets deleting a field take its values with it.
+   * The library field this row belongs to, {@code null} for a core field. Set exactly when {@link
+   * #getFieldKey()} carries the {@code lib:} namespace (database CHECK), and the reference that
+   * lets deleting a field take its values with it.
    */
   @Column(name = "library_field_id", updatable = false)
   private UUID libraryFieldId;
 
   /**
-   * The chosen entry of a SELECT field's value list (#1071), {@code null} otherwise. A real foreign
-   * key with {@code ON DELETE RESTRICT}: a value outside the list is not storable and a list entry
-   * a document still carries is not removable without the confirmed mapping.
+   * The chosen entry of a SELECT field's value list, {@code null} otherwise. A real foreign key
+   * with {@code ON DELETE RESTRICT}: a value outside the list is not storable and a list entry a
+   * document still carries is not removable without the confirmed mapping.
    */
   @Column(name = "library_value_id")
   private UUID libraryValueId;
@@ -115,8 +115,8 @@ public class DocumentMetadataValue {
   }
 
   /**
-   * A manual row for a library field (#1071): the namespaced {@code lib:<key>} and the field's id,
-   * which the database requires to appear together.
+   * A manual row for a library field: the namespaced {@code lib:<key>} and the field's id, which
+   * the database requires to appear together.
    */
   public static DocumentMetadataValue manual(
       UUID documentId, String fieldKey, UUID libraryFieldId, UUID actorUserId) {
@@ -148,8 +148,8 @@ public class DocumentMetadataValue {
   }
 
   /**
-   * Re-labels an existing row as set by hand by {@code actorUserId} (#1068): origin {@code MANUAL},
-   * no confidence, model or extraction version - from now on no extraction touches it.
+   * Re-labels an existing row as set by hand by {@code actorUserId}: origin {@code MANUAL}, no
+   * confidence, model or extraction version - from now on no extraction touches it.
    */
   void markManual(UUID actorUserId) {
     this.origin = MetadataOrigin.MANUAL;
@@ -202,8 +202,8 @@ public class DocumentMetadataValue {
   }
 
   /**
-   * Records that a person found there is no value to find (#1069): the row stays, carries no value
-   * and is only storable with origin {@code MANUAL} ({@code
+   * Records that a person found there is no value to find: the row stays, carries no value and is
+   * only storable with origin {@code MANUAL} ({@code
    * chk_document_metadata_values_not_determinable_is_manual}) - package-private, so only {@link
    * MetadataValueInput}'s manual path reaches it. No automatic extraction ever writes or clears it
    * - {@link DocumentMetadataService} leaves every {@code MANUAL} row alone.

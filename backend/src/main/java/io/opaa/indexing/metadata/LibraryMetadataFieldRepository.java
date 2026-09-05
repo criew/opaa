@@ -10,7 +10,7 @@ public interface LibraryMetadataFieldRepository extends JpaRepository<LibraryMet
 
   List<LibraryMetadataField> findByLibraryIdOrderBySortOrderAscFieldKeyAsc(UUID libraryId);
 
-  /** The fields of a whole search scope in one query, for the filter options (#1070/#1071). */
+  /** The fields of a whole search scope in one query, for the filter options. */
   List<LibraryMetadataField> findByLibraryIdInOrderBySortOrderAscFieldKeyAsc(
       Collection<UUID> libraryIds);
 

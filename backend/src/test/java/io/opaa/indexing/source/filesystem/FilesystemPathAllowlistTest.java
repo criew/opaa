@@ -7,11 +7,10 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for {@link FilesystemPathAllowlist} (#484, ADR-0018 Entscheidung 6). Deliberately
- * without Spring context - the allowlist is pure path logic, and these tests exist specifically to
- * turn red the moment someone "simplifies" the implementation to a lexical {@code
- * String.startsWith} check, which is vulnerable to the prefix trap in {@link
- * #rejectsSiblingDirectoryWithMatchingPrefix()}.
+ * Unit tests for {@link FilesystemPathAllowlist} (ADR-0018 Entscheidung 6). Deliberately without
+ * Spring context - the allowlist is pure path logic, and these tests exist specifically to turn red
+ * the moment someone "simplifies" the implementation to a lexical {@code String.startsWith} check,
+ * which is vulnerable to the prefix trap in {@link #rejectsSiblingDirectoryWithMatchingPrefix()}.
  */
 class FilesystemPathAllowlistTest {
 

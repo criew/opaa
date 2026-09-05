@@ -80,9 +80,9 @@ abstract class AbstractConfluenceClient implements ConfluenceClient {
   /**
    * {@code type=page AND space in (...) AND lastmodified >= now("-Nm")} - the window as minutes
    * before the instance's own {@code now}, so the instance evaluates it in its clock and time zone
-   * (an absolute timestamp would be read in the instance's zone, not UTC - #1199 review). {@code N}
-   * is rounded up, so the window never starts after {@code since}; callers add their own overlap.
-   * No {@code expand} of bodies is ever appended to a search (guarded by the contract test).
+   * (an absolute timestamp would be read in the instance's zone, not UTC). {@code N} is rounded up,
+   * so the window never starts after {@code since}; callers add their own overlap. No {@code
+   * expand} of bodies is ever appended to a search (guarded by the contract test).
    */
   protected static String changedPagesCql(Set<String> spaceKeys, Instant since) {
     if (spaceKeys == null || spaceKeys.isEmpty()) {

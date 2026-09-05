@@ -10,10 +10,10 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * A filter on the filterable schema fields (#1070/#1071, metadata-schema.md Wirkstelle 1): a set of
- * Dokumentart codes, an inclusive Datum/Stand window and conditions on library fields. The title is
- * not filterable and free keywords never are - so these three are the whole vocabulary of a
- * metadata filter. {@link #NONE} is the absence of any condition.
+ * A filter on the filterable schema fields (metadata-schema.md Wirkstelle 1): a set of Dokumentart
+ * codes, an inclusive Datum/Stand window and conditions on library fields. The title is not
+ * filterable and free keywords never are - so these three are the whole vocabulary of a metadata
+ * filter. {@link #NONE} is the absence of any condition.
  *
  * <p><b>Date semantics.</b> A stored value covers the whole span its {@link DatePrecision} leaves
  * open (YEAR 2024 is 2024-01-01..2024-12-31) and matches when that span overlaps the window. Since
@@ -24,8 +24,8 @@ import java.util.Set;
  * @param documentTypes vocabulary codes; empty means no condition on the Dokumentart.
  * @param documentDateFrom inclusive window start, {@code null} for an open start.
  * @param documentDateTo inclusive window end, {@code null} for an open end.
- * @param libraryFields conditions on library fields (#1071), each naming its own library - the
- *     third and last kind of condition a filter can carry; free keywords never filter.
+ * @param libraryFields conditions on library fields, each naming its own library - the third and
+ *     last kind of condition a filter can carry; free keywords never filter.
  */
 public record MetadataFilter(
     Set<String> documentTypes,
@@ -57,7 +57,7 @@ public record MetadataFilter(
     }
   }
 
-  /** The core-field half alone - the shape every caller before #1071 built. */
+  /** The core-field half alone - the shape every caller before built. */
   public MetadataFilter(
       Set<String> documentTypes, LocalDate documentDateFrom, LocalDate documentDateTo) {
     this(documentTypes, documentDateFrom, documentDateTo, List.of());

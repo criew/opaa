@@ -11,7 +11,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /**
- * The domain rule of the core-field filter (#1070): the precision semantics of the date window, the
+ * The domain rule of the core-field filter: the precision semantics of the date window, the
  * Leerwert rule, and what a filter refuses to carry.
  */
 class MetadataFilterTest {

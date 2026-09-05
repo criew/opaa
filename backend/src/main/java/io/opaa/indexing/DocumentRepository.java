@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
-   * Document identity is scoped to {@code (library_id, file_path)} (#877), enforced by {@code
+   * Document identity is scoped to {@code (library_id, file_path)}, enforced by {@code
    * uk_documents_library_path} (migration 067): the same path or URL indexed into two different
    * libraries is two independent documents, never a "move" of one into the other. Backs every
    * dedup/change-detection lookup in {@link FileProcessingService}, {@code UrlIndexingExecutor} and
@@ -30,14 +30,14 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    * Whether at least one attachment document for {@code sourceEntryUrl} (an RSS entry's own {@code
    * file_path}) already exists in {@code libraryId}. Backs the "an entry indexed before attachments
    * existed must still get them backfilled" check in {@code RssFeedIndexingExecutor#isUnchanged}'s
-   * caller. Scoped to {@code libraryId} (#877) - another library's attachments for the same entry
-   * URL must never suppress this library's own backfill.
+   * caller. Scoped to {@code libraryId} - another library's attachments for the same entry URL must
+   * never suppress this library's own backfill.
    */
   boolean existsBySourceEntryUrlAndLibraryId(String sourceEntryUrl, UUID libraryId);
 
   /**
    * Moves a connector document's title and source context without touching its chunks - a
-   * Confluence page renamed or moved without a body change (ADR-0023, #1136 review).
+   * Confluence page renamed or moved without a body change (ADR-0023).
    */
   @Modifying
   @Transactional
@@ -52,9 +52,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
    * Every attachment of {@code parentDocumentId} (ADR-0022, Entscheidung 4) - the FK-backed
-   * generalization of {@link #existsBySourceEntryUrlAndLibraryId}'s RSS-only path lookup. No writer
-   * sets {@link Document#getParentDocumentId()} yet (#1180 is schema-only); this backs the lookup
-   * side that #1182 onwards builds on.
+   * generalization of {@link #existsBySourceEntryUrlAndLibraryId}'s RSS-only path lookup.
    */
   List<Document> findByParentDocumentId(UUID parentDocumentId);
 
@@ -93,18 +91,18 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long countByLibraryId(UUID libraryId);
 
   /**
-   * The bestand the Pflege-Anker (#1069) and the Füllgrad of #1067 measure against: a library's
-   * {@code INDEXED} documents, attachments included - a metadata value hangs at every document row,
-   * not only at the ones the document list pages over.
+   * The bestand the Pflege-Anker and the Füllgrad measure against: a library's {@code INDEXED}
+   * documents, attachments included - a metadata value hangs at every document row, not only at the
+   * ones the document list pages over.
    */
   long countByLibraryIdAndStatus(UUID libraryId, DocumentStatus status);
 
-  /** The indexed bestand of a whole search scope - the base of the filter Füllstand (#1070). */
+  /** The indexed bestand of a whole search scope - the base of the filter Füllstand. */
   long countByLibraryIdInAndStatus(Collection<UUID> libraryIds, DocumentStatus status);
 
   /**
-   * The same bestand broken down per library - the base of the one Füllstand count (#1305). A
-   * library without documents in {@code status} is absent from the result.
+   * The same bestand broken down per library - the base of the one Füllstand count. A library
+   * without documents in {@code status} is absent from the result.
    */
   @Query(
       "select d.libraryId as libraryId, count(d) as documentCount from Document d"
@@ -113,20 +111,18 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       @Param("libraryIds") Collection<UUID> libraryIds, @Param("status") DocumentStatus status);
 
   /**
-   * The parent-level counterpart of {@link #countByLibraryId} (#1184): top-level documents only,
-   * matching what the document list pages over - shown as a library's {@code documentCount}. {@link
+   * The parent-level counterpart of {@link #countByLibraryId}: top-level documents only, matching
+   * what the document list pages over - shown as a library's {@code documentCount}. {@link
    * #countByLibraryId} keeps backing the delete guard, which must see every row.
    */
   long countByLibraryIdAndParentDocumentIdIsNull(UUID libraryId);
 
   /**
-   * The paged search behind {@code KnowledgeLibraryService#listDocuments} with {@code q} (#1184,
-   * ADR-0022 Entscheidung 5): top-level documents only ({@code parentDocumentId IS NULL}), matching
-   * either their own file name or - via {@code attachmentRootIds}, resolved by the caller from
-   * matching attachment rows - an attachment anywhere in their subtree. {@code escapedQ} must have
-   * {@code \}, {@code %} and {@code _} backslash-escaped by the caller (see {@code
-   * KnowledgeLibraryService#escapeLike}); the hand-written LIKE has no automatic escaping the way
-   * the derived {@code ...ContainingIgnoreCase} finders do.
+   * The paged search behind {@code KnowledgeLibraryService#listDocuments} with {@code q} (ADR-0022,
+   * Entscheidung 5): top-level documents only, matching their own file name or - via {@code
+   * attachmentRootIds}, resolved by the caller - an attachment anywhere in their subtree. {@code
+   * escapedQ} must be backslash-escaped by the caller; this hand-written LIKE has no escaping of
+   * its own.
    */
   @Query(
       """
@@ -153,14 +149,11 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
           UUID libraryId, String q);
 
   /**
-   * The paged Pflege-Anker list (#1069): every indexed document row of the library - top-level and
-   * attachment alike - that has no row for {@code fieldKey}, optionally narrowed by {@code
-   * escapedQ} (empty matches every name). Deliberately not the top-level paging of {@link
-   * #searchTopLevelByFileNameOrAttachmentRoot}: this list must hold exactly the rows the anchor
-   * counts, so that every entry is genuinely open and a Sammelzuweisung over the whole page cannot
-   * overwrite a maintained value. Only {@code status} rows count - an anchor over documents that
-   * were never indexed would never reach zero. The gap is a correlated {@code NOT EXISTS}, so no
-   * unbounded id list travels between two queries.
+   * The paged Pflege-Anker list: every indexed document row of the library, top-level and
+   * attachment alike, that has no row for {@code fieldKey}. It must hold exactly the rows the
+   * anchor counts, so a Sammelzuweisung over a page cannot overwrite a maintained value; only
+   * {@code status} rows count, or the anchor would never reach zero. The gap is a correlated {@code
+   * NOT EXISTS}, so no unbounded id list travels between two queries.
    */
   @Query(
       """
@@ -177,7 +170,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       @Param("status") DocumentStatus status,
       Pageable pageable);
 
-  /** The two ids the attachment-aware search prefilter needs (#1184) - see the finder above. */
+  /** The two ids the attachment-aware search prefilter needs - see the finder above. */
   interface AttachmentParentRef {
     UUID getId();
 
@@ -187,8 +180,8 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   /**
    * The attachment rows of every parent in {@code parentDocumentIds}, ordered by {@code filePath}
    * (which embeds the extraction-order index for mail attachments, ADR-0022 Entscheidung 2) - backs
-   * {@code KnowledgeLibraryService#listDocuments}'s per-page subtree expansion (#1184), called once
-   * per nesting level, not once per parent.
+   * {@code KnowledgeLibraryService#listDocuments}'s per-page subtree expansion, called once per
+   * nesting level, not once per parent.
    */
   List<Document> findByParentDocumentIdInOrderByFilePathAsc(Collection<UUID> parentDocumentIds);
 
@@ -204,27 +197,19 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   /**
    * The library root's counterpart to {@link #findByLibraryIdAndFolderId} - backs {@code GET
    * .../documents} with no {@code folderId} and no {@code q}, ADR-0020's convention that a {@code
-   * null folder_id} means the library's root. Top-level documents only since #1184: an attachment
-   * ({@code parentDocumentId} set) is never paged independently, it rides along with its parent
-   * (see {@link #findByParentDocumentIdInOrderByFilePathAsc}).
+   * null folder_id} means the library's root. Top-level documents only: an attachment ({@code
+   * parentDocumentId} set) is never paged independently, it rides along with its parent (see {@link
+   * #findByParentDocumentIdInOrderByFilePathAsc}).
    */
   Page<Document> findByLibraryIdAndFolderIdIsNullAndParentDocumentIdIsNull(
       UUID libraryId, Pageable pageable);
 
   /**
    * The recursive document counts of a set of folders - each folder's own documents plus every
-   * document in every one of its descendant folders, one query for the whole set rather than one
-   * per subfolder. Matches {@code LibraryFolderService#countDocumentsRecursive}'s semantics (the
-   * count {@code LibraryFolderResponse.documentCount} shows before a recursive DELETE, ADR-0020
-   * Entscheidung 5), not a shallow "direct children only" count.
-   *
-   * <p>A single recursive CTE, not application code walking per subfolder: {@code folder_tree}
-   * expands every requested id in {@code folderIds} into itself plus its full descendant subtree,
-   * tagging each descendant with the requested ancestor it came from ({@code root_id}); the outer
-   * query then counts {@code documents} joined on every id in that expanded tree, grouped by {@code
-   * root_id}. A {@code LEFT JOIN}, not an inner join, so a folder with zero documents anywhere in
-   * its subtree still contributes a row with count {@code 0} rather than disappearing from the
-   * result, unlike {@link #countByLibraryIdIn}'s inner-join equivalent.
+   * document in its descendant folders, one query for the whole set. Matches {@code
+   * LibraryFolderService#countDocumentsRecursive}'s semantics (ADR-0020, Entscheidung 5), not a
+   * shallow count. A {@code LEFT JOIN}, so a folder with an empty subtree still yields a row with
+   * count {@code 0} instead of disappearing.
    */
   @Query(
       value =
@@ -259,12 +244,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long deleteByLibraryId(@Param("libraryId") UUID libraryId);
 
   /**
-   * Backs the upload endpoint's per-library deduplication: the same checksum is rejected a second
-   * time within the same library, but is deliberately allowed in a different one - see the
-   * acceptance criteria on {@code io.opaa.library.LibraryDocumentService#uploadDocument}. Scoped to
-   * parentless rows (#1218), matching {@code uk_documents_library_checksum}'s own scope since
-   * migration 017: an attachment row of an uploaded mail (ADR-0022) is derived content, not a user
-   * upload - uploading a file whose bytes happen to equal an indexed attachment is not a duplicate.
+   * Backs the upload endpoint's per-library deduplication: the same checksum is rejected within one
+   * library and deliberately allowed in another. Scoped to parentless rows, matching {@code
+   * uk_documents_library_checksum} - an attachment row is derived content, so uploading a file
+   * whose bytes equal an indexed attachment is not a duplicate.
    */
   Optional<Document> findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
       UUID libraryId, String checksum);
@@ -272,8 +255,8 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   /**
    * Backs {@code KnowledgeLibraryService#listLibraries}'s {@code documentCount} column: one grouped
    * query for the whole page instead of one count per row. Libraries with no documents simply have
-   * no row here - the caller defaults those to zero. Top-level documents only since #1184, matching
-   * the document list's own parent-level totalElements - attachments show up inside their parent's
+   * no row here - the caller defaults those to zero. Top-level documents only, matching the
+   * document list's own parent-level totalElements - attachments show up inside their parent's
    * group, not in this count.
    */
   @Query(
@@ -290,18 +273,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   }
 
   /**
-   * Backs {@code LibraryStorageQuotaService}: the total bytes a library's documents currently
-   * occupy, one aggregate query rather than loading every {@link Document} row to sum {@link
-   * Document#getFileSize} in application code. Two {@code coalesce} layers:
-   *
-   * <ul>
-   *   <li>the outer one maps the {@code SUM} of an empty result set to {@code 0} instead of {@code
-   *       null} - callers would otherwise have to null-check a supposedly primitive byte count;
-   *   <li>the inner one makes explicit, rather than leaving to {@code SUM}'s own null-skipping
-   *       behaviour, that an individual row with no recorded {@code file_size} (the column is
-   *       nullable) counts as {@code 0} - see {@code LibraryStorageQuotaService#usedBytes}'s own
-   *       Javadoc.
-   * </ul>
+   * Backs {@code LibraryStorageQuotaService}: the total bytes a library's documents occupy, as one
+   * aggregate query. The outer {@code coalesce} maps the {@code SUM} of an empty result to {@code
+   * 0} rather than {@code null}, so callers need no null check; the inner one states explicitly
+   * that a row without a recorded {@code file_size} counts as {@code 0}.
    */
   @Query(
       "select coalesce(sum(coalesce(d.fileSize, 0)), 0) from Document d where d.libraryId ="
@@ -309,14 +284,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long sumFileSizeByLibraryId(@Param("libraryId") UUID libraryId);
 
   /**
-   * Conditionally transitions an asynchronously-processed upload to {@code FAILED}. {@code
-   * FileProcessingService#processUploadedFileAsync} re-reads the row by id before it starts, but
-   * Tika parsing/embedding can run for seconds - long enough for {@code
-   * LibraryDocumentService#deleteDocument} to remove that same row from another request in the
-   * meantime. A plain {@code documentRepository.save} on the (now stale) entity would not notice:
-   * {@link Document} assigns its own id in its constructor and carries no {@code @Version}, so
-   * Hibernate's merge would silently re-{@code INSERT} it as a zombie row. A conditional {@code
-   * UPDATE} has no such failure mode: it either affects the row that is still there, or nothing.
+   * Conditionally transitions an asynchronously-processed upload to {@code FAILED}. Parsing and
+   * embedding can run for seconds, long enough for a concurrent delete to remove the row. A plain
+   * save would re-insert it as a zombie, since {@link Document} assigns its own id and carries no
+   * {@code @Version}; a conditional {@code UPDATE} either hits the row or nothing.
    *
    * @return the number of rows updated - {@code 0} means the row no longer exists, and the caller
    *     must clean up any chunks it already wrote instead of trying to persist anything
@@ -330,10 +301,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
    * Like {@link #markFailed}, plus {@code chunk_count = 0}: for a document whose chunks were just
-   * removed because its new version is legitimately empty (#1268). {@link #markFailed} deliberately
-   * leaves {@code chunk_count} alone, which is right for a document that kept its previous chunks
-   * and wrong for one that has none left - since #1268 those two cases are distinguishable, so the
-   * column must say which of them a {@code FAILED} row is.
+   * removed because its new version is legitimately empty. {@link #markFailed} deliberately leaves
+   * {@code chunk_count} alone, which is right for a document that kept its previous chunks and
+   * wrong for one that has none left, so the column must say which of the two a {@code FAILED} row
+   * is.
    */
   @Modifying
   @Transactional
@@ -358,16 +329,9 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
    * Backs {@code UploadPendingRecoveryRunner}: every {@code PENDING} upload created before {@code
-   * threshold} is stuck for good, not merely queued - the process that would have finished it (via
-   * {@code uploadTaskExecutor}) died before {@link #markIndexed}/{@link #markFailed} could run, and
-   * a fresh JVM start has no in-memory record of that task to wait for. A bulk {@code UPDATE}, not
-   * a load-then-save loop, mirrors {@link #deleteByLibraryId}'s reasoning.
-   *
-   * <p>Scoped to {@code sourceType = UPLOAD} deliberately: a connector run ({@code FILESYSTEM}/
-   * {@code HTTP_DIRECTORY}/{@code RSS_FEED}) also passes through a transient {@code PENDING} row,
-   * and a crash mid-run could in principle leave one stuck the same way - but that failure mode
-   * belongs to {@code indexing_jobs}' own {@code RUNNING} recovery, not to this upload-specific
-   * runner and its upload-specific error message.
+   * threshold} is stuck for good - the process that would have finished it died. A bulk {@code
+   * UPDATE}, for the same reason as {@link #deleteByLibraryId}, scoped to {@code UPLOAD}: a
+   * connector run's transient {@code PENDING} row belongs to {@code indexing_jobs}' own recovery.
    *
    * @return the number of rows transitioned to {@code FAILED}
    */
@@ -382,10 +346,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       @Param("errorMessage") String errorMessage, @Param("threshold") Instant threshold);
 
   /**
-   * Records which core-metadata extraction version last ran over a document (ADR-0024, #1066). A
-   * targeted {@code UPDATE} rather than an entity save: it runs from the ingest after the row's own
-   * insert has committed, and must not resurrect a row a concurrent delete already removed - the
-   * same zero-rows-means-the-row-is-gone contract as {@link #markIndexed(UUID, int, Instant)}.
+   * Records which core-metadata extraction version last ran over a document (ADR-0024). A targeted
+   * {@code UPDATE} rather than an entity save: it runs from the ingest after the row's own insert
+   * has committed, and must not resurrect a row a concurrent delete already removed - the same
+   * zero-rows-means-the-row-is-gone contract as {@link #markIndexed(UUID, int, Instant)}.
    */
   @Modifying
   @Transactional
@@ -393,7 +357,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   int updateMetadataExtractionVersion(@Param("id") UUID id, @Param("version") int version);
 
   /**
-   * Hands a document back to the Bestandslauf (#1068): a manually deleted core value must be
+   * Hands a document back to the Bestandslauf: a manually deleted core value must be
    * re-extractable, and the run selects only documents without a current extraction version.
    */
   @Modifying
@@ -402,15 +366,11 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   int clearMetadataExtractionVersion(@Param("id") UUID id);
 
   /**
-   * The connector counterpart to {@link #markIndexed(UUID, int, Instant)}, generalized for {@code
-   * FileProcessingService#processFile}/{@code #processUrlFile}/{@code #processRssEntry}. Those
-   * three paths only learn the checksum - and for URL/RSS sources, the remote's own {@code
-   * last_modified}/publish marker - once chunking and embedding have already succeeded, unlike the
-   * upload path, which persists its checksum on the {@code PENDING} row before this transition ever
-   * runs. {@code lastModifiedRemote} is {@code null} for {@code processFile}'s filesystem
-   * documents.
-   *
-   * <p>Same zero-rows-means-the-row-is-gone contract as {@link #markIndexed(UUID, int, Instant)}.
+   * The connector counterpart to {@link #markIndexed(UUID, int, Instant)}: those paths only learn
+   * the checksum - and the remote's own change marker - once chunking and embedding have succeeded,
+   * unlike the upload path, which persists its checksum on the {@code PENDING} row beforehand.
+   * {@code lastModifiedRemote} is {@code null} for filesystem documents. Same
+   * zero-rows-means-the-row-is-gone contract.
    */
   @Modifying
   @Transactional
@@ -427,17 +387,9 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
    * Marks a document for reprocessing by its own connector run, by clearing <b>both</b> change
-   * markers a run consults. Used by {@code PipelineReindexService} for documents whose source can
-   * only be re-read by that run.
-   *
-   * <p>Both are required, and clearing only the checksum would be a no-op for the remote paths:
-   * {@code UrlIndexingExecutor#isUnchanged}/{@code RssFeedIndexingExecutor#isUnchanged} decide
-   * <em>before</em> downloading, from {@code last_modified_remote} plus {@link
-   * DocumentStatus#INDEXED} alone - the checksum is never compared, because the bytes it would be
-   * computed from have deliberately not been fetched yet. A {@code null} {@code
-   * last_modified_remote} can never equal the remote's own value, so the download happens; the
-   * {@code null} checksum then stops {@link FileProcessingService#processUrlFile} from skipping the
-   * freshly downloaded file as unchanged in the second gate.
+   * markers a run consults. Clearing only the checksum would be a no-op for the remote paths, which
+   * decide from {@code last_modified_remote} plus {@link DocumentStatus#INDEXED} before
+   * downloading; the cleared checksum then stops the second gate from skipping the fresh download.
    *
    * @return the number of rows updated - {@code 0} means the row was deleted meanwhile, which needs
    *     no further action here

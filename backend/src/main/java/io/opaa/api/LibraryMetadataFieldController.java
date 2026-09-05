@@ -28,10 +28,10 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The schema configuration of a library's own metadata fields (#1071): fields, their Wirkstellen
- * and their controlled value lists, including the confirmed mapping a removed value needs. Rights
- * (management right for every change, read right for the configured lists), the Aufnahmeregel and
- * the Abbildungsregel live in {@link LibraryMetadataFieldService}.
+ * The schema configuration of a library's own metadata fields: fields, their Wirkstellen and their
+ * controlled value lists, including the confirmed mapping a removed value needs. Rights (management
+ * right for every change, read right for the configured lists), the Aufnahmeregel and the
+ * Abbildungsregel live in {@link LibraryMetadataFieldService}.
  */
 @RestController
 @RequestMapping("/api/v1/libraries/{libraryId}/metadata-fields")

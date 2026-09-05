@@ -19,19 +19,11 @@ import java.util.regex.Pattern;
 final class MailThreadSplitter {
 
   /**
-   * A line introducing a quoted prior message. Three families:
-   *
-   * <ul>
-   *   <li>German Outlook/Thunderbird inline attribution: {@code "Am 03.01.2024 um 10:15 schrieb Max
-   *       Mustermann <max@example.org>:"}
-   *   <li>English Outlook/Gmail inline attribution: {@code "On Wed, Jan 3, 2024 at 10:15 AM John
-   *       Doe <john@example.org> wrote:"}
-   *   <li>Outlook's plain-text separator block, either language: a line of five or more hyphens
-   *       around "Ursprüngliche Nachricht" / "Original Message"
-   * </ul>
-   *
-   * Anchored to a whole line ({@code MULTILINE}, no {@code DOTALL}) so a quoted line that merely
-   * mentions one of these phrases mid-sentence does not match.
+   * A line introducing a quoted prior message: the German and English inline attributions Outlook,
+   * Thunderbird and Gmail write ("Am ... schrieb ...:", "On ... wrote:"), and Outlook's plain-text
+   * separator block around "Ursprüngliche Nachricht"/"Original Message". Anchored to a whole line
+   * ({@code MULTILINE}, no {@code DOTALL}), so a quoted line merely mentioning one of these phrases
+   * mid-sentence does not match.
    */
   private static final Pattern SEPARATOR =
       Pattern.compile(

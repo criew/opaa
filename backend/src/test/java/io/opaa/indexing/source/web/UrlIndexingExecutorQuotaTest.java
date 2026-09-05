@@ -39,11 +39,10 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Unit-level coverage of {@link UrlIndexingExecutor}'s {@code FileProcessingResult#QUOTA_EXCEEDED}
- * handling (#119, PR #700 review finding 4) - {@link UrlIndexingExecutorTest} already covers this
- * class's {@code isUnchanged} logic in isolation; this class instead drives the full {@code
- * execute} flow with {@link AutoindexCrawlerService} and {@link BoundedDownloader} mocked (no live
- * HTTP server needed, unlike {@code RssFeedIndexingExecutorTest}, since both are ordinary
- * constructor dependencies here).
+ * handling - {@link UrlIndexingExecutorTest} already covers this class's {@code isUnchanged} logic
+ * in isolation; this class instead drives the full {@code execute} flow with {@link
+ * AutoindexCrawlerService} and {@link BoundedDownloader} mocked (no live HTTP server needed, unlike
+ * {@code RssFeedIndexingExecutorTest}, since both are ordinary constructor dependencies here).
  */
 class UrlIndexingExecutorQuotaTest {
 
@@ -94,7 +93,7 @@ class UrlIndexingExecutorQuotaTest {
     Files.writeString(downloaded, "content");
     when(downloader.download(any(HttpClient.class), any(), anyString(), anyString(), anyLong()))
         .thenReturn(downloaded);
-    // #404 review, finding 1: the executor now reads a bounded prefix to decide before ever
+    // the executor now reads a bounded prefix to decide before ever
     // calling #download - this mock must answer it too, or the format decision sees a null
     // sample and the entry never reaches the quota check this test exercises.
     when(downloader.downloadPrefix(any(HttpClient.class), any(), anyString(), anyInt()))

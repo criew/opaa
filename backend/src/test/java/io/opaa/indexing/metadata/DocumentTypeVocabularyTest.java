@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 /**
- * The two matching modes of the vocabulary (#1263): {@link DocumentTypeVocabulary#resolve} stays
- * the exact one every declared and manually entered value is validated against, while {@link
+ * The two matching modes of the vocabulary: {@link DocumentTypeVocabulary#resolve} stays the exact
+ * one every declared and manually entered value is validated against, while {@link
  * DocumentTypeVocabulary#resolveToken} adds the seeded Kompositum endings for a token read out of a
  * file name or a Dokumentkopf.
  */

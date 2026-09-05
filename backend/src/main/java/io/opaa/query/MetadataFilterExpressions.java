@@ -109,12 +109,12 @@ public final class MetadataFilterExpressions {
   }
 
   /**
-   * One library-field condition (#1071) as {@code (foreign library OR matches OR no value)}. The
-   * library guard is what makes {@code (libraryId, fieldKey)} the field identity: two libraries may
-   * define the same key, and a document of the other one must not be judged against this field's
-   * value list. "No value" reads the presence marker, whose value set is closed at exactly one
-   * value - see {@link LibraryMetadataFieldKeys#PRESENCE_CHUNK_KEY_PREFIX} for why the value key
-   * itself cannot carry that condition.
+   * One library-field condition as {@code (foreign library OR matches OR no value)}. The library
+   * guard is what makes {@code (libraryId, fieldKey)} the field identity: two libraries may define
+   * the same key, and a document of the other one must not be judged against this field's value
+   * list. "No value" reads the presence marker, whose value set is closed at exactly one value -
+   * see {@link LibraryMetadataFieldKeys#PRESENCE_CHUNK_KEY_PREFIX} for why the value key itself
+   * cannot carry that condition.
    */
   private static FilterExpressionBuilder.Op libraryFieldOp(
       FilterExpressionBuilder b, LibraryFieldCondition condition) {

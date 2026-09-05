@@ -9,13 +9,13 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Reads the page ids a notification names (#1140). The payload is a hint about <em>which</em> pages
- * to look at, never about <em>what</em> happened to them - the targeted fetch asks the instance
- * (ADR-0023, Entscheidung 4) - so the event type is not interpreted and every shape that carries a
- * page id is accepted: Data Center's {@code page.id} (page events) and {@code
- * attachment.pageId}/{@code attachment.container.id} (attachment events), the generic {@code
- * content.id}, and the flat {@code pageId} or {@code pageIds} an Automation rule's custom body
- * sends. A body that names no page is not an error: the sender is answered, nothing is queued.
+ * Reads the page ids a notification names. The payload is a hint about <em>which</em> pages to look
+ * at, never about <em>what</em> happened to them - the targeted fetch asks the instance (ADR-0023,
+ * Entscheidung 4) - so the event type is not interpreted and every shape that carries a page id is
+ * accepted: Data Center's {@code page.id} (page events) and {@code attachment.pageId}/{@code
+ * attachment.container.id} (attachment events), the generic {@code content.id}, and the flat {@code
+ * pageId} or {@code pageIds} an Automation rule's custom body sends. A body that names no page is
+ * not an error: the sender is answered, nothing is queued.
  */
 public final class ConfluenceWebhookPayload {
 

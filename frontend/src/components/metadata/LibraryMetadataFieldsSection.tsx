@@ -47,13 +47,13 @@ function effectChips(field: LibraryMetadataFieldResponse) {
 
 interface Props {
   libraryId: string
-  /** Only a person with the management right at the library may change the schema (#1071). */
+  /** Only a person with the management right at the library may change the schema. */
   canManageSchema: boolean
   onFieldsChanged?: () => void
 }
 
 /**
- * The "Metadatenfelder" section of a library's settings (#1071, metadata-schema.md Teil V): the
+ * The "Metadatenfelder" section of a library's settings (metadata-schema.md Teil V): the
  * library's own fields with their Wirkstellen and value lists, and the two operations the
  * specification guards - a field is only accepted with a retrieval effect, and a value is only
  * removed together with a confirmed mapping whose Folgekosten stand beforehand.
@@ -149,9 +149,7 @@ export default function LibraryMetadataFieldsSection({
       await reload()
       onFieldsChanged?.()
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Die Bezeichnung konnte nicht geändert werden',
-      )
+      setError(err instanceof Error ? err.message : 'Die Bezeichnung konnte nicht geändert werden')
     }
   }
 
@@ -257,9 +255,7 @@ export default function LibraryMetadataFieldsSection({
                       onClick={
                         canManageSchema ? () => void openRemap(field, value.code) : undefined
                       }
-                      aria-label={
-                        canManageSchema ? `Wert ${value.label} bearbeiten` : undefined
-                      }
+                      aria-label={canManageSchema ? `Wert ${value.label} bearbeiten` : undefined}
                     />
                   ))}
                   {canManageSchema && (
@@ -340,17 +336,20 @@ export default function LibraryMetadataFieldsSection({
         </DialogActions>
       </Dialog>
 
-      <EditFieldDialog
-        libraryId={libraryId}
-        field={editField}
-        onClose={() => setEditField(null)}
-        onSaved={() => {
-          setEditField(null)
-          void reload()
-          onFieldsChanged?.()
-        }}
-        onError={setError}
-      />
+      {editField && (
+        <EditFieldDialog
+          key={editField.fieldKey}
+          libraryId={libraryId}
+          field={editField}
+          onClose={() => setEditField(null)}
+          onSaved={() => {
+            setEditField(null)
+            void reload()
+            onFieldsChanged?.()
+          }}
+          onError={setError}
+        />
+      )}
 
       <Dialog open={deleteField != null} onClose={() => setDeleteField(null)}>
         <DialogTitle>Feld löschen</DialogTitle>
@@ -600,28 +599,23 @@ function EditFieldDialog({
   onError,
 }: {
   libraryId: string
-  field: LibraryMetadataFieldResponse | null
+  field: LibraryMetadataFieldResponse
   onClose: () => void
   onSaved: () => void
   onError: (message: string) => void
 }) {
-  const [label, setLabel] = useState('')
-  const [filter, setFilter] = useState(false)
-  const [contextPrefix, setContextPrefix] = useState(false)
-  const [citationPosition, setCitationPosition] = useState('')
-
-  useEffect(() => {
-    if (field === null) return
-    setLabel(field.label)
-    setFilter(field.filter)
-    setContextPrefix(field.contextPrefix)
-    setCitationPosition(field.citationPosition == null ? '' : String(field.citationPosition))
-  }, [field])
+  // Seeded from the field once; the caller remounts this dialog per field (key), so there is no
+  // effect that copies props into state.
+  const [label, setLabel] = useState(field.label)
+  const [filter, setFilter] = useState(field.filter)
+  const [contextPrefix, setContextPrefix] = useState(field.contextPrefix)
+  const [citationPosition, setCitationPosition] = useState(
+    field.citationPosition == null ? '' : String(field.citationPosition),
+  )
 
   const noEffect = !filter && !contextPrefix
 
   async function submit() {
-    if (!field) return
     try {
       await updateLibraryMetadataField(libraryId, field.fieldKey, {
         label,
@@ -636,7 +630,7 @@ function EditFieldDialog({
   }
 
   return (
-    <Dialog open={field !== null} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>Metadatenfeld bearbeiten</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>

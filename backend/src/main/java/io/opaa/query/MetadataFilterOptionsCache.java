@@ -16,7 +16,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * The per-person cache of {@link MetadataFilterOptions} (#1070) the specification explicitly allows
+ * The per-person cache of {@link MetadataFilterOptions} the specification explicitly allows
  * (metadata-schema.md, Rechte-Invariante): keyed by the person <em>and</em> the search scope her
  * rights resolved to, so an entry can only ever be served for exactly the libraries it was built
  * over; discarded on every rights change that touches the person - a grant on a library, a
@@ -79,10 +79,10 @@ public class MetadataFilterOptionsCache implements GroupMembershipChangeListener
   }
 
   /**
-   * A library's metadata field schema changed (#1071): the offered fields and their value lists are
-   * derived from it, so every entry that could contain the library is stale. Emptying the whole
-   * cache is the cheap and provably complete answer - the entries are rebuilt from the bestand on
-   * the next opening of the filter interface, in each person's own rights context.
+   * A library's metadata field schema changed: the offered fields and their value lists are derived
+   * from it, so every entry that could contain the library is stale. Emptying the whole cache is
+   * the cheap and provably complete answer - the entries are rebuilt from the bestand on the next
+   * opening of the filter interface, in each person's own rights context.
    */
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION, fallbackExecution = true)
   public void onLibraryMetadataSchemaChanged(LibraryMetadataSchemaChanged event) {

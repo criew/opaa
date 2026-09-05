@@ -74,7 +74,7 @@ class DocumentPipelineRegistryRoutingIntegrationTest {
                 .id())
         .isEqualTo("odp");
 
-    // #1103: Markdown is claimed by its own pipeline now, unlike every other format without one
+    // Markdown is claimed by its own pipeline now, unlike every other format without one
     // registered, which keeps going through TikaFallbackPipeline - the verhaltensneutral guarantee
     // of Teil 1 (a new pipeline bean must never change this for a format it does not claim).
     assertThat(registry.pipelineFor("notiz.md", "text/plain").id()).isEqualTo("markdown");
@@ -85,7 +85,7 @@ class DocumentPipelineRegistryRoutingIntegrationTest {
 
   @Test
   void markdownDocumentPipelineIsRegisteredAsABean() {
-    // #1103: MarkdownDocumentPipeline is registered like every other format pipeline, replacing
+    // MarkdownDocumentPipeline is registered like every other format pipeline, replacing
     // TikaFallbackPipeline for .md - asserting the bean's presence, not just the routing decision
     // above, catches a regression even if a future change happened to keep the routing correct by
     // coincidence (e.g. a second, competing bean that also claims ".md").
@@ -96,8 +96,8 @@ class DocumentPipelineRegistryRoutingIntegrationTest {
    * Every pipeline actually wired into the application declares exactly the passthrough metadata
    * keys it set before the hardcoded {@code storeChunks} allowlist was replaced by {@link
    * DocumentPipeline#passthroughMetadataKeys()} - a single parametrized guard against declaration
-   * drift, replacing what used to be one near-identical unit test per pipeline class (each of them
-   * asserting the declaration against itself, not against a shared expectation).
+   * drift, instead of one near-identical unit test per pipeline class (each of them asserting the
+   * declaration against itself, not against a shared expectation).
    */
   @Test
   void everyPipelineDeclaresExactlyItsOwnMetadataKeys() {

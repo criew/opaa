@@ -4,7 +4,7 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Operational bounds of the Confluence webhook intake (#1140) - its own block beside {@code
+ * Operational bounds of the Confluence webhook intake - its own block beside {@code
  * ConfluenceProperties} so adding a bound here touches no positional call site of the access layer.
  *
  * @param debounce how long the intake collects notifications for one library before it starts the

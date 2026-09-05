@@ -17,7 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * #483 acceptance criterion: a run reads its credentials from the {@link KnowledgeLibrary} entity
+ * Acceptance criterion: a run reads its credentials from the {@link KnowledgeLibrary} entity
  * exactly as it did before this issue, even though the underlying database column is now encrypted
  * ({@code SourceCredentialsConverter}). Runs against a real Postgres/Liquibase schema (not
  * Hibernate-generated DDL) so {@code source_credentials} is really the encrypted, widened {@code

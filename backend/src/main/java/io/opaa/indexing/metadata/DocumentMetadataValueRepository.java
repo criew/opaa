@@ -24,8 +24,7 @@ public interface DocumentMetadataValueRepository
 
   /**
    * How many documents carry {@code libraryValueId} - the Folgekosten a person sees <b>before</b>
-   * confirming a value mapping (#1071, metadata-schema.md "Kontrolliertes Vokabular statt
-   * Freitext").
+   * confirming a value mapping (metadata-schema.md "Kontrolliertes Vokabular statt Freitext").
    */
   long countByLibraryValueId(UUID libraryValueId);
 
@@ -55,8 +54,8 @@ public interface DocumentMetadataValueRepository
 
   /**
    * The values of {@code fieldKey} at least one document of the scope carries, with their document
-   * count - the offered choice list of a library-field filter (#1071): "die im Bestand vorkommenden
-   * Werte", in the rights context of the asking person, never the configured list.
+   * count - the offered choice list of a library-field filter: "die im Bestand vorkommenden Werte",
+   * in the rights context of the asking person, never the configured list.
    */
   @Query(
       "select v.textValue as code, count(v) as documentCount"
@@ -72,9 +71,9 @@ public interface DocumentMetadataValueRepository
       @Param("fieldKey") String fieldKey);
 
   /**
-   * The counted half of the one Füllstand count (#1305): per library, field and state, over the
-   * documents of {@code libraryIds} in {@code status}. Core fields and library fields alike - both
-   * are rows keyed by field key. The absence of a row is "leer" and is derived by {@link
+   * The counted half of the one Füllstand count: per library, field and state, over the documents
+   * of {@code libraryIds} in {@code status}. Core fields and library fields alike - both are rows
+   * keyed by field key. The absence of a row is "leer" and is derived by {@link
    * MetadataFillCounter} from the library's total.
    */
   @Query(
@@ -108,8 +107,8 @@ public interface DocumentMetadataValueRepository
 
   /**
    * Per field and state over a whole search scope at once - the Füllstand the filter interface
-   * shows (#1070), built over exactly the libraries the asking person's next question would search.
-   * Never precomputed (metadata-schema.md, Rechte-Invariante).
+   * shows, built over exactly the libraries the asking person's next question would search. Never
+   * precomputed (metadata-schema.md, Rechte-Invariante).
    */
   @Query(
       "select v.fieldKey as fieldKey, v.state as state, count(v) as documentCount"
@@ -121,8 +120,8 @@ public interface DocumentMetadataValueRepository
 
   /**
    * The Dokumentart values at least one document of the scope carries, with their document count -
-   * the offered choice list of the filter (#1070): "die im Bestand vorkommenden Werte", in the
-   * rights context of the asking person, never the whole vocabulary.
+   * the offered choice list of the filter: "die im Bestand vorkommenden Werte", in the rights
+   * context of the asking person, never the whole vocabulary.
    */
   @Query(
       "select v.vocabularyCode as code, count(v) as documentCount"

@@ -45,11 +45,11 @@ class BoundedDownloaderTest {
     server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
     server.start();
     baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
-    // NORMAL, not the JDK's own default NEVER (#492 review, finding 4's test needs an
+    // NORMAL, not the JDK's own default NEVER (this test needs an
     // actually-followed redirect to exercise the post-hoc foreign-host check
     // RedirectFollowingFetcher's REJECT_OFF_ORIGIN policy still carries as a safety net).
-    // Production itself now builds its client with Redirect.NEVER (#538,
-    // SourceHttpClientFactory.buildHttpClient) and has downloadBounded follow redirects
+    // Production itself builds its client with Redirect.NEVER
+    // (SourceHttpClientFactory.buildHttpClient) and has downloadBounded follow redirects
     // manually instead - downloadBoundedThrowsWhenRedirectedToAForeignHost below exercises the
     // post-hoc path with this NORMAL client on purpose, since a NEVER client never reaches it.
     httpClient = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
@@ -62,7 +62,7 @@ class BoundedDownloaderTest {
 
   @Test
   void preservesFileExtension() throws IOException, InterruptedException {
-    // #538: download() now streams the response body itself (via
+    // download() now streams the response body itself (via
     // RedirectFollowingFetcher.sendFollowingRedirects, HttpResponse<InputStream>) instead of
     // handing the client a HttpResponse.BodyHandlers.ofFile(...) target directly - the mock
     // therefore returns an InputStream, not a pre-written Path.
@@ -109,11 +109,11 @@ class BoundedDownloaderTest {
   @Test
   void downloadDoesNotLeakAuthorizationToAForeignHostRedirect()
       throws IOException, InterruptedException {
-    // #538 reproduction: the production client from SourceHttpClientFactory.buildHttpClient (not
+    // Reproduction: the production client from SourceHttpClientFactory.buildHttpClient (not
     // this test's own NORMAL client above, which mirrors the JDK's own leaking behaviour) must not
     // replay Authorization to a redirect target on a different host than baseUrl.
     // "localhost", not a 127/8 alias like 127.0.0.2: macOS binds only 127.0.0.1 by default
-    // (#966), and the foreign-host checks compare host STRINGS, so a different literal on the
+    // , and the foreign-host checks compare host STRINGS, so a different literal on the
     // same loopback carries the same meaning as a second address.
     HttpServer foreignServer = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
     foreignServer.start();
@@ -193,7 +193,7 @@ class BoundedDownloaderTest {
   @Test
   void downloadBoundedThrowsWhenRedirectedToAForeignHostWithTheProductionClient()
       throws IOException {
-    // #538: exercises the proactive redirect loop downloadBounded now needs of its own, since the
+    // exercises the proactive redirect loop downloadBounded now needs of its own, since the
     // production client (SourceHttpClientFactory.buildHttpClient) no longer auto-follows and never
     // reaches the pre-existing post-hoc foreign-host check the test above exercises.
     // "localhost" as the foreign host string - see downloadDoesNotLeakAuthorization above.
@@ -314,7 +314,7 @@ class BoundedDownloaderTest {
 
   @Test
   void downloadBoundedSendsTheGivenAuthorizationHeader() throws IOException, InterruptedException {
-    // #505: RssFeedIndexingExecutor now applies a library's own sourceCredentials to attachment
+    // RssFeedIndexingExecutor now applies a library's own sourceCredentials to attachment
     // downloads too, mirroring download()'s existing authHeader parameter.
     AtomicReference<String> authorization = new AtomicReference<>();
     server.createContext(
@@ -372,8 +372,8 @@ class BoundedDownloaderTest {
 
   @Test
   void downloadBoundedThrowsWhenRedirectedToAForeignHost() throws IOException {
-    // Same host (127.0.0.1), two different ports - not a second host string like "localhost" (#538
-    // follow-up review, finding 1): the foreign-host check originally compared hosts only, so two
+    // Same host (127.0.0.1), two different ports - not a second host string like "localhost"
+    // the foreign-host check must not compare hosts only, or two
     // servers on the same host at different ports would have looked identical to it and missed
     // the redirect entirely. It now delegates to RedirectFollowingFetcher.sameOrigin, which
     // normalizes and compares the port too - this test exercises exactly that gap instead of
@@ -410,12 +410,12 @@ class BoundedDownloaderTest {
 
   @Test
   void downloadBoundedThrowsWhenRedirectedToAHostUriCannotParse() throws IOException {
-    // #651: a redirect target with a host java.net.URI cannot parse (e.g. one containing an
+    // a redirect target with a host java.net.URI cannot parse (e.g. one containing an
     // underscore, per RFC an illegal reg-name character) makes URI#getHost() return null on that
     // side - the foreign-host check previously special-cased "either host null" as "not foreign"
     // and let the header-stripping/rejection logic treat this exactly like a same-origin redirect,
-    // the opposite of RedirectFollowingFetcher.sameOrigin's own null-host handling (#615 review,
-    // finding 1: "both hosts null must not compare equal"). A redirect target OPAA cannot even
+    // the opposite of RedirectFollowingFetcher.sameOrigin's own null-host handling
+    // ("both hosts null must not compare equal"). A redirect target OPAA cannot even
     // identify the host of must never be treated as trustworthy.
     //
     // Uses the production client (Redirect.NEVER, downloadBounded's own manual redirect loop,
@@ -446,7 +446,7 @@ class BoundedDownloaderTest {
   @Test
   void downloadDropsAuthorizationOnASameHostDifferentPortRedirect()
       throws IOException, InterruptedException {
-    // #538 follow-up review, finding 1: sendFollowingRedirects originally compared host+scheme
+    // sendFollowingRedirects must not compare host+scheme
     // only, so a redirect to a different port of the same host would have kept Authorization
     // attached - a service on a different port is a different origin, exactly what
     // RedirectFollowingFetcher.sameOrigin (scheme+host+normalized port) now catches.
@@ -491,7 +491,7 @@ class BoundedDownloaderTest {
 
   @Test
   void downloadRejectsAProtocolDowngradeRedirect() throws IOException, InterruptedException {
-    // #538 follow-up review, finding 2: Redirect.NORMAL always refused to follow a redirect from
+    // Redirect.NORMAL always refused to follow a redirect from
     // https to http; none of the manual replacement loops originally checked for that. Mocked
     // (like preservesFileExtension above) rather than a real HttpServer - the test HttpServer stub
     // used elsewhere in this class only ever speaks plain http, so it cannot itself answer an
@@ -517,7 +517,7 @@ class BoundedDownloaderTest {
         .hasMessageContaining("protocol downgrade");
   }
 
-  // --- #1236: download itself is capped, so one entry can never fill the temp partition -------
+  // --- download itself is capped, so one entry can never fill the temp partition -------
 
   /**
    * A suffix used by this class alone, so the leftover-temp-file assertions below cannot be
@@ -626,7 +626,7 @@ class BoundedDownloaderTest {
     }
   }
 
-  // --- #404 review, finding 1: downloadPrefix never reads more than the requested cap ----------
+  // --- downloadPrefix never reads more than the requested cap ----------
 
   @Test
   void downloadPrefixNeverReturnsMoreThanMaxBytesEvenWhenTheResponseIsLarger() throws Exception {
@@ -724,12 +724,10 @@ class BoundedDownloaderTest {
   @Test
   void downloadBoundedFollowsASameHostHttpToHttpsUpgradeRedirectAndResendsAuthorization()
       throws IOException, InterruptedException {
-    // #693: a same-host http->https upgrade at matching (here: both default) ports is not a
-    // foreign origin - before the fix, this was rejected outright with
-    // RedirectRejectedException, exactly like a genuine cross-origin redirect, breaking every
-    // Basic-Auth-protected http:// source whose server upgrades every request to https (as every
-    // well-behaved one does). Mocked at the HttpClient level (mirrors the protocol-downgrade test
-    // above) since neither example.com nor a real TLS listener is reachable from this test.
+    // A same-host http->https upgrade at matching (here: both default) ports is not a foreign
+    // origin and must not be rejected with RedirectRejectedException - that would break every
+    // Basic-Auth-protected http:// source whose server upgrades to https. Mocked at the HttpClient
+    // level since neither example.com nor a real TLS listener is reachable from this test.
     @SuppressWarnings("unchecked")
     HttpResponse<InputStream> redirectResponse = mock(HttpResponse.class);
     when(redirectResponse.statusCode()).thenReturn(301);
@@ -768,7 +766,7 @@ class BoundedDownloaderTest {
     verify(httpClient, times(2)).send(requestCaptor.capture(), any());
     HttpRequest secondRequest = requestCaptor.getAllValues().get(1);
     assertThat(secondRequest.uri()).isEqualTo(URI.create("https://example.com/anlage.pdf"));
-    // Zugangsdaten-Verhalten (#693 Soll-Zustand): same host, more secure channel - the stored
+    // Zugangsdaten-Verhalten: same host, more secure channel - the stored
     // credential is resent, not dropped as it would be for a genuine cross-origin redirect.
     assertThat(secondRequest.headers().firstValue("Authorization")).contains("Basic geheim");
   }
@@ -776,7 +774,7 @@ class BoundedDownloaderTest {
   @Test
   void downloadRejectsARedirectToABlockedTargetWhenValidationIsEnabled()
       throws IOException, InterruptedException {
-    // PR #699 review, finding 2 (#267 acceptance criterion: "Die Prüfung greift auch, wenn erst
+    // "Die Prüfung greift auch, wenn erst
     // eine Weiterleitung auf ein solches Ziel führt"). Deliberately exercises download() (backed
     // by RedirectFollowingFetcher.sendFollowingRedirects's DROP_AUTHORIZATION_OFF_ORIGIN policy),
     // not downloadBounded(): the latter's own REJECT_OFF_ORIGIN policy already rejects any

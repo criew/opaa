@@ -3,12 +3,11 @@ package io.opaa.indexing.metadata;
 import java.util.Optional;
 
 /**
- * The two key namespaces a library field lives in (#1071). A value row keys on {@code lib:<key>} in
- * {@code document_metadata_values.field_key}, so a library field can never collide with a core
- * field key and the existing per-field machinery (audit payload, Pflege-Anker, Sammelzuweisung)
- * keeps working unchanged; a filterable field's value additionally rides on every chunk under
- * {@code lf_<key>}, the library-field twin of {@link CoreMetadataChunkKeys} (ADR-0024, Entscheidung
- * 5).
+ * The two key namespaces a library field lives in. A value row keys on {@code lib:<key>} in {@code
+ * document_metadata_values.field_key}, so a library field can never collide with a core field key
+ * and the existing per-field machinery (audit payload, Pflege-Anker, Sammelzuweisung) keeps working
+ * unchanged; a filterable field's value additionally rides on every chunk under {@code lf_<key>},
+ * the library-field twin of {@link CoreMetadataChunkKeys} (ADR-0024, Entscheidung 5).
  *
  * <p>The key alone is not a field identity: two libraries may each define {@code fassung}, and
  * those are two fields. Whoever resolves a key needs the library beside it - which is why a filter
