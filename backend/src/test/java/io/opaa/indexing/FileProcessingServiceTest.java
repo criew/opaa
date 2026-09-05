@@ -804,6 +804,7 @@ class FileProcessingServiceTest {
                 "Abschnitt 1.1",
                 pageUrl,
                 "7",
+                Instant.parse("2026-02-01T08:00:00Z"),
                 new SourceDocumentContext("ENG", "Handbuch / Kapitel 1"),
                 targetLibrary);
 
@@ -860,6 +861,7 @@ class FileProcessingServiceTest {
                 "Abschnitt 1.1 (umbenannt)",
                 pageUrl,
                 "8",
+                Instant.parse("2026-02-01T08:00:00Z"),
                 new SourceDocumentContext("ENG", null),
                 targetLibrary);
 
@@ -901,6 +903,7 @@ class FileProcessingServiceTest {
                 "Abschnitt 1.1 (neu)",
                 pageUrl,
                 "9",
+                Instant.parse("2026-02-01T08:00:00Z"),
                 new SourceDocumentContext("ENG", "Handbuch"),
                 targetLibrary);
 

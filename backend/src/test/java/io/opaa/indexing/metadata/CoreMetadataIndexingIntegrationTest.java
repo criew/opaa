@@ -11,6 +11,7 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.library.KnowledgeLibrary;
@@ -369,6 +370,61 @@ class CoreMetadataIndexingIntegrationTest {
     // The feed's publication instant, not the year in the headline.
     assertThat(core.documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
     assertThat(core.documentDatePrecision()).isEqualTo(DatePrecision.DAY);
+  }
+
+  /**
+   * #1318: a Confluence page title is free text, not a file name - "Gebuehrensatzung 2024" is
+   * neither a Dokumentart nor a Stand, exactly as an RSS headline is not. It stays the title.
+   */
+  @Test
+  void aConfluencePageTitleIsNoFileNameSoItYieldsNeitherDokumentartNorDatum() {
+    assertThat(
+            fileProcessingService.processConfluencePage(
+                "<h1>Uebersicht</h1><p>Die Verwaltung erhebt Entgelte fuer Amtshandlungen im"
+                    + " Buergerbuero.</p>",
+                "Gebuehrensatzung 2024",
+                "https://wiki.example/pages/viewpage.action?pageId=4711",
+                "7",
+                null,
+                new SourceDocumentContext("BAU", "Handbuch"),
+                targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.title()).isEqualTo("Gebuehrensatzung 2024");
+    assertThat(core.documentTypeCode()).isNull();
+    // Neither the version marker nor the year in the title is a date: without a page version
+    // instant the field stays empty rather than guessed.
+    assertThat(core.documentDate()).isNull();
+    assertThat(document.getLastModifiedRemote()).isEqualTo("7");
+  }
+
+  /**
+   * #1318: the Stand of a page is when its current version was written - the one date Confluence
+   * itself declares, and the reason the title never has to supply one.
+   */
+  @Test
+  void aConfluencePageTakesItsStandFromThePageVersionNotFromItsTitle() {
+    assertThat(
+            fileProcessingService.processConfluencePage(
+                "<h1>Uebersicht</h1><p>Die Verwaltung erhebt Entgelte fuer Amtshandlungen im"
+                    + " Buergerbuero.</p>",
+                "Gebuehrensatzung 2024",
+                "https://wiki.example/pages/viewpage.action?pageId=4712",
+                "7",
+                java.time.Instant.parse("2026-03-12T10:00:00Z"),
+                new SourceDocumentContext("BAU", "Handbuch"),
+                targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
+    assertThat(core.documentDatePrecision()).isEqualTo(DatePrecision.DAY);
+    assertThat(core.documentDateOrigin()).isEqualTo(MetadataOrigin.DETERMINISTIC);
+    // Still no naming convention: the year in the title never competes with the page version.
+    assertThat(core.documentTypeCode()).isNull();
   }
 
   @Test

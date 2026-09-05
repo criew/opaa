@@ -11,6 +11,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIndexingIntegrationTest;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -96,6 +97,7 @@ class ConfluencePageIndexingIntegrationTest {
             "Abschnitt 1.1",
             PAGE_URL,
             "3",
+            Instant.parse("2026-02-01T08:00:00Z"),
             new SourceDocumentContext("ENG", "Handbuch / Kapitel 1"),
             library);
 
