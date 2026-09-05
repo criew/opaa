@@ -5,7 +5,6 @@ import io.opaa.indexing.pipeline.DocumentProperties;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
@@ -34,16 +33,11 @@ final class OdfMetaProperties {
       log.warn("Could not read meta.xml of ODF document {}", source.fileName(), e);
       return DocumentProperties.EMPTY;
     }
-    return new DocumentProperties(
-        handler.title,
-        parseDate(handler.created),
-        parseDate(handler.modified),
-        null,
-        null,
-        null,
-        null,
-        false,
-        Map.of());
+    return DocumentProperties.builder()
+        .title(handler.title)
+        .createdAt(parseDate(handler.created))
+        .modifiedAt(parseDate(handler.modified))
+        .build();
   }
 
   /**

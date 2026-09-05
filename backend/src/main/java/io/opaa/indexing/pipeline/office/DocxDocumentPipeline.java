@@ -1,21 +1,21 @@
 package io.opaa.indexing.pipeline.office;
 
-import io.opaa.indexing.pipeline.DocumentPipeline;
+import io.opaa.indexing.pipeline.DeduplicatedLines;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.DocumentTitleLine;
+import io.opaa.indexing.pipeline.FileDocumentPipeline;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.RepeatingHeaderChunk;
+import io.opaa.indexing.pipeline.TableText;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -49,7 +49,7 @@ import org.springframework.ai.document.Document;
  * cached value is excluded rather than indexed as static text. That chunk never rescues a body-less
  * document from {@code NO_CONTENT}/{@code NO_EXTRACTABLE_TEXT} - a scan must stay OCR-needing.
  */
-public class DocxDocumentPipeline implements DocumentPipeline {
+public class DocxDocumentPipeline extends FileDocumentPipeline<DocxDocumentPipeline.DocxContent> {
 
   private static final Logger log = LoggerFactory.getLogger(DocxDocumentPipeline.class);
 
@@ -81,26 +81,35 @@ public class DocxDocumentPipeline implements DocumentPipeline {
     return Set.of(".docx");
   }
 
+  /**
+   * One DOCX's reading, as plain data outliving the {@link XWPFDocument}: the body's event stream,
+   * the deduplicated header/footer text and the OOXML core properties.
+   */
+  public record DocxContent(
+      List<HeadingSectionSplitter.Event> events,
+      String headerFooterText,
+      DocumentProperties coreProperties) {}
+
   @Override
-  public DocumentPipelineResult run(DocumentPipelineSource source) {
-    if (source.file() == null) {
-      // A DOCX pipeline is only ever reached through a genuine .docx file (never RSS-extracted
-      // text, ADR-0017 decision 2) - defensive fallback, mirrors PdfDocumentPipeline/
-      // PptxDocumentPipeline.
-      return DocumentPipelineResult.parseFailed();
+  protected DocxContent read(DocumentPipelineSource source) throws IOException {
+    try (InputStream in = Files.newInputStream(source.file());
+        XWPFDocument document = new XWPFDocument(in)) {
+      return new DocxContent(
+          toEvents(document.getBodyElements()),
+          headerFooterText(document),
+          coreProperties(document));
     }
-    DocxContent content = readDocxContent(source);
-    if (content == null) {
-      return DocumentPipelineResult.parseFailed();
-    }
-    List<HeadingSectionSplitter.Event> events = toEvents(content.bodyElements());
-    if (events.isEmpty()) {
+  }
+
+  @Override
+  protected DocumentPipelineResult chunks(DocumentPipelineSource source, DocxContent content) {
+    if (content.events().isEmpty()) {
       // A genuinely empty document (no body elements at all). Header/footer text never rescues
       // this outcome - see this class's own Javadoc on why the guard ignores it entirely.
       return DocumentPipelineResult.noContent();
     }
     List<Document> chunks =
-        new ArrayList<>(HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL));
+        new ArrayList<>(HeadingSectionSplitter.chunk(content.events(), MAX_CUTTING_LEVEL));
     if (chunks.isEmpty()) {
       return DocumentPipelineResult.noExtractableText();
     }
@@ -109,110 +118,56 @@ public class DocxDocumentPipeline implements DocumentPipeline {
     if (headerFooterChunk != null) {
       chunks.add(0, headerFooterChunk);
     }
-    return DocumentPipelineResult.chunked(chunks)
-        .withProperties(
-            content
-                .properties()
-                .withFirstHeading(firstTopLevelHeading(events))
-                .withTitleLine(DocumentTitleLine.ofEvents(events)));
+    return DocumentPipelineResult.chunked(chunks);
   }
 
   /**
    * The OOXML core properties (dc:title, created, modified), the first level-1 heading (ADR-0024)
-   * and the opening of the body text, read without building the chunk stream.
+   * and the opening of the body text.
    */
   @Override
-  public DocumentProperties readProperties(DocumentPipelineSource source) {
-    if (source.file() == null) {
-      return DocumentProperties.EMPTY;
-    }
-    DocxContent content = readDocxContent(source);
-    if (content == null) {
-      return DocumentProperties.EMPTY;
-    }
-    List<HeadingSectionSplitter.Event> events = toEvents(content.bodyElements());
+  protected DocumentProperties properties(DocxContent content) {
     return content
-        .properties()
-        .withFirstHeading(firstTopLevelHeading(events))
-        .withTitleLine(DocumentTitleLine.ofEvents(events));
-  }
-
-  private record DocxContent(
-      List<IBodyElement> bodyElements, String headerFooterText, DocumentProperties properties) {}
-
-  /** {@code null} when the file could not be opened as a DOCX at all - a parse failure. */
-  private static DocxContent readDocxContent(DocumentPipelineSource source) {
-    try (InputStream in = Files.newInputStream(source.file())) {
-      try (XWPFDocument document = new XWPFDocument(in)) {
-        return new DocxContent(
-            document.getBodyElements(), headerFooterText(document), coreProperties(document));
-      }
-    } catch (IOException | RuntimeException e) {
-      log.warn("Could not read DOCX document {}", source.fileName(), e);
-      return null;
-    }
+        .coreProperties()
+        .withFirstHeading(HeadingSectionSplitter.firstTopLevelHeading(content.events()))
+        .withTitleLine(DocumentTitleLine.ofEvents(content.events()));
   }
 
   private static DocumentProperties coreProperties(XWPFDocument document) {
     POIXMLProperties.CoreProperties core = document.getProperties().getCoreProperties();
-    return new DocumentProperties(
-        core.getTitle(),
-        DocumentProperties.toLocalDate(core.getCreated()),
-        DocumentProperties.toLocalDate(core.getModified()),
-        null,
-        null,
-        null,
-        null,
-        false,
-        Map.of());
-  }
-
-  private static String firstTopLevelHeading(List<HeadingSectionSplitter.Event> events) {
-    for (HeadingSectionSplitter.Event event : events) {
-      if (event instanceof HeadingSectionSplitter.Heading heading
-          && heading.level() == 1
-          && !heading.title().isBlank()) {
-        return heading.title();
-      }
-    }
-    return null;
+    return DocumentProperties.builder()
+        .title(core.getTitle())
+        .createdAt(DocumentProperties.toLocalDate(core.getCreated()))
+        .modifiedAt(DocumentProperties.toLocalDate(core.getModified()))
+        .build();
   }
 
   private static String headerFooterText(XWPFDocument document) {
-    Map<String, String> headerLines = new LinkedHashMap<>();
-    Map<String, String> footerLines = new LinkedHashMap<>();
+    DeduplicatedLines headerLines = new DeduplicatedLines();
+    DeduplicatedLines footerLines = new DeduplicatedLines();
     for (XWPFHeader header : document.getHeaderList()) {
       collectParagraphLines(header.getParagraphs(), headerLines);
     }
     for (XWPFFooter footer : document.getFooterList()) {
       collectParagraphLines(footer.getParagraphs(), footerLines);
     }
-    String header = String.join("\n", headerLines.values());
-    String footer = String.join("\n", footerLines.values());
-    if (header.isEmpty()) {
-      return footer;
+    if (headerLines.isEmpty()) {
+      return footerLines.text();
     }
-    if (footer.isEmpty()) {
-      return header;
+    if (footerLines.isEmpty()) {
+      return headerLines.text();
     }
-    return header + "\n\n" + footer;
+    return headerLines.text() + "\n\n" + footerLines.text();
   }
 
   /**
-   * Adds each paragraph's field-excluding text to {@code lines}, keyed by its whitespace-normalized
-   * form so a paragraph repeated verbatim across header/footer variants or sections is kept once.
+   * Adds each paragraph's field-excluding text to {@code lines}, so a paragraph repeated verbatim
+   * across header/footer variants or sections is kept once.
    */
   private static void collectParagraphLines(
-      List<XWPFParagraph> paragraphs, Map<String, String> lines) {
+      List<XWPFParagraph> paragraphs, DeduplicatedLines lines) {
     for (XWPFParagraph paragraph : paragraphs) {
-      String stripped = paragraphTextExcludingFieldValues(paragraph).strip();
-      if (!stripped.isBlank()) {
-        // \\s alone does not match a non-breaking space (U+00A0) or narrow no-break space
-        // (U+202F) - both routine in an authority letterhead's column separators - so a variant
-        // using one and the default using a plain space would otherwise be treated as distinct
-        // lines and both survive deduplication.
-        lines.putIfAbsent(stripped.replaceAll("[\\s\\u00A0\\u202F]+", " "), stripped);
-      }
+      lines.add(paragraphTextExcludingFieldValues(paragraph));
     }
   }
 
@@ -278,30 +233,17 @@ public class DocxDocumentPipeline implements DocumentPipeline {
     return events;
   }
 
-  /**
-   * One line per row, cells joined by {@code " | "} - a blank row (no non-blank cell) is dropped.
-   */
+  /** One line per row via {@link TableText}; a blank cell is padding, a blank row is dropped. */
   private static String tableText(XWPFTable table) {
-    StringBuilder text = new StringBuilder();
+    List<List<String>> rows = new ArrayList<>();
     for (XWPFTableRow row : table.getRows()) {
-      StringBuilder rowText = new StringBuilder();
+      List<String> cells = new ArrayList<>();
       for (XWPFTableCell cell : row.getTableCells()) {
-        String cellText = cell.getText();
-        if (cellText != null && !cellText.isBlank()) {
-          if (rowText.length() > 0) {
-            rowText.append(" | ");
-          }
-          rowText.append(cellText.strip());
-        }
+        cells.add(cell.getText());
       }
-      if (rowText.length() > 0) {
-        if (text.length() > 0) {
-          text.append('\n');
-        }
-        text.append(rowText);
-      }
+      rows.add(cells);
     }
-    return text.toString();
+    return TableText.rowsOfNonBlankCells(rows);
   }
 
   private static Integer headingLevel(XWPFParagraph paragraph) {

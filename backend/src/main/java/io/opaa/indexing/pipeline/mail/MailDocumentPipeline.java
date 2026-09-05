@@ -132,7 +132,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
     ParsedMailMessage message;
     try {
       message =
-          ".msg".equals(resolveExtension(source))
+          ".msg".equals(source.effectiveExtension())
               ? MsgReader.read(source.file(), properties, source.attachmentIndex())
               : EmlReader.read(source.file(), properties, source.attachmentIndex());
     } catch (IOException e) {
@@ -177,7 +177,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
         return DocumentProperties.EMPTY;
       }
       ParsedMailMessage message =
-          ".msg".equals(resolveExtension(source))
+          ".msg".equals(source.effectiveExtension())
               ? MsgReader.read(source.file(), properties, MATERIALIZE_NO_ATTACHMENT)
               : EmlReader.read(source.file(), properties, MATERIALIZE_NO_ATTACHMENT);
       return properties(message);
@@ -192,14 +192,6 @@ public class MailDocumentPipeline implements DocumentPipeline {
         .withTitle(message.subject())
         .withDocumentDate(
             message.date() == null ? null : message.date().atZone(clock.getZone()).toLocalDate());
-  }
-
-  private static String resolveExtension(DocumentPipelineSource source) {
-    if (source.detectedExtension() != null) {
-      return source.detectedExtension();
-    }
-    String fileName = source.fileName() == null ? "" : source.fileName().toLowerCase(Locale.ROOT);
-    return fileName.endsWith(".msg") ? ".msg" : ".eml";
   }
 
   /**

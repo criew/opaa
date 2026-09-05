@@ -6,6 +6,7 @@ import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.DocumentTitleLine;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
+import io.opaa.indexing.pipeline.MarkdownHeading;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -100,25 +101,11 @@ public class MarkdownDocumentPipeline implements DocumentPipeline {
 
   private static DocumentProperties properties(
       String raw, List<HeadingSectionSplitter.Event> events) {
-    String firstHeading = null;
-    for (HeadingSectionSplitter.Event event : events) {
-      if (event instanceof HeadingSectionSplitter.Heading heading
-          && heading.level() == 1
-          && !heading.title().isBlank()) {
-        firstHeading = heading.title();
-        break;
-      }
-    }
-    return new DocumentProperties(
-        null,
-        null,
-        null,
-        null,
-        firstHeading,
-        DocumentTitleLine.ofEvents(events),
-        null,
-        false,
-        frontmatterEntries(raw));
+    return DocumentProperties.builder()
+        .firstHeading(HeadingSectionSplitter.firstTopLevelHeading(events))
+        .titleLine(DocumentTitleLine.ofEvents(events))
+        .frontmatter(frontmatterEntries(raw))
+        .build();
   }
 
   /**
@@ -199,12 +186,13 @@ public class MarkdownDocumentPipeline implements DocumentPipeline {
         appendLine(paragraph, withoutCr);
         continue;
       }
-      Matcher headingMatch = HEADING.matcher(withoutCr);
+      Matcher headingMatch = MarkdownHeading.LINE.matcher(withoutCr);
       if (headingMatch.matches()) {
         flushParagraph(events, paragraph);
         events.add(
             new HeadingSectionSplitter.Heading(
-                headingMatch.group(1).length(), headingMatch.group(2)));
+                headingMatch.group(MarkdownHeading.LEVEL_GROUP).length(),
+                headingMatch.group(MarkdownHeading.TITLE_GROUP)));
         continue;
       }
       if (withoutCr.isBlank()) {

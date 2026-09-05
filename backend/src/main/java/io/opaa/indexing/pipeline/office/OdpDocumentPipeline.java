@@ -1,18 +1,16 @@
 package io.opaa.indexing.pipeline.office;
 
 import io.opaa.indexing.ChunkingService;
-import io.opaa.indexing.pipeline.DocumentPipeline;
+import io.opaa.indexing.pipeline.DeduplicatedLines;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.indexing.pipeline.FileDocumentPipeline;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.RepeatingHeaderChunk;
 import java.io.IOException;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,7 +33,7 @@ import org.xml.sax.helpers.DefaultHandler;
  * carry no text at all stays {@code NO_EXTRACTABLE_TEXT} regardless of it - template boilerplate
  * must not defeat the scan guard.
  */
-public class OdpDocumentPipeline implements DocumentPipeline {
+public class OdpDocumentPipeline extends FileDocumentPipeline<OdpDocumentPipeline.OdpContent> {
 
   private static final Logger log = LoggerFactory.getLogger(OdpDocumentPipeline.class);
 
@@ -68,58 +66,57 @@ public class OdpDocumentPipeline implements DocumentPipeline {
     return Set.of(".odp");
   }
 
+  /**
+   * One presentation's reading: one chunk per slide, whether any of them carried text at all, and
+   * {@code meta.xml}'s data.
+   */
+  public record OdpContent(
+      List<Document> slideChunks, boolean anySlideHasText, DocumentProperties meta) {}
+
   @Override
-  public DocumentPipelineResult run(DocumentPipelineSource source) {
-    if (source.file() == null) {
-      return DocumentPipelineResult.parseFailed();
-    }
+  protected OdpContent read(DocumentPipelineSource source) throws IOException {
     OdpContentHandler handler =
         new OdpContentHandler(
             odfProperties.maxOdpSlides(),
             odfProperties.maxSpaceRepeat(),
             odfProperties.maxTextCharacters());
-    boolean found;
-    try {
-      found = OdfContentXml.parse(source.file(), odfProperties.maxContentXmlBytes(), handler);
-    } catch (IOException | RuntimeException e) {
-      // Unparsable content (a corrupt ZIP, a rejected XXE attempt, a limit SAXException wraps into
-      // an IOException) is reported the same way as PDF/DOCX/PPTX/Tabular/ODT - see
-      // DocumentPipelineResult's own Javadoc for the shared contract.
-      log.warn("Could not read ODP document {}", source.fileName(), e);
-      return DocumentPipelineResult.parseFailed();
-    }
-    if (!found) {
+    if (!OdfContentXml.parse(source.file(), odfProperties.maxContentXmlBytes(), handler)) {
       // Not a genuine ODF ZIP (no content.xml entry at all) - the same "could not be parsed" case
-      // OdtDocumentPipeline reports for a corrupt .odt, distinct from a well-formed but empty
-      // presentation below.
-      return DocumentPipelineResult.parseFailed();
+      // a corrupt .odp reaches, distinct from a well-formed but empty presentation.
+      throw new IOException("No content.xml entry in ODP file " + source.fileName());
     }
-    if (handler.chunks().isEmpty() || !handler.anySlideHasText()) {
+    return new OdpContent(
+        handler.chunks(), handler.anySlideHasText(), OdfMetaProperties.read(source, odfProperties));
+  }
+
+  @Override
+  protected DocumentPipelineResult chunks(DocumentPipelineSource source, OdpContent content) {
+    if (content.slideChunks().isEmpty() || !content.anySlideHasText()) {
       // Covers both a genuinely empty <office:presentation/> (zero draw:page elements) and a
       // presentation whose slides carry no text - the same NO_EXTRACTABLE_TEXT outcome
       // TikaFallbackPipeline reported for either case before this pipeline existed. A
       // master-slide chunk never overrides this - see this class's own Javadoc.
       return DocumentPipelineResult.noExtractableText();
     }
-    List<Document> chunks = new ArrayList<>(handler.chunks());
+    List<Document> chunks = new ArrayList<>(content.slideChunks());
     Document masterSlideChunk =
         RepeatingHeaderChunk.ofOrNull(MASTER_SLIDE_LOCATION, readMasterSlideText(source));
     if (masterSlideChunk != null) {
       chunks.add(0, masterSlideChunk);
     }
-    return DocumentPipelineResult.chunked(chunks).withProperties(readProperties(source));
+    return DocumentPipelineResult.chunked(chunks);
   }
 
   /** {@code meta.xml}'s title/dates (ADR-0024); ODP slides carry no heading hierarchy to read. */
   @Override
-  public DocumentProperties readProperties(DocumentPipelineSource source) {
-    return OdfMetaProperties.read(source, odfProperties);
+  protected DocumentProperties properties(OdpContent content) {
+    return content.meta();
   }
 
   /**
    * A missing entry, a missing master page or a parse failure all resolve to no master-slide text -
    * this is supplementary content, and a broken {@code styles.xml} must not fail a presentation
-   * whose {@code content.xml} parsed successfully above.
+   * whose {@code content.xml} parsed successfully.
    */
   private String readMasterSlideText(DocumentPipelineSource source) {
     OdpStylesHandler stylesHandler =
@@ -139,19 +136,16 @@ public class OdpDocumentPipeline implements DocumentPipeline {
 
   /**
    * Collects {@code office:presentation}'s {@code draw:page} children into one chunk per slide,
-   * deliberately narrow: it reads only what {@link #run} needs (title, body, notes, slide number)
-   * and ignores everything else in {@code content.xml} (styles, images, animations).
+   * deliberately narrow: it reads only what a slide chunk needs (title, body, notes, slide number)
+   * and ignores everything else in {@code content.xml} (styles, images, animations). Paragraph text
+   * comes from {@link OdfParagraphTextCollector}, table structure from {@link OdfTableStack}.
    */
   static final class OdpContentHandler extends DefaultHandler {
 
     private final int maxSlides;
-    private final int maxSpaceRepeat;
-    private final long maxTextCharacters;
+    private final OdfParagraphTextCollector collector;
+    private final OdfTableStack tables = new OdfTableStack();
     private int slideCount;
-    // Cumulative across the whole document, not reset with text - text.setLength(0) only bounds
-    // one paragraph's buffer, not how many text:s elements a single paragraph can carry (see
-    // OdfProperties#maxTextCharacters).
-    private long textCharacterCount;
 
     private final List<Document> chunks = new ArrayList<>();
     private boolean anySlideHasText;
@@ -166,18 +160,11 @@ public class OdpDocumentPipeline implements DocumentPipeline {
     private StringBuilder currentNotes;
     private boolean currentHasBodyText;
 
-    private int paragraphDepth;
-    private final StringBuilder text = new StringBuilder();
-
-    private int tableDepth;
-    // One frame per currently open table:table, deepest on top; a nested table gets its own row
-    // list and cell buffer so it cannot overwrite the carrier row/cell of the table around it.
-    private final Deque<TableFrame> tableStack = new ArrayDeque<>();
-
     OdpContentHandler(int maxSlides, int maxSpaceRepeat, long maxTextCharacters) {
       this.maxSlides = maxSlides;
-      this.maxSpaceRepeat = maxSpaceRepeat;
-      this.maxTextCharacters = maxTextCharacters;
+      this.collector =
+          OdfParagraphTextCollector.forContent(
+              "ODP presentation", maxSpaceRepeat, maxTextCharacters);
     }
 
     List<Document> chunks() {
@@ -210,82 +197,19 @@ public class OdpDocumentPipeline implements DocumentPipeline {
         }
         case "presentation:notes" -> insideNotes = true;
         case "draw:frame" -> currentFrameClass = attributes.getValue("presentation:class");
-        case "text:h", "text:p" -> {
-          if (paragraphDepth == 0) {
-            text.setLength(0);
-          }
-          paragraphDepth++;
-        }
-        case "table:table" -> {
-          tableDepth++;
-          tableStack.push(new TableFrame());
-        }
-        case "table:table-row" -> {
-          if (tableDepth > 0) {
-            tableStack.peek().currentRowCells = new ArrayList<>();
-          }
-        }
-        case "table:table-cell", "table:covered-table-cell" -> {
-          if (tableDepth > 0) {
-            TableFrame frame = tableStack.peek();
-            frame.insideCell = true;
-            frame.cellText.setLength(0);
-          }
-        }
-        case "text:s" -> appendRepeatedSpace(attributes);
-        case "text:tab" -> {
-          if (paragraphDepth > 0) {
-            text.append('\t');
-          }
-        }
-        case "text:line-break" -> {
-          if (paragraphDepth > 0) {
-            text.append('\n');
-          }
-        }
         default -> {
-          // Every other element (styles, images, animations) carries no structure this pipeline
-          // renders and is ignored.
+          // Every other element is either a table (below) or carries no structure this pipeline
+          // renders.
         }
       }
-    }
-
-    private void appendRepeatedSpace(Attributes attributes) throws SAXException {
-      if (paragraphDepth == 0) {
-        return;
-      }
-      int count = parsePositiveIntOrDefault(attributes.getValue("text:c"), 1);
-      int repeated = Math.min(count, maxSpaceRepeat);
-      checkTextCharacterBudget(repeated);
-      text.append(" ".repeat(repeated));
-    }
-
-    private static int parsePositiveIntOrDefault(String value, int defaultValue) {
-      if (value == null) {
-        return defaultValue;
-      }
-      try {
-        int parsed = Integer.parseInt(value);
-        return parsed > 0 ? parsed : defaultValue;
-      } catch (NumberFormatException e) {
-        return defaultValue;
+      if (!tables.startElement(qName)) {
+        collector.startElement(qName, attributes);
       }
     }
 
     @Override
     public void characters(char[] ch, int start, int length) throws SAXException {
-      if (paragraphDepth > 0) {
-        checkTextCharacterBudget(length);
-        text.append(ch, start, length);
-      }
-    }
-
-    private void checkTextCharacterBudget(int added) throws SAXException {
-      textCharacterCount += added;
-      if (textCharacterCount > maxTextCharacters) {
-        throw new SAXException(
-            "ODP presentation exceeds the configured text character limit of " + maxTextCharacters);
-      }
+      collector.characters(ch, start, length);
     }
 
     @Override
@@ -293,59 +217,25 @@ public class OdpDocumentPipeline implements DocumentPipeline {
       switch (qName) {
         case "presentation:notes" -> insideNotes = false;
         case "draw:frame" -> currentFrameClass = null;
-        case "text:h", "text:p" -> {
-          paragraphDepth--;
-          if (paragraphDepth == 0) {
-            String value = text.toString();
-            if (tableDepth > 0) {
-              TableFrame frame = tableStack.peek();
-              if (frame.insideCell) {
-                if (frame.cellText.length() > 0) {
-                  frame.cellText.append(' ');
-                }
-                frame.cellText.append(value.strip());
-              }
-            } else if (hasSlide) {
-              routeParagraphText(value);
-            }
-          }
-        }
-        case "table:table-cell", "table:covered-table-cell" -> {
-          if (tableDepth > 0) {
-            TableFrame frame = tableStack.peek();
-            frame.insideCell = false;
-            if (frame.currentRowCells != null) {
-              frame.currentRowCells.add(frame.cellText.toString());
-            }
-          }
-        }
-        case "table:table-row" -> {
-          if (tableDepth > 0) {
-            TableFrame frame = tableStack.peek();
-            if (frame.currentRowCells != null) {
-              String rowText = String.join(" | ", frame.currentRowCells);
-              if (!rowText.isBlank()) {
-                frame.rows.add(rowText);
-              }
-              frame.currentRowCells = null;
-            }
-          }
-        }
-        case "table:table" -> {
-          tableDepth--;
-          TableFrame frame = tableStack.pop();
-          if (tableDepth == 0 && hasSlide) {
-            // A nested table's own frame (tableDepth > 0 here) is discarded without emitting -
-            // its rows do not separately become body text, only the carrier row's cell survives.
-            String tableText = String.join("\n", frame.rows);
-            if (!tableText.isBlank()) {
-              routeParagraphText(tableText);
-            }
-          }
-        }
         default -> {
           // See startElement.
         }
+      }
+      String tableText = tables.endElement(qName);
+      if (tableText != null) {
+        if (hasSlide) {
+          routeParagraphText(tableText);
+        }
+        return;
+      }
+      String value = collector.endElement(qName);
+      if (value == null) {
+        return;
+      }
+      if (tables.insideTable()) {
+        tables.appendParagraphText(value);
+      } else if (hasSlide) {
+        routeParagraphText(value);
       }
     }
 
@@ -404,14 +294,6 @@ public class OdpDocumentPipeline implements DocumentPipeline {
       anySlideHasText |= hasText;
       hasSlide = false;
     }
-
-    /** Per-table-nesting-level row/cell accumulation state, see {@link #tableStack}. */
-    private static final class TableFrame {
-      private final List<String> rows = new ArrayList<>();
-      private final StringBuilder cellText = new StringBuilder();
-      private List<String> currentRowCells;
-      private boolean insideCell;
-    }
   }
 
   /**
@@ -420,25 +302,21 @@ public class OdpDocumentPipeline implements DocumentPipeline {
    * {@link OdpContentHandler}: it does not distinguish title/body/notes the way a slide does. A
    * frame whose {@code presentation:class} is one of {@link #NON_CONTENT_PLACEHOLDER_CLASSES}
    * (layout scaffolding such as an outline "edit master text" prompt) is excluded, mirroring {@link
-   * OdpContentHandler}'s own notes filter. Two paragraphs whose whitespace-normalized text is equal
-   * (e.g. the same footer repeated across several master pages, or across a page's default/left/odd
-   * layout variants) contribute only once.
+   * OdpContentHandler}'s own notes filter.
    */
   static final class OdpStylesHandler extends DefaultHandler {
 
     private final OdfParagraphTextCollector collector;
     private boolean insideMasterPage;
     private String currentFrameClass;
-    // Normalized (whitespace-collapsed) line -> first-seen original line, insertion-ordered so the
-    // rendered text preserves the order paragraphs appeared in.
-    private final Map<String, String> lines = new LinkedHashMap<>();
+    private final DeduplicatedLines lines = new DeduplicatedLines();
 
     OdpStylesHandler(int maxSpaceRepeat, long maxTextCharacters) {
-      collector = new OdfParagraphTextCollector(maxSpaceRepeat, maxTextCharacters);
+      collector = OdfParagraphTextCollector.forStyles(maxSpaceRepeat, maxTextCharacters);
     }
 
     String masterSlideText() {
-      return String.join("\n", lines.values());
+      return lines.text();
     }
 
     @Override
@@ -465,7 +343,7 @@ public class OdpDocumentPipeline implements DocumentPipeline {
       boolean isPlaceholder =
           currentFrameClass != null && NON_CONTENT_PLACEHOLDER_CLASSES.contains(currentFrameClass);
       if (paragraphText != null && insideMasterPage && !isPlaceholder) {
-        addLineIfNew(paragraphText);
+        lines.add(paragraphText);
       }
       switch (qName) {
         case "style:master-page" -> insideMasterPage = false;
@@ -474,18 +352,6 @@ public class OdpDocumentPipeline implements DocumentPipeline {
           // See startElement.
         }
       }
-    }
-
-    private void addLineIfNew(String value) {
-      String stripped = value.strip();
-      if (stripped.isBlank()) {
-        return;
-      }
-      // \s alone does not match a non-breaking space (U+00A0) or narrow no-break space
-      // (U+202F) - both routine in an authority letterhead's column separators - so a variant
-      // using one and the default using a plain space would otherwise be treated as distinct
-      // lines and both survive deduplication.
-      lines.putIfAbsent(stripped.replaceAll("[\\s\\u00A0\\u202F]+", " "), stripped);
     }
   }
 }

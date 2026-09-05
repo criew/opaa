@@ -42,35 +42,36 @@ public class AttachmentExtractor {
    */
   public Extracted extract(Path parentFile, String parentFileName, int index) {
     Extracted[] extracted = new Extracted[1];
+    DocumentPipelineRegistry.Routed routed;
     try {
-      DocumentPipelineRegistry.Routed routed =
-          pipelineRegistry.routedPipelineFor(parentFile, parentFileName);
-      DocumentPipelineRunner.run(
-          routed.pipeline(),
-          DocumentPipelineSource.ofFile(parentFile, parentFileName, routed.detectedExtension())
-              .withAttachmentIndex(index),
-          result -> {
-            List<DiscoveredAttachment> attachments = result.discoveredAttachments();
-            if (attachments.isEmpty()) {
-              return;
-            }
-            // Selective extraction: the source above restricts the run to index, so the pipeline
-            // reports that attachment as the only one (DocumentPipelineSource#attachmentIndex).
-            DiscoveredAttachment attachment = attachments.getFirst();
-            try {
-              Path copy = Files.createTempFile("opaa-attachment-", suffixOf(attachment.fileName()));
-              Files.copy(attachment.tempFile(), copy, StandardCopyOption.REPLACE_EXISTING);
-              extracted[0] = new Extracted(copy, attachment.fileName());
-            } catch (IOException e) {
-              log.warn("Failed to copy re-extracted attachment {}", attachment.fileName(), e);
-            }
-          });
+      routed = pipelineRegistry.routedPipelineFor(parentFile, parentFileName);
     } catch (RuntimeException e) {
-      // A corrupt or unreadable parent must cost only this one extraction - some pipelines still
-      // throw on a parse failure instead of reporting PARSE_FAILED.
-      log.warn("Failed to re-extract attachment {} of {}", index, parentFileName, e);
+      // Routing reads the parent's own bytes; a parent that has since been removed or truncated
+      // must cost only this one extraction. A parse failure of the routed pipeline itself needs no
+      // handling here - DocumentPipelineRunner reports it as a result without attachments.
+      log.warn("Failed to route parent {} for attachment {}", parentFileName, index, e);
       return null;
     }
+    DocumentPipelineRunner.run(
+        routed.pipeline(),
+        DocumentPipelineSource.ofFile(parentFile, parentFileName, routed.detectedExtension())
+            .withAttachmentIndex(index),
+        result -> {
+          List<DiscoveredAttachment> attachments = result.discoveredAttachments();
+          if (attachments.isEmpty()) {
+            return;
+          }
+          // Selective extraction: the source above restricts the run to index, so the pipeline
+          // reports that attachment as the only one (DocumentPipelineSource#attachmentIndex).
+          DiscoveredAttachment attachment = attachments.getFirst();
+          try {
+            Path copy = Files.createTempFile("opaa-attachment-", suffixOf(attachment.fileName()));
+            Files.copy(attachment.tempFile(), copy, StandardCopyOption.REPLACE_EXISTING);
+            extracted[0] = new Extracted(copy, attachment.fileName());
+          } catch (IOException e) {
+            log.warn("Failed to copy re-extracted attachment {}", attachment.fileName(), e);
+          }
+        });
     return extracted[0];
   }
 

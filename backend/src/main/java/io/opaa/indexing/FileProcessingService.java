@@ -1005,7 +1005,8 @@ public class FileProcessingService {
                               + ConfluenceDocumentPipeline.ID
                               + " is not registered"));
       DocumentPipelineResult parsed =
-          pipeline.run(DocumentPipelineSource.ofExtractedText(storageBody, fileName));
+          DocumentPipelineRunner.run(
+              pipeline, DocumentPipelineSource.ofExtractedText(storageBody, fileName));
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
           log.warn("No usable text in Confluence page {}", pageUrl);

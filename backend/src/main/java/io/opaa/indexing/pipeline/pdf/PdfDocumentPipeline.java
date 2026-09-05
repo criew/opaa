@@ -1,11 +1,11 @@
 package io.opaa.indexing.pipeline.pdf;
 
 import io.opaa.indexing.ChunkingService;
-import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.DocumentTitleLine;
+import io.opaa.indexing.pipeline.FileDocumentPipeline;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -22,8 +22,6 @@ import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocume
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineNode;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 
 /**
@@ -33,12 +31,13 @@ import org.springframework.ai.document.Document;
  * Absatz as two separately citable levels - and several entries on one page split that page's text
  * between their titles. Without an outline, chunking falls back to one chunk per non-blank page.
  *
+ * <p>Every page's text is extracted exactly once, into {@link PdfContent}; a page range is the
+ * concatenation of its pages, which is what the stripper itself produces for that range.
+ *
  * <p>Scan detection is answered from this pipeline's own extraction: a PDF whose text is entirely
  * blank is rejected as {@code NO_EXTRACTABLE_TEXT}.
  */
-public class PdfDocumentPipeline implements DocumentPipeline {
-
-  private static final Logger log = LoggerFactory.getLogger(PdfDocumentPipeline.class);
+public class PdfDocumentPipeline extends FileDocumentPipeline<PdfDocumentPipeline.PdfContent> {
 
   static final String ID = "pdf";
   static final short VERSION = 1;
@@ -58,88 +57,67 @@ public class PdfDocumentPipeline implements DocumentPipeline {
     return Set.of(".pdf");
   }
 
+  /**
+   * One PDF's extraction, as plain data outliving the {@link PDDocument}: {@code pageTexts} in page
+   * order, the flattened outline, and the Info dictionary's own properties.
+   */
+  public record PdfContent(
+      List<String> pageTexts, List<OutlineEntry> entries, DocumentProperties info) {}
+
+  record OutlineEntry(int level, String title, int pageIndex) {}
+
   @Override
-  public DocumentPipelineResult run(DocumentPipelineSource source) {
-    if (source.file() == null) {
-      return DocumentPipelineResult.parseFailed();
-    }
+  protected PdfContent read(DocumentPipelineSource source) throws IOException {
     try (PDDocument doc = Loader.loadPDF(source.file().toFile())) {
-      String fullText = new PDFTextStripper().getText(doc);
-      if (fullText.isBlank()) {
-        return DocumentPipelineResult.noExtractableText();
+      List<String> pageTexts = new ArrayList<>(doc.getNumberOfPages());
+      for (int i = 0; i < doc.getNumberOfPages(); i++) {
+        pageTexts.add(extractPageText(doc, i));
       }
-      List<OutlineEntry> entries = flattenOutline(doc);
-      DocumentProperties properties = properties(doc, entries, firstPageText(doc));
-      if (!entries.isEmpty()) {
-        return chunkByOutline(doc, entries).withProperties(properties);
-      }
-      return chunkByPage(doc).withProperties(properties);
-    } catch (IOException | RuntimeException e) {
-      log.warn("Could not read PDF document {} via PDFBox", source.fileName(), e);
-      return DocumentPipelineResult.parseFailed();
+      return new PdfContent(pageTexts, flattenOutline(doc), infoProperties(doc));
     }
+  }
+
+  @Override
+  protected DocumentPipelineResult chunks(DocumentPipelineSource source, PdfContent content) {
+    if (content.pageTexts().stream().allMatch(String::isBlank)) {
+      return DocumentPipelineResult.noExtractableText();
+    }
+    return content.entries().isEmpty()
+        ? chunkByPage(content.pageTexts())
+        : chunkByOutline(content.pageTexts(), content.entries());
   }
 
   /**
    * The Info dictionary's Title/CreationDate/ModDate, the first top-level outline entry as the
-   * first heading (ADR-0024) and the opening of the first page's text as the head text - the only
-   * page whose text is extracted here.
+   * first heading (ADR-0024) and the opening of the first page's text as the head text - the head
+   * area is the only place a title line is read from.
    */
   @Override
-  public DocumentProperties readProperties(DocumentPipelineSource source) {
-    if (source.file() == null) {
-      return DocumentProperties.EMPTY;
-    }
-    try (PDDocument doc = Loader.loadPDF(source.file().toFile())) {
-      return properties(doc, flattenOutline(doc), firstPageText(doc));
-    } catch (IOException | RuntimeException e) {
-      log.warn("Could not read PDF properties of {} via PDFBox", source.fileName(), e);
-      return DocumentProperties.EMPTY;
-    }
-  }
-
-  /**
-   * The first page's text as the head area, or {@code null} when it cannot be extracted - never a
-   * failure. Read on both paths, so {@link #run} and {@link #readProperties} declare the same head
-   * for the same file.
-   */
-  private static String firstPageText(PDDocument doc) {
-    try {
-      PDFTextStripper stripper = new PDFTextStripper();
-      stripper.setStartPage(1);
-      stripper.setEndPage(1);
-      return stripper.getText(doc);
-    } catch (IOException | RuntimeException e) {
-      return null;
-    }
-  }
-
-  private static DocumentProperties properties(
-      PDDocument doc, List<OutlineEntry> entries, String text) {
-    PDDocumentInformation info = doc.getDocumentInformation();
+  protected DocumentProperties properties(PdfContent content) {
     String firstHeading =
-        entries.stream()
+        content.entries().stream()
             .filter(entry -> entry.level() == 1)
             .map(OutlineEntry::title)
             .findFirst()
             .orElse(null);
-    String titleLine = DocumentTitleLine.of(text);
-    if (info == null) {
-      return DocumentProperties.EMPTY.withFirstHeading(firstHeading).withTitleLine(titleLine);
-    }
-    return new DocumentProperties(
-        info.getTitle(),
-        DocumentProperties.toLocalDate(info.getCreationDate()),
-        DocumentProperties.toLocalDate(info.getModificationDate()),
-        null,
-        firstHeading,
-        titleLine,
-        null,
-        false,
-        Map.of());
+    String firstPageText = content.pageTexts().isEmpty() ? null : content.pageTexts().getFirst();
+    return content
+        .info()
+        .withFirstHeading(firstHeading)
+        .withTitleLine(DocumentTitleLine.of(firstPageText));
   }
 
-  private record OutlineEntry(int level, String title, int pageIndex) {}
+  private static DocumentProperties infoProperties(PDDocument doc) {
+    PDDocumentInformation info = doc.getDocumentInformation();
+    if (info == null) {
+      return DocumentProperties.EMPTY;
+    }
+    return DocumentProperties.builder()
+        .title(info.getTitle())
+        .createdAt(DocumentProperties.toLocalDate(info.getCreationDate()))
+        .modifiedAt(DocumentProperties.toLocalDate(info.getModificationDate()))
+        .build();
+  }
 
   private static List<OutlineEntry> flattenOutline(PDDocument doc) {
     PDDocumentOutline outline = doc.getDocumentCatalog().getDocumentOutline();
@@ -181,12 +159,12 @@ public class PdfDocumentPipeline implements DocumentPipeline {
     }
   }
 
-  private static DocumentPipelineResult chunkByOutline(PDDocument doc, List<OutlineEntry> entries)
-      throws IOException {
+  private static DocumentPipelineResult chunkByOutline(
+      List<String> pageTexts, List<OutlineEntry> entries) {
     List<HeadingSectionSplitter.Event> events = new ArrayList<>();
     int firstStart = entries.get(0).pageIndex();
     if (firstStart > 0) {
-      String preamble = extractPageRangeText(doc, 0, firstStart);
+      String preamble = pageRangeText(pageTexts, 0, firstStart);
       if (!preamble.isBlank()) {
         events.add(new HeadingSectionSplitter.Paragraph(preamble.strip()));
       }
@@ -200,10 +178,8 @@ public class PdfDocumentPipeline implements DocumentPipeline {
       }
       List<OutlineEntry> run = entries.subList(i, runEnd + 1);
       int rangeEnd =
-          runEnd + 1 < entries.size()
-              ? entries.get(runEnd + 1).pageIndex()
-              : doc.getNumberOfPages();
-      String rangeText = extractPageRangeText(doc, page, rangeEnd);
+          runEnd + 1 < entries.size() ? entries.get(runEnd + 1).pageIndex() : pageTexts.size();
+      String rangeText = pageRangeText(pageTexts, page, rangeEnd);
       Attribution attribution = splitAmongSiblingTitles(rangeText, run);
       if (!attribution.head().isBlank()) {
         // Text before the run's first title belongs to whichever section is still open when
@@ -277,11 +253,10 @@ public class PdfDocumentPipeline implements DocumentPipeline {
     return new Attribution(head, bodies);
   }
 
-  private static DocumentPipelineResult chunkByPage(PDDocument doc) throws IOException {
+  private static DocumentPipelineResult chunkByPage(List<String> pageTexts) {
     List<Document> chunks = new ArrayList<>();
-    int pageCount = doc.getNumberOfPages();
-    for (int i = 0; i < pageCount; i++) {
-      String text = extractPageRangeText(doc, i, i + 1);
+    for (int i = 0; i < pageTexts.size(); i++) {
+      String text = pageTexts.get(i);
       if (text.isBlank()) {
         continue;
       }
@@ -298,14 +273,19 @@ public class PdfDocumentPipeline implements DocumentPipeline {
   /**
    * @param startPageIndex inclusive, 0-based. @param endPageIndexExclusive exclusive, 0-based.
    */
-  private static String extractPageRangeText(
-      PDDocument doc, int startPageIndex, int endPageIndexExclusive) throws IOException {
+  private static String pageRangeText(
+      List<String> pageTexts, int startPageIndex, int endPageIndexExclusive) {
     if (endPageIndexExclusive <= startPageIndex) {
       return "";
     }
+    return String.join("", pageTexts.subList(startPageIndex, endPageIndexExclusive));
+  }
+
+  /** A page whose text cannot be extracted fails the whole document - nothing is known about it. */
+  private static String extractPageText(PDDocument doc, int pageIndex) throws IOException {
     PDFTextStripper stripper = new PDFTextStripper();
-    stripper.setStartPage(startPageIndex + 1);
-    stripper.setEndPage(endPageIndexExclusive);
+    stripper.setStartPage(pageIndex + 1);
+    stripper.setEndPage(pageIndex + 1);
     return stripper.getText(doc);
   }
 }
