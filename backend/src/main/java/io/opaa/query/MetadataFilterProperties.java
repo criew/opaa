@@ -16,6 +16,11 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param documentTypeOfferThreshold share of indexed documents with a Dokumentart value or the mark
  *     "kein Wert ermittelbar", in 0..1, from which the field is offered.
  * @param documentDateOfferThreshold the same for Datum/Stand.
+ * @param libraryFieldOfferThreshold the same for every library field (#1071), measured against the
+ *     field's own library rather than the whole search scope. One threshold for all of them, and
+ *     the same 0.75 as Datum/Stand: a library field is filled by hand, never by an extraction, so
+ *     the higher Dokumentart bar - justified by a deterministically reachable vocabulary - does not
+ *     apply to it.
  * @param optionsCacheTtl how long a person's filter options stay cached before they are recomputed
  *     over the current bestand - a rights change discards them earlier.
  */
@@ -23,11 +28,13 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 public record MetadataFilterProperties(
     @DefaultValue("0.90") double documentTypeOfferThreshold,
     @DefaultValue("0.75") double documentDateOfferThreshold,
+    @DefaultValue("0.75") double libraryFieldOfferThreshold,
     @DefaultValue("5m") Duration optionsCacheTtl) {
 
   public MetadataFilterProperties {
     requireShare("documentTypeOfferThreshold", documentTypeOfferThreshold);
     requireShare("documentDateOfferThreshold", documentDateOfferThreshold);
+    requireShare("libraryFieldOfferThreshold", libraryFieldOfferThreshold);
     if (optionsCacheTtl == null || optionsCacheTtl.isNegative()) {
       throw new IllegalArgumentException("optionsCacheTtl must be zero or positive");
     }

@@ -103,6 +103,16 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long countByLibraryIdInAndStatus(Collection<UUID> libraryIds, DocumentStatus status);
 
   /**
+   * The same bestand broken down per library - the base of the one Füllstand count (#1305). A
+   * library without documents in {@code status} is absent from the result.
+   */
+  @Query(
+      "select d.libraryId as libraryId, count(d) as documentCount from Document d"
+          + " where d.libraryId in :libraryIds and d.status = :status group by d.libraryId")
+  List<LibraryDocumentCount> countByLibraryAndStatus(
+      @Param("libraryIds") Collection<UUID> libraryIds, @Param("status") DocumentStatus status);
+
+  /**
    * The parent-level counterpart of {@link #countByLibraryId} (#1184): top-level documents only,
    * matching what the document list pages over - shown as a library's {@code documentCount}. {@link
    * #countByLibraryId} keeps backing the delete guard, which must see every row.

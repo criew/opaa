@@ -31,8 +31,11 @@ Titelzeile verengt in #1289), **dazu Arbeitspaket 4 vollständig**: der Kernfeld
 Suchpfaden mit Füllstand und Eintrittsbedingung (#1070, Teil 1, siehe
 [Umgesetzt (#1070, Teil 1)](#umgesetzt-1070-teil-1)) und seine Benchmark-Abnahme mit den beiden
 getrennt ausgewiesenen Fehlerrichtungen (#1070, Teil 2, siehe
-[`retrieval-benchmark.md`, „Umgesetzt (#1070, Teil 2)"](./retrieval-benchmark.md#umgesetzt-1070-teil-2));
-Bibliotheksfelder und Modell-Extraktion sind noch nicht gebaut.
+[`retrieval-benchmark.md`, „Umgesetzt (#1070, Teil 2)"](./retrieval-benchmark.md#umgesetzt-1070-teil-2)),
+**und Arbeitspaket 5**: die Bibliotheksfelder mit kontrolliertem Vokabular, bestätigter
+Wertelisten-Abbildung, Filter, Beleg-Anzeige und Verwaltungsansicht (#1071, siehe
+[Umgesetzt (#1071)](#umgesetzt-1071)). Der Kontextpräfix-Anteil der Wirkstellen (#1072) und die
+Modell-Extraktion sind noch nicht gebaut.
 
 ---
 
@@ -280,6 +283,102 @@ genauso unsichtbar wie ein halluzinierter — nur diesmal ohne Modell im Spiel. 
 **Freitextfelder gibt es nicht.** Ein Freitextfeld ist ein Schlagwort mit dem Anschein von Struktur:
 Man kann darauf filtern, aber niemand weiß, welche Werte existieren, und ein Tippfehler beim Anlegen
 erzeugt eine stille zweite Kategorie. Wer Freitext braucht, braucht (c).
+
+### Umgesetzt (#1071)
+
+Arbeitspaket 5: die Bibliotheksfelder selbst — Schemakonfiguration je Bibliothek, kontrolliertes
+Vokabular mit bestätigter Wertelisten-Abbildung, Filter in beiden Suchpfaden, Beleg-Anzeige und
+Pflege-Anker.
+
+**Datenmodell.** `library_metadata_fields` (Migration 025) führt je Bibliothek bis zu **fünf**
+Felder: stabiler `field_key` (kleingeschrieben, je Bibliothek eindeutig), deutsches Label, Typ
+`SELECT`/`DATE`/`PATTERN`, das Muster eines `PATTERN`-Feldes, die Wirkstellen als Flags und die
+Zitierposition. `library_metadata_field_values` ist die Werteliste eines `SELECT`-Feldes mit
+stabilen Codes. Die Werte der Dokumente liegen weiter in `document_metadata_values` (#1066) — unter
+dem Schlüssel `lib:<key>`, mit `library_field_id` auf das Feld und, bei `SELECT`, `library_value_id`
+als **echtem Fremdschlüssel** auf den Listeneintrag. Damit hängt die ganze vorhandene Mechanik
+(Audit-Nutzlast, Pflege-Anker, Sammelzuweisung, Herkunftspflicht) unverändert an denselben Zeilen,
+und die Feldidentität bleibt das Paar `(Bibliothek, Feldschlüssel)`: **zwei Bibliotheken mit
+demselben Schlüssel führen zwei verschiedene Felder**, jedes mit eigener Werteliste.
+
+**Die Aufnahmeregel steht in der Datenbank.** `chk_library_metadata_fields_retrieval_effect` lässt
+ein Feld ohne Filter- und ohne Kontextpräfix-Wirkung gar nicht erst speichern; die API weist es
+zusätzlich mit 400 und einer deutschen Meldung ab. „Nur Beleg-Anzeige" ist damit kein erreichbarer
+Zustand, sondern ein nicht darstellbarer. Die Obergrenze von fünf Feldern setzt der Dienst (409 beim
+sechsten); die Zitierposition ist 1 oder 2 und je Bibliothek einmal vergeben
+(`uk_library_metadata_fields_citation_position`).
+
+**Die Abbildungsregel steht ebenfalls in der Datenbank.** Es gibt **keine** Operation, die einen
+Listenwert ohne Abbildung entfernt: `POST …/values/{code}/remap` nimmt `targetCode` (ein anderer Wert
+der Liste) oder `null` („leer") entgegen, schreibt in **einer** Transaktion jedes betroffene Dokument
+um, zieht die Chunk-Schlüssel per JSON-Update nach, schreibt je Dokument ein
+`DOCUMENT_METADATA_CHANGED`-Ereignis mit Altwert und gemeinsamer `correlationRef` und löscht erst
+danach den Listeneintrag. Ein Löschversuch ohne diesen Weg scheitert am `ON DELETE RESTRICT` des
+Fremdschlüssels. Die Zahl der betroffenen Dokumente steht vorher fest
+(`GET …/values/{code}/usage`), ebenso die Folgekosten einer Feldlöschung
+(`GET …/metadata-fields/{fieldKey}/usage`). Ein Wert **hinzufügen** ist jederzeit möglich und ohne
+Nachlauf; ein Label korrigieren ebenso, weil die Dokumente den Code tragen, nicht das Label.
+
+**Rechte.** Schema ändern — Feld anlegen, ändern, löschen, Werteliste pflegen, Abbildung bestätigen —
+verlangt das **Verwaltungsrecht an der Bibliothek** (`MANAGER`), dieselbe Schranke wie jede andere
+Bibliothekseinstellung. Einen Wert an einem Dokument setzen bleibt beim **Bearbeitungsrecht**
+(`EDITOR`, #1068). Die konfigurierte Werteliste liest jede Person mit Leserecht — sie ist
+Schemabestandteil, kein Aggregat (siehe [Rechte-Invariante](#rechte-invariante-der-extraktion-und-aller-aggregate));
+die Verwaltungsansicht weist deshalb darauf hin, dass Wertelisten keine schutzbedürftigen
+Bezeichnungen tragen dürfen.
+
+**Werte werden nicht automatisch befüllt.** Für ein Bibliotheksfeld gibt es keine deterministische
+Quelle — `CoreMetadataExtractor` rührt sie nicht an, und der Bestandslauf (#1067) füllt sie nicht.
+Sie entstehen von Hand oder per Sammelzuweisung (#1068, um Bibliotheksfelder erweitert: Wert gegen
+Werteliste, Datumsgenauigkeit bzw. Muster geprüft, sonst 400). Ein Feldwert, den niemand setzt,
+bleibt leer — und erscheint im Pflege-Anker, der Kernfelder und Bibliotheksfelder jetzt nebeneinander
+zeigt.
+
+**Filter in beiden Pfaden.** `MetadataFilter` trägt neben den beiden Kernfeldbedingungen eine Liste
+von Bibliotheksfeld-Bedingungen, jede mit `(libraryId, fieldKey)`. Die Form der Bedingung nennt den
+Typ: Codes für `SELECT`, ein Fenster für `DATE` (identische Spannen-Semantik wie Datum/Stand), ein
+**exakter** Wert für `PATTERN`. Exakt und nicht Präfix oder Teilstring: Der Typ existiert, damit eine
+Kennung prüfbar ist; ein Teiltreffer machte daraus wieder die Textsuche, die die Spezifikation
+ausschließt. Beide Pfade tragen dieselbe Bedingung
+(`(fremde Bibliothek) OR (Wert passt) OR (kein Wert)`), dem Rechtefilter nachgeordnet und explizit
+geklammert wie die Kernfelder. Die Bedingung „kein Wert" liest einen eigenen Präsenz-Schlüssel
+`lfs_<key>` am Chunk statt den Wertschlüssel: Der pgvector-Konverter kennt kein `IS NULL`, und die
+Wertemenge eines `SELECT`- oder `PATTERN`-Feldes ist zur Abfragezeit nicht geschlossen — die des
+Präsenz-Schlüssels ist es (genau ein Wert). Der Zusatz „fremde Bibliothek" ist die Stelle, an der die
+Feldidentität wirksam wird: Ein Dokument einer anderen Bibliothek wird nie gegen eine Werteliste
+geprüft, die es nichts angeht, und bleibt über die Leerwert-Regel in der Trefferliste.
+
+**Filteroptionen.** `GET /api/v1/search/metadata-filter-options` liefert zusätzlich die filterbaren
+Bibliotheksfelder des Suchbereichs — je Bibliothek und Feld mit Füllstand, Schwellwert, `offered` und
+den im Bestand **vorkommenden** Werten (bzw. der Datumsspanne). Bezugsmenge des Füllstands ist die
+**eigene Bibliothek des Feldes**, nicht der ganze Suchbereich: Das Feld existiert nur dort, und
+gegen alle Bibliotheken gemessen bliebe ein gepflegtes Feld einer kleinen Bibliothek dauerhaft unter
+der Schwelle. Der Schwellwert ist **0,75** für jedes Bibliotheksfeld
+(`opaa.query.metadata-filter.library-field-offer-threshold`) — dieselbe Zahl wie Datum/Stand und aus
+demselben Grund: Ein Bibliotheksfeld wird von Hand gepflegt, nie extrahiert; die höhere
+Dokumentart-Schranke von 0,90 rechtfertigt sich aus einem deterministisch erreichbaren Vokabular und
+gilt hier nicht.
+
+**Beleg-Anzeige.** Die generische Feld-Wert-Liste am `SourceReference` (#1066) trägt hinter den
+Kernfeldern die Bibliotheksfelder mit Zitierposition — höchstens zwei, in der Reihenfolge der
+Position, leere Felder gar nicht.
+
+**Kontextpräfix.** Die Wirkstelle wird gespeichert und ist in der Verwaltungsansicht sichtbar; der
+Präfix selbst und der Reindex-Nachlauf, den eine Änderung daran kostet, kommen mit **#1072**. Ein
+Feld, das heute nur den Kontextpräfix bedient, ist ein gültiger Schemazustand ohne heutige Wirkung —
+das ist der Preis dafür, die Wirkstellen vollständig am Feld zu führen, statt sie später nachzurüsten.
+
+**Oberfläche.** In den Bibliothekseinstellungen steht der Abschnitt „Metadatenfelder": die Liste mit
+Typ, Wirkstellen und Werteliste, das Anlegen (mit der Pflicht, Filter oder Kontextpräfix zu wählen),
+Bearbeiten, Löschen mit Folgekostenanzeige, das Pflegen der Werteliste und der Abbildungsdialog
+(„N Dokumente tragen ‚X' → auf … / leer abbilden"). Der Hinweis auf schutzbedürftige Bezeichnungen
+steht dort, wo die Werteliste gepflegt wird. Metadatenansicht und Sammelzuweisung (#1068) sowie der
+Pflege-Anker (#1069) zeigen die Bibliotheksfelder mit; das Filter-Popover bietet sie je Bibliothek
+des Suchbereichs an.
+
+**Bewusst nicht gebaut.** Kein geführter Assistent (Teil V, spätere Ausbaustufe); keine automatische
+Befüllung eines Bibliotheksfeldes; keine Umbenennung eines Wertecodes im Bestand (das ist eine
+Entfernung mit Abbildung); kein Freitextfeld.
 
 ## (c) Freie Schlagworte
 

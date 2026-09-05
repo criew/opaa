@@ -11,10 +11,12 @@ import io.opaa.chat.ChatSourceLocation;
 import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.metadata.CitationFieldValue;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
-import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.indexing.metadata.LibraryCitationMetadataReader;
 import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
@@ -67,7 +69,8 @@ public class QueryService {
   private final KnowledgeLibraryRepository knowledgeLibraryRepository;
   private final RerankModelRole rerankModelRole;
   private final DocumentMetadataService documentMetadataService;
-  private final DocumentTypeVocabularyRepository vocabularyRepository;
+  private final MetadataFilterValidator metadataFilterValidator;
+  private final LibraryCitationMetadataReader citationMetadataReader;
 
   public QueryService(
       RetrievalPipeline retrievalPipeline,
@@ -84,8 +87,10 @@ public class QueryService {
       KnowledgeLibraryRepository knowledgeLibraryRepository,
       RerankModelRole rerankModelRole,
       DocumentMetadataService documentMetadataService,
-      DocumentTypeVocabularyRepository vocabularyRepository) {
-    this.vocabularyRepository = vocabularyRepository;
+      MetadataFilterValidator metadataFilterValidator,
+      LibraryCitationMetadataReader citationMetadataReader) {
+    this.metadataFilterValidator = metadataFilterValidator;
+    this.citationMetadataReader = citationMetadataReader;
     this.retrievalPipeline = retrievalPipeline;
     this.answerGenerationService = answerGenerationService;
     this.chatMemory = chatMemory;
@@ -226,6 +231,7 @@ public class QueryService {
                     resolveSearchScope(chat, useKnowledge, requestedLibraryIds, readableLibraryIds);
                 MetadataFilter metadataFilter =
                     validatedMetadataFilter(
+                        readableLibraryIds,
                         chat.map(Chat::getMetadataFilter)
                             .orElse(
                                 requestedMetadataFilter == null
@@ -273,6 +279,8 @@ public class QueryService {
                     lookupSourceDocuments(relevantChunks);
                 Map<UUID, CoreMetadata> coreMetadataByDocId =
                     lookupCoreMetadata(sourceDocumentsByDocId);
+                Map<UUID, List<CitationFieldValue>> citationFieldsByDocId =
+                    lookupCitationFields(sourceDocumentsByDocId);
                 List<ChatSource> sources =
                     mapSources(
                         relevantChunks,
@@ -280,6 +288,7 @@ public class QueryService {
                         matchCounts,
                         sourceDocumentsByDocId,
                         coreMetadataByDocId,
+                        citationFieldsByDocId,
                         metadataFilter);
 
                 log.debug(
@@ -338,15 +347,16 @@ public class QueryService {
   }
 
   /**
-   * The filter with its Dokumentart codes checked against the vocabulary - an unknown code is a
-   * caller error (400), never silently a filter that matches nothing but the documents without a
-   * value.
+   * The filter checked against the schema - an unknown Dokumentart code, an unknown library field
+   * or a value outside a field's list is a caller error (400), never silently a filter that matches
+   * nothing but the documents without a value.
    */
-  private MetadataFilter validatedMetadataFilter(MetadataFilter filter) {
+  private MetadataFilter validatedMetadataFilter(
+      Set<UUID> readableLibraryIds, MetadataFilter filter) {
     if (filter.isEmpty()) {
       return filter;
     }
-    return filter.validatedAgainst(vocabularyRepository.snapshot());
+    return metadataFilterValidator.validate(filter, readableLibraryIds);
   }
 
   /**
@@ -665,12 +675,31 @@ public class QueryService {
    * right file name but the wrong document id must still flag every real entry sharing that file
    * name, since there is no other signal for which one the model meant.
    */
+  /**
+   * The library fields a Beleg shows (#1071) for every resolved source document - at most two per
+   * library, in their configured order. A lookup failure is logged and yields no library fields
+   * rather than failing the answer, exactly like the core-field lookup.
+   */
+  private Map<UUID, List<CitationFieldValue>> lookupCitationFields(
+      Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId) {
+    try {
+      return citationMetadataReader.forDocuments(sourceDocumentsByDocId.values());
+    } catch (RuntimeException e) {
+      log.warn(
+          "Library citation metadata lookup failed for {} source document(s)",
+          sourceDocumentsByDocId.size(),
+          e);
+      return Map.of();
+    }
+  }
+
   private List<ChatSource> mapSources(
       List<Document> chunks,
       List<CitationValidator.ValidatedCitation> validatedCitations,
       Map<String, Integer> matchCounts,
       Map<String, io.opaa.indexing.Document> sourceDocumentsByDocId,
       Map<UUID, CoreMetadata> coreMetadataByDocId,
+      Map<UUID, List<CitationFieldValue>> citationFieldsByDocId,
       MetadataFilter metadataFilter) {
     Set<String> retrievedDocumentIds =
         chunks.stream()
@@ -714,7 +743,11 @@ public class QueryService {
                               sourceDocument.getId(), CoreMetadata.EMPTY)
                           : null;
                   List<ChatSourceMetadataEntry> metadataEntries =
-                      core != null ? ChatSourceMetadataEntry.fromCore(core) : List.of();
+                      core != null
+                          ? ChatSourceMetadataEntry.from(
+                              core,
+                              citationFieldsByDocId.getOrDefault(sourceDocument.getId(), List.of()))
+                          : List.of();
                   ChatSource reference =
                       new ChatSource(fileName, score, matches, cited)
                           .indexedAt(indexedAt)
@@ -734,7 +767,7 @@ public class QueryService {
                           .mailDate(
                               mailMetadataValue(chunk, ChunkMailMetadata.MAIL_DATE_METADATA_KEY))
                           .metadata(metadataEntries.isEmpty() ? null : metadataEntries)
-                          .metadataFilterMatch(metadataFilterMatch(metadataFilter, core));
+                          .metadataFilterMatch(metadataFilterMatch(metadataFilter, core, chunk));
                   return Map.entry(groupKey, reference);
                 })
             .collect(
@@ -774,15 +807,18 @@ public class QueryService {
   }
 
   /**
-   * #1070: whether a retrieved document matched every filtered field or was kept by the Leerwert
-   * rule alone - read from the document's core fields, the same values the chunk keys mirror. Null
-   * without an active filter, and for a chunk whose document no longer resolves.
+   * #1070/#1071: whether a retrieved document matched every filtered field or was kept by the
+   * Leerwert rule alone. Read from the chunk's own metadata keys - the ones both search paths
+   * filtered on, so the mark cannot disagree with the condition that let the chunk through, and a
+   * library field is covered without a second query per document. Null without an active filter,
+   * and for a chunk whose document no longer resolves.
    */
-  static MetadataFilterMatch metadataFilterMatch(MetadataFilter filter, CoreMetadata core) {
+  static MetadataFilterMatch metadataFilterMatch(
+      MetadataFilter filter, CoreMetadata core, Document chunk) {
     if (filter == null || filter.isEmpty() || core == null) {
       return null;
     }
-    return filter.keptWithoutValue(core.documentTypeCode(), core.documentDate())
+    return MetadataFilterExpressions.keptWithoutValue(filter, chunk)
         ? MetadataFilterMatch.NO_VALUE
         : MetadataFilterMatch.MATCHED;
   }

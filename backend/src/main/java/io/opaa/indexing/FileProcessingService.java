@@ -2,8 +2,8 @@ package io.opaa.indexing;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
-import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
+import io.opaa.indexing.metadata.DocumentChunkMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
 import io.opaa.indexing.pipeline.DiscoveredAttachment;
@@ -982,7 +982,7 @@ public class FileProcessingService {
       }
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
 
-      CoreMetadata coreMetadata = extractCoreMetadata(doc, doc.getFileName(), parsed);
+      DocumentChunkMetadata coreMetadata = extractCoreMetadata(doc, doc.getFileName(), parsed);
       if (replacingExistingChunks) {
         vectorChunkStore.deleteByDocumentId(doc.getId());
         previousChunksDeleted = true;
@@ -1538,9 +1538,10 @@ public class FileProcessingService {
    * @param routingExtension see {@link #routingExtensionFor}: written onto every chunk as {@link
    *     ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} when present, omitted entirely when
    *     empty (#1126)
-   * @param coreMetadata the document's effective core fields (ADR-0024), whose filterable keys
-   *     ({@link CoreMetadataChunkKeys}) are written onto every chunk before any pipeline
-   *     passthrough - they hang on the document, so no pipeline may set them
+   * @param chunkMetadata the document's filterable schema values (ADR-0024, {@link
+   *     CoreMetadataChunkKeys}, and its library's own filterable fields since #1071), written onto
+   *     every chunk before any pipeline passthrough - they hang on the document, so no pipeline may
+   *     set them
    */
   private void storeChunks(
       Document document,
@@ -1548,7 +1549,7 @@ public class FileProcessingService {
       String contextTitle,
       DocumentPipeline pipeline,
       Optional<String> routingExtension,
-      CoreMetadata coreMetadata) {
+      DocumentChunkMetadata chunkMetadata) {
     boolean documentWasSplit = chunks.size() >= 2;
     ContentFormatter embedFormatter =
         documentWasSplit && contextTitle != null
@@ -1585,7 +1586,7 @@ public class FileProcessingService {
                               ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY, extension));
                   // The document's filterable core fields (ADR-0024): inherited by every chunk,
                   // written here so both search paths can carry the same condition.
-                  metadata.putAll(coreMetadata.chunkMetadata());
+                  metadata.putAll(chunkMetadata.values());
                   // The registry-wide declared passthrough keys (DocumentPipeline#
                   // passthroughMetadataKeys) - e.g. the chunk's Fundort, or a message's Kopfdaten
                   // (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5) - copied only when this
@@ -1614,14 +1615,14 @@ public class FileProcessingService {
    * and returns the effective fields for {@link #storeChunks}. Never fails the ingest - a failure
    * here is logged and the chunks are written without core fields, exactly as an empty result.
    */
-  private CoreMetadata extractCoreMetadata(
+  private DocumentChunkMetadata extractCoreMetadata(
       Document document, String fileName, DocumentPipelineResult parsed) {
     try {
       return documentMetadataService.applyDeterministicExtraction(
-          document.getId(), fileName, parsed.properties());
+          document, fileName, parsed.properties());
     } catch (RuntimeException e) {
       log.warn("Core metadata extraction failed for {}; indexing without it", fileName, e);
-      return CoreMetadata.EMPTY;
+      return DocumentChunkMetadata.EMPTY;
     }
   }
 

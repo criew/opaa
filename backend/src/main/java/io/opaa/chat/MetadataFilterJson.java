@@ -1,17 +1,20 @@
 package io.opaa.chat;
 
+import io.opaa.indexing.metadata.LibraryFieldCondition;
 import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The persisted form of a chat's sticky {@link MetadataFilter} in {@code chats.metadata_filter}
- * (#1070): the three filter fields as a small JSON object with ISO dates, {@code null} for no
- * filter - the same shape the API carries, so a stored row reads back into the same record.
+ * (#1070, um Bibliotheksfelder erweitert in #1071): the filter's conditions as a small JSON object
+ * with ISO dates, {@code null} for no filter - the same shape the API carries, so a stored row
+ * reads back into the same record.
  */
 final class MetadataFilterJson {
 
@@ -33,6 +36,18 @@ final class MetadataFilterJson {
     json.put(
         "documentDateTo",
         filter.documentDateTo() == null ? null : filter.documentDateTo().toString());
+    List<Map<String, Object>> libraryFields = new ArrayList<>();
+    for (LibraryFieldCondition condition : filter.libraryFields()) {
+      Map<String, Object> entry = new LinkedHashMap<>();
+      entry.put("libraryId", condition.libraryId().toString());
+      entry.put("fieldKey", condition.fieldKey());
+      entry.put("codes", condition.codes().stream().sorted().toList());
+      entry.put("dateFrom", condition.dateFrom() == null ? null : condition.dateFrom().toString());
+      entry.put("dateTo", condition.dateTo() == null ? null : condition.dateTo().toString());
+      entry.put("value", condition.value());
+      libraryFields.add(entry);
+    }
+    json.put("libraryFields", libraryFields);
     return MAPPER.writeValueAsString(json);
   }
 
@@ -48,9 +63,35 @@ final class MetadataFilterJson {
     if (types instanceof List<?> list) {
       list.forEach(code -> codes.add(String.valueOf(code)));
     }
+    List<LibraryFieldCondition> conditions = new ArrayList<>();
+    if (object.get("libraryFields") instanceof List<?> entries) {
+      for (Object entry : entries) {
+        if (entry instanceof Map<?, ?> map) {
+          List<String> entryCodes = new ArrayList<>();
+          if (map.get("codes") instanceof List<?> list) {
+            list.forEach(code -> entryCodes.add(String.valueOf(code)));
+          }
+          conditions.add(
+              LibraryFieldCondition.parse(
+                  UUID.fromString(String.valueOf(map.get("libraryId"))),
+                  String.valueOf(map.get("fieldKey")),
+                  entryCodes,
+                  text(map.get("dateFrom")),
+                  text(map.get("dateTo")),
+                  text(map.get("value"))));
+        }
+      }
+    }
     return MetadataFilter.parse(
-        codes,
-        object.get("documentDateFrom") == null ? null : object.get("documentDateFrom").toString(),
-        object.get("documentDateTo") == null ? null : object.get("documentDateTo").toString());
+            codes,
+            object.get("documentDateFrom") == null
+                ? null
+                : object.get("documentDateFrom").toString(),
+            object.get("documentDateTo") == null ? null : object.get("documentDateTo").toString())
+        .withLibraryFields(conditions);
+  }
+
+  private static String text(Object value) {
+    return value == null ? null : value.toString();
   }
 }

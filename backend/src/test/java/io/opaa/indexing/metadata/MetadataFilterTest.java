@@ -95,14 +95,15 @@ class MetadataFilterTest {
   }
 
   /**
-   * "Nur Kernfelder filtern; freie Schlagworte nie": the filter's whole vocabulary is the two
-   * filterable core fields - there is no component a keyword or the title could travel in.
+   * "Nur (a) und (b) filtern; freie Schlagworte nie": the filter's whole vocabulary is the two
+   * filterable core fields and the library fields (#1071) - there is no component a keyword or the
+   * title could travel in.
    */
   @Test
-  void onlyDocumentTypeAndDocumentDateAreFilterable() {
+  void onlyCoreFieldsAndLibraryFieldsAreFilterable() {
     assertThat(MetadataFilter.class.getRecordComponents())
         .extracting(component -> component.getName())
-        .containsExactly("documentTypes", "documentDateFrom", "documentDateTo");
+        .containsExactly("documentTypes", "documentDateFrom", "documentDateTo", "libraryFields");
     assertThat(MetadataFilter.NONE.isEmpty()).isTrue();
     assertThat(MetadataFilter.parse(null, null, null).isEmpty()).isTrue();
   }

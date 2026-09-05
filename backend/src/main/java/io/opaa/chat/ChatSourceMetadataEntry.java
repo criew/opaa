@@ -2,6 +2,7 @@ package io.opaa.chat;
 
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.MetadataOrigin;
+import io.opaa.indexing.metadata.CitationFieldValue;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.MetadataValueDisplay;
@@ -59,6 +60,29 @@ public record ChatSourceMetadataEntry(
               displayDate(core.documentDate(), core.documentDatePrecision()),
               core.documentDateOrigin(),
               core.documentDatePrecision()));
+    }
+    return entries;
+  }
+
+  /**
+   * The core fields of {@code core} followed by the library fields of {@code citationFields}
+   * (#1071) - at most two, in their configured citation order, empty ones absent.
+   */
+  public static List<ChatSourceMetadataEntry> from(
+      CoreMetadata core, List<CitationFieldValue> citationFields) {
+    List<ChatSourceMetadataEntry> entries = fromCore(core);
+    if (citationFields == null) {
+      return entries;
+    }
+    for (CitationFieldValue field : citationFields) {
+      entries.add(
+          new ChatSourceMetadataEntry(
+              field.fieldKey(),
+              field.label(),
+              field.value(),
+              field.displayValue(),
+              field.origin(),
+              field.datePrecision()));
     }
     return entries;
   }

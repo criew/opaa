@@ -140,6 +140,41 @@ jeder Client dieselbe Darstellung zeigt. Keine weiteren formatspezifischen Felde
 die vier Mail-Sonderfelder aus #1164 bleiben vorerst bestehen und werden in einem eigenen Sub-Issue nach
 #1071 durch Schemafelder abgelöst — kein Parallelbetrieb danach.
 
+### 8. Nachtrag (#1071): Bibliotheksfelder hängen an derselben Werte-Tabelle, mit Fremdschlüssel auf ihre Werteliste
+
+Die Konsequenzen oben kündigen für #1071 „einen weiteren Feldbezug an dieselbe Werte-Tabelle" an.
+So ist es gebaut, mit drei Festlegungen, die die Spezifikation offen lässt:
+
+**Der Feldschlüssel ist namensraumgetrennt statt tabellengetrennt.** Eine Zeile in
+`document_metadata_values` trägt für ein Bibliotheksfeld den Schlüssel `lib:<key>` und zusätzlich
+`library_field_id` (Migration 025, `ON DELETE CASCADE`); ein CHECK bindet Namensraum und Referenz in
+beide Richtungen aneinander. Damit gilt jede vorhandene Mechanik — Herkunftspflicht, dritter Zustand,
+Audit-Nutzlast, Pflege-Anker, Sammelzuweisung — unverändert auch für Bibliotheksfelder, statt für
+eine zweite Werte-Tabelle noch einmal geschrieben zu werden. Der Preis ist die Namensraum-Konvention,
+die jede Stelle kennen muss, die einen Feldschlüssel entgegennimmt; sie ist in
+`LibraryMetadataFieldKeys` an einer Stelle festgelegt.
+
+**Die Feldidentität ist `(Bibliothek, Feldschlüssel)`, nicht der Schlüssel.** Zwei Bibliotheken
+dürfen beide `fassung` führen, mit verschiedenen Wertelisten. Ein Filter trägt deshalb beides, und
+seine Bedingung enthält einen Bibliotheksvorbehalt (`fremde Bibliothek ODER …`), damit ein Dokument
+nie gegen die Werteliste einer fremden Bibliothek geprüft wird. Die Alternative — global eindeutige
+Schlüssel — wäre einfacher zu filtern und machte das Anlegen eines Feldes von den Feldern fremder
+Bibliotheken abhängig, die die anlegende Person womöglich nicht sehen darf.
+
+**Der Wert eines Auswahlfeldes ist ein echter Fremdschlüssel auf seinen Listeneintrag** — dieselbe
+Entscheidung wie 3 für die Dokumentart, aus demselben Grund: Der Zustand „Dokument trägt einen Wert,
+den es im Schema nicht mehr gibt" wird dort ausgeschlossen, wo er nicht vergessen werden kann. Aus
+`ON DELETE RESTRICT` folgt, dass es **keine** Operation gibt, die einen benutzten Listenwert ohne
+bestätigte Abbildung entfernt; die Abbildung selbst läuft in einer Transaktion und zieht die
+Chunk-Schlüssel darin mit.
+
+**Am Chunk trägt ein filterbares Bibliotheksfeld drei Schlüssel** statt einem: `lf_<key>` (Wert),
+`lfp_<key>` (Genauigkeit eines Datums) und `lfs_<key>` (Präsenzmarke). Die dritte ist nötig, weil
+beide Suchpfade „kein Wert" als `NOT IN` über eine **geschlossene** Wertemenge ausdrücken
+(Entscheidung 5; der pgvector-Konverter kennt kein `IS NULL`) — die Werte eines Auswahl- oder
+Kennungsfeldes sind zur Abfragezeit keine geschlossene Menge, die Präsenzmarke mit ihrem einen Wert
+ist es.
+
 ## Konsequenzen
 
 - **Einfacher:** #1068 setzt eine `MANUAL`-Zeile und ruft `updateDocumentMetadata`; #1067 ruft je Dokument

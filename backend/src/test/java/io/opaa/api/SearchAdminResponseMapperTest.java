@@ -23,6 +23,7 @@ import io.opaa.api.dto.TrackedDocumentOutcome;
 import io.opaa.indexing.metadata.CoreMetadataExtractor;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
+import io.opaa.indexing.metadata.MetadataFieldFill;
 import io.opaa.query.CandidateOutcome;
 import io.opaa.query.CandidateVerdict;
 import io.opaa.query.RetrievalExplanation;
@@ -152,10 +153,12 @@ class SearchAdminResponseMapperTest {
                 1,
                 2,
                 Map.of(
-                    CoreMetadataField.TITLE, 10L,
-                    CoreMetadataField.DOCUMENT_TYPE, 4L,
-                    CoreMetadataField.DOCUMENT_DATE, 6L),
-                Map.of(CoreMetadataField.DOCUMENT_TYPE, 2L)));
+                    CoreMetadataField.TITLE,
+                    new MetadataFieldFill(10, 10, 0),
+                    CoreMetadataField.DOCUMENT_TYPE,
+                    new MetadataFieldFill(10, 4, 2),
+                    CoreMetadataField.DOCUMENT_DATE,
+                    new MetadataFieldFill(10, 6, 0))));
 
     var response =
         SearchAdminResponseMapper.toStatusResponse(

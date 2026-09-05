@@ -45,7 +45,8 @@ final class DocumentMetadataResponseMapper {
         blankToNull(request.getTextValue()),
         blankToNull(request.getVocabularyCode()),
         date,
-        request.getDatePrecision());
+        request.getDatePrecision(),
+        null);
   }
 
   /** An absent state means "set a value" - the request body of every client before #1069. */
@@ -64,8 +65,8 @@ final class DocumentMetadataResponseMapper {
             .map(
                 field ->
                     new MetadataFieldMaintenanceResponse(
-                        field.field().key(),
-                        field.field().label(),
+                        field.fieldKey(),
+                        field.label(),
                         field.totalDocuments(),
                         field.documentsWithoutValue(),
                         field.missingShare(),
@@ -83,8 +84,7 @@ final class DocumentMetadataResponseMapper {
   static DocumentMetadataFieldResponse toFieldResponse(DocumentMetadataFieldView view) {
     MetadataValueSnapshot value = view.value();
     DocumentMetadataFieldResponse response =
-        new DocumentMetadataFieldResponse(
-            view.field().key(), fieldStateOf(value), view.field().label());
+        new DocumentMetadataFieldResponse(view.fieldKey(), fieldStateOf(value), view.label());
     if (value == null) {
       return response;
     }
@@ -106,7 +106,8 @@ final class DocumentMetadataResponseMapper {
         .extractionVersion(value.extractionVersion())
         .actorUserId(value.actorUserId())
         .actorDisplayName(view.actorDisplayName())
-        .updatedAt(value.updatedAt());
+        .updatedAt(value.updatedAt())
+        .libraryFieldType(view.libraryFieldType());
   }
 
   /** An absent row is the empty state - the row itself never carries {@code EMPTY} (#1069). */

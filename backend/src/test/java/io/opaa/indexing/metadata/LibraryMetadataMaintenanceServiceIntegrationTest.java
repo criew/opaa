@@ -330,7 +330,7 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
 
   private MetadataFieldMaintenance anchorOf(String fieldKey, CurrentUser caller) {
     return maintenanceOf(library.getId(), caller).fields().stream()
-        .filter(field -> field.field().key().equals(fieldKey))
+        .filter(field -> field.fieldKey().equals(fieldKey))
         .findFirst()
         .orElseThrow();
   }

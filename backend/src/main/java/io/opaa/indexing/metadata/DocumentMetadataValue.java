@@ -70,12 +70,29 @@ public class DocumentMetadataValue {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  /**
+   * The library field this row belongs to (#1071), {@code null} for a core field. Set exactly when
+   * {@link #getFieldKey()} carries the {@code lib:} namespace (database CHECK), and the reference
+   * that lets deleting a field take its values with it.
+   */
+  @Column(name = "library_field_id", updatable = false)
+  private UUID libraryFieldId;
+
+  /**
+   * The chosen entry of a SELECT field's value list (#1071), {@code null} otherwise. A real foreign
+   * key with {@code ON DELETE RESTRICT}: a value outside the list is not storable and a list entry
+   * a document still carries is not removable without the confirmed mapping.
+   */
+  @Column(name = "library_value_id")
+  private UUID libraryValueId;
+
   protected DocumentMetadataValue() {}
 
-  private DocumentMetadataValue(UUID documentId, CoreMetadataField field) {
+  private DocumentMetadataValue(UUID documentId, String fieldKey, UUID libraryFieldId) {
     this.id = UUID.randomUUID();
     this.documentId = documentId;
-    this.fieldKey = field.key();
+    this.fieldKey = fieldKey;
+    this.libraryFieldId = libraryFieldId;
     this.createdAt = Instant.now();
     this.updatedAt = this.createdAt;
   }
@@ -83,7 +100,7 @@ public class DocumentMetadataValue {
   /** A fresh deterministic row for {@code field}; the value itself is set via {@code assign*}. */
   static DocumentMetadataValue deterministic(
       UUID documentId, CoreMetadataField field, int extractionVersion) {
-    DocumentMetadataValue value = new DocumentMetadataValue(documentId, field);
+    DocumentMetadataValue value = new DocumentMetadataValue(documentId, field.key(), null);
     value.markDeterministic(extractionVersion);
     return value;
   }
@@ -94,7 +111,16 @@ public class DocumentMetadataValue {
    */
   public static DocumentMetadataValue manual(
       UUID documentId, CoreMetadataField field, UUID actorUserId) {
-    DocumentMetadataValue value = new DocumentMetadataValue(documentId, field);
+    return manual(documentId, field.key(), null, actorUserId);
+  }
+
+  /**
+   * A manual row for a library field (#1071): the namespaced {@code lib:<key>} and the field's id,
+   * which the database requires to appear together.
+   */
+  public static DocumentMetadataValue manual(
+      UUID documentId, String fieldKey, UUID libraryFieldId, UUID actorUserId) {
+    DocumentMetadataValue value = new DocumentMetadataValue(documentId, fieldKey, libraryFieldId);
     value.origin = MetadataOrigin.MANUAL;
     value.actorUserId = actorUserId;
     value.extractionVersion = null;
@@ -113,7 +139,7 @@ public class DocumentMetadataValue {
       String modelId,
       double confidence,
       int extractionVersion) {
-    DocumentMetadataValue value = new DocumentMetadataValue(documentId, field);
+    DocumentMetadataValue value = new DocumentMetadataValue(documentId, field.key(), null);
     value.origin = MetadataOrigin.DERIVED;
     value.modelId = modelId;
     value.confidence = confidence;
@@ -150,6 +176,18 @@ public class DocumentMetadataValue {
     return this;
   }
 
+  /**
+   * A SELECT value of a library field: the stable code for reading and the list entry's id, which
+   * is what the foreign key checks. Both always travel together - the code is never stored without
+   * the reference that makes it valid.
+   */
+  public DocumentMetadataValue assignLibraryValue(String code, UUID libraryValueId) {
+    clearValue();
+    this.textValue = code;
+    this.libraryValueId = libraryValueId;
+    return this;
+  }
+
   public DocumentMetadataValue assignVocabularyCode(String code) {
     clearValue();
     this.vocabularyCode = code;
@@ -178,6 +216,7 @@ public class DocumentMetadataValue {
 
   private void clearValue() {
     this.state = MetadataValueState.SET;
+    this.libraryValueId = null;
     this.textValue = null;
     this.vocabularyCode = null;
     this.dateValue = null;
@@ -195,6 +234,14 @@ public class DocumentMetadataValue {
 
   public String getFieldKey() {
     return fieldKey;
+  }
+
+  public UUID getLibraryFieldId() {
+    return libraryFieldId;
+  }
+
+  public UUID getLibraryValueId() {
+    return libraryValueId;
   }
 
   public MetadataValueState getState() {

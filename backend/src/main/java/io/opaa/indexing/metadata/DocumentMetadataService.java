@@ -14,9 +14,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
@@ -47,6 +49,7 @@ public class DocumentMetadataService {
   private final DocumentRepository documentRepository;
   private final DocumentPipelineRegistry pipelineRegistry;
   private final VectorChunkStore vectorChunkStore;
+  private final LibraryMetadataFieldRepository libraryFieldRepository;
   private final TransactionTemplate transactionTemplate;
 
   public DocumentMetadataService(
@@ -55,12 +58,14 @@ public class DocumentMetadataService {
       DocumentRepository documentRepository,
       DocumentPipelineRegistry pipelineRegistry,
       VectorChunkStore vectorChunkStore,
+      LibraryMetadataFieldRepository libraryFieldRepository,
       PlatformTransactionManager transactionManager) {
     this.valueRepository = valueRepository;
     this.vocabularyRepository = vocabularyRepository;
     this.documentRepository = documentRepository;
     this.pipelineRegistry = pipelineRegistry;
     this.vectorChunkStore = vectorChunkStore;
+    this.libraryFieldRepository = libraryFieldRepository;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
@@ -70,9 +75,79 @@ public class DocumentMetadataService {
    * Returns the effective values afterwards - what {@code storeChunks} writes onto the document's
    * chunks.
    */
-  public CoreMetadata applyDeterministicExtraction(
-      UUID documentId, String fileName, DocumentProperties properties) {
-    return transactionTemplate.execute(status -> reconcileAll(documentId, fileName, properties));
+  public DocumentChunkMetadata applyDeterministicExtraction(
+      Document document, String fileName, DocumentProperties properties) {
+    return transactionTemplate.execute(
+        status -> {
+          reconcileAll(document.getId(), fileName, properties);
+          return chunkMetadataFor(document);
+        });
+  }
+
+  /**
+   * Every filterable value of {@code document} plus the complete key set its library manages - core
+   * fields (ADR-0024) and the library's own filterable fields (#1071). Read whenever chunks are
+   * written or rewritten, so a re-index never drops a library field a person set by hand.
+   */
+  @Transactional(readOnly = true)
+  public DocumentChunkMetadata chunkMetadataFor(Document document) {
+    return chunkMetadataOf(document, valueRepository.findByDocumentId(document.getId()));
+  }
+
+  /**
+   * Rewrites the managed chunk keys of {@code document} from its stored values - the path a schema
+   * change takes that moves no value but changes which keys the chunks must carry (#1071: a field
+   * that starts or stops filtering).
+   */
+  public int rewriteChunkMetadata(Document document) {
+    return transactionTemplate.execute(
+        status -> {
+          DocumentChunkMetadata chunkMetadata = chunkMetadataFor(document);
+          return vectorChunkStore.updateDocumentMetadata(
+              document.getId(), chunkMetadata.values(), chunkMetadata.managedKeys());
+        });
+  }
+
+  private DocumentChunkMetadata chunkMetadataOf(
+      Document document, List<DocumentMetadataValue> rows) {
+    Map<String, Object> values =
+        new LinkedHashMap<>(toCoreMetadata(rows, DocumentTypeVocabulary.empty()).chunkMetadata());
+    Set<String> managed = new LinkedHashSet<>(CoreMetadataChunkKeys.ALL);
+    if (document.getLibraryId() == null) {
+      return new DocumentChunkMetadata(values, managed);
+    }
+    Map<String, DocumentMetadataValue> byKey = new HashMap<>();
+    for (DocumentMetadataValue row : rows) {
+      byKey.put(row.getFieldKey(), row);
+    }
+    for (LibraryMetadataField field :
+        libraryFieldRepository.findByLibraryIdOrderBySortOrderAscFieldKeyAsc(
+            document.getLibraryId())) {
+      if (!field.isFilterEnabled()) {
+        continue;
+      }
+      managed.add(field.chunkKey());
+      managed.add(LibraryMetadataFieldKeys.precisionChunkKey(field.getFieldKey()));
+      managed.add(LibraryMetadataFieldKeys.presenceChunkKey(field.getFieldKey()));
+      DocumentMetadataValue row = byKey.get(field.documentFieldKey());
+      if (row == null || row.getState() != MetadataValueState.SET) {
+        continue;
+      }
+      if (row.getDateValue() != null) {
+        values.put(field.chunkKey(), row.getDateValue().toString());
+        values.put(
+            LibraryMetadataFieldKeys.precisionChunkKey(field.getFieldKey()),
+            row.getDatePrecision().name());
+      } else if (row.getTextValue() != null) {
+        values.put(field.chunkKey(), row.getTextValue());
+      } else {
+        continue;
+      }
+      values.put(
+          LibraryMetadataFieldKeys.presenceChunkKey(field.getFieldKey()),
+          LibraryMetadataFieldKeys.PRESENCE_VALUE);
+    }
+    return new DocumentChunkMetadata(values, managed);
   }
 
   /**
@@ -109,8 +184,9 @@ public class DocumentMetadataService {
     return transactionTemplate.execute(
         status -> {
           CoreMetadata core = reconcileAll(document.getId(), document.getFileName(), properties);
+          DocumentChunkMetadata chunkMetadata = chunkMetadataFor(document);
           vectorChunkStore.updateDocumentMetadata(
-              document.getId(), core.chunkMetadata(), CoreMetadataChunkKeys.ALL);
+              document.getId(), chunkMetadata.values(), chunkMetadata.managedKeys());
           return core;
         });
   }
@@ -195,7 +271,7 @@ public class DocumentMetadataService {
    * DocumentMetadataCorrectionService}); this method only owns the rows.
    */
   public ManualValueChange setManualValue(
-      UUID documentId, CoreMetadataField field, MetadataValueInput input, UUID actorUserId) {
+      UUID documentId, MetadataFieldRef field, MetadataValueInput input, UUID actorUserId) {
     return transactionTemplate.execute(
         status -> {
           DocumentMetadataValue current =
@@ -209,7 +285,9 @@ public class DocumentMetadataService {
             current.markManual(actorUserId);
             target = current;
           } else {
-            target = DocumentMetadataValue.manual(documentId, field, actorUserId);
+            target =
+                DocumentMetadataValue.manual(
+                    documentId, field.key(), field.libraryFieldId(), actorUserId);
           }
           input.applyTo(target);
           valueRepository.save(target);
@@ -225,7 +303,7 @@ public class DocumentMetadataService {
    * otherwise never be read again). Chunk keys are rewritten in the same transaction; an already
    * empty field is reported as unchanged.
    */
-  public ManualValueChange deleteValue(UUID documentId, CoreMetadataField field) {
+  public ManualValueChange deleteValue(UUID documentId, MetadataFieldRef field) {
     return transactionTemplate.execute(
         status -> {
           DocumentMetadataValue current =
@@ -235,26 +313,34 @@ public class DocumentMetadataService {
           }
           MetadataValueSnapshot before = MetadataValueSnapshot.of(current);
           valueRepository.delete(current);
-          documentRepository.clearMetadataExtractionVersion(documentId);
+          if (!field.isLibraryField()) {
+            // Only a core field is filled by an extraction at all; clearing the version for a
+            // library field would hand the document to a Bestandslauf that cannot fill it.
+            documentRepository.clearMetadataExtractionVersion(documentId);
+          }
           propagateToChunks(documentId, field);
           return new ManualValueChange(before, null, true);
         });
   }
 
   /**
-   * The title is not a chunk key (ADR-0024, Entscheidung 5) - only the other two are rewritten. The
-   * chunk keys carry codes, never labels, so no vocabulary is loaded here.
+   * The title is not a chunk key (ADR-0024, Entscheidung 5) and is skipped; every other field -
+   * core or library - rewrites the document's managed keys. The chunk keys carry codes, never
+   * labels, so no vocabulary is loaded here.
    */
-  private void propagateToChunks(UUID documentId, CoreMetadataField field) {
-    if (field == CoreMetadataField.TITLE) {
+  private void propagateToChunks(UUID documentId, MetadataFieldRef field) {
+    if (!field.affectsChunkKeys()) {
+      return;
+    }
+    Document document = documentRepository.findById(documentId).orElse(null);
+    if (document == null) {
       return;
     }
     valueRepository.flush();
-    CoreMetadata core =
-        toCoreMetadata(
-            valueRepository.findByDocumentId(documentId), DocumentTypeVocabulary.empty());
+    DocumentChunkMetadata chunkMetadata =
+        chunkMetadataOf(document, valueRepository.findByDocumentId(documentId));
     vectorChunkStore.updateDocumentMetadata(
-        documentId, core.chunkMetadata(), CoreMetadataChunkKeys.ALL);
+        documentId, chunkMetadata.values(), chunkMetadata.managedKeys());
   }
 
   /** Every stored row of {@code documentId} as detached snapshots, in no particular order. */

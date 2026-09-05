@@ -29,12 +29,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Manual correction of a document's core fields (#1068, metadata-schema.md "Manuelle Korrektur ist
- * Teil des ersten Schnitts"): rights, validation and the audit event around {@link
- * DocumentMetadataService}'s row writes. Whoever may edit the library's documents ({@link
- * AssetRole#EDITOR}) may correct their metadata - no management right. Every change writes one
- * {@code DOCUMENT_METADATA_CHANGED} event per document and field with old and new value, so the
- * manual values of a library can be rebuilt from the audit log after a restore.
+ * Manual correction of a document's schema fields (#1068, erweitert um Bibliotheksfelder in #1071;
+ * metadata-schema.md "Manuelle Korrektur ist Teil des ersten Schnitts"): rights, validation and the
+ * audit event around {@link DocumentMetadataService}'s row writes. Whoever may edit the library's
+ * documents ({@link AssetRole#EDITOR}) may correct their metadata - no management right; changing
+ * the <em>schema</em> is the management right and lives in {@link LibraryMetadataFieldService}.
+ * Every change writes one {@code DOCUMENT_METADATA_CHANGED} event per document and field with old
+ * and new value, so the manual values of a library can be rebuilt from the audit log after a
+ * restore.
  */
 @Service
 public class DocumentMetadataCorrectionService {
@@ -49,6 +51,8 @@ public class DocumentMetadataCorrectionService {
   private final DocumentRepository documentRepository;
   private final DocumentMetadataService metadataService;
   private final DocumentTypeVocabularyRepository vocabularyRepository;
+  private final LibraryMetadataFieldRepository libraryFieldRepository;
+  private final LibraryMetadataFieldValueRepository libraryValueRepository;
   private final UserRepository userRepository;
   private final AuditEventRecorder auditEventRecorder;
 
@@ -58,6 +62,8 @@ public class DocumentMetadataCorrectionService {
       DocumentRepository documentRepository,
       DocumentMetadataService metadataService,
       DocumentTypeVocabularyRepository vocabularyRepository,
+      LibraryMetadataFieldRepository libraryFieldRepository,
+      LibraryMetadataFieldValueRepository libraryValueRepository,
       UserRepository userRepository,
       AuditEventRecorder auditEventRecorder) {
     this.libraryRepository = libraryRepository;
@@ -65,6 +71,8 @@ public class DocumentMetadataCorrectionService {
     this.documentRepository = documentRepository;
     this.metadataService = metadataService;
     this.vocabularyRepository = vocabularyRepository;
+    this.libraryFieldRepository = libraryFieldRepository;
+    this.libraryValueRepository = libraryValueRepository;
     this.userRepository = userRepository;
     this.auditEventRecorder = auditEventRecorder;
   }
@@ -78,7 +86,10 @@ public class DocumentMetadataCorrectionService {
     return vocabularyRepository.findAllByOrderBySortOrderAsc();
   }
 
-  /** Every core field of the document, empty ones included, for anyone who may read the library. */
+  /**
+   * Every schema field of the document - the three core fields followed by the library's own fields
+   * (#1071), empty ones included - for anyone who may read the library.
+   */
   @Transactional(readOnly = true)
   public List<DocumentMetadataFieldView> fieldsOf(
       UUID libraryId, UUID documentId, CurrentUser caller) {
@@ -94,10 +105,20 @@ public class DocumentMetadataCorrectionService {
     for (CoreMetadataField field : CoreMetadataField.values()) {
       MetadataValueSnapshot value = byKey.get(field.key());
       views.add(
-          new DocumentMetadataFieldView(
+          DocumentMetadataFieldView.ofCore(
               field,
               value,
               value == null ? null : value.displayValue(vocabulary),
+              value == null ? null : actorNames.get(value.actorUserId())));
+    }
+    for (LibraryMetadataField field :
+        libraryFieldRepository.findByLibraryIdOrderBySortOrderAscFieldKeyAsc(library.getId())) {
+      MetadataValueSnapshot value = byKey.get(field.documentFieldKey());
+      views.add(
+          DocumentMetadataFieldView.ofLibraryField(
+              field,
+              value,
+              value == null ? null : libraryDisplayValue(field, value),
               value == null ? null : actorNames.get(value.actorUserId())));
     }
     return views;
@@ -113,18 +134,17 @@ public class DocumentMetadataCorrectionService {
       CurrentUser caller) {
     KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.EDITOR);
     Document document = requireDocument(library, documentId);
-    CoreMetadataField field = requireField(fieldKey);
+    ResolvedField field = requireField(library, fieldKey);
     DocumentTypeVocabulary vocabulary = vocabularyRepository.snapshot();
-    MetadataValueInput validated = input.validatedFor(field, vocabulary);
+    MetadataValueInput validated = field.validate(input, vocabulary);
 
     ManualValueChange change =
-        metadataService.setManualValue(document.getId(), field, validated, caller.id());
+        metadataService.setManualValue(document.getId(), field.ref(), validated, caller.id());
     if (change.changed()) {
-      recordChange(library, document, field, change, caller, null, vocabulary);
+      recordChange(library, document, field.ref(), change, caller, null, vocabulary);
     }
     MetadataValueSnapshot after = change.after();
-    return new DocumentMetadataFieldView(
-        field, after, after.displayValue(vocabulary), caller.displayName());
+    return field.view(after, field.displayValue(after, vocabulary), caller.displayName());
   }
 
   /** Removes one field's value; see the class Javadoc for rights and audit. */
@@ -132,11 +152,12 @@ public class DocumentMetadataCorrectionService {
   public void deleteValue(UUID libraryId, UUID documentId, String fieldKey, CurrentUser caller) {
     KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.EDITOR);
     Document document = requireDocument(library, documentId);
-    CoreMetadataField field = requireField(fieldKey);
+    ResolvedField field = requireField(library, fieldKey);
 
-    ManualValueChange change = metadataService.deleteValue(document.getId(), field);
+    ManualValueChange change = metadataService.deleteValue(document.getId(), field.ref());
     if (change.changed()) {
-      recordChange(library, document, field, change, caller, null, vocabularyRepository.snapshot());
+      recordChange(
+          library, document, field.ref(), change, caller, null, vocabularyRepository.snapshot());
     }
   }
 
@@ -153,7 +174,7 @@ public class DocumentMetadataCorrectionService {
       Collection<UUID> documentIds,
       CurrentUser caller) {
     KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.EDITOR);
-    CoreMetadataField field = requireField(fieldKey);
+    ResolvedField field = requireField(library, fieldKey);
     Set<UUID> requested = new LinkedHashSet<>(documentIds);
     if (requested.isEmpty()) {
       throw new ValidationException("Es wurde kein Dokument ausgewählt");
@@ -163,7 +184,7 @@ public class DocumentMetadataCorrectionService {
           "Höchstens " + MAX_BULK_DOCUMENTS + " Dokumente je Sammelzuweisung");
     }
     DocumentTypeVocabulary vocabulary = vocabularyRepository.snapshot();
-    MetadataValueInput validated = input.validatedFor(field, vocabulary);
+    MetadataValueInput validated = field.validate(input, vocabulary);
 
     Map<UUID, Document> ownDocuments = new LinkedHashMap<>();
     for (Document document : documentRepository.findAllById(requested)) {
@@ -183,10 +204,10 @@ public class DocumentMetadataCorrectionService {
     int unchanged = 0;
     for (Document document : ownDocuments.values()) {
       ManualValueChange change =
-          metadataService.setManualValue(document.getId(), field, validated, caller.id());
+          metadataService.setManualValue(document.getId(), field.ref(), validated, caller.id());
       if (change.changed()) {
         updated++;
-        recordChange(library, document, field, change, caller, correlationRef, vocabulary);
+        recordChange(library, document, field.ref(), change, caller, correlationRef, vocabulary);
       } else {
         unchanged++;
       }
@@ -194,10 +215,15 @@ public class DocumentMetadataCorrectionService {
     return new BulkMetadataResult(updated, unchanged, List.copyOf(rejected), correlationRef);
   }
 
-  private void recordChange(
+  /**
+   * The audit event of one changed value, for this service's own operations and for the confirmed
+   * value mapping of {@link LibraryMetadataFieldService}, which writes the same event per document
+   * with the same payload shape.
+   */
+  void recordChange(
       KnowledgeLibrary library,
       Document document,
-      CoreMetadataField field,
+      MetadataFieldRef field,
       ManualValueChange change,
       CurrentUser caller,
       String correlationRef,
@@ -222,7 +248,7 @@ public class DocumentMetadataCorrectionService {
    */
   static Map<String, Object> payload(
       Document document,
-      CoreMetadataField field,
+      MetadataFieldRef field,
       MetadataValueSnapshot snapshot,
       DocumentTypeVocabulary vocabulary) {
     Map<String, Object> payload = new LinkedHashMap<>();
@@ -293,8 +319,85 @@ public class DocumentMetadataCorrectionService {
         .orElseThrow(() -> new NotFoundException("Dokument nicht gefunden"));
   }
 
-  private static CoreMetadataField requireField(String fieldKey) {
-    return CoreMetadataField.fromKey(fieldKey)
-        .orElseThrow(() -> new ValidationException("Unbekanntes Metadatenfeld: " + fieldKey));
+  /**
+   * The core field or the library field {@code fieldKey} names. A library key is namespaced {@code
+   * lib:<key>} and is resolved within this library only - the same key in another library is
+   * another field.
+   */
+  private ResolvedField requireField(KnowledgeLibrary library, String fieldKey) {
+    if (LibraryMetadataFieldKeys.isLibraryFieldKey(fieldKey)) {
+      String key = LibraryMetadataFieldKeys.fieldKeyOf(fieldKey).orElseThrow();
+      LibraryMetadataField field =
+          libraryFieldRepository
+              .findByLibraryIdAndFieldKey(library.getId(), key)
+              .orElseThrow(() -> new ValidationException("Unbekanntes Metadatenfeld: " + fieldKey));
+      return new ResolvedField(null, field, valuesByCode(field));
+    }
+    CoreMetadataField core =
+        CoreMetadataField.fromKey(fieldKey)
+            .orElseThrow(() -> new ValidationException("Unbekanntes Metadatenfeld: " + fieldKey));
+    return new ResolvedField(core, null, Map.of());
+  }
+
+  private Map<String, LibraryMetadataFieldValue> valuesByCode(LibraryMetadataField field) {
+    Map<String, LibraryMetadataFieldValue> byCode = new LinkedHashMap<>();
+    for (LibraryMetadataFieldValue value :
+        libraryValueRepository.findByFieldIdOrderBySortOrderAscCodeAsc(field.getId())) {
+      byCode.put(value.getCode(), value);
+    }
+    return byCode;
+  }
+
+  private String libraryDisplayValue(LibraryMetadataField field, MetadataValueSnapshot snapshot) {
+    if (snapshot.dateValue() != null) {
+      return MetadataValueDisplay.displayDate(snapshot.dateValue(), snapshot.datePrecision());
+    }
+    if (snapshot.textValue() == null) {
+      return null;
+    }
+    return valuesByCode(field).values().stream()
+        .filter(value -> value.getCode().equals(snapshot.textValue()))
+        .map(LibraryMetadataFieldValue::getLabel)
+        .findFirst()
+        .orElse(snapshot.textValue());
+  }
+
+  /** A field key resolved against this library: exactly one of the two halves is set. */
+  private record ResolvedField(
+      CoreMetadataField core,
+      LibraryMetadataField libraryField,
+      Map<String, LibraryMetadataFieldValue> valuesByCode) {
+
+    MetadataFieldRef ref() {
+      return core != null ? MetadataFieldRef.of(core) : MetadataFieldRef.of(libraryField);
+    }
+
+    MetadataValueInput validate(MetadataValueInput input, DocumentTypeVocabulary vocabulary) {
+      return core != null
+          ? input.validatedFor(core, vocabulary)
+          : input.validatedForLibraryField(libraryField, valuesByCode);
+    }
+
+    String displayValue(MetadataValueSnapshot snapshot, DocumentTypeVocabulary vocabulary) {
+      if (snapshot == null) {
+        return null;
+      }
+      if (core != null) {
+        return snapshot.displayValue(vocabulary);
+      }
+      if (snapshot.dateValue() != null) {
+        return MetadataValueDisplay.displayDate(snapshot.dateValue(), snapshot.datePrecision());
+      }
+      LibraryMetadataFieldValue entry = valuesByCode.get(snapshot.textValue());
+      return entry != null ? entry.getLabel() : snapshot.textValue();
+    }
+
+    DocumentMetadataFieldView view(
+        MetadataValueSnapshot snapshot, String displayValue, String actorDisplayName) {
+      return core != null
+          ? DocumentMetadataFieldView.ofCore(core, snapshot, displayValue, actorDisplayName)
+          : DocumentMetadataFieldView.ofLibraryField(
+              libraryField, snapshot, displayValue, actorDisplayName);
+    }
   }
 }
