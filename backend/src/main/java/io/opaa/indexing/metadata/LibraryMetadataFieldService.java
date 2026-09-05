@@ -69,6 +69,14 @@ public class LibraryMetadataFieldService {
   private static final int MAX_VALUES = 100;
   private static final int REMAP_BATCH_SIZE = 500;
   private static final String CORRELATION_PREFIX = "metadata-remap-";
+
+  /**
+   * The correlationRef prefix of the audit events a field deletion writes - one per document, so
+   * the manual values of a library stay reconstructible from the audit bestand even after the field
+   * that carried them is gone (metadata-schema.md, "Manuelle Setzungen sind protokollpflichtig").
+   */
+  static final String DELETE_CORRELATION_PREFIX = "metadata-field-delete-";
+
   private static final Pattern FIELD_KEY = Pattern.compile("^[a-z][a-z0-9_]*$");
   private static final Pattern VALUE_CODE = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9_.-]*$");
 
@@ -265,20 +273,30 @@ public class LibraryMetadataFieldService {
    * Removes a field with everything that hangs on it: its stored document values, its chunk keys
    * and its value list. The values are removed explicitly before the field, so the {@code ON DELETE
    * RESTRICT} of the value list never has to decide the order.
+   *
+   * <p>Every removed value is audited per document with its old value, all under one
+   * correlationRef, exactly like the value mapping: a deletion is a loss of manual work, and only
+   * the audit event makes it reconstructible and attributable afterwards.
    */
   @Transactional
   public void deleteField(UUID libraryId, String fieldKey, CurrentUser caller) {
     KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.MANAGER);
     LibraryMetadataField field = requireField(library, fieldKey);
     MetadataFieldRef ref = MetadataFieldRef.of(field);
+    String correlationRef = DELETE_CORRELATION_PREFIX + UUID.randomUUID();
+    DocumentTypeVocabulary vocabulary = vocabularyRepository.snapshot();
     // While the field still exists, its chunk keys are part of what a rewrite owns - so deleting
     // the value of every document that carries one strips those keys along the way. Paged like the
     // value mapping rather than loaded at once.
     forEachDocumentWithAValue(
-        field, false, documentId -> metadataService.deleteValue(documentId, ref));
+        field,
+        false,
+        documentId ->
+            remapOrClearDocument(
+                library, documentId, ref, null, caller, correlationRef, vocabulary));
     valueRepository.deleteByFieldId(field.getId());
     fieldRepository.delete(field);
-    // The documents that carried a value were already handed to the Nachlauf by deleteValue above,
+    // The documents that carried a value were already handed to the Nachlauf by the loop above,
     // which marks whatever it empties on a prefix-effective field - no second marking here.
     schemaChanged(library);
   }
@@ -411,7 +429,7 @@ public class LibraryMetadataFieldService {
                   documentValueRepository.findDocumentIdsByLibraryValueId(
                       removedId, PageRequest.of(0, limit)),
               documentId ->
-                  remapDocument(
+                  remapOrClearDocument(
                       library, documentId, ref, replacement, caller, correlationRef, vocabulary));
       remapped += counts.get(Advance.REMAPPED);
       cleared += counts.get(Advance.CLEARED);
@@ -554,7 +572,7 @@ public class LibraryMetadataFieldService {
     SKIPPED
   }
 
-  private Advance remapDocument(
+  private Advance remapOrClearDocument(
       KnowledgeLibrary library,
       UUID documentId,
       MetadataFieldRef ref,

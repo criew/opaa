@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.LibraryMetadataFieldType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.api.types.SystemRole;
@@ -24,6 +25,9 @@ import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.indexing.metadata.FormatFieldCondition;
+import io.opaa.indexing.metadata.LibraryFieldCondition;
+import io.opaa.indexing.metadata.LibraryMetadataFieldInput;
+import io.opaa.indexing.metadata.LibraryMetadataFieldService;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataValueInput;
 import io.opaa.library.AssetGrant;
@@ -86,6 +90,7 @@ class MetadataFilterSearchIntegrationTest {
   @Autowired private FileProcessingService fileProcessingService;
   @Autowired private DocumentMetadataService documentMetadataService;
   @Autowired private DocumentMetadataCorrectionService correctionService;
+  @Autowired private LibraryMetadataFieldService fieldService;
   @Autowired private DocumentTypeVocabularyRepository vocabularyRepository;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
@@ -255,6 +260,77 @@ class MetadataFilterSearchIntegrationTest {
         run(MetadataFilter.ofDocumentTypes(List.of("PROTOKOLL")), Set.of(library.getId()));
     assertThat(documentKeys(protokoll, RetrievalStageName.VECTOR_SEARCH)).isEmpty();
     assertThat(documentKeys(protokoll, RetrievalStageName.FULL_TEXT_SEARCH)).isEmpty();
+  }
+
+  /**
+   * The same ceiling for the two condition forms whose first operand looks as if it opened the set
+   * up again: a library condition starts with {@code fremde Bibliothek OR …} and a format condition
+   * carries no library guard at all. Each condition here names the forbidden library and exactly
+   * the value its document carries - the strongest case for the bracketing - and still no chunk of
+   * that library reaches either path.
+   */
+  @Test
+  void neitherALibraryNorAFormatFieldFilterReachesIntoAForbiddenLibrary() throws IOException {
+    Document readable = indexed(library, "2024-03-12_Vermerk_Nutzung.pdf");
+    Document forbidden = indexed(forbiddenLibrary, "2024-03-12_Protokoll_Nutzung.pdf");
+    indexedMail(forbiddenLibrary, "fremd.eml", "max@stadt.de");
+    UUID forbiddenId = forbiddenLibrary.getId();
+    createLibraryField(forbiddenLibrary, "fassung", LibraryMetadataFieldType.SELECT, null);
+    createLibraryField(forbiddenLibrary, "stand", LibraryMetadataFieldType.DATE, null);
+    createLibraryField(
+        forbiddenLibrary, "aktenzeichen", LibraryMetadataFieldType.PATTERN, "^RF-[A-Z]+-[0-9]+$");
+    setValue(forbidden, "lib:fassung", MetadataValueInput.text("A"));
+    setValue(
+        forbidden,
+        "lib:stand",
+        MetadataValueInput.date(LocalDate.of(2026, 3, 1), DatePrecision.DAY));
+    setValue(forbidden, "lib:aktenzeichen", MetadataValueInput.text("RF-KFZ-001"));
+
+    for (MetadataFilter filter :
+        List.of(
+            MetadataFilter.NONE.withLibraryFields(
+                List.of(LibraryFieldCondition.ofCodes(forbiddenId, "fassung", List.of("A")))),
+            MetadataFilter.NONE.withLibraryFields(
+                List.of(
+                    LibraryFieldCondition.ofDateWindow(
+                        forbiddenId,
+                        "stand",
+                        LocalDate.of(2026, 1, 1),
+                        LocalDate.of(2026, 12, 31)))),
+            MetadataFilter.NONE.withLibraryFields(
+                List.of(LibraryFieldCondition.ofValue(forbiddenId, "aktenzeichen", "RF-KFZ-001"))),
+            MetadataFilter.NONE.withFormatFields(
+                List.of(FormatFieldCondition.parse("mail_sender", List.of("max@stadt.de")))))) {
+      RetrievalPipelineResult result = run(filter, Set.of(library.getId()));
+      for (RetrievalStageName path :
+          List.of(RetrievalStageName.VECTOR_SEARCH, RetrievalStageName.FULL_TEXT_SEARCH)) {
+        assertThat(documentKeys(result, path))
+            .as("filter %s, path %s", filter, path)
+            .containsExactly(readable.getId().toString());
+      }
+    }
+  }
+
+  private void createLibraryField(
+      KnowledgeLibrary target, String key, LibraryMetadataFieldType type, String valuePattern) {
+    fieldService.createField(
+        target.getId(),
+        new LibraryMetadataFieldInput(
+            key,
+            key,
+            type,
+            valuePattern,
+            true,
+            false,
+            null,
+            type == LibraryMetadataFieldType.SELECT
+                ? List.of(new LibraryMetadataFieldInput.LibraryFieldValueInput("A", "Wert A"))
+                : List.of()),
+        owner);
+  }
+
+  private void setValue(Document document, String fieldKey, MetadataValueInput input) {
+    correctionService.setValue(document.getLibraryId(), document.getId(), fieldKey, input, owner);
   }
 
   /**

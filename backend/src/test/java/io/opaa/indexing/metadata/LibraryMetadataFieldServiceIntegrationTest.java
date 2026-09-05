@@ -268,6 +268,45 @@ class LibraryMetadataFieldServiceIntegrationTest {
                     .doesNotContainKey("lfs_fassung"));
   }
 
+  /**
+   * Deleting a field destroys manual values no run can reproduce, so it is protokollpflichtig like
+   * every other removal: one event per document, each with its old value, all under one
+   * correlationRef - without them a restore from the audit bestand would resurrect exactly the
+   * values somebody deliberately removed, and nobody could say who removed them.
+   */
+  @Test
+  void deletingAFieldAuditsEveryRemovedValueWithItsOldValue() throws IOException {
+    fieldService.createField(
+        library.getId(),
+        input("fassung", LibraryMetadataFieldType.SELECT, true, false, null),
+        owner);
+    Document first = indexed("satzung.pdf");
+    Document second = indexed("gebuehren.pdf");
+    setLibraryValue(first, "A");
+    setLibraryValue(second, "B");
+
+    // The audit log outlives the per-test cleanup, so only the refs this deletion adds count.
+    Set<String> earlierRuns =
+        deletionAuditPayloads().stream()
+            .map(payload -> String.valueOf(payload.get("correlationRef")))
+            .collect(java.util.stream.Collectors.toSet());
+    fieldService.deleteField(library.getId(), "fassung", owner);
+
+    List<Map<String, Object>> events =
+        deletionAuditPayloads().stream()
+            .filter(payload -> !earlierRuns.contains(String.valueOf(payload.get("correlationRef"))))
+            .toList();
+    assertThat(events).hasSize(2);
+    assertThat(events)
+        .extracting(payload -> payload.get("correlationRef"))
+        .as("one correlationRef for the whole deletion, like a Sammelzuweisung")
+        .hasSize(2)
+        .containsOnly(events.getFirst().get("correlationRef"));
+    assertThat(events)
+        .extracting(payload -> payload.get("before"))
+        .containsExactlyInAnyOrder("A", "B");
+  }
+
   @Test
   void atMostTwoLibraryFieldsReachTheBelegAndAnEmptyOneNeverDoes() throws IOException {
     fieldService.createField(
@@ -599,6 +638,19 @@ class LibraryMetadataFieldServiceIntegrationTest {
         "SELECT before FROM audit_log WHERE correlation_ref = ? ORDER BY recorded_at, event_id",
         (rs, i) -> Map.of("before", valueOf(rs.getString("before"))),
         correlationRef);
+  }
+
+  private List<Map<String, Object>> deletionAuditPayloads() {
+    return jdbcTemplate.query(
+        "SELECT correlation_ref, before FROM audit_log WHERE correlation_ref LIKE ?"
+            + " ORDER BY recorded_at, event_id",
+        (rs, i) ->
+            Map.of(
+                "correlationRef",
+                rs.getString("correlation_ref"),
+                "before",
+                valueOf(rs.getString("before"))),
+        LibraryMetadataFieldService.DELETE_CORRELATION_PREFIX + "%");
   }
 
   private static String valueOf(String json) {

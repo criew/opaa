@@ -193,3 +193,7 @@ erzeugte Worst-Case-Eingaben, beim Anlegen des Feldes.
   Bestandslauf. Ein Vokabular-Code darf nie umbenannt werden, solange Dokumente ihn tragen (FK).
 - **Bewusst offen:** Die Erweiterung des Vokabulars je Organisation oder je Bibliothek (Offener Punkt der
   Spezifikation) — die Tabelle ist heute installationsweit.
+- **Fortgeführt:** Die beiden letzten Arbeitspakete desselben Datenmodells — Kontextpräfix-Abdruck
+  je Dokument (#1072) und modellgestützte Extraktion mit freien Schlagworten (#1073) — stehen in
+  [ADR-0026](0026-kontextpraefix-abdruck-und-modellgestuetzte-extraktion.md). Die Entscheidungen 1
+  bis 8 dieses ADR gelten dort unverändert weiter.
