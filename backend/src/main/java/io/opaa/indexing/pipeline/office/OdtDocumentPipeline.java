@@ -69,6 +69,11 @@ public class OdtDocumentPipeline extends FileDocumentPipeline<OdtDocumentPipelin
 
   @Override
   protected OdtContent read(DocumentPipelineSource source) throws IOException {
+    return new OdtContent(readEvents(source), OdfMetaProperties.read(source, odfProperties));
+  }
+
+  private List<HeadingSectionSplitter.Event> readEvents(DocumentPipelineSource source)
+      throws IOException {
     OdtContentHandler handler =
         new OdtContentHandler(
             odfProperties.maxOdtParagraphs(),
@@ -79,7 +84,23 @@ public class OdtDocumentPipeline extends FileDocumentPipeline<OdtDocumentPipelin
       // a corrupt .odt reaches, distinct from a well-formed but empty document.
       throw new IOException("No content.xml entry in ODT file " + source.fileName());
     }
-    return new OdtContent(handler.events(), OdfMetaProperties.read(source, odfProperties));
+    return handler.events();
+  }
+
+  /**
+   * {@code meta.xml} is read first and kept even when {@code content.xml} cannot be read at all:
+   * the two entries fail independently, and a document whose body is unreadable still declares its
+   * title and dates.
+   */
+  @Override
+  protected DocumentProperties declaredProperties(DocumentPipelineSource source) {
+    DocumentProperties meta = OdfMetaProperties.read(source, odfProperties);
+    try {
+      return properties(new OdtContent(readEvents(source), meta));
+    } catch (IOException | RuntimeException e) {
+      log.warn("Could not read headings of ODT document {}", source.fileName(), e);
+      return meta;
+    }
   }
 
   @Override

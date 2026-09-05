@@ -114,6 +114,16 @@ public class OdpDocumentPipeline extends FileDocumentPipeline<OdpDocumentPipelin
   }
 
   /**
+   * Reads {@code meta.xml} alone: an ODP declares nothing about itself in {@code content.xml}, so
+   * the Bestandslauf neither builds a chunk per slide nor loses the title and dates of a
+   * presentation whose {@code content.xml} is unreadable.
+   */
+  @Override
+  protected DocumentProperties declaredProperties(DocumentPipelineSource source) {
+    return OdfMetaProperties.read(source, odfProperties);
+  }
+
+  /**
    * A missing entry, a missing master page or a parse failure all resolve to no master-slide text -
    * this is supplementary content, and a broken {@code styles.xml} must not fail a presentation
    * whose {@code content.xml} parsed successfully.

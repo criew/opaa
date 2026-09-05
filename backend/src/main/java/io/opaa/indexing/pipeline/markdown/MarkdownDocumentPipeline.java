@@ -42,10 +42,6 @@ public class MarkdownDocumentPipeline implements DocumentPipeline {
    */
   private static final int MAX_CUTTING_LEVEL = 3;
 
-  // Mirrors ChunkLocationResolver's own ATX heading pattern (up to 6 levels recognized; only the
-  // first three actually cut, see HeadingSectionSplitter#chunk).
-  private static final Pattern HEADING = Pattern.compile("^ {0,3}(#{1,6})[ \\t]+(\\S.*?)[ \\t#]*$");
-
   private static final Pattern FENCE = Pattern.compile("^ {0,3}(```|~~~)");
 
   private static final Pattern FRONTMATTER_DELIMITER = Pattern.compile("^-{3}[ \\t]*$");

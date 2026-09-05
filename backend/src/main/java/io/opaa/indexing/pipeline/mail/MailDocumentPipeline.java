@@ -139,8 +139,20 @@ public class MailDocumentPipeline implements DocumentPipeline {
       throw new UncheckedIOException("Could not read mail document " + source.fileName(), e);
     }
 
+    try {
+      return resultOf(message, source.fileName());
+    } catch (RuntimeException e) {
+      // The readers have already written every attachment to a temp file; a failure from here on
+      // never reaches a result that could carry them, and DocumentPipelineRunner only deletes what
+      // a result reports - so this is the last owner of those files.
+      deleteTempFiles(message.attachments());
+      throw e;
+    }
+  }
+
+  private DocumentPipelineResult resultOf(ParsedMailMessage message, String fileName) {
     String headerContext = headerContextText(message);
-    List<Document> chunks = bodyChunks(message, source.fileName(), headerContext);
+    List<Document> chunks = bodyChunks(message, fileName, headerContext);
     List<DiscoveredAttachment> discovered = discoveredAttachments(message.attachments());
 
     if (chunks.isEmpty()) {
@@ -319,6 +331,19 @@ public class MailDocumentPipeline implements DocumentPipeline {
    * makes that admission decision itself, exactly once. Both readers already cap the count at
    * {@link MailProperties#maxAttachmentsPerMessage()} in their own extraction loop.
    */
+  private static void deleteTempFiles(List<ParsedMailAttachment> attachments) {
+    for (ParsedMailAttachment attachment : attachments) {
+      if (attachment.tempFile() == null) {
+        continue;
+      }
+      try {
+        Files.deleteIfExists(attachment.tempFile());
+      } catch (IOException | RuntimeException e) {
+        log.warn("Failed to delete extracted mail attachment {}", attachment.tempFile(), e);
+      }
+    }
+  }
+
   private static List<DiscoveredAttachment> discoveredAttachments(
       List<ParsedMailAttachment> attachments) {
     if (attachments.isEmpty()) {

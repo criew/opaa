@@ -74,17 +74,33 @@ public class PptxDocumentPipeline extends FileDocumentPipeline<PptxDocumentPipel
       for (int i = 0; i < slides.size(); i++) {
         built.add(buildChunk(slides.get(i), i + 1));
       }
-      POIXMLProperties.CoreProperties core = slideShow.getProperties().getCoreProperties();
-      String firstHeading = slides.isEmpty() ? null : titleText(titleShape(slides.getFirst()));
-      return new PptxContent(
-          built,
-          DocumentProperties.builder()
-              .title(core.getTitle())
-              .createdAt(DocumentProperties.toLocalDate(core.getCreated()))
-              .modifiedAt(DocumentProperties.toLocalDate(core.getModified()))
-              .firstHeading(firstHeading)
-              .build());
+      return new PptxContent(built, coreProperties(slideShow));
     }
+  }
+
+  /**
+   * Reads the core properties and the first slide's title without building a chunk per slide - the
+   * Bestandslauf needs no chunk stream.
+   */
+  @Override
+  protected DocumentProperties declaredProperties(DocumentPipelineSource source)
+      throws IOException {
+    try (InputStream in = Files.newInputStream(source.file());
+        XMLSlideShow slideShow = new XMLSlideShow(in)) {
+      return coreProperties(slideShow);
+    }
+  }
+
+  private static DocumentProperties coreProperties(XMLSlideShow slideShow) {
+    POIXMLProperties.CoreProperties core = slideShow.getProperties().getCoreProperties();
+    List<XSLFSlide> slides = slideShow.getSlides();
+    String firstHeading = slides.isEmpty() ? null : titleText(titleShape(slides.getFirst()));
+    return DocumentProperties.builder()
+        .title(core.getTitle())
+        .createdAt(DocumentProperties.toLocalDate(core.getCreated()))
+        .modifiedAt(DocumentProperties.toLocalDate(core.getModified()))
+        .firstHeading(firstHeading)
+        .build();
   }
 
   @Override

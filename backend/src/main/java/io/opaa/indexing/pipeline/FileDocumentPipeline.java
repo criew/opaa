@@ -51,13 +51,27 @@ public abstract class FileDocumentPipeline<T> implements DocumentPipeline {
     return chunks(source, content).withProperties(properties(content));
   }
 
+  /**
+   * What {@link #run} would attach, read from {@code source} alone - by default the same full
+   * {@link #read} the chunking run takes. A format overrides this where the Bestandslauf can read
+   * its properties more cheaply (a presentation's core properties without building a chunk per
+   * slide) or more resiliently (an ODF package's {@code meta.xml}, which is still readable when
+   * {@code content.xml} is not).
+   *
+   * @throws IOException the file could not be read - answered as {@link DocumentProperties#EMPTY}
+   */
+  protected DocumentProperties declaredProperties(DocumentPipelineSource source)
+      throws IOException {
+    return properties(read(source));
+  }
+
   @Override
   public final DocumentProperties readProperties(DocumentPipelineSource source) {
     if (source.file() == null) {
       return DocumentProperties.EMPTY;
     }
     try {
-      return properties(read(source));
+      return declaredProperties(source);
     } catch (IOException | RuntimeException e) {
       log.warn("Could not read properties of {} via pipeline {}", source.fileName(), id(), e);
       return DocumentProperties.EMPTY;

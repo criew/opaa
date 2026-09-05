@@ -107,6 +107,20 @@ public class PdfDocumentPipeline extends FileDocumentPipeline<PdfDocumentPipelin
         .withTitleLine(DocumentTitleLine.of(firstPageText));
   }
 
+  /**
+   * Extracts the first page alone: the head area is the only page a title line is read from, so the
+   * Bestandslauf does not pay for the whole document's text.
+   */
+  @Override
+  protected DocumentProperties declaredProperties(DocumentPipelineSource source)
+      throws IOException {
+    try (PDDocument doc = Loader.loadPDF(source.file().toFile())) {
+      List<String> firstPage =
+          doc.getNumberOfPages() == 0 ? List.of() : List.of(extractPageText(doc, 0));
+      return properties(new PdfContent(firstPage, flattenOutline(doc), infoProperties(doc)));
+    }
+  }
+
   private static DocumentProperties infoProperties(PDDocument doc) {
     PDDocumentInformation info = doc.getDocumentInformation();
     if (info == null) {
