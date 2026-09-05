@@ -1,0 +1,40 @@
+databaseChangeLog:
+  - changeSet:
+      id: 027-context-prefix-stamp
+      author: opaa
+      comment: >-
+        #1072 (metadata-schema.md, Wirkstelle 2): what makes the Kontextpraefix Nachlauf selective.
+        documents.context_prefix_stamp is the fingerprint of the document-level prefix parts its
+        chunks were last embedded with; NULL means "waiting for the Nachlauf" and is set by exactly
+        the schema changes that alter this document's prefix - so the number the Folgekosten preview
+        shows and the number the run processes are the same set. documents.context_prefix_eligible
+        records the ingest's own "this document type gets a prefix at all" decision (an RSS entry
+        without a headline gets none), so the run never has to guess it. The two boolean columns are
+        the switchable Kontextpraefix-Wirkstelle of the core fields Dokumentart and Datum/Stand -
+        false by default, because the Wirkstelle is a deliberate decision per field and never a
+        default for all of them; the Kernfeld Titel is always prefix-effective and has no column.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries
+                ADD COLUMN core_context_prefix_document_type boolean NOT NULL DEFAULT false,
+                ADD COLUMN core_context_prefix_document_date boolean NOT NULL DEFAULT false;
+              ALTER TABLE public.documents
+                ADD COLUMN context_prefix_stamp varchar(64),
+                ADD COLUMN context_prefix_eligible boolean,
+                ADD COLUMN context_prefix_title text;
+              CREATE INDEX idx_documents_library_context_prefix
+                ON public.documents (library_id) WHERE context_prefix_stamp IS NULL;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP INDEX IF EXISTS public.idx_documents_library_context_prefix;
+              ALTER TABLE public.documents
+                DROP COLUMN IF EXISTS context_prefix_title,
+                DROP COLUMN IF EXISTS context_prefix_eligible,
+                DROP COLUMN IF EXISTS context_prefix_stamp;
+              ALTER TABLE public.knowledge_libraries
+                DROP COLUMN IF EXISTS core_context_prefix_document_date,
+                DROP COLUMN IF EXISTS core_context_prefix_document_type;

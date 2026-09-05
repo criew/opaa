@@ -20,6 +20,7 @@ import io.opaa.api.dto.SearchPath;
 import io.opaa.api.dto.SearchPathState;
 import io.opaa.api.dto.SearchStatusResponse;
 import io.opaa.api.dto.TrackedDocumentOutcome;
+import io.opaa.indexing.ContextPrefixRerunProgress;
 import io.opaa.indexing.metadata.CoreMetadataExtractor;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
@@ -158,7 +159,8 @@ class SearchAdminResponseMapperTest {
                     CoreMetadataField.DOCUMENT_TYPE,
                     new MetadataFieldFill(10, 4, 2),
                     CoreMetadataField.DOCUMENT_DATE,
-                    new MetadataFieldFill(10, 6, 0))));
+                    new MetadataFieldFill(10, 6, 0))),
+            new ContextPrefixRerunProgress(LIBRARY_ID, 10, 7, 3, 1));
 
     var response =
         SearchAdminResponseMapper.toStatusResponse(
@@ -191,6 +193,14 @@ class SearchAdminResponseMapperTest {
             // Four filled, two marked "kein Wert ermittelbar" - the anchor counts the four left.
             tuple("document_type", "Dokumentart", 4L, 0.4d, 2L, 4L, 0.4d),
             tuple("document_date", "Datum/Stand", 6L, 0.6d, 0L, 4L, 0.4d));
+    // The Kontextpraefix Mischzustand travels in the same row: verarbeitet, ausstehend,
+    // fehlgeschlagen (metadata-schema.md, "Nachlauf im Betrieb").
+    var rerun = response.getContextPrefixRerun();
+    assertThat(rerun.getTotalDocuments()).isEqualTo(10);
+    assertThat(rerun.getCurrentDocuments()).isEqualTo(7);
+    assertThat(rerun.getPendingDocuments()).isEqualTo(3);
+    assertThat(rerun.getLastSkippedDocuments()).isEqualTo(1);
+    assertThat(rerun.getComplete()).isFalse();
     assertThat(response.getLibraryName()).isEqualTo("Satzungen");
     assertThat(response.getDocumentCount()).isEqualTo(12);
     assertThat(response.getIndexedDocumentCount()).isEqualTo(10);
@@ -229,7 +239,8 @@ class SearchAdminResponseMapperTest {
                             null,
                             0,
                             0,
-                            MetadataBackfillProgress.empty(LIBRARY_ID)))))
+                            MetadataBackfillProgress.empty(LIBRARY_ID),
+                            ContextPrefixRerunProgress.empty(LIBRARY_ID)))))
             .getLibraries()
             .get(0);
 

@@ -1,5 +1,7 @@
 package io.opaa.searchadmin;
 
+import io.opaa.indexing.ContextPrefixRerunProgress;
+import io.opaa.indexing.ContextPrefixRerunService;
 import io.opaa.indexing.FullTextIndexFillState;
 import io.opaa.indexing.FullTextIndexFillStateService;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
@@ -84,6 +86,7 @@ public class SearchStatusService {
   private final LibraryDocumentStatsReader documentStatsReader;
   private final FullTextIndexFillStateService fullTextIndexFillStateService;
   private final MetadataBackfillService metadataBackfillService;
+  private final ContextPrefixRerunService contextPrefixRerunService;
   private final QueryProperties queryProperties;
   private final RetrievalPipelineProperties pipelineProperties;
   private final Clock clock;
@@ -128,6 +131,7 @@ public class SearchStatusService {
       LibraryDocumentStatsReader documentStatsReader,
       FullTextIndexFillStateService fullTextIndexFillStateService,
       MetadataBackfillService metadataBackfillService,
+      ContextPrefixRerunService contextPrefixRerunService,
       QueryProperties queryProperties,
       RetrievalPipelineProperties pipelineProperties,
       Clock clock) {
@@ -140,6 +144,7 @@ public class SearchStatusService {
     this.documentStatsReader = documentStatsReader;
     this.fullTextIndexFillStateService = fullTextIndexFillStateService;
     this.metadataBackfillService = metadataBackfillService;
+    this.contextPrefixRerunService = contextPrefixRerunService;
     this.queryProperties = queryProperties;
     this.pipelineProperties = pipelineProperties;
     this.clock = clock;
@@ -402,6 +407,8 @@ public class SearchStatusService {
     // run is reported separately, so the display can explain a remainder the run cannot reach.
     Map<UUID, MetadataBackfillProgress> metadataByLibrary =
         metadataBackfillService.progressForLibraries(libraryIds);
+    Map<UUID, ContextPrefixRerunProgress> contextPrefixByLibrary =
+        contextPrefixRerunService.progressForLibraries(libraryIds);
 
     List<LibrarySearchStatus> result = new ArrayList<>();
     for (KnowledgeLibrary library : libraries) {
@@ -427,7 +434,9 @@ public class SearchStatusService {
               stats.lastIndexedAt(),
               fillState.indexedChunks(),
               fillState.missingChunks(),
-              metadataBackfill));
+              metadataBackfill,
+              contextPrefixByLibrary.getOrDefault(
+                  library.getId(), ContextPrefixRerunProgress.empty(library.getId()))));
     }
     result.sort(
         Comparator.comparing(LibrarySearchStatus::libraryName, String.CASE_INSENSITIVE_ORDER));

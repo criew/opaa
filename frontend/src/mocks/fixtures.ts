@@ -697,6 +697,13 @@ export const mockSearchStatus: SearchStatusResponse = {
           },
         ],
       },
+      contextPrefixRerun: {
+        totalDocuments: 11,
+        currentDocuments: 8,
+        pendingDocuments: 3,
+        lastSkippedDocuments: 1,
+        complete: false,
+      },
     },
     {
       libraryId: 'lib-protokolle',
@@ -751,6 +758,13 @@ export const mockSearchStatus: SearchStatusResponse = {
           },
         ],
       },
+      contextPrefixRerun: {
+        totalDocuments: 3,
+        currentDocuments: 3,
+        pendingDocuments: 0,
+        lastSkippedDocuments: 0,
+        complete: true,
+      },
     },
     {
       libraryId: 'lib-formulare',
@@ -804,6 +818,13 @@ export const mockSearchStatus: SearchStatusResponse = {
             missingShare: 0.0,
           },
         ],
+      },
+      contextPrefixRerun: {
+        totalDocuments: 0,
+        currentDocuments: 0,
+        pendingDocuments: 0,
+        lastSkippedDocuments: 0,
+        complete: true,
       },
     },
   ],

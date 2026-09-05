@@ -209,6 +209,18 @@ public class KnowledgeLibrary {
   @Column(name = "diagnostics_locked", nullable = false)
   private boolean diagnosticsLocked = true;
 
+  /**
+   * Whether the Kernfeld Dokumentart belongs into this library's Kontextpraefix. Off by default:
+   * the Wirkstelle is a deliberate decision per field, never a default for all of them. The
+   * Kernfeld Titel is always prefix-effective and therefore has no flag.
+   */
+  @Column(name = "core_context_prefix_document_type", nullable = false)
+  private boolean coreContextPrefixDocumentType;
+
+  /** Whether the Kernfeld Datum/Stand belongs into this library's Kontextpraefix; see above. */
+  @Column(name = "core_context_prefix_document_date", nullable = false)
+  private boolean coreContextPrefixDocumentDate;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -560,6 +572,31 @@ public class KnowledgeLibrary {
 
   public String getScheduleCron() {
     return scheduleCron;
+  }
+
+  public boolean isCoreContextPrefixDocumentType() {
+    return coreContextPrefixDocumentType;
+  }
+
+  public boolean isCoreContextPrefixDocumentDate() {
+    return coreContextPrefixDocumentDate;
+  }
+
+  /**
+   * Applies the switchable core-field Wirkstellen; the caller hands the affected documents to the
+   * Nachlauf, which is a per-document marking, not a library-wide one.
+   *
+   * @return whether anything changed
+   */
+  public boolean applyCoreContextPrefix(boolean documentType, boolean documentDate) {
+    if (coreContextPrefixDocumentType == documentType
+        && coreContextPrefixDocumentDate == documentDate) {
+      return false;
+    }
+    this.coreContextPrefixDocumentType = documentType;
+    this.coreContextPrefixDocumentDate = documentDate;
+    this.updatedAt = Instant.now();
+    return true;
   }
 
   public Instant getCreatedAt() {

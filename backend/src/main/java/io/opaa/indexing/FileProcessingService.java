@@ -61,13 +61,14 @@ public class FileProcessingService {
       (document, mode) -> document.getText();
 
   /**
-   * The {@code EMBED}-only formatter for a document that split into 2 or more chunks: the title in
-   * brackets, a blank line, then the chunk text (ingestion-pipelines.md, Querschnittsregel (b)).
-   * Ignores every metadata key rather than excluding a known list, so a key added later cannot
-   * re-enter the embedding input. Stored chunk text and citations are unaffected.
+   * The {@code EMBED}-only formatter carrying one chunk's Kontextpraefix (ingestion-pipelines.md,
+   * Querschnittsregel (b); metadata-schema.md, Wirkstelle 2): the prefix in brackets, a blank line,
+   * then the chunk text. Ignores every metadata key rather than excluding a known list, so a key
+   * added later cannot re-enter the embedding input. Stored chunk text and citations are unaffected
+   * - the quoted excerpt in a Beleg stays the original wording.
    */
-  private static ContentFormatter chunkEmbedFormatterWithPrefix(String title) {
-    return (document, mode) -> "[" + title + "]\n\n" + document.getText();
+  private static ContentFormatter chunkEmbedFormatterWithPrefix(String prefix) {
+    return (document, mode) -> ChunkContextPrefix.format(prefix, document.getText());
   }
 
   private final DocumentPipelineRegistry pipelineRegistry;
@@ -640,13 +641,17 @@ public class FileProcessingService {
   }
 
   /**
-   * Enriches {@code chunks} with permission-filter and citation metadata and, for a document that
-   * split into 2 or more chunks, prefixes {@code contextTitle} onto the embedding input only (see
-   * {@link #chunkEmbedFormatterWithPrefix}). A single chunk gets {@link
-   * #CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX}, since it already carries its whole document.
+   * Enriches {@code chunks} with permission-filter and citation metadata and puts each chunk's
+   * Kontextpraefix onto the embedding input only - built by {@link ChunkContextPrefix#forChunk}
+   * from the Kernfeld Titel, the document's prefix-effective values and the chunk's Strukturkontext
+   * (metadata-schema.md, Wirkstelle 2). A chunk without a prefix gets {@link
+   * #CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX}. Records afterwards which prefix the chunks were
+   * written with, so the Nachlauf knows what is current.
    *
-   * @param contextTitle the candidate prefix, or {@code null} if this document never gets one (see
-   *     {@link #contextTitleFor})
+   * @param contextTitle the fallback title, or {@code null} if this document type never gets a
+   *     prefix at all (see {@link #contextTitleFor}). The Kernfeld Titel takes precedence over it
+   *     where one was extracted; what ends up in the prefix is recorded at the document, so the
+   *     Nachlauf reproduces this choice instead of deriving its own.
    * @param pipeline the pipeline that produced {@code chunks}; its id and version go onto every
    *     chunk. Which further keys ride along is decided by {@link
    *     DocumentPipelineRegistry#allPassthroughMetadataKeys()}, not by {@code pipeline} alone - a
@@ -666,10 +671,13 @@ public class FileProcessingService {
       Optional<String> routingExtension,
       DocumentChunkMetadata chunkMetadata) {
     boolean documentWasSplit = chunks.size() >= 2;
-    ContentFormatter embedFormatter =
-        documentWasSplit && contextTitle != null
-            ? chunkEmbedFormatterWithPrefix(contextTitle)
-            : CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX;
+    // The Kernfeld Titel replaces the file-name humanisation the prefix used before; the caller's
+    // own candidate stays the fallback and still decides whether this document type gets a prefix
+    // at all - an RSS entry without a headline never does. That decision is recorded below, so the
+    // Nachlauf honours it instead of guessing it.
+    boolean prefixEligible = contextTitle != null;
+    String prefixTitle =
+        ChunkContextPrefix.titleAtRest(prefixEligible, chunkMetadata.contextTitle(), contextTitle);
     Set<String> passthroughKeys = pipelineRegistry.allPassthroughMetadataKeys();
 
     List<org.springframework.ai.document.Document> enriched =
@@ -714,12 +722,33 @@ public class FileProcessingService {
                   }
                   org.springframework.ai.document.Document enrichedChunk =
                       new org.springframework.ai.document.Document(chunk.getText(), metadata);
-                  enrichedChunk.setContentFormatter(embedFormatter);
+                  String prefix =
+                      ChunkContextPrefix.forChunk(
+                          prefixEligible,
+                          documentWasSplit,
+                          prefixTitle,
+                          chunkMetadata.contextPrefixValues(),
+                          metadata.get(ChunkingService.LOCATION_METADATA_KEY),
+                          chunk.getText());
+                  enrichedChunk.setContentFormatter(
+                      prefix == null
+                          ? CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX
+                          : chunkEmbedFormatterWithPrefix(prefix));
                   return enrichedChunk;
                 })
             .toList();
 
     addToVectorStore(enriched);
+    // Recorded only after the chunks exist: the stamp says "these chunks carry this prefix", which
+    // is exactly what the Nachlauf selects against.
+    // Records the ingest's own title, not the effective one: with it,
+    // ChunkContextPrefix#titleAtRest
+    // reproduces this very prefix later, and a Kernfeld Titel corrected in between still wins.
+    documentRepository.recordContextPrefix(
+        document.getId(),
+        chunkMetadata.contextPrefixStamp(prefixTitle),
+        prefixEligible,
+        contextTitle);
   }
 
   /**

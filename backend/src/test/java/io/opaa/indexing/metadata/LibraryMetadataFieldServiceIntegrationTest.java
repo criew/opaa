@@ -433,6 +433,119 @@ class LibraryMetadataFieldServiceIntegrationTest {
         .containsExactly("B");
   }
 
+  @Test
+  void theFolgekostenOfAPrefixEffectiveChangeNameDocumentsChunksCallsAndRuntime()
+      throws IOException {
+    fieldService.createField(
+        library.getId(),
+        input("fassung", LibraryMetadataFieldType.SELECT, false, true, null),
+        owner);
+    Document first = indexed("satzung.pdf");
+    Document second = indexed("gebuehren.pdf");
+    correctionService.setValue(
+        library.getId(), first.getId(), "lib:fassung", MetadataValueInput.text("A"), editor);
+    correctionService.setValue(
+        library.getId(), second.getId(), "lib:fassung", MetadataValueInput.text("A"), editor);
+    long chunks =
+        documentRepository.findById(first.getId()).orElseThrow().getChunkCount()
+            + documentRepository.findById(second.getId()).orElseThrow().getChunkCount();
+
+    MetadataChangeImpact impact =
+        fieldService.changeImpact(
+            library.getId(), "fassung", MetadataChangeKind.CONTEXT_PREFIX_DISABLED, owner);
+
+    assertThat(impact.affectedDocuments()).isEqualTo(2);
+    assertThat(impact.affectedChunks()).isEqualTo(chunks);
+    assertThat(impact.embeddingCalls())
+        .as("one embedding call per chunk - that is what the runtime estimate multiplies")
+        .isEqualTo(chunks);
+    assertThat(impact.reembeddingRequired()).isTrue();
+    assertThat(impact.estimatedSeconds()).isPositive();
+  }
+
+  @Test
+  void extendingAValueListCostsNothingAndAFilterOnlyFieldCostsNoEmbeddingCall() throws IOException {
+    fieldService.createField(
+        library.getId(),
+        input("projekt", LibraryMetadataFieldType.SELECT, true, false, null),
+        owner);
+    Document document = indexed("projekt.pdf");
+    correctionService.setValue(
+        library.getId(), document.getId(), "lib:projekt", MetadataValueInput.text("A"), editor);
+
+    assertThat(
+            fieldService.changeImpact(
+                library.getId(), "projekt", MetadataChangeKind.VALUE_ADDED, owner))
+        .satisfies(
+            impact -> {
+              assertThat(impact.affectedDocuments()).isZero();
+              assertThat(impact.reembeddingRequired()).isFalse();
+              assertThat(impact.estimatedSeconds()).isZero();
+            });
+
+    MetadataChangeImpact removal =
+        fieldService.changeImpact(
+            library.getId(), "projekt", MetadataChangeKind.FIELD_REMOVED, owner);
+    assertThat(removal.affectedDocuments())
+        .as("the values are gone even though no chunk has to be re-embedded")
+        .isEqualTo(1);
+    assertThat(removal.affectedChunks()).isZero();
+    assertThat(removal.embeddingCalls()).isZero();
+    assertThat(removal.reembeddingRequired()).isFalse();
+  }
+
+  @Test
+  void theFolgekostenOfRemovingOneValueCountOnlyTheDocumentsThatCarryIt() throws IOException {
+    fieldService.createField(
+        library.getId(),
+        input("fassung", LibraryMetadataFieldType.SELECT, false, true, null),
+        owner);
+    Document first = indexed("satzung.pdf");
+    Document second = indexed("gebuehren.pdf");
+    correctionService.setValue(
+        library.getId(), first.getId(), "lib:fassung", MetadataValueInput.text("A"), editor);
+    correctionService.setValue(
+        library.getId(), second.getId(), "lib:fassung", MetadataValueInput.text("B"), editor);
+
+    MetadataChangeImpact impact =
+        fieldService.valueChangeImpact(library.getId(), "fassung", "A", owner);
+
+    assertThat(impact.affectedDocuments()).isEqualTo(1);
+    assertThat(impact.affectedChunks())
+        .isEqualTo(documentRepository.findById(first.getId()).orElseThrow().getChunkCount());
+    assertThat(impact.reembeddingRequired()).isTrue();
+  }
+
+  @Test
+  void askingForTheFolgekostenNeedsTheManagementRightAndChangesNothing() throws IOException {
+    fieldService.createField(
+        library.getId(),
+        input("fassung", LibraryMetadataFieldType.SELECT, false, true, null),
+        owner);
+    indexed("satzung.pdf");
+
+    assertThatThrownBy(
+            () ->
+                fieldService.changeImpact(
+                    library.getId(), "fassung", MetadataChangeKind.CONTEXT_PREFIX_ENABLED, editor))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThatThrownBy(
+            () -> fieldService.valueChangeImpact(library.getId(), "fassung", "A", viewer))
+        .isInstanceOf(AccessDeniedException.class);
+  }
+
+  @Test
+  void theCoreFieldWirkstellenAreOffByDefaultAndTheTitleIsAlwaysPrefixEffective() {
+    assertThat(fieldService.coreContextPrefix(library.getId(), viewer))
+        .isEqualTo(new CoreContextPrefixSettings(true, false, false));
+
+    assertThat(fieldService.updateCoreContextPrefix(library.getId(), true, false, owner))
+        .isEqualTo(new CoreContextPrefixSettings(true, true, false));
+    assertThatThrownBy(
+            () -> fieldService.updateCoreContextPrefix(library.getId(), true, true, editor))
+        .isInstanceOf(AccessDeniedException.class);
+  }
+
   private LibraryMetadataFieldInput input(
       String key,
       LibraryMetadataFieldType type,

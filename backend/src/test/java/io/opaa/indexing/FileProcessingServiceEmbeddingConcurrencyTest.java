@@ -125,7 +125,8 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
             embeddingModel,
             batchingStrategy,
             vectorStoreWriter,
-            fullTextChunkStore);
+            fullTextChunkStore,
+            new EmbeddingRateEstimator(4.0));
     return new FileProcessingService(
         TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
         documentRepository,

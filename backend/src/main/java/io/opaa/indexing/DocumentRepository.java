@@ -366,6 +366,62 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   int clearMetadataExtractionVersion(@Param("id") UUID id);
 
   /**
+   * Records the Kontextpraefix this document's chunks were just embedded with (#1072) and whether
+   * it got one at all. A targeted {@code UPDATE} for the same reason {@link
+   * #updateMetadataExtractionVersion} is one: it must not resurrect a row a concurrent delete
+   * already removed.
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.contextPrefixStamp = :stamp, d.contextPrefixEligible = :eligible,"
+          + " d.contextPrefixTitle = :title where d.id = :id")
+  int recordContextPrefix(
+      @Param("id") UUID id,
+      @Param("stamp") String stamp,
+      @Param("eligible") boolean eligible,
+      @Param("title") String title);
+
+  /**
+   * Hands a document to the Kontextpraefix-Nachlauf - the one marking every prefix-effective change
+   * uses, applied to exactly the documents whose prefix actually changes, so the number the
+   * Folgekosten preview shows and the number the run processes are the same set.
+   */
+  @Modifying
+  @Transactional
+  @Query("update Document d set d.contextPrefixStamp = null where d.id = :id")
+  int clearContextPrefixStamp(@Param("id") UUID id);
+
+  /**
+   * Hands exactly the indexed documents that carry a value for {@code fieldKey} to the Nachlauf -
+   * the same set {@code DocumentMetadataValueRepository#impactOfField} counts for the Folgekosten
+   * preview, so the price shown and the price paid are one number.
+   *
+   * @return the number of documents marked
+   */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.contextPrefixStamp = null where d.libraryId = :libraryId"
+          + " and d.status = io.opaa.api.types.DocumentStatus.INDEXED and d.id in"
+          + " (select v.documentId from DocumentMetadataValue v where v.fieldKey = :fieldKey"
+          + " and v.state = io.opaa.indexing.metadata.MetadataValueState.SET)")
+  int clearContextPrefixStampForField(
+      @Param("libraryId") UUID libraryId, @Param("fieldKey") String fieldKey);
+
+  /** The same marking for the documents carrying one value of a library field's list. */
+  @Modifying
+  @Transactional
+  @Query(
+      "update Document d set d.contextPrefixStamp = null where d.libraryId = :libraryId"
+          + " and d.status = io.opaa.api.types.DocumentStatus.INDEXED and d.id in"
+          + " (select v.documentId from DocumentMetadataValue v"
+          + " where v.libraryValueId = :libraryValueId"
+          + " and v.state = io.opaa.indexing.metadata.MetadataValueState.SET)")
+  int clearContextPrefixStampForValue(
+      @Param("libraryId") UUID libraryId, @Param("libraryValueId") UUID libraryValueId);
+
+  /**
    * The connector counterpart to {@link #markIndexed(UUID, int, Instant)}: those paths only learn
    * the checksum - and the remote's own change marker - once chunking and embedding have succeeded,
    * unlike the upload path, which persists its checksum on the {@code PENDING} row beforehand.

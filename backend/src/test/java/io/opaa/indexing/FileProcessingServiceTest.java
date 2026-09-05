@@ -101,7 +101,12 @@ class FileProcessingServiceTest {
     meterRegistry = new SimpleMeterRegistry();
     vectorChunkStore =
         new VectorChunkStore(
-            vectorStore, embeddingModel, batchingStrategy, vectorStoreWriter, fullTextChunkStore);
+            vectorStore,
+            embeddingModel,
+            batchingStrategy,
+            vectorStoreWriter,
+            fullTextChunkStore,
+            new EmbeddingRateEstimator(4.0));
     service = serviceWith(TestPipelineRegistries.fallbackOnly(documentService, chunkingService));
     targetLibrary = library();
     // Default: plenty of headroom, so tests never trip the quota check unless they explicitly

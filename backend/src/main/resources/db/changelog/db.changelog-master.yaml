@@ -59,3 +59,5 @@ databaseChangeLog:
       file: db/changelog/changes/024-library-confluence-full-sync-interval.yaml
   - include:
       file: db/changelog/changes/025-library-metadata-fields.yaml
+  - include:
+      file: db/changelog/changes/027-context-prefix-stamp.yaml

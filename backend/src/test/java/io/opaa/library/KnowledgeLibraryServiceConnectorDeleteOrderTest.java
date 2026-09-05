@@ -19,6 +19,7 @@ import io.opaa.auth.UserRepository;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.EmbeddingRateEstimator;
 import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingJobService;
@@ -95,7 +96,8 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
             mock(org.springframework.ai.embedding.EmbeddingModel.class),
             mock(org.springframework.ai.embedding.BatchingStrategy.class),
             mock(VectorStoreWriter.class),
-            mock(FullTextChunkStore.class));
+            mock(FullTextChunkStore.class),
+            new EmbeddingRateEstimator(4.0));
     FilesystemPathAllowlist filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     IndexingJobRepository indexingJobRepository = mock(IndexingJobRepository.class);
     when(indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
