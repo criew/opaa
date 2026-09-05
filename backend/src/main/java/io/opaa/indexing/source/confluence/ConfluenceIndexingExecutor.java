@@ -427,6 +427,11 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       summary =
           new ConfluencePageSummary(page.id(), page.spaceKey(), page.title(), page.version(), null);
     }
+    // a search hit outside the selection (or without a space key, so without an identity URL)
+    // costs neither a URL nor a lookup
+    if (policy == PageVisitPolicy.INCREMENTAL && rejectedAsUnselected(run, summary)) {
+      return;
+    }
     String spaceKey = summary.spaceKey();
     String pagePath = run.client.pageUrl(spaceKey, summary.id());
     if (policy.reconciles()) {
@@ -438,18 +443,13 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       discardTrashed(run, existing, pagePath);
       return;
     }
-    if (!policy.reconciles()) {
-      if (spaceKey == null || !run.selectedKeys.contains(spaceKey)) {
-        run.events.record(
-            IndexingEventCategory.REJECTED,
-            pageLabel(summary, spaceKey == null ? "?" : spaceKey) + NOT_SELECTED_SUFFIX,
-            summary.id());
-        run.progress.recordSkipped();
-        return;
-      }
-      if (existing.isEmpty()) {
-        removeMovedFrom(run, summary, pagePath);
-      }
+    // a reported page is judged once fetched: the trash goes whatever its space, the rest only
+    // inside the selection
+    if (policy == PageVisitPolicy.WEBHOOK && rejectedAsUnselected(run, summary)) {
+      return;
+    }
+    if (!policy.reconciles() && existing.isEmpty()) {
+      removeMovedFrom(run, summary, pagePath);
     }
     if (isUnchanged(existing, String.valueOf(summary.version()))) {
       run.progress.recordSkipped();
@@ -478,6 +478,23 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
                 ? null
                 : String.join(SourceDocumentContext.HIERARCHY_SEPARATOR, page.ancestorTitles()));
     storePage(run, page, pagePath, String.valueOf(page.version()), pageContext);
+  }
+
+  /**
+   * A page outside the library's space selection is left alone until the next full sync judges its
+   * old document: a REJECTED note, counted as skipped. True when the page was rejected.
+   */
+  private static boolean rejectedAsUnselected(ConfluenceRun run, ConfluencePageSummary summary) {
+    String spaceKey = summary.spaceKey();
+    if (spaceKey != null && run.selectedKeys.contains(spaceKey)) {
+      return false;
+    }
+    run.events.record(
+        IndexingEventCategory.REJECTED,
+        pageLabel(summary, spaceKey == null ? "?" : spaceKey) + NOT_SELECTED_SUFFIX,
+        summary.id());
+    run.progress.recordSkipped();
+    return true;
   }
 
   /**

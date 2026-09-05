@@ -81,9 +81,15 @@ class ConfluenceIndexingExecutorVisitPageTest {
   @BeforeEach
   void setUp() throws Exception {
     client = mock(ConfluenceClient.class);
+    // like CloudConfluenceClient, which URL-encodes the key: a null space key has no URL
     when(client.pageUrl(any(), any()))
         .thenAnswer(
-            inv -> BASE + "/wiki/spaces/" + inv.getArgument(0) + "/pages/" + inv.getArgument(1));
+            inv ->
+                BASE
+                    + "/wiki/spaces/"
+                    + java.util.Objects.requireNonNull(inv.getArgument(0), "space key")
+                    + "/pages/"
+                    + inv.getArgument(1));
     when(client.listAttachments(anyString())).thenReturn(List.of());
     documentRepository = mock(DocumentRepository.class);
     when(documentRepository.findByLibraryIdAndFilePath(any(), anyString()))
@@ -390,6 +396,29 @@ class ConfluenceIndexingExecutorVisitPageTest {
       // the search already said where the page is - no call is spent on it
       verify(client, never()).fetchPage(anyString());
     }
+  }
+
+  @Test
+  void aSearchHitWithoutASpaceKeyIsSkippedBeforeAnyUrlOrLookup() throws Exception {
+    // a CQL hit without content.space.key has no identity URL: rejected as unselected, never
+    // handed to pageUrl (Cloud would throw) nor looked up
+    executor.visitPage(
+        run,
+        new ConfluencePageSummary("300", null, "Streng geheim", 2, null),
+        PageVisitPolicy.INCREMENTAL);
+
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.REJECTED,
+                    "Seite „Streng geheim“ (Space ?) "
+                        + ConfluenceIndexingExecutor.NOT_SELECTED_SUFFIX,
+                    "300")));
+    assertThat(run.progress.skippedCount()).isEqualTo(1);
+    verify(client, never()).pageUrl(any(), any());
+    verify(client, never()).fetchPage(anyString());
+    verify(documentRepository, never()).findByLibraryIdAndFilePath(any(), anyString());
   }
 
   // ---- budget --------------------------------------------------------------------------------
