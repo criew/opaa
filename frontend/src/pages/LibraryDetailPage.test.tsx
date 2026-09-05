@@ -863,6 +863,55 @@ describe('LibraryDetailPage', () => {
     expect(screen.getByText('Anfragebudget erschöpft')).toBeInTheDocument()
   })
 
+  it('shows only attachments and duration for a run of a source without a request meter', async () => {
+    setLibraryState(
+      managerLibrary,
+      detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
+    )
+    server.use(
+      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
+        HttpResponse.json({
+          runs: [
+            {
+              id: 'run-filesystem',
+              status: 'COMPLETED',
+              triggeredBy: 'MANUAL',
+              runMode: 'FULL',
+              documentCount: 12,
+              totalDocuments: 12,
+              documentsSkipped: 0,
+              documentsFailed: 0,
+              documentsIndexedTotal: 15,
+              message:
+                'Indizierung abgeschlossen: 12 verarbeitet, 0 übersprungen, 0 fehlgeschlagen',
+              startedAt: '2026-09-05T09:00:00Z',
+              completedAt: '2026-09-05T09:00:42Z',
+              incomplete: false,
+              metrics: {
+                requestsSent: 0,
+                throttleCount: 0,
+                throttleWaitSeconds: 0,
+                attachmentsProcessed: 3,
+                attachmentsSkipped: 1,
+                attachmentsFailed: 0,
+              },
+              events: [],
+              eventsTruncatedCount: 0,
+            },
+          ],
+        } satisfies IndexingRunListResponse),
+      ),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    const line = await screen.findByTestId('run-metrics-run-filesystem')
+    expect(line).toHaveTextContent(
+      'Anhänge: 3 indiziert, 1 übersprungen, 0 fehlgeschlagen · Dauer 0 min 42 s',
+    )
+    expect(line).not.toHaveTextContent('Anfragen an die Quelle')
+    expect(line).not.toHaveTextContent('gedrosselt')
+  })
+
   it('shows the webhook row to a manager of a Confluence library only (#1140)', async () => {
     const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
     setLibraryState(
