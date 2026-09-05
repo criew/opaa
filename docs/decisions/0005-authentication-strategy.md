@@ -12,7 +12,10 @@ Umgebung sät nur noch den ersten Anbieter einmalig), das Backend prüft Tokens 
 Multi-Issuer-Resolver, die SPA führt den Code-Flow gegen den gewählten Anbieter. Zustandslosigkeit,
 Public Clients ohne Secret und die Identität `(issuer, subject)` bleiben; ADR-0025 präzisiert die
 Erstadministrator-Regel, die Abmeldung und die Annahme unter „Neutral", dass `DirectorySyncService`
-einen einzelnen Issuer voraussetzt.
+einen einzelnen Issuer voraussetzt. **Aufgehoben** wird eine Festlegung aus „Automatische
+Benutzerbereitstellung": Für Anbieter mit gesetztem `groups_claim` kommen Gruppenzugehörigkeiten
+aus dem Token, und für Anbieter mit gesetztem `roles_claim` auch die Systemrollen `SYSTEM_ADMIN`
+und `AUDITOR` — ADR-0025, Entscheidung 4, mit den dort genannten Sicherungen.
 
 ## Kontext
 
@@ -115,7 +118,9 @@ würde weiterhin jede Anfrage abweisen, der Nutzer säße vor einer funktionslos
 Bei authentifizierten Anfragen extrahiert `UserProvisioningFilter` Benutzerinformationen aus dem
 JWT (`sub`, `iss`, `email`, `name`) und legt bzw. aktualisiert einen Datensatz in der
 `users`-Tabelle. Gruppenzugehörigkeiten kommen **nicht** aus dem Token, sondern über
-`DirectoryClient` (`io.opaa.group.sync`). Derselbe Filter baut aus diesem Datensatz einmalig
+`DirectoryClient` (`io.opaa.group.sync`) — seit [ADR-0025](0025-mehrere-oidc-anbieter.md) gilt das
+nur noch für Anbieter ohne `groups_claim`; ein Anbieter mit gesetztem `groups_claim` liefert
+Gruppen (und mit `roles_claim` Systemrollen) aus dem Token, siehe dort, Entscheidung 4. Derselbe Filter baut aus diesem Datensatz einmalig
 einen `CurrentUser`-Schnappschuss der Aufrufer-Identität und legt ihn als Request-Attribut ab;
 Controller erhalten ihn über einen dedizierten, ausschließlich `@Caller`-annotierte Parameter
 bedienenden `HandlerMethodArgumentResolver` statt ihn selbst erneut aus dem JWT abzuleiten (#884) -
