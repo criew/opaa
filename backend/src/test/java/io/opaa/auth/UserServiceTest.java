@@ -217,6 +217,32 @@ class UserServiceTest {
     verify(userRepository, never()).save(any());
   }
 
+  /** A disabled provider issues no more tokens - its accounts' roles are managed here again. */
+  @Test
+  void updateRoleIsPossibleAgainForAccountsOfADisabledProviderWithARolesClaim() {
+    UUID organizationId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    User user = new User("sub1", "https://partner.example/realms/b", "t@example.com", "Test");
+    user.setOrganizationId(organizationId);
+    OidcProvider disabled =
+        providerWith(
+            "https://partner.example/realms/b",
+            new OidcClaimMapping(null, null, "roles", "admin", null, null));
+    disabled.disable();
+    when(userRepository.findByIdAndOrganizationId(userId, organizationId))
+        .thenReturn(Optional.of(user));
+    when(providerRepository.findByNormalizedIssuerUri("https://partner.example/realms/b"))
+        .thenReturn(Optional.of(disabled));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
+
+    User updated =
+        userService.updateRole(
+            userId, SystemRole.SYSTEM_ADMIN, actorInOrganization(organizationId));
+
+    assertThat(updated.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
+  }
+
   @Test
   void findOrCreateUserCreatesNewUser() {
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1")).thenReturn(Optional.empty());

@@ -11,7 +11,7 @@ import jakarta.persistence.Embeddable;
  *
  * @param emailClaim source of {@code users.email}; {@code email} for every OIDC-conformant provider
  * @param displayNameClaim source of {@code users.display_name}; the provisioning path falls back to
- *     {@code preferred_username} and then to the subject
+ *     {@code preferred_username}, never to the subject (a raw identifier is no display name)
  * @param rolesClaim dot-separated path to the roles claim, e.g. {@code realm_access.roles}
  * @param groupsClaim dot-separated path to the groups claim, e.g. {@code groups}
  */

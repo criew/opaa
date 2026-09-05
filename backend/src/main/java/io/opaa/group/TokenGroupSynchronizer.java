@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -122,12 +123,14 @@ public class TokenGroupSynchronizer {
         continue;
       }
       Group group = findOrCreate(organizationId, provider, entry.getKey(), entry.getValue());
-      if (group.getMemberships().stream().anyMatch(m -> m.getUserId().equals(user.getId()))) {
+      // one row, not the group's whole membership list - a large group must not be loaded on
+      // every first sign-in of a further member
+      if (membershipRepository.findByGroupIdAndUserId(group.getId(), user.getId()).isPresent()) {
         continue;
       }
       GroupMembership membership = new GroupMembership(user.getId(), organizationId);
-      group.addMembership(membership);
-      groupRepository.save(group);
+      membership.assignGroup(group);
+      membershipRepository.save(membership);
       permissionHistoryService.recordMembershipAdded(
           membership, GroupMembershipHistoryCause.IDENTITY_PROVIDER_ADDED, null);
       recordMembershipChange(user, provider, group, AuditEventType.GROUP_MEMBER_ADDED);
@@ -137,23 +140,22 @@ public class TokenGroupSynchronizer {
       if (desired.containsKey(externalId)) {
         continue;
       }
-      groupRepository
-          .findByOrganizationIdAndKindAndExternalId(
-              organizationId, GroupKind.IDENTITY_PROVIDER, externalId)
-          .ifPresent(
-              group -> {
-                membershipRepository
-                    .findByGroupIdAndUserId(group.getId(), user.getId())
-                    .ifPresent(group::removeMembership);
-                groupRepository.save(group);
-                permissionHistoryService.recordMembershipRemoved(
-                    group.getId(),
-                    organizationId,
-                    user.getId(),
-                    GroupMembershipHistoryCause.IDENTITY_PROVIDER_REMOVED,
-                    null);
-                recordMembershipChange(user, provider, group, AuditEventType.GROUP_MEMBER_REMOVED);
-              });
+      Optional<Group> group =
+          groupRepository.findByOrganizationIdAndKindAndExternalId(
+              organizationId, GroupKind.IDENTITY_PROVIDER, externalId);
+      Optional<GroupMembership> membership =
+          group.flatMap(g -> membershipRepository.findByGroupIdAndUserId(g.getId(), user.getId()));
+      if (group.isEmpty() || membership.isEmpty()) {
+        continue;
+      }
+      membershipRepository.delete(membership.get());
+      permissionHistoryService.recordMembershipRemoved(
+          group.get().getId(),
+          organizationId,
+          user.getId(),
+          GroupMembershipHistoryCause.IDENTITY_PROVIDER_REMOVED,
+          null);
+      recordMembershipChange(user, provider, group.get(), AuditEventType.GROUP_MEMBER_REMOVED);
       changed = true;
     }
     if (changed) {

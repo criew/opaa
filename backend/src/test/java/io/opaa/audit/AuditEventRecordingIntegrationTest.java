@@ -93,6 +93,8 @@ import org.springframework.transaction.support.TransactionTemplate;
     mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 class AuditEventRecordingIntegrationTest {
 
+  @Autowired private io.opaa.auth.AuthProperties authProperties;
+
   @Autowired private AssetGrantService grantService;
   @Autowired private AssetGrantRepository grantRepository;
   @Autowired private AssetGrantHistoryRepository grantHistoryRepository;
@@ -179,7 +181,11 @@ class AuditEventRecordingIntegrationTest {
 
   private UUID createUser() {
     User user =
-        new User(UUID.randomUUID().toString(), "test-issuer", "user@example.com", "Test User");
+        new User(
+            UUID.randomUUID().toString(),
+            authProperties.dev().issuer(),
+            "user@example.com",
+            "Test User");
     user.setOrganizationId(organizationId);
     UUID id = userRepository.save(user).getId();
     createdUserIds.add(id);
@@ -353,7 +359,11 @@ class AuditEventRecordingIntegrationTest {
     UUID foreignOrganizationId =
         organizationRepository.save(new Organization(UUID.randomUUID(), "Other Org")).getId();
     User foreignUser =
-        new User(UUID.randomUUID().toString(), "test-issuer", "foreign@example.com", "Foreign");
+        new User(
+            UUID.randomUUID().toString(),
+            authProperties.dev().issuer(),
+            "foreign@example.com",
+            "Foreign");
     foreignUser.setOrganizationId(foreignOrganizationId);
     UUID foreignUserId = userRepository.save(foreignUser).getId();
     long before = auditLogRepository.count();

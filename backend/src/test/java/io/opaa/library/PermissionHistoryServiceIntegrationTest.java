@@ -61,6 +61,8 @@ import org.springframework.test.context.TestExecutionListeners;
     mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
 class PermissionHistoryServiceIntegrationTest {
 
+  @Autowired private io.opaa.auth.AuthProperties authProperties;
+
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private AssetGrantService grantService;
@@ -130,7 +132,11 @@ class PermissionHistoryServiceIntegrationTest {
 
   private UUID createUser() {
     User user =
-        new User(UUID.randomUUID().toString(), "test-issuer", "user@example.com", "Test User");
+        new User(
+            UUID.randomUUID().toString(),
+            authProperties.dev().issuer(),
+            "user@example.com",
+            "Test User");
     user.setOrganizationId(organizationId);
     UUID id = userRepository.save(user).getId();
     createdUserIds.add(id);

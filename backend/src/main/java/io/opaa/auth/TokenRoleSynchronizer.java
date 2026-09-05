@@ -75,12 +75,14 @@ public class TokenRoleSynchronizer {
             ? userRepository.withdrawSystemAdminIfAnotherRemains(user.getId(), target)
             : userRepository.changeRoleIfStill(user.getId(), current, target);
     if (written == 0) {
-      if (current == SystemRole.SYSTEM_ADMIN) {
+      // zero rows means either "the last administrator" or "a concurrent request already moved
+      // the role"; the re-read under the held lock tells the two apart
+      User stored = userRepository.findById(user.getId()).orElse(user);
+      if (current == SystemRole.SYSTEM_ADMIN && stored.getSystemRole() == SystemRole.SYSTEM_ADMIN) {
         refuseWithdrawal(user, provider, target);
         return user;
       }
-      // a concurrent request already moved the role - read what it wrote
-      return userRepository.findById(user.getId()).orElse(user);
+      return stored;
     }
     user.setSystemRole(target);
     recordChange(user, provider, current, target);

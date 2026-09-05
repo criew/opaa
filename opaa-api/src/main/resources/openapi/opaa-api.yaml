@@ -7707,7 +7707,15 @@ components:
         What a directory synchronisation run did. APPLIED and DRY_RUN both mean the run computed
         a valid diff; the ABORTED_* and UNREACHABLE values mean nothing was written on purpose -
         see #237.
-      enum: [APPLIED, DRY_RUN, ABORTED_THRESHOLD, ABORTED_EMPTY_RESULT, UNREACHABLE]
+      enum:
+        [
+          APPLIED,
+          DRY_RUN,
+          ABORTED_THRESHOLD,
+          ABORTED_EMPTY_RESULT,
+          ABORTED_NO_TRUSTED_PROVIDER,
+          UNREACHABLE,
+        ]
       example: APPLIED
 
     DirectorySyncGroupChange:
