@@ -442,7 +442,7 @@ Lebenszyklus wie `pnpm test` oben, mit denselben Bausteinen, aber anderem Ziel:
 - Playwright-Lauf mit einer eigenen Konfiguration
   ([`demo-smoke/playwright.config.ts`](./demo-smoke/playwright.config.ts), `testDir` zeigt auf
   `demo-smoke/tests/`), damit `pnpm exec playwright test` (ohne Pfadangabe, wie `pnpm test` und
-  `.github/workflows/e2e.yml` es aufrufen) das einzige Szenario dort niemals mitläuft.
+  `.github/workflows/e2e.yml` es aufrufen) die Szenarien dort niemals mitlaufen.
 
 **Szenario 1** (`demo-smoke/tests/demo-smoke.spec.ts`): Maria Weber meldet sich über die
 echte Keycloak-Anmeldung an (Autorisierungscode-Flow, nicht der `dev`-Modus — genau das prüft
