@@ -160,7 +160,7 @@ export default function MetadataExtractionSettingsSection({
         Extraktionsgüte
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-        Herkunft der Werte über {quality?.totalDocuments ?? 0} indizierte Dokumente dieser
+        Herkunft der Werte über {quality?.totalDocuments ?? 0} aufgenommene Dokumente dieser
         Bibliothek.
       </Typography>
       <Stack spacing={0.75}>

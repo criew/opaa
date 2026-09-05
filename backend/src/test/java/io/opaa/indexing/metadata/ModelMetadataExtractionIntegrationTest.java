@@ -37,6 +37,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -84,12 +85,7 @@ class ModelMetadataExtractionIntegrationTest {
   @BeforeEach
   void setUp() throws IOException {
     Files.createDirectories(classTempDir);
-    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
-    documentRepository.deleteAll();
-    jdbcTemplate.update(
-        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
-            + " email = 'model-extraction-it@example.com')");
-    jdbcTemplate.update("DELETE FROM users WHERE email = 'model-extraction-it@example.com'");
+    removeOwnRows();
     UUID userId = UUID.randomUUID();
     jdbcTemplate.update(
         "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
@@ -543,6 +539,26 @@ class ModelMetadataExtractionIntegrationTest {
         .progressForLibraries(List.of(library.getId()))
         .get(library.getId())
         .pendingDocuments();
+  }
+
+  @AfterEach
+  void tearDown() {
+    // Cleaned up afterwards as well, not only before: every class carrying this signature shares
+    // one database, and a leftover library of this class blocks another class's
+    // libraryRepository.deleteAll() through the RESTRICT of documents.library_id.
+    removeOwnRows();
+  }
+
+  /** One DELETE per table, in dependency order - a self-referencing parent chain and all. */
+  private void removeOwnRows() {
+    jdbcTemplate.execute("TRUNCATE TABLE vector_store, chunk_full_text");
+    // A single statement rather than deleteAll(): PostgreSQL checks the self-reference of
+    // documents.parent_document_id only after it, so a parent and its attachment go together.
+    jdbcTemplate.update("DELETE FROM documents");
+    jdbcTemplate.update(
+        "DELETE FROM knowledge_libraries WHERE owner_user_id IN (SELECT id FROM users WHERE"
+            + " email = 'model-extraction-it@example.com')");
+    jdbcTemplate.update("DELETE FROM users WHERE email = 'model-extraction-it@example.com'");
   }
 
   private void switchOn(boolean modelExtraction, boolean keywords) {

@@ -22,6 +22,7 @@ import io.opaa.library.LibraryAccessService;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,9 +51,7 @@ class LibraryMetadataExtractionServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    jdbcTemplate.update("DELETE FROM documents WHERE file_name LIKE 'guete-%'");
-    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE name LIKE 'Güte%'");
-    jdbcTemplate.update("DELETE FROM users WHERE email LIKE 'metadata-quality-%'");
+    removeOwnRows();
     owner = user("owner");
     viewer = user("viewer");
     library =
@@ -196,6 +195,23 @@ class LibraryMetadataExtractionServiceIntegrationTest {
     // The export is a bulk read of titles and values, so it stays at the management right.
     assertThatThrownBy(() -> extractionService.sampleOf(library.getId(), 100, viewer))
         .isInstanceOf(AccessDeniedException.class);
+  }
+
+  @AfterEach
+  void tearDown() {
+    // Also afterwards: this class shares its database with every other class of this signature, and
+    // a leftover library blocks their libraryRepository.deleteAll() through documents.library_id.
+    removeOwnRows();
+  }
+
+  private void removeOwnRows() {
+    jdbcTemplate.update("DELETE FROM document_keywords WHERE model_id = 'test-model'");
+    jdbcTemplate.update("DELETE FROM documents WHERE file_name LIKE 'guete-%'");
+    jdbcTemplate.update(
+        "DELETE FROM asset_grants WHERE granted_by_user_id IN (SELECT id FROM"
+            + " users WHERE email LIKE 'metadata-quality-%')");
+    jdbcTemplate.update("DELETE FROM knowledge_libraries WHERE name LIKE 'Güte%'");
+    jdbcTemplate.update("DELETE FROM users WHERE email LIKE 'metadata-quality-%'");
   }
 
   private Document indexed(String fileName) {
