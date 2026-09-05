@@ -8,7 +8,6 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -20,6 +19,7 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.AttachmentOutcome;
+import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -130,16 +130,14 @@ class UrlIndexingExecutorQuotaTest {
 
   private void stubProcessUrlFile(org.mockito.stubbing.Answer<FileProcessingResult> answer)
       throws IOException {
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
-            isNull(),
-            isNull(),
+    when(fileProcessingService.ingest(
+            DocumentIngests.that()
+                .file()
+                .in(library)
+                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .foundOn(null)
+                .childOf(null)
+                .match(),
             any()))
         .thenAnswer(answer);
   }
@@ -165,7 +163,7 @@ class UrlIndexingExecutorQuotaTest {
   }
 
   @Test
-  void aLibraryDeletedDuringTheRunFailsWithAGermanMessageNotTheJdbcOne() {
+  void aLibraryDeletedDuringTheRunFailsWithAGermanMessageNotTheJdbcOne() throws Exception {
     // A foreign key to the library breaking mid-run - simulated at the first job write, the
     // earliest point the frame sees such a failure - is translated by the frame, the same for
     // every connector.
@@ -192,7 +190,7 @@ class UrlIndexingExecutorQuotaTest {
     UUID jobId = UUID.randomUUID();
     stubProcessUrlFile(
         invocation -> {
-          AttachmentAccess access = invocation.getArgument(9);
+          AttachmentAccess access = invocation.getArgument(1);
           access.progress().recordAttachment(AttachmentOutcome.PROCESSED);
           access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
           access.progress().recordAttachment(AttachmentOutcome.SKIPPED);

@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -19,6 +18,7 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -122,16 +122,14 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
 
   private void stubProcessUrlFile(org.mockito.stubbing.Answer<FileProcessingResult> answer)
       throws IOException {
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.HTTP_DIRECTORY),
-            isNull(),
-            isNull(),
+    when(fileProcessingService.ingest(
+            DocumentIngests.that()
+                .file()
+                .in(library)
+                .from(DocumentSourceType.HTTP_DIRECTORY)
+                .foundOn(null)
+                .childOf(null)
+                .match(),
             any()))
         .thenAnswer(answer);
   }
@@ -152,7 +150,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
 
     stubProcessUrlFile(
         invocation -> {
-          AttachmentAccess access = invocation.getArgument(9);
+          AttachmentAccess access = invocation.getArgument(1);
           access.recordIndexedAttachment(keptPath, true);
           return FileProcessingResult.PROCESSED;
         });
@@ -209,7 +207,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
 
     stubProcessUrlFile(
         invocation -> {
-          AttachmentAccess access = invocation.getArgument(9);
+          AttachmentAccess access = invocation.getArgument(1);
           access.recordIndexedAttachment(failedPath, false);
           return FileProcessingResult.PROCESSED;
         });

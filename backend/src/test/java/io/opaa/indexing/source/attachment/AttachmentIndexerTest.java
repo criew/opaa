@@ -18,6 +18,7 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.AttachmentOutcome;
 import io.opaa.indexing.AttachmentProgressSink;
+import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
@@ -63,7 +64,7 @@ class AttachmentIndexerTest {
   private UUID parentDocumentId;
 
   @BeforeEach
-  void setUp() {
+  void setUp() throws Exception {
     attachmentDownloader = mock(BoundedDownloader.class);
     fileProcessingService = mock(FileProcessingService.class);
     LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
@@ -118,8 +119,7 @@ class AttachmentIndexerTest {
     when(attachmentDownloader.downloadBounded(
             any(), anyString(), anyString(), anyLong(), any(), any()))
         .thenReturn(new BoundedDownloader.DownloadedFile(downloaded, "text/plain"));
-    when(fileProcessingService.processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any()))
+    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
         .thenReturn(FileProcessingResult.FAILED);
 
     List<String> indexed =
@@ -180,8 +180,7 @@ class AttachmentIndexerTest {
     when(access.progress()).thenReturn(progress);
     Path extracted = tempDir.resolve("anlage.txt");
     Files.writeString(extracted, "Anhangsinhalt");
-    when(fileProcessingService.processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any()))
+    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
         .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
 
     List<String> indexed =
@@ -258,8 +257,7 @@ class AttachmentIndexerTest {
               return FileProcessingResult.PROCESSED;
             })
         .when(fileProcessingService)
-        .processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any());
+        .ingest(DocumentIngests.anyFile(), any());
 
     List<String> mailIndexed =
         shallowIndexer.indexAll(
@@ -304,8 +302,7 @@ class AttachmentIndexerTest {
               return FileProcessingResult.PROCESSED;
             })
         .when(fileProcessingService)
-        .processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any());
+        .ingest(DocumentIngests.anyFile(), any());
 
     List<String> feedIndexed =
         shallowIndexer.indexAll(
@@ -355,8 +352,7 @@ class AttachmentIndexerTest {
     when(access.sourceContext()).thenReturn(pageContext);
     Path downloaded = tempDir.resolve("notizen.txt");
     Files.writeString(downloaded, "Notizen");
-    when(fileProcessingService.processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any()))
+    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     List<String> indexed =
@@ -375,16 +371,19 @@ class AttachmentIndexerTest {
 
     assertThat(indexed).containsExactly("https://wiki.example/download/900/notizen.txt");
     verify(fileProcessingService)
-        .processUrlFile(
-            eq(downloaded),
-            eq("notizen.txt"),
-            eq("https://wiki.example/download/900/notizen.txt"),
-            eq("3"),
-            eq(7L),
-            eq(confluenceLibrary),
-            eq(DocumentSourceType.CONFLUENCE),
-            eq("https://wiki.example/pages/102"),
-            eq(parentDocumentId),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .file(downloaded)
+                .named("notizen.txt")
+                .at("https://wiki.example/download/900/notizen.txt")
+                .marked("3")
+                .sized(7L)
+                .in(confluenceLibrary)
+                .from(DocumentSourceType.CONFLUENCE)
+                .foundOn("https://wiki.example/pages/102")
+                .childOf(parentDocumentId)
+                .match(),
             eq(access));
     verify(access).recordIndexedAttachment("https://wiki.example/download/900/notizen.txt", true);
     verify(progress).recordAttachment(AttachmentOutcome.PROCESSED);
@@ -406,9 +405,7 @@ class AttachmentIndexerTest {
         new AttachmentSource.LocalFile(file, "anlage.txt", "/mail.eml/0/anlage.txt");
 
     for (FileProcessingResult result : FileProcessingResult.values()) {
-      when(fileProcessingService.processUrlFile(
-              any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any()))
-          .thenReturn(result);
+      when(fileProcessingService.ingest(DocumentIngests.anyFile(), any())).thenReturn(result);
       indexer.indexAll(
           access,
           List.of(source),

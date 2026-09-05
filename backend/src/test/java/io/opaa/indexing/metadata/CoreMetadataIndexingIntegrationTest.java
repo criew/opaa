@@ -8,6 +8,8 @@ import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
+import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.EmbeddingRateEstimator;
 import io.opaa.indexing.FileProcessingResult;
@@ -113,7 +115,9 @@ class CoreMetadataIndexingIntegrationTest {
     Path file = classTempDir.resolve("2026-03-12_Dienstanweisung_IT-Nutzung.pdf");
     writePdf(file, "Dienstanweisung zur IT-Nutzung", LocalDate.of(2025, 6, 30));
 
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
@@ -156,7 +160,9 @@ class CoreMetadataIndexingIntegrationTest {
     Path file = classTempDir.resolve("anlage.docx");
     writeDocx(file, "Vermerk zur Fristsetzung", LocalDate.of(2024, 11, 5));
 
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
@@ -194,7 +200,9 @@ class CoreMetadataIndexingIntegrationTest {
         Diese Satzung regelt die Befreiung von Gebühren.
         """);
 
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
@@ -215,7 +223,9 @@ class CoreMetadataIndexingIntegrationTest {
     Path file = classTempDir.resolve("01_verwaltungsgebuehrensatzung.pdf");
     writePdf(file, null, null);
 
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
@@ -236,7 +246,9 @@ class CoreMetadataIndexingIntegrationTest {
         "Dienstanweisung Nr. 1 - Identitätszweifel beim Ausweisantrag",
         "Diese Regelung gilt fuer alle Mitarbeitenden des Buergerbueros.");
 
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
@@ -265,7 +277,9 @@ class CoreMetadataIndexingIntegrationTest {
         Die Zulassungsstelle nimmt den Antrag persoenlich entgegen.
         """);
 
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
@@ -295,7 +309,9 @@ class CoreMetadataIndexingIntegrationTest {
         RF-KFZ-002 liegt vor Ort aus.
         """);
 
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
@@ -317,7 +333,9 @@ class CoreMetadataIndexingIntegrationTest {
             "Termine werden nach der Dienstanweisung zur Terminvergabe vergeben.",
             "Die Gebuehr ist bei Antragstellung faellig."));
 
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
@@ -334,7 +352,9 @@ class CoreMetadataIndexingIntegrationTest {
     Path file = classTempDir.resolve("21_onboarding-buergerbuero.pptx");
     writePptx(file, "Onboarding Buergerbuero", "Ablauf der ersten Woche im Buergerbuero.");
 
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
@@ -352,18 +372,17 @@ class CoreMetadataIndexingIntegrationTest {
    * headline (no file name) may become a Dokumentart, and its headline is no Stand either.
    */
   @Test
-  void anRssEntryNeitherReadsItsBodyAsAKopfbereichNorItsHeadlineAsAFileName() {
+  void anRssEntryNeitherReadsItsBodyAsAKopfbereichNorItsHeadlineAsAFileName() throws IOException {
     assertThat(
-            fileProcessingService.processRssEntry(
-                // Two traps in the lead: the Kompositum "Hundesteuersatzung" and "Vortrag", a
-                // seeded synonym of PRAESENTATION; two more in the headline: the Kompositum again
-                // and a bare year that would look like a Stand.
-                "Der Rat hat in seiner Sitzung die neue Hundesteuersatzung beschlossen. Der"
-                    + " Vortrag dazu findet am Montag statt.",
-                "Rat beschliesst Hundesteuersatzung fuer 2024",
-                "https://feed.example/rat-beschluss",
-                "2026-03-12T10:00:00Z",
-                targetLibrary))
+            fileProcessingService.ingest(
+                DocumentIngests.rssEntry(
+                    targetLibrary,
+                    "Der Rat hat in seiner Sitzung die neue Hundesteuersatzung beschlossen. Der"
+                        + " Vortrag dazu findet am Montag statt.",
+                    "Rat beschliesst Hundesteuersatzung fuer 2024",
+                    "https://feed.example/rat-beschluss",
+                    "2026-03-12T10:00:00Z"),
+                null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
@@ -380,17 +399,19 @@ class CoreMetadataIndexingIntegrationTest {
    * Dokumentart nor a Stand, exactly as an RSS headline is not. It stays the title.
    */
   @Test
-  void aConfluencePageTitleIsNoFileNameSoItYieldsNeitherDokumentartNorDatum() {
+  void aConfluencePageTitleIsNoFileNameSoItYieldsNeitherDokumentartNorDatum() throws IOException {
     assertThat(
-            fileProcessingService.processConfluencePage(
-                "<h1>Uebersicht</h1><p>Die Verwaltung erhebt Entgelte fuer Amtshandlungen im"
-                    + " Buergerbuero.</p>",
-                "Gebuehrensatzung 2024",
-                "https://wiki.example/pages/viewpage.action?pageId=4711",
-                "7",
-                null,
-                new SourceDocumentContext("BAU", "Handbuch"),
-                targetLibrary))
+            fileProcessingService.ingest(
+                DocumentIngests.confluencePage(
+                    targetLibrary,
+                    "<h1>Uebersicht</h1><p>Die Verwaltung erhebt Entgelte fuer Amtshandlungen im"
+                        + " Buergerbuero.</p>",
+                    "Gebuehrensatzung 2024",
+                    "https://wiki.example/pages/viewpage.action?pageId=4711",
+                    "7",
+                    null,
+                    new SourceDocumentContext("BAU", "Handbuch")),
+                null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
@@ -408,17 +429,19 @@ class CoreMetadataIndexingIntegrationTest {
    * declares, and the reason the title never has to supply one.
    */
   @Test
-  void aConfluencePageTakesItsStandFromThePageVersionNotFromItsTitle() {
+  void aConfluencePageTakesItsStandFromThePageVersionNotFromItsTitle() throws IOException {
     assertThat(
-            fileProcessingService.processConfluencePage(
-                "<h1>Uebersicht</h1><p>Die Verwaltung erhebt Entgelte fuer Amtshandlungen im"
-                    + " Buergerbuero.</p>",
-                "Gebuehrensatzung 2024",
-                "https://wiki.example/pages/viewpage.action?pageId=4712",
-                "7",
-                java.time.Instant.parse("2026-03-12T10:00:00Z"),
-                new SourceDocumentContext("BAU", "Handbuch"),
-                targetLibrary))
+            fileProcessingService.ingest(
+                DocumentIngests.confluencePage(
+                    targetLibrary,
+                    "<h1>Uebersicht</h1><p>Die Verwaltung erhebt Entgelte fuer Amtshandlungen im"
+                        + " Buergerbuero.</p>",
+                    "Gebuehrensatzung 2024",
+                    "https://wiki.example/pages/viewpage.action?pageId=4712",
+                    "7",
+                    java.time.Instant.parse("2026-03-12T10:00:00Z"),
+                    new SourceDocumentContext("BAU", "Handbuch")),
+                null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     Document document = documentRepository.findAll().getFirst();
@@ -445,7 +468,7 @@ class CoreMetadataIndexingIntegrationTest {
         Hinweise zum Ausfüllen.
         """);
 
-    fileProcessingService.processFile(file, targetLibrary);
+    fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
 
     Document document = documentRepository.findAll().getFirst();
     CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
@@ -459,7 +482,7 @@ class CoreMetadataIndexingIntegrationTest {
       throws IOException {
     Path file = classTempDir.resolve("2026-03-12_Dienstanweisung_Homeoffice.pdf");
     writePdf(file, null, LocalDate.of(2025, 6, 30));
-    fileProcessingService.processFile(file, targetLibrary);
+    fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
     Document document = documentRepository.findAll().getFirst();
     List<UUID> chunkIdsBefore = chunkIds(document.getId());
 
@@ -493,7 +516,7 @@ class CoreMetadataIndexingIntegrationTest {
   void anEmptiedFieldDisappearsFromDocumentAndChunksOnReextraction() throws IOException {
     Path file = classTempDir.resolve("Protokoll_Sitzung.pdf");
     writePdf(file, null, null);
-    fileProcessingService.processFile(file, targetLibrary);
+    fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
     Document document = documentRepository.findAll().getFirst();
     assertThat(documentMetadataService.coreMetadataFor(document.getId()).documentTypeCode())
         .isEqualTo("PROTOKOLL");
@@ -521,7 +544,7 @@ class CoreMetadataIndexingIntegrationTest {
       throws IOException {
     Path file = classTempDir.resolve("Protokoll_Sitzung.pdf");
     writePdf(file, null, null);
-    fileProcessingService.processFile(file, targetLibrary);
+    fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
     Document document = documentRepository.findAll().getFirst();
     jdbcTemplate.update(
         "UPDATE documents SET file_name = 'Vermerk_2020-01-01.pdf', metadata_extraction_version ="
@@ -570,7 +593,7 @@ class CoreMetadataIndexingIntegrationTest {
   void aDerivedValueSurvivesAnEmptyDeterministicResultButYieldsToARealOne() throws IOException {
     Path file = classTempDir.resolve("anlage.pdf");
     writePdf(file, null, null);
-    fileProcessingService.processFile(file, targetLibrary);
+    fileProcessingService.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null);
     Document document = documentRepository.findAll().getFirst();
     valueRepository.save(
         DocumentMetadataValue.derived(

@@ -58,6 +58,25 @@ public final class SupportedDocumentFormats {
           Map.entry("text/html", ".html"));
 
   /**
+   * The canonical media type of each accepted extension - the inverse of {@link
+   * #EXTENSIONS_BY_CONTENT_TYPE}, plus the two mail formats that map has no header for. What a
+   * document row stores as {@code content_type} once its format is decided: Tika's raw detection
+   * would report {@code .md} as {@code text/plain} and a text file with header lines as {@code
+   * message/rfc822}, and downstream consumers (the download endpoint, the Markdown preview) compare
+   * against the canonical type.
+   */
+  private static final Map<String, String> CONTENT_TYPES_BY_EXTENSION = contentTypesByExtension();
+
+  private static Map<String, String> contentTypesByExtension() {
+    Map<String, String> byExtension = new java.util.HashMap<>();
+    EXTENSIONS_BY_CONTENT_TYPE.forEach(
+        (contentType, extension) -> byExtension.put(extension, contentType));
+    byExtension.put(".eml", "message/rfc822");
+    byExtension.put(".msg", "application/vnd.ms-outlook");
+    return Map.copyOf(byExtension);
+  }
+
+  /**
    * Extensions whose content is only checked for being text at all. {@code .md}, {@code .txt} and
    * {@code .csv} are barely distinguishable by content (a CSV file is valid Markdown), and Tika's
    * {@code message/rfc822} detector is a textual heuristic rather than a byte signature, so {@code
@@ -132,6 +151,17 @@ public final class SupportedDocumentFormats {
     }
     String mediaType = contentType.split(";", 2)[0].strip().toLowerCase(Locale.ROOT);
     return EXTENSIONS_BY_CONTENT_TYPE.get(mediaType);
+  }
+
+  /**
+   * The canonical media type of {@code extension} (lower-cased, with its dot), or {@code null} for
+   * an extension this system does not accept or an absent one.
+   */
+  public static String contentTypeForExtension(String extension) {
+    if (extension == null) {
+      return null;
+    }
+    return CONTENT_TYPES_BY_EXTENSION.get(extension.toLowerCase(Locale.ROOT));
   }
 
   /**

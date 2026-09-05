@@ -247,12 +247,7 @@ public class PipelineReindexService {
       // Re-runs the current pipeline over an attachment re-extracted from its root ancestor, so a
       // raised sub-pipeline version (e.g. PDF) reaches an attachment inside a Mail without waiting
       // for the Mail file itself to change.
-      advanced =
-          sourceAccess.withReextractedAttachment(
-              document,
-              file ->
-                  fileProcessingService.reindexStoredDocument(
-                      document.getId(), file, attachmentAccessFor(document)));
+      advanced = sourceAccess.withReextractedAttachment(document, file -> reindex(document, file));
     } else {
       Path localFile = sourceAccess.localSourceFile(document);
       if (localFile == null) {
@@ -262,9 +257,7 @@ public class PipelineReindexService {
             documentId);
         return Advance.SKIPPED;
       }
-      advanced =
-          fileProcessingService.reindexStoredDocument(
-              documentId, localFile, attachmentAccessFor(document));
+      advanced = reindex(document, localFile);
     }
     if (!advanced) {
       return Advance.SKIPPED;
@@ -299,19 +292,50 @@ public class PipelineReindexService {
   }
 
   /**
-   * The {@link AttachmentAccess} a re-index hands to {@code
-   * FileProcessingService#reindexStoredDocument} so attachments a re-run pipeline discovers reach
-   * the generalized attachment path - FILESYSTEM and UPLOAD, the two source types whose files this
-   * machine can re-read. There is no job here, so events are only logged and no progress counted.
+   * Re-runs the current pipeline over {@code document}'s file {@code file} and replaces its chunks
+   * under the same row id, so citations survive. A document that cannot be re-chunked keeps its
+   * chunks and its {@code INDEXED} row (ingestion-pipelines.md, "Übergabepunkt") - that is {@link
+   * DocumentIngest.Builder#reindex}'s contract, and a failure is reported as "not re-indexed".
+   *
+   * @return whether the document was actually re-indexed
    */
-  private AttachmentAccess attachmentAccessFor(Document document) {
-    if ((document.getSourceType() != DocumentSourceType.FILESYSTEM
-            && document.getSourceType() != DocumentSourceType.UPLOAD)
-        || document.getLibraryId() == null) {
-      return null;
-    }
-    KnowledgeLibrary library = libraryRepository.findById(document.getLibraryId()).orElse(null);
+  private boolean reindex(Document document, Path file) {
+    KnowledgeLibrary library =
+        document.getLibraryId() == null
+            ? null
+            : libraryRepository.findById(document.getLibraryId()).orElse(null);
     if (library == null) {
+      log.warn(
+          "Skipping document {} in the pipeline re-index: its library is gone", document.getId());
+      return false;
+    }
+    try {
+      return fileProcessingService.ingest(
+              DocumentIngest.builder(library)
+                  .file(file)
+                  .filePath(document.getFilePath())
+                  .fileName(document.getFileName())
+                  .sourceType(document.getSourceType())
+                  .changeMarker(document.getLastModifiedRemote())
+                  .reindex()
+                  .build(),
+              attachmentAccessFor(document, library))
+          == FileProcessingResult.PROCESSED;
+    } catch (Exception e) {
+      log.error("Failed to re-index document {}", document.getFileName(), e);
+      return false;
+    }
+  }
+
+  /**
+   * The {@link AttachmentAccess} a re-index hands to {@link FileProcessingService#ingest} so
+   * attachments a re-run pipeline discovers reach the generalized attachment path - FILESYSTEM and
+   * UPLOAD, the two source types whose files this machine can re-read. There is no job here, so
+   * events are only logged and no progress counted.
+   */
+  private static AttachmentAccess attachmentAccessFor(Document document, KnowledgeLibrary library) {
+    if (document.getSourceType() != DocumentSourceType.FILESYSTEM
+        && document.getSourceType() != DocumentSourceType.UPLOAD) {
       return null;
     }
     return new StandaloneAttachmentAccess(library, "Pipeline re-index");

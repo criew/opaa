@@ -6,7 +6,6 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -23,6 +22,7 @@ import io.opaa.indexing.AttachmentOutcome;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.EmbeddingRateEstimator;
@@ -81,7 +81,7 @@ class AsyncIndexingExecutorTest {
   private KnowledgeLibrary library;
 
   @BeforeEach
-  void setUp() {
+  void setUp() throws Exception {
     fileProcessingService = mock(FileProcessingService.class);
     indexingJobService = mock(IndexingJobService.class);
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
@@ -133,7 +133,8 @@ class AsyncIndexingExecutorTest {
     Path file = documentDir.resolve("over-quota.txt");
     Files.writeString(file, "content");
 
-    when(fileProcessingService.processFile(eq(file), eq(library), isNull(), any()))
+    when(fileProcessingService.ingest(
+            DocumentIngests.that().file().file(file).in(library).inFolder(null).match(), any()))
         .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
     when(storageQuotaService.quotaExceededMessage(library.getId()))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
@@ -159,7 +160,8 @@ class AsyncIndexingExecutorTest {
     Path file = documentDir.resolve("scan.txt");
     Files.writeString(file, "content");
 
-    when(fileProcessingService.processFile(eq(file), eq(library), isNull(), any()))
+    when(fileProcessingService.ingest(
+            DocumentIngests.that().file().file(file).in(library).inFolder(null).match(), any()))
         .thenReturn(FileProcessingResult.NO_EXTRACTABLE_TEXT);
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
@@ -182,7 +184,8 @@ class AsyncIndexingExecutorTest {
     Path file = documentDir.resolve("corrupt.txt");
     Files.writeString(file, "content");
 
-    when(fileProcessingService.processFile(eq(file), eq(library), isNull(), any()))
+    when(fileProcessingService.ingest(
+            DocumentIngests.that().file().file(file).in(library).inFolder(null).match(), any()))
         .thenReturn(FileProcessingResult.FAILED);
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
@@ -252,7 +255,6 @@ class AsyncIndexingExecutorTest {
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
             new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, ""),
-            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
             io.opaa.indexing.TestDocumentMetadataServices.returningEmpty());
 
     FilesystemPathAllowlist realFlowAllowlist = mock(FilesystemPathAllowlist.class);
@@ -282,7 +284,8 @@ class AsyncIndexingExecutorTest {
     Path file = documentDir.resolve("ok.txt");
     Files.writeString(file, "content");
 
-    when(fileProcessingService.processFile(eq(file), eq(library), isNull(), any()))
+    when(fileProcessingService.ingest(
+            DocumentIngests.that().file().file(file).in(library).inFolder(null).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
@@ -309,10 +312,11 @@ class AsyncIndexingExecutorTest {
             library.getId(), DocumentSourceType.FILESYSTEM))
         .thenReturn(List.of(mailDoc, keptDoc, removedDoc));
 
-    when(fileProcessingService.processFile(eq(mailFile), eq(library), isNull(), any()))
+    when(fileProcessingService.ingest(
+            DocumentIngests.that().file().file(mailFile).in(library).inFolder(null).match(), any()))
         .thenAnswer(
             invocation -> {
-              AttachmentAccess access = invocation.getArgument(3);
+              AttachmentAccess access = invocation.getArgument(1);
               access.recordIndexedAttachment(keptPath, true);
               return FileProcessingResult.PROCESSED;
             });
@@ -349,7 +353,8 @@ class AsyncIndexingExecutorTest {
             library.getId(), DocumentSourceType.FILESYSTEM))
         .thenReturn(List.of(grandchildDoc, mailDoc, innerMailDoc));
 
-    when(fileProcessingService.processFile(eq(mailFile), eq(library), isNull(), any()))
+    when(fileProcessingService.ingest(
+            DocumentIngests.that().file().file(mailFile).in(library).inFolder(null).match(), any()))
         .thenReturn(FileProcessingResult.SKIPPED);
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
@@ -379,10 +384,11 @@ class AsyncIndexingExecutorTest {
             library.getId(), DocumentSourceType.FILESYSTEM))
         .thenReturn(List.of(grandchildDoc, mailDoc, innerMailDoc));
 
-    when(fileProcessingService.processFile(eq(mailFile), eq(library), isNull(), any()))
+    when(fileProcessingService.ingest(
+            DocumentIngests.that().file().file(mailFile).in(library).inFolder(null).match(), any()))
         .thenAnswer(
             invocation -> {
-              AttachmentAccess access = invocation.getArgument(3);
+              AttachmentAccess access = invocation.getArgument(1);
               // The inner mail was confirmed unchanged (SKIPPED), not re-parsed.
               access.recordIndexedAttachment(innerMailPath, false);
               return FileProcessingResult.PROCESSED;
@@ -423,10 +429,11 @@ class AsyncIndexingExecutorTest {
     Path mailFile = documentDir.resolve("mail.eml");
     Files.writeString(mailFile, "mail content");
     UUID jobId = UUID.randomUUID();
-    when(fileProcessingService.processFile(eq(mailFile), eq(library), isNull(), any()))
+    when(fileProcessingService.ingest(
+            DocumentIngests.that().file().file(mailFile).in(library).inFolder(null).match(), any()))
         .thenAnswer(
             invocation -> {
-              AttachmentAccess access = invocation.getArgument(3);
+              AttachmentAccess access = invocation.getArgument(1);
               access.progress().recordAttachment(AttachmentOutcome.PROCESSED);
               access.progress().recordAttachment(AttachmentOutcome.PROCESSED);
               access.progress().recordAttachment(AttachmentOutcome.SKIPPED);

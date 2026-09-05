@@ -122,7 +122,9 @@ public class ContextPrefixRerunService {
       // than guessed. A document written before it was recorded counts as eligible: that is what
       // every ingest path but the headline-less RSS entry was, and that one has no title either.
       boolean eligible = !Boolean.FALSE.equals(document.getContextPrefixEligible());
-      String title = effectiveTitle(chunkMetadata, document);
+      String title =
+          ChunkContextPrefix.titleAtRest(
+              eligible, chunkMetadata.contextTitle(), document.getContextPrefixTitle());
       boolean documentWasSplit = stored.size() >= 2;
       List<org.springframework.ai.document.Document> rebuilt =
           stored.stream()
@@ -134,24 +136,16 @@ public class ContextPrefixRerunService {
       // Only after the replacement exists: a failed embedding call must leave the document pending
       // rather than mark it done with its old chunks.
       documentRepository.recordContextPrefix(
-          documentId, chunkMetadata.contextPrefixStamp(title), eligible);
+          documentId,
+          chunkMetadata.contextPrefixStamp(title),
+          eligible,
+          document.getContextPrefixTitle());
       return Advance.PROCESSED;
     } catch (RuntimeException e) {
       log.warn(
           "Skipping document {} in the context prefix rerun: re-embedding failed", documentId, e);
       return Advance.SKIPPED;
     }
-  }
-
-  /** The Kernfeld Titel, or the humanised file name the prefix falls back to at ingest time. */
-  private static String effectiveTitle(DocumentChunkMetadata chunkMetadata, Document document) {
-    String coreTitle = chunkMetadata.contextTitle();
-    if (coreTitle != null && !coreTitle.isBlank()) {
-      return coreTitle;
-    }
-    return document.getFileName() == null
-        ? null
-        : ChunkContextTitle.deriveTitle(document.getFileName());
   }
 
   /**

@@ -114,10 +114,13 @@ public class DocumentPipelineRegistry {
    *     this transient case as a confirmed "no extension".
    */
   public record Routed(
-      DocumentPipeline pipeline, String detectedExtension, boolean formatDetectionFailed) {
+      DocumentPipeline pipeline,
+      String detectedExtension,
+      boolean formatDetectionFailed,
+      String detectedMediaType) {
 
     public Routed(DocumentPipeline pipeline, String detectedExtension) {
-      this(pipeline, detectedExtension, false);
+      this(pipeline, detectedExtension, false, null);
     }
   }
 
@@ -139,7 +142,7 @@ public class DocumentPipelineRegistry {
       return routedPipelineFor(fileName, SupportedDocumentFormats.detectMediaType(file));
     } catch (IOException e) {
       log.warn("Could not read {} to route it to a pipeline, using the fallback pipeline", file, e);
-      return new Routed(fallback, null, true);
+      return new Routed(fallback, null, true, null);
     }
   }
 
@@ -154,15 +157,15 @@ public class DocumentPipelineRegistry {
     SupportedDocumentFormats.ContentDecision decision =
         SupportedDocumentFormats.decideForFileName(fileName, detectedMediaType);
     if (!decision.supported()) {
-      return new Routed(fallback, null);
+      return new Routed(fallback, null, false, detectedMediaType);
     }
     DocumentPipeline pipeline = byFormat.getOrDefault(decision.detectedExtension(), fallback);
-    return new Routed(pipeline, decision.detectedExtension());
+    return new Routed(pipeline, decision.detectedExtension(), false, detectedMediaType);
   }
 
   /**
    * The pipeline for content that never was a file and therefore has no detectable format - an RSS
-   * entry's already-extracted main text (see {@code FileProcessingService#processRssEntry}).
+   * entry's already-extracted main text (see {@code FileProcessingService#ingest}).
    */
   public DocumentPipeline fallbackPipeline() {
     return fallback;

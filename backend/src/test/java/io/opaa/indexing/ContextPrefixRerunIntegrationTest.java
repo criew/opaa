@@ -19,6 +19,7 @@ import io.opaa.indexing.metadata.MetadataChangeImpact;
 import io.opaa.indexing.metadata.MetadataChangeKind;
 import io.opaa.indexing.metadata.MetadataFieldRef;
 import io.opaa.indexing.metadata.MetadataValueInput;
+import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.library.AssetGrant;
 import io.opaa.library.AssetGrantRepository;
 import io.opaa.library.KnowledgeLibrary;
@@ -264,6 +265,35 @@ class ContextPrefixRerunIntegrationTest {
   }
 
   @Test
+  void aBestandslaufThatFirstFillsTheTitleHandsTheDocumentToTheNachlauf() throws IOException {
+    Document document = indexed("bestandslauf.md");
+    String titleAtIngest = metadataService.coreMetadataFor(document.getId()).title();
+
+    // A Bestandslauf that arrives at the same title as the ingest changes no prefix at all.
+    metadataService.reextractFromProperties(
+        documentRepository.findById(document.getId()).orElseThrow(),
+        DocumentProperties.EMPTY.withTitle(titleAtIngest));
+    assertThat(rerunService.pendingDocuments(library.getId()))
+        .as("an extraction that changes no prefix part costs nothing")
+        .isZero();
+
+    // The same run, this time reading a different title out of the document: the prefix of every
+    // chunk changes, so the document belongs to the Nachlauf - the Bestandslauf embeds nothing.
+    metadataService.reextractFromProperties(
+        documentRepository.findById(document.getId()).orElseThrow(),
+        DocumentProperties.EMPTY.withTitle("Gebührenordnung Meldewesen"));
+
+    assertThat(rerunService.pendingDocuments(library.getId())).isEqualTo(1);
+    assertThat(fullTextMatches(document, "Meldewesen"))
+        .as("the Bestandslauf writes values and chunk keys, never an embedding")
+        .isZero();
+
+    rerunService.rerunBatch(Organization.DEFAULT_ID, library.getId(), 10);
+
+    assertThat(fullTextMatches(document, "Meldewesen")).isEqualTo(chunkCount(document));
+  }
+
+  @Test
   void aReRunDocumentCarriesTheSameIndexedTextAsAFreshlyIngestedOne() throws IOException {
     LibraryMetadataFieldValue value = prefixEffectiveFassungField();
     Document reRun = indexed("gleichstand-a.md");
@@ -352,11 +382,18 @@ class ContextPrefixRerunIntegrationTest {
    * Re-runs the ingest over an already indexed file, so its chunks are written by {@code
    * storeChunks} with the value in place - the comparison partner for a re-run document.
    */
-  private void reindexFromScratch(Document document, String fileName) {
+  private void reindexFromScratch(Document document, String fileName) throws IOException {
     assertThat(
-            fileProcessingService.reindexStoredDocument(
-                document.getId(), classTempDir.resolve(fileName), null))
-        .isTrue();
+            fileProcessingService.ingest(
+                DocumentIngest.builder(library)
+                    .file(classTempDir.resolve(fileName))
+                    .filePath(document.getFilePath())
+                    .fileName(document.getFileName())
+                    .sourceType(document.getSourceType())
+                    .reindex()
+                    .build(),
+                null))
+        .isEqualTo(FileProcessingResult.PROCESSED);
   }
 
   /** The text both indexes actually see: the chunk's prefix in front of its stored text. */
@@ -432,7 +469,15 @@ class ContextPrefixRerunIntegrationTest {
         Sozialgesetzbuch beziehen und dies durch einen aktuellen Bescheid nachweisen.
         """,
         StandardCharsets.UTF_8);
-    assertThat(fileProcessingService.processFile(file, library))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.builder(library)
+                    .file(file)
+                    .filePath(file.toString())
+                    .fileName(fileName)
+                    .sourceType(DocumentSourceType.FILESYSTEM)
+                    .build(),
+                null))
         .isEqualTo(FileProcessingResult.PROCESSED);
     return documentRepository.findAll().stream()
         .filter(document -> fileName.equals(document.getFileName()))

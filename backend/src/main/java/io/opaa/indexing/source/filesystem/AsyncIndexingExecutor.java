@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.filesystem;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -153,7 +154,9 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
         UUID folderId = materializeFolder(documentDir, file, folderMirror);
         folderMirror.markSeen(folderId);
         FileProcessingResult result =
-            fileProcessingService.processFile(file, targetLibrary, folderId, attachmentAccess);
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).folder(folderId).build(),
+                attachmentAccess);
         if (run.recordOutcome(result, fileName)) {
           run.markReprocessed(filePath);
           log.info("Indexing completed: {}", fileName);

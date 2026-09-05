@@ -2,6 +2,7 @@ package io.opaa.indexing.source.attachment;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.indexing.AttachmentOutcome;
+import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.FileProcessingOutcomes;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -15,7 +16,6 @@ import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -48,8 +48,8 @@ public class AttachmentIndexer {
    * How many levels of attachment-in-attachment recursion the current thread is at - {@code null}
    * outside of any {@link #indexAll} call. An attachment whose own pipeline reports further {@code
    * discoveredAttachments} (e.g. a nested {@code .eml}) re-enters this class synchronously, through
-   * {@code FileProcessingService#processUrlFile}'s own attachment handling, on the same thread. The
-   * depth cutoff is this class's alone (ADR-0022, Entscheidung 6), never a pipeline's.
+   * {@code FileProcessingService#ingest}'s own attachment handling, on the same thread. The depth
+   * cutoff is this class's alone (ADR-0022, Entscheidung 6), never a pipeline's.
    */
   private static final ThreadLocal<Integer> RECURSION_DEPTH = new ThreadLocal<>();
 
@@ -255,14 +255,10 @@ public class AttachmentIndexer {
                 download.url());
       }
 
-      // Files.probeContentType inside FileProcessingService#processUrlFile probes the physical
-      // temp file, which for a GSB attachment carries no extension (".tmp") - renaming it to match
-      // the resolved name's extension lets that probe succeed.
-      Path indexedFile = withMatchingExtension(downloaded.path(), fileName);
-      long size = Files.size(indexedFile);
+      long size = Files.size(downloaded.path());
       return storeAttachment(
           access,
-          indexedFile,
+          downloaded.path(),
           fileName,
           download.url(),
           null,
@@ -412,8 +408,8 @@ public class AttachmentIndexer {
   }
 
   /**
-   * The {@link FileProcessingService#processUrlFile} call and outcome handling both branches share.
-   * {@code remoteVersion} is the source's change marker for the attachment ({@link
+   * The {@link FileProcessingService#ingest} call and outcome handling both branches share. {@code
+   * remoteVersion} is the source's change marker for the attachment ({@link
    * AttachmentSource.LocalFile#remoteVersion()}), {@code null} for a download; {@code access}
    * carries the parent's {@link AttachmentAccess#sourceContext()} to the attachment.
    *
@@ -433,16 +429,17 @@ public class AttachmentIndexer {
       DocumentSourceType sourceType) {
     try {
       FileProcessingResult result =
-          fileProcessingService.processUrlFile(
-              localFile,
-              fileName,
-              filePathIdentity,
-              remoteVersion,
-              size,
-              access.targetLibrary(),
-              sourceType,
-              parentPath,
-              parentDocumentId,
+          fileProcessingService.ingest(
+              DocumentIngest.builder(access.targetLibrary())
+                  .file(localFile, size)
+                  .filePath(filePathIdentity)
+                  .fileName(fileName)
+                  .sourceType(sourceType)
+                  .parentDocumentId(parentDocumentId)
+                  .sourceEntryUrl(parentPath)
+                  .context(access.sourceContext())
+                  .changeMarker(remoteVersion)
+                  .build(),
               access);
       FileProcessingOutcomes.record(
           access.events(),
@@ -510,32 +507,6 @@ public class AttachmentIndexer {
     String baseName =
         suggestedFileName == null || suggestedFileName.isBlank() ? "attachment" : suggestedFileName;
     return baseName + extension;
-  }
-
-  /**
-   * Renames {@code tempFile} to a new temp file carrying {@code fileName}'s own extension, when it
-   * does not already have it. A no-op when the extension already matches, which covers every {@link
-   * AttachmentProfile#GENERIC} attachment.
-   */
-  private static Path withMatchingExtension(Path tempFile, String fileName) throws IOException {
-    String desiredSuffix = extractExtension(fileName);
-    if (tempFile.toString().toLowerCase(Locale.ROOT).endsWith(desiredSuffix)) {
-      return tempFile;
-    }
-    Path renamed = Files.createTempFile("opaa-", desiredSuffix);
-    Files.move(tempFile, renamed, StandardCopyOption.REPLACE_EXISTING);
-    return renamed;
-  }
-
-  private static String extractExtension(String fileName) {
-    if (fileName == null) {
-      return ".tmp";
-    }
-    int dotIndex = fileName.lastIndexOf('.');
-    if (dotIndex >= 0) {
-      return fileName.substring(dotIndex).toLowerCase(Locale.ROOT);
-    }
-    return ".tmp";
   }
 
   /** Whether {@code contentType} (the raw {@code Content-Type} header value) denotes HTML. */

@@ -2,6 +2,7 @@ package io.opaa.indexing.metadata;
 
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.MetadataOrigin;
+import io.opaa.indexing.ChunkContextPrefix;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.VectorChunkStore;
@@ -19,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -237,6 +239,9 @@ public class DocumentMetadataService {
           DocumentChunkMetadata chunkMetadata = chunkMetadataFor(document);
           vectorChunkStore.updateDocumentMetadata(
               document.getId(), chunkMetadata.values(), chunkMetadata.managedKeys());
+          // An extraction that first fills the Kernfeld Titel changes the prefix of every chunk -
+          // no less than a manual correction does, and it must reach the Nachlauf the same way.
+          markContextPrefixStaleIfChanged(document.getId());
           return core;
         });
   }
@@ -342,7 +347,7 @@ public class DocumentMetadataService {
           input.applyTo(target);
           valueRepository.save(target);
           propagateToChunks(documentId, field);
-          markContextPrefixStale(documentId, field);
+          markContextPrefixStaleIfChanged(documentId);
           return new ManualValueChange(before, MetadataValueSnapshot.of(target), true);
         });
   }
@@ -370,7 +375,7 @@ public class DocumentMetadataService {
             documentRepository.clearMetadataExtractionVersion(documentId);
           }
           propagateToChunks(documentId, field);
-          markContextPrefixStale(documentId, field);
+          markContextPrefixStaleIfChanged(documentId);
           return new ManualValueChange(before, null, true);
         });
   }
@@ -396,40 +401,35 @@ public class DocumentMetadataService {
   }
 
   /**
-   * Hands {@code documentId} to the Kontextpraefix-Nachlauf when {@code field} is prefix-effective
-   * for its library (metadata-schema.md, "Nachlauf im Betrieb"): a corrected value changes the
-   * prefix of every chunk, and re-embedding is an explicit release, never a side effect of a
-   * correction. A field that only filters or only appears in the Beleg leaves the version alone.
+   * Hands {@code documentId} to the Kontextpraefix-Nachlauf when its prefix actually changed
+   * (metadata-schema.md, "Nachlauf im Betrieb") - compared, not guessed from the field: the stored
+   * Abdruck against the one this document's values would produce now. Re-embedding stays an
+   * explicit release, never a side effect of a value change; a field that only filters or only
+   * appears in the Beleg leaves the Abdruck alone because it does not enter it.
    */
-  private void markContextPrefixStale(UUID documentId, MetadataFieldRef field) {
+  private void markContextPrefixStaleIfChanged(UUID documentId) {
     Document document = documentRepository.findById(documentId).orElse(null);
     if (document == null || document.getLibraryId() == null) {
       return;
     }
-    if (!isContextPrefixEffective(document.getLibraryId(), field)) {
-      return;
+    valueRepository.flush();
+    DocumentChunkMetadata chunkMetadata =
+        chunkMetadataOf(document, valueRepository.findByDocumentId(documentId));
+    if (!Objects.equals(
+        currentContextPrefixStamp(document, chunkMetadata), document.getContextPrefixStamp())) {
+      documentRepository.clearContextPrefixStamp(documentId);
     }
-    documentRepository.clearContextPrefixStamp(documentId);
   }
 
-  /** Whether {@code field} contributes to the Kontextpraefix of {@code libraryId}'s chunks. */
-  private boolean isContextPrefixEffective(UUID libraryId, MetadataFieldRef field) {
-    if (field.isLibraryField()) {
-      return libraryFieldRepository
-          .findById(field.libraryFieldId())
-          .map(LibraryMetadataField::isContextPrefixEnabled)
-          .orElse(false);
-    }
-    if (CoreMetadataField.TITLE.key().equals(field.key())) {
-      return true;
-    }
-    KnowledgeLibrary library = libraryRepository.findById(libraryId).orElse(null);
-    if (library == null) {
-      return false;
-    }
-    return CoreMetadataField.DOCUMENT_TYPE.key().equals(field.key())
-        ? library.isCoreContextPrefixDocumentType()
-        : library.isCoreContextPrefixDocumentDate();
+  /** The Abdruck this document's chunks would carry if they were written now. */
+  private static String currentContextPrefixStamp(
+      Document document, DocumentChunkMetadata chunkMetadata) {
+    String title =
+        ChunkContextPrefix.titleAtRest(
+            !Boolean.FALSE.equals(document.getContextPrefixEligible()),
+            chunkMetadata.contextTitle(),
+            document.getContextPrefixTitle());
+    return chunkMetadata.contextPrefixStamp(title);
   }
 
   /** Every stored row of {@code documentId} as detached snapshots, in no particular order. */

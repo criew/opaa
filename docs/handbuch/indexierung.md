@@ -283,7 +283,10 @@ geparst und gechunkt vorliegt, nicht schon vor dem Parsen.
 Über den Inhalt wird eine SHA-256-Prüfsumme gebildet. Dann wird die Dokumentzeile über das Paar
 aus Bibliothek und Quellpfad gesucht. Ist die Prüfsumme unverändert und stand das Dokument zuletzt
 auf „indiziert", ist der Fall erledigt: **übersprungen**, keine Chunks angefasst. Das ist der
-Normalfall in jedem Folgelauf und der Grund, warum Folgeläufe schnell sind.
+Normalfall in jedem Folgelauf und der Grund, warum Folgeläufe schnell sind. Was die Quelle sonst
+über das Element sagt — Titel, Ort in der Quelle, Änderungsmarke, Ordner — wird dabei trotzdem auf
+den aktuellen Stand gebracht: So überspringt der nächste Lauf das Element schon vor dem Abruf, und
+Dokumentliste wie Zitat zeigen den aktuellen Titel.
 
 Hat sich der Inhalt geändert, bleibt die Dokumentzeile mit ihrer ID bestehen. Nur die Chunks
 werden ausgetauscht. Dadurch überleben Verweise auf das Dokument, etwa aus Chat-Zitaten oder von
@@ -312,7 +315,10 @@ Die Formaterkennung schaut in den **Inhalt** (Magic Bytes), nicht auf die Dateie
 überein, wird das Dokument trotzdem indiziert, aber ein Protokolleintrag „Formatabweichung"
 gesetzt, damit der Fall auffällt.
 
-Anhand des erkannten Formats wird eine **Format-Pipeline** gewählt. Für jedes Format gibt es
+Als Inhaltstyp des Dokuments wird der kanonische Medientyp des erkannten Formats gespeichert (etwa
+`text/markdown` für Markdown, auch wenn die Byte-Erkennung nur „Text" sagt); nur ein Dokument ohne
+erkanntes Format behält den roh erkannten Typ. Anhand des erkannten Formats wird eine
+**Format-Pipeline** gewählt. Für jedes Format gibt es
 genau eine zuständige Pipeline; für alles Unbekannte oder Strukturlose gibt es eine
 Auffang-Pipeline auf Basis von Apache Tika. Zwei Inhalte waren nie eine Datei und überspringen die
 Formaterkennung: Der Text einer Feed-Detailseite geht direkt an die Auffang-Pipeline, der Körper
