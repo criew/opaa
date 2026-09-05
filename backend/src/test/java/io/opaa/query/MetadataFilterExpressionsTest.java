@@ -2,6 +2,8 @@ package io.opaa.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.indexing.metadata.FormatFieldCondition;
+import io.opaa.indexing.metadata.LibraryFieldCondition;
 import io.opaa.indexing.metadata.MetadataFilter;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -75,9 +77,9 @@ class MetadataFilterExpressionsTest {
 
     String permission = jsonPath(LIBRARY_FILTER).replace("'::jsonpath", "");
     assertThat(rendered).startsWith(permission + " && (");
-    // No "||" may sit at bracket depth zero of the metadata part: every OR is inside a group.
+    // No "||" may sit at depth zero inside the subordinate group: every OR is in a group.
     String metadataPart = rendered.substring(permission.length());
-    assertThat(topLevelOrCount(metadataPart)).isZero();
+    assertThat(topLevelOrCount(insideTheSubordinateGroup(metadataPart))).isZero();
     // Inside: the Dokumentart condition AND the (bracketed) date condition.
     assertThat(metadataPart).contains(") && (");
   }
@@ -101,9 +103,111 @@ class MetadataFilterExpressionsTest {
     String permission = jsonPath(LIBRARY_FILTER).replace("'::jsonpath", "");
     assertThat(rendered).startsWith(permission + " && (");
     String metadataPart = rendered.substring(permission.length());
-    assertThat(topLevelOrCount(metadataPart)).isZero();
-    // Every precision branch of the window sits inside that one bracket.
-    assertThat(metadataPart).contains("DAY").contains("MONTH").contains("YEAR");
+    // Every precision branch of the window sits inside that one bracket - a group that closed after
+    // the first branch would leave MONTH and YEAR outside it, tied to nothing.
+    assertThat(insideTheSubordinateGroup(metadataPart))
+        .contains("DAY")
+        .contains("MONTH")
+        .contains("YEAR");
+  }
+
+  /**
+   * The same bracket rule for the two condition forms whose first operand looks as if it opened the
+   * set up again: a library condition is {@code (fremde Bibliothek OR trifft zu OR ohne Wert)} and
+   * a format condition {@code (trifft zu OR ohne Wert)}. Both must sit inside the group the
+   * permission filter binds to - all three field circles at once, in both query forms.
+   */
+  @Test
+  void everyFieldCircleIsBracketedUnderThePermissionFilterInBothForms() {
+    MetadataFilter filter = allFieldCircles();
+
+    String rendered =
+        jsonPath(
+            MetadataFilterExpressions.subordinateTo(
+                LIBRARY_FILTER, MetadataFilterExpressions.vectorExpression(filter, VOCABULARY)));
+    String permission = jsonPath(LIBRARY_FILTER).replace("'::jsonpath", "");
+    assertThat(rendered).startsWith(permission + " && (");
+    String metadataPart = rendered.substring(permission.length());
+    assertThat(topLevelOrCount(insideTheSubordinateGroup(metadataPart))).isZero();
+    // Each circle contributed its own condition: value key, precision key, presence marker and the
+    // library guard of the library fields, plus the format field's value and presence key.
+    assertThat(metadataPart)
+        .contains("lf_fassung")
+        .contains("lf_stand")
+        .contains("lfp_stand")
+        .contains("lf_aktenzeichen")
+        .contains("lfs_fassung")
+        .contains("library_id")
+        .contains("ff_mail_sender")
+        .contains("ffs_mail_sender");
+
+    List<Object> parameters = new ArrayList<>();
+    String sql =
+        MetadataFilterExpressions.sqlPredicate(filter, "v.metadata", VOCABULARY, parameters);
+    // The lexical twin: every condition is its own bracketed AND term, so none of them can widen
+    // what the permission clause before it already narrowed.
+    assertThat(sql).startsWith(" AND (");
+    assertThat(topLevelSqlOrCount(sql)).isZero();
+    assertThat(sql)
+        .contains("v.metadata->>'lf_fassung'")
+        .contains("v.metadata->>'lfp_stand'")
+        .contains("v.metadata->>'lf_aktenzeichen'")
+        .contains("v.metadata->>'lfs_fassung'")
+        .contains("v.metadata->>'library_id'")
+        .contains("v.metadata->>'ff_mail_sender'")
+        .contains("v.metadata->>'ffs_mail_sender'");
+  }
+
+  /** A filter carrying a condition of every kind: core fields, all three library types, format. */
+  private static MetadataFilter allFieldCircles() {
+    UUID libraryId = UUID.randomUUID();
+    return new MetadataFilter(
+            Set.of("VERMERK"), LocalDate.of(2024, 6, 15), LocalDate.of(2024, 8, 31))
+        .withLibraryFields(
+            List.of(
+                LibraryFieldCondition.ofCodes(libraryId, "fassung", List.of("A")),
+                LibraryFieldCondition.ofDateWindow(
+                    libraryId, "stand", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31)),
+                LibraryFieldCondition.ofValue(libraryId, "aktenzeichen", "RF-KFZ-001")))
+        .withFormatFields(
+            List.of(FormatFieldCondition.parse("mail_sender", List.of("max@stadt.de"))));
+  }
+
+  /** How many {@code OR} sit outside every bracket of an SQL fragment - must always be zero. */
+  private static int topLevelSqlOrCount(String sql) {
+    int depth = 0;
+    int count = 0;
+    for (int i = 0; i < sql.length(); i++) {
+      char c = sql.charAt(i);
+      if (c == '(') {
+        depth++;
+      } else if (c == ')') {
+        depth--;
+      } else if (depth == 0 && sql.startsWith(" OR ", i)) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /**
+   * The content of the group {@link MetadataFilterExpressions#subordinateTo} wraps the whole
+   * metadata condition in. Counting ORs on the metadata part as a whole would say nothing: that
+   * outer bracket holds every character at depth 1 or deeper, so the count were zero even for a
+   * condition that lost its own brackets. What must be free of top-level ORs is the inside.
+   */
+  private static String insideTheSubordinateGroup(String metadataPart) {
+    int open = metadataPart.indexOf('(');
+    int depth = 0;
+    for (int i = open; i < metadataPart.length(); i++) {
+      char c = metadataPart.charAt(i);
+      if (c == '(') {
+        depth++;
+      } else if (c == ')' && --depth == 0) {
+        return metadataPart.substring(open + 1, i);
+      }
+    }
+    throw new IllegalStateException("unbalanced brackets in " + metadataPart);
   }
 
   private static int topLevelOrCount(String jsonPath) {

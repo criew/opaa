@@ -394,6 +394,10 @@ public class DocumentMetadataService {
    * rewrites the document's filterable chunk keys in the same transaction. A field that already
    * carries a row - of any origin - is skipped: step 2 only ever fills what step 1 left empty, and
    * a manual correction is never overwritten. Returns the effective chunk metadata afterwards.
+   *
+   * <p>A row written here carries {@link ModelMetadataExtractor#EXTRACTION_VERSION}, never the
+   * deterministic step's: the version names the producer of the value, so raising step 1 must not
+   * make every model-filled value claim a prompt it never saw.
    */
   public DocumentChunkMetadata applyDerivedValues(
       Document document, List<DerivedMetadataValue> values) {
@@ -412,7 +416,7 @@ public class DocumentMetadataService {
                     value.field().libraryFieldId(),
                     value.modelId(),
                     value.confidence(),
-                    CoreMetadataExtractor.EXTRACTION_VERSION);
+                    ModelMetadataExtractor.EXTRACTION_VERSION);
             if (value.libraryValueId() == null) {
               row.assignVocabularyCode(value.code());
             } else {
