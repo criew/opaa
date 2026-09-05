@@ -52,7 +52,9 @@ import type {
   AssetGrantRequest,
   BrandingUpdateRequest,
   BulkMetadataValueRequest,
+  CreateLibraryMetadataFieldRequest,
   DocumentMetadataFieldResponse,
+  LibraryMetadataFieldResponse,
   MetadataValueRequest,
   AssetRole,
   ChatCreateRequest,
@@ -449,6 +451,12 @@ function getRunningStatus(step: number): IndexingStatusResponse {
     timestamp: new Date().toISOString(),
   }
 }
+
+/**
+ * #1071: the library metadata field schema per library, in memory for the mock session - the
+ * settings section writes it and the value-mapping dialog reads it back.
+ */
+const mockLibraryMetadataFields: Record<string, LibraryMetadataFieldResponse[]> = {}
 
 export const handlers = [
   http.get('/api/health', () => {
@@ -1852,6 +1860,104 @@ export const handlers = [
       }),
     })
   }),
+
+  // #1071: the library's own metadata fields. Kept in memory so the settings section, the
+  // Abbildungsdialog and the filter popover all read the same schema in dev mode.
+  http.get('/api/v1/libraries/:libraryId/metadata-fields', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json({ items: mockLibraryMetadataFields[libraryId] ?? [] })
+  }),
+
+  http.post('/api/v1/libraries/:libraryId/metadata-fields', async ({ params, request }) => {
+    const libraryId = String(params.libraryId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!canManageMockLibrary(libraryId)) {
+      return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+    }
+    const body = (await request.json()) as CreateLibraryMetadataFieldRequest
+    if (!body.filter && !body.contextPrefix) {
+      return HttpResponse.json(
+        { error: 'Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken' },
+        { status: 400 },
+      )
+    }
+    const fields = (mockLibraryMetadataFields[libraryId] ??= [])
+    if (fields.length >= 5) {
+      return HttpResponse.json(
+        { error: 'Eine Bibliothek führt höchstens 5 eigene Metadatenfelder' },
+        { status: 409 },
+      )
+    }
+    const field: LibraryMetadataFieldResponse = {
+      fieldKey: body.fieldKey,
+      documentFieldKey: `lib:${body.fieldKey}`,
+      label: body.label,
+      type: body.type,
+      valuePattern: body.valuePattern ?? null,
+      filter: body.filter ?? false,
+      contextPrefix: body.contextPrefix ?? false,
+      citationPosition: body.citationPosition ?? null,
+      sortOrder: (fields.length + 1) * 10,
+      values: (body.values ?? []).map((value) => ({ code: value.code, label: value.label })),
+    }
+    fields.push(field)
+    return HttpResponse.json(field, { status: 201 })
+  }),
+
+  http.delete('/api/v1/libraries/:libraryId/metadata-fields/:fieldKey', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    const fields = mockLibraryMetadataFields[libraryId] ?? []
+    mockLibraryMetadataFields[libraryId] = fields.filter(
+      (field) => field.fieldKey !== String(params.fieldKey),
+    )
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.get('/api/v1/libraries/:libraryId/metadata-fields/:fieldKey/usage', () =>
+    HttpResponse.json({ documentCount: 2 }),
+  ),
+
+  http.post(
+    '/api/v1/libraries/:libraryId/metadata-fields/:fieldKey/values',
+    async ({ params, request }) => {
+      const body = (await request.json()) as { code: string; label: string }
+      const field = (mockLibraryMetadataFields[String(params.libraryId)] ?? []).find(
+        (candidate) => candidate.fieldKey === String(params.fieldKey),
+      )
+      if (!field) {
+        return HttpResponse.json({ error: 'Metadatenfeld nicht gefunden' }, { status: 404 })
+      }
+      field.values = [...field.values, { code: body.code, label: body.label }]
+      return HttpResponse.json(field)
+    },
+  ),
+
+  http.get('/api/v1/libraries/:libraryId/metadata-fields/:fieldKey/values/:code/usage', () =>
+    HttpResponse.json({ documentCount: 3 }),
+  ),
+
+  http.post(
+    '/api/v1/libraries/:libraryId/metadata-fields/:fieldKey/values/:code/remap',
+    async ({ params, request }) => {
+      const body = (await request.json()) as { targetCode: string | null }
+      const field = (mockLibraryMetadataFields[String(params.libraryId)] ?? []).find(
+        (candidate) => candidate.fieldKey === String(params.fieldKey),
+      )
+      if (field) {
+        field.values = field.values.filter((value) => value.code !== String(params.code))
+      }
+      return HttpResponse.json({
+        remappedDocuments: body.targetCode == null ? 0 : 3,
+        clearedDocuments: body.targetCode == null ? 3 : 0,
+        correlationRef: 'metadata-remap-mock',
+      })
+    },
+  ),
 
   // #1068: manual metadata correction - read, set, delete, bulk, plus the vocabulary.
   http.get('/api/v1/metadata/document-types', () =>

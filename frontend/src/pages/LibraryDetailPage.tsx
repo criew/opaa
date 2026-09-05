@@ -99,6 +99,7 @@ import ConfluenceWebhookSection from '../components/library/ConfluenceWebhookSec
 import DocumentTextPreviewDialog from '../components/DocumentTextPreviewDialog'
 import DocumentMetadataPanel from '../components/metadata/DocumentMetadataPanel'
 import MetadataMaintenanceAnchor from '../components/metadata/MetadataMaintenanceAnchor'
+import LibraryMetadataFieldsSection from '../components/metadata/LibraryMetadataFieldsSection'
 import { coreMetadataFieldLabel } from '../components/metadata/metadataValues'
 import BulkMetadataDialog from '../components/metadata/BulkMetadataDialog'
 import PageHeading from '../components/a11y/PageHeading'
@@ -949,6 +950,12 @@ export default function LibraryDetailPage() {
           hidden={activeTab !== 'verwaltung'}
         >
           <Stack spacing={3}>
+            <DetailCard
+              title="Metadatenfelder"
+              description="Eigene typisierte Felder dieser Bibliothek, ihre Wirkstellen und ihre Wertelisten."
+            >
+              <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={canEdit} />
+            </DetailCard>
             <DetailCard
               title="Stammdaten"
               description="Name, Beschreibung und Verteilungsstufe dieser Bibliothek."

@@ -63,6 +63,13 @@ import type {
   DocumentMetadataFieldResponse,
   DocumentMetadataResponse,
   DocumentTypeVocabularyResponse,
+  CreateLibraryMetadataFieldRequest,
+  LibraryMetadataFieldResponse,
+  LibraryMetadataFieldValueRequest,
+  LibraryMetadataFieldsResponse,
+  MetadataFieldUsageResponse,
+  RemapLibraryMetadataFieldValueResponse,
+  UpdateLibraryMetadataFieldRequest,
   MetadataFilter,
   MetadataFilterOptionsResponse,
   LibraryMetadataMaintenanceResponse,
@@ -1004,6 +1011,147 @@ export async function getLibraryMetadataMaintenance(
   try {
     const { data } = await client.get<LibraryMetadataMaintenanceResponse>(
       `/v1/libraries/${libraryId}/metadata/maintenance`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * #1071: the library's own metadata fields with their configured value lists. Schema, not an
+ * aggregate - readable by everyone who may use the library.
+ */
+export async function listLibraryMetadataFields(
+  libraryId: string,
+): Promise<LibraryMetadataFieldsResponse> {
+  try {
+    const { data } = await client.get<LibraryMetadataFieldsResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function createLibraryMetadataField(
+  libraryId: string,
+  request: CreateLibraryMetadataFieldRequest,
+): Promise<LibraryMetadataFieldResponse> {
+  try {
+    const { data } = await client.post<LibraryMetadataFieldResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateLibraryMetadataField(
+  libraryId: string,
+  fieldKey: string,
+  request: UpdateLibraryMetadataFieldRequest,
+): Promise<LibraryMetadataFieldResponse> {
+  try {
+    const { data } = await client.put<LibraryMetadataFieldResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/${fieldKey}`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function deleteLibraryMetadataField(
+  libraryId: string,
+  fieldKey: string,
+): Promise<void> {
+  try {
+    await client.delete(`/v1/libraries/${libraryId}/metadata-fields/${fieldKey}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** The Folgekosten of a deletion: how many documents carry a value for this field. */
+export async function getLibraryMetadataFieldUsage(
+  libraryId: string,
+  fieldKey: string,
+): Promise<MetadataFieldUsageResponse> {
+  try {
+    const { data } = await client.get<MetadataFieldUsageResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/${fieldKey}/usage`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function addLibraryMetadataFieldValue(
+  libraryId: string,
+  fieldKey: string,
+  request: LibraryMetadataFieldValueRequest,
+): Promise<LibraryMetadataFieldResponse> {
+  try {
+    const { data } = await client.post<LibraryMetadataFieldResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/${fieldKey}/values`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function relabelLibraryMetadataFieldValue(
+  libraryId: string,
+  fieldKey: string,
+  code: string,
+  label: string,
+): Promise<LibraryMetadataFieldResponse> {
+  try {
+    const { data } = await client.patch<LibraryMetadataFieldResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/${fieldKey}/values/${encodeURIComponent(code)}`,
+      { label },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** The number that stands before the confirmation of a mapping (#1071). */
+export async function getLibraryMetadataFieldValueUsage(
+  libraryId: string,
+  fieldKey: string,
+  code: string,
+): Promise<MetadataFieldUsageResponse> {
+  try {
+    const { data } = await client.get<MetadataFieldUsageResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/${fieldKey}/values/${encodeURIComponent(code)}/usage`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Removes a value together with its confirmed mapping; targetCode null maps onto "leer". */
+export async function remapLibraryMetadataFieldValue(
+  libraryId: string,
+  fieldKey: string,
+  code: string,
+  targetCode: string | null,
+): Promise<RemapLibraryMetadataFieldValueResponse> {
+  try {
+    const { data } = await client.post<RemapLibraryMetadataFieldValueResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/${fieldKey}/values/${encodeURIComponent(code)}/remap`,
+      { targetCode },
     )
     return data
   } catch (err) {

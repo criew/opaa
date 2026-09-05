@@ -11,7 +11,12 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import FilterListIcon from '@mui/icons-material/FilterList'
-import type { MetadataFilter, MetadataFilterOptionsResponse } from '../../types/api'
+import type {
+  MetadataFilter,
+  MetadataFilterLibraryFieldCondition,
+  MetadataFilterLibraryFieldOption,
+  MetadataFilterOptionsResponse,
+} from '../../types/api'
 import {
   metadataFilterScopeKey,
   useMetadataFilterOptionsStore,
@@ -31,6 +36,30 @@ function fieldOf(options: MetadataFilterOptionsResponse, fieldKey: string) {
   return options.fields.find((field) => field.fieldKey === fieldKey)
 }
 
+/** A library field's identity is the pair (library, key) - two libraries may use the same key. */
+function libraryFieldKey(field: { libraryId: string; fieldKey: string }) {
+  return `${field.libraryId}/${field.fieldKey}`
+}
+
+function conditionsByKey(
+  filter: MetadataFilter | null,
+): Record<string, MetadataFilterLibraryFieldCondition> {
+  const byKey: Record<string, MetadataFilterLibraryFieldCondition> = {}
+  for (const condition of filter?.libraryFields ?? []) {
+    byKey[libraryFieldKey(condition)] = condition
+  }
+  return byKey
+}
+
+function isEmptyCondition(condition: MetadataFilterLibraryFieldCondition): boolean {
+  return (
+    (condition.codes ?? []).length === 0 &&
+    !condition.dateFrom &&
+    !condition.dateTo &&
+    !condition.value
+  )
+}
+
 /**
  * #1070: the filter popover next to the chip bar. Per filterable core field it shows the
  * Füllstand in the person's own search scope and offers the field only above the committed
@@ -48,6 +77,9 @@ export default function MetadataFilterPopover({
   const [draftTypes, setDraftTypes] = useState<string[]>(filter?.documentTypes ?? [])
   const [draftFrom, setDraftFrom] = useState(filter?.documentDateFrom ?? '')
   const [draftTo, setDraftTo] = useState(filter?.documentDateTo ?? '')
+  const [draftLibraryFields, setDraftLibraryFields] = useState<
+    Record<string, MetadataFilterLibraryFieldCondition>
+  >(conditionsByKey(filter))
   const popoverId = useId()
 
   const options = useMetadataFilterOptionsStore((s) => s.options)
@@ -73,7 +105,13 @@ export default function MetadataFilterPopover({
   const dateField = optionsCurrent ? fieldOf(options, 'document_date') : undefined
   const dateInvalid = draftFrom !== '' && draftTo !== '' && draftTo < draftFrom
 
-  const anyOffered = (typeField?.offered ?? false) || (dateField?.offered ?? false)
+  const libraryFields: MetadataFilterLibraryFieldOption[] = optionsCurrent
+    ? (options.libraryFields ?? [])
+    : []
+  const anyOffered =
+    (typeField?.offered ?? false) ||
+    (dateField?.offered ?? false) ||
+    libraryFields.some((field) => field.offered)
 
   // A field below the threshold is not offered, but a condition already set on it stays in force
   // (Koordinator-Festlegung an #1070): its existing value is carried through untouched, and only
@@ -86,13 +124,36 @@ export default function MetadataFilterPopover({
     const to = dateField?.offered ? draftTo : (filter?.documentDateTo ?? '')
     if (from !== '') next.documentDateFrom = from
     if (to !== '') next.documentDateTo = to
+    // A library field the scope no longer offers keeps whatever the chat already carries - the same
+    // rule the core fields follow; only its chip removes it.
+    const offeredKeys = new Set(libraryFields.filter((f) => f.offered).map(libraryFieldKey))
+    const carried = Object.entries(conditionsByKey(filter))
+      .filter(([key]) => !offeredKeys.has(key))
+      .map(([, condition]) => condition)
+    const chosen = Object.entries(draftLibraryFields)
+      .filter(([key]) => offeredKeys.has(key))
+      .map(([, condition]) => condition)
+      .filter((condition) => !isEmptyCondition(condition))
+    const conditions = [...carried, ...chosen]
+    if (conditions.length > 0) next.libraryFields = conditions
     return Object.keys(next).length === 0 ? null : next
-  }, [dateField?.offered, draftFrom, draftTo, draftTypes, filter, typeField?.offered])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    dateField?.offered,
+    draftFrom,
+    draftTo,
+    draftTypes,
+    draftLibraryFields,
+    filter,
+    optionsScopeKey,
+    typeField?.offered,
+  ])
 
   const handleOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     setDraftTypes(filter?.documentTypes ?? [])
     setDraftFrom(filter?.documentDateFrom ?? '')
     setDraftTo(filter?.documentDateTo ?? '')
+    setDraftLibraryFields(conditionsByKey(filter))
     setAnchorEl(event.currentTarget)
   }
 
@@ -249,6 +310,130 @@ export default function MetadataFilterPopover({
                 )
               )}
             </Box>
+            {libraryFields.map((field) => (
+              <Box key={libraryFieldKey(field)} data-testid="filter-library-field">
+                <Typography sx={{ fontSize: 13, fontWeight: 500 }}>
+                  {field.label} · {field.libraryName}
+                </Typography>
+                {field.offered ? (
+                  <>
+                    <Typography variant="caption" color="text.secondary" component="p">
+                      {fillLevelText(field)}
+                    </Typography>
+                    {field.type === 'SELECT' && field.values.length === 0 && (
+                      <Typography variant="caption" color="text.secondary" component="p">
+                        Im Suchbereich kommt kein Wert dieses Feldes vor.
+                      </Typography>
+                    )}
+                    {field.type === 'SELECT' && field.values.length > 0 && (
+                      <FormGroup aria-label={field.label}>
+                        {field.values.map((value) => (
+                          <FormControlLabel
+                            key={value.code}
+                            control={
+                              <Checkbox
+                                size="small"
+                                checked={(
+                                  draftLibraryFields[libraryFieldKey(field)]?.codes ?? []
+                                ).includes(value.code)}
+                                onChange={(e) =>
+                                  setDraftLibraryFields((current) => {
+                                    const key = libraryFieldKey(field)
+                                    const codes = current[key]?.codes ?? []
+                                    return {
+                                      ...current,
+                                      [key]: {
+                                        libraryId: field.libraryId,
+                                        fieldKey: field.fieldKey,
+                                        codes: e.target.checked
+                                          ? [...codes, value.code]
+                                          : codes.filter((code) => code !== value.code),
+                                      },
+                                    }
+                                  })
+                                }
+                              />
+                            }
+                            label={`${value.label} (${value.documentCount})`}
+                            slotProps={{ typography: { sx: { fontSize: 13 } } }}
+                          />
+                        ))}
+                      </FormGroup>
+                    )}
+                    {field.type === 'PATTERN' && (
+                      <TextField
+                        label="Kennung"
+                        size="small"
+                        fullWidth
+                        helperText="Genau dieser Wert, kein Teiltreffer."
+                        value={draftLibraryFields[libraryFieldKey(field)]?.value ?? ''}
+                        onChange={(e) =>
+                          setDraftLibraryFields((current) => ({
+                            ...current,
+                            [libraryFieldKey(field)]: {
+                              libraryId: field.libraryId,
+                              fieldKey: field.fieldKey,
+                              value: e.target.value,
+                            },
+                          }))
+                        }
+                      />
+                    )}
+                    {field.type === 'DATE' && (
+                      <Stack direction="row" spacing={1}>
+                        <TextField
+                          label="Von"
+                          type="date"
+                          size="small"
+                          fullWidth
+                          slotProps={{ inputLabel: { shrink: true } }}
+                          value={draftLibraryFields[libraryFieldKey(field)]?.dateFrom ?? ''}
+                          onChange={(e) =>
+                            setDraftLibraryFields((current) => ({
+                              ...current,
+                              [libraryFieldKey(field)]: {
+                                ...current[libraryFieldKey(field)],
+                                libraryId: field.libraryId,
+                                fieldKey: field.fieldKey,
+                                dateFrom: e.target.value,
+                              },
+                            }))
+                          }
+                        />
+                        <TextField
+                          label="Bis"
+                          type="date"
+                          size="small"
+                          fullWidth
+                          slotProps={{ inputLabel: { shrink: true } }}
+                          value={draftLibraryFields[libraryFieldKey(field)]?.dateTo ?? ''}
+                          onChange={(e) =>
+                            setDraftLibraryFields((current) => ({
+                              ...current,
+                              [libraryFieldKey(field)]: {
+                                ...current[libraryFieldKey(field)],
+                                libraryId: field.libraryId,
+                                fieldKey: field.fieldKey,
+                                dateTo: e.target.value,
+                              },
+                            }))
+                          }
+                        />
+                      </Stack>
+                    )}
+                  </>
+                ) : (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    component="p"
+                    data-testid="filter-field-not-offered"
+                  >
+                    {notOfferedText(field)}
+                  </Typography>
+                )}
+              </Box>
+            ))}
             <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
               <Button size="small" onClick={handleClear} disabled={filter === null}>
                 Filter entfernen
