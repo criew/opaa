@@ -3,6 +3,7 @@ package io.opaa.eval;
 import io.opaa.eval.PipelineEvaluationReport.PipelineQueryResult;
 import io.opaa.eval.PipelineEvaluationReport.PipelineRunConfiguration;
 import io.opaa.eval.PipelineEvaluationReport.SelectionCoverage;
+import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -46,6 +47,16 @@ public final class PipelineRetrievalEvaluator {
   public record PipelineInvocationResult(List<String> rankedFileNames, List<String> subQueries) {}
 
   /**
+   * One call into the pipeline for a case: its query and its core-field filter (issue #1070, {@link
+   * MetadataFilter#NONE} for an unfiltered case), the second argument carried into {@code
+   * QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition} as given.
+   */
+  @FunctionalInterface
+  public interface PipelineInvocation {
+    PipelineInvocationResult invoke(String query, MetadataFilter metadataFilter);
+  }
+
+  /**
    * Evaluates a single case from the chunk file names the pipeline selected for it, in selection
    * order. {@code null} entries (a chunk without {@code file_name} metadata) are dropped by {@link
    * DocumentRanking#dedupeToDocuments}, the same handling the raw-vector path applies.
@@ -73,9 +84,20 @@ public final class PipelineRetrievalEvaluator {
    */
   public static List<CaseOutcome> evaluateAll(
       List<GoldenCase> goldenCases, Function<String, PipelineInvocationResult> pipeline) {
+    return evaluateAll(goldenCases, (query, filter) -> pipeline.apply(query));
+  }
+
+  /**
+   * The same run with each case's filter handed to the pipeline (issue #1070) - the form the
+   * harness uses; the query-only overload above serves tests whose pipeline stands in for the real
+   * one and has nothing to filter.
+   */
+  public static List<CaseOutcome> evaluateAll(
+      List<GoldenCase> goldenCases, PipelineInvocation pipeline) {
     List<CaseOutcome> outcomes = new ArrayList<>(goldenCases.size());
     for (GoldenCase goldenCase : goldenCases) {
-      PipelineInvocationResult invocation = pipeline.apply(goldenCase.query());
+      PipelineInvocationResult invocation =
+          pipeline.invoke(goldenCase.query(), goldenCase.metadataFilter());
       outcomes.add(evaluateCase(goldenCase, invocation.rankedFileNames(), invocation.subQueries()));
     }
     return List.copyOf(outcomes);
@@ -118,6 +140,7 @@ public final class PipelineRetrievalEvaluator {
                                 r.rankedFileNames(),
                                 r.goldenCase().expectedDocuments())))
                 .toList()),
+        MetadataFilterAudit.fromWindowedResults(results),
         allQueryResults.stream().limit(10).toList(),
         allQueryResults,
         MarginAggregate.ofWindowed(results),

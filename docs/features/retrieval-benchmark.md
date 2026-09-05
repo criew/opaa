@@ -501,8 +501,9 @@ Drei Milderungen, keine Lösungen:
 
 ## 5. Neue Golden-Fall-Klassen
 
-> **Umsetzungsstand (Issue #1043, 08/2026):** Die fünf Fallklassen sind gebaut, kuratiert und
-> gemessen. `eval/golden/verwaltung.json` führt 46 von Hand kuratierte Fälle (9–10 je Klasse, über
+> **Umsetzungsstand (Issue #1043, 08/2026; Klasse `metadata_filter` erweitert mit #1070,
+> 09/2026):** Die fünf Fallklassen sind gebaut, kuratiert und gemessen.
+> `eval/golden/verwaltung.json` führt 49 von Hand kuratierte Fälle (9–12 je Klasse, über
 > dem Minimum von acht), jeder mit seiner Klasse als `category` und den drei Zustandsfeldern — ab
 > dem ersten Commit im Schema, nicht nachgerüstet. Beide Messpfade werten je Klasse aus
 > (`byCategory` in beiden Reports, je Klasse eine eigene Gruppe in beiden Baselines), und beide
@@ -645,6 +646,57 @@ Verwechslungspartner. Der Korpus muss die Metadaten dafür im Frontmatter tragen
 heute **nicht vorhandene** Produktfähigkeit misst: Es gibt keinen Metadatenfilter in der Suche. Die
 Fälle werden trotzdem jetzt gebaut — sie sind dann von Anfang an die Abnahmegrundlage, statt
 nachträglich passend zur gebauten Lösung zu entstehen.
+
+#### Umgesetzt (#1070, Teil 2)
+
+Der Kernfeld-Filter aus [`metadata-schema.md`](./metadata-schema.md), Arbeitspaket 4, wirkt seit
+#1070 (Teil 1) in beiden produktiven Suchpfaden. Damit ist diese Fallklasse erstmals **mit** dem
+Mechanismus messbar, für den sie gebaut wurde — der Fall aus Abschnitt 6, in dem der Benchmark
+zuerst die Lücke gemessen und danach die Lösung abgenommen hat.
+
+**Der Filter steht im Golden-Fall, nicht im Harness.** Jeder `metadata_filter`-Fall trägt sein
+`filter`-Objekt (Dokumentart-Codes der Produktion, Von/Bis-Fenster auf Datum/Stand), seinen
+`confusable_document` und — bei den drei neuen Fällen der Leerwert-Regel — sein `no_value_field`;
+Schema und Kuratierungsregeln stehen in [`eval/golden/README.md`](../../eval/golden/README.md).
+Beide Messpfade wenden genau diesen Filter **innerhalb** ihrer Abfrage an: der Rohvektor-Pfad als
+`Filter.Expression` an `similaritySearch`, gebaut über dasselbe `MetadataFilterExpressions` wie die
+Produktion; der Pipeline-Pfad über den Request, wo die Stufe `METADATA_FILTER` ihn in beide
+Suchabfragen einsetzt. Ein nachgelagertes Filtern der Trefferliste wäre eine andere Messung als die,
+die die Produktion ausführt.
+
+**Die zwei Fehlerrichtungen werden getrennt ausgewiesen** (`MetadataFilterAudit`, gleichrangig neben
+`ExpectedStateAudit`): „Filter greift nicht" (der Verwechslungspartner steht trotz Filter im
+Fenster) und „Filter greift zu stark" (ein Fall der Leerwert-Regel verliert sein erwartetes
+Dokument). Beide Zahlen erscheinen je Messpfad im JSON-Report, im Lauf-Log und in der
+Markdown-Delta-Tabelle — also auch in Job-Zusammenfassung, PR-Kommentar und Alarm-Issue. Ein
+gemittelter Gesamtwert ist ausdrücklich nicht vorgesehen: Die beiden Richtungen verlangen
+verschiedene Korrekturen.
+
+**Neuer Fixpunkt, neue Messvertragsversionen.** `metadataFilterEnabled` ist Gültigkeitsfeld beider
+Baselines; `CURRENT_MEASUREMENT_CONTRACT_VERSION` steigt 5 → 6,
+`PIPELINE_MEASUREMENT_CONTRACT_VERSION` 7 → 8 (ADR-0012, Nachtrag „Metadatenfilter im
+Messvertrag"). Anders als die letzten Fixpunkt-Nachträge ist das kein reiner Vertragsschritt: Beide
+Baselines der Domäne `verwaltung` sind neu gezogen.
+
+**Ergebnis des Abnahmelaufs (2026-09-05, CPU/Testcontainer).** Beide Fehlerrichtungen ohne Befund,
+auf beiden Pfaden: 10 gefilterte Fälle gemessen, Verwechslungspartner bei 7 benannt, 3 Fälle der
+Leerwert-Regel — „Filter greift nicht" 0, „Filter greift zu stark" 0. Die Klasse selbst:
+
+| Messpfad | `metadata_filter` vorher (n=9) | nachher (n=12) |
+|---|---|---|
+| Rohvektor | MRR 0,670 · nDCG@10 0,753 | MRR 0,861 · nDCG@10 0,897 |
+| Pipeline | MRR@8 0,806 · nDCG@8 0,855 | MRR@8 0,917 · nDCG@8 0,938 |
+
+Neun der zwölf Fälle wechseln auf `solved` (sechs Fassungs-/Dokumentartfälle, drei Fälle der
+Leerwert-Regel); `verw-meta-003`/`-005` bleiben `known_gap`, weil „derzeit gültig"/„gilt heute"
+keine Kernfeld-Frage ist (Bibliotheksfeld, #1071), `verw-meta-001` bleibt `known_gap` mit
+Pfad-Asymmetrie: Der Filter hält dort den Verwechslungspartner heraus, die Rangfolge des
+Rohvektor-Pfads stellt aber zwei gleich datierte Dienstanweisungen vor das erwartete Dokument. Die
+Selbstprüfung an den übrigen vier Fallklassen: auf dem Pipeline-Pfad **exakt** unverändert; auf dem
+Rohvektor-Pfad (ohne Ähnlichkeitsschwelle, Fenster `documentTopK=10`) verschieben die zwei neuen
+Korpusdokumente einen Fall der Klasse `literal_term_weak_embedding` aus dem Top-5-Fenster
+(HitRate@5 0,444 → 0,333) und `compound_word`/nDCG@10 um 0,005 — benannt statt geglättet, siehe
+[`eval/corpus/verwaltung/MAINTENANCE.md`](../../eval/corpus/verwaltung/MAINTENANCE.md).
 
 ### Gemeinsame Regeln
 

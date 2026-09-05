@@ -382,4 +382,90 @@ class GoldenCaseCurationTest {
         .extracting(GoldenCase::expectedState)
         .containsAnyOf(GoldenCase.ExpectedState.SOLVED, GoldenCase.ExpectedState.KNOWN_GAP);
   }
+
+  // --- filter fields of issue #1070 -------------------------------------------------------------
+
+  private static GoldenCase filterCase(
+      String id,
+      GoldenCase.Filter filter,
+      String filterNote,
+      String confusable,
+      String noValueField) {
+    return new GoldenCase(
+        id,
+        "test-domain",
+        "frage " + id,
+        List.of("a.md"),
+        GoldenCaseCuration.METADATA_FILTER_CLASS,
+        "medium",
+        "de",
+        "factual",
+        null,
+        GoldenCase.ExpectedState.KNOWN_GAP,
+        "2026-09-05",
+        "Testfixture",
+        null,
+        filter,
+        filterNote,
+        confusable,
+        noValueField);
+  }
+
+  private static List<GoldenCaseCuration.Violation> validate(GoldenCase goldenCase) {
+    return GoldenCaseCuration.validate(
+        List.of(goldenCase), "test-domain", Set.of("a.md", "a-2023.md"));
+  }
+
+  /** The class exists to measure a filter; a case without one says why, or it is a violation. */
+  @Test
+  void rejectsAMetadataFilterCaseWithNeitherFilterNorNote() {
+    assertThat(validate(filterCase("a", null, null, null, null)))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .contains(GoldenCaseCuration.METADATA_FILTER_CASE_RULE);
+
+    assertThat(validate(filterCase("a", null, "kein Kernfeld trifft die Frage", null, null)))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .doesNotContain(GoldenCaseCuration.METADATA_FILTER_CASE_RULE);
+  }
+
+  /** A misspelled filter key deserializes to an empty object - the case would measure nothing. */
+  @Test
+  void rejectsAFilterWithoutASingleCondition() {
+    assertThat(
+            validate(
+                filterCase("a", new GoldenCase.Filter(List.of(), null, null), null, null, null)))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .contains(GoldenCaseCuration.FILTER_WITHOUT_CONDITION_RULE);
+  }
+
+  @Test
+  void rejectsAConfusableDocumentOutsideTheCorpusOrAmongTheExpectedOnes() {
+    GoldenCase.Filter filter = new GoldenCase.Filter(null, "2024-01-01", null);
+
+    assertThat(validate(filterCase("a", filter, null, "nicht-im-korpus.md", null)))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .anyMatch(rule -> rule.contains("is not in the corpus"));
+
+    assertThat(validate(filterCase("a", filter, null, "a.md", null)))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .contains("confusable_document is itself an expected document");
+  }
+
+  /** A Leerwert-Regel marker without a filter on that very field would measure nothing. */
+  @Test
+  void rejectsANoValueFieldThatIsNotTheFilteredOne() {
+    GoldenCase.Filter dateOnly = new GoldenCase.Filter(null, "2024-01-01", "2024-12-31");
+
+    assertThat(validate(filterCase("a", dateOnly, null, null, "documentType")))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .contains("no_value_field requires a filter on that field");
+
+    assertThat(validate(filterCase("a", dateOnly, null, null, "titel")))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .anyMatch(rule -> rule.startsWith("no_value_field 'titel' is not one of"));
+
+    assertThat(validate(filterCase("a", dateOnly, null, null, "documentDate")))
+        .extracting(GoldenCaseCuration.Violation::rule)
+        .noneMatch(rule -> rule.contains("no_value_field"));
+  }
 }

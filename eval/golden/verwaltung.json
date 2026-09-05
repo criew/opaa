@@ -640,10 +640,14 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Satzung des Sozialamts der Stadt Kalkstadt über die Erhebung von Gebühren für Bescheinigungen und Leistungen der sozialen Unterstützung (Fassung 2024), beschlossen vom Stadtrat der Stadt Kalkstadt auf Grundlage des Kommunalabgabengesetzes.",
+    "filter": {
+      "documentDateFrom": "2024-01-01"
+    },
+    "confusable_document": "verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md",
     "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-09-01 (Pipeline-Pfad, seit #1049): alle erwarteten Dokumente im Fenster, richtige Fassung auf Rang 1 — ohne Metadatenfilter, also ohne den geprüften Mechanismus; auf dem Rohvektor-Pfad unverändert ungelöst",
-    "expected_state_exception": "Seit #1049 auf dem Pipeline-Pfad gelöst, aber ohne den geprüften Mechanismus: Die richtige Fassung rankt zufällig oben, ein Metadatenfilter existiert nicht. Der Fall bleibt known_gap, damit ein Zufallsergebnis nicht unter Regressionsschutz gerät — die Abweichung im Audit des Pipeline-Pfads ist deshalb erwartet."
+    "expected_state_since": "2026-09-05",
+    "expected_state_reason": "Der Kernfeld-Filter greift, die Rangfolge trägt ihn nicht (#1070): Das Datumsfenster ab 2024-01-01 hält die Fassung 2023 aus beiden Fenstern; gemessen am 2026-09-05 belegen auf dem Rohvektor-Pfad zwei gleich datierte Dienstanweisungen des Sozialamts die Ränge 1 und 2, die erwartete Satzung folgt auf Rang 3. Auf dem Pipeline-Pfad steht sie auf Rang 1.",
+    "expected_state_exception": "Pfad-Asymmetrie: Auf dem Pipeline-Pfad seit #1070 mit dem geprüften Mechanismus gelöst, auf dem Rohvektor-Pfad nicht — dort trägt kein Volltextpfad zur Fusion bei, und die Einbettungsähnlichkeit stellt zwei gleich datierte Dienstanweisungen vor die erwartete Satzung. Die Abweichung im Audit des Pipeline-Pfads ist deshalb erwartet."
   },
   {
     "id": "verw-meta-002",
@@ -657,9 +661,14 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Satzung des Bauamts der Stadt Kalkstadt über die Erhebung von Gebühren für die Erteilung von Baugenehmigungen (Fassung 2023), beschlossen vom Stadtrat der Stadt Kalkstadt auf Grundlage des Kommunalabgabengesetzes.",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md)"
+    "filter": {
+      "documentDateFrom": "2023-01-01",
+      "documentDateTo": "2023-12-31"
+    },
+    "confusable_document": "verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md",
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-05",
+    "expected_state_reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
   },
   {
     "id": "verw-meta-003",
@@ -673,10 +682,12 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Satzung des Ordnungsamts der Stadt Kalkstadt über die Erhebung von Gebühren für die Anmeldung eines Gewerbes (Fassung 2024), beschlossen vom Stadtrat der Stadt Kalkstadt auf Grundlage des Kommunalabgabengesetzes.",
+    "filter": null,
+    "filter_note": "„derzeit gültig“ ist eine Gültigkeits-/Nachfolgeaussage (gueltig_bis, ersetzt_durch), kein Datumsvergleich: beide Fassungen tragen ein stand_datum vor dem heutigen Tag, ein Datumsfenster auf Datum/Stand träfe beide oder keine. Braucht das Bibliotheksfeld Gültigkeit/aktuelle Fassung aus #1071; bis dahin ohne Kernfeld-Filter und known_gap.",
+    "confusable_document": "verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md",
     "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-09-01 (Pipeline-Pfad): richtige Fassung auf Rang 1, ohne dass ein Metadatenfilter beteiligt war",
-    "expected_state_exception": "Pfad-Asymmetrie seit #1049: auf dem Rohvektor-Pfad gelöst, auf dem Pipeline-Pfad nicht mehr — dort belegt seither ein lexikalischer Treffer den ersten Rang. Der Fall bleibt known_gap, weil er ohnehin nur ohne den geprüften Mechanismus gelöst war: Die richtige Fassung rankte zufällig oben, ein Metadatenfilter existiert nicht. Die Abweichung im Audit des Rohvektor-Pfads ist deshalb erwartet."
+    "expected_state_since": "2026-09-05",
+    "expected_state_reason": "Kein Kernfeld-Filter trifft die Frage (#1070, siehe filter_note): „derzeit gültig\" ist eine Gültigkeits-/Nachfolgeaussage, kein Datumsvergleich — der Fall wird ungefiltert gemessen, bis #1071 das Bibliotheksfeld liefert. Gemessen am 2026-09-05 auf beiden Messpfaden ungelöst: Rang 1 belegt verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md."
   },
   {
     "id": "verw-meta-004",
@@ -690,9 +701,13 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Satzung des Bürgeramts der Stadt Kalkstadt über die Erhebung von Gebühren für die Ausstellung eines Personalausweises (Fassung 2023), beschlossen vom Stadtrat der Stadt Kalkstadt auf Grundlage des Kommunalabgabengesetzes.",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-09-01 (Pipeline-Pfad): erwartetes Dokument außerhalb des Fensters (verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md)"
+    "filter": {
+      "documentDateTo": "2023-12-31"
+    },
+    "confusable_document": "verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md",
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-05",
+    "expected_state_reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
   },
   {
     "id": "verw-meta-005",
@@ -706,10 +721,12 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Satzung des Jugendamts der Stadt Kalkstadt über die Erhebung von Gebühren für die Betreuung in städtischen Kindertagesstätten (Fassung 2024), beschlossen vom Stadtrat der Stadt Kalkstadt auf Grundlage des Kommunalabgabengesetzes.",
+    "filter": null,
+    "filter_note": "„gilt heute“ ist dieselbe Gültigkeits-/Nachfolgeaussage wie bei verw-meta-003: kein Kernfeld-Filter trifft sie, ohne die falsche Fassung ebenso einzuschließen. Braucht das Bibliotheksfeld aus #1071; bis dahin ohne Kernfeld-Filter und known_gap.",
+    "confusable_document": "verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md",
     "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-09-01 (Pipeline-Pfad): richtige Fassung auf Rang 1, ohne dass ein Metadatenfilter beteiligt war",
-    "expected_state_exception": "Heute auf beiden Pfaden gelöst, aber ohne den geprüften Mechanismus: Die richtige Fassung rankt zufällig oben, ein Metadatenfilter existiert nicht. Der Fall bleibt known_gap, damit ein Zufallsergebnis nicht unter Regressionsschutz gerät — die Abweichung im Audit ist deshalb erwartet."
+    "expected_state_since": "2026-09-05",
+    "expected_state_reason": "Kein Kernfeld-Filter trifft die Frage (#1070, siehe filter_note): „gilt heute\" ist eine Gültigkeits-/Nachfolgeaussage, kein Datumsvergleich — der Fall wird ungefiltert gemessen, bis #1071 das Bibliotheksfeld liefert. Gemessen am 2026-09-05 auf beiden Messpfaden ungelöst: Rang 1 belegt verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md."
   },
   {
     "id": "verw-meta-006",
@@ -723,9 +740,14 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Diese Fassung ersetzt die Dienstanweisung SOZ-DA-1/2023, deren Regelungen für bereits abgeschlossene Vorgänge unberührt bleiben.",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-09-01 (Pipeline-Pfad): alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0004_dienstanweisung-sozialamt-1-2023.md"
+    "filter": {
+      "documentDateFrom": "2024-01-01",
+      "documentDateTo": "2024-12-31"
+    },
+    "confusable_document": "verwaltung-0004_dienstanweisung-sozialamt-1-2023.md",
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-05",
+    "expected_state_reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2024-01-01 bis 2024-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0004_dienstanweisung-sozialamt-1-2023.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
   },
   {
     "id": "verw-meta-007",
@@ -739,10 +761,14 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Dienstanweisung des Bauamts der Stadt Kalkstadt, Aktenzeichen BAU-DA-1/2023, gültig ab dem 1.",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-09-01 (Pipeline-Pfad): richtige Fassung auf Rang 1, ohne dass ein Metadatenfilter beteiligt war",
-    "expected_state_exception": "Heute auf beiden Pfaden gelöst, aber ohne den geprüften Mechanismus: Die richtige Fassung rankt zufällig oben, ein Metadatenfilter existiert nicht. Der Fall bleibt known_gap, damit ein Zufallsergebnis nicht unter Regressionsschutz gerät — die Abweichung im Audit ist deshalb erwartet."
+    "filter": {
+      "documentDateFrom": "2023-01-01",
+      "documentDateTo": "2023-12-31"
+    },
+    "confusable_document": "verwaltung-0013_dienstanweisung-bauamt-1-2024.md",
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-05",
+    "expected_state_reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0013_dienstanweisung-bauamt-1-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
   },
   {
     "id": "verw-meta-008",
@@ -756,9 +782,13 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Dienstanweisung des Ordnungsamts der Stadt Kalkstadt, Aktenzeichen ORD-DA-1/2023, gültig ab dem 1.",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-09-01 (Pipeline-Pfad): alle erwarteten Dokumente im Fenster, aber Rang 1 belegt verwaltung-0021_dienstanweisung-ordnungsamt-1-2024.md"
+    "filter": {
+      "documentDateTo": "2023-12-31"
+    },
+    "confusable_document": "verwaltung-0021_dienstanweisung-ordnungsamt-1-2024.md",
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-05",
+    "expected_state_reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster bis 2023-12-31 schließt die Fassung des falschen Stands aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Fassung auf Rang 1, Verwechslungspartner (verwaltung-0021_dienstanweisung-ordnungsamt-1-2024.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
   },
   {
     "id": "verw-meta-009",
@@ -772,9 +802,84 @@
     "language": "de",
     "type": "factual",
     "answer_span": "Dienstanweisung der Kämmerei der Stadt Kalkstadt, Aktenzeichen KAE-DA-1/2024, gültig ab dem 1.",
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-08-31",
-    "expected_state_reason": "Kein Metadatenfilter in der Suche (Roadmap 2f): die inhaltlich nahezu identische Fassung des falschen Stands ist nicht ausschließbar; gemessen am 2026-09-01 (Pipeline-Pfad): richtige Fassung auf Rang 1, ohne dass ein Metadatenfilter beteiligt war",
-    "expected_state_exception": "Heute auf beiden Pfaden gelöst, aber ohne den geprüften Mechanismus: Die richtige Fassung rankt zufällig oben, ein Metadatenfilter existiert nicht. Der Fall bleibt known_gap, damit ein Zufallsergebnis nicht unter Regressionsschutz gerät — die Abweichung im Audit ist deshalb erwartet."
+    "filter": {
+      "documentType": [
+        "DIENSTANWEISUNG"
+      ]
+    },
+    "confusable_document": "verwaltung-0038_verwaltungsgebuehrensatzung.md",
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-05",
+    "expected_state_reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Die Dokumentart DIENSTANWEISUNG schließt die Satzung aus; gemessen am 2026-09-05 auf beiden Messpfaden: alle erwarteten Dokumente im Fenster, erwartete Dienstanweisung auf Rang 1, Verwechslungspartner (verwaltung-0038_verwaltungsgebuehrensatzung.md) in keinem Fenster mehr — Fehlerrichtung „Filter greift nicht\" ohne Befund."
+  },
+  {
+    "id": "verw-meta-010",
+    "domain": "verwaltung",
+    "query": "Wie lange sind abgeschlossene Vorgänge aufzubewahren, bevor sie ausgesondert werden?",
+    "expected_documents": [
+      "verwaltung-dienstanweisung-aktenaufbewahrung.md"
+    ],
+    "category": "metadata_filter",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Abgeschlossene Vorgänge werden grundsätzlich zehn Jahre aufbewahrt, gerechnet ab dem Ende des Kalenderjahres, in dem der Vorgang abgeschlossen wurde.",
+    "filter": {
+      "documentDateFrom": "2024-01-01",
+      "documentDateTo": "2024-12-31"
+    },
+    "confusable_document": null,
+    "no_value_field": "documentDate",
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-05",
+    "expected_state_reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Datum/Stand keinen Wert und bleibt trotzdem im Fenster; gemessen am 2026-09-05 auf beiden Messpfaden auf Rang 1 — Fehlerrichtung „Filter greift zu stark\" ohne Befund."
+  },
+  {
+    "id": "verw-meta-011",
+    "domain": "verwaltung",
+    "query": "Welche Anforderungen an die Barrierefreiheit müssen die Dienstgebäude mit Publikumsverkehr erfüllen?",
+    "expected_documents": [
+      "verwaltung-leitfaden-barrierefreiheit.md"
+    ],
+    "category": "metadata_filter",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Jedes Dienstgebäude mit Publikumsverkehr verfügt über mindestens einen stufenlosen Zugang mit automatischer Tür.",
+    "filter": {
+      "documentType": [
+        "DIENSTANWEISUNG"
+      ]
+    },
+    "confusable_document": null,
+    "no_value_field": "documentType",
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-05",
+    "expected_state_reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Dokumentart keinen Wert und bleibt trotzdem im Fenster; gemessen am 2026-09-05 auf beiden Messpfaden auf Rang 1 — Fehlerrichtung „Filter greift zu stark\" ohne Befund."
+  },
+  {
+    "id": "verw-meta-012",
+    "domain": "verwaltung",
+    "query": "Wie ist die Vernichtung nicht archivwürdiger Akten zu protokollieren?",
+    "expected_documents": [
+      "verwaltung-dienstanweisung-aktenaufbewahrung.md"
+    ],
+    "category": "metadata_filter",
+    "difficulty": "medium",
+    "language": "de",
+    "type": "factual",
+    "answer_span": "Über jede Vernichtung ist ein Vernichtungsprotokoll zu führen, das Aktenzeichen, Datum der Vernichtung und die verantwortliche Person nennt.",
+    "filter": {
+      "documentType": [
+        "DIENSTANWEISUNG"
+      ],
+      "documentDateFrom": "2024-01-01",
+      "documentDateTo": "2024-12-31"
+    },
+    "confusable_document": null,
+    "no_value_field": "documentDate",
+    "expected_state": "solved",
+    "expected_state_since": "2026-09-05",
+    "expected_state_reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Datum/Stand keinen Wert und bleibt trotzdem im Fenster; gemessen am 2026-09-05 auf beiden Messpfaden auf Rang 1 — Fehlerrichtung „Filter greift zu stark\" ohne Befund."
   }
 ]

@@ -26,7 +26,8 @@ import org.junit.jupiter.api.Test;
 class VerwaltungChunkSizeDryRunTest {
 
   private static final int MIN_CHUNKS_PER_DOCUMENT = 3;
-  private static final int EXPECTED_DOCUMENT_COUNT = 70;
+  // 70 documents of #1042 plus the two Leerwert documents of #1070 (Teil 2).
+  private static final int EXPECTED_DOCUMENT_COUNT = 72;
 
   @Test
   void reportsChunkCountsForTheGeneratedCorpus() throws IOException {

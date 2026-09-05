@@ -32,6 +32,8 @@ import java.util.TreeMap;
  *   <li><b>{@code answer_span} only on single-document cases</b> — see {@link
  *       #SINGLE_DOCUMENT_ANSWER_SPAN_RULE}.
  *   <li><b>Unique ids and unique queries</b>, and every case in the domain the dataset belongs to.
+ *   <li><b>Filter fields consistent</b> (issue #1070) - see {@link #METADATA_FILTER_CASE_RULE},
+ *       {@link #FILTER_WITHOUT_CONDITION_RULE} and {@link #NO_VALUE_FIELDS}.
  * </ul>
  *
  * <p>Deliberately a validator over an already-written dataset rather than a generator: these cases
@@ -106,6 +108,20 @@ public final class GoldenCaseCuration {
       "answer_span is defined per case and only for cases with exactly one expected document "
           + "(issue #1043, ADR-0012 Nachtrag zu offenem Punkt 4)";
 
+  /** The class whose cases measure the core-field filter (issue #1070). */
+  public static final String METADATA_FILTER_CLASS = "metadata_filter";
+
+  public static final String METADATA_FILTER_CASE_RULE =
+      "a metadata_filter case carries a filter with at least one condition, or a filter_note "
+          + "saying why no core field can express the question (issue #1070)";
+
+  public static final String FILTER_WITHOUT_CONDITION_RULE =
+      "filter is present but constrains nothing - a misspelled key or an empty object; drop the "
+          + "field or state a condition";
+
+  /** The two filterable core fields a Leerwert-Regel case may name (issue #1070). */
+  public static final List<String> NO_VALUE_FIELDS = List.of("documentType", "documentDate");
+
   private GoldenCaseCuration() {}
 
   /** One violated rule, with the case it was found on ({@code null} for a dataset-wide rule). */
@@ -155,6 +171,7 @@ public final class GoldenCaseCuration {
       validateExpectedDocuments(goldenCase, corpusFileNames, violations);
       validateAnswerSpan(goldenCase, violations);
       validateState(goldenCase, violations);
+      validateFilter(goldenCase, corpusFileNames, violations);
     }
 
     validateClassSizes(cases, violations);
@@ -234,6 +251,70 @@ public final class GoldenCaseCuration {
       violations.add(
           new Violation(
               goldenCase.id(), "expected_state_since '" + since + "' is not an ISO date"));
+    }
+  }
+
+  /**
+   * The filter fields of issue #1070: a {@code metadata_filter} case carries either a filter with
+   * at least one condition or a written {@code filter_note} saying why no core field can express
+   * the question; a confusable document exists in the corpus and is not itself expected; a
+   * Leerwert-Regel marker names a filtered field. An empty {@code filter} object is refused because
+   * it is what a misspelled key deserializes to - and a case measured without the filter it claims
+   * would report the filter as working.
+   */
+  private static void validateFilter(
+      GoldenCase goldenCase, Set<String> corpusFileNames, List<Violation> violations) {
+    String id = goldenCase.id();
+    boolean filtered = false;
+    if (goldenCase.filter() != null) {
+      try {
+        filtered = !goldenCase.metadataFilter().isEmpty();
+        if (!filtered) {
+          violations.add(new Violation(id, FILTER_WITHOUT_CONDITION_RULE));
+        }
+      } catch (RuntimeException e) {
+        violations.add(new Violation(id, "filter is invalid: " + e.getMessage()));
+      }
+    }
+    if (METADATA_FILTER_CLASS.equals(goldenCase.category())
+        && !filtered
+        && (goldenCase.filterNote() == null || goldenCase.filterNote().isBlank())) {
+      violations.add(new Violation(id, METADATA_FILTER_CASE_RULE));
+    }
+    if (goldenCase.confusableDocument() != null) {
+      if (!corpusFileNames.contains(goldenCase.confusableDocument())) {
+        violations.add(
+            new Violation(
+                id,
+                "confusable_document '"
+                    + goldenCase.confusableDocument()
+                    + "' is not in the corpus"));
+      }
+      if (goldenCase.expectedDocuments() != null
+          && goldenCase.expectedDocuments().contains(goldenCase.confusableDocument())) {
+        violations.add(new Violation(id, "confusable_document is itself an expected document"));
+      }
+    }
+    if (goldenCase.noValueField() != null) {
+      if (!NO_VALUE_FIELDS.contains(goldenCase.noValueField())) {
+        violations.add(
+            new Violation(
+                id,
+                "no_value_field '"
+                    + goldenCase.noValueField()
+                    + "' is not one of "
+                    + NO_VALUE_FIELDS));
+      } else if (!filtered) {
+        violations.add(new Violation(id, "no_value_field requires a filter on that field"));
+      } else {
+        boolean filtersThatField =
+            "documentType".equals(goldenCase.noValueField())
+                ? goldenCase.metadataFilter().filtersDocumentType()
+                : goldenCase.metadataFilter().filtersDocumentDate();
+        if (!filtersThatField) {
+          violations.add(new Violation(id, "no_value_field requires a filter on that field"));
+        }
+      }
     }
   }
 

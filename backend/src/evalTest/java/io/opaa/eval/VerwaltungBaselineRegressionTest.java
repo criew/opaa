@@ -55,12 +55,16 @@ class VerwaltungBaselineRegressionTest {
 
     String markdown =
         BaselineMarkdownWriter.render(
-            result, EvalDomainConfig.VERWALTUNG.baselineFileName(), report.expectedStateAudit());
+            result,
+            EvalDomainConfig.VERWALTUNG.baselineFileName(),
+            report.expectedStateAudit(),
+            report.metadataFilterAudit());
     BaselineMarkdownWriter.write(
         result,
         MARKDOWN_FILE,
         EvalDomainConfig.VERWALTUNG.baselineFileName(),
-        report.expectedStateAudit());
+        report.expectedStateAudit(),
+        report.metadataFilterAudit());
     log.info(markdown);
     System.out.println(markdown);
     System.out.println("Delta-Tabelle geschrieben nach " + MARKDOWN_FILE.toAbsolutePath());

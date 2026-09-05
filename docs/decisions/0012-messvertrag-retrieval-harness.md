@@ -728,3 +728,71 @@ PR #1201 (Mail-Kopfdaten an der Fundstelle anzeigen und filtern, Issue #1164) k�
 Damit bewegt sich der Sammelabdruck aus Entscheidung 28 ein drittes Mal (nach der ursprünglichen Aufnahme des Fixpunkts in Entscheidung 28/29 und dessen Nachzug in Entscheidung 30): `email:2` → `email:3` im `ingestionPipelineFingerprint` aller sechs committeten Baselines. Nach Entscheidung 29 folgt daraus zwingend ein weiterer Versionsschritt auf beiden Messverträgen: `EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` 3 → **4**, `PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` 4 → **5**. Wie in Entscheidung 30: reine Fixpunkt-Ergänzung ohne neuen Messlauf - der Eval-Korpus besteht weiterhin ausschließlich aus Markdown, `MailDocumentPipeline` verarbeitet keines seiner Dokumente, die gemessenen Chunks und Zahlen bleiben unverändert.
 
 **Versionskollision mit ADR-0022 §9 aufgelöst:** ADR-0022 ("Ein Anhang ist ein eigenes Dokument") hatte `MailDocumentPipeline`-Version 3 bereits dem dort beschriebenen Anhangsumbau (Issue #1183) zugesagt. Da dieser PR v3 zuerst für den `mail_date`-Fix verbraucht, geht der Anhangsumbau nun auf **v4** - ADR-0022 §9 und Issue #1183 sind entsprechend korrigiert.
+
+## Nachtrag: Metadatenfilter im Messvertrag (Issue #1070, Teil 2)
+
+> **Nachtrag vom 2026-09-05, Issue #1070 (Teil 2).** Der Kernfeld-Filter aus Arbeitspaket 4 des
+> Metadatenschemas (#1070, Teil 1) wirkt seither in beiden produktiven Suchpfaden. Damit ist die
+> Fallklasse `metadata_filter` erstmals mit dem Mechanismus messbar, für den sie gebaut wurde —
+> und der Harness misst etwas anderes als vorher.
+
+### 32. `metadataFilterEnabled` als neuer Fixpunkt auf beiden Pfaden
+
+Der Harness reicht seither den `filter` jedes Golden-Falls in die Messung durch: auf dem
+Rohvektor-Pfad als `Filter.Expression` an `similaritySearch`, gebaut über dieselbe
+`MetadataFilterExpressions.vectorExpression` wie die produktive Vektorsuche; auf dem Pipeline-Pfad
+als `MetadataFilter` am Request, wo die Stufe `METADATA_FILTER` ihn in beide Suchabfragen einsetzt.
+Ein Lauf ohne diese Durchreichung misst die Klasse `metadata_filter` ohne den geprüften
+Mechanismus — dieselbe Kategorie wie `fullTextSearchEnabled` (Entscheidung 22): keine schlechtere
+Messung, sondern eine andere. `metadataFilterEnabled` ist deshalb ein Gültigkeitsfeld nach
+Entscheidung 18 auf **beiden** Pfaden; weicht es ab, ist die Baseline für diesen Lauf ungültig und
+es wird keine Metrik verglichen.
+
+Der Wert ist heute unbedingt `true`: Die Durchreichung ist Eigenschaft des Harness-Codes, kein
+Schalter. Er steht trotzdem im Fixpunkt-Block, weil eine committete Baseline aussagen muss, unter
+welcher Messgrundlage sie entstanden ist — eine ältere Datei ohne das Feld lädt als `null` und wird
+damit als unvergleichbar gemeldet, statt stillschweigend als „ohne Filter gemessen" durchzugehen.
+
+### 33. Beide Messverträge steigen: Rohvektor 5 → 6, Pipeline 7 → 8
+
+Ein neuer Fixpunkt erweitert, was „dieselbe Messung" heißt (Entscheidung 6), auf beiden Pfaden.
+Anders als die Fixpunkt-Nachträge 29 bis 31 ist das hier **kein** reiner Vertragsschritt ohne
+Messlauf: Der Filter verändert die gemessene Auswahl der Klasse `metadata_filter` tatsächlich.
+Beide Baselines der Domäne `verwaltung` sind deshalb im selben Lauf neu gezogen; die vier übrigen
+Fallklassen dieser Domäne dienen dabei als Selbstprüfung — kein Fall außerhalb von
+`metadata_filter` trägt einen Filter, ihr Delta muss ≈ 0 sein. Die vier Baselines von
+`comic-characters`/`city-landmarks` erhalten den Fixpunkt und die neue Vertragsversion, aber keine
+neue Messung: Kein Fall dieser beiden Domänen trägt ein `filter`-Feld, ihre Zahlen sind
+unverändert.
+
+### 34. Die zwei Fehlerrichtungen werden getrennt ausgewiesen, nie gemittelt
+
+`MetadataFilterAudit` steht gleichrangig neben `ExpectedStateAudit`: Jenes beantwortet „ist der Fall
+gelöst", dieses „hat der Filtermechanismus getan, wofür er da ist". Es zählt getrennt, je Messpfad:
+
+- **„Filter greift nicht"** — der im Fall benannte `confusable_document` steht trotz Filter im
+  Fenster.
+- **„Filter greift zu stark"** — ein Fall mit `no_value_field` (das erwartete Dokument hat im
+  gefilterten Feld keinen Wert) verliert sein erwartetes Dokument, obwohl die Leerwert-Regel es
+  halten muss.
+
+Ein gemittelter Gesamtwert verschwiege, welche der beiden Richtungen gerade schiefliegt — und die
+beiden verlangen unterschiedliche Korrekturen. Wie das Zustandsfeld-Audit **meldet** die Auswertung
+und lässt den Lauf nicht fehlschlagen; sie erscheint im JSON-Report, im Lauf-Log und in der
+Markdown-Delta-Tabelle beider Pfade, also in Job-Zusammenfassung, PR-Kommentar und Alarm-Issue.
+
+### 35. Vierter Nachtrag des Fingerabdrucks: `confluence:1` (Issue #1212, nachgezogen hier)
+
+Der Confluence-Konnektor (#1212) registriert mit `ConfluenceDocumentPipeline` eine weitere
+Ingestion-Pipeline. Der Sammelabdruck aus Entscheidung 28 bewegt sich damit ein viertes Mal —
+`docx:3,…` → `confluence:1,docx:3,…` —, der Nachzug in den sechs committeten Baselines unterblieb
+dort jedoch. Er wird hier nachgeholt, im selben Versionsschritt wie der Metadatenfilter-Fixpunkt
+(Entscheidung 33), statt eine weitere Version dafür zu verbrauchen: Beide Änderungen erreichen
+dieselben sechs Dateien und denselben Lauf.
+
+Warum das nicht auffiel: `PipelinePathIsolationTest#committedIngestionPipelineFingerprintsMatchTheRealRegistry`
+baut die Registry im Docker-freien Test aus einer Liste nachgebauter Pipeline-Instanzen — diese
+Liste war ebenfalls nicht nachgezogen, sodass Prüfling und Prüfer gemeinsam veraltet waren. Sie ist
+jetzt vollständig; ein künftiger Konnektor fällt damit wieder Docker-frei auf statt erst im
+nächtlichen Lauf als „Baseline ungültig". Wie in Entscheidung 30: reine Fixpunkt-Ergänzung ohne
+neuen Messlauf — kein Korpus dieses Repositorys routet ein Dokument durch die Confluence-Pipeline.

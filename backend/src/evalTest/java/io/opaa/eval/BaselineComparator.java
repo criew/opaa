@@ -477,6 +477,13 @@ public final class BaselineComparator {
         "ingestionPipelineFingerprint",
         fp.ingestionPipelineFingerprint(),
         cfg.ingestionPipelineFingerprint());
+    // Issue #1070: the golden filters move the metadata_filter class's numbers; a run that did not
+    // apply them measures a different thing, not a worse one.
+    addIfDiffers(
+        mismatches,
+        "metadataFilterEnabled",
+        String.valueOf(fp.metadataFilterEnabled()),
+        String.valueOf(cfg.metadataFilterEnabled()));
     return List.copyOf(mismatches);
   }
 

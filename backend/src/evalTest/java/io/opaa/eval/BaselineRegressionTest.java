@@ -59,12 +59,14 @@ class BaselineRegressionTest {
         BaselineMarkdownWriter.render(
             result,
             EvalDomainConfig.COMIC_CHARACTERS.baselineFileName(),
-            report.expectedStateAudit());
+            report.expectedStateAudit(),
+            report.metadataFilterAudit());
     BaselineMarkdownWriter.write(
         result,
         MARKDOWN_FILE,
         EvalDomainConfig.COMIC_CHARACTERS.baselineFileName(),
-        report.expectedStateAudit());
+        report.expectedStateAudit(),
+        report.metadataFilterAudit());
     log.info(markdown);
     System.out.println(markdown);
     System.out.println("Delta-Tabelle geschrieben nach " + MARKDOWN_FILE.toAbsolutePath());

@@ -81,7 +81,12 @@ public record Baseline(
       // Issue #1144: under which ingestion pipeline versions (all registered, not just the ones
       // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
       // Javadoc for why corpusManifestSha256 alone does not answer that question.
-      String ingestionPipelineFingerprint) {}
+      String ingestionPipelineFingerprint,
+      // Issue #1070 (Teil 2): whether each golden case's filter was applied inside the search —
+      // see EvaluationReport.RunConfiguration#metadataFilterEnabled. Boxed on purpose: a baseline
+      // file predating the field loads as null and is then reported as incomparable ("null" vs.
+      // "true") instead of silently reading as "measured without filters".
+      Boolean metadataFilterEnabled) {}
 
   /** Group keys used in {@link #groups()} — must match how the report's groups are addressed. */
   public static final String OVERALL = "overall";

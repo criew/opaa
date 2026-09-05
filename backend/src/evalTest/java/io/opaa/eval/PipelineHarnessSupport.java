@@ -17,9 +17,10 @@ import org.slf4j.Logger;
 /**
  * The pipeline measurement path's harness half (issue #1039): everything the two domain harnesses
  * need to run their golden dataset through {@link
- * QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition(String, List, Set)} and write
- * the resulting {@link PipelineEvaluationReport}, in one place instead of copied into both
- * near-duplicate harness classes.
+ * QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition(String, List, Set,
+ * io.opaa.indexing.metadata.MetadataFilter)} and write the resulting {@link
+ * PipelineEvaluationReport}, in one place instead of copied into both near-duplicate harness
+ * classes.
  *
  * <p>Runs on the corpus the calling harness has already indexed and manifest-verified — the
  * pipeline path costs a second pass of queries, never a second indexing run, and therefore measures
@@ -196,11 +197,12 @@ public final class PipelineHarnessSupport {
         PipelineRetrievalEvaluator.evaluateAll(
             goldenCases,
             // No conversation history: a golden case is a standalone question, and the harness has
-            // no chat to resolve a follow-up against.
-            query -> {
+            // no chat to resolve a follow-up against. The case's filter (#1070) is carried in as
+            // given, where the METADATA_FILTER stage applies it in both search paths.
+            (query, metadataFilter) -> {
               QueryService.RetrievalWithDecomposition retrieval =
                   queryService.retrieveRelevantChunksInGivenScopeWithDecomposition(
-                      query, List.of(), searchScope);
+                      query, List.of(), searchScope, metadataFilter);
               List<String> rankedFileNames =
                   retrieval.chunks().stream()
                       .map(chunk -> chunk.getMetadata().get("file_name"))
@@ -387,6 +389,9 @@ public final class PipelineHarnessSupport {
         identity.goldenDatasetSha256(),
         goldenCaseCount,
         identity.ingestionPipelineFingerprint(),
+        // Every case's filter is carried into the run by measure() above - unconditionally, so
+        // this is a statement about this code, not about a switch.
+        true,
         searchScopeLibraryCount,
         SEARCH_SCOPE_NOTE,
         pipelineRunStart.toString(),
