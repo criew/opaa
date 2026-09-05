@@ -244,6 +244,14 @@ Aus dem Verzeichnis:
 Das Verzeichnis ist die **führende Quelle**. Wer dort gesperrt ist, ist in OPAA gesperrt; ein
 abweichender Zustand in OPAA ist kein Zustand, den ein Admin von Hand herstellen können sollte.
 
+**Je Anbieter (ADR-0025):** Der Verzeichnisabgleich gilt für die Konten des **Standardanbieters** —
+nur unter ihnen werden die Subjects des Verzeichnisses aufgelöst, und nur seine Organisationseinheiten
+entstehen daraus. Ein zweiter Anbieter (Partnerportal, Landesanbieter) hat keinen Verzeichnisabgleich;
+seine Gruppen kommen, wenn überhaupt, aus seinem Gruppen-Claim (siehe [„Claim-Zuordnung je
+Anbieter"](#anmeldung-und-identität)) und leben im Namensraum dieses Anbieters. Ein gleichnamiges
+Subject bei zwei Anbietern sind zwei Konten, und nur das des Standardanbieters erhält die
+Verzeichnisgruppen.
+
 ### Der Lebenszyklus eines Kontos
 
 ```
@@ -258,7 +266,9 @@ abweichender Zustand in OPAA ist kein Zustand, den ein Admin von Hand herstellen
 ```
 
 1. **Anlage.** Ein Konto entsteht durch die Bereitstellung aus dem Verzeichnis, nicht durch eine
-   Einladung im Produkt. Wer im Verzeichnis nicht existiert, hat in OPAA nichts.
+   Einladung im Produkt. Wer im Verzeichnis nicht existiert, hat in OPAA nichts. Konten anderer
+   Anbieter entstehen bei der ersten Anmeldung über diesen Anbieter — mit eigener Identität
+   `(Issuer, Subject)`, ohne Verzeichnisgruppen und ohne Erstadministrator-Regel.
 2. **Erste Anmeldung.** Der Standard-Space (`isDefault`) entsteht dabei; eine Wissensbibliothek legt die Person
    bei Bedarf selbst an (siehe [Wissensquellen](./knowledge-sources.md)). Ein Anlaufbestand an
    Assets ergibt sich aus den Gruppen der Person.
@@ -268,6 +278,9 @@ abweichender Zustand in OPAA ist kein Zustand, den ein Admin von Hand herstellen
 4. **Ausscheiden.** Verschwindet ein Konto im Verzeichnis oder wird es dort gesperrt, wird der Zugang in
    OPAA **beim nächsten Abgleich automatisch entzogen** — ohne Ticket, ohne Handgriff und ohne
    Bedingung. Das ist die Anforderung, an der der IT-Grundschutz und jede Prüfung als Erstes ansetzen.
+   Für Konten anderer Anbieter ist der Hebel der Anbieter selbst (gesperrtes Konto: keine Anmeldung
+   mehr, Token-Gruppen enden mit der nächsten Anmeldung) oder das Deaktivieren des ganzen Anbieters in
+   der Anbieterverwaltung (ab dem nächsten Token abgewiesen, Konten bleiben).
 
 **Die Deaktivierung wird nie durch offene Eigentumsfragen aufgehalten.** Eine Regel, die verlangt, erst
 die Nachfolge für dutzende Assets zu klären, wird am Freitagnachmittag umgangen und schützt dann gerade

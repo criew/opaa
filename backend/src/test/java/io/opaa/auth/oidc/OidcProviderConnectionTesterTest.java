@@ -81,6 +81,22 @@ class OidcProviderConnectionTesterTest {
     assertThat(outcome.success()).isTrue();
   }
 
+  /**
+   * The Compose split: the browser reaches the provider under the issuer, the backend only under
+   * the override - the registry never fetches the issuer then, so the test must not fail on it.
+   */
+  @Test
+  void anIssuerUnreachableFromTheBackendStillPassesThroughTheJwkSetOverride() {
+    OidcProviderConnectionTester.TestOutcome outcome =
+        tester.test("http://127.0.0.1:1/realms/opaa", baseUrl + "/realms/opaa/certs");
+
+    assertThat(outcome.success()).isTrue();
+    assertThat(outcome.message())
+        .contains("erreichbar")
+        .contains("vom Backend aus nicht geprüft")
+        .contains("1 Schlüssel");
+  }
+
   @Test
   void anIssuerMismatchInTheDiscoveryDocumentFails() {
     discoveryBody = discovery("https://elsewhere.example", baseUrl + "/realms/opaa/certs");
