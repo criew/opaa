@@ -384,7 +384,7 @@ kein Dokument), dann „Vollabgleich starten", und prüfen, dass dieser Lauf vol
 | abgewiesen | … liegt in einem nicht ausgewählten Space; der bisherige Stand bleibt bis zum nächsten Vollabgleich | verschoben oder per Webhook außerhalb der Auswahl gemeldet |
 | nicht erreichbar | Meldung der Zugriffsschicht (Zeitüberschreitung, Verbindung abgelehnt, TLS, HTTP-Status) | Instanz, Proxy, Allowlist prüfen; die Seite zählt als fehlgeschlagen, der Anker rückt nicht vor |
 | nicht erreichbar | Anhänge nicht auflistbar: … | die Auflistung gilt als unvollständig, kein Vollabgleich bereinigt |
-| entfernt | In der Quelle nicht mehr gefunden, entfernt / In Confluence im Papierkorb, entfernt / In Confluence in einen anderen Space verschoben, alter Stand entfernt | positiver Befund |
+| in der Quelle entfernt | In der Quelle nicht mehr gefunden, entfernt / In Confluence im Papierkorb, entfernt / In Confluence in einen anderen Space verschoben, alter Stand entfernt | positiver Befund |
 | Ratenbegrenzung | Confluence hat den Lauf n-mal gedrosselt (Retry-After); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen | eine Zeile je Lauf; bei Häufung Zeitpläne entzerren |
 | Anfragebudget erschöpft | Anfragebudget von … Anfragen erschöpft; der Lauf endet unvollständig, … | der nächste Lauf setzt fort; bei Dauerzustand Abschnitt 6.3 |
 | Fehler | Das Anfragebudget von … Anfragen reicht für diese Bibliothek nicht aus … | Budget anheben oder Auswahl aufteilen |
@@ -486,7 +486,7 @@ Alle Schlüssel unter `opaa.indexing.confluence.*`, Umgebungsvariablen als
 | `incremental-overlap` | 10m | Überlappung des Änderungsfensters nach hinten |
 | `request-budget-per-run` | 50000 | Anfragen je Lauf; `0` schaltet das Budget ab |
 | `webhook.debounce` | 5s | Sammelzeit des Webhook-Eingangs |
-| `webhook.max-pending-pages` | 200 | ab dieser Stapelgröße ein gewöhnlicher Lauf statt Einzelabrufen |
+| `webhook.max-pending-pages` | 200 | über dieser Stapelgröße ein gewöhnlicher Lauf statt Einzelabrufen |
 | `webhook.max-deferrals` | 120 | Wartezyklen, bevor ein Stapel verworfen wird |
 
 Dazu die Ratenbegrenzung des Webhook-Eingangs (`OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS` je

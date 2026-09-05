@@ -184,8 +184,8 @@ Ein abgebrochener Lauf lässt den bisherigen Bestand weitgehend stehen. Dokument
 bereits fertig verarbeitet hat, bleiben indiziert; Dokumente, die er noch nicht erreicht hat,
 bleiben auf dem alten Stand. Nur das eine Dokument, das gerade in Arbeit war, kann ohne Chunks
 zurückbleiben, und auch das nur noch, wenn der Abbruch genau zwischen dem Entfernen der alten
-Chunks und dem Schreiben der neuen fiel — seit #1268 ist das das Zeitfenster des Embedding-Aufrufs
-statt der gesamten Verarbeitung (Abschnitt 5, Schritt 6a). Es steht dann nicht auf „indiziert" und
+Chunks und dem Schreiben der neuen fiel, also im Zeitfenster des Embedding-Aufrufs (Abschnitt 5,
+Schritt 6a). Es steht dann nicht auf „indiziert" und
 wird im nächsten Lauf erneut verarbeitet, unabhängig von der Prüfsumme.
 
 ## 4. Die Quellen: der Übergabepunkt an die Konnektoren
@@ -266,9 +266,8 @@ flowchart TB
     S4 -. gefundene Anhänge .-> AT[Anhänge als eigene<br/>Dokumente durch dieselbe Strecke]
 ```
 
-Schritt 6a steht bewusst im Bild: Seit #1268 werden die alten Chunks erst entfernt, wenn die neue
-Fassung geparst und gechunkt vorliegt — vorher geschah das direkt nach der Kontingentprüfung, also
-vor dem Parsen.
+Schritt 6a steht bewusst im Bild: Die alten Chunks werden erst entfernt, wenn die neue Fassung
+geparst und gechunkt vorliegt, nicht schon vor dem Parsen.
 
 ### Schritt 1: Prüfsumme und Identität
 
@@ -281,9 +280,8 @@ Hat sich der Inhalt geändert, bleibt die Dokumentzeile mit ihrer ID bestehen. N
 werden ausgetauscht. Dadurch überleben Verweise auf das Dokument, etwa aus Chat-Zitaten oder von
 Anhängen, eine Aktualisierung.
 
-**Wann die alten Chunks verschwinden (seit #1268):** erst, wenn die neue Fassung tatsächlich
-geparst und gechunkt vorliegt (Schritt 6a im Bild) — vorher geschah das schon direkt nach der
-Kontingentprüfung. Scheitert das Parsen der neuen Fassung, bleibt der alte Stand durchsuchbar; das
+**Wann die alten Chunks verschwinden:** erst, wenn die neue Fassung tatsächlich geparst und
+gechunkt vorliegt (Schritt 6a im Bild). Scheitert das Parsen der neuen Fassung, bleibt der alte Stand durchsuchbar; das
 Dokument steht auf „fehlgeschlagen", behält aber seine Chunks und seine bisherige Chunk-Anzahl.
 Nur eine neue Fassung, die gelesen werden konnte und leer oder ohne extrahierbaren Text ist,
 entfernt die alten Chunks — dann ist „leer" eine Aussage über den neuen Inhalt, und die
@@ -453,7 +451,7 @@ Konsequenzen für den Betrieb:
 Die Dokumentstrecke weiß nicht, woher ein Anhang stammt. Jeder Konnektor, der Anhänge
 liefert, und jede Format-Pipeline, die welche findet, nutzt denselben Weg; die Grenzwerte für
 Anzahl und Größe je Elternteil setzt die jeweilige Quelle bzw. das Format, die Tiefe ist
-allgemein (Ticket #1269 führt sie unter `opaa.indexing.attachments.max-depth` zusammen).
+allgemein (`opaa.indexing.attachments.max-depth`).
 
 ## 7. Änderungen und Löschungen erkennen
 

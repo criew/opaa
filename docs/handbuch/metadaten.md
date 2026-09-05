@@ -118,7 +118,7 @@ Jede Format-Pipeline gibt nur weiter, was ihr Format selbst erklärt; interpreti
 | HTML | `<title>` | | erste `<h1>` | erster Textblock des Hauptinhalts | |
 | E-Mail | Betreff | `Date`-Kopf als Dokumentdatum | | | |
 | Feed-Eintrag | Überschrift des Eintrags | Veröffentlichungsdatum als Dokumentdatum | | | Name gilt nicht als Dateiname |
-| Confluence-Seite | Seitentitel | | | | Name gilt nicht als Dateiname |
+| Confluence-Seite | Seitentitel | | | | der Seitentitel wird wie ein Dateiname gelesen (Dokumentart-Token, Datum) |
 | Tabellen, TXT, DOC | | | | TXT, DOC: erste Textzeile | |
 
 Bei allen Formaten kommt der **Dateiname** hinzu, und die geroutete **Formatkennung** entscheidet
@@ -216,7 +216,7 @@ Für Konnektorbibliotheken gilt dasselbe; der Wert hängt am Dokument, nicht an 
 
 ### 7.1 Der Pflege-Anker
 
-In den Einstellungen der Bibliothek steht über der Dokumentliste der Abschnitt
+Auf der Bibliotheksseite steht über der Dokumentliste der Abschnitt
 **„Metadaten-Pflege"**: je Feld „N Dokumente ohne Wert (x %)" oder „vollständig gepflegt", mit
 einer Schaltfläche, die genau diese Dokumente in der Liste darunter öffnet. Gezählt werden nur leere
 Felder; „kein Wert ermittelbar" zählt nicht mit, deshalb kann die Zahl null erreichen. Die Liste

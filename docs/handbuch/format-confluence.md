@@ -80,9 +80,11 @@ Space und Gliederungspfad stehen nicht im Seitenkörper; der Konnektor kennt sie
 das Dokument und an jeden Chunk. Der **Kontexttitel** für das Embedding ist der Ort der Seite im
 Space, Gliederungspfad plus Titel („Handbuch / Kapitel 1 / Abschnitt 1.1"), nicht nur der Titel.
 
-**Dokumenteigenschaften** für das [Metadatenschema](metadaten.md): der Seitentitel als Titel. Die
-Versionsnummer ist kein Datum, und ein Seitentitel folgt keiner Dateinamenskonvention; Dokumentart
-und Datum/Stand bleiben für Confluence-Seiten leer, solange sie nicht von Hand gesetzt werden.
+**Dokumenteigenschaften** für das [Metadatenschema](metadaten.md): der Seitentitel als Titel.
+Der Seitentitel wird dabei wie ein Dateiname behandelt: Seine Wörter liefern die Dokumentart
+(exakter Vokabularbegriff oder Kompositum-Endung, etwa „Gebührensatzung"), eine Datumsangabe oder
+Jahreszahl im Titel liefert Datum/Stand. Die Versionsnummer ist kein Datum. Eine Titelzeile aus dem
+Seitenkörper wird nicht gelesen.
 
 ## 5. Fehler
 
