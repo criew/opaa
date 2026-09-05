@@ -110,6 +110,7 @@ val typeMappingsConfig = mapOf(
     "ScheduleWeekday" to "ScheduleWeekday",
     "ConfluenceEdition" to "ConfluenceEdition",
     "IndexingRunMode" to "IndexingRunMode",
+    "LibraryMetadataFieldType" to "LibraryMetadataFieldType",
 )
 
 tasks.withType<Test> {
@@ -184,6 +185,7 @@ tasks.named<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openAp
         "ScheduleWeekday" to "io.opaa.api.types.ScheduleWeekday",
         "ConfluenceEdition" to "io.opaa.api.types.ConfluenceEdition",
         "IndexingRunMode" to "io.opaa.api.types.IndexingRunMode",
+        "LibraryMetadataFieldType" to "io.opaa.api.types.LibraryMetadataFieldType",
     ))
 }
 

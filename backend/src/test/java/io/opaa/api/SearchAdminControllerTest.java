@@ -18,6 +18,7 @@ import io.opaa.auth.UserService;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
+import io.opaa.indexing.metadata.MetadataFieldFill;
 import io.opaa.query.RetrievalExplanation;
 import io.opaa.searchadmin.ChunkInspection;
 import io.opaa.searchadmin.ChunkInspectionService;
@@ -157,8 +158,11 @@ class SearchAdminControllerTest {
                             3,
                             1,
                             1,
-                            Map.of(CoreMetadataField.TITLE, 2L),
-                            Map.of(CoreMetadataField.DOCUMENT_TYPE, 1L))))));
+                            Map.of(
+                                CoreMetadataField.TITLE,
+                                new MetadataFieldFill(5, 2, 0),
+                                CoreMetadataField.DOCUMENT_TYPE,
+                                new MetadataFieldFill(5, 0, 1)))))));
 
     mockMvc
         .perform(get("/api/v1/admin/search/status").with(asAdmin()))

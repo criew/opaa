@@ -1,6 +1,7 @@
 package io.opaa.api;
 
 import io.opaa.api.dto.MetadataFilter;
+import io.opaa.api.dto.MetadataFilterLibraryFieldCondition;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,8 +25,11 @@ public class MetadataFilterDeserializer extends ValueDeserializer<MetadataFilter
   private static final String DOCUMENT_TYPES = "documentTypes";
   private static final String DOCUMENT_DATE_FROM = "documentDateFrom";
   private static final String DOCUMENT_DATE_TO = "documentDateTo";
+  private static final String LIBRARY_FIELDS = "libraryFields";
   private static final Set<String> KNOWN_FIELDS =
-      Set.of(DOCUMENT_TYPES, DOCUMENT_DATE_FROM, DOCUMENT_DATE_TO);
+      Set.of(DOCUMENT_TYPES, DOCUMENT_DATE_FROM, DOCUMENT_DATE_TO, LIBRARY_FIELDS);
+  private static final Set<String> KNOWN_LIBRARY_FIELD_PROPERTIES =
+      Set.of("libraryId", "fieldKey", "codes", "dateFrom", "dateTo", "value");
 
   @Override
   public MetadataFilter deserialize(JsonParser parser, DeserializationContext context) {
@@ -59,7 +63,64 @@ public class MetadataFilterDeserializer extends ValueDeserializer<MetadataFilter
     }
     filter.setDocumentDateFrom(text(node, DOCUMENT_DATE_FROM));
     filter.setDocumentDateTo(text(node, DOCUMENT_DATE_TO));
+    JsonNode libraryFields = node.get(LIBRARY_FIELDS);
+    if (libraryFields != null && !libraryFields.isNull()) {
+      if (!libraryFields.isArray()) {
+        return context.reportInputMismatch(
+            MetadataFilter.class, "libraryFields must be an array of conditions");
+      }
+      List<MetadataFilterLibraryFieldCondition> conditions = new ArrayList<>();
+      for (JsonNode entry : libraryFields) {
+        if (!entry.isObject()) {
+          return context.reportInputMismatch(
+              MetadataFilter.class, "a library field condition must be a JSON object");
+        }
+        for (Map.Entry<String, JsonNode> property : entry.properties()) {
+          if (!KNOWN_LIBRARY_FIELD_PROPERTIES.contains(property.getKey())) {
+            return context.reportInputMismatch(
+                MetadataFilter.class,
+                "library field condition property '"
+                    + property.getKey()
+                    + "' is not filterable; only libraryId, fieldKey, codes, dateFrom, dateTo and"
+                    + " value are");
+          }
+        }
+        MetadataFilterLibraryFieldCondition condition =
+            new MetadataFilterLibraryFieldCondition(
+                toUuid(entry, context), text(entry, "fieldKey"));
+        JsonNode codes = entry.get("codes");
+        if (codes != null && !codes.isNull()) {
+          if (!codes.isArray()) {
+            return context.reportInputMismatch(
+                MetadataFilter.class, "codes must be an array of value codes");
+          }
+          List<String> values = new ArrayList<>();
+          for (JsonNode code : codes) {
+            values.add(code.asString());
+          }
+          condition.setCodes(values);
+        }
+        condition.setDateFrom(text(entry, "dateFrom"));
+        condition.setDateTo(text(entry, "dateTo"));
+        condition.setValue(text(entry, "value"));
+        conditions.add(condition);
+      }
+      filter.setLibraryFields(conditions);
+    }
     return filter;
+  }
+
+  private static java.util.UUID toUuid(JsonNode node, DeserializationContext context) {
+    String value = text(node, "libraryId");
+    if (value == null) {
+      return context.reportInputMismatch(
+          MetadataFilter.class, "a library field condition needs its libraryId");
+    }
+    try {
+      return java.util.UUID.fromString(value);
+    } catch (IllegalArgumentException e) {
+      return context.reportInputMismatch(MetadataFilter.class, "libraryId is not a UUID: " + value);
+    }
   }
 
   private static String text(JsonNode node, String field) {

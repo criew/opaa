@@ -45,7 +45,7 @@ const NOTE_RULES: NoteRule[] = [
       'Rechtefilter in jeder Suche dieses Laufs angewendet, nie erst nachträglich auf das Ergebnis.',
   },
 
-  // MetadataFilterStage (#1070)
+  // MetadataFilterStage
   {
     name: 'METADATA_FILTER_NONE',
     pattern: /^no metadata filter set: every candidate of the search scope qualifies$/,
@@ -62,6 +62,11 @@ const NOTE_RULES: NoteRule[] = [
       /^metadata filter: document date from (.+?) to (.+?), a value counting for the whole span its precision leaves open$/,
     german: (m) =>
       `Metadatenfilter: Datum/Stand von ${m[1] === 'open start' ? 'offen' : m[1]} bis ${m[2] === 'open end' ? 'offen' : m[2]}; ein Wert gilt für den ganzen Zeitraum, den seine Genauigkeit offenlässt.`,
+  },
+  {
+    name: 'METADATA_FILTER_LIBRARY_FIELD',
+    pattern: /^metadata filter: library field (.+?) of library (.+?) (.*)$/s,
+    german: (m) => `Metadatenfilter: Bibliotheksfeld ${m[1]} der Bibliothek ${m[2]} ${m[3]}.`,
   },
   {
     name: 'METADATA_FILTER_SUBORDINATE',

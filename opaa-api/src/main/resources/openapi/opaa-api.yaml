@@ -2006,6 +2006,349 @@ paths:
               schema:
                 $ref: "#/components/schemas/DocumentTypeVocabularyResponse"
 
+  /api/v1/libraries/{libraryId}/metadata-fields:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: listLibraryMetadataFields
+      tags: [library]
+      summary: >
+        The library's own metadata fields with their configured value lists (#1071,
+        metadata-schema.md Teil II (b)). Schema, not an aggregate over documents: the list exists
+        whether or not a document carries a value and is readable by everyone who may use the
+        library (VIEWER or above) - which is exactly why a value list must not carry
+        schutzbedürftige Bezeichnungen. A library with no own fields is the normal case and
+        answers with an empty list.
+      responses:
+        "200":
+          description: The library's fields in display order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataFieldsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      operationId: createLibraryMetadataField
+      tags: [library]
+      summary: >
+        Defines a new library field (#1071). Requires the management right at the library (MANAGER
+        or above) - the same bar as changing the library's other settings, and deliberately higher
+        than the EDITOR right that sets a value on a document (#1068). Two rules are enforced here:
+        a field must serve the filter or the Kontextpräfix ("nur Beleg-Anzeige" is rejected with
+        400), and a library carries at most five own fields (a sixth is 409). A duplicate field key
+        and an already taken citationPosition are 409 as well; at most two fields of a library
+        carry a citation position, which is what keeps the Belegzeile readable. The Kontextpräfix
+        flag is stored here and becomes effective with the following work package (#1072).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLibraryMetadataFieldRequest"
+      responses:
+        "201":
+          description: The created field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataFieldResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: path
+        required: true
+        description: >-
+          The field's own key, without the lib namespace a document value carries.
+        schema:
+          type: string
+          example: fassung
+
+    put:
+      operationId: updateLibraryMetadataField
+      tags: [library]
+      summary: >
+        Changes label, Wirkstellen and citation position of a field (#1071). Type, key and value
+        list stay: the type is what every stored value was checked against, and the value list has
+        its own operations with the confirmed mapping. Same rules and same right as creating a
+        field. Switching the filter Wirkstelle on or off rewrites the field's chunk keys on the
+        documents that carry a value, without re-embedding.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLibraryMetadataFieldRequest"
+      responses:
+        "200":
+          description: The field after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataFieldResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    delete:
+      operationId: deleteLibraryMetadataField
+      tags: [library]
+      summary: >
+        Removes a field with everything that hangs on it (#1071): every stored document value, the
+        field's chunk keys and its value list, in one transaction. The number of affected documents
+        is available beforehand through GET
+        /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}/usage, so a client can confirm the
+        Folgekosten. Requires the management right at the library.
+      responses:
+        "204":
+          description: Field and its values removed
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}/usage:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: getLibraryMetadataFieldUsage
+      tags: [library]
+      summary: >
+        How many documents carry a value for this field - the Folgekosten shown before a deletion
+        is confirmed (#1071). Requires the management right, like the deletion it precedes.
+      responses:
+        "200":
+          description: The number of affected documents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataFieldUsageResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}/values:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      operationId: addLibraryMetadataFieldValue
+      tags: [library]
+      summary: >
+        Adds one entry to a SELECT field's value list (#1071, metadata-schema.md "Kontrolliertes
+        Vokabular statt Freitext"). Extending a list is always possible, has no Rückwirkung on any
+        stored value and needs no Nachlauf - unlike removing an entry. Requires the management
+        right; a field that is not a SELECT field and a code already in the list are rejected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryMetadataFieldValueRequest"
+      responses:
+        "200":
+          description: The field with its extended value list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataFieldResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}/values/{code}:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+
+    patch:
+      operationId: relabelLibraryMetadataFieldValue
+      tags: [library]
+      summary: >
+        Corrects the German label of one list entry (#1071). The code stays - it is what documents
+        carry, so a relabeling has no Rückwirkung and needs no mapping. Replacing a code is a
+        removal with a confirmed mapping (POST .../values/{code}/remap), never an edit here.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryMetadataFieldValueLabelRequest"
+      responses:
+        "200":
+          description: The field with its corrected value list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataFieldResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}/values/{code}/usage:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      operationId: getLibraryMetadataFieldValueUsage
+      tags: [library]
+      summary: >
+        How many documents carry this value - the number that stands before the confirmation of a
+        mapping (metadata-schema.md: "Die Zahl der betroffenen Dokumente steht vor der Bestätigung
+        fest"). Readable with VIEWER, since it is the number a confirmation dialog shows.
+      responses:
+        "200":
+          description: The number of affected documents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataFieldUsageResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/{fieldKey}/values/{code}/remap:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      operationId: remapLibraryMetadataFieldValue
+      tags: [library]
+      summary: >
+        Removes a value from the list together with the confirmed mapping of every document that
+        carries it (#1071, metadata-schema.md "Kontrolliertes Vokabular statt Freitext"): onto
+        another value of the same list, or - with targetCode null - onto "leer". There is no way to
+        remove a value without a mapping, which is what makes the state "Dokument trägt einen Wert,
+        den es im Schema nicht mehr gibt" unreachable; the database enforces the same rule from
+        below. One transaction: values, chunk keys and the removal of the list entry commit
+        together. Every affected document gets its own DOCUMENT_METADATA_CHANGED audit event with
+        its old value, all sharing the returned correlationRef. A document mapped onto "leer" is
+        found again by every filter through the Leerwert rule and reappears in the Pflege-Anker.
+        Requires the management right at the library.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RemapLibraryMetadataFieldValueRequest"
+      responses:
+        "200":
+          description: What the mapping did
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemapLibraryMetadataFieldValueResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries/{libraryId}/folders:
     parameters:
       - name: libraryId
@@ -5934,6 +6277,13 @@ components:
           format: date-time
           nullable: true
           description: When the current value was written.
+        libraryFieldType:
+          nullable: true
+          description: >-
+            Set exactly for a library field (#1071) and tells a client which editor to offer; null
+            for a core field.
+          allOf:
+            - $ref: "#/components/schemas/LibraryMetadataFieldType"
 
     DocumentMetadataResponse:
       type: object
@@ -6110,6 +6460,14 @@ components:
             Inclusive end of the window, same overlap rule. Must not precede documentDateFrom
             (400).
           example: "2024-12-31"
+        libraryFields:
+          type: array
+          nullable: true
+          description: >-
+            Conditions on library fields (#1071) - the third and last kind of condition a filter
+            can carry. Absent or empty: no condition on any library field.
+          items:
+            $ref: "#/components/schemas/MetadataFilterLibraryFieldCondition"
 
     MetadataFilterMatch:
       type: string
@@ -6209,6 +6567,364 @@ components:
           type: string
           nullable: true
           example: "2026-03-12"
+        libraryFields:
+          type: array
+          description: >-
+            The filterable library fields of the scope (#1071), one entry per library and field,
+            each with its own Füllstand, entry condition and occurring values.
+          items:
+            $ref: "#/components/schemas/MetadataFilterLibraryFieldOption"
+
+    LibraryMetadataFieldType:
+      type: string
+      description: >-
+        The type of a library metadata field (docs/features/metadata-schema.md, Teil II (b)
+        "Kontrolliertes Vokabular statt Freitext"): SELECT - a choice from the field's own value
+        list; DATE - a year or date with the same precision semantics as the Kernfeld Datum/Stand;
+        PATTERN - an identifier checked against the regular expression the field definition
+        carries. There is deliberately no free-text type: free text is a keyword with the
+        appearance of structure.
+      enum: [SELECT, DATE, PATTERN]
+      example: SELECT
+
+    LibraryMetadataFieldValueResponse:
+      type: object
+      required: [code, label]
+      description: One entry of a SELECT field's controlled value list.
+      properties:
+        code:
+          type: string
+          description: >-
+            The stable code the documents carry. Never rewritten in place - replacing it is a
+            removal with a confirmed mapping.
+          example: FASSUNG_2026
+        label:
+          type: string
+          example: Fassung 2026
+
+    LibraryMetadataFieldResponse:
+      type: object
+      required:
+        [
+          fieldKey,
+          documentFieldKey,
+          label,
+          type,
+          filter,
+          contextPrefix,
+          sortOrder,
+          values,
+        ]
+      description: >-
+        One library metadata field with its Wirkstellen and its configured value list (#1071).
+      properties:
+        fieldKey:
+          type: string
+          description: The field's own key within its library, stable and lowercase.
+          example: fassung
+        documentFieldKey:
+          type: string
+          description: >-
+            The same field as a document value key - the namespaced form PUT
+            /api/v1/libraries/{libraryId}/documents/{documentId}/metadata/{fieldKey} and the
+            Pflege-Anker use. Two libraries may define the same fieldKey; those are two different
+            fields, which is why a filter condition names the library beside the key.
+          example: "lib:fassung"
+        label:
+          type: string
+          example: Fassung
+        type:
+          $ref: "#/components/schemas/LibraryMetadataFieldType"
+        valuePattern:
+          type: string
+          nullable: true
+          description: >-
+            The regular expression a PATTERN field's values must match entirely; null for the other
+            types.
+          example: "^§ ?[0-9]+[a-z]?$"
+        filter:
+          type: boolean
+          description: >-
+            Whether the field filters in both search paths. At least one of filter and
+            contextPrefix is true - the Aufnahmeregel of the specification.
+        contextPrefix:
+          type: boolean
+          description: >-
+            Whether the field's value belongs into the Kontextpräfix of every chunk. Stored here,
+            effective with #1072.
+        citationPosition:
+          type: integer
+          nullable: true
+          description: >-
+            1 or 2 when the field appears in the Belegzeile, null otherwise. At most two fields of
+            a library carry a position - a Beleg stays a readable line.
+          example: 1
+        sortOrder:
+          type: integer
+          description: Display order within the library.
+        values:
+          type: array
+          description: The configured value list; empty for a DATE or PATTERN field.
+          items:
+            $ref: "#/components/schemas/LibraryMetadataFieldValueResponse"
+
+    LibraryMetadataFieldsResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LibraryMetadataFieldResponse"
+
+    LibraryMetadataFieldValueRequest:
+      type: object
+      required: [code, label]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: "^[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+
+    LibraryMetadataFieldValueLabelRequest:
+      type: object
+      required: [label]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+
+    CreateLibraryMetadataFieldRequest:
+      type: object
+      required: [fieldKey, label, type]
+      description: >-
+        A new library field. filter and contextPrefix are the two retrieval effects, at least one
+        of which must be true; citationPosition is the optional Beleg-Anzeige and never a field's
+        only effect.
+      properties:
+        fieldKey:
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: "^[a-z][a-z0-9_]*$"
+          example: fassung
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: Fassung
+        type:
+          $ref: "#/components/schemas/LibraryMetadataFieldType"
+        valuePattern:
+          type: string
+          nullable: true
+          maxLength: 200
+          description: Required for type PATTERN, rejected for the other types.
+        filter:
+          type: boolean
+          default: false
+        contextPrefix:
+          type: boolean
+          default: false
+        citationPosition:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 2
+        values:
+          type: array
+          description: >-
+            The initial value list; required and non-empty for type SELECT, rejected for the other
+            types.
+          items:
+            $ref: "#/components/schemas/LibraryMetadataFieldValueRequest"
+
+    UpdateLibraryMetadataFieldRequest:
+      type: object
+      required: [label]
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+        filter:
+          type: boolean
+          default: false
+        contextPrefix:
+          type: boolean
+          default: false
+        citationPosition:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 2
+
+    MetadataFieldUsageResponse:
+      type: object
+      required: [documentCount]
+      description: >-
+        How many documents an about-to-be-confirmed change affects - the Folgekosten a dialog shows
+        before the confirmation (#1071).
+      properties:
+        documentCount:
+          type: integer
+          format: int64
+
+    RemapLibraryMetadataFieldValueRequest:
+      type: object
+      description: >-
+        The confirmed mapping of a value that is being removed. targetCode names another value of
+        the same list; null maps every affected document onto "leer" - the honest way out when no
+        successor value exists.
+      properties:
+        targetCode:
+          type: string
+          nullable: true
+          example: FASSUNG_2027
+
+    RemapLibraryMetadataFieldValueResponse:
+      type: object
+      required: [remappedDocuments, clearedDocuments, correlationRef]
+      properties:
+        remappedDocuments:
+          type: integer
+          format: int64
+          description: Documents rewritten onto targetCode.
+        clearedDocuments:
+          type: integer
+          format: int64
+          description: Documents whose value was removed because the mapping was "leer".
+        correlationRef:
+          type: string
+          description: >-
+            The correlationRef every audit event of this mapping carries, so the whole operation
+            reads back from the audit log as one.
+
+    MetadataFilterLibraryFieldCondition:
+      type: object
+      additionalProperties: false
+      required: [libraryId, fieldKey]
+      description: >-
+        One condition on a library field (#1071). The field identity is the pair (libraryId,
+        fieldKey), never the key alone: two libraries may each define "fassung" with their own
+        value lists, and those are two fields. Exactly one shape is used, following the field's
+        type - codes for SELECT, the window for DATE, value for PATTERN; naming a shape that does
+        not fit the field's type is rejected with 400, as is an unknown field or a code outside the
+        field's configured list. A document without a value for the field - and every document of
+        another library - is not excluded ("Leerwerte schließen nicht aus").
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        fieldKey:
+          type: string
+          description: The field's own key, without the namespace prefix.
+          example: fassung
+        codes:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: For a SELECT field - codes of its configured value list.
+        dateFrom:
+          type: string
+          nullable: true
+          pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          description: >-
+            For a DATE field - inclusive window start, same span semantics as the Kernfeld
+            Datum/Stand.
+        dateTo:
+          type: string
+          nullable: true
+          pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        value:
+          type: string
+          nullable: true
+          description: >-
+            For a PATTERN field - the exact value a document must carry. Deliberately exact and not
+            a prefix or substring match: the type exists so an identifier is checkable, and a
+            partial match would turn it back into a text search.
+
+    MetadataFilterLibraryFieldValueOption:
+      type: object
+      required: [code, label, documentCount]
+      description: One value of a library field that actually occurs in the caller's search scope.
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        documentCount:
+          type: integer
+          format: int64
+
+    MetadataFilterLibraryFieldOption:
+      type: object
+      required:
+        [
+          libraryId,
+          libraryName,
+          fieldKey,
+          label,
+          type,
+          filledDocuments,
+          totalDocuments,
+          fillShare,
+          threshold,
+          offered,
+          values,
+        ]
+      description: >-
+        The Füllstand of one filterable library field within the caller's search scope, and whether
+        the filter interface offers it (#1071). The base of fillShare is the field's own library,
+        not the whole scope: the field exists only there, and measuring it against libraries that
+        cannot carry it would keep a well-maintained field of a small library permanently below the
+        threshold. The listed values are the ones documents in the caller's rights context actually
+        carry - not the configured list (metadata-schema.md, Rechte-Invariante).
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        libraryName:
+          type: string
+        fieldKey:
+          type: string
+        label:
+          type: string
+        type:
+          $ref: "#/components/schemas/LibraryMetadataFieldType"
+        filledDocuments:
+          type: integer
+          format: int64
+        totalDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents of the field's own library within the scope.
+        fillShare:
+          type: number
+          format: double
+        threshold:
+          type: number
+          format: double
+        offered:
+          type: boolean
+        values:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataFilterLibraryFieldValueOption"
+        dateMin:
+          type: string
+          nullable: true
+          description: For a DATE field - earliest value in the scope, null without any.
+        dateMax:
+          type: string
+          nullable: true
 
     DocumentTypeVocabularyResponse:
       type: object

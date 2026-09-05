@@ -24,7 +24,13 @@ import {
 import { useSpaceStore } from '../../stores/spaceStore'
 import type { LibraryListResponse } from '../../types/api'
 import MetadataFilterPopover from './MetadataFilterPopover'
-import { dateChipLabel, withoutDateWindow, withoutDocumentTypes } from './metadataFilterText'
+import {
+  dateChipLabel,
+  libraryFieldChipLabel,
+  withoutDateWindow,
+  withoutDocumentTypes,
+  withoutLibraryField,
+} from './metadataFilterText'
 
 interface ChatInputProps {
   onSend: (message: string) => void
@@ -480,6 +486,25 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
                 data-testid="metadata-filter-chip-document-date"
               />
             )}
+            {(metadataFilter?.libraryFields ?? []).map((condition) => (
+              <Chip
+                key={`${condition.libraryId}/${condition.fieldKey}`}
+                label={libraryFieldChipLabel(condition, filterOptions)}
+                size="small"
+                variant="outlined"
+                color="secondary"
+                onDelete={
+                  disabled
+                    ? undefined
+                    : () => {
+                        if (metadataFilter)
+                          setMetadataFilter(withoutLibraryField(metadataFilter, condition))
+                      }
+                }
+                aria-label={`Filter nach ${condition.fieldKey} entfernen`}
+                data-testid="metadata-filter-chip-library-field"
+              />
+            ))}
             <MetadataFilterPopover
               scope={filterScope}
               filter={metadataFilter}

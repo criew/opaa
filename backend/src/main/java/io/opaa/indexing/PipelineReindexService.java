@@ -32,20 +32,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
  *
  * <p>Resumable by construction - the remaining work is re-derived from the chunk metadata - and
  * every call terminates and makes progress: a candidate that cannot be advanced stays in the set
- * and is scanned past by an offset rather than hidden by a write, and is reported as skipped. Only
- * an explicit admin call ever drives this, never a background tick.
+ * and is scanned past by {@link DocumentBatchLoop}'s offset rather than hidden by a write, and is
+ * reported as skipped. Only an explicit admin call ever drives this, never a background tick.
  */
 public class PipelineReindexService {
 
   private static final Logger log = LoggerFactory.getLogger(PipelineReindexService.class);
-
-  /**
-   * How many candidates one call may scan past, relative to its own batch size, before giving up
-   * for this call. Bounds the work a corpus consisting mostly of unreachable documents can cause in
-   * a single request; the next call starts over and reaches further only if earlier candidates
-   * became advanceable in the meantime.
-   */
-  private static final int MAX_SKIP_SCAN_FACTOR = 10;
 
   private final JdbcTemplate jdbcTemplate;
   private final DocumentPipelineRegistry pipelineRegistry;
@@ -203,42 +195,21 @@ public class PipelineReindexService {
     if (batchSize <= 0) {
       return PipelineReindexResult.NOTHING_TO_DO;
     }
-    int reindexed = 0;
-    int marked = 0;
-    int skipped = 0;
-    int orphans = 0;
-    int maxSkips = batchSize * MAX_SKIP_SCAN_FACTOR;
-
-    while (reindexed + marked + orphans < batchSize && skipped < maxSkips) {
-      List<UUID> candidates =
-          selectStaleDocuments(organizationId, pipelineId, belowVersion, batchSize, skipped);
-      if (candidates.isEmpty()) {
-        break;
-      }
-      boolean exhausted = true;
-      for (UUID documentId : candidates) {
-        if (reindexed + marked + orphans >= batchSize) {
-          exhausted = false;
-          break;
-        }
-        switch (advance(documentId, pipelineId)) {
-          case REINDEXED -> reindexed++;
-          case MARKED_FOR_NEXT_RUN -> marked++;
-          case ORPHAN_REMOVED -> orphans++;
-          // Left in place on purpose - the offset in the next selection is what scans past it,
-          // rather than a database write that would misrepresent why it was not advanced.
-          case SKIPPED -> skipped++;
-        }
-        if (skipped >= maxSkips) {
-          exhausted = false;
-          break;
-        }
-      }
-      if (exhausted && candidates.size() < batchSize) {
-        break;
-      }
-    }
-    return new PipelineReindexResult(reindexed, marked, skipped, orphans);
+    // A skipped candidate is left in place on purpose - the offset in the next selection is what
+    // scans past it, rather than a database write that would misrepresent why it was not advanced.
+    Map<Advance, Integer> counts =
+        DocumentBatchLoop.run(
+            batchSize,
+            Advance.class,
+            Advance.SKIPPED,
+            (limit, offset) ->
+                selectStaleDocuments(organizationId, pipelineId, belowVersion, limit, offset),
+            documentId -> advance(documentId, pipelineId));
+    return new PipelineReindexResult(
+        counts.get(Advance.REINDEXED),
+        counts.get(Advance.MARKED_FOR_NEXT_RUN),
+        counts.get(Advance.SKIPPED),
+        counts.get(Advance.ORPHAN_REMOVED));
   }
 
   private enum Advance {

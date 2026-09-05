@@ -1,7 +1,10 @@
 package io.opaa.query;
 
 import io.opaa.api.types.DatePrecision;
+import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
+import io.opaa.indexing.metadata.LibraryFieldCondition;
+import io.opaa.indexing.metadata.LibraryMetadataFieldKeys;
 import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.Collection;
 import java.util.List;
@@ -98,7 +101,54 @@ public final class MetadataFilterExpressions {
                   b.nin(CoreMetadataChunkKeys.DOCUMENT_DATE_PRECISION, List.copyOf(PRECISIONS))));
       combined = combined == null ? dateCondition : b.and(combined, dateCondition);
     }
+    for (LibraryFieldCondition condition : filter.libraryFields()) {
+      FilterExpressionBuilder.Op libraryCondition = libraryFieldOp(b, condition);
+      combined = combined == null ? libraryCondition : b.and(combined, libraryCondition);
+    }
     return combined == null ? null : combined.build();
+  }
+
+  /**
+   * One library-field condition as {@code (foreign library OR matches OR no value)}. The library
+   * guard is what makes {@code (libraryId, fieldKey)} the field identity: two libraries may define
+   * the same key, and a document of the other one must not be judged against this field's value
+   * list. "No value" reads the presence marker, whose value set is closed at exactly one value -
+   * see {@link LibraryMetadataFieldKeys#PRESENCE_CHUNK_KEY_PREFIX} for why the value key itself
+   * cannot carry that condition.
+   */
+  private static FilterExpressionBuilder.Op libraryFieldOp(
+      FilterExpressionBuilder b, LibraryFieldCondition condition) {
+    FilterExpressionBuilder.Op matches =
+        switch (condition.type()) {
+          case SELECT -> b.in(condition.chunkKey(), List.copyOf(condition.codes()));
+          case PATTERN -> b.eq(condition.chunkKey(), condition.value());
+          case DATE -> {
+            FilterExpressionBuilder.Op window = null;
+            for (DatePrecision precision : DatePrecision.values()) {
+              FilterExpressionBuilder.Op branch =
+                  b.eq(condition.precisionChunkKey(), precision.name());
+              if (condition.dateFrom() != null) {
+                branch =
+                    b.and(
+                        branch,
+                        b.gte(condition.chunkKey(), condition.dateFromBound(precision).toString()));
+              }
+              if (condition.dateTo() != null) {
+                branch = b.and(branch, b.lte(condition.chunkKey(), condition.dateTo().toString()));
+              }
+              branch = b.group(branch);
+              window = window == null ? branch : b.or(window, branch);
+            }
+            yield window;
+          }
+        };
+    FilterExpressionBuilder.Op noValue =
+        b.nin(
+            LibraryMetadataFieldKeys.presenceChunkKey(condition.fieldKey()),
+            List.of(LibraryMetadataFieldKeys.PRESENCE_VALUE));
+    FilterExpressionBuilder.Op foreignLibrary =
+        b.nin(VectorChunkStore.LIBRARY_ID_METADATA_KEY, List.of(condition.libraryId().toString()));
+    return b.group(b.or(b.or(foreignLibrary, matches), noValue));
   }
 
   /**
@@ -165,7 +215,64 @@ public final class MetadataFilterExpressions {
       }
       sql.append(")");
     }
+    for (LibraryFieldCondition condition : filter.libraryFields()) {
+      appendLibraryFieldPredicate(condition, metadataColumn, sql, parameters);
+    }
     return sql.toString();
+  }
+
+  /** The lexical twin of {@link #libraryFieldOp}, stating the identical rule. */
+  private static void appendLibraryFieldPredicate(
+      LibraryFieldCondition condition,
+      String metadataColumn,
+      StringBuilder sql,
+      List<Object> parameters) {
+    String valueKey = metadataColumn + "->>'" + condition.chunkKey() + "'";
+    String presenceKey =
+        metadataColumn
+            + "->>'"
+            + LibraryMetadataFieldKeys.presenceChunkKey(condition.fieldKey())
+            + "'";
+    String libraryKey = metadataColumn + "->>'" + VectorChunkStore.LIBRARY_ID_METADATA_KEY + "'";
+    sql.append(" AND (")
+        .append(libraryKey)
+        .append(" IS NULL OR ")
+        .append(libraryKey)
+        .append(" <> ALL(?)");
+    parameters.add(new String[] {condition.libraryId().toString()});
+    sql.append(" OR ")
+        .append(presenceKey)
+        .append(" IS NULL OR ")
+        .append(presenceKey)
+        .append(" <> ALL(?)");
+    parameters.add(new String[] {LibraryMetadataFieldKeys.PRESENCE_VALUE});
+    switch (condition.type()) {
+      case SELECT -> {
+        sql.append(" OR ").append(valueKey).append(" = ANY(?)");
+        parameters.add(condition.codes().toArray(String[]::new));
+      }
+      case PATTERN -> {
+        sql.append(" OR ").append(valueKey).append(" = ?");
+        parameters.add(condition.value());
+      }
+      case DATE -> {
+        String precisionKey = metadataColumn + "->>'" + condition.precisionChunkKey() + "'";
+        for (DatePrecision precision : DatePrecision.values()) {
+          sql.append(" OR (").append(precisionKey).append(" = ?");
+          parameters.add(precision.name());
+          if (condition.dateFrom() != null) {
+            sql.append(" AND ").append(valueKey).append(" >= ?");
+            parameters.add(condition.dateFromBound(precision).toString());
+          }
+          if (condition.dateTo() != null) {
+            sql.append(" AND ").append(valueKey).append(" <= ?");
+            parameters.add(condition.dateTo().toString());
+          }
+          sql.append(")");
+        }
+      }
+    }
+    sql.append(")");
   }
 
   /** Whether {@code chunk} was kept by the Leerwert rule alone - see {@link MetadataFilter}. */
@@ -173,9 +280,24 @@ public final class MetadataFilterExpressions {
     Map<String, Object> metadata = chunk.getMetadata();
     Object type = metadata.get(CoreMetadataChunkKeys.DOCUMENT_TYPE);
     Object date = metadata.get(CoreMetadataChunkKeys.DOCUMENT_DATE);
-    return filter.keptWithoutValue(
+    if (filter.keptWithoutValue(
         type == null ? null : type.toString(),
-        date == null ? null : java.time.LocalDate.parse(date.toString()));
+        date == null ? null : java.time.LocalDate.parse(date.toString()))) {
+      return true;
+    }
+    Object libraryId = metadata.get(VectorChunkStore.LIBRARY_ID_METADATA_KEY);
+    for (LibraryFieldCondition condition : filter.libraryFields()) {
+      if (libraryId == null || !condition.libraryId().toString().equals(libraryId.toString())) {
+        // A document of another library was never in this field's scope: it is neither matched nor
+        // "kept without a value", and counting it as the latter would inflate the protocol note
+        // with every document the condition was never about.
+        continue;
+      }
+      if (metadata.get(LibraryMetadataFieldKeys.presenceChunkKey(condition.fieldKey())) == null) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** How many of {@code candidates} were kept by the Leerwert rule alone. */

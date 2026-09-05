@@ -63,6 +63,13 @@ import type {
   DocumentMetadataFieldResponse,
   DocumentMetadataResponse,
   DocumentTypeVocabularyResponse,
+  CreateLibraryMetadataFieldRequest,
+  LibraryMetadataFieldResponse,
+  LibraryMetadataFieldValueRequest,
+  LibraryMetadataFieldsResponse,
+  MetadataFieldUsageResponse,
+  RemapLibraryMetadataFieldValueResponse,
+  UpdateLibraryMetadataFieldRequest,
   MetadataFilter,
   MetadataFilterOptionsResponse,
   LibraryMetadataMaintenanceResponse,
@@ -83,7 +90,7 @@ setupAuthInterceptors(
   () => useAuthStore.getState().expireSession(),
 )
 
-// #519 (review): a bare 413 alone doesn't tell us the oversized body was a file - normalizeError is
+//  (review): a bare 413 alone doesn't tell us the oversized body was a file - normalizeError is
 // shared by every endpoint in this file, most of which only ever send small JSON payloads. Scoping
 // the translated message to callers that actually upload a file (currently just uploadDocument)
 // keeps it honest instead of guessing "Datei" for a hypothetical 413 on, say, updateSpaceDetails.
@@ -97,7 +104,7 @@ export function normalizeError(err: unknown, context?: 'upload'): never {
   if (err instanceof AxiosError) {
     const data = err.response?.data
 
-    // #822 review: `cause` keeps the original AxiosError (and thus its response.status) reachable
+    //  review: `cause` keeps the original AxiosError (and thus its response.status) reachable
     // for a caller that needs to distinguish e.g. 404 from any other failure - documentStore's
     // folder-not-found fallback is the first to rely on this; every other caller keeps using the
     // plain German message and can ignore cause entirely.
@@ -105,7 +112,7 @@ export function normalizeError(err: unknown, context?: 'upload'): never {
       throw new Error(data.error, { cause: err })
     }
 
-    // #519: the compose reverse proxy (frontend/nginx.conf) answers uploads above its own
+    // the compose reverse proxy (frontend/nginx.conf) answers uploads above its own
     // client_max_body_size with a bare HTML 413 page, not the backend's JSON ErrorResponse -
     // isErrorResponse above is false for that body, so this would otherwise fall through to the
     // generic "HTTP 413: ..." message below, which is neither German nor understandable to users.
@@ -142,11 +149,11 @@ export async function sendQuery(
 ): Promise<QueryResponse> {
   try {
     // libraryIds is only meaningful (and only sent) when useKnowledge is false - the backend
-    // ignores it otherwise (#526), so omitting it keeps the request honest about what it does.
-    // chatId (#525) is the persisted-chat/in-memory-cache key; when it names a chat the caller
+    // ignores it otherwise, so omitting it keeps the request honest about what it does.
+    // chatId is the persisted-chat/in-memory-cache key; when it names a chat the caller
     // authored, useKnowledge/libraryIds below are ignored server-side in favour of the chat's own
-    // settings (#525) - the UI itself does not create persisted chats yet, that lands with the UI
-    // overhaul, #527. metadataFilter (#1070) follows the same rule: a persisted chat's own sticky
+    // settings - the UI itself does not create persisted chats yet, that lands with the UI
+    // overhaul, . metadataFilter follows the same rule: a persisted chat's own sticky
     // filter applies, so it is only sent for an ephemeral query.
     const request: QueryRequest = {
       question,
@@ -162,7 +169,7 @@ export async function sendQuery(
   }
 }
 
-/** #1070: a filter without any condition - what the backend treats as "no filter". */
+/** a filter without any condition - what the backend treats as "no filter". */
 export function isEmptyMetadataFilter(filter: MetadataFilter | null | undefined): boolean {
   if (!filter) return true
   return (
@@ -171,7 +178,7 @@ export function isEmptyMetadataFilter(filter: MetadataFilter | null | undefined)
 }
 
 /**
- * #1070: the Füllstand and the offered values of the filterable core fields in the caller's
+ * the Füllstand and the offered values of the filterable core fields in the caller's
  * search scope, resolved with the same rules the query itself applies (chatId first, otherwise
  * useKnowledge/libraryIds).
  */
@@ -261,9 +268,9 @@ export async function getSpace(spaceId: string): Promise<SpaceResponse> {
   }
 }
 
-// #144: the full member list (identities and display names) is only reachable here - SpaceResponse
+// the full member list (identities and display names) is only reachable here - SpaceResponse
 // no longer carries it, and the backend restricts this endpoint to ADMIN, owner and system admins.
-// #674 review, nit a: a 403 here is an expected, silent "not allowed to see this" for a caller
+//  review, nit a: a 403 here is an expected, silent "not allowed to see this" for a caller
 // without the role - it resolves to an empty list rather than an error, but every other failure
 // (network error, 404, 500, ...) still throws through normalizeError so the store can tell the two
 // apart instead of treating every failure alike.
@@ -356,7 +363,7 @@ export async function createSpace(
       visibility,
       ownerId: currentUserId,
       initialMembers: [],
-      // #686: the assistant's Datenquellen step submits the creator's chosen libraries alongside
+      // the assistant's Datenquellen step submits the creator's chosen libraries alongside
       // the space itself - the backend associates each one right after creation, requiring the
       // creator to already be able to read it (SpaceAssetAssociationService#associate), the same
       // rule the dedicated endpoints below enforce afterwards.
@@ -369,7 +376,7 @@ export async function createSpace(
   }
 }
 
-// #203/#686/#706: the space's own view of its associated libraries. For a plain MEMBER, filtered
+// the space's own view of its associated libraries. For a plain MEMBER, filtered
 // server-side to what they may themselves read - two members of the same space can see different
 // lists. For a CURATOR/ADMIN/owner, unfiltered - see SpaceLibraryAssociationListResponse's own
 // description. hasAssociations is a count-free state field, independent of items, that
@@ -410,7 +417,7 @@ export async function detachSpaceLibrary(spaceId: string, libraryId: string): Pr
   }
 }
 
-// #203: the library owner's view - every space this library is associated with, never filtered by
+// the library owner's view - every space this library is associated with, never filtered by
 // the caller's own space membership (requires MANAGER role or above on the library).
 export async function getLibrarySpaceAssociations(
   libraryId: string,
@@ -433,7 +440,7 @@ export async function deleteSpace(spaceId: string): Promise<void> {
   }
 }
 
-// #543: the way out of a space fk_chats_space makes permanently undeletable because it still
+// the way out of a space fk_chats_space makes permanently undeletable because it still
 // contains a chat authored by someone other than the space owner - see
 // docs/features/spaces-and-assets.md#einen-space-stilllegen-archivieren-statt-löschen.
 export async function archiveSpace(spaceId: string): Promise<SpaceResponse> {
@@ -445,7 +452,7 @@ export async function archiveSpace(spaceId: string): Promise<SpaceResponse> {
   }
 }
 
-// #478: the trigger reduces to "index this library" - sourceType and every typed configuration
+// the trigger reduces to "index this library" - sourceType and every typed configuration
 // field (url/proxy/credentials/insecureSsl) now live on the library itself (ADR-0018) and are no
 // longer sent from the frontend.
 /**
@@ -470,7 +477,7 @@ export async function triggerIndexing(
 }
 
 /**
- * #1140: generates or rotates the Confluence webhook secret of a library. The secret is returned
+ * generates or rotates the Confluence webhook secret of a library. The secret is returned
  * exactly once - the caller shows it, the API never returns it again.
  */
 export async function generateConfluenceWebhookSecret(
@@ -486,7 +493,7 @@ export async function generateConfluenceWebhookSecret(
   }
 }
 
-/** #1140: removes the webhook secret - the library's webhook endpoint rejects every call from now on. */
+/** removes the webhook secret - the library's webhook endpoint rejects every call from now on. */
 export async function removeConfluenceWebhookSecret(libraryId: string): Promise<void> {
   try {
     await client.delete(`/v1/libraries/${libraryId}/confluence-webhook-secret`)
@@ -506,7 +513,7 @@ export async function getIndexingStatus(libraryId: string): Promise<IndexingStat
   }
 }
 
-// #513: the last 10 runs for a library, each with its own protocol of skipped/rejected items and
+// the last 10 runs for a library, each with its own protocol of skipped/rejected items and
 // errors - distinct from getIndexingStatus above, which only ever names the single current/most
 // recent run.
 export async function getIndexingRuns(libraryId: string): Promise<IndexingRunListResponse> {
@@ -529,12 +536,12 @@ export async function getUsers(): Promise<UserInfo[]> {
   }
 }
 
-// #777: unlike getUsers() above (GET /v1/admin/users, SYSTEM_ADMIN only), this is reachable for
+// unlike getUsers() above (GET /v1/admin/users, SYSTEM_ADMIN only), this is reachable for
 // any authenticated organization member - the member/grant pickers on SpaceManagementPage,
 // SpaceCreatePage, LibraryCreatePage and LibraryGrantsDialog need to search for a user to add,
 // and the caller reaching those pages is not necessarily a system admin.
 //
-// #778 review, finding 4: the backend requires `query` (min. 2 characters) and caps the result at
+//  review, finding 4: the backend requires `query` (min. 2 characters) and caps the result at
 // 20 rows - it no longer answers an unqualified "list everyone" call. A missing/blank query is
 // passed straight through and yields an empty result (UserService#searchInOrganization), never a
 // fallback list, so a caller must always supply the person's typed input here.
@@ -670,7 +677,7 @@ export async function testLibrarySource(
   }
 }
 
-/** #1134: the spaces a Confluence token may read - basis of the wizard's space selection. */
+/** the spaces a Confluence token may read - basis of the wizard's space selection. */
 export async function listConfluenceSpaces(
   request: ConfluenceSpaceListRequest,
 ): Promise<ConfluenceSpaceListResponse> {
@@ -742,11 +749,11 @@ export async function getLibraryDocuments(
           // (KnowledgeLibraryService#listDocuments) would treat it identically either way, but
           // omitting it keeps the request itself a plain, unfiltered "list this page" call.
           q: options?.q || undefined,
-          // #822: undefined/null both mean "the library's root" to the backend (GET .../documents,
+          // undefined/null both mean "the library's root" to the backend (GET .../documents,
           // folderId param) - dropped here the same way q is above, rather than sent as the string
           // "null".
           folderId: options?.folderId || undefined,
-          // #1069: the Pflege-Anker's list - dropped when absent, like q above.
+          // the Pflege-Anker's list - dropped when absent, like q above.
           missingMetadataField: options?.missingMetadataField || undefined,
         },
       },
@@ -761,7 +768,7 @@ export async function uploadDocument(
   libraryId: string,
   file: File,
   folderId?: string | null,
-  // #823: a path relative to folderId (e.g. "Protokolle/2026") whose intermediate folders the
+  // a path relative to folderId (e.g. "Protokolle/2026") whose intermediate folders the
   // backend creates idempotently - lets a whole dragged-and-dropped/webkitdirectory-selected
   // folder tree upload one file at a time while landing under a single, shared folder chain.
   folderPath?: string | null,
@@ -769,13 +776,13 @@ export async function uploadDocument(
   try {
     const formData = new FormData()
     formData.append('file', file)
-    // #822: an empty/root folderId is simply omitted, mirroring getLibraryDocuments above - the
+    // an empty/root folderId is simply omitted, mirroring getLibraryDocuments above - the
     // backend's own folderId form field is optional and nullable, meaning "the library's root"
     // either way.
     if (folderId) {
       formData.append('folderId', folderId)
     }
-    // #823: same "omit rather than send empty" treatment as folderId above.
+    // same "omit rather than send empty" treatment as folderId above.
     if (folderPath) {
       formData.append('folderPath', folderPath)
     }
@@ -790,8 +797,8 @@ export async function uploadDocument(
   }
 }
 
-// #822 (Epic #520 Phase 3): folder CRUD for the UPLOAD-library navigation UI - the endpoints
-// themselves shipped with #820 (ADR-0020).
+//  (Epic  Phase 3): folder CRUD for the UPLOAD-library navigation UI - the endpoints
+// themselves shipped with  (ADR-0020).
 export async function createLibraryFolder(
   libraryId: string,
   request: LibraryFolderRequest,
@@ -845,7 +852,7 @@ export async function deleteLibraryFolder(libraryId: string, folderId: string): 
   }
 }
 
-// #738/#739: extracts the RFC 6266/5987 filename from a Content-Disposition header value, e.g.
+// extracts the RFC 6266/5987 filename from a Content-Disposition header value, e.g.
 // `inline; filename="a.pdf"; filename*=UTF-8''a.pdf`. Prefers the filename* (percent-encoded,
 // UTF-8) parameter when present, since that is the one DocumentController escapes correctly for
 // non-ASCII names - falling back to the plain filename parameter otherwise.
@@ -853,7 +860,7 @@ export async function deleteLibraryFolder(libraryId: string, folderId: string): 
 // Exported so api.test.ts can exercise the parsing directly against header strings (including the
 // RFC 5987/Umlaut case) instead of through getDocumentContent() end-to-end: a Blob response body
 // hangs against msw/node in this project's jsdom test environment, the same limitation documented
-// on normalizeError above for a Blob *request* body (#743 review).
+// on normalizeError above for a Blob *request* body ( review).
 export function parseContentDispositionFileName(headerValue: string | undefined): string | null {
   if (!headerValue) return null
   const extended = /filename\*=UTF-8''([^;]+)/i.exec(headerValue)
@@ -866,7 +873,7 @@ export function parseContentDispositionFileName(headerValue: string | undefined)
   }
   // (?!\*) keeps this from matching the filename* parameter's own "filename" prefix when there is
   // no ASCII filename to fall back to (e.g. decodeURIComponent above threw) - without it, a header
-  // with only `filename*=UTF-8''...` would match here with `*=UTF-8''...` as the "file name" (#743
+  // with only `filename*=UTF-8''...` would match here with `*=UTF-8''...` as the "file name" (
   // review).
   const plain = /filename(?!\*)="?([^";]+)"?/i.exec(headerValue)
   return plain ? plain[1].trim() : null
@@ -877,7 +884,7 @@ export interface DocumentContent {
   fileName: string | null
 }
 
-// #743 (review): a Blob response body (success or error) hangs against msw/node in this project's
+//  (review): a Blob response body (success or error) hangs against msw/node in this project's
 // jsdom test environment (same undici/XHR-interceptor limitation documented on normalizeError above
 // for a Blob *request* body) - so this cannot be exercised end-to-end through getDocumentContent()
 // in tests. Exported and kept independent of any HTTP call so api.test.ts can construct an
@@ -913,7 +920,7 @@ export async function mapDocumentContentError(err: unknown): Promise<never> {
   normalizeError(err)
 }
 
-// #736/#738: streams the original file behind an indexed document. Bearer-authenticated like every
+// streams the original file behind an indexed document. Bearer-authenticated like every
 // other endpoint here, so a plain <a href> deep link cannot reach it - see
 // utils/documentContent.ts for the client-side blob-URL piece this feeds.
 export async function getDocumentContent(documentId: string): Promise<DocumentContent> {
@@ -938,7 +945,7 @@ export async function deleteLibraryDocument(libraryId: string, documentId: strin
   }
 }
 
-// #1068: manual metadata correction - every core field of a document with its provenance.
+// manual metadata correction - every core field of a document with its provenance.
 export async function getDocumentMetadata(
   libraryId: string,
   documentId: string,
@@ -997,13 +1004,154 @@ export async function bulkSetDocumentMetadata(
   }
 }
 
-/** #1069: the Pflege-Anker of a library - "N Dokumente ohne Wert" per core field. */
+/** the Pflege-Anker of a library - "N Dokumente ohne Wert" per core field. */
 export async function getLibraryMetadataMaintenance(
   libraryId: string,
 ): Promise<LibraryMetadataMaintenanceResponse> {
   try {
     const { data } = await client.get<LibraryMetadataMaintenanceResponse>(
       `/v1/libraries/${libraryId}/metadata/maintenance`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * the library's own metadata fields with their configured value lists. Schema, not an
+ * aggregate - readable by everyone who may use the library.
+ */
+export async function listLibraryMetadataFields(
+  libraryId: string,
+): Promise<LibraryMetadataFieldsResponse> {
+  try {
+    const { data } = await client.get<LibraryMetadataFieldsResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function createLibraryMetadataField(
+  libraryId: string,
+  request: CreateLibraryMetadataFieldRequest,
+): Promise<LibraryMetadataFieldResponse> {
+  try {
+    const { data } = await client.post<LibraryMetadataFieldResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateLibraryMetadataField(
+  libraryId: string,
+  fieldKey: string,
+  request: UpdateLibraryMetadataFieldRequest,
+): Promise<LibraryMetadataFieldResponse> {
+  try {
+    const { data } = await client.put<LibraryMetadataFieldResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/${fieldKey}`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function deleteLibraryMetadataField(
+  libraryId: string,
+  fieldKey: string,
+): Promise<void> {
+  try {
+    await client.delete(`/v1/libraries/${libraryId}/metadata-fields/${fieldKey}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** The Folgekosten of a deletion: how many documents carry a value for this field. */
+export async function getLibraryMetadataFieldUsage(
+  libraryId: string,
+  fieldKey: string,
+): Promise<MetadataFieldUsageResponse> {
+  try {
+    const { data } = await client.get<MetadataFieldUsageResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/${fieldKey}/usage`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function addLibraryMetadataFieldValue(
+  libraryId: string,
+  fieldKey: string,
+  request: LibraryMetadataFieldValueRequest,
+): Promise<LibraryMetadataFieldResponse> {
+  try {
+    const { data } = await client.post<LibraryMetadataFieldResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/${fieldKey}/values`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function relabelLibraryMetadataFieldValue(
+  libraryId: string,
+  fieldKey: string,
+  code: string,
+  label: string,
+): Promise<LibraryMetadataFieldResponse> {
+  try {
+    const { data } = await client.patch<LibraryMetadataFieldResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/${fieldKey}/values/${encodeURIComponent(code)}`,
+      { label },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** The number that stands before the confirmation of a mapping. */
+export async function getLibraryMetadataFieldValueUsage(
+  libraryId: string,
+  fieldKey: string,
+  code: string,
+): Promise<MetadataFieldUsageResponse> {
+  try {
+    const { data } = await client.get<MetadataFieldUsageResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/${fieldKey}/values/${encodeURIComponent(code)}/usage`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** Removes a value together with its confirmed mapping; targetCode null maps onto "leer". */
+export async function remapLibraryMetadataFieldValue(
+  libraryId: string,
+  fieldKey: string,
+  code: string,
+  targetCode: string | null,
+): Promise<RemapLibraryMetadataFieldValueResponse> {
+  try {
+    const { data } = await client.post<RemapLibraryMetadataFieldValueResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/${fieldKey}/values/${encodeURIComponent(code)}/remap`,
+      { targetCode },
     )
     return data
   } catch (err) {
@@ -1052,8 +1200,8 @@ export async function revokeLibraryGrant(libraryId: string, grantId: string): Pr
   }
 }
 
-// #583: branding is readable by anyone, including the not-yet-signed-in visitor of the sign-in
-// page - the backend permits both read paths without authentication (#582/#583, see
+// branding is readable by anyone, including the not-yet-signed-in visitor of the sign-in
+// page - the backend permits both read paths without authentication (see
 // BrandingController). Writing goes through the /v1/system paths below and stays SYSTEM_ADMIN-only.
 export async function getBranding(): Promise<BrandingResponse> {
   try {
@@ -1097,7 +1245,7 @@ export async function deleteBrandingLogo(): Promise<BrandingResponse> {
   }
 }
 
-// #759: managed chat models (#757's admin API) - SYSTEM_ADMIN only, same as the group/branding
+// managed chat models ('s admin API) - SYSTEM_ADMIN only, same as the group/branding
 // admin endpoints above. The API key is write-only: LlmModelResponse never carries it, only
 // apiKeySet (see LlmModelController's Javadoc).
 export async function getLlmModels(): Promise<LlmModelResponse[]> {
@@ -1175,7 +1323,7 @@ export async function getSearchStatus(): Promise<SearchStatusResponse> {
 }
 
 /**
- * One batch of the deterministic core-metadata backfill of a library (#1067). Repeated until
+ * One batch of the deterministic core-metadata backfill of a library. Repeated until
  * `done`; the remaining work is re-derived server-side on every call, so stopping the repetition
  * is the pause and the next call the resumption.
  */
@@ -1251,7 +1399,7 @@ export async function getDocumentChunks(documentId: string): Promise<DocumentChu
   }
 }
 
-// #203: minimal in-app notification, deliberately narrow (see io.opaa.notification.Notification's
+// minimal in-app notification, deliberately narrow (see io.opaa.notification.Notification's
 // Javadoc) - currently only used for "your library was associated into a mixed-audience space".
 export async function getNotifications(): Promise<NotificationResponse[]> {
   try {

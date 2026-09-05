@@ -122,7 +122,7 @@ class MetadataBackfillServiceIntegrationTest {
     assertThat(before.totalDocuments()).isEqualTo(3);
     assertThat(before.pendingDocuments()).isEqualTo(3);
     assertThat(before.currentDocuments()).isZero();
-    assertThat(before.filledDocumentsByField().get(CoreMetadataField.TITLE)).isZero();
+    assertThat(before.filledDocuments(CoreMetadataField.TITLE)).isZero();
 
     MetadataBackfillResult first =
         backfillService.backfillBatch(Organization.DEFAULT_ID, library.getId(), 2);
@@ -146,10 +146,9 @@ class MetadataBackfillServiceIntegrationTest {
     MetadataBackfillProgress after = progress();
     assertThat(after.isComplete()).isTrue();
     assertThat(after.currentDocuments()).isEqualTo(3);
-    assertThat(after.filledDocumentsByField())
-        .containsEntry(CoreMetadataField.TITLE, 3L)
-        .containsEntry(CoreMetadataField.DOCUMENT_TYPE, 3L)
-        .containsEntry(CoreMetadataField.DOCUMENT_DATE, 3L);
+    assertThat(after.filledDocuments(CoreMetadataField.TITLE)).isEqualTo(3L);
+    assertThat(after.filledDocuments(CoreMetadataField.DOCUMENT_TYPE)).isEqualTo(3L);
+    assertThat(after.filledDocuments(CoreMetadataField.DOCUMENT_DATE)).isEqualTo(3L);
     assertThat(after.filledShare(CoreMetadataField.DOCUMENT_TYPE)).isEqualTo(1.0d);
 
     // The values came from the original files - the file-name convention and the frontmatter,

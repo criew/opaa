@@ -2,6 +2,7 @@ package io.opaa.query;
 
 import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.indexing.metadata.LibraryFieldCondition;
 import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,8 +10,8 @@ import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.stereotype.Component;
 
 /**
- * Carries the caller-supplied core-field filter into the run (#1070, metadata-schema.md Wirkstelle
- * 1): translates {@link RetrievalContext#metadataFilter()} once into the vector-path expression and
+ * Carries the caller-supplied core-field filter into the run (metadata-schema.md Wirkstelle 1):
+ * translates {@link RetrievalContext#metadataFilter()} once into the vector-path expression and
  * hands both forms on in the state, so {@link VectorSearchStage} and {@link FullTextSearchStage}
  * apply the identical condition inside their queries.
  *
@@ -37,6 +38,19 @@ class MetadataFilterStage implements RetrievalStage {
   @Override
   public RetrievalStageName name() {
     return RetrievalStageName.METADATA_FILTER;
+  }
+
+  /** The condition of one library field for the protocol - its shape names its type. */
+  private static String describe(LibraryFieldCondition condition) {
+    return switch (condition.type()) {
+      case SELECT -> "in [" + String.join(", ", condition.codes().stream().sorted().toList()) + "]";
+      case PATTERN -> "= " + condition.value();
+      case DATE ->
+          "between "
+              + (condition.dateFrom() == null ? "open start" : condition.dateFrom())
+              + " and "
+              + (condition.dateTo() == null ? "open end" : condition.dateTo());
+    };
   }
 
   @Override
@@ -66,6 +80,11 @@ class MetadataFilterStage implements RetrievalStage {
           RetrievalNote.METADATA_FILTER_DATE_WINDOW.format(
               filter.documentDateFrom() == null ? "open start" : filter.documentDateFrom(),
               filter.documentDateTo() == null ? "open end" : filter.documentDateTo()));
+    }
+    for (LibraryFieldCondition condition : filter.libraryFields()) {
+      notes.add(
+          RetrievalNote.METADATA_FILTER_LIBRARY_FIELD.format(
+              condition.fieldKey(), condition.libraryId(), describe(condition)));
     }
     notes.add(RetrievalNote.METADATA_FILTER_SUBORDINATE.format());
     return new StageOutcome(

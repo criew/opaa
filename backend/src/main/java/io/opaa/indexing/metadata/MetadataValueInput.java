@@ -1,8 +1,11 @@
 package io.opaa.indexing.metadata;
 
 import io.opaa.api.types.DatePrecision;
+import io.opaa.api.types.LibraryMetadataFieldType;
 import io.opaa.common.ValidationException;
 import java.time.LocalDate;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * The value a person sets for one core field: either a value - exactly one of {@code textValue},
@@ -16,24 +19,33 @@ public record MetadataValueInput(
     String textValue,
     String vocabularyCode,
     LocalDate dateValue,
-    DatePrecision datePrecision) {
+    DatePrecision datePrecision,
+    UUID libraryValueId) {
 
   private static final int MAX_TEXT_LENGTH = 1000;
+
+  /** A library field's value never exceeds its column; the pattern check bounds it in practice. */
+  private static final int MAX_LIBRARY_TEXT_LENGTH = 200;
 
   public MetadataValueInput {
     state = state == null ? MetadataValueState.SET : state;
   }
 
   public static MetadataValueInput text(String textValue) {
-    return new MetadataValueInput(MetadataValueState.SET, textValue, null, null, null);
+    return new MetadataValueInput(MetadataValueState.SET, textValue, null, null, null, null);
   }
 
   public static MetadataValueInput vocabulary(String code) {
-    return new MetadataValueInput(MetadataValueState.SET, null, code, null, null);
+    return new MetadataValueInput(MetadataValueState.SET, null, code, null, null, null);
   }
 
   public static MetadataValueInput date(LocalDate date, DatePrecision precision) {
-    return new MetadataValueInput(MetadataValueState.SET, null, null, date, precision);
+    return new MetadataValueInput(MetadataValueState.SET, null, null, date, precision, null);
+  }
+
+  /** A chosen entry of a library SELECT field's value list: its code and the entry's own id. */
+  public static MetadataValueInput libraryValue(String code, UUID libraryValueId) {
+    return new MetadataValueInput(MetadataValueState.SET, code, null, null, null, libraryValueId);
   }
 
   /**
@@ -41,7 +53,8 @@ public record MetadataValueInput(
    * value (metadata-schema.md, "Kein Wert ermittelbar ist ein dritter Zustand").
    */
   public static MetadataValueInput notDeterminable() {
-    return new MetadataValueInput(MetadataValueState.NOT_DETERMINABLE, null, null, null, null);
+    return new MetadataValueInput(
+        MetadataValueState.NOT_DETERMINABLE, null, null, null, null, null);
   }
 
   /**
@@ -90,10 +103,107 @@ public record MetadataValueInput(
     };
   }
 
+  /**
+   * The same input, checked and normalised for the library field {@code field}: a SELECT value must
+   * name an entry of {@code valuesByCode} - nothing is mapped to a near match, and the resolved
+   * entry id is what the database checks; a DATE value follows the core date rules; a PATTERN value
+   * must match the pattern the field definition carries, which is the whole reason the pattern
+   * belongs to the definition. "Kein Wert ermittelbar" is valid for a library field exactly as for
+   * a core field.
+   */
+  public MetadataValueInput validatedForLibraryField(
+      LibraryMetadataField field, Map<String, LibraryMetadataFieldValue> valuesByCode) {
+    if (state == MetadataValueState.NOT_DETERMINABLE) {
+      if (textValue != null || vocabularyCode != null || dateValue != null) {
+        throw new ValidationException(
+            "„Kein Wert ermittelbar“ wird ohne Wert gesetzt (Feld " + field.getLabel() + ")");
+      }
+      return notDeterminable();
+    }
+    if (vocabularyCode != null) {
+      requireLibraryOnly(field, false, false);
+    }
+    return switch (field.getType()) {
+      case SELECT -> {
+        requireLibraryOnly(field, textValue != null, dateValue == null);
+        String code = textValue.strip();
+        LibraryMetadataFieldValue entry = valuesByCode.get(code);
+        if (entry == null) {
+          throw new ValidationException(
+              "Der Wert „"
+                  + code
+                  + "“ steht nicht in der Werteliste des Feldes "
+                  + field.getLabel());
+        }
+        yield libraryValue(entry.getCode(), entry.getId());
+      }
+      case DATE -> {
+        requireLibraryOnly(field, dateValue != null, textValue == null);
+        if (datePrecision == null) {
+          throw new ValidationException(
+              "Für das Feld " + field.getLabel() + " ist eine Genauigkeit erforderlich");
+        }
+        yield date(padToPrecision(dateValue, datePrecision), datePrecision);
+      }
+      case PATTERN -> {
+        requireLibraryOnly(field, textValue != null, dateValue == null);
+        String value = textValue.strip();
+        if (value.isEmpty()) {
+          throw new ValidationException(
+              "Der Wert für " + field.getLabel() + " darf nicht leer sein");
+        }
+        if (value.length() > MAX_LIBRARY_TEXT_LENGTH) {
+          throw new ValidationException(
+              "Der Wert für "
+                  + field.getLabel()
+                  + " darf höchstens "
+                  + MAX_LIBRARY_TEXT_LENGTH
+                  + " Zeichen lang sein");
+        }
+        if (!BoundedRegex.matchesWithinBudget(
+            BoundedRegex.compile(field), value, field.getLabel())) {
+          throw new ValidationException(
+              "Der Wert „"
+                  + value
+                  + "“ entspricht nicht dem Muster des Feldes "
+                  + field.getLabel()
+                  + " ("
+                  + field.getValuePattern()
+                  + ")");
+        }
+        yield text(value);
+      }
+    };
+  }
+
+  private static void requireLibraryOnly(
+      LibraryMetadataField field, boolean ownValuePresent, boolean otherValuesAbsent) {
+    if (!ownValuePresent || !otherValuesAbsent) {
+      throw new ValidationException(
+          "Der Wert passt nicht zum Feld "
+              + field.getLabel()
+              + " ("
+              + field.getFieldKey()
+              + ", "
+              + typeLabel(field.getType())
+              + ")");
+    }
+  }
+
+  private static String typeLabel(LibraryMetadataFieldType type) {
+    return switch (type) {
+      case SELECT -> "Auswahl";
+      case DATE -> "Jahr/Datum";
+      case PATTERN -> "Kennung nach Muster";
+    };
+  }
+
   /** Applies this (validated) value to {@code target}. */
   void applyTo(DocumentMetadataValue target) {
     if (state == MetadataValueState.NOT_DETERMINABLE) {
       target.assignNotDeterminable();
+    } else if (libraryValueId != null) {
+      target.assignLibraryValue(textValue, libraryValueId);
     } else if (textValue != null) {
       target.assignText(textValue);
     } else if (vocabularyCode != null) {

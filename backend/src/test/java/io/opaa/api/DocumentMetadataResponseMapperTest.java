@@ -20,6 +20,7 @@ import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.DocumentMetadataFieldView;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
 import io.opaa.indexing.metadata.LibraryMetadataMaintenance;
+import io.opaa.indexing.metadata.MetadataFieldFill;
 import io.opaa.indexing.metadata.MetadataFieldMaintenance;
 import io.opaa.indexing.metadata.MetadataValueInput;
 import io.opaa.indexing.metadata.MetadataValueSnapshot;
@@ -55,7 +56,7 @@ class DocumentMetadataResponseMapperTest {
 
     DocumentMetadataFieldResponse response =
         DocumentMetadataResponseMapper.toFieldResponse(
-            new DocumentMetadataFieldView(
+            DocumentMetadataFieldView.ofCore(
                 CoreMetadataField.DOCUMENT_DATE, snapshot, "03/2024", "Erika"));
 
     assertThat(response.getFieldKey()).isEqualTo("document_date");
@@ -77,7 +78,7 @@ class DocumentMetadataResponseMapperTest {
     DocumentMetadataResponse response =
         DocumentMetadataResponseMapper.toResponse(
             UUID.randomUUID(),
-            List.of(new DocumentMetadataFieldView(CoreMetadataField.TITLE, null, null, null)));
+            List.of(DocumentMetadataFieldView.ofCore(CoreMetadataField.TITLE, null, null, null)));
 
     DocumentMetadataFieldResponse field = response.getFields().get(0);
     assertThat(field.getFieldKey()).isEqualTo("title");
@@ -111,7 +112,7 @@ class DocumentMetadataResponseMapperTest {
 
     DocumentMetadataFieldResponse response =
         DocumentMetadataResponseMapper.toFieldResponse(
-            new DocumentMetadataFieldView(
+            DocumentMetadataFieldView.ofCore(
                 CoreMetadataField.DOCUMENT_DATE, snapshot, null, "Erika"));
 
     assertThat(response.getState()).isEqualTo(MetadataFieldState.NOT_DETERMINABLE);
@@ -146,9 +147,18 @@ class DocumentMetadataResponseMapperTest {
                 libraryId,
                 10,
                 List.of(
-                    new MetadataFieldMaintenance(CoreMetadataField.TITLE, 10, 10, 0),
-                    new MetadataFieldMaintenance(CoreMetadataField.DOCUMENT_TYPE, 10, 4, 2),
-                    new MetadataFieldMaintenance(CoreMetadataField.DOCUMENT_DATE, 10, 0, 0))));
+                    new MetadataFieldMaintenance(
+                        CoreMetadataField.TITLE.key(),
+                        CoreMetadataField.TITLE.label(),
+                        new MetadataFieldFill(10, 10, 0)),
+                    new MetadataFieldMaintenance(
+                        CoreMetadataField.DOCUMENT_TYPE.key(),
+                        CoreMetadataField.DOCUMENT_TYPE.label(),
+                        new MetadataFieldFill(10, 4, 2)),
+                    new MetadataFieldMaintenance(
+                        CoreMetadataField.DOCUMENT_DATE.key(),
+                        CoreMetadataField.DOCUMENT_DATE.label(),
+                        new MetadataFieldFill(10, 0, 0)))));
 
     assertThat(response.getLibraryId()).isEqualTo(libraryId);
     assertThat(response.getTotalDocuments()).isEqualTo(10);

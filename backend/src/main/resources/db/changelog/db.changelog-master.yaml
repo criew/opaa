@@ -57,3 +57,5 @@ databaseChangeLog:
       file: db/changelog/changes/023-indexing-jobs-listing-assessment.yaml
   - include:
       file: db/changelog/changes/024-library-confluence-full-sync-interval.yaml
+  - include:
+      file: db/changelog/changes/025-library-metadata-fields.yaml

@@ -33,9 +33,9 @@ final class MetadataBackfillResponseMapper {
           new CoreMetadataFieldFillResponse(
               field.key(),
               field.label(),
-              progress.filledDocumentsByField().get(field),
+              progress.filledDocuments(field),
               progress.filledShare(field),
-              progress.notDeterminableDocumentsByField().get(field),
+              progress.notDeterminableDocuments(field),
               progress.documentsWithoutValue(field),
               progress.missingShare(field)));
     }

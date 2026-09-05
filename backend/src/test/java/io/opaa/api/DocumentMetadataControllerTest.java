@@ -29,6 +29,7 @@ import io.opaa.indexing.metadata.DocumentMetadataFieldView;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
 import io.opaa.indexing.metadata.LibraryMetadataMaintenance;
 import io.opaa.indexing.metadata.LibraryMetadataMaintenanceService;
+import io.opaa.indexing.metadata.MetadataFieldFill;
 import io.opaa.indexing.metadata.MetadataFieldMaintenance;
 import io.opaa.indexing.metadata.MetadataValueInput;
 import io.opaa.indexing.metadata.MetadataValueSnapshot;
@@ -122,10 +123,11 @@ class DocumentMetadataControllerTest {
     when(correctionService.fieldsOf(libraryId, documentId, caller))
         .thenReturn(
             List.of(
-                new DocumentMetadataFieldView(CoreMetadataField.TITLE, null, null, null),
-                new DocumentMetadataFieldView(
+                DocumentMetadataFieldView.ofCore(CoreMetadataField.TITLE, null, null, null),
+                DocumentMetadataFieldView.ofCore(
                     CoreMetadataField.DOCUMENT_TYPE, manual, "Vermerk", "Test User"),
-                new DocumentMetadataFieldView(CoreMetadataField.DOCUMENT_DATE, null, null, null)));
+                DocumentMetadataFieldView.ofCore(
+                    CoreMetadataField.DOCUMENT_DATE, null, null, null)));
 
     mockMvc
         .perform(get(metadataPath()).with(asTestUser()))
@@ -160,7 +162,7 @@ class DocumentMetadataControllerTest {
     when(correctionService.setValue(
             eq(libraryId), eq(documentId), eq("document_date"), any(), eq(caller)))
         .thenReturn(
-            new DocumentMetadataFieldView(
+            DocumentMetadataFieldView.ofCore(
                 CoreMetadataField.DOCUMENT_DATE, after, "2024", "Test User"));
 
     mockMvc
@@ -316,7 +318,7 @@ class DocumentMetadataControllerTest {
     when(correctionService.setValue(
             eq(libraryId), eq(documentId), eq("document_date"), any(), eq(caller)))
         .thenReturn(
-            new DocumentMetadataFieldView(
+            DocumentMetadataFieldView.ofCore(
                 CoreMetadataField.DOCUMENT_DATE, after, null, "Test User"));
 
     mockMvc
@@ -345,9 +347,18 @@ class DocumentMetadataControllerTest {
                 libraryId,
                 10,
                 List.of(
-                    new MetadataFieldMaintenance(CoreMetadataField.TITLE, 10, 10, 0),
-                    new MetadataFieldMaintenance(CoreMetadataField.DOCUMENT_TYPE, 10, 4, 2),
-                    new MetadataFieldMaintenance(CoreMetadataField.DOCUMENT_DATE, 10, 0, 0))));
+                    new MetadataFieldMaintenance(
+                        CoreMetadataField.TITLE.key(),
+                        CoreMetadataField.TITLE.label(),
+                        new MetadataFieldFill(10, 10, 0)),
+                    new MetadataFieldMaintenance(
+                        CoreMetadataField.DOCUMENT_TYPE.key(),
+                        CoreMetadataField.DOCUMENT_TYPE.label(),
+                        new MetadataFieldFill(10, 4, 2)),
+                    new MetadataFieldMaintenance(
+                        CoreMetadataField.DOCUMENT_DATE.key(),
+                        CoreMetadataField.DOCUMENT_DATE.label(),
+                        new MetadataFieldFill(10, 0, 0)))));
 
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/metadata/maintenance").with(asTestUser()))

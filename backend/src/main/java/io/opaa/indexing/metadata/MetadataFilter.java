@@ -6,31 +6,66 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
- * A filter on the filterable core fields (metadata-schema.md, Wirkstelle 1): a set of Dokumentart
- * codes and an inclusive Datum/Stand window. Only those two are filterable - the title is not, free
- * keywords never are - so this record is the whole vocabulary of a metadata filter. {@link #NONE}
- * is the absence of any condition.
+ * A filter on the filterable schema fields (metadata-schema.md Wirkstelle 1): a set of Dokumentart
+ * codes, an inclusive Datum/Stand window and conditions on library fields. The title is not
+ * filterable and free keywords never are - so these three are the whole vocabulary of a metadata
+ * filter. {@link #NONE} is the absence of any condition.
  *
  * <p><b>Date semantics.</b> A stored value covers the whole span its {@link DatePrecision} leaves
- * open and matches when that span overlaps the window. Since it is stored as the first day of its
- * span, that is {@code value <= to} and {@code value >= lowerBound(precision)} via {@link
- * #dateFromBound} - the same two comparisons in both search paths.
+ * open (YEAR 2024 is 2024-01-01..2024-12-31) and matches when that span overlaps the window. Since
+ * a value is stored as the first day of its span, that is {@code value <= to} and {@code value >=
+ * lowerBound(precision)} with {@link #dateFromBound} - the same two comparisons in both search
+ * paths.
+ *
+ * @param documentTypes vocabulary codes; empty means no condition on the Dokumentart.
+ * @param documentDateFrom inclusive window start, {@code null} for an open start.
+ * @param documentDateTo inclusive window end, {@code null} for an open end.
+ * @param libraryFields conditions on library fields, each naming its own library - the third and
+ *     last kind of condition a filter can carry; free keywords never filter.
  */
 public record MetadataFilter(
-    Set<String> documentTypes, LocalDate documentDateFrom, LocalDate documentDateTo) {
+    Set<String> documentTypes,
+    LocalDate documentDateFrom,
+    LocalDate documentDateTo,
+    List<LibraryFieldCondition> libraryFields) {
 
-  public static final MetadataFilter NONE = new MetadataFilter(Set.of(), null, null);
+  public static final MetadataFilter NONE = new MetadataFilter(Set.of(), null, null, List.of());
 
   public MetadataFilter {
     documentTypes = documentTypes == null ? Set.of() : Set.copyOf(documentTypes);
+    libraryFields =
+        libraryFields == null
+            ? List.of()
+            : libraryFields.stream().filter(condition -> !condition.isEmpty()).toList();
+    // One condition per field: two of them would be AND-ed and could only ever contradict each
+    // other, which reads to the asking person like "the filter found nothing".
+    java.util.Set<String> seen = new java.util.HashSet<>();
+    for (LibraryFieldCondition condition : libraryFields) {
+      if (!seen.add(condition.libraryId() + "/" + condition.fieldKey())) {
+        throw new ValidationException(
+            "Für das Feld " + condition.fieldKey() + " steht mehr als eine Bedingung im Filter");
+      }
+    }
     if (documentDateFrom != null
         && documentDateTo != null
         && documentDateTo.isBefore(documentDateFrom)) {
       throw new ValidationException("Das Datumsfenster endet vor seinem Beginn");
     }
+  }
+
+  /** The core-field half alone - the shape every caller before built. */
+  public MetadataFilter(
+      Set<String> documentTypes, LocalDate documentDateFrom, LocalDate documentDateTo) {
+    this(documentTypes, documentDateFrom, documentDateTo, List.of());
+  }
+
+  /** The same filter with {@code conditions} on library fields added. */
+  public MetadataFilter withLibraryFields(List<LibraryFieldCondition> conditions) {
+    return new MetadataFilter(documentTypes, documentDateFrom, documentDateTo, conditions);
   }
 
   /** A filter on the Dokumentart alone. */
@@ -65,7 +100,14 @@ public record MetadataFilter(
 
   /** A filter without any condition - a no-op in both search paths. */
   public boolean isEmpty() {
-    return documentTypes.isEmpty() && documentDateFrom == null && documentDateTo == null;
+    return documentTypes.isEmpty()
+        && documentDateFrom == null
+        && documentDateTo == null
+        && libraryFields.isEmpty();
+  }
+
+  public boolean filtersLibraryFields() {
+    return !libraryFields.isEmpty();
   }
 
   public boolean filtersDocumentType() {

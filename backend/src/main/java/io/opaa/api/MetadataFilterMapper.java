@@ -1,5 +1,7 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.MetadataFilterLibraryFieldCondition;
+import io.opaa.indexing.metadata.LibraryFieldCondition;
 import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,8 +20,22 @@ final class MetadataFilterMapper {
     if (request == null) {
       return MetadataFilter.NONE;
     }
+    List<LibraryFieldCondition> conditions = new ArrayList<>();
+    if (request.getLibraryFields() != null) {
+      for (MetadataFilterLibraryFieldCondition condition : request.getLibraryFields()) {
+        conditions.add(
+            LibraryFieldCondition.parse(
+                condition.getLibraryId(),
+                condition.getFieldKey(),
+                condition.getCodes(),
+                condition.getDateFrom(),
+                condition.getDateTo(),
+                condition.getValue()));
+      }
+    }
     return MetadataFilter.parse(
-        request.getDocumentTypes(), request.getDocumentDateFrom(), request.getDocumentDateTo());
+            request.getDocumentTypes(), request.getDocumentDateFrom(), request.getDocumentDateTo())
+        .withLibraryFields(conditions);
   }
 
   /**
@@ -41,7 +57,29 @@ final class MetadataFilterMapper {
         .documentTypes(codes.isEmpty() ? null : codes)
         .documentDateFrom(
             filter.documentDateFrom() == null ? null : filter.documentDateFrom().toString())
-        .documentDateTo(
-            filter.documentDateTo() == null ? null : filter.documentDateTo().toString());
+        .documentDateTo(filter.documentDateTo() == null ? null : filter.documentDateTo().toString())
+        .libraryFields(
+            filter.libraryFields().isEmpty()
+                ? null
+                : filter.libraryFields().stream()
+                    .map(MetadataFilterMapper::toConditionResponse)
+                    .toList());
+  }
+
+  private static MetadataFilterLibraryFieldCondition toConditionResponse(
+      LibraryFieldCondition condition) {
+    MetadataFilterLibraryFieldCondition response =
+        new MetadataFilterLibraryFieldCondition(condition.libraryId(), condition.fieldKey());
+    if (!condition.codes().isEmpty()) {
+      response.setCodes(condition.codes().stream().sorted().toList());
+    }
+    if (condition.dateFrom() != null) {
+      response.setDateFrom(condition.dateFrom().toString());
+    }
+    if (condition.dateTo() != null) {
+      response.setDateTo(condition.dateTo().toString());
+    }
+    response.setValue(condition.value());
+    return response;
   }
 }
