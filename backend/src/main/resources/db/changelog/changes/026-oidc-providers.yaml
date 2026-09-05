@@ -4,9 +4,12 @@ databaseChangeLog:
       author: opaa
       comment: >-
         #1329, ADR-0025: the identity providers a deployment accepts sign-ins from, replacing the
-        single issuer configured through OPAA_OIDC_*. issuer_uri is unique - a token's "iss" claim
-        must identify exactly one provider, and users(subject, issuer) stays the account identity,
-        so a provider deleted and re-created under the same issuer keeps every account. Public
+        single issuer configured through OPAA_OIDC_*. issuer_uri is stored exactly as the provider
+        mints its "iss" claim (a trailing slash included - the token is compared with it byte for
+        byte) and unique after stripping trailing slashes (ux_oidc_providers_issuer_uri_normalized,
+        the SQL twin of OidcIssuerUris.normalize): a token's "iss" claim must identify exactly one
+        provider, and users(subject, issuer) stays the account identity, so a provider deleted and
+        re-created under the same issuer keeps every account. Public
         clients only (PKCE in the SPA, ADR-0025 Entscheidung 1): there is no client-secret column.
         jwk_set_uri optionally overrides the JWK set found through discovery - the backend-side
         address of the same instance the browser reaches under issuer_uri (Compose: keycloak:8180
@@ -39,9 +42,11 @@ databaseChangeLog:
                   groups_claim character varying(200),
                   created_at timestamp with time zone DEFAULT now() NOT NULL,
                   updated_at timestamp with time zone DEFAULT now() NOT NULL,
-                  CONSTRAINT oidc_providers_pkey PRIMARY KEY (id),
-                  CONSTRAINT uq_oidc_providers_issuer_uri UNIQUE (issuer_uri)
+                  CONSTRAINT oidc_providers_pkey PRIMARY KEY (id)
               );
+
+              CREATE UNIQUE INDEX ux_oidc_providers_issuer_uri_normalized
+                  ON public.oidc_providers (rtrim(issuer_uri, '/'));
 
               CREATE UNIQUE INDEX ux_oidc_providers_single_default
                   ON public.oidc_providers (is_default) WHERE is_default;

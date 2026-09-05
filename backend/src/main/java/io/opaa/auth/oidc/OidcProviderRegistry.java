@@ -11,14 +11,14 @@ import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.BearerTokenError;
-import org.springframework.security.oauth2.server.resource.BearerTokenErrors;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -30,13 +30,17 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * expired token - so a provider disabled or deleted is refused from the first token after the
  * commit.
  *
- * <p>Rebuilt as a whole on every {@link OidcProvidersChangedEvent} <em>after</em> its transaction
- * committed (mirroring {@code ActiveChatModelResolver}), and lazily on first use. A row whose
- * address the {@link OidcAddressPolicy} rejects or whose decoder cannot be built (discovery not
- * reachable yet - Keycloak regularly starts after OPAA in the Compose stack) is logged and skipped
- * so the remaining providers stay reachable; it is kept as {@link Failure} and rebuilt on the next
- * token of its issuer once {@link #RETRY_INTERVAL} passed, so it does not stay out until the next
- * restart. Process-local without distributed invalidation, per ADR-0021.
+ * <p>Refreshed from the enabled rows on every {@link OidcProvidersChangedEvent} <em>after</em> its
+ * transaction committed (mirroring {@code ActiveChatModelResolver}), and lazily on first use. A
+ * refresh keeps the decoder of every row whose verification inputs (issuer, client id, JWK set
+ * address) did not change - a rename, a reorder or a claim-mapping edit fetches nothing - and
+ * builds decoders only for new or changed rows. A row whose address the {@link OidcAddressPolicy}
+ * rejects or whose decoder cannot be built (discovery not reachable yet - Keycloak regularly starts
+ * after OPAA in the Compose stack) is logged and skipped so the remaining providers stay reachable;
+ * it is kept as {@link Failure} and rebuilt on the next token of its issuer once {@link
+ * #RETRY_INTERVAL} passed - at most once per interval, however many request threads carry that
+ * issuer - so it does not stay out until the next restart. Process-local without distributed
+ * invalidation, per ADR-0021.
  */
 public class OidcProviderRegistry implements AuthenticationManagerResolver<String> {
 
@@ -76,17 +80,26 @@ public class OidcProviderRegistry implements AuthenticationManagerResolver<Strin
     refresh();
   }
 
-  /** Rebuilds the whole set from the enabled rows; never throws for a single bad row. */
-  @Transactional(readOnly = true)
+  /**
+   * Rebuilds the set from the enabled rows, reusing the decoder of every unchanged row; never
+   * throws for a single bad row. Not transactional on purpose: the one repository call opens its
+   * own read transaction, and the rows are kept detached anyway.
+   */
   public void refresh() {
     synchronized (lock) {
+      Map<String, Entry> previous = entries == null ? Map.of() : entries;
       Map<String, Entry> built = new LinkedHashMap<>();
       Map<String, Failure> failed = new LinkedHashMap<>();
       for (OidcProvider provider :
           repository.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc()) {
         String issuer = OidcIssuerUris.normalize(provider.getIssuerUri());
+        Entry reusable = previous.get(issuer);
         try {
-          built.put(issuer, build(provider));
+          if (reusable != null && reusable.provider().hasSameDecoderInputsAs(provider)) {
+            built.put(issuer, new Entry(provider, reusable.authenticationManager()));
+          } else {
+            built.put(issuer, build(provider));
+          }
         } catch (RuntimeException e) {
           failed.put(issuer, new Failure(provider, e.getMessage(), clock.instant()));
           log.warn(
@@ -100,7 +113,9 @@ public class OidcProviderRegistry implements AuthenticationManagerResolver<Strin
       entries = Collections.unmodifiableMap(built);
       failures = Collections.unmodifiableMap(failed);
       log.info(
-          "OIDC provider registry rebuilt: {} ready, {} unavailable", built.size(), failed.size());
+          "OIDC provider registry refreshed: {} ready, {} unavailable",
+          built.size(),
+          failed.size());
     }
   }
 
@@ -120,10 +135,7 @@ public class OidcProviderRegistry implements AuthenticationManagerResolver<Strin
     return authentication -> {
       throw new OAuth2AuthenticationException(
           new BearerTokenError(
-              BearerTokenErrors.invalidToken(UNKNOWN_ISSUER).getErrorCode(),
-              org.springframework.http.HttpStatus.UNAUTHORIZED,
-              UNKNOWN_ISSUER,
-              null));
+              OAuth2ErrorCodes.INVALID_TOKEN, HttpStatus.UNAUTHORIZED, UNKNOWN_ISSUER, null));
     };
   }
 
@@ -162,17 +174,22 @@ public class OidcProviderRegistry implements AuthenticationManagerResolver<Strin
     return new Entry(provider, authenticationProvider::authenticate);
   }
 
-  /** A second attempt for a failed provider, at most once per {@link #RETRY_INTERVAL}. */
+  /**
+   * A second attempt for a failed provider, at most once per {@link #RETRY_INTERVAL}: the interval
+   * is checked again under the lock, against the attempt a concurrent thread may just have made.
+   */
   private Entry retryIfDue(String issuer) {
-    Failure failure = failures.get(issuer);
-    if (failure == null
-        || Duration.between(failure.lastAttempt(), clock.instant()).compareTo(RETRY_INTERVAL) < 0) {
+    if (!retryDue(failures.get(issuer))) {
       return null;
     }
     synchronized (lock) {
       Entry already = entries.get(issuer);
       if (already != null) {
         return already;
+      }
+      Failure failure = failures.get(issuer);
+      if (!retryDue(failure)) {
+        return null;
       }
       try {
         Entry entry = build(failure.provider());
@@ -195,6 +212,11 @@ public class OidcProviderRegistry implements AuthenticationManagerResolver<Strin
         return null;
       }
     }
+  }
+
+  private boolean retryDue(Failure failure) {
+    return failure != null
+        && Duration.between(failure.lastAttempt(), clock.instant()).compareTo(RETRY_INTERVAL) >= 0;
   }
 
   private Map<String, Entry> loaded() {

@@ -79,11 +79,22 @@ public class OidcProvider {
       String jwkSetUri,
       OidcClaimMapping claimMapping) {
     this.displayName = Objects.requireNonNull(displayName, "displayName").trim();
-    this.issuerUri = OidcIssuerUris.normalize(Objects.requireNonNull(issuerUri, "issuerUri"));
+    // stored as minted (ADR-0025): the decoder compares a token's iss with it byte for byte
+    this.issuerUri = Objects.requireNonNull(issuerUri, "issuerUri").trim();
     this.clientId = Objects.requireNonNull(clientId, "clientId").trim();
     this.jwkSetUri = jwkSetUri == null || jwkSetUri.isBlank() ? null : jwkSetUri.trim();
     this.claimMapping = claimMapping == null ? OidcClaimMapping.keycloakDefaults() : claimMapping;
     this.updatedAt = Instant.now();
+  }
+
+  /**
+   * Whether a decoder built for {@code other} verifies this row's tokens too - same issuer, client
+   * id and JWK set address; the claim mapping plays no part in token verification.
+   */
+  public boolean hasSameDecoderInputsAs(OidcProvider other) {
+    return issuerUri.equals(other.issuerUri)
+        && clientId.equals(other.clientId)
+        && Objects.equals(jwkSetUri, other.jwkSetUri);
   }
 
   public void enable() {

@@ -25,6 +25,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.jwt.JwtValidationException;
 
 /**
@@ -59,6 +60,13 @@ class NimbusOidcJwtDecoderFactoryTest {
                     + (jwksPath.startsWith("http") ? jwksPath : baseUrl + jwksPath)
                     + "\"}"));
     server.createContext("/realms/opaa/certs", exchange -> respond(exchange, jwks));
+    server.createContext(
+        "/redirect-to-certs",
+        exchange -> {
+          exchange.getResponseHeaders().add("Location", baseUrl + "/realms/opaa/certs");
+          exchange.sendResponseHeaders(302, -1);
+          exchange.close();
+        });
     server.start();
   }
 
@@ -93,6 +101,32 @@ class NimbusOidcJwtDecoderFactoryTest {
     JwtDecoder decoder = factory().create(provider(baseUrl + "/realms/opaa/certs"));
 
     assertThat(decoder.decode(token(issuer, null)).getSubject()).isEqualTo("alice");
+  }
+
+  /**
+   * Auth0 and some Entra/Okta setups mint {@code iss} with a trailing slash. The issuer is stored
+   * as the provider mints it and compared byte for byte, as OIDC requires - normalizing it away
+   * would refuse every token of such a provider with a plain {@code invalid_token}.
+   */
+  @Test
+  void aProviderWhoseIssuerEndsWithASlashAcceptsTheTokensMintedWithThatSlash() throws Exception {
+    OidcProvider slashed =
+        new OidcProvider(
+            "Auth0", issuer + "/", "opaa-frontend", null, OidcClaimMapping.keycloakDefaults());
+
+    JwtDecoder decoder = factory().create(slashed);
+
+    assertThat(decoder.decode(token(issuer + "/", "opaa-frontend")).getSubject())
+        .isEqualTo("alice");
+    assertThatThrownBy(() -> decoder.decode(token(issuer, "opaa-frontend")))
+        .isInstanceOf(JwtValidationException.class);
+  }
+
+  @Test
+  void theJwkSetClientNeverFollowsRedirects() {
+    JwtDecoder decoder = factory().create(provider(baseUrl + "/redirect-to-certs"));
+
+    assertThatThrownBy(() -> decoder.decode(token(issuer, null))).isInstanceOf(JwtException.class);
   }
 
   @Test

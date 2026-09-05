@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.auth.AuthProperties;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -123,9 +124,9 @@ class OidcProviderSeederTest {
     mistyped.disable();
     OidcProvider partner =
         OidcProviderServiceTest.provider("Partner", "https://idp.example/realms/b", true, true);
-    when(repository.findByIssuerUri("https://idp.example/realms/opaa"))
-        .thenReturn(java.util.Optional.of(mistyped));
-    when(repository.findByDefaultProviderTrue()).thenReturn(java.util.Optional.of(partner));
+    when(repository.findByNormalizedIssuerUri("https://idp.example/realms/opaa"))
+        .thenReturn(Optional.of(mistyped));
+    when(repository.findByDefaultProviderTrue()).thenReturn(Optional.of(partner));
     AuthProperties forced =
         new AuthProperties(
             "oidc",
@@ -147,8 +148,8 @@ class OidcProviderSeederTest {
   @Test
   void forcedBootstrapCreatesTheEnvironmentProviderWhenNoneHasItsIssuer() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(true);
-    when(repository.findByIssuerUri(any())).thenReturn(java.util.Optional.empty());
-    when(repository.findByDefaultProviderTrue()).thenReturn(java.util.Optional.empty());
+    when(repository.findByNormalizedIssuerUri(any())).thenReturn(Optional.empty());
+    when(repository.findByDefaultProviderTrue()).thenReturn(Optional.empty());
     AuthProperties forced =
         new AuthProperties(
             "oidc",
@@ -185,5 +186,57 @@ class OidcProviderSeederTest {
 
     verify(repository, never()).save(any());
     verify(markerRepository, never()).save(any());
+  }
+
+  @Test
+  void leavesNoMarkerWhenTheClientIdIsMissingSoALaterBootstrapStillWorks() {
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    when(repository.count()).thenReturn(0L);
+
+    // an unset OPAA_OIDC_CLIENT_ID binds to the empty string, not to null
+    seederFor(oidc("https://idp.example/realms/opaa", null, null, "")).seedIfNeeded();
+
+    verify(repository, never()).save(any());
+    verify(markerRepository, never()).save(any());
+  }
+
+  @Test
+  void leavesNoMarkerWhenTheIssuerIsNoHttpAddress() {
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    when(repository.count()).thenReturn(0L);
+
+    seederFor(oidc("idp.example/realms/opaa", null, null, "opaa-frontend")).seedIfNeeded();
+
+    verify(repository, never()).save(any());
+    verify(markerRepository, never()).save(any());
+  }
+
+  @Test
+  void forcedBootstrapWithAnIncompleteEnvironmentChangesNothing() {
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(true);
+    AuthProperties forced =
+        new AuthProperties(
+            "oidc",
+            new AuthProperties.OidcAuth(
+                null, "", "https://idp.example/realms/opaa", null, "force", null),
+            null,
+            "admin@opaa.local");
+
+    seederFor(forced).seedIfNeeded();
+
+    verify(repository, never()).save(any());
+    verify(repository, never()).saveAndFlush(any());
+  }
+
+  @Test
+  void theIssuerIsTakenOverExactlyAsTheProviderMintsIt() {
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    when(repository.count()).thenReturn(0L);
+
+    seederFor(oidc(" https://tenant.eu.auth0.com/ ", null, null, "opaa-frontend")).seedIfNeeded();
+
+    ArgumentCaptor<OidcProvider> captor = ArgumentCaptor.forClass(OidcProvider.class);
+    verify(repository).save(captor.capture());
+    assertThat(captor.getValue().getIssuerUri()).isEqualTo("https://tenant.eu.auth0.com/");
   }
 }

@@ -107,11 +107,28 @@ class OidcProviderServiceIntegrationTest {
 
   private OidcProviderDraft draft(String name, String issuerUri) {
     return new OidcProviderDraft(
-        name,
-        issuerUri,
-        "opaa-frontend",
-        "http://127.0.0.1:" + jwks.getAddress().getPort() + "/certs",
-        OidcClaimMapping.keycloakDefaults());
+        name, issuerUri, "opaa-frontend", jwksUri(), OidcClaimMapping.keycloakDefaults());
+  }
+
+  private String jwksUri() {
+    return "http://127.0.0.1:" + jwks.getAddress().getPort() + "/certs";
+  }
+
+  /** Serves a discovery document for {@code discoveredIssuer} on the local server. */
+  private void serveDiscoveryFor(String discoveredIssuer) {
+    String path = discoveredIssuer.substring(discoveredIssuer.indexOf('/', "http://".length()));
+    jwks.createContext(
+        path + "/.well-known/openid-configuration",
+        exchange -> {
+          byte[] bytes =
+              ("{\"issuer\":\"" + discoveredIssuer + "\",\"jwks_uri\":\"" + jwksUri() + "\"}")
+                  .getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().add("Content-Type", "application/json");
+          exchange.sendResponseHeaders(200, bytes.length);
+          try (OutputStream out = exchange.getResponseBody()) {
+            out.write(bytes);
+          }
+        });
   }
 
   @Test
@@ -161,6 +178,90 @@ class OidcProviderServiceIntegrationTest {
     List<OidcProvider> all = repository.findAllByOrderBySortOrderAscDisplayNameAsc();
     assertThat(all).filteredOn(OidcProvider::isDefaultProvider).singleElement();
     assertThat(all).filteredOn(OidcProvider::isDefaultProvider).first().isEqualTo(partner);
+  }
+
+  @Test
+  void aProviderWithoutAJwkSetOverrideIsBuiltFromItsDiscoveryDocument() throws Exception {
+    String discovered =
+        "http://127.0.0.1:" + jwks.getAddress().getPort() + "/realms/" + UUID.randomUUID();
+    serveDiscoveryFor(discovered);
+
+    OidcProvider created =
+        service.createProvider(
+            organizationId,
+            userId,
+            new OidcProviderDraft(
+                "Entdeckt",
+                discovered,
+                "opaa-frontend",
+                null,
+                OidcClaimMapping.keycloakDefaults()));
+
+    assertThat(registry.healthOf(created.getId()).ready()).isTrue();
+    Authentication authenticated =
+        registry
+            .resolve(discovered)
+            .authenticate(new BearerTokenAuthenticationToken(signedToken(discovered)));
+    assertThat(authenticated).isInstanceOf(JwtAuthenticationToken.class);
+  }
+
+  @Test
+  void theDefaultProviderCanNeitherBeDisabledNorDeletedUntilAnotherOneTookItsPlace() {
+    OidcProvider standard = service.createProvider(organizationId, userId, draft("Erster", issuer));
+    OidcProvider partner =
+        service.createProvider(organizationId, userId, draft("Partner", issuer + "-2"));
+
+    assertThatThrownBy(() -> service.setEnabled(organizationId, userId, standard.getId(), false))
+        .isInstanceOf(ConflictException.class);
+    assertThatThrownBy(() -> service.deleteProvider(organizationId, userId, standard.getId()))
+        .isInstanceOf(ConflictException.class);
+    assertThat(repository.findById(standard.getId())).map(OidcProvider::isEnabled).contains(true);
+
+    service.makeDefault(organizationId, userId, partner.getId());
+    service.setEnabled(organizationId, userId, standard.getId(), false);
+    service.deleteProvider(organizationId, userId, standard.getId());
+    assertThat(repository.findById(standard.getId())).isEmpty();
+    assertThat(registry.findEnabledByIssuer(issuer)).isEmpty();
+  }
+
+  /**
+   * The rule with irreversible data effect, against real rows: {@code users.issuer} holds the
+   * token's {@code iss} exactly as minted (here with a trailing slash), and the provider's stored
+   * issuer must count those rows - a normalized comparison would find none and let the change
+   * through.
+   */
+  @Test
+  void changingTheIssuerOfAProviderThatMintedAccountsIsRefusedAgainstRealAccountRows() {
+    String slashed = issuer + "/";
+    User minted = new User(UUID.randomUUID().toString(), slashed, "minted@example.com", "Minted");
+    minted.setOrganizationId(organizationId);
+    UUID mintedId = userRepository.save(minted).getId();
+    try {
+      OidcProvider provider =
+          service.createProvider(organizationId, userId, draft("Auth0", slashed));
+
+      assertThatThrownBy(
+              () ->
+                  service.updateProvider(
+                      organizationId, userId, provider.getId(), draft("Auth0", issuer + "-neu")))
+          .isInstanceOf(ConflictException.class)
+          .hasMessageContaining("1 Konten");
+      assertThat(repository.findById(provider.getId()))
+          .map(OidcProvider::getIssuerUri)
+          .as("stored as minted, slash included")
+          .contains(slashed);
+    } finally {
+      userRepository.deleteById(mintedId);
+    }
+  }
+
+  @Test
+  void aSecondProviderWhoseIssuerDiffersOnlyByATrailingSlashIsRefused() {
+    service.createProvider(organizationId, userId, draft("Erster", issuer));
+
+    assertThatThrownBy(
+            () -> service.createProvider(organizationId, userId, draft("Kopie", issuer + "/")))
+        .isInstanceOf(ConflictException.class);
   }
 
   @Test

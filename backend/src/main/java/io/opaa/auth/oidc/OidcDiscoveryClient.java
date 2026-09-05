@@ -28,8 +28,10 @@ public class OidcDiscoveryClient {
 
   private static final Logger log = LoggerFactory.getLogger(OidcDiscoveryClient.class);
 
-  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
-  private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
+  /** Shared with the JWK set client of {@link NimbusOidcJwtDecoderFactory}. */
+  static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+
+  static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
   private static final int MAX_BODY_BYTES = 256 * 1024;
   static final String DISCOVERY_PATH = "/.well-known/openid-configuration";
 

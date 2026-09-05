@@ -1,6 +1,7 @@
 package io.opaa.auth.oidc;
 
 import io.opaa.auth.AuthProperties;
+import io.opaa.common.ValidationException;
 import java.time.Instant;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -18,10 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>Guarded by {@link OidcProviderSeedMarker}, never by "is the table empty?"</b> - the marker
  * is written in the same transaction as the seeded row. Two deliberate cases leave <em>no</em>
  * marker: the {@code dev} mode (which knows no providers - a later switch to {@code oidc} must
- * still be able to take the environment over) and an {@code oidc} start whose environment names no
- * issuer at all (the bootstrap of a fresh installation depends on this seed, so the operator is
- * told what to set and the next start tries again). Existing rows with no marker get the marker
- * without any seeding, mirroring {@code LlmModelSeeder}.
+ * still be able to take the environment over) and an {@code oidc} start whose environment is
+ * incomplete or malformed - no issuer, an issuer that is no http(s) address, or no client id (the
+ * bootstrap of a fresh installation depends on this seed, and a row seeded from such values would
+ * be an undeletable default provider nobody can sign in through; so the operator is told what to
+ * set and the next start tries again). Existing rows with no marker get the marker without any
+ * seeding, mirroring {@code LlmModelSeeder}.
  *
  * <p><b>{@code OPAA_OIDC_BOOTSTRAP=force} is the documented way back</b> from a mistyped issuer of
  * the only provider: the marker is ignored once, the environment provider is restored - a row with
@@ -72,7 +75,7 @@ class OidcProviderSeeder {
       markerRepository.save(new OidcProviderSeedMarker(Instant.now()));
       return;
     }
-    String issuer = requireIssuer(oidc);
+    String issuer = requireBootstrapConfiguration(oidc);
     if (issuer == null) {
       return;
     }
@@ -88,19 +91,20 @@ class OidcProviderSeeder {
   }
 
   private void forceBootstrap(AuthProperties.OidcAuth oidc) {
-    String issuer = requireIssuer(oidc);
+    String issuer = requireBootstrapConfiguration(oidc);
     if (issuer == null) {
       return;
     }
+    String key = OidcIssuerUris.normalize(issuer);
     repository
         .findByDefaultProviderTrue()
-        .filter(current -> !current.getIssuerUri().equals(issuer))
+        .filter(current -> !OidcIssuerUris.normalize(current.getIssuerUri()).equals(key))
         .ifPresent(
             current -> {
               current.clearDefault();
               repository.saveAndFlush(current);
             });
-    Optional<OidcProvider> existing = repository.findByIssuerUri(issuer);
+    Optional<OidcProvider> existing = repository.findByNormalizedIssuerUri(key);
     OidcProvider provider;
     if (existing.isPresent()) {
       provider = existing.get();
@@ -129,7 +133,9 @@ class OidcProviderSeeder {
 
   private static OidcProvider environmentProvider(AuthProperties.OidcAuth oidc, String issuer) {
     String authority = OidcIssuerUris.normalize(oidc.authority());
-    if (authority != null && !authority.isBlank() && !authority.equals(issuer)) {
+    if (authority != null
+        && !authority.isBlank()
+        && !authority.equals(OidcIssuerUris.normalize(issuer))) {
       log.warn(
           "OPAA_OIDC_AUTHORITY ({}) weicht von OPAA_OIDC_ISSUER_URI ({}) ab; der Issuer ist"
               + " zugleich die Authority des Anmeldeflusses und wird übernommen, die Authority"
@@ -145,17 +151,35 @@ class OidcProviderSeeder {
         OidcClaimMapping.keycloakDefaults());
   }
 
-  private static String requireIssuer(AuthProperties.OidcAuth oidc) {
-    String issuer = OidcIssuerUris.normalize(oidc.issuerUri());
-    if (issuer == null || issuer.isBlank()) {
-      log.error(
-          "Kein Identitätsanbieter hinterlegt und OPAA_OIDC_ISSUER_URI nicht gesetzt: Bis ein"
-              + " Anbieter existiert, ist keine Anmeldung möglich. OPAA_OIDC_ISSUER_URI,"
-              + " OPAA_OIDC_CLIENT_ID (und bei Bedarf OPAA_OIDC_JWK_SET_URI) setzen und neu"
-              + " starten - die Übernahme wird dann nachgeholt. Siehe"
-              + " docs/handbuch/deployment.md.");
-      return null;
+  /**
+   * The issuer exactly as configured (trimmed), or {@code null} - with the operator told why - when
+   * the environment could not seed a provider anyone can sign in through. An unset variable binds
+   * to the empty string, so blank means unset.
+   */
+  private static String requireBootstrapConfiguration(AuthProperties.OidcAuth oidc) {
+    String issuer = oidc.issuerUri() == null ? "" : oidc.issuerUri().trim();
+    String clientId = oidc.clientId() == null ? "" : oidc.clientId().trim();
+    String problem = null;
+    if (issuer.isEmpty()) {
+      problem = "OPAA_OIDC_ISSUER_URI ist nicht gesetzt";
+    } else if (clientId.isEmpty()) {
+      problem = "OPAA_OIDC_CLIENT_ID ist nicht gesetzt";
+    } else {
+      try {
+        OidcIssuerUris.requireHttpUri(issuer, "OPAA_OIDC_ISSUER_URI");
+      } catch (ValidationException e) {
+        problem = e.getMessage();
+      }
     }
-    return issuer;
+    if (problem == null) {
+      return issuer;
+    }
+    log.error(
+        "Kein Identitätsanbieter übernommen ({}): Bis ein Anbieter existiert, ist keine Anmeldung"
+            + " möglich. OPAA_OIDC_ISSUER_URI und OPAA_OIDC_CLIENT_ID (und bei Bedarf"
+            + " OPAA_OIDC_JWK_SET_URI) setzen und neu starten - die Übernahme wird dann"
+            + " nachgeholt. Siehe docs/handbuch/deployment.md.",
+        problem);
+    return null;
   }
 }

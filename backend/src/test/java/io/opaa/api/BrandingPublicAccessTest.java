@@ -109,7 +109,8 @@ class BrandingPublicAccessTest {
 
   @Test
   void anUnknownApiPathIsStillRejectedWithoutCredentials() throws Exception {
-    // no bearer token on the request: the resolver is never even consulted
     mockMvc.perform(get("/api/v1/spaces")).andExpect(status().isUnauthorized());
+    // no bearer token on the request: the resolver is never even consulted
+    org.mockito.Mockito.verifyNoInteractions(oidcAuthenticationManagerResolver);
   }
 }

@@ -121,5 +121,6 @@ class ConfluenceWebhookPublicAccessTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"sourceUrl\":\"http://127.0.0.1:9/confluence\"}"))
         .andExpect(status().isUnauthorized());
+    org.mockito.Mockito.verifyNoInteractions(oidcAuthenticationManagerResolver);
   }
 }

@@ -14,11 +14,19 @@ import io.opaa.common.ValidationException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.BearerTokenError;
@@ -57,12 +65,12 @@ class OidcProviderRegistryTest {
     Clock clock =
         new Clock() {
           @Override
-          public java.time.ZoneId getZone() {
+          public ZoneId getZone() {
             return ZoneOffset.UTC;
           }
 
           @Override
-          public Clock withZone(java.time.ZoneId zone) {
+          public Clock withZone(ZoneId zone) {
             return this;
           }
 
@@ -74,8 +82,7 @@ class OidcProviderRegistryTest {
     registry = new OidcProviderRegistry(repository, decoderFactory, addressPolicy, clock);
   }
 
-  private static void assertUnknownIssuer(
-      org.springframework.security.authentication.AuthenticationManager manager) {
+  private static void assertUnknownIssuer(AuthenticationManager manager) {
     assertThatThrownBy(() -> manager.authenticate(new BearerTokenAuthenticationToken("x.y.z")))
         .isInstanceOf(OAuth2AuthenticationException.class)
         .satisfies(
@@ -163,5 +170,78 @@ class OidcProviderRegistryTest {
 
     assertThat(registry.findEnabledByIssuer("https://idp.example/realms/a/")).contains(enabledA);
     verify(decoderFactory, times(2)).create(any());
+  }
+
+  /**
+   * The retry interval must hold under concurrency: request threads that pass the "is a retry due?"
+   * check together may not each rebuild a provider that stays broken - every attempt is a discovery
+   * fetch with a 15 s budget on a request thread, serialized behind the registry's lock.
+   */
+  @Test
+  void concurrentRetriesOfAProviderThatStaysBrokenAttemptTheRebuildOnlyOnce() throws Exception {
+    when(decoderFactory.create(enabledA))
+        .thenThrow(new IllegalStateException("nicht erreichbar"))
+        .thenAnswer(
+            invocation -> {
+              Thread.sleep(300);
+              throw new IllegalStateException("immer noch nicht erreichbar");
+            });
+    registry.refresh();
+    now.set(START.plus(OidcProviderRegistry.RETRY_INTERVAL).plus(Duration.ofSeconds(1)));
+
+    CountDownLatch bothArrived = new CountDownLatch(2);
+    ExecutorService pool = Executors.newFixedThreadPool(2);
+    try {
+      List<Future<AuthenticationManager>> results = new ArrayList<>();
+      for (int i = 0; i < 2; i++) {
+        results.add(
+            pool.submit(
+                () -> {
+                  bothArrived.countDown();
+                  bothArrived.await();
+                  return registry.resolve("https://idp.example/realms/a");
+                }));
+      }
+      for (Future<AuthenticationManager> result : results) {
+        assertThat(result.get(5, TimeUnit.SECONDS)).isNotNull();
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+
+    // one attempt in refresh, one retry - not one retry per thread
+    verify(decoderFactory, times(2)).create(enabledA);
+    assertThat(registry.healthOf(enabledA.getId()).message()).contains("immer noch");
+  }
+
+  @Test
+  void aRefreshReusesTheDecodersOfUnchangedProvidersAndRebuildsOnlyChangedOnes() {
+    registry.refresh();
+
+    // a reorder: the same rows in another order - no decoder is rebuilt, the order is taken over
+    when(repository.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc())
+        .thenReturn(List.of(enabledB, enabledA));
+    registry.onProvidersChanged(new OidcProvidersChangedEvent());
+    verify(decoderFactory, times(1)).create(enabledA);
+    verify(decoderFactory, times(1)).create(enabledB);
+    assertThat(registry.enabledProviders()).containsExactly(enabledB, enabledA);
+
+    // a changed client id is a changed validator: that provider is rebuilt, the other is not
+    OidcProvider aWithNewClient =
+        OidcProviderServiceTest.provider("A", "https://idp.example/realms/a", true, true);
+    aWithNewClient.replaceDetails(
+        "A",
+        "https://idp.example/realms/a",
+        "other-client",
+        null,
+        OidcClaimMapping.keycloakDefaults());
+    when(decoderFactory.create(aWithNewClient)).thenReturn(decoderA);
+    when(repository.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc())
+        .thenReturn(List.of(enabledB, aWithNewClient));
+    registry.onProvidersChanged(new OidcProvidersChangedEvent());
+    verify(decoderFactory).create(aWithNewClient);
+    verify(decoderFactory, times(1)).create(enabledB);
+    assertThat(registry.findEnabledByIssuer("https://idp.example/realms/a"))
+        .contains(aWithNewClient);
   }
 }

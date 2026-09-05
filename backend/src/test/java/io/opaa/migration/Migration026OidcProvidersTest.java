@@ -84,13 +84,33 @@ class Migration026OidcProvidersTest extends AbstractMigrationTest {
   }
 
   @Test
-  void rejectsASecondProviderWithTheSameIssuer() throws Exception {
+  void rejectsASecondProviderWithTheSameIssuerEvenWhenItDiffersByTrailingSlashesOnly()
+      throws Exception {
     applyChangelog(connection, CHANGELOG_PATH);
-    insertProvider("Beschäftigte", "https://idp.example/realms/a", true, true);
+    insertProvider("Beschäftigte", "https://idp.example/realms/a/", true, true);
 
     assertThatThrownBy(() -> insertProvider("Partner", "https://idp.example/realms/a", true, false))
         .isInstanceOf(SQLException.class)
-        .hasMessageContaining("uq_oidc_providers_issuer_uri");
+        .hasMessageContaining("ux_oidc_providers_issuer_uri_normalized");
+    assertThatThrownBy(
+            () -> insertProvider("Partner", "https://idp.example/realms/a//", true, false))
+        .isInstanceOf(SQLException.class)
+        .hasMessageContaining("ux_oidc_providers_issuer_uri_normalized");
+  }
+
+  /**
+   * The stored issuer is compared byte for byte with a token's {@code iss}: nothing rewrites it.
+   */
+  @Test
+  void keepsTheIssuerExactlyAsInserted() throws Exception {
+    applyChangelog(connection, CHANGELOG_PATH);
+    insertProvider("Auth0", "https://tenant.eu.auth0.com/", true, true);
+
+    try (Statement statement = connection.createStatement();
+        ResultSet rs = statement.executeQuery("SELECT issuer_uri FROM oidc_providers")) {
+      assertThat(rs.next()).isTrue();
+      assertThat(rs.getString("issuer_uri")).isEqualTo("https://tenant.eu.auth0.com/");
+    }
   }
 
   @Test

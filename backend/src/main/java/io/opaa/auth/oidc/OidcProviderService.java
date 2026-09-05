@@ -28,11 +28,13 @@ import org.springframework.transaction.annotation.Transactional;
  * change is effective without a restart.
  *
  * <p><b>Invariants enforced here, backed by the schema:</b> an issuer names exactly one provider
- * ({@code uq_oidc_providers_issuer_uri}); exactly one provider is the default while any exist
- * ({@code ux_oidc_providers_single_default}), and the default is always enabled - it is the
- * provider {@code opaa.auth.initial-admin-email} applies to and the one the directory
- * synchronisation is bound to, so it can be neither disabled nor deleted before another provider
- * took its place. The very first provider becomes the default automatically.
+ * ({@code ux_oidc_providers_issuer_uri_normalized} - trailing slashes do not make a second one);
+ * exactly one provider is the default while any exist ({@code ux_oidc_providers_single_default}),
+ * and the default is always enabled and its decoder ready - it is the provider {@code
+ * opaa.auth.initial-admin-email} applies to and the one the directory synchronisation is bound to,
+ * so it can be neither disabled nor deleted before another provider took its place, and a provider
+ * whose keys cannot be fetched cannot take that place (there must never be a state without a
+ * sign-in-capable provider). The very first provider becomes the default automatically.
  *
  * <p>Every operator-entered address passes {@link OidcAddressPolicy} before the row is written.
  * Deleting a provider deletes no account: {@code users(subject, issuer)} keeps every row, only the
@@ -48,6 +50,7 @@ public class OidcProviderService {
   private final OidcProviderRepository repository;
   private final UserRepository userRepository;
   private final OidcAddressPolicy addressPolicy;
+  private final OidcProviderRegistry registry;
   private final AuditEventRecorder auditEventRecorder;
   private final ApplicationEventPublisher eventPublisher;
 
@@ -55,11 +58,13 @@ public class OidcProviderService {
       OidcProviderRepository repository,
       UserRepository userRepository,
       OidcAddressPolicy addressPolicy,
+      OidcProviderRegistry registry,
       AuditEventRecorder auditEventRecorder,
       ApplicationEventPublisher eventPublisher) {
     this.repository = repository;
     this.userRepository = userRepository;
     this.addressPolicy = addressPolicy;
+    this.registry = registry;
     this.auditEventRecorder = auditEventRecorder;
     this.eventPublisher = eventPublisher;
   }
@@ -85,8 +90,9 @@ public class OidcProviderService {
             draft.clientId(),
             draft.jwkSetUri(),
             draft.claimMapping());
-    provider.setSortOrder((int) repository.count());
-    if (repository.count() == 0) {
+    long existing = repository.count();
+    provider.setSortOrder((int) existing);
+    if (existing == 0) {
       provider.markDefault();
     }
     repository.save(provider);
@@ -104,15 +110,16 @@ public class OidcProviderService {
   /**
    * The issuer of a provider that already provisioned accounts cannot be changed (ADR-0025,
    * Entscheidung 2): the identity is {@code (issuer, subject)} and there is no merging, so every
-   * account of the old issuer would silently become a new, empty account on its next sign-in.
+   * account of the old issuer would silently become a new, empty account on its next sign-in. The
+   * comparison is byte for byte, like the token check and {@code users.issuer}: a trailing slash
+   * added or removed is an issuer change too.
    */
   @Transactional
   public OidcProvider updateProvider(
       UUID organizationId, UUID actorUserId, UUID id, OidcProviderDraft draft) {
     OidcProvider provider = repository.findById(id).orElseThrow(() -> notFound(id));
     validate(draft, provider.getId());
-    String newIssuer = OidcIssuerUris.normalize(draft.issuerUri());
-    if (!newIssuer.equals(provider.getIssuerUri())) {
+    if (!draft.issuerUri().trim().equals(provider.getIssuerUri())) {
       long accounts = userRepository.countByIssuer(provider.getIssuerUri());
       if (accounts > 0) {
         throw new ConflictException(
@@ -213,6 +220,14 @@ public class OidcProviderService {
           "Ein deaktivierter Anbieter kann nicht Standardanbieter werden. Aktivieren Sie ihn"
               + " zuerst.");
     }
+    OidcProviderRegistry.Health health = registry.healthOf(provider.getId());
+    if (!health.ready()) {
+      throw new ConflictException(
+          "Ein Anbieter, dessen Schlüssel nicht abrufbar sind, kann nicht Standardanbieter werden"
+              + (health.message() == null ? "" : ": " + health.message())
+              + ". Beheben Sie die Verbindung zuerst - der Standardanbieter ist der einzige, der"
+              + " weder deaktiviert noch gelöscht werden kann.");
+    }
     Optional<OidcProvider> previous = repository.findByDefaultProviderTrue();
     if (previous.isPresent()) {
       OidcProvider old = previous.get();
@@ -280,7 +295,7 @@ public class OidcProviderService {
 
   /**
    * Shape, SSRF policy and uniqueness of the issuer - {@code selfId} excludes the row being updated
-   * from the uniqueness check.
+   * from the uniqueness check, which ignores trailing slashes like the index behind it.
    */
   private void validate(OidcProviderDraft draft, UUID selfId) {
     if (draft.displayName() == null || draft.displayName().isBlank()) {
@@ -294,11 +309,14 @@ public class OidcProviderService {
     // invariant that only http(s) issuers ever reach the row
     OidcIssuerUris.requireHttpUri(issuer, ISSUER_LABEL);
     addressPolicy.requireAllowed(issuer, ISSUER_LABEL);
+    if (issuer.isEmpty()) {
+      throw new ValidationException(ISSUER_LABEL + " darf nicht leer sein.");
+    }
     if (draft.jwkSetUri() != null && !draft.jwkSetUri().isBlank()) {
       addressPolicy.requireAllowed(draft.jwkSetUri().trim(), JWK_SET_LABEL);
     }
     repository
-        .findByIssuerUri(issuer)
+        .findByNormalizedIssuerUri(issuer)
         .filter(other -> !other.getId().equals(selfId))
         .ifPresent(
             other -> {

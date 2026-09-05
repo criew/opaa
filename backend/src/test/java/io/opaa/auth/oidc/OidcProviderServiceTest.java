@@ -42,6 +42,7 @@ class OidcProviderServiceTest {
   private final OidcProviderRepository repository = mock(OidcProviderRepository.class);
   private final UserRepository userRepository = mock(UserRepository.class);
   private final OidcAddressPolicy addressPolicy = mock(OidcAddressPolicy.class);
+  private final OidcProviderRegistry registry = mock(OidcProviderRegistry.class);
   private final AuditEventRecorder auditEventRecorder = mock(AuditEventRecorder.class);
   private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
@@ -51,10 +52,16 @@ class OidcProviderServiceTest {
   void setUp() {
     service =
         new OidcProviderService(
-            repository, userRepository, addressPolicy, auditEventRecorder, eventPublisher);
+            repository,
+            userRepository,
+            addressPolicy,
+            registry,
+            auditEventRecorder,
+            eventPublisher);
     when(repository.save(any(OidcProvider.class))).thenAnswer(inv -> inv.getArgument(0));
     when(repository.saveAndFlush(any(OidcProvider.class))).thenAnswer(inv -> inv.getArgument(0));
-    when(repository.findByIssuerUri(anyString())).thenReturn(Optional.empty());
+    when(repository.findByNormalizedIssuerUri(anyString())).thenReturn(Optional.empty());
+    when(registry.healthOf(any())).thenReturn(new OidcProviderRegistry.Health(true, null));
     when(repository.findByDefaultProviderTrue()).thenReturn(Optional.empty());
     when(repository.count()).thenReturn(0L);
   }
@@ -141,7 +148,7 @@ class OidcProviderServiceTest {
   @Test
   void aDuplicateIssuerIsAConflict() {
     OidcProvider existing = provider("Beschäftigte", "https://idp.example/realms/a", true, true);
-    when(repository.findByIssuerUri("https://idp.example/realms/a"))
+    when(repository.findByNormalizedIssuerUri("https://idp.example/realms/a"))
         .thenReturn(Optional.of(existing));
 
     assertThatThrownBy(
@@ -156,7 +163,7 @@ class OidcProviderServiceTest {
   @Test
   void aTrailingSlashDoesNotMakeTheSameIssuerLookDifferent() {
     OidcProvider existing = provider("Beschäftigte", "https://idp.example/realms/a", true, true);
-    when(repository.findByIssuerUri("https://idp.example/realms/a"))
+    when(repository.findByNormalizedIssuerUri("https://idp.example/realms/a"))
         .thenReturn(Optional.of(existing));
 
     assertThatThrownBy(
@@ -171,7 +178,8 @@ class OidcProviderServiceTest {
     OidcProvider self = provider("Beschäftigte", "https://idp.example/realms/a", true, true);
     OidcProvider other = provider("Partner", "https://idp.example/realms/b", true, false);
     when(repository.findById(self.getId())).thenReturn(Optional.of(self));
-    when(repository.findByIssuerUri("https://idp.example/realms/b")).thenReturn(Optional.of(other));
+    when(repository.findByNormalizedIssuerUri("https://idp.example/realms/b"))
+        .thenReturn(Optional.of(other));
 
     assertThatThrownBy(
             () ->
@@ -183,7 +191,8 @@ class OidcProviderServiceTest {
         .isInstanceOf(ConflictException.class);
 
     // the row's own issuer is not a conflict with itself
-    when(repository.findByIssuerUri("https://idp.example/realms/a")).thenReturn(Optional.of(self));
+    when(repository.findByNormalizedIssuerUri("https://idp.example/realms/a"))
+        .thenReturn(Optional.of(self));
     OidcProvider updated =
         service.updateProvider(
             ORGANIZATION_ID,
@@ -225,6 +234,31 @@ class OidcProviderServiceTest {
             self.getId(),
             draft("Beschäftigte", "https://idp.example/realms/neu"));
     assertThat(updated.getIssuerUri()).isEqualTo("https://idp.example/realms/neu");
+  }
+
+  /**
+   * The stored issuer is what the token's {@code iss} is compared with byte for byte, so it is kept
+   * exactly as entered; consequently even a slash-only change is a change of identity for the
+   * accounts minted under it.
+   */
+  @Test
+  void theIssuerIsStoredAsEnteredAndASlashOnlyChangeCountsAsAnIssuerChange() {
+    OidcProvider created =
+        service.createProvider(
+            ORGANIZATION_ID, ACTOR_ID, draft("Auth0", " https://tenant.eu.auth0.com/ "));
+    assertThat(created.getIssuerUri()).isEqualTo("https://tenant.eu.auth0.com/");
+
+    when(repository.findById(created.getId())).thenReturn(Optional.of(created));
+    when(userRepository.countByIssuer("https://tenant.eu.auth0.com/")).thenReturn(3L);
+    assertThatThrownBy(
+            () ->
+                service.updateProvider(
+                    ORGANIZATION_ID,
+                    ACTOR_ID,
+                    created.getId(),
+                    draft("Auth0", "https://tenant.eu.auth0.com")))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("3 Konten");
   }
 
   @Test
@@ -276,6 +310,26 @@ class OidcProviderServiceTest {
     // ux_oidc_providers_single_default would otherwise see two defaults mid-transaction
     verify(repository).saveAndFlush(previous);
     verify(eventPublisher).publishEvent(any(OidcProvidersChangedEvent.class));
+  }
+
+  /**
+   * "Es gibt keinen Zustand ohne anmeldefähigen Anbieter" (ADR-0025, Entscheidung 3): a provider
+   * whose decoder could not be built must not become the one provider that can neither be disabled
+   * nor deleted.
+   */
+  @Test
+  void aProviderWhoseKeysAreNotReachableCannotBecomeTheDefault() {
+    OidcProvider broken = provider("Partner", "https://idp.example/realms/b", true, false);
+    when(repository.findById(broken.getId())).thenReturn(Optional.of(broken));
+    when(registry.healthOf(broken.getId()))
+        .thenReturn(
+            new OidcProviderRegistry.Health(false, "Discovery-Dokument: Antwort mit HTTP 503."));
+
+    assertThatThrownBy(() -> service.makeDefault(ORGANIZATION_ID, ACTOR_ID, broken.getId()))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("HTTP 503");
+    assertThat(broken.isDefaultProvider()).isFalse();
+    verify(eventPublisher, never()).publishEvent(any());
   }
 
   @Test
