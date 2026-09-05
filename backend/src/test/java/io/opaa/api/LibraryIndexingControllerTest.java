@@ -1,7 +1,6 @@
 package io.opaa.api;
 
 import static org.hamcrest.Matchers.containsString;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
@@ -89,7 +88,9 @@ class LibraryIndexingControllerTest {
             currentUser.getSystemRole(),
             currentUser.getDisplayName(),
             currentUser.getEmail());
-    when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
+    when(userService.provisionFromToken(
+            org.mockito.ArgumentMatchers.argThat(
+                token -> token != null && TEST_SUBJECT.equals(token.getSubject()))))
         .thenReturn(currentUser);
   }
 

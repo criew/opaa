@@ -58,6 +58,7 @@ class DirectorySyncServiceIntegrationTest {
   @Autowired private GroupMembershipRepository membershipRepository;
   @Autowired private GroupMembershipHistoryRepository membershipHistoryRepository;
   @Autowired private UserRepository userRepository;
+  @Autowired private io.opaa.auth.AuthProperties authProperties;
   @Autowired private DirectorySyncStatusRepository statusRepository;
   @Autowired private FakeDirectoryClient directoryClient;
 
@@ -107,8 +108,13 @@ class DirectorySyncServiceIntegrationTest {
     wipeOrganizationData();
   }
 
+  /** An account of the trusted provider - the dev issuer in this context (ADR-0025). */
   private UUID createUser(UUID organizationId, String subject) {
-    User user = new User(subject, "test-issuer", subject + "@example.com", "Test User");
+    return createUser(organizationId, subject, authProperties.dev().issuer());
+  }
+
+  private UUID createUser(UUID organizationId, String subject, String issuer) {
+    User user = new User(subject, issuer, subject + "@example.com", "Test User");
     user.setOrganizationId(organizationId);
     return userRepository.save(user).getId();
   }
@@ -124,6 +130,47 @@ class DirectorySyncServiceIntegrationTest {
   // ---------------------------------------------------------------------------------------
   // Rename
   // ---------------------------------------------------------------------------------------
+
+  /**
+   * ADR-0025, Entscheidung 4: the directory's subjects are accounts of the trusted provider only -
+   * a second provider's account with the same subject is a different person and never inherits the
+   * directory's memberships, and a token-derived group is no directory group.
+   */
+  @Test
+  void membersResolveOnlyAmongTheTrustedProvidersAccountsAndTokenGroupsAreLeftAlone() {
+    UUID trusted = createUser(organizationId, "member-1");
+    UUID partnerAccount =
+        createUser(organizationId, "member-1", "https://partner.example/realms/b");
+    Group tokenGroup =
+        new Group(
+            organizationId,
+            GroupKind.IDENTITY_PROVIDER,
+            "Referat 12",
+            null,
+            "oidc:p:Referat 12",
+            null);
+    tokenGroup.addMembership(new GroupMembership(partnerAccount, organizationId));
+    groupRepository.save(tokenGroup);
+    directoryClient.respondWith(
+        new DirectoryGroup("dir-guid-1", "Referat 12", null, Set.of("member-1")));
+
+    SyncReport report = directorySyncService.run(organizationId);
+
+    assertThat(report.outcome()).isEqualTo(DirectorySyncOutcome.APPLIED);
+    assertThat(report.unresolvedMemberCount()).isZero();
+    Group created =
+        groupRepository.findByOrganizationIdAndKindOrgUnit(organizationId).stream()
+            .filter(g -> "dir-guid-1".equals(g.getExternalId()))
+            .findFirst()
+            .orElseThrow();
+    assertThat(membershipRepository.findByGroupId(created.getId()))
+        .extracting(GroupMembership::getUserId)
+        .containsExactly(trusted);
+    assertThat(membershipRepository.findByGroupId(tokenGroup.getId()))
+        .extracting(GroupMembership::getUserId)
+        .containsExactly(partnerAccount);
+    assertThat(groupRepository.findById(tokenGroup.getId()).orElseThrow().isDissolved()).isFalse();
+  }
 
   @Test
   void aRenamedGroupKeepsItsGrantsAndItsMembers() {

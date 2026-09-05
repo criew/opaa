@@ -2,7 +2,6 @@ package io.opaa.api;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -99,7 +98,9 @@ class AuditControllerTest {
     auditor.setSystemRole(SystemRole.AUDITOR);
     auditor.setOrganizationId(organizationId);
     setId(auditor, UUID.randomUUID());
-    when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
+    when(userService.provisionFromToken(
+            org.mockito.ArgumentMatchers.argThat(
+                token -> token != null && TEST_SUBJECT.equals(token.getSubject()))))
         .thenReturn(auditor);
 
     // UserProvisioningFilter (wired below via AdminTestSecurityConfig) re-derives authorities
@@ -110,7 +111,9 @@ class AuditControllerTest {
     regularUser.setSystemRole(SystemRole.USER);
     regularUser.setOrganizationId(organizationId);
     setId(regularUser, UUID.randomUUID());
-    when(userService.findOrCreateUser(eq(REGULAR_USER_SUBJECT), eq(TEST_ISSUER), any(), any()))
+    when(userService.provisionFromToken(
+            org.mockito.ArgumentMatchers.argThat(
+                token -> REGULAR_USER_SUBJECT.equals(token.getSubject()))))
         .thenReturn(regularUser);
   }
 
