@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.test.OpaaMockMvcTest;
@@ -49,6 +50,20 @@ class UserProvisioningLoadCountIntegrationTest {
     // The old per-controller currentUser(Jwt) helpers this refactor removed re-derived the caller
     // via findById on the just-loaded id, not only findBySubjectAndIssuer - both loads must be
     // gone.
+    verify(userRepository, never()).findById(any());
+  }
+
+  /**
+   * {@code /auth/me} used to re-run the provisioning lookup itself; it answers from the snapshot.
+   */
+  @Test
+  void theUserInfoEndpointAnswersFromTheSnapshotWithoutASecondLoad() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/auth/me").with(devUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.email").isNotEmpty());
+
+    verify(userRepository, times(1)).findBySubjectAndIssuer(anyString(), anyString());
     verify(userRepository, never()).findById(any());
   }
 }

@@ -1,30 +1,21 @@
 package io.opaa.auth;
 
 import io.opaa.api.dto.UserInfoResponse;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Answers from the {@link CurrentUser} snapshot {@link UserProvisioningFilter} took for this
+ * request - the one caller load per request (#884); the controller itself touches no repository.
+ */
 @RestController
 @RequestMapping("/api/v1/auth")
 public class UserInfoController {
 
-  private final UserService userService;
-
-  public UserInfoController(UserService userService) {
-    this.userService = userService;
-  }
-
   @GetMapping("/me")
-  public UserInfoResponse me(@AuthenticationPrincipal Jwt jwt) {
-    String subject = jwt.getSubject();
-    String issuer = JwtUserClaims.issuer(jwt);
-    User user =
-        userService.findOrCreateUser(
-            subject, issuer, jwt.getClaimAsString("email"), JwtUserClaims.displayName(jwt));
+  public UserInfoResponse me(@Caller CurrentUser caller) {
     return new UserInfoResponse(
-        user.getId(), user.getEmail(), user.getDisplayName(), user.getSystemRole().name());
+        caller.id(), caller.email(), caller.displayName(), caller.systemRole().name());
   }
 }

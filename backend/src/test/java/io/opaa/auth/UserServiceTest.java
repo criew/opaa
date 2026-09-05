@@ -17,6 +17,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.observability.AuthMetrics;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;
@@ -102,8 +103,7 @@ class UserServiceTest {
         new UserService(
             userRepository,
             spaceService,
-            new InitialAdminPolicy(
-                authProperties, mock(io.opaa.auth.oidc.OidcProviderRepository.class)),
+            new InitialAdminPolicy(authProperties, mock(OidcProviderRepository.class)),
             auditEventRecorder,
             authMetrics,
             clock);
