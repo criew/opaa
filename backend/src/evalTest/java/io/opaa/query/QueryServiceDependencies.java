@@ -2,8 +2,8 @@ package io.opaa.query;
 
 import io.opaa.chat.ChatService;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.CitationMetadataReader;
+import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
