@@ -141,14 +141,15 @@ class MailDocumentPipelineTest {
    */
   @Test
   void theSenderIsTheFirstMailboxOfTheHeaderLowerCased() throws Exception {
-    Message message =
-        newMessageBuilder(
-                "Sammelanschreiben",
-                "Amt Rheinfurt <Amt@Stadt.DE>; Vertretung <vertretung@stadt.de>",
-                "verteiler@example.org")
-            .setBody("Text.", StandardCharsets.UTF_8)
-            .build();
-    Path file = writeEml(DefaultMessageWriter.asBytes(message));
+    Path file =
+        writeEml(
+            ("From: Amt Rheinfurt <Amt@Stadt.DE>, Vertretung <vertretung@stadt.de>\n"
+                    + "To: verteiler@example.org\n"
+                    + "Subject: Sammelanschreiben\n"
+                    + "Date: Thu, 12 Mar 2026 09:15:00 +0100\n"
+                    + "Content-Type: text/plain; charset=UTF-8\n\n"
+                    + "Text.\n")
+                .getBytes(StandardCharsets.UTF_8));
 
     assertThat(
             pipeline(defaultProperties)

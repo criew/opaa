@@ -85,22 +85,29 @@ class FormatFieldFilterExpressionsTest {
         .contains("ffs_mail_sender");
   }
 
-  /** A chunk without the presence marker was kept by the Leerwert rule, not by a match. */
+  /**
+   * "ohne Angabe" says something only where the field could have had a value: a mail without a
+   * sender is marked, a document of any other format is not - the question was never about it.
+   */
   @Test
-  void aChunkWithoutTheSenderMarkerCountsAsKeptWithoutValue() {
+  void onlyAMailWithoutASenderCountsAsKeptWithoutValue() {
     MetadataFilter filter = senderFilter("max@stadt.de");
-    Document withSender =
+    Document mailWithSender =
         new Document(
             "text",
             Map.of(
+                "pipeline_id",
+                "email",
                 FormatMetadataField.MAIL_SENDER.chunkKey(),
                 "max@stadt.de",
                 FormatMetadataField.MAIL_SENDER.presenceChunkKey(),
                 FormatMetadataField.PRESENCE_VALUE));
+    Document mailWithoutSender = new Document("text", Map.of("pipeline_id", "email"));
+    Document pdf = new Document("text", Map.of("pipeline_id", "pdf"));
 
-    assertThat(MetadataFilterExpressions.keptWithoutValue(filter, withSender)).isFalse();
-    assertThat(MetadataFilterExpressions.keptWithoutValue(filter, new Document("text", Map.of())))
-        .isTrue();
+    assertThat(MetadataFilterExpressions.keptWithoutValue(filter, mailWithSender)).isFalse();
+    assertThat(MetadataFilterExpressions.keptWithoutValue(filter, mailWithoutSender)).isTrue();
+    assertThat(MetadataFilterExpressions.keptWithoutValue(filter, pdf)).isFalse();
   }
 
   /**
