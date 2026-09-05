@@ -8,6 +8,7 @@ import io.opaa.api.types.DirectorySyncOutcome;
 import io.opaa.api.types.GroupKind;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.TrustedProvider;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.group.Group;
@@ -118,6 +119,7 @@ class DirectorySyncPlanExecutor {
 
   private final GroupRepository groupRepository;
   private final UserRepository userRepository;
+  private final TrustedProvider trustedProvider;
   private final GroupMembershipResolver membershipResolver;
   private final DirectorySyncProperties properties;
   private final PermissionHistoryService permissionHistoryService;
@@ -126,12 +128,14 @@ class DirectorySyncPlanExecutor {
   DirectorySyncPlanExecutor(
       GroupRepository groupRepository,
       UserRepository userRepository,
+      TrustedProvider trustedProvider,
       GroupMembershipResolver membershipResolver,
       DirectorySyncProperties properties,
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder) {
     this.groupRepository = groupRepository;
     this.userRepository = userRepository;
+    this.trustedProvider = trustedProvider;
     this.membershipResolver = membershipResolver;
     this.properties = properties;
     this.permissionHistoryService = permissionHistoryService;
@@ -184,7 +188,28 @@ class DirectorySyncPlanExecutor {
           emptyPlan());
     }
 
-    SyncPlan plan = buildPlan(organizationId, snapshot, existingOrgUnits);
+    // ADR-0025, Entscheidung 4: the directory's subjects are accounts of the trusted provider
+    // only - without one there is nobody to resolve, and resolving nobody would read as "remove
+    // every membership", so the run stops here instead.
+    String issuer = trustedProvider.issuer().orElse(null);
+    if (issuer == null) {
+      String message =
+          "Kein Standardanbieter hinterlegt: Die Mitglieder des Verzeichnisses können keinem"
+              + " Konto zugeordnet werden. Der Lauf wurde ohne Änderungen abgebrochen.";
+      log.warn(
+          "Directory sync: no trusted provider to resolve members through for organization {} -"
+              + " aborting without changes",
+          organizationId);
+      return finish(
+          organizationId,
+          correlationRef,
+          now,
+          DirectorySyncOutcome.ABORTED_EMPTY_RESULT,
+          message,
+          emptyPlan());
+    }
+
+    SyncPlan plan = buildPlan(organizationId, issuer, snapshot, existingOrgUnits);
 
     if (plan.changedFraction() > properties.changeThresholdFraction()) {
       String changedPercent = formatPercent(plan.changedFraction());
@@ -303,7 +328,10 @@ class DirectorySyncPlanExecutor {
   // ---------------------------------------------------------------------------------------
 
   private SyncPlan buildPlan(
-      UUID organizationId, DirectorySnapshot snapshot, List<Group> existingOrgUnits) {
+      UUID organizationId,
+      String issuer,
+      DirectorySnapshot snapshot,
+      List<Group> existingOrgUnits) {
     Map<String, Group> existingByExternalId = new HashMap<>();
     for (Group group : existingOrgUnits) {
       if (group.getExternalId() != null) {
@@ -333,7 +361,7 @@ class DirectorySyncPlanExecutor {
       incomingExternalIds.add(incoming.externalId());
       incomingByExternalId.put(incoming.externalId(), incoming);
 
-      ResolvedMembers resolved = resolveMembers(organizationId, incoming.memberSubjects());
+      ResolvedMembers resolved = resolveMembers(organizationId, issuer, incoming.memberSubjects());
       unresolvedMemberCount += resolved.unresolvedCount();
 
       Group existing = existingByExternalId.get(incoming.externalId());
@@ -458,11 +486,12 @@ class DirectorySyncPlanExecutor {
         changedFraction);
   }
 
-  private ResolvedMembers resolveMembers(UUID organizationId, Set<String> subjects) {
+  private ResolvedMembers resolveMembers(UUID organizationId, String issuer, Set<String> subjects) {
     if (subjects.isEmpty()) {
       return new ResolvedMembers(Set.of(), 0);
     }
-    List<User> users = userRepository.findByOrganizationIdAndSubjectIn(organizationId, subjects);
+    List<User> users =
+        userRepository.findByOrganizationIdAndIssuerAndSubjectIn(organizationId, issuer, subjects);
     Set<ResolvedUserRef> userRefs = new HashSet<>();
     for (User user : users) {
       userRefs.add(toResolvedUserRef(user));
@@ -476,7 +505,7 @@ class DirectorySyncPlanExecutor {
    * names, the same way {@link #resolveMembers} does for the directory's incoming subjects. These
    * ids come from this organization's own {@code group_memberships} rows, not from external input,
    * so no organization-boundary check is needed here the way {@link
-   * io.opaa.auth.UserRepository#findByOrganizationIdAndSubjectIn} enforces one.
+   * io.opaa.auth.UserRepository#findByOrganizationIdAndIssuerAndSubjectIn} enforces one.
    */
   private Set<ResolvedUserRef> resolveResolvedUserRefsById(Set<UUID> userIds) {
     if (userIds.isEmpty()) {

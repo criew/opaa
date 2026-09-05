@@ -23,6 +23,10 @@ class InitialAdminPolicyTest {
 
   private final OidcProviderRepository repository = mock(OidcProviderRepository.class);
 
+  private InitialAdminPolicy policyFor(AuthProperties properties) {
+    return new InitialAdminPolicy(properties, new TrustedProvider(properties, repository));
+  }
+
   private InitialAdminPolicy oidcPolicy() {
     OidcProvider standard =
         new OidcProvider(
@@ -33,7 +37,7 @@ class InitialAdminPolicyTest {
             OidcClaimMapping.keycloakDefaults());
     standard.markDefault();
     when(repository.findByDefaultProviderTrue()).thenReturn(Optional.of(standard));
-    return new InitialAdminPolicy(new AuthProperties("oidc", null, null, ADMIN), repository);
+    return policyFor(new AuthProperties("oidc", null, null, ADMIN));
   }
 
   @Test
@@ -59,8 +63,7 @@ class InitialAdminPolicyTest {
             OidcClaimMapping.keycloakDefaults());
     auth0.markDefault();
     when(repository.findByDefaultProviderTrue()).thenReturn(Optional.of(auth0));
-    InitialAdminPolicy policy =
-        new InitialAdminPolicy(new AuthProperties("oidc", null, null, ADMIN), repository);
+    InitialAdminPolicy policy = policyFor(new AuthProperties("oidc", null, null, ADMIN));
 
     assertThat(policy.grantsSystemAdmin(ADMIN, "https://tenant.eu.auth0.com/")).isTrue();
     assertThat(policy.grantsSystemAdmin(ADMIN, "https://tenant.eu.auth0.com")).isTrue();
@@ -69,8 +72,7 @@ class InitialAdminPolicyTest {
   @Test
   void grantsNothingWhileNoDefaultProviderExists() {
     when(repository.findByDefaultProviderTrue()).thenReturn(Optional.empty());
-    InitialAdminPolicy policy =
-        new InitialAdminPolicy(new AuthProperties("oidc", null, null, ADMIN), repository);
+    InitialAdminPolicy policy = policyFor(new AuthProperties("oidc", null, null, ADMIN));
 
     assertThat(policy.grantsSystemAdmin(ADMIN, DEFAULT_ISSUER)).isFalse();
   }
@@ -80,7 +82,7 @@ class InitialAdminPolicyTest {
     AuthProperties dev =
         new AuthProperties(
             "dev", null, new AuthProperties.DevAuth("opaa-dev", "dev-admin", null), ADMIN);
-    InitialAdminPolicy policy = new InitialAdminPolicy(dev, repository);
+    InitialAdminPolicy policy = policyFor(dev);
 
     assertThat(policy.grantsSystemAdmin(ADMIN, "opaa-dev")).isTrue();
     assertThat(policy.grantsSystemAdmin(ADMIN, DEFAULT_ISSUER)).isFalse();
@@ -88,8 +90,7 @@ class InitialAdminPolicyTest {
 
   @Test
   void aBlankInitialAdminAddressGrantsNothing() {
-    InitialAdminPolicy policy =
-        new InitialAdminPolicy(new AuthProperties("oidc", null, null, "  "), repository);
+    InitialAdminPolicy policy = policyFor(new AuthProperties("oidc", null, null, "  "));
 
     assertThat(policy.grantsSystemAdmin(ADMIN, DEFAULT_ISSUER)).isFalse();
     assertThat(policy.grantsSystemAdmin(null, DEFAULT_ISSUER)).isFalse();

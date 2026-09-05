@@ -5203,8 +5203,9 @@ components:
       description: >
         ORG_UNIT groups are synchronised from the directory (see #237), carry a parent unit and
         can have curators. AD_HOC groups are created in the system, have no curator and no
-        distribution level of their own.
-      enum: [ORG_UNIT, AD_HOC]
+        distribution level of their own. IDENTITY_PROVIDER groups mirror the groups claim of an
+        identity provider's tokens (ADR-0025): refreshed on every sign-in, read-only here.
+      enum: [ORG_UNIT, AD_HOC, IDENTITY_PROVIDER]
       example: AD_HOC
 
     GroupRequest:
@@ -7927,6 +7928,7 @@ components:
           SYSTEM_ADMIN_ROLE_REVOKED,
           AUDITOR_ROLE_GRANTED,
           AUDITOR_ROLE_REVOKED,
+          SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED,
           ACCOUNT_DEACTIVATED,
           ACCOUNT_REAUTHENTICATION_FORCED,
           API_TOKEN_ISSUED,

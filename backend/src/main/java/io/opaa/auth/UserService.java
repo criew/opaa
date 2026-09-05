@@ -7,6 +7,13 @@ import io.opaa.api.types.AuditSubjectKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.oidc.OidcClaimMapping;
+import io.opaa.auth.oidc.OidcIssuerUris;
+import io.opaa.auth.oidc.OidcProvider;
+import io.opaa.auth.oidc.OidcProviderRegistry;
+import io.opaa.auth.oidc.OidcProviderRepository;
+import io.opaa.common.ConflictException;
+import io.opaa.group.TokenGroupSynchronizer;
 import io.opaa.observability.AuthMetrics;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;
@@ -22,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -43,6 +51,10 @@ public class UserService {
   private final UserRepository userRepository;
   private final SpaceService spaceService;
   private final InitialAdminPolicy initialAdminPolicy;
+  private final OidcProviderRegistry providerRegistry;
+  private final OidcProviderRepository providerRepository;
+  private final TokenRoleSynchronizer roleSynchronizer;
+  private final TokenGroupSynchronizer groupSynchronizer;
   private final AuditEventRecorder auditEventRecorder;
   private final AuthMetrics authMetrics;
   private final Clock clock;
@@ -51,15 +63,50 @@ public class UserService {
       UserRepository userRepository,
       SpaceService spaceService,
       InitialAdminPolicy initialAdminPolicy,
+      OidcProviderRegistry providerRegistry,
+      OidcProviderRepository providerRepository,
+      TokenRoleSynchronizer roleSynchronizer,
+      TokenGroupSynchronizer groupSynchronizer,
       AuditEventRecorder auditEventRecorder,
       AuthMetrics authMetrics,
       Clock clock) {
     this.userRepository = userRepository;
     this.spaceService = spaceService;
     this.initialAdminPolicy = initialAdminPolicy;
+    this.providerRegistry = providerRegistry;
+    this.providerRepository = providerRepository;
+    this.roleSynchronizer = roleSynchronizer;
+    this.groupSynchronizer = groupSynchronizer;
     this.auditEventRecorder = auditEventRecorder;
     this.authMetrics = authMetrics;
     this.clock = clock;
+  }
+
+  /**
+   * The per-request provisioning behind {@link UserProvisioningFilter} (ADR-0025, Entscheidung 4):
+   * the token is read through the claim mapping of the enabled provider that owns its issuer - or
+   * the Keycloak-shaped defaults when no provider does, which is the {@code dev} mode - and the
+   * account is found or created as before. For a provider with a roles or groups claim, the
+   * provider is authoritative: the stored role and the token-derived group memberships are aligned
+   * with the token, each only when they differ.
+   */
+  public User provisionFromToken(Jwt jwt) {
+    String issuer = JwtUserClaims.issuer(jwt);
+    Optional<OidcProvider> provider = providerRegistry.findEnabledByIssuer(issuer);
+    OidcClaimMapping mapping =
+        provider.map(OidcProvider::getClaimMapping).orElseGet(OidcClaimMapping::keycloakDefaults);
+    TokenClaims claims = TokenClaims.read(jwt, mapping);
+    User user = findOrCreateUser(claims.subject(), issuer, claims.email(), claims.displayName());
+    if (provider.isEmpty()) {
+      return user;
+    }
+    if (mapping.rolesClaim() != null) {
+      user = roleSynchronizer.apply(user, provider.get(), claims.roles());
+    }
+    if (mapping.groupsClaim() != null) {
+      groupSynchronizer.apply(user, provider.get(), claims.groups());
+    }
+    return user;
   }
 
   /**
@@ -343,6 +390,18 @@ public class UserService {
         userRepository
             .findByIdAndOrganizationId(userId, actor.organizationId())
             .orElseThrow(() -> new UserNotFoundException("Benutzer nicht gefunden: " + userId));
+    // ADR-0025, Entscheidung 4: a provider with a roles claim is authoritative - a role written
+    // here would be overwritten by the account's next request.
+    providerRepository
+        .findByNormalizedIssuerUri(OidcIssuerUris.normalize(user.getIssuer()))
+        .filter(provider -> provider.getClaimMapping().rolesClaim() != null)
+        .ifPresent(
+            provider -> {
+              throw new ConflictException(
+                  "Die Rolle wird vom Identitätsanbieter „"
+                      + provider.getDisplayName()
+                      + "“ verwaltet und kann hier nicht geändert werden.");
+            });
     SystemRole previousRole = user.getSystemRole();
     user.setSystemRole(role);
     User saved = userRepository.save(user);

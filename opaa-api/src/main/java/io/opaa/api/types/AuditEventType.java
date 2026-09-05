@@ -81,6 +81,12 @@ public enum AuditEventType {
    */
   AUDITOR_ROLE_GRANTED,
   AUDITOR_ROLE_REVOKED,
+  /**
+   * A provider's token withdrew {@code SYSTEM_ADMIN} from the last system administrator and the
+   * withdrawal was refused (ADR-0025, Entscheidung 4): the installation must never be left without
+   * one. Written under the identity-provider system actor.
+   */
+  SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED,
   ACCOUNT_DEACTIVATED,
   ACCOUNT_REAUTHENTICATION_FORCED,
   API_TOKEN_ISSUED,

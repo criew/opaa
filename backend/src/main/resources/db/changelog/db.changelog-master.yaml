@@ -61,3 +61,5 @@ databaseChangeLog:
       file: db/changelog/changes/025-library-metadata-fields.yaml
   - include:
       file: db/changelog/changes/026-oidc-providers.yaml
+  - include:
+      file: db/changelog/changes/027-identity-provider-groups.yaml

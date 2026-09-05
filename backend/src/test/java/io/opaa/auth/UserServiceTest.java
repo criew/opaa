@@ -17,7 +17,12 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.oidc.OidcClaimMapping;
+import io.opaa.auth.oidc.OidcProvider;
+import io.opaa.auth.oidc.OidcProviderRegistry;
 import io.opaa.auth.oidc.OidcProviderRepository;
+import io.opaa.common.ConflictException;
+import io.opaa.group.TokenGroupSynchronizer;
 import io.opaa.observability.AuthMetrics;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;
@@ -26,6 +31,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +40,7 @@ import org.mockito.Mockito;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 /**
  * The race-related tests here follow the same simulation approach as {@code SpaceServiceTest}:
@@ -53,6 +60,10 @@ class UserServiceTest {
   private AuditEventRecorder auditEventRecorder;
   private AuthMetrics authMetrics;
   private MutableClock clock;
+  private OidcProviderRegistry providerRegistry;
+  private OidcProviderRepository providerRepository;
+  private TokenRoleSynchronizer roleSynchronizer;
+  private TokenGroupSynchronizer groupSynchronizer;
   private UserService userService;
 
   /**
@@ -99,14 +110,111 @@ class UserServiceTest {
     // issuer "issuer1" is the trusted one, so the address tests below keep their meaning.
     when(authProperties.mode()).thenReturn("dev");
     when(authProperties.dev()).thenReturn(new AuthProperties.DevAuth("issuer1", null, null));
+    providerRegistry = mock(OidcProviderRegistry.class);
+    providerRepository = mock(OidcProviderRepository.class);
+    roleSynchronizer = mock(TokenRoleSynchronizer.class);
+    groupSynchronizer = mock(TokenGroupSynchronizer.class);
+    when(providerRegistry.findEnabledByIssuer(any())).thenReturn(Optional.empty());
+    when(providerRepository.findByNormalizedIssuerUri(any())).thenReturn(Optional.empty());
     userService =
         new UserService(
             userRepository,
             spaceService,
-            new InitialAdminPolicy(authProperties, mock(OidcProviderRepository.class)),
+            new InitialAdminPolicy(
+                authProperties, new TrustedProvider(authProperties, providerRepository)),
+            providerRegistry,
+            providerRepository,
+            roleSynchronizer,
+            groupSynchronizer,
             auditEventRecorder,
             authMetrics,
             clock);
+  }
+
+  private static Jwt tokenOf(String issuer) {
+    return Jwt.withTokenValue("t")
+        .header("alg", "none")
+        .claim("sub", "alice")
+        .claim("iss", issuer)
+        .claim("email", "alice@behoerde.example")
+        .claim("upn", "alice@partner.example")
+        .claim("name", "Alice")
+        .claim("realm_access", Map.of("roles", List.of("opaa-admin")))
+        .claim("groups", List.of("Fachbereich 3"))
+        .build();
+  }
+
+  private static OidcProvider providerWith(String issuer, OidcClaimMapping mapping) {
+    return new OidcProvider("Anbieter", issuer, "opaa-frontend", null, mapping);
+  }
+
+  /**
+   * ADR-0025, Entscheidung 4: the same token means two identities under two providers' mappings.
+   */
+  @Test
+  void provisionFromTokenReadsTheClaimsThroughTheProvidersMappingAndFollowsRolesAndGroups() {
+    OidcProvider beschaeftigte =
+        providerWith("https://idp.example/realms/a", OidcClaimMapping.keycloakDefaults());
+    OidcProvider partner =
+        providerWith(
+            "https://partner.example/realms/b",
+            new OidcClaimMapping(
+                "upn", "name", "realm_access.roles", "opaa-admin", null, "groups"));
+    when(providerRegistry.findEnabledByIssuer("https://idp.example/realms/a"))
+        .thenReturn(Optional.of(beschaeftigte));
+    when(providerRegistry.findEnabledByIssuer("https://partner.example/realms/b"))
+        .thenReturn(Optional.of(partner));
+    when(userRepository.findBySubjectAndIssuer(any(), any())).thenReturn(Optional.empty());
+    when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(roleSynchronizer.apply(any(), any(), any())).thenAnswer(inv -> inv.getArgument(0));
+
+    User atBeschaeftigte = userService.provisionFromToken(tokenOf("https://idp.example/realms/a"));
+    User atPartner = userService.provisionFromToken(tokenOf("https://partner.example/realms/b"));
+
+    assertThat(atBeschaeftigte.getEmail()).isEqualTo("alice@behoerde.example");
+    assertThat(atPartner.getEmail()).isEqualTo("alice@partner.example");
+    // no roles/groups claim: the first provider never touches roles or groups
+    verify(roleSynchronizer, never()).apply(eq(atBeschaeftigte), any(), any());
+    verify(groupSynchronizer, never()).apply(eq(atBeschaeftigte), any(), any());
+    verify(roleSynchronizer).apply(atPartner, partner, List.of("opaa-admin"));
+    verify(groupSynchronizer).apply(atPartner, partner, List.of("Fachbereich 3"));
+  }
+
+  @Test
+  void provisionFromTokenWithoutAnyProviderUsesTheDefaultsAndDerivesNothing() {
+    when(userRepository.findBySubjectAndIssuer(any(), any())).thenReturn(Optional.empty());
+    when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    User user = userService.provisionFromToken(tokenOf("issuer1"));
+
+    assertThat(user.getEmail()).isEqualTo("alice@behoerde.example");
+    assertThat(user.getDisplayName()).isEqualTo("Alice");
+    verifyNoInteractions(roleSynchronizer, groupSynchronizer);
+  }
+
+  @Test
+  void updateRoleIsRefusedForAccountsOfAProviderWithARolesClaim() {
+    UUID organizationId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    User user = new User("sub1", "https://partner.example/realms/b/", "t@example.com", "Test");
+    user.setOrganizationId(organizationId);
+    when(userRepository.findByIdAndOrganizationId(userId, organizationId))
+        .thenReturn(Optional.of(user));
+    when(providerRepository.findByNormalizedIssuerUri("https://partner.example/realms/b"))
+        .thenReturn(
+            Optional.of(
+                providerWith(
+                    "https://partner.example/realms/b",
+                    new OidcClaimMapping(null, null, "roles", "admin", null, null))));
+
+    assertThatThrownBy(
+            () ->
+                userService.updateRole(
+                    userId, SystemRole.SYSTEM_ADMIN, actorInOrganization(organizationId)))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("Identitätsanbieter");
+    assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
+    verify(userRepository, never()).save(any());
   }
 
   @Test

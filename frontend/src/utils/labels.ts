@@ -68,6 +68,7 @@ export function spaceVisibilityDescription(
 const groupKindLabels: Record<GroupKind, string> = {
   ORG_UNIT: 'Organisationseinheit',
   AD_HOC: 'Ad-hoc-Gruppe',
+  IDENTITY_PROVIDER: 'Gruppe aus dem Identitätsanbieter',
 }
 
 export function groupKindLabel(kind: GroupKind | string | undefined): string {

@@ -86,7 +86,9 @@ class DocumentMetadataControllerTest {
             user.getSystemRole(),
             user.getDisplayName(),
             user.getEmail());
-    when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
+    when(userService.provisionFromToken(
+            org.mockito.ArgumentMatchers.argThat(
+                token -> token != null && TEST_SUBJECT.equals(token.getSubject()))))
         .thenReturn(user);
   }
 
