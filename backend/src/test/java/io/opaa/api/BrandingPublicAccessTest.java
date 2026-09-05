@@ -1,6 +1,5 @@
 package io.opaa.api;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -11,6 +10,7 @@ import io.opaa.branding.BrandingDefaults;
 import io.opaa.branding.BrandingLogoValidator;
 import io.opaa.branding.BrandingSettingsService;
 import io.opaa.branding.EffectiveBranding;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +18,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -61,7 +61,9 @@ class BrandingPublicAccessTest {
   @MockitoBean private BrandingSettingsService brandingSettingsService;
   @MockitoBean private BrandingLogoValidator logoValidator;
   @MockitoBean private UserService userService;
-  @MockitoBean private JwtDecoder jwtDecoder;
+
+  @MockitoBean
+  private AuthenticationManagerResolver<HttpServletRequest> oidcAuthenticationManagerResolver;
 
   @Test
   void brandingIsReadableWithoutAnyCredentials() throws Exception {
@@ -107,8 +109,8 @@ class BrandingPublicAccessTest {
 
   @Test
   void anUnknownApiPathIsStillRejectedWithoutCredentials() throws Exception {
-    when(jwtDecoder.decode(any())).thenThrow(new IllegalStateException("must not be reached"));
-
     mockMvc.perform(get("/api/v1/spaces")).andExpect(status().isUnauthorized());
+    // no bearer token on the request: the resolver is never even consulted
+    org.mockito.Mockito.verifyNoInteractions(oidcAuthenticationManagerResolver);
   }
 }

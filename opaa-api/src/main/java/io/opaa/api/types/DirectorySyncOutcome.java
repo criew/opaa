@@ -23,6 +23,13 @@ public enum DirectorySyncOutcome {
    */
   ABORTED_EMPTY_RESULT,
 
+  /**
+   * No trusted provider (the default provider in the {@code oidc} mode) exists to resolve the
+   * directory's subjects among; resolving nobody would read as "remove every membership", so the
+   * run stops before planning (ADR-0025, Entscheidung 4).
+   */
+  ABORTED_NO_TRUSTED_PROVIDER,
+
   /** The directory could not be reached. Nothing was written; the last-known-good state stands. */
   UNREACHABLE
 }

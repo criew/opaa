@@ -1,0 +1,47 @@
+{
+  "realm": "partner",
+  "enabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "sslRequired": "none",
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 3600,
+  "ssoSessionMaxLifespan": 36000,
+  "clients": [
+    {
+      "clientId": "opaa-partner",
+      "description": "Zweiter Public Client auf demselben Origin (ADR-0025, #1334): zweiter Identitaetsanbieter fuer Demo-Smoke und lokalen oidc-Stack. Nicht beim Start uebernommen - die Systemverwaltung legt ihn ueber die Anbieterverwaltung an.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://localhost:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "maria.weber",
+      "enabled": true,
+      "email": "maria.weber@stadt-rheinfurt.example",
+      "firstName": "Maria",
+      "lastName": "Weber",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "RheinfurtDemo!2026",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

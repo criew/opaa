@@ -251,7 +251,7 @@ selben PR — und verwendet es dort auch tatsächlich, statt es unbenutzt stehen
   (derzeit: Kontrast der Akzentfarbe, #634 — suite-weit für gefüllte primäre Buttons/Chips,
   auf der Einstellungsseite zusätzlich seitenlokal für Akzent-Links). Die Anmeldeseite ist im dev-Auth-Modus nur sichtbar,
   wenn `/api/v1/auth/config` per `page.route` eine OIDC-Konfiguration zurückgibt — die
-  erfundene Authority wird dabei nie kontaktiert. Das dunkle Farbschema wird über
+  erfundene Anbieterzeile (Issuer-URI) wird dabei nie kontaktiert. Das dunkle Farbschema wird über
   `page.emulateMedia({ colorScheme: 'dark' })` aktiviert (die Voreinstellung „System" folgt
   `prefers-color-scheme`). Die Szenarien verändern keinen geteilten Zustand und sind daher von
   der Reihenfolge der Suite unabhängig. Der Durchklick durch die Admin-Sekundärspalte liegt
@@ -442,9 +442,9 @@ Lebenszyklus wie `pnpm test` oben, mit denselben Bausteinen, aber anderem Ziel:
 - Playwright-Lauf mit einer eigenen Konfiguration
   ([`demo-smoke/playwright.config.ts`](./demo-smoke/playwright.config.ts), `testDir` zeigt auf
   `demo-smoke/tests/`), damit `pnpm exec playwright test` (ohne Pfadangabe, wie `pnpm test` und
-  `.github/workflows/e2e.yml` es aufrufen) das einzige Szenario dort niemals mitläuft.
+  `.github/workflows/e2e.yml` es aufrufen) die Szenarien dort niemals mitlaufen.
 
-**Das eine Szenario** (`demo-smoke/tests/demo-smoke.spec.ts`): Maria Weber meldet sich über die
+**Szenario 1** (`demo-smoke/tests/demo-smoke.spec.ts`): Maria Weber meldet sich über die
 echte Keycloak-Anmeldung an (Autorisierungscode-Flow, nicht der `dev`-Modus — genau das prüft
 dieser Test zusätzlich zur restlichen Suite, siehe „Warum der `dev`-Auth-Modus?" oben), sieht den
 Demo-Hinweis (#230, `frontend/src/layouts/DemoNotice.tsx`, aktiviert über `OPAA_DEMO_MODE=true`
@@ -458,6 +458,18 @@ könnte. Die konkrete Frage ist dabei mit `ai-stub` rein symbolisch: Wie in der 
 Trefferauswahl ausschließlich über den Rechtefilter läuft, nie über inhaltliche Relevanz — dieser
 Test behauptet keine Kopplung an den tatsächlichen Korpusinhalt, das bleibt Sache des manuell
 verifizierten Drehbuchs in `docs/market/demo-drehbuch.md` (mit einem echten Modell) bzw. von Epic #224.
+
+**Szenario 2 — zwei Anbieter, keine Vermischung** (ADR-0025, #1334, dieselbe Spec): `demo-admin`
+meldet sich über den beim Start übernommenen Standardanbieter „Verzeichnisdienst" an
+(`e2e/demo-smoke.env`s `OPAA_OIDC_*`-Bootstrap — der Lauf belegt damit auch die Bestandsübernahme),
+legt unter Administration → Identitätsanbieter den zweiten Realm des gebündelten Keycloak
+(`keycloak/realm-partner-export.json`, Client `opaa-partner`, JWK-Set über `keycloak:8180`) als
+„Partnerportal" an — Verbindungstest, Anlegen, Zustand „Erreichbar" ohne Neustart — und meldet
+sich ab. Die Anmeldeseite zeigt jetzt beide Anbieter. `maria.weber` meldet sich über das
+Partnerportal an (im Partner-Realm mit derselben E-Mail wie im Realm `opaa`), sieht als frisches
+Konto keine der Demo-Bibliotheken, meldet sich ab und meldet sich über den Verzeichnisdienst an:
+eine andere Konto-ID (`/api/v1/auth/me`), die Demo-Bibliotheken sichtbar. Die Abmeldung ist der
+RP-initiierte Logout beim Anbieter der jeweiligen Sitzung.
 
 **Isolation:** Die Keycloak-Realm des `demo`-Profils (`keycloak/realm-export.json`) trägt feste
 `redirectUris`/`webOrigins` für `http://localhost:3000` — anders als die `e2e`-Suite oben lässt

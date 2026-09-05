@@ -17,7 +17,7 @@ import {
 // times out. Verified by adding a bare `import '../services/api'` here and watching
 // SpaceCreatePage.test.tsx go red on its own. Store state that has to be reset between tests
 // belongs in that test file's own beforeEach.
-import { resetMockBranding } from '../mocks/fixtures'
+import { resetMockBranding, resetMockOidcProviders } from '../mocks/fixtures'
 
 beforeAll(() => server.listen())
 afterEach(() => {
@@ -30,5 +30,6 @@ afterEach(() => {
   // The branding fixture is mutable so a PUT is visible on the next GET (#583) - without this,
   // a test that configures a brand colour would silently set the stage for the next one.
   resetMockBranding()
+  resetMockOidcProviders()
 })
 afterAll(() => server.close())

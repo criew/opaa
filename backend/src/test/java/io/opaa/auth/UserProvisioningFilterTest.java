@@ -40,13 +40,13 @@ class UserProvisioningFilterTest {
             .build();
     SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
     User provisioned = new User("admin", "opaa-dev", null, "admin");
-    when(userService.findOrCreateUser("admin", "opaa-dev", null, "admin")).thenReturn(provisioned);
+    when(userService.provisionFromToken(jwt)).thenReturn(provisioned);
 
     MockHttpServletRequest request = new MockHttpServletRequest();
     UserProvisioningFilter filter = new UserProvisioningFilter(userService);
     filter.doFilter(request, new MockHttpServletResponse(), filterChain);
 
-    verify(userService).findOrCreateUser("admin", "opaa-dev", null, "admin");
+    verify(userService).provisionFromToken(jwt);
     verify(filterChain).doFilter(any(), any());
     verifyNoMoreInteractions(userService);
 
@@ -59,6 +59,7 @@ class UserProvisioningFilterTest {
                 provisioned.getId(),
                 provisioned.getOrganizationId(),
                 provisioned.getSystemRole(),
-                provisioned.getDisplayName()));
+                provisioned.getDisplayName(),
+                provisioned.getEmail()));
   }
 }

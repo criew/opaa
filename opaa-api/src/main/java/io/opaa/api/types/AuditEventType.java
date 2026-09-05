@@ -81,6 +81,12 @@ public enum AuditEventType {
    */
   AUDITOR_ROLE_GRANTED,
   AUDITOR_ROLE_REVOKED,
+  /**
+   * A provider's token withdrew {@code SYSTEM_ADMIN} from the last system administrator and the
+   * withdrawal was refused (ADR-0025, Entscheidung 4): the installation must never be left without
+   * one. Written under the identity-provider system actor.
+   */
+  SYSTEM_ADMIN_ROLE_REVOCATION_REFUSED,
   ACCOUNT_DEACTIVATED,
   ACCOUNT_REAUTHENTICATION_FORCED,
   API_TOKEN_ISSUED,
@@ -126,6 +132,20 @@ public enum AuditEventType {
    * catch-all governance bucket.
    */
   BRANDING_SETTINGS_CHANGED,
+  /** An identity provider ({@code io.opaa.auth.oidc.OidcProvider}, ADR-0025) was created. */
+  OIDC_PROVIDER_CREATED,
+  /**
+   * An identity provider's editable fields changed - including its default-provider flag, its sort
+   * order and, most consequentially, its JWK set address (the trust anchor of every account of that
+   * issuer).
+   */
+  OIDC_PROVIDER_CHANGED,
+  /** An identity provider was deleted; its accounts remain, only their sign-in stops. */
+  OIDC_PROVIDER_DELETED,
+  /** An identity provider was enabled - its tokens are accepted again from this commit on. */
+  OIDC_PROVIDER_ENABLED,
+  /** An identity provider was disabled - its tokens are refused from this commit on. */
+  OIDC_PROVIDER_DISABLED,
   /** A managed chat model ({@code io.opaa.llm.LlmModel}) was created. */
   LLM_MODEL_CREATED,
   /** A managed chat model's editable fields (display name, base URL, model id, ...) changed. */

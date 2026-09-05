@@ -1,0 +1,53 @@
+# #1331, ADR-0025 Entscheidung 4: groups whose membership comes from a provider's token. Delta test:
+# backend/src/test/java/io/opaa/migration/Migration027IdentityProviderGroupsTest.java
+databaseChangeLog:
+  - changeSet:
+      id: 027-groups-kind-identity-provider
+      author: opaa
+      comment: >-
+        #1331, ADR-0025 Entscheidung 4: widens chk_groups_kind to accept 'IDENTITY_PROVIDER' - a
+        group whose membership comes from the groups claim of a provider's tokens, refreshed on
+        every sign-in. Its external_id is namespaced per provider ('oidc:<provider-id>:<name>'), so
+        same-named groups of two providers are two groups and a group of one provider is never a
+        group of another; uk_groups_organization_external_id keeps the namespaced id unique.
+        ORG_UNIT and AD_HOC rows are untouched.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.groups DROP CONSTRAINT chk_groups_kind;
+              ALTER TABLE public.groups ADD CONSTRAINT chk_groups_kind
+                  CHECK (kind IN ('ORG_UNIT', 'AD_HOC', 'IDENTITY_PROVIDER'));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.groups DROP CONSTRAINT chk_groups_kind;
+              ALTER TABLE public.groups ADD CONSTRAINT chk_groups_kind
+                  CHECK (kind IN ('ORG_UNIT', 'AD_HOC'));
+
+  - changeSet:
+      id: 027-group-membership-history-cause-identity-provider
+      author: opaa
+      comment: >-
+        #1331: widens chk_group_membership_history_cause by the two causes a token-derived
+        membership interval is opened or closed with ('IDENTITY_PROVIDER_ADDED',
+        'IDENTITY_PROVIDER_REMOVED') - kept apart from the directory-sync causes the same way those
+        are kept apart from the manual ones: a sign-in has no acting person either.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.group_membership_history DROP CONSTRAINT chk_group_membership_history_cause;
+              ALTER TABLE public.group_membership_history ADD CONSTRAINT chk_group_membership_history_cause
+                  CHECK (cause IN ('ADDED', 'REMOVED', 'DIRECTORY_SYNC_ADDED', 'DIRECTORY_SYNC_REMOVED',
+                                   'BACKFILL', 'GROUP_DELETED', 'IDENTITY_PROVIDER_ADDED',
+                                   'IDENTITY_PROVIDER_REMOVED'));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.group_membership_history DROP CONSTRAINT chk_group_membership_history_cause;
+              ALTER TABLE public.group_membership_history ADD CONSTRAINT chk_group_membership_history_cause
+                  CHECK (cause IN ('ADDED', 'REMOVED', 'DIRECTORY_SYNC_ADDED', 'DIRECTORY_SYNC_REMOVED',
+                                   'BACKFILL', 'GROUP_DELETED'));

@@ -212,6 +212,12 @@ zu ersetzen. Der Ist-Zustand auf der öffentlichen Instanz opaa.ewerlin.com weic
 | `thomas.klein` | Sachbearbeiter Kfz-Zulassung | „Kfz-Zulassung" (allein) | Leistungen Kfz-Zulassung, Satzungen & Gebührenordnungen, Pressemitteilungen | `RheinfurtDemo!2026` |
 | `andrea.vogt` | Amtsleitung Bürgerbüro | „Amtsleitung Bürgerbüro" (allein) | alle fünf Bibliotheken | `RheinfurtDemo!2026` |
 
+Zusätzlich existiert im zweiten Keycloak-Realm `partner` (`keycloak/realm-partner-export.json`,
+ADR-0025) eine **zweite `maria.weber` mit derselben E-Mail** und demselben Passwort — ein
+eigenes Konto ohne die Rechte der Demo-Maria, sobald die Systemverwaltung den Realm als weiteren
+Anbieter angelegt hat (Administration → Identitätsanbieter; der Demo-Smoke-Lauf tut genau das).
+Sie zeigt, dass Konten zweier Anbieter nie zusammengeführt werden.
+
 Die Spalte „Lesbare Bibliotheken" zählt nur explizit vergebene `VIEWER`-Rechte; jeder Nutzer bekommt
 beim ersten Login zusätzlich automatisch seinen eigenen Default-Space, der oben nicht eigens
 aufgeführt ist. Die drei Sachgebiets- und Amtsleitungs-Spaces tragen ihre lesbaren Bibliotheken

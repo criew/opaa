@@ -68,6 +68,11 @@ services:
       - "${OPAA_KEYCLOAK_PORT:-8180}:8180"
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      # A second realm = a second identity provider on the same origin (ADR-0025, #1334): the
+      # user maria.weber exists in both realms with the same e-mail address, so the demo-smoke run
+      # can prove that two providers never share an account. Not taken over at start-up - the
+      # Anbieterverwaltung adds it, exactly as an operator would add a partner's provider.
+      - ./keycloak/realm-partner-export.json:/opt/keycloak/data/import/realm-partner-export.json:ro
     # Also part of "demo" (#712): the demo instance shows the realistic Keycloak login (see
     # docs/features/demo-instance.md, "Installation und Seed") and must never be reachable without
     # one - `docker compose --profile demo up` starting keycloak automatically is the only way to

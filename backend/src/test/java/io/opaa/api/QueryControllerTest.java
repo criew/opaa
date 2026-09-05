@@ -61,7 +61,9 @@ class QueryControllerTest {
   void setUp() {
     User user = new User(TEST_SUBJECT, TEST_ISSUER, "test@example.com", "Test User");
     user.setSystemRole(SystemRole.USER);
-    when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
+    when(userService.provisionFromToken(
+            org.mockito.ArgumentMatchers.argThat(
+                token -> token != null && TEST_SUBJECT.equals(token.getSubject()))))
         .thenReturn(user);
   }
 

@@ -80,12 +80,14 @@ class LibraryControllerFolderTest {
     setId(user, currentUserId);
     caller =
         CurrentUser.of(
-            user.getId(), user.getOrganizationId(), user.getSystemRole(), user.getDisplayName());
-    when(userService.findOrCreateUser(
-            org.mockito.ArgumentMatchers.eq(TEST_SUBJECT),
-            org.mockito.ArgumentMatchers.eq(TEST_ISSUER),
-            org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.any()))
+            user.getId(),
+            user.getOrganizationId(),
+            user.getSystemRole(),
+            user.getDisplayName(),
+            user.getEmail());
+    when(userService.provisionFromToken(
+            org.mockito.ArgumentMatchers.argThat(
+                token -> token != null && TEST_SUBJECT.equals(token.getSubject()))))
         .thenReturn(user);
   }
 
@@ -338,12 +340,11 @@ class LibraryControllerFolderTest {
             admin.getId(),
             admin.getOrganizationId(),
             admin.getSystemRole(),
-            admin.getDisplayName());
-    when(userService.findOrCreateUser(
-            org.mockito.ArgumentMatchers.eq("admin-subject"),
-            org.mockito.ArgumentMatchers.eq(TEST_ISSUER),
-            org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.any()))
+            admin.getDisplayName(),
+            admin.getEmail());
+    when(userService.provisionFromToken(
+            org.mockito.ArgumentMatchers.argThat(
+                token -> token != null && "admin-subject".equals(token.getSubject()))))
         .thenReturn(admin);
     when(folderService.getFolder(libraryId, folderId, adminCaller))
         .thenReturn(sampleDetail(libraryId, folderId, "Archiv"));
