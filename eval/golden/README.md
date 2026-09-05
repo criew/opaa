@@ -2,7 +2,7 @@
 
 ## Domäne `verwaltung` (Issue #1043)
 
-`verwaltung.json` — 46 kuratierte, deutschsprachige Fälle über
+`verwaltung.json` — 49 kuratierte, deutschsprachige Fälle über
 [`eval/corpus/verwaltung/`](../corpus/verwaltung/). Anders als die beiden anderen Datasets misst
 dieses keine Abdeckung, sondern **fünf benannte Fehlerbilder**
 (`docs/features/retrieval-benchmark.md`, Abschnitt 5). Jeder Fall trägt seine Klasse als
@@ -15,7 +15,7 @@ absichert.
 | `exact_identifier` | 10 | Aktenzeichen, Formularnummern, Paragraphen mit Verwechslungspartner (`SOZ-DA-1/2023` vs. `…/2024`, `§ 3` vs. `§ 13`) | 1–2 Dokumente |
 | `compound_word` | 9 | die Frage nennt einen Wortbestandteil („Ausweis"), das Dokument das Kompositum („Personalausweisgebührensatzung") | 2–3 Dokumente |
 | `multi_hop` | 9 | zweistufige Ketten: Sachregelung **und** Vertretungsregelung/Geschäftsverteilungsplan | genau 2 Dokumente |
-| `metadata_filter` | 9 | Fassungs- und Dokumentart-Fragen; der Verwechslungspartner ist die inhaltsgleiche andere Fassung | 1 Dokument |
+| `metadata_filter` | 12 | Fassungs- und Dokumentart-Fragen; der Verwechslungspartner ist die inhaltsgleiche andere Fassung. Seit #1070 (Teil 2) zusätzlich drei Fälle der Leerwert-Regel (`verw-meta-010/011/012`), deren Zieldokument im gefilterten Feld gar keinen Wert trägt | 1 Dokument |
 
 **Erzeugung:** keine. Diese Fälle sind **von Hand gegen den Korpus kuratiert** — es gibt bewusst
 kein Generatorskript, weil die Fälle laut Spezifikation „aus den Dokumenten heraus formuliert"
@@ -55,9 +55,12 @@ Dokumente im Fenster **und** ein erwartetes Dokument auf Rang 1 — und zwar auf
 Messpfaden. Die Rang-1-Bedingung ist nicht Kosmetik: Beide Fassungen einer Satzung sind inhaltlich
 nahezu identisch und ranken deshalb nebeneinander, sodass „die richtige Fassung liegt irgendwo im
 Fenster" auch dann erfüllt ist, wenn die falsche obenauf steht — genau die Fähigkeit, die
-`metadata_filter` messen soll. Ohne die Zusatzbedingung wären 9 von 9 Fällen dieser Klasse
-„gelöst", mit ihr sind es 4 — und auch diese vier werden als `known_gap` geführt, weil ein Treffer
-ohne Filtermechanismus keine Fähigkeit belegt (Begründung in
+`metadata_filter` messen soll. Vor #1070 wären ohne die Zusatzbedingung 9 von 9 Fällen dieser
+Klasse „gelöst" gewesen, mit ihr waren es 4 — und auch diese vier wurden als `known_gap` geführt,
+weil ein Treffer ohne Filtermechanismus keine Fähigkeit belegt. Genau diese Strenge macht den
+heutigen Stand aussagekräftig: Seit dem Kernfeld-Filter (#1070, Teil 2) sind 9 der 12 Fälle
+`solved`, und zwar auf beiden Messpfaden und mit dem geprüften Mechanismus (Begründung je Fall im
+Datensatz, Zusammenfassung in
 [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)).
 
 Der Bericht beider Pfade führt in jedem Lauf einen Abschnitt „Zustandsfelder", der die deklarierten
@@ -69,11 +72,47 @@ veröffentlicht. Ein
 Baseline-Verbesserung durchzugehen; das Nachziehen der Felder bleibt ein bewusster,
 dokumentierter Schritt (Verfahren: [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)).
 
+### Filterfelder der Klasse `metadata_filter` (Issue #1070, Teil 2)
+
+Seit #1070 sagt ein `metadata_filter`-Fall selbst, mit welchem Kernfeld-Filter er gemessen wird —
+beide Messpfade wenden genau diesen Filter innerhalb ihrer Abfrage an (Rohvektor als
+`Filter.Expression`, Pipeline über den Request), gebaut aus demselben `MetadataFilterExpressions`
+wie in der Produktion:
+
+```json
+"filter": {
+  "documentType": ["DIENSTANWEISUNG"],
+  "documentDateFrom": "2024-01-01",
+  "documentDateTo": "2024-12-31"
+},
+"confusable_document": "verwaltung-0004_dienstanweisung-sozialamt-1-2023.md",
+"no_value_field": "documentDate"
+```
+
+| Feld | Bedeutung |
+|---|---|
+| `filter` | Die zwei filterbaren Kernfelder: Dokumentart als Liste von **Produktionscodes** (`SATZUNG_ORDNUNG`, `DIENSTANWEISUNG`, … — nie die Frontmatter-Rohwerte des Korpus) und ein einschließendes Von/Bis-Fenster auf Datum/Stand. Jede Hälfte optional; ein Feld ohne Wert wird weggelassen, nicht auf `null` gesetzt. `null` für einen Fall, den kein Kernfeld ausdrücken kann. |
+| `filter_note` | Pflicht, wenn ein `metadata_filter`-Fall **keinen** Filter trägt: die committete Begründung, warum kein Kernfeld die Frage trifft (`verw-meta-003`/`-005` fragen nach der „derzeit gültigen" Fassung — eine Gültigkeits-/Nachfolgeaussage, kein Datumsvergleich; sie bleiben `known_gap` bis #1071). |
+| `confusable_document` | Das Dokument, das der Filter ausschließen soll — die andere Fassung, die falsche Dokumentart. Ohne dieses Feld ließe sich „der Filter greift nicht" nicht von „es wurde gar kein Filter ausgewertet" unterscheiden. |
+| `no_value_field` | `documentType` oder `documentDate`: markiert einen Fall der **Leerwert-Regel** — das erwartete Dokument trägt in genau diesem gefilterten Feld keinen Wert und muss trotzdem im Fenster bleiben. |
+
+`io.opaa.eval.GoldenCaseCuration` erzwingt die Zusammenhänge Docker-frei: ein
+`metadata_filter`-Fall trägt einen Filter mit mindestens einer Bedingung **oder** eine
+`filter_note`; ein leeres `filter`-Objekt (das, wozu ein vertippter Schlüssel deserialisiert) ist
+ein Verstoß; ein `confusable_document` existiert im Manifest und ist nie selbst erwartet; ein
+`no_value_field` verlangt einen Filter auf genau dieses Feld.
+
+**Was daraus gemessen wird:** `io.opaa.eval.MetadataFilterAudit` weist die beiden Fehlerrichtungen
+**getrennt** aus — „Filter greift nicht" (der Verwechslungspartner steht trotz Filter im Fenster)
+und „Filter greift zu stark" (ein Leerwert-Fall verliert sein erwartetes Dokument) —, je Messpfad,
+im JSON-Report, im Lauf-Log und in der Markdown-Delta-Tabelle. Gemittelt wird nichts: Ein
+Gesamtwert aus beiden Richtungen verschwiege, welche der beiden gerade schiefliegt.
+
 ### `answer_span` bei mehreren Zieldokumenten — entschieden (offener Punkt 4)
 
 `docs/features/retrieval-benchmark.md` ließ offen, ob die Chunkebenen-Metrik bei Fällen mit mehreren
 Zieldokumenten **je Dokument** oder **je Fall** gebildet wird. Entschieden mit diesem Datensatz:
-**je Fall — und nur für Fälle mit genau einem erwarteten Dokument.** 24 der 46 Fälle tragen deshalb
+**je Fall — und nur für Fälle mit genau einem erwarteten Dokument.** 27 der 49 Fälle tragen deshalb
 einen `answer_span`, die 22 mehrdokumentigen keinen. Begründung, Alternative und Durchsetzung stehen
 bei `GoldenCaseCuration.SINGLE_DOCUMENT_ANSWER_SPAN_RULE` und im Nachtrag zu
 [ADR-0012](../../docs/decisions/0012-messvertrag-retrieval-harness.md); kurz: ein einzelner Span auf

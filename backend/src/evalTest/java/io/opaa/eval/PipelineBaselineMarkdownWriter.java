@@ -27,21 +27,27 @@ public final class PipelineBaselineMarkdownWriter {
       PipelineBaselineComparator.ComparisonResult result,
       Path target,
       String baselineFileName,
-      ExpectedStateAudit.Result expectedStateAudit)
+      ExpectedStateAudit.Result expectedStateAudit,
+      MetadataFilterAudit.Result metadataFilterAudit)
       throws IOException {
     Files.createDirectories(target.getParent());
     Files.writeString(
-        target, render(result, baselineFileName, expectedStateAudit), StandardCharsets.UTF_8);
+        target,
+        render(result, baselineFileName, expectedStateAudit, metadataFilterAudit),
+        StandardCharsets.UTF_8);
   }
 
   /**
    * @param expectedStateAudit the run's declared-vs-measured case-state audit at this path's window
    *     (issue #1043); {@code null} for a domain whose golden dataset declares no states.
+   * @param metadataFilterAudit the run's filter audit at this path's window (issue #1070); {@code
+   *     null} for a domain without a filtered case.
    */
   public static String render(
       PipelineBaselineComparator.ComparisonResult result,
       String baselineFileName,
-      ExpectedStateAudit.Result expectedStateAudit) {
+      ExpectedStateAudit.Result expectedStateAudit,
+      MetadataFilterAudit.Result metadataFilterAudit) {
     StringBuilder sb = new StringBuilder();
     sb.append("## Pipeline-Messpfad gegen Baseline (`eval/baseline/")
         .append(baselineFileName)
@@ -68,6 +74,7 @@ public final class PipelineBaselineMarkdownWriter {
       }
       // Same reasoning as in BaselineMarkdownWriter: the states were measured either way.
       sb.append(ExpectedStateAudit.renderMarkdown(expectedStateAudit));
+      sb.append(MetadataFilterAudit.renderMarkdown(metadataFilterAudit));
       return sb.toString();
     }
 
@@ -116,6 +123,7 @@ public final class PipelineBaselineMarkdownWriter {
     }
 
     sb.append(ExpectedStateAudit.renderMarkdown(expectedStateAudit));
+    sb.append(MetadataFilterAudit.renderMarkdown(metadataFilterAudit));
     return sb.toString();
   }
 }

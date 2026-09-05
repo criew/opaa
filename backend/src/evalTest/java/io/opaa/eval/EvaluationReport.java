@@ -29,6 +29,9 @@ public record EvaluationReport(
     // case state. Null for a domain whose golden dataset carries no expected_state fields —
     // absent, not "audited and clean" (see ExpectedStateAudit#evaluate).
     ExpectedStateAudit.Result expectedStateAudit,
+    // Issue #1070 (Teil 2): whether the core-field filter itself worked, in its two error
+    // directions — see MetadataFilterAudit. Null for a domain without a single filtered case.
+    MetadataFilterAudit.Result metadataFilterAudit,
     List<WorstQuery> worstQueries,
     List<WorstQuery> allQueryResults,
     // Issue #1151: how close to the window edge each group's solved cases sit — report-only,
@@ -68,8 +71,14 @@ public record EvaluationReport(
    * chunk nested under its Mail parent) - the same collective-fingerprint reasoning as the #1164
    * bump above, not a corpus routing change (no corpus in this repository routes a document through
    * {@code MailDocumentPipeline}).
+   *
+   * <p><b>Bumped to 6 by issue #1070 (Teil 2, ADR-0012 Nachtrag Metadatenfilter):</b> {@code
+   * metadataFilterEnabled} became a fixed point - the harness applies each golden case's {@code
+   * filter} inside {@code similaritySearch}, so a run with and one without the filter measure
+   * different things for the {@code metadata_filter} class. Unlike the two fingerprint bumps above
+   * this one moves measured values (the {@code verwaltung} baselines were re-drawn).
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 5;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 6;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(
@@ -114,6 +123,11 @@ public record EvaluationReport(
       // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
       // Javadoc for why corpusManifestSha256 alone does not answer that question.
       String ingestionPipelineFingerprint,
+      // Issue #1070 (Teil 2): whether every golden case's filter was applied inside the search
+      // (as a Filter.Expression on similaritySearch, built by MetadataFilterExpressions exactly as
+      // the production vector path builds it). A fixed point: the metadata_filter class measures
+      // something else without it.
+      boolean metadataFilterEnabled,
       String runStartedAt,
       double runDurationSeconds,
       // Issue #1076: true when this run talked to an external Ollama endpoint
@@ -150,6 +164,11 @@ public record EvaluationReport(
    * harness for that domain. {@code minDistinctDocumentsReached} is the smallest per-query {@code
    * distinctDocumentsReached} seen across the whole run — a single number that makes "did the
    * window ever come up short, and by how much" readable without scanning {@code allQueryResults}.
+   *
+   * <p>Counted over the <b>unfiltered</b> queries only (issue #1070): a case measured with a
+   * core-field filter may legitimately have fewer than {@code documentTopK} documents left in the
+   * whole store (a 2023 date window over a corpus with nine 2023 documents), which is the filter
+   * working, not the window coming up short.
    */
   public record DocumentWindowCoverageResult(
       int queriesEvaluated, int queriesBelowDocumentTopK, int minDistinctDocumentsReached) {

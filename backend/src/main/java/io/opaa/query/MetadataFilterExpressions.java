@@ -38,8 +38,12 @@ import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
  * <p>The window at a precision: a stored value is the first day of the span its precision leaves
  * open, so {@code value <= to} and {@code value >= }{@link MetadataFilter#dateFromBound} is the
  * overlap of that span with the window.
+ *
+ * <p>Public for exactly one caller outside this package: the retrieval-evaluation harness ({@code
+ * io.opaa.eval}) builds the raw-vector path's filter through {@link #vectorExpression} so that its
+ * measurement applies the identical condition the production search applies.
  */
-final class MetadataFilterExpressions {
+public final class MetadataFilterExpressions {
 
   private static final List<String> PRECISIONS =
       List.of(DatePrecision.DAY.name(), DatePrecision.MONTH.name(), DatePrecision.YEAR.name());
@@ -51,7 +55,7 @@ final class MetadataFilterExpressions {
    * Dokumentart selection covering the whole {@code vocabularyCodes}, which every document
    * satisfies or lacks alike.
    */
-  static Filter.Expression vectorExpression(
+  public static Filter.Expression vectorExpression(
       MetadataFilter filter, Collection<String> vocabularyCodes) {
     FilterExpressionBuilder b = new FilterExpressionBuilder();
     FilterExpressionBuilder.Op combined = null;

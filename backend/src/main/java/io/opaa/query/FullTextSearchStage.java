@@ -105,6 +105,7 @@ class FullTextSearchStage implements RetrievalStage {
                 searchQueries.get(i),
                 searchScope,
                 state.metadataFilter(),
+                state.metadataFilterVocabularyCodes(),
                 context.queryProperties().fetchK());
       } catch (RuntimeException e) {
         log.warn(

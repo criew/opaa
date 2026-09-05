@@ -21,6 +21,8 @@ import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.JobStatus;
+import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
+import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
@@ -29,6 +31,7 @@ import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.ActiveChatModelResolver;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.organization.Organization;
+import io.opaa.query.MetadataFilterExpressions;
 import io.opaa.query.QueryProperties;
 import io.opaa.query.QueryService;
 import io.opaa.query.RetrievalPipelineProperties;
@@ -55,6 +58,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
@@ -346,6 +350,8 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
   @Autowired private DocumentRepository documentRepository;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private VectorStore vectorStore;
+  // Issue #1070: the vocabulary snapshot the golden filters' "no value" condition is built over.
+  @Autowired private DocumentTypeVocabularyRepository vocabularyRepository;
   @Autowired private IndexingProperties indexingProperties;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -578,14 +584,40 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     List<RetrievalMetrics.QueryResult> results = new ArrayList<>(goldenCases.size());
     List<ChunkAnswerSpanMetrics.ChunkQueryResult> answerSpanResults = new ArrayList<>();
     List<DocumentRanking.DocumentWindowResult> windowResults = new ArrayList<>(goldenCases.size());
+    // Issue #1070: the Dokumentart vocabulary both filter forms say "no value" over, read once
+    // for the run exactly as the production METADATA_FILTER stage reads it.
+    List<String> vocabularyCodes =
+        vocabularyRepository.findAllByOrderBySortOrderAsc().stream()
+            .map(DocumentTypeVocabularyEntry::getCode)
+            .toList();
+    // Issue #1070: counted, not assumed - the fixed point metadataFilterEnabled below is "every
+    // filtered case was searched with its filter", derived from these two counters. Counted at the
+    // handover to similaritySearch, not where the expression is built: what the fixed point claims
+    // is that the search saw the filter. A filter that constrains nothing - a Dokumentart selection
+    // covering the whole vocabulary, which every document satisfies or lacks alike - yields no
+    // expression and therefore counts as not applied; no golden case carries one.
+    int filteredCases = 0;
+    int appliedFilters = 0;
     for (GoldenCase goldenCase : goldenCases) {
-      List<org.springframework.ai.document.Document> hits =
-          vectorStore.similaritySearch(
-              SearchRequest.builder()
-                  .query(goldenCase.query())
-                  .topK(DOMAIN.chunkTopK())
-                  .similarityThreshold(0.0)
-                  .build());
+      // Issue #1070: the case's core-field filter, built by the same MetadataFilterExpressions
+      // the production vector path uses and applied inside similaritySearch - null, i.e. no
+      // condition, for every case without a filter.
+      Filter.Expression metadataFilterExpression =
+          MetadataFilterExpressions.vectorExpression(goldenCase.metadataFilter(), vocabularyCodes);
+      SearchRequest request =
+          SearchRequest.builder()
+              .query(goldenCase.query())
+              .topK(DOMAIN.chunkTopK())
+              .similarityThreshold(0.0)
+              .filterExpression(metadataFilterExpression)
+              .build();
+      if (goldenCase.isFiltered()) {
+        filteredCases++;
+      }
+      if (request.getFilterExpression() != null) {
+        appliedFilters++;
+      }
+      List<org.springframework.ai.document.Document> hits = vectorStore.similaritySearch(request);
       List<String> rankedChunkFileNames =
           hits.stream()
               .map(h -> h.getMetadata().get("file_name"))
@@ -593,7 +625,11 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
               .toList();
       var windowResult =
           DocumentRanking.applyDocumentWindow(rankedChunkFileNames, DOMAIN.documentTopK());
-      windowResults.add(windowResult);
+      // A filtered case may legitimately have fewer than documentTopK documents left in the
+      // whole store; the window-coverage check below is therefore over unfiltered cases only.
+      if (!goldenCase.isFiltered()) {
+        windowResults.add(windowResult);
+      }
       results.add(RetrievalMetrics.evaluate(goldenCase, windowResult.rankedFileNames()));
 
       if (ChunkAnswerSpanMetrics.isApplicable(goldenCase)) {
@@ -779,6 +815,9 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             GoldenDataset.sha256(goldenFile),
             goldenCases.size(),
             ingestionPipelineFingerprint,
+            // Issue #1070: derived from the run above - true exactly when every filtered case
+            // reached similaritySearch with its filter expression.
+            appliedFilters == filteredCases,
             runStart.toString(),
             Duration.between(runStart, Instant.now()).toMillis() / 1000.0,
             EvalOllamaEndpoint.isExternal());
@@ -799,6 +838,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             // Issue #1043: declared vs. measured case state. Null for this domain, whose
             // golden dataset carries no expected_state fields.
             ExpectedStateAudit.fromRawVectorResults(results),
+            MetadataFilterAudit.fromRawVectorResults(results),
             worstQueries,
             allQueryResults,
             overallMargins,

@@ -66,6 +66,10 @@ class MetadataFilterStageTest {
     assertThat(outcome.state().libraryFilter()).isSameAs(state.libraryFilter());
     assertThat(outcome.state().metadataFilter()).isEqualTo(filter);
     assertThat(outcome.state().metadataFilterExpression()).isNotNull();
+    // The vocabulary snapshot is read once here and travels with the state, so the lexical path
+    // filters every sub-query against the same value set as the vector path.
+    assertThat(outcome.state().metadataFilterVocabularyCodes())
+        .containsExactly("DIENSTANWEISUNG", "VERMERK");
     assertThat(outcome.explanation().stage()).isEqualTo(RetrievalStageName.METADATA_FILTER);
     assertThat(outcome.explanation().notes())
         .containsExactly(

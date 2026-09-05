@@ -35,8 +35,8 @@ Erzeugt durch
 [`eval/generator/generate_verwaltung_corpus.py`](../../generator/generate_verwaltung_corpus.py).
 Kein Netzzugriff: Das Skript liest nur seine eigenen, im Quelltext hinterlegten Daten (`AEMTER`,
 Textbausteine je Dokumenttyp). Zwei Läufe erzeugen byte-identische Ausgabe (per Vergleich der
-SHA-256-Summen aller 70 Dateien über zwei aufeinanderfolgende Läufe geprüft, siehe
-PR-Beschreibung von Issue #1042).
+SHA-256-Summen aller Dateien über zwei aufeinanderfolgende Läufe geprüft, siehe
+PR-Beschreibung von Issue #1042; mit den beiden Leerwert-Dokumenten aus #1070 sind es 72).
 
 ## Integritätsprüfung
 
@@ -55,6 +55,7 @@ sha256sum -c MANIFEST.sha256
 | `formularhinweis` | 20 (2 Nummern je Amt) | (a) — nur die beiden Kämmerei-Formularhinweise; (b) `exact_identifier` über benachbarte Formularnummern (`Formular <AMT>-07`/`-08`) |
 | `vertretungsregelung` | 1 (organisationsweit) | (d) `multi_hop` — trägt ausschließlich die Vertretungs-/Zuständigkeitshälfte (wer entscheidet ersatzweise), keine Sachaussage zu § 3/§ 13 einer konkreten Satzung; jede Satzung, Dienstanweisung und jeder Formularhinweis verweist hierher statt die Vertretung selbst zu wiederholen |
 | `geschaeftsverteilungsplan` | 1 (organisationsweit) | (d) `multi_hop` — analog, für die Frage „wer ist fachlich zuständig" statt „wer vertritt"; ebenfalls ohne § 3/§ 13-Sachaussage |
+| Leerwert-Dokumente (Issue #1070, Teil 2) | 2 (organisationsweit) | (e) `metadata_filter`, Leerwert-Regel: `verwaltung-dienstanweisung-aktenaufbewahrung.md` ist eine Dienstanweisung **ohne** `stand_datum`/`fassung` (auch kein Jahr in Titel oder Dateiname), `verwaltung-leitfaden-barrierefreiheit.md` ein Leitfaden **ohne** `dokumentart` (die Extraktion kennt „Leitfaden" nicht als Vokabularbegriff). Beide sind thematisch bewusst fern von Gebühren, Aktenzeichen und Vertretung, damit die übrigen vier Fallklassen unberührt bleiben |
 
 Das vollständige Frontmatter-Schema (u. a. `dokumentart`, `fassung`, `stand_datum`, `gueltig_ab`,
 `gueltig_bis`, `ersetzt`/`ersetzt_durch`, `aktenzeichen`, `schlagworte`) ist in jedem Dokument
@@ -68,18 +69,19 @@ Tatsächlich gemessen (nicht geschätzt), Stand des letzten Generator-Laufs:
 
 | | Bytes |
 |---|---|
-| Minimum | 6.697 |
-| Median | 7.089 |
+| Minimum | 3.454 |
+| Median | 7.078 |
 | Maximum | 9.797 |
-| Gesamtgröße | ca. 518,4 KiB |
+| Gesamtgröße | ca. 525,7 KiB |
 
 Zusammen mit den rund 1,9 MB (`comic-characters`) und 4,92 MB (`city-landmarks`) bleibt der
-Gesamtkorpus mit rund 7,3 MB weiterhin deutlich unter der 25-MB-Prüfschwelle aus ADR-0011.
+Gesamtkorpus mit rund 7,3 MB weiterhin deutlich unter der 25-MB-Prüfschwelle aus ADR-0011. Das
+Minimum stammt seit #1070 von den beiden kürzeren, organisationsweiten Leerwert-Dokumenten.
 
 **Chunk-Zahl-Verifikation** (echter `TokenTextSplitter`-Lauf, `chunkSize=1000`,
 `chunkOverlap=100` — Docker-freier Trockenlauf über `io.opaa.eval.VerwaltungChunkSizeDryRunTest`,
 mirrors `CityLandmarksChunkSizeDryRunTest`): Minimum 3, Median 3, Maximum 4 Chunks je Dokument —
-die Domänen-Vorgabe „mindestens 3 Chunks je Dokument" ist für alle 70 Dokumente erfüllt (0
+die Domänen-Vorgabe „mindestens 3 Chunks je Dokument" ist für alle 72 Dokumente erfüllt (0
 Verletzungen). Anders als bei `city-landmarks` (Median 8) liegt der Median hier bewusst nahe an
 der Mindestschwelle: Die Dokumenttypen dieser Domäne (Satzungsparagraphen, Dienstanweisungs-
 abschnitte, Formularhinweis-Abschnitte) sind von Natur aus kürzer als enzyklopädische
@@ -88,20 +90,20 @@ zusätzlichen, inhaltlich nicht mehr begründbaren Füll­text erkauft worden.
 
 ## Begriffs- und Kennungshäufigkeit im Korpus (verifiziert, nicht geschätzt)
 
-Nachgezählt über alle 70 generierten Dateien (siehe PR-Beschreibung von #1074 für den
+Nachgezählt über alle 72 generierten Dateien (siehe PR-Beschreibung von #1074 für den
 verwendeten Python-Einzeiler; jederzeit reproduzierbar über ein einfaches `grep -l` je Begriff im
 Korpusverzeichnis):
 
 | Begriff | Trefferdokumente | Welche |
 |---|---|---|
-| „Bedürftigkeit" | 6 von 70 | die Satzung, Gebührenordnung, beide Dienstanweisungen und beide Formularhinweise der Kämmerei (`verwaltung-0038` bis `verwaltung-0043`) |
-| „Gebührenbefreiung" | 6 von 70 | dieselben sechs Kämmerei-Dokumente |
-| „Bürgergeld" | 9 von 70 | die sechs Kämmerei-Dokumente sowie die beiden Formularhinweise von Sozialamt, Bürgeramt und Jugendamt, deren `alltagsfrage` unabhängig davon ebenfalls den Bürgergeld-Bezug thematisiert (reine Bürgersprache-Flavor-Texte, kein Bezug zu § 3 dieser Ämter — deren § 3 ist „Auskunftsrecht und Akteneinsicht", nicht die Bedürftigkeitsklausel) |
-| „§ 3" | 68 von 70 | alle Amtsdokumente (nicht die zwei organisationsweiten Dokumente, die bewusst keine §-Sachaussage tragen — siehe unten) |
-| „§ 13" | 68 von 70 | wie „§ 3" |
+| „Bedürftigkeit" | 6 von 72 | die Satzung, Gebührenordnung, beide Dienstanweisungen und beide Formularhinweise der Kämmerei (`verwaltung-0038` bis `verwaltung-0043`) |
+| „Gebührenbefreiung" | 6 von 72 | dieselben sechs Kämmerei-Dokumente |
+| „Bürgergeld" | 9 von 72 | die sechs Kämmerei-Dokumente sowie die beiden Formularhinweise von Sozialamt, Bürgeramt und Jugendamt, deren `alltagsfrage` unabhängig davon ebenfalls den Bürgergeld-Bezug thematisiert (reine Bürgersprache-Flavor-Texte, kein Bezug zu § 3 dieser Ämter — deren § 3 ist „Auskunftsrecht und Akteneinsicht", nicht die Bedürftigkeitsklausel) |
+| „§ 3" | 68 von 72 | alle Amtsdokumente (nicht die vier organisationsweiten Dokumente, die bewusst keine §-Sachaussage tragen — siehe unten) |
+| „§ 13" | 68 von 72 | wie „§ 3" |
 
 Damit ist die für die `literal_term_weak_embedding`-Fallklasse (Abschnitt 5a der Spezifikation)
-nötige Seltenheit gegeben (Dokumenthäufigkeit 6/70 ≈ 0,086 statt der ursprünglich implementierten
+nötige Seltenheit gegeben (Dokumenthäufigkeit 6/72 ≈ 0,083 statt der ursprünglich implementierten
 70/70), während die Kennungs-Verwechslungsgefahr für `exact_identifier` (Abschnitt 5b) erhalten
 bleibt: „§ 3" allein bleibt über 68 Dokumente hinweg mehrdeutig, aber nur in sechs davon steht
 tatsächlich eine Bedürftigkeitsklausel — die anderen 62 sind für den `literal_term`-Fall

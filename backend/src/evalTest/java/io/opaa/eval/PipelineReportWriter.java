@@ -77,10 +77,12 @@ public final class PipelineReportWriter {
             cfg.pgvectorIndexType()));
     sb.append(
         format(
-            "  Korpus: %d Dokumente, Manifest %s, Ingestion-Pipelines %s\n",
+            "  Korpus: %d Dokumente, Manifest %s, Ingestion-Pipelines %s, Metadatenfilter der "
+                + "Golden-Fälle angewandt: %s\n",
             cfg.corpusDocumentCount(),
             shortHash(cfg.corpusManifestSha256()),
-            cfg.ingestionPipelineFingerprint()));
+            cfg.ingestionPipelineFingerprint(),
+            cfg.metadataFilterEnabled()));
     sb.append(
         format(
             "  Golden Dataset: %s, %d Fälle, Hash %s\n",
@@ -117,6 +119,7 @@ public final class PipelineReportWriter {
     appendGroup(sb, "Je Schwierigkeit", report.byDifficulty());
     appendGroup(sb, "Je Sprache", report.byLanguage());
     sb.append(ExpectedStateAudit.renderSummary(report.expectedStateAudit()));
+    sb.append(MetadataFilterAudit.renderSummary(report.metadataFilterAudit()));
 
     // Issue #1151: Grenzstabilität — wie knapp gelöste Fälle von sicher gelösten Fällen
     // unterschieden werden können, ohne dass sich eine der obigen Kennzahlen bewegt.
