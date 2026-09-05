@@ -17,18 +17,29 @@ import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import Switch from '@mui/material/Switch'
+import { Link as RouterLink } from 'react-router'
+import Link from '@mui/material/Link'
 import {
   addLibraryMetadataFieldValue,
   createLibraryMetadataField,
   deleteLibraryMetadataField,
   getLibraryMetadataFieldUsage,
   getLibraryMetadataFieldValueUsage,
+  getMetadataChangeImpact,
   listLibraryMetadataFields,
   relabelLibraryMetadataFieldValue,
   remapLibraryMetadataFieldValue,
+  updateCoreContextPrefix,
   updateLibraryMetadataField,
 } from '../../services/api'
-import type { LibraryMetadataFieldResponse, LibraryMetadataFieldType } from '../../types/api'
+import type {
+  CoreContextPrefixResponse,
+  LibraryMetadataFieldResponse,
+  LibraryMetadataFieldType,
+  MetadataChangeImpactResponse,
+  MetadataChangeKind,
+} from '../../types/api'
 
 const TYPE_LABELS: Record<LibraryMetadataFieldType, string> = {
   SELECT: 'Auswahl aus einer Werteliste',
@@ -43,6 +54,92 @@ function effectChips(field: LibraryMetadataFieldResponse) {
   if (field.contextPrefix) chips.push('Kontextpräfix')
   if (field.citationPosition != null) chips.push(`Beleg ${field.citationPosition}`)
   return chips
+}
+
+/** "rund 40 Minuten" - a runtime a decision can be made on, never a raw number of seconds. */
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return 'unter einer Minute'
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 90) return `rund ${minutes} Minute${minutes === 1 ? '' : 'n'}`
+  const hours = Math.round(minutes / 60)
+  return `rund ${hours} Stunde${hours === 1 ? '' : 'n'}`
+}
+
+/**
+ * The Folgekosten of a planned change, as concrete as the specification demands: documents,
+ * chunks and the expected runtime of the Nachlauf - or the explicit statement that it costs
+ * nothing. Loads on mount and on every change of the planned operation.
+ */
+function ChangeImpactNotice({
+  libraryId,
+  fieldKey,
+  change,
+  valueCode,
+}: {
+  libraryId: string
+  fieldKey: string
+  change: MetadataChangeKind
+  valueCode?: string
+}) {
+  // Keyed by the planned operation instead of reset in the effect: an answer to an earlier
+  // operation is then simply not the current one, and nothing has to be cleared synchronously.
+  const requestKey = `${libraryId}|${fieldKey}|${change}|${valueCode ?? ''}`
+  const [answer, setAnswer] = useState<{
+    key: string
+    impact: MetadataChangeImpactResponse | null
+    failed: boolean
+  }>({ key: '', impact: null, failed: false })
+
+  useEffect(() => {
+    let cancelled = false
+    getMetadataChangeImpact(libraryId, fieldKey, change, valueCode)
+      .then((result) => {
+        if (!cancelled) setAnswer({ key: requestKey, impact: result, failed: false })
+      })
+      .catch(() => {
+        if (!cancelled) setAnswer({ key: requestKey, impact: null, failed: true })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [requestKey, libraryId, fieldKey, change, valueCode])
+
+  const current = answer.key === requestKey ? answer : { impact: null, failed: false }
+  const impact = current.impact
+  const failed = current.failed
+
+  if (failed) {
+    return (
+      <Alert severity="warning" sx={{ mt: 2 }}>
+        Die Folgekosten konnten nicht ermittelt werden.
+      </Alert>
+    )
+  }
+  if (!impact) {
+    return (
+      <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+        Folgekosten werden ermittelt …
+      </Typography>
+    )
+  }
+  if (!impact.reembeddingRequired) {
+    return (
+      <Alert severity="success" sx={{ mt: 2 }}>
+        {impact.affectedDocuments === 0
+          ? 'Diese Änderung hat keine Folgekosten.'
+          : `${impact.affectedDocuments} Dokument(e) sind betroffen; neu eingebettet werden muss nichts.`}
+      </Alert>
+    )
+  }
+  return (
+    <Alert severity="warning" sx={{ mt: 2 }}>
+      {`${impact.affectedChunks} Abschnitte in ${impact.affectedDocuments} Dokument(en) neu`}{' '}
+      {`einzubetten, ${formatDuration(impact.estimatedSeconds)}`}
+      {impact.rateSource === 'CONFIGURED' ? ' (geschätzte Rate)' : ' (gemessene Rate)'}. Das
+      Speichern setzt nichts in Bewegung — der Nachlauf wird auf der Seite „Suche &amp; Indexierung“
+      ausdrücklich gestartet.
+    </Alert>
+  )
 }
 
 interface Props {
@@ -64,6 +161,8 @@ export default function LibraryMetadataFieldsSection({
   onFieldsChanged,
 }: Props) {
   const [fields, setFields] = useState<LibraryMetadataFieldResponse[]>([])
+  const [coreContextPrefix, setCoreContextPrefix] = useState<CoreContextPrefixResponse | null>(null)
+  const [awaitingRerun, setAwaitingRerun] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [remapField, setRemapField] = useState<LibraryMetadataFieldResponse | null>(null)
@@ -79,6 +178,8 @@ export default function LibraryMetadataFieldsSection({
     try {
       const response = await listLibraryMetadataFields(libraryId)
       setFields(response.items)
+      setCoreContextPrefix(response.coreContextPrefix)
+      setAwaitingRerun(response.documentsAwaitingContextPrefixRerun)
       setError(null)
     } catch (err) {
       setError(
@@ -93,6 +194,8 @@ export default function LibraryMetadataFieldsSection({
       .then((response) => {
         if (cancelled) return
         setFields(response.items)
+        setCoreContextPrefix(response.coreContextPrefix)
+        setAwaitingRerun(response.documentsAwaitingContextPrefixRerun)
         setError(null)
       })
       .catch((err: unknown) => {
@@ -105,6 +208,16 @@ export default function LibraryMetadataFieldsSection({
       cancelled = true
     }
   }, [libraryId])
+
+  async function saveCoreContextPrefix(documentType: boolean, documentDate: boolean) {
+    try {
+      setCoreContextPrefix(await updateCoreContextPrefix(libraryId, { documentType, documentDate }))
+      await reload()
+      onFieldsChanged?.()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Die Wirkstelle konnte nicht geändert werden')
+    }
+  }
 
   async function openRemap(field: LibraryMetadataFieldResponse, code: string) {
     setRemapField(field)
@@ -201,6 +314,42 @@ export default function LibraryMetadataFieldsSection({
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
+      )}
+      {awaitingRerun > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {`${awaitingRerun} Dokument(e) warten auf Neu-Einbetten.`} Der Nachlauf wird von einer
+          Systemadministratorin auf der Seite{' '}
+          <Link component={RouterLink} to="/admin/search">
+            Suche &amp; Indexierung
+          </Link>{' '}
+          gestartet; bis dahin bleibt die Suche über den alten Stand verfügbar.
+        </Alert>
+      )}
+      {coreContextPrefix && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle2">Kernfelder im Kontextpräfix</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Der Titel steht immer im Kontextpräfix. Dokumentart und Datum/Stand sind je Bibliothek
+            eine bewusste Entscheidung — eingeschaltet kostet jede spätere Änderung daran ein
+            Neu-Einbetten.
+          </Typography>
+          <CoreContextPrefixSwitch
+            libraryId={libraryId}
+            label="Dokumentart"
+            fieldKey="document_type"
+            checked={coreContextPrefix.documentType}
+            disabled={!canManageSchema}
+            onSave={(next) => void saveCoreContextPrefix(next, coreContextPrefix.documentDate)}
+          />
+          <CoreContextPrefixSwitch
+            libraryId={libraryId}
+            label="Datum/Stand"
+            fieldKey="document_date"
+            checked={coreContextPrefix.documentDate}
+            disabled={!canManageSchema}
+            onSave={(next) => void saveCoreContextPrefix(coreContextPrefix.documentType, next)}
+          />
+        </Box>
       )}
       {fields.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
@@ -323,6 +472,14 @@ export default function LibraryMetadataFieldsSection({
                 ))}
             </Select>
           </FormControl>
+          {remapField && remapCode && (
+            <ChangeImpactNotice
+              libraryId={libraryId}
+              fieldKey={remapField.fieldKey}
+              change="VALUE_REMOVED"
+              valueCode={remapCode}
+            />
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setRemapField(null)}>Abbrechen</Button>
@@ -359,6 +516,13 @@ export default function LibraryMetadataFieldsSection({
               ? 'Betroffene Dokumente werden ermittelt …'
               : `${deleteUsage} Dokument(e) tragen einen Wert für „${deleteField?.label}“. Mit dem Feld werden diese Werte und seine Werteliste entfernt.`}
           </Typography>
+          {deleteField && (
+            <ChangeImpactNotice
+              libraryId={libraryId}
+              fieldKey={deleteField.fieldKey}
+              change="FIELD_REMOVED"
+            />
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteField(null)}>Abbrechen</Button>
@@ -373,6 +537,66 @@ export default function LibraryMetadataFieldsSection({
         </DialogActions>
       </Dialog>
     </Box>
+  )
+}
+
+/**
+ * One switchable core field. The Folgekosten of the planned switch stand in a confirmation dialog
+ * before it is saved - the same rule every prefix-effective change follows.
+ */
+function CoreContextPrefixSwitch({
+  libraryId,
+  label,
+  fieldKey,
+  checked,
+  disabled,
+  onSave,
+}: {
+  libraryId: string
+  label: string
+  fieldKey: string
+  checked: boolean
+  disabled: boolean
+  onSave: (next: boolean) => void
+}) {
+  const [pending, setPending] = useState<boolean | null>(null)
+
+  return (
+    <>
+      <FormControlLabel
+        control={
+          <Switch
+            checked={checked}
+            disabled={disabled}
+            onChange={(e) => setPending(e.target.checked)}
+          />
+        }
+        label={label}
+      />
+      <Dialog open={pending != null} onClose={() => setPending(null)} fullWidth maxWidth="sm">
+        <DialogTitle>{`${label} im Kontextpräfix ${pending ? 'einschalten' : 'ausschalten'}`}</DialogTitle>
+        <DialogContent>
+          <ChangeImpactNotice
+            libraryId={libraryId}
+            fieldKey={fieldKey}
+            change={pending ? 'CONTEXT_PREFIX_ENABLED' : 'CONTEXT_PREFIX_DISABLED'}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPending(null)}>Abbrechen</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              const next = pending
+              setPending(null)
+              if (next != null) onSave(next)
+            }}
+          >
+            Speichern
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   )
 }
 
@@ -671,6 +895,13 @@ function EditFieldDialog({
               Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken; „nur Beleg-Anzeige“
               genügt nicht.
             </Alert>
+          )}
+          {contextPrefix !== field.contextPrefix && (
+            <ChangeImpactNotice
+              libraryId={libraryId}
+              fieldKey={field.fieldKey}
+              change={contextPrefix ? 'CONTEXT_PREFIX_ENABLED' : 'CONTEXT_PREFIX_DISABLED'}
+            />
           )}
         </Stack>
       </DialogContent>

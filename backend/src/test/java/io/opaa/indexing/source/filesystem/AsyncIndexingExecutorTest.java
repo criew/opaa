@@ -21,6 +21,7 @@ import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentService;
+import io.opaa.indexing.EmbeddingRateEstimator;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.FullTextChunkStore;
@@ -233,7 +234,8 @@ class AsyncIndexingExecutorTest {
                 mock(org.springframework.ai.embedding.EmbeddingModel.class),
                 mock(org.springframework.ai.embedding.BatchingStrategy.class),
                 mock(VectorStoreWriter.class),
-                mock(FullTextChunkStore.class)),
+                mock(FullTextChunkStore.class),
+                new EmbeddingRateEstimator(4.0)),
             new ChecksumService(),
             new IndexingMetrics(new SimpleMeterRegistry()),
             realFlowQuotaService,

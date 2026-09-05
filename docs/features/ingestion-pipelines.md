@@ -1365,6 +1365,32 @@ Der Präfix geht in Embedding **und** Volltextindex — die Anthropic-Zahlen zei
 gerade bei der kontextualisierten lexikalischen Seite. Er ist Teil der Chunk-Darstellung, nicht seines
 Rohtexts: Der zitierte Auszug im Beleg bleibt der Originalwortlaut.
 
+#### Umgesetzt (#1072)
+
+`ChunkContextPrefix` ist die eine Stelle, an der der Präfix entsteht — für den Aufnahmeweg
+(`FileProcessingService#storeChunks`) und für den Nachlauf gleichermaßen. Er setzt sich aus dem Titel,
+den präfixwirksamen Metadatenwerten des Dokuments und dem Strukturkontext des Chunks zusammen, getrennt
+durch `›`; ein leeres Segment entfällt vollständig, und ein Präfix ohne jedes Segment existiert nicht.
+
+- **Der Titel ist das Kernfeld Titel** (ADR-0024) und ersetzt damit die Dateinamens-Humanisierung von
+  `ChunkContextTitle`; die bleibt der Rückfall, wo kein Titel ermittelt wurde. Die Entscheidung „dieser
+  Dokumenttyp bekommt gar keinen Präfix" (RSS-Eintrag ohne Überschrift) bleibt beim Aufrufer.
+- **Der Strukturkontext ist der Abschnittspfad des Chunks**, gelesen aus seinem Fundort und nur dort,
+  wo dieser einen Abschnitt nennt (`Abschn. …`). Eine Seiten-, Folien- oder Zeilenangabe benennt keinen
+  Inhalt und würde beide Indizes nur verdünnen.
+- **Der Volltextindex liest dieselbe `EMBED`-Form wie die Einbettung** (`FullTextChunkStore`), statt
+  den Präfix ein zweites Mal zu bilden — die beiden können damit nicht auseinanderlaufen. Der
+  gespeicherte Chunk-Text bleibt unangetastet, der Beleg zitiert weiter den Originalwortlaut. Weil sich
+  die gespeicherten Lexeme damit ändern, steigt `content_tsv_version` auf 5; der Altbestand wird über
+  denselben Reparaturpfad nachgezogen wie jede andere Lexem-Änderung
+  (`PipelineReindexService`, Regel (d)).
+- **Ein Dokument aus einem einzigen Chunk bekommt weiterhin keinen Titel vorangestellt** — es trägt
+  seinen ganzen Text —, wohl aber einen Präfix, sobald ein präfixwirksamer Metadatenwert vorliegt: der
+  steht gerade nicht in diesem Text.
+
+Was eine Änderung an einem präfixwirksamen Feld kostet und wie der Nachlauf sie einholt, steht in
+[Metadatenschema, Umgesetzt (#1072)](./metadata-schema.md#umgesetzt-1072).
+
 ### (c) Chunk-Größen entscheidet die Pipeline, nicht ein Admin-Regler
 
 Die Chunk-Größe je Dokumentklasse ist eine Eigenschaft der Pipeline — gemessen, wo Messmaterial

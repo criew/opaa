@@ -761,6 +761,45 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/admin/indexing/context-prefix-rerun:
+    post:
+      operationId: rerunContextPrefixBatch
+      tags: [admin, indexing]
+      summary: >
+        Re-embed one batch of a library's documents under the current Kontextpräfix (system admin
+        only, #1072, metadata-schema.md "Nachlauf im Betrieb")
+      description: >
+        Processes at most batchSize INDEXED documents of libraryId (which must belong to the
+        caller's own organization, otherwise 404) whose stored context-prefix version is missing or
+        below the library's current one - the same version-driven selection the pipeline re-index
+        uses, not a second mechanism. The existing chunks are kept and re-embedded in place under
+        their own ids with the new prefix; the full-text row is rewritten from the same prefixed
+        text. No re-chunking, no model call beyond the embedding, no citation or deep link is lost.
+        Nothing is destroyed before its replacement exists: a document that cannot be advanced keeps
+        its chunks and stays selected. The search stays available throughout, and a document carries
+        either its old or its new prefix, never a mixture. Repeat until done is true; pausing is
+        simply not calling again. Nothing triggers this automatically - saving a schema change moves
+        no bestand.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContextPrefixRerunRequest"
+      responses:
+        "200":
+          description: What this batch did
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContextPrefixRerunResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/admin/search/status:
     get:
       operationId: getSearchStatus
@@ -2344,6 +2383,87 @@ paths:
                 $ref: "#/components/schemas/RemapLibraryMetadataFieldValueResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/change-impact:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: query
+        required: true
+        description: >
+          The field the planned change applies to - a core field key (title, document_type,
+          document_date) or a library field key.
+        schema:
+          type: string
+      - name: change
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/MetadataChangeKind"
+
+    get:
+      operationId: getMetadataChangeImpact
+      tags: [library]
+      summary: >
+        The Folgekosten of a planned schema change before it is saved (#1072,
+        metadata-schema.md "Der Reindex-Preis, ehrlich ausgewiesen"): affected documents and
+        chunks, the resulting number of embedding calls and the expected runtime. Concrete
+        numbers, not a general warning. Requires the management right at the library.
+      responses:
+        "200":
+          description: The Folgekosten of the planned change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataChangeImpactResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/core-context-prefix:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: updateCoreContextPrefix
+      tags: [library]
+      summary: >
+        Switches the Kontextpräfix-Wirkstelle of the two switchable core fields Dokumentart and
+        Datum/Stand for this library (#1072). Deliberately no installation-wide default: the
+        Wirkstelle "Kontextpräfix" is a deliberate decision per field. The Kernfeld Titel is always
+        prefix-effective and therefore not switchable. Saving raises the library's context-prefix
+        version; it moves no bestand - the Nachlauf is started separately on the administration
+        page. Requires the management right at the library.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoreContextPrefixRequest"
+      responses:
+        "200":
+          description: The stored Wirkstellen of the core fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoreContextPrefixResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -6650,8 +6770,10 @@ components:
         contextPrefix:
           type: boolean
           description: >-
-            Whether the field's value belongs into the Kontextpräfix of every chunk. Stored here,
-            effective with #1072.
+            Whether the field's value belongs into the Kontextpräfix of every chunk, which goes
+            into embedding and full-text index alike (#1072). Switching it costs a Nachlauf over
+            the documents that carry a value - see GET
+            /api/v1/libraries/{libraryId}/metadata-fields/change-impact.
         citationPosition:
           type: integer
           nullable: true
@@ -6670,12 +6792,205 @@ components:
 
     LibraryMetadataFieldsResponse:
       type: object
-      required: [items]
+      required: [items, coreContextPrefix, documentsAwaitingContextPrefixRerun]
       properties:
         items:
           type: array
           items:
             $ref: "#/components/schemas/LibraryMetadataFieldResponse"
+        coreContextPrefix:
+          $ref: "#/components/schemas/CoreContextPrefixResponse"
+        documentsAwaitingContextPrefixRerun:
+          type: integer
+          format: int64
+          description: >-
+            Indexed documents of this library whose chunks were embedded under an older
+            context-prefix configuration (#1072) - the "N Dokumente warten auf Neu-Einbetten" hint
+            in the library settings. Saving a schema change never starts the Nachlauf; it runs from
+            the administration page "Suche & Indexierung", started by a system administrator.
+
+    CoreContextPrefixRequest:
+      type: object
+      required: [documentType, documentDate]
+      description: >-
+        Which of the two switchable core fields belong into the Kontextpraefix of this library's
+        chunks. Titel is always prefix-effective and has no switch.
+      properties:
+        documentType:
+          type: boolean
+        documentDate:
+          type: boolean
+
+    CoreContextPrefixResponse:
+      type: object
+      required: [title, documentType, documentDate]
+      description: The Kontextpraefix-Wirkstelle of the three core fields (#1072).
+      properties:
+        title:
+          type: boolean
+          description: >-
+            Always true: the Titel replaces the file-name humanisation the prefix used before, and
+            a prefix without it would name nothing.
+        documentType:
+          type: boolean
+        documentDate:
+          type: boolean
+
+    MetadataChangeKind:
+      type: string
+      description: >-
+        The planned schema change whose Folgekosten are being asked for (#1072,
+        metadata-schema.md, Kostentabelle): CONTEXT_PREFIX_ENABLED / CONTEXT_PREFIX_DISABLED - the
+        Kontextpraefix-Wirkstelle of the field is switched on or off; FIELD_REMOVED - the field is
+        deleted with everything hanging on it; VALUE_REMOVED - a value of the list is removed with
+        a confirmed mapping; VALUE_ADDED - the list is extended, which has no effect on stored
+        values and costs nothing.
+      enum:
+        [
+          CONTEXT_PREFIX_ENABLED,
+          CONTEXT_PREFIX_DISABLED,
+          FIELD_REMOVED,
+          VALUE_REMOVED,
+          VALUE_ADDED,
+        ]
+      example: CONTEXT_PREFIX_ENABLED
+
+    EmbeddingRateSource:
+      type: string
+      description: >-
+        Where the runtime estimate's rate comes from: MEASURED - the mean duration per chunk of the
+        embedding calls this process has actually made; CONFIGURED - the configured
+        opaa.indexing.embedding-rate-estimate, used until enough calls have been measured.
+      enum: [MEASURED, CONFIGURED]
+
+    MetadataChangeImpactResponse:
+      type: object
+      required:
+        [
+          affectedDocuments,
+          affectedChunks,
+          embeddingCalls,
+          estimatedSeconds,
+          reembeddingRequired,
+          rateSource,
+        ]
+      description: >-
+        The Folgekosten of one planned schema change (#1072). Concrete numbers a decision can be
+        made on ("4.812 Chunks neu einzubetten, rund 40 Minuten"), never a general warning.
+      properties:
+        affectedDocuments:
+          type: integer
+          format: int64
+          description: Documents whose stored values the change touches.
+        affectedChunks:
+          type: integer
+          format: int64
+          description: >-
+            Chunks of those documents. 0 when the change is not prefix-effective, because then no
+            chunk changes.
+        embeddingCalls:
+          type: integer
+          format: int64
+          description: >-
+            Embedding calls the Nachlauf will make - one per chunk, so equal to affectedChunks for
+            a prefix-effective change and 0 otherwise.
+        estimatedSeconds:
+          type: integer
+          format: int64
+          description: Expected runtime of the Nachlauf, from embeddingCalls and the rate below.
+        reembeddingRequired:
+          type: boolean
+          description: >-
+            Whether the change makes re-embedding necessary at all. False for a pure filter or
+            Beleg field and for extending a value list - the two rows of the Kostentabelle that
+            cost nothing.
+        rateSource:
+          $ref: "#/components/schemas/EmbeddingRateSource"
+
+    ContextPrefixRerunRequest:
+      type: object
+      required: [libraryId]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+          description: >
+            The library whose documents are to be re-embedded under the current Kontextpraefix. Per
+            library on purpose: starting the run is the explicit, library-wise release the
+            specification demands.
+        batchSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: >
+            The maximum number of documents one call processes. Repeat until done is true; an
+            interrupted run loses at most one batch.
+
+    ContextPrefixRerunResponse:
+      type: object
+      required: [processedDocuments, skippedDocuments, done]
+      properties:
+        processedDocuments:
+          type: integer
+          description: >
+            Documents re-embedded under the current prefix: their chunks were rewritten in place
+            under their own ids, vector and full-text row together, and the document's
+            context-prefix version was recorded.
+        skippedDocuments:
+          type: integer
+          description: >
+            Documents this call could not advance (embedding call failed, chunks vanished).
+            Nothing about them changed - they keep their old chunks and stay pending.
+        done:
+          type: boolean
+          description: >
+            True when this call advanced nothing - the signal to stop repeating it, ignoring
+            skippedDocuments for the same reason MetadataBackfillResponse.done does.
+
+    ContextPrefixRerunStatusResponse:
+      type: object
+      required:
+        [
+          prefixVersion,
+          totalDocuments,
+          currentDocuments,
+          pendingDocuments,
+          lastSkippedDocuments,
+          complete,
+        ]
+      description: >
+        The Kontextpraefix state of one library (#1072, metadata-schema.md "Nachlauf im Betrieb"):
+        the defined, permitted Mischzustand of a library whose prefix is being changed -
+        verarbeitet, ausstehend, fehlgeschlagen. The search stays available over both halves.
+      properties:
+        prefixVersion:
+          type: integer
+          description: >
+            The library's current context-prefix version every document is measured against.
+        totalDocuments:
+          type: integer
+          format: int64
+        currentDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents already embedded under the current prefix.
+        pendingDocuments:
+          type: integer
+          format: int64
+          description: >
+            Indexed documents never embedded with a prefix version or embedded under an older one -
+            including the ones whose own prefix-effective value was corrected by hand, which the
+            correction hands back to the Nachlauf instead of re-embedding on the spot.
+        lastSkippedDocuments:
+          type: integer
+          format: int64
+          description: >
+            Documents the most recent Nachlauf call for this library could not advance - a
+            process-lifetime figure (ADR-0021), 0 before the first call.
+        complete:
+          type: boolean
+          description: True when pendingDocuments is 0.
 
     LibraryMetadataFieldValueRequest:
       type: object
@@ -7679,6 +7994,7 @@ components:
           CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
           INDEXING_PIPELINE_REINDEX_TRIGGERED,
           INDEXING_METADATA_BACKFILL_TRIGGERED,
+          INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED,
           DOCUMENT_METADATA_CHANGED,
           BRANDING_SETTINGS_CHANGED,
           LLM_MODEL_CREATED,
@@ -8483,6 +8799,7 @@ components:
           fullTextIndexedChunks,
           fullTextMissingChunks,
           metadataBackfill,
+          contextPrefixRerun,
         ]
       properties:
         libraryId:
@@ -8542,6 +8859,8 @@ components:
             The same data source the "Volltextpfad inaktiv oder unvollständig" alarm reads.
         metadataBackfill:
           $ref: "#/components/schemas/MetadataBackfillStatusResponse"
+        contextPrefixRerun:
+          $ref: "#/components/schemas/ContextPrefixRerunStatusResponse"
 
     SearchStatusResponse:
       type: object

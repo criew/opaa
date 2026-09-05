@@ -29,6 +29,7 @@ import io.opaa.indexing.AttachmentExtractor;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.EmbeddingRateEstimator;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.VectorChunkStore;
@@ -132,7 +133,8 @@ class LibraryDocumentServiceTest {
             mock(org.springframework.ai.embedding.EmbeddingModel.class),
             mock(org.springframework.ai.embedding.BatchingStrategy.class),
             mock(VectorStoreWriter.class),
-            mock(FullTextChunkStore.class));
+            mock(FullTextChunkStore.class),
+            new EmbeddingRateEstimator(4.0));
     uploadProperties = new UploadProperties(storageDir.toString(), 10L * 1024, null, 0);
     storageQuotaService = mock(LibraryStorageQuotaService.class);
     // Default: plenty of headroom, so existing tests exercising other behaviour never trip the

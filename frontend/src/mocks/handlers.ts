@@ -3,6 +3,11 @@ import { assetRoleLabel } from '../utils/labels'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
 const mockMetadataBackfillRemaining = new Map<string, number>()
+const mockContextPrefixRerunRemaining = new Map<string, number>()
+const mockCoreContextPrefix: Record<
+  string,
+  { title: boolean; documentType: boolean; documentDate: boolean }
+> = {}
 import {
   mockHealthResponse,
   mockIndexingIdle,
@@ -1153,6 +1158,25 @@ export const handlers = [
     })
   }),
 
+  // Same countdown as the backfill above, so the page's batch loop terminates in mock mode.
+  http.post('/api/v1/admin/indexing/context-prefix-rerun', async ({ request }) => {
+    const body = (await request.json()) as { libraryId?: string; batchSize?: number }
+    const library = mockSearchStatus.libraries.find((l) => l.libraryId === body.libraryId)
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const remaining =
+      mockContextPrefixRerunRemaining.get(library.libraryId) ??
+      library.contextPrefixRerun.pendingDocuments
+    const processed = Math.min(remaining, 1)
+    mockContextPrefixRerunRemaining.set(library.libraryId, remaining - processed)
+    return HttpResponse.json({
+      processedDocuments: processed,
+      skippedDocuments: 0,
+      done: processed === 0,
+    })
+  }),
+
   http.post('/api/v1/admin/search/diagnosis', async ({ request }) => {
     const body = (await request.json()) as {
       question?: string
@@ -1868,8 +1892,56 @@ export const handlers = [
     if (!mockLibraryDetails[libraryId]) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
-    return HttpResponse.json({ items: mockLibraryMetadataFields[libraryId] ?? [] })
+    return HttpResponse.json({
+      items: mockLibraryMetadataFields[libraryId] ?? [],
+      coreContextPrefix: mockCoreContextPrefix[libraryId] ?? {
+        title: true,
+        documentType: false,
+        documentDate: false,
+      },
+      documentsAwaitingContextPrefixRerun: 0,
+    })
   }),
+
+  http.get('/api/v1/libraries/:libraryId/metadata-fields/change-impact', ({ request }) => {
+    const change = new URL(request.url).searchParams.get('change')
+    if (change === 'VALUE_ADDED') {
+      return HttpResponse.json({
+        affectedDocuments: 0,
+        affectedChunks: 0,
+        embeddingCalls: 0,
+        estimatedSeconds: 0,
+        reembeddingRequired: false,
+        rateSource: 'CONFIGURED',
+      })
+    }
+    return HttpResponse.json({
+      affectedDocuments: 12,
+      affectedChunks: 4812,
+      embeddingCalls: 4812,
+      estimatedSeconds: 2400,
+      reembeddingRequired: true,
+      rateSource: 'MEASURED',
+    })
+  }),
+
+  http.put(
+    '/api/v1/libraries/:libraryId/metadata-fields/core-context-prefix',
+    async ({ params, request }) => {
+      const libraryId = String(params.libraryId)
+      if (!canManageMockLibrary(libraryId)) {
+        return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+      }
+      const body = (await request.json()) as { documentType?: boolean; documentDate?: boolean }
+      const next = {
+        title: true,
+        documentType: body.documentType === true,
+        documentDate: body.documentDate === true,
+      }
+      mockCoreContextPrefix[libraryId] = next
+      return HttpResponse.json(next)
+    },
+  ),
 
   http.post('/api/v1/libraries/:libraryId/metadata-fields', async ({ params, request }) => {
     const libraryId = String(params.libraryId)

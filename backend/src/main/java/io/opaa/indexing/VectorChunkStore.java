@@ -35,18 +35,21 @@ public class VectorChunkStore {
   private final BatchingStrategy batchingStrategy;
   private final VectorStoreWriter vectorStoreWriter;
   private final FullTextChunkStore fullTextChunkStore;
+  private final EmbeddingRateEstimator embeddingRateEstimator;
 
   public VectorChunkStore(
       VectorStore vectorStore,
       EmbeddingModel embeddingModel,
       BatchingStrategy batchingStrategy,
       VectorStoreWriter vectorStoreWriter,
-      FullTextChunkStore fullTextChunkStore) {
+      FullTextChunkStore fullTextChunkStore,
+      EmbeddingRateEstimator embeddingRateEstimator) {
     this.vectorStore = vectorStore;
     this.embeddingModel = embeddingModel;
     this.batchingStrategy = batchingStrategy;
     this.vectorStoreWriter = vectorStoreWriter;
     this.fullTextChunkStore = fullTextChunkStore;
+    this.embeddingRateEstimator = embeddingRateEstimator;
   }
 
   /**
@@ -60,8 +63,12 @@ public class VectorChunkStore {
     if (chunks.isEmpty()) {
       return;
     }
+    long startedAt = System.nanoTime();
     List<float[]> embeddings =
         embeddingModel.embed(chunks, EmbeddingOptions.builder().build(), batchingStrategy);
+    // Measured around the embedding round trip only, never the write: the Folgekosten estimate
+    // names the cost of embedding calls, and a slow disk must not make a reindex look expensive.
+    embeddingRateEstimator.record(chunks.size(), System.nanoTime() - startedAt);
     vectorStoreWriter.writeEmbeddedChunks(chunks, embeddings);
   }
 

@@ -146,6 +146,15 @@ public class Document {
   @Column(name = "metadata_extraction_version", insertable = false, updatable = false)
   private Integer metadataExtractionVersion;
 
+  /**
+   * The library context-prefix version this document's chunks were last embedded under (#1072), or
+   * {@code null} when none ever was - the selection key of the Kontextpraefix-Nachlauf. Written
+   * only through {@link DocumentRepository#updateContextPrefixVersion} and cleared by a manual
+   * correction of a prefix-effective value.
+   */
+  @Column(name = "context_prefix_version", insertable = false, updatable = false)
+  private Integer contextPrefixVersion;
+
   protected Document() {}
 
   public Document(String fileName, String filePath, String contentType, Long fileSize) {
@@ -338,6 +347,10 @@ public class Document {
 
   public Integer getMetadataExtractionVersion() {
     return metadataExtractionVersion;
+  }
+
+  public Integer getContextPrefixVersion() {
+    return contextPrefixVersion;
   }
 
   /**

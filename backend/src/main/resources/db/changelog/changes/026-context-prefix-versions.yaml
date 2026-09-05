@@ -1,0 +1,40 @@
+databaseChangeLog:
+  - changeSet:
+      id: 026-context-prefix-versions
+      author: opaa
+      comment: >-
+        #1072 (metadata-schema.md, Wirkstelle 2): the version pair that makes the Kontextpraefix
+        Nachlauf selective without a second mechanism. knowledge_libraries.context_prefix_version
+        rises with every change to the library's prefix-effective configuration;
+        documents.context_prefix_version records the version a document's chunks were last embedded
+        under. NULL means "never embedded with a prefix version, or handed back by a manual
+        correction of a prefix-effective value" and therefore pending. The two boolean columns are
+        the switchable Kontextpraefix-Wirkstelle of the core fields Dokumentart and Datum/Stand -
+        false by default, because the Wirkstelle is a deliberate decision per field and never a
+        default for all of them; the Kernfeld Titel is always prefix-effective and has no column.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries
+                ADD COLUMN context_prefix_version integer NOT NULL DEFAULT 1,
+                ADD COLUMN core_context_prefix_document_type boolean NOT NULL DEFAULT false,
+                ADD COLUMN core_context_prefix_document_date boolean NOT NULL DEFAULT false,
+                ADD CONSTRAINT chk_knowledge_libraries_context_prefix_version
+                  CHECK (context_prefix_version > 0);
+              ALTER TABLE public.documents
+                ADD COLUMN context_prefix_version integer;
+              CREATE INDEX idx_documents_library_context_prefix_version
+                ON public.documents (library_id, context_prefix_version);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP INDEX IF EXISTS public.idx_documents_library_context_prefix_version;
+              ALTER TABLE public.documents
+                DROP COLUMN IF EXISTS context_prefix_version;
+              ALTER TABLE public.knowledge_libraries
+                DROP CONSTRAINT IF EXISTS chk_knowledge_libraries_context_prefix_version,
+                DROP COLUMN IF EXISTS core_context_prefix_document_date,
+                DROP COLUMN IF EXISTS core_context_prefix_document_type,
+                DROP COLUMN IF EXISTS context_prefix_version;

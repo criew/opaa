@@ -110,6 +110,12 @@ public enum AuditEventType {
    */
   INDEXING_METADATA_BACKFILL_TRIGGERED,
   /**
+   * A Nachlauf re-embedding a library's chunks under the current Kontextpraefix was triggered
+   * (docs/features/metadata-schema.md, "Nachlauf im Betrieb"). Recorded per triggering call, not
+   * per document, mirroring {@link #INDEXING_METADATA_BACKFILL_TRIGGERED}.
+   */
+  INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED,
+  /**
    * A person set, changed or removed a core metadata value of a document by hand
    * (docs/features/metadata-schema.md, "Manuelle Setzungen sind protokollpflichtig"). One entry per
    * document and field, carrying the old and the new value - also for every document of a

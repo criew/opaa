@@ -13,6 +13,8 @@ const {
   mockRemap,
   mockUpdate,
   mockRelabel,
+  mockImpact,
+  mockUpdateCorePrefix,
 } = vi.hoisted(() => ({
   mockList: vi.fn(),
   mockCreate: vi.fn(),
@@ -22,6 +24,8 @@ const {
   mockRemap: vi.fn(),
   mockUpdate: vi.fn(),
   mockRelabel: vi.fn(),
+  mockImpact: vi.fn(),
+  mockUpdateCorePrefix: vi.fn(),
 }))
 
 vi.mock('../../services/api', async () => {
@@ -36,6 +40,8 @@ vi.mock('../../services/api', async () => {
     remapLibraryMetadataFieldValue: mockRemap,
     updateLibraryMetadataField: mockUpdate,
     relabelLibraryMetadataFieldValue: mockRelabel,
+    getMetadataChangeImpact: mockImpact,
+    updateCoreContextPrefix: mockUpdateCorePrefix,
   }
 })
 
@@ -58,7 +64,24 @@ const fassung = {
 describe('LibraryMetadataFieldsSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockList.mockResolvedValue({ items: [fassung] })
+    mockList.mockResolvedValue({
+      items: [fassung],
+      coreContextPrefix: { title: true, documentType: false, documentDate: false },
+      documentsAwaitingContextPrefixRerun: 0,
+    })
+    mockImpact.mockResolvedValue({
+      affectedDocuments: 12,
+      affectedChunks: 4812,
+      embeddingCalls: 4812,
+      estimatedSeconds: 2400,
+      reembeddingRequired: true,
+      rateSource: 'MEASURED',
+    })
+    mockUpdateCorePrefix.mockResolvedValue({
+      title: true,
+      documentType: true,
+      documentDate: false,
+    })
     mockFieldUsage.mockResolvedValue({ documentCount: 4 })
     mockValueUsage.mockResolvedValue({ documentCount: 3 })
     mockRemap.mockResolvedValue({
@@ -114,6 +137,82 @@ describe('LibraryMetadataFieldsSection', () => {
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Endgültig löschen' }))
     expect(mockDelete).toHaveBeenCalledWith('library-team', 'fassung')
+  })
+
+  it('names the Folgekosten of a prefix-effective change before it is saved', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
+
+    await user.click(await screen.findByRole('button', { name: 'Feld Fassung bearbeiten' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Wirkt im Kontextpräfix' }))
+
+    // Concrete numbers, not a general warning - the whole point of the Kostenanzeige.
+    expect(
+      await within(dialog).findByText(/4812 Abschnitte in 12 Dokument\(en\) neu/),
+    ).toBeInTheDocument()
+    expect(within(dialog).getByText(/rund 40 Minuten/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/Speichern setzt nichts in Bewegung/)).toBeInTheDocument()
+    expect(mockImpact).toHaveBeenCalledWith(
+      'library-team',
+      'fassung',
+      'CONTEXT_PREFIX_ENABLED',
+      undefined,
+    )
+  })
+
+  it('switches a core field into the Kontextpräfix only after its Folgekosten were shown', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
+
+    await user.click(await screen.findByRole('switch', { name: 'Dokumentart' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(await within(dialog).findByText(/4812 Abschnitte/)).toBeInTheDocument()
+    expect(mockUpdateCorePrefix).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    expect(mockUpdateCorePrefix).toHaveBeenCalledWith('library-team', {
+      documentType: true,
+      documentDate: false,
+    })
+  })
+
+  it('names a change without Folgekosten as free instead of warning about it', async () => {
+    mockImpact.mockResolvedValue({
+      affectedDocuments: 0,
+      affectedChunks: 0,
+      embeddingCalls: 0,
+      estimatedSeconds: 0,
+      reembeddingRequired: false,
+      rateSource: 'CONFIGURED',
+    })
+    const user = userEvent.setup()
+    renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
+
+    await user.click(await screen.findByRole('button', { name: 'Feld Fassung löschen' }))
+    const dialog = await screen.findByRole('dialog')
+
+    expect(
+      await within(dialog).findByText('Diese Änderung hat keine Folgekosten.'),
+    ).toBeInTheDocument()
+  })
+
+  it('points a Fachperson at the administration page when documents wait for re-embedding', async () => {
+    mockList.mockResolvedValue({
+      items: [fassung],
+      coreContextPrefix: { title: true, documentType: true, documentDate: false },
+      documentsAwaitingContextPrefixRerun: 7,
+    })
+    renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />, {
+      withRouter: true,
+    })
+
+    expect(await screen.findByText(/7 Dokument\(e\) warten auf Neu-Einbetten/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Suche & Indexierung/ })).toHaveAttribute(
+      'href',
+      '/admin/search',
+    )
   })
 
   it('offers no schema change without the management right', async () => {

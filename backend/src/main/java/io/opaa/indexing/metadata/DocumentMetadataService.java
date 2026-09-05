@@ -8,6 +8,8 @@ import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.KnowledgeLibraryRepository;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -50,6 +52,8 @@ public class DocumentMetadataService {
   private final DocumentPipelineRegistry pipelineRegistry;
   private final VectorChunkStore vectorChunkStore;
   private final LibraryMetadataFieldRepository libraryFieldRepository;
+  private final LibraryMetadataFieldValueRepository libraryValueRepository;
+  private final KnowledgeLibraryRepository libraryRepository;
   private final TransactionTemplate transactionTemplate;
 
   public DocumentMetadataService(
@@ -59,6 +63,8 @@ public class DocumentMetadataService {
       DocumentPipelineRegistry pipelineRegistry,
       VectorChunkStore vectorChunkStore,
       LibraryMetadataFieldRepository libraryFieldRepository,
+      LibraryMetadataFieldValueRepository libraryValueRepository,
+      KnowledgeLibraryRepository libraryRepository,
       PlatformTransactionManager transactionManager) {
     this.valueRepository = valueRepository;
     this.vocabularyRepository = vocabularyRepository;
@@ -66,6 +72,8 @@ public class DocumentMetadataService {
     this.pipelineRegistry = pipelineRegistry;
     this.vectorChunkStore = vectorChunkStore;
     this.libraryFieldRepository = libraryFieldRepository;
+    this.libraryValueRepository = libraryValueRepository;
+    this.libraryRepository = libraryRepository;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
@@ -110,11 +118,25 @@ public class DocumentMetadataService {
 
   private DocumentChunkMetadata chunkMetadataOf(
       Document document, List<DocumentMetadataValue> rows) {
-    Map<String, Object> values =
-        new LinkedHashMap<>(toCoreMetadata(rows, DocumentTypeVocabulary.empty()).chunkMetadata());
+    CoreMetadata core = toCoreMetadata(rows, vocabularyRepository.snapshot());
+    Map<String, Object> values = new LinkedHashMap<>(core.chunkMetadata());
     Set<String> managed = new LinkedHashSet<>(CoreMetadataChunkKeys.ALL);
-    if (document.getLibraryId() == null) {
-      return new DocumentChunkMetadata(values, managed);
+    KnowledgeLibrary library =
+        document.getLibraryId() == null
+            ? null
+            : libraryRepository.findById(document.getLibraryId()).orElse(null);
+    List<String> prefixValues = new ArrayList<>();
+    if (library != null && library.isCoreContextPrefixDocumentType()) {
+      addIfSet(prefixValues, core.documentTypeLabel());
+    }
+    if (library != null
+        && library.isCoreContextPrefixDocumentDate()
+        && core.documentDate() != null) {
+      prefixValues.add(
+          MetadataValueDisplay.displayDate(core.documentDate(), core.documentDatePrecision()));
+    }
+    if (library == null) {
+      return new DocumentChunkMetadata(values, managed, core.title(), prefixValues, 1);
     }
     Map<String, DocumentMetadataValue> byKey = new HashMap<>();
     for (DocumentMetadataValue row : rows) {
@@ -123,6 +145,12 @@ public class DocumentMetadataService {
     for (LibraryMetadataField field :
         libraryFieldRepository.findByLibraryIdOrderBySortOrderAscFieldKeyAsc(
             document.getLibraryId())) {
+      DocumentMetadataValue row = byKey.get(field.documentFieldKey());
+      if (field.isContextPrefixEnabled()
+          && row != null
+          && row.getState() == MetadataValueState.SET) {
+        addIfSet(prefixValues, libraryFieldDisplayValue(row));
+      }
       // Owned regardless of the field's current Wirkstelle: the managed set is what a rewrite may
       // remove, so a field that stopped filtering loses its keys on the next rewrite instead of
       // leaving a stale "has a value" marker behind that a later filter would exclude the document
@@ -130,7 +158,6 @@ public class DocumentMetadataService {
       managed.add(field.chunkKey());
       managed.add(LibraryMetadataFieldKeys.precisionChunkKey(field.getFieldKey()));
       managed.add(LibraryMetadataFieldKeys.presenceChunkKey(field.getFieldKey()));
-      DocumentMetadataValue row = byKey.get(field.documentFieldKey());
       if (!field.isFilterEnabled() || row == null || row.getState() != MetadataValueState.SET) {
         continue;
       }
@@ -148,7 +175,32 @@ public class DocumentMetadataService {
           LibraryMetadataFieldKeys.presenceChunkKey(field.getFieldKey()),
           LibraryMetadataFieldKeys.PRESENCE_VALUE);
     }
-    return new DocumentChunkMetadata(values, managed);
+    return new DocumentChunkMetadata(
+        values, managed, core.title(), prefixValues, library.getContextPrefixVersion());
+  }
+
+  /**
+   * A library field's value as it appears in the Kontextpraefix: the label of a SELECT value - the
+   * chunk metadata carries the code, but the prefix is text a model and a person read - the German
+   * display form of a DATE, the identifier itself for PATTERN.
+   */
+  private String libraryFieldDisplayValue(DocumentMetadataValue row) {
+    if (row.getDateValue() != null) {
+      return MetadataValueDisplay.displayDate(row.getDateValue(), row.getDatePrecision());
+    }
+    if (row.getLibraryValueId() != null) {
+      return libraryValueRepository
+          .findById(row.getLibraryValueId())
+          .map(LibraryMetadataFieldValue::getLabel)
+          .orElse(row.getTextValue());
+    }
+    return row.getTextValue();
+  }
+
+  private static void addIfSet(List<String> target, String value) {
+    if (value != null && !value.isBlank()) {
+      target.add(value);
+    }
   }
 
   /**
@@ -291,6 +343,7 @@ public class DocumentMetadataService {
           input.applyTo(target);
           valueRepository.save(target);
           propagateToChunks(documentId, field);
+          markContextPrefixStale(documentId, field);
           return new ManualValueChange(before, MetadataValueSnapshot.of(target), true);
         });
   }
@@ -318,6 +371,7 @@ public class DocumentMetadataService {
             documentRepository.clearMetadataExtractionVersion(documentId);
           }
           propagateToChunks(documentId, field);
+          markContextPrefixStale(documentId, field);
           return new ManualValueChange(before, null, true);
         });
   }
@@ -340,6 +394,43 @@ public class DocumentMetadataService {
         chunkMetadataOf(document, valueRepository.findByDocumentId(documentId));
     vectorChunkStore.updateDocumentMetadata(
         documentId, chunkMetadata.values(), chunkMetadata.managedKeys());
+  }
+
+  /**
+   * Hands {@code documentId} to the Kontextpraefix-Nachlauf when {@code field} is prefix-effective
+   * for its library (metadata-schema.md, "Nachlauf im Betrieb"): a corrected value changes the
+   * prefix of every chunk, and re-embedding is an explicit release, never a side effect of a
+   * correction. A field that only filters or only appears in the Beleg leaves the version alone.
+   */
+  private void markContextPrefixStale(UUID documentId, MetadataFieldRef field) {
+    Document document = documentRepository.findById(documentId).orElse(null);
+    if (document == null || document.getLibraryId() == null) {
+      return;
+    }
+    if (!isContextPrefixEffective(document.getLibraryId(), field)) {
+      return;
+    }
+    documentRepository.clearContextPrefixVersion(documentId);
+  }
+
+  /** Whether {@code field} contributes to the Kontextpraefix of {@code libraryId}'s chunks. */
+  private boolean isContextPrefixEffective(UUID libraryId, MetadataFieldRef field) {
+    if (field.isLibraryField()) {
+      return libraryFieldRepository
+          .findById(field.libraryFieldId())
+          .map(LibraryMetadataField::isContextPrefixEnabled)
+          .orElse(false);
+    }
+    if (CoreMetadataField.TITLE.key().equals(field.key())) {
+      return true;
+    }
+    KnowledgeLibrary library = libraryRepository.findById(libraryId).orElse(null);
+    if (library == null) {
+      return false;
+    }
+    return CoreMetadataField.DOCUMENT_TYPE.key().equals(field.key())
+        ? library.isCoreContextPrefixDocumentType()
+        : library.isCoreContextPrefixDocumentDate();
   }
 
   /** Every stored row of {@code documentId} as detached snapshots, in no particular order. */

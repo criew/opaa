@@ -9,6 +9,7 @@ import io.opaa.api.types.MetadataOrigin;
 import io.opaa.api.types.SystemRole;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.EmbeddingRateEstimator;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.SourceDocumentContext;
@@ -67,6 +68,7 @@ class CoreMetadataIndexingIntegrationTest {
   @Autowired private FileProcessingService fileProcessingService;
   @Autowired private DocumentMetadataService documentMetadataService;
   @Autowired private LibraryMetadataFieldRepository libraryFieldRepository;
+  @Autowired private LibraryMetadataFieldValueRepository libraryValueRepository;
   @Autowired private DocumentMetadataValueRepository valueRepository;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private DocumentTypeVocabularyRepository vocabularyRepository;
@@ -532,7 +534,7 @@ class CoreMetadataIndexingIntegrationTest {
             vocabularyRepository,
             documentRepository,
             pipelineRegistry,
-            new VectorChunkStore(null, null, null, null, null) {
+            new VectorChunkStore(null, null, null, null, null, new EmbeddingRateEstimator(4.0)) {
               @Override
               public int updateDocumentMetadata(
                   UUID id, Map<String, Object> values, Set<String> keysToClear) {
@@ -540,6 +542,8 @@ class CoreMetadataIndexingIntegrationTest {
               }
             },
             libraryFieldRepository,
+            libraryValueRepository,
+            libraryRepository,
             transactionManager);
 
     assertThatThrownBy(() -> withFailingChunkUpdate.reextractFromFile(renamed, file))

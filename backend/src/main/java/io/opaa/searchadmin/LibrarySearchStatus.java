@@ -1,5 +1,6 @@
 package io.opaa.searchadmin;
 
+import io.opaa.indexing.ContextPrefixRerunProgress;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import java.time.Instant;
 import java.util.UUID;
@@ -18,6 +19,8 @@ import java.util.UUID;
  *     a permanent operational metric, not a one-off cleanup number (#1055).
  * @param metadataBackfill the core-metadata extraction state and Füllgrad per field (#1067), read
  *     from the same selection the backfill itself drains.
+ * @param contextPrefixRerun the Kontextpräfix state (#1072) - the defined Mischzustand of a library
+ *     whose prefix is being changed, read from the same selection its Nachlauf drains.
  */
 public record LibrarySearchStatus(
     UUID libraryId,
@@ -32,7 +35,8 @@ public record LibrarySearchStatus(
     Instant lastIndexedAt,
     long fullTextIndexedChunks,
     long fullTextMissingChunks,
-    MetadataBackfillProgress metadataBackfill) {
+    MetadataBackfillProgress metadataBackfill,
+    ContextPrefixRerunProgress contextPrefixRerun) {
 
   /** Whether an index holds what it is supposed to hold. */
   public enum IndexCondition {

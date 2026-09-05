@@ -1,5 +1,7 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.ContextPrefixRerunRequest;
+import io.opaa.api.dto.ContextPrefixRerunResponse;
 import io.opaa.api.dto.LowChunkDocumentPageResponse;
 import io.opaa.api.dto.MetadataBackfillRequest;
 import io.opaa.api.dto.MetadataBackfillResponse;
@@ -13,6 +15,8 @@ import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.indexing.ContextPrefixRerunResult;
+import io.opaa.indexing.ContextPrefixRerunService;
 import io.opaa.indexing.LowChunkDocumentAuditService;
 import io.opaa.indexing.PipelineReindexResult;
 import io.opaa.indexing.PipelineReindexService;
@@ -52,6 +56,7 @@ public class IndexingAdminController {
   private final LowChunkDocumentAuditService lowChunkDocumentAuditService;
   private final PipelineReindexService pipelineReindexService;
   private final MetadataBackfillService metadataBackfillService;
+  private final ContextPrefixRerunService contextPrefixRerunService;
   private final DocumentPipelineRegistry pipelineRegistry;
   private final AuditEventRecorder auditEventRecorder;
 
@@ -59,11 +64,13 @@ public class IndexingAdminController {
       LowChunkDocumentAuditService lowChunkDocumentAuditService,
       PipelineReindexService pipelineReindexService,
       MetadataBackfillService metadataBackfillService,
+      ContextPrefixRerunService contextPrefixRerunService,
       DocumentPipelineRegistry pipelineRegistry,
       AuditEventRecorder auditEventRecorder) {
     this.lowChunkDocumentAuditService = lowChunkDocumentAuditService;
     this.pipelineReindexService = pipelineReindexService;
     this.metadataBackfillService = metadataBackfillService;
+    this.contextPrefixRerunService = contextPrefixRerunService;
     this.pipelineRegistry = pipelineRegistry;
     this.auditEventRecorder = auditEventRecorder;
   }
@@ -199,6 +206,48 @@ public class IndexingAdminController {
         metadataBackfillService.backfillBatch(caller.organizationId(), libraryId, batchSize);
     recordBackfillAudit(caller, libraryId, result);
     return MetadataBackfillResponseMapper.toBackfillResponse(result);
+  }
+
+  /**
+   * One batch of the Kontextpräfix-Nachlauf (#1072). The library is the explicit, library-wise
+   * release the specification demands; saving a schema change never starts it. Pausing is not
+   * calling again; the next call resumes at the next unprocessed document.
+   */
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PostMapping("/context-prefix-rerun")
+  public ContextPrefixRerunResponse rerunContextPrefixBatch(
+      @RequestBody ContextPrefixRerunRequest request, @Caller CurrentUser caller) {
+    UUID libraryId = request.getLibraryId();
+    if (libraryId == null) {
+      throw new IllegalArgumentException("libraryId ist erforderlich");
+    }
+    int batchSize =
+        request.getBatchSize() == null ? DEFAULT_REINDEX_BATCH_SIZE : request.getBatchSize();
+    if (batchSize < 1 || batchSize > MAX_REINDEX_BATCH_SIZE) {
+      throw new IllegalArgumentException(
+          "batchSize muss zwischen 1 und " + MAX_REINDEX_BATCH_SIZE + " liegen, war " + batchSize);
+    }
+    ContextPrefixRerunResult result =
+        contextPrefixRerunService.rerunBatch(caller.organizationId(), libraryId, batchSize);
+    recordContextPrefixRerunAudit(caller, libraryId, result);
+    return MetadataBackfillResponseMapper.toRerunResponse(result);
+  }
+
+  /** One event per triggering call, mirroring {@link #recordBackfillAudit}. */
+  private void recordContextPrefixRerunAudit(
+      CurrentUser caller, UUID libraryId, ContextPrefixRerunResult result) {
+    auditEventRecorder.recordUserAction(
+        AuditEvent.builder()
+            .organizationId(caller.organizationId())
+            .actor(caller.id())
+            .type(AuditEventType.INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED)
+            .object(AuditObjectType.KNOWLEDGE_LIBRARY, libraryId, "Bibliothek " + libraryId)
+            .after(
+                Map.of(
+                    "processedDocuments", result.processedDocuments(),
+                    "skippedDocuments", result.skippedDocuments()))
+            .outcome(AuditOutcome.SUCCESS)
+            .build());
   }
 
   /**

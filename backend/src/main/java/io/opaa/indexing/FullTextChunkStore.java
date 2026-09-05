@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.ai.document.MetadataMode;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
@@ -44,7 +45,7 @@ public class FullTextChunkStore {
    * brought up to date only by {@link PipelineReindexService#reindexBatch}, never by a background
    * job. Public because the query path must restrict itself to rows built under this version.
    */
-  public static final short CURRENT_TSV_VERSION = 4;
+  public static final short CURRENT_TSV_VERSION = 5;
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -58,6 +59,13 @@ public class FullTextChunkStore {
    * {@link FullTextIdentifiers}' undecomposed lexemes at weight {@link #IDENTIFIER_LEXEME_WEIGHT}.
    * Built with {@code to_tsvector}, never the positionless {@code array_to_tsvector} that would
    * make {@code setweight} a no-op; {@code ON CONFLICT DO UPDATE} brings an older row up to date.
+   *
+   * <p>Indexes the chunk's {@code EMBED} form, not its raw text: the Kontextpraefix goes into
+   * embedding <b>and</b> full-text index (metadata-schema.md, Wirkstelle 2), and reading it off the
+   * same formatter the embedding uses is what keeps the two from drifting apart. Every caller must
+   * therefore have set a {@link org.springframework.ai.document.ContentFormatter} - both do, via
+   * {@code FileProcessingService#storeChunks} and {@code ContextPrefixRerunService}; the stored
+   * chunk text itself is untouched, so a Beleg still quotes the original wording.
    */
   void indexChunks(List<org.springframework.ai.document.Document> chunks) {
     if (chunks.isEmpty()) {
@@ -84,9 +92,10 @@ public class FullTextChunkStore {
               3,
               UUID.fromString(
                   (String) chunk.getMetadata().get(VectorChunkStore.LIBRARY_ID_METADATA_KEY)));
+          String indexedText = chunk.getFormattedContent(MetadataMode.EMBED);
           ps.setString(4, TEXT_SEARCH_CONFIGURATION);
-          ps.setString(5, chunk.getText());
-          ps.setString(6, String.join(" ", FullTextIdentifiers.extract(chunk.getText())));
+          ps.setString(5, indexedText);
+          ps.setString(6, String.join(" ", FullTextIdentifiers.extract(indexedText)));
           ps.setShort(7, CURRENT_TSV_VERSION);
         });
   }

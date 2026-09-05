@@ -55,13 +55,14 @@ public class FileProcessingService {
       (document, mode) -> document.getText();
 
   /**
-   * The {@code EMBED}-only formatter for a document that split into 2 or more chunks: the title in
-   * brackets, a blank line, then the chunk text (ingestion-pipelines.md, Querschnittsregel (b)).
-   * Ignores every metadata key rather than excluding a known list, so a key added later cannot
-   * re-enter the embedding input. Stored chunk text and citations are unaffected.
+   * The {@code EMBED}-only formatter carrying one chunk's Kontextpraefix (ingestion-pipelines.md,
+   * Querschnittsregel (b); metadata-schema.md, Wirkstelle 2): the prefix in brackets, a blank line,
+   * then the chunk text. Ignores every metadata key rather than excluding a known list, so a key
+   * added later cannot re-enter the embedding input. Stored chunk text and citations are unaffected
+   * - the quoted excerpt in a Beleg stays the original wording.
    */
-  private static ContentFormatter chunkEmbedFormatterWithPrefix(String title) {
-    return (document, mode) -> "[" + title + "]\n\n" + document.getText();
+  private static ContentFormatter chunkEmbedFormatterWithPrefix(String prefix) {
+    return (document, mode) -> ChunkContextPrefix.format(prefix, document.getText());
   }
 
   private final DocumentPipelineRegistry pipelineRegistry;
@@ -1329,10 +1330,15 @@ public class FileProcessingService {
       Optional<String> routingExtension,
       DocumentChunkMetadata chunkMetadata) {
     boolean documentWasSplit = chunks.size() >= 2;
-    ContentFormatter embedFormatter =
-        documentWasSplit && contextTitle != null
-            ? chunkEmbedFormatterWithPrefix(contextTitle)
-            : CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX;
+    // The Kernfeld Titel replaces the file-name humanisation the prefix used before; the caller's
+    // own candidate stays the fallback and still decides whether this document type gets a prefix
+    // at all - an RSS entry without a headline never does.
+    String prefixTitle =
+        contextTitle == null ? null : effectiveContextTitle(chunkMetadata, contextTitle);
+    // A single-chunk document carries its whole text and needs no title repeated in front of it -
+    // but a prefix-effective metadata value is not in that text, so it earns a prefix regardless.
+    boolean prefixWanted =
+        prefixTitle != null && (documentWasSplit || !chunkMetadata.contextPrefixValues().isEmpty());
     Set<String> passthroughKeys = pipelineRegistry.allPassthroughMetadataKeys();
 
     List<org.springframework.ai.document.Document> enriched =
@@ -1377,12 +1383,48 @@ public class FileProcessingService {
                   }
                   org.springframework.ai.document.Document enrichedChunk =
                       new org.springframework.ai.document.Document(chunk.getText(), metadata);
-                  enrichedChunk.setContentFormatter(embedFormatter);
+                  enrichedChunk.setContentFormatter(
+                      contextPrefixFormatter(prefixWanted, prefixTitle, chunkMetadata, metadata));
                   return enrichedChunk;
                 })
             .toList();
 
     addToVectorStore(enriched);
+    // Stamped only after the chunks exist: the version says "these chunks were embedded under this
+    // prefix configuration", which is exactly what the Nachlauf selects against.
+    documentRepository.updateContextPrefixVersion(
+        document.getId(), chunkMetadata.contextPrefixVersion());
+  }
+
+  /** The Kernfeld Titel if the document has one, otherwise the caller's own candidate. */
+  private static String effectiveContextTitle(
+      DocumentChunkMetadata chunkMetadata, String fallback) {
+    String coreTitle = chunkMetadata.contextTitle();
+    return coreTitle != null && !coreTitle.isBlank() ? coreTitle : fallback;
+  }
+
+  /**
+   * The {@code EMBED} formatter of one chunk: its Kontextpraefix built from the title, the
+   * document's prefix-effective values and the chunk's own Strukturkontext, or the no-prefix
+   * formatter when this document gets none.
+   */
+  private static ContentFormatter contextPrefixFormatter(
+      boolean prefixWanted,
+      String prefixTitle,
+      DocumentChunkMetadata chunkMetadata,
+      Map<String, Object> chunkMetadataValues) {
+    if (!prefixWanted) {
+      return CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX;
+    }
+    String prefix =
+        ChunkContextPrefix.build(
+            prefixTitle,
+            chunkMetadata.contextPrefixValues(),
+            ChunkContextPrefix.structureContextFrom(
+                chunkMetadataValues.get(ChunkingService.LOCATION_METADATA_KEY)));
+    return prefix == null
+        ? CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX
+        : chunkEmbedFormatterWithPrefix(prefix);
   }
 
   /**

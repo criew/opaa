@@ -209,6 +209,27 @@ public class KnowledgeLibrary {
   @Column(name = "diagnostics_locked", nullable = false)
   private boolean diagnosticsLocked = true;
 
+  /**
+   * Rises with every change to this library's prefix-effective metadata configuration (#1072,
+   * metadata-schema.md, Wirkstelle 2). A document whose {@code context_prefix_version} is below
+   * this one carries chunks embedded under an outdated Kontextpraefix and is what the Nachlauf
+   * selects - the same version-driven mechanism the pipeline re-index uses, not a second one.
+   */
+  @Column(name = "context_prefix_version", nullable = false)
+  private int contextPrefixVersion = 1;
+
+  /**
+   * Whether the Kernfeld Dokumentart belongs into this library's Kontextpraefix. Off by default:
+   * the Wirkstelle is a deliberate decision per field, never a default for all of them. The
+   * Kernfeld Titel is always prefix-effective and therefore has no flag.
+   */
+  @Column(name = "core_context_prefix_document_type", nullable = false)
+  private boolean coreContextPrefixDocumentType;
+
+  /** Whether the Kernfeld Datum/Stand belongs into this library's Kontextpraefix; see above. */
+  @Column(name = "core_context_prefix_document_date", nullable = false)
+  private boolean coreContextPrefixDocumentDate;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -560,6 +581,41 @@ public class KnowledgeLibrary {
 
   public String getScheduleCron() {
     return scheduleCron;
+  }
+
+  public int getContextPrefixVersion() {
+    return contextPrefixVersion;
+  }
+
+  public boolean isCoreContextPrefixDocumentType() {
+    return coreContextPrefixDocumentType;
+  }
+
+  public boolean isCoreContextPrefixDocumentDate() {
+    return coreContextPrefixDocumentDate;
+  }
+
+  /**
+   * Applies the switchable core-field Wirkstellen and raises {@link #getContextPrefixVersion()} if
+   * either actually changed - the version rises exactly when the prefix a chunk would get changes.
+   *
+   * @return whether anything changed
+   */
+  public boolean applyCoreContextPrefix(boolean documentType, boolean documentDate) {
+    if (coreContextPrefixDocumentType == documentType
+        && coreContextPrefixDocumentDate == documentDate) {
+      return false;
+    }
+    this.coreContextPrefixDocumentType = documentType;
+    this.coreContextPrefixDocumentDate = documentDate;
+    raiseContextPrefixVersion();
+    return true;
+  }
+
+  /** Marks this library's whole indexed bestand as due for the Kontextpraefix-Nachlauf. */
+  public void raiseContextPrefixVersion() {
+    this.contextPrefixVersion++;
+    this.updatedAt = Instant.now();
   }
 
   public Instant getCreatedAt() {

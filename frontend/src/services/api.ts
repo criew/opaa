@@ -9,8 +9,14 @@ import type {
   ChatSummary,
   ChatUpdateRequest,
   EmbeddingInfoResponse,
+  ContextPrefixRerunRequest,
+  ContextPrefixRerunResponse,
+  CoreContextPrefixRequest,
+  CoreContextPrefixResponse,
   MetadataBackfillRequest,
   MetadataBackfillResponse,
+  MetadataChangeImpactResponse,
+  MetadataChangeKind,
   SearchStatusResponse,
   SearchDiagnosisContextResponse,
   SearchDiagnosisRequest,
@@ -1159,6 +1165,46 @@ export async function remapLibraryMetadataFieldValue(
   }
 }
 
+/**
+ * The Folgekosten of a planned schema change, before it is saved: documents, chunks, embedding
+ * calls and expected runtime. Read-only - asking changes nothing.
+ */
+export async function getMetadataChangeImpact(
+  libraryId: string,
+  fieldKey: string,
+  change: MetadataChangeKind,
+  valueCode?: string,
+): Promise<MetadataChangeImpactResponse> {
+  try {
+    const { data } = await client.get<MetadataChangeImpactResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/change-impact`,
+      { params: { fieldKey, change, ...(valueCode ? { valueCode } : {}) } },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Switches the Kontextpräfix-Wirkstelle of the two switchable core fields. Saving moves no
+ * bestand; the Nachlauf is started separately on the administration page.
+ */
+export async function updateCoreContextPrefix(
+  libraryId: string,
+  request: CoreContextPrefixRequest,
+): Promise<CoreContextPrefixResponse> {
+  try {
+    const { data } = await client.put<CoreContextPrefixResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/core-context-prefix`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 export async function getDocumentTypeVocabulary(): Promise<DocumentTypeVocabularyResponse> {
   try {
     const { data } = await client.get<DocumentTypeVocabularyResponse>('/v1/metadata/document-types')
@@ -1333,6 +1379,24 @@ export async function runMetadataBackfillBatch(
   try {
     const { data } = await client.post<MetadataBackfillResponse>(
       '/v1/admin/indexing/metadata-backfill',
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * One batch of the Kontextpräfix-Nachlauf of a library, repeated until `done` exactly like the
+ * backfill above: stopping the repetition is the pause, the next call the resumption.
+ */
+export async function runContextPrefixRerunBatch(
+  request: ContextPrefixRerunRequest,
+): Promise<ContextPrefixRerunResponse> {
+  try {
+    const { data } = await client.post<ContextPrefixRerunResponse>(
+      '/v1/admin/indexing/context-prefix-rerun',
       request,
     )
     return data

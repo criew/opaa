@@ -1,8 +1,12 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.ContextPrefixRerunResponse;
+import io.opaa.api.dto.ContextPrefixRerunStatusResponse;
 import io.opaa.api.dto.CoreMetadataFieldFillResponse;
 import io.opaa.api.dto.MetadataBackfillResponse;
 import io.opaa.api.dto.MetadataBackfillStatusResponse;
+import io.opaa.indexing.ContextPrefixRerunProgress;
+import io.opaa.indexing.ContextPrefixRerunResult;
 import io.opaa.indexing.metadata.CoreMetadataExtractor;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
@@ -11,8 +15,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Maps the core-metadata backfill's domain records (#1067) onto their generated API responses
- * (#860: the domain services never see a DTO). Package-private like every other mapper here.
+ * Maps the core-metadata backfill (#1067) and the Kontextpraefix-Nachlauf (#1072) onto their
+ * generated API responses (#860: the domain services never see a DTO). Package-private like every
+ * other mapper here.
  */
 final class MetadataBackfillResponseMapper {
 
@@ -24,6 +29,22 @@ final class MetadataBackfillResponseMapper {
         result.markedForNextRun(),
         result.skippedDocuments(),
         result.isEmpty());
+  }
+
+  static ContextPrefixRerunResponse toRerunResponse(ContextPrefixRerunResult result) {
+    return new ContextPrefixRerunResponse(
+        result.processedDocuments(), result.skippedDocuments(), result.isEmpty());
+  }
+
+  static ContextPrefixRerunStatusResponse toRerunStatusResponse(
+      ContextPrefixRerunProgress progress) {
+    return new ContextPrefixRerunStatusResponse(
+        progress.prefixVersion(),
+        progress.totalDocuments(),
+        progress.currentDocuments(),
+        progress.pendingDocuments(),
+        progress.lastSkippedDocuments(),
+        progress.isComplete());
   }
 
   static MetadataBackfillStatusResponse toStatusResponse(MetadataBackfillProgress progress) {

@@ -366,6 +366,25 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   int clearMetadataExtractionVersion(@Param("id") UUID id);
 
   /**
+   * Records the context-prefix version this document's chunks were last embedded under (#1072). A
+   * targeted {@code UPDATE} for the same reason {@link #updateMetadataExtractionVersion} is one: it
+   * must not resurrect a row a concurrent delete already removed.
+   */
+  @Modifying
+  @Transactional
+  @Query("update Document d set d.contextPrefixVersion = :version where d.id = :id")
+  int updateContextPrefixVersion(@Param("id") UUID id, @Param("version") int version);
+
+  /**
+   * Hands a document to the Kontextpraefix-Nachlauf: a corrected prefix-effective value changes the
+   * prefix of every chunk, and the run selects only documents without a current prefix version.
+   */
+  @Modifying
+  @Transactional
+  @Query("update Document d set d.contextPrefixVersion = null where d.id = :id")
+  int clearContextPrefixVersion(@Param("id") UUID id);
+
+  /**
    * The connector counterpart to {@link #markIndexed(UUID, int, Instant)}: those paths only learn
    * the checksum - and the remote's own change marker - once chunking and embedding have succeeded,
    * unlike the upload path, which persists its checksum on the {@code PENDING} row beforehand.
