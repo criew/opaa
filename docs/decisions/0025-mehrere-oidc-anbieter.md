@@ -63,8 +63,11 @@ Clients, app-eigene Sitzung mit Refresh-Ledger), sondern bleibt bei der Architek
   existiert, wird mit `401` abgewiesen — ein deaktivierter Anbieter ist damit **sofort**
   unwirksam, ohne dass laufende Sitzungen serverseitig verwaltet werden müssten.
 - **Ein unbekannter Issuer ist vom abgelaufenen Token unterscheidbar:** Die Antwort trägt
-  `WWW-Authenticate: Bearer error="invalid_token", error_description="unknown_issuer"`. Die SPA
-  wertet das im 401-Interceptor aus ADR-0005 (#737) aus: kein stiller Erneuerungsversuch (die
+  `WWW-Authenticate: Bearer error="invalid_token", error_description="unknown_issuer"` — gesetzt
+  über einen `BearerTokenError`, den einzigen Fehlertyp, dessen Beschreibung Spring in den Header
+  schreibt; `SecurityCorsConfig` gibt `WWW-Authenticate` als `exposedHeaders` frei, damit der
+  Marker auch auf dem direkten CORS-Weg lesbar ist. Die SPA wertet das im 401-Interceptor aus
+  ADR-0005 (#737) aus: kein stiller Erneuerungsversuch (die
   Sitzung beim Anbieter ist ja intakt, ein neues Token würde genauso abgewiesen), sondern lokale
   Abmeldung mit der Meldung, dass der Anmeldeanbieter dieser Sitzung nicht mehr verfügbar ist —
   sonst liefe der Nutzer in eine Schleife aus Anmelden und „Sitzung abgelaufen".
@@ -79,8 +82,9 @@ Clients, app-eigene Sitzung mit Refresh-Ledger), sondern bleibt bei der Architek
   OPAA speichert keine Tokens und prägt keine eigenen.
 - **`azp` wird geprüft, `aud` nicht.** Trägt ein Token einen `azp`-Claim (authorized party),
   muss er der `client_id` der Anbieterzeile entsprechen; fehlt der Claim, gilt keine Prüfung.
-  Keycloak und Entra ID setzen `azp` immer auf den anfragenden Client, die Prüfung bricht also
-  keine bestehende Installation, und sie ist bei einem Public Client die einzige Kontrolle
+  Keycloak setzt `azp` immer auf den anfragenden Client, andere Anbieter (Entra ID ab v2.0)
+  ebenfalls, ältere Formate nutzen abweichende Claims — daher die Regel „fehlt der Claim, gilt keine
+  Prüfung". Die Prüfung bricht also keine bestehende Installation, und sie ist bei einem Public Client die einzige Kontrolle
   dagegen, dass ein Token, das derselbe Anbieter für eine *andere* Anwendung ausgestellt hat,
   von OPAA angenommen wird — bei einem Partner-IdP, den OPAA nicht kontrolliert, kein
   theoretischer Fall. `aud` bleibt dagegen ungeprüft, wie heute: Keycloak setzt `aud` nicht auf
@@ -104,8 +108,9 @@ Regeln, die eine Installation nie ohne anmeldefähigen Anbieter zurücklassen.
 
 - Jeder Anbieter muss einen **Public Client mit PKCE** und den Origin der OPAA-Oberfläche als
   erlaubte Redirect-URI (`<Origin>/auth/callback`), Post-Logout-Redirect (`<Origin>`) und
-  Web-Origin (CORS am Token-Endpunkt) zulassen. Keycloak, Entra ID, Authentik und jeder
-  OIDC-konforme Anbieter mit SPA-Unterstützung können das; ein Anbieter, der ausschließlich
+  Web-Origin (CORS am Token-Endpunkt) zulassen. Keycloak, Entra ID (dort zusätzlich mit eigener
+  API-Registrierung und Scope, damit die SPA ein für OPAA bestimmtes Access-Token erhält),
+  Authentik und jeder OIDC-konforme Anbieter mit SPA-Unterstützung können das; ein Anbieter, der ausschließlich
   Confidential Clients zulässt, ist nicht anbindbar (siehe Grenzen). Die Anbieterverwaltung zeigt
   die einzutragenden Werte an (#1333).
 - **„Ohne Neustart" gilt für das Backend, nicht für die Content-Security-Policy.** Die CSP des
@@ -135,6 +140,12 @@ Die Identität eines Kontos bleibt `users(subject, issuer)`. Eine eigene Identit
   verlieren — das ist zugleich der Mechanismus der Bestandsübernahme (Entscheidung 3): Der heutige
   Anbieter erhält als Zeile denselben Issuer, den die bestehenden `users`-Zeilen bereits tragen.
   **Keine Datenmigration an `users`.**
+- **Das Ändern der `issuer_uri` eines Anbieters mit Konten wird verweigert** (`409`, mit der Zahl
+  der betroffenen Konten): Da die Identität am Issuer hängt und eine Zusammenführung
+  ausgeschlossen ist, bekämen alle Konten des alten Issuers bei der nächsten Anmeldung neue Konten
+  ohne Space und Rechte — die einzige Aktion der Anbieterverwaltung mit irreversibler Datenwirkung.
+  Ein Anbieter unter neuem Issuer ist ein neuer Anbieter; der alte bleibt, bis seine Konten
+  ausgelaufen sind.
 - **Keine Zusammenführung über die E-Mail**, weder automatisch noch stillschweigend bei gleicher
   Adresse: Ein unbekanntes `(issuer, subject)` provisioniert ein **neues** Konto, auch wenn ein
   anderes Konto dieselbe E-Mail trägt. Anbieter B kann kein Konto aus Anbieter A übernehmen. Diese
@@ -179,12 +190,18 @@ aktivierte Standard-Anbieterzeile (`display_name` „Verzeichnisdienst"): `issue
 abweichende `OPAA_OIDC_AUTHORITY` wird beim Start protokolliert und verworfen. Der Seeder ist über
 eine Markierung gegen Wiederholung gesichert — **nicht** über „ist die Tabelle leer?" —, exakt wie
 `LlmModelSeeder`/`LlmModelSeedMarker` (#756): Wer alle Anbieter löscht, bekommt die alte
-Umgebungskonfiguration nicht still zurückgespielt. Danach werden die `OPAA_OIDC_*`-Variablen
-**nicht mehr ausgewertet**; das Handbuch sagt das. Dafür verschwinden die
+Umgebungskonfiguration nicht still zurückgespielt. Danach **bestimmen die `OPAA_OIDC_*`-Variablen den laufenden
+Betrieb nicht mehr** — Anbieter, Claim-Zuordnung, Reihenfolge kommen aus der Datenbank. Gesetzt
+bleiben sie trotzdem: Sie sind der Notanker für den Wiederanlauf (unten) und die implizit erlaubte
+Adresse der Adressprüfung; wer sie aus der Umgebung entfernt, verliert beides, und das Handbuch
+(#1334) sagt das ausdrücklich. Dafür verschwinden die
 `spring.security.oauth2.resourceserver.jwt.*`-Einträge aus dem `oidc`-Profil — ein
 Framework-Namensraum darf nicht mit einer Zweitbedeutung („Seeder-Quelle") stehen bleiben; die
-Werte ziehen in einen eigenen Block `opaa.auth.oidc.*`, aus dem allein der Seeder liest. Für eine
-**Neuinstallation** ist derselbe Weg der Einstieg: Der Betrieb setzt `OPAA_OIDC_*` für den ersten
+Werte ziehen in einen eigenen Block `opaa.auth.oidc.*`, aus dem allein der Seeder liest — **ohne
+Vorgabewerte**: Behielte der Block die heutigen `localhost:8180`-Vorgaben, säte eine
+Neuinstallation ohne gesetzte Variablen stillschweigend einen unerreichbaren Standardanbieter, der
+weder deaktivier- noch löschbar wäre. Die `localhost`-Werte gehören in `.env.docker.example`, die
+E2E-/Demo-Umgebungen und das Handbuch. Für eine **Neuinstallation** ist derselbe Weg der Einstieg: Der Betrieb setzt `OPAA_OIDC_*` für den ersten
 Anbieter, meldet sich damit als Erstadministrator an und legt weitere Anbieter über die
 Oberfläche an. Der `dev`-Modus bleibt der vollwertige zweite Modus aus ADR-0005 und kennt keine
 Anbieterzeilen; er schreibt auch keine Markierung, damit ein späterer Wechsel auf `oidc` die
@@ -232,11 +249,14 @@ darf damit nicht unbemerkt die Anmeldung mitschalten, und ein Auth-Betreiber suc
 Freigabe nicht im Indexing-Namensraum. Die Anmeldung bekommt ihren eigenen Block
 `opaa.auth.oidc.target-validation.{enabled,allowlist}` (`OPAA_OIDC_TARGET_VALIDATION_ENABLED`,
 Standard `true`; `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST`), und die Ablehnung nennt diese Variable.
-**Die Hosts aus `OPAA_OIDC_ISSUER_URI` und `OPAA_OIDC_JWK_SET_URI` sind immer erlaubt** — sie
-stammen aus der Betriebskonfiguration, derselben Vertrauensstufe wie die Allowlist selbst — und
-damit auch die gesäte Zeile: Ein Upgrade einer Installation mit Keycloak auf `localhost` oder einer
-privaten Adresse, der Compose-Stack (`keycloak:8180`), die E2E-Umgebung und der Demo-Smoke laufen
-ohne zusätzliche Freigabe weiter. Ein Identitätsanbieter einer Behörde steht im Regelfall auf einer
+**Genau die beiden Adressen aus `OPAA_OIDC_ISSUER_URI` und `OPAA_OIDC_JWK_SET_URI` — Schema,
+Host und Port, nicht der bloße Host — sind immer erlaubt**; sie stammen aus der
+Betriebskonfiguration, derselben Vertrauensstufe wie die Allowlist selbst. Ein anderer Port
+desselben Hosts (`localhost:8080`, `keycloak:9000`) braucht einen Eintrag in der Allowlist, sonst
+gäbe die Ausnahme den Loopback für jeden lokalen Dienst wieder frei. Damit ist auch die gesäte
+Zeile erlaubt: Ein Upgrade einer Installation mit Keycloak auf `localhost` oder einer privaten
+Adresse, der Compose-Stack (`keycloak:8180`), die E2E-Umgebung und der Demo-Smoke laufen ohne
+zusätzliche Freigabe weiter. Ein Identitätsanbieter einer Behörde steht im Regelfall auf einer
 privaten Adresse; wer einen **weiteren** internen Anbieter über die Oberfläche anlegt, trägt dessen
 Host in die Allowlist ein — der Verbindungstest und das Speichern sagen ihm das. Die Prüfung läuft
 beim Speichern (der Betreiber sieht die Meldung), beim Aufbau der Registry (eine nachträglich
@@ -245,7 +265,9 @@ Zeile wird übersprungen und wie in Entscheidung 1 wieder versucht) und vor jede
 Verbindungstests. **Auch die aus der Discovery gelesene `jwks_uri` wird vor dem ersten Abruf
 geprüft** — die Registry holt das Discovery-Dokument selbst, prüft die darin genannte Adresse und
 baut den Decoder erst dann auf einer festen JWK-Set-Adresse; Weiterleitungen werden bei beiden
-Abrufen nicht gefolgt. Eine eigene qnop-artige Property „private Adressen erlauben" gibt es nicht —
+Abrufen nicht gefolgt. Was `JwtDecoders.fromIssuerLocation` mitgebracht hätte, bleibt Pflicht: Das
+Discovery-Dokument muss im Feld `issuer` die konfigurierte `issuer_uri` nennen, und der Decoder
+jedes Anbieters trägt einen `JwtIssuerValidator` auf diese URI. Eine eigene qnop-artige Property „private Adressen erlauben" gibt es nicht —
 die Allowlist ist die feinere Form.
 
 ### 4. Claim-Zuordnung, Rollen, Gruppen und Organisation je Anbieter
@@ -276,7 +298,14 @@ ausdrücklich konfiguriert. Drei Sicherungen gegen das Aussperren:
   ohne Systemverwalter zurücklassen, unterbleibt er, wird protokolliert und in der
   Anbieterverwaltung angezeigt — dieselbe Regel wie „der letzte Eigentümer" an anderer Stelle des
   Produkts. Ein Betreiber, der `roles_claim` setzt, ohne im Anbieter die Rollenzuordnung angelegt
-  zu haben, verliert damit nicht die gesamte Systemverwaltung.
+  zu haben, verliert damit nicht die gesamte Systemverwaltung. Die Prüfung ist kein
+  „lesen, dann schreiben" im Anfragepfad — zwei gleichzeitige Anfragen zweier Verwalter zählten
+  sonst beide „noch zwei" —, sondern ein bedingter `UPDATE`, der den Entzug nur schreibt, wenn
+  danach noch ein Systemverwalter bleibt. Die Kehrseite steht unter „Negativ": Der geschützte
+  letzte Verwalter behält eine Rolle, die der Anbieter ihm entzogen hat. `AUDITOR` ist nicht
+  geschützt — ein verlorener letzter Prüfer ist nur im Anbieter wiederherstellbar (Grenzen). Der
+  Weg aus einer falschen Rollenzuordnung ist das Leeren von `roles_claim` an der Anbieterzeile:
+  eine Anbieteränderung, keine Rollenvergabe, also nicht von der Sperre unten betroffen.
 - **Die manuelle Rollenvergabe** (`AdminController`) ist für Konten eines Anbieters mit
   `roles_claim` gesperrt (`409`, „Rolle wird vom Anbieter verwaltet") — sonst schreibt ein Admin
   eine Rolle, die die nächste Anfrage wieder überschreibt.
@@ -350,6 +379,8 @@ nichts über Konten. Dieselbe Abwägung wie beim Branding (#583).
 - **Keine `aud`-Prüfung**, wie heute; `azp` wird geprüft, sofern vorhanden (Entscheidung 1).
 - **Die Erstadministrator-Regel** bleibt auf der Vertrauensstellung des Standardanbieters
   gegründet (Entscheidung 3).
+- **Der letzte `AUDITOR` ist nicht geschützt** (Entscheidung 4); die `OPAA_OIDC_*`-Variablen
+  bleiben als Notanker gesetzt (Entscheidung 3).
 - **Ein neuer Anbieter-Origin braucht einen Neustart des Frontend-Containers** (CSP,
   Entscheidung 1).
 - **Eine Organisation** für alle Anbieter.
@@ -379,7 +410,9 @@ nichts über Konten. Dieselbe Abwägung wie beim Branding (#583).
   damit ein Nebeneinander alter und neuer Konten, bis die alten auslaufen.
 - Rollen aus einem Token (Entscheidung 4) machen den Anbieter führend für `SYSTEM_ADMIN` und
   `AUDITOR`; ein Fehler in der Rollenzuordnung eines Anbieters wirkt bei der nächsten Anfrage —
-  begrenzt durch den Schutz des letzten Systemverwalters, aber für jeden weiteren spürbar.
+  begrenzt durch den Schutz des letzten Systemverwalters, aber für jeden weiteren spürbar. Und
+  umgekehrt behält der geschützte letzte Verwalter eine Rolle, die der Anbieter ihm entzogen hat;
+  wer eine Person wirklich entfernen will, legt vorher einen zweiten Verwalter an.
 - Der Verzeichnisabgleich und die Gruppentabelle bekommen anbieterbewusste Änderungen
   (Issuer-Parameter, neuer `GroupKind`), die #1331 größer machen als das Issue heute annimmt.
 
@@ -396,11 +429,11 @@ nichts über Konten. Dieselbe Abwägung wie beim Branding (#583).
 
 | Issue | Folgt aus diesem ADR |
 | --- | --- |
-| #1329 Anbieterverwaltung | Tabelle `oidc_providers` **ohne** Secret-Spalte, mit `issuer_uri` (eindeutig, normalisiert), optionalem `jwk_set_uri` und den Claim-Feldern aus Entscheidung 4 (Spalten hier, Auswertung in #1331); Seeder mit Markierung, `OPAA_OIDC_BOOTSTRAP=force`; Registry mit `AFTER_COMMIT`-Neuaufbau, Wiederholung fehlerhafter Anbieter, `azp`-Prüfung, Discovery mit geprüfter `jwks_uri` und ohne Weiterleitungen; `OidcSecurityConfig` auf `authenticationManagerResolver`, `unknown_issuer` in `WWW-Authenticate`; eigener Block `opaa.auth.oidc.target-validation.*` mit implizit erlaubten Bootstrap-Hosts; Regeln „erster Anbieter ist Standard", „Standard weder deaktivierbar noch löschbar"; Discovery-Probe; Audit-Ereignisse `OIDC_PROVIDER_*` mit `SYSTEM_SETTING` (kein Changeset am Audit-Log) |
+| #1329 Anbieterverwaltung | Tabelle `oidc_providers` **ohne** Secret-Spalte, mit `issuer_uri` (eindeutig, normalisiert), optionalem `jwk_set_uri` und den Claim-Feldern aus Entscheidung 4 (Spalten hier, Auswertung in #1331); Seeder mit Markierung, `OPAA_OIDC_BOOTSTRAP=force`; Registry mit `AFTER_COMMIT`-Neuaufbau, Wiederholung fehlerhafter Anbieter, `azp`-Prüfung, Discovery mit geprüfter `jwks_uri` und ohne Weiterleitungen; `OidcSecurityConfig` auf `authenticationManagerResolver`, `unknown_issuer` in `WWW-Authenticate`; eigener Block `opaa.auth.oidc.target-validation.*` ohne Vorgabewerte, mit implizit erlaubten Bootstrap-**Adressen** (Schema, Host, Port - eigene Prüfung, nicht `TargetAddressValidator#isAllowedHost`); `WWW-Authenticate` in `SecurityCorsConfig#exposedHeaders`; Regeln „erster Anbieter ist Standard", „Standard weder deaktivierbar noch löschbar", „Issuer-Änderung mit Konten verweigert"; Discovery-Probe; Audit-Ereignisse `OIDC_PROVIDER_*` mit `SYSTEM_SETTING` (kein Changeset am Audit-Log) |
 | #1330 Anmeldefluss und Kontenmodell | `UserProvisioningFilter` unverändert auf `(issuer, subject)`; Erstadmin-Regel nur für den Standardanbieter; Test „gleiche E-Mail, zwei Anbieter, zwei Konten"; Test „deaktivierter Anbieter → 401 mit `unknown_issuer`"; Abmeldung beim Anbieter der Sitzung |
-| #1331 Claim-Zuordnung | Auswertung der Felder aus Entscheidung 4; Rollen führend bei gesetztem `roles_claim` mit den drei Sicherungen; Gruppen als `GroupKind.IDENTITY_PROVIDER` im Namensraum `oidc:<anbieter-id>:` (Changeset für `chk_groups_kind`); `findByOrganizationIdAndIssuerAndSubjectIn` im Verzeichnisabgleich; Abgleich filtert `ORG_UNIT` in der Abfrage |
+| #1331 Claim-Zuordnung | Auswertung der Felder aus Entscheidung 4; Rollen führend bei gesetztem `roles_claim` mit den drei Sicherungen; Gruppen als `GroupKind.IDENTITY_PROVIDER` im Namensraum `oidc:<anbieter-id>:` (Changeset für `chk_groups_kind`, Spec-Änderung am geteilten Enum nach ADR-0006, Label im Frontend; Token-Gruppen sind in der Gruppenverwaltung schreibgeschützt und nicht als „Sicht als"-Geltungsbereich wählbar); Entzug des letzten `SYSTEM_ADMIN` als bedingter `UPDATE`; `findByOrganizationIdAndIssuerAndSubjectIn` im Verzeichnisabgleich; Abgleich filtert `ORG_UNIT` in der Abfrage |
 | #1332 Anmeldeseite | `GET /api/v1/auth/config` mit Anbieterliste (`id`, `displayName`, `issuerUri`, `clientId`, `isDefault`, `sortOrder`); ein `UserManager` je Anbieter; Anbieter des Flusses im `sessionStorage`, Vorschlag im `localStorage`; `prompt=login`; `unknown_issuer`-Behandlung im Interceptor; Abmeldung beim Anbieter der Sitzung |
-| #1333 Anbieterverwaltung (UI) | Kein Secret-Feld; Felder aus Entscheidung 2 und 4, `jwk_set_uri` als Vertrauensanker benannt; Bestätigung beim Setzen von `roles_claim`; Verbindungstest; Anleitung mit `<Origin>/auth/callback`, `<Origin>`, dem `connect-src`-Schritt samt Frontend-Neustart und der Allowlist; Anzeige fehlerhafter Anbieter; Konsequenz-Hinweis beim Deaktivieren und beim Wechsel des Standardanbieters |
+| #1333 Anbieterverwaltung (UI) | Kein Secret-Feld; Felder aus Entscheidung 2 und 4, `jwk_set_uri` als Vertrauensanker benannt; Bestätigung beim Setzen von `roles_claim`; Verbindungstest; Anleitung mit `<Origin>/auth/callback`, `<Origin>`, dem `connect-src`-Schritt samt Frontend-Neustart und der Allowlist; Anzeige fehlerhafter Anbieter; Konsequenz-Hinweis beim Deaktivieren, beim Wechsel des Standardanbieters und beim Versuch, den Issuer eines Anbieters mit Konten zu ändern |
 | #1334 E2E und Handbuch | Zweiter Realm im gebündelten Keycloak als zweiter Public Client auf demselben Origin; Szenario im **Demo-Smoke-Ziel** (`e2e/demo-smoke.env`, `docker,oidc` — die reguläre Suite fährt `dev`); Handbuchkapitel mit Bootstrap aus `OPAA_OIDC_*`, `OPAA_OIDC_BOOTSTRAP=force`, `OPAA_OIDC_TARGET_VALIDATION_*`, Betriebsschritten je Anbieter (Client, CSP, Neustart) und Grenzen; `.env.docker.example` und `docs/handbuch/deployment.md` ziehen nach |
 
 ### Was in den Sub-Issues zu korrigieren ist

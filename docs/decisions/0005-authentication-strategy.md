@@ -120,7 +120,8 @@ JWT (`sub`, `iss`, `email`, `name`) und legt bzw. aktualisiert einen Datensatz i
 `users`-Tabelle. Gruppenzugehörigkeiten kommen **nicht** aus dem Token, sondern über
 `DirectoryClient` (`io.opaa.group.sync`) — seit [ADR-0025](0025-mehrere-oidc-anbieter.md) gilt das
 nur noch für Anbieter ohne `groups_claim`; ein Anbieter mit gesetztem `groups_claim` liefert
-Gruppen (und mit `roles_claim` Systemrollen) aus dem Token, siehe dort, Entscheidung 4. Derselbe Filter baut aus diesem Datensatz einmalig
+Gruppen (und mit `roles_claim` Systemrollen) aus dem Token, siehe dort, Entscheidung 4. Derselbe
+Filter baut aus diesem Datensatz einmalig
 einen `CurrentUser`-Schnappschuss der Aufrufer-Identität und legt ihn als Request-Attribut ab;
 Controller erhalten ihn über einen dedizierten, ausschließlich `@Caller`-annotierte Parameter
 bedienenden `HandlerMethodArgumentResolver` statt ihn selbst erneut aus dem JWT abzuleiten (#884) -
