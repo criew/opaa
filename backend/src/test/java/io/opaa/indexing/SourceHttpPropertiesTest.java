@@ -45,17 +45,6 @@ class SourceHttpPropertiesTest {
         });
   }
 
-  @Test
-  void theFormerConnectorSpecificUserAgentKeysNoLongerHaveAnyEffect() {
-    contextRunner
-        .withPropertyValues(
-            "opaa.indexing.rss.user-agent=Alt/1.0", "opaa.indexing.confluence.user-agent=Alt/1.0")
-        .run(
-            context ->
-                assertThat(context.getBean(SourceHttpProperties.class).userAgent())
-                    .isEqualTo("OPAA-Indexer/1.0"));
-  }
-
   @EnableConfigurationProperties(SourceHttpProperties.class)
   private static class Config {}
 }

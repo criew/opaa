@@ -465,9 +465,9 @@ Konsequenzen für den Betrieb:
 
 Die Dokumentstrecke weiß nicht, woher ein Anhang stammt. Jeder Konnektor, der Anhänge
 liefert, und jede Format-Pipeline, die welche findet, nutzt denselben Weg; die Grenzwerte für
-Anzahl und Größe je Elternteil setzt die jeweilige Quelle bzw. das Format, ersatzweise gelten
-`opaa.indexing.attachments.max-per-parent`/`max-size-bytes`; die Tiefe ist allgemein
-(`opaa.indexing.attachments.max-depth`).
+Anzahl und Größe je Elternteil setzt die jeweilige Quelle bzw. das Format (ersatzweise
+`opaa.indexing.attachments.max-per-parent`/`max-size-bytes`, derzeit von keinem Konnektor
+genutzt); die Tiefe ist allgemein (`opaa.indexing.attachments.max-depth`).
 
 ## 7. Änderungen und Löschungen erkennen
 
@@ -616,7 +616,7 @@ Die wichtigsten Schlüssel unter `opaa.indexing.*`:
 |---|---|---|
 | `filesystem.allowlist` | leer | freigegebene Basisverzeichnisse; leer schaltet `FILESYSTEM` ab |
 | `attachments.max-depth` | 5 | Verschachtelungstiefe von Anhängen (Mail-in-Mail, Feed-Anlage) - ein Wert für jeden Konnektor |
-| `attachments.max-per-parent` / `attachments.max-size-bytes` | 10 / 20 MiB | Anzahl je Elternteil und Größe eines vom Anhangsweg heruntergeladenen Anhangs für einen Konnektor ohne eigene Werte (Confluence); RSS und Mail behalten ihre eigenen |
+| `attachments.max-per-parent` / `attachments.max-size-bytes` | 10 / 20 MiB | Reserve für künftige Konnektoren ohne eigene Werte, derzeit ohne Wirkung: RSS und Mail bringen eigene Grenzen mit, Confluence lädt mit eigener Größengrenze und übergibt je Aufruf einen Anhang |
 | `http.user-agent` / `http.max-rate-limit-retries` / `http.max-retry-after` | `OPAA-Indexer/1.0` / 6 / 2m | `User-Agent` jeder Anfrage an eine fremde Quelle und die 429-Wartezeit von RSS- und Webverzeichnis-Konnektor; Confluence hat eigene 429-Werte |
 | `chunk-size` / `chunk-overlap` | 1000 / 100 Tokens | nur Auffang-Pipeline und strukturlose Texte |
 | `batch-size` | 50 | Chunks je Embedding-Aufruf |

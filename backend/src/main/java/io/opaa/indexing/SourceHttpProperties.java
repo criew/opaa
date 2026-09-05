@@ -42,7 +42,11 @@ public record SourceHttpProperties(
     }
   }
 
-  /** The policy every source-access caller of this deployment shares. */
+  /**
+   * The policy every source-access caller of this deployment shares. {@code maxRateLimitRetries} is
+   * never {@code 0} here - the compact constructor maps {@code 0} to the default 6, so the {@code
+   * 429} wait cannot be switched off, only shortened via {@code maxRetryAfter}.
+   */
   public SourceRequestPolicy toRequestPolicy() {
     return new SourceRequestPolicy(
         userAgent, RateLimitPolicy.of(maxRateLimitRetries, maxRetryAfter), Sleeper.threadSleep());

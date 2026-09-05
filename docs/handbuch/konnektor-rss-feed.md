@@ -181,7 +181,7 @@ ist als künftiger Mechanismus benannt, aber nicht gebaut.
 |---|---|---|
 | abgewiesen | Verknüpfung mit nicht unterstütztem Schema abgelehnt | Link ist nicht http/https |
 | abgewiesen | Verknüpfung mit ungültiger URL abgelehnt | Link syntaktisch kaputt |
-| abgewiesen | Vom Quellserver abgewiesen (HTTP 403 / 429) | Bot-Schutz oder Ratenbegrenzung der Detailseite; Eintrag zurückgestellt |
+| abgewiesen | Vom Quellserver abgewiesen (HTTP 403 / 429) | Bot-Schutz oder Ratenbegrenzung der Detailseite (429 erst nach erschöpften Wiederholungen); Eintrag zurückgestellt |
 | abgewiesen | Weiterleitung auf einen fremden Host abgelehnt (Ziel: …) | Detailseite leitet auf fremden Ursprung |
 | abgewiesen | Weiterleitung von https auf http abgelehnt (Protokoll-Downgrade) | |
 | abgewiesen | Zieladresse liegt in einem gesperrten Adressbereich | Zieladressprüfung |
@@ -218,7 +218,7 @@ HTTP-Code, kein gültiges XML, kein RSS-Feed (etwa Atom), Feed zu groß, Proxy-F
 | Feed unverändert (304) | Lauf erfolgreich mit null Elementen nach einer Anfrage |
 | Feed nicht erreichbar, HTTP-Fehler, kein XML, Atom, zu groß | Lauf `FAILED`, Bestand unverändert |
 | Feed hat mehr als 200 Einträge | Rest abgeschnitten, Lauf erfolgreich, Zustand nicht gespeichert, nächster Lauf holt vollständig |
-| Detailseite 403 oder 429 | Eintrag abgewiesen und zurückgestellt, Lauf läuft weiter, nächster Lauf versucht es erneut |
+| Detailseite 403, oder 429 nach erschöpften Wiederholungen | Eintrag abgewiesen und zurückgestellt, Lauf läuft weiter, nächster Lauf versucht es erneut |
 | Detailseite leitet auf fremden Host | abgelehnt, bevor der fremde Server kontaktiert wird |
 | Detailseite liefert PDF statt HTML | Eintrag „Format nicht unterstützt" |
 | Bibliothek während des Laufs gelöscht | Lauf `FAILED` mit verständlicher Meldung |
