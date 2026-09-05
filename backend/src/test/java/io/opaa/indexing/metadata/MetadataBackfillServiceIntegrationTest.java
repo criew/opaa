@@ -398,6 +398,47 @@ class MetadataBackfillServiceIntegrationTest {
   }
 
   /**
+   * A Confluence page has no local file and no row-only extraction - the backfill marks it for its
+   * next connector run, and that run extracts it. Both ways therefore read the page title as the
+   * synthetic name it is: it becomes the title, never a Dokumentart and never a Stand.
+   */
+  @Test
+  void aConfluencePageIsMarkedForItsNextRunAndThatRunReadsItsTitleAsASyntheticName() {
+    UUID pageId = UUID.randomUUID();
+    String pageUrl = "https://wiki.example/pages/viewpage.action?pageId=4711";
+    insertRemoteDocument(
+        pageId, DocumentSourceType.CONFLUENCE, "Gebuehrensatzung 2024", pageUrl, "6");
+
+    MetadataBackfillResult result =
+        backfillService.backfillBatch(Organization.DEFAULT_ID, library.getId(), 10);
+
+    assertThat(result.markedForNextRun()).isEqualTo(1);
+    assertThat(result.processedDocuments()).isZero();
+    assertThat(documentRepository.findById(pageId).orElseThrow().getChecksum()).isNull();
+    assertThat(progress().awaitingConnectorRunDocuments()).isEqualTo(1);
+
+    assertThat(
+            fileProcessingService.processConfluencePage(
+                "<h1>Uebersicht</h1><p>Die Verwaltung erhebt Entgelte fuer Amtshandlungen im"
+                    + " Buergerbuero.</p>",
+                "Gebuehrensatzung 2024",
+                pageUrl,
+                "7",
+                java.time.Instant.parse("2026-03-12T10:00:00Z"),
+                null,
+                library))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    CoreMetadata core = documentMetadataService.coreMetadataFor(pageId);
+    assertThat(core.title()).isEqualTo("Gebuehrensatzung 2024");
+    // The Stand comes from the page version, never from the year in the title.
+    assertThat(core.documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
+    assertThat(core.documentTypeCode()).isNull();
+    assertThat(documentRepository.findById(pageId).orElseThrow().getMetadataExtractionVersion())
+        .isEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION);
+  }
+
+  /**
    * The chunks were cut from the bytes read at indexing time. A file replaced since then would put
    * the core fields of a different text onto those chunks - the same rule the attachment path
    * applies via its checksum - so the document is skipped and left to its next connector run.

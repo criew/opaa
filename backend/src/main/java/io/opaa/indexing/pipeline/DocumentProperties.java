@@ -36,8 +36,9 @@ import java.util.TreeMap;
  *     DocumentPipelineSource#detectedExtension()}, never by a pipeline; {@code null} when routing
  *     resolved none
  * @param syntheticName whether the document's name is <em>not</em> a file name but free text an
- *     upstream source declared - an RSS entry's headline or its URL. A naming convention can only
- *     be read out of a real file name; a headline names what an article is <em>about</em>.
+ *     upstream source declared - an RSS entry's headline or a Confluence page title, in both cases
+ *     its URL as a fallback. A naming convention can only be read out of a real file name; a
+ *     headline names what a document is <em>about</em>.
  * @param frontmatter a Markdown YAML frontmatter's scalar entries, verbatim, keys lower-cased
  */
 public record DocumentProperties(
@@ -228,6 +229,11 @@ public record DocumentProperties(
     } catch (DateTimeParseException e) {
       return null;
     }
+  }
+
+  /** The {@link Instant} counterpart of {@link #instantToLocalDate(String)} - same UTC day. */
+  public static LocalDate instantToLocalDate(Instant instant) {
+    return instant == null ? null : instant.atZone(ZoneOffset.UTC).toLocalDate();
   }
 
   private static String blankToNull(String value) {

@@ -49,6 +49,7 @@ class VariantComparisonRunnerTest {
         "golden",
         1,
         "markdown:1",
+        true,
         1,
         PipelineHarnessSupport.SEARCH_SCOPE_NOTE,
         "2026-08-31T00:00:00Z",

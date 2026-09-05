@@ -2,6 +2,7 @@ package io.opaa.eval;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.List;
 
 /**
@@ -45,7 +46,88 @@ public record GoldenCase(
     // mechanism it measures, or one solved on only one of the two measurement paths. Such a case is
     // reported separately from an unexplained deviation (see ExpectedStateAudit), so a permanently
     // expected finding does not train readers to ignore the section.
-    @JsonProperty("expected_state_exception") String expectedStateException) {
+    @JsonProperty("expected_state_exception") String expectedStateException,
+    // Issue #1070 (Teil 2): the core-field filter both measurement paths apply for this case -
+    // null for a case that is asked without one. The Dokumentart codes are production vocabulary
+    // codes, never the corpus' frontmatter raw values.
+    @JsonProperty("filter") Filter filter,
+    // Issue #1070: the committed reason why a metadata_filter case carries no filter although its
+    // class exists to measure one (e.g. a validity question no core field can express).
+    @JsonProperty("filter_note") String filterNote,
+    // Issue #1070: the document the filter exists to keep out - the other Fassung, the wrong
+    // Dokumentart. MetadataFilterAudit reports "Filter greift nicht" when it is still in the
+    // window.
+    @JsonProperty("confusable_document") String confusableDocument,
+    // Issue #1070: names the filtered field the expected document has no value for
+    // ("documentType" or "documentDate"), marking a Leerwert-Regel case: the filter must keep the
+    // document by that rule, and MetadataFilterAudit reports "Filter greift zu stark" when it does
+    // not.
+    @JsonProperty("no_value_field") String noValueField) {
+
+  /** The constructor of a case without the #1070 filter fields, as every earlier dataset has. */
+  public GoldenCase(
+      String id,
+      String domain,
+      String query,
+      List<String> expectedDocuments,
+      String category,
+      String difficulty,
+      String language,
+      String type,
+      String answerSpan,
+      ExpectedState expectedState,
+      String expectedStateSince,
+      String expectedStateReason,
+      String expectedStateException) {
+    this(
+        id,
+        domain,
+        query,
+        expectedDocuments,
+        category,
+        difficulty,
+        language,
+        type,
+        answerSpan,
+        expectedState,
+        expectedStateSince,
+        expectedStateReason,
+        expectedStateException,
+        null,
+        null,
+        null,
+        null);
+  }
+
+  /**
+   * The case's filter as the domain type both search paths take; {@link MetadataFilter#NONE} if the
+   * case declares none.
+   */
+  public MetadataFilter metadataFilter() {
+    return filter == null ? MetadataFilter.NONE : filter.toMetadataFilter();
+  }
+
+  /** Whether this case is measured with a filter at all. */
+  public boolean isFiltered() {
+    return filter != null && !metadataFilter().isEmpty();
+  }
+
+  /**
+   * The JSON shape of a case's filter (issue #1070): a list of Dokumentart codes and an inclusive
+   * ISO date window, either half optional. Mirrors the API's {@code MetadataFilter} schema so a
+   * golden case says exactly what a person would set in the filter popover. A misspelled key is not
+   * rejected here but by {@link GoldenCaseCuration}: it leaves the filter without a condition,
+   * which that check refuses.
+   */
+  public record Filter(
+      @JsonProperty("documentType") List<String> documentType,
+      @JsonProperty("documentDateFrom") String documentDateFrom,
+      @JsonProperty("documentDateTo") String documentDateTo) {
+
+    public MetadataFilter toMetadataFilter() {
+      return MetadataFilter.parse(documentType, documentDateFrom, documentDateTo);
+    }
+  }
 
   /**
    * The two states a curated case can be in (docs/features/retrieval-benchmark.md §5,

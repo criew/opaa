@@ -188,9 +188,10 @@ public class MetadataBackfillService {
    * extraction, so it is re-run from the row without a download. "Has a headline" is approximated
    * as {@code file_name != file_path}: an entry whose title is literally its own URL loses that
    * title here, accepted as too exotic to carry a marker column for. Everything else remote (an
-   * HTTP directory file, any remote attachment) can only be re-read by its own connector run, which
-   * re-extracts on every inflow, and is marked for it. The name is marked as synthetic exactly as
-   * the ingest marks it, so both paths read the same fields out of the same row.
+   * HTTP directory file, a Confluence page, any remote attachment) can only be re-read by its own
+   * connector run, which re-extracts on every inflow, and is marked for it. The name is marked as
+   * synthetic exactly as the ingest marks it, so both paths read the same fields out of the same
+   * row.
    */
   private Advance advanceRemote(Document document) {
     if (document.getSourceType() == DocumentSourceType.RSS_FEED

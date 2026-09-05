@@ -2,8 +2,6 @@ package io.opaa.query;
 
 import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.FullTextIdentifiers;
-import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
-import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -73,19 +71,16 @@ class FullTextChunkSearch {
 
   private final JdbcTemplate jdbcTemplate;
   private final ObjectMapper objectMapper;
-  private final DocumentTypeVocabularyRepository vocabularyRepository;
   private final String schemaName;
   private final String tableName;
 
   FullTextChunkSearch(
       JdbcTemplate jdbcTemplate,
       ObjectMapper objectMapper,
-      DocumentTypeVocabularyRepository vocabularyRepository,
       @Value("${spring.ai.vectorstore.pgvector.schema-name:public}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     this.jdbcTemplate = jdbcTemplate;
     this.objectMapper = objectMapper;
-    this.vocabularyRepository = vocabularyRepository;
     this.schemaName = schemaName;
     this.tableName = tableName;
   }
@@ -99,7 +94,7 @@ class FullTextChunkSearch {
    * means the caller resolved no readable library at all.
    */
   List<Document> search(String question, Collection<UUID> libraryIds, int limit) {
-    return search(question, libraryIds, MetadataFilter.NONE, limit);
+    return search(question, libraryIds, MetadataFilter.NONE, List.of(), limit);
   }
 
   /**
@@ -107,9 +102,18 @@ class FullTextChunkSearch {
    * chunk's {@code metadata} - the lexical twin of the vector path's filter expression, built by
    * {@link MetadataFilterExpressions#sqlPredicate} from the same rule, and placed after the
    * permission filter in the same clause: it narrows, it never widens.
+   *
+   * @param vocabularyCodes the complete Dokumentart value set the "no value" condition is built
+   *     over - the one snapshot {@link MetadataFilterStage} read for the run, so every sub-query of
+   *     both paths filters against the same vocabulary. Ignored unless the filter constrains the
+   *     Dokumentart.
    */
   List<Document> search(
-      String question, Collection<UUID> libraryIds, MetadataFilter metadataFilter, int limit) {
+      String question,
+      Collection<UUID> libraryIds,
+      MetadataFilter metadataFilter,
+      Collection<String> vocabularyCodes,
+      int limit) {
     if (libraryIds.isEmpty() || limit <= 0) {
       return List.of();
     }
@@ -124,7 +128,7 @@ class FullTextChunkSearch {
     List<Object> metadataParameters = new ArrayList<>();
     String metadataPredicate =
         MetadataFilterExpressions.sqlPredicate(
-            metadataFilter, "v.metadata", vocabularyCodesFor(metadataFilter), metadataParameters);
+            metadataFilter, "v.metadata", vocabularyCodes, metadataParameters);
     String sql =
         "WITH q AS (SELECT "
             + tsQueryExpression
@@ -188,20 +192,6 @@ class FullTextChunkSearch {
                 .metadata(readMetadata(rs.getString("metadata")))
                 .score((double) rs.getFloat("rank"))
                 .build());
-  }
-
-  /**
-   * The complete Dokumentart value set the "no value" condition is built over - read only when the
-   * filter constrains the Dokumentart, the same snapshot {@link MetadataFilterStage} reads for the
-   * vector form.
-   */
-  private List<String> vocabularyCodesFor(MetadataFilter metadataFilter) {
-    if (!metadataFilter.filtersDocumentType()) {
-      return List.of();
-    }
-    return vocabularyRepository.findAllByOrderBySortOrderAsc().stream()
-        .map(DocumentTypeVocabularyEntry::getCode)
-        .toList();
   }
 
   /**

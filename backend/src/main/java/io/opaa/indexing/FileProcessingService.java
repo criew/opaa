@@ -944,12 +944,15 @@ public class FileProcessingService {
    *
    * @param storageBody the page body in Confluence storage format (XHTML with macro elements)
    * @param version the page's Confluence version number, the executor's pre-fetch change marker
+   * @param lastModified when the page's current version was created - its Stand; {@code null} when
+   *     the instance did not say
    */
   public FileProcessingResult processConfluencePage(
       String storageBody,
       String title,
       String pageUrl,
       String version,
+      Instant lastModified,
       SourceDocumentContext context,
       KnowledgeLibrary targetLibrary) {
     boolean hasTitle = title != null && !title.isBlank();
@@ -1072,10 +1075,17 @@ public class FileProcessingService {
           }
         }
       }
-      // The page title is the document's declared title (ADR-0024); the version number is no
-      // date, and a Confluence title follows no file-naming convention.
+      // The page title is the document's declared title, the creation of its current version the
+      // Stand (ADR-0024) - the version number itself is no date. The name of this document is that
+      // title (or its URL), never a file name - marked as such so no naming convention is read
+      // out of it.
+      DocumentProperties properties =
+          parsed
+              .properties()
+              .withSyntheticName(true)
+              .withModifiedAt(DocumentProperties.instantToLocalDate(lastModified));
       DocumentPipelineResult withTitle =
-          hasTitle ? parsed.withProperties(parsed.properties().withTitle(title)) : parsed;
+          parsed.withProperties(hasTitle ? properties.withTitle(title) : properties);
       if (replacingExistingChunks) {
         // Only now, with the new chunks in hand - see storeChunks' callers.
         vectorChunkStore.deleteByDocumentId(doc.getId());

@@ -57,10 +57,15 @@ Bibliothek gelangen:
 | `FILESYSTEM` | Ein Verzeichnis auf dem Server bzw. ein eingebundenes Netzlaufwerk wird gelesen | ja |
 | `HTTP_DIRECTORY` | Ein Webverzeichnis (Apache-Autoindex) wird gecrawlt | ja |
 | `RSS_FEED` | Ein Feed und die verlinkten Detailseiten werden gelesen | ja |
+| `CONFLUENCE` | Die Seiten und Anhänge ausgewählter Spaces einer Confluence-Instanz (Cloud oder Data Center) werden über deren API gelesen | ja, in zwei Betriebsarten |
 
-Ein **Indexierungslauf** ist ein Durchgang über die ganze Quelle einer lauf-basierten
-Bibliothek. Er hat einen Start, ein Ende, einen Status, Zähler und ein Protokoll. Uploads haben
-keinen Lauf: die Datei wird verarbeitet, das Ergebnis steht am Dokument.
+Ein **Indexierungslauf** ist ein Durchgang über die Quelle einer lauf-basierten Bibliothek. Er
+hat einen Start, ein Ende, einen Status, Zähler, ein Protokoll und eine **Betriebsart**: Ein
+*vollständig auflistender* Lauf sieht die ganze Quelle und darf am Ende Verschwundenes entfernen;
+ein *ergänzender* Lauf sieht nur ein Fenster (die jüngsten Feed-Einträge, die seit dem letzten Lauf
+geänderten Seiten) und entfernt nie etwas wegen Abwesenheit. Welche Betriebsarten ein Quellentyp
+kennt, legt sein Konnektor fest (Abschnitt 4). Uploads haben keinen Lauf: die Datei wird
+verarbeitet, das Ergebnis steht am Dokument.
 
 Ein **Dokument** ist eine Zeile in der Dokumenttabelle, eindeutig über das Paar aus Bibliothek
 und Quellpfad. Es trägt Prüfsumme, Status, Chunk-Anzahl und Fehlermeldung. Steckt in einem
@@ -79,6 +84,7 @@ Ordnerpfad an. Wer Ordner anlegt, hängt vom Quellentyp ab:
 | `FILESYSTEM` | Der Lauf spiegelt die Verzeichnisstruktur der Quelle. Ordner entstehen nur entlang gefundener Dateien; ein Verzeichnis, das keine Dokumente mehr hält, verschwindet am Ende des Laufs. | nein, die Quelle ist führend |
 | `HTTP_DIRECTORY` | Der Lauf spiegelt den gecrawlten Verzeichnisbaum: der URL-Pfad unterhalb der Start-URL, je Segment prozentdekodiert. Wie beim Dateisystem entstehen Ordner nur entlang gefundener Dateien; aufgeräumt wird nur nach einem vollständigen Crawl. | nein, die Quelle ist führend |
 | `RSS_FEED` | keine Ordner; ein Feed hat keine Struktur | entfällt |
+| `CONFLUENCE` | keine Ordner. Space und Gliederungspfad einer Seite stehen am Dokument und erscheinen in Zitat, Protokoll und Chunk-Kontext, nicht als Ordner. | entfällt |
 
 Das Löschen eines Ordners in einer Upload-Bibliothek löscht die enthaltenen Dokumente samt
 Chunks und Dateien, nach einer Bestätigung, die deren Anzahl nennt.
@@ -100,10 +106,11 @@ flowchart TB
 
 | Auslöser | Beschreibung |
 |---|---|
-| **Manuell** | „Jetzt indizieren" an der Bibliothek. Genügt die Rolle EDITOR an der Bibliothek. |
+| **Manuell** | „Jetzt indizieren" an der Bibliothek, in der Betriebsart, die der Konnektor für den Zustand der Bibliothek vorsieht. Genügt die Rolle EDITOR an der Bibliothek. Bei Confluence gibt es zusätzlich „Vollabgleich starten". |
 | **Zeitplan** | Je Bibliothek einstellbar, Details unten. |
+| **Webhook** | Nur Confluence: Die Instanz meldet geänderte Seiten, OPAA holt wenige Sekunden später genau diese Seiten in einem kurzen Lauf „per Webhook". Ersetzt weder Zeitplan noch Vollabgleich. |
 | **Upload** | Kein Lauf. Jede Datei geht sofort einzeln durch die Dokumentstrecke, auf einem eigenen Thread-Pool, damit ein Upload nie hinter einem langen Verzeichnislauf wartet. |
-| **Nachzug (Admin)** | Kein regulärer Lauf. Ein Systemadministrator stößt die Neuverarbeitung von Dokumenten an, die mit einer älteren Pipeline-Version erzeugt wurden (Abschnitt 9). |
+| **Nachzug (Admin)** | Kein regulärer Lauf. Ein Systemadministrator stößt die Neuverarbeitung von Dokumenten an, die mit einer älteren Pipeline-Version erzeugt wurden (Abschnitt 9), oder den Bestandslauf der Kernfelder (Kapitel [Metadaten](metadaten.md)). |
 
 **Zeitplan je Bibliothek.** Jede lauf-basierte Bibliothek kann einen Zeitplan tragen; für
 Upload-Bibliotheken wird er abgewiesen. Verwaltende setzen ihn in der Bibliotheksansicht:
@@ -132,7 +139,9 @@ fällig geworden sind. Daraus folgen drei Regeln:
 
 Welche Stufe sinnvoll ist, hängt von der Quelle ab. Ein Feed kostet unverändert nur eine
 Anfrage je Lauf und verträgt stündlich; ein großes Netzlaufwerk liest bei jedem Lauf alle Dateien
-und ist eher täglich oder wöchentlich fällig.
+und ist eher täglich oder wöchentlich fällig. Eine Confluence-Bibliothek läuft täglich inkrementell
+und nach ihrem eigenen Rhythmus (Standard sieben Tage, je Bibliothek im Zeitplan-Dialog
+einstellbar) als Vollabgleich.
 
 ### 3.2 Zustände eines Laufs
 
@@ -156,6 +165,10 @@ Ein einzelnes Dokument, das nicht verarbeitet werden kann, bricht den Lauf **nic
 wird gezählt, protokolliert und übersprungen. `FAILED` bedeutet, dass der Lauf als Ganzes nicht
 zu Ende geführt werden konnte.
 
+Ein Lauf kann `COMPLETED` und trotzdem **unvollständig** sein: Ein Confluence-Lauf, der sein
+Anfragebudget verbraucht hat, endet geordnet mit dem Kennzeichen „unvollständig, wird fortgesetzt";
+der nächste Lauf setzt dort an. Ein solcher Lauf entfernt nichts.
+
 ### 3.3 Wiederanlauf nach Störungen
 
 Weil ein hängender Lauf seine Bibliothek dauerhaft blockieren würde, gibt es zwei Aufräumer:
@@ -171,8 +184,8 @@ Ein abgebrochener Lauf lässt den bisherigen Bestand weitgehend stehen. Dokument
 bereits fertig verarbeitet hat, bleiben indiziert; Dokumente, die er noch nicht erreicht hat,
 bleiben auf dem alten Stand. Nur das eine Dokument, das gerade in Arbeit war, kann ohne Chunks
 zurückbleiben, und auch das nur noch, wenn der Abbruch genau zwischen dem Entfernen der alten
-Chunks und dem Schreiben der neuen fiel — seit #1268 ist das das Zeitfenster des Embedding-Aufrufs
-statt der gesamten Verarbeitung (Abschnitt 5, Schritt 6a). Es steht dann nicht auf „indiziert" und
+Chunks und dem Schreiben der neuen fiel, also im Zeitfenster des Embedding-Aufrufs (Abschnitt 5,
+Schritt 6a). Es steht dann nicht auf „indiziert" und
 wird im nächsten Lauf erneut verarbeitet, unabhängig von der Prüfsumme.
 
 ## 4. Die Quellen: der Übergabepunkt an die Konnektoren
@@ -181,10 +194,19 @@ Jeder lauf-basierte Quellentyp hat einen eigenen **Konnektor** (im Code: Executo
 Konnektor kennt die Eigenheiten seiner Quelle, die Dokumentstrecke dahinter kennt sie nicht.
 Was ein Konnektor liefern muss, ist für alle gleich:
 
-1. eine **Aufzählung** der aktuell vorhandenen Elemente (Dateien, URLs, Feed-Einträge) samt der
-   Aussage, ob sie **vollständig** ist. Nur eine vollständige Aufzählung darf am Ende als
+1. eine **Aufzählung** der aktuell vorhandenen Elemente (Dateien, URLs, Feed-Einträge, Seiten)
+   samt der Aussage, ob sie **vollständig** ist. Nur eine vollständige Aufzählung darf am Ende als
    Grundlage dienen, um verschwundene Dokumente zu erkennen (Abschnitt 7),
-2. für jedes Element den **Inhalt** als Datei oder als bereits extrahierten Text.
+2. für jedes Element den **Inhalt** als Datei oder als bereits extrahierten Text,
+3. die Erklärung seiner **Betriebsarten**: welche es gibt und ob sie vollständig auflisten oder
+   nur ergänzen.
+
+| Konnektor | Betriebsarten | Löscht durch Abwesenheit |
+|---|---|---|
+| FILESYSTEM | vollständig | ja, nach vollständigem Lauf |
+| HTTP_DIRECTORY | vollständig | ja, wenn der Crawl weder abgeschnitten noch unvollständig war |
+| RSS_FEED | ergänzend | nie |
+| CONFLUENCE | Vollabgleich (vollständig), inkrementell (ergänzend) | nur der Vollabgleich, und nur bei vollständiger Auflistung aller Spaces |
 
 ```mermaid
 flowchart LR
@@ -192,10 +214,12 @@ flowchart LR
         F[FILESYSTEM<br/>Verzeichnisbaum lesen]
         H[HTTP_DIRECTORY<br/>Autoindex crawlen]
         R[RSS_FEED<br/>Feed + Detailseiten]
+        C[CONFLUENCE<br/>Spaces, Seiten, Anhänge]
     end
     F --> DS
     H --> DS
     R --> DS
+    C --> DS
     U[Upload] --> DS
     DS[Dokumentstrecke<br/>je Element identisch]
 ```
@@ -215,7 +239,8 @@ beginnt:
 
 > Welche Mechanismen und Grenzwerte das je Quelle konkret sind, steht in den Kapiteln
 > [Verzeichnis im Dateisystem](konnektor-filesystem.md),
-> [Webverzeichnis](konnektor-http-directory.md) und [Feed](konnektor-rss-feed.md).
+> [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md) und
+> [Confluence](konnektor-confluence.md).
 
 ## 5. Die Dokumentstrecke: was mit jedem Element passiert
 
@@ -241,9 +266,8 @@ flowchart TB
     S4 -. gefundene Anhänge .-> AT[Anhänge als eigene<br/>Dokumente durch dieselbe Strecke]
 ```
 
-Schritt 6a steht bewusst im Bild: Seit #1268 werden die alten Chunks erst entfernt, wenn die neue
-Fassung geparst und gechunkt vorliegt — vorher geschah das direkt nach der Kontingentprüfung, also
-vor dem Parsen.
+Schritt 6a steht bewusst im Bild: Die alten Chunks werden erst entfernt, wenn die neue Fassung
+geparst und gechunkt vorliegt, nicht schon vor dem Parsen.
 
 ### Schritt 1: Prüfsumme und Identität
 
@@ -256,9 +280,8 @@ Hat sich der Inhalt geändert, bleibt die Dokumentzeile mit ihrer ID bestehen. N
 werden ausgetauscht. Dadurch überleben Verweise auf das Dokument, etwa aus Chat-Zitaten oder von
 Anhängen, eine Aktualisierung.
 
-**Wann die alten Chunks verschwinden (seit #1268):** erst, wenn die neue Fassung tatsächlich
-geparst und gechunkt vorliegt (Schritt 6a im Bild) — vorher geschah das schon direkt nach der
-Kontingentprüfung. Scheitert das Parsen der neuen Fassung, bleibt der alte Stand durchsuchbar; das
+**Wann die alten Chunks verschwinden:** erst, wenn die neue Fassung tatsächlich geparst und
+gechunkt vorliegt (Schritt 6a im Bild). Scheitert das Parsen der neuen Fassung, bleibt der alte Stand durchsuchbar; das
 Dokument steht auf „fehlgeschlagen", behält aber seine Chunks und seine bisherige Chunk-Anzahl.
 Nur eine neue Fassung, die gelesen werden konnte und leer oder ohne extrahierbaren Text ist,
 entfernt die alten Chunks — dann ist „leer" eine Aussage über den neuen Inhalt, und die
@@ -282,7 +305,9 @@ gesetzt, damit der Fall auffällt.
 
 Anhand des erkannten Formats wird eine **Format-Pipeline** gewählt. Für jedes Format gibt es
 genau eine zuständige Pipeline; für alles Unbekannte oder Strukturlose gibt es eine
-Auffang-Pipeline auf Basis von Apache Tika. Zugelassen sind grob: Text und Markdown, PDF, die
+Auffang-Pipeline auf Basis von Apache Tika. Zwei Inhalte waren nie eine Datei und überspringen die
+Formaterkennung: Der Text einer Feed-Detailseite geht direkt an die Auffang-Pipeline, der Körper
+einer Confluence-Seite direkt an die [Confluence-Pipeline](format-confluence.md). Zugelassen sind grob: Text und Markdown, PDF, die
 Office-Formate von Microsoft und OpenDocument, Tabellen, HTML und E-Mails. Welche Endungen das
 genau sind, welche Pipeline sie bedient und welche Formate bewusst nicht aufgenommen werden,
 steht in der [Formatübersicht](#anhang-formatübersicht) am Ende dieses Kapitels.
@@ -319,13 +344,19 @@ Was alle Pipelines gemeinsam haben:
 
 Vor dem Speichern bekommt jeder Chunk seinen Rahmen: Dokument, Bibliothek, Organisation,
 laufende Nummer im Dokument, Dateiname, Pipeline-Kennung und -Version, sowie die
-Struktur-Metadaten aus der Pipeline (Ortsangabe, bei Mails die Kopfdaten). Diese Metadaten sind
-das, worüber die Suche später filtert, etwa auf die Bibliotheken, die eine Person sehen darf.
+Struktur-Metadaten aus der Pipeline (Ortsangabe, bei Mails die Kopfdaten, bei Confluence-Seiten
+Space und Gliederungspfad). Diese Metadaten sind das, worüber die Suche später filtert, etwa auf die
+Bibliotheken, die eine Person sehen darf.
 
-Zusätzlich wird für das Embedding, nicht für den gespeicherten Text, ein aus dem Dateinamen
-abgeleiteter **Kontexttitel** vorangestellt. Ein Chunk aus `2024-03_Dienstanweisung_Homeoffice.pdf`
-wird als „[Dienstanweisung Homeoffice] …" eingebettet, sofern das Dokument in mehr als einen
-Chunk zerfällt. Der Präfix wirkt nur auf der Vektorseite: Der Volltextindex enthält den
+An derselben Stelle werden die **Kernfelder** des Dokuments ermittelt (Titel, Dokumentart,
+Datum/Stand) und die filterbaren davon an jeden Chunk geschrieben. Woher sie kommen und was sie
+bewirken, steht im Kapitel [Metadaten](metadaten.md).
+
+Zusätzlich wird für das Embedding, nicht für den gespeicherten Text, ein **Kontexttitel**
+vorangestellt: bei Dateien aus dem Dateinamen abgeleitet, bei Feed-Einträgen die Überschrift, bei
+Confluence-Seiten der Ort der Seite im Space. Ein Chunk aus
+`2024-03_Dienstanweisung_Homeoffice.pdf` wird als „[Dienstanweisung Homeoffice] …" eingebettet,
+sofern das Dokument in mehr als einen Chunk zerfällt. Der Präfix wirkt nur auf der Vektorseite: Der Volltextindex enthält den
 Chunk-Text und die Kennungen, nicht den Dateinamen. Er gleicht aus, dass ein Detail-Chunk (eine
 Gebührenzeile, ein einzelner Paragraf) im Embedding sonst kaum Signal trägt, wovon das Dokument
 handelt. Das Zitat bleibt unverändert.
@@ -384,8 +415,9 @@ Inhalt. Anhänge entstehen auf zwei Arten, und beide münden in denselben Mechan
   Das ist unabhängig von der Quelle; die Format-Pipeline meldet die Anhänge, gleich ob die Mail
   hochgeladen, aus einem Verzeichnis gelesen oder von einem Server geladen wurde.
 - **Aus der Quelle:** Ein Quellsystem verknüpft mit einem Element weitere Dateien, wie eine
-  Feed-Detailseite ihre verlinkten Anlagen oder eine Wiki-Seite ihre angehängten Dateien. Hier
-  meldet der Konnektor die Anhänge.
+  Feed-Detailseite ihre verlinkten Anlagen oder eine Confluence-Seite ihre angehängten Dateien.
+  Hier meldet der Konnektor die Anhänge; bei Confluence trägt jeder Anhang Space und
+  Gliederungspfad seiner Seite.
 
 OPAA behandelt jeden Anhang als **eigenes Dokument**: mit eigener Prüfsumme, eigener Pipeline,
 eigener Chunk-Anzahl und einem Verweis auf das Elterndokument. Das Beispiel zeigt eine Mail:
@@ -419,7 +451,7 @@ Konsequenzen für den Betrieb:
 Die Dokumentstrecke weiß nicht, woher ein Anhang stammt. Jeder Konnektor, der Anhänge
 liefert, und jede Format-Pipeline, die welche findet, nutzt denselben Weg; die Grenzwerte für
 Anzahl und Größe je Elternteil setzt die jeweilige Quelle bzw. das Format, die Tiefe ist
-allgemein (Ticket #1269 führt sie unter `opaa.indexing.attachments.max-depth` zusammen).
+allgemein (`opaa.indexing.attachments.max-depth`).
 
 ## 7. Änderungen und Löschungen erkennen
 
@@ -428,20 +460,23 @@ allgemein (Ticket #1269 führt sie unter `opaa.indexing.attachments.max-depth` z
 | Datei unverändert | übersprungen, Chunks bleiben |
 | Datei geändert | alte Chunks entfernt, neue erzeugt, Dokument-ID bleibt |
 | Datei umbenannt oder verschoben | neuer Pfad ist ein neues Dokument, alter Pfad gilt als entfernt |
-| Datei verschwunden | Dokument samt Chunks wird am Ende eines **vollständigen, erfolgreichen** Laufs entfernt |
-| Quelle nicht erreichbar | Lauf `FAILED`, **nichts** wird entfernt |
+| Datei verschwunden | Dokument samt Chunks wird am Ende eines **vollständig auflistenden, erfolgreichen** Laufs entfernt |
+| Quelle meldet die Löschung selbst (Confluence: Seite im Papierkorb, Seite in einen anderen Space verschoben) | Dokument samt Anhängen wird sofort entfernt, in jeder Betriebsart |
+| Quelle nicht erreichbar, Teil der Quelle nicht lesbar | Lauf `FAILED` bzw. Aufzählung unvollständig, **nichts** wird entfernt |
 
 Die letzte Zeile ist die wichtigste Sicherung: Ein Lauf, der null Dateien sieht, kann eine leere
 Quelle oder ein nicht eingebundenes Netzlaufwerk bedeuten. Deshalb löscht ein leeres Ergebnis nie,
 und die Bereinigung läuft nur, wenn der Konnektor die Quelle vollständig aufgezählt hat. Ein
-abgebrochener Crawl bereinigt nicht.
+abgebrochener Crawl bereinigt nicht; ein Confluence-Space, den das Dienstkonto nicht lesen darf,
+lässt den ganzen Bestand stehen. Ein entzogenes Recht ist kein Löschbefund.
 
 Auch abgewiesene Dateien, etwa nicht unterstützte Formate, gelten dabei als „gesehen". Unlesbar
 ist nicht dasselbe wie verschwunden.
 
-Die Bereinigung wirkt je Bibliothek und Quellentyp. Feeds bereinigen **nie** durch Abwesenheit,
-weil ein Feed nur die jüngsten Einträge zeigt und ältere Meldungen nicht verschwunden sind, nur
-nicht mehr gelistet.
+Die Bereinigung wirkt je Bibliothek und Quellentyp und nur in vollständig auflistenden
+Betriebsarten (Abschnitt 4). Feeds bereinigen **nie** durch Abwesenheit, weil ein Feed nur die
+jüngsten Einträge zeigt und ältere Meldungen nicht verschwunden sind, nur nicht mehr gelistet; ein
+inkrementeller Confluence-Lauf ebenso wenig, weil er nur Geändertes sieht.
 
 Beim Löschen werden Anhänge vor ihren Elterndokumenten entfernt, damit die Verweise in der
 Datenbank konsistent bleiben.
@@ -468,7 +503,9 @@ Eintrag. Die Kategorien:
 | Formatabweichung | indiziert, aber Endung und Inhalt passen nicht zusammen |
 | Allowlist | Quellpfad liegt außerhalb der Freigabe |
 | Zeitplan übersprungen | fällig, aber ein Lauf lief bereits |
-| entfernt | Dokument wurde wegen Abwesenheit in der Quelle gelöscht |
+| in der Quelle entfernt | Dokument wurde gelöscht, wegen Abwesenheit oder auf Befund der Quelle |
+| Ratenbegrenzung | die Quelle hat den Lauf gebremst (HTTP 429); eine Zeile je Lauf mit Anzahl und Wartezeit |
+| Anfragebudget erschöpft | der Lauf endete geordnet unvollständig, der nächste setzt fort |
 | Fehler | Verarbeitung begonnen, unerwartet gescheitert |
 
 Drei Betriebsregeln dazu:
@@ -488,6 +525,10 @@ MANAGER an der Bibliothek, weil sie interne Pfade und URLs der Quellkonfiguratio
 
 Scheitern zwei geplante Läufe hintereinander, zeigt die Bibliothek ein Warnbanner. Manuelle
 Versuche zählen dafür nicht mit, damit ein Testlauf den Befund nicht überschreibt.
+
+Bei Confluence zeigt jeder Lauf zusätzlich seine Betriebsart, das Kennzeichen „unvollständig,
+wird fortgesetzt" und eine Kennzahlenzeile (Anfragen, Drosselungen, Anhänge, Dauer); eine
+unvollständige Auflistung bleibt dauerhaft an der Bibliothek sichtbar.
 
 Systemweit sieht ein Systemadministrator zusätzlich eine Liste der Dokumente **ohne einen
 einzigen Chunk**, der typische Befund für eingescannte PDFs, sowie den Pipeline-Versionsstand je
@@ -518,7 +559,7 @@ flowchart LR
     V --> A[Admin stößt Nachzug an<br/>in Paketen von 1 bis 100]
     A --> L{Quelldatei lokal<br/>erreichbar?}
     L -- ja: FILESYSTEM, UPLOAD --> N[sofort neu verarbeitet,<br/>gleiche Dokument-ID]
-    L -- nein: Web, Feed --> M[für nächsten Lauf vorgemerkt]
+    L -- nein: Web, Feed, Confluence --> M[für nächsten Lauf vorgemerkt]
 ```
 
 Der Nachzug ist unterbrechbar und wiederaufnehmbar, weil er keine eigene Cursor-Tabelle führt:
@@ -563,7 +604,7 @@ Die wichtigsten Schlüssel unter `opaa.indexing.*`:
 | `stale-job-timeout` | 4h | Frist ohne Fortschritt, bis ein Lauf als verwaist gilt |
 | `thread-pool.*` | 2 / 4 / 20 | Lauf-Pool |
 | `target-validation.*` | aktiv | Zieladressprüfung für Netzquellen |
-| `rss.*`, `crawl.*`, `mail.*`, `tabular.*`, `odf.*` | siehe Konnektor- und Format-Kapitel | Grenzwerte je Quelle und Format |
+| `rss.*`, `crawl.*`, `confluence.*`, `mail.*`, `tabular.*`, `odf.*` | siehe Konnektor- und Format-Kapitel | Grenzwerte je Quelle und Format |
 
 ### 10.4 Was nicht gebaut ist
 
@@ -573,15 +614,17 @@ Die wichtigsten Schlüssel unter `opaa.indexing.*`:
 - **Automatischer Nachzug** nach einem Pipeline-Update. Ob er selbsttätig oder auf
   Betreiberentscheidung läuft, ist bewusst offen.
 
-Weitere Systemkonnektoren, etwa für Wikis und Dokumentenmanagementsysteme, werden laufend
-ergänzt. Der Rahmen dafür (eine Registrierung je Quellentyp, der gemeinsame Anhangsweg, die
-Löschsemantik je Betriebsart) ist Teil dieser Pipeline und wächst nicht je Konnektor.
+Weitere Systemkonnektoren, etwa für Dokumentenmanagementsysteme, werden laufend ergänzt. Der
+Rahmen dafür (eine Registrierung je Quellentyp, der gemeinsame Anhangsweg, die Löschsemantik je
+Betriebsart) ist Teil dieser Pipeline und wächst nicht je Konnektor.
 
 ## 11. Weiterführende Kapitel
 
 - Konnektoren je Quellentyp: [Verzeichnis im Dateisystem](konnektor-filesystem.md),
-  [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md)
+  [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md),
+  [Confluence](konnektor-confluence.md)
 - Format-Pipelines je Dokumenttyp: siehe [Formatübersicht](#anhang-formatübersicht)
+- Kernfelder je Dokument, ihre Ermittlung, Pflege und Wirkung in der Suche: [Metadaten](metadaten.md)
 - Installation, Umgebungsvariablen und Update-Verhalten des Index: [Deployment](deployment.md)
 
 ## Anhang: Formatübersicht
@@ -607,6 +650,7 @@ muss nur als Text erkennbar sein und die Datei muss die Endung selbst tragen.
 | `.eml` | `email` | text-tolerant | Kopfdaten, Nachrichtentext, Thread-Segmente, Anhänge | [E-Mail](format-mail.md) |
 | `.msg` | `email` | strikt | wie `.eml` | [E-Mail](format-mail.md) |
 | Feed-Text | `tika-fallback` | entfällt | keine, Token-Fenster | [Auffang-Pipeline](format-fallback.md) |
+| Confluence-Seite | `confluence` | entfällt | Überschriften h1 bis h3, Tabellen, Listen, Makros nach Regelwerk | [Confluence-Seite](format-confluence.md) |
 
 ### Bewusst nicht zugelassen
 

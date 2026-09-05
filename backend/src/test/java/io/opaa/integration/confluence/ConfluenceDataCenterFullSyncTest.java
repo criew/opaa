@@ -77,7 +77,8 @@ class ConfluenceDataCenterFullSyncTest {
   @BeforeEach
   void setUp() throws Exception {
     fileProcessingService = mock(FileProcessingService.class);
-    when(fileProcessingService.processConfluencePage(any(), any(), any(), any(), any(), any()))
+    when(fileProcessingService.processConfluencePage(
+            any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
     when(fileProcessingService.processUrlFile(
             any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any()))
@@ -152,12 +153,13 @@ class ConfluenceDataCenterFullSyncTest {
             eq("Abschnitt 1.1"),
             eq(pagePath("Abschnitt 1.1")),
             eq("1"),
+            any(),
             eq(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1")),
             eq(library));
     verify(fileProcessingService, never())
-        .processConfluencePage(any(), eq("Nur Admin"), any(), any(), any(), any());
+        .processConfluencePage(any(), eq("Nur Admin"), any(), any(), any(), any(), any());
     verify(fileProcessingService, never())
-        .processConfluencePage(any(), eq("Alt"), any(), any(), any(), any());
+        .processConfluencePage(any(), eq("Alt"), any(), any(), any(), any(), any());
     verify(fileProcessingService)
         .processUrlFile(
             any(),
@@ -287,6 +289,7 @@ class ConfluenceDataCenterFullSyncTest {
             eq(pagePath("Onboarding")),
             eq("2"),
             any(),
+            any(),
             eq(library));
     verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
     verify(indexingJobService, never()).failJob(eq(jobId), any());
@@ -303,7 +306,7 @@ class ConfluenceDataCenterFullSyncTest {
     verify(indexingJobService).failJob(eq(jobId), message.capture());
     assertThat(message.getValue()).contains("anonym").doesNotContain("kein-gueltiges-token");
     verify(fileProcessingService, never())
-        .processConfluencePage(any(), any(), any(), any(), any(), any());
+        .processConfluencePage(any(), any(), any(), any(), any(), any(), any());
     verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
   }
 }

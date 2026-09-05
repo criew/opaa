@@ -27,8 +27,11 @@ Design goals (see docs/features/retrieval-benchmark.md, Abschnitt 4):
   Kennungshäufigkeit im Korpus"); konfusionsfähige Kennungen (Aktenzeichen mit benachbarten
   Nummern/Jahren, § 3 vs. § 13, über alle zehn Ämter hinweg erhalten);
   Komposita (Satzungstitel wie "Personalausweisgebührensatzung"); eine organisationsweite
-  Vertretungsregelung, die eine Mehrfach-Dokument-Kette für Multi-Hop-Fragen trägt; und
-  Fassungspaare (identische Satzung/Dienstanweisung in zwei Ständen) für Metadaten-Filterfragen.
+  Vertretungsregelung, die eine Mehrfach-Dokument-Kette für Multi-Hop-Fragen trägt;
+  Fassungspaare (identische Satzung/Dienstanweisung in zwei Ständen) für Metadaten-Filterfragen;
+  und zwei organisationsweite Dokumente mit bewusst leerem Kernfeld (eines ohne
+  `stand_datum`/`fassung`, eines ohne `dokumentart`) für die Leerwert-Regel des Kernfeld-Filters
+  (Issue #1070, Teil 2: "Filter greift zu stark" muss messbar sein).
 - Vollständig synthetisch, keine Fremdquelle — es gibt daher keinen Rohdaten-Snapshot zu
   verifizieren (anders als bei `comic-characters`/`city-landmarks`); Determinismus folgt allein
   aus der festen Iterationsreihenfolge über `AEMTER` und den festen Textbausteinen unten.
@@ -58,6 +61,10 @@ SOURCE_VALUE = "synthetic/opaa-eval-verwaltung"
 LICENSE_VALUE = "CC0-1.0"
 VERTRETUNGSREGELUNG_FILENAME = "verwaltung-vertretungsregelung.md"
 GESCHAEFTSVERTEILUNGSPLAN_FILENAME = "verwaltung-geschaeftsverteilungsplan.md"
+# Leerwert-Dokumente (Issue #1070, Teil 2): feste Dateinamen wie bei den beiden Organisations-
+# dokumenten, damit die Golden-Fälle der Leerwert-Regel sie stabil referenzieren können.
+AKTENAUFBEWAHRUNG_FILENAME = "verwaltung-dienstanweisung-aktenaufbewahrung.md"
+BARRIEREFREIHEIT_FILENAME = "verwaltung-leitfaden-barrierefreiheit.md"
 
 
 # --- Fachbereiche (Ämter) --------------------------------------------------------------
@@ -306,13 +313,16 @@ def slugify(name: str) -> str:
 class GeneratedDocument:
     doc_id: str
     filename: str
-    dokumentart: str
+    dokumentart: str | None
     titel: str
     amt: Amt | None
     aktenzeichen: str
-    fassung: int
-    stand_datum: str
-    gueltig_ab: str
+    # None only on the two Leerwert documents (issue #1070, Teil 2): rendered as YAML `null`,
+    # which the extractor reads as "no value" — the corpus then carries one document without a
+    # Datum/Stand and one without a Dokumentart, exactly what the Leerwert-Regel cases need.
+    fassung: int | None
+    stand_datum: str | None
+    gueltig_ab: str | None
     gueltig_bis: str | None
     ersetzt: str | None
     ersetzt_durch: str | None
@@ -1172,6 +1182,114 @@ def build_geschaeftsverteilungsplan_body() -> str:
     return "\n\n".join(abschnitte)
 
 
+def build_aktenaufbewahrung_body() -> str:
+    # Leerwert-Dokument 1 (Issue #1070, Teil 2): eine organisationsweite Dienstanweisung OHNE
+    # Datum/Stand — weder `stand_datum` noch `fassung` im Frontmatter, kein Jahr in Titel oder
+    # Dateiname. Der Kernfeld-Filter auf ein Datumsfenster muss dieses Dokument nach der
+    # Leerwert-Regel im Fenster halten ("Filter greift zu stark" wird daran gemessen). Thematisch
+    # bewusst fern von Gebühren, damit die übrigen vier Fallklassen unberührt bleiben.
+    abschnitte = [
+        f"# Dienstanweisung über die Aufbewahrung und Aussonderung von Akten der Stadtverwaltung {GEMEINDE}\n\n"
+        f"Diese Dienstanweisung regelt für alle Ämter der Stadtverwaltung {GEMEINDE}, wie "
+        "abgeschlossene Akten und Vorgänge aufzubewahren, nach Ablauf der Aufbewahrungsfrist "
+        "auszusondern und dem Stadtarchiv zur Übernahme anzubieten sind. Sie gilt für Akten in "
+        "Papierform ebenso wie für elektronisch geführte Vorgänge im Dokumentenmanagementsystem "
+        "und tritt mit ihrer Bekanntgabe an die Amtsleitungen in Kraft; ein bestimmter "
+        "Stichtag ist nicht festgelegt.",
+        "## Aufbewahrungsfristen\n\n"
+        "Abgeschlossene Vorgänge werden grundsätzlich zehn Jahre aufbewahrt, gerechnet ab dem "
+        "Ende des Kalenderjahres, in dem der Vorgang abgeschlossen wurde. Personalakten sind "
+        "nach dem Ausscheiden der Beschäftigten weitere fünf Jahre aufzubewahren; Bauakten "
+        "bleiben für die Dauer des Bestehens des Bauwerks in der Registratur. Unterlagen von "
+        "nur vorübergehender Bedeutung — Terminlisten, Entwürfe, Mehrfertigungen — dürfen "
+        "bereits nach zwei Jahren ausgesondert werden, sofern sie nicht Bestandteil eines "
+        "laufenden Vorgangs sind. Die Fristen sind in der Aktenordnung des jeweiligen Amtes "
+        "auszuweisen und im Aktenplan je Aktenzeichen zu hinterlegen.",
+        "## Aussonderungsverfahren\n\n"
+        "Nach Ablauf der Aufbewahrungsfrist erstellt die Registratur des Amtes jährlich bis zum "
+        "31. März eine Aussonderungsliste über alle fristabgelaufenen Akten. Die Liste nennt "
+        "Aktenzeichen, Betreff, Laufzeit und Umfang jeder Akte und wird der Amtsleitung zur "
+        "Freigabe vorgelegt. Eine Akte, die noch für ein laufendes Verfahren, ein "
+        "Rechtsmittel oder eine Prüfung des Rechnungsprüfungsamts benötigt wird, ist von der "
+        "Aussonderung zurückzustellen und mit einem Sperrvermerk zu versehen. Die freigegebene "
+        "Liste geht an das Stadtarchiv, das innerhalb von acht Wochen über die Archivwürdigkeit "
+        "entscheidet.",
+        "## Abgabe an das Stadtarchiv\n\n"
+        f"Das Stadtarchiv der Stadt {GEMEINDE} bewertet die angebotenen Akten und übernimmt die als "
+        "archivwürdig eingestuften Unterlagen in seine Zuständigkeit. Die Abgabe erfolgt in "
+        "gekennzeichneten Archivkartons mit einer Abgabeliste, die das Stadtarchiv "
+        "gegenzeichnet. Elektronische Vorgänge werden in einem vom Stadtarchiv festgelegten "
+        "Format exportiert und mit einer Prüfsumme übergeben. Mit der Gegenzeichnung geht die "
+        "Verantwortung für die Aufbewahrung auf das Stadtarchiv über; das abgebende Amt behält "
+        "ein Einsichtsrecht.",
+        "## Vernichtung nicht archivwürdiger Akten\n\n"
+        "Akten, die das Stadtarchiv als nicht archivwürdig bewertet hat, werden datenschutzgerecht "
+        "vernichtet. Papierakten sind über den zertifizierten Aktenvernichtungsdienst der "
+        "Stadtverwaltung zu entsorgen, elektronische Vorgänge sind einschließlich aller "
+        "Sicherungskopien zu löschen. Über jede Vernichtung ist ein Vernichtungsprotokoll zu "
+        "führen, das Aktenzeichen, Datum der Vernichtung und die verantwortliche Person nennt. "
+        "Das Protokoll wird selbst dauerhaft aufbewahrt.",
+        "## Verantwortlichkeiten\n\n"
+        "Verantwortlich für die Einhaltung dieser Dienstanweisung ist die jeweilige Amtsleitung. "
+        "Sie benennt eine Registraturverantwortliche oder einen Registraturverantwortlichen, "
+        "die oder der die Aussonderungsliste erstellt und die Abgabe an das Stadtarchiv "
+        "vorbereitet. Ist diese Person nicht erreichbar, gilt die Vertretungsregelung der "
+        f"Stadtverwaltung {GEMEINDE} ({VERTRETUNGSREGELUNG_FILENAME}). Fragen der "
+        "Archivwürdigkeit entscheidet ausschließlich das Stadtarchiv.",
+    ]
+    return "\n\n".join(abschnitte)
+
+
+def build_barrierefreiheit_body() -> str:
+    # Leerwert-Dokument 2 (Issue #1070, Teil 2): ein organisationsweiter Leitfaden OHNE
+    # Dokumentart — `dokumentart` ist im Frontmatter `null`, und weder Dateiname noch Titelzeile
+    # tragen einen Vokabularbegriff ("Leitfaden" ist keiner). Der Kernfeld-Filter auf eine
+    # Dokumentart muss dieses Dokument nach der Leerwert-Regel im Fenster halten.
+    abschnitte = [
+        f"# Leitfaden zur Barrierefreiheit der Dienstgebäude der Stadtverwaltung {GEMEINDE}\n\n"
+        f"Dieser Leitfaden beschreibt, welche Anforderungen an die Barrierefreiheit die "
+        f"Dienstgebäude der Stadtverwaltung {GEMEINDE} erfüllen und wie Beschäftigte mit "
+        "Anliegen von Bürgerinnen und Bürgern mit Behinderung umgehen. Er richtet sich an alle "
+        "Ämter mit Publikumsverkehr und ergänzt die baulichen Vorgaben des Gebäudemanagements "
+        "um Verhaltensregeln für den Dienstbetrieb.",
+        "## Zugänge und Aufzüge\n\n"
+        "Jedes Dienstgebäude mit Publikumsverkehr verfügt über mindestens einen stufenlosen "
+        "Zugang mit automatischer Tür. Aufzüge sind mit taktilen Bedienelementen, akustischer "
+        "Etagenansage und einem Notruf ausgestattet, der an den Empfang des Gebäudes geht. "
+        "Rampen weisen eine Neigung von höchstens sechs Prozent auf und sind beidseitig mit "
+        "Handläufen versehen. Ist ein Zugang vorübergehend nicht barrierefrei nutzbar, etwa "
+        "wegen Bauarbeiten, ist am Haupteingang ein Hinweis mit dem alternativen Zugang und "
+        "einer Rufnummer für Hilfe anzubringen.",
+        "## Beschilderung und Leitsysteme\n\n"
+        "Die Beschilderung in den Dienstgebäuden ist kontrastreich, in großer Schrift und in "
+        "Brailleschrift ausgeführt. Ein taktiles Bodenleitsystem führt vom Haupteingang zum "
+        "Empfang und zu den Aufzügen. Raumnummern sind auf Augenhöhe und in Greifhöhe "
+        "angebracht. Digitale Anzeigen im Wartebereich geben Aufrufe zusätzlich akustisch "
+        "wieder, damit auch Menschen mit Sehbehinderung ihren Aufruf wahrnehmen.",
+        "## Beratungsräume und Kommunikation\n\n"
+        "In jedem Amt mit Publikumsverkehr steht mindestens ein Beratungsraum zur Verfügung, der "
+        "mit dem Rollstuhl befahrbar ist und über eine induktive Höranlage verfügt. Auf Wunsch "
+        "werden Gebärdensprachdolmetschende oder Schriftdolmetschende hinzugezogen; der "
+        "Termin ist dafür mindestens eine Woche im Voraus zu vereinbaren. Schriftliche "
+        "Informationen werden auf Anfrage in Leichter Sprache oder in Großdruck bereitgestellt. "
+        "Beschäftigte sprechen Menschen mit Behinderung direkt an, nicht deren Begleitung.",
+        "## Meldung von Barrieren\n\n"
+        "Bürgerinnen und Bürger sowie Beschäftigte können Barrieren in Dienstgebäuden über das "
+        "Formular „Barriere melden“ auf der städtischen Website oder telefonisch beim Empfang "
+        "melden. Das Gebäudemanagement bestätigt den Eingang innerhalb von drei Werktagen und "
+        "teilt mit, bis wann die Barriere beseitigt oder eine Ersatzlösung eingerichtet wird. "
+        "Die Beauftragte für die Belange von Menschen mit Behinderung erhält jede Meldung in "
+        "Kopie und berichtet dem Stadtrat jährlich über den Stand.",
+        "## Fortschreibung\n\n"
+        "Dieser Leitfaden wird vom Gebäudemanagement gemeinsam mit der Beauftragten für die "
+        "Belange von Menschen mit Behinderung fortgeschrieben, sobald sich bauliche oder "
+        "rechtliche Anforderungen ändern. Zuständig für die Umsetzung in den einzelnen Ämtern "
+        f"ist die jeweilige Amtsleitung; im Vertretungsfall gilt die Vertretungsregelung der "
+        f"Stadtverwaltung {GEMEINDE} ({VERTRETUNGSREGELUNG_FILENAME}).",
+    ]
+    return "\n\n".join(abschnitte)
+
+
 # --- Orchestrierung: Dokumentliste in fester, deterministischer Reihenfolge ----------------
 
 
@@ -1418,6 +1536,47 @@ def build_documents() -> list[GeneratedDocument]:
             ersetzt_durch=None,
             schlagworte=["Geschäftsverteilungsplan", "Zuständigkeit", "Organisation"],
             body=build_geschaeftsverteilungsplan_body(),
+        )
+    )
+
+    # Leerwert-Dokumente (Issue #1070, Teil 2) — angehängt nach allen bisherigen Dokumenten,
+    # damit die Ids und Dateinamen der 70 Bestandsdokumente unverändert bleiben.
+    aktenaufbewahrung_id = allocator.next_id()
+    documents.append(
+        GeneratedDocument(
+            doc_id=aktenaufbewahrung_id,
+            filename=AKTENAUFBEWAHRUNG_FILENAME,
+            dokumentart="dienstanweisung",
+            titel=f"Dienstanweisung über die Aufbewahrung und Aussonderung von Akten der Stadtverwaltung {GEMEINDE}",
+            amt=None,
+            aktenzeichen="ORG-DA-AKTEN",
+            fassung=None,
+            stand_datum=None,
+            gueltig_ab=None,
+            gueltig_bis=None,
+            ersetzt=None,
+            ersetzt_durch=None,
+            schlagworte=["Dienstanweisung", "Aktenaufbewahrung", "Aussonderung", "Stadtarchiv"],
+            body=build_aktenaufbewahrung_body(),
+        )
+    )
+    barrierefreiheit_id = allocator.next_id()
+    documents.append(
+        GeneratedDocument(
+            doc_id=barrierefreiheit_id,
+            filename=BARRIEREFREIHEIT_FILENAME,
+            dokumentart=None,
+            titel=f"Leitfaden zur Barrierefreiheit der Dienstgebäude der Stadtverwaltung {GEMEINDE}",
+            amt=None,
+            aktenzeichen="ORG-BARRIEREFREIHEIT",
+            fassung=2024,
+            stand_datum="2024-03-01",
+            gueltig_ab="2024-03-01",
+            gueltig_bis=None,
+            ersetzt=None,
+            ersetzt_durch=None,
+            schlagworte=["Leitfaden", "Barrierefreiheit", "Dienstgebäude", "Organisation"],
+            body=build_barrierefreiheit_body(),
         )
     )
     return documents

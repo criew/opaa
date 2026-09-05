@@ -27,9 +27,11 @@ siehe [Umgesetzt (#1067)](#umgesetzt-1067); manuelle Korrektur, Sammelzuweisung 
 #1068, siehe [Umgesetzt (#1068)](#umgesetzt-1068); Pflege-Anker und der dritte Zustand „kein Wert
 ermittelbar" — #1069, siehe [Umgesetzt (#1069)](#umgesetzt-1069); Dokumentart auch aus Dokumentkopf
 und Dateiformat — #1263, siehe [Umgesetzt (#1263)](#umgesetzt-1263), mit der Kopfregel auf die
-Titelzeile verengt in #1289), **dazu der Kernfeld-Filter in beiden Suchpfaden mit Füllstand und
-Eintrittsbedingung** (Arbeitspaket 4, erster Teil von #1070, siehe
-[Umgesetzt (#1070, Teil 1)](#umgesetzt-1070-teil-1)); Benchmark-Messung des Filters,
+Titelzeile verengt in #1289), **dazu Arbeitspaket 4 vollständig**: der Kernfeld-Filter in beiden
+Suchpfaden mit Füllstand und Eintrittsbedingung (#1070, Teil 1, siehe
+[Umgesetzt (#1070, Teil 1)](#umgesetzt-1070-teil-1)) und seine Benchmark-Abnahme mit den beiden
+getrennt ausgewiesenen Fehlerrichtungen (#1070, Teil 2, siehe
+[`retrieval-benchmark.md`, „Umgesetzt (#1070, Teil 2)"](./retrieval-benchmark.md#umgesetzt-1070-teil-2));
 Bibliotheksfelder und Modell-Extraktion sind noch nicht gebaut.
 
 ---
@@ -471,10 +473,33 @@ eines Dokuments überhaupt ein Dateiname ist. Für einen RSS-Beitrag ist er es n
 geht*, nicht *was das Dokument ist* — „Rat beschließt neue Hundesteuersatzung" ist keine Satzung, und
 „Haushalt 2024 beschlossen" trägt keinen Stand. Für einen solchen synthetischen Namen entfallen
 deshalb **beide** Namensquellen: der Token-Abgleich der Dokumentart (samt Endungsregel) und die
-Datumsangabe aus dem Namen. Als **Titel** bleibt die Überschrift, denn genau das ist sie. Gesetzt wird
-das Kennzeichen an den zwei Stellen, an denen ein RSS-Eintragskörper in die Extraktion geht —
-`FileProcessingService#processRssEntry` im Ingest und `MetadataBackfillService` im Bestandslauf —,
-damit beide Wege dieselben Felder aus derselben Zeile lesen.
+Datumsangabe aus dem Namen. Als **Titel** bleibt der Name, denn genau das ist er.
+
+*Welche Zuflüsse betroffen sind* — vollständige Bestandsaufnahme über alle Quellarten (#1318):
+
+| Zufluss | `file_name` | Name ist ein Dateiname? |
+|---|---|---|
+| Dateisystem, Upload, Webverzeichnis (HTTP) | Name der Datei | ja |
+| Anhang einer Mail, eines RSS-Eintrags, eines Webverzeichnisses oder einer Confluence-Seite | Name des Anhangs | ja |
+| RSS-Eintragskörper | Überschrift des Eintrags, ersatzweise seine URL | **nein** |
+| Confluence-Seite | Seitentitel, ersatzweise seine URL | **nein** |
+
+Anhänge stehen ausnahmslos auf der Ja-Seite: Sie laufen über `FileProcessingService#processUrlFile`
+mit dem Namen, den die Quelle für die Datei nennt — auch der Anhang eines RSS-Eintrags und der einer
+Confluence-Seite, deren Elternzeile selbst einen synthetischen Namen trägt.
+
+Ein Seitentitel im Wiki folgt derselben freien Schreibweise wie eine Feed-Überschrift: „Gebührensatzung
+2024" ist die Überschrift einer Wiki-Seite über Gebühren, keine Satzung mit Stand 2024. Beide Zuflüsse
+haben stattdessen eine echte Datumsquelle aus den Eigenschaften der Quelle: der Feed-Eintrag sein
+Veröffentlichungsdatum (`documentDate`), die Confluence-Seite den Zeitpunkt, zu dem ihre aktuelle
+Version geschrieben wurde (`modifiedAt`, aus `ConfluencePage#lastModified`). Beide
+synthetischen Zuflüsse setzen das Kennzeichen im Ingest, in `FileProcessingService#processRssEntry`
+und `#processConfluencePage`. Im **Bestandslauf** gibt es zwei Wege zur selben Regel: Ein
+RSS-Eintragskörper wird in `MetadataBackfillService#advanceRemote` ohne Download aus seiner Zeile neu
+ermittelt und setzt das Kennzeichen dort selbst; eine Confluence-Seite hat keine zeilenweise
+Ersatzquelle (ihr `last_modified_remote` ist die Versionsnummer, kein Datum, und Titelzeile wie
+Überschriften stehen nur im Seitenkörper) und wird deshalb für ihren nächsten Konnektorlauf
+vorgemerkt — der läuft durch `#processConfluencePage` und damit durch dieselbe Regel.
 
 **Dateiformat.** PPTX/ODP → `PRAESENTATION` (die beiden Präsentationsformate, die
 `SupportedDocumentFormats` überhaupt zulässt), als letzte Quelle: Jede Textquelle geht vor, und ein
@@ -889,7 +914,7 @@ die Gegenmaßnahme auf der richtigen Seite — er behebt die Ursache, statt die 
 Der erste von zwei Teilen von Arbeitspaket 4: der Filter selbst in beiden Suchpfaden, die Query-/Chat-
 API, die Filter-Oberfläche mit Füllstand und Eintrittsbedingung. Der zweite Teil (Golden-Filterfeld,
 `MetadataFilterAudit`, Fixpunkt und Baseline-Neuziehung — die Messung der beiden Fehlerrichtungen)
-folgt in einem eigenen PR.
+steht in [`retrieval-benchmark.md`, „Umgesetzt (#1070, Teil 2)"](./retrieval-benchmark.md#umgesetzt-1070-teil-2).
 
 **Filtermodell.** `MetadataFilter` (`io.opaa.indexing.metadata`) trägt genau die zwei filterbaren
 Kernfelder: eine Menge von Dokumentart-Codes und ein inklusives Datumsfenster `documentDateFrom`/
@@ -1330,7 +1355,7 @@ solange keine Füllstandsverteilung eines echten Bestands vorliegt.
 | 1 | Kernfelder: Datenmodell, Herkunft/Konfidenz/Akteur, deterministische Extraktion beim Aufnehmen — **umgesetzt mit #1066**, siehe [Umgesetzt (#1066)](#umgesetzt-1066) | — | Beleg-Anzeige wird einordbar; Grundlage für alles Weitere |
 | 2 | **Deterministischer Bestandslauf** über den Altbestand, bibliotheksweise, mit den Nachlauf-Zusagen — **umgesetzt mit #1067**, siehe [Umgesetzt (#1067)](#umgesetzt-1067) | 1 | Die Kernfelder gelten für den vorhandenen Bestand, nicht nur für künftige Dokumente |
 | 3 | Manuelle Korrektur, Sammelzuweisung, Audit-Ereignis — **umgesetzt mit #1068**, siehe [Umgesetzt (#1068)](#umgesetzt-1068) — und Pflege-Anker („N ohne Wert", absolut und anteilig) samt drittem Zustand — **umgesetzt mit #1069**, siehe [Umgesetzt (#1069)](#umgesetzt-1069) | 1, 2 | Die Leerwert-Regel wird behebbar statt Dauerzustand |
-| 4 | Metadatenfilter in beiden Suchpfaden, mit Füllstandsanzeige je Feld — **Filter, API, Oberfläche und Füllstand umgesetzt mit #1070 (Teil 1)**, siehe [Umgesetzt (#1070, Teil 1)](#umgesetzt-1070-teil-1); die Benchmark-Messung folgt als Teil 2 | 2, 3, Hybrid-Suche AP 3 | Löst Szenario 9; die `metadata_filter`-Fälle werden erstmals lösbar |
+| 4 | Metadatenfilter in beiden Suchpfaden, mit Füllstandsanzeige je Feld — **vollständig umgesetzt**: Filter, API, Oberfläche und Füllstand mit #1070 (Teil 1), siehe [Umgesetzt (#1070, Teil 1)](#umgesetzt-1070-teil-1); Benchmark-Abnahme mit #1070 (Teil 2), siehe [`retrieval-benchmark.md`](./retrieval-benchmark.md#umgesetzt-1070-teil-2) | 2, 3, Hybrid-Suche AP 3 | Löst Szenario 9; die `metadata_filter`-Fälle werden erstmals lösbar |
 | 5 | Bibliotheksfelder: Schemakonfiguration je Bibliothek, Wertelisten mit bestätigter Abbildung | 1, 4 | Fassung und Rechtsebene werden führbar |
 | 6 | Metadaten im Kontextpräfix, mit Folgekostenanzeige und selektivem Nachlauf | 5, Ingestion Regel (b)/(d) | Wirkung auch ohne gesetzten Filter |
 | 7 | Modellgestützte Extraktion mit Konfidenz, je Bibliothek abschaltbar | 1, 5 | Felder, die deterministisch nicht erreichbar sind |
