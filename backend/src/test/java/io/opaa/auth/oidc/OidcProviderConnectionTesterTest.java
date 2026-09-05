@@ -93,8 +93,29 @@ class OidcProviderConnectionTesterTest {
     assertThat(outcome.success()).isTrue();
     assertThat(outcome.message())
         .contains("erreichbar")
-        .contains("vom Backend aus nicht geprüft")
+        .contains("vom Backend aus nicht erreichbar")
         .contains("1 Schlüssel");
+  }
+
+  /** Reached and rejected is not "unreachable": the override never stands in for those. */
+  @Test
+  void anIssuerThatWasReachedAndRejectedStillFailsDespiteTheJwkSetOverride() {
+    discoveryBody = discovery("https://elsewhere.example", baseUrl + "/realms/opaa/certs");
+    assertThat(tester.test(baseUrl + "/realms/opaa", baseUrl + "/realms/opaa/certs").success())
+        .as("issuer mismatch")
+        .isFalse();
+
+    discoveryBody = discovery(baseUrl + "/realms/opaa", baseUrl + "/realms/opaa/certs");
+    discoveryStatus = 404;
+    assertThat(tester.test(baseUrl + "/realms/opaa", baseUrl + "/realms/opaa/certs").success())
+        .as("discovery not found")
+        .isFalse();
+
+    discoveryStatus = 200;
+    OidcProviderConnectionTester.TestOutcome blocked =
+        tester.test("http://169.254.169.254/realms/x", baseUrl + "/realms/opaa/certs");
+    assertThat(blocked.success()).as("blocked issuer address").isFalse();
+    assertThat(blocked.message()).contains("OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST");
   }
 
   @Test

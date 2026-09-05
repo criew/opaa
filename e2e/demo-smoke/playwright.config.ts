@@ -13,7 +13,8 @@ import { defineConfig, devices } from '@playwright/test'
  * Same reasoning as e2e/playwright.config.ts for the rest: no `webServer`
  * entry (the stack is a full Docker Compose stack started by run-e2e.mjs,
  * out of scope for what Playwright's own webServer can express), and
- * `workers: 1` even though there is exactly one test - consistency with the
+ * `workers: 1` - the two scenarios share one stack and one Keycloak session state, and the
+ * regular suite runs serially too; consistency with the
  * regular suite's own serialisation convention costs nothing here.
  */
 export default defineConfig({

@@ -139,20 +139,29 @@ test.describe('Demo-Smoke (#232)', () => {
     // Entscheidung 3) is listed as the default
     await expect(page.getByRole('article', { name: 'Verzeichnisdienst' })).toBeVisible()
 
-    await page.getByRole('button', { name: 'Neuer Anbieter' }).click()
-    const dialog = page.getByRole('dialog')
-    await dialog.getByRole('textbox', { name: /^Anzeigename/ }).fill(PARTNER_PROVIDER_NAME)
-    await dialog.getByRole('textbox', { name: /^Issuer-URI/ }).fill(PARTNER_ISSUER)
-    await dialog.getByRole('textbox', { name: /^Client-ID/ }).fill(PARTNER_CLIENT_ID)
-    await dialog.getByRole('textbox', { name: /^JWK-Set-Adresse/ }).fill(PARTNER_JWK_SET_URI)
-    await dialog.getByRole('button', { name: 'Verbindung testen' }).click()
-    await expect(dialog.getByText(/Anbieter erreichbar/)).toBeVisible({ timeout: 30_000 })
-    await dialog.getByRole('button', { name: 'Anlegen' }).click()
-    await expect(page.getByRole('dialog')).toBeHidden()
     const partnerCard = page.getByRole('article', { name: PARTNER_PROVIDER_NAME })
+    // Repeat-safe: a Playwright retry runs against the same, still-running stack - the provider
+    // a previous attempt created is still there, and the issuer is unique per provider.
+    if ((await partnerCard.count()) === 0) {
+      await page.getByRole('button', { name: 'Neuer Anbieter' }).click()
+      const dialog = page.getByRole('dialog')
+      // anchored: "Anzeigename-Claim" is a second textbox of the same dialog
+      await dialog.getByRole('textbox', { name: /^Anzeigename\s*\*?$/ }).fill(PARTNER_PROVIDER_NAME)
+      await dialog.getByRole('textbox', { name: /^Issuer-URI/ }).fill(PARTNER_ISSUER)
+      await dialog.getByRole('textbox', { name: /^Client-ID/ }).fill(PARTNER_CLIENT_ID)
+      await dialog.getByRole('textbox', { name: /^JWK-Set-Adresse/ }).fill(PARTNER_JWK_SET_URI)
+      await dialog.getByRole('button', { name: 'Verbindung testen' }).click()
+      await expect(dialog.getByText(/Anbieter erreichbar/)).toBeVisible({ timeout: 30_000 })
+      await dialog.getByRole('button', { name: 'Anlegen' }).click()
+      await expect(page.getByRole('dialog')).toBeHidden()
+    }
     await expect(partnerCard).toBeVisible()
-    // its decoder was built after the commit, without a restart
-    await expect(partnerCard.getByText('Erreichbar')).toBeVisible({ timeout: 30_000 })
+    // its decoder was built after the commit, without a restart - exact: "Nicht erreichbar"
+    // contains the same word
+    await expect(partnerCard.getByText('Erreichbar', { exact: true })).toBeVisible({
+      timeout: 30_000,
+    })
+    await expect(partnerCard.getByText('Nicht erreichbar', { exact: true })).toHaveCount(0)
 
     await logout(page)
     await expect(page.getByRole('button', { name: 'Anmelden bei Verzeichnisdienst' })).toBeVisible()
@@ -164,8 +173,10 @@ test.describe('Demo-Smoke (#232)', () => {
       username: DEMO_USERNAME,
     })
     expect(mariaAtPartner.email).toBe('maria.weber@stadt-rheinfurt.example')
-    // a fresh account: none of the seeded demo libraries is readable for it
+    // a fresh account: none of the seeded demo libraries is readable for it - wait for the
+    // rendered empty state first, an absence check alone would pass before the list rendered
     await gotoLibraries(page)
+    await expect(page.getByText('Es sind noch keine Bibliotheken vorhanden.')).toBeVisible()
     await expect(page.getByText('Leistungen Meldewesen & Ausweise', { exact: true })).toHaveCount(0)
     await logout(page)
 

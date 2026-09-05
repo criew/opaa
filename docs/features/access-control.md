@@ -249,7 +249,7 @@ nur unter ihnen werden die Subjects des Verzeichnisses aufgelöst, und nur seine
 entstehen daraus. Ein zweiter Anbieter (Partnerportal, Landesanbieter) hat keinen Verzeichnisabgleich;
 seine Gruppen kommen, wenn überhaupt, aus seinem Gruppen-Claim (siehe [„Claim-Zuordnung je
 Anbieter"](#anmeldung-und-identität)) und leben im Namensraum dieses Anbieters. Ein gleichnamiges
-Subject bei zwei Anbietern sind zwei Konten, und nur das des Standardanbieters erhält die
+Subject bei zwei Anbietern ergibt zwei Konten, und nur das des Standardanbieters erhält die
 Verzeichnisgruppen.
 
 ### Der Lebenszyklus eines Kontos
