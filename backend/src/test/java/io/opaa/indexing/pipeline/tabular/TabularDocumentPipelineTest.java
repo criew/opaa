@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
+import io.opaa.indexing.pipeline.DocumentPipelineRunner;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
@@ -620,7 +621,8 @@ class TabularDocumentPipelineTest {
       out.closeEntry();
     }
 
-    DocumentPipelineResult result = pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.ods"));
+    DocumentPipelineResult result =
+        DocumentPipelineRunner.run(pipeline, DocumentPipelineSource.ofFile(file, "xxe.ods"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
@@ -638,7 +640,8 @@ class TabularDocumentPipelineTest {
     }
 
     DocumentPipelineResult result =
-        pipeline.run(DocumentPipelineSource.ofFile(file, "ohne-content-xml.ods"));
+        DocumentPipelineRunner.run(
+            pipeline, DocumentPipelineSource.ofFile(file, "ohne-content-xml.ods"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
@@ -680,7 +683,8 @@ class TabularDocumentPipelineTest {
     writeOds(file, odsTable("Blatt1", odsRow("Name", "Amt"), odsRow("Müller", "Bauamt")));
 
     DocumentPipelineResult result =
-        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.ods"));
+        DocumentPipelineRunner.run(
+            tinyLimitPipeline, DocumentPipelineSource.ofFile(file, "gross.ods"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
@@ -713,7 +717,8 @@ class TabularDocumentPipelineTest {
             "Blatt1", odsRow("Name", "Amt"), odsRow("A", "1"), odsRow("B", "2"), odsRow("C", "3")));
 
     DocumentPipelineResult result =
-        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-zeilen.ods"));
+        DocumentPipelineRunner.run(
+            tinyLimitPipeline, DocumentPipelineSource.ofFile(file, "viele-zeilen.ods"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }

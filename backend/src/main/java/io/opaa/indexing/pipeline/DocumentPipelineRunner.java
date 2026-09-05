@@ -12,6 +12,10 @@ import org.slf4j.LoggerFactory;
  * returning, so no caller can forget the cleanup a reported-but-unclaimed attachment needs. Cleanup
  * never throws, so it cannot turn a successful result into a failure.
  *
+ * <p>It is also where a parse failure becomes an outcome: a {@link RuntimeException} out of {@link
+ * DocumentPipeline#run} is mapped to {@link DocumentPipelineResult#parseFailed()} and logged here,
+ * once, for every format alike.
+ *
  * <p>The {@link #run(DocumentPipeline, DocumentPipelineSource, Consumer)} overload lets the caller
  * index an attachment's bytes first; the cleanup afterwards is unconditional and idempotent, so a
  * handler that consumed the file causes no double delete and one that throws leaves nothing behind.
@@ -41,7 +45,7 @@ public final class DocumentPipelineRunner {
     // The routed format extension is a source of the Dokumentart but no pipeline's own
     // finding - attached here, once, so every ingest path carries it without every pipeline copying
     // it.
-    DocumentPipelineResult result = withFormatExtension(pipeline.run(source), source);
+    DocumentPipelineResult result = withFormatExtension(runPipeline(pipeline, source), source);
     try {
       resultHandler.accept(result);
     } finally {
@@ -55,6 +59,22 @@ public final class DocumentPipelineRunner {
       }
     }
     return result;
+  }
+
+  /**
+   * Turns whatever a pipeline throws while parsing into {@link
+   * DocumentPipelineResult#parseFailed()} and logs it once, so a pipeline reports a format's own
+   * failure by throwing rather than by carrying its own catch-and-map block, and no caller of a
+   * pipeline has to defend against both forms of the same answer.
+   */
+  private static DocumentPipelineResult runPipeline(
+      DocumentPipeline pipeline, DocumentPipelineSource source) {
+    try {
+      return pipeline.run(source);
+    } catch (RuntimeException e) {
+      log.warn("Could not parse {} with pipeline {}", source.fileName(), pipeline.id(), e);
+      return DocumentPipelineResult.parseFailed();
+    }
   }
 
   private static DocumentPipelineResult withFormatExtension(

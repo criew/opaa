@@ -1,11 +1,12 @@
 package io.opaa.indexing.pipeline.office;
 
 import io.opaa.indexing.ChunkingService;
-import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.indexing.pipeline.FileDocumentPipeline;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
+import io.opaa.indexing.pipeline.TableText;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -25,8 +26,6 @@ import org.apache.poi.xslf.usermodel.XSLFTable;
 import org.apache.poi.xslf.usermodel.XSLFTableCell;
 import org.apache.poi.xslf.usermodel.XSLFTableRow;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 
 /**
@@ -40,9 +39,7 @@ import org.springframework.ai.document.Document;
  * ChunkingService#LOCATION_METADATA_KEY location}, every other shape's text follows in shape order,
  * and speaker notes are appended as a final labeled paragraph.
  */
-public class PptxDocumentPipeline implements DocumentPipeline {
-
-  private static final Logger log = LoggerFactory.getLogger(PptxDocumentPipeline.class);
+public class PptxDocumentPipeline extends FileDocumentPipeline<PptxDocumentPipeline.PptxContent> {
 
   static final String ID = "pptx";
   static final short VERSION = 1;
@@ -62,78 +59,71 @@ public class PptxDocumentPipeline implements DocumentPipeline {
     return Set.of(".pptx");
   }
 
+  /**
+   * One presentation's reading: one entry per slide in slide order, plus the OOXML core properties
+   * and the first slide's title as the first heading (ADR-0024).
+   */
+  public record PptxContent(List<SlideChunk> slides, DocumentProperties properties) {}
+
   @Override
-  public DocumentPipelineResult run(DocumentPipelineSource source) {
-    if (source.file() == null) {
-      return DocumentPipelineResult.parseFailed();
+  protected PptxContent read(DocumentPipelineSource source) throws IOException {
+    try (InputStream in = Files.newInputStream(source.file());
+        XMLSlideShow slideShow = new XMLSlideShow(in)) {
+      List<XSLFSlide> slides = slideShow.getSlides();
+      List<SlideChunk> built = new ArrayList<>(slides.size());
+      for (int i = 0; i < slides.size(); i++) {
+        built.add(buildChunk(slides.get(i), i + 1));
+      }
+      return new PptxContent(built, coreProperties(slideShow));
     }
-    PptxContent content = readContent(source);
-    if (content == null) {
-      // The file could not be opened as a PPTX at all - see readContent.
-      return DocumentPipelineResult.parseFailed();
-    }
-    if (content.slides().isEmpty()) {
-      return DocumentPipelineResult.noContent();
-    }
-    List<XSLFSlide> slides = content.slides();
-    List<Document> chunks = new ArrayList<>();
-    boolean anySlideHasText = false;
-    for (int i = 0; i < slides.size(); i++) {
-      SlideChunk built = buildChunk(slides.get(i), i + 1);
-      chunks.add(built.document());
-      anySlideHasText |= built.hasText();
-    }
-    if (!anySlideHasText) {
-      return DocumentPipelineResult.noExtractableText();
-    }
-    return DocumentPipelineResult.chunked(chunks).withProperties(content.properties());
   }
 
   /**
-   * The OOXML core properties (dc:title, created, modified) plus the first slide's title as the
-   * first heading (ADR-0024) - one parse, the same read {@link #run} takes.
+   * Reads the core properties and the first slide's title without building a chunk per slide - the
+   * Bestandslauf needs no chunk stream.
    */
   @Override
-  public DocumentProperties readProperties(DocumentPipelineSource source) {
-    if (source.file() == null) {
-      return DocumentProperties.EMPTY;
+  protected DocumentProperties declaredProperties(DocumentPipelineSource source)
+      throws IOException {
+    try (InputStream in = Files.newInputStream(source.file());
+        XMLSlideShow slideShow = new XMLSlideShow(in)) {
+      return coreProperties(slideShow);
     }
-    PptxContent content = readContent(source);
-    return content == null ? DocumentProperties.EMPTY : content.properties();
   }
 
-  private record PptxContent(List<XSLFSlide> slides, DocumentProperties properties) {}
+  private static DocumentProperties coreProperties(XMLSlideShow slideShow) {
+    POIXMLProperties.CoreProperties core = slideShow.getProperties().getCoreProperties();
+    List<XSLFSlide> slides = slideShow.getSlides();
+    String firstHeading = slides.isEmpty() ? null : titleText(titleShape(slides.getFirst()));
+    return DocumentProperties.builder()
+        .title(core.getTitle())
+        .createdAt(DocumentProperties.toLocalDate(core.getCreated()))
+        .modifiedAt(DocumentProperties.toLocalDate(core.getModified()))
+        .firstHeading(firstHeading)
+        .build();
+  }
 
-  /** {@code null} when the file could not be opened as a PPTX at all - reported as no content. */
-  private static PptxContent readContent(DocumentPipelineSource source) {
-    try (InputStream in = Files.newInputStream(source.file())) {
-      try (XMLSlideShow slideShow = new XMLSlideShow(in)) {
-        List<XSLFSlide> slides = slideShow.getSlides();
-        POIXMLProperties.CoreProperties core = slideShow.getProperties().getCoreProperties();
-        String firstHeading = slides.isEmpty() ? null : titleText(titleShape(slides.get(0)));
-        return new PptxContent(
-            slides,
-            new DocumentProperties(
-                core.getTitle(),
-                DocumentProperties.toLocalDate(core.getCreated()),
-                DocumentProperties.toLocalDate(core.getModified()),
-                null,
-                firstHeading,
-                null,
-                null,
-                false,
-                Map.of()));
-      }
-    } catch (IOException | RuntimeException e) {
-      log.warn("Could not read PPTX document {}", source.fileName(), e);
-      return null;
+  @Override
+  protected DocumentPipelineResult chunks(DocumentPipelineSource source, PptxContent content) {
+    if (content.slides().isEmpty()) {
+      return DocumentPipelineResult.noContent();
     }
+    if (content.slides().stream().noneMatch(SlideChunk::hasText)) {
+      return DocumentPipelineResult.noExtractableText();
+    }
+    return DocumentPipelineResult.chunked(
+        content.slides().stream().map(SlideChunk::document).toList());
+  }
+
+  @Override
+  protected DocumentProperties properties(PptxContent content) {
+    return content.properties();
   }
 
   /**
    * @param hasText whether the slide carried any real text - see this class's own Javadoc.
    */
-  private record SlideChunk(Document document, boolean hasText) {}
+  public record SlideChunk(Document document, boolean hasText) {}
 
   private static SlideChunk buildChunk(XSLFSlide slide, int slideNumber) {
     XSLFShape titleShape = titleShape(slide);
@@ -186,31 +176,17 @@ public class PptxDocumentPipeline implements DocumentPipeline {
     }
   }
 
-  /**
-   * One line per row, cells joined by {@code " | "} - mirrors {@link DocxDocumentPipeline}'s table
-   * reading.
-   */
+  /** One line per row via {@link TableText}, mirroring {@link DocxDocumentPipeline}. */
   private static String tableText(XSLFTable table) {
-    StringBuilder text = new StringBuilder();
+    List<List<String>> rows = new ArrayList<>();
     for (XSLFTableRow row : table.getRows()) {
-      StringBuilder rowText = new StringBuilder();
+      List<String> cells = new ArrayList<>();
       for (XSLFTableCell cell : row.getCells()) {
-        String cellText = cell.getText();
-        if (cellText != null && !cellText.isBlank()) {
-          if (rowText.length() > 0) {
-            rowText.append(" | ");
-          }
-          rowText.append(cellText.strip());
-        }
+        cells.add(cell.getText());
       }
-      if (rowText.length() > 0) {
-        if (text.length() > 0) {
-          text.append('\n');
-        }
-        text.append(rowText);
-      }
+      rows.add(cells);
     }
-    return text.toString();
+    return TableText.rowsOfNonBlankCells(rows);
   }
 
   private static void appendParagraph(StringBuilder body, String text) {

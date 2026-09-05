@@ -50,6 +50,20 @@ public final class HeadingSectionSplitter {
   private HeadingSectionSplitter() {}
 
   /**
+   * The first level-1 heading of {@code events}, or {@code null} when there is none - the format's
+   * own first heading (ADR-0024), which may sit anywhere in the document and is therefore not its
+   * title line.
+   */
+  public static String firstTopLevelHeading(List<Event> events) {
+    for (Event event : events) {
+      if (event instanceof Heading heading && heading.level() == 1 && !heading.title().isBlank()) {
+        return heading.title();
+      }
+    }
+    return null;
+  }
+
+  /**
    * @param maxCuttingLevel the deepest heading level that still opens a new chunk; a {@link
    *     Heading} deeper than this folds into the current section's text instead.
    */

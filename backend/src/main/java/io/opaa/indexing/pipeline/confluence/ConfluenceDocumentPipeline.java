@@ -8,6 +8,8 @@ import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter.Event;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter.Heading;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter.Paragraph;
+import io.opaa.indexing.pipeline.TableText;
+import io.opaa.indexing.pipeline.Whitespace;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -16,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.regex.Pattern;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
@@ -53,9 +54,6 @@ public class ConfluenceDocumentPipeline implements DocumentPipeline {
   /** h1-h3 open a new chunk, like the HTML and Markdown pipelines; h4-h6 fold into the text. */
   static final int MAX_CUTTING_LEVEL = 3;
 
-  // Jsoup counts U+00A0 as whitespace, Java does not - and Confluence writes <p>&nbsp;</p> for
-  // every empty editor line (the same pattern the DOCX/ODF pipelines use).
-  private static final Pattern WHITESPACE = Pattern.compile("[\\s\\u00A0\\u202F]+");
   private static final Set<String> BLOCK_TAGS =
       Set.of(
           "p",
@@ -272,7 +270,7 @@ public class ConfluenceDocumentPipeline implements DocumentPipeline {
           cells.add(cellText(cell));
         }
         if (!cells.isEmpty()) {
-          emitLine(String.join(" | ", cells));
+          emitLine(TableText.row(cells));
         }
       }
     }
@@ -394,7 +392,7 @@ public class ConfluenceDocumentPipeline implements DocumentPipeline {
     }
 
     private static String normalize(String text) {
-      return WHITESPACE.matcher(text).replaceAll(" ").strip();
+      return Whitespace.normalize(text).strip();
     }
   }
 }

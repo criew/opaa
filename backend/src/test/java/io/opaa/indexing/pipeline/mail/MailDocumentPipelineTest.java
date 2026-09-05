@@ -2,6 +2,7 @@ package io.opaa.indexing.pipeline.mail;
 
 import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.IndexingProperties;
@@ -411,6 +412,54 @@ class MailDocumentPipelineTest {
     assertThat(attachment.fileName()).isEqualTo("antrag.pdf");
     assertThat(Files.exists(attachment.tempFile())).isTrue();
     assertThat(Files.readAllBytes(attachment.tempFile())).isEqualTo(pdfBytes);
+  }
+
+  @Test
+  void aFailureAfterExtractionDeletesTheAttachmentsTempFiles() throws Exception {
+    // The readers have already written every attachment to disk by then, and a thrown failure
+    // reaches DocumentPipelineRunner as a result without attachments - nothing else would ever
+    // delete those files.
+    byte[] pdfBytes = readTestResource("test-document.pdf");
+    Message message =
+        newMessageBuilder("Anfrage mit Anlage", "max@example.org", "erika@example.org")
+            .setBody(
+                MultipartBuilder.create("mixed")
+                    .addTextPart("Anbei der Antrag.", StandardCharsets.UTF_8)
+                    .addBodyPart(
+                        BodyPartBuilder.create()
+                            .setBody(pdfBytes, "application/pdf")
+                            .setContentDisposition("attachment", "antrag.pdf"))
+                    .build())
+            .build();
+    Path file = writeEml(DefaultMessageWriter.asBytes(message));
+    Set<Path> mailTempFilesBefore = mailAttachmentTempFiles();
+    ChunkingService throwingChunking =
+        new ChunkingService(new IndexingProperties(1000, 100, 50, null, null, null, null, 1)) {
+          @Override
+          public List<Document> chunkDocuments(String fileName, List<Document> documents) {
+            throw new IllegalStateException("Chunking kaputt");
+          }
+        };
+
+    assertThatThrownBy(
+            () ->
+                pipeline(defaultProperties, throwingChunking)
+                    .run(DocumentPipelineSource.ofFile(file, "mit-anlage.eml")))
+        .isInstanceOf(IllegalStateException.class);
+
+    assertThat(mailAttachmentTempFiles()).isSubsetOf(mailTempFilesBefore);
+  }
+
+  /**
+   * The files {@code MailAttachmentIo} writes, by its own prefix - a set difference rather than a
+   * count, so a file another test writes in parallel cannot decide this assertion.
+   */
+  private static Set<Path> mailAttachmentTempFiles() throws IOException {
+    try (var entries = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
+      return entries
+          .filter(path -> path.getFileName().toString().startsWith("opaa-mail-"))
+          .collect(java.util.stream.Collectors.toSet());
+    }
   }
 
   @Test
