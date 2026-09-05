@@ -5,8 +5,29 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-04T04:54:15Z</updated>
+  <updated>2026-09-05T04:48:01Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Freitag, 4. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-04.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-04.html</id>
+    <updated>2026-09-05T04:48:01Z</updated>
+    <summary type="text">feat(indexing): Metadatenschema für Wissensbibliotheken:
+— Kernfelder Titel, Dokumentart, Datum/Stand mit Herkunftsangabe implementiert
+— Deterministischer Bestandslauf über Altbestand umgesetzt
+— Manuelle Metadatenkorrektur und Sammelzuweisung mit Audit-Ereignissen
+— Pflege-Anker je Feld und Zustand kein Wert ermittelbar eingeführt
+feat: Confluence als Datenquelle anbinden (Konnektor für Cloud und Data Center):
+— Confluence-Konnektor für Cloud und Data Center vollständig implementiert
+— Inkrementeller und Vollabgleich mit unterschiedlicher Löschsemantik
+— Push-Aktualisierung über Webhooks als Beschleuniger des Pull-Abgleichs
+— Betriebsgrenzen für große Instanzen mit Anfragebudget und Wiederaufnahme
+Sonstiges:
+— Kernfeld-Filter Dokumentart und Datum/Stand in beiden Suchpfaden
+— Volltext-Nachzug und FullTextBackfill-Infrastruktur entfernt
+— HTTP_DIRECTORY spiegelt Verzeichnisstruktur als schreibgeschützte Ordner
+— Diagnose im Rechtekontext einer benannten Person ermöglicht</summary>
+  </entry>
   <entry>
     <title>Tagesreport Donnerstag, 3. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-03.html"/>

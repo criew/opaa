@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-09-04</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Freitag, 4. September 2026</h1>
+<nav class="blaettern"><a href="2026-09-03.html" rel="prev" title="Donnerstag, 3. September 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/33905377333" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">30</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+35</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">52</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">41</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1065">#1065</a> feat(indexing): Metadatenschema für Wissensbibliotheken</span>
+<span class="epic-progress">6 / 11 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 55%"></div></div>
+<ul><li>Kernfelder Titel, Dokumentart, Datum/Stand mit Herkunftsangabe implementiert</li><li>Deterministischer Bestandslauf über Altbestand umgesetzt</li><li>Manuelle Metadatenkorrektur und Sammelzuweisung mit Audit-Ereignissen</li><li>Pflege-Anker je Feld und Zustand kein Wert ermittelbar eingeführt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1299">#1299</a></span>fix(indexing): Dokumentart nur aus der Titelzeile des Dokumentkopfes ableiten (+504/−163, 16 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1272">#1272</a></span>feat(indexing): Dokumentart auch aus Dokumentkopf, Kompositum-Endung und Dateiformat ableiten (#1263) (+1468/−66, 28 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1265">#1265</a></span>feat(library): Pflege-Anker je Feld und der Zustand „kein Wert ermittelbar&quot; (#1069) (+2263/−106, 49 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1258">#1258</a></span>feat(library): Manuelle Metadatenkorrektur, Sammelzuweisung und Audit-Ereignisse (#1068) (+4268/−142, 40 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1244">#1244</a></span>feat(indexing): Deterministischer Bestandslauf über den Altbestand (#1067) (+2757/−398, 39 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1237">#1237</a></span>feat(indexing): Kernfelder — Datenmodell, Herkunftsangabe und deterministische Extraktion (#1066) (+4423/−62, 72 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1129">#1129</a> feat: Confluence als Datenquelle anbinden (Konnektor für Cloud und Data Center)</span>
+<span class="epic-progress">13 / 13 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li>Confluence-Konnektor für Cloud und Data Center vollständig implementiert</li><li>Inkrementeller und Vollabgleich mit unterschiedlicher Löschsemantik</li><li>Push-Aktualisierung über Webhooks als Beschleuniger des Pull-Abgleichs</li><li>Betriebsgrenzen für große Instanzen mit Anfragebudget und Wiederaufnahme</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1212">#1212</a></span>feat(confluence): Confluence-Konnektor für Cloud und Data Center (Epic #1129) (+20927/−962, 209 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li>Kernfeld-Filter Dokumentart und Datum/Stand in beiden Suchpfaden</li><li>Volltext-Nachzug und FullTextBackfill-Infrastruktur entfernt</li><li>HTTP_DIRECTORY spiegelt Verzeichnisstruktur als schreibgeschützte Ordner</li><li>Diagnose im Rechtekontext einer benannten Person ermöglicht</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1303">#1303</a></span>feat(library): Vollabgleich-Rhythmus je Confluence-Bibliothek einstellbar (+559/−19, 24 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1302">#1302</a></span>feat(indexing): Bibliothek warnt dauerhaft bei unvollständiger Confluence-Auflistung (+523/−11, 18 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1300">#1300</a></span>fix(indexing): Crawler-Unterbaumprüfung dekodiert Segmente vor dem Vergleich (+582/−74, 12 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1298">#1298</a></span>feat(search): Kernfeld-Filter in beiden Suchpfaden mit Füllstand und Eintrittsbedingung (#1070, Teil 1) (+4834/−130, 92 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1290">#1290</a></span>feat(indexing): Volltext-Nachzug samt Tor, Skip-Tabelle und Fortschrittsanzeige entfernen (+1161/−2735, 107 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1286">#1286</a></span>feat(indexing): Anhangs-Verschachtelungstiefe unter opaa.indexing.attachments.max-depth vereinheitlichen (+288/−92, 24 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1285">#1285</a></span>feat(indexing): Verzeichnisstruktur einer HTTP_DIRECTORY-Quelle als schreibgeschützte Ordner spiegeln (+1109/−93, 19 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1284">#1284</a></span>refactor(frontend): Diagnoseformular der Seite „Suche &amp; Indexierung&quot; als eigene Komponente mit eigenem Zustand (+625/−518, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1283">#1283</a></span>docs(handbuch): initiales Produkthandbuch zu Indexierung, Konnektoren und Formaten (+2151/−25, 17 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1281">#1281</a></span>fix(query): Zerlegungsprompt ohne Beispielsatz, degenerierte Teilfragen werden erkannt statt still übernommen (+477/−26, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1280">#1280</a></span>feat(indexing): opaa.indexing.filesystem-allowlist in opaa.indexing.filesystem.allowlist ueberfuehren (+143/−105, 39 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1279">#1279</a></span>fix(searchadmin): Sperrauskunft der Personendiagnose am Bestand statt an der Rechteschnittmenge festmachen (+201/−55, 15 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1278">#1278</a></span>feat(library): Diagnosesperre einer Bibliothek in der Oberfläche bedienbar machen (+359/−14, 15 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1276">#1276</a></span>fix(indexing): alte Chunks erst nach erfolgreichem Parsen der neuen Fassung ersetzen (+838/−163, 28 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1275">#1275</a></span>fix(diagnosticaccess): Anlass-Längenlimit und SYSTEM_ADMIN-Bypass in Protokoll-Lesepfaden (+254/−25, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1274">#1274</a></span>feat(library): Speicherkontingent nach eigenem Namensraum opaa.library verschieben (+114/−49, 15 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1266">#1266</a></span>fix(searchadmin): Bibliothekstabelle nicht mehr bei jedem Tastendruck neu rendern (+45/−7, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1262">#1262</a></span>fix(searchadmin): Timeout der Personenkontext-Tests beheben, main wieder grün (+13/−16, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1255">#1255</a></span>feat(eval): Chat-Modell für den Pipeline-Pfad mit aktiver Teilfragen-Zerlegung anbinden (+1269/−690, 26 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1253">#1253</a></span>test(e2e): Verdrängung im Stub-Retrieval strukturell beseitigen statt pro Testkonto zu umgehen (+97/−56, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1252">#1252</a></span>feat(searchadmin): Diagnose im Rechtekontext einer Person, erklärte Kontextwahl (+1252/−131, 24 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1251">#1251</a></span>chore(deps): ollama/ollama docker tag to v0.33.3 (+2/−2, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1250">#1250</a></span>feat(library): Anhangsabruf selektiv extrahieren und Parallelität deckeln (+932/−90, 22 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1249">#1249</a></span>feat(diagnosticaccess): Restpunkte des Befugnis- und Protokollmodells &quot;Sicht als&quot; schließen (+925/−94, 23 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1248">#1248</a></span>fix(indexing): HTTP_DIRECTORY-Download auf eine konfigurierbare Bytegrenze deckeln (+508/−57, 21 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1247">#1247</a></span>ci(eval): backend-integration nicht mehr durch eval/** auslösen (+27/−5, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1246">#1246</a></span>docs(agents): Review startet mit der PR-Eröffnung, nicht erst nach grüner CI (+3/−0, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1241">#1241</a></span>fix(library): Mail-Anhänge beim Öffnen aus der Elternmail nachextrahieren (ADR-0022) (+857/−69, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1240">#1240</a></span>fix(chat): Belege-Drawer sortiert zitierte Dokumente nach Zitatnummer (+66/−13, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1235">#1235</a></span>fix(llm): Basis-Adressen der Modellrollen mit Anmeldedaten ablehnen (+682/−35, 24 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1234">#1234</a></span>fix(frontend): Blob.stream() für jsdom nachrüsten — brandingStore-Test hängt unter Windows nicht mehr (+58/−0, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1233">#1233</a></span>fix(indexing): MSG- und DOC-Dateien oberhalb der Leseprobe am HTTP_DIRECTORY-Pfad zulassen (+424/−36, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1232">#1232</a></span>fix(eval): rerankCandidateCount-Override im Variantenbericht rendern (+25/−0, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1231">#1231</a></span>feat(searchadmin): Chunk-Ansicht in der Suchdiagnose und Chunk-Vorschau je Dokument (+1560/−21, 18 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-09-05 um 06:48 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-09-04T00:00:00 bis 2026-09-04T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
