@@ -78,7 +78,7 @@ public record EvaluationReport(
    * different things for the {@code metadata_filter} class. Unlike the two fingerprint bumps above
    * this one moves measured values (the {@code verwaltung} baselines were re-drawn).
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 6;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 7;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(

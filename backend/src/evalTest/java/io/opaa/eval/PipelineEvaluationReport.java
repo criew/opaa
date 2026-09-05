@@ -91,7 +91,7 @@ public record PipelineEvaluationReport(
    * fingerprint-only bump: the filter moves the measured selection of the {@code metadata_filter}
    * class, and the {@code verwaltung} baseline was re-drawn.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 8;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 9;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be
