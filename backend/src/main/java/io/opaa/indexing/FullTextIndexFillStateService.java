@@ -51,7 +51,7 @@ public class FullTextIndexFillStateService {
    * inconsistent tuple - {@code READ COMMITTED} allows exactly that across separate statements.
    *
    * <p>The {@code vector_store} count is filtered by {@code metadata->>'library_id'}, backed by the
-   * expression index from {@code changes/012-vector-store-library-id-index.yaml} (#1119).
+   * expression index from {@code changes/012-vector-store-library-id-index.yaml}.
    */
   public FullTextIndexFillState fillStateForLibrary(UUID libraryId) {
     String vectorStoreTable = schemaName + "." + tableName;
@@ -94,8 +94,8 @@ public class FullTextIndexFillStateService {
    * would otherwise aggregate across every organization for a display that shows one of them.
    *
    * <p>The {@code vector_store} subquery filters by {@code metadata->>'library_id'} (backed by the
-   * expression index from {@code changes/012-vector-store-library-id-index.yaml}, #1119) and groups
-   * by that same value cast to {@code uuid}; no separate index on the cast is needed - it only ever
+   * expression index from {@code changes/012-vector-store-library-id-index.yaml}) and groups by
+   * that same value cast to {@code uuid}; no separate index on the cast is needed - it only ever
    * runs over the rows the text-expression index already restricted the scan to.
    */
   public List<FullTextIndexFillState> fillStateForLibraries(Collection<UUID> libraryIds) {

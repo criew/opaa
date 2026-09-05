@@ -42,13 +42,13 @@ import org.slf4j.LoggerFactory;
  * classified as an attachment, so {@link MailProperties#maxMessageBytes()} is the actual memory
  * guard, checked by the caller before this class ever runs.
  *
- * <p><b>Selective extraction</b> (#1243): with a {@code wantedIndex}, every attachment is still
- * read in exactly the same order, but only the one at that position is written to a temp file;
- * every other one is streamed into a discarding sink under the same size bound. Positions are
- * counted exactly as an unfiltered run does: an attachment that could not be read at all - too
- * large, or a decode failure - consumes no position, because it would not appear in the unfiltered
- * run's attachment list either. The returned {@link ParsedMailMessage} then carries the wanted
- * attachment alone, or none; a negative {@code wantedIndex} materializes nothing at all.
+ * <p><b>Selective extraction</b>: with a {@code wantedIndex}, every attachment is still read in
+ * exactly the same order, but only the one at that position is written to a temp file; every other
+ * one is streamed into a discarding sink under the same size bound. Positions are counted exactly
+ * as an unfiltered run does: an attachment that could not be read at all - too large, or a decode
+ * failure - consumes no position, because it would not appear in the unfiltered run's attachment
+ * list either. The returned {@link ParsedMailMessage} then carries the wanted attachment alone, or
+ * none; a negative {@code wantedIndex} materializes nothing at all.
  */
 final class EmlReader {
 
@@ -82,7 +82,7 @@ final class EmlReader {
       walk(message, collector, attachments, properties, budget, position);
     } catch (IOException | RuntimeException e) {
       // Whatever this pass already extracted must not leak as an orphaned temp file just because a
-      // later part in the same message failed to read (#1101 review, finding 4b) - the caller never
+      // later part in the same message failed to read - the caller never
       // gets a ParsedMailMessage to clean these up itself, since this call never returns one.
       for (ParsedMailAttachment attachment : attachments) {
         deleteQuietly(attachment.tempFile());
@@ -165,7 +165,7 @@ final class EmlReader {
     if (isAttachment(entity)) {
       if (!budget.hasCapacity()) {
         // Not extracted at all - no temp file is ever created for an attachment beyond the
-        // configured limit (#1101 review, finding 3c).
+        // configured limit.
         return;
       }
       budget.reserve();
@@ -235,8 +235,8 @@ final class EmlReader {
    * Extracts one attachment to its own temp file (or, with {@code materialize} {@code false},
    * merely reads it under the same size bound without writing it anywhere), or {@code null} when it
    * could not be read at all - a malformed part (mime4j throwing while decoding it) must only cost
-   * this one attachment, never the whole message's extraction (#1101 review, finding 4a). A {@code
-   * null} return also skips an extraction position, exactly as it did before selective extraction.
+   * this one attachment, never the whole message's extraction. A {@code null} return also skips an
+   * extraction position, exactly as it did before selective extraction.
    */
   private static ReadAttachment extractAttachment(
       Entity entity, MailProperties properties, boolean materialize) throws IOException {

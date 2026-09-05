@@ -15,42 +15,21 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Sends a GET request and manually follows up to {@link #MAX_REDIRECTS} redirects - the single
- * redirect implementation every source-access caller uses, since {@code httpClient} is always built
- * with {@code Redirect.NEVER} ({@link SourceHttpClientFactory#buildHttpClient}) and never follows
- * one on its own.
+ * redirect implementation every source-access caller uses, since every client this package builds
+ * ({@link SourceHttpClientFactory#buildHttpClient}) uses {@code Redirect.NEVER}.
  *
- * <p>A protocol downgrade (https to http) is never followed at all. What happens to a redirect that
- * changes origin (scheme, host or port) instead is governed by {@link RedirectPolicy}, since
- * callers genuinely need different behaviour here: a directory crawl ({@code
- * io.opaa.indexing.source.web.AutoindexCrawlerService}) keeps following an off-origin redirect,
- * only dropping {@code Authorization} the moment it stops matching the original target - a
- * browser's own cross-origin redirect behaviour. A file/attachment download ({@link
- * BoundedDownloader}, an RSS detail-page fetch) by default refuses to follow at all: the target is
- * content a feed or directory listing operator controls, not one the library owner vouches for, so
- * silently walking off to a different origin (even without credentials) is not an acceptable
- * outcome there. The one named exception is a Confluence Cloud attachment download, whose bytes the
- * instance itself hands off to a pre-signed media host - that caller chooses the dropping policy
- * explicitly ({@link BoundedDownloader#downloadBounded(java.net.http.HttpClient, String, String,
- * long, String, String, RedirectPolicy)}).
+ * <p>A protocol downgrade (https to http) is never followed. An origin change is governed by {@link
+ * RedirectPolicy}: a directory crawl keeps following and only drops {@code Authorization}, a file
+ * or attachment download refuses to follow at all, and a caller whose source hands bytes to a
+ * foreign media host (Confluence Cloud) opts into the dropping policy explicitly.
  *
- * <p>{@code targetAddressValidator} is validated against the current URI at the top of every
- * iteration - the initial request and every redirect hop alike - before a single further byte is
- * requested, so an SSRF target-address check applies identically whether the blocked address was
- * the configured start URL or only reached via a redirect.
+ * <p>{@code targetAddressValidator} runs against the current URI at the top of every iteration -
+ * the initial request and every hop alike - before a single further byte is requested.
  *
- * <p><b>Post-hoc check asymmetry.</b> Only under {@link RedirectPolicy#REJECT_OFF_ORIGIN} is the
- * response actually received additionally checked against the original URL on every iteration (not
- * only the explicit {@code Location}-based hops this loop itself walks) - closing the gap a
- * caller-supplied {@link HttpClient} configured to auto-follow redirects on its own would otherwise
- * leave, since its returned {@link HttpResponse#uri()} then already reflects a followed target this
- * loop never decided to walk to. {@link RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN} carries no
- * equivalent check - safe only because every production {@link HttpClient} this package builds
- * ({@link SourceHttpClientFactory#buildHttpClient}) uses {@code Redirect.NEVER}; an auto-following
- * client is never part of a production code path here, only of a test deliberately exercising this
- * gap. This class does not otherwise rely on what such a client would have done with {@code
- * Authorization} on the auto-followed hop - whether the header still reaches the foreign host in
- * that scenario is the auto-following client's own redirect implementation's call, not this one's
- * (see {@code RedirectFollowingFetcherTest} for the JDK's own client's behaviour here).
+ * <p>Only under {@link RedirectPolicy#REJECT_OFF_ORIGIN} is the response actually received also
+ * checked against the original URL, which closes the gap a caller-supplied auto-following {@link
+ * HttpClient} would leave. {@link RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN} carries no such
+ * check, which is safe only because no production client here auto-follows.
  */
 public final class RedirectFollowingFetcher {
 

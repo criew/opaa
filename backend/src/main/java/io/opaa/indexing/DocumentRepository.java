@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
-   * Document identity is scoped to {@code (library_id, file_path)} (#877), enforced by {@code
+   * Document identity is scoped to {@code (library_id, file_path)}, enforced by {@code
    * uk_documents_library_path} (migration 067): the same path or URL indexed into two different
    * libraries is two independent documents, never a "move" of one into the other. Backs every
    * dedup/change-detection lookup in {@link FileProcessingService}, {@code UrlIndexingExecutor} and
@@ -30,14 +30,14 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    * Whether at least one attachment document for {@code sourceEntryUrl} (an RSS entry's own {@code
    * file_path}) already exists in {@code libraryId}. Backs the "an entry indexed before attachments
    * existed must still get them backfilled" check in {@code RssFeedIndexingExecutor#isUnchanged}'s
-   * caller. Scoped to {@code libraryId} (#877) - another library's attachments for the same entry
-   * URL must never suppress this library's own backfill.
+   * caller. Scoped to {@code libraryId} - another library's attachments for the same entry URL must
+   * never suppress this library's own backfill.
    */
   boolean existsBySourceEntryUrlAndLibraryId(String sourceEntryUrl, UUID libraryId);
 
   /**
    * Moves a connector document's title and source context without touching its chunks - a
-   * Confluence page renamed or moved without a body change (ADR-0023, #1136 review).
+   * Confluence page renamed or moved without a body change (ADR-0023).
    */
   @Modifying
   @Transactional
@@ -52,9 +52,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
    * Every attachment of {@code parentDocumentId} (ADR-0022, Entscheidung 4) - the FK-backed
-   * generalization of {@link #existsBySourceEntryUrlAndLibraryId}'s RSS-only path lookup. No writer
-   * sets {@link Document#getParentDocumentId()} yet (#1180 is schema-only); this backs the lookup
-   * side that #1182 onwards builds on.
+   * generalization of {@link #existsBySourceEntryUrlAndLibraryId}'s RSS-only path lookup.
    */
   List<Document> findByParentDocumentId(UUID parentDocumentId);
 
@@ -93,28 +91,28 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   long countByLibraryId(UUID libraryId);
 
   /**
-   * The bestand the Pflege-Anker (#1069) and the Füllgrad of #1067 measure against: a library's
-   * {@code INDEXED} documents, attachments included - a metadata value hangs at every document row,
-   * not only at the ones the document list pages over.
+   * The bestand the Pflege-Anker and the Füllgrad measure against: a library's {@code INDEXED}
+   * documents, attachments included - a metadata value hangs at every document row, not only at the
+   * ones the document list pages over.
    */
   long countByLibraryIdAndStatus(UUID libraryId, DocumentStatus status);
 
-  /** The indexed bestand of a whole search scope - the base of the filter Füllstand (#1070). */
+  /** The indexed bestand of a whole search scope - the base of the filter Füllstand. */
   long countByLibraryIdInAndStatus(Collection<UUID> libraryIds, DocumentStatus status);
 
   /**
-   * The parent-level counterpart of {@link #countByLibraryId} (#1184): top-level documents only,
-   * matching what the document list pages over - shown as a library's {@code documentCount}. {@link
+   * The parent-level counterpart of {@link #countByLibraryId}: top-level documents only, matching
+   * what the document list pages over - shown as a library's {@code documentCount}. {@link
    * #countByLibraryId} keeps backing the delete guard, which must see every row.
    */
   long countByLibraryIdAndParentDocumentIdIsNull(UUID libraryId);
 
   /**
-   * The paged search behind {@code KnowledgeLibraryService#listDocuments} with {@code q} (#1184,
-   * ADR-0022 Entscheidung 5): top-level documents only ({@code parentDocumentId IS NULL}), matching
-   * either their own file name or - via {@code attachmentRootIds}, resolved by the caller from
-   * matching attachment rows - an attachment anywhere in their subtree. {@code escapedQ} must have
-   * {@code \}, {@code %} and {@code _} backslash-escaped by the caller (see {@code
+   * The paged search behind {@code KnowledgeLibraryService#listDocuments} with {@code q} (ADR-0022,
+   * Entscheidung 5): top-level documents only ({@code parentDocumentId IS NULL}), matching either
+   * their own file name or - via {@code attachmentRootIds}, resolved by the caller from matching
+   * attachment rows - an attachment anywhere in their subtree. {@code escapedQ} must have {@code
+   * \}, {@code %} and {@code _} backslash-escaped by the caller (see {@code
    * KnowledgeLibraryService#escapeLike}); the hand-written LIKE has no automatic escaping the way
    * the derived {@code ...ContainingIgnoreCase} finders do.
    */
@@ -143,7 +141,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
           UUID libraryId, String q);
 
   /**
-   * The paged Pflege-Anker list (#1069): every indexed document row of the library - top-level and
+   * The paged Pflege-Anker list: every indexed document row of the library - top-level and
    * attachment alike - that has no row for {@code fieldKey}, optionally narrowed by {@code
    * escapedQ} (empty matches every name). Deliberately not the top-level paging of {@link
    * #searchTopLevelByFileNameOrAttachmentRoot}: this list must hold exactly the rows the anchor
@@ -167,7 +165,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       @Param("status") DocumentStatus status,
       Pageable pageable);
 
-  /** The two ids the attachment-aware search prefilter needs (#1184) - see the finder above. */
+  /** The two ids the attachment-aware search prefilter needs - see the finder above. */
   interface AttachmentParentRef {
     UUID getId();
 
@@ -177,8 +175,8 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   /**
    * The attachment rows of every parent in {@code parentDocumentIds}, ordered by {@code filePath}
    * (which embeds the extraction-order index for mail attachments, ADR-0022 Entscheidung 2) - backs
-   * {@code KnowledgeLibraryService#listDocuments}'s per-page subtree expansion (#1184), called once
-   * per nesting level, not once per parent.
+   * {@code KnowledgeLibraryService#listDocuments}'s per-page subtree expansion, called once per
+   * nesting level, not once per parent.
    */
   List<Document> findByParentDocumentIdInOrderByFilePathAsc(Collection<UUID> parentDocumentIds);
 
@@ -194,9 +192,9 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   /**
    * The library root's counterpart to {@link #findByLibraryIdAndFolderId} - backs {@code GET
    * .../documents} with no {@code folderId} and no {@code q}, ADR-0020's convention that a {@code
-   * null folder_id} means the library's root. Top-level documents only since #1184: an attachment
-   * ({@code parentDocumentId} set) is never paged independently, it rides along with its parent
-   * (see {@link #findByParentDocumentIdInOrderByFilePathAsc}).
+   * null folder_id} means the library's root. Top-level documents only: an attachment ({@code
+   * parentDocumentId} set) is never paged independently, it rides along with its parent (see {@link
+   * #findByParentDocumentIdInOrderByFilePathAsc}).
    */
   Page<Document> findByLibraryIdAndFolderIdIsNullAndParentDocumentIdIsNull(
       UUID libraryId, Pageable pageable);
@@ -252,9 +250,9 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    * Backs the upload endpoint's per-library deduplication: the same checksum is rejected a second
    * time within the same library, but is deliberately allowed in a different one - see the
    * acceptance criteria on {@code io.opaa.library.LibraryDocumentService#uploadDocument}. Scoped to
-   * parentless rows (#1218), matching {@code uk_documents_library_checksum}'s own scope since
-   * migration 017: an attachment row of an uploaded mail (ADR-0022) is derived content, not a user
-   * upload - uploading a file whose bytes happen to equal an indexed attachment is not a duplicate.
+   * parentless rows, matching {@code uk_documents_library_checksum}'s own scope since migration
+   * 017: an attachment row of an uploaded mail (ADR-0022) is derived content, not a user upload -
+   * uploading a file whose bytes happen to equal an indexed attachment is not a duplicate.
    */
   Optional<Document> findByLibraryIdAndChecksumAndParentDocumentIdIsNull(
       UUID libraryId, String checksum);
@@ -262,8 +260,8 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   /**
    * Backs {@code KnowledgeLibraryService#listLibraries}'s {@code documentCount} column: one grouped
    * query for the whole page instead of one count per row. Libraries with no documents simply have
-   * no row here - the caller defaults those to zero. Top-level documents only since #1184, matching
-   * the document list's own parent-level totalElements - attachments show up inside their parent's
+   * no row here - the caller defaults those to zero. Top-level documents only, matching the
+   * document list's own parent-level totalElements - attachments show up inside their parent's
    * group, not in this count.
    */
   @Query(
@@ -320,10 +318,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
   /**
    * Like {@link #markFailed}, plus {@code chunk_count = 0}: for a document whose chunks were just
-   * removed because its new version is legitimately empty (#1268). {@link #markFailed} deliberately
-   * leaves {@code chunk_count} alone, which is right for a document that kept its previous chunks
-   * and wrong for one that has none left - since #1268 those two cases are distinguishable, so the
-   * column must say which of them a {@code FAILED} row is.
+   * removed because its new version is legitimately empty. {@link #markFailed} deliberately leaves
+   * {@code chunk_count} alone, which is right for a document that kept its previous chunks and
+   * wrong for one that has none left, so the column must say which of the two a {@code FAILED} row
+   * is.
    */
   @Modifying
   @Transactional
@@ -351,7 +349,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
    * threshold} is stuck for good, not merely queued - the process that would have finished it (via
    * {@code uploadTaskExecutor}) died before {@link #markIndexed}/{@link #markFailed} could run, and
    * a fresh JVM start has no in-memory record of that task to wait for. A bulk {@code UPDATE}, not
-   * a load-then-save loop, mirrors {@link #deleteByLibraryId}'s reasoning.
+   * a load-then-save loop, for the same reason as {@link #deleteByLibraryId}.
    *
    * <p>Scoped to {@code sourceType = UPLOAD} deliberately: a connector run ({@code FILESYSTEM}/
    * {@code HTTP_DIRECTORY}/{@code RSS_FEED}) also passes through a transient {@code PENDING} row,
@@ -372,10 +370,10 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       @Param("errorMessage") String errorMessage, @Param("threshold") Instant threshold);
 
   /**
-   * Records which core-metadata extraction version last ran over a document (ADR-0024, #1066). A
-   * targeted {@code UPDATE} rather than an entity save: it runs from the ingest after the row's own
-   * insert has committed, and must not resurrect a row a concurrent delete already removed - the
-   * same zero-rows-means-the-row-is-gone contract as {@link #markIndexed(UUID, int, Instant)}.
+   * Records which core-metadata extraction version last ran over a document (ADR-0024). A targeted
+   * {@code UPDATE} rather than an entity save: it runs from the ingest after the row's own insert
+   * has committed, and must not resurrect a row a concurrent delete already removed - the same
+   * zero-rows-means-the-row-is-gone contract as {@link #markIndexed(UUID, int, Instant)}.
    */
   @Modifying
   @Transactional
@@ -383,7 +381,7 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
   int updateMetadataExtractionVersion(@Param("id") UUID id, @Param("version") int version);
 
   /**
-   * Hands a document back to the Bestandslauf (#1068): a manually deleted core value must be
+   * Hands a document back to the Bestandslauf: a manually deleted core value must be
    * re-extractable, and the run selects only documents without a current extraction version.
    */
   @Modifying

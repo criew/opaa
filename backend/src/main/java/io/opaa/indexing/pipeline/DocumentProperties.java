@@ -27,17 +27,17 @@ import java.util.TreeMap;
  *     sit anywhere in the document (a Markdown section, a PDF outline entry) and is therefore not
  *     the title line
  * @param titleLine the first non-blank line of the body text, reduced to that line and truncated to
- *     {@link #MAX_TITLE_LINE_LENGTH} characters here rather than by the pipeline (#1289) - the only
- *     line of the text a Dokumentart may be read from, and the reason a label line or a quotation
- *     below it can never become one
+ *     {@link #MAX_TITLE_LINE_LENGTH} characters here rather than by the pipeline - the only line of
+ *     the text a Dokumentart may be read from, and the reason a label line or a quotation below it
+ *     can never become one
  * @param formatExtension the routed format extension of the document ({@code ".pptx"}), lower-cased
  *     - attached centrally by {@code DocumentPipelineRunner} and {@code
  *     DocumentMetadataService#reextractFromFile} from {@link
  *     DocumentPipelineSource#detectedExtension()}, never by a pipeline; {@code null} when routing
  *     resolved none
  * @param syntheticName whether the document's name is <em>not</em> a file name but free text an
- *     upstream source declared - an RSS entry's headline or its URL (#1263). A naming convention
- *     can only be read out of a real file name; a headline names what an article is <em>about</em>.
+ *     upstream source declared - an RSS entry's headline or its URL. A naming convention can only
+ *     be read out of a real file name; a headline names what an article is <em>about</em>.
  * @param frontmatter a Markdown YAML frontmatter's scalar entries, verbatim, keys lower-cased
  */
 public record DocumentProperties(
@@ -155,7 +155,7 @@ public record DocumentProperties(
         frontmatter);
   }
 
-  /** Marks the document's name as free text rather than a file name (#1263). */
+  /** Marks the document's name as free text rather than a file name. */
   public DocumentProperties withSyntheticName(boolean syntheticName) {
     return new DocumentProperties(
         title,

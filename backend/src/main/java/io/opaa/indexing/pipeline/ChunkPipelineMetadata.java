@@ -35,11 +35,11 @@ public final class ChunkPipelineMetadata {
 
   /**
    * The extension {@link DocumentPipelineRegistry#routedPipelineFor} actually resolved when this
-   * chunk was written (#1126), never the chunk's file name. Absent for a chunk where routing could
-   * not be attempted or completed (the pre-#1126 Altbestand; a failed detection) - {@code
-   * io.opaa.indexing.PipelineReindexService} then falls back to its pre-#1126 file-name
-   * approximation instead of the exact comparison {@link
-   * DocumentPipelineRegistry#pipelineIdForRoutingExtension(String)} gives.
+   * chunk was written, never the chunk's file name. Absent for a chunk where routing could not be
+   * attempted or completed (an Altbestand chunk; a failed detection) - {@code
+   * io.opaa.indexing.PipelineReindexService} then falls back to its file-name approximation instead
+   * of the exact comparison {@link DocumentPipelineRegistry#pipelineIdForRoutingExtension(String)}
+   * gives.
    */
   public static final String ROUTING_EXTENSION_METADATA_KEY = "routing_extension";
 

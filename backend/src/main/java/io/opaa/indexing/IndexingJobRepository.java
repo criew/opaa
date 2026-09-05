@@ -25,7 +25,7 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
       UUID libraryId, UUID organizationId);
 
   /**
-   * The most recent run for {@code libraryId} that assessed its source listing (#1191) - {@code
+   * The most recent run for {@code libraryId} that assessed its source listing - {@code
    * listing_complete IS NOT NULL}, written only by a successful, non-budget-truncated full sync.
    * Deliberately not the most recent run overall: an incremental or webhook run in between never
    * assesses the listing, and the warning at the library must survive it. {@code organizationId} is
@@ -58,9 +58,9 @@ public interface IndexingJobRepository extends JpaRepository<IndexingJob, UUID> 
   List<IndexingJob> findByLibraryIdOrderByStartedAtDesc(UUID libraryId);
 
   /**
-   * Latest successful completion per library in one grouped query (#684) - backs the library
-   * overview's "Stand" column the same way {@code DocumentRepository#countByLibraryIdIn} backs its
-   * documentCount (#477): one query for the whole page, never one per row. Only {@link
+   * Latest successful completion per library in one grouped query - backs the library overview's
+   * "Stand" column the same way {@code DocumentRepository#countByLibraryIdIn} backs its
+   * documentCount: one query for the whole page, never one per row. Only {@link
    * JobStatus#COMPLETED} rows count; libraries without any completed run simply have no row here
    * and stay {@code null} on the response.
    */

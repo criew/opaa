@@ -95,28 +95,25 @@ public class IndexingConfiguration {
     return new TikaFallbackPipeline(documentService, chunkingService);
   }
 
-  /**
-   * XLSX/CSV/ODS pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 3) - registered as
-   * an ordinary {@link DocumentPipeline} bean, picked up by {@link #documentPipelineRegistry} below
-   * without either method changing shape (the open-closed criterion of Teil 1).
-   */
+  // Every pipeline below is an ordinary DocumentPipeline bean, picked up by
+  // documentPipelineRegistry without that method changing shape - the open-closed criterion of
+  // docs/features/ingestion-pipelines.md, Teil 1.
+
+  /** XLSX/CSV/ODS pipeline (ingestion-pipelines.md, Teil 3, Punkt 3). */
   @Bean
   TabularDocumentPipeline tabularDocumentPipeline(TabularProperties tabularProperties) {
     return new TabularDocumentPipeline(tabularProperties);
   }
 
-  /**
-   * HTML pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 4) - registered as an
-   * ordinary {@link DocumentPipeline} bean, exactly like {@link #tabularDocumentPipeline}.
-   */
+  /** HTML pipeline (ingestion-pipelines.md, Teil 3, Punkt 4). */
   @Bean
   HtmlDocumentPipeline htmlDocumentPipeline() {
     return new HtmlDocumentPipeline();
   }
 
   /**
-   * Confluence page pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 6; #1137) -
-   * claims no format, {@link FileProcessingService#processConfluencePage} looks it up by id.
+   * Confluence page pipeline (ingestion-pipelines.md, Teil 3, Punkt 6) - claims no format, {@link
+   * FileProcessingService#processConfluencePage} looks it up by id.
    */
   @Bean
   ConfluenceDocumentPipeline confluenceDocumentPipeline() {
@@ -124,58 +121,42 @@ public class IndexingConfiguration {
   }
 
   /**
-   * Markdown pipeline (docs/features/ingestion-pipelines.md, Teil 2) - registered as an ordinary
-   * {@link DocumentPipeline} bean, exactly like {@link #tabularDocumentPipeline}. Registration was
-   * deferred until #1103 because the eval corpus is entirely Markdown and the heading-aware cut
-   * changes the eval measurement contract (see {@link MarkdownDocumentPipeline}'s own Javadoc).
+   * Markdown pipeline (ingestion-pipelines.md, Teil 2). Its heading-aware cut changes the eval
+   * measurement contract, because the eval corpus is entirely Markdown - see {@link
+   * MarkdownDocumentPipeline}.
    */
   @Bean
   MarkdownDocumentPipeline markdownDocumentPipeline() {
     return new MarkdownDocumentPipeline();
   }
 
-  /**
-   * DOCX pipeline (docs/features/ingestion-pipelines.md, Teil 2) - registered as an ordinary {@link
-   * DocumentPipeline} bean, exactly like {@link #tabularDocumentPipeline}.
-   */
+  /** DOCX pipeline (ingestion-pipelines.md, Teil 2). */
   @Bean
   DocxDocumentPipeline docxDocumentPipeline() {
     return new DocxDocumentPipeline();
   }
 
-  /**
-   * PPTX pipeline (docs/features/ingestion-pipelines.md, Teil 2) - registered as an ordinary {@link
-   * DocumentPipeline} bean, exactly like {@link #tabularDocumentPipeline}.
-   */
+  /** PPTX pipeline (ingestion-pipelines.md, Teil 2). */
   @Bean
   PptxDocumentPipeline pptxDocumentPipeline() {
     return new PptxDocumentPipeline();
   }
 
-  /**
-   * ODT pipeline (docs/features/ingestion-pipelines.md, Teil 3 Punkt 2) - registered as an ordinary
-   * {@link DocumentPipeline} bean, exactly like {@link #tabularDocumentPipeline}.
-   */
+  /** ODT pipeline (ingestion-pipelines.md, Teil 3, Punkt 2). */
   @Bean
   OdtDocumentPipeline odtDocumentPipeline(OdfProperties odfProperties) {
     return new OdtDocumentPipeline(odfProperties);
   }
 
-  /**
-   * ODP pipeline (docs/features/ingestion-pipelines.md, Teil 3 Punkt 2) - registered as an ordinary
-   * {@link DocumentPipeline} bean, exactly like {@link #tabularDocumentPipeline}.
-   */
+  /** ODP pipeline (ingestion-pipelines.md, Teil 3, Punkt 2). */
   @Bean
   OdpDocumentPipeline odpDocumentPipeline(OdfProperties odfProperties) {
     return new OdpDocumentPipeline(odfProperties);
   }
 
   /**
-   * PDF pipeline (docs/features/ingestion-pipelines.md, Teil 1's parsing table and Teil 2) -
-   * registered as an ordinary {@link DocumentPipeline} bean, exactly like {@link
-   * #tabularDocumentPipeline}. Answers the #1055 scan-detection guard from its own PDFBox
-   * extraction rather than needing {@link DocumentService} (see {@link PdfDocumentPipeline}'s own
-   * Javadoc).
+   * PDF pipeline (ingestion-pipelines.md, Teil 1 and Teil 2). Answers the scan-detection guard from
+   * its own PDFBox extraction rather than needing {@link DocumentService}.
    */
   @Bean
   PdfDocumentPipeline pdfDocumentPipeline() {
@@ -183,17 +164,14 @@ public class IndexingConfiguration {
   }
 
   /**
-   * EML/MSG pipeline (docs/features/ingestion-pipelines.md, Teil 3, Punkt 5). Since #1183 this
-   * pipeline no longer recurses into a sub-pipeline itself (ADR-0022, Entscheidung 10) - it only
-   * reports its attachments via {@link DocumentPipelineResult#discoveredAttachments()} - so it no
-   * longer needs {@link DocumentPipelineRegistry} at all, and the {@link
-   * org.springframework.beans.factory.ObjectProvider} that used to break its circular dependency on
-   * {@link #documentPipelineRegistry} below is gone with it. The {@code Clock} parameter resolves
-   * the same way {@link LibraryIndexingScheduler}'s own does - by type, to whichever single {@link
-   * Clock} bean is {@code @Primary} in this application ({@code
-   * io.opaa.auth.AuthConfiguration#clock()} today, not {@link #schedulingClock()} despite the
-   * parameter's name, since Spring's {@code @Primary} resolution outranks name matching) - not a
-   * second, independently configured clock.
+   * EML/MSG pipeline (ingestion-pipelines.md, Teil 3, Punkt 5). It never recurses into a
+   * sub-pipeline itself (ADR-0022, Entscheidung 10), only reports its attachments via {@link
+   * DocumentPipelineResult#discoveredAttachments()}, and therefore needs no {@link
+   * DocumentPipelineRegistry}.
+   *
+   * <p>The {@code Clock} parameter resolves by type to the single {@code @Primary} {@link Clock}
+   * bean of this application, not to {@link #schedulingClock()} despite the parameter's name -
+   * Spring's {@code @Primary} resolution outranks name matching.
    */
   @Bean
   MailDocumentPipeline mailDocumentPipeline(
@@ -215,7 +193,7 @@ public class IndexingConfiguration {
 
   /**
    * The shared re-extraction of attachment bytes (ADR-0022) - attachments are never stored, so both
-   * the selective re-index and "Im Dokument öffnen" (#1239) re-derive them from their parent here.
+   * the selective re-index and "Im Dokument öffnen" re-derive them from their parent here.
    */
   @Bean
   AttachmentExtractor attachmentExtractor(DocumentPipelineRegistry documentPipelineRegistry) {
@@ -267,23 +245,17 @@ public class IndexingConfiguration {
   }
 
   /**
-   * The generalized attachment path's shared indexer (ADR-0022, Entscheidung 8) - a bean since
-   * #1183, so both {@code RssFeedIndexingExecutor} and {@link FileProcessingService} share one
-   * instance instead of each constructing their own.
+   * The generalized attachment path's shared indexer (ADR-0022, Entscheidung 8) - one instance
+   * every caller shares, instead of each constructing its own.
    */
   @Bean
   AttachmentIndexer attachmentIndexer(
       BoundedDownloader boundedDownloader,
       FileProcessingService fileProcessingService,
       LibraryStorageQuotaService libraryStorageQuotaService,
-      DocumentRepository documentRepository,
       AttachmentProperties attachmentProperties) {
     return new AttachmentIndexer(
-        boundedDownloader,
-        fileProcessingService,
-        libraryStorageQuotaService,
-        documentRepository,
-        attachmentProperties);
+        boundedDownloader, fileProcessingService, libraryStorageQuotaService, attachmentProperties);
   }
 
   /**
@@ -293,7 +265,7 @@ public class IndexingConfiguration {
    * passed {@code EmlReader}/{@code MsgReader}'s own extraction-loop limits); {@code
    * requestDelayMs}/{@code userAgent} are unused for an {@code AttachmentSource.LocalFile} (no
    * request of its own), which is all a Mail attachment ever is. The nesting depth is not part of
-   * this record any more (#1269) - {@link AttachmentIndexer} enforces {@link
+   * this record any more - {@link AttachmentIndexer} enforces {@link
    * AttachmentProperties#maxDepth()} itself, the same value for every connector.
    */
   @Bean
@@ -360,7 +332,7 @@ public class IndexingConfiguration {
   /**
    * Shared by every {@link SourceIndexingExecutor} bean below that runs a full, "vollständig
    * auflistend" crawl (FILESYSTEM, HTTP_DIRECTORY) - {@code RssFeedIndexingExecutor} deliberately
-   * does not depend on this (#886, ADR-0017 decision 5).
+   * does not depend on this (ADR-0017 decision 5).
    */
   @Bean
   StaleDocumentCleanupService staleDocumentCleanupService(
@@ -463,8 +435,8 @@ public class IndexingConfiguration {
 
   /**
    * Declared as the concrete type, not as {@link SourceIndexingExecutor} like its siblings: {@code
-   * ConfluenceWebhookService} injects the executor directly for its targeted webhook run (#1140),
-   * and Spring resolves an injection point by the bean method's declared type - the registry still
+   * ConfluenceWebhookService} injects the executor directly for its targeted webhook run, and
+   * Spring resolves an injection point by the bean method's declared type - the registry still
    * collects it through the interface it implements.
    */
   @Bean
@@ -528,14 +500,12 @@ public class IndexingConfiguration {
   }
 
   /**
-   * Backs every {@link SourceIndexingExecutor} (directory/URL/RSS indexing runs). Used to reject a
-   * full queue with {@code AbortPolicy} (this class' default), not {@code
-   * ThreadPoolExecutor.DiscardPolicy}: a silently discarded task would leave its already-inserted
-   * {@code indexing_jobs} row stuck at {@code RUNNING} forever, locking the row's one library out
-   * of every future trigger (409). {@code AbortPolicy} throws {@link
-   * org.springframework.core.task.TaskRejectedException} synchronously back to {@code
-   * DocumentIndexingService#triggerIndexing}, which catches it and fails the job immediately -
-   * mirroring {@link #uploadTaskExecutor}'s own reasoning.
+   * Backs every {@link SourceIndexingExecutor} (directory/URL/RSS indexing runs). Rejects a full
+   * queue with {@code AbortPolicy}, never {@code ThreadPoolExecutor.DiscardPolicy}: a silently
+   * discarded task would leave its {@code indexing_jobs} row stuck at {@code RUNNING} forever,
+   * locking that library out of every future trigger. {@code AbortPolicy} throws {@link
+   * org.springframework.core.task.TaskRejectedException} synchronously, so {@code
+   * DocumentIndexingService#triggerIndexing} fails the job immediately.
    */
   @Bean
   TaskExecutor indexingTaskExecutor(IndexingProperties properties) {

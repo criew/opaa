@@ -27,7 +27,7 @@ import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The intake behind {@code POST /api/v1/libraries/{libraryId}/confluence-webhook} (#1140).
+ * The intake behind {@code POST /api/v1/libraries/{libraryId}/confluence-webhook}.
  *
  * <p>Authentication first, uniformly: an unknown library, a library without a secret, a library of
  * another source type and a wrong signature are all answered with the same 401 and a warning in the

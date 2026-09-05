@@ -23,7 +23,7 @@ public interface DocumentMetadataValueRepository
 
   /**
    * How many of {@code libraryId}'s documents in {@code status} carry a row per field and state -
-   * the counted half of the Pflege-Anker (#1069), computed on every query, never precomputed
+   * the counted half of the Pflege-Anker, computed on every query, never precomputed
    * (metadata-schema.md, Rechte-Invariante). A field/state pair no document holds is simply absent
    * from the result; "leer" is the absence of a row and is derived by the caller from the total.
    */
@@ -46,8 +46,8 @@ public interface DocumentMetadataValueRepository
 
   /**
    * {@link #countByFieldAndState} over a whole search scope at once - the Füllstand the filter
-   * interface shows (#1070), built over exactly the libraries the asking person's next question
-   * would search. Never precomputed (metadata-schema.md, Rechte-Invariante).
+   * interface shows, built over exactly the libraries the asking person's next question would
+   * search. Never precomputed (metadata-schema.md, Rechte-Invariante).
    */
   @Query(
       "select v.fieldKey as fieldKey, v.state as state, count(v) as documentCount"
@@ -59,8 +59,8 @@ public interface DocumentMetadataValueRepository
 
   /**
    * The Dokumentart values at least one document of the scope carries, with their document count -
-   * the offered choice list of the filter (#1070): "die im Bestand vorkommenden Werte", in the
-   * rights context of the asking person, never the whole vocabulary.
+   * the offered choice list of the filter: "die im Bestand vorkommenden Werte", in the rights
+   * context of the asking person, never the whole vocabulary.
    */
   @Query(
       "select v.vocabularyCode as code, count(v) as documentCount"

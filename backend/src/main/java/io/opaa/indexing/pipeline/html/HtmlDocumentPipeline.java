@@ -48,8 +48,8 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   /**
    * Boilerplate that is only ever boilerplate, never legitimate content - removed everywhere,
    * including inside the chosen content root: navigation, sidebar, cookie consent and
-   * script/style/noscript sit in a content wrapper often enough (#1059 review, follow-up finding 2)
-   * that they cannot be treated the same way as {@link #CONDITIONAL_BOILERPLATE_SELECTOR}.
+   * script/style/noscript sit in a content wrapper often enough that they cannot be treated the
+   * same way as {@link #CONDITIONAL_BOILERPLATE_SELECTOR}.
    */
   private static final String UNCONDITIONAL_BOILERPLATE_SELECTOR =
       "nav, aside, [role=navigation], [role=complementary], .nav, .navigation, .menu,"
@@ -60,9 +60,9 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
    * Boilerplate stripped only when it sits <em>outside</em> every chosen content root (see {@link
    * #selectContentRoots}) - a standard CMS article/section legitimately nests its own {@code
    * <header>} (title, Stand-Datum) or {@code <footer>} (author, tags), and stripping those away
-   * would silently drop real content along with the surrounding page chrome (#1059 review, finding
-   * 4). Mirrors the set {@code DetailPageExtractor} uses for an RSS detail page, minus the elements
-   * moved to {@link #UNCONDITIONAL_BOILERPLATE_SELECTOR} above.
+   * would silently drop real content along with the surrounding page chrome. Same set {@code
+   * DetailPageExtractor} uses for an RSS detail page, minus the elements moved to {@link
+   * #UNCONDITIONAL_BOILERPLATE_SELECTOR} above.
    */
   private static final String CONDITIONAL_BOILERPLATE_SELECTOR =
       "header, footer, [role=banner], [role=contentinfo]";
@@ -147,10 +147,9 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * The {@code <title>}, the first {@code <h1>} (ADR-0024) and the title line of the content
-   * (#1263, #1289). {@link #selectContentRoots} runs here too, so the title line is read from the
-   * same boilerplate-stripped view {@link #run} sees - a navigation label must not become a
-   * Dokumentart.
+   * The {@code <title>}, the first {@code <h1>} (ADR-0024) and the title line of the content .
+   * {@link #selectContentRoots} runs here too, so the title line is read from the same
+   * boilerplate-stripped view {@link #run} sees - a navigation label must not become a Dokumentart.
    */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
@@ -172,8 +171,8 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * The first text block of the content (#1289) - a page has no line breaks of its own, so the
-   * block boundaries of {@link #BLOCK_TAGS} and the headings are what a title line ends at.
+   * The first text block of the content - a page has no line breaks of its own, so the block
+   * boundaries of {@link #BLOCK_TAGS} and the headings are what a title line ends at.
    */
   private static String titleLine(List<Element> contentRoots) {
     for (Element root : contentRoots) {
@@ -225,12 +224,12 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
    * <p>{@link #UNCONDITIONAL_BOILERPLATE_SELECTOR} is removed first, document-wide, regardless of
    * where the content area ends up - it is never legitimate content anywhere.
    *
-   * <p>Every {@link #MAIN_CONTENT_SELECTOR} match is processed, not just the first (#1059 review,
-   * finding 5) - an overview page routinely lists several {@code <article>} teasers, and taking
-   * only the first would silently drop every other one. A match nested inside another match (e.g.
-   * {@code <main><article>…</article></main>}, both matching the selector) is dropped in favour of
-   * its outer match rather than kept as a second, overlapping root - otherwise the same content
-   * would be cut and stored twice (#1059 review, follow-up finding 1).
+   * <p>Every {@link #MAIN_CONTENT_SELECTOR} match is processed, not just the first - an overview
+   * page routinely lists several {@code <article>} teasers, and taking only the first would
+   * silently drop every other one. A match nested inside another match (e.g. {@code
+   * <main><article>…</article></main>}, both matching the selector) is dropped in favour of its
+   * outer match rather than kept as a second, overlapping root - otherwise the same content would
+   * be cut and stored twice.
    */
   private static List<Element> selectContentRoots(org.jsoup.nodes.Document htmlDoc) {
     htmlDoc.select(UNCONDITIONAL_BOILERPLATE_SELECTOR).remove();
@@ -252,9 +251,8 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * {@code candidates} with every match dropped that is itself a descendant of another match - the
-   * fix for {@code <main><article>…</article></main>} both matching {@link #MAIN_CONTENT_SELECTOR}
-   * (#1059 review, follow-up finding 1).
+   * {@code candidates} with every match dropped that is itself a descendant of another match, so
+   * {@code <main><article>…</article></main>} yields one root rather than two overlapping ones.
    */
   private static List<Element> topLevelOnly(Elements candidates) {
     List<Element> roots = new ArrayList<>();
@@ -363,8 +361,7 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
   /**
    * Accumulates one section's body text as a list of already-whitespace-normalized blocks (one per
    * {@link #BLOCK_TAGS} boundary), each built by {@link InlineTextAccumulator} so inline markup
-   * inside a block (e.g. {@code <b>Personal</b>ausweis}) re-joins without an artificial space
-   * (#1059 review, finding 7).
+   * inside a block (e.g. {@code <b>Personal</b>ausweis}) re-joins without an artificial space .
    */
   private static final class SectionAccumulator {
     private final List<String> blocks = new ArrayList<>();
@@ -398,10 +395,9 @@ public class HtmlDocumentPipeline implements DocumentPipeline {
    * (leading/trailing whitespace on either fragment, or a whitespace-only fragment between them).
    * Two fragments with no whitespace anywhere at their boundary re-join directly instead: {@code
    * <b>Personal</b>ausweis} must read "Personalausweis", not "Personal ausweis" - the bug a blanket
-   * "always insert a separator" rule produced (#1059 review, finding 7). Mirrors what {@link
-   * Element#text()} already does correctly for a single element (confirmed empirically); this
-   * pipeline needs its own equivalent because it accumulates text across an explicit block
-   * boundary, not a whole subtree in one call.
+   * "always insert a separator" rule produced. Mirrors what {@link Element#text()} already does
+   * correctly for a single element (confirmed empirically); this pipeline needs its own equivalent
+   * because it accumulates text across an explicit block boundary, not a whole subtree in one call.
    */
   private static final class InlineTextAccumulator {
     private final StringBuilder text = new StringBuilder();

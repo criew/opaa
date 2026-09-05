@@ -37,8 +37,8 @@ import org.springframework.ai.document.Document;
  * each claiming the whole page. Without a resolvable outline, chunking falls back to one chunk per
  * non-blank page.
  *
- * <p>Scan detection (#1055) is answered from this pipeline's own PDFBox extraction: a PDF whose
- * extracted text is entirely blank is rejected as {@code NO_EXTRACTABLE_TEXT}.
+ * <p>Scan detection is answered from this pipeline's own PDFBox extraction: a PDF whose extracted
+ * text is entirely blank is rejected as {@code NO_EXTRACTABLE_TEXT}.
  */
 public class PdfDocumentPipeline implements DocumentPipeline {
 
@@ -86,8 +86,8 @@ public class PdfDocumentPipeline implements DocumentPipeline {
 
   /**
    * The Info dictionary's Title/CreationDate/ModDate, the first top-level outline entry as the
-   * first heading (ADR-0024) and the opening of the first page's text as the head text (#1263) -
-   * the only page whose text is extracted here.
+   * first heading (ADR-0024) and the opening of the first page's text as the head text - the only
+   * page whose text is extracted here.
    */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
@@ -103,9 +103,9 @@ public class PdfDocumentPipeline implements DocumentPipeline {
   }
 
   /**
-   * The first page's text as the head area (#1263), or {@code null} when it cannot be extracted -
-   * never a failure. Read on both paths, so {@link #run} and {@link #readProperties} declare the
-   * same head for the same file.
+   * The first page's text as the head area, or {@code null} when it cannot be extracted - never a
+   * failure. Read on both paths, so {@link #run} and {@link #readProperties} declare the same head
+   * for the same file.
    */
   private static String firstPageText(PDDocument doc) {
     try {
@@ -211,10 +211,9 @@ public class PdfDocumentPipeline implements DocumentPipeline {
       Attribution attribution = splitAmongSiblingTitles(rangeText, run);
       if (!attribution.head().isBlank()) {
         // Text before the run's first title belongs to whichever section is still open when
-        // this run starts - the preamble (first run) or the previous run's last entry (#1104
-        // review round 2, wichtig 1). Added before this run's own Heading events, so
-        // HeadingSectionSplitter#chunk folds it into that still-open section rather than
-        // dropping it.
+        // this run starts - the preamble (first run) or the previous run's last entry. Added
+        // before this run's own Heading events, so HeadingSectionSplitter#chunk folds it into
+        // that still-open section rather than dropping it.
         events.add(new HeadingSectionSplitter.Paragraph(attribution.head().strip()));
       }
       for (int k = 0; k < run.size(); k++) {

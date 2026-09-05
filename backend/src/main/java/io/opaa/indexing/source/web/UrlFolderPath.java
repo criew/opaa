@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Derives the folder path a crawled entry maps to (ADR-0020 Nachtrag, #1277): the entry's URL path
+ * Derives the folder path a crawled entry maps to (ADR-0020 Nachtrag): the entry's URL path
  * relative to the normalized start URL, segment by segment percent-decoded, without the entry's own
  * file name and without any query string or fragment on either side.
  *

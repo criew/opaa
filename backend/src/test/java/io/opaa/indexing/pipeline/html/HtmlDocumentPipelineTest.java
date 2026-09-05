@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The HTML pipeline (#1059; ingestion-pipelines.md Teil 3, Punkt 4): boilerplate outside the chosen
+ * The HTML pipeline (ingestion-pipelines.md Teil 3, Punkt 4): boilerplate outside the chosen
  * content area never reaches a chunk, the cut follows h1-h3 with every chunk carrying its heading
  * path (in text and metadata alike), and an oversized section is split further at block boundaries
  * rather than growing a single chunk without bound.
@@ -54,8 +54,8 @@ class HtmlDocumentPipelineTest {
   }
 
   /**
-   * #1289: the Dokumentart is read from the title line, and an HTML page has no line breaks of its
-   * own - the first text block is that line, the label paragraph below it is not part of it.
+   * the Dokumentart is read from the title line, and an HTML page has no line breaks of its own -
+   * the first text block is that line, the label paragraph below it is not part of it.
    */
   @Test
   void readsTheFirstTextBlockAsTheTitleLine() {
@@ -141,9 +141,9 @@ class HtmlDocumentPipelineTest {
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
     // Personalausweis (h1), Voraussetzungen (h2), Fuer Minderjaehrige (h3), Gebuehren (h2).
     assertThat(result.chunks()).hasSize(4);
-    // #1059 review, finding 6: the heading path must be part of the chunk's own text, not only
+    // the heading path must be part of the chunk's own text, not only
     // its location metadatum - otherwise it is unreachable for embedding and for the lexical path
-    // (#1097).
+    // .
     assertThat(result.chunks().get(0).getText())
         .startsWith("Personalausweis beantragen")
         .contains("amtliches Ausweisdokument");
@@ -191,7 +191,7 @@ class HtmlDocumentPipelineTest {
   @Test
   void aHeadingWithNoBodyTextStillBecomesItsOwnChunkInsteadOfNoExtractableText()
       throws IOException {
-    // #1059 review, finding 6: a section that is nothing but its own heading must not disappear -
+    // a section that is nothing but its own heading must not disappear -
     // it is real, searchable content even without a paragraph beneath it.
     String headingOnly = "<html><body><main><h1>Nur eine Ueberschrift</h1></main></body></html>";
 
@@ -202,7 +202,7 @@ class HtmlDocumentPipelineTest {
     assertThat(result.chunks().getFirst().getText()).isEqualTo("Nur eine Ueberschrift");
   }
 
-  // --- #1059 review, finding 4: header/footer nested inside the content area survive ----------
+  // --- header/footer nested inside the content area survive ----------
 
   @Test
   void headerAndFooterNestedInsideTheContentAreaAreNotStripped() throws IOException {
@@ -233,7 +233,7 @@ class HtmlDocumentPipelineTest {
         .doesNotContain("Startseite");
   }
 
-  // --- #1059 review, finding 5: every main/article match is processed, not just the first -------
+  // --- every main/article match is processed, not just the first -------
 
   @Test
   void everyArticleOnAnOverviewPageIsProcessed() throws IOException {
@@ -255,7 +255,7 @@ class HtmlDocumentPipelineTest {
     assertThat(allText).contains("Erster Teaser").contains("Zweiter Teaser");
   }
 
-  // --- #1059 review, follow-up finding 1: a nested selector match is one root, not two ----------
+  // --- a nested selector match is one root, not two ----------
 
   @Test
   void aMainWrappingAnArticleIsProcessedOnceNotTwice() throws IOException {
@@ -272,7 +272,7 @@ class HtmlDocumentPipelineTest {
     assertThat(result.chunks().getFirst().getText()).contains("Inhalt.");
   }
 
-  // --- #1059 review, follow-up finding 2: nav/cookie banner inside the content area still go ----
+  // --- nav/cookie banner inside the content area still go ----
 
   @Test
   void navAndCookieBannerInsideTheContentAreaAreStillStripped() throws IOException {
@@ -301,7 +301,7 @@ class HtmlDocumentPipelineTest {
     assertThat(allText).doesNotContain("Startseite").doesNotContain("Cookies").contains("Inhalt.");
   }
 
-  // --- #1059 review, follow-up finding 3: no redundant title-only chunk for an ordinary document -
+  // --- no redundant title-only chunk for an ordinary document -
 
   @Test
   void anOrdinaryTitleImmediatelyFollowedByASubsectionHeadingGetsNoRedundantTitleOnlyChunk()
@@ -323,7 +323,7 @@ class HtmlDocumentPipelineTest {
         .contains("Text.");
   }
 
-  // --- #1059 review, finding 7: inline markup must not introduce a spurious word-internal space -
+  // --- inline markup must not introduce a spurious word-internal space -
 
   @Test
   void inlineMarkupDoesNotIntroduceASpuriousSpaceInsideAWord() throws IOException {
@@ -368,7 +368,7 @@ class HtmlDocumentPipelineTest {
     assertThat(result.chunks()).isEmpty();
   }
 
-  // --- #1059 review, finding 3: size control -------------------------------------------------
+  // --- size control -------------------------------------------------
 
   @Test
   void manyParagraphsWithNoHeadingStructureAreSplitAtBlockBoundariesInsteadOfOneGiantChunk()

@@ -29,7 +29,7 @@ class SupportedDocumentFormatsTest {
     assertThat(SupportedDocumentFormats.extensionForContentType(null)).isNull();
   }
 
-  // #435 code review: the correct OOXML/OLE2 media types below depend on the transitive
+  // The correct OOXML/OLE2 media types below depend on the transitive
   // tika-parsers-standard detectors (via spring-ai-tika-document-reader) actually being on the
   // classpath - without them, Tika's ZipContainerDetector/POIFSContainerDetector cannot look
   // inside the container and falls back to the generic "application/x-tika-ooxml"/
@@ -54,7 +54,7 @@ class SupportedDocumentFormatsTest {
         .isTrue();
   }
 
-  // --- #1057: ODF (ODT, ODS, ODP) ---------------------------------------------------------------
+  // --- ODF (ODT, ODS, ODP) ---------------------------------------------------------------
 
   @Test
   void contentMatchesExtensionAcceptsTheExactMediaTypeForEveryOdfExtension() {
@@ -72,7 +72,7 @@ class SupportedDocumentFormatsTest {
         .isTrue();
   }
 
-  // Review nit 3 (#1057): pins DOCX and ODT apart from each other the same way the OOXML-container
+  // Pins DOCX and ODT apart from each other the same way the OOXML-container
   // tests above pin real Office content apart from its generic, unresolved container type - so a
   // later "tolerance" widening of either extension's strict set cannot silently start accepting
   // the other family's content.
@@ -149,7 +149,7 @@ class SupportedDocumentFormatsTest {
     assertThat(SupportedDocumentFormats.contentMatchesExtension(".md", "text/plain")).isTrue();
     assertThat(SupportedDocumentFormats.contentMatchesExtension(".csv", "text/plain")).isTrue();
     // application/xml and application/rtf are declared sub-class-of text/plain in Tika's own
-    // media type registry (tika-mimetypes.xml) - exactly the false positives #435's code review
+    // media type registry (tika-mimetypes.xml) - exactly the false positives this check
     // flagged a plain startsWith("text/") check as missing.
     assertThat(SupportedDocumentFormats.contentMatchesExtension(".txt", "application/xml"))
         .isTrue();
@@ -172,7 +172,7 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void contentMatchesExtensionRejectsAGenericUnresolvedOle2ContainerForDoc() {
-    // #435 code review, finding 3: application/x-tika-msoffice is the generic OLE2 fallback Tika
+    // application/x-tika-msoffice is the generic OLE2 fallback Tika
     // uses when it cannot identify the specific format inside the container - deliberately not
     // accepted for .doc (see STRICT_CONTENT_TYPES_BY_EXTENSION's Javadoc for why).
     assertThat(
@@ -193,7 +193,7 @@ class SupportedDocumentFormatsTest {
     assertThat(SupportedDocumentFormats.contentMatchesExtension(".pdf", null)).isFalse();
   }
 
-  // --- #404: content decides, the extension is only a hint -----------------------------------
+  // --- content decides, the extension is only a hint -----------------------------------
 
   @Test
   void extensionForDetectedContentResolvesEveryStrictType() {
@@ -209,7 +209,7 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void extensionForDetectedContentReturnsNullForAmbiguousTextContent() {
-    // Deliberately not resolved here (#404): content alone cannot tell a Markdown file apart from
+    // Deliberately not resolved here: content alone cannot tell a Markdown file apart from
     // a CSV export or a source file - see decideForFileName for how the ambiguity is resolved
     // using the file's own name as a hint instead.
     assertThat(SupportedDocumentFormats.extensionForDetectedContent("text/plain")).isNull();
@@ -219,14 +219,6 @@ class SupportedDocumentFormatsTest {
   void extensionForDetectedContentReturnsNullForUnsupportedOrMissingContent() {
     assertThat(SupportedDocumentFormats.extensionForDetectedContent("application/zip")).isNull();
     assertThat(SupportedDocumentFormats.extensionForDetectedContent(null)).isNull();
-  }
-
-  @Test
-  void isPdfContentIsTrueOnlyForDetectedPdfContent() {
-    assertThat(SupportedDocumentFormats.isPdfContent("application/pdf")).isTrue();
-    assertThat(SupportedDocumentFormats.isPdfContent("application/msword")).isFalse();
-    assertThat(SupportedDocumentFormats.isPdfContent("text/plain")).isFalse();
-    assertThat(SupportedDocumentFormats.isPdfContent(null)).isFalse();
   }
 
   @Test
@@ -240,8 +232,9 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void decideForFileNameAcceptsAndReportsAWrongExtensionOnReadableContent() {
-    // The core case #404 exists for: a spreadsheet-turned-.txt used to be indexed as garbled
-    // text; here the reverse - a real PDF mislabeled .csv - used to be rejected outright. Both
+    // The core case content-based admission exists for: a spreadsheet-turned-.txt would be indexed
+    // as garbled
+    // text; here the reverse - a real PDF mislabeled .csv - would be rejected outright. Both
     // are now accepted from their actual content, with the mismatch surfaced, not hidden.
     var decision = SupportedDocumentFormats.decideForFileName("bescheid.csv", "application/pdf");
 
@@ -272,7 +265,7 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void decideForFileNameAcceptsCsvContentOnlyUnderItsOwnExtension() {
-    // #1058: CSV joins .md/.txt as text-tolerant - its own extension has to already claim it,
+    // CSV joins .md/.txt as text-tolerant - its own extension has to already claim it,
     // exactly like the other two, since content alone cannot tell a CSV export apart from
     // Markdown or plain text.
     var decision = SupportedDocumentFormats.decideForFileName("gebuehren.csv", "text/plain");
@@ -284,10 +277,10 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void decideForFileNameRejectsAmbiguousTextContentUnderAnUnrelatedExtension() {
-    // #404: the extension is consulted for ambiguous (text) content, not just for reporting a
+    // the extension is consulted for ambiguous (text) content, not just for reporting a
     // mismatch - a log file or source code carrying genuinely readable text must not silently
     // widen the accepted Bestand to "any plain text whatsoever". (CSV itself is a text-tolerant
-    // extension since #1058, see decideForFileNameAcceptsCsvContentOnlyUnderItsOwnExtension.)
+    // extension, see decideForFileNameAcceptsCsvContentOnlyUnderItsOwnExtension.)
     var decision = SupportedDocumentFormats.decideForFileName("export.log", "text/plain");
 
     assertThat(decision.supported()).isFalse();
@@ -320,7 +313,7 @@ class SupportedDocumentFormatsTest {
     assertThat(SupportedDocumentFormats.detectMediaType(file)).isEqualTo("application/pdf");
   }
 
-  // --- #1060/#1101: EML and MSG ------------------------------------------------------------------
+  // --- EML and MSG ------------------------------------------------------------------
 
   @Test
   void isSupportedAcceptsEmlAndMsgByName() {
@@ -337,7 +330,7 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void contentMatchesExtensionAcceptsEmlOnlyAsTextTolerantContent() {
-    // #1101 review, finding 1: message/rfc822 is a text/plain specialization in Tika's own media
+    // message/rfc822 is a text/plain specialization in Tika's own media
     // type hierarchy, not a distinctive byte signature - .eml is admitted the same tolerant way
     // .md/.txt/.csv are, not as a strictly detected type.
     assertThat(SupportedDocumentFormats.contentMatchesExtension(".eml", "message/rfc822")).isTrue();
@@ -369,7 +362,7 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void decideForFileNameDoesNotRouteUnrelatedTextFilesIntoTheMailPipelineEvenIfTikaGuessesRfc822() {
-    // #1101 review, finding 1 (empirically confirmed hijack): a log file, a Markdown changelog and
+    // a log file, a Markdown changelog and
     // a CSV export can all trip Tika's loose message/rfc822 header-line heuristic, but each keeps
     // its own extension's routing because decideForFileName's text-tolerant branch always
     // classifies
@@ -389,7 +382,7 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void decideForFileNameAcceptsARealEmlEvenWhenTikaDoesNotRecognizeItsFirstHeaderLine() {
-    // #1101 review, finding 1: an .eml whose first header does not match Tika's rfc822 heuristic
+    // an .eml whose first header does not match Tika's rfc822 heuristic
     // (e.g. a leading Authentication-Results: or German Von:/An: pair) can be detected as plain
     // text/plain instead of message/rfc822 - still admitted, since .eml only demands text-tolerant
     // content, not the rfc822 heuristic specifically.
@@ -406,7 +399,7 @@ class SupportedDocumentFormatsTest {
     assertThat(SupportedDocumentFormats.detectMediaType(file)).startsWith("text/plain");
   }
 
-  // --- #1059: HTML ------------------------------------------------------------------------------
+  // --- HTML ------------------------------------------------------------------------------
 
   @Test
   void contentMatchesExtensionAcceptsHtmlAndXhtmlForTheHtmlExtension() {
@@ -447,7 +440,7 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void decideForFileNameKeepsTheMarkdownRuleWinningOverAHtmlContentDetection() throws IOException {
-    // #1059 review, finding 1 (blocking): Tika's tika-mimetypes.xml registers text/html as a
+    // Tika's tika-mimetypes.xml registers text/html as a
     // specialization of text/plain, so a Markdown file that happens to open with a raw
     // <div>/<h1> is detected as text/html, not text/plain - confirmed empirically against the
     // real Tika detector below, not assumed from a literal mime string. Without the fix, the
@@ -482,7 +475,7 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void decideForFileNameKeepsTheEmlRuleWinningOverAHtmlContentDetection() {
-    // #1101 review (post-#1100-merge): .eml joined TEXT_TOLERANT_EXTENSIONS after #1100 already
+    // .eml joined TEXT_TOLERANT_EXTENSIONS already
     // established that the text-tolerant branch must win over a strict detection - the same
     // rationale applies here without any change to decideForFileName itself. An HTML-formatted
     // mail body (common for a genuine .eml exported as raw markup, or one saved without its own
@@ -499,7 +492,7 @@ class SupportedDocumentFormatsTest {
     assertThat(decision.extensionMismatch()).isFalse();
   }
 
-  // --- #1229: a bounded prefix that ends inside an unresolved container is not a rejection ----
+  // --- a bounded prefix that ends inside an unresolved container is not a rejection ----
 
   @Test
   void decideForPrefixDecidesOnThePrefixAloneWheneverTheDetectionResolved() throws Exception {

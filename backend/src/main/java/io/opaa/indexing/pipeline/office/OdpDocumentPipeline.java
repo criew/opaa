@@ -105,7 +105,7 @@ public class OdpDocumentPipeline implements DocumentPipeline {
     if (handler.chunks().isEmpty() || !handler.anySlideHasText()) {
       // Covers both a genuinely empty <office:presentation/> (zero draw:page elements) and a
       // presentation whose slides carry no text - the same NO_EXTRACTABLE_TEXT outcome
-      // TikaFallbackPipeline reported for either case before this pipeline existed (#1057). A
+      // TikaFallbackPipeline reported for either case before this pipeline existed. A
       // master-slide chunk never overrides this - see this class's own Javadoc.
       return DocumentPipelineResult.noExtractableText();
     }

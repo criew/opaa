@@ -238,7 +238,7 @@ public class PptxDocumentPipeline implements DocumentPipeline {
 
   /**
    * Non-content placeholders (slide number, date, footer/header) inherited from the notes master
-   * are excluded - they are layout scaffolding, never meaningful body text (#1104 review, Nit 7).
+   * are excluded - they are layout scaffolding, never meaningful body text.
    */
   private static final Set<Placeholder> NON_CONTENT_NOTES_PLACEHOLDERS =
       Set.of(
@@ -256,7 +256,7 @@ public class PptxDocumentPipeline implements DocumentPipeline {
       }
       // getTextType() is null for an ordinary text box that is not inherited from a notes-master
       // placeholder - Set.of(...)#contains(null) throws rather than returning false, so the null
-      // case must short-circuit before it (#1104 review round 2, wichtig 2).
+      // case must short-circuit before it.
       Placeholder textType = textShape.getTextType();
       if (textType != null && NON_CONTENT_NOTES_PLACEHOLDERS.contains(textType)) {
         continue;

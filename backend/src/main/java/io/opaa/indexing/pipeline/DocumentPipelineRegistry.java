@@ -19,10 +19,10 @@ import org.slf4j.LoggerFactory;
  *
  * <p><b>Routing follows the detected content, not the file extension</b> - the same rule and the
  * same code path {@link SupportedDocumentFormats#decideForFileName} already applies to the
- * admission decision (#404), and for the same reason: in grown file shares documents routinely
- * carry the wrong extension. The text-tolerant special case for Markdown and Klartext (content
- * <em>and</em> extension must agree, because the two cannot be told apart by content alone)
- * therefore holds for routing too - it is not re-implemented here, it is inherited by asking {@link
+ * admission decision, and for the same reason: in grown file shares documents routinely carry the
+ * wrong extension. The text-tolerant special case for Markdown and Klartext (content <em>and</em>
+ * extension must agree, because the two cannot be told apart by content alone) therefore holds for
+ * routing too - it is not re-implemented here, it is inherited by asking {@link
  * SupportedDocumentFormats} the one question it already answers.
  *
  * <p><b>No second admission list.</b> A document that {@link SupportedDocumentFormats} does not
@@ -115,8 +115,8 @@ public class DocumentPipelineRegistry {
    *     see {@link #pipelineFor(String, String)})
    * @param formatDetectionFailed {@code true} only when {@code file}'s bytes could not be read for
    *     detection at all (deleted, permission-denied, briefly locked) - distinct from a content
-   *     decision that admits nothing: a caller persisting {@code detectedExtension} (#1126) must
-   *     not treat this transient case as a confirmed "no extension".
+   *     decision that admits nothing: a caller persisting {@code detectedExtension} must not treat
+   *     this transient case as a confirmed "no extension".
    */
   public record Routed(
       DocumentPipeline pipeline, String detectedExtension, boolean formatDetectionFailed) {
@@ -175,7 +175,7 @@ public class DocumentPipelineRegistry {
 
   /**
    * The registered pipeline with {@code id}, for a caller that invokes a pipeline directly instead
-   * of routing by format - the Confluence page pipeline claims no format at all (#1137).
+   * of routing by format - the Confluence page pipeline claims no format at all.
    */
   public java.util.Optional<DocumentPipeline> pipelineById(String id) {
     return all.stream().filter(pipeline -> pipeline.id().equals(id)).findFirst();
@@ -184,9 +184,9 @@ public class DocumentPipelineRegistry {
   /**
    * The id of the pipeline that claims {@code routingExtension} today - the exact counterpart of
    * {@link #pipelineFor(String, String)} for a chunk's own {@link
-   * ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} instead of a freshly detected media type
-   * (#1126). Used by {@code io.opaa.indexing.PipelineReindexService} to tell whether a chunk is
-   * still routed the way it would be today, without re-reading or re-detecting its source file.
+   * ChunkPipelineMetadata#ROUTING_EXTENSION_METADATA_KEY} instead of a freshly detected media type.
+   * Used by {@code io.opaa.indexing.PipelineReindexService} to tell whether a chunk is still routed
+   * the way it would be today, without re-reading or re-detecting its source file.
    *
    * @param routingExtension {@code null} or {@link ChunkPipelineMetadata#NO_ROUTING_EXTENSION} for
    *     a chunk whose routing never resolved an extension - resolves to {@link #fallbackPipeline()}

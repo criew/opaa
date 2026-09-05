@@ -57,9 +57,9 @@ public class StoredDocumentSourceAccess {
 
   /**
    * Whether {@code document}'s bytes live on a remote the connector run alone can re-read.
-   * Confluence included (#1137): clearing checksum and version marker makes the next run fetch and
-   * process the page again - the executor's pre-fetch version check and the processing checksum
-   * check both see "changed".
+   * Confluence included: clearing checksum and version marker makes the next run fetch and process
+   * the page again - the executor's pre-fetch version check and the processing checksum check both
+   * see "changed".
    */
   public static boolean isRemote(Document document) {
     DocumentSourceType sourceType = document.getSourceType();
@@ -221,11 +221,11 @@ public class StoredDocumentSourceAccess {
 
   /**
    * Marks a remote (HTTP_DIRECTORY/RSS_FEED) document, and for an attachment its <em>whole</em>
-   * parent chain up to the root (#1219), for the next connector run by clearing every change marker
-   * ({@link DocumentRepository#markForReindexOnNextRun}). Only that run can re-download the root; a
-   * chain cleared level by level is re-parsed level by level, so the attachment is reached again.
-   * Never deletes a row (ADR-0022, Entscheidung 3). Returns {@code false} - a skip - for a broken
-   * or cyclic chain.
+   * parent chain up to the root, for the next connector run by clearing every change marker ({@link
+   * DocumentRepository#markForReindexOnNextRun}). Only that run can re-download the root; a chain
+   * cleared level by level is re-parsed level by level, so the attachment is reached again. Never
+   * deletes a row (ADR-0022, Entscheidung 3). Returns {@code false} - a skip - for a broken or
+   * cyclic chain.
    */
   public boolean markRemoteChainForNextRun(Document document) {
     List<UUID> chainIds = new ArrayList<>();

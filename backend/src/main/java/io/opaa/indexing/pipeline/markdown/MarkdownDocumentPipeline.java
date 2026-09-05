@@ -33,10 +33,9 @@ import org.springframework.ai.document.Document;
  * unterminated block at the start) is ordinary content. Frontmatter fields are handed over
  * uninterpreted via {@link DocumentProperties#frontmatter()} (ADR-0024).
  *
- * <p>Registered as a {@code DocumentPipeline} bean since #1103, replacing {@link
- * TikaFallbackPipeline} for {@code .md}: the retrieval-quality evaluation corpus is entirely
- * Markdown, so this routing change is also a measurement-contract change for the eval domains (see
- * {@code EvalDomainConfig}).
+ * <p>Claims {@code .md} ahead of {@link TikaFallbackPipeline}. The retrieval-quality evaluation
+ * corpus is entirely Markdown, so this pipeline's cut is also the eval domains' measurement
+ * contract (see {@code EvalDomainConfig}).
  */
 public class MarkdownDocumentPipeline implements DocumentPipeline {
 
@@ -91,9 +90,8 @@ public class MarkdownDocumentPipeline implements DocumentPipeline {
 
   /**
    * The frontmatter's scalar entries verbatim, the first level-1 heading (ADR-0024) and the opening
-   * of the text after the frontmatter (#1263) - the eval corpus' {@code titel}/{@code
-   * dokumentart}/{@code stand_datum}/{@code fassung} keys reach the extractor this way,
-   * uninterpreted.
+   * of the text after the frontmatter - the eval corpus' {@code titel}/{@code dokumentart}/{@code
+   * stand_datum}/{@code fassung} keys reach the extractor this way, uninterpreted.
    */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {

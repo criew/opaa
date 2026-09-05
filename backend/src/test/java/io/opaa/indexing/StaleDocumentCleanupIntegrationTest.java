@@ -25,7 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * End-to-end coverage of #886: {@link StaleDocumentCleanupService}, wired into {@link
+ * End-to-end coverage: {@link StaleDocumentCleanupService}, wired into {@link
  * AsyncIndexingExecutor} (FILESYSTEM), removes a document - row and vector store chunks - that
  * vanished from the source, but only once a run finished successfully. Runs against the real
  * Liquibase schema and a real {@code vector_store} table (AGENTS.md "Reproduktionsnachweis"), the
@@ -156,7 +156,7 @@ class StaleDocumentCleanupIntegrationTest {
   void aDocumentWhoseFileVanishedIsRemovedWithItsChunksAfterASuccessfulRun() throws IOException {
     Files.writeString(classTempDir.resolve("keep.txt"), "This file stays.");
     Files.writeString(classTempDir.resolve("vanishing.txt"), "This file will disappear.");
-    // #886 review, ADR-0017 core rule: cleanup is scoped to (library, sourceType) - a document of
+    // cleanup is scoped to (library, sourceType) - a document of
     // a different sourceType in the very same (nominally FILESYSTEM) library must survive
     // regardless of what the FILESYSTEM cleanup below does. Inserted directly, bypassing the
     // "one source type per library" rule ADR-0018 normally enforces at creation time, to prove the
@@ -221,7 +221,7 @@ class StaleDocumentCleanupIntegrationTest {
         .extracting(Document::getId)
         .containsExactlyInAnyOrder(keptDoc.getId(), uploadDocId, rssDocId);
 
-    // #886 review (finding 5): the run's own protocol names what was removed and not just how many.
+    // the run's own protocol names what was removed and not just how many.
     List<IndexingRunEvent> events =
         indexingRunEventRepository.findByJobIdOrderByCreatedAtAsc(secondJob.getId());
     assertThat(events)
@@ -233,7 +233,7 @@ class StaleDocumentCleanupIntegrationTest {
 
   @Test
   void aFailedRunNeverDeletesADocumentEvenIfItsFileVanishedFromTheSource() throws IOException {
-    // Sharpened per #886 review: the failure must come from within discoverFiles itself (the
+    // The failure must come from within discoverFiles itself (the
     // production code path that can genuinely race a real source, e.g. an unmounted network
     // share), not from the allowlist pre-check that runs before discoverFiles is ever called -
     // library.sourcePath points at its own dedicated subdirectory of classTempDir (still inside
@@ -255,7 +255,7 @@ class StaleDocumentCleanupIntegrationTest {
         documentRepository.findByLibraryId(targetLibraryId).stream().findFirst().orElseThrow();
 
     // The source directory itself disappears entirely (not just the file in it) - the next run's
-    // own DocumentService#discoverFiles throws IOException (#886 fix), caught by
+    // own DocumentService#discoverFiles throws IOException, caught by
     // AsyncIndexingExecutor's outer catch, which fails the job before cleanupVanished (or even
     // pruneOrphanedFolders) is ever reached.
     Files.delete(librarySourceDir.resolve("survivor.txt"));
@@ -276,7 +276,7 @@ class StaleDocumentCleanupIntegrationTest {
   @Test
   void aSuccessfulRunOverAGenuinelyEmptyDirectoryNeverDeletesTheExistingBestand()
       throws IOException {
-    // #886 review, finding 1: the directory itself still exists (discoverFiles succeeds, the job
+    // the directory itself still exists (discoverFiles succeeds, the job
     // COMPLETEs normally) but every file inside it is gone - indistinguishable here from an
     // unreachable/misconfigured source (an empty maintenance mount, a listing OPAA read before the
     // real content was synced). StaleDocumentCleanupService#cleanupVanished's own empty-set guard

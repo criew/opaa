@@ -1,9 +1,9 @@
 package io.opaa.indexing.metadata;
 
 /**
- * The Pflege-Anker of one core field in one library (#1069, metadata-schema.md "Der Pflege-Anker"):
- * how many indexed documents carry no row for the field at all - "leer", the open rest - beside the
- * two states that are done, {@code SET} and {@code NOT_DETERMINABLE}. Only {@link
+ * The Pflege-Anker of one core field in one library (metadata-schema.md "Der Pflege-Anker"): how
+ * many indexed documents carry no row for the field at all - "leer", the open rest - beside the two
+ * states that are done, {@code SET} and {@code NOT_DETERMINABLE}. Only {@link
  * #documentsWithoutValue()} is the anchor's number, which is what lets it reach zero.
  *
  * @param totalDocuments the library's indexed documents, the base of {@link #missingShare()}

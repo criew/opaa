@@ -29,8 +29,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Manual correction of a document's core fields (#1068, metadata-schema.md "Manuelle Korrektur ist
- * Teil des ersten Schnitts"): rights, validation and the audit event around {@link
+ * Manual correction of a document's core fields (metadata-schema.md "Manuelle Korrektur ist Teil
+ * des ersten Schnitts"): rights, validation and the audit event around {@link
  * DocumentMetadataService}'s row writes. Whoever may edit the library's documents ({@link
  * AssetRole#EDITOR}) may correct their metadata - no management right. Every change writes one
  * {@code DOCUMENT_METADATA_CHANGED} event per document and field with old and new value, so the

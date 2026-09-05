@@ -15,9 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The Markdown pipeline (#1061; ingestion-pipelines.md Teil 2): the cut follows ATX headings level
- * 1-3, every chunk carries its heading path (in text and metadata alike), and a heading with no
- * body still becomes its own chunk instead of disappearing.
+ * The Markdown pipeline (ingestion-pipelines.md Teil 2): the cut follows ATX headings level 1-3,
+ * every chunk carries its heading path (in text and metadata alike), and a heading with no body
+ * still becomes its own chunk instead of disappearing.
  */
 class MarkdownDocumentPipelineTest {
 

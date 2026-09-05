@@ -9,10 +9,10 @@ import io.opaa.library.KnowledgeLibrary;
 import java.util.Set;
 
 /**
- * {@link ConfluenceIndexingExecutor}'s own {@link AttachmentAccess} (#1137, ADR-0022 Entscheidung
- * 8), one instance per page: unlike RSS's run-wide context it carries the page's {@link
- * #sourceContext()} - space key and hierarchy path including the page title - so every attachment
- * stored through it, at any nesting depth, is placed where its page sits.
+ * {@link ConfluenceIndexingExecutor}'s own {@link AttachmentAccess} (ADR-0022 Entscheidung 8), one
+ * instance per page: unlike RSS's run-wide context it carries the page's {@link #sourceContext()} -
+ * space key and hierarchy path including the page title - so every attachment stored through it, at
+ * any nesting depth, is placed where its page sits.
  *
  * <p>{@link #markDeferred()} keeps no per-run state to suppress: a Confluence run has no
  * conditional GET; a lost attachment is retried on the next run because its document row is either
@@ -60,7 +60,7 @@ final class ConfluenceAttachmentAccess implements AttachmentAccess {
     return events;
   }
 
-  /** Every attachment document created counts towards the run's attachment share (#1141). */
+  /** Every attachment document created counts towards the run's attachment share. */
   @Override
   public AttachmentProgressSink progress() {
     return () -> {

@@ -11,8 +11,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Everything a single RSS indexing run shares across every entry and attachment it processes -
- * collapses the 9-10-parameter methods {@link RssFeedIndexingExecutor} used to thread this same
- * state through individually into one object.
+ * collapses the 9-10-parameter signatures {@link RssFeedIndexingExecutor} would otherwise thread
+ * this same state through individually into one object.
  *
  * <p><b>{@link #httpClientFor}/{@link #authHeaderFor}.</b> {@code sourceInsecureSsl}/{@code
  * Authorization} are withheld for any target outside the feed's own origin - an entry's {@code

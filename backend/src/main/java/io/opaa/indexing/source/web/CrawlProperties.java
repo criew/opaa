@@ -4,12 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Bounds an {@code HTTP_DIRECTORY} run: {@link AutoindexCrawlerService}'s recursive descent and the
- * size of a single entry {@link UrlIndexingExecutor} transfers - deliberately its own property
- * block rather than a component of {@code IndexingProperties} (mirrors {@code UploadProperties}'s
- * own reasoning): {@link AutoindexCrawlerService} is a plain, non-Spring-bean class with a single
- * test-friendly constructor, and adding these values there would touch every one of {@link
- * IndexingProperties}'s many positional-record call sites for a concern specific to the {@code
- * HTTP_DIRECTORY} crawl path alone.
+ * size of a single entry {@link UrlIndexingExecutor} transfers.
  *
  * @param maxDepth the maximum recursion depth {@link AutoindexCrawlerService#crawl} descends before
  *     truncating (logged, not failed) - the root directory itself is depth 0, so a crawl visits
@@ -26,12 +21,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param maxFileSizeBytes the maximum number of bytes a single crawled entry may transfer before
  *     {@code BoundedDownloader#download} aborts it - enforced while streaming to disk, so neither
  *     the temp partition nor the transfer itself ever holds more than this much of one entry,
- *     whether it is indexed or rejected afterwards (#1236). It bounds the heap only indirectly, by
- *     bounding the input every later step works on. Default 104 857 600 (100 MiB): the same order
- *     as {@code MailProperties#maxMessageBytes}, and deliberately below the 128 MiB {@code
- *     markLimit} of Tika's POIFS container detection, past which an OLE2 entry would be rejected
- *     after a full transfer anyway. {@code 0} falls back to the default; a negative value is
- *     rejected outright.
+ *     whether it is indexed or rejected afterwards. It bounds the heap only indirectly, by bounding
+ *     the input every later step works on. Default 104 857 600 (100 MiB): the same order as {@code
+ *     MailProperties#maxMessageBytes}, and deliberately below the 128 MiB {@code markLimit} of
+ *     Tika's POIFS container detection, past which an OLE2 entry would be rejected after a full
+ *     transfer anyway. {@code 0} falls back to the default; a negative value is rejected outright.
  */
 @ConfigurationProperties(prefix = "opaa.indexing.crawl")
 public record CrawlProperties(int maxDepth, int maxEntries, long maxFileSizeBytes) {

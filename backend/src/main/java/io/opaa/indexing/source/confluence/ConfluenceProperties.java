@@ -4,10 +4,7 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Operational bounds of the Confluence access layer - deliberately its own property block rather
- * than a component of {@code IndexingProperties} (mirrors {@code CrawlProperties}'s reasoning:
- * adding a record component there touches every positional call site for a concern specific to one
- * source type).
+ * Operational bounds of the Confluence access layer.
  *
  * @param pageSize the {@code limit} sent with every listing request (spaces, pages, attachments,
  *     search). Cloud caps at 250, Data Center at 200 for most listings; the adapters send this
@@ -39,10 +36,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     clock skew between OPAA and the instance and CQL's minute granularity; a re-found unchanged
  *     page costs a listing entry, no body fetch; ten minutes by default (zero falls back to it)
  * @param requestBudgetPerRun how many requests one run may send to its instance before it ends in
- *     an orderly way as "incomplete, continued by the next run" (#1141) - the bound that makes a
- *     run against a very large instance plannable, for Cloud (a points budget answered with 429)
- *     and Data Center (no built-in limit, the instance is simply kept busy) alike. Applied only to
- *     a run's client ({@code ConfluenceClientFactory#createForRun}), never to the wizard's probes.
+ *     an orderly way as "incomplete, continued by the next run" - the bound that makes a run
+ *     against a very large instance plannable, for Cloud (a points budget answered with 429) and
+ *     Data Center (no built-in limit, the instance is simply kept busy) alike. Applied only to a
+ *     run's client ({@code ConfluenceClientFactory#createForRun}), never to the wizard's probes.
  *     Zero disables the budget; the default is {@link #DEFAULT_REQUEST_BUDGET_PER_RUN}
  */
 @ConfigurationProperties(prefix = "opaa.indexing.confluence")
@@ -63,10 +60,10 @@ public record ConfluenceProperties(
   static final String DEFAULT_USER_AGENT = "OPAA-Indexer/1.0";
 
   /**
-   * Calls per run before the run ends as incomplete (#1141). Measured against a real Data Center in
-   * the container suite (run 33772411512): a full sync of 4 readable pages with 2 attachments cost
-   * 13 calls - 1 credential check, 2 listings, 4 page bodies, 4 attachment lists, 2 downloads - so
-   * a page costs 2 calls plus its downloads plus one listing call per {@code pageSize} pages; an
+   * Calls per run before the run ends as incomplete. Measured against a real Data Center in the
+   * container suite (run 33772411512): a full sync of 4 readable pages with 2 attachments cost 13
+   * calls - 1 credential check, 2 listings, 4 page bodies, 4 attachment lists, 2 downloads - so a
+   * page costs 2 calls plus its downloads plus one listing call per {@code pageSize} pages; an
    * incremental run for one change cost 6. 50 000 calls therefore cover roughly 20 000 pages of new
    * or changed content per run. A resumed full sync re-lists its unfinished spaces but spends no
    * call on a page already stored at the listed version, so the chain of runs converges as long as

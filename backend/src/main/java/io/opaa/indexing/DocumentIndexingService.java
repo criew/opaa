@@ -199,7 +199,7 @@ public class DocumentIndexingService {
    * supports; without a request the executor's own default for this library applies - the only mode
    * a one-mode executor knows, or for Confluence the mode its sync state calls for (a full run when
    * none completed yet, after a selection change or once the full-sync interval passed, incremental
-   * otherwise; #1139).
+   * otherwise).
    */
   private static IndexingRunMode resolveRunMode(
       SourceIndexingExecutor executor, KnowledgeLibrary library, IndexingRunMode requested) {

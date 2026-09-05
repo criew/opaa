@@ -9,14 +9,13 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit coverage of {@link TargetAddressValidator} (#267): the scheme check, every blocked address
- * range (IPv4 and IPv6, including the IPv4-mapped/-compatible, unique-local and NAT64 IPv6 cases,
- * plus the CGNAT/reserved/benchmarking/protocol-assignments IPv4 ranges added in PR #699 review,
- * nit 1 - none of which the plain {@link InetAddress} predicates alone cover), the allowlist
- * bypass, {@link TargetAddressValidator#validateHost} for a bare (schemeless) proxy host, and the
- * disabled/enabled switch. Reproduces the two acceptance-criteria scenarios directly: a
- * loopback/private target is rejected while enabled, and disabling the check turns the identical
- * target into a no-op.
+ * Unit coverage of {@link TargetAddressValidator}: the scheme check, every blocked address range
+ * (IPv4 and IPv6, including the IPv4-mapped/-compatible, unique-local and NAT64 IPv6 cases, plus
+ * the CGNAT/reserved/benchmarking/protocol-assignments IPv4 ranges, nit 1 - none of which the plain
+ * {@link InetAddress} predicates alone cover), the allowlist bypass, {@link
+ * TargetAddressValidator#validateHost} for a bare (schemeless) proxy host, and the disabled/enabled
+ * switch. Reproduces the two acceptance-criteria scenarios directly: a loopback/private target is
+ * rejected while enabled, and disabling the check turns the identical target into a no-op.
  */
 class TargetAddressValidatorTest {
 
@@ -95,7 +94,7 @@ class TargetAddressValidatorTest {
 
   @Test
   void rejectsIpv4LinkLocalIncludingCloudMetadata() {
-    // 169.254.169.254 - the common cloud metadata endpoint (#267 acceptance criteria).
+    // 169.254.169.254 - the common cloud metadata endpoint.
     assertThatThrownBy(() -> enabled().validate(URI.create("http://169.254.169.254/")))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
   }
@@ -139,7 +138,7 @@ class TargetAddressValidatorTest {
 
   @Test
   void rejectsTheDeprecatedIpv4CompatibleIpv6Form() throws Exception {
-    // PR #699 review, nit 1: ::7f00:1 (IPv4-compatible, RFC 4291, for 127.0.0.1) is NOT itself
+    // ::7f00:1 (IPv4-compatible, RFC 4291, for 127.0.0.1) is NOT itself
     // recognized as loopback by InetAddress#isLoopbackAddress - only literal ::1 is - so it passed
     // every check before this fix, unlike the structurally similar ::ffff:127.0.0.1 (IPv4-mapped)
     // above.
@@ -240,7 +239,7 @@ class TargetAddressValidatorTest {
 
   @Test
   void rejectsAHostThatCannotBeResolved() {
-    // PR #699 review, nit 3: the same friendly wording
+    // The same friendly wording
     // SourceConnectionTestService#translateConnectionError already used for an ordinary
     // UnknownHostException - this check now runs before that connection attempt is ever made, so
     // it is the only place this wording is reached for an http(s) target.
@@ -252,7 +251,7 @@ class TargetAddressValidatorTest {
         .hasMessageContaining("DNS-Auflösung fehlgeschlagen");
   }
 
-  // --- proxy host (PR #699 review, "vorbestehend") -------------------------
+  // --- proxy host -------------------------
 
   @Test
   void validateHostRejectsALoopbackProxyHostWhenEnabled() {

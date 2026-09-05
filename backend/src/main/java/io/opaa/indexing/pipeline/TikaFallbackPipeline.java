@@ -2,9 +2,6 @@ package io.opaa.indexing.pipeline;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentService;
-import io.opaa.indexing.SupportedDocumentFormats;
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -12,17 +9,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 
 /**
- * The universal fallback pipeline (docs/features/ingestion-pipelines.md, Teil 1: "Tika bleibt als
- * Fallback-Pipeline"): Tika reader plus the token splitter with the globally configured {@code
- * opaa.indexing.chunk-size}/{@code -overlap}. It claims no format at all and handles everything no
- * specialized pipeline claimed - which today is every admitted format, so the abstraction is
- * behaviour-neutral for the existing corpus by construction.
+ * The universal fallback pipeline (docs/features/ingestion-pipelines.md, Teil 1): Tika reader plus
+ * the token splitter with the globally configured {@code opaa.indexing.chunk-size}/{@code
+ * -overlap}. It claims no format ({@link #handledFormats()} is empty) and handles everything no
+ * specialized pipeline claimed.
  *
- * <p>Chunk size: <b>gesetzt, nicht gemessen</b> (ingestion-pipelines.md, "Chunk-Größen"). The
- * 1000/100-token default predates any measurement on a verwaltungs-corpus; it is the value {@code
- * ChunkingService} has always applied, kept unchanged here so this pipeline reproduces the
- * pre-abstraction cut exactly. A measurement would need a corpus per document class, which is the
- * subject of the per-format issues, not of this one.
+ * <p>Its chunk size is <b>gesetzt, nicht gemessen</b> (ingestion-pipelines.md, "Chunk-Größen"): the
+ * 1000/100-token default {@code ChunkingService} applies globally, not a value measured against a
+ * verwaltungs-corpus.
  */
 public class TikaFallbackPipeline implements DocumentPipeline {
 
@@ -31,10 +25,8 @@ public class TikaFallbackPipeline implements DocumentPipeline {
   public static final String ID = "tika-fallback";
 
   /**
-   * Version 1 is the cut this project has produced since before the abstraction existed - the
-   * pre-#1056 corpus is therefore attributed to version {@link
-   * ChunkPipelineMetadata#LEGACY_PIPELINE_VERSION}, not to this one, purely because those chunks
-   * carry no metadata saying so.
+   * Chunks carrying no pipeline metadata at all are attributed to {@link
+   * ChunkPipelineMetadata#LEGACY_PIPELINE_VERSION}, never to this version.
    */
   public static final short VERSION = 1;
 
@@ -66,9 +58,6 @@ public class TikaFallbackPipeline implements DocumentPipeline {
     List<Document> parsed;
     if (source.file() != null) {
       parsed = documentService.parseDocument(source.file());
-      if (isTextlessPdf(source.file(), parsed)) {
-        return DocumentPipelineResult.noExtractableText();
-      }
       if (parsed.isEmpty()) {
         return DocumentPipelineResult.noContent();
       }
@@ -79,9 +68,8 @@ public class TikaFallbackPipeline implements DocumentPipeline {
     List<Document> chunks = chunkingService.chunkDocuments(source.fileName(), parsed);
     if (chunks.isEmpty()) {
       // Non-blank parsed text can still chunk down to nothing (OCR noise or page footers below
-      // ChunkingService's own minChunkLengthToEmbed/minChunkSizeChars, or a non-PDF format the
-      // isTextlessPdf guard above never covers) - reported as the same rejection, so no caller can
-      // end up INDEXED with zero chunks regardless of why chunking produced none.
+      // ChunkingService's own minChunkLengthToEmbed/minChunkSizeChars) - reported as a rejection,
+      // so no caller can end up INDEXED with zero chunks.
       return DocumentPipelineResult.noExtractableText();
     }
     return DocumentPipelineResult.chunked(chunks)
@@ -89,10 +77,9 @@ public class TikaFallbackPipeline implements DocumentPipeline {
   }
 
   /**
-   * The opening of the extracted text (#1263) - the only metadata source this pipeline has, since
-   * Tika's own document properties are not read here. Unlike PDF (one page) or DOCX/ODT (core
-   * properties only) this parses the whole document for its first 300 characters; Tika has no
-   * cheaper entry point, and the formats reaching this pipeline are small.
+   * The opening of the extracted text - the only metadata source this pipeline has, since Tika's
+   * own document properties are not read here. Parses the whole document for its first 300
+   * characters; Tika has no cheaper entry point, and the formats reaching this pipeline are small.
    */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
@@ -110,8 +97,8 @@ public class TikaFallbackPipeline implements DocumentPipeline {
 
   /**
    * {@code null} for a source without a file: that is text extracted upstream, today an RSS entry's
-   * body (#1263). A title line only names a Dokumentart if the document names <em>itself</em> - a
-   * press release names the Satzung it reports about, and would inherit its Dokumentart.
+   * body. A title line only names a Dokumentart if the document names <em>itself</em> - a press
+   * release names the Satzung it reports about, and would inherit its Dokumentart.
    */
   private static String titleLine(DocumentPipelineSource source, List<Document> parsed) {
     if (source.file() == null) {
@@ -124,32 +111,5 @@ public class TikaFallbackPipeline implements DocumentPipeline {
       }
     }
     return null;
-  }
-
-  /**
-   * Whether {@code parsed} carries no extractable text at all and {@code file} was detected as a
-   * PDF. Tika's PDF parser returns a {@link Document} even for a scan without a text layer - just
-   * with blank text - so {@code parsed.isEmpty()} alone does not catch this case. Scoped to PDF for
-   * now; meant to extend to TIFF/PNG/JPEG once accepted.
-   *
-   * <p>Lives here rather than on {@link DocumentService}: it is only ever asked by this pipeline,
-   * about the parse result this pipeline just produced (ingestion-pipelines.md, Teil 3, Punkt 1
-   * "Scan-Erkennung und Bestandsprüfung").
-   */
-  boolean isTextlessPdf(Path file, List<Document> parsed) {
-    boolean hasText = parsed.stream().anyMatch(d -> d.getText() != null && !d.getText().isBlank());
-    if (hasText) {
-      return false;
-    }
-    return isPdf(file);
-  }
-
-  private boolean isPdf(Path file) {
-    try {
-      return SupportedDocumentFormats.isPdfContent(SupportedDocumentFormats.detectMediaType(file));
-    } catch (IOException e) {
-      log.warn("Could not read {} to detect whether it is a PDF", file, e);
-      return false;
-    }
   }
 }

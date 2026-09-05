@@ -21,13 +21,12 @@ public sealed interface AttachmentSource {
       implements AttachmentSource {}
 
   /**
-   * An attachment whose bytes are already on disk, no download step needed - the case Mail (#1183)
-   * needs: {@code EmlReader}/{@code MsgReader} already extracted the attachment into a temporary
-   * file before this path ever sees it - and the case of a source whose own access layer downloads
-   * (Confluence, #1137: the download goes through {@code ConfluenceClient}, which owns the
-   * edition-aware redirect policy, the request budget and the credentials; only the bytes reach
-   * this path). The caller owns the file and deletes it once {@link AttachmentIndexer#indexAll}
-   * returns.
+   * An attachment whose bytes are already on disk, no download step needed - the case Mail needs:
+   * {@code EmlReader}/{@code MsgReader} already extracted the attachment into a temporary file
+   * before this path ever sees it - and the case of a source whose own access layer downloads
+   * (Confluence: the download goes through {@code ConfluenceClient}, which owns the edition-aware
+   * redirect policy, the request budget and the credentials; only the bytes reach this path). The
+   * caller owns the file and deletes it once {@link AttachmentIndexer#indexAll} returns.
    *
    * @param fileName the attachment's own, human-readable name (e.g. {@code "anlage.pdf"}) - never
    *     used as identity, only for display and format detection, mirroring {@link

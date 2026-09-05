@@ -80,22 +80,18 @@ public final class SupportedDocumentFormats {
    * 3): content alone cannot tell a comma- or semicolon-separated export apart from a Markdown
    * table or plain text, so a CSV file is only accepted once its own extension already claims it.
    *
-   * <p>{@code .eml} joins this set (#1101 review) rather than the strict one below, for a reason
-   * specific to Tika's own {@code message/rfc822} detector: it is a loose textual heuristic (looks
-   * for header-shaped lines such as {@code Date:}/{@code Subject:}/{@code To:}/{@code From:} near
-   * the top of the content), not a fixed byte signature the way a PDF header or an OLE2/ZIP
-   * container is - {@code message/rfc822} is registered in Tika's own media type hierarchy as a
+   * <p>{@code .eml} joins this set rather than the strict one below, for a reason specific to
+   * Tika's own {@code message/rfc822} detector: it is a loose textual heuristic (looks for
+   * header-shaped lines such as {@code Date:}/{@code Subject:}/{@code To:}/{@code From:} near the
+   * top of the content), not a fixed byte signature the way a PDF header or an OLE2/ZIP container
+   * is - {@code message/rfc822} is registered in Tika's own media type hierarchy as a
    * specialization of {@code text/plain} (confirmed empirically), so it is exactly as ambiguous by
    * content alone as Markdown or plain text: a log file with {@code Date:}/{@code Status:} lines, a
    * changelog with {@code To:}/{@code From:} lines, or a CSV export with {@code Date:}/{@code
-   * Subject:} columns can trip the same heuristic. Treating {@code message/rfc822} as strictly
-   * detected content (as an earlier version of this class did) would route such files into the mail
-   * pipeline with no mismatch reported at all, and - the mirror failure - reject a genuine {@code
-   * .eml} whose first header line does not match the heuristic (e.g. a leading {@code
-   * Authentication-Results:} or a German {@code Von:}/{@code An:} pair) outright. Requiring the
-   * file's own {@code .eml} extension in addition to "looks like text" fixes both: an unrelated
-   * text file never gets routed as mail regardless of what its content resembles, and a genuine
-   * {@code .eml} is admitted regardless of which header happens to come first.
+   * Subject:} columns can trip the same heuristic. Requiring the file's own {@code .eml} extension
+   * in addition to "looks like text" therefore decides both directions: an unrelated text file is
+   * never routed as mail regardless of what its content resembles, and a genuine {@code .eml} is
+   * admitted regardless of which header happens to come first.
    */
   private static final Set<String> TEXT_TOLERANT_EXTENSIONS = Set.of(".md", ".txt", ".csv", ".eml");
 
@@ -279,7 +275,7 @@ public final class SupportedDocumentFormats {
    * POIFSContainerDetector} reads at most its {@code markLimit} (128 MiB by default) before
    * reporting the unresolved type again, so an OLE2 document larger than that stays rejected even
    * with its complete bytes at hand. On the network path the fetch itself is capped ({@code
-   * CrawlProperties#maxFileSizeBytes}, #1236), by default below that limit - such an entry is then
+   * CrawlProperties#maxFileSizeBytes}), by default below that limit - such an entry is then
    * rejected while streaming rather than after a full transfer; an installation raising the cap
    * past 128 MiB brings the case back.
    */
@@ -321,16 +317,6 @@ public final class SupportedDocumentFormats {
   }
 
   /**
-   * Whether {@code detectedMimeType} is Tika-detected PDF content - used by {@code
-   * io.opaa.indexing.pipeline.TikaFallbackPipeline#isTextlessPdf} to tell a scan PDF
-   * (ingestion-pipelines.md, Teil 3, Punkt 1 "Scan-Erkennung und Bestandsprüfung") apart from any
-   * other format that happens to also yield blank extracted text.
-   */
-  public static boolean isPdfContent(String detectedMimeType) {
-    return ".pdf".equals(extensionForDetectedContent(detectedMimeType));
-  }
-
-  /**
    * The entry of {@link #EXTENSIONS} that {@code fileName} ends with, or empty when it ends with
    * none of them - the file's own claimed extension, used only as a hint once {@link
    * #decideForFileName} has already decided acceptance from the content. Package-visible so {@code
@@ -346,8 +332,8 @@ public final class SupportedDocumentFormats {
 
   /**
    * Whether a document is accepted for indexing and, if so, whether {@code fileName}'s own claimed
-   * extension actually matches the detected content (a mismatch is reported, not silently corrected
-   * or used to reject an otherwise-readable file).
+   * extension actually matches the detected content (a mismatch is reported, never silently
+   * corrected, and never a reason to reject an otherwise-readable file).
    */
   public record ContentDecision(
       boolean supported, String detectedExtension, boolean extensionMismatch) {
@@ -356,42 +342,20 @@ public final class SupportedDocumentFormats {
   }
 
   /**
-   * The single decision both indexing paths make once a file's bytes are available.
+   * The single decision both indexing paths make once a file's bytes are available, in three steps.
    *
-   * <p>The Markdown/Klartext/CSV special rule ({@link #TEXT_TOLERANT_EXTENSIONS}) is checked
-   * <b>first</b>, ahead of any strict detection - not just as a fallback for content a strict
-   * detection could not resolve at all. {@code text/html} is registered in Tika's own {@code
-   * tika-mimetypes.xml} as a specialization of {@code text/plain} (confirmed empirically, see
-   * {@code SupportedDocumentFormatsTest}), so a Markdown file that happens to open with a raw
-   * {@code <div>}/{@code <h1>} detects as {@code text/html}, an otherwise-strict type (#1059
-   * review, finding 1) - the special rule must still win, per ingestion-pipelines.md, Teil 1 ("gilt
-   * für das Routing unverändert weiter"), or such a file would be silently routed to the HTML
-   * pipeline with no {@code FORMAT_MISMATCH} even reported (the same content that makes the
-   * text-tolerant match succeed also makes the strict branch's own mismatch check come out {@code
-   * false}).
+   * <p>The text-tolerant rule ({@link #TEXT_TOLERANT_EXTENSIONS}) is checked <b>first</b>, ahead of
+   * any strict detection: {@code text/html} is a Tika specialization of {@code text/plain}, so a
+   * Markdown file opening with a raw {@code <div>} - or an {@code .eml} whose body is HTML - would
+   * otherwise be routed to the HTML pipeline without even a reported mismatch. Here the claimed
+   * extension decides; a file actually named {@code .html} is unaffected.
    *
-   * <p>The same precedence is what makes {@code .eml} admission correct for a message whose HTML
-   * body happens to be detected as {@code text/html} content (#1101 review): {@code text/html} is
-   * {@code isInstanceOf text/plain} (see {@link #TEXT_TOLERANT_EXTENSIONS}'s own Javadoc on why
-   * {@code .eml} joined this set), so such a file matches the text-tolerant branch on its own
-   * {@code .eml} extension before the strict branch ever gets a say - the extension decides, not
-   * the content, exactly as for the Markdown-detected-as-HTML case above. A file actually named
-   * {@code .html} with the same content still takes the strict branch (its own extension is not
-   * text-tolerant) and is routed to the HTML pipeline as normal; only a file already claiming
-   * {@code .eml} benefits from this priority.
+   * <p>Otherwise a {@link #extensionForDetectedContent strictly detected} type is accepted
+   * outright, whatever the file is named - the claimed extension then only decides whether a
+   * mismatch is reported, never whether the file is indexed.
    *
-   * <p>Once that is ruled out, an unambiguous, {@link #extensionForDetectedContent strictly
-   * detected} type is accepted outright, regardless of what the file is named - {@code fileName}'s
-   * own claimed extension only decides whether the caller needs to report a mismatch, never whether
-   * the file is indexed. A text-tolerant name over genuinely non-text content (e.g. a PDF misnamed
-   * {@code .csv}) never satisfies the first check above (PDF is not an {@code isInstanceOf
-   * text/plain}), so it still falls through to this strict branch and is reported as a mismatch
-   * there, exactly as before this method's own text-tolerant priority check existed.
-   *
-   * <p>Content that is neither a text-tolerant match nor a strict detection is unsupported -
-   * content alone cannot tell a Markdown file apart from a CSV export or a source file, so an
-   * ambiguous, text-tolerant detection is only ever accepted under one of {@link
-   * #TEXT_TOLERANT_EXTENSIONS}, never as a mismatch, and never for any other or missing extension.
+   * <p>Anything else is unsupported: ambiguous, text-tolerant content is only ever accepted under
+   * one of {@link #TEXT_TOLERANT_EXTENSIONS}, never as a mismatch.
    */
   public static ContentDecision decideForFileName(String fileName, String detectedMimeType) {
     if (detectedMimeType == null) {

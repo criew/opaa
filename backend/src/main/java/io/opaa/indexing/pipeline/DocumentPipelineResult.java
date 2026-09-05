@@ -16,8 +16,8 @@ import org.springframework.ai.document.Document;
  * <p>{@link Outcome#PARSE_FAILED} versus {@link Outcome#NO_CONTENT}/{@link
  * Outcome#NO_EXTRACTABLE_TEXT} is the distinction "the source could not be read" versus "the source
  * was read and is empty", and it is load-bearing for the caller: a document being re-indexed keeps
- * its previous chunks on a parse failure and loses them on a legitimately empty new version
- * (#1268). A pipeline that cannot tell the two apart reports {@code PARSE_FAILED}.
+ * its previous chunks on a parse failure and loses them on a legitimately empty new version . A
+ * pipeline that cannot tell the two apart reports {@code PARSE_FAILED}.
  *
  * @param chunks never {@code null}; empty for every outcome other than {@link Outcome#CHUNKED}
  * @param discoveredAttachments embedded objects (e.g. mail/archive attachments) this pipeline found
@@ -64,15 +64,15 @@ public record DocumentPipelineResult(
      * RuntimeException} its own parser can throw and returning {@link #parseFailed()} with a single
      * {@code log.warn} naming the document - never by letting the exception propagate out of {@link
      * DocumentPipeline#run}. PDF, DOCX, PPTX, ODT, ODP and the XLSX/CSV/ODS pipeline (tabular)
-     * follow this contract (#1108); HTML, Markdown and the Tika fallback pipeline (the catch-all
-     * for every format none of those claim, so a corrupt file is likeliest to reach it) still
-     * propagate an unchecked exception on a parse failure instead - a known, pre-existing gap, but
-     * one the caller handles identically since #1268.
+     * follow this contract; HTML, Markdown and the Tika fallback pipeline (the catch-all for every
+     * format none of those claim, so a corrupt file is likeliest to reach it) still propagate an
+     * unchecked exception on a parse failure instead - a known, pre-existing gap, but one the
+     * caller handles identically.
      */
     PARSE_FAILED,
     /**
-     * The document parsed, but carries no usable text - a PDF without a text layer (see {@link
-     * TikaFallbackPipeline#isTextlessPdf}), or text that chunked down to nothing. Maps to {@code
+     * The document parsed, but carries no usable text - a PDF without a text layer, or text that
+     * chunked down to nothing. Maps to {@code
      * io.opaa.indexing.DocumentService#NO_EXTRACTABLE_TEXT_MESSAGE}.
      */
     NO_EXTRACTABLE_TEXT

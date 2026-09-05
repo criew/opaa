@@ -14,17 +14,17 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * #513: a run's protocol is capped at {@link IndexingRunEventRecorder#MAX_EVENTS_PER_RUN} entries -
+ * a run's protocol is capped at {@link IndexingRunEventRecorder#MAX_EVENTS_PER_RUN} entries -
  * beyond that, events are counted but no longer persisted, so a run that skips thousands of items
  * never turns its own protocol into an unbounded table.
  *
- * <p><b>PR #604 review, finding 2.</b> Every test below that exercises a persistence failure - a
- * failed {@code save} or a failed {@code recordEventsTruncated} - proves the recorder swallows it
- * rather than letting it propagate: a broken protocol write must never break the run it protocols,
- * or a single DB hiccup would leave the job stuck {@link JobStatus#RUNNING} forever and, via {@code
- * uk_indexing_jobs_library_running} (migration 028), permanently block every future run of that
- * library. {@code RssFeedIndexingExecutorTest#aFailedEventWriteNeverPreventsTheRunFromCompleting}
- * proves the same thing one level up, through a real executor.
+ * <p>Every test below that exercises a persistence failure - a failed {@code save} or a failed
+ * {@code recordEventsTruncated} - proves the recorder swallows it rather than letting it propagate:
+ * a broken protocol write must never break the run it protocols, or a single DB hiccup would leave
+ * the job stuck {@link JobStatus#RUNNING} forever and, via {@code uk_indexing_jobs_library_running}
+ * (migration 028), permanently block every future run of that library. {@code
+ * RssFeedIndexingExecutorTest#aFailedEventWriteNeverPreventsTheRunFromCompleting} proves the same
+ * thing one level up, through a real executor.
  */
 class IndexingRunEventRecorderTest {
 

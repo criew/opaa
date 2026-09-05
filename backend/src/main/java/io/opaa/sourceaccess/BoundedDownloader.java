@@ -37,8 +37,8 @@ public class BoundedDownloader {
    * address the system administration chose deliberately - unlike {@link #downloadBounded}, used
    * for a feed/page-supplied attachment URL this system does not vouch for.
    *
-   * <p>Capped at {@code maxBytes} while streaming to disk (#1236): a response is cut off the moment
-   * it exceeds the limit, before the excess bytes are written, so one entry can never fill the temp
+   * <p>Capped at {@code maxBytes} while streaming to disk: a response is cut off the moment it
+   * exceeds the limit, before the excess bytes are written, so one entry can never fill the temp
    * partition - not even one that is rejected right afterwards. A {@code Content-Length} above the
    * limit is refused before the body is read at all; a missing or understated one is caught by the
    * bounded copy itself.

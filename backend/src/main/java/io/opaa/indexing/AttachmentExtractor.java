@@ -19,13 +19,13 @@ import org.slf4j.LoggerFactory;
  * at {@code index} - the 0-based extraction order encoded in the attachment's synthetic {@code
  * file_path}, see {@link FileProcessingService#attachmentFilePath} - to a temp file <b>the caller
  * owns and must delete</b>. The run is restricted to that one index ({@link
- * DocumentPipelineSource#attachmentIndex()}, #1243), so a message with many attachments costs one
+ * DocumentPipelineSource#attachmentIndex()}), so a message with many attachments costs one
  * temporary file here, not one per attachment; the extraction order itself is unchanged, which is
  * what keeps the stored index meaningful.
  *
  * <p>Attachment bytes are never stored at indexing time, so every read path re-extracts them here:
- * the selective re-index ({@code PipelineReindexService}, #1218) and "Im Dokument öffnen" ({@code
- * LibraryDocumentService#loadContent}, #1239). Sharing this one implementation is what makes the
+ * the selective re-index ({@code PipelineReindexService}) and "Im Dokument öffnen" ({@code
+ * LibraryDocumentService#loadContent}). Sharing this one implementation is what makes the
  * extraction order - and with it the meaning of the stored index - identical to the indexing run's,
  * and applies the same parse limits ({@code MailProperties}) the pipeline itself enforces.
  */

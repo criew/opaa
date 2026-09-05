@@ -20,7 +20,7 @@ import java.util.UUID;
  *     - a process-lifetime figure (ADR-0021), 0 before the first call
  * @param filledDocumentsByField indexed documents carrying a {@code SET} value, per core field
  * @param notDeterminableDocumentsByField indexed documents a person marked as "kein Wert
- *     ermittelbar" (#1069), per core field - neither filled nor open
+ *     ermittelbar", per core field - neither filled nor open
  */
 public record MetadataBackfillProgress(
     UUID libraryId,
@@ -62,9 +62,9 @@ public record MetadataBackfillProgress(
   }
 
   /**
-   * The Pflege-Anker of this library and field (#1069): documents with neither a value nor a "kein
-   * Wert ermittelbar" mark - the same definition {@link MetadataFieldMaintenance} uses in the
-   * library's own settings, counted here in the administrative context.
+   * The Pflege-Anker of this library and field: documents with neither a value nor a "kein Wert
+   * ermittelbar" mark - the same definition {@link MetadataFieldMaintenance} uses in the library's
+   * own settings, counted here in the administrative context.
    */
   public long documentsWithoutValue(CoreMetadataField field) {
     return Math.max(

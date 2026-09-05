@@ -72,12 +72,12 @@ final class MailAttachmentIo {
   /**
    * A safe {@code Files.createTempFile} suffix derived from {@code fileName}'s own extension, or
    * {@code .tmp} when there is none or it does not look like one. Restricted to {@code [A-Za-z0-9]}
-   * after the dot (#1101 review, finding 4c) - an attachment name is attacker-controlled content
-   * from inside the parsed message, and a raw extension can carry characters {@code
-   * Files.createTempFile} rejects outright on some platforms (e.g. {@code :} on Windows, throwing
-   * {@link java.nio.file.InvalidPathException}) or that are otherwise unsafe to splice into a path
-   * segment - an attachment named {@code "bericht.q1:2024"} must be skipped and logged like any
-   * other attachment failure, never crash the whole message's extraction.
+   * after the dot - an attachment name is attacker-controlled content from inside the parsed
+   * message, and a raw extension can carry characters {@code Files.createTempFile} rejects outright
+   * on some platforms (e.g. {@code :} on Windows, throwing {@link
+   * java.nio.file.InvalidPathException}) or that are otherwise unsafe to splice into a path segment
+   * - an attachment named {@code "bericht.q1:2024"} must be skipped and logged like any other
+   * attachment failure, never crash the whole message's extraction.
    */
   private static String suffixFor(String fileName) {
     if (fileName == null) {

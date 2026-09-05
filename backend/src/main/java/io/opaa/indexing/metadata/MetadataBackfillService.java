@@ -37,8 +37,7 @@ import org.springframework.stereotype.Service;
  * work is re-derived from the {@code documents} table on every call, a processed document drops out
  * of the selection by its recorded version, an unadvanceable one is scanned past by offset and
  * retried next call. Pausing is not calling again. A system process without a person's rights
- * context (Epic #1065, Beschluss 1); never scheduled, only driven by {@code
- * IndexingAdminController}.
+ * context (ADR-0024); never scheduled, only driven by {@code IndexingAdminController}.
  */
 @Service
 public class MetadataBackfillService {
@@ -191,7 +190,7 @@ public class MetadataBackfillService {
    * title here, accepted as too exotic to carry a marker column for. Everything else remote (an
    * HTTP directory file, any remote attachment) can only be re-read by its own connector run, which
    * re-extracts on every inflow, and is marked for it. The name is marked as synthetic exactly as
-   * the ingest marks it (#1263), so both paths read the same fields out of the same row.
+   * the ingest marks it, so both paths read the same fields out of the same row.
    */
   private Advance advanceRemote(Document document) {
     if (document.getSourceType() == DocumentSourceType.RSS_FEED

@@ -24,13 +24,13 @@ import java.util.regex.Pattern;
  *       humanized file name ({@link ChunkContextTitle}) - so a title is always found.
  *   <li><b>Dokumentart</b>: frontmatter {@code dokumentart} (an explicit declaration outside the
  *       vocabulary leaves the field empty, it never falls through), then the file name's tokens,
- *       then the {@link DocumentProperties#titleLine() title line}, then the file format (#1263).
- *       Within one of the two token sources exactly one distinct code must result; two different
- *       codes at once yield nothing <em>from that source</em> - the next source is still asked,
- *       unlike for the frontmatter declaration. A file-name token may also carry a seeded
- *       Kompositum ending; the title line is matched exactly. Nothing below the title line is read
- *       at all (#1289): a label line ({@code Formular: RF-KFZ-001}), a quotation and a section
- *       heading name other documents, never the document itself.
+ *       then the {@link DocumentProperties#titleLine() title line}, then the file format. Within
+ *       one of the two token sources exactly one distinct code must result; two different codes at
+ *       once yield nothing <em>from that source</em> - the next source is still asked, unlike for
+ *       the frontmatter declaration. A file-name token may also carry a seeded Kompositum ending;
+ *       the title line is matched exactly. Nothing below the title line is read at all: a label
+ *       line ({@code Formular: RF-KFZ-001}), a quotation and a section heading name other
+ *       documents, never the document itself.
  *   <li><b>A {@link DocumentProperties#syntheticName() synthetic name}</b> (an RSS entry's
  *       headline) is no naming convention: it yields neither a Dokumentart nor a Datum. It remains
  *       a title - that is what a headline is.
@@ -84,7 +84,7 @@ public final class CoreMetadataExtractor {
   private static final Pattern TEXT_TOKEN_SEPARATOR = Pattern.compile("[^\\p{L}\\p{N}]+");
 
   /**
-   * Formats whose Dokumentart follows from the format alone (#1263) - a presentation file is a
+   * Formats whose Dokumentart follows from the format alone - a presentation file is a
    * Praesentation, there is nothing else it could be. Consulted last, so every text source still
    * outranks it. No entry for PDF/DOCX: those carry every Dokumentart there is.
    */

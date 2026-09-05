@@ -146,10 +146,10 @@ public class AutoindexCrawlerService {
     }
 
     /**
-     * Marks the crawl as having skipped an entire subtree it could not fetch at all (#886 review):
-     * unlike {@link #logDepthLimitOnce}/{@link #logEntryLimitOnce}, this is never a configured
-     * limit doing its job - it means {@code entries} is missing content the crawl never even saw,
-     * so a caller deciding whether to delete-by-absence must treat this the same as a limit.
+     * Marks the crawl as having skipped an entire subtree it could not fetch at all: unlike {@link
+     * #logDepthLimitOnce}/{@link #logEntryLimitOnce}, this is never a configured limit doing its
+     * job - it means {@code entries} is missing content the crawl never even saw, so a caller
+     * deciding whether to delete-by-absence must treat this the same as a limit.
      */
     void markIncomplete(String url, IOException cause) {
       incomplete = true;
@@ -239,9 +239,8 @@ public class AutoindexCrawlerService {
    * null} if the link must not be followed at all - shared by {@link #parseHtmlTableLayout} and
    * {@link #parseLinkBasedLayout} so both layouts apply exactly the same rule to an absolute,
    * already-resolved {@code http(s)://} href as to a relative one, rather than a layout-specific
-   * subset of it (a foreign-origin absolute href was previously only rejected in one of the two). A
-   * rejected link's best-effort resolved address is appended to {@code rejectedLinks} so a caller
-   * can report what was silently left out of the crawl.
+   * subset of it. A rejected link's best-effort resolved address is appended to {@code
+   * rejectedLinks} so a caller can report what was silently left out of the crawl.
    */
   private static String resolveFollowableUrl(
       String baseUrl, String href, List<String> rejectedLinks) {
@@ -349,7 +348,7 @@ public class AutoindexCrawlerService {
       if (response.statusCode() != 200) {
         throw new IOException("HTTP " + response.statusCode() + " for URL: " + url);
       }
-      // #1236 review, finding 7: a directory page is read under a fixed cap, never unbounded - a
+      // a directory page is read under a fixed cap, never unbounded - a
       // remote end streaming an endless text/html would otherwise grow the heap until an
       // OutOfMemoryError kills the whole run instead of skipping one directory. An oversized page
       // is an IOException like any other fetch failure: a subdirectory is then marked incomplete,

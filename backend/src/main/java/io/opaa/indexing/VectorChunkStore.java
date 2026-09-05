@@ -23,12 +23,12 @@ import org.springframework.stereotype.Component;
  * chunk it stores, {@code QueryService} reads them back for the permission-aware search filter, and
  * this class writes/deletes by them.
  *
- * <p>Since #1047 (docs/features/hybrid-retrieval.md, "Arbeitspaket 2a"), {@link #addChunks} also
- * writes {@code chunk_full_text} - the lexical-search counterpart of {@code vector_store} - in the
- * same transaction as the vector write, via {@link VectorStoreWriter}: a chunk's vector write and
- * its full-text index entry are always written together, never one without the other. Embedding
- * happens here, <em>before</em> that transaction opens (see {@link #addChunks}'s own Javadoc for
- * why); {@link VectorStoreWriter} only ever sees already-embedded chunks.
+ * <p>Per docs/features/hybrid-retrieval.md, "Arbeitspaket 2a", {@link #addChunks} also writes
+ * {@code chunk_full_text} - the lexical-search counterpart of {@code vector_store} - in the same
+ * transaction as the vector write, via {@link VectorStoreWriter}: a chunk's vector write and its
+ * full-text index entry are always written together, never one without the other. Embedding happens
+ * here, <em>before</em> that transaction opens (see {@link #addChunks}'s own Javadoc for why);
+ * {@link VectorStoreWriter} only ever sees already-embedded chunks.
  *
  * <p>Both delete methods deliberately do <em>not</em> share a transaction across the vector and
  * full-text delete: both callers of this class that run a delete from a deferred {@code
@@ -68,14 +68,14 @@ public class VectorChunkStore {
   /**
    * Embeds {@code chunks} on the calling thread (a network call to the configured embedding
    * endpoint - the same {@link EmbeddingModel}/{@link BatchingStrategy} beans {@code PgVectorStore}
-   * itself uses, so batching is unchanged from before #1047), then hands the already-embedded
-   * chunks to {@link VectorStoreWriter#writeEmbeddedChunks}, which writes {@code vector_store} and
-   * {@code chunk_full_text} together in one transaction (docs/features/hybrid-retrieval.md,
-   * "Arbeitspaket 2": "Der Volltextindex entsteht beim Schreiben des Chunks, in derselben
-   * Transaktion wie Text und Vektor"). Deliberately two steps rather than one {@code
-   * VectorStore#add} call inside a transaction: embedding is an HTTP round trip, and holding a
-   * pooled database connection for its duration - as a transaction spanning the whole call would -
-   * risks exhausting the connection pool under concurrent writes.
+   * itself uses), then hands the already-embedded chunks to {@link
+   * VectorStoreWriter#writeEmbeddedChunks}, which writes {@code vector_store} and {@code
+   * chunk_full_text} together in one transaction (docs/features/hybrid-retrieval.md, "Arbeitspaket
+   * 2": "Der Volltextindex entsteht beim Schreiben des Chunks, in derselben Transaktion wie Text
+   * und Vektor"). Deliberately two steps rather than one {@code VectorStore#add} call inside a
+   * transaction: embedding is an HTTP round trip, and holding a pooled database connection for its
+   * duration - as a transaction spanning the whole call would - risks exhausting the connection
+   * pool under concurrent writes.
    */
   public void addChunks(List<Document> chunks) {
     if (chunks.isEmpty()) {

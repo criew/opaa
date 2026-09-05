@@ -44,7 +44,7 @@ public class ConfluenceSyncState {
   @Column(name = "full_sync_completed_at")
   private Instant fullSyncCompletedAt;
 
-  /** Where the next incremental run searches from (#1139) - the start of the last full sync. */
+  /** Where the next incremental run searches from - the start of the last full sync. */
   @Column(name = "incremental_anchor")
   private Instant incrementalAnchor;
 

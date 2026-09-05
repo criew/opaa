@@ -46,38 +46,19 @@ import org.springframework.scheduling.annotation.Async;
 /**
  * Executes indexing runs for {@link IndexingSourceType#RSS_FEED} (ADR-0017): fetches an RSS 2.0
  * feed, resolves every entry's detail page and hands the page's main text - not the whole page -
- * into the shared processing chain via {@link FileProcessingService#processRssEntry}.
+ * into {@link FileProcessingService#processRssEntry}. Transport, page reduction and attachments
+ * belong to {@link FeedFetcher}, {@link DetailPageExtractor} and {@link AttachmentIndexer}; this
+ * class keeps the run's orchestration and its per-run state ({@link RssFeedRunContext}).
  *
- * <p><b>Split into collaborators.</b> {@link FeedFetcher} owns the feed's own transport, {@link
- * DetailPageExtractor} owns fetching and reducing a single entry's detail page, {@link
- * AttachmentIndexer} owns downloading and indexing its attachments. This class is left with the
- * run's own orchestration: change detection, ordering, error-to-event translation and the per-run
- * state ({@link RssFeedRunContext}) shared across all three - see each collaborator's own Javadoc
- * for the invariants it enforces (bounded reads, SSRF/redirect policy, credential/certificate
- * scoping to the feed's own origin).
+ * <p>Change detection is three-staged: a conditional {@code GET} on the feed ({@link
+ * RssFeedState}), then each entry's stored {@code pubDate}, then the SHA-256 checksum inside {@code
+ * processRssEntry}. <b>No deletion by absence</b> (ADR-0017, decision 5): a feed's window is a
+ * property of the feed, so an entry scrolling out of it is no evidence that it is gone.
  *
- * <p><b>Two-stage change detection.</b> The feed itself is fetched with a conditional {@code GET}
- * (ETag/{@code If-Modified-Since}, tracked per library and feed URL in {@link RssFeedState}) - an
- * unchanged feed ends the run after a single {@code 304} response. Every entry is then checked
- * against its stored {@code pubDate} before its detail page is requested; the SHA-256 checksum
- * inside {@link FileProcessingService#processRssEntry} is the final, content-based layer once a
- * page is fetched. No deletion by absence (ADR-0017, decision 5): an entry that has scrolled out of
- * the feed's window is not touched here - re-confirmed by #886, which added deletion-by-absence for
- * {@code FILESYSTEM}/{@code HTTP_DIRECTORY} but deliberately excludes RSS: a feed's window is a
- * property of the feed, not of whether the entry's own source still exists, so "missing from this
- * run's entries" is not evidence an entry is gone.
- *
- * <p>Entry- and byte-size limits, a link scheme check ({@code http}/{@code https} only), a minimum
- * delay between detail-page requests and a configurable {@code User-Agent} come from {@link
- * IndexingProperties.Rss}. A rejected, oversized or unreachable entry never aborts the run; it is
- * skipped, counted and logged.
- *
- * <p><b>Attachments.</b> Once an entry's detail page has yielded its main text, {@link
- * AttachmentIndexer} downloads and indexes every attachment found in that same content area. An
- * attachment failure never affects the entry's own outcome, but marks the run as having deferred
- * something. An entry whose {@code pubDate} is unchanged still gets its detail page fetched once
- * for attachments alone when it has none yet (see {@link #processUnchangedEntry}) - otherwise it
- * would never receive attachments discovered after it was first indexed.
+ * <p>A rejected, oversized or unreachable entry never aborts the run; it is skipped, counted and
+ * logged. An attachment failure never changes its entry's outcome, only marks the run as having
+ * deferred something, and an unchanged entry with no attachments yet still gets its page fetched
+ * once for them (see {@link #processUnchangedEntry}).
  */
 public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
@@ -299,7 +280,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         progress.recordSkipped();
       } else if (result == FileProcessingResult.NO_EXTRACTABLE_TEXT) {
         // See AsyncIndexingExecutor's own handling of this outcome. Reachable on this path since
-        // #1056: the entry's own document was rejected and marked FAILED, so it is reported as
+        // the entry's own document was rejected and marked FAILED, so it is reported as
         // rejected rather than counted as processed - and its attachments are deliberately not
         // indexed, mirroring every other rejected entry.
         events.record(
@@ -334,9 +315,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * This method fetches the detail page for attachments alone (the entry's own text is not
    * reprocessed) only when no attachment document exists yet for it in this run's own library
    * ({@link DocumentRepository#existsBySourceEntryUrlAndLibraryId}); an entry that already has its
-   * attachments there stays as cheap as before. Scoped to {@code ctx.targetLibrary()} (#877) - a
-   * different library's attachments for the same entry URL must not suppress this library's own
-   * backfill.
+   * attachments there stays as cheap as before. Scoped to {@code ctx.targetLibrary()} - a different
+   * library's attachments for the same entry URL must not suppress this library's own backfill.
    */
   private void processUnchangedEntry(RssFeedRunContext ctx, String entryUrl) {
     ctx.progress().recordSkipped();
@@ -358,10 +338,10 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   /**
    * Converts {@code candidates} into {@link AttachmentSource.Download} jobs (the {@link HttpClient}
    * and {@code Authorization} header a download uses are decided per candidate by {@code
-   * ctx.httpClientFor}/{@code ctx.authHeaderFor}, exactly as before #1182's generalization) and
-   * hands them to {@link AttachmentIndexer#indexAll}, looking up {@code entryUrl}'s own document
-   * row as {@code parentDocumentId} - present at this point on every call site, since both call it
-   * only once its own entry document is known to exist.
+   * ctx.httpClientFor}/{@code ctx.authHeaderFor}) and hands them to {@link
+   * AttachmentIndexer#indexAll}, looking up {@code entryUrl}'s own document row as {@code
+   * parentDocumentId} - present at this point on every call site, since both call it only once its
+   * own entry document is known to exist.
    */
   private void indexAttachments(
       RssFeedRunContext ctx, List<AttachmentCandidate> candidates, String entryUrl) {
@@ -528,8 +508,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * page is ever requested (ADR-0017) - mirrors {@code UrlIndexingExecutor#isUnchanged}. A missing
    * {@code pubDate} is treated as "changed" - the SHA-256 checksum inside {@link
    * FileProcessingService#processRssEntry} becomes the deciding change signal instead. The lookup
-   * is scoped to {@code targetLibrary} (#877): the same entry URL indexed into a different library
-   * is an independent document.
+   * is scoped to {@code targetLibrary}: the same entry URL indexed into a different library is an
+   * independent document.
    */
   private boolean isUnchanged(
       String entryUrl, Optional<Instant> publishedAt, KnowledgeLibrary targetLibrary) {

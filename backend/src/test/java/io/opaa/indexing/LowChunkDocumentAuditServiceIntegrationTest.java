@@ -19,11 +19,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * {@link LowChunkDocumentAuditService} against a real Liquibase schema (#1090): proves the
- * organization scope, the {@code status = INDEXED} filter and the {@code chunkCount} threshold are
- * genuinely enforced by the query, not merely assumed from {@link DocumentRepository}'s derived
- * method name - and that {@code idx_documents_indexed_chunk_count} (migration 002) is actually
- * usable by it (same columns/predicate the query filters on).
+ * {@link LowChunkDocumentAuditService} against a real Liquibase schema: proves the organization
+ * scope, the {@code status = INDEXED} filter and the {@code chunkCount} threshold are genuinely
+ * enforced by the query, not merely assumed from {@link DocumentRepository}'s derived method name -
+ * and that {@code idx_documents_indexed_chunk_count} (migration 002) is actually usable by it (same
+ * columns/predicate the query filters on).
  */
 @OpaaIntegrationTest
 class LowChunkDocumentAuditServiceIntegrationTest {
@@ -103,7 +103,7 @@ class LowChunkDocumentAuditServiceIntegrationTest {
     // Mandatory: SpaceRepositoryTest (and any other class sharing this @OpaaIntegrationTest
     // context) unconditionally deletes every knowledge_libraries row in its own cleanUp() -
     // leftover documents from this class referencing library/otherOrganizationLibrary would block
-    // that delete with a fk_documents_library_organization RESTRICT violation (#1090 CI failure).
+    // that delete with a fk_documents_library_organization RESTRICT violation.
     cleanUpFixtures();
   }
 

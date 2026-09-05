@@ -10,10 +10,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 
 /**
- * The macro rule set and the structure preservation of {@link ConfluenceDocumentPipeline} (#1137),
- * against a representative storage-format page: headings, a table, lists, a code block, panels with
- * titles, an expand, a status lozenge, a task list, a link, an image - and the dynamic macros that
- * must leave no trace.
+ * The macro rule set and the structure preservation of {@link ConfluenceDocumentPipeline}, against
+ * a representative storage-format page: headings, a table, lists, a code block, panels with titles,
+ * an expand, a status lozenge, a task list, a link, an image - and the dynamic macros that must
+ * leave no trace.
  */
 class ConfluenceDocumentPipelineTest {
 
@@ -166,7 +166,7 @@ class ConfluenceDocumentPipelineTest {
   @Test
   void emptyEditorLinesWithNonBreakingSpacesLeaveNoBlock() {
     // Confluence writes <p>&nbsp;</p> for every empty editor line; U+00A0 is whitespace to
-    // Jsoup but not to Java's \s - #1192 review, finding 1
+    // Jsoup but not to Java's \s
     List<Document> chunks =
         chunk("<p>Frist:&nbsp;14 Tage</p><p>&nbsp;</p><p>\u00a0</p><p>Ende.</p>");
 

@@ -30,11 +30,11 @@ import org.slf4j.LoggerFactory;
  * is skipped, not recursed into - POI offers no public writer to reconstruct a standalone {@code
  * .msg} from it.
  *
- * <p><b>Selective extraction</b> (#1243): with a {@code wantedIndex}, every attachment is still
- * classified in the same order, but only the one at that position is written to a temp file.
- * Positions are counted exactly as an unfiltered run does: an attachment that is skipped entirely -
- * an embedded Outlook item, an unreadable chunk, one over the size limit - consumes no position,
- * because it would not appear in the unfiltered run's attachment list either. The returned {@link
+ * <p><b>Selective extraction</b>: with a {@code wantedIndex}, every attachment is still classified
+ * in the same order, but only the one at that position is written to a temp file. Positions are
+ * counted exactly as an unfiltered run does: an attachment that is skipped entirely - an embedded
+ * Outlook item, an unreadable chunk, one over the size limit - consumes no position, because it
+ * would not appear in the unfiltered run's attachment list either. The returned {@link
  * ParsedMailMessage} then carries the wanted attachment alone, or none; a negative {@code
  * wantedIndex} materializes nothing at all.
  */
@@ -89,7 +89,7 @@ final class MsgReader {
       for (AttachmentChunks chunk : chunks) {
         if (!budget.hasCapacity()) {
           // Not extracted at all - no temp file is ever created for an attachment beyond the
-          // configured limit (#1101 review, finding 3c).
+          // configured limit.
           continue;
         }
         budget.reserve();

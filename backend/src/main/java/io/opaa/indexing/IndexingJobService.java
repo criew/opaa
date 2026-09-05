@@ -81,8 +81,8 @@ public class IndexingJobService {
    * removes each pruned run's own {@link IndexingRunEvent}s along with it. Called from {@link
    * #startJob} so the newly started run is always counted among the retained ones.
    *
-   * <p>The most recent run that assessed its listing (#1191) is always kept, even beyond the cap:
-   * the library's incomplete-listing warning hangs on that row, and a burst of webhook runs (which
+   * <p>The most recent run that assessed its listing is always kept, even beyond the cap: the
+   * library's incomplete-listing warning hangs on that row, and a burst of webhook runs (which
    * never assess) must not prune it away before the next full sync replaces the verdict.
    */
   private void pruneOldRuns(UUID libraryId) {
@@ -196,9 +196,9 @@ public class IndexingJobService {
   }
 
   /**
-   * Records the run's cost figures and its incomplete flag (#1141) - called once by an executor
-   * right before {@link #completeJob}, so a COMPLETED row either carries them or never will. A
-   * no-op once the job is no longer {@link JobStatus#RUNNING}, like {@link #updateProgress}.
+   * Records the run's cost figures and its incomplete flag - called once by an executor right
+   * before {@link #completeJob}, so a COMPLETED row either carries them or never will. A no-op once
+   * the job is no longer {@link JobStatus#RUNNING}, like {@link #updateProgress}.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void recordRunMetrics(UUID jobId, IndexingRunCost metrics) {
@@ -215,8 +215,8 @@ public class IndexingJobService {
 
   /**
    * Records whether {@code jobId}'s run assessed its source listing as complete and, if not, which
-   * spaces it could not read (#1191) - called at most once per run, by a successful Confluence full
-   * sync that was not cut short by its budget. A no-op once the job is no longer {@link
+   * spaces it could not read - called at most once per run, by a successful Confluence full sync
+   * that was not cut short by its budget. A no-op once the job is no longer {@link
    * JobStatus#RUNNING}, like {@link #recordRunMetrics}.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -233,9 +233,9 @@ public class IndexingJobService {
   }
 
   /**
-   * The most recent run for {@code libraryId} that assessed its source listing (#1191), or empty
-   * while none has. This - not the most recent run overall - is what the library's warning about an
-   * incomplete listing hangs on; see {@link
+   * The most recent run for {@code libraryId} that assessed its source listing, or empty while none
+   * has. This - not the most recent run overall - is what the library's warning about an incomplete
+   * listing hangs on; see {@link
    * IndexingJobRepository#findTopByLibraryIdAndOrganizationIdAndListingCompleteIsNotNullOrderByStartedAtDesc}.
    */
   @Transactional(readOnly = true)

@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Exercises {@link AttachmentProfile} in isolation, with fictional {@code example.gov}-style
- * addresses only (#468 acceptance criteria: no test references a real address, and the GSB profile
- * is checked against a nachgebildete page, not a real institution's).
+ * addresses only (no test references a real address, and the GSB profile is checked against a
+ * nachgebildete page, not a real institution's).
  */
 class AttachmentProfileTest {
 
@@ -51,11 +51,10 @@ class AttachmentProfileTest {
 
   @Test
   void genericFindsALinkWithAnExtensionSupportedDocumentFormatsDoesNotRecognize() {
-    // #404 review, finding 2: a candidate is no longer filtered down to SupportedDocumentFormats's
-    // six extensions here - a document linked under the wrong extension (a PDF published as
-    // bescheid.csv, the exact case #404 exists for) must still become a candidate, so
-    // RssFeedIndexingExecutor#processAttachment gets a chance to download it and decide from its
-    // actual content.
+    // A candidate is never filtered down to SupportedDocumentFormats's extensions here - a
+    // document linked under the wrong extension (a PDF published as bescheid.csv) must still
+    // become a candidate, so RssFeedIndexingExecutor#processAttachment gets a chance to download
+    // it and decide from its actual content.
     Element content =
         contentArea(
             "<main><a href=\"https://example.gov/downloads/bescheid.csv\">Bescheid</a></main>");
@@ -71,7 +70,7 @@ class AttachmentProfileTest {
 
   @Test
   void genericIgnoresALinkToAForeignHost() {
-    // #468 acceptance criteria: "Verweise, die aus der Seite hinausführen, gelten nicht als
+    // "Verweise, die aus der Seite hinausführen, gelten nicht als
     // Anlage" - a link to a foreign host is never an attachment, even with a supported extension.
     Element content =
         contentArea("<main><a href=\"https://anderes-beispiel.gov/anlage.pdf\">Fremd</a></main>");
@@ -85,7 +84,7 @@ class AttachmentProfileTest {
 
   @Test
   void gsbFindsAQueryParameterAttachmentWithoutAFileExtension() {
-    // Generic reproduction of the Government Site Builder pattern (#468): the file is served
+    // Generic reproduction of the Government Site Builder pattern: the file is served
     // through __blob=publicationFile on the page's own address, and the URL itself carries no
     // file extension.
     Element content =

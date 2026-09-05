@@ -91,8 +91,8 @@ class StaleDocumentCleanupServiceTest {
   }
 
   /**
-   * #1183: a Mail-in-Mail chain nests an attachment inside an attachment (a forwarded {@code .eml}
-   * with its own attachment) - two levels of {@code parent_document_id}, not the one level {@link
+   * a Mail-in-Mail chain nests an attachment inside an attachment (a forwarded {@code .eml} with
+   * its own attachment) - two levels of {@code parent_document_id}, not the one level {@link
    * #deletesAVanishedAttachmentBeforeItsOwnVanishedParent} covers. Stubbed in the order least
    * favorable to a naive one-level sort (grandchild first, then parent, then the intermediate
    * child) to prove the delete order is derived from actual nesting depth, not from the

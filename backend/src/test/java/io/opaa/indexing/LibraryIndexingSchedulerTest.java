@@ -27,9 +27,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 /**
- * #485: {@link LibraryIndexingScheduler}'s own responsibility is narrow - decide which libraries
- * are due on a tick, and either trigger a run or record a skip event. Everything downstream (which
- * executor runs, how a run's own counters change) belongs to {@link DocumentIndexingService} and is
+ * {@link LibraryIndexingScheduler}'s own responsibility is narrow - decide which libraries are due
+ * on a tick, and either trigger a run or record a skip event. Everything downstream (which executor
+ * runs, how a run's own counters change) belongs to {@link DocumentIndexingService} and is
  * exercised by that class's own tests. Uses a fixed {@link Clock} throughout (per AGENTS.md: unit
  * tests for a scheduler's core use a stelled clock, never real waiting).
  */
@@ -156,7 +156,7 @@ class LibraryIndexingSchedulerTest {
     verify(indexingJobService, never()).isJobRunning(any(), any());
   }
 
-  // PR #705 review, blocker 3: an undecodable stored cron expression must not abort the whole
+  // An undecodable stored cron expression must not abort the whole
   // tick - every other due library is still evaluated and triggered.
   @Test
   void aLibraryWithAnUndecodableCronDoesNotAbortTheWholeTick() {
@@ -173,7 +173,7 @@ class LibraryIndexingSchedulerTest {
     verify(indexingService, never()).triggerScheduledIndexing(defective);
   }
 
-  // PR #705 review, item 4: verpasste Termine werden ausgelassen, nicht nachgeholt - a fresh
+  // Verpasste Termine werden ausgelassen, nicht nachgeholt - a fresh
   // scheduler (simulating a restart) only ever looks one tick-interval into the past on its first
   // tick, never further back, however long the library's due time actually lies in the past.
   @Test
@@ -197,7 +197,7 @@ class LibraryIndexingSchedulerTest {
     verify(indexingService, never()).triggerScheduledIndexing(any());
   }
 
-  // PR #705 review, item 4: a fixed "now minus 60s" window can develop a gap between two ticks
+  // A fixed "now minus 60s" window can develop a gap between two ticks
   // that fired more than 60 seconds apart (a slow previous tick, scheduler thread contention) -
   // tracking the previous tick's own `now` as the next window's start closes that gap instead.
   // Here the due time (NOW, 03:00:00) lies 90s before the first tick and 65s before the second -

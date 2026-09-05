@@ -51,14 +51,14 @@ public class FullTextChunkStore {
    * FullTextIndexFillStateService}, which is what makes the gap a visible operational state on the
    * administration page.
    *
-   * <p><b>Since #1270 a bump is not repaired by any background job.</b> The one path that brings
-   * existing rows up to the new version is the pipeline re-index ({@link
-   * PipelineReindexService#reindexBatch}, driven by the admin endpoint): it selects a chunk whose
-   * row is missing or below this version regardless of pipeline version. That path re-parses,
-   * re-chunks and re-embeds the document, which the removed backfill did not - the accepted price
-   * of having no second write path for {@code content_tsv} (docs/features/hybrid-retrieval.md,
-   * "Arbeitspaket 2a"). Until it has run, the affected chunks are invisible to the lexical search
-   * path and the library reads {@code INCOMPLETE} on the administration page.
+   * <p><b>A bump is not repaired by any background job.</b> The one path that brings existing rows
+   * up to the new version is the pipeline re-index ({@link PipelineReindexService#reindexBatch},
+   * driven by the admin endpoint): it selects a chunk whose row is missing or below this version
+   * regardless of pipeline version. That path re-parses, re-chunks and re-embeds the document,
+   * which the removed backfill did not - the accepted price of having no second write path for
+   * {@code content_tsv} (docs/features/hybrid-retrieval.md, "Arbeitspaket 2a"). Until it has run,
+   * the affected chunks are invisible to the lexical search path and the library reads {@code
+   * INCOMPLETE} on the administration page.
    *
    * <p>Public for the same reason {@link #TEXT_SEARCH_CONFIGURATION} is: the lexical search path
    * ({@code io.opaa.query.FullTextChunkSearch}) must restrict its query to rows built under this

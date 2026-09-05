@@ -1,8 +1,6 @@
 package io.opaa.indexing.source.attachment;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -27,12 +25,11 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Indexes the attachments of a parent document into their own {@link io.opaa.indexing.Document}
- * rows (ADR-0022) - generalized (#1182) from an RSS-only implementation detail into the shared
- * attachment path every connector uses: RSS ({@code RssFeedIndexingExecutor}), Mail (#1183) and
- * Confluence (#1137, {@code ConfluenceIndexingExecutor}). Carries no dependency on any single
- * connector's package - a caller supplies an {@link AttachmentAccess} (library, event log,
- * progress, deferred-marking) and a list of {@link AttachmentSource} (a download job or an
- * already-extracted local file) instead.
+ * rows (ADR-0022) - generalized from an RSS-only implementation detail into the shared attachment
+ * path every connector uses: RSS ({@code RssFeedIndexingExecutor}), Mail and Confluence ({@code
+ * ConfluenceIndexingExecutor}). Carries no dependency on any single connector's package - a caller
+ * supplies an {@link AttachmentAccess} (library, event log, progress, deferred-marking) and a list
+ * of {@link AttachmentSource} (a download job or an already-extracted local file) instead.
  *
  * <p>Never lets an attachment failure propagate to the caller: a lost attachment (too large,
  * unreachable, rejected, unsupported format, or cut off by {@link
@@ -56,44 +53,25 @@ public class AttachmentIndexer {
    * How many levels of attachment-in-attachment recursion the current thread is at - {@code null}
    * outside of any {@link #indexAll} call. An attachment whose own pipeline reports further {@code
    * discoveredAttachments} (e.g. a nested {@code .eml}) re-enters this class synchronously, through
-   * {@code FileProcessingService#processUrlFile}'s own attachment handling, on the same thread -
-   * mirrors {@code MailDocumentPipeline}'s pre-#1183 {@code RECURSION_DEPTH} field, moved here as
-   * part of ADR-0022 Entscheidung 6.
+   * {@code FileProcessingService#processUrlFile}'s own attachment handling, on the same thread. The
+   * depth cutoff is this class's alone (ADR-0022, Entscheidung 6), never a pipeline's.
    */
   private static final ThreadLocal<Integer> RECURSION_DEPTH = new ThreadLocal<>();
 
   private final BoundedDownloader attachmentDownloader;
   private final FileProcessingService fileProcessingService;
   private final LibraryStorageQuotaService storageQuotaService;
-  private final DocumentRepository documentRepository;
   private final AttachmentProperties attachmentProperties;
 
   public AttachmentIndexer(
       BoundedDownloader attachmentDownloader,
       FileProcessingService fileProcessingService,
       LibraryStorageQuotaService storageQuotaService,
-      DocumentRepository documentRepository,
       AttachmentProperties attachmentProperties) {
     this.attachmentDownloader = attachmentDownloader;
     this.fileProcessingService = fileProcessingService;
     this.storageQuotaService = storageQuotaService;
-    this.documentRepository = documentRepository;
     this.attachmentProperties = attachmentProperties;
-  }
-
-  /**
-   * The Nachtragsfall of ADR-0022, Entscheidung 3: a parent document a caller skipped as unchanged
-   * is never re-parsed, so its attachments are never rediscovered by {@link #indexAll} this run -
-   * their paths must still be folded into {@code currentFilePaths}, or a caller that calls {@code
-   * StaleDocumentCleanupService#cleanupVanished} would wrongly remove them despite parent and
-   * attachments both unchanged. Backed by {@link DocumentRepository#findByParentDocumentId}
-   * (ADR-0022 Entscheidung 4) - RSS itself never calls {@code cleanupVanished} (ADR-0017 decision
-   * 5) and so never needs this method, but a future caller that does (Confluence, #1137) does.
-   */
-  public List<String> existingAttachmentPaths(UUID parentDocumentId) {
-    return documentRepository.findByParentDocumentId(parentDocumentId).stream()
-        .map(Document::getFilePath)
-        .toList();
   }
 
   /**
@@ -356,10 +334,9 @@ public class AttachmentIndexer {
   }
 
   /**
-   * Indexes an attachment whose bytes are already on disk - the case Mail (#1183) and Confluence
-   * (#1137) need, no download step involved here. {@code localFile.filePathIdentity()} is this
-   * attachment's {@code file_path} (ADR-0022, Entscheidung 2); {@code localFile.fileName()} is only
-   * its display name.
+   * Indexes an attachment whose bytes are already on disk - the case Mail and Confluence need, no
+   * download step involved here. {@code localFile.filePathIdentity()} is this attachment's {@code
+   * file_path} (ADR-0022, Entscheidung 2); {@code localFile.fileName()} is only its display name.
    */
   private Optional<String> indexLocalFile(
       AttachmentAccess access,

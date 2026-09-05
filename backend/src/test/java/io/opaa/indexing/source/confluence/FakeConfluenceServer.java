@@ -151,7 +151,7 @@ public final class FakeConfluenceServer implements AutoCloseable {
     page.lastModified = modified;
   }
 
-  /** Moves a page into another space - on Cloud that changes its identity URL (#1199 review). */
+  /** Moves a page into another space - on Cloud that changes its identity URL. */
   public void movePage(String id, String newSpaceKey, Instant modified) {
     Page page = pages.get(id);
     page.spaceKey = newSpaceKey;
@@ -503,7 +503,7 @@ public final class FakeConfluenceServer implements AutoCloseable {
       return;
     }
     String token = authenticateDataCenter(ex);
-    // Like the real Data Center (#1171): an unknown token is not refused, the request runs
+    // Like the real Data Center: an unknown token is not refused, the request runs
     // anonymously - and anonymous reads nothing here.
     Set<String> readable = token == null ? Set.of() : tokens.get(token);
     if (path.equals("/rest/api/user/current")) {

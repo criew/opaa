@@ -33,7 +33,7 @@ class DocumentServiceTest {
     assertThat(discovered.supported())
         .extracting(p -> p.getFileName().toString())
         .containsExactlyInAnyOrder("readme.md", "notes.txt");
-    // Issue #375: the rejected file is handed back, not swallowed by the filter.
+    // The rejected file is handed back, not swallowed by the filter.
     assertThat(discovered.rejected())
         .extracting(p -> p.getFileName().toString())
         .containsOnly("data.csv");
@@ -53,7 +53,7 @@ class DocumentServiceTest {
 
   @Test
   void discoverFilesFailsInsteadOfSilentlyReportingAnEmptyBestandForANonexistentDir() {
-    // #886 review: a missing directory (unmounted network share, moved/renamed source) must fail
+    // a missing directory (unmounted network share, moved/renamed source) must fail
     // the run, not look like a genuinely empty - but successful - source;
     // StaleDocumentCleanupService
     // would otherwise read that as "every document vanished" and delete the whole library.
@@ -80,12 +80,12 @@ class DocumentServiceTest {
     assertThat(discovered.rejected()).isEmpty();
   }
 
-  // --- #404: content decides, the extension is only a hint ------------------------------------
+  // --- content decides, the extension is only a hint ------------------------------------
 
   @Test
   void discoverFilesAcceptsReadableContentDespiteAWrongExtension() throws IOException {
-    // The core case #404 exists for: a real PDF mislabeled with an unsupported extension used to
-    // be rejected outright, even though Tika can read it perfectly well.
+    // The core case content-based admission exists for: a real PDF mislabeled with an
+    // unsupported extension is accepted, because Tika can read it perfectly well.
     Path file = tempDir.resolve("bescheid.csv");
     Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
 
@@ -121,29 +121,6 @@ class DocumentServiceTest {
 
     assertThat(discovered.rejected()).containsExactly(file);
     assertThat(discovered.supported()).isEmpty();
-  }
-
-  @Test
-  void isSupportedFormatAcceptsAFileWhoseContentMatchesAnAcceptedType() throws IOException {
-    Path file = tempDir.resolve("doc.pdf");
-    Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
-
-    assertThat(service.isSupportedFormat(file)).isTrue();
-  }
-
-  @Test
-  void isSupportedFormatRejectsUnsupportedContent() throws IOException {
-    Path file = tempDir.resolve("image.png");
-    Files.write(file, new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a});
-
-    assertThat(service.isSupportedFormat(file)).isFalse();
-  }
-
-  @Test
-  void isSupportedFormatTreatsAnUnreadableFileAsUnsupported() {
-    Path missing = tempDir.resolve("does-not-exist.pdf");
-
-    assertThat(service.isSupportedFormat(missing)).isFalse();
   }
 
   @Test

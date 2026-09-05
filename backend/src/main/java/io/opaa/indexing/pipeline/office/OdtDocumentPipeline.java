@@ -120,7 +120,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
     if (chunks.isEmpty()) {
       // Covers both a genuinely empty <office:text/> and text that chunked down to nothing - the
       // same NO_EXTRACTABLE_TEXT outcome TikaFallbackPipeline reported for either case before this
-      // pipeline existed (#1057), so an already-empty document's user-facing treatment (skipped,
+      // pipeline existed, so an already-empty document's user-facing treatment (skipped,
       // not failed) does not change with the routing. Header/footer text never rescues this
       // outcome - see this class's own Javadoc on why the guard ignores it entirely.
       return DocumentPipelineResult.noExtractableText();
@@ -140,7 +140,7 @@ public class OdtDocumentPipeline implements DocumentPipeline {
 
   /**
    * {@code meta.xml}'s title/dates, the first level-1 {@code text:h} (ADR-0024) and the opening of
-   * the body text (#1263).
+   * the body text.
    */
   @Override
   public DocumentProperties readProperties(DocumentPipelineSource source) {
@@ -428,11 +428,10 @@ public class OdtDocumentPipeline implements DocumentPipeline {
    * styles.xml}'s master page(s) via {@link OdfParagraphTextCollector}. Every variant ({@code
    * style:header}, {@code style:header-left}, {@code style:header-first} and their footer
    * counterparts) is read - a document with "different first page" set carries its letterhead only
-   * in the first-page variant, so skipping it (as an earlier version of this handler did) would
-   * miss the exact case motivating this class. Two paragraphs whose whitespace-normalized text is
-   * equal (the common case of the same header/footer repeated verbatim across variants or master
-   * pages) contribute only once, keeping the header role and the footer role each a single
-   * deduplicated block.
+   * in the first-page variant, which is exactly the case this class exists for. Two paragraphs
+   * whose whitespace-normalized text is equal (the common case of the same header/footer repeated
+   * verbatim across variants or master pages) contribute only once, keeping the header role and the
+   * footer role each a single deduplicated block.
    */
   static final class OdtStylesHandler extends DefaultHandler {
 

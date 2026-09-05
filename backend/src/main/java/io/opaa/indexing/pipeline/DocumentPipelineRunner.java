@@ -48,7 +48,7 @@ public final class DocumentPipelineRunner {
       DocumentPipeline pipeline,
       DocumentPipelineSource source,
       Consumer<DocumentPipelineResult> resultHandler) {
-    // The routed format extension is a source of the Dokumentart (#1263) but no pipeline's own
+    // The routed format extension is a source of the Dokumentart but no pipeline's own
     // finding - attached here, once, so every ingest path carries it without every pipeline copying
     // it.
     DocumentPipelineResult result = withFormatExtension(pipeline.run(source), source);

@@ -15,10 +15,10 @@ import java.util.UUID;
  * FullTextIndexFillStateService} - never combined from separate reads a concurrent write could
  * interleave between.
  *
- * <p>Since #1270 nothing fills a gap after the fact: the full-text row is written in the same
- * transaction as the vector row (see {@link VectorChunkStore#addChunks}), so a nonzero {@code
- * missingChunks} is an operational finding - visible on the administration page, resolved by a
- * reindex, never by a background job.
+ * <p>Nothing fills a gap after the fact: the full-text row is written in the same transaction as
+ * the vector row (see {@link VectorChunkStore#addChunks}), so a nonzero {@code missingChunks} is an
+ * operational finding - visible on the administration page, resolved by a reindex, never by a
+ * background job.
  */
 public record FullTextIndexFillState(
     UUID libraryId, long totalChunks, long indexedChunks, long missingChunks) {

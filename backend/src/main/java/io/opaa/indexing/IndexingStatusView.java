@@ -12,8 +12,8 @@ import java.util.Optional;
  * an {@link IndexingRunEvent#getReference()} there does not get the same information handed back
  * here instead.
  *
- * <p>{@code unreadableSpaceKeys} (#1191) comes from the most recent run that assessed its listing -
- * not necessarily {@code job} - and is empty while that assessment was complete or none exists; see
+ * <p>{@code unreadableSpaceKeys} comes from the most recent run that assessed its listing - not
+ * necessarily {@code job} - and is empty while that assessment was complete or none exists; see
  * {@link IndexingJobService#getLatestListingAssessment}.
  */
 public record IndexingStatusView(

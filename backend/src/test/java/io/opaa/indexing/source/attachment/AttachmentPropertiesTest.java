@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 /**
- * #1269: {@link AttachmentProperties} binds {@code maxDepth} under the general {@code
+ * {@link AttachmentProperties} binds {@code maxDepth} under the general {@code
  * opaa.indexing.attachments.max-depth} key - the old, connector-specific {@code
  * opaa.indexing.mail.max-attachment-depth} no longer has any effect on it.
  */

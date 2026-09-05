@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 
 /**
  * Derives the human-readable title {@link FileProcessingService#chunkEmbedFormatterWithPrefix}
- * prepends to a multi-chunk document's chunk embeddings (#933, "Contextual Chunking"), for a
+ * prepends to a multi-chunk document's chunk embeddings ("Contextual Chunking"), for a
  * filesystem-style {@code file_name} ({@code "NNN_slug.ext"} - see {@link
  * FileProcessingService#deriveContextTitle} for the RSS-headline/URL exception). Contract: strip a
  * trailing extension ({@code \.[A-Za-z0-9]{1,5}$} - only a suffix that actually looks like one, so

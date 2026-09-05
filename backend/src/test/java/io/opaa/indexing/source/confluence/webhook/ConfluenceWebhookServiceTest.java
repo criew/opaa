@@ -43,9 +43,9 @@ import org.springframework.scheduling.TaskScheduler;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The intake's contract (#1140): one 401 for every way a request fails to authenticate, one
- * debounced run per library for any number of notifications, targeted fetches below the batch bound
- * and an incremental run above it, and a wait - then a drop - while another run is in progress.
+ * The intake's contract: one 401 for every way a request fails to authenticate, one debounced run
+ * per library for any number of notifications, targeted fetches below the batch bound and an
+ * incremental run above it, and a wait - then a drop - while another run is in progress.
  */
 class ConfluenceWebhookServiceTest {
 

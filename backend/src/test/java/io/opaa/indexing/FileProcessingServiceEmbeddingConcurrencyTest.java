@@ -43,16 +43,14 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
 
 /**
- * Unit tests for the concurrent embedding path #734 adds to {@link FileProcessingService} (private
- * {@code addToVectorStore}/{@code subBatchSize}, exercised only via {@link
+ * Unit tests for the concurrent embedding path of {@link FileProcessingService} (private {@code
+ * addToVectorStore}/{@code subBatchSize}, exercised only via {@link
  * FileProcessingService#processFile}) - no real Ollama, a fake {@link VectorStoreWriter} standing
- * in for the terminal write call {@link VectorChunkStore#addChunks} makes after embedding (#1047
- * moved that terminal call from {@code VectorStore#add} to {@code VectorStoreWriter}, see both
- * classes' own Javadoc). {@link FileProcessingServiceTest} already covers {@code
- * embeddingConcurrency == 1} exhaustively (its {@code defaultIndexingProperties()} always uses 1);
- * this class covers only what changes above 1.
+ * in for the terminal write call {@link VectorChunkStore#addChunks} makes after embedding. {@link
+ * FileProcessingServiceTest} already covers {@code embeddingConcurrency == 1} exhaustively (its
+ * {@code defaultIndexingProperties()} always uses 1); this class covers only what changes above 1.
  *
- * <p><b>Deterministic where it matters, not everywhere (#735 review, nit 8).</b> {@link
+ * <p><b>Deterministic where it matters, not everywhere.</b> {@link
  * #embeddingConcurrencyAboveOneSplitsIntoBatchSizedSubBatchesOnTheExecutor} proves actual overlap
  * with a {@link CyclicBarrier} every write call must reach within a timeout - if the executor ran
  * calls one at a time instead of concurrently, the barrier would time out and fail the test loudly,
@@ -115,7 +113,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
       VectorStoreWriter vectorStoreWriter, int embeddingConcurrency, int batchSize) {
     IndexingProperties properties =
         new IndexingProperties(1000, 0, batchSize, null, null, null, null, embeddingConcurrency);
-    // Mirrors IndexingConfiguration#embeddingTaskExecutor exactly (#734): the concurrency bound
+    // Mirrors IndexingConfiguration#embeddingTaskExecutor exactly: the concurrency bound
     // is the executor's own pool size, not anything FileProcessingService enforces itself - a
     // test executor sized differently from embeddingConcurrency would not actually exercise the
     // bound production relies on.
@@ -160,7 +158,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
 
   @Test
   void embeddingConcurrencyOneAlwaysUsesTheSingleDirectVectorStoreAddCall() throws IOException {
-    // #734: concurrency=1 must reproduce the pre-#734 behaviour exactly, regardless of how many
+    // concurrency=1 must reproduce the earlier behaviour exactly, regardless of how many
     // chunks the document has - it never even looks at batchSize.
     Path file = tempDir.resolve("many-chunks.txt");
     Files.writeString(file, "irrelevant");
@@ -184,7 +182,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
     // exactly 3 sub-batches (2,2,2), matching both the 3-thread pool (see #service) and the
     // barrier's 3 parties in a single round - every write call must reach the barrier within a
     // timeout, deterministically proving all 3 genuinely overlap rather than merely being
-    // observed to (#735 review, nit 8). A CyclicBarrier is cyclic - it resets after every trip -
+    // observed to. A CyclicBarrier is cyclic - it resets after every trip -
     // so the sub-batch count is chosen to be an exact multiple of the pool size, or a second,
     // smaller round left over from an uneven split would time out waiting for parties that will
     // never arrive.
@@ -237,7 +235,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
 
   @Test
   void aFewChunksEngageConcurrencyRegardlessOfBatchSize() throws IOException {
-    // #735 review, finding 1: before this fix, the sub-batch size was batchSize itself, so with
+    // before this fix, the sub-batch size was batchSize itself, so with
     // the production default (batchSize=50) essentially no real document (city-landmarks' own
     // median is 8, max 13 chunks) ever exceeded it - the concurrent path was dead code. Now the
     // sub-batch size is chunkCount spread across embeddingConcurrency workers, capped by
@@ -259,7 +257,7 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
 
   @Test
   void aFailingSubBatchPropagatesTheOriginalExceptionAndFailsTheDocument() throws IOException {
-    // #734: a sub-batch failure must surface exactly like a single write failure did before this
+    // a sub-batch failure must surface exactly like a single write failure did before this
     // issue - processFile's own catch block (unchanged) marks the document FAILED and cleans up
     // whatever chunks the *other*, successful sub-batches already wrote.
     Path file = tempDir.resolve("failing-batch.txt");
@@ -278,18 +276,18 @@ class FileProcessingServiceEmbeddingConcurrencyTest {
 
   /**
    * Records every {@link VectorStoreWriter#writeEmbeddedChunks} call's chunks, its thread name, and
-   * the observed peak concurrency - the write-path counterpart of the pre-#1047 {@code
+   * the observed peak concurrency - the write-path counterpart of the earlier {@code
    * RecordingVectorStore}, moved here because {@link VectorChunkStore#addChunks} now hands
    * already-embedded chunks to {@link VectorStoreWriter} instead of calling {@code VectorStore#add}
    * directly (see both classes' own Javadoc).
    *
-   * <p>{@code concurrencyProof}, when given (#735 review, nit 8), makes "these calls actually
-   * overlapped" a deterministic fact rather than an observation that depends on scheduling luck:
-   * every write call blocks on the same {@link CyclicBarrier} until as many parties as the barrier
-   * was built for have all arrived, within a bounded timeout. If the executor ran calls one at a
-   * time instead of concurrently, the first call would still be waiting when the timeout expires
-   * and the test fails loudly with a clear cause, instead of silently passing on a {@code
-   * maxConcurrentWriteCalls} value a sleep window merely made likely.
+   * <p>{@code concurrencyProof}, when given, makes "these calls actually overlapped" a
+   * deterministic fact rather than an observation that depends on scheduling luck: every write call
+   * blocks on the same {@link CyclicBarrier} until as many parties as the barrier was built for
+   * have all arrived, within a bounded timeout. If the executor ran calls one at a time instead of
+   * concurrently, the first call would still be waiting when the timeout expires and the test fails
+   * loudly with a clear cause, instead of silently passing on a {@code maxConcurrentWriteCalls}
+   * value a sleep window merely made likely.
    *
    * <p>Extends the real {@link VectorStoreWriter} purely for its type (a mocked constructor's
    * dependencies are never touched - every one of them is a bare mock, and the only overridden

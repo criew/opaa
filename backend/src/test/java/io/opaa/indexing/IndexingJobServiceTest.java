@@ -52,7 +52,7 @@ class IndexingJobServiceTest {
 
   @Test
   void recordRunMetricsWritesTheCostFiguresOntoARunningJobOnly() {
-    // #1141: the figures land on the row while it is RUNNING; a job the stale sweep already failed
+    // the figures land on the row while it is RUNNING; a job the stale sweep already failed
     // keeps its state - the same conditional guard updateProgress has.
     var running = new IndexingJob(JobStatus.RUNNING);
     var failed = new IndexingJob(JobStatus.FAILED);
@@ -73,7 +73,7 @@ class IndexingJobServiceTest {
 
   @Test
   void recordListingAssessmentWritesTheVerdictOntoARunningJobOnly() {
-    // #1191: the verdict lands on the row while it is RUNNING; a job the stale sweep already
+    // the verdict lands on the row while it is RUNNING; a job the stale sweep already
     // failed keeps its state - the same conditional guard recordRunMetrics has.
     var running = new IndexingJob(JobStatus.RUNNING);
     var failed = new IndexingJob(JobStatus.FAILED);
@@ -103,7 +103,7 @@ class IndexingJobServiceTest {
 
   @Test
   void pruningKeepsTheMostRecentListingAssessmentBeyondTheCap() {
-    // #1191: the library's incomplete-listing warning hangs on the most recent assessing run - a
+    // the library's incomplete-listing warning hangs on the most recent assessing run - a
     // burst of webhook runs (which never assess) must not prune that row away.
     UUID libraryId = UUID.randomUUID();
     List<IndexingJob> runs = new ArrayList<>();
@@ -122,7 +122,7 @@ class IndexingJobServiceTest {
 
   @Test
   void startJobRecordsTheTargetLibrary() {
-    // #419 acceptance criteria: the indexing job records its target library.
+    // The indexing job records its target library.
     UUID libraryId = UUID.randomUUID();
     when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
         .thenAnswer(inv -> inv.getArgument(0));
@@ -136,7 +136,7 @@ class IndexingJobServiceTest {
 
   @Test
   void startJobRecordsTheOrganization() {
-    // #401 acceptance criteria: the indexing job records the organization it belongs to.
+    // The indexing job records the organization it belongs to.
     UUID organizationId = UUID.randomUUID();
     when(indexingJobRepository.saveAndFlush(any(IndexingJob.class)))
         .thenAnswer(inv -> inv.getArgument(0));
@@ -150,7 +150,7 @@ class IndexingJobServiceTest {
 
   @Test
   void startJobMapsAConstraintViolationOnTheUniqueRunningIndexTo409() {
-    // #500 review, finding 3 (TOCTOU): DocumentIndexingService's own isJobRunning check and this
+    // DocumentIndexingService's own isJobRunning check and this
     // insert are not atomic - a concurrent second trigger for the same library can pass that check
     // before either has inserted, so the database's partial unique index
     // (uk_indexing_jobs_library_running, migration 028) is the guard that actually always holds.
@@ -218,11 +218,11 @@ class IndexingJobServiceTest {
   }
 
   /**
-   * #501 review, finding 1: a job the stale-run sweep already failed must not have its status
-   * flipped back to COMPLETED once its (unaware) executor thread finally calls this - the
-   * conditional {@code UPDATE ... WHERE status = RUNNING} in {@code
-   * IndexingJobRepository#completeIfRunning} affects 0 rows in that case, and the row still exists
-   * (just no longer RUNNING), so this must complete silently instead of throwing.
+   * a job the stale-run sweep already failed must not have its status flipped back to COMPLETED
+   * once its (unaware) executor thread finally calls this - the conditional {@code UPDATE ... WHERE
+   * status = RUNNING} in {@code IndexingJobRepository#completeIfRunning} affects 0 rows in that
+   * case, and the row still exists (just no longer RUNNING), so this must complete silently instead
+   * of throwing.
    */
   @Test
   void completeJobDoesNothingWhenTheJobIsNoLongerRunning() {
@@ -274,14 +274,14 @@ class IndexingJobServiceTest {
     assertThat(job.getDocumentsIndexedTotal()).isEqualTo(6);
     assertThat(job.getStatus()).isEqualTo(JobStatus.RUNNING);
     assertThat(job.getCompletedAt()).isNull();
-    // #501 review, finding 1: every progress report is also the heartbeat the stale-run sweep
+    // every progress report is also the heartbeat the stale-run sweep
     // compares against its cutoff.
     assertThat(job.getLastProgressAt()).isNotNull().isAfterOrEqualTo(previousHeartbeat);
   }
 
   /**
-   * #501 review, finding 1: once the sweep has already failed a job, its executor thread's further
-   * progress reports (it is unaware of the recovery) must not resurrect its counters or heartbeat.
+   * once the sweep has already failed a job, its executor thread's further progress reports (it is
+   * unaware of the recovery) must not resurrect its counters or heartbeat.
    */
   @Test
   void updateProgressDoesNothingWhenTheJobIsNoLongerRunning() {
@@ -323,7 +323,7 @@ class IndexingJobServiceTest {
   }
 
   /**
-   * #401: reproduces the leak the issue describes at the service layer, independently of {@code
+   * reproduces the leak the issue describes at the service layer, independently of {@code
    * DocumentIndexingService}'s own library-ownership check. Before the fix (see this test's own
    * two-argument {@code startJob}/{@code getLatestJob} calls being reduced to one argument, and
    * {@code IndexingJobRepository#findTopByLibraryIdOrderByStartedAtDesc} being called without
@@ -354,7 +354,7 @@ class IndexingJobServiceTest {
 
   @Test
   void isJobRunningReflectsOnlyTheGivenLibraryAndOrganization() {
-    // #478: concurrency is per library - this must never ask about the whole indexing_jobs table.
+    // concurrency is per library - this must never ask about the whole indexing_jobs table.
     UUID libraryId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();
     when(indexingJobRepository.existsByStatusAndLibraryIdAndOrganizationId(
@@ -376,7 +376,7 @@ class IndexingJobServiceTest {
   }
 
   /**
-   * #401: the same defense-in-depth boundary as {@link
+   * the same defense-in-depth boundary as {@link
    * #getLatestJobDoesNotLeakAJobToACallerFromADifferentOrganization}, applied to the concurrency
    * check - a run genuinely {@code RUNNING} for {@code libraryId} under one organization must not
    * report as running (and therefore block a trigger) for a different organization asking about the
@@ -398,7 +398,7 @@ class IndexingJobServiceTest {
     assertThat(service.isJobRunning(libraryId, aDifferentOrganization)).isFalse();
   }
 
-  // --- #501: recovery of RUNNING rows orphaned by a restart or a stale/dropped task ---
+  // --- recovery of RUNNING rows orphaned by a restart or a stale/dropped task ---
 
   @Test
   void recoverJobsOrphanedByRestartFailsEveryRunningRowWithARestartMessage() {

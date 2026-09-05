@@ -7,8 +7,8 @@ package io.opaa.indexing.pipeline.mail;
  * onto the persisted chunk by {@code FileProcessingService#storeChunks}.
  *
  * <p>{@code io.opaa.query.QueryService#mapSources} reads these back onto {@code ChatSource}, from
- * where {@code ChatResponseMapper} carries them into the generated {@code SourceReference} (#1164)
- * - the Fundstellen-Anzeige's mail summary line. {@link MailDocumentPipeline} also renders the same
+ * where {@code ChatResponseMapper} carries them into the generated {@code SourceReference} - the
+ * Fundstellen-Anzeige's mail summary line. {@link MailDocumentPipeline} also renders the same
  * Kopfdaten as German-labeled context lines into the first body chunk's own text (see {@code
  * MailDocumentPipeline#headerContextText}), which is what reaches embedding and full-text search;
  * these structured fields are the separate, machine-readable copy the Fundstellen-Anzeige and a

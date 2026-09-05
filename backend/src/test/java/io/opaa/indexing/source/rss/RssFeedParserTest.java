@@ -10,9 +10,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Verifies {@link RssFeedParser} entirely against checked-in fixtures under {@code
- * src/test/resources/rss-feeds/} (#466) - no network, no database, as ADR-0017 and the issue's
- * motivation call for. Fixtures are invented and generic (example.invalid domains, made-up
- * agency/titles) - never a reference to a real feed or institution.
+ * src/test/resources/rss-feeds/} - no network, no database, as ADR-0017 and the issue's motivation
+ * call for. Fixtures are invented and generic (example.invalid domains, made-up agency/titles) -
+ * never a reference to a real feed or institution.
  */
 class RssFeedParserTest {
 

@@ -48,9 +48,9 @@ public class ConfluenceAccessException extends IOException {
   }
 
   /**
-   * The run's request budget ({@code ConfluenceProperties#requestBudgetPerRun}, #1141) is spent -
-   * not a failure of the instance or the credentials but the run's own bound; the executor ends the
-   * run in an orderly way as incomplete and the next run continues.
+   * The run's request budget ({@code ConfluenceProperties#requestBudgetPerRun}) is spent - not a
+   * failure of the instance or the credentials but the run's own bound; the executor ends the run
+   * in an orderly way as incomplete and the next run continues.
    */
   public static final class BudgetExhausted extends ConfluenceAccessException {
     private final int budget;

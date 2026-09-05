@@ -13,11 +13,11 @@ public enum FileProcessingResult {
   QUOTA_EXCEEDED,
 
   /**
-   * The document carried no extractable text - very likely a scan PDF without a text layer (see
-   * {@code io.opaa.indexing.pipeline.TikaFallbackPipeline#isTextlessPdf}, ingestion-pipelines.md
-   * Teil 3 Punkt 1). The document row was already created and is marked {@code FAILED} with a
-   * German, user-facing message instead of being indexed with zero chunks; a caller must report
-   * this as a rejection, the same way it already reports {@link #QUOTA_EXCEEDED}.
+   * The document carried no extractable text - very likely a scan PDF without a text layer
+   * (ingestion-pipelines.md, Teil 3, Punkt 1). The document row was already created and is marked
+   * {@code FAILED} with a German, user-facing message instead of being indexed with zero chunks; a
+   * caller must report this as a rejection, the same way it already reports {@link
+   * #QUOTA_EXCEEDED}.
    */
   NO_EXTRACTABLE_TEXT,
 

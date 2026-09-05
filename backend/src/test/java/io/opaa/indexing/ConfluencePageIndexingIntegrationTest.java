@@ -21,8 +21,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The end-to-end proof for #1137 that a representative Confluence page - macros, a table, a
- * hierarchy - is answerable after chunking: the storage body goes through {@link
+ * The end-to-end proof that a representative Confluence page - macros, a table, a hierarchy - is
+ * answerable after chunking: the storage body goes through {@link
  * FileProcessingService#processConfluencePage}, is cut by {@link ConfluenceDocumentPipeline}, and
  * the stored chunks carry the pipeline id, the section as Fundort, the space and hierarchy path,
  * and the table row a question about the deadline would hit. Recorded as a test, not as a manual

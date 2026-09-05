@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
-/** The one-thread timer behind the webhook intake's debounce (#1140). */
+/** The one-thread timer behind the webhook intake's debounce. */
 @Configuration
 public class ConfluenceWebhookConfiguration {
 

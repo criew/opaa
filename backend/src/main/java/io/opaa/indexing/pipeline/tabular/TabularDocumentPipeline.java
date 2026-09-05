@@ -60,9 +60,9 @@ public class TabularDocumentPipeline implements DocumentPipeline {
    * Rows of data grouped per chunk (the repeated header does not count against this) - <b>gesetzt,
    * nicht gemessen</b> (ingestion-pipelines.md, "Chunk-Größen"): weder der bestehende
    * Evaluierungskorpus noch die geplante Verwaltungs-Evaldomäne enthalten heute Tabellenblätter mit
-   * kuratierter Ground Truth, gegen die dieser Wert gemessen werden könnte - siehe #1036. 50 ist
-   * ein Ausgangspunkt, der eine mittelgroße Gebühren- oder Zuständigkeitstabelle in überschaubar
-   * viele, noch les- und zitierbare Chunks teilt.
+   * kuratierter Ground Truth, gegen die dieser Wert gemessen werden könnte. 50 teilt eine
+   * mittelgroße Gebühren- oder Zuständigkeitstabelle in überschaubar viele, noch les- und
+   * zitierbare Chunks.
    */
   static final int MAX_ROWS_PER_CHUNK = 50;
 
@@ -139,13 +139,12 @@ public class TabularDocumentPipeline implements DocumentPipeline {
 
   /**
    * The format to dispatch on: {@link DocumentPipelineSource#detectedExtension()} when the registry
-   * resolved one - the normal, content-routed path (#1096 review, finding 3) - falling back to
-   * {@code fileName}'s own suffix only when it did not (a source built directly in a test, or
-   * content that never went through routing at all). Trusting the file name over the detected
-   * content would silently reintroduce the exact bug #404 exists to prevent: a genuine XLSX
-   * misnamed {@code .csv} would be parsed as CSV and fail, instead of being read as the XLSX it
-   * actually is - and the reverse (a CSV or ODS misnamed {@code .xlsx}) would hand POI bytes it
-   * cannot open at all.
+   * resolved one - the normal, content-routed path - falling back to {@code fileName}'s own suffix
+   * only when it did not (a source built directly in a test, or content that never went through
+   * routing at all). Trusting the file name over the detected content would reintroduce exactly
+   * what content-based admission prevents: a genuine XLSX misnamed {@code .csv} would be parsed as
+   * CSV and fail, instead of being read as the XLSX it actually is - and the reverse (a CSV or ODS
+   * misnamed {@code .xlsx}) would hand POI bytes it cannot open at all.
    */
   private static String resolveExtension(DocumentPipelineSource source) {
     if (source.detectedExtension() != null) {
@@ -259,9 +258,9 @@ public class TabularDocumentPipeline implements DocumentPipeline {
    * because the actual column boundaries come from parsing the candidate, not from a raw character
    * count - the fix for a quoted field that happens to contain one of the other candidates' own
    * delimiter (e.g. {@code "Leistung, allgemein";Betrag}, where a naive count of raw commas and
-   * semicolons ties and used to always resolve to comma). Returns 0 for a candidate that does not
-   * split the sample into more than one column at all, or that fails to parse as CSV under it (e.g.
-   * an unbalanced quote the candidate's own tokenizer rejects).
+   * semicolons ties). Returns 0 for a candidate that does not split the sample into more than one
+   * column at all, or that fails to parse as CSV under it (e.g. an unbalanced quote the candidate's
+   * own tokenizer rejects).
    */
   private static long delimiterScore(String sample, char candidate) {
     CSVFormat format =
@@ -310,18 +309,18 @@ public class TabularDocumentPipeline implements DocumentPipeline {
       return List.of();
     }
     // Instantiated per call, not shared: DataFormatter is not thread-safe, and this pipeline can
-    // run several documents concurrently on the indexing thread pool (#1096 review, finding 5).
+    // run several documents concurrently on the indexing thread pool.
     DataFormatter cellFormatter = new DataFormatter(Locale.GERMANY);
     // Without this, a formula cell renders its formula text ("SUMME(B2:B12)") instead of the
     // value a spreadsheet application would show ("1.240,00") - the last value POI cached when the
     // file was saved, which is the same value every consumer of the file already sees without
-    // re-evaluating anything (#1096 review, finding 4).
+    // re-evaluating anything.
     cellFormatter.setUseCachedValuesForFormulaCells(true);
 
     List<Document> chunks = new ArrayList<>();
     // File-based, read-only: keeps POI's own temp-file/memory strategy for XLSX's ZIP+XML
     // container rather than first buffering the whole file through an InputStream ourselves
-    // (#1096 review, finding 6) - source.file() is never re-written while this runs.
+    // - source.file() is never re-written while this runs.
     try (Workbook workbook = WorkbookFactory.create(source.file().toFile(), null, true)) {
       for (Sheet sheet : workbook) {
         chunks.addAll(readSheet(sheet, cellFormatter));
@@ -395,8 +394,8 @@ public class TabularDocumentPipeline implements DocumentPipeline {
     boolean found = OdfContentXml.parse(source.file(), maxOdsContentXmlBytes, handler);
     if (!found) {
       // Not a genuine ODF ZIP (no content.xml entry at all) - the same "could not be parsed" case
-      // OdtDocumentPipeline/OdpDocumentPipeline report for a corrupt .odt/.odp (#1108 review,
-      // finding 7), distinct from a well-formed but empty spreadsheet below. Thrown, not returned
+      // OdtDocumentPipeline/OdpDocumentPipeline report for a corrupt .odt/.odp, distinct from a
+      // well-formed but empty spreadsheet below. Thrown, not returned
       // as an empty list, so the outer catch below reports it as NO_CONTENT the same way it
       // already does for a corrupt XLSX workbook POI rejects outright.
       throw new IOException("No content.xml entry in ODS file " + source.fileName());
@@ -424,10 +423,9 @@ public class TabularDocumentPipeline implements DocumentPipeline {
    * <p><b>{@code table:number-rows-repeated} advances the row counter but is not expanded</b> - a
    * repeated row is recorded once, at the first row number of its repeated span, and the running
    * counter jumps by the full repeat count before the next row - otherwise a citation's "Zeile n"
-   * would be wrong for every row after a filler gap (#1096 review, finding 11). ODF exporters use
-   * this attribute almost exclusively for large runs of trailing blank filler rows (up to a sheet's
-   * full row count); expanding it for content-bearing rows would be unusual and is not modelled
-   * here.
+   * would be wrong for every row after a filler gap. ODF exporters use this attribute almost
+   * exclusively for large runs of trailing blank filler rows (up to a sheet's full row count);
+   * expanding it for content-bearing rows would be unusual and is not modelled here.
    *
    * <p><b>{@code table:number-columns-repeated} is expanded, but capped</b> at {@code
    * maxCellRepeat} per cell and {@code maxRowColumns} per row - the same style of guard as {@link
@@ -582,11 +580,11 @@ public class TabularDocumentPipeline implements DocumentPipeline {
    * table/file that never had more than one row has no header/data split to make, and treating the
    * sole row as an empty header would silently drop real content - both a minimal spreadsheet used
    * as a one-line text container (one cell) and a genuine one-row result table (several columns,
-   * e.g. a single summary line) are Nutzdaten (#1096 review, finding 9). A table with a real,
-   * multi-column header and deliberately zero rows beneath it is indistinguishable from the latter
-   * once blank filler rows are filtered out, so this pipeline accepts the (documented) risk of
-   * occasionally indexing a genuinely field-name-only row rather than the alternative of
-   * occasionally discarding real data - see ingestion-pipelines.md, Teil 3, Punkt 3.
+   * e.g. a single summary line) are Nutzdaten. A table with a real, multi-column header and
+   * deliberately zero rows beneath it is indistinguishable from the latter once blank filler rows
+   * are filtered out, so this pipeline accepts the (documented) risk of occasionally indexing a
+   * genuinely field-name-only row rather than the alternative of occasionally discarding real data
+   * - see ingestion-pipelines.md, Teil 3, Punkt 3.
    *
    * @param sheetName the sheet name, or {@code null} for CSV, forwarded to {@link #buildChunks} /
    *     {@link #renderSingleRowChunk} unchanged

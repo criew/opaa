@@ -21,9 +21,11 @@ public class Document {
   private String fileName;
 
   /**
-   * Polymorphic by {@link #sourceType} (#877, not resolved yet): a local filesystem/storage path
-   * for {@code FILESYSTEM}/{@code UPLOAD}, a remote URL for {@code HTTP_DIRECTORY}/{@code
-   * RSS_FEED}.
+   * Polymorphic by {@link #sourceType}: a local filesystem/storage path for {@code
+   * FILESYSTEM}/{@code UPLOAD}, a remote URL for {@code HTTP_DIRECTORY}/{@code RSS_FEED}/{@code
+   * CONFLUENCE}. An attachment carries the synthetic path {@code
+   * FileProcessingService#attachmentFilePath} builds from its parent's own (ADR-0022, Entscheidung
+   * 2). Unique per library ({@code uk_documents_library_path}).
    */
   @Column(name = "file_path", nullable = false, length = 2000)
   private String filePath;
@@ -76,9 +78,9 @@ public class Document {
 
   /**
    * The user who uploaded this document via the REST upload endpoint, or {@code null} for every
-   * other {@link #sourceType} (directory crawl, URL indexing) and for documents that predate this
-   * column. Kept separate from {@link #libraryId}'s owner: a library's owner and the person who
-   * happened to upload a given file into it are frequently different once a library is shared.
+   * other {@link #sourceType}. Kept separate from {@link #libraryId}'s owner: a library's owner and
+   * the person who happened to upload a given file into it are frequently different once a library
+   * is shared.
    */
   @Column(name = "uploaded_by_user_id")
   private UUID uploadedByUserId;
@@ -144,8 +146,8 @@ public class Document {
 
   /**
    * The {@code CoreMetadataExtractor#EXTRACTION_VERSION} that last ran over this document (ADR-
-   * 0024), or {@code null} when none ever did - the selection key of the Bestandslauf (#1067).
-   * Written only through {@link DocumentRepository#updateMetadataExtractionVersion}.
+   * 0024), or {@code null} when none ever did - the selection key of the Bestandslauf. Written only
+   * through {@link DocumentRepository#updateMetadataExtractionVersion}.
    */
   @Column(name = "metadata_extraction_version", insertable = false, updatable = false)
   private Integer metadataExtractionVersion;
@@ -193,8 +195,8 @@ public class Document {
   }
 
   /**
-   * Backs {@code FileProcessingService#processRssEntry}'s update-in-place path (#1182): a changed
-   * RSS entry keeps its row's identity so {@link #getId()} - and therefore any attachment's {@link
+   * Backs {@code FileProcessingService#processRssEntry}'s update-in-place path: a changed RSS entry
+   * keeps its row's identity so {@link #getId()} - and therefore any attachment's {@link
    * #parentDocumentId} pointing at it - stays valid, instead of the delete-and-recreate every other
    * connector path uses when a document's content changes.
    */

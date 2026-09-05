@@ -32,14 +32,14 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * #501 reproduction: a {@code RUNNING} {@code indexing_jobs} row with no {@code @Async} task behind
- * it (a discarded task, or - simulated here - a process that died mid-run) locks its library out of
+ * Reproduction: a {@code RUNNING} {@code indexing_jobs} row with no {@code @Async} task behind it
+ * (a discarded task, or - simulated here - a process that died mid-run) locks its library out of
  * every future trigger forever (409, {@code IndexingJobService#isJobRunning}), with nothing in the
- * UI to resolve it (#478's per-library concurrency turned what used to be a global inconvenience
- * into a permanent, per-library dead end). {@link IndexingJobRecoveryScheduler#recoverOnStartup}
- * must free the library the moment the application restarts; {@link
- * IndexingJobService#recoverStaleJobs} must free it even without one - but only once its heartbeat
- * has actually gone stale, not merely because the run has been going on for a while.
+ * UI to resolve it (per-library concurrency turns what would be a global inconvenience into a
+ * permanent, per-library dead end). {@link IndexingJobRecoveryScheduler#recoverOnStartup} must free
+ * the library the moment the application restarts; {@link IndexingJobService#recoverStaleJobs} must
+ * free it even without one - but only once its heartbeat has actually gone stale, not merely
+ * because the run has been going on for a while.
  */
 // Own filesystem allowlist @DynamicPropertySource (below, scoped to this class's @TempDir) means
 // Spring's context cache still keys this to its own context regardless of the shared
@@ -114,8 +114,8 @@ class IndexingJobRecoveryIntegrationTest {
   /**
    * Simulates a running job whose heartbeat ({@link IndexingJob#getLastProgressAt()}) is {@code
    * heartbeatAge} in the past - a genuinely active run that has been running longer than that has a
-   * far more recent heartbeat (#501 review, finding 1's whole point), so this stands in for either
-   * a truly stale run (an old age) or an actively progressing one (a fresh age).
+   * far more recent heartbeat, so this stands in for either a truly stale run (an old age) or an
+   * actively progressing one (a fresh age).
    */
   private IndexingJob seedRunningJobWithHeartbeat(UUID libraryId, Duration heartbeatAge) {
     var job = new IndexingJob(JobStatus.RUNNING);
@@ -130,7 +130,7 @@ class IndexingJobRecoveryIntegrationTest {
     KnowledgeLibrary library = createFilesystemLibraryWithEditorGrant();
     IndexingJob orphaned = seedOrphanedRunningJob(library.getId());
 
-    // Reproduces #501: the library is locked by a row with no task left to ever finish it.
+    // Reproduces the lock-up: the library is locked by a row with no task left to ever finish it.
     mockMvc
         .perform(post("/api/v1/libraries/" + library.getId() + "/indexing"))
         .andExpect(status().isConflict());
@@ -158,13 +158,13 @@ class IndexingJobRecoveryIntegrationTest {
   }
 
   /**
-   * #501 review, finding 2: the previous version of this test called the repository directly with a
-   * cutoff manufactured in the future, so removing the {@code lastProgressAt} condition entirely
-   * (or flipping its sign) would still have left this green - the assertion never depended on
-   * *which* rows the query actually selected. This version seeds two libraries, one genuinely stale
-   * (an old heartbeat) and one still actively progressing (a fresh heartbeat), and calls the real
-   * entry point ({@link IndexingJobService#recoverStaleJobs}) with a realistic timeout - only the
-   * stale row may end up FAILED.
+   * the previous version of this test called the repository directly with a cutoff manufactured in
+   * the future, so removing the {@code lastProgressAt} condition entirely (or flipping its sign)
+   * would still have left this green - the assertion never depended on *which* rows the query
+   * actually selected. This version seeds two libraries, one genuinely stale (an old heartbeat) and
+   * one still actively progressing (a fresh heartbeat), and calls the real entry point ({@link
+   * IndexingJobService#recoverStaleJobs}) with a realistic timeout - only the stale row may end up
+   * FAILED.
    */
   @Test
   void recoverStaleJobsOnlyFailsRunsPastTheConfiguredTimeoutNotActivelyProgressingOnes() {

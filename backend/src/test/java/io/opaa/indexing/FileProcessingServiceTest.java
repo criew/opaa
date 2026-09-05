@@ -72,7 +72,7 @@ class FileProcessingServiceTest {
   private FileProcessingService service;
   private SimpleMeterRegistry meterRegistry;
 
-  // #419: an indexing run always targets a caller-chosen library, never the fixed system library
+  // an indexing run always targets a caller-chosen library, never the fixed system library
   // - lets tests assert the metadata carries the chosen library.
   private KnowledgeLibrary targetLibrary;
 
@@ -102,7 +102,7 @@ class FileProcessingServiceTest {
     // tests never reach it (e.g. the "skips unchanged document" ones return before this is
     // consulted).
     lenient().when(storageQuotaService.wouldExceedQuota(any(), anyLong())).thenReturn(false);
-    // Default happy-path stubs for the conditional status-transition UPDATEs (#632) - tests that
+    // Default happy-path stubs for the conditional status-transition UPDATEs - tests that
     // exercise a deletion race override these explicitly to return 0. lenient() because tests
     // that never reach the success path (e.g. the "skips unchanged document" ones) never invoke
     // them, which strict stubbing would otherwise flag as unnecessary.
@@ -118,7 +118,7 @@ class FileProcessingServiceTest {
         UUID.randomUUID(), "Bibliothek", null, UUID.randomUUID(), LibraryVisibility.PRIVATE, false);
   }
 
-  // embeddingConcurrency=1: every test in this class exercises the pre-#734 sequential
+  // embeddingConcurrency=1: every test in this class exercises the earlier sequential
   // storeChunks path (a single vectorStore.add call) unless it opts into concurrency itself (see
   // EmbeddingConcurrencyTest) - Runnable::run above is therefore never actually invoked here.
   private static IndexingProperties defaultIndexingProperties() {
@@ -126,7 +126,7 @@ class FileProcessingServiceTest {
   }
 
   // Mirrors VectorChunkStore#deleteByDocumentId's own filter construction, so assertions here
-  // compare against the actual Filter.Expression the helper builds rather than the pre-#838
+  // compare against the actual Filter.Expression the helper builds rather than the earlier
   // raw delete string.
   private static Filter.Expression documentIdFilter(UUID documentId) {
     return new FilterExpressionBuilder().eq("document_id", documentId.toString()).build();
@@ -159,7 +159,7 @@ class FileProcessingServiceTest {
     verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
 
     // The initial PENDING row is still a plain save; the final INDEXED transition is now a
-    // conditional UPDATE (#632), not a second save.
+    // conditional UPDATE, not a second save.
     ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
     verify(documentRepository, org.mockito.Mockito.times(1)).save(docCaptor.capture());
     ArgumentCaptor<UUID> idCaptor = ArgumentCaptor.forClass(UUID.class);
@@ -172,73 +172,10 @@ class FileProcessingServiceTest {
   }
 
   @Test
-  void scanPdfWithoutExtractableTextIsRejectedInsteadOfIndexedWithZeroChunks() throws IOException {
-    // regression guard for #1055: a PDF Tika can open but that carries no text layer (a scan) used
-    // to sail through parsed.isEmpty() - Tika still returns a Document, just with blank text - get
-    // chunked into zero chunks, and land in the bestand as INDEXED with chunkCount 0: "successful",
-    // but unfindable (ingestion-pipelines.md, Teil 3, Punkt 1). It must instead be rejected with a
-    // clear, German message and never reach the vector store or an INDEXED row.
-    //
-    // Uses a spy around a real DocumentService (only #parseDocument stubbed) instead of the class'
-    // own mocked field, so the scan-detection path this test exercises runs for real against the
-    // file on disk - only its magic bytes, which is enough for Tika's own content-type detection
-    // (see TikaFallbackPipelineTest's identical PDF_MAGIC_BYTES fixture).
-    Path file = tempDir.resolve("scan.pdf");
-    Files.writeString(file, "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection");
-
-    DocumentService realDocumentService = org.mockito.Mockito.spy(new DocumentService());
-    org.mockito.Mockito.doReturn(List.of(new org.springframework.ai.document.Document("")))
-        .when(realDocumentService)
-        .parseDocument(file);
-
-    FileProcessingService serviceWithRealScanDetection =
-        new FileProcessingService(
-            TestPipelineRegistries.fallbackOnly(realDocumentService, chunkingService),
-            documentRepository,
-            vectorChunkStore,
-            checksumService,
-            new IndexingMetrics(meterRegistry),
-            storageQuotaService,
-            defaultIndexingProperties(),
-            Runnable::run,
-            org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
-            new io.opaa.indexing.source.attachment.AttachmentDownloadLimits(0, 0, 0, ""),
-            org.mockito.Mockito.mock(io.opaa.library.KnowledgeLibraryRepository.class),
-            TestDocumentMetadataServices.returningEmpty());
-
-    when(checksumService.computeSha256(file)).thenReturn("sha256-of-scan");
-    when(documentRepository.findByLibraryIdAndFilePath(
-            targetLibrary.getId(), file.toAbsolutePath().toString()))
-        .thenReturn(Optional.empty());
-    when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
-
-    FileProcessingResult result = serviceWithRealScanDetection.processFile(file, targetLibrary);
-
-    assertThat(result).isEqualTo(FileProcessingResult.NO_EXTRACTABLE_TEXT);
-    // Scan detection intercepts before chunking is ever attempted - chunkDocuments is never
-    // called, unlike the pre-fix path (see this test's own Javadoc for the reproduction proof).
-    verify(chunkingService, never()).chunkDocuments(anyString(), any());
-
-    // The actual bug: nothing must ever be written to the vector store or marked INDEXED with zero
-    // chunks for this document.
-    verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
-    verify(documentRepository, never()).markIndexedFromSource(any(), anyInt(), any(), any(), any());
-
-    ArgumentCaptor<Document> docCaptor = ArgumentCaptor.forClass(Document.class);
-    verify(documentRepository).save(docCaptor.capture());
-    ArgumentCaptor<String> messageCaptor = ArgumentCaptor.forClass(String.class);
-    verify(documentRepository)
-        .markFailedWithoutChunks(eq(docCaptor.getValue().getId()), messageCaptor.capture());
-    assertThat(messageCaptor.getValue()).containsIgnoringCase("Scan");
-  }
-
-  @Test
   void chunkingProducingNoChunksIsRejectedInsteadOfIndexedWithZeroChunks() throws IOException {
-    // #1090 review finding 1: TikaFallbackPipeline#isTextlessPdf only guards the pre-chunking stage
-    // (blank parsed text). ChunkingService's own minChunkLengthToEmbed/minChunkSizeChars can still
-    // reduce non-blank text (OCR noise, page footers) to zero chunks afterwards, and a non-PDF
-    // format with blank parsed text never reaches isTextlessPdf at all (it is PDF-only). The
-    // format-independent guard is on the promised outcome itself: never INDEXED with zero chunks.
+    // ChunkingService's own minChunkLengthToEmbed/minChunkSizeChars can reduce non-blank text
+    // (OCR noise, page footers) to zero chunks. The format-independent guard is on the promised
+    // outcome itself: never INDEXED with zero chunks.
     Path file = tempDir.resolve("noise-only.txt");
     Files.writeString(file, "content that survives parsing but not chunking");
 
@@ -267,10 +204,10 @@ class FileProcessingServiceTest {
   @Test
   void processFileMarksDocumentFailedAndReportsFailedWhenThePipelineReportsNoContent()
       throws IOException {
-    // #1108 review, blocker 1: NO_CONTENT (the source was readable and holds nothing) must be
+    // NO_CONTENT (the source was readable and holds nothing) must be
     // reported the same way an uncaught pipeline exception on the same document would be -
     // FileProcessingResult#FAILED, documentsFailed incremented, never counted as processed.
-    // Since #1268 a source that could not be read at all is the separate PARSE_FAILED outcome.
+    // A source that could not be read at all is the separate PARSE_FAILED outcome.
     Path file = tempDir.resolve("empty.txt");
     Files.writeString(file, "content the fallback pipeline reads as empty");
 
@@ -297,7 +234,7 @@ class FileProcessingServiceTest {
 
   @Test
   void processFileSkipsWithoutPersistingWhenTheLibraryQuotaWouldBeExceeded() throws IOException {
-    // #119: nothing is persisted - no document row, no chunks - once the library's quota would be
+    // nothing is persisted - no document row, no chunks - once the library's quota would be
     // exceeded, and the caller (an indexing executor) learns exactly why via the distinct
     // QUOTA_EXCEEDED result, not a generic SKIPPED.
     Path file = tempDir.resolve("over-quota.txt");
@@ -320,7 +257,7 @@ class FileProcessingServiceTest {
 
   @Test
   void quotaCheckMeasuresTheSizeDeltaOfAnInPlaceUpdateNotTheFullNewSize() throws IOException {
-    // #119, PR #700 review finding 5, rewritten for #1183's update-in-place contract (mirrors
+    // The update-in-place contract (mirrors
     // processRssEntryChecksTheQuotaDeltaNotTheFullNewSizeWhenUpdatingInPlace): uses a REAL
     // LibraryStorageQuotaService, not a mock, so "the delta, not the full new size" is genuinely
     // exercised. The existing row is never deleted here (fk_documents_parent, see this method's
@@ -389,7 +326,7 @@ class FileProcessingServiceTest {
 
   @Test
   void newDocumentAndItsChunksCarryTheChosenLibraryAndOrganizationAsMetadata() throws IOException {
-    // #419 acceptance criteria: a run with libraryId writes every document and chunk into
+    // A run with libraryId writes every document and chunk into
     // exactly that library - checked at the document row and at the library_id chunk metadatum.
     Path file = tempDir.resolve("library-metadata.txt");
     Files.writeString(file, "some content");
@@ -426,26 +363,26 @@ class FileProcessingServiceTest {
     assertThat(metadata).containsEntry("library_id", targetLibrary.getId().toString());
     assertThat(metadata)
         .containsEntry("organization_id", targetLibrary.getOrganizationId().toString());
-    // #667: the chunk's Fundort rides along to the vector store.
+    // the chunk's Fundort rides along to the vector store.
     assertThat(metadata).containsEntry(ChunkingService.LOCATION_METADATA_KEY, "S. 2");
-    // #1056, ingestion-pipelines.md Querschnittsregel (d): every chunk names the verfahren that
+    // ingestion-pipelines.md, Querschnittsregel (d): every chunk names the verfahren that
     // produced it - without it, a bestand containing chunks from two pipelines is not feststellbar.
     assertThat(metadata)
         .containsEntry(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY, TikaFallbackPipeline.ID)
         .containsEntry(
             ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY,
             (int) TikaFallbackPipeline.VERSION);
-    // #1126: the extension routing actually resolved for this document rides along too.
+    // the extension routing actually resolved for this document rides along too.
     assertThat(metadata)
         .containsEntry(ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY, ".txt");
   }
 
   @Test
   void aDocumentThatCannotBeReadForFormatDetectionWritesNoRoutingKeyAtAll() throws IOException {
-    // Regression guard for the #1165 review: a transient read failure during routing (e.g. a
+    // Regression guard for #1165: a transient read failure during routing (e.g. a
     // virus scanner briefly locking the file after it was discovered) must not be persisted as a
     // routing verdict - PipelineReindexService would otherwise treat it as "confirmed fallback"
-    // forever instead of falling back to the pre-#1126 file-name approximation for it. Deleting
+    // forever instead of falling back to the earlier file-name approximation for it. Deleting
     // the file right before the re-index call reproduces the read failure inside
     // routedPipelineFor without needing to simulate an actual lock; every other collaborator that
     // would otherwise touch the file (parseDocument, chunkDocuments) is mocked.
@@ -479,8 +416,8 @@ class FileProcessingServiceTest {
   /**
    * A stand-in pipeline declaring an arbitrary passthrough key - stands in for e.g.
    * MailDocumentPipeline's mail_* keys without pulling that pipeline's own parsing into this
-   * service-level test (#1107: the mechanism under test is generic, not tied to any one pipeline's
-   * key names). {@code run} simply returns {@code chunksToReturn} - routed to via {@code
+   * service-level test (the mechanism under test is generic, not tied to any one pipeline's key
+   * names). {@code run} simply returns {@code chunksToReturn} - routed to via {@code
    * processRssEntry}, which calls the registry's fallback pipeline directly rather than through
    * content-based routing.
    */
@@ -512,10 +449,10 @@ class FileProcessingServiceTest {
 
   @Test
   void pipelineDeclaredPassthroughMetadataKeysRideAlongOnlyWhenThePipelineSetThem() {
-    // #1107: storeChunks no longer hardcodes which non-bookkeeping metadata keys ride along - it
+    // storeChunks no longer hardcodes which non-bookkeeping metadata keys ride along - it
     // reads DocumentPipeline#passthroughMetadataKeys() from the pipeline that actually produced the
     // chunk. A declared-but-absent key must still be skipped, and an undeclared key present on the
-    // chunk must never be copied (mirrors the pre-#1107 mail Kopfdaten test's own two assertions).
+    // chunk must never be copied (mirrors the earlier mail Kopfdaten test's own two assertions).
     var chunks =
         List.of(
             new org.springframework.ai.document.Document(
@@ -624,14 +561,14 @@ class FileProcessingServiceTest {
 
   @Test
   void aSingleChunkDocumentEmbedsByteIdenticalToBeforeIssue933() throws IOException {
-    // Issue #773 (whitelist itself) and #933 review ("gesplittet ja/nein"): a document
+    // The metadata-free whitelist plus the "gesplittet ja/nein" rule: a document
     // ChunkingService left as a single chunk gets NO contextual-title prefix at all - see
     // FileProcessingService#storeChunks's Javadoc for why (the comic-characters eval baseline
     // regressed once every chunk, including whole unsplit documents, got prefixed). What actually
     // gets sent to the embedding call (EmbeddingModel#getEmbeddingContent(Document), defaulting to
     // Document#getFormattedContent(MetadataMode.EMBED) for org.springframework.ai.openai.
-    // OpenAiEmbeddingModel, the only embedding path since #762) must therefore be byte-identical to
-    // the plain chunk text, exactly as it was before #933 ever existed.
+    // OpenAiEmbeddingModel, the only embedding path) must therefore be byte-identical to
+    // the plain chunk text, exactly as it is without any contextual prefix.
     Path file = tempDir.resolve("embed-content.txt");
     Files.writeString(file, "some content");
 
@@ -662,9 +599,9 @@ class FileProcessingServiceTest {
     assertThat(storedChunk.getText()).isEqualTo("the real chunk text to embed");
     // ...and MetadataMode.EMBED - what an OpenAiEmbeddingModel actually sends to be embedded -
     // must be exactly the chunk text too, byte for byte: CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX
-    // is the unchanged #773 whitelist, so a single-chunk document's embedding input is
+    // is the metadata-free whitelist, so a single-chunk document's embedding input is
     // bit-identical
-    // to before #933.
+    // to a prefix-free chunk.
     assertThat(storedChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
         .isEqualTo("the real chunk text to embed");
   }
@@ -672,8 +609,8 @@ class FileProcessingServiceTest {
   @Test
   void aMultiChunkDocumentEmbedsWithAHumanizedContextTitlePrefix() throws IOException {
     // The counterpart to the single-chunk test above: a document ChunkingService split into 2 or
-    // more chunks gets every chunk prefixed with a humanized title derived from file_name (#933,
-    // "Contextual Chunking") - see FileProcessingService#storeChunks's Javadoc for the split-count
+    // more chunks gets every chunk prefixed with a humanized title derived from file_name
+    // ("Contextual Chunking") - see FileProcessingService#storeChunks's Javadoc for the split-count
     // gate and ChunkContextTitle for the title-derivation contract.
     Path file = tempDir.resolve("001_embed-content.txt");
     Files.writeString(file, "some content");
@@ -723,14 +660,14 @@ class FileProcessingServiceTest {
 
   @Test
   void anUnknownMetadataKeyNeverReachesTheEmbeddingCall() throws IOException {
-    // #940 review, finding 1 (and finding 2 of the follow-up review: the first version of this
+    // the first version of this
     // test was tautological - storeChunks builds its own metadata map from scratch and never
     // copies a chunk's incoming metadata into it, so seeding the *input* chunk with an extra key
     // proved nothing about the formatter). The previous DefaultContentFormatter-based whitelist
     // excluded a known list of bookkeeping keys from MetadataMode.EMBED - a *blacklist* under the
     // hood (DefaultContentFormatter#metadataFilter does usableMetadataKeys.removeAll(excluded)),
     // so a metadata key added later without also being added to the exclusion list would silently
-    // re-enter the embedding text (the #773 contamination this whitelist exists to prevent). The
+    // re-enter the embedding text (the contamination this whitelist exists to prevent). The
     // per-chunk lambda formatters never read Document#getMetadata() at all - proven here by
     // mutating the metadata of the already-captured, already-formatter-attached stored chunk and
     // asserting the added key still never surfaces in getFormattedContent(EMBED).
@@ -787,7 +724,7 @@ class FileProcessingServiceTest {
 
   @Test
   void aConfluencePageIsStoredWithItsSpaceHierarchyVersionAndTitleAsChunkContext() {
-    // ADR-0023 (#1136): identity by the title-free page URL, the version as the pre-fetch change
+    // ADR-0023: identity by the title-free page URL, the version as the pre-fetch change
     // marker in last_modified_remote, space and ancestors in the context columns, the title as
     // file_name and embed prefix.
     String pageUrl = "https://wiki.behoerde.example/pages/viewpage.action?pageId=102";
@@ -823,7 +760,7 @@ class FileProcessingServiceTest {
     ArgumentCaptor<List<org.springframework.ai.document.Document>> chunkCaptor =
         ArgumentCaptor.forClass(List.class);
     verify(vectorStoreWriter).writeEmbeddedChunks(chunkCaptor.capture(), any());
-    // ingestion-pipelines.md, Querschnittsregel (b) / #1137: the page's place in the space is the
+    // ingestion-pipelines.md, Querschnittsregel (b): the page's place in the space is the
     // chunk-context prefix, so a chunk embeds with the outline it sits in
     org.springframework.ai.document.Document firstChunk = chunkCaptor.getValue().getFirst();
     assertThat(firstChunk.getFormattedContent(org.springframework.ai.document.MetadataMode.EMBED))
@@ -867,7 +804,7 @@ class FileProcessingServiceTest {
     verify(documentRepository)
         .markIndexedFromSource(
             existing.getId(), 2, Instant.parse("2026-09-01T08:00:00Z"), "sha256-of-page", "8");
-    // #1179 review: the new title and place become visible even though no chunk changed
+    // the new title and place become visible even though no chunk changed
     verify(documentRepository)
         .refreshConnectorTitleAndContext(
             existing.getId(), "Abschnitt 1.1 (umbenannt)", "ENG", null);
@@ -877,7 +814,7 @@ class FileProcessingServiceTest {
 
   @Test
   void aChangedConfluencePageIsUpdatedInPlaceSoItsAttachmentsKeepTheirParent() {
-    // ADR-0022, Entscheidung 4 (#1137): the page's attachments point at this row via
+    // ADR-0022, Entscheidung 4: the page's attachments point at this row via
     // parent_document_id, so a delete-and-recreate would fail fk_documents_parent. Only the chunks
     // are exchanged; title, context and the version marker move with the row, and the quota check
     // measures the delta (mirrors processRssEntry).
@@ -922,7 +859,7 @@ class FileProcessingServiceTest {
 
   @Test
   void anAttachmentTakesItsPlaceInTheSourceFromTheAttachmentAccess() throws IOException {
-    // #1137: the ten-argument overload records AttachmentAccess#sourceContext() on the row - a
+    // the ten-argument overload records AttachmentAccess#sourceContext() on the row - a
     // Confluence attachment's space and page hierarchy - next to its parent_document_id.
     Path file = tempDir.resolve("notizen.txt");
     Files.writeString(file, "Notizen");
@@ -969,7 +906,7 @@ class FileProcessingServiceTest {
 
   @Test
   void anRssEntryEmbedsWithItsHeadlineVerbatimEvenWithAnInteriorPeriod() {
-    // #940 review, finding 2: file_name for an RSS entry is a free-text headline, not a
+    // file_name for an RSS entry is a free-text headline, not a
     // filesystem-style "NNN_slug.ext" name - ChunkContextTitle#deriveTitle's extension-stripping
     // (originally lastIndexOf('.')) would truncate a headline containing a sentence-internal
     // period ("...zum 1. Januar" -> "...zum 1"). RSS entries use the headline verbatim instead of
@@ -1003,9 +940,9 @@ class FileProcessingServiceTest {
 
   @Test
   void anRssEntryWithoutATitleGetsNoContextPrefixAtAll() {
-    // #940 review, finding 2: without a feed-supplied title, file_name falls back to the entry's
+    // without a feed-supplied title, file_name falls back to the entry's
     // own URL (processRssEntry) - every entry of one feed then shares a domain/path prefix, the
-    // exact boilerplate-prefix pattern the #933 review found harmful for city-landmarks. A
+    // exact boilerplate-prefix pattern the eval measurement found harmful for city-landmarks. A
     // URL-shaped file_name therefore gets no prefix at all, even though the document split into
     // multiple chunks.
     String entryUrl = "https://example.gov/artikel/ohne-titel";
@@ -1036,13 +973,13 @@ class FileProcessingServiceTest {
 
   @Test
   void anRssAttachmentGetsAHumanizedTitleNotItsRawFileName() throws IOException {
-    // #940 delta review, finding 1: an RSS entry's *attachment* also carries DocumentSourceType.
+    // An RSS entry's *attachment* also carries DocumentSourceType.
     // RSS_FEED (routed through processUrlFile by RssFeedIndexingExecutor, same as
     // processUrlFileRecordsSourceTypeAndOriginEntryForAnAttachment above), but unlike the entry's
     // own body document (processRssEntry), its file_name is a real filesystem-style name, not a
     // headline - deriving the title from source type alone would have used the raw file name
     // verbatim here (extension and numbering prefix unstripped), exactly the measured-harmful
-    // pattern from #933's first measurement round. The title must therefore be humanized like any
+    // pattern the first measurement round found. The title must therefore be humanized like any
     // other file-name-bearing document, regardless of RSS_FEED as the source type.
     Path file = tempDir.resolve("001_satzung.pdf");
     Files.writeString(file, "pdf content");
@@ -1127,7 +1064,7 @@ class FileProcessingServiceTest {
     var parsed = List.of(new org.springframework.ai.document.Document("parsed text"));
     when(documentService.parseDocument(file)).thenReturn(parsed);
 
-    // #667: the location key joins the bookkeeping metadata and must stay out of the embed text
+    // the location key joins the bookkeeping metadata and must stay out of the embed text
     // too.
     var chunks =
         List.of(
@@ -1138,7 +1075,7 @@ class FileProcessingServiceTest {
     FileProcessingResult result = service.processFile(file, targetLibrary);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
-    // #1183: updated in place - only the chunks are exchanged, the row (and with it every
+    // updated in place - only the chunks are exchanged, the row (and with it every
     // attachment's parent_document_id) survives under its own id.
     verify(vectorStore).delete(documentIdFilter(existingDoc.getId()));
     verify(documentRepository, never()).delete(any(Document.class));
@@ -1150,7 +1087,7 @@ class FileProcessingServiceTest {
 
   @Test
   void aWriteFailureAfterTheOldChunksWereDeletedRemovesTheNewlyWrittenOnes() throws IOException {
-    // #1268: past the delete there is no untouched previous state left to preserve, so the failure
+    // past the delete there is no untouched previous state left to preserve, so the failure
     // path must clean up exactly as it does for a first-time document - otherwise a FAILED row
     // could keep partially written new chunks. The counterpart, a failure *before* the delete, is
     // covered by ChunkReplacementOrderIntegrationTest.
@@ -1189,8 +1126,8 @@ class FileProcessingServiceTest {
 
   @Test
   void reindexingKeepsTheLibraryAssignmentWhenTheTargetLibraryIsUnchanged() throws IOException {
-    // #419 acceptance criteria: re-indexing into the same library keeps the assignment. Since
-    // #1183 the row is updated in place (see reindexesDocumentWithChangedChecksum above), so this
+    // Re-indexing into the same library keeps the assignment: the row is updated in place
+    // (see reindexesDocumentWithChangedChecksum above), so this
     // pins that the updated row still carries the chosen library, not a dangling/absent one.
     Path file = tempDir.resolve("reindexed.txt");
     Files.writeString(file, "new content");
@@ -1226,8 +1163,8 @@ class FileProcessingServiceTest {
 
   @Test
   void sameFilePathAlreadyIndexedIntoADifferentLibraryIsLeftUntouched() throws IOException {
-    // #877 (Epic #826, Befund B6): identity is (library_id, file_path), not file_path alone - the
-    // pre-#877 dedup lookup was global and "moved" (deleted) a document another library already
+    // Identity is (library_id, file_path), not file_path alone - the
+    // earlier dedup lookup was global and "moved" (deleted) a document another library already
     // held the moment a second library indexed the same path. findByLibraryIdAndFilePath is scoped
     // to targetLibrary, so another library's existing document for this exact path is simply never
     // found here, and this run creates its own, independent document instead of touching it.
@@ -1374,7 +1311,7 @@ class FileProcessingServiceTest {
     verify(documentRepository, org.mockito.Mockito.atLeast(1)).save(docCaptor.capture());
     Document lastSaved = docCaptor.getAllValues().getLast();
     assertThat(lastSaved.getLibraryId()).isEqualTo(targetLibrary.getId());
-    // The final INDEXED transition is a conditional UPDATE (#632), not a second save.
+    // The final INDEXED transition is a conditional UPDATE, not a second save.
     verify(documentRepository)
         .markIndexedFromSource(
             eq(lastSaved.getId()), eq(1), any(), eq("sha256-of-pdf"), eq("2025-06-15 10:30"));
@@ -1383,7 +1320,7 @@ class FileProcessingServiceTest {
   @Test
   void processUrlFileChunkingProducingNoChunksIsRejectedInsteadOfIndexedWithZeroChunks()
       throws IOException {
-    // #1090 review finding 2: the post-chunking guard test above only covered processFile - this
+    // the post-chunking guard test above only covered processFile - this
     // mirrors it for processUrlFile, the second of the three ingest paths carrying the guard.
     Path file = tempDir.resolve("noise-only-remote.txt");
     Files.writeString(file, "content that survives parsing but not chunking");
@@ -1446,7 +1383,7 @@ class FileProcessingServiceTest {
 
   @Test
   void processUrlFileRecordsSourceTypeAndOriginEntryForAnAttachment() throws IOException {
-    // #468: an RSS attachment goes through the same processUrlFile chain as an HTTP_DIRECTORY
+    // an RSS attachment goes through the same processUrlFile chain as an HTTP_DIRECTORY
     // file, but with RSS_FEED recorded as its source_type and the entry it was found on recorded
     // as source_entry_url - the trace the issue's acceptance criteria require ("Zu jeder Anlage
     // ist der Eintrag erkennbar, aus dem sie stammt").
@@ -1487,7 +1424,7 @@ class FileProcessingServiceTest {
 
   @Test
   void theSameAttachmentUrlFromTwoEntriesBecomesOneDocument() throws IOException {
-    // #492 review, finding 5: the previous dedup test verified two processUrlFile calls against a
+    // the previous dedup test verified two processUrlFile calls against a
     // mock - the "one document" claim actually rests on findByLibraryIdAndFilePath, exercised here
     // with a
     // stateful repository double instead of a plain call-count assertion.
@@ -1510,7 +1447,7 @@ class FileProcessingServiceTest {
               savedByFilePath.put(doc.getFilePath(), doc);
               return doc;
             });
-    // The final INDEXED transition no longer goes through save() (#632) - the stateful double
+    // The final INDEXED transition no longer goes through save() - the stateful double
     // has to apply it itself, the same way a real conditional UPDATE would, or the second call's
     // dedup check (checksum + INDEXED status) would never see a matching row.
     when(documentRepository.markIndexedFromSource(any(), anyInt(), any(), any(), any()))
@@ -1644,7 +1581,7 @@ class FileProcessingServiceTest {
   @Test
   void processUrlFileUpdatesAChangedDocumentInPlaceInsteadOfDeletingAndRecreatingIt()
       throws IOException {
-    // #1183: mirrors processRssEntryUpdatesAChangedEntryInPlaceInsteadOfDeletingAndRecreatingIt -
+    // mirrors processRssEntryUpdatesAChangedEntryInPlaceInsteadOfDeletingAndRecreatingIt -
     // a delete-and-recreate here would fail fk_documents_parent the moment this document (itself
     // possibly an attachment reprocessed via AttachmentIndexer, or a Mail-in-Mail attachment with
     // its own children) has descendant rows pointing at it via parent_document_id.
@@ -1696,7 +1633,7 @@ class FileProcessingServiceTest {
 
   @Test
   void processUrlFileRemovesOrphanedChunksWhenTheDocumentIsDeletedWhileItRuns() throws IOException {
-    // Review of PR #633: FileProcessingServiceIntegrationTest exercises this window end-to-end
+    // FileProcessingServiceIntegrationTest exercises this window end-to-end
     // for processFile, but processUrlFile's own conditional UPDATE - DocumentRepository
     // #markIndexedFromSource - never had a unit test simulating a concurrent delete via a
     // zero-rows-updated result, the same way processUploadedFileAsync's tests do for the upload
@@ -1736,7 +1673,7 @@ class FileProcessingServiceTest {
     verify(vectorStore).delete(documentIdFilter(savedDocCaptor.getValue().getId()));
     // The initial insert is the only save() call - the final transition never falls back to one.
     verify(documentRepository, org.mockito.Mockito.times(1)).save(any(Document.class));
-    // #636 review round 2, item 2: the deletion race is counted as skipped, not silently dropped -
+    // the deletion race is counted as skipped, not silently dropped -
     // processed + failed + skipped must still sum to the number of documents seen.
     assertThat(
             meterRegistry.get("opaa.indexing.documents").tag("result", "skipped").counter().count())
@@ -1931,7 +1868,7 @@ class FileProcessingServiceTest {
 
   @Test
   void processRssEntryRejectsAnEntryWhoseTextChunksDownToNothing() {
-    // Pre-existing gap closed with #1056: this path discarded the pipeline outcome entirely and
+    // This path discarded the pipeline outcome entirely and
     // left such an entry INDEXED with zero chunks - the same silent empty index the file paths
     // already guard against, only reached through a feed instead of a file.
     String entryUrl = "https://example.gov/artikel/leer";
@@ -1974,7 +1911,7 @@ class FileProcessingServiceTest {
 
   @Test
   void processFileRemovesWrittenChunksWhenTheFinalUpdateThrows() throws IOException {
-    // #636 review, item 2: the connector paths' own catch block used to mark the row FAILED
+    // the connector paths' own catch block marks the row FAILED
     // without ever removing chunks storeChunks had already written - the upload path's own catch
     // block (processUploadedFileAsyncMarksTheDocumentFailedAndRemovesAnyWrittenChunksWhenTheFinal
     // UpdateThrows below) already got this right; the connector paths did not.
@@ -2014,11 +1951,11 @@ class FileProcessingServiceTest {
             eq(docCaptor.getValue().getId()), org.mockito.ArgumentMatchers.isNull());
   }
 
-  // #434/#589: processUploadedFile is now processUploadedFileAsync - it no longer creates or
+  // processUploadedFile is now processUploadedFileAsync - it no longer creates or
   // deletes the document row itself. LibraryDocumentService creates the PENDING row synchronously
   // and hands this method only the row's id and the already-stored file; this method re-reads the
   // row, then transitions it via the conditional DocumentRepository#markIndexed/#markFailed
-  // updates (PR #589 review, finding 1) rather than a plain entity save - see those methods'
+  // updates rather than a plain entity save - see those methods'
   // Javadoc for why a save would be unsafe here.
 
   private Document pendingUploadDocument(String fileName) {
@@ -2081,29 +2018,9 @@ class FileProcessingServiceTest {
   }
 
   @Test
-  void processUploadedFileAsyncMarksTheDocumentFailedForATextlessScanPdf() throws IOException {
-    // #1090 review finding 4: the scan branch of the upload path had no coverage of its own.
-    Path file = tempDir.resolve("scan-upload.pdf");
-    Files.writeString(file, "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection");
-
-    Document doc = pendingUploadDocument("scan-upload.pdf");
-    when(documentRepository.findById(doc.getId())).thenReturn(Optional.of(doc));
-    var parsed = List.of(new org.springframework.ai.document.Document(""));
-    when(documentService.parseDocument(file)).thenReturn(parsed);
-    when(documentRepository.markFailed(doc.getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE))
-        .thenReturn(1);
-
-    service.processUploadedFileAsync(doc.getId(), file);
-
-    verify(documentRepository).markFailed(doc.getId(), DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE);
-    verify(chunkingService, never()).chunkDocuments(anyString(), any());
-    verify(vectorStore, never()).add(any());
-  }
-
-  @Test
   void processUploadedFileAsyncMarksTheDocumentFailedWhenChunkingProducesNoChunks()
       throws IOException {
-    // #1090 review finding 1: the post-chunking guard applies to the upload path too, not only the
+    // the post-chunking guard applies to the upload path too, not only the
     // connector paths.
     Path file = tempDir.resolve("noise-upload.txt");
     Files.writeString(file, "content that survives parsing but not chunking");
@@ -2147,13 +2064,13 @@ class FileProcessingServiceTest {
     // anything to remove (chunkDocuments itself threw here, before storeChunks could run).
     verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
     verify(vectorStore).delete(documentIdFilter(doc.getId()));
-    // Unlike the synchronous #420 design, the row survives a failed upload - it is never deleted.
+    // The row survives a failed upload - it is never deleted.
     verify(documentRepository, never()).delete(any(Document.class));
   }
 
   @Test
   void processUploadedFileAsyncDoesNothingWhenTheDocumentNoLongerExists() throws IOException {
-    // #434: the row can be deleted (e.g. by the uploader) between the synchronous PENDING save
+    // the row can be deleted (e.g. by the uploader) between the synchronous PENDING save
     // and this method actually running on uploadTaskExecutor - nothing left to update.
     Path file = tempDir.resolve("deleted-before-processing.pdf");
     Files.writeString(file, "content");
@@ -2170,7 +2087,7 @@ class FileProcessingServiceTest {
   @Test
   void processUploadedFileAsyncRemovesOrphanedChunksWhenTheDocumentIsDeletedWhileItRuns()
       throws IOException {
-    // PR #589 review, finding 1 - reproduces exactly the window the fix closes: the document row
+    // Reproduces exactly the window the ordering closes: the document row
     // is deleted (e.g. by a concurrent LibraryDocumentService#deleteDocument) after this method's
     // own findById above, but before storeChunks/markIndexed run below. Simulated as a
     // zero-rows-updated result from markIndexed, the same outcome a real concurrent DELETE would
@@ -2240,7 +2157,7 @@ class FileProcessingServiceTest {
 
   @Test
   void sameUrlAlreadyIndexedIntoADifferentLibraryIsLeftUntouched() throws IOException {
-    // #877 (Epic #826, Befund B6), URL path counterpart of the filesystem test above: another
+    // URL path counterpart of the filesystem test above: another
     // library already has a document for this exact URL, but findByLibraryIdAndFilePath is scoped
     // to targetLibrary and never finds it - this run creates its own, independent document.
     Path file = tempDir.resolve("independent-url.pdf");
@@ -2288,8 +2205,8 @@ class FileProcessingServiceTest {
   }
 
   /**
-   * A stand-in pipeline reporting a {@link DiscoveredAttachment} - #1181 (ADR-0022, part 2): no
-   * real pipeline reports one yet, so this is the only way to exercise the wiring between {@code
+   * A stand-in pipeline reporting a {@link DiscoveredAttachment} (ADR-0022, Teil 2): no real
+   * pipeline reports one yet, so this is the only way to exercise the wiring between {@code
    * FileProcessingService} and {@code DocumentPipelineRunner}. The cleanup contract itself (outcome
    * branch, exception branch, a failing delete never turning success into failure) is covered once,
    * generically, in {@code DocumentPipelineRunnerTest}.
@@ -2322,9 +2239,9 @@ class FileProcessingServiceTest {
 
   @Test
   void aDiscoveredAttachmentsTempFileIsDeletedAfterProcessing() throws IOException {
-    // #1181 (ADR-0022, part 2): FileProcessingService routes DocumentPipeline#run through
+    // ADR-0022, Teil 2: FileProcessingService routes DocumentPipeline#run through
     // DocumentPipelineRunner, which owns deleting a reported attachment's temp file - there is no
-    // attachment path yet to take that ownership instead (ADR-0022, part 3, #1182).
+    // attachment path yet to take that ownership instead (ADR-0022, part 3).
     Path attachmentTempFile = tempDir.resolve("discovered-attachment.tmp");
     Files.writeString(attachmentTempFile, "attachment bytes");
     var attachment = new DiscoveredAttachment("anlage.pdf", attachmentTempFile, "application/pdf");

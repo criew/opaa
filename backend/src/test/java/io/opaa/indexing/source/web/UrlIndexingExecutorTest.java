@@ -43,7 +43,7 @@ class UrlIndexingExecutorTest {
           new CrawlProperties(0, 0, 0),
           mock(io.opaa.library.LibraryFolderService.class));
 
-  // --- #550 review: blank lastModified must never be treated as "unchanged" -----------------
+  // --- blank lastModified must never be treated as "unchanged" -----------------
 
   @Test
   void isUnchanged_treatsBlankLastModifiedAsUnknownAndAlwaysRefetches() {
@@ -88,14 +88,14 @@ class UrlIndexingExecutorTest {
         .isTrue();
   }
 
-  // --- #877 (Epic #826, Befund B6): the lookup itself is scoped to the target library ---------
+  // --- the lookup itself is scoped to the target library ---------
 
   @Test
   void isUnchanged_returnsFalseWhenTargetLibraryDiffersFromTheExistingDocuments() {
     // A run indexing the same source into a different library must not skip the document just
     // because its lastModified is unchanged there - findByLibraryIdAndFilePath is scoped to
-    // libraryB, so libraryA's existing document is simply never found here, unlike the pre-#877
-    // global findByFilePath lookup this test used to exercise a library-equality check against.
+    // libraryB, so libraryA's existing document is simply never found here, unlike the earlier
+    // global findByFilePath lookup a library-equality check would be needed against.
     // libraryA's own document is rebuilt and stubbed here (not just libraryB's empty lookup) so
     // this test would fail loudly if the executor ever queried the wrong library id.
     KnowledgeLibrary libraryA = libraryWithId(UUID.randomUUID());
@@ -155,7 +155,7 @@ class UrlIndexingExecutorTest {
     assertThat(UrlIndexingExecutor.hasFileExtension("https://example.com/doc.pdf#page=2")).isTrue();
   }
 
-  // --- #267: SSRF target validation, wired through a real crawler/downloader -----------------
+  // --- SSRF target validation, wired through a real crawler/downloader -----------------
 
   @Test
   void aRunAgainstALoopbackTargetFailsWithAGermanSsrfMessageWhenValidationIsEnabled() {
@@ -185,7 +185,7 @@ class UrlIndexingExecutorTest {
             DocumentSourceType.HTTP_DIRECTORY,
             null,
             // Loopback - never reachable from outside the server itself, exactly the class of
-            // target #267 exists to reject.
+            // target the SSRF check rejects.
             "http://127.0.0.1:1/dir/",
             null,
             null,

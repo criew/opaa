@@ -26,7 +26,7 @@ import org.springframework.ai.document.Document;
 
 /**
  * Turns a Confluence page's storage-format body (XHTML with {@code ac:}/{@code ri:} macro elements,
- * identical for Cloud and Data Center) into heading-section chunks (#1137, ADR-0023;
+ * identical for Cloud and Data Center) into heading-section chunks (ADR-0023;
  * docs/features/ingestion-pipelines.md, Teil 3, Punkt 6). Not a file format: the pipeline claims no
  * extension and is invoked by {@code FileProcessingService#processConfluencePage} directly, the way
  * an RSS entry's text goes to the fallback pipeline - the executor hands the body over as extracted

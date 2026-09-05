@@ -22,8 +22,8 @@ import org.springframework.data.domain.Pageable;
 
 /**
  * Unit coverage of the one-time inventory check from ingestion-pipelines.md, Teil 3, Punkt 1
- * "Scan-Erkennung und Bestandsprüfung" (#1055/#1090): finding already-INDEXED documents of one
- * organization with null or auffällig wenigen Chunks, paged and carrying their library's name.
+ * "Scan-Erkennung und Bestandsprüfung": finding already-INDEXED documents of one organization with
+ * null or auffällig wenigen Chunks, paged and carrying their library's name.
  */
 class LowChunkDocumentAuditServiceTest {
 
