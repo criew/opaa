@@ -245,6 +245,25 @@ class ContextPrefixRerunIntegrationTest {
   }
 
   @Test
+  void theRunHonoursTheIngestsDecisionThatThisDocumentTypeGetsNoPrefixAtAll() throws IOException {
+    LibraryMetadataFieldValue value = prefixEffectiveFassungField();
+    Document document = indexed("ohne-praefix.md");
+    setFassung(document, value);
+    // What the ingest records for an RSS entry without a headline: no prefix for this document,
+    // whatever its file name would suggest. Re-created here rather than through a feed run.
+    jdbcTemplate.update(
+        "UPDATE documents SET context_prefix_eligible = false, context_prefix_stamp = NULL"
+            + " WHERE id = ?",
+        document.getId());
+
+    rerunService.rerunBatch(Organization.DEFAULT_ID, library.getId(), 10);
+
+    assertThat(fullTextMatches(document, "Fassung"))
+        .as("the Nachlauf must not hand out a prefix the ingest deliberately withheld")
+        .isZero();
+  }
+
+  @Test
   void aReRunDocumentCarriesTheSameIndexedTextAsAFreshlyIngestedOne() throws IOException {
     LibraryMetadataFieldValue value = prefixEffectiveFassungField();
     Document reRun = indexed("gleichstand-a.md");
