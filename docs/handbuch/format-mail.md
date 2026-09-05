@@ -79,8 +79,9 @@ Die Mail-Pipeline ist die einzige mit zusätzlichen Metadatenfeldern:
 | `mail_subject` | Betreff |
 | `mail_date` | Zeitstempel in ISO-Form, auf ganze Sekunden gekürzt, damit die Sortierung stabil ist |
 
-Diese Felder erscheinen in der Fundstellenanzeige der Antwort. Eine Filterung nach Absender,
-Zeitraum oder Betreff in der Suche gibt es noch nicht.
+Diese Felder erscheinen in der Fundstellenanzeige der Antwort. Eine Filterung nach Absender oder
+Betreff in der Suche gibt es noch nicht; nach dem Zeitraum lässt sich über das Kernfeld Datum/Stand
+filtern, das aus dem `Date`-Kopf ermittelt wird (siehe [Metadaten](metadaten.md)).
 
 **Dokumenteigenschaften:** Betreff als Titel, der `Date`-Kopf als Dokumentdatum mit höchstem
 Rang für das Metadatenschema.
