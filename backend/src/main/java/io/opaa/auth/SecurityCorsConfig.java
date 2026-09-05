@@ -20,6 +20,9 @@ public class SecurityCorsConfig {
         Arrays.stream(origins.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList());
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("Content-Type", "Authorization", "X-Requested-With"));
+    // ADR-0025: the SPA tells a token of an unknown (disabled) issuer apart from an expired one by
+    // the error_description in this header - readable on the direct CORS path only when exposed.
+    config.setExposedHeaders(List.of("WWW-Authenticate"));
     config.setAllowCredentials(false);
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

@@ -1,9 +1,11 @@
 package io.opaa.auth;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManagerResolver;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -18,9 +20,13 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class OidcSecurityConfig {
 
   private final UserService userService;
+  private final AuthenticationManagerResolver<HttpServletRequest> oidcAuthenticationManagerResolver;
 
-  public OidcSecurityConfig(UserService userService) {
+  public OidcSecurityConfig(
+      UserService userService,
+      AuthenticationManagerResolver<HttpServletRequest> oidcAuthenticationManagerResolver) {
     this.userService = userService;
+    this.oidcAuthenticationManagerResolver = oidcAuthenticationManagerResolver;
   }
 
   @Bean
@@ -61,7 +67,10 @@ public class OidcSecurityConfig {
                     .authenticated()
                     .anyRequest()
                     .permitAll())
-        .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}))
+        // ADR-0025: one AuthenticationManager per enabled provider, resolved per request from the
+        // token's issuer (io.opaa.auth.oidc.OidcProviderRegistry) - not a single static JwtDecoder.
+        .oauth2ResourceServer(
+            oauth2 -> oauth2.authenticationManagerResolver(oidcAuthenticationManagerResolver))
         .addFilterAfter(
             new UserProvisioningFilter(userService), BearerTokenAuthenticationFilter.class)
         .build();
