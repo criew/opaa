@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.web;
 
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.pipeline.html.HtmlContentRoots;
 import io.opaa.indexing.source.attachment.AttachmentCandidate;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
@@ -12,21 +13,22 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
 /**
- * Fetches a single RSS entry's detail page and reduces it to its main content's text plus
- * attachment candidates, split out of {@code RssFeedIndexingExecutor}. Package-private - an
- * implementation detail of the executor, not a new public API.
- *
- * <p>{@code nav}/{@code header}/{@code footer}/menu-ish elements are stripped before the configured
- * {@link IndexingProperties.Rss#mainContentSelector()} is applied, so boilerplate inside the
- * matched main element does not survive either and is never considered for attachments.
+ * Fetches a single RSS entry's detail page and reduces it to the HTML of its main content plus
+ * attachment candidates, split out of {@code RssFeedIndexingExecutor}. The reduction is {@link
+ * HtmlContentRoots}' - the same boilerplate stripping and root selection the HTML pipeline applies
+ * to a file, here with the configured {@link IndexingProperties.Rss#mainContentSelector()} - so
+ * boilerplate never survives into the index and is never considered for attachments.
  */
 public class DetailPageExtractor {
 
@@ -43,8 +45,11 @@ public class DetailPageExtractor {
     this.requestPolicy = requestPolicy;
   }
 
-  /** An entry's detail page, reduced to its main content's text and attachment candidates. */
-  public record DetailPage(String mainText, List<AttachmentCandidate> attachments) {}
+  /**
+   * An entry's detail page reduced to its content roots' HTML - empty when they carry no visible
+   * text - and the attachment candidates found in them, each once.
+   */
+  public record DetailPage(String mainHtml, List<AttachmentCandidate> attachments) {}
 
   /**
    * Fetches {@code entryUrl} and extracts its main content, following redirects only within {@code
@@ -103,22 +108,23 @@ public class DetailPageExtractor {
       // hardcoded StandardCharsets.UTF_8, which silently mangles e.g. ISO-8859-1 into U+FFFD.
       Document htmlDoc =
           Jsoup.parse(new ByteArrayInputStream(pageBytes), charsetNameFrom(contentType), entryUrl);
-      // nav/header/footer/menu-ish elements never survive into the index, regardless of whether
-      // they sit inside or outside the matched main element below.
-      htmlDoc
-          .select(
-              "nav, header, footer, [role=navigation], [role=banner], [role=contentinfo],"
-                  + " .nav, .navigation, .menu, .breadcrumb, script, style, noscript")
-          .remove();
-
-      Element main = htmlDoc.selectFirst(properties.mainContentSelector());
-      Element content = main != null ? main : htmlDoc.body();
-      if (content == null) {
+      List<Element> roots = HtmlContentRoots.select(htmlDoc, properties.mainContentSelector());
+      if (roots.isEmpty()) {
         return new DetailPage("", List.of());
       }
-      List<AttachmentCandidate> attachments =
-          properties.attachmentProfile().findAttachments(content, URI.create(entryUrl));
-      return new DetailPage(content.text(), attachments);
+      // Serialized verbatim: pretty-printing would insert whitespace inside inline text, and the
+      // pipeline decodes any entity again, so the output charset is UTF-8 regardless of the page's.
+      htmlDoc.outputSettings().prettyPrint(false).charset(StandardCharsets.UTF_8);
+      Set<AttachmentCandidate> attachments = new LinkedHashSet<>();
+      StringBuilder html = new StringBuilder();
+      boolean hasText = false;
+      for (Element root : roots) {
+        attachments.addAll(
+            properties.attachmentProfile().findAttachments(root, URI.create(entryUrl)));
+        hasText |= !root.text().isBlank();
+        html.append(root.outerHtml()).append('\n');
+      }
+      return new DetailPage(hasText ? html.toString() : "", List.copyOf(attachments));
     }
   }
 

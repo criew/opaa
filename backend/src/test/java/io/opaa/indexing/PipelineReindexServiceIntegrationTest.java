@@ -421,7 +421,8 @@ class PipelineReindexServiceIntegrationTest {
     assertThat(marked.getLastModifiedRemote()).isNull();
     assertThat(
             reindexService
-                .reindexBatch(Organization.DEFAULT_ID, htmlPipeline.id(), htmlPipeline.version(), 10)
+                .reindexBatch(
+                    Organization.DEFAULT_ID, htmlPipeline.id(), htmlPipeline.version(), 10)
                 .isEmpty())
         .isTrue();
   }

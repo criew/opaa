@@ -812,7 +812,7 @@ adressieren. Der Zuschnitt folgt den Überschriften h1–h3.
 
 #### Umgesetzt (#1059)
 
-`HtmlDocumentPipeline` (`id` `html`, Version 1) beansprucht `.html` in der
+`HtmlDocumentPipeline` (`id` `html`, Version 1; seit #1315 Version 2, siehe unten) beansprucht `.html` in der
 `DocumentPipelineRegistry`; `.html` ist dafür neu in `SupportedDocumentFormats` zugelassen, über
 den unzweideutigen Tika-Medientyp `text/html` (bzw. `application/xhtml+xml`) — wie bei PDF/DOCX ein
 strenger, inhaltsbasierter Treffer, keine text-tolerante Sonderregel wie bei Markdown/Klartext/CSV.
@@ -884,15 +884,35 @@ Endung müssen passen) deshalb **vor** jeder strengen Erkennung, nicht nur als R
 eine solche Datei stillschweigend über die HTML-Pipeline laufen, ohne dass auch nur ein
 `FORMAT_MISMATCH` gemeldet würde.
 
-**Grenze: Feed-Detailseiten laufen weiterhin über die Fallback-Pipeline, nicht über diese.**
-Der RSS-Konnektor übergibt den bereits extrahierten Haupttext eines RSS-Eintrags als Text an
-`FileProcessingService#ingest`, der ihn direkt an die Tika-Fallback-Pipeline weiterreicht (ADR-0017,
-Entscheidung 2) — dieser Text war nie
-eine Datei und durchläuft das inhaltsbasierte Routing der `DocumentPipelineRegistry` gar nicht, kann
-diese Pipeline also grundsätzlich nicht erreichen. Nur echte `.html`-Dateien — Verzeichnis-Crawl,
-Dateisystem oder ein Anhang eines RSS-Eintrags — profitieren von `HtmlDocumentPipeline`.
+**Feed-Detailseiten laufen seit #1315 ebenfalls über diese Pipeline.** Bis dahin übergab der
+RSS-Konnektor den bereits extrahierten Haupttext als Text an die Tika-Fallback-Pipeline, und eine
+Pressemitteilung mit Zwischenüberschriften wurde in Token-Fenster geschnitten, dieselbe Seite als
+`.html`-Datei in Abschnitte. Jetzt reduziert `DetailPageExtractor` die Seite über die geteilten
+`HtmlContentRoots` (Boilerplate- und Hauptinhalt-Selektoren stehen einmal, der Feed-Konnektor
+setzt nur seinen konfigurierbaren Selektor ein) und übergibt das HTML der Inhaltsbereiche per
+`DocumentIngest#pipelineId` an `HtmlDocumentPipeline` — kein inhaltsbasiertes Routing, sondern der
+direkte Aufruf, den der Confluence-Konnektor bereits nutzt. Anlagen-Erkennung und
+Boilerplate-Entfernung bleiben im Konnektor. RSS-Chunks tragen `pipeline_id=html`; der
+Pipeline-Nachzug (`PipelineReindexService`) erfasst Feed-Einträge deshalb wie jedes andere
+Netzdokument (Vormerkung für den nächsten Lauf), die Sonderregel „RSS ist immer Fallback" ist
+entfallen. Eine Titelzeile liest die Pipeline nur aus Dateien, nicht aus übergebenem Text: Eine
+Meldung benennt andere Dokumente als sich selbst (dieselbe Regel, die der Fallback für Textquellen
+anwendete).
 
-**Baseline unberührt** — der bestehende Evaluierungskorpus enthält keine HTML-Dokumente.
+**Ein XHTML-Ereignisleser für HTML und Confluence (#1315, Version 2).** `XhtmlEventBuilder` im
+Paket `pipeline` erzeugt die Heading/Paragraph-Ereignisse für `HtmlDocumentPipeline` und
+`ConfluenceDocumentPipeline`; Blocktags, Whitespace-Normalisierung, Tabellen- und Listenrendering
+stehen einmal. Die Confluence-Makroregeln sind ein `ElementRule`-Hook (`ConfluenceElementRule`),
+der vor dem eingebauten Lauf befragt wird. Für HTML-Dateien ändert sich damit der Zuschnitt
+(daher Version 2): Tabellen werden eine Zeile je Tabellenzeile mit „ | "-getrennten Zellen,
+Listen eine Zeile je Eintrag mit Verschachtelungsmarker, `pre` behält Zeilenumbrüche, geschützte
+Leerzeichen zählen als Leerraum. Der Confluence-Zuschnitt ist unverändert (Version 1, Golden-Chunks
+der Tests unverändert).
+
+**Baseline unberührt** — der bestehende Evaluierungskorpus enthält keine HTML-Dokumente. Der
+Versionsschritt verschiebt `ingestionPipelineFingerprint` (`html:1` → `html:2`); die sechs
+Baselines sind als reine Fixpunkt-Ergänzung nachgezogen (Rohvektor-Messvertrag 7 → 8, Pipeline 9 →
+10), siehe „Baseline-Aktualisierung als Schritt jedes Format-Issues".
 
 ### 5. EML und MSG
 
@@ -1248,10 +1268,13 @@ Makro-Inhalt Seiteninhalt ist** und welcher zur Laufzeit aus anderen Quellen zus
 
 `ConfluenceDocumentPipeline` (`id` `confluence`, Version 1) beansprucht **kein** Format in der
 `DocumentPipelineRegistry` — der Confluence-Konnektor benennt sie im `DocumentIngest`
-(`pipelineId`), und `FileProcessingService#ingest` ruft sie über `pipelineById` direkt auf, so wie ein Feed-Eintrag den Fallback direkt erhält; ohne registrierte
-Pipeline (reduzierte Testregistry) nimmt der Fallback den Körper als Text. Der Vollabgleich (#1136)
+(`pipelineId`), und `FileProcessingService#ingest` ruft sie über `pipelineById` direkt auf, so wie
+seit #1315 auch ein Feed-Eintrag die HTML-Pipeline benennt; ohne registrierte Pipeline ist das ein
+Verdrahtungsfehler. Der Vollabgleich (#1136)
 übergibt den Storage-Körper unverändert; die Pipeline liest ihn mit dem XML-Parser von Jsoup, damit
-die Makro-Elemente erhalten bleiben (der HTML-Parser verwirft namensraum-präfigierte Elemente).
+die Makro-Elemente erhalten bleiben (der HTML-Parser verwirft namensraum-präfigierte Elemente). Das
+XHTML selbst liest seit #1315 der mit der HTML-Pipeline geteilte `XhtmlEventBuilder`; die
+Makro-Elemente behandelt `ConfluenceElementRule` als dessen Hook.
 
 **Regelwerk je Makro-Klasse** (`ConfluenceMacroRules`). Die Trennlinie ist, wo der Inhalt lebt:
 

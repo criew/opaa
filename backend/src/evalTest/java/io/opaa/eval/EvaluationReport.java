@@ -77,8 +77,13 @@ public record EvaluationReport(
    * filter} inside {@code similaritySearch}, so a run with and one without the filter measure
    * different things for the {@code metadata_filter} class. Unlike the two fingerprint bumps above
    * this one moves measured values (the {@code verwaltung} baselines were re-drawn).
+   *
+   * <p><b>Bumped to 8 by issue #1315:</b> {@code HtmlDocumentPipeline#version()} moved 1 → 2 (the
+   * shared XHTML event walk renders tables and lists with their structure), shifting the collective
+   * fingerprint; no corpus in this repository routes a document through that pipeline, so this is a
+   * fingerprint-only bump like the Mail ones above.
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 7;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 8;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(

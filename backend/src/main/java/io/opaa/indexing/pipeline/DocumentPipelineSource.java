@@ -5,8 +5,8 @@ import java.util.Locale;
 
 /**
  * What a {@link DocumentPipeline} is handed: either a file on disk, or text that was already
- * extracted upstream and never had a file (an RSS entry's main content, see {@code
- * FileProcessingService#ingest}).
+ * extracted upstream and never had a file (a feed entry's main content as HTML, a Confluence page
+ * body - see {@code FileProcessingService#ingest}).
  *
  * <p>Exactly one of {@link #file()} and {@link #extractedText()} is non-{@code null} - enforced in
  * the compact constructor, so a pipeline can branch on {@code file() != null} without having to
@@ -17,12 +17,13 @@ import java.util.Locale;
  * @param detectedExtension the extension {@link DocumentPipelineRegistry} actually routed on (see
  *     {@link DocumentPipelineRegistry.Routed#detectedExtension()}), or {@code null} when routing
  *     did not resolve one (detection failed, or this source never went through the registry at all
- *     - the RSS entry body's {@link #ofExtractedText}). A pipeline handling more than one format
- *     (e.g. {@code TabularDocumentPipeline}'s XLSX/CSV/ODS) dispatches on this, not on {@code
- *     fileName}'s own suffix - a document is admitted and routed by its <em>detected</em> content ,
- *     and a pipeline that re-derived the format from the name alone would silently reintroduce the
- *     name-trusting bug the registry exists to avoid (a genuine XLSX misnamed {@code .csv} routes
- *     here on content, but would mis-parse as CSV if this field were ignored).
+ *     - the {@link #ofExtractedText} of a feed entry or a Confluence page). A pipeline handling
+ *     more than one format (e.g. {@code TabularDocumentPipeline}'s XLSX/CSV/ODS) dispatches on
+ *     this, not on {@code fileName}'s own suffix - a document is admitted and routed by its
+ *     <em>detected</em> content , and a pipeline that re-derived the format from the name alone
+ *     would silently reintroduce the name-trusting bug the registry exists to avoid (a genuine XLSX
+ *     misnamed {@code .csv} routes here on content, but would mis-parse as CSV if this field were
+ *     ignored).
  * @param attachmentIndex the 0-based extraction position of the single attachment this run is
  *     interested in, or {@code null} for an ordinary run that wants all of them. A pipeline that
  *     reports {@link DocumentPipelineResult#discoveredAttachments()} must honour it: it numbers

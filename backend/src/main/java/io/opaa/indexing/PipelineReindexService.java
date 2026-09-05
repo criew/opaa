@@ -85,7 +85,6 @@ public class PipelineReindexService {
             + ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY
             + "')::int, ?) AS pipeline_version, "
             + "       d.file_name AS file_name, "
-            + "       d.source_type AS source_type, "
             + "       v.metadata->>'"
             + ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY
             + "' AS routing_extension, "
@@ -105,7 +104,7 @@ public class PipelineReindexService {
             + "LEFT JOIN chunk_full_text f ON f.chunk_id = v.id AND f.content_tsv_version = ? "
             + "WHERE v.metadata->>'library_id' IS NOT NULL "
             + "  AND v.metadata->>'organization_id' = ? "
-            + "GROUP BY 1, 2, 3, 4, 5, 6";
+            + "GROUP BY 1, 2, 3, 4, 5";
 
     Map<UUID, long[]> byLibrary = new HashMap<>();
     jdbcTemplate.query(
@@ -115,29 +114,26 @@ public class PipelineReindexService {
           String pipelineId = rs.getString("pipeline_id");
           int version = rs.getInt("pipeline_version");
           String fileName = rs.getString("file_name");
-          String sourceType = rs.getString("source_type");
           String routingExtension = rs.getString("routing_extension");
           long count = rs.getLong("chunk_count");
           long tsvStale = rs.getLong("tsv_stale_count");
           long[] counters = byLibrary.computeIfAbsent(libraryId, key -> new long[3]);
           counters[0] += count;
-          boolean isRss = DocumentSourceType.RSS_FEED.name().equals(sourceType);
           if (routingExtension != null) {
             // Exact via pipelineIdForRoutingExtension: stale in both directions - out of the
             // fallback, out of another specialized pipeline, or out of a pipeline_id this
             // deployment does not register at all - since resolving the target needs only the
-            // stored routing key. Never for an RSS entry (ADR-0017, decision 2).
+            // stored routing key.
             String targetPipelineId =
                 pipelineRegistry.pipelineIdForRoutingExtension(routingExtension);
-            if (!isRss && !pipelineId.equals(targetPipelineId)) {
+            if (!pipelineId.equals(targetPipelineId)) {
               counters[2] += count;
               return;
             }
             Short currentVersion = currentVersions.get(pipelineId);
             if (currentVersion == null) {
-              // Routing-current but a pipeline_id this deployment does not register - only
-              // reachable for an RSS entry. Counted in the total only, so it is visible without
-              // being promised.
+              // Routing-current but a pipeline_id this deployment does not register. Counted in
+              // the total only, so it is visible without being promised.
               return;
             }
             if (version >= currentVersion) {
@@ -158,8 +154,7 @@ public class PipelineReindexService {
             return;
           }
           boolean routingStale =
-              !isRss
-                  && pipelineId.equals(pipelineRegistry.fallbackPipeline().id())
+              pipelineId.equals(pipelineRegistry.fallbackPipeline().id())
                   && fileName != null
                   && !pipelineId.equals(currentPipelineIdForFileName(fileName));
           if (!routingStale && version >= currentVersion) {
@@ -406,11 +401,9 @@ public class PipelineReindexService {
             // The routing gap: a document whose routing key or, absent that, its file name names
             // pipelineId as claiming it today, but whose chunks still carry a different
             // pipeline_id - stale regardless of the stored pipeline's own version, since no request
-            // naming that stored pipeline would select it. Excludes RSS_FEED, whose body always
-            // goes to the fallback pipeline regardless of its name (ADR-0017, decision 2).
-            + "       OR ("
+            // naming that stored pipeline would select it.
+            + "       OR "
             + misrouted.sql()
-            + "            AND COALESCE(d.source_type, '') <> 'RSS_FEED')"
             // The lexical-index gap: a chunk without a chunk_full_text row at the current
             // FullTextChunkStore#CURRENT_TSV_VERSION is invisible to lexical search, and this
             // re-index is the only thing that repairs it. Deliberately independent of pipelineId

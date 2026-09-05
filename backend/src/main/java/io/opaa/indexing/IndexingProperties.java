@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.indexing.pipeline.html.HtmlContentRoots;
 import io.opaa.indexing.source.attachment.AttachmentProfile;
 import java.time.Duration;
 import java.util.List;
@@ -151,8 +152,9 @@ public record IndexingProperties(
    *     being a well-behaved crawler against sites OPAA does not operate. Default 1000: a
    *     conservative one request per second.
    * @param mainContentSelector the CSS selector (Jsoup syntax) used to find a detail page's main
-   *     content, tried against the whole document. Falls back to {@code body} when it matches
-   *     nothing, so an unusual page still yields the full page's text rather than nothing at all.
+   *     content, tried against the whole document ({@code HtmlContentRoots}). Falls back to {@code
+   *     body} when it matches nothing, so an unusual page still yields the full page rather than
+   *     nothing at all.
    * @param attachmentProfile the {@link AttachmentProfile} deciding which links on a detail page
    *     count as attachments. Defaults to {@link AttachmentProfile#GENERIC}. This is deliberately
    *     an application property, not a per-request field on {@code IndexingTriggerRequest} -
@@ -175,12 +177,9 @@ public record IndexingProperties(
       int maxAttachmentsPerEntry,
       long maxAttachmentSizeBytes) {
 
-    /**
-     * Tried in order against the whole document; the first selector that matches anything wins.
-     * {@code main}/{@code article}/{@code [role=main]} cover the vast majority of German public
-     * administration CMS templates without any per-site configuration.
-     */
-    static final String DEFAULT_MAIN_CONTENT_SELECTOR = "main, article, [role=main]";
+    /** The HTML pipeline's own choice, so a file and a feed page are reduced the same way. */
+    static final String DEFAULT_MAIN_CONTENT_SELECTOR =
+        HtmlContentRoots.DEFAULT_MAIN_CONTENT_SELECTOR;
 
     public Rss {
       if (maxEntries <= 0) {

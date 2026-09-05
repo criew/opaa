@@ -164,8 +164,9 @@ public class DocumentPipelineRegistry {
   }
 
   /**
-   * The pipeline for content that never was a file and therefore has no detectable format - an RSS
-   * entry's already-extracted main text (see {@code FileProcessingService#ingest}).
+   * The pipeline for content no specialized pipeline claims - a file of an admitted but unclaimed
+   * format, or text that never was a file and names no pipeline of its own (see {@code
+   * FileProcessingService#ingest}).
    */
   public DocumentPipeline fallbackPipeline() {
     return fallback;
@@ -173,7 +174,8 @@ public class DocumentPipelineRegistry {
 
   /**
    * The registered pipeline with {@code id}, for a caller that invokes a pipeline directly instead
-   * of routing by format - the Confluence page pipeline claims no format at all.
+   * of routing by format - a Confluence page body or a feed entry's main content, neither of which
+   * is a file.
    */
   public java.util.Optional<DocumentPipeline> pipelineById(String id) {
     return all.stream().filter(pipeline -> pipeline.id().equals(id)).findFirst();

@@ -59,12 +59,8 @@ class HtmlDocumentPipelineTest {
    * the first text block is that line, the label paragraph below it is not part of it.
    */
   @Test
-  void readsTheFirstTextBlockAsTheTitleLine() {
-    assertThat(
-            pipeline
-                .readProperties(
-                    DocumentPipelineSource.ofExtractedText(REALISTIC_PAGE, "seite.html"))
-                .titleLine())
+  void readsTheFirstTextBlockAsTheTitleLine() throws IOException {
+    assertThat(pipeline.readProperties(sourceFor(REALISTIC_PAGE)).titleLine())
         .isEqualTo("Personalausweis beantragen");
 
     String withLabelLine =
@@ -76,11 +72,24 @@ class HtmlDocumentPipelineTest {
         </main></body></html>
         """;
 
-    assertThat(
-            pipeline
-                .readProperties(DocumentPipelineSource.ofExtractedText(withLabelLine, "kfz.html"))
-                .titleLine())
+    assertThat(pipeline.readProperties(sourceFor(withLabelLine)).titleLine())
         .isEqualTo("Fabrikneues Fahrzeug anmelden");
+  }
+
+  /**
+   * A feed entry arrives as extracted text and names other documents than itself (a press release
+   * about a Satzung is no Satzung) - like the fallback pipeline before it, this pipeline reads no
+   * title line for it, so the body cannot become its Dokumentart.
+   */
+  @Test
+  void readsNoTitleLineForExtractedText() {
+    DocumentPipelineSource entry =
+        DocumentPipelineSource.ofExtractedText(
+            "<main><p>Der Rat hat die Satzung beschlossen. Der Vortrag folgt.</p></main>",
+            "Rat beschliesst Satzung");
+
+    assertThat(pipeline.readProperties(entry).titleLine()).isNull();
+    assertThat(pipeline.run(entry).properties().titleLine()).isNull();
   }
 
   // A realistic Government Site Builder-style page: nav, header, footer and a cookie banner
@@ -502,10 +511,10 @@ class HtmlDocumentPipelineTest {
                 "Pressemitteilung"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
-    assertThat(result.chunks()).extracting(d -> d.getText())
+    assertThat(result.chunks())
+        .extracting(d -> d.getText())
         .containsExactly(
-            "Pressemitteilung\n\nEinleitung.",
-            "Pressemitteilung › Hintergrund\n\nDetails.");
+            "Pressemitteilung\n\nEinleitung.", "Pressemitteilung › Hintergrund\n\nDetails.");
   }
 
   private DocumentPipelineSource sourceFor(String html) throws IOException {

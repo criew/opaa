@@ -9,9 +9,9 @@ import org.jsoup.nodes.Element;
 import org.junit.jupiter.api.Test;
 
 /**
- * The one boilerplate/main-content selection the HTML pipeline and the feed connector's detail
- * page extraction share: unconditional chrome goes everywhere, header/footer only outside the
- * chosen roots, every top-level match is a root, and the main-content selector is a parameter.
+ * The one boilerplate/main-content selection the HTML pipeline and the feed connector's detail page
+ * extraction share: unconditional chrome goes everywhere, header/footer only outside the chosen
+ * roots, every top-level match is a root, and the main-content selector is a parameter.
  */
 class HtmlContentRootsTest {
 

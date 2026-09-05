@@ -593,7 +593,8 @@ class FileProcessingServiceTest {
 
       FileProcessingResult result =
           service.ingest(
-              DocumentIngests.extractedText(targetLibrary, "text", "Titel", ENTRY_URL, PUBLISHED_AT),
+              DocumentIngests.extractedText(
+                  targetLibrary, "text", "Titel", ENTRY_URL, PUBLISHED_AT),
               null);
 
       assertThat(result).isEqualTo(FileProcessingResult.SKIPPED);
@@ -1137,7 +1138,8 @@ class FileProcessingServiceTest {
           .thenReturn(chunks("first chunk text", "second chunk text"));
 
       service.ingest(
-          DocumentIngests.extractedText(targetLibrary, "entry main text", null, ENTRY_URL, PUBLISHED_AT),
+          DocumentIngests.extractedText(
+              targetLibrary, "entry main text", null, ENTRY_URL, PUBLISHED_AT),
           null);
 
       assertThat(savedDocument().getFileName()).isEqualTo(ENTRY_URL);

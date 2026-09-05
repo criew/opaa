@@ -12,9 +12,9 @@ import org.jsoup.parser.Parser;
 import org.junit.jupiter.api.Test;
 
 /**
- * The one DOM-to-event walk the HTML and the Confluence pipeline share: headings, block
- * boundaries, inline whitespace, tables, lists, verbatim blocks - and the element rule a format
- * hooks its own elements into. Exercised on both parsers, since Confluence pages are XML-parsed.
+ * The one DOM-to-event walk the HTML and the Confluence pipeline share: headings, block boundaries,
+ * inline whitespace, tables, lists, verbatim blocks - and the element rule a format hooks its own
+ * elements into. Exercised on both parsers, since Confluence pages are XML-parsed.
  */
 class XhtmlEventBuilderTest {
 

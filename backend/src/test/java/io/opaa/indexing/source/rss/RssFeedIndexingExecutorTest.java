@@ -263,7 +263,8 @@ class RssFeedIndexingExecutorTest {
         .ingest(
             DocumentIngests.that()
                 .text()
-                .textMatching(only("Der eigentliche Artikeltext.", "Navigation", "Kopf", "Fuss")).via(HtmlDocumentPipeline.ID)
+                .textMatching(only("Der eigentliche Artikeltext.", "Navigation", "Kopf", "Fuss"))
+                .via(HtmlDocumentPipeline.ID)
                 .at(baseUrl + "/a.html")
                 .in(library)
                 .match(),
@@ -272,7 +273,8 @@ class RssFeedIndexingExecutorTest {
         .ingest(
             DocumentIngests.that()
                 .text()
-                .textMatching(only("Der eigentliche Artikeltext.", "Navigation", "Kopf", "Fuss")).via(HtmlDocumentPipeline.ID)
+                .textMatching(only("Der eigentliche Artikeltext.", "Navigation", "Kopf", "Fuss"))
+                .via(HtmlDocumentPipeline.ID)
                 .at(baseUrl + "/b.html")
                 .in(library)
                 .match(),
@@ -387,7 +389,8 @@ class RssFeedIndexingExecutorTest {
         .ingest(
             DocumentIngests.that()
                 .text()
-                .textMatching(only("Eigentlicher Inhalt", "Navigation", "Kopf", "Fuss")).via(HtmlDocumentPipeline.ID)
+                .textMatching(only("Eigentlicher Inhalt", "Navigation", "Kopf", "Fuss"))
+                .via(HtmlDocumentPipeline.ID)
                 .at(baseUrl + "/a.html")
                 .in(library)
                 .match(),
@@ -1654,7 +1657,8 @@ class RssFeedIndexingExecutorTest {
         .ingest(
             DocumentIngests.that()
                 .text()
-                .textMatching(only("Der eigentliche Artikeltext.", "Navigation", "Kopf", "Fuss")).via(HtmlDocumentPipeline.ID)
+                .textMatching(only("Der eigentliche Artikeltext.", "Navigation", "Kopf", "Fuss"))
+                .via(HtmlDocumentPipeline.ID)
                 .at(baseUrl + "/a.html")
                 .in(library)
                 .match(),
