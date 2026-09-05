@@ -28,7 +28,7 @@
     },
     {
       "clientId": "opaa-seed",
-      "description": "Resource-Owner-Password-Grant-Client ausschliesslich fuer demo/seed/seed.py (Issue #712) - nie fuer die Anmeldung im Frontend gedacht, deshalb ohne Redirect-URI und getrennt von opaa-frontend, dessen directAccessGrantsEnabled bewusst false bleibt. Der Audience-Mapper traegt opaa-frontend in aud ein: Seit ADR-0025 prueft OPAA den azp-Claim gegen die Client-ID des Anbieters und laesst ein Token eines anderen Clients nur durch, wenn aud die Client-ID nennt (AuthorizedPartyValidator).",
+      "description": "ROPC-Client nur fuer demo/seed/seed.py (#712), nie fuer die Anmeldung im Frontend - ohne Redirect-URI, getrennt von opaa-frontend (directAccessGrantsEnabled bleibt dort false). Der Audience-Mapper traegt opaa-frontend in aud ein (ADR-0025, azp-Pruefung).",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": false,
