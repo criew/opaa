@@ -28,7 +28,7 @@ const DEMO_PASSWORD = 'RheinfurtDemo!2026'
 async function loginViaKeycloak(page: Page): Promise<void> {
   await page.goto('/')
   await page
-    .getByRole('button', { name: 'Anmelden über den Verzeichnisdienst' })
+    .getByRole('button', { name: 'Anmelden bei Verzeichnisdienst' })
     .click()
   // Keycloak's own hosted login page, a different origin from the frontend - the ids below
   // ("username"/"password"/"kc-login") are Keycloak's default theme, stable across locales and
