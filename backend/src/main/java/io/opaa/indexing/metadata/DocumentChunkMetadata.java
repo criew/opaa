@@ -1,5 +1,6 @@
 package io.opaa.indexing.metadata;
 
+import io.opaa.indexing.ChunkContextPrefix;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,22 +18,29 @@ import java.util.Set;
  * @param contextTitle the Kernfeld Titel, which replaces the file-name humanisation in the prefix;
  *     {@code null} when the document has none and the caller's own fallback applies
  * @param contextPrefixValues the prefix-effective field values in schema order, core fields first
- * @param contextPrefixVersion the library's context-prefix version these parts were read under -
- *     what a document's chunks are stamped with, and what the Nachlauf selects against
  */
 public record DocumentChunkMetadata(
     Map<String, Object> values,
     Set<String> managedKeys,
     String contextTitle,
-    List<String> contextPrefixValues,
-    int contextPrefixVersion) {
+    List<String> contextPrefixValues) {
 
   public static final DocumentChunkMetadata EMPTY =
-      new DocumentChunkMetadata(Map.of(), CoreMetadataChunkKeys.ALL, null, List.of(), 1);
+      new DocumentChunkMetadata(Map.of(), CoreMetadataChunkKeys.ALL, null, List.of());
 
   public DocumentChunkMetadata {
     values = Map.copyOf(values);
     managedKeys = Set.copyOf(managedKeys);
     contextPrefixValues = List.copyOf(contextPrefixValues);
+  }
+
+  /**
+   * The fingerprint of this document's prefix under {@code effectiveTitle} - what a chunk write
+   * records and what the Nachlauf compares against. Takes the effective title rather than {@link
+   * #contextTitle()} because the ingest's own fallback (a humanised file name) is part of the
+   * prefix and therefore part of its identity.
+   */
+  public String contextPrefixStamp(String effectiveTitle) {
+    return ChunkContextPrefix.stampOf(effectiveTitle, contextPrefixValues);
   }
 }

@@ -1,7 +1,6 @@
 package io.opaa.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -13,16 +12,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Delta test for {@code changes/026-context-prefix-versions.yaml} (#1072): the version pair the
- * Kontextpräfix-Nachlauf selects by. An existing library starts at version 1 with both core-field
+ * Delta test for {@code changes/026-context-prefix-stamp.yaml} (#1072): what the
+ * Kontextpräfix-Nachlauf selects by. An existing library starts with both switchable core-field
  * Wirkstellen off - the Wirkstelle is a deliberate decision per field, never a default for all -
  * and an existing document reads {@code NULL}, which is what puts the whole Altbestand into the
- * run's selection.
+ * run's selection until it has been embedded once under a recorded prefix.
  */
-class Migration026ContextPrefixVersionsTest extends AbstractMigrationTest {
+class Migration026ContextPrefixStampTest extends AbstractMigrationTest {
 
-  private static final String CHANGELOG_PATH =
-      "db/changelog/changes/026-context-prefix-versions.yaml";
+  private static final String CHANGELOG_PATH = "db/changelog/changes/026-context-prefix-stamp.yaml";
   private static final UUID ORGANIZATION_ID =
       UUID.fromString("00000000-0000-0000-0000-000000000001");
 
@@ -44,29 +42,28 @@ class Migration026ContextPrefixVersionsTest extends AbstractMigrationTest {
   }
 
   @Test
-  void stampsLibrariesWithVersionOneAndLeavesEveryExistingDocumentPending() throws Exception {
-    assertThat(columnType("knowledge_libraries", "context_prefix_version")).isNull();
+  void addsTheStampAndTheCoreWirkstellenAndLeavesEveryExistingDocumentPending() throws Exception {
+    assertThat(columnType("documents", "context_prefix_stamp")).isNull();
     UUID libraryId = insertLibrary();
     UUID documentId = insertDocument(libraryId);
 
     applyChangelog(connection, CHANGELOG_PATH);
 
-    assertThat(columnType("knowledge_libraries", "context_prefix_version")).isEqualTo("integer");
+    assertThat(columnType("documents", "context_prefix_stamp")).isEqualTo("character varying");
+    assertThat(columnType("documents", "context_prefix_eligible")).isEqualTo("boolean");
     assertThat(columnType("knowledge_libraries", "core_context_prefix_document_type"))
         .isEqualTo("boolean");
     assertThat(columnType("knowledge_libraries", "core_context_prefix_document_date"))
         .isEqualTo("boolean");
-    assertThat(columnType("documents", "context_prefix_version")).isEqualTo("integer");
 
-    assertThat(libraryVersion(libraryId)).isEqualTo(1);
     assertThat(coreFlag(libraryId, "core_context_prefix_document_type")).isFalse();
     assertThat(coreFlag(libraryId, "core_context_prefix_document_date")).isFalse();
-    assertThat(documentVersion(documentId))
-        .as("the Altbestand was never embedded under a prefix version and is therefore pending")
+    assertThat(stampOf(documentId))
+        .as("the Altbestand was never embedded under a recorded prefix and is therefore pending")
         .isNull();
-
-    assertThatThrownBy(() -> setLibraryVersion(libraryId, 0))
-        .hasMessageContaining("chk_knowledge_libraries_context_prefix_version");
+    assertThat(partialIndexExists())
+        .as("the run's selection reads a partial index over exactly the pending rows")
+        .isTrue();
   }
 
   private String columnType(String table, String column) throws SQLException {
@@ -82,14 +79,13 @@ class Migration026ContextPrefixVersionsTest extends AbstractMigrationTest {
     }
   }
 
-  private int libraryVersion(UUID libraryId) throws SQLException {
+  private boolean partialIndexExists() throws SQLException {
     try (PreparedStatement statement =
         connection.prepareStatement(
-            "SELECT context_prefix_version FROM knowledge_libraries WHERE id = ?")) {
-      statement.setObject(1, libraryId);
+            "SELECT indexdef FROM pg_indexes WHERE indexname ="
+                + " 'idx_documents_library_context_prefix'")) {
       try (ResultSet rs = statement.executeQuery()) {
-        assertThat(rs.next()).isTrue();
-        return rs.getInt(1);
+        return rs.next() && rs.getString(1).contains("context_prefix_stamp IS NULL");
       }
     }
   }
@@ -106,25 +102,14 @@ class Migration026ContextPrefixVersionsTest extends AbstractMigrationTest {
     }
   }
 
-  private Integer documentVersion(UUID documentId) throws SQLException {
+  private String stampOf(UUID documentId) throws SQLException {
     try (PreparedStatement statement =
-        connection.prepareStatement("SELECT context_prefix_version FROM documents WHERE id = ?")) {
+        connection.prepareStatement("SELECT context_prefix_stamp FROM documents WHERE id = ?")) {
       statement.setObject(1, documentId);
       try (ResultSet rs = statement.executeQuery()) {
         assertThat(rs.next()).isTrue();
-        int value = rs.getInt(1);
-        return rs.wasNull() ? null : value;
+        return rs.getString(1);
       }
-    }
-  }
-
-  private void setLibraryVersion(UUID libraryId, int version) throws SQLException {
-    try (PreparedStatement statement =
-        connection.prepareStatement(
-            "UPDATE knowledge_libraries SET context_prefix_version = ? WHERE id = ?")) {
-      statement.setInt(1, version);
-      statement.setObject(2, libraryId);
-      statement.executeUpdate();
     }
   }
 

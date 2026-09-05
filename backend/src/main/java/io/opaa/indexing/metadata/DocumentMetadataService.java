@@ -136,7 +136,7 @@ public class DocumentMetadataService {
           MetadataValueDisplay.displayDate(core.documentDate(), core.documentDatePrecision()));
     }
     if (library == null) {
-      return new DocumentChunkMetadata(values, managed, core.title(), prefixValues, 1);
+      return new DocumentChunkMetadata(values, managed, core.title(), prefixValues);
     }
     Map<String, DocumentMetadataValue> byKey = new HashMap<>();
     for (DocumentMetadataValue row : rows) {
@@ -175,8 +175,7 @@ public class DocumentMetadataService {
           LibraryMetadataFieldKeys.presenceChunkKey(field.getFieldKey()),
           LibraryMetadataFieldKeys.PRESENCE_VALUE);
     }
-    return new DocumentChunkMetadata(
-        values, managed, core.title(), prefixValues, library.getContextPrefixVersion());
+    return new DocumentChunkMetadata(values, managed, core.title(), prefixValues);
   }
 
   /**
@@ -410,7 +409,7 @@ public class DocumentMetadataService {
     if (!isContextPrefixEffective(document.getLibraryId(), field)) {
       return;
     }
-    documentRepository.clearContextPrefixVersion(documentId);
+    documentRepository.clearContextPrefixStamp(documentId);
   }
 
   /** Whether {@code field} contributes to the Kontextpraefix of {@code libraryId}'s chunks. */

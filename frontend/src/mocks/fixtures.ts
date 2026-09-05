@@ -673,7 +673,6 @@ export const mockSearchStatus: SearchStatusResponse = {
         ],
       },
       contextPrefixRerun: {
-        prefixVersion: 2,
         totalDocuments: 11,
         currentDocuments: 8,
         pendingDocuments: 3,
@@ -735,7 +734,6 @@ export const mockSearchStatus: SearchStatusResponse = {
         ],
       },
       contextPrefixRerun: {
-        prefixVersion: 2,
         totalDocuments: 3,
         currentDocuments: 3,
         pendingDocuments: 0,
@@ -797,7 +795,6 @@ export const mockSearchStatus: SearchStatusResponse = {
         ],
       },
       contextPrefixRerun: {
-        prefixVersion: 2,
         totalDocuments: 0,
         currentDocuments: 0,
         pendingDocuments: 0,

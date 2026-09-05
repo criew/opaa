@@ -18,8 +18,7 @@ class EmbeddingRateEstimatorTest {
     assertThat(estimator.rateSource()).isEqualTo(EmbeddingRateEstimator.RateSource.CONFIGURED);
     assertThat(estimator.estimatedSeconds(100)).isEqualTo(50);
 
-    estimator.record(
-        (int) EmbeddingRateEstimator.MIN_MEASURED_CHUNKS - 1, Duration.ofSeconds(1).toNanos());
+    record(estimator, (int) EmbeddingRateEstimator.MIN_MEASURED_CHUNKS - 1, Duration.ofSeconds(1));
     assertThat(estimator.rateSource()).isEqualTo(EmbeddingRateEstimator.RateSource.CONFIGURED);
   }
 
@@ -28,7 +27,7 @@ class EmbeddingRateEstimatorTest {
     EmbeddingRateEstimator estimator = new EmbeddingRateEstimator(2.0);
 
     // 40 chunks in 20 seconds: half a second per chunk, twice as slow as the configured rate.
-    estimator.record(40, Duration.ofSeconds(20).toNanos());
+    record(estimator, 40, Duration.ofSeconds(20));
 
     assertThat(estimator.rateSource()).isEqualTo(EmbeddingRateEstimator.RateSource.MEASURED);
     assertThat(estimator.secondsPerChunk()).isEqualTo(0.5);
@@ -38,8 +37,8 @@ class EmbeddingRateEstimatorTest {
   @Test
   void ignoresANonMeasurementAndEstimatesNothingForNoChunks() {
     EmbeddingRateEstimator estimator = new EmbeddingRateEstimator(4.0);
-    estimator.record(0, 5);
-    estimator.record(5, 0);
+    record(estimator, 0, Duration.ofNanos(5));
+    record(estimator, 5, Duration.ZERO);
 
     assertThat(estimator.rateSource()).isEqualTo(EmbeddingRateEstimator.RateSource.CONFIGURED);
     assertThat(estimator.estimatedSeconds(0)).isZero();
@@ -49,5 +48,24 @@ class EmbeddingRateEstimatorTest {
   void fallsBackToTheDefaultRateForANonsensicalConfiguration() {
     assertThat(new EmbeddingRateEstimator(0).secondsPerChunk()).isEqualTo(0.25);
     assertThat(new EmbeddingRateEstimator(-1).secondsPerChunk()).isEqualTo(0.25);
+  }
+
+  @Test
+  void dropsTheWallTimeOfOverlappingCallsInsteadOfSummingThemIntoTheMean() {
+    EmbeddingRateEstimator estimator = new EmbeddingRateEstimator(2.0);
+
+    // Two concurrent sub-batches: their wall times overlap, so neither is a throughput measurement.
+    long first = estimator.started();
+    long second = estimator.started();
+    estimator.record(1000, Duration.ofSeconds(1000).toNanos(), second);
+    estimator.record(1000, Duration.ofSeconds(1000).toNanos(), first);
+
+    assertThat(estimator.rateSource()).isEqualTo(EmbeddingRateEstimator.RateSource.CONFIGURED);
+    assertThat(estimator.secondsPerChunk()).isEqualTo(0.5);
+  }
+
+  /** One embedding call that ran alone, the only kind that contributes a measurement. */
+  private static void record(EmbeddingRateEstimator estimator, int chunks, Duration took) {
+    estimator.record(chunks, took.toNanos(), estimator.started());
   }
 }

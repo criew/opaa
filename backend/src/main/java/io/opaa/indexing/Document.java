@@ -147,13 +147,21 @@ public class Document {
   private Integer metadataExtractionVersion;
 
   /**
-   * The library context-prefix version this document's chunks were last embedded under (#1072), or
-   * {@code null} when none ever was - the selection key of the Kontextpraefix-Nachlauf. Written
-   * only through {@link DocumentRepository#updateContextPrefixVersion} and cleared by a manual
-   * correction of a prefix-effective value.
+   * The fingerprint of the Kontextpraefix this document's chunks were last embedded with (#1072),
+   * or {@code null} when it waits for the Nachlauf - which is the run's whole selection. Written
+   * only through {@link DocumentRepository#recordContextPrefix} and cleared by exactly the schema
+   * changes and manual corrections that alter this document's prefix.
    */
-  @Column(name = "context_prefix_version", insertable = false, updatable = false)
-  private Integer contextPrefixVersion;
+  @Column(name = "context_prefix_stamp", insertable = false, updatable = false, length = 64)
+  private String contextPrefixStamp;
+
+  /**
+   * Whether the ingest gave this document a Kontextpraefix at all - an RSS entry without a headline
+   * gets none (#1072). Recorded so the Nachlauf honours the same decision instead of guessing it
+   * from the file name; {@code null} for a document last written before this was recorded.
+   */
+  @Column(name = "context_prefix_eligible", insertable = false, updatable = false)
+  private Boolean contextPrefixEligible;
 
   protected Document() {}
 
@@ -362,8 +370,12 @@ public class Document {
     return metadataExtractionVersion;
   }
 
-  public Integer getContextPrefixVersion() {
-    return contextPrefixVersion;
+  public String getContextPrefixStamp() {
+    return contextPrefixStamp;
+  }
+
+  public Boolean getContextPrefixEligible() {
+    return contextPrefixEligible;
   }
 
   /**

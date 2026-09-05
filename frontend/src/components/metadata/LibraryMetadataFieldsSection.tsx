@@ -19,6 +19,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Switch from '@mui/material/Switch'
 import { Link as RouterLink } from 'react-router'
+import { plural } from '../searchadmin/format'
 import Link from '@mui/material/Link'
 import {
   addLibraryMetadataFieldValue,
@@ -127,14 +128,15 @@ function ChangeImpactNotice({
       <Alert severity="success" sx={{ mt: 2 }}>
         {impact.affectedDocuments === 0
           ? 'Diese Änderung hat keine Folgekosten.'
-          : `${impact.affectedDocuments} Dokument(e) sind betroffen; neu eingebettet werden muss nichts.`}
+          : `${plural(impact.affectedDocuments, 'Dokument ist', 'Dokumente sind')} betroffen; neu eingebettet werden muss nichts.`}
       </Alert>
     )
   }
   return (
     <Alert severity="warning" sx={{ mt: 2 }}>
-      {`${impact.affectedChunks} Abschnitte in ${impact.affectedDocuments} Dokument(en) neu`}{' '}
-      {`einzubetten, ${formatDuration(impact.estimatedSeconds)}`}
+      {`${plural(impact.affectedChunks, 'Abschnitt', 'Abschnitte')} in `}
+      {`${plural(impact.affectedDocuments, 'Dokument', 'Dokumenten')} neu einzubetten, `}
+      {formatDuration(impact.estimatedSeconds)}
       {impact.rateSource === 'CONFIGURED' ? ' (geschätzte Rate)' : ' (gemessene Rate)'}. Das
       Speichern setzt nichts in Bewegung — der Nachlauf wird auf der Seite „Suche &amp; Indexierung“
       ausdrücklich gestartet.
@@ -317,8 +319,8 @@ export default function LibraryMetadataFieldsSection({
       )}
       {awaitingRerun > 0 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          {`${awaitingRerun} Dokument(e) warten auf Neu-Einbetten.`} Der Nachlauf wird von einer
-          Systemadministratorin auf der Seite{' '}
+          {`${plural(awaitingRerun, 'Dokument wartet', 'Dokumente warten')} auf Neu-Einbetten.`} Der
+          Nachlauf wird von einer Systemadministratorin auf der Seite{' '}
           <Link component={RouterLink} to="/admin/search">
             Suche &amp; Indexierung
           </Link>{' '}
@@ -797,6 +799,9 @@ function CreateFieldDialog({
               Jedes Feld muss mindestens im Filter oder im Kontextpräfix wirken; „nur Beleg-Anzeige“
               genügt nicht.
             </Alert>
+          )}
+          {contextPrefix && (
+            <ChangeImpactNotice libraryId={libraryId} fieldKey={fieldKey} change="FIELD_ADDED" />
           )}
         </Stack>
       </DialogContent>

@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,10 +23,11 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * The Nachlauf that brings a library's chunks onto its current Kontextpraefix (metadata-schema.md,
- * "Nachlauf im Betrieb"). Selects by the same version pair the pipeline re-index selects by - a
- * document whose {@code context_prefix_version} is missing or below its library's - so no second
- * mechanism exists.
+ * The Nachlauf that brings a library's chunks onto their current Kontextpräfix (metadata-schema.md,
+ * "Nachlauf im Betrieb"). Its selection is the document-level prefix stamp: a document whose {@code
+ * context_prefix_stamp} is cleared waits for the run, and it is cleared by exactly the changes that
+ * alter that document's prefix - so the number the Folgekosten preview shows and the number this
+ * run processes are the same set.
  *
  * <p>The processing unit is one document, and it keeps its chunks: they are re-embedded in place
  * under their own ids with the new prefix, vector row and {@code chunk_full_text} together, without
@@ -47,8 +49,7 @@ public class ContextPrefixRerunService {
   private final String vectorStoreTable;
 
   /** Skipped count of the most recent call per library; process lifetime only (ADR-0021). */
-  private final Map<UUID, Integer> lastSkippedByLibrary =
-      new java.util.concurrent.ConcurrentHashMap<>();
+  private final Map<UUID, Integer> lastSkippedByLibrary = new ConcurrentHashMap<>();
 
   public ContextPrefixRerunService(
       JdbcTemplate jdbcTemplate,
@@ -84,16 +85,19 @@ public class ContextPrefixRerunService {
     if (batchSize <= 0) {
       return ContextPrefixRerunResult.NOTHING_TO_DO;
     }
-    int targetVersion = library.getContextPrefixVersion();
     Map<Advance, Integer> counts =
         DocumentBatchLoop.run(
             batchSize,
             Advance.class,
             Advance.SKIPPED,
-            (limit, offset) -> selectPendingDocuments(libraryId, targetVersion, limit, offset),
-            documentId -> advance(documentId, targetVersion));
+            (limit, offset) -> selectPendingDocuments(library.getId(), limit, offset),
+            this::advance);
     int skipped = counts.get(Advance.SKIPPED);
-    lastSkippedByLibrary.put(libraryId, skipped);
+    if (skipped == 0) {
+      lastSkippedByLibrary.remove(library.getId());
+    } else {
+      lastSkippedByLibrary.put(library.getId(), skipped);
+    }
     return new ContextPrefixRerunResult(counts.get(Advance.PROCESSED), skipped);
   }
 
@@ -106,7 +110,7 @@ public class ContextPrefixRerunService {
    * One document. Every failure costs only this candidate: it is logged, counted as skipped and
    * left exactly as it was, with its old chunks still searchable.
    */
-  private Advance advance(UUID documentId, int targetVersion) {
+  private Advance advance(UUID documentId) {
     Document document = documentRepository.findById(documentId).orElse(null);
     if (document == null) {
       return Advance.SKIPPED;
@@ -114,19 +118,23 @@ public class ContextPrefixRerunService {
     try {
       DocumentChunkMetadata chunkMetadata = documentMetadataService.chunkMetadataFor(document);
       List<StoredChunk> stored = storedChunksOf(documentId);
-      // Mirrors FileProcessingService#storeChunks: a single-chunk document carries its whole text
-      // and gets no title in front of it, but a prefix-effective value is not in that text.
+      // The ingest's own "does this document type get a prefix at all" decision, read back rather
+      // than guessed. A document written before it was recorded counts as eligible: that is what
+      // every ingest path but the headline-less RSS entry was, and that one has no title either.
+      boolean eligible = !Boolean.FALSE.equals(document.getContextPrefixEligible());
+      String title = effectiveTitle(chunkMetadata, document);
       boolean documentWasSplit = stored.size() >= 2;
       List<org.springframework.ai.document.Document> rebuilt =
           stored.stream()
-              .map(chunk -> chunk.toRebuiltDocument(chunkMetadata, documentWasSplit))
+              .map(chunk -> chunk.rebuild(eligible, documentWasSplit, title, chunkMetadata))
               .toList();
       if (!rebuilt.isEmpty()) {
         vectorChunkStore.addChunks(rebuilt);
       }
       // Only after the replacement exists: a failed embedding call must leave the document pending
       // rather than mark it done with its old chunks.
-      documentRepository.updateContextPrefixVersion(documentId, targetVersion);
+      documentRepository.recordContextPrefix(
+          documentId, chunkMetadata.contextPrefixStamp(title), eligible);
       return Advance.PROCESSED;
     } catch (RuntimeException e) {
       log.warn(
@@ -135,43 +143,43 @@ public class ContextPrefixRerunService {
     }
   }
 
+  /** The Kernfeld Titel, or the humanised file name the prefix falls back to at ingest time. */
+  private static String effectiveTitle(DocumentChunkMetadata chunkMetadata, Document document) {
+    String coreTitle = chunkMetadata.contextTitle();
+    if (coreTitle != null && !coreTitle.isBlank()) {
+      return coreTitle;
+    }
+    return document.getFileName() == null
+        ? null
+        : ChunkContextTitle.deriveTitle(document.getFileName());
+  }
+
   /**
    * One chunk as it sits in the store: its id, its stored text and its metadata. The text is what
    * gets re-embedded behind the new prefix - the prefix is never written into it.
    */
   private record StoredChunk(String id, String text, Map<String, Object> metadata) {
 
-    org.springframework.ai.document.Document toRebuiltDocument(
-        DocumentChunkMetadata chunkMetadata, boolean documentWasSplit) {
+    org.springframework.ai.document.Document rebuild(
+        boolean eligible,
+        boolean documentWasSplit,
+        String title,
+        DocumentChunkMetadata chunkMetadata) {
       org.springframework.ai.document.Document document =
           new org.springframework.ai.document.Document(id, text, metadata);
       String prefix =
-          documentWasSplit || !chunkMetadata.contextPrefixValues().isEmpty()
-              ? ChunkContextPrefix.build(
-                  titleOf(chunkMetadata),
-                  chunkMetadata.contextPrefixValues(),
-                  ChunkContextPrefix.structureContextFrom(
-                      metadata.get(ChunkingService.LOCATION_METADATA_KEY), text))
-              : null;
+          ChunkContextPrefix.forChunk(
+              eligible,
+              documentWasSplit,
+              title,
+              chunkMetadata.contextPrefixValues(),
+              metadata.get(ChunkingService.LOCATION_METADATA_KEY),
+              text);
       document.setContentFormatter(
           prefix == null
               ? (candidate, mode) -> candidate.getText()
               : (candidate, mode) -> ChunkContextPrefix.format(prefix, candidate.getText()));
       return document;
-    }
-
-    /**
-     * The Kernfeld Titel, or the humanised file name the prefix used before it existed. The
-     * ingest's own "this document type never gets a prefix" decision is not stored at the chunk; it
-     * is approximated here by both sources being empty.
-     */
-    private String titleOf(DocumentChunkMetadata chunkMetadata) {
-      String coreTitle = chunkMetadata.contextTitle();
-      if (coreTitle != null && !coreTitle.isBlank()) {
-        return coreTitle;
-      }
-      Object fileName = metadata.get("file_name");
-      return fileName instanceof String name ? ChunkContextTitle.deriveTitle(name) : null;
     }
   }
 
@@ -197,88 +205,64 @@ public class ContextPrefixRerunService {
 
   /**
    * Pending documents in stable id order, so the offset scans past what this call already found
-   * unadvanceable. A document without a prefix version has never been embedded under one - the
-   * bestand from before #1072 - and is pending exactly like one stamped with an older version.
+   * unadvanceable. A document without a stamp either never carried one - the bestand from before
+   * #1072 - or was handed back by a change to its own prefix.
    */
-  private List<UUID> selectPendingDocuments(
-      UUID libraryId, int targetVersion, int limit, int offset) {
+  private List<UUID> selectPendingDocuments(UUID libraryId, int limit, int offset) {
     return jdbcTemplate.query(
         "SELECT id FROM documents WHERE library_id = ? AND status = ? "
-            + "AND (context_prefix_version IS NULL OR context_prefix_version < ?) "
-            + "ORDER BY id OFFSET ? LIMIT ?",
+            + "AND context_prefix_stamp IS NULL ORDER BY id OFFSET ? LIMIT ?",
         (rs, index) -> (UUID) rs.getObject("id"),
         libraryId,
         DocumentStatus.INDEXED.name(),
-        targetVersion,
         offset,
         limit);
   }
 
   /**
-   * The Kontextpraefix state of every library in {@code libraryIds}: one grouped query over the
-   * indexed documents, compared per library against its own current prefix version. A library
-   * without indexed documents is absent from the result.
+   * The Kontextpräfix state of every library in {@code libraryIds}: one grouped query over the
+   * indexed documents. A library without indexed documents is absent from the result.
    */
   public Map<UUID, ContextPrefixRerunProgress> progressForLibraries(Collection<UUID> libraryIds) {
     if (libraryIds.isEmpty()) {
       return Map.of();
     }
-    Map<UUID, Integer> versions = new HashMap<>();
-    libraryRepository
-        .findAllById(libraryIds)
-        .forEach(library -> versions.put(library.getId(), library.getContextPrefixVersion()));
-
-    Map<UUID, long[]> counters = new HashMap<>();
+    Map<UUID, ContextPrefixRerunProgress> byLibrary = new HashMap<>();
     List<Object> parameters = new ArrayList<>();
     parameters.add(DocumentStatus.INDEXED.name());
     parameters.addAll(libraryIds);
     jdbcTemplate.query(
-        "SELECT library_id, context_prefix_version, count(*) AS chunk_documents FROM documents "
-            + "WHERE status = ? AND library_id IN ("
+        "SELECT library_id, count(*) AS total, "
+            + "count(*) FILTER (WHERE context_prefix_stamp IS NULL) AS pending "
+            + "FROM documents WHERE status = ? AND library_id IN ("
             + libraryIds.stream().map(id -> "?").collect(Collectors.joining(", "))
-            + ") GROUP BY library_id, context_prefix_version",
+            + ") GROUP BY library_id",
         rs -> {
           UUID libraryId = (UUID) rs.getObject("library_id");
-          int stamped = rs.getInt("context_prefix_version");
-          boolean unstamped = rs.wasNull();
-          long count = rs.getLong("chunk_documents");
-          long[] totals = counters.computeIfAbsent(libraryId, key -> new long[2]);
-          totals[0] += count;
-          if (!unstamped && stamped >= versions.getOrDefault(libraryId, 1)) {
-            totals[1] += count;
-          }
+          long total = rs.getLong("total");
+          long pending = rs.getLong("pending");
+          byLibrary.put(
+              libraryId,
+              new ContextPrefixRerunProgress(
+                  libraryId,
+                  total,
+                  total - pending,
+                  pending,
+                  lastSkippedByLibrary.getOrDefault(libraryId, 0)));
         },
         parameters.toArray());
-
-    Map<UUID, ContextPrefixRerunProgress> byLibrary = new HashMap<>();
-    counters.forEach(
-        (libraryId, totals) ->
-            byLibrary.put(
-                libraryId,
-                new ContextPrefixRerunProgress(
-                    libraryId,
-                    versions.getOrDefault(libraryId, 1),
-                    totals[0],
-                    totals[1],
-                    totals[0] - totals[1],
-                    lastSkippedByLibrary.getOrDefault(libraryId, 0))));
     return byLibrary;
   }
 
   /** Indexed documents of {@code libraryId} waiting for the Nachlauf - the settings-page hint. */
   public long pendingDocuments(UUID libraryId) {
-    KnowledgeLibrary library = libraryRepository.findById(libraryId).orElse(null);
-    if (library == null) {
-      return 0;
-    }
     Long pending =
         jdbcTemplate.queryForObject(
             "SELECT count(*) FROM documents WHERE library_id = ? AND status = ? "
-                + "AND (context_prefix_version IS NULL OR context_prefix_version < ?)",
+                + "AND context_prefix_stamp IS NULL",
             Long.class,
             libraryId,
-            DocumentStatus.INDEXED.name(),
-            library.getContextPrefixVersion());
+            DocumentStatus.INDEXED.name());
     return pending == null ? 0 : pending;
   }
 }

@@ -3,6 +3,7 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryMetadataFieldType;
 import io.opaa.api.types.LibraryVisibility;
@@ -14,6 +15,8 @@ import io.opaa.indexing.metadata.LibraryMetadataFieldDefinition;
 import io.opaa.indexing.metadata.LibraryMetadataFieldInput;
 import io.opaa.indexing.metadata.LibraryMetadataFieldService;
 import io.opaa.indexing.metadata.LibraryMetadataFieldValue;
+import io.opaa.indexing.metadata.MetadataChangeImpact;
+import io.opaa.indexing.metadata.MetadataChangeKind;
 import io.opaa.indexing.metadata.MetadataFieldRef;
 import io.opaa.indexing.metadata.MetadataValueInput;
 import io.opaa.library.AssetGrant;
@@ -160,26 +163,31 @@ class ContextPrefixRerunIntegrationTest {
   }
 
   @Test
-  void switchingACoreFieldIntoThePrefixHandsTheWholeBestandToTheRunWithoutStartingIt()
+  void switchingACoreFieldIntoThePrefixMarksOnlyTheDocumentsThatCarryAValueForIt()
       throws IOException {
-    Document document = indexed("dienstanweisung.md");
-    assertThat(rerunService.pendingDocuments(library.getId()))
-        .as("a freshly indexed document is stamped with its library's current version")
-        .isZero();
+    Document withDate = indexed("satzung-mit-datum.md");
+    Document withoutDate = indexed("satzung-ohne-datum.md");
+    setDocumentDate(withDate);
+    // The correction of a not yet prefix-effective core field leaves the bestand alone.
+    assertThat(rerunService.pendingDocuments(library.getId())).isZero();
 
     fieldService.updateCoreContextPrefix(library.getId(), false, true, owner);
 
     assertThat(rerunService.pendingDocuments(library.getId()))
-        .as("saving the schema change moves no bestand, it only marks it")
+        .as("saving the schema change moves no bestand, and it marks only what it changes")
         .isEqualTo(1);
-    assertThat(chunkTexts(document)).isNotEmpty();
-    assertThat(fullTextRowCount(document))
+    assertThat(
+            documentRepository.findById(withoutDate.getId()).orElseThrow().getContextPrefixStamp())
+        .as("a document without a value for the switched field keeps its prefix")
+        .isNotNull();
+    assertThat(chunkTexts(withDate)).isNotEmpty();
+    assertThat(fullTextRowCount(withDate))
         .as("the search stays available over the not yet re-embedded half")
-        .isEqualTo(chunkCount(document));
+        .isEqualTo(chunkCount(withDate));
   }
 
   @Test
-  void aFieldThatOnlyFiltersLeavesTheBestandAloneWhileAPrefixEffectiveOneDoesNot()
+  void aChangeWithoutAffectedDocumentsCostsNothingAndTheRunMakesNoEmbeddingCall()
       throws IOException {
     indexed("nur-filter.md");
     fieldService.createField(
@@ -194,14 +202,64 @@ class ContextPrefixRerunIntegrationTest {
             null,
             List.of(new LibraryMetadataFieldInput.LibraryFieldValueInput("P1", "Projekt 1"))),
         owner);
-
     assertThat(rerunService.pendingDocuments(library.getId()))
-        .as("a field that only filters costs nothing on change")
+        .as("a field nobody has filled yet costs nothing to define")
         .isZero();
 
+    // Switching a field nobody has filled into the Kontextpräfix changes no document's prefix -
+    // the preview says so, and the run must agree with it.
+    MetadataChangeImpact impact =
+        fieldService.changeImpact(
+            library.getId(), "projekt", MetadataChangeKind.CONTEXT_PREFIX_ENABLED, owner);
     fieldService.updateField(library.getId(), "projekt", "Projekt", true, true, null, owner);
 
-    assertThat(rerunService.pendingDocuments(library.getId())).isEqualTo(1);
+    assertThat(impact.affectedDocuments()).isZero();
+    assertThat(impact.reembeddingRequired()).isFalse();
+    assertThat(rerunService.pendingDocuments(library.getId())).isZero();
+    assertThat(rerunService.rerunBatch(Organization.DEFAULT_ID, library.getId(), 10).isEmpty())
+        .as("no document to re-embed means no embedding call")
+        .isTrue();
+  }
+
+  @Test
+  void theNumberTheFolgekostenPreviewShowsIsTheNumberTheRunProcesses() throws IOException {
+    LibraryMetadataFieldValue value = prefixEffectiveFassungField();
+    Document carries = indexed("mit-fassung.md");
+    indexed("ohne-fassung-a.md");
+    indexed("ohne-fassung-b.md");
+    setFassung(carries, value);
+    rerunService.rerunBatch(Organization.DEFAULT_ID, library.getId(), 10);
+
+    MetadataChangeImpact impact =
+        fieldService.changeImpact(
+            library.getId(), "fassung", MetadataChangeKind.CONTEXT_PREFIX_DISABLED, owner);
+    fieldService.updateField(library.getId(), "fassung", "Fassung", true, false, null, owner);
+
+    assertThat(impact.affectedDocuments()).isEqualTo(1);
+    assertThat(rerunService.pendingDocuments(library.getId()))
+        .as("the price shown is the price paid")
+        .isEqualTo(impact.affectedDocuments());
+    ContextPrefixRerunResult result =
+        rerunService.rerunBatch(Organization.DEFAULT_ID, library.getId(), 10);
+    assertThat(result.processedDocuments()).isEqualTo(impact.affectedDocuments());
+  }
+
+  @Test
+  void aReRunDocumentCarriesTheSameIndexedTextAsAFreshlyIngestedOne() throws IOException {
+    LibraryMetadataFieldValue value = prefixEffectiveFassungField();
+    Document reRun = indexed("gleichstand-a.md");
+    setFassung(reRun, value);
+    rerunService.rerunBatch(Organization.DEFAULT_ID, library.getId(), 10);
+
+    // The same file taken in afresh, with the value already set before the chunks are written.
+    Document fresh = indexed("gleichstand-b.md");
+    setFassung(fresh, value);
+    documentRepository.findById(fresh.getId()).orElseThrow();
+    reindexFromScratch(fresh, "gleichstand-b.md");
+
+    assertThat(indexedTexts(reRun))
+        .as("one gate: the Nachlauf writes what the ingest would have written")
+        .containsExactlyInAnyOrderElementsOf(indexedTexts(fresh));
   }
 
   @Test
@@ -214,8 +272,7 @@ class ContextPrefixRerunIntegrationTest {
 
     setFassung(document, value);
 
-    assertThat(
-            documentRepository.findById(document.getId()).orElseThrow().getContextPrefixVersion())
+    assertThat(documentRepository.findById(document.getId()).orElseThrow().getContextPrefixStamp())
         .as("an explicit release re-embeds, not the correction itself")
         .isNull();
     assertThat(rerunService.pendingDocuments(library.getId())).isEqualTo(1);
@@ -272,10 +329,38 @@ class ContextPrefixRerunIntegrationTest {
     assertThat(fullTextMatches(document, "Meldewesen")).isEqualTo(chunkCount(document));
   }
 
+  /**
+   * Re-runs the ingest over an already indexed file, so its chunks are written by {@code
+   * storeChunks} with the value in place - the comparison partner for a re-run document.
+   */
+  private void reindexFromScratch(Document document, String fileName) {
+    assertThat(
+            fileProcessingService.reindexStoredDocument(
+                document.getId(), classTempDir.resolve(fileName), null))
+        .isTrue();
+  }
+
+  /** The text both indexes actually see: the chunk's prefix in front of its stored text. */
+  private List<String> indexedTexts(Document document) {
+    return jdbcTemplate.queryForList(
+        "SELECT f.content_tsv::text FROM chunk_full_text f"
+            + " WHERE f.document_id = ? ORDER BY f.chunk_id",
+        String.class,
+        document.getId());
+  }
+
+  private void setDocumentDate(Document document) {
+    metadataService.setManualValue(
+        document.getId(),
+        MetadataFieldRef.of(CoreMetadataField.DOCUMENT_DATE),
+        MetadataValueInput.date(java.time.LocalDate.of(2026, 3, 12), DatePrecision.DAY),
+        owner.id());
+  }
+
   private ContextPrefixRerunProgress progress() {
     return rerunService
         .progressForLibraries(List.of(library.getId()))
-        .getOrDefault(library.getId(), ContextPrefixRerunProgress.empty(library.getId(), 1));
+        .getOrDefault(library.getId(), ContextPrefixRerunProgress.empty(library.getId()));
   }
 
   private LibraryMetadataFieldValue prefixEffectiveFassungField() {

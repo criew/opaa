@@ -1905,7 +1905,7 @@ export const handlers = [
 
   http.get('/api/v1/libraries/:libraryId/metadata-fields/change-impact', ({ request }) => {
     const change = new URL(request.url).searchParams.get('change')
-    if (change === 'VALUE_ADDED') {
+    if (change === 'VALUE_ADDED' || change === 'FIELD_ADDED') {
       return HttpResponse.json({
         affectedDocuments: 0,
         affectedChunks: 0,

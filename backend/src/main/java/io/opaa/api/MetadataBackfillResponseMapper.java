@@ -39,7 +39,6 @@ final class MetadataBackfillResponseMapper {
   static ContextPrefixRerunStatusResponse toRerunStatusResponse(
       ContextPrefixRerunProgress progress) {
     return new ContextPrefixRerunStatusResponse(
-        progress.prefixVersion(),
         progress.totalDocuments(),
         progress.currentDocuments(),
         progress.pendingDocuments(),

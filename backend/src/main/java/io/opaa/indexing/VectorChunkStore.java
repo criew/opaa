@@ -63,12 +63,17 @@ public class VectorChunkStore {
     if (chunks.isEmpty()) {
       return;
     }
-    long startedAt = System.nanoTime();
-    List<float[]> embeddings =
-        embeddingModel.embed(chunks, EmbeddingOptions.builder().build(), batchingStrategy);
     // Measured around the embedding round trip only, never the write: the Folgekosten estimate
     // names the cost of embedding calls, and a slow disk must not make a reindex look expensive.
-    embeddingRateEstimator.record(chunks.size(), System.nanoTime() - startedAt);
+    long measurementToken = embeddingRateEstimator.started();
+    long startedAt = System.nanoTime();
+    List<float[]> embeddings;
+    try {
+      embeddings =
+          embeddingModel.embed(chunks, EmbeddingOptions.builder().build(), batchingStrategy);
+    } finally {
+      embeddingRateEstimator.record(chunks.size(), System.nanoTime() - startedAt, measurementToken);
+    }
     vectorStoreWriter.writeEmbeddedChunks(chunks, embeddings);
   }
 

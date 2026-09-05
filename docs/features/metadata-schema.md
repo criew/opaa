@@ -1247,34 +1247,46 @@ niemand beauftragt hat. Gespeichert wird das an der Bibliothek
 geplante Änderung mit betroffenen Dokumenten, betroffenen Chunks, der daraus folgenden Zahl der
 Einbettungsaufrufe (einer je Chunk) und der erwarteten Laufzeit — „4.812 Abschnitte in 12 Dokumenten
 neu einzubetten, rund 40 Minuten". Die Rate dahinter ist die **gemessene** mittlere Dauer je Chunk der
-Einbettungsaufrufe dieses Prozesses (`EmbeddingRateEstimator`); solange zu wenige gemessen sind, gilt
-die konfigurierte `opaa.indexing.embedding-rate-estimate` (Chunks je Sekunde, Voreinstellung 4). Die
+Einbettungsaufrufe dieses Prozesses (`EmbeddingRateEstimator`); gemessen wird nur, was allein lief —
+die Wandzeiten nebenläufiger Teilchargen überlappen und ergäben summiert eine bis zum
+Nebenläufigkeitsfaktor zu pessimistische Rate. Solange zu wenige Aufrufe gemessen sind, gilt die
+konfigurierte `opaa.indexing.embedding-rate-estimate` (Chunks je Sekunde, Voreinstellung 4). Die
 Antwort nennt, welche der beiden gerade zählt — eine geschätzte Zahl als gemessene auszugeben wäre
-genau die Sorte Angabe, gegen die diese Anzeige gebaut ist. Die Kostentabelle oben verhält sich damit
-wie beschrieben: Werteliste erweitern kostet nichts; ein Feld, das nur filtert oder nur im Beleg steht,
-kostet keinen Einbettungsaufruf; eine Änderung an einem präfixwirksamen Feld kostet einen Chunk je
-Einbettungsaufruf. Die Anzeige erscheint im Bestätigungsdialog jeder dieser Änderungen — Feld
-bearbeiten, Feld löschen, Wert abbilden, Kernfeld schalten.
+genau die Sorte Angabe, gegen die diese Anzeige gebaut ist.
 
-**Das Speichern setzt nichts in Bewegung.** Eine präfixwirksame Schemaänderung erhöht die
-`context_prefix_version` der Bibliothek und **markiert** damit ihren indizierten Bestand; sie startet
-nichts. Der Nachlauf läuft über `POST /api/v1/admin/indexing/context-prefix-rerun`, bibliotheksweise,
-von einer Person mit `SYSTEM_ADMIN` auf der Seite „Suche & Indexierung" gestartet — dieselbe Schranke
-wie beim Pipeline-Reindex und beim Bestandslauf, und aus demselben Grund: Es ist ein Systemprozess über
-einen ganzen Bestand. In den Bibliothekseinstellungen steht dafür der Hinweis „N Dokumente warten auf
-Neu-Einbetten" mit Verweis auf diese Seite — die Fachperson, die die Änderung veranlasst, ist selten
-selbst Administratorin.
+Die Kostentabelle oben verhält sich damit wie beschrieben: Werteliste erweitern kostet nichts; ein
+**neu angelegtes** Feld kostet zunächst ebenfalls nichts, weil noch kein Dokument einen Wert dafür
+trägt (der Preis entsteht dokumentweise, sobald Werte hineinkommen); ein Feld, das nur filtert oder nur
+im Beleg steht, kostet keinen Einbettungsaufruf; eine Änderung an einem präfixwirksamen Feld kostet
+einen Einbettungsaufruf je Chunk **der Dokumente, die dafür einen Wert tragen**. Die Anzeige erscheint
+im Bestätigungsdialog jeder dieser Änderungen — Feld anlegen, Feld bearbeiten, Feld löschen, Wert
+abbilden, Kernfeld schalten.
 
-**Der Nachlauf ist der vorhandene Mechanismus, kein zweiter.** Er wählt über dasselbe Versionspaar aus,
-das Regel (d) für die Pipeline-Version benutzt: Ein Dokument, dessen `context_prefix_version` fehlt oder
-unter der seiner Bibliothek liegt, ist ausstehend. Er läuft über dieselbe Chargen-Schleife
-(`DocumentBatchLoop`) wie Bestandslauf und Reindex. Verarbeitungseinheit ist das Dokument, und seine
-Chunks bleiben: Sie werden **unter ihren eigenen IDs** neu eingebettet, Vektorzeile und
-`chunk_full_text` zusammen, ohne Neu-Chunking und ohne den gespeicherten Text anzufassen — Belege und
-Deep Links überleben. Ändert sich das Zerlegungsverfahren selbst, ist das weiterhin der reguläre
-Pipeline-Reindex. Die vier Betriebszusagen gelten damit unverändert: Die Suche bleibt verfügbar (ein
-noch nicht neu eingebetteter Chunk bleibt gültig und auffindbar), der Mischzustand ist je Bibliothek
-abfragbar und erscheint in derselben Zustandsübersicht wie der übrige Indexzustand (siehe
+**Der angezeigte Preis ist der bezahlte Preis.** Die Auswahl des Nachlaufs steht auf **Dokumentebene**:
+Jedes Dokument trägt in `documents.context_prefix_stamp` den Abdruck des Präfix, mit dem seine Chunks
+zuletzt eingebettet wurden (`ChunkContextPrefix#stampOf` über Titel und präfixwirksame Werte; der
+Strukturkontext hängt am Chunk und kann sich ohne Neu-Chunking nicht ändern). Eine präfixwirksame
+Schemaänderung leert diesen Abdruck bei **genau den Dokumenten, deren Präfix sich dadurch ändert** —
+dieselbe Menge, die die Vorschau zählt. Eine bibliotheksweite Markierung gäbe es nicht umsonst: Sie
+ließe die Vorschau „12 Dokumente" sagen und den Lauf danach 10.000 neu einbetten, und genau diese
+Überraschung ist der Grund, aus dem es die Anzeige überhaupt gibt.
+
+**Das Speichern setzt nichts in Bewegung.** Es markiert nur; gestartet wird der Nachlauf über `POST
+/api/v1/admin/indexing/context-prefix-rerun`, bibliotheksweise, von einer Person mit `SYSTEM_ADMIN` auf
+der Seite „Suche & Indexierung" — dieselbe Schranke wie beim Pipeline-Reindex und beim Bestandslauf,
+und aus demselben Grund: Es ist ein Systemprozess über einen ganzen Bestand. In den
+Bibliothekseinstellungen steht dafür der Hinweis „N Dokumente warten auf Neu-Einbetten" mit Verweis auf
+diese Seite — die Fachperson, die die Änderung veranlasst, ist selten selbst Administratorin.
+
+**Der Nachlauf ist kein zweiter Mechanismus.** Er läuft über dieselbe Chargen-Schleife
+(`DocumentBatchLoop`) wie Bestandslauf und Reindex, und seine Auswahl ist der eine Abdruck.
+Verarbeitungseinheit ist das Dokument, und seine Chunks bleiben: Sie werden **unter ihren eigenen IDs**
+neu eingebettet, Vektorzeile und `chunk_full_text` zusammen, ohne Neu-Chunking und ohne den
+gespeicherten Text anzufassen — Belege und Deep Links überleben. Ändert sich das Zerlegungsverfahren
+selbst, ist das weiterhin der reguläre Pipeline-Reindex nach Regel (d). Die vier Betriebszusagen gelten
+damit unverändert: Die Suche bleibt verfügbar (ein noch nicht neu eingebetteter Chunk bleibt gültig und
+auffindbar), der Mischzustand ist je Bibliothek abfragbar und erscheint in derselben Zustandsübersicht
+wie der übrige Indexzustand (siehe
 [Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)), die Wiederaufnahme ist
 dokumentgranular und idempotent (ein zweiter Lauf über bereits verarbeitete Dokumente kostet keinen
 Einbettungsaufruf), und Anhalten ist schlicht das Ausbleiben des nächsten Aufrufs. Ein Dokument, das
@@ -1282,15 +1294,20 @@ nicht verarbeitet werden kann, behält alles, was es hatte, und bleibt ausstehen
 zerstört, bevor der Ersatz existiert. Jeder Aufruf wird auditiert
 (`INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED`, ein Eintrag je Aufruf, Objekt ist die Bibliothek).
 
-**Eine manuelle Korrektur eines präfixwirksamen Wertes bettet nicht sofort neu ein** (#1068): Sie
-leert die `context_prefix_version` des Dokuments und gibt es damit an den Nachlauf, dessen Start eine
-ausdrückliche Freigabe bleibt. Die Korrektur selbst bleibt, was sie war — ein JSON-Update der
-Chunk-Schlüssel ohne Modellaufruf. Ein Feld, das nur filtert oder nur im Beleg steht, lässt die Version
-unangetastet.
+**Eine manuelle Korrektur eines präfixwirksamen Wertes bettet nicht sofort neu ein** (#1068): Sie leert
+den Abdruck dieses einen Dokuments und gibt es damit an den Nachlauf, dessen Start eine ausdrückliche
+Freigabe bleibt. Die Korrektur selbst bleibt, was sie war — ein JSON-Update der Chunk-Schlüssel ohne
+Modellaufruf. Ein Feld, das nur filtert oder nur im Beleg steht, lässt den Abdruck unangetastet.
 
-**Bewusst nicht gebaut.** Kein automatischer Start nach einer Schemaänderung; kein zweiter
-Auswahlmechanismus neben dem Versionspaar; keine installationsweite Voreinstellung für
-präfixwirksame Kernfelder; kein Präfix im gespeicherten Chunk-Text.
+**Der Bestand vor #1072 trägt keinen Abdruck** und gilt damit unmittelbar nach dem Upgrade als
+ausstehend, ohne dass jemand etwas geändert hätte. Das ist der ehrliche Zustand — die Kernfeld-Titel
+gab es beim Einbetten dieser Chunks noch nicht —, aber es heißt, dass die erste Administratorin nach
+dem Upgrade „N Dokumente warten auf Neu-Einbetten" für den ganzen Bestand liest. Wann dieser eine
+Nachlauf gefahren wird, entscheidet sie; die Suche läuft bis dahin über den alten Stand.
+
+**Bewusst nicht gebaut.** Kein automatischer Start nach einer Schemaänderung; keine bibliotheksweite
+Markierung neben dem Abdruck je Dokument; keine installationsweite Voreinstellung für präfixwirksame
+Kernfelder; kein Präfix im gespeicherten Chunk-Text.
 
 ## Wirkstelle 3: Beleg-Anzeige
 

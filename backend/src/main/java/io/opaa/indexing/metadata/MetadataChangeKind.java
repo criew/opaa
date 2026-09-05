@@ -8,6 +8,8 @@ import java.util.Optional;
  * MetadataChangeKind}, so no service reads a generated DTO type.
  */
 public enum MetadataChangeKind {
+  /** A new field is defined - no document carries a value for it yet, so nothing changes today. */
+  FIELD_ADDED,
   /** The field starts appearing in the Kontextpraefix - every chunk of a document with a value. */
   CONTEXT_PREFIX_ENABLED,
   /** The field stops appearing there - the same chunks, the same price. */

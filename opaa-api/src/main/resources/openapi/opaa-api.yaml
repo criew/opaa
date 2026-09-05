@@ -770,9 +770,10 @@ paths:
         only, #1072, metadata-schema.md "Nachlauf im Betrieb")
       description: >
         Processes at most batchSize INDEXED documents of libraryId (which must belong to the
-        caller's own organization, otherwise 404) whose stored context-prefix version is missing or
-        below the library's current one - the same version-driven selection the pipeline re-index
-        uses, not a second mechanism. The existing chunks are kept and re-embedded in place under
+        caller's own organization, otherwise 404) whose context-prefix stamp was cleared - the
+        marking every prefix-effective schema change and every manual correction of a
+        prefix-effective value applies to exactly the documents whose prefix it alters, so the
+        number the Folgekosten preview shows and the number this run processes are the same set. The existing chunks are kept and re-embedded in place under
         their own ids with the new prefix; the full-text row is rewritten from the same prefixed
         text. No re-chunking, no model call beyond the embedding, no citation or deep link is lost.
         Nothing is destroyed before its replacement exists: a document that cannot be advanced keeps
@@ -2409,6 +2410,16 @@ paths:
         required: true
         schema:
           $ref: "#/components/schemas/MetadataChangeKind"
+      - name: valueCode
+        in: query
+        required: false
+        description: >
+          The value of a SELECT field's list that is about to be removed. Only evaluated for
+          change=VALUE_REMOVED, where it narrows the answer to the documents carrying exactly this
+          value; without it that change is answered with the whole field's usage, the honest upper
+          bound.
+        schema:
+          type: string
 
     get:
       operationId: getMetadataChangeImpact
@@ -2448,9 +2459,9 @@ paths:
         Switches the Kontextpräfix-Wirkstelle of the two switchable core fields Dokumentart and
         Datum/Stand for this library (#1072). Deliberately no installation-wide default: the
         Wirkstelle "Kontextpräfix" is a deliberate decision per field. The Kernfeld Titel is always
-        prefix-effective and therefore not switchable. Saving raises the library's context-prefix
-        version; it moves no bestand - the Nachlauf is started separately on the administration
-        page. Requires the management right at the library.
+        prefix-effective and therefore not switchable. Saving hands exactly the documents carrying a
+        value for a switched field to the Nachlauf; it moves no bestand - the run is started
+        separately on the administration page. Requires the management right at the library.
       requestBody:
         required: true
         content:
@@ -6771,8 +6782,8 @@ components:
           type: boolean
           description: >-
             Whether the field's value belongs into the Kontextpräfix of every chunk, which goes
-            into embedding and full-text index alike (#1072). Switching it costs a Nachlauf over
-            the documents that carry a value - see GET
+            into embedding and full-text index alike (#1072). Switching it hands exactly the
+            documents that carry a value to the Nachlauf - see GET
             /api/v1/libraries/{libraryId}/metadata-fields/change-impact.
         citationPosition:
           type: integer
@@ -6840,13 +6851,15 @@ components:
       type: string
       description: >-
         The planned schema change whose Folgekosten are being asked for (#1072,
-        metadata-schema.md, Kostentabelle): CONTEXT_PREFIX_ENABLED / CONTEXT_PREFIX_DISABLED - the
+        metadata-schema.md, Kostentabelle): FIELD_ADDED - a new field is defined, which no document
+        carries a value for yet; CONTEXT_PREFIX_ENABLED / CONTEXT_PREFIX_DISABLED - the
         Kontextpraefix-Wirkstelle of the field is switched on or off; FIELD_REMOVED - the field is
         deleted with everything hanging on it; VALUE_REMOVED - a value of the list is removed with
         a confirmed mapping; VALUE_ADDED - the list is extended, which has no effect on stored
         values and costs nothing.
       enum:
         [
+          FIELD_ADDED,
           CONTEXT_PREFIX_ENABLED,
           CONTEXT_PREFIX_DISABLED,
           FIELD_REMOVED,
@@ -6934,9 +6947,9 @@ components:
         processedDocuments:
           type: integer
           description: >
-            Documents re-embedded under the current prefix: their chunks were rewritten in place
-            under their own ids, vector and full-text row together, and the document's
-            context-prefix version was recorded.
+            Documents re-embedded under their current prefix: their chunks were rewritten in place
+            under their own ids, vector and full-text row together, and the document's new prefix
+            stamp was recorded.
         skippedDocuments:
           type: integer
           description: >
@@ -6951,37 +6964,27 @@ components:
     ContextPrefixRerunStatusResponse:
       type: object
       required:
-        [
-          prefixVersion,
-          totalDocuments,
-          currentDocuments,
-          pendingDocuments,
-          lastSkippedDocuments,
-          complete,
-        ]
+        [totalDocuments, currentDocuments, pendingDocuments, lastSkippedDocuments, complete]
       description: >
         The Kontextpraefix state of one library (#1072, metadata-schema.md "Nachlauf im Betrieb"):
         the defined, permitted Mischzustand of a library whose prefix is being changed -
         verarbeitet, ausstehend, fehlgeschlagen. The search stays available over both halves.
       properties:
-        prefixVersion:
-          type: integer
-          description: >
-            The library's current context-prefix version every document is measured against.
         totalDocuments:
           type: integer
           format: int64
         currentDocuments:
           type: integer
           format: int64
-          description: Indexed documents already embedded under the current prefix.
+          description: Indexed documents already embedded under their current prefix.
         pendingDocuments:
           type: integer
           format: int64
           description: >
-            Indexed documents never embedded with a prefix version or embedded under an older one -
-            including the ones whose own prefix-effective value was corrected by hand, which the
-            correction hands back to the Nachlauf instead of re-embedding on the spot.
+            Indexed documents whose prefix stamp was cleared by a change to their own prefix, plus
+            the bestand that never carried one. A manual correction of a prefix-effective value
+            lands here too - it hands the document to the Nachlauf instead of re-embedding on the
+            spot.
         lastSkippedDocuments:
           type: integer
           format: int64

@@ -160,7 +160,7 @@ class SearchAdminResponseMapperTest {
                     new MetadataFieldFill(10, 4, 2),
                     CoreMetadataField.DOCUMENT_DATE,
                     new MetadataFieldFill(10, 6, 0))),
-            new ContextPrefixRerunProgress(LIBRARY_ID, 3, 10, 7, 3, 1));
+            new ContextPrefixRerunProgress(LIBRARY_ID, 10, 7, 3, 1));
 
     var response =
         SearchAdminResponseMapper.toStatusResponse(
@@ -196,7 +196,6 @@ class SearchAdminResponseMapperTest {
     // The Kontextpraefix Mischzustand travels in the same row: verarbeitet, ausstehend,
     // fehlgeschlagen (metadata-schema.md, "Nachlauf im Betrieb").
     var rerun = response.getContextPrefixRerun();
-    assertThat(rerun.getPrefixVersion()).isEqualTo(3);
     assertThat(rerun.getTotalDocuments()).isEqualTo(10);
     assertThat(rerun.getCurrentDocuments()).isEqualTo(7);
     assertThat(rerun.getPendingDocuments()).isEqualTo(3);
@@ -241,7 +240,7 @@ class SearchAdminResponseMapperTest {
                             0,
                             0,
                             MetadataBackfillProgress.empty(LIBRARY_ID),
-                            ContextPrefixRerunProgress.empty(LIBRARY_ID, 1)))))
+                            ContextPrefixRerunProgress.empty(LIBRARY_ID)))))
             .getLibraries()
             .get(0);
 

@@ -209,9 +209,8 @@ public class LibraryMetadataFieldService {
     } else if (!input.values().isEmpty()) {
       throw new ValidationException("Nur ein Auswahlfeld führt eine Werteliste");
     }
-    if (input.contextPrefix()) {
-      raiseContextPrefixVersion(library);
-    }
+    // No marking here on purpose: a field that does not exist yet carries no value on any
+    // document, so no document's prefix changes - which is exactly what FIELD_ADDED reports.
     schemaChanged(library);
     return new LibraryMetadataFieldDefinition(field, values);
   }
@@ -247,9 +246,9 @@ public class LibraryMetadataFieldService {
       rewriteChunksOf(field);
     }
     if (wasPrefixEffective != contextPrefix) {
-      // Both directions cost the same: the prefix of every chunk of a document with a value
-      // changes, whether the field enters it or leaves it.
-      raiseContextPrefixVersion(library);
+      // Both directions cost the same, and both cost it for exactly the documents that carry a
+      // value: for every other document the prefix is unchanged.
+      documentRepository.clearContextPrefixStampForField(library.getId(), field.documentFieldKey());
     }
     schemaChanged(library);
     return new LibraryMetadataFieldDefinition(field, valuesOfField(field.getId()));
@@ -279,9 +278,8 @@ public class LibraryMetadataFieldService {
         field, false, documentId -> metadataService.deleteValue(documentId, ref));
     valueRepository.deleteByFieldId(field.getId());
     fieldRepository.delete(field);
-    if (field.isContextPrefixEnabled()) {
-      raiseContextPrefixVersion(library);
-    }
+    // The documents that carried a value were already handed to the Nachlauf by deleteValue above,
+    // which marks whatever it empties on a prefix-effective field - no second marking here.
     schemaChanged(library);
   }
 
@@ -348,8 +346,8 @@ public class LibraryMetadataFieldService {
     valueRepository.save(value);
     if (field.isContextPrefixEnabled()) {
       // A document carries the code, so no value moves - but the Kontextpraefix carries the label,
-      // so the indexed text of every chunk of a prefix-effective field does change.
-      raiseContextPrefixVersion(library);
+      // so the indexed text of the documents carrying exactly this value does change.
+      documentRepository.clearContextPrefixStampForValue(library.getId(), value.getId());
     }
     schemaChanged(library);
     return new LibraryMetadataFieldDefinition(field, valuesOfField(field.getId()));
@@ -439,9 +437,11 @@ public class LibraryMetadataFieldService {
   public MetadataChangeImpact changeImpact(
       UUID libraryId, String fieldKey, MetadataChangeKind kind, CurrentUser caller) {
     KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.MANAGER);
-    if (kind == MetadataChangeKind.VALUE_ADDED) {
-      // Extending a list has no rueckwirkung on a stored value - the one row of the Kostentabelle
-      // that is free regardless of the field's Wirkstellen.
+    if (kind == MetadataChangeKind.VALUE_ADDED || kind == MetadataChangeKind.FIELD_ADDED) {
+      // Extending a list has no rueckwirkung on a stored value, and a field that does not exist yet
+      // carries none - the two rows of the Kostentabelle that are free whatever the Wirkstellen
+      // are.
+      // A new field starts costing only once values reach it, one document at a time.
       return MetadataChangeImpact.free(embeddingRateEstimator.rateSource());
     }
     CoreMetadataField coreField = CoreMetadataField.fromKey(fieldKey).orElse(null);
@@ -509,25 +509,29 @@ public class LibraryMetadataFieldService {
   }
 
   /**
-   * Switches the Kontextpraefix-Wirkstelle of Dokumentart and Datum/Stand. Saving raises the
-   * library's context-prefix version and thereby hands its indexed bestand to the Nachlauf; it
-   * starts nothing - that is a separate, explicit release on the administration page.
+   * Switches the Kontextpraefix-Wirkstelle of Dokumentart and Datum/Stand and hands exactly the
+   * documents carrying a value for a switched field to the Nachlauf; it starts nothing - that is a
+   * separate, explicit release on the administration page.
    */
   @Transactional
   public CoreContextPrefixSettings updateCoreContextPrefix(
       UUID libraryId, boolean documentType, boolean documentDate, CurrentUser caller) {
     KnowledgeLibrary library = requireLibrary(libraryId, caller, AssetRole.MANAGER);
+    boolean typeSwitched = library.isCoreContextPrefixDocumentType() != documentType;
+    boolean dateSwitched = library.isCoreContextPrefixDocumentDate() != documentDate;
     if (library.applyCoreContextPrefix(documentType, documentDate)) {
       libraryRepository.save(library);
+      if (typeSwitched) {
+        documentRepository.clearContextPrefixStampForField(
+            library.getId(), CoreMetadataField.DOCUMENT_TYPE.key());
+      }
+      if (dateSwitched) {
+        documentRepository.clearContextPrefixStampForField(
+            library.getId(), CoreMetadataField.DOCUMENT_DATE.key());
+      }
       schemaChanged(library);
     }
     return CoreContextPrefixSettings.of(library);
-  }
-
-  /** Hands the library's whole indexed bestand to the Kontextpraefix-Nachlauf. */
-  private void raiseContextPrefixVersion(KnowledgeLibrary library) {
-    library.raiseContextPrefixVersion();
-    libraryRepository.save(library);
   }
 
   /**

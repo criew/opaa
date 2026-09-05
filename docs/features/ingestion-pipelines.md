@@ -1373,14 +1373,17 @@ Rohtexts: Der zitierte Auszug im Beleg bleibt der Originalwortlaut.
 
 #### Umgesetzt (#1072)
 
-`ChunkContextPrefix` ist die eine Stelle, an der der Präfix entsteht — für den Aufnahmeweg
-(`FileProcessingService#storeChunks`) und für den Nachlauf gleichermaßen. Er setzt sich aus dem Titel,
+`ChunkContextPrefix#forChunk` ist die eine Stelle, an der der Präfix entsteht — für den Aufnahmeweg
+(`FileProcessingService#storeChunks`) und für den Nachlauf gleichermaßen, samt der Entscheidung, ob es
+überhaupt einen gibt. Er setzt sich aus dem Titel,
 den präfixwirksamen Metadatenwerten des Dokuments und dem Strukturkontext des Chunks zusammen, getrennt
 durch `›`; ein leeres Segment entfällt vollständig, und ein Präfix ohne jedes Segment existiert nicht.
 
 - **Der Titel ist das Kernfeld Titel** (ADR-0024) und ersetzt damit die Dateinamens-Humanisierung von
   `ChunkContextTitle`; die bleibt der Rückfall, wo kein Titel ermittelt wurde. Die Entscheidung „dieser
-  Dokumenttyp bekommt gar keinen Präfix" (RSS-Eintrag ohne Überschrift) bleibt beim Aufrufer.
+  Dokumenttyp bekommt gar keinen Präfix" (RSS-Eintrag ohne Überschrift) trifft der Aufrufer und wird an
+  `documents.context_prefix_eligible` festgehalten — sonst müsste der Nachlauf sie raten und gäbe
+  demselben Dokument einen Präfix, den die Aufnahme ihm bewusst verweigert hatte.
 - **Der Strukturkontext ist der Abschnittspfad des Chunks**, gelesen aus seinem Fundort und nur dort,
   wo dieser einen Abschnitt nennt (`Abschn. …`). Eine Seiten-, Folien- oder Zeilenangabe benennt keinen
   Inhalt und würde beide Indizes nur verdünnen. Beginnt der Chunk-Text bereits mit der Überschrift —

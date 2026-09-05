@@ -148,9 +148,7 @@ describe('LibraryMetadataFieldsSection', () => {
     await user.click(within(dialog).getByRole('checkbox', { name: 'Wirkt im Kontextpräfix' }))
 
     // Concrete numbers, not a general warning - the whole point of the Kostenanzeige.
-    expect(
-      await within(dialog).findByText(/4812 Abschnitte in 12 Dokument\(en\) neu/),
-    ).toBeInTheDocument()
+    expect(await within(dialog).findByText(/4812 Abschnitte in/)).toBeInTheDocument()
     expect(within(dialog).getByText(/rund 40 Minuten/)).toBeInTheDocument()
     expect(within(dialog).getByText(/Speichern setzt nichts in Bewegung/)).toBeInTheDocument()
     expect(mockImpact).toHaveBeenCalledWith(
@@ -159,6 +157,30 @@ describe('LibraryMetadataFieldsSection', () => {
       'CONTEXT_PREFIX_ENABLED',
       undefined,
     )
+  })
+
+  it('names the Folgekosten of a newly defined prefix-effective field', async () => {
+    mockImpact.mockResolvedValue({
+      affectedDocuments: 0,
+      affectedChunks: 0,
+      embeddingCalls: 0,
+      estimatedSeconds: 0,
+      reembeddingRequired: false,
+      rateSource: 'CONFIGURED',
+    })
+    const user = userEvent.setup()
+    renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)
+
+    await user.click(await screen.findByRole('button', { name: 'Feld anlegen' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Wirkt im Kontextpräfix' }))
+
+    // A field nobody has filled yet changes no document's prefix - and says so, instead of
+    // leaving the most expensive row of the Kostentabelle without any number at all.
+    expect(
+      await within(dialog).findByText('Diese Änderung hat keine Folgekosten.'),
+    ).toBeInTheDocument()
+    expect(mockImpact).toHaveBeenCalledWith('library-team', '', 'FIELD_ADDED', undefined)
   })
 
   it('switches a core field into the Kontextpräfix only after its Folgekosten were shown', async () => {
@@ -208,7 +230,7 @@ describe('LibraryMetadataFieldsSection', () => {
       withRouter: true,
     })
 
-    expect(await screen.findByText(/7 Dokument\(e\) warten auf Neu-Einbetten/)).toBeInTheDocument()
+    expect(await screen.findByText(/7 Dokumente warten auf Neu-Einbetten/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Suche & Indexierung/ })).toHaveAttribute(
       'href',
       '/admin/search',

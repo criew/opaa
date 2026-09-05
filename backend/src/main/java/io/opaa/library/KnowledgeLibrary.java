@@ -210,15 +210,6 @@ public class KnowledgeLibrary {
   private boolean diagnosticsLocked = true;
 
   /**
-   * Rises with every change to this library's prefix-effective metadata configuration (#1072,
-   * metadata-schema.md, Wirkstelle 2). A document whose {@code context_prefix_version} is below
-   * this one carries chunks embedded under an outdated Kontextpraefix and is what the Nachlauf
-   * selects - the same version-driven mechanism the pipeline re-index uses, not a second one.
-   */
-  @Column(name = "context_prefix_version", nullable = false)
-  private int contextPrefixVersion = 1;
-
-  /**
    * Whether the Kernfeld Dokumentart belongs into this library's Kontextpraefix. Off by default:
    * the Wirkstelle is a deliberate decision per field, never a default for all of them. The
    * Kernfeld Titel is always prefix-effective and therefore has no flag.
@@ -583,10 +574,6 @@ public class KnowledgeLibrary {
     return scheduleCron;
   }
 
-  public int getContextPrefixVersion() {
-    return contextPrefixVersion;
-  }
-
   public boolean isCoreContextPrefixDocumentType() {
     return coreContextPrefixDocumentType;
   }
@@ -596,8 +583,8 @@ public class KnowledgeLibrary {
   }
 
   /**
-   * Applies the switchable core-field Wirkstellen and raises {@link #getContextPrefixVersion()} if
-   * either actually changed - the version rises exactly when the prefix a chunk would get changes.
+   * Applies the switchable core-field Wirkstellen; the caller hands the affected documents to the
+   * Nachlauf, which is a per-document marking, not a library-wide one.
    *
    * @return whether anything changed
    */
@@ -608,14 +595,8 @@ public class KnowledgeLibrary {
     }
     this.coreContextPrefixDocumentType = documentType;
     this.coreContextPrefixDocumentDate = documentDate;
-    raiseContextPrefixVersion();
-    return true;
-  }
-
-  /** Marks this library's whole indexed bestand as due for the Kontextpraefix-Nachlauf. */
-  public void raiseContextPrefixVersion() {
-    this.contextPrefixVersion++;
     this.updatedAt = Instant.now();
+    return true;
   }
 
   public Instant getCreatedAt() {

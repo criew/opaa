@@ -164,7 +164,7 @@ class SearchAdminControllerTest {
                                 new MetadataFieldFill(5, 2, 0),
                                 CoreMetadataField.DOCUMENT_TYPE,
                                 new MetadataFieldFill(5, 0, 1))),
-                        new ContextPrefixRerunProgress(UUID.randomUUID(), 2, 5, 4, 1, 0)))));
+                        new ContextPrefixRerunProgress(UUID.randomUUID(), 5, 4, 1, 0)))));
 
     mockMvc
         .perform(get("/api/v1/admin/search/status").with(asAdmin()))

@@ -436,9 +436,7 @@ public class SearchStatusService {
               fillState.missingChunks(),
               metadataBackfill,
               contextPrefixByLibrary.getOrDefault(
-                  library.getId(),
-                  ContextPrefixRerunProgress.empty(
-                      library.getId(), library.getContextPrefixVersion()))));
+                  library.getId(), ContextPrefixRerunProgress.empty(library.getId()))));
     }
     result.sort(
         Comparator.comparing(LibrarySearchStatus::libraryName, String.CASE_INSENSITIVE_ORDER));

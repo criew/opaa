@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.ai.document.DefaultContentFormatter;
 import org.springframework.ai.document.MetadataMode;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -62,10 +63,10 @@ public class FullTextChunkStore {
    *
    * <p>Indexes the chunk's {@code EMBED} form, not its raw text: the Kontextpraefix goes into
    * embedding <b>and</b> full-text index (metadata-schema.md, Wirkstelle 2), and reading it off the
-   * same formatter the embedding uses is what keeps the two from drifting apart. Every caller must
-   * therefore have set a {@link org.springframework.ai.document.ContentFormatter} - both do, via
-   * {@code FileProcessingService#storeChunks} and {@code ContextPrefixRerunService}; the stored
-   * chunk text itself is untouched, so a Beleg still quotes the original wording.
+   * same formatter the embedding uses is what keeps the two from drifting apart. A chunk still
+   * carrying Spring AI's default formatter is indexed by its raw text instead - that formatter
+   * would spell every metadata key into {@code content_tsv}, and a caller who forgot to set one
+   * must not silently poison the lexical index.
    */
   void indexChunks(List<org.springframework.ai.document.Document> chunks) {
     if (chunks.isEmpty()) {
@@ -92,12 +93,21 @@ public class FullTextChunkStore {
               3,
               UUID.fromString(
                   (String) chunk.getMetadata().get(VectorChunkStore.LIBRARY_ID_METADATA_KEY)));
-          String indexedText = chunk.getFormattedContent(MetadataMode.EMBED);
+          String indexedText = indexedTextOf(chunk);
           ps.setString(4, TEXT_SEARCH_CONFIGURATION);
           ps.setString(5, indexedText);
           ps.setString(6, String.join(" ", FullTextIdentifiers.extract(indexedText)));
           ps.setShort(7, CURRENT_TSV_VERSION);
         });
+  }
+
+  /**
+   * See {@link #indexChunks}: the chunk's own formatter, never Spring AI's metadata-spelling one.
+   */
+  private static String indexedTextOf(org.springframework.ai.document.Document chunk) {
+    return chunk.getContentFormatter() instanceof DefaultContentFormatter
+        ? chunk.getText()
+        : chunk.getFormattedContent(MetadataMode.EMBED);
   }
 
   /**

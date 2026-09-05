@@ -33,7 +33,7 @@ class LibrarySearchStatusTest {
         vectorChunkCount - missing,
         missing,
         MetadataBackfillProgress.empty(LIBRARY_ID),
-        ContextPrefixRerunProgress.empty(LIBRARY_ID, 1));
+        ContextPrefixRerunProgress.empty(LIBRARY_ID));
   }
 
   @Test
