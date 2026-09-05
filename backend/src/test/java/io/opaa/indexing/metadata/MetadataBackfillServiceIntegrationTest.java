@@ -424,14 +424,15 @@ class MetadataBackfillServiceIntegrationTest {
                 "Gebuehrensatzung 2024",
                 pageUrl,
                 "7",
+                java.time.Instant.parse("2026-03-12T10:00:00Z"),
                 null,
                 library))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     CoreMetadata core = documentMetadataService.coreMetadataFor(pageId);
     assertThat(core.title()).isEqualTo("Gebuehrensatzung 2024");
-    // The year in the title is no Stand, and the version marker is no date either.
-    assertThat(core.documentDate()).isNull();
+    // The Stand comes from the page version, never from the year in the title.
+    assertThat(core.documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
     assertThat(core.documentTypeCode()).isNull();
     assertThat(documentRepository.findById(pageId).orElseThrow().getMetadataExtractionVersion())
         .isEqualTo(CoreMetadataExtractor.EXTRACTION_VERSION);

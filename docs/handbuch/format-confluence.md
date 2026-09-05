@@ -80,12 +80,13 @@ Space und Gliederungspfad stehen nicht im Seitenkörper; der Konnektor kennt sie
 das Dokument und an jeden Chunk. Der **Kontexttitel** für das Embedding ist der Ort der Seite im
 Space, Gliederungspfad plus Titel („Handbuch / Kapitel 1 / Abschnitt 1.1"), nicht nur der Titel.
 
-**Dokumenteigenschaften** für das [Metadatenschema](metadaten.md): der Seitentitel als Titel.
+**Dokumenteigenschaften** für das [Metadatenschema](metadaten.md): der Seitentitel als Titel und der
+Zeitpunkt der aktuellen Seitenversion als Änderungsdatum — daraus wird **Datum/Stand** ermittelt.
 Der Seitentitel gilt dabei **nicht** als Dateiname: Weder seine Wörter liefern die Dokumentart noch
 eine Jahreszahl darin den Stand — „Gebührensatzung 2024" ist die Überschrift einer Wiki-Seite über
-Gebühren, keine Satzung mit Stand 2024. Die Versionsnummer ist ebenfalls kein Datum. Eine Titelzeile
-aus dem Seitenkörper wird nicht gelesen. Dokumentart und Datum bleiben damit leer, bis sie von Hand
-gesetzt werden.
+Gebühren, keine Satzung mit Stand 2024. Das Datum kommt aus der Seitenversion, nicht aus dem Titel;
+die Versionsnummer selbst ist kein Datum. Eine Titelzeile aus dem Seitenkörper wird nicht gelesen.
+Die **Dokumentart** bleibt damit leer, bis sie von Hand gesetzt wird.
 
 ## 5. Fehler
 

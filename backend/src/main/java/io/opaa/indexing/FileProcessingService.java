@@ -1074,12 +1074,15 @@ public class FileProcessingService {
    *
    * @param storageBody the page body in Confluence storage format (XHTML with macro elements)
    * @param version the page's Confluence version number, the executor's pre-fetch change marker
+   * @param lastModified when the page's current version was created - its Stand; {@code null} when
+   *     the instance did not say
    */
   public FileProcessingResult processConfluencePage(
       String storageBody,
       String title,
       String pageUrl,
       String version,
+      Instant lastModified,
       SourceDocumentContext context,
       KnowledgeLibrary targetLibrary) {
     boolean hasTitle = title != null && !title.isBlank();
@@ -1203,10 +1206,15 @@ public class FileProcessingService {
           }
         }
       }
-      // The page title is the document's declared title (ADR-0024); the version number is no
-      // date. The name of this document is that title (or its URL), never a file name - marked as
-      // such so no naming convention is read out of it (#1263).
-      DocumentProperties properties = parsed.properties().withSyntheticName(true);
+      // The page title is the document's declared title, the creation of its current version the
+      // Stand (ADR-0024) - the version number itself is no date. The name of this document is that
+      // title (or its URL), never a file name - marked as such so no naming convention is read out
+      // of it (#1263).
+      DocumentProperties properties =
+          parsed
+              .properties()
+              .withSyntheticName(true)
+              .withModifiedAt(DocumentProperties.instantToLocalDate(lastModified));
       DocumentPipelineResult withTitle =
           parsed.withProperties(hasTitle ? properties.withTitle(title) : properties);
       if (replacingExistingChunks) {

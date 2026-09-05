@@ -480,12 +480,19 @@ Datumsangabe aus dem Namen. Als **Titel** bleibt der Name, denn genau das ist er
 | Zufluss | `file_name` | Name ist ein Dateiname? |
 |---|---|---|
 | Dateisystem, Upload, Webverzeichnis (HTTP) | Name der Datei | ja |
-| Anhang einer Mail, eines Webverzeichnisses oder einer Confluence-Seite | Name des Anhangs | ja |
+| Anhang einer Mail, eines RSS-Eintrags, eines Webverzeichnisses oder einer Confluence-Seite | Name des Anhangs | ja |
 | RSS-Eintragskörper | Überschrift des Eintrags, ersatzweise seine URL | **nein** |
 | Confluence-Seite | Seitentitel, ersatzweise seine URL | **nein** |
 
+Anhänge stehen ausnahmslos auf der Ja-Seite: Sie laufen über `FileProcessingService#processUrlFile`
+mit dem Namen, den die Quelle für die Datei nennt — auch der Anhang eines RSS-Eintrags und der einer
+Confluence-Seite, deren Elternzeile selbst einen synthetischen Namen trägt.
+
 Ein Seitentitel im Wiki folgt derselben freien Schreibweise wie eine Feed-Überschrift: „Gebührensatzung
-2024" ist die Überschrift einer Wiki-Seite über Gebühren, keine Satzung mit Stand 2024. Beide
+2024" ist die Überschrift einer Wiki-Seite über Gebühren, keine Satzung mit Stand 2024. Beide Zuflüsse
+haben stattdessen eine echte Datumsquelle aus den Eigenschaften der Quelle: der Feed-Eintrag sein
+Veröffentlichungsdatum (`documentDate`), die Confluence-Seite den Zeitpunkt, zu dem ihre aktuelle
+Version geschrieben wurde (`modifiedAt`, aus `ConfluencePage#lastModified`). Beide
 synthetischen Zuflüsse setzen das Kennzeichen im Ingest, in `FileProcessingService#processRssEntry`
 und `#processConfluencePage`. Im **Bestandslauf** gibt es zwei Wege zur selben Regel: Ein
 RSS-Eintragskörper wird in `MetadataBackfillService#advanceRemote` ohne Download aus seiner Zeile neu

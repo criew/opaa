@@ -118,7 +118,7 @@ Jede Format-Pipeline gibt nur weiter, was ihr Format selbst erklärt; interpreti
 | HTML | `<title>` | | erste `<h1>` | erster Textblock des Hauptinhalts | |
 | E-Mail | Betreff | `Date`-Kopf als Dokumentdatum | | | |
 | Feed-Eintrag | Überschrift des Eintrags | Veröffentlichungsdatum als Dokumentdatum | | | Name gilt nicht als Dateiname |
-| Confluence-Seite | Seitentitel | | | | Name gilt nicht als Dateiname |
+| Confluence-Seite | Seitentitel | Zeitpunkt der aktuellen Seitenversion als Änderungsdatum | | | Name gilt nicht als Dateiname |
 | Tabellen, TXT, DOC | | | | TXT, DOC: erste Textzeile | |
 
 Bei allen Formaten kommt der **Dateiname** hinzu, und die geroutete **Formatkennung** entscheidet
@@ -139,7 +139,8 @@ Dokumentart und liefern nichts.
 - **Ein Name, der kein Dateiname ist**, liefert weder Dokumentart noch Datum: Die Überschrift eines
   Feed-Eintrags („Rat beschließt neue Hundesteuersatzung") ist keine Satzung, und der Titel einer
   Confluence-Seite („Gebührensatzung 2024") ist weder eine Satzung noch ein Stand. Er bleibt der
-  Titel. Betroffen sind genau diese beiden Zuflüsse; Dateien, Uploads, Dateien eines
+  Titel; das Datum kommt bei beiden aus den Eigenschaften der Quelle (Veröffentlichungsdatum des
+  Eintrags, Zeitpunkt der Seitenversion). Betroffen sind genau diese beiden Zuflüsse; Dateien, Uploads, Dateien eines
   Webverzeichnisses und jeder Anhang tragen echte Dateinamen.
 - **Datumsschreibweisen**, in dieser Reihenfolge je Quelle: `2026-03-12`, `12.03.2026`, `2026-03`,
   „März 2026", dann ein Jahr 1900 bis 2099. Ein unmögliches Datum (ein Aktenzeichen wie

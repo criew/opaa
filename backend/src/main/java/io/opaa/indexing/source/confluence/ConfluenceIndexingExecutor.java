@@ -875,7 +875,13 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       // the structure-preserving cut.
       FileProcessingResult result =
           fileProcessingService.processConfluencePage(
-              storageBody, page.title(), pagePath, version, pageContext, run.library);
+              storageBody,
+              page.title(),
+              pagePath,
+              version,
+              page.lastModified(),
+              pageContext,
+              run.library);
       pageStored = recordPageResult(run, result, pagePath);
     } catch (Exception e) {
       log.error("Failed to process Confluence page {}", pagePath, e);
