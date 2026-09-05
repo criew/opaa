@@ -47,6 +47,25 @@ class InitialAdminPolicyTest {
     assertThat(policy.grantsSystemAdmin("other@opaa.local", DEFAULT_ISSUER)).isFalse();
   }
 
+  /** The stored issuer keeps the provider's spelling; the comparison ignores trailing slashes. */
+  @Test
+  void aDefaultProviderStoredWithATrailingSlashStillMatchesItsIssuer() {
+    OidcProvider auth0 =
+        new OidcProvider(
+            "Auth0",
+            "https://tenant.eu.auth0.com/",
+            "opaa-frontend",
+            null,
+            OidcClaimMapping.keycloakDefaults());
+    auth0.markDefault();
+    when(repository.findByDefaultProviderTrue()).thenReturn(Optional.of(auth0));
+    InitialAdminPolicy policy =
+        new InitialAdminPolicy(new AuthProperties("oidc", null, null, ADMIN), repository);
+
+    assertThat(policy.grantsSystemAdmin(ADMIN, "https://tenant.eu.auth0.com/")).isTrue();
+    assertThat(policy.grantsSystemAdmin(ADMIN, "https://tenant.eu.auth0.com")).isTrue();
+  }
+
   @Test
   void grantsNothingWhileNoDefaultProviderExists() {
     when(repository.findByDefaultProviderTrue()).thenReturn(Optional.empty());

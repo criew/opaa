@@ -2,7 +2,10 @@ package io.opaa.auth;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -48,11 +51,12 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
  * The real {@link OidcSecurityConfig} chain over a real {@link OidcProviderRegistry} (#1329,
- * ADR-0025 Entscheidung 1): a token of an enabled provider passes the chain and reaches the
- * controller; a token of an issuer no enabled provider owns - a disabled or deleted one - is
- * refused with {@code 401} and {@code error_description="unknown_issuer"} in {@code
- * WWW-Authenticate}, which is what the SPA tells apart from an expired token. Only the decoder is a
- * test double; the resolver, the registry and the filter order are the production wiring.
+ * ADR-0025 Entscheidung 1): a token of an enabled provider is provisioned by {@link
+ * UserProvisioningFilter} - exactly once, and the controller answers from that snapshot; a token of
+ * an issuer no enabled provider owns - a disabled or deleted one - is refused with {@code 401} and
+ * {@code error_description="unknown_issuer"} in {@code WWW-Authenticate}, which is what the SPA
+ * tells apart from an expired token. Only the decoder is a test double; the resolver, the registry
+ * and the filter order are the production wiring.
  */
 @WebMvcTest(controllers = UserInfoController.class)
 @Import({OidcSecurityConfig.class, OidcUnknownIssuerAccessTest.RegistryStub.class})
@@ -116,14 +120,19 @@ class OidcUnknownIssuerAccessTest {
   }
 
   @Test
-  void aTokenOfAnEnabledProviderReachesTheController() throws Exception {
+  void aTokenOfAnEnabledProviderIsProvisionedOnceByTheFilterAndAnsweredFromThatSnapshot()
+      throws Exception {
     User alice = new User("alice", ENABLED_ISSUER, "alice@behoerde.example", "Alice");
     when(userService.findOrCreateUser(any(), any(), any(), any())).thenReturn(alice);
 
     mockMvc
         .perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token(ENABLED_ISSUER)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.email").value("alice@behoerde.example"));
+        .andExpect(jsonPath("$.email").value("alice@behoerde.example"))
+        .andExpect(jsonPath("$.displayName").value("Alice"));
+    // the filter's load is the only one; without the filter @Caller has nothing to resolve
+    verify(userService, times(1))
+        .findOrCreateUser(eq("alice"), eq(ENABLED_ISSUER), eq("alice@behoerde.example"), any());
   }
 
   @Test

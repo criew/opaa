@@ -153,11 +153,15 @@ Verwaltungsoberfläche (#1333) folgen.
 
 **Kontenmodell je Anbieter (gebaut, #1330).** Die Identität eines Kontos ist das Paar
 `(Issuer, Subject)`. Dieselbe Person bei zwei Anbietern hat zwei Konten mit getrennten
-persönlichen Spaces und Rechten — eine Zusammenführung über die E-Mail findet nie statt, auch nicht
-stillschweigend bei gleicher Adresse (Anbieter B kann kein Konto aus Anbieter A übernehmen). Die
-Erstadministrator-Regel (`OPAA_INITIAL_ADMIN_EMAIL`) greift nur beim Anlegen eines Kontos und nur
-über den **Standardanbieter** (im `dev`-Modus: den Dev-Issuer); dieselbe Adresse aus einem zweiten
-Anbieter ergibt einen regulären Nutzer. Ein Token eines deaktivierten oder gelöschten Anbieters wird
+persönlichen Spaces, Systemrollen und Space-Rechten — eine Zusammenführung über die E-Mail findet
+nie statt, auch nicht stillschweigend bei gleicher Adresse (Anbieter B kann kein Konto aus Anbieter
+A übernehmen). Die Bindung des Verzeichnisabgleichs an den Standardanbieter kommt mit #1331; bis
+dahin löst der Abgleich Mitglieder noch ohne Issuer auf, und ein zweiter Anbieter ist erst danach
+betriebsreif. Die Erstadministrator-Regel (`OPAA_INITIAL_ADMIN_EMAIL`) greift nur beim Anlegen
+eines Kontos und nur über den **Standardanbieter** (im `dev`-Modus: den Dev-Issuer); dieselbe
+Adresse aus einem zweiten Anbieter ergibt einen regulären Nutzer, ebenso ein Konto, das angelegt
+wird, solange noch kein Standardanbieter existiert — beides wird als Warnung protokolliert, da die
+Regel nur einmal, beim Anlegen, greift. Ein Token eines deaktivierten oder gelöschten Anbieters wird
 mit `401` und `error_description="unknown_issuer"` abgewiesen, sodass die Oberfläche den Fall vom
 abgelaufenen Token unterscheiden kann.
 
