@@ -20,6 +20,7 @@ import {
   mockChunkInspections,
   mockDocumentChunks,
   mockLlmModels,
+  mockOidcProviders,
   resetMockLlmModels,
   mockUser,
   mockUsers,
@@ -49,6 +50,10 @@ import {
 } from './fixtures'
 import type { MockLibraryFolder } from './fixtures'
 import type {
+  OidcProviderOrderRequest,
+  OidcProviderRequest,
+  OidcProviderResponse,
+  OidcProviderTestRequest,
   AssetGrantRequest,
   BrandingUpdateRequest,
   BulkMetadataValueRequest,
@@ -1116,6 +1121,166 @@ export const handlers = [
       success: true,
       message: 'Verbindung erfolgreich, Modell hat geantwortet.',
     })
+  }),
+
+  // identity providers (ADR-0025, #1329 admin API) - public clients, no secret in any payload;
+  // the same invariants as OidcProviderService: the default is neither disable- nor deletable,
+  // a duplicate issuer is a conflict.
+  http.get('/api/v1/admin/oidc-providers', () => {
+    return HttpResponse.json([...mockOidcProviders].sort((a, b) => a.sortOrder - b.sortOrder))
+  }),
+
+  http.post('/api/v1/admin/oidc-providers', async ({ request }) => {
+    const body = (await request.json()) as OidcProviderRequest
+    if (!body.displayName || !body.issuerUri || !body.clientId) {
+      return HttpResponse.json(
+        { error: 'Anzeigename, Issuer-URI und Client-ID sind erforderlich' },
+        { status: 400 },
+      )
+    }
+    if (mockOidcProviders.some((p) => p.issuerUri === body.issuerUri)) {
+      return HttpResponse.json(
+        { error: 'Für diesen Issuer existiert bereits ein Anbieter.' },
+        { status: 409 },
+      )
+    }
+    const now = new Date().toISOString()
+    const created: OidcProviderResponse = {
+      id: `oidc-provider-${crypto.randomUUID().slice(0, 8)}`,
+      displayName: body.displayName,
+      enabled: true,
+      isDefault: mockOidcProviders.length === 0,
+      sortOrder: mockOidcProviders.length,
+      issuerUri: body.issuerUri,
+      clientId: body.clientId,
+      jwkSetUri: body.jwkSetUri ?? null,
+      claimMapping: {
+        emailClaim: body.claimMapping?.emailClaim || 'email',
+        displayNameClaim: body.claimMapping?.displayNameClaim || 'name',
+        rolesClaim: body.claimMapping?.rolesClaim || null,
+        systemAdminRole: body.claimMapping?.systemAdminRole || null,
+        auditorRole: body.claimMapping?.auditorRole || null,
+        groupsClaim: body.claimMapping?.groupsClaim || null,
+      },
+      registryState: 'READY',
+      registryMessage: null,
+      createdAt: now,
+      updatedAt: now,
+    }
+    mockOidcProviders.push(created)
+    return HttpResponse.json(created, { status: 201 })
+  }),
+
+  http.put('/api/v1/admin/oidc-providers/order', async ({ request }) => {
+    const body = (await request.json()) as OidcProviderOrderRequest
+    body.providerIds.forEach((id, index) => {
+      const provider = mockOidcProviders.find((p) => p.id === id)
+      if (provider) provider.sortOrder = index
+    })
+    return HttpResponse.json([...mockOidcProviders].sort((a, b) => a.sortOrder - b.sortOrder))
+  }),
+
+  http.post('/api/v1/admin/oidc-providers/test', async ({ request }) => {
+    const body = (await request.json()) as OidcProviderTestRequest
+    if (!body.issuerUri) {
+      return HttpResponse.json({ error: 'Issuer-URI darf nicht leer sein.' }, { status: 400 })
+    }
+    return HttpResponse.json({
+      success: true,
+      message: 'Anbieter erreichbar: Discovery-Dokument gefunden, JWK-Set mit 2 Schlüsseln.',
+    })
+  }),
+
+  http.put('/api/v1/admin/oidc-providers/:providerId', async ({ params, request }) => {
+    const provider = mockOidcProviders.find((p) => p.id === String(params.providerId))
+    if (!provider) {
+      return HttpResponse.json({ error: 'Anbieter nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as OidcProviderRequest
+    if (body.issuerUri !== provider.issuerUri && provider.id === 'oidc-provider-beschaeftigte') {
+      return HttpResponse.json(
+        {
+          error:
+            'Die Issuer-URI kann nicht geändert werden: Über diesen Anbieter wurden bereits 12' +
+            ' Konten angelegt, die ihre Identität verlieren würden.',
+        },
+        { status: 409 },
+      )
+    }
+    provider.displayName = body.displayName
+    provider.issuerUri = body.issuerUri
+    provider.clientId = body.clientId
+    provider.jwkSetUri = body.jwkSetUri ?? null
+    provider.claimMapping = {
+      emailClaim: body.claimMapping?.emailClaim || 'email',
+      displayNameClaim: body.claimMapping?.displayNameClaim || 'name',
+      rolesClaim: body.claimMapping?.rolesClaim || null,
+      systemAdminRole: body.claimMapping?.systemAdminRole || null,
+      auditorRole: body.claimMapping?.auditorRole || null,
+      groupsClaim: body.claimMapping?.groupsClaim || null,
+    }
+    provider.updatedAt = new Date().toISOString()
+    return HttpResponse.json(provider)
+  }),
+
+  http.delete('/api/v1/admin/oidc-providers/:providerId', ({ params }) => {
+    const provider = mockOidcProviders.find((p) => p.id === String(params.providerId))
+    if (!provider) {
+      return HttpResponse.json({ error: 'Anbieter nicht gefunden' }, { status: 404 })
+    }
+    if (provider.isDefault) {
+      return HttpResponse.json(
+        { error: 'Der Standardanbieter kann nicht gelöscht werden.' },
+        { status: 409 },
+      )
+    }
+    mockOidcProviders.splice(mockOidcProviders.indexOf(provider), 1)
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.post('/api/v1/admin/oidc-providers/:providerId/enable', ({ params }) => {
+    const provider = mockOidcProviders.find((p) => p.id === String(params.providerId))
+    if (!provider) {
+      return HttpResponse.json({ error: 'Anbieter nicht gefunden' }, { status: 404 })
+    }
+    provider.enabled = true
+    provider.registryState = 'READY'
+    provider.registryMessage = null
+    return HttpResponse.json(provider)
+  }),
+
+  http.post('/api/v1/admin/oidc-providers/:providerId/disable', ({ params }) => {
+    const provider = mockOidcProviders.find((p) => p.id === String(params.providerId))
+    if (!provider) {
+      return HttpResponse.json({ error: 'Anbieter nicht gefunden' }, { status: 404 })
+    }
+    if (provider.isDefault) {
+      return HttpResponse.json(
+        { error: 'Der Standardanbieter kann nicht deaktiviert werden.' },
+        { status: 409 },
+      )
+    }
+    provider.enabled = false
+    provider.registryState = 'DISABLED'
+    provider.registryMessage = null
+    return HttpResponse.json(provider)
+  }),
+
+  http.post('/api/v1/admin/oidc-providers/:providerId/default', ({ params }) => {
+    const provider = mockOidcProviders.find((p) => p.id === String(params.providerId))
+    if (!provider) {
+      return HttpResponse.json({ error: 'Anbieter nicht gefunden' }, { status: 404 })
+    }
+    if (!provider.enabled) {
+      return HttpResponse.json(
+        { error: 'Ein deaktivierter Anbieter kann nicht Standardanbieter werden.' },
+        { status: 409 },
+      )
+    }
+    mockOidcProviders.forEach((p) => {
+      p.isDefault = p.id === provider.id
+    })
+    return HttpResponse.json(provider)
   }),
 
   http.get('/api/v1/admin/models/embedding-info', () => {

@@ -74,6 +74,11 @@ import type {
   MetadataFilterOptionsResponse,
   LibraryMetadataMaintenanceResponse,
   MetadataValueRequest,
+  OidcProviderOrderRequest,
+  OidcProviderRequest,
+  OidcProviderResponse,
+  OidcProviderTestRequest,
+  OidcProviderTestResponse,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
 import { setupAuthInterceptors } from './apiInterceptors'
@@ -1307,6 +1312,101 @@ export async function testLlmModel(request: LlmModelTestRequest): Promise<LlmMod
 export async function getEmbeddingInfo(): Promise<EmbeddingInfoResponse> {
   try {
     const { data } = await client.get<EmbeddingInfoResponse>('/v1/admin/models/embedding-info')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+// identity providers (ADR-0025, #1329 admin API) - SYSTEM_ADMIN only. Public clients: there is
+// no secret anywhere in these payloads.
+export async function getOidcProviders(): Promise<OidcProviderResponse[]> {
+  try {
+    const { data } = await client.get<OidcProviderResponse[]>('/v1/admin/oidc-providers')
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function createOidcProvider(
+  request: OidcProviderRequest,
+): Promise<OidcProviderResponse> {
+  try {
+    const { data } = await client.post<OidcProviderResponse>('/v1/admin/oidc-providers', request)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateOidcProvider(
+  providerId: string,
+  request: OidcProviderRequest,
+): Promise<OidcProviderResponse> {
+  try {
+    const { data } = await client.put<OidcProviderResponse>(
+      `/v1/admin/oidc-providers/${providerId}`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function deleteOidcProvider(providerId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/admin/oidc-providers/${providerId}`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function setOidcProviderEnabled(
+  providerId: string,
+  enabled: boolean,
+): Promise<OidcProviderResponse> {
+  try {
+    const { data } = await client.post<OidcProviderResponse>(
+      `/v1/admin/oidc-providers/${providerId}/${enabled ? 'enable' : 'disable'}`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function makeOidcProviderDefault(providerId: string): Promise<OidcProviderResponse> {
+  try {
+    const { data } = await client.post<OidcProviderResponse>(
+      `/v1/admin/oidc-providers/${providerId}/default`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function reorderOidcProviders(providerIds: string[]): Promise<OidcProviderResponse[]> {
+  try {
+    const { data } = await client.put<OidcProviderResponse[]>('/v1/admin/oidc-providers/order', {
+      providerIds,
+    } satisfies OidcProviderOrderRequest)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function testOidcProvider(
+  request: OidcProviderTestRequest,
+): Promise<OidcProviderTestResponse> {
+  try {
+    const { data } = await client.post<OidcProviderTestResponse>(
+      '/v1/admin/oidc-providers/test',
+      request,
+    )
     return data
   } catch (err) {
     normalizeError(err)
