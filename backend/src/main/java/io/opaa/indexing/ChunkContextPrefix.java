@@ -47,14 +47,20 @@ public final class ChunkContextPrefix {
 
   /**
    * The Strukturkontext segment derived from a chunk's Fundort: the heading path of a section, with
-   * the {@code "Abschn. "} marker stripped. A page, slide or row Fundort yields {@code null} - a
-   * page number names no content and would only dilute both indexes.
+   * the {@code "Abschn. "} marker stripped. Two cases yield {@code null}: a page, slide or row
+   * Fundort, which names no content and would only dilute both indexes, and a heading the chunk
+   * text already opens with - a pipeline that cuts on headings keeps them in the text, and
+   * repeating them in front of it adds nothing.
    */
-  public static String structureContextFrom(Object location) {
+  public static String structureContextFrom(Object location, String chunkText) {
     if (!(location instanceof String text) || !text.startsWith(SECTION_LOCATION_MARKER)) {
       return null;
     }
-    return text.substring(SECTION_LOCATION_MARKER.length()).trim();
+    String context = text.substring(SECTION_LOCATION_MARKER.length()).trim();
+    if (context.isEmpty() || (chunkText != null && chunkText.startsWith(context))) {
+      return null;
+    }
+    return context;
   }
 
   private static void addIfPresent(List<String> segments, String segment) {

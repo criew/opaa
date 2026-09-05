@@ -1384,7 +1384,8 @@ public class FileProcessingService {
                   org.springframework.ai.document.Document enrichedChunk =
                       new org.springframework.ai.document.Document(chunk.getText(), metadata);
                   enrichedChunk.setContentFormatter(
-                      contextPrefixFormatter(prefixWanted, prefixTitle, chunkMetadata, metadata));
+                      contextPrefixFormatter(
+                          prefixWanted, prefixTitle, chunkMetadata, metadata, chunk.getText()));
                   return enrichedChunk;
                 })
             .toList();
@@ -1412,7 +1413,8 @@ public class FileProcessingService {
       boolean prefixWanted,
       String prefixTitle,
       DocumentChunkMetadata chunkMetadata,
-      Map<String, Object> chunkMetadataValues) {
+      Map<String, Object> chunkMetadataValues,
+      String chunkText) {
     if (!prefixWanted) {
       return CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX;
     }
@@ -1421,7 +1423,7 @@ public class FileProcessingService {
             prefixTitle,
             chunkMetadata.contextPrefixValues(),
             ChunkContextPrefix.structureContextFrom(
-                chunkMetadataValues.get(ChunkingService.LOCATION_METADATA_KEY)));
+                chunkMetadataValues.get(ChunkingService.LOCATION_METADATA_KEY), chunkText));
     return prefix == null
         ? CHUNK_EMBED_CONTENT_FORMATTER_NO_PREFIX
         : chunkEmbedFormatterWithPrefix(prefix);

@@ -151,7 +151,7 @@ public class ContextPrefixRerunService {
                   titleOf(chunkMetadata),
                   chunkMetadata.contextPrefixValues(),
                   ChunkContextPrefix.structureContextFrom(
-                      metadata.get(ChunkingService.LOCATION_METADATA_KEY)))
+                      metadata.get(ChunkingService.LOCATION_METADATA_KEY), text))
               : null;
       document.setContentFormatter(
           prefix == null

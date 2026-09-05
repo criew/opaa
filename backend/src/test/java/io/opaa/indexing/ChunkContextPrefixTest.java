@@ -35,14 +35,19 @@ class ChunkContextPrefixTest {
   }
 
   @Test
-  void takesTheStructureContextOnlyFromASectionFundort() {
-    assertThat(ChunkContextPrefix.structureContextFrom("Abschn. § 7 Gebühren"))
+  void takesTheStructureContextOnlyFromASectionFundortTheChunkDoesNotAlreadyOpenWith() {
+    assertThat(ChunkContextPrefix.structureContextFrom("Abschn. § 7 Gebühren", "37,00 EUR"))
         .isEqualTo("§ 7 Gebühren");
-    assertThat(ChunkContextPrefix.structureContextFrom("S. 2–4"))
+    assertThat(ChunkContextPrefix.structureContextFrom("S. 2–4", "37,00 EUR"))
         .as("a page number names no content")
         .isNull();
-    assertThat(ChunkContextPrefix.structureContextFrom(null)).isNull();
-    assertThat(ChunkContextPrefix.structureContextFrom(42)).isNull();
+    assertThat(
+            ChunkContextPrefix.structureContextFrom(
+                "Abschn. § 7 Gebühren", "§ 7 Gebühren\n\n37,00 EUR"))
+        .as("a pipeline that cuts on headings keeps them in the text; repeating adds nothing")
+        .isNull();
+    assertThat(ChunkContextPrefix.structureContextFrom(null, "37,00 EUR")).isNull();
+    assertThat(ChunkContextPrefix.structureContextFrom(42, "37,00 EUR")).isNull();
   }
 
   @Test
