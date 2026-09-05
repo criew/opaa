@@ -137,8 +137,9 @@ public class DocumentMetadataService {
                 }
               });
     }
-    // A Format field carries no Kontextpraefix-Wirkstelle: it is built in, so nobody decided it
-    // per library, and the Wirkstelle is never a default (metadata-schema.md, Wirkstelle 2).
+    // A Format field carries no Kontextpraefix-Wirkstelle: nobody defines it, so nobody chose one,
+    // and the Wirkstelle is never a default (metadata-schema.md, "Formatfelder der
+    // Aufnahmestrecke", Wirkung).
     KnowledgeLibrary library =
         document.getLibraryId() == null
             ? null

@@ -51,6 +51,11 @@ class Migration027ContextPrefixStampTest extends AbstractMigrationTest {
 
     assertThat(columnType("documents", "context_prefix_stamp")).isEqualTo("character varying");
     assertThat(columnType("documents", "context_prefix_eligible")).isEqualTo("boolean");
+    // Unbounded on purpose: the recorded title holds a Confluence hierarchy path
+    // (source_hierarchy_path is varchar(2000)) plus the page title, and it is the identity the
+    // Abdruck compares - a bounded column would throw after the chunks were written, and
+    // truncating would make two different prefixes compare equal.
+    assertThat(columnType("documents", "context_prefix_title")).isEqualTo("text");
     assertThat(columnType("knowledge_libraries", "core_context_prefix_document_type"))
         .isEqualTo("boolean");
     assertThat(columnType("knowledge_libraries", "core_context_prefix_document_date"))

@@ -456,7 +456,12 @@ zugleich Titelquelle ist), erscheint nicht zweimal. **Der Empfänger steht nur i
 in der Fundstellenzeile**: Eine Verteilerliste ist unbegrenzt lang und benennt niemanden, der die
 Fundstelle einordnet — sie würde genau die Angaben aus der einen Zeile verdrängen, die es tun. Die
 Obergrenze von zwei Nicht-Kernfeldern der Belegzeile zählt die Formatfelder mit; knapp ist die
-Zeile, nicht die Feldart.
+Zeile, nicht die Feldart. **Kein Formatfeld steht im Kontextpräfix** (#1072): Die Wirkstelle
+„Kontextpräfix" ist je Feld eine bewusste Entscheidung — bei einem Bibliotheksfeld beim Anlegen, bei
+Dokumentart und Datum/Stand je Bibliothek —, und ein Formatfeld legt niemand an, also hat sie auch
+niemand getroffen. Sie stillschweigend zu setzen hieße, jedem Bestand mit Mails einen Nachlauf
+aufzuerlegen, den er nicht beauftragt hat; der Betreff einer Mail steht ohnehin im deutsch
+beschrifteten Kopfblock des Chunk-Textes und ist damit lexikalisch auffindbar.
 
 **Abgelöst.** Die mail-eigenen Chunk-Schlüssel `mail_from`/`mail_to`/`mail_subject`/`mail_date`, die
 vier Felder `mailFrom`/`mailTo`/`mailSubject`/`mailDate` am `SourceReference` und `formatMailSummary`
