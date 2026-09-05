@@ -133,9 +133,14 @@ Die Identität eines Kontos bleibt `users(subject, issuer)`. Eine eigene Identit
   OAuth2-Anbieter ohne Issuer (GitHub, Facebook) anbinden. OPAA bindet ausschließlich OIDC an;
   jedes Token trägt einen `iss`, gegen den es validiert wurde. Der Issuer **ist** die
   Anbieteridentität.
-- Die Tabelle `oidc_providers` führt deshalb `issuer_uri` als **eindeutige** Spalte (normalisiert:
-  ohne abschließenden Schrägstrich): zwei Anbieter mit demselben Issuer sind ausgeschlossen (ein
-  Token wäre sonst nicht einem Anbieter zuzuordnen). Ein Anbieter kann umbenannt, deaktiviert,
+- Die Tabelle `oidc_providers` führt deshalb `issuer_uri` als **eindeutige** Spalte: Gespeichert
+  wird der Issuer **genau so, wie der Anbieter ihn prägt** (ein abschließender Schrägstrich
+  eingeschlossen — Auth0 prägt `iss` mit einem), denn das Token wird byteweise dagegen geprüft und
+  `users.issuer` trägt denselben geprägten Wert. Die Eindeutigkeit gilt **normalisiert** (ohne
+  abschließende Schrägstriche, als Ausdrucksindex), und jede Suche nach einem Issuer läuft über
+  denselben normalisierten Schlüssel: zwei Anbieter mit demselben Issuer sind ausgeschlossen (ein
+  Token wäre sonst nicht einem Anbieter zuzuordnen), und eine Schreibweise mit oder ohne
+  Schrägstrich findet dieselbe Zeile. Ein Anbieter kann umbenannt, deaktiviert,
   gelöscht und unter demselben Issuer neu angelegt werden, ohne dass Konten ihre Identität
   verlieren — das ist zugleich der Mechanismus der Bestandsübernahme (Entscheidung 3): Der heutige
   Anbieter erhält als Zeile denselben Issuer, den die bestehenden `users`-Zeilen bereits tragen.
@@ -429,7 +434,7 @@ nichts über Konten. Dieselbe Abwägung wie beim Branding (#583).
 
 | Issue | Folgt aus diesem ADR |
 | --- | --- |
-| #1329 Anbieterverwaltung | Tabelle `oidc_providers` **ohne** Secret-Spalte, mit `issuer_uri` (eindeutig, normalisiert), optionalem `jwk_set_uri` und den Claim-Feldern aus Entscheidung 4 (Spalten hier, Auswertung in #1331); Seeder mit Markierung, `OPAA_OIDC_BOOTSTRAP=force`; Registry mit `AFTER_COMMIT`-Neuaufbau, Wiederholung fehlerhafter Anbieter, `azp`-Prüfung, Discovery mit geprüfter `jwks_uri` und ohne Weiterleitungen; `OidcSecurityConfig` auf `authenticationManagerResolver`, `unknown_issuer` in `WWW-Authenticate`; eigener Block `opaa.auth.oidc.target-validation.*` ohne Vorgabewerte, mit implizit erlaubten Bootstrap-**Adressen** (Schema, Host, Port - eigene Prüfung, nicht `TargetAddressValidator#isAllowedHost`); `WWW-Authenticate` in `SecurityCorsConfig#exposedHeaders`; Regeln „erster Anbieter ist Standard", „Standard weder deaktivierbar noch löschbar", „Issuer-Änderung mit Konten verweigert"; Discovery-Probe; Audit-Ereignisse `OIDC_PROVIDER_*` mit `SYSTEM_SETTING` (kein Changeset am Audit-Log) |
+| #1329 Anbieterverwaltung | Tabelle `oidc_providers` **ohne** Secret-Spalte, mit `issuer_uri` (gespeichert wie geprägt, eindeutig über den normalisierten Wert), optionalem `jwk_set_uri` und den Claim-Feldern aus Entscheidung 4 (Spalten hier, Auswertung in #1331); Seeder mit Markierung, `OPAA_OIDC_BOOTSTRAP=force`; Registry mit `AFTER_COMMIT`-Neuaufbau, Wiederholung fehlerhafter Anbieter, `azp`-Prüfung, Discovery mit geprüfter `jwks_uri` und ohne Weiterleitungen; `OidcSecurityConfig` auf `authenticationManagerResolver`, `unknown_issuer` in `WWW-Authenticate`; eigener Block `opaa.auth.oidc.target-validation.*` ohne Vorgabewerte, mit implizit erlaubten Bootstrap-**Adressen** (Schema, Host, Port - eigene Prüfung, nicht `TargetAddressValidator#isAllowedHost`); `WWW-Authenticate` in `SecurityCorsConfig#exposedHeaders`; Regeln „erster Anbieter ist Standard", „Standard weder deaktivierbar noch löschbar", „Issuer-Änderung mit Konten verweigert"; Discovery-Probe; Audit-Ereignisse `OIDC_PROVIDER_*` mit `SYSTEM_SETTING` (kein Changeset am Audit-Log) |
 | #1330 Anmeldefluss und Kontenmodell | `UserProvisioningFilter` unverändert auf `(issuer, subject)`; Erstadmin-Regel nur für den Standardanbieter; Test „gleiche E-Mail, zwei Anbieter, zwei Konten"; Test „deaktivierter Anbieter → 401 mit `unknown_issuer`"; Abmeldung beim Anbieter der Sitzung |
 | #1331 Claim-Zuordnung | Auswertung der Felder aus Entscheidung 4; Rollen führend bei gesetztem `roles_claim` mit den drei Sicherungen; Gruppen als `GroupKind.IDENTITY_PROVIDER` im Namensraum `oidc:<anbieter-id>:` (Changeset für `chk_groups_kind`, Spec-Änderung am geteilten Enum nach ADR-0006, Label im Frontend; Token-Gruppen sind in der Gruppenverwaltung schreibgeschützt und nicht als „Sicht als"-Geltungsbereich wählbar); Entzug des letzten `SYSTEM_ADMIN` als bedingter `UPDATE`; `findByOrganizationIdAndIssuerAndSubjectIn` im Verzeichnisabgleich; Abgleich filtert `ORG_UNIT` in der Abfrage |
 | #1332 Anmeldeseite | `GET /api/v1/auth/config` mit Anbieterliste (`id`, `displayName`, `issuerUri`, `clientId`, `isDefault`, `sortOrder`); ein `UserManager` je Anbieter; Anbieter des Flusses im `sessionStorage`, Vorschlag im `localStorage`; `prompt=login`; `unknown_issuer`-Behandlung im Interceptor; Abmeldung beim Anbieter der Sitzung |
