@@ -128,10 +128,12 @@ Die Mandantengrenze gilt auch für die Anmeldung: Eine Identität gehört zu **g
 Es gibt kein Konto, das mehrere Mandanten sieht, und keinen Wechsel zwischen ihnen innerhalb einer
 Sitzung.
 
-> **Backlog-Notiz:** Mehrere OIDC-Anbieter gleichzeitig als Anmeldeweg anbieten (z. B. keycloak1,
-> keycloak2, … zur Auswahl). Steht im Spannungsverhältnis zur heutigen Annahme eines einzelnen
-> OIDC-Issuers je Organisation (`DirectorySyncService`, siehe
-> [ADR-0005](../decisions/0005-authentication-strategy.md)) und ist noch nicht spezifiziert.
+> **Mehrere OIDC-Anbieter** (Epic #1294): Eine Installation kann mehrere Identitätsanbieter
+> gleichzeitig anbieten — die Anmeldeseite zeigt sie zur Auswahl. Die Architektur legt
+> [ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md) fest: Anbieter in der Datenbank mit
+> Admin-Oberfläche, Identität strikt als `(Issuer, Subject)` ohne Zusammenführung über die E-Mail,
+> Erstadministrator-Regel nur für den Standardanbieter, Verzeichnisabgleich an den Standardanbieter
+> gebunden. Der Ist-Stand der Umsetzung steht im Epic.
 
 ---
 
