@@ -87,7 +87,7 @@ class HybridFusionTest {
   void aChunkOnlyTheLexicalPathFoundReachesTheSelection() {
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-a", 0.8), chunk("vector-b", 0.7)));
-    when(fullTextChunkSearch.search(anyString(), any(), any(), anyInt()))
+    when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
         .thenReturn(List.of(chunk("literal-term", 0.09)));
 
     assertThat(run(HYBRID)).extracting(Document::getId).contains("literal-term");
@@ -103,7 +103,7 @@ class HybridFusionTest {
   void aChunkBothPathsFoundIsOneCandidateWithTwoContributions() {
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-top", 0.8), chunk("both", 0.6)));
-    when(fullTextChunkSearch.search(anyString(), any(), any(), anyInt()))
+    when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
         .thenReturn(List.of(chunk("lexical-top", 0.09), chunk("both", 0.05)));
 
     List<Document> selection = run(HYBRID);
@@ -124,7 +124,7 @@ class HybridFusionTest {
   void aFailingLexicalQueryLeavesTheVectorSelectionIntact() {
     when(vectorStore.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-a", 0.8), chunk("vector-b", 0.7)));
-    when(fullTextChunkSearch.search(anyString(), any(), any(), anyInt()))
+    when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
         .thenThrow(new IllegalStateException("relation chunk_full_text does not exist"));
 
     assertThat(run(HYBRID)).extracting(Document::getId).containsExactly("vector-a", "vector-b");

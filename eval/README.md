@@ -48,10 +48,10 @@ Eine dritte Domäne, **Verwaltung** (Issues #1042/#1043, Abschnitte 4 und 5 von
 `docs/features/retrieval-benchmark.md`), misst deutschsprachige Amtssprache an einem vollständig
 synthetischen Korpus (Satzungen, Gebührenordnungen, Dienstanweisungen, Formularhinweise sowie eine
 organisationsweite Vertretungsregelung und einen Geschäftsverteilungsplan). Sie ist die erste
-Domäne, die nicht Abdeckung, sondern **benannte Fehlerbilder** misst: Ihre 46 Golden-Fälle tragen
+Domäne, die nicht Abdeckung, sondern **benannte Fehlerbilder** misst: Ihre 49 Golden-Fälle tragen
 je eine der fünf Fallklassen `literal_term_weak_embedding`, `exact_identifier`, `compound_word`,
 `multi_hop` und `metadata_filter` als `category`, und jeder Fall führt seinen zuletzt bewusst
-akzeptierten Zustand (`expected_state`) mit Datum und Begründung. 37 der 46 Fälle sind heute als
+akzeptierten Zustand (`expected_state`) mit Datum und Begründung. 30 der 49 Fälle sind heute als
 `known_gap` geführt — das ist der Zweck der Domäne, kein Mangel; die Liste steht in
 `eval/corpus/verwaltung/MAINTENANCE.md`.
 

@@ -109,7 +109,7 @@ public record EvalDomainConfig(
    * the re-measured maximum (16), checked at runtime by the harness like every domain's.
    *
    * <p>Unlike the other two domains, this corpus is smaller than one might expect a search window
-   * to need: 70 documents against {@code documentTopK=10} is still comfortably above the window, so
+   * to need: 72 documents against {@code documentTopK=10} is still comfortably above the window, so
    * the harness's "every query reached the full document window" assertion holds here too.
    */
   public static final EvalDomainConfig VERWALTUNG =

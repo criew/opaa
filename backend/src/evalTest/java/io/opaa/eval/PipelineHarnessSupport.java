@@ -11,15 +11,17 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 
 /**
  * The pipeline measurement path's harness half (issue #1039): everything the two domain harnesses
  * need to run their golden dataset through {@link
- * QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition(String, List, Set)} and write
- * the resulting {@link PipelineEvaluationReport}, in one place instead of copied into both
- * near-duplicate harness classes.
+ * QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition(String, List, Set,
+ * io.opaa.indexing.metadata.MetadataFilter)} and write the resulting {@link
+ * PipelineEvaluationReport}, in one place instead of copied into both near-duplicate harness
+ * classes.
  *
  * <p>Runs on the corpus the calling harness has already indexed and manifest-verified — the
  * pipeline path costs a second pass of queries, never a second indexing run, and therefore measures
@@ -192,15 +194,23 @@ public final class PipelineHarnessSupport {
       List<GoldenCase> goldenCases,
       Instant pipelineRunStart) {
     Set<UUID> searchScope = Set.of(evalLibraryId);
+    // Issue #1070: counted, not assumed - the fixed point metadataFilterEnabled below is "every
+    // filtered case reached the pipeline with its filter", derived from this counter and the
+    // dataset's own count of filtered cases.
+    AtomicInteger appliedFilters = new AtomicInteger();
     List<PipelineRetrievalEvaluator.CaseOutcome> outcomes =
         PipelineRetrievalEvaluator.evaluateAll(
             goldenCases,
             // No conversation history: a golden case is a standalone question, and the harness has
-            // no chat to resolve a follow-up against.
-            query -> {
+            // no chat to resolve a follow-up against. The case's filter (#1070) is carried in as
+            // given, where the METADATA_FILTER stage applies it in both search paths.
+            (query, metadataFilter) -> {
+              if (!metadataFilter.isEmpty()) {
+                appliedFilters.incrementAndGet();
+              }
               QueryService.RetrievalWithDecomposition retrieval =
                   queryService.retrieveRelevantChunksInGivenScopeWithDecomposition(
-                      query, List.of(), searchScope);
+                      query, List.of(), searchScope, metadataFilter);
               List<String> rankedFileNames =
                   retrieval.chunks().stream()
                       .map(chunk -> chunk.getMetadata().get("file_name"))
@@ -220,6 +230,7 @@ public final class PipelineHarnessSupport {
             indexingProperties,
             goldenCases.size(),
             searchScope.size(),
+            appliedFilters.get() == goldenCases.stream().filter(GoldenCase::isFiltered).count(),
             pipelineRunStart));
   }
 
@@ -353,6 +364,7 @@ public final class PipelineHarnessSupport {
       IndexingProperties indexingProperties,
       int goldenCaseCount,
       int searchScopeLibraryCount,
+      boolean metadataFilterEnabled,
       Instant pipelineRunStart) {
     return new PipelineEvaluationReport.PipelineRunConfiguration(
         domain.name(),
@@ -387,6 +399,7 @@ public final class PipelineHarnessSupport {
         identity.goldenDatasetSha256(),
         goldenCaseCount,
         identity.ingestionPipelineFingerprint(),
+        metadataFilterEnabled,
         searchScopeLibraryCount,
         SEARCH_SCOPE_NOTE,
         pipelineRunStart.toString(),

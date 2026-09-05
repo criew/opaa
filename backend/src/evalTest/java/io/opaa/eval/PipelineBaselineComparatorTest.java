@@ -63,7 +63,8 @@ class PipelineBaselineComparatorTest {
         "eval/golden/test.json",
         "golden",
         20,
-        "markdown:1");
+        "markdown:1",
+        true);
   }
 
   private static PipelineBaseline baseline(double value, int n) {
@@ -88,6 +89,7 @@ class PipelineBaselineComparatorTest {
         Map.of("easy", aggregate(value, n)),
         Map.of("de", aggregate(value, n)),
         // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
+        null,
         null,
         List.of(),
         List.of(),
@@ -129,6 +131,7 @@ class PipelineBaselineComparatorTest {
         "golden",
         20,
         "markdown:1",
+        true,
         1,
         PipelineHarnessSupport.SEARCH_SCOPE_NOTE,
         "2026-08-31T00:00:00Z",
@@ -168,6 +171,7 @@ class PipelineBaselineComparatorTest {
         cfg.goldenDatasetSha256(),
         cfg.goldenCaseCount(),
         cfg.ingestionPipelineFingerprint(),
+        cfg.metadataFilterEnabled(),
         cfg.searchScopeLibraryCount(),
         cfg.searchScopeNote(),
         cfg.runStartedAt(),
@@ -270,6 +274,7 @@ class PipelineBaselineComparatorTest {
             cfg.goldenDatasetSha256(),
             cfg.goldenCaseCount(),
             "markdown:2",
+            cfg.metadataFilterEnabled(),
             cfg.searchScopeLibraryCount(),
             cfg.searchScopeNote(),
             cfg.runStartedAt(),
@@ -285,6 +290,60 @@ class PipelineBaselineComparatorTest {
         .extracting(BaselineComparator.FixedPointMismatch::field)
         .containsExactly("ingestionPipelineFingerprint");
     assertThat(result.checks()).isEmpty();
+  }
+
+  /**
+   * Issue #1070: a run that did not carry the golden filters into the pipeline measures the
+   * metadata_filter class without the mechanism it exists for - a different measurement.
+   */
+  @Test
+  void aRunWithoutTheGoldenFiltersInvalidatesTheBaseline() {
+    PipelineEvaluationReport.PipelineRunConfiguration cfg = matchingRunConfiguration();
+    PipelineEvaluationReport.PipelineRunConfiguration withoutFilter =
+        new PipelineEvaluationReport.PipelineRunConfiguration(
+            cfg.domain(),
+            cfg.embeddingProvider(),
+            cfg.embeddingModel(),
+            cfg.embeddingModelDigest(),
+            cfg.ollamaImage(),
+            cfg.embeddingDimensions(),
+            cfg.chunkSize(),
+            cfg.chunkSizeMatchesApplicationDefault(),
+            cfg.chunkOverlap(),
+            cfg.fetchK(),
+            cfg.topK(),
+            cfg.similarityThreshold(),
+            cfg.similarityThresholdNote(),
+            cfg.maxChunksPerDocument(),
+            cfg.mmrLambda(),
+            cfg.fullTextSearchEnabled(),
+            cfg.fullTextIndexComplete(),
+            cfg.queryDecompositionEnabled(),
+            cfg.maxSubQueries(),
+            cfg.chatModel(),
+            cfg.hitRateK(),
+            cfg.rankingK(),
+            cfg.pgvectorIndexType(),
+            cfg.corpusManifestSha256(),
+            cfg.corpusDocumentCount(),
+            cfg.goldenDatasetFile(),
+            cfg.goldenDatasetSha256(),
+            cfg.goldenCaseCount(),
+            cfg.ingestionPipelineFingerprint(),
+            false,
+            cfg.searchScopeLibraryCount(),
+            cfg.searchScopeNote(),
+            cfg.runStartedAt(),
+            cfg.runDurationSeconds(),
+            cfg.externalOllamaEndpoint());
+
+    PipelineBaselineComparator.ComparisonResult result =
+        PipelineBaselineComparator.compare(baseline(0.5, 20), report(0.5, 20, withoutFilter));
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly("metadataFilterEnabled");
   }
 
   @Test

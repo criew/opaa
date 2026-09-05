@@ -54,7 +54,7 @@ Anfang an ein Urteil (`checkVerwaltungRetrievalBaseline` führt beide Vergleiche
 Besonderheiten, alle in den `notes` der Dateien selbst festgehalten:
 
 - **Die Zahlen sind bewusst niedrig** (Gesamt-nDCG@10 0,575 / nDCG@8 0,558). Diese Domäne misst
-  benannte Fehlerbilder, nicht Abdeckung: 37 der 46 Fälle sind als `known_gap` geführt (siehe
+  benannte Fehlerbilder, nicht Abdeckung: 30 der 49 Fälle sind als `known_gap` geführt (siehe
   [`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md)). Eine spätere
   Verbesserung dieser Zahlen ist der erwartete Nutzen eines Retrieval-Bausteins — sie ist der
   Grund, warum die Baseline **jetzt** gezogen wurde und nicht danach.
@@ -76,6 +76,20 @@ Pipeline-Baseline dieser Domäne steht auf Messvertragsversion 3 und trägt die 
 Golden-Hash geändert (elf Fälle haben ihre `expected_state_exception` nachgezogen bekommen), jeder
 Metrikwert ist im selben Lauf erneut gemessen und unverändert: Dieser Pfad misst `similaritySearch`
 direkt und kennt den Volltextpfad nicht.
+
+**Neu gezogen mit Issue #1070 (Teil 2)** (Kernfeld-Filter im Benchmark): Beide Baselines dieser
+Domäne stammen aus einem CPU-Testcontainer-Lauf vom 2026-09-05 und tragen den neuen Fixpunkt
+`metadataFilterEnabled` (Rohvektor-Messvertrag 5 → 6, Pipeline 7 → 8; ADR-0012, Nachtrag
+„Metadatenfilter im Messvertrag"). Der Harness reicht seither den `filter` jedes Golden-Falls in
+beide Messpfade durch; die Klasse `metadata_filter` wuchs dabei von 9 auf 12 Fälle (drei davon für
+die Leerwert-Regel) und der Korpus von 70 auf 72 Dokumente. Auf dem Pipeline-Pfad sind die vier
+übrigen Fallklassen **exakt** unverändert; auf dem schwellenlosen Rohvektor-Pfad verschieben die
+zwei neuen Dokumente `literal_term_weak_embedding`/HitRate@5 (0,444 → 0,333) und
+`compound_word`/nDCG@10 (0,849 → 0,844) — Begründung und Einzelfall in
+[`../corpus/verwaltung/MAINTENANCE.md`](../corpus/verwaltung/MAINTENANCE.md). Die vier Baselines der
+Domänen `comic-characters`/`city-landmarks` haben denselben Fixpunkt und dieselben neuen
+Vertragsversionen bekommen, aber **keine** neue Messung: Kein Fall dieser Domänen trägt ein
+`filter`-Feld.
 
 Ein Zustandswechsel eines Falls (`expected_state`) ändert die Golden-Dataset-Datei und damit deren
 SHA-256 — einen Fixpunkt beider Baselines. Eine Zustandspflege ist deshalb **immer** auch eine

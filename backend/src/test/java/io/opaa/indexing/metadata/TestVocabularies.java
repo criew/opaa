@@ -7,11 +7,11 @@ import java.util.Set;
  * The delivered Dokumentart vocabulary of migrations 018 and 020, as an in-memory snapshot for unit
  * tests - synonyms, Kompositum endings and their exclusions exactly as seeded.
  */
-final class TestVocabularies {
+public final class TestVocabularies {
 
   private TestVocabularies() {}
 
-  static DocumentTypeVocabulary delivered() {
+  public static DocumentTypeVocabulary delivered() {
     return DocumentTypeVocabulary.of(
         List.of(
             new DocumentTypeVocabularyEntry(

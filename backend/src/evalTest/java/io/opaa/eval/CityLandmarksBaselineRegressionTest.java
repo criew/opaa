@@ -55,12 +55,14 @@ class CityLandmarksBaselineRegressionTest {
         BaselineMarkdownWriter.render(
             result,
             EvalDomainConfig.CITY_LANDMARKS.baselineFileName(),
-            report.expectedStateAudit());
+            report.expectedStateAudit(),
+            report.metadataFilterAudit());
     BaselineMarkdownWriter.write(
         result,
         MARKDOWN_FILE,
         EvalDomainConfig.CITY_LANDMARKS.baselineFileName(),
-        report.expectedStateAudit());
+        report.expectedStateAudit(),
+        report.metadataFilterAudit());
     log.info(markdown);
     System.out.println(markdown);
     System.out.println("Delta-Tabelle geschrieben nach " + MARKDOWN_FILE.toAbsolutePath());

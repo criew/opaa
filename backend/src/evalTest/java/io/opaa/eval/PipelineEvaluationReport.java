@@ -28,6 +28,9 @@ public record PipelineEvaluationReport(
     // case state, at this path's own window. Null for a domain whose golden dataset carries no
     // expected_state fields (see ExpectedStateAudit#evaluate).
     ExpectedStateAudit.Result expectedStateAudit,
+    // Issue #1070 (Teil 2): whether the core-field filter itself worked at this path's window, in
+    // its two error directions — see MetadataFilterAudit. Null without a single filtered case.
+    MetadataFilterAudit.Result metadataFilterAudit,
     List<PipelineQueryResult> worstQueries,
     List<PipelineQueryResult> allQueryResults,
     // Issue #1151: how close to the window edge each group's solved cases sit — report-only, see
@@ -79,8 +82,16 @@ public record PipelineEvaluationReport(
    * fullTextIndexComplete}. The full-text backfill and its per-library gate are gone; what is
    * measured is unchanged - whether the measured library's full-text index was complete - so this
    * is a pure fixed-point rename, no re-measurement (see eval/baseline/README.md).
+   *
+   * <p>Version 8 (issue #1070, Teil 2, ADR-0012 Nachtrag Metadatenfilter): {@code
+   * metadataFilterEnabled} became a fixed point - each golden case's {@code filter} is carried into
+   * the pipeline run through {@code
+   * QueryService#retrieveRelevantChunksInGivenScopeWithDecomposition}, where the {@code
+   * METADATA_FILTER} stage applies it in both search paths. Unlike versions 4 to 7 this is not a
+   * fingerprint-only bump: the filter moves the measured selection of the {@code metadata_filter}
+   * class, and the {@code verwaltung} baseline was re-drawn.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 7;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 8;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be
@@ -139,6 +150,10 @@ public record PipelineEvaluationReport(
       // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
       // Javadoc for why corpusManifestSha256 alone does not answer that question.
       String ingestionPipelineFingerprint,
+      // Issue #1070 (Teil 2): whether every golden case's filter was carried into the pipeline
+      // run, so both search paths applied it inside their queries. A fixed point: the
+      // metadata_filter class measures something else without it.
+      boolean metadataFilterEnabled,
       int searchScopeLibraryCount,
       String searchScopeNote,
       String runStartedAt,

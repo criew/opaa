@@ -92,13 +92,13 @@ class FullTextSearchStageTest {
   @Test
   void searchesExactlyThePermissionScope() {
     Set<UUID> scope = Set.of(SCOPED_LIBRARY, SECOND_LIBRARY);
-    when(search.search(anyString(), any(), any(), anyInt())).thenReturn(List.of(chunk("a")));
+    when(search.search(anyString(), any(), any(), any(), anyInt())).thenReturn(List.of(chunk("a")));
 
     StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<UUID>> libraries = ArgumentCaptor.forClass(Set.class);
-    verify(search).search(anyString(), libraries.capture(), any(), anyInt());
+    verify(search).search(anyString(), libraries.capture(), any(), any(), anyInt());
     assertThat(libraries.getValue()).containsExactlyInAnyOrder(SCOPED_LIBRARY, SECOND_LIBRARY);
     assertThat(outcome.explanation().notes())
         .anySatisfy(note -> assertThat(note).contains("2 scoped libraries"));
@@ -112,13 +112,13 @@ class FullTextSearchStageTest {
   void searchesAnIncompletelyIndexedLibraryAndRecordsThatItIsIncomplete() {
     Set<UUID> scope = Set.of(SCOPED_LIBRARY, SECOND_LIBRARY);
     when(indexCompleteness.incompleteLibraryCount(scope)).thenReturn(1L);
-    when(search.search(anyString(), any(), any(), anyInt())).thenReturn(List.of(chunk("a")));
+    when(search.search(anyString(), any(), any(), any(), anyInt())).thenReturn(List.of(chunk("a")));
 
     StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<UUID>> libraries = ArgumentCaptor.forClass(Set.class);
-    verify(search).search(anyString(), libraries.capture(), any(), anyInt());
+    verify(search).search(anyString(), libraries.capture(), any(), any(), anyInt());
     assertThat(libraries.getValue()).containsExactlyInAnyOrder(SCOPED_LIBRARY, SECOND_LIBRARY);
     assertThat(outcome.explanation().notes())
         .anySatisfy(
@@ -143,7 +143,7 @@ class FullTextSearchStageTest {
   @Test
   void runsOneQueryPerSearchQueryAndRecordsEveryCandidate() {
     Set<UUID> scope = Set.of(SCOPED_LIBRARY);
-    when(search.search(anyString(), any(), any(), anyInt()))
+    when(search.search(anyString(), any(), any(), any(), anyInt()))
         .thenReturn(List.of(chunk("a"), chunk("b")))
         .thenReturn(List.of(chunk("c")));
     RetrievalState state =
@@ -153,8 +153,8 @@ class FullTextSearchStageTest {
 
     StageOutcome outcome = stage().apply(context(scope), state);
 
-    verify(search).search("q1", scope, MetadataFilter.NONE, PROPERTIES.fetchK());
-    verify(search).search("q2", scope, MetadataFilter.NONE, PROPERTIES.fetchK());
+    verify(search).search("q1", scope, MetadataFilter.NONE, List.of(), PROPERTIES.fetchK());
+    verify(search).search("q2", scope, MetadataFilter.NONE, List.of(), PROPERTIES.fetchK());
     // Nothing was in flight, three candidates leave: the stage adds, it never narrows.
     assertThat(outcome.explanation().incomingCount()).isZero();
     assertThat(outcome.explanation().outgoingCount()).isEqualTo(3);
@@ -183,14 +183,19 @@ class FullTextSearchStageTest {
   @Test
   void searchesTheBareQuestionWhenNoSearchQueriesWereBuiltAndRecordsIt() {
     Set<UUID> scope = Set.of(SCOPED_LIBRARY);
-    when(search.search(anyString(), any(), any(), anyInt())).thenReturn(List.of());
+    when(search.search(anyString(), any(), any(), any(), anyInt())).thenReturn(List.of());
     RetrievalState state =
         RetrievalState.initial().withLibraryFilter(SearchScopeStage.libraryFilter(scope));
 
     StageOutcome outcome = stage().apply(context(scope), state);
 
     verify(search)
-        .search("Was gilt nach § 35 BauGB?", scope, MetadataFilter.NONE, PROPERTIES.fetchK());
+        .search(
+            "Was gilt nach § 35 BauGB?",
+            scope,
+            MetadataFilter.NONE,
+            List.of(),
+            PROPERTIES.fetchK());
     assertThat(outcome.state().searchQueries()).containsExactly("Was gilt nach § 35 BauGB?");
   }
 
@@ -198,7 +203,7 @@ class FullTextSearchStageTest {
   @Test
   void keepsTheSearchQueriesAnEarlierStageBuilt() {
     Set<UUID> scope = Set.of(SCOPED_LIBRARY);
-    when(search.search(anyString(), any(), any(), anyInt())).thenReturn(List.of());
+    when(search.search(anyString(), any(), any(), any(), anyInt())).thenReturn(List.of());
 
     StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
 
@@ -213,7 +218,7 @@ class FullTextSearchStageTest {
   @Test
   void handsItsListsOnNextToTheVectorPathsAndExtendsThePool() {
     Set<UUID> scope = Set.of(SCOPED_LIBRARY);
-    when(search.search(anyString(), any(), any(), anyInt()))
+    when(search.search(anyString(), any(), any(), any(), anyInt()))
         .thenReturn(List.of(chunk("lexical-only")));
     RetrievalState before =
         scopedState(scope)
@@ -263,7 +268,7 @@ class FullTextSearchStageTest {
   @Test
   void aFailedListIsOmittedWhileTheRemainingOnesStillReachTheFusion() {
     Set<UUID> scope = Set.of(SCOPED_LIBRARY);
-    when(search.search(anyString(), any(), any(), anyInt()))
+    when(search.search(anyString(), any(), any(), any(), anyInt()))
         .thenThrow(new IllegalStateException("relation chunk_full_text does not exist"))
         .thenReturn(List.of(chunk("second-list-hit")));
     RetrievalState state =
@@ -291,7 +296,7 @@ class FullTextSearchStageTest {
   @Test
   void aFailingQueryDegradesThePathInsteadOfFailingTheRun() {
     Set<UUID> scope = Set.of(SCOPED_LIBRARY);
-    when(search.search(anyString(), any(), any(), anyInt()))
+    when(search.search(anyString(), any(), any(), any(), anyInt()))
         .thenThrow(new IllegalStateException("relation chunk_full_text does not exist"));
 
     StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
