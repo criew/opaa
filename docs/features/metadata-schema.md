@@ -573,8 +573,8 @@ Bibliotheksfelder (#1071) hängen sich an dieselbe Liste. Fundstellenzeile und B
 Liste ohne Feldwissen (Anzeigewerte mit „ · " verbunden, Label als barrierefreie Beschreibung) — ein
 leeres Feld ist nicht in der Liste und erscheint gar nicht, ein `DERIVED`-Wert ist mit „(abgeleitet)"
 gekennzeichnet; `location` bleibt die Fundstelle. Die vier Mail-Sonderfelder
-`mailFrom`/`mailTo`/`mailSubject`/`mailDate` bleiben in diesem Schnitt unverändert; ihre Ablösung
-über Schemafelder ist ein eigenes Sub-Issue nach #1071.
+`mailFrom`/`mailTo`/`mailSubject`/`mailDate` blieben in diesem Schnitt unverändert; **mit #1242 sind
+sie abgelöst** (siehe [Formatfelder der Aufnahmestrecke](#formatfelder-der-aufnahmestrecke-1242)).
 
 **Abweichungen und bewusst nicht Gebautes.** Das Abnahmekriterium „Die Extraktion läuft im
 Rechtekontext" ist durch Beschluss 1 des Maintainers ersetzt (Systemprozess; die Rechte-Invariante gilt
