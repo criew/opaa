@@ -296,7 +296,7 @@ public class LibraryMetadataFieldService {
                 library, documentId, ref, null, caller, correlationRef, vocabulary));
     valueRepository.deleteByFieldId(field.getId());
     fieldRepository.delete(field);
-    // The documents that carried a value were already handed to the Nachlauf by deleteValue above,
+    // The documents that carried a value were already handed to the Nachlauf by the loop above,
     // which marks whatever it empties on a prefix-effective field - no second marking here.
     schemaChanged(library);
   }

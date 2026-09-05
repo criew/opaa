@@ -879,9 +879,11 @@ außerhalb der Liste wird unabhängig von der Konfidenz verworfen — keine Abbi
 nächstähnlichen Wert. Übernommene Werte tragen `origin = DERIVED`, die gelieferte Konfidenz, die
 Modell-Kennung und die **eigene Extraktionsversion des Modellschritts** — nie die des
 deterministischen Schritts, sonst behauptete ein modellbefüllter Wert nach einer korrigierten Regel
-in Schritt 1 einen Prompt, den es nie gab; ein manueller Wert wird nie berührt. Die Schwelle darf
-nach einer Messung nur gesenkt werden, nie stillschweigend erhöht, und jede Änderung ist ein Commit
-mit Datum und gemessener Verteilung.
+in Schritt 1 einen Prompt, den es nie gab; ein manueller Wert wird nie berührt. **Senken verlangt
+eine neue Messung, Anheben nicht** — der Schaden ist asymmetrisch
+([ADR-0026](../decisions/0026-kontextpraefix-abdruck-und-modellgestuetzte-extraktion.md),
+Entscheidung 5; die erste Messung hat die Richtung der ursprünglichen Formulierung umgekehrt). Jede
+Änderung ist ein Commit mit Datum und gemessener Verteilung.
 
 **Ein Ausfall blockiert nie die Aufnahme.** Zeitüberschreitung, Transportfehler und unbrauchbare
 Antwort enden gleich: Feld leer, Dokument regulär aufgenommen und durchsuchbar, Aufruf als Fehler
@@ -948,7 +950,10 @@ Produkt geradesteht.
 verbindliche 100er-Handstichprobe der QA-Rolle liegt seit dem 05.09.2026 vor
 (`eval/reports/metadata-extraction-sample-2026-09-05.md`, Demo-Instanz, Modell `claude-haiku-4-5`,
 Schwelle 0,80). Ergebnis: Von 49 modellbefüllten Dokumentart-Werten sind **46 falsch** (93,9 %),
-während die deterministische Extraktion auf derselben Stichprobe fehlerfrei ist. Die
+während die **deterministische Dokumentart** auf derselben Stichprobe fehlerfrei ist (0 von 23
+Werten falsch). Das gilt für dieses eine Feld, nicht für die deterministische Extraktion insgesamt:
+Titel (14 % falsch) und Datum/Stand (27 % falsch) sind ausschließlich deterministisch befüllt und
+haben ihre eigenen Befunde (#1360). Die
 Kalibrierungsregel („Anteil falsch trotz Konfidenz ≥ 0,80 unter 5 %") ist um mehr als das
 Achtzehnfache verfehlt, und die Konfidenz ist **nicht trennscharf** — sie trennt „das Modell hat
 geantwortet" von „das Modell hat sich enthalten", nicht richtig von falsch. Ursache ist die
@@ -1416,14 +1421,16 @@ Extraktionsversion entsteht:
   [Ingestion-Pipelines, Regel (d)](./ingestion-pipelines.md#d-jeder-chunk-trägt-die-version-des-verfahrens-das-ihn-erzeugt-hat));
   es wird kein zweiter gebaut.
 
-**Eine benannte Ausnahme: die Umschlüsselung einer Werteliste.** Sie läuft heute als **eine
-Transaktion** — der Listeneintrag wird erst gelöscht, wenn jedes Dokument umgeschrieben ist — und ist
-damit weder dokumentgranular wiederaufnehmbar noch je Bibliothek im Fortschritt abfragbar. Das ist
+**Eine benannte Ausnahme: die Umschlüsselung einer Werteliste und das Löschen eines Feldes.** Beide
+laufen heute als **eine Transaktion** — der Listeneintrag beziehungsweise das Feld wird erst gelöscht,
+wenn jedes Dokument umgeschrieben ist — und sind damit weder dokumentgranular wiederaufnehmbar noch je
+Bibliothek im Fortschritt abfragbar. Das ist
 bewusst so: Sie ist die einzige Stelle, an der ein Zwischenzustand den Zustand „Dokument trägt einen
 Wert, den es im Schema nicht mehr gibt" erzeugen könnte, und die Regel „nicht einmal kurz" wiegt hier
-schwerer als die Wiederaufnahme. Der Preis ist eine lange Schreibtransaktion, sobald zehntausende
-Dokumente denselben Code tragen; die zweiphasige Ablösung (Listeneintrag zuerst stilllegen, dann
-chargenweise umschlüsseln, dann löschen) ist als **Issue #1361** außerhalb dieses Epics erfasst.
+schwerer als die Wiederaufnahme; für die Feldlöschung gilt dieselbe Abwägung. Der Preis ist eine
+lange Schreibtransaktion, sobald zehntausende Dokumente denselben Code tragen; die zweiphasige
+Ablösung (Listeneintrag zuerst stilllegen, dann chargenweise umschlüsseln, dann löschen) ist als
+**Issue #1361** außerhalb dieses Epics erfasst und deckt beide Wege ab.
 
 ### Umgesetzt (#1072)
 

@@ -77,9 +77,9 @@ class MetadataFilterExpressionsTest {
 
     String permission = jsonPath(LIBRARY_FILTER).replace("'::jsonpath", "");
     assertThat(rendered).startsWith(permission + " && (");
-    // No "||" may sit at bracket depth zero of the metadata part: every OR is inside a group.
+    // No "||" may sit at depth zero inside the subordinate group: every OR is in a group.
     String metadataPart = rendered.substring(permission.length());
-    assertThat(topLevelOrCount(metadataPart)).isZero();
+    assertThat(topLevelOrCount(insideTheSubordinateGroup(metadataPart))).isZero();
     // Inside: the Dokumentart condition AND the (bracketed) date condition.
     assertThat(metadataPart).contains(") && (");
   }
@@ -103,9 +103,12 @@ class MetadataFilterExpressionsTest {
     String permission = jsonPath(LIBRARY_FILTER).replace("'::jsonpath", "");
     assertThat(rendered).startsWith(permission + " && (");
     String metadataPart = rendered.substring(permission.length());
-    assertThat(topLevelOrCount(metadataPart)).isZero();
-    // Every precision branch of the window sits inside that one bracket.
-    assertThat(metadataPart).contains("DAY").contains("MONTH").contains("YEAR");
+    // Every precision branch of the window sits inside that one bracket - a group that closed after
+    // the first branch would leave MONTH and YEAR outside it, tied to nothing.
+    assertThat(insideTheSubordinateGroup(metadataPart))
+        .contains("DAY")
+        .contains("MONTH")
+        .contains("YEAR");
   }
 
   /**
@@ -125,7 +128,7 @@ class MetadataFilterExpressionsTest {
     String permission = jsonPath(LIBRARY_FILTER).replace("'::jsonpath", "");
     assertThat(rendered).startsWith(permission + " && (");
     String metadataPart = rendered.substring(permission.length());
-    assertThat(topLevelOrCount(metadataPart)).isZero();
+    assertThat(topLevelOrCount(insideTheSubordinateGroup(metadataPart))).isZero();
     // Each circle contributed its own condition: value key, precision key, presence marker and the
     // library guard of the library fields, plus the format field's value and presence key.
     assertThat(metadataPart)
@@ -185,6 +188,26 @@ class MetadataFilterExpressionsTest {
       }
     }
     return count;
+  }
+
+  /**
+   * The content of the group {@link MetadataFilterExpressions#subordinateTo} wraps the whole
+   * metadata condition in. Counting ORs on the metadata part as a whole would say nothing: that
+   * outer bracket holds every character at depth 1 or deeper, so the count were zero even for a
+   * condition that lost its own brackets. What must be free of top-level ORs is the inside.
+   */
+  private static String insideTheSubordinateGroup(String metadataPart) {
+    int open = metadataPart.indexOf('(');
+    int depth = 0;
+    for (int i = open; i < metadataPart.length(); i++) {
+      char c = metadataPart.charAt(i);
+      if (c == '(') {
+        depth++;
+      } else if (c == ')' && --depth == 0) {
+        return metadataPart.substring(open + 1, i);
+      }
+    }
+    throw new IllegalStateException("unbalanced brackets in " + metadataPart);
   }
 
   private static int topLevelOrCount(String jsonPath) {

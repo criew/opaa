@@ -518,8 +518,10 @@ konfigurierbar.
 **Die modellgestützte Ermittlung der Dokumentart ist gebaut und arbeitet — abgenommen ist sie
 nicht.** Eine handausgewertete Stichprobe über 100 Dokumente der Demo-Instanz (05.09.2026,
 `eval/reports/metadata-extraction-sample-2026-09-05.md`) hat gemessen: Von 49 modellbefüllten Werten
-waren **46 falsch** (93,9 %), während die regelbasierte Ermittlung auf derselben Stichprobe
-fehlerfrei blieb. Die Konfidenz trennt dabei nicht richtig von falsch, sondern nur „geantwortet" von
+waren **46 falsch** (93,9 %), während die **regelbasiert** ermittelte Dokumentart auf derselben
+Stichprobe fehlerfrei blieb (0 von 23). Fehlerfrei ist damit die Dokumentart, nicht die
+regelbasierte Ermittlung insgesamt: Titel (14 %) und Datum/Stand (27 %) tragen falsche Werte, die
+sämtlich deterministisch entstanden sind — dazu die beiden Befunde unter #1360. Die Konfidenz trennt dabei nicht richtig von falsch, sondern nur „geantwortet" von
 „enthalten": Auf der Stufe 0,85 war kein einziger der 42 Werte richtig. Ursache ist nicht die
 Schwelle, sondern eine Vokabularlücke — für 63 der 100 Dokumente gibt es keinen passenden Wert, und
 das Modell greift dann zum nächstbesten.
