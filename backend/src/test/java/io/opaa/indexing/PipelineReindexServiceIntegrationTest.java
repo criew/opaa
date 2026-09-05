@@ -4,14 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
-import io.opaa.indexing.source.web.AutoindexCrawlerService;
-import io.opaa.indexing.source.web.UrlIndexingExecutor;
+import io.opaa.indexing.source.IndexingRun;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.UploadProperties;
@@ -880,8 +880,8 @@ class PipelineReindexServiceIntegrationTest {
 
   @Test
   void aMarkedRemoteDocumentIsActuallyReprocessedByItsOwnConnectorRun() {
-    // The gate that decides it, before anything is downloaded: UrlIndexingExecutor#isUnchanged
-    // reads last_modified_remote plus INDEXED - never the checksum, because the bytes it would be
+    // The gate that decides it, before anything is downloaded: IndexingRun#isUnchanged reads
+    // last_modified_remote plus INDEXED - never the checksum, because the bytes it would be
     // computed from have deliberately not been fetched yet. Clearing the checksum alone would
     // therefore have been a no-op the run never notices.
     String remoteUrl = "https://example.test/satzung.pdf";
@@ -892,14 +892,14 @@ class PipelineReindexServiceIntegrationTest {
     documentRepository.save(document);
     seedChunk(document.getId(), "alter chunk", null, null);
 
-    UrlIndexingExecutor executor = urlIndexingExecutorForGateCheck();
-    assertThat(executor.isUnchanged(remoteUrl, lastModified, library))
+    IndexingRun run = runForGateCheck();
+    assertThat(run.isUnchanged(remoteUrl, lastModified))
         .as("before the re-index the run would skip this document as unchanged")
         .isTrue();
 
     assertThat(reindexBatch(10).markedForNextRun()).isEqualTo(1);
 
-    assertThat(executor.isUnchanged(remoteUrl, lastModified, library))
+    assertThat(run.isUnchanged(remoteUrl, lastModified))
         .as("after being marked the very same run re-reads it instead of skipping it")
         .isFalse();
     Document marked = documentRepository.findById(document.getId()).orElseThrow();
@@ -909,22 +909,23 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   /**
-   * The real {@link UrlIndexingExecutor}, with only the collaborators its change decision does not
+   * The real {@link IndexingRun} change gate, with only the collaborators the decision does not
    * touch mocked away - the decision itself runs against this test's own database rows, not a
    * reimplementation of the rule.
    */
-  private UrlIndexingExecutor urlIndexingExecutorForGateCheck() {
-    return new UrlIndexingExecutor(
-        org.mockito.Mockito.mock(AutoindexCrawlerService.class),
-        org.mockito.Mockito.mock(io.opaa.sourceaccess.BoundedDownloader.class),
-        org.mockito.Mockito.mock(FileProcessingService.class),
-        org.mockito.Mockito.mock(IndexingJobService.class),
+  private IndexingRun runForGateCheck() {
+    UUID jobId = UUID.randomUUID();
+    IndexingJobService jobService = org.mockito.Mockito.mock(IndexingJobService.class);
+    return new IndexingRun(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        DocumentSourceType.HTTP_DIRECTORY,
+        new IndexingRunProgress(jobService, jobId),
+        new IndexingRunEventRecorder(
+            org.mockito.Mockito.mock(IndexingRunEventRepository.class), jobService, jobId),
         documentRepository,
-        org.mockito.Mockito.mock(IndexingRunEventRepository.class),
-        org.mockito.Mockito.mock(io.opaa.library.LibraryStorageQuotaService.class),
-        org.mockito.Mockito.mock(StaleDocumentCleanupService.class),
-        new io.opaa.indexing.source.web.CrawlProperties(0, 0, 0),
-        org.mockito.Mockito.mock(io.opaa.library.LibraryFolderService.class));
+        org.mockito.Mockito.mock(io.opaa.library.LibraryStorageQuotaService.class));
   }
 
   @Test

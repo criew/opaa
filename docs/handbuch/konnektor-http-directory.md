@@ -235,6 +235,7 @@ Unauthorized, check credentials" oder „HTTP 503 for URL …".
 | HTTP 403 oder 429 bei einer Datei | Eintrag „Fehler", Lauf läuft weiter; keine gesonderte Bot-Schutz-Erkennung |
 | Bot-Schutzseite als Antwort auf einen Dateilink | wird als „Format nicht unterstützt" abgewiesen |
 | Endlos streamende Verzeichnisseite | bei 8 MiB abgebrochen |
+| Bibliothek während des Laufs gelöscht | Lauf `FAILED` mit „Die Bibliothek wurde während des Laufs gelöscht." |
 
 ## 12. Konfiguration
 

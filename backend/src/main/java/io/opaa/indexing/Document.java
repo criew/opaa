@@ -264,6 +264,19 @@ public class Document {
     this.lastModifiedRemote = lastModifiedRemote;
   }
 
+  /**
+   * Whether this row already holds {@code remoteVersion} of its source item (a listing's
+   * last-modified stamp, a feed entry's pubDate, a Confluence version) and is {@link
+   * DocumentStatus#INDEXED}, so a run may skip the item before fetching it. A missing or blank
+   * {@code remoteVersion} is unknown, never unchanged - the checksum then decides after the fetch.
+   */
+  public boolean isUnchangedAt(String remoteVersion) {
+    return remoteVersion != null
+        && !remoteVersion.isBlank()
+        && status == DocumentStatus.INDEXED
+        && remoteVersion.equals(lastModifiedRemote);
+  }
+
   public UUID getLibraryId() {
     return libraryId;
   }

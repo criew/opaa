@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
+import io.opaa.indexing.pipeline.DocumentPipelineRunner;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
 import java.io.IOException;
@@ -400,7 +401,8 @@ class OdpDocumentPipelineTest {
     }
 
     DocumentPipelineResult result =
-        pipeline.run(DocumentPipelineSource.ofFile(file, "ohne-content-xml.odp", ".odp"));
+        DocumentPipelineRunner.run(
+            pipeline, DocumentPipelineSource.ofFile(file, "ohne-content-xml.odp", ".odp"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
@@ -422,7 +424,8 @@ class OdpDocumentPipelineTest {
     Files.writeString(file, "das ist kein odp");
 
     DocumentPipelineResult result =
-        pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.odp", ".odp"));
+        DocumentPipelineRunner.run(
+            pipeline, DocumentPipelineSource.ofFile(file, "kaputt.odp", ".odp"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
@@ -449,7 +452,8 @@ class OdpDocumentPipelineTest {
     }
 
     DocumentPipelineResult result =
-        pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.odp", ".odp"));
+        DocumentPipelineRunner.run(
+            pipeline, DocumentPipelineSource.ofFile(file, "xxe.odp", ".odp"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
@@ -462,7 +466,8 @@ class OdpDocumentPipelineTest {
     writeOdp(file, odpSlide(odpFrame("title", "Titel") + odpFrame(null, "Ein laengerer Text.")));
 
     DocumentPipelineResult result =
-        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.odp", ".odp"));
+        DocumentPipelineRunner.run(
+            tinyLimitPipeline, DocumentPipelineSource.ofFile(file, "gross.odp", ".odp"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
@@ -515,7 +520,9 @@ class OdpDocumentPipelineTest {
                     + "<text:s text:c=\"5\"/>")));
 
     DocumentPipelineResult result =
-        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odp", ".odp"));
+        DocumentPipelineRunner.run(
+            tinyLimitPipeline,
+            DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odp", ".odp"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
@@ -551,7 +558,8 @@ class OdpDocumentPipelineTest {
         file, odpSlide(odpFrame(null, "Folie eins.")) + odpSlide(odpFrame(null, "Folie zwei.")));
 
     DocumentPipelineResult result =
-        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-folien.odp", ".odp"));
+        DocumentPipelineRunner.run(
+            tinyLimitPipeline, DocumentPipelineSource.ofFile(file, "viele-folien.odp", ".odp"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }

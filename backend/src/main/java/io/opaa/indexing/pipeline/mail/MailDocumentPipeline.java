@@ -132,15 +132,27 @@ public class MailDocumentPipeline implements DocumentPipeline {
     ParsedMailMessage message;
     try {
       message =
-          ".msg".equals(resolveExtension(source))
+          ".msg".equals(source.effectiveExtension())
               ? MsgReader.read(source.file(), properties, source.attachmentIndex())
               : EmlReader.read(source.file(), properties, source.attachmentIndex());
     } catch (IOException e) {
       throw new UncheckedIOException("Could not read mail document " + source.fileName(), e);
     }
 
+    try {
+      return resultOf(message, source.fileName());
+    } catch (RuntimeException e) {
+      // The readers have already written every attachment to a temp file; a failure from here on
+      // never reaches a result that could carry them, and DocumentPipelineRunner only deletes what
+      // a result reports - so this is the last owner of those files.
+      deleteTempFiles(message.attachments());
+      throw e;
+    }
+  }
+
+  private DocumentPipelineResult resultOf(ParsedMailMessage message, String fileName) {
     String headerContext = headerContextText(message);
-    List<Document> chunks = bodyChunks(message, source.fileName(), headerContext);
+    List<Document> chunks = bodyChunks(message, fileName, headerContext);
     List<DiscoveredAttachment> discovered = discoveredAttachments(message.attachments());
 
     if (chunks.isEmpty()) {
@@ -177,7 +189,7 @@ public class MailDocumentPipeline implements DocumentPipeline {
         return DocumentProperties.EMPTY;
       }
       ParsedMailMessage message =
-          ".msg".equals(resolveExtension(source))
+          ".msg".equals(source.effectiveExtension())
               ? MsgReader.read(source.file(), properties, MATERIALIZE_NO_ATTACHMENT)
               : EmlReader.read(source.file(), properties, MATERIALIZE_NO_ATTACHMENT);
       return properties(message);
@@ -192,14 +204,6 @@ public class MailDocumentPipeline implements DocumentPipeline {
         .withTitle(message.subject())
         .withDocumentDate(
             message.date() == null ? null : message.date().atZone(clock.getZone()).toLocalDate());
-  }
-
-  private static String resolveExtension(DocumentPipelineSource source) {
-    if (source.detectedExtension() != null) {
-      return source.detectedExtension();
-    }
-    String fileName = source.fileName() == null ? "" : source.fileName().toLowerCase(Locale.ROOT);
-    return fileName.endsWith(".msg") ? ".msg" : ".eml";
   }
 
   /**
@@ -337,5 +341,22 @@ public class MailDocumentPipeline implements DocumentPipeline {
       discovered.add(new DiscoveredAttachment(attachment.fileName(), attachment.tempFile(), null));
     }
     return discovered;
+  }
+
+  /**
+   * Deletes what the readers already extracted, for the failure path that never reaches a result
+   * reporting them - deletion failures are logged, never raised over the failure being handled.
+   */
+  private static void deleteTempFiles(List<ParsedMailAttachment> attachments) {
+    for (ParsedMailAttachment attachment : attachments) {
+      if (attachment.tempFile() == null) {
+        continue;
+      }
+      try {
+        Files.deleteIfExists(attachment.tempFile());
+      } catch (IOException | RuntimeException e) {
+        log.warn("Failed to delete extracted mail attachment {}", attachment.tempFile(), e);
+      }
+    }
   }
 }

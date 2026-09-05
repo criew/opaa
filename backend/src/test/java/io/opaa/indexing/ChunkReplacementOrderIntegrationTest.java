@@ -1,7 +1,6 @@
 package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentStatus;
@@ -109,8 +108,10 @@ class ChunkReplacementOrderIntegrationTest {
     Files.writeString(file, SECOND_TEXT);
     when(documentService.parseDocument(file)).thenThrow(new IllegalStateException("Reader kaputt"));
 
-    assertThatThrownBy(() -> fileProcessingService.processFile(file, targetLibrary))
-        .isInstanceOf(IllegalStateException.class);
+    // A reader that throws is the same answer as one that reports PARSE_FAILED - the exception is
+    // mapped in DocumentPipelineRunner, so the run ends FAILED instead of propagating.
+    assertThat(fileProcessingService.processFile(file, targetLibrary))
+        .isEqualTo(FileProcessingResult.FAILED);
 
     Document doc = documentRepository.findById(documentId).orElseThrow();
     assertThat(doc.getStatus()).isEqualTo(DocumentStatus.FAILED);

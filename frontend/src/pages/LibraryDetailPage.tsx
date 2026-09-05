@@ -2764,11 +2764,15 @@ function runEventsLabel(events: IndexingRunResponse['events']): string {
   return unreadable > 0 ? `${base}, davon ${unreadable} nicht lesbar` : base
 }
 
-// #1141: the operator's line on what a run cost - only when the run recorded it (Confluence).
+// The operator's line on what a run cost. Every connector records the attachment share and the
+// duration; requests and throttles only appear when a source actually counted them (Confluence).
 function runMetricsLabel(run: IndexingRunResponse): string | null {
   const metrics = run.metrics
   if (!metrics) return null
-  const parts = [`${metrics.requestsSent} Anfragen an die Quelle`]
+  const parts: string[] = []
+  if (metrics.requestsSent > 0 || metrics.throttleCount > 0) {
+    parts.push(`${metrics.requestsSent} Anfragen an die Quelle`)
+  }
   if (metrics.throttleCount > 0) {
     parts.push(
       `${metrics.throttleCount}-mal gedrosselt (${metrics.throttleWaitSeconds} s gewartet)`,

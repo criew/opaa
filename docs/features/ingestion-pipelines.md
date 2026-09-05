@@ -207,6 +207,11 @@ die Registry noch `FileProcessingService` noch `SupportedDocumentFormats` änder
 Zwei Pipelines, die dasselbe Format beanspruchen, sind ein Verdrahtungsfehler und lassen den Kontext
 beim Start scheitern, statt die Bean-Reihenfolge entscheiden zu lassen.
 
+Für ein Format, das immer als Datei ankommt (PDF, DOCX, PPTX, ODT, ODP), übernimmt die
+Basisklasse `FileDocumentPipeline<T>` das Gerüst: einmal lesen (`read`), daraus Chunks (`chunks`)
+und Eigenschaften (`properties`). Die Datei wird damit je Aufnahme genau einmal geöffnet — vorher
+lasen `run` und `readProperties` sie getrennt (#1313).
+
 Die Ausgänge, die `FileProcessingService` bisher selbst entschied — „Scan ohne Textebene",
 „gar nichts geparst", „Text, aber keine Chunks" — entscheidet jetzt die Pipeline für ihr eigenes
 Format. Genau das braucht eine PDF-Pipeline später, um Scan-Erkennung anders zu beantworten als eine
@@ -217,9 +222,10 @@ unterscheidbare Fälle: die Quelle war lesbar und ist leer (`NO_CONTENT`), und d
 gar nicht erst lesen — beschädigter Container, abgewiesene XXE-Auflösung, überschrittene
 Schutzgrenze. Der zweite Fall heißt jetzt `PARSE_FAILED`. Eine Pipeline, die beides nicht
 auseinanderhalten kann, meldet `PARSE_FAILED`; sie sagt damit nur, dass sie nichts über den Inhalt
-weiß. Die Pipelines für PDF, DOCX, PPTX, ODT, ODP und XLSX/CSV/ODS fangen ihre Lesefehler selbst ab
-und melden diesen Ausgang; HTML, Markdown und der Tika-Fallback werfen weiterhin eine Ausnahme —
-der Aufrufer behandelt beides gleich.
+weiß. Eine Pipeline meldet diesen Ausgang, indem sie die Ausnahme ihres Parsers herauslässt:
+`DocumentPipelineRunner` — der einzige Aufrufpunkt von `DocumentPipeline#run` — bildet jede
+Laufzeitausnahme auf `PARSE_FAILED` ab und protokolliert sie einmal, für jedes Format gleich. Der
+Aufrufer sieht einen Lesefehler damit nur noch in dieser einen Form (#1313).
 
 ### Übergabepunkt: die Reihenfolge, in der Chunks ersetzt werden
 
