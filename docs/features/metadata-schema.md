@@ -877,7 +877,7 @@ gezählt. Kein Retry, keine Warteschlange. Der Aufruf läuft auf einem **eigenen
 Threadpool** (`modelExtractionTaskExecutor`, so groß wie Indexierungs- und Upload-Pool zusammen),
 nicht auf dem gemeinsamen `ForkJoinPool`: Dessen Auslastung ließe das Zeitlimit an einem Aufruf
 ablaufen, der nie gestartet ist — ein gezählter „Fehler", den kein Modell verursacht hat. Ist der
-Pool dennoch voll, wird der Aufruf **übersprungen** (eigener Zähler „übersprungen (ausgelastet)"),
+Pool dennoch voll, unterbleibt der Aufruf (eigener Zähler „nicht angefragt (ausgelastet)"),
 nicht eingereiht und nicht auf dem aufrufenden Faden ausgeführt: Ein Inline-Aufruf kehrte erst nach
 der Antwort des Modells zurück, das Zeitlimit griffe also gerade dann nicht, wenn es gebraucht wird.
 Das Feld bleibt leer, die Aufnahme läuft weiter. Ein überschrittener Aufruf wird **aufgegeben, nicht

@@ -209,11 +209,12 @@ Antwort: Das Feld bleibt leer, das Dokument wird regulär aufgenommen und ist du
 keinen erneuten Versuch und keine Warteschlange; nachgeholt wird über den Bestandslauf (Abschnitt 6).
 Ein überschrittener Aufruf wird aufgegeben: Seine Antwort wird verworfen, beim Anbieter läuft er zu
 Ende und erscheint auf dessen Rechnung; spätestens nach denselben 30 Sekunden bricht die Verbindung
-ab. Sind alle Fäden der Ermittlung belegt, wird der Aufruf **übersprungen** statt eingereiht — auch
-das steht im Zählwerk, damit ein Engpass nicht wie ein Modellausfall aussieht.
+ab. Sind alle Fäden der Ermittlung belegt, unterbleibt der Aufruf ganz („nicht angefragt
+(ausgelastet)") statt eingereiht zu werden — auch das steht im Zählwerk, damit ein Engpass nicht wie
+ein Modellausfall aussieht.
 
 **Zählwerk.** Je Bibliothek werden Aufrufe, übernommene Werte, wegen Konfidenz und wegen Werteliste
-verworfene Werte, Fehler, übersprungene Aufrufe und vergebene Schlagworte geführt — sichtbar in den Bibliothekseinstellungen
+verworfene Werte, Fehler, nicht angefragte Dokumente und vergebene Schlagworte geführt — sichtbar in den Bibliothekseinstellungen
 und auf der Seite „Suche & Indexierung". Ohne diese Zahlen ist die einzige Rückmeldung über die
 Kosten die Rechnung des Modellanbieters. Verworfene Werte werden zusätzlich mit ihrer Konfidenz
 protokolliert (je Bibliothek die 1.000 jüngsten), damit die Schwelle an einem echten Bestand

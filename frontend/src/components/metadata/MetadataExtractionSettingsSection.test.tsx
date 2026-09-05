@@ -142,7 +142,7 @@ describe('MetadataExtractionSettingsSection', () => {
     ).toBeInTheDocument()
     expect(screen.getByText(/Modellaufrufe: 12/)).toBeInTheDocument()
     expect(screen.getByText(/verworfen \(Konfidenz\): 2/)).toBeInTheDocument()
-    expect(screen.getByText(/übersprungen \(ausgelastet\): 2/)).toBeInTheDocument()
+    expect(screen.getByText(/nicht angefragt \(ausgelastet\): 2/)).toBeInTheDocument()
     // Without the management right the switches are not offered at all.
     expect(screen.queryByLabelText('Modellgestützte Extraktion', { selector: 'input' })).toBeNull()
     expect(mockGetSettings).not.toHaveBeenCalled()

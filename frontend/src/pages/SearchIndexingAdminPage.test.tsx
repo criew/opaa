@@ -196,7 +196,7 @@ describe('SearchIndexingAdminPage', () => {
         'Modellgestützte Extraktion: Satzungen & Gebuehrenordnungen',
       ),
     ).toHaveTextContent(
-      'Modellaufrufe 12 · übernommen 8 · verworfen 3 · Fehler 1 · übersprungen 0 · Schlagworte 20',
+      'Modellaufrufe 12 · übernommen 8 · verworfen 3 · Fehler 1 · nicht angefragt 0 · Schlagworte 20',
     )
     expect(
       within(row as HTMLElement).getByRole('button', {
