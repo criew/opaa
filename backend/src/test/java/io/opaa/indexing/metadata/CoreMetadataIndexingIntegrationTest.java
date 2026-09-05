@@ -11,6 +11,7 @@ import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
+import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.library.KnowledgeLibrary;
@@ -369,6 +370,32 @@ class CoreMetadataIndexingIntegrationTest {
     // The feed's publication instant, not the year in the headline.
     assertThat(core.documentDate()).isEqualTo(LocalDate.of(2026, 3, 12));
     assertThat(core.documentDatePrecision()).isEqualTo(DatePrecision.DAY);
+  }
+
+  /**
+   * #1318: a Confluence page title is free text, not a file name - "Gebuehrensatzung 2024" is
+   * neither a Dokumentart nor a Stand, exactly as an RSS headline is not. It stays the title.
+   */
+  @Test
+  void aConfluencePageTitleIsNoFileNameSoItYieldsNeitherDokumentartNorDatum() {
+    assertThat(
+            fileProcessingService.processConfluencePage(
+                "<h1>Uebersicht</h1><p>Die Verwaltung erhebt Entgelte fuer Amtshandlungen im"
+                    + " Buergerbuero.</p>",
+                "Gebuehrensatzung 2024",
+                "https://wiki.example/pages/viewpage.action?pageId=4711",
+                "7",
+                new SourceDocumentContext("BAU", "Handbuch"),
+                targetLibrary))
+        .isEqualTo(FileProcessingResult.PROCESSED);
+
+    Document document = documentRepository.findAll().getFirst();
+    CoreMetadata core = documentMetadataService.coreMetadataFor(document.getId());
+    assertThat(core.title()).isEqualTo("Gebuehrensatzung 2024");
+    assertThat(core.documentTypeCode()).isNull();
+    // The version marker is no date either, so the field stays empty rather than guessed.
+    assertThat(core.documentDate()).isNull();
+    assertThat(document.getLastModifiedRemote()).isEqualTo("7");
   }
 
   @Test
