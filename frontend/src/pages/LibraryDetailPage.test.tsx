@@ -875,6 +875,7 @@ describe('LibraryDetailPage', () => {
                 attachmentsProcessed: 30,
                 attachmentsSkipped: 5,
                 attachmentsFailed: 1,
+                bytesDownloaded: 734003200,
               },
               events: [
                 {
@@ -897,7 +898,7 @@ describe('LibraryDetailPage', () => {
     )
     expect(screen.getByText('per Zeitplan')).toBeInTheDocument()
     expect(screen.getByTestId('run-metrics-run-budget')).toHaveTextContent(
-      '1000 Anfragen an die Quelle · 2-mal gedrosselt (45 s gewartet) · Anhänge: 30 indiziert, 5 übersprungen, 1 fehlgeschlagen · Dauer 12 min 30 s',
+      '1000 Anfragen an die Quelle · 2-mal gedrosselt (45 s gewartet) · 700 MB geladen · Anhänge: 30 indiziert, 5 übersprungen, 1 fehlgeschlagen · Dauer 12 min 30 s',
     )
     expect(screen.getByText('Anfragebudget erschöpft')).toBeInTheDocument()
   })

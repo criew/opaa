@@ -57,6 +57,7 @@ class S3LibraryConfigurationIntegrationTest {
   private static final String ENDPOINT = "http://localhost:9000";
 
   @Autowired private KnowledgeLibraryService libraryService;
+  @Autowired private io.opaa.indexing.source.s3.S3SyncStateRepository syncStateRepository;
   @Autowired private MockMvc mockMvc;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UserRepository userRepository;
@@ -292,6 +293,11 @@ class S3LibraryConfigurationIntegrationTest {
     CurrentUser caller = currentUser(owner);
     UUID libraryId =
         libraryService.createLibrary(s3("Protokolle", ENDPOINT).build(), caller).library().getId();
+    io.opaa.indexing.source.s3.S3SyncState resumption =
+        new io.opaa.indexing.source.s3.S3SyncState(libraryId);
+    resumption.beginFullSync(UUID.randomUUID());
+    resumption.markScopeCompleted("protokolle/2025/");
+    syncStateRepository.save(resumption);
 
     // settings only: replaced as a whole, nothing else touched
     LibraryDetail widened =
@@ -310,6 +316,9 @@ class S3LibraryConfigurationIntegrationTest {
         .containsExactly(S3Scope.of("protokolle", "2025/"), S3Scope.of("protokolle", "2024/"));
     assertThat(widened.library().getS3Settings().region()).isEqualTo("eu-west-1");
     assertThat(widened.library().getSourceCredentials()).isEqualTo("AKIAEXAMPLE:geheim");
+    assertThat(syncStateRepository.findByLibraryId(libraryId))
+        .as("a changed selection discards the resumption state (ADR-0027, Entscheidung 3)")
+        .isEmpty();
     List<String> audit =
         jdbcTemplate.queryForList(
             "SELECT after FROM audit_log WHERE object_id = ? AND event_type = ?",
@@ -320,10 +329,12 @@ class S3LibraryConfigurationIntegrationTest {
         .singleElement()
         .satisfies(payload -> assertThat(payload).contains("s3Settings"));
 
-    // a rename alone leaves the settings untouched
+    // a rename alone leaves the settings - and the resumption state - untouched
+    syncStateRepository.save(new io.opaa.indexing.source.s3.S3SyncState(libraryId));
     LibraryDetail renamed =
         libraryService.updateLibrary(libraryId, libraryUpdate("Sitzungen").build(), caller);
     assertThat(renamed.library().getS3Settings()).isEqualTo(widened.library().getS3Settings());
+    assertThat(syncStateRepository.findByLibraryId(libraryId)).isPresent();
 
     // an endpoint edit on the same origin keeps the stored key; a new origin drops it
     LibraryDetail sameOrigin =

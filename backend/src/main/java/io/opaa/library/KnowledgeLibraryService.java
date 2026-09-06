@@ -42,6 +42,7 @@ import io.opaa.indexing.source.s3.S3Connection;
 import io.opaa.indexing.source.s3.S3Credentials;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
+import io.opaa.indexing.source.s3.S3SyncStateRepository;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
 import java.security.SecureRandom;
@@ -139,6 +140,7 @@ public class KnowledgeLibraryService {
   private final IndexingJobService indexingJobService;
   private final RssFeedStateRepository rssFeedStateRepository;
   private final ConfluenceSyncStateRepository confluenceSyncStateRepository;
+  private final S3SyncStateRepository s3SyncStateRepository;
   private final ConfluenceProperties confluenceProperties;
   private final Clock schedulingClock;
   private final LibraryStorageQuotaService storageQuotaService;
@@ -164,6 +166,7 @@ public class KnowledgeLibraryService {
       IndexingJobService indexingJobService,
       RssFeedStateRepository rssFeedStateRepository,
       ConfluenceSyncStateRepository confluenceSyncStateRepository,
+      S3SyncStateRepository s3SyncStateRepository,
       Clock schedulingClock,
       LibraryStorageQuotaService storageQuotaService,
       LibraryFolderRepository folderRepository,
@@ -187,6 +190,7 @@ public class KnowledgeLibraryService {
     this.indexingJobService = indexingJobService;
     this.rssFeedStateRepository = rssFeedStateRepository;
     this.confluenceSyncStateRepository = confluenceSyncStateRepository;
+    this.s3SyncStateRepository = s3SyncStateRepository;
     this.schedulingClock = schedulingClock;
     this.storageQuotaService = storageQuotaService;
     this.folderRepository = folderRepository;
@@ -673,10 +677,17 @@ public class KnowledgeLibraryService {
         // or narrowing it is a source change like any other and leaves the same audit trail.
         changedSourceFields.add("confluenceSpaces");
       }
-      if (!Objects.equals(
-          previousS3Settings, S3SourceSettingsJson.write(updated.getS3Settings()))) {
+      boolean s3SettingsChanged =
+          !Objects.equals(previousS3Settings, S3SourceSettingsJson.write(updated.getS3Settings()));
+      if (s3SettingsChanged) {
         // ADR-0027, Entscheidung 2: the scopes are the scope every reader sees - same trail
         changedSourceFields.add("s3Settings");
+      }
+      if (updated.getSourceType() == DocumentSourceType.S3
+          && (sourceUrlChanged || s3SettingsChanged)) {
+        // ADR-0027, Entscheidung 3: a changed endpoint or selection discards the resumption state
+        // - the next run lists every scope from scratch
+        s3SyncStateRepository.deleteByLibraryId(updated.getId());
       }
       if (updated.getSourceType() == DocumentSourceType.CONFLUENCE
           && (sourceUrlChanged

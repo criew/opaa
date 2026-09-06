@@ -152,6 +152,9 @@ public class IndexingJob {
   @Column(name = "attachments_skipped")
   private Integer attachmentsSkipped;
 
+  @Column(name = "bytes_downloaded")
+  private Long bytesDownloaded;
+
   @Column(name = "attachments_failed")
   private Integer attachmentsFailed;
 
@@ -314,7 +317,8 @@ public class IndexingJob {
         attachmentsProcessed == null ? 0 : attachmentsProcessed,
         attachmentsSkipped == null ? 0 : attachmentsSkipped,
         attachmentsFailed == null ? 0 : attachmentsFailed,
-        incomplete);
+        incomplete,
+        bytesDownloaded == null ? 0L : bytesDownloaded);
   }
 
   public void applyMetrics(IndexingRunCost metrics) {
@@ -325,6 +329,7 @@ public class IndexingJob {
     this.attachmentsSkipped = metrics.attachmentsSkipped();
     this.attachmentsFailed = metrics.attachmentsFailed();
     this.incomplete = metrics.incomplete();
+    this.bytesDownloaded = metrics.bytesDownloaded();
   }
 
   public void setTriggeredBy(JobTriggerSource triggeredBy) {

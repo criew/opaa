@@ -18,13 +18,25 @@ import io.opaa.library.LibraryFolderService;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,8 +49,15 @@ import org.slf4j.LoggerFactory;
  * named in the protocol and the assessment; a spent request budget ends the run truncated; a
  * store-wide failure (credentials, clock, TLS, reachability) fails the run with the access layer's
  * own sentence.
+ *
+ * <p>Resumption ({@link S3SyncState}): a run after an interrupted one lists every scope again - the
+ * scopes the interrupted run did not finish first - and saves only the downloads, since an object
+ * stored at its listed feature costs no call. Downloads run {@code downloadConcurrency} at a time
+ * on their own threads while the listing goes on; every download is handed to the document path on
+ * the listing thread in listing order, so counters, folders and the protocol stay sequential. The
+ * sync must be {@link #close() closed} so no download thread or temp file outlives the run.
  */
-final class S3FullSync {
+final class S3FullSync implements AutoCloseable {
 
   private static final Logger log = LoggerFactory.getLogger(S3FullSync.class);
 
@@ -52,6 +71,8 @@ final class S3FullSync {
   static final String EXCLUDED_KEYS_SUFFIX =
       " Schlüssel durch die Ein-/Ausschlussmuster ausgeschlossen; sie sind nicht Teil des Bestands"
           + " und werden entfernt, falls ein früherer Lauf sie aufgenommen hat";
+  static final String RECONCILIATION_FAILED_MESSAGE =
+      "Abgleich des Bestands fehlgeschlagen; der nächste Lauf holt ihn nach";
 
   private final IndexingRun frame;
   private final S3ObjectStore store;
@@ -67,10 +88,31 @@ final class S3FullSync {
   /** The scopes behind an incomplete listing as {@code bucket/prefix}, in the order met. */
   private final Set<String> unlistableScopeKeys = new LinkedHashSet<>();
 
+  private final S3SyncState state;
+  private final S3SyncStateRepository syncStateRepository;
+  private final Clock clock;
+
+  /** Downloads in flight, oldest first; drained on the listing thread in this order. */
+  private final Deque<PendingDownload> pending = new ArrayDeque<>();
+
+  private final AtomicInteger downloadThreads = new AtomicInteger();
+  private ExecutorService downloadPool;
+
+  private final Map<String, Duration> scopeDurations = new LinkedHashMap<>();
   private int total;
   private long listed;
   private long folderMarkers;
   private long excludedKeys;
+
+  /** One object fetched off the listing thread, with everything its ingest needs. */
+  private record PendingDownload(
+      S3Scope scope,
+      S3ObjectSummary object,
+      String filePath,
+      String fileName,
+      String marker,
+      UUID folderId,
+      Future<S3Download> download) {}
 
   S3FullSync(
       IndexingRun frame,
@@ -79,7 +121,10 @@ final class S3FullSync {
       S3Properties properties,
       FileProcessingService fileProcessingService,
       DocumentRepository documentRepository,
-      LibraryFolderService folderService) {
+      LibraryFolderService folderService,
+      S3SyncState state,
+      S3SyncStateRepository syncStateRepository,
+      Clock clock) {
     this.frame = frame;
     this.store = store;
     this.properties = properties;
@@ -88,14 +133,28 @@ final class S3FullSync {
     this.patterns = S3KeyPatterns.of(settings);
     this.folderMirror = new SourceFolderMirror(folderService, frame.library());
     this.scopeRootChain = settings.scopes().size() > 1;
+    this.state = state;
+    this.syncStateRepository = syncStateRepository;
+    this.clock = clock;
   }
 
   ListingOutcome run(List<S3Scope> scopes) throws InterruptedException {
+    List<S3Scope> ordered = orderForResumption(scopes, state);
+    state.beginFullSync(frame.jobId());
+    S3SyncState saved = syncStateRepository.save(state);
     try {
-      for (S3Scope scope : scopes) {
-        listScope(scope);
+      for (S3Scope scope : ordered) {
+        Instant scopeStart = clock.instant();
+        boolean listedCompletely = listScope(scope);
+        drainAll();
+        scopeDurations.put(scope.key(), Duration.between(scopeStart, clock.instant()));
+        if (listedCompletely) {
+          saved.markScopeCompleted(scope.key());
+          saved = syncStateRepository.save(saved);
+        }
       }
     } catch (S3AccessException.BudgetExhausted e) {
+      // the state holds every scope listed completely so far - the next run starts with the rest
       recordSummaries();
       return recordBudgetExhausted(e);
     }
@@ -108,14 +167,69 @@ final class S3FullSync {
           unlistableScopeKeys);
       return ListingOutcome.incomplete(List.copyOf(unlistableScopeKeys));
     }
-    // folders are pruned only after the document cleanup of a complete listing, so a folder
-    // emptied by that cleanup goes in the same run (ADR-0020, like FILESYSTEM and HTTP_DIRECTORY).
-    // The frame holds one hook: whatever else a complete run must do afterwards composes here.
-    frame.afterReconciliation(reconciled -> folderMirror.prune());
+    // Folders are pruned only after the document cleanup of a complete listing, so a folder
+    // emptied by that cleanup goes in the same run (ADR-0020, like FILESYSTEM and HTTP_DIRECTORY);
+    // and without the reconciliation the full sync is not complete - the state stays open, so the
+    // next run reconciles again. The frame holds one hook, so both compose here.
+    S3SyncState completedState = saved;
+    frame.afterReconciliation(
+        reconciled -> {
+          folderMirror.prune();
+          if (reconciled) {
+            completedState.completeFullSync(clock.instant());
+            syncStateRepository.save(completedState);
+          } else {
+            frame.events().record(IndexingEventCategory.ERROR, RECONCILIATION_FAILED_MESSAGE, null);
+          }
+        });
     return ListingOutcome.complete();
   }
 
-  private void listScope(S3Scope scope)
+  /** Unfinished scopes of an interrupted full sync first, then the already completed ones. */
+  static List<S3Scope> orderForResumption(List<S3Scope> scopes, S3SyncState state) {
+    Set<String> completed = state.isFullSyncInterrupted() ? state.completedScopeKeys() : Set.of();
+    List<S3Scope> ordered = new ArrayList<>();
+    for (S3Scope scope : scopes) {
+      if (!completed.contains(scope.key())) {
+        ordered.add(scope);
+      }
+    }
+    for (S3Scope scope : scopes) {
+      if (completed.contains(scope.key())) {
+        ordered.add(scope);
+      }
+    }
+    return ordered;
+  }
+
+  /** Abandons every download still in flight and deletes what already landed on disk. */
+  @Override
+  public void close() {
+    for (PendingDownload item : pending) {
+      item.download().cancel(true);
+    }
+    if (downloadPool != null) {
+      downloadPool.shutdownNow();
+    }
+    for (PendingDownload item : pending) {
+      if (item.download().isDone() && !item.download().isCancelled()) {
+        try {
+          deleteQuietly(item.download().get().file());
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+          // the download failed - nothing on disk
+        }
+      }
+    }
+    pending.clear();
+  }
+
+  /**
+   * @return whether the scope was listed to its last page - {@code false} for a scope the
+   *     credentials cannot list, which stays out of the state and is listed first next time
+   */
+  private boolean listScope(S3Scope scope)
       throws S3AccessException.BudgetExhausted, InterruptedException {
     String token = null;
     do {
@@ -146,7 +260,7 @@ final class S3FullSync {
                     + UNLISTABLE_SCOPE_SUFFIX,
                 scope.key());
         unlistableScopeKeys.add(scope.key());
-        return;
+        return false;
       } catch (S3AccessException e) {
         throw new IndexingRunFailedException(e.getMessage(), e);
       }
@@ -170,6 +284,7 @@ final class S3FullSync {
       }
       token = page.nextContinuationToken();
     } while (token != null);
+    return true;
   }
 
   /**
@@ -228,14 +343,95 @@ final class S3FullSync {
     if (!supportedByName && !headAdmits(bucket, key, filePath)) {
       return;
     }
-    download(
+    enqueueDownload(
         scope,
         object,
         filePath,
         fileName,
         marker,
         existing.isPresent() ? folderId : folderFor(scope, key, filePath));
-    frame.progress().report();
+  }
+
+  /**
+   * Fetches the object off the listing thread when downloads may run concurrently, serially
+   * otherwise; with {@code downloadConcurrency} downloads in flight the oldest is ingested first,
+   * so the queue never grows past that bound and the protocol keeps listing order.
+   */
+  private void enqueueDownload(
+      S3Scope scope,
+      S3ObjectSummary object,
+      String filePath,
+      String fileName,
+      String marker,
+      UUID folderId)
+      throws S3AccessException.BudgetExhausted, InterruptedException {
+    int concurrency = properties.downloadConcurrency();
+    if (concurrency <= 1) {
+      S3Download download = fetch(scope, object, filePath);
+      if (download != null) {
+        ingest(scope, object, filePath, fileName, marker, folderId, download);
+      }
+      return;
+    }
+    while (pending.size() >= concurrency) {
+      drainOne();
+    }
+    Future<S3Download> future =
+        downloadPool()
+            .submit(
+                () ->
+                    store.getObject(scope.bucket(), object.key(), properties.maxObjectSizeBytes()));
+    pending.add(new PendingDownload(scope, object, filePath, fileName, marker, folderId, future));
+  }
+
+  private ExecutorService downloadPool() {
+    if (downloadPool == null) {
+      String library = frame.library().getId().toString();
+      downloadPool =
+          Executors.newFixedThreadPool(
+              properties.downloadConcurrency(),
+              task -> {
+                Thread thread =
+                    new Thread(
+                        task, "s3-download-" + library + "-" + downloadThreads.incrementAndGet());
+                thread.setDaemon(true);
+                return thread;
+              });
+    }
+    return downloadPool;
+  }
+
+  /** Ingests the oldest download in flight, waiting for it if it is not done yet. */
+  private void drainOne() throws S3AccessException.BudgetExhausted, InterruptedException {
+    PendingDownload item = pending.poll();
+    if (item == null) {
+      return;
+    }
+    S3Download download;
+    try {
+      download = item.download().get();
+    } catch (ExecutionException e) {
+      if (e.getCause() instanceof S3AccessException failure) {
+        handleObjectFailure(item.filePath(), failure);
+      } else {
+        frame.recordFailure(item.filePath(), e.getCause() == null ? e : e.getCause());
+      }
+      return;
+    }
+    ingest(
+        item.scope(),
+        item.object(),
+        item.filePath(),
+        item.fileName(),
+        item.marker(),
+        item.folderId(),
+        download);
+  }
+
+  private void drainAll() throws S3AccessException.BudgetExhausted, InterruptedException {
+    while (!pending.isEmpty()) {
+      drainOne();
+    }
   }
 
   /**
@@ -321,21 +517,25 @@ final class S3FullSync {
     return true;
   }
 
-  private void download(
+  /** The object's bytes in a temp file, or {@code null} once the failure was handled. */
+  private S3Download fetch(S3Scope scope, S3ObjectSummary object, String filePath)
+      throws S3AccessException.BudgetExhausted, InterruptedException {
+    try {
+      return store.getObject(scope.bucket(), object.key(), properties.maxObjectSizeBytes());
+    } catch (S3AccessException e) {
+      handleObjectFailure(filePath, e);
+      return null;
+    }
+  }
+
+  private void ingest(
       S3Scope scope,
       S3ObjectSummary object,
       String filePath,
       String fileName,
       String marker,
-      UUID folderId)
-      throws S3AccessException.BudgetExhausted, InterruptedException {
-    S3Download download;
-    try {
-      download = store.getObject(scope.bucket(), object.key(), properties.maxObjectSizeBytes());
-    } catch (S3AccessException e) {
-      handleObjectFailure(filePath, e);
-      return;
-    }
+      UUID folderId,
+      S3Download download) {
     Path file = download.file();
     try {
       String changeMarker =
@@ -376,11 +576,16 @@ final class S3FullSync {
     } catch (Exception e) {
       frame.recordFailure(filePath, e);
     } finally {
-      try {
-        Files.deleteIfExists(file);
-      } catch (IOException e) {
-        log.warn("Failed to delete temp file: {}", file, e);
-      }
+      deleteQuietly(file);
+      frame.progress().report();
+    }
+  }
+
+  private static void deleteQuietly(Path file) {
+    try {
+      Files.deleteIfExists(file);
+    } catch (IOException e) {
+      log.warn("Failed to delete temp file: {}", file, e);
     }
   }
 
@@ -452,6 +657,49 @@ final class S3FullSync {
           .events()
           .record(IndexingEventCategory.REJECTED, excludedKeys + EXCLUDED_KEYS_SUFFIX, null);
     }
+    frame.events().record(IndexingEventCategory.SUMMARY, summaryMessage(), null);
+  }
+
+  /** The run's figures in one German sentence - what an operator reads throughput against. */
+  private String summaryMessage() {
+    S3RequestMeter meter = store.meter();
+    StringBuilder message =
+        new StringBuilder()
+            .append(meter.requests())
+            .append(" Anfragen, ")
+            .append(formatBytes(meter.bytesDownloaded()))
+            .append(" geladen; ")
+            .append(listed)
+            .append(" Objekte gelistet, ")
+            .append(excludedKeys)
+            .append(" durch Muster ausgeschlossen, ")
+            .append(frame.progress().skippedCount())
+            .append(" übersprungen, ")
+            .append(frame.progress().processedCount())
+            .append(" neu verarbeitet, ")
+            .append(frame.progress().failedCount())
+            .append(" fehlgeschlagen");
+    if (!scopeDurations.isEmpty()) {
+      message.append("; Dauer je Geltungsbereich: ");
+      List<String> parts = new ArrayList<>();
+      scopeDurations.forEach(
+          (key, duration) -> parts.add(key + " " + Math.max(0, duration.toSeconds()) + " s"));
+      message.append(String.join(", ", parts));
+    }
+    return message.toString();
+  }
+
+  static String formatBytes(long bytes) {
+    if (bytes >= 1L << 30) {
+      return String.format(java.util.Locale.GERMANY, "%.1f GiB", bytes / (double) (1L << 30));
+    }
+    if (bytes >= 1L << 20) {
+      return String.format(java.util.Locale.GERMANY, "%.1f MiB", bytes / (double) (1L << 20));
+    }
+    if (bytes >= 1L << 10) {
+      return String.format(java.util.Locale.GERMANY, "%.1f KiB", bytes / (double) (1L << 10));
+    }
+    return bytes + " Bytes";
   }
 
   private ListingOutcome recordBudgetExhausted(S3AccessException.BudgetExhausted e) {

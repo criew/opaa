@@ -30,6 +30,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     visible failure asking for narrower scopes - an emergency brake for heap and runtime (every
  *     listed path is held for the reconciliation), not a working limit. Default {@link
  *     #DEFAULT_MAX_OBJECTS_PER_RUN}; {@code 0} falls back to it.
+ * @param downloadConcurrency how many object downloads one run keeps in flight while its listing
+ *     goes on - a bound on the load put on the store, not a throughput target. Default {@link
+ *     #DEFAULT_DOWNLOAD_CONCURRENCY}; {@code 0} falls back to it, {@code 1} downloads serially.
  */
 @ConfigurationProperties(prefix = "opaa.indexing.s3")
 public record S3Properties(
@@ -40,12 +43,16 @@ public record S3Properties(
     Duration retryBackoff,
     int requestBudgetPerRun,
     Path tempDirectory,
-    int maxObjectsPerRun) {
+    int maxObjectsPerRun,
+    int downloadConcurrency) {
 
   public static final int MAX_LIST_PAGE_SIZE = 1000;
 
   /** Listed objects per run before the run fails visibly (ADR-0027, Entscheidung 3). */
   public static final int DEFAULT_MAX_OBJECTS_PER_RUN = 1_000_000;
+
+  /** Concurrent downloads per run (ADR-0027, Entscheidung 11). */
+  public static final int DEFAULT_DOWNLOAD_CONCURRENCY = 2;
 
   /**
    * Calls per run before the run ends as truncated: one call per {@link #MAX_LIST_PAGE_SIZE} listed
@@ -92,6 +99,13 @@ public record S3Properties(
     if (maxObjectsPerRun == 0) {
       maxObjectsPerRun = DEFAULT_MAX_OBJECTS_PER_RUN;
     }
+    if (downloadConcurrency < 0) {
+      throw new IllegalArgumentException(
+          "downloadConcurrency must not be negative, got " + downloadConcurrency);
+    }
+    if (downloadConcurrency == 0) {
+      downloadConcurrency = DEFAULT_DOWNLOAD_CONCURRENCY;
+    }
   }
 
   /**
@@ -107,7 +121,8 @@ public record S3Properties(
         retryBackoff,
         0,
         tempDirectory,
-        maxObjectsPerRun);
+        maxObjectsPerRun,
+        downloadConcurrency);
   }
 
   /** {@code true} when a run is bounded by {@link #requestBudgetPerRun}; zero means unbounded. */
@@ -117,6 +132,6 @@ public record S3Properties(
 
   /** All defaults - for callers and tests that need a properties instance without configuration. */
   public static S3Properties defaults() {
-    return new S3Properties(0, 0, null, null, null, DEFAULT_REQUEST_BUDGET_PER_RUN, null, 0);
+    return new S3Properties(0, 0, null, null, null, DEFAULT_REQUEST_BUDGET_PER_RUN, null, 0, 0);
   }
 }

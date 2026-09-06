@@ -390,12 +390,13 @@ public class LibraryController {
       return null;
     }
     return new IndexingRunMetrics(
-        metrics.requestsSent(),
-        metrics.throttleCount(),
-        Math.round(metrics.throttleWaitMillis() / 1000.0),
-        metrics.attachmentsProcessed(),
-        metrics.attachmentsSkipped(),
-        metrics.attachmentsFailed());
+            metrics.requestsSent(),
+            metrics.throttleCount(),
+            Math.round(metrics.throttleWaitMillis() / 1000.0),
+            metrics.attachmentsProcessed(),
+            metrics.attachmentsSkipped(),
+            metrics.attachmentsFailed())
+        .bytesDownloaded(metrics.bytesDownloaded());
   }
 
   private IndexingTriggerSource mapIndexingTriggerSource(
@@ -424,6 +425,7 @@ public class LibraryController {
       case REMOVED -> IndexingRunEventCategory.REMOVED;
       case RATE_LIMITED -> IndexingRunEventCategory.RATE_LIMITED;
       case BUDGET_EXHAUSTED -> IndexingRunEventCategory.BUDGET_EXHAUSTED;
+      case SUMMARY -> IndexingRunEventCategory.SUMMARY;
     };
   }
 

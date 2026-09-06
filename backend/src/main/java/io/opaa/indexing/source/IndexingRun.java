@@ -54,6 +54,7 @@ public final class IndexingRun {
   private int requestsSent;
   private int throttleCount;
   private long throttleWaitMillis;
+  private long bytesDownloaded;
   private ReconciliationHook reconciliationHook = reconciled -> {};
 
   public IndexingRun(
@@ -179,9 +180,16 @@ public final class IndexingRun {
 
   /** What the run's source meter counted; a source without one leaves the zeros. */
   public void recordRequestCost(int requestsSent, int throttleCount, long throttleWaitMillis) {
+    recordRequestCost(requestsSent, throttleCount, throttleWaitMillis, 0L);
+  }
+
+  /** Like {@link #recordRequestCost(int, int, long)}, for a source that also counts bytes. */
+  public void recordRequestCost(
+      int requestsSent, int throttleCount, long throttleWaitMillis, long bytesDownloaded) {
     this.requestsSent = requestsSent;
     this.throttleCount = throttleCount;
     this.throttleWaitMillis = throttleWaitMillis;
+    this.bytesDownloaded = bytesDownloaded;
   }
 
   IndexingRunCost cost(boolean incomplete) {
@@ -192,6 +200,7 @@ public final class IndexingRun {
         progress.attachmentsProcessed(),
         progress.attachmentsSkipped(),
         progress.attachmentsFailed(),
-        incomplete);
+        incomplete,
+        bytesDownloaded);
   }
 }

@@ -188,6 +188,13 @@ Chunks und dem Schreiben der neuen fiel, also im Zeitfenster des Embedding-Aufru
 Schritt 6a). Es steht dann nicht auf „indiziert" und
 wird im nächsten Lauf erneut verarbeitet, unabhängig von der Prüfsumme.
 
+Ein S3-Vollabgleich, der durch das Anfragebudget oder eine Störung endete, hinterlässt je
+Bibliothek einen Wiederaufnahmezustand: welche Geltungsbereiche er bereits vollständig gelistet
+hatte. Der nächste Lauf listet **alle** Bereiche erneut — die unvollendeten zuerst — und spart nur
+die Downloads, denn ein Objekt, dessen Änderungsmerkmal bereits gespeichert ist, kostet keinen
+Abruf; erst ein Lauf, der jeden Bereich bis zur letzten Seite gelistet und den Bestand abgeglichen
+hat, schließt den Zustand. Eine Änderung des Endpoints oder der Geltungsbereiche verwirft ihn.
+
 ## 4. Die Quellen: der Übergabepunkt an die Konnektoren
 
 Jeder lauf-basierte Quellentyp hat einen eigenen **Konnektor** (im Code: Executor). Der
@@ -641,7 +648,7 @@ Die wichtigsten Schlüssel unter `opaa.indexing.*`:
 | `stale-job-timeout` | 4h | Frist ohne Fortschritt, bis ein Lauf als verwaist gilt |
 | `thread-pool.*` | 2 / 4 / 20 | Lauf-Pool |
 | `target-validation.*` | aktiv | Zieladressprüfung für Netzquellen |
-| `rss.*`, `crawl.*`, `confluence.*`, `s3.*`, `mail.*`, `tabular.*`, `odf.*` | siehe Konnektor- und Format-Kapitel; `s3.*` bis zum eigenen Kapitel in [deployment.md](deployment.md) (`OPAA_INDEXING_S3_*`, darunter `max-objects-per-run` als sichtbare Notbremse und `request-budget-per-run` als geordnetes Laufende) | Grenzwerte je Quelle und Format |
+| `rss.*`, `crawl.*`, `confluence.*`, `s3.*`, `mail.*`, `tabular.*`, `odf.*` | siehe Konnektor- und Format-Kapitel; `s3.*` bis zum eigenen Kapitel in [deployment.md](deployment.md) (`OPAA_INDEXING_S3_*`, darunter `max-objects-per-run` als sichtbare Notbremse, `request-budget-per-run` als geordnetes Laufende und `download-concurrency` als Obergrenze gleichzeitiger Downloads) | Grenzwerte je Quelle und Format |
 
 ### 10.4 Was nicht gebaut ist
 

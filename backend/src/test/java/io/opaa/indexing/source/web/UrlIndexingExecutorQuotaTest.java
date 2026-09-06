@@ -202,7 +202,7 @@ class UrlIndexingExecutorQuotaTest {
 
     ArgumentCaptor<IndexingRunCost> cost = ArgumentCaptor.forClass(IndexingRunCost.class);
     verify(indexingJobService, timeout(2000)).recordRunMetrics(eq(jobId), cost.capture());
-    assertThat(cost.getValue()).isEqualTo(new IndexingRunCost(0, 0, 0L, 1, 2, 1, false));
+    assertThat(cost.getValue()).isEqualTo(new IndexingRunCost(0, 0, 0L, 1, 2, 1, false, 0L));
     verify(indexingJobService).completeJob(jobId, 1, 0, 0, 2);
   }
 }

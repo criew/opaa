@@ -120,7 +120,7 @@ class LibraryIndexingControllerTest {
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setDocumentsProcessed(400);
     job.setDocumentsSkipped(20);
-    job.applyMetrics(new IndexingRunCost(1000, 3, 2700L, 30, 5, 1, true));
+    job.applyMetrics(new IndexingRunCost(1000, 3, 2700L, 30, 5, 1, true, 0L));
     job.setStatus(JobStatus.COMPLETED);
     when(indexingService.getRecentRuns(eq(libraryId), eq(caller)))
         .thenReturn(List.of(new IndexingRunDetail(job, List.of())));

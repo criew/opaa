@@ -38,6 +38,7 @@ import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import io.opaa.indexing.source.s3.S3ClientFactory;
 import io.opaa.indexing.source.s3.S3IndexingExecutor;
 import io.opaa.indexing.source.s3.S3Properties;
+import io.opaa.indexing.source.s3.S3SyncStateRepository;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
 import io.opaa.indexing.source.web.CrawlProperties;
 import io.opaa.indexing.source.web.UrlIndexingExecutor;
@@ -493,6 +494,7 @@ public class IndexingConfiguration {
       FileProcessingService fileProcessingService,
       DocumentRepository documentRepository,
       LibraryFolderService libraryFolderService,
+      S3SyncStateRepository s3SyncStateRepository,
       IndexingRunTemplate indexingRunTemplate) {
     return new S3IndexingExecutor(
         s3ClientFactory,
@@ -500,6 +502,8 @@ public class IndexingConfiguration {
         fileProcessingService,
         documentRepository,
         libraryFolderService,
+        s3SyncStateRepository,
+        Clock.systemUTC(),
         indexingRunTemplate);
   }
 
