@@ -17,6 +17,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.observability.AuthMetrics;
 import io.opaa.organization.Organization;
 import io.opaa.space.SpaceService;
@@ -94,9 +95,18 @@ class UserServiceTest {
     // counter itself actually incremented, not just that some method was called on a mock.
     authMetrics = new AuthMetrics(new SimpleMeterRegistry());
     clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
+    // #1330: the initial-admin rule is issuer-bound (ADR-0025); in this mocked "dev" mode the dev
+    // issuer "issuer1" is the trusted one, so the address tests below keep their meaning.
+    when(authProperties.mode()).thenReturn("dev");
+    when(authProperties.dev()).thenReturn(new AuthProperties.DevAuth("issuer1", null, null));
     userService =
         new UserService(
-            userRepository, spaceService, authProperties, auditEventRecorder, authMetrics, clock);
+            userRepository,
+            spaceService,
+            new InitialAdminPolicy(authProperties, mock(OidcProviderRepository.class)),
+            auditEventRecorder,
+            authMetrics,
+            clock);
   }
 
   @Test
@@ -214,6 +224,22 @@ class UserServiceTest {
     User user = userService.findOrCreateUser("sub1", "issuer1", "admin@example.com", "Admin");
 
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.SYSTEM_ADMIN);
+  }
+
+  @Test
+  void findOrCreateUserDoesNotGrantAdminThroughAnotherIssuer() {
+    // ADR-0025, Entscheidung 3 (#1330): the initial administrator's address issued by a provider
+    // other than the trusted one is a plain user - the rule cannot be captured.
+    when(userRepository.findBySubjectAndIssuer("sub1", "https://partner.example/realms/b"))
+        .thenReturn(Optional.empty());
+    when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(authProperties.initialAdminEmail()).thenReturn("admin@example.com");
+
+    User user =
+        userService.findOrCreateUser(
+            "sub1", "https://partner.example/realms/b", "admin@example.com", "Admin");
+
+    assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
   }
 
   @Test

@@ -61,7 +61,11 @@ class MeControllerTest {
         .thenReturn(user);
     expectedCaller =
         CurrentUser.of(
-            user.getId(), user.getOrganizationId(), SystemRole.USER, user.getDisplayName());
+            user.getId(),
+            user.getOrganizationId(),
+            SystemRole.USER,
+            user.getDisplayName(),
+            user.getEmail());
   }
 
   private RequestPostProcessor asRegularUser() {

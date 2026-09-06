@@ -37,6 +37,7 @@ public final class CurrentUser {
   private final UUID organizationId;
   private final SystemRole systemRole;
   private final String displayName;
+  private final String email;
 
   /**
    * Reflection guard, never called by application code - see the class Javadoc. Spring's data
@@ -48,11 +49,13 @@ public final class CurrentUser {
         "CurrentUser must never be constructed via reflection/data binding");
   }
 
-  private CurrentUser(UUID id, UUID organizationId, SystemRole systemRole, String displayName) {
+  private CurrentUser(
+      UUID id, UUID organizationId, SystemRole systemRole, String displayName, String email) {
     this.id = id;
     this.organizationId = organizationId;
     this.systemRole = systemRole;
     this.displayName = displayName;
+    this.email = email;
   }
 
   public UUID id() {
@@ -71,13 +74,22 @@ public final class CurrentUser {
     return displayName;
   }
 
+  /** The address the identity provider asserted at this sign-in; may be {@code null}. */
+  public String email() {
+    return email;
+  }
+
   public boolean isSystemAdmin() {
     return systemRole == SystemRole.SYSTEM_ADMIN;
   }
 
   static CurrentUser from(User user) {
     return new CurrentUser(
-        user.getId(), user.getOrganizationId(), user.getSystemRole(), user.getDisplayName());
+        user.getId(),
+        user.getOrganizationId(),
+        user.getSystemRole(),
+        user.getDisplayName(),
+        user.getEmail());
   }
 
   /**
@@ -85,7 +97,12 @@ public final class CurrentUser {
    */
   public static CurrentUser of(
       UUID id, UUID organizationId, SystemRole systemRole, String displayName) {
-    return new CurrentUser(id, organizationId, systemRole, displayName);
+    return new CurrentUser(id, organizationId, systemRole, displayName, null);
+  }
+
+  public static CurrentUser of(
+      UUID id, UUID organizationId, SystemRole systemRole, String displayName, String email) {
+    return new CurrentUser(id, organizationId, systemRole, displayName, email);
   }
 
   @Override
@@ -99,12 +116,13 @@ public final class CurrentUser {
     return Objects.equals(id, that.id)
         && Objects.equals(organizationId, that.organizationId)
         && systemRole == that.systemRole
-        && Objects.equals(displayName, that.displayName);
+        && Objects.equals(displayName, that.displayName)
+        && Objects.equals(email, that.email);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, organizationId, systemRole, displayName);
+    return Objects.hash(id, organizationId, systemRole, displayName, email);
   }
 
   @Override
@@ -117,6 +135,8 @@ public final class CurrentUser {
         + systemRole
         + ", displayName="
         + displayName
+        + ", email="
+        + email
         + "]";
   }
 }
