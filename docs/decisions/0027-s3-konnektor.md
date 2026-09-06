@@ -482,7 +482,7 @@ bewusst nach — Stück für Stück, mit Test je Stück:
 
 ### 9. AWS SDK for Java v2 mit Apache-HTTP-Client; MinIO im Container als Testdoppel
 
-Bibliothek ist `software.amazon.awssdk:s3` mit `software.amazon.awssdk:apache-client` (Apache 2.0),
+Bibliothek ist `software.amazon.awssdk:s3` mit `software.amazon.awssdk:apache5-client` (Apache 2.0),
 deklariert in `libs.versions.toml`. Gründe gegen das MinIO-Java-SDK: Es kennt weder Session-Tokens
 noch die AWS-Regionensignatur noch einen Weg zur Instanzrolle (Entscheidung 7, Zielbild), bringt
 OkHttp als zweiten HTTP-Stack mit und ist auf AWS selbst weniger erprobt. Gründe für den
