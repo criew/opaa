@@ -36,7 +36,7 @@ const DEV_USER_HEADER = 'X-OPAA-Dev-User'
 // docker-compose.e2e.yml veröffentlicht ai-stubs Port zusätzlich auf dem Host (#760, PR-Review
 // Befund 2) - nötig, weil Szenario 2 GET /last-chat-model direkt vom Playwright/Node-Prozess aus
 // abfragt, nicht über den Browser. run-e2e.mjs reicht die tatsächlich verwendete Portnummer über
-// E2E_AI_STUB_BASE_URL durch; der Fallback hier greift bei `npm run test:playwright` gegen einen
+// E2E_AI_STUB_BASE_URL durch; der Fallback hier greift bei `pnpm run test:playwright` gegen einen
 // bereits laufenden Stack mit dem Compose-Default (18089).
 const AI_STUB_BASE_URL = process.env.E2E_AI_STUB_BASE_URL ?? 'http://localhost:18089'
 

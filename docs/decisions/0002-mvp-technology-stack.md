@@ -84,3 +84,13 @@ OPAA benötigt einen Technologie-Stack, um das damals in `docs/MVP.md` definiert
 - **KI-Ökosystem-Breite**: Python hat ein breiteres KI/ML-Ökosystem (LangChain, LlamaIndex, HuggingFace). Einige Spitzenbibliotheken sind möglicherweise noch nicht in Java verfügbar. Spring AI mildert dies, ist aber neuer als Python-Alternativen.
 - **Frontend-Backend-Sprachteilung**: Zwei Sprachen (Java + TypeScript) erfordern breitere Fähigkeiten von Beitragenden. Dies wird durch saubere API-Trennung gemildert.
 - **pgvector-Skalierungsgrenzen**: Für sehr große Dokumentensammlungen (Millionen von Vektoren) kann schließlich eine dedizierte Vektor-Datenbank (Milvus, Qdrant) benötigt werden. pgvector ist für MVP und mittlere Deployments ausreichend.
+
+## Nachträge
+
+### 06.09.2026 — Frontend-Aufrufe laufen über pnpm
+
+Mit der Migration des Frontend-Builds von npm auf pnpm (#653, PR #752) lautet der im Abschnitt
+„Deployment" genannte Befehl für die lokale Entwicklung `pnpm run dev`; Abhängigkeiten werden mit
+`pnpm install` installiert, die pnpm-Version ist über das `packageManager`-Feld der `package.json`
+gepinnt. An der Entscheidung selbst (Docker Compose plus lokale Entwicklung ohne Docker) ändert
+das nichts.
