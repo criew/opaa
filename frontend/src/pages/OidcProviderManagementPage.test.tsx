@@ -268,6 +268,42 @@ describe('OidcProviderManagementPage', () => {
     expect(screen.getByText(/OPAA_CSP_CONNECT_SRC_EXTRA/)).toBeInTheDocument()
   })
 
+  /** #1369: the two values an operator carries over to the provider are copied with one click. */
+  it('offers copy buttons for the redirect URI and the origin, and a legend of the states', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const user = userEvent.setup()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    })
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+    await screen.findAllByRole('article')
+
+    await user.click(screen.getByRole('button', { name: 'Weiterleitungs-URI kopieren' }))
+    expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/auth/callback`)
+    expect(
+      screen.getByRole('button', { name: 'Web-Origin und Abmelde-Weiterleitung kopieren' }),
+    ).toBeInTheDocument()
+
+    const legend = screen.getByRole('region', { name: 'Status verstehen' })
+    expect(within(legend).getByText('Erreichbar')).toBeInTheDocument()
+    expect(within(legend).getByText('Nicht erreichbar')).toBeInTheDocument()
+    expect(within(legend).getByText('Deaktiviert')).toBeInTheDocument()
+  })
+
+  /** #1369: the card surfaces the claim mapping instead of hiding it in the dialog. */
+  it('summarises each provider’s claim mapping on its card', async () => {
+    signInAs('SYSTEM_ADMIN')
+    renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
+    const cards = await screen.findAllByRole('article')
+    // the fixture's first provider manages roles in OPAA, the second reads them from the token
+    expect(within(cards[0]).getByText(/Rollen werden in OPAA verwaltet/)).toBeInTheDocument()
+    expect(within(cards[1]).queryByText(/Rollen werden in OPAA verwaltet/)).not.toBeInTheDocument()
+    expect(within(cards[1]).getByText('Rollen aus dem Token')).toBeInTheDocument()
+    expect(within(cards[0]).getByText('Position 1 auf der Anmeldeseite')).toBeInTheDocument()
+  })
+
   it('explains in the dev mode that providers only take effect in the OIDC mode', async () => {
     signInAs('SYSTEM_ADMIN', 'dev')
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
