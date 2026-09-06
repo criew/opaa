@@ -208,6 +208,17 @@ opaa:
         debounce: ${OPAA_INDEXING_CONFLUENCE_WEBHOOK_DEBOUNCE:5s}
         max-pending-pages: ${OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_PENDING_PAGES:200}
         max-deferrals: ${OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_DEFERRALS:120}
+    # ADR-0027: bounds of the S3 access layer (io.opaa.indexing.source.s3) - own property block
+    # like confluence above, see S3Properties.
+    s3:
+      list-page-size: ${OPAA_INDEXING_S3_LIST_PAGE_SIZE:1000}
+      max-object-size-bytes: ${OPAA_INDEXING_S3_MAX_OBJECT_SIZE_BYTES:52428800}
+      request-timeout: ${OPAA_INDEXING_S3_REQUEST_TIMEOUT:30s}
+      max-retries: ${OPAA_INDEXING_S3_MAX_RETRIES:5}
+      retry-backoff: ${OPAA_INDEXING_S3_RETRY_BACKOFF:500ms}
+      # requests one run may send before it ends as "unvollständig, wird fortgesetzt"; 0 disables
+      # the budget (see S3Properties.DEFAULT_REQUEST_BUDGET_PER_RUN).
+      request-budget-per-run: ${OPAA_INDEXING_S3_REQUEST_BUDGET_PER_RUN:20000}
     # #1058: DoS-hardening limits for TabularDocumentPipeline (XLSX/CSV/ODS) - own property block,
     # own binding prefix, see TabularProperties's own Javadoc for why.
     tabular:
@@ -352,6 +363,10 @@ management:
 logging:
   level:
     org.hibernate.orm.connections.pooling: WARN
+    # The SDK's SigV4 signer logs the canonical request at DEBUG - session token included. Pinned so
+    # raising software.amazon.awssdk to DEBUG for diagnosis never prints a credential; the pin is
+    # guarded by S3LogLeakTest.
+    software.amazon.awssdk.http.auth.aws.internal.signer: INFO
 
 ---
 spring:

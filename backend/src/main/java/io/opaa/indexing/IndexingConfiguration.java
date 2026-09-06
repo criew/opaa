@@ -35,6 +35,8 @@ import io.opaa.indexing.source.filesystem.FilesystemProperties;
 import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
 import io.opaa.indexing.source.rss.RssFeedParser;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
+import io.opaa.indexing.source.s3.S3ClientFactory;
+import io.opaa.indexing.source.s3.S3Properties;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
 import io.opaa.indexing.source.web.CrawlProperties;
 import io.opaa.indexing.source.web.UrlIndexingExecutor;
@@ -336,6 +338,17 @@ public class IndexingConfiguration {
       SourceRequestPolicy sourceRequestPolicy) {
     return new ConfluenceClientFactory(
         confluenceProperties, targetAddressValidator, sourceRequestPolicy);
+  }
+
+  /**
+   * Builds per-library S3 stores (ADR-0027); shares the target validation every other outbound
+   * source fetch uses - the SDK's own HTTP client bypasses SourceHttpClientFactory, so the
+   * validation is applied on the client and on every request instead.
+   */
+  @Bean
+  S3ClientFactory s3ClientFactory(
+      S3Properties s3Properties, TargetAddressValidator targetAddressValidator) {
+    return new S3ClientFactory(s3Properties, targetAddressValidator);
   }
 
   @Bean
