@@ -40,10 +40,26 @@ public class OidcDiscoveryClient {
   /** What a discovery document says about itself; {@code jwksUri} is already policy-checked. */
   public record Discovery(String issuer, String jwksUri) {}
 
-  /** A failed probe, with a German message a Systemverwaltung can act on. */
+  /**
+   * A failed probe, with a German message a Systemverwaltung can act on. {@code unreachable} tells
+   * "the backend could not reach the address at all" (timeout, connection refused, unknown host)
+   * apart from an answer that was reached and rejected (status, redirect, malformed document,
+   * issuer mismatch, address policy) - only the former is what a JWK set override may stand in for.
+   */
   public static final class OidcProbeException extends Exception {
+    private final boolean unreachable;
+
     OidcProbeException(String message) {
+      this(message, false);
+    }
+
+    OidcProbeException(String message, boolean unreachable) {
       super(message);
+      this.unreachable = unreachable;
+    }
+
+    public boolean isUnreachable() {
+      return unreachable;
     }
   }
 
@@ -70,7 +86,7 @@ public class OidcDiscoveryClient {
     try {
       document = JSON.readTree(fetch(issuer + DISCOVERY_PATH));
     } catch (OidcProbeException e) {
-      throw new OidcProbeException("Discovery-Dokument: " + e.getMessage());
+      throw new OidcProbeException("Discovery-Dokument: " + e.getMessage(), e.isUnreachable());
     } catch (RuntimeException e) {
       throw new OidcProbeException("Das Discovery-Dokument ist kein gültiges JSON.");
     }
@@ -95,7 +111,7 @@ public class OidcDiscoveryClient {
     try {
       return fetch(jwkSetUri.trim());
     } catch (OidcProbeException e) {
-      throw new OidcProbeException("JWK-Set: " + e.getMessage());
+      throw new OidcProbeException("JWK-Set: " + e.getMessage(), e.isUnreachable());
     }
   }
 
@@ -135,12 +151,13 @@ public class OidcDiscoveryClient {
     } catch (OidcProbeException e) {
       throw e;
     } catch (HttpTimeoutException e) {
-      throw new OidcProbeException("Der Anbieter hat nicht rechtzeitig geantwortet.");
+      throw new OidcProbeException("Der Anbieter hat nicht rechtzeitig geantwortet.", true);
     } catch (ConnectException | UnknownHostException e) {
-      throw new OidcProbeException("Der Anbieter ist nicht erreichbar.");
+      throw new OidcProbeException("Der Anbieter ist nicht erreichbar.", true);
     } catch (IOException e) {
       log.info("OIDC probe of {} failed: {}", url, e.getMessage());
-      throw new OidcProbeException("Der Anbieter ist nicht erreichbar (" + e.getMessage() + ").");
+      throw new OidcProbeException(
+          "Der Anbieter ist nicht erreichbar (" + e.getMessage() + ").", true);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new OidcProbeException("Der Abruf wurde unterbrochen.");
