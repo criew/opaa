@@ -124,14 +124,18 @@ public class S3AccessException extends IOException {
 
   public static final class ObjectTooLarge extends S3AccessException {
     public ObjectTooLarge(String bucket, String key, long maxBytes) {
-      super(
-          "Das Objekt „"
-              + bucket
-              + "/"
-              + key
-              + "“ überschreitet die Größenobergrenze von "
-              + maxBytes
-              + " Bytes und wurde nicht übernommen.");
+      super(describe(bucket, key, maxBytes));
+    }
+
+    /** The sentence, for a caller that decides from the listed size without a download. */
+    public static String describe(String bucket, String key, long maxBytes) {
+      return "Das Objekt „"
+          + bucket
+          + "/"
+          + key
+          + "“ überschreitet die Größenobergrenze von "
+          + maxBytes
+          + " Bytes und wurde nicht übernommen.";
     }
   }
 

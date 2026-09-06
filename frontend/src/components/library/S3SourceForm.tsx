@@ -568,7 +568,7 @@ export default function S3SourceForm({
                 value={values.includePatterns}
                 onChange={(e) => changePatterns({ includePatterns: e.target.value })}
                 placeholder={'**/*.pdf\n**/*.docx'}
-                helperText="Glob-Muster auf den Objektschlüssel, eines je Zeile; leer = alle Schlüssel."
+                helperText="Glob-Muster auf den vollständigen Objektschlüssel (mit Bereichspräfix), eines je Zeile; leer = alle Schlüssel. „*“ bleibt innerhalb eines Segments, „**“ überschreitet Schrägstriche: „**/*.pdf“ trifft PDFs in Unterordnern, „*.pdf“ nur auf der obersten Ebene."
                 fullWidth
                 slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
               />
@@ -583,7 +583,7 @@ export default function S3SourceForm({
                 value={values.excludePatterns}
                 onChange={(e) => changePatterns({ excludePatterns: e.target.value })}
                 placeholder={'**/~*\n**/.DS_Store'}
-                helperText="Ein passender Schlüssel wird übersprungen - nach den Einschlussmustern."
+                helperText="Ein passender Schlüssel wird übersprungen - nach den Einschlussmustern. Was die Muster ausschließen, gehört nicht zum Bestand: bereits aufgenommene Objekte werden mit dem nächsten Vollabgleich entfernt."
                 fullWidth
                 slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
               />

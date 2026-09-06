@@ -38,10 +38,13 @@ final class S3FullSync {
   static final String UNLISTABLE_SCOPE_SUFFIX =
       " Sein Bestand bleibt bis zur nächsten vollständigen Auflistung unverändert.";
   static final String UNREADABLE_OBJECT_SUFFIX = " Der bereits indizierte Stand bleibt erhalten.";
-  static final String FOLDER_MARKER_MESSAGE =
-      "Ordnermarker (0 Byte, Schlüssel endet auf „/“), kein Dokument";
   static final String UNSUPPORTED_FORMAT_MESSAGE = "Dateiformat wird nicht unterstützt";
   static final String GONE_SUFFIX = " Zwischen Auflistung und Abruf entfernt.";
+  static final String FOLDER_MARKERS_SUFFIX =
+      " Ordnermarker (Schlüssel endet auf „/“) übersprungen; sie sind keine Dokumente";
+  static final String EXCLUDED_KEYS_SUFFIX =
+      " Schlüssel durch die Ein-/Ausschlussmuster ausgeschlossen; sie sind nicht Teil des Bestands"
+          + " und werden entfernt, falls ein früherer Lauf sie aufgenommen hat";
 
   private final IndexingRun frame;
   private final S3ObjectStore store;
@@ -54,6 +57,8 @@ final class S3FullSync {
 
   private int total;
   private long listed;
+  private long folderMarkers;
+  private long excludedKeys;
 
   S3FullSync(
       IndexingRun frame,
@@ -69,13 +74,15 @@ final class S3FullSync {
   }
 
   ListingOutcome run(List<S3Scope> scopes) throws InterruptedException {
-    for (S3Scope scope : scopes) {
-      try {
+    try {
+      for (S3Scope scope : scopes) {
         listScope(scope);
-      } catch (S3AccessException.BudgetExhausted e) {
-        return recordBudgetExhausted(e);
       }
+    } catch (S3AccessException.BudgetExhausted e) {
+      recordSummaries();
+      return recordBudgetExhausted(e);
     }
+    recordSummaries();
     if (!unlistableScopeKeys.isEmpty()) {
       log.info(
           "S3 full sync for library {} listed incompletely ({}) - keeping the bestand, no"
@@ -98,10 +105,10 @@ final class S3FullSync {
         throw e;
       } catch (S3AccessException.ListForbidden
           | S3AccessException.BucketNotFound
-          | S3AccessException.ListingIncomplete
-          | S3AccessException.RateLimited e) {
+          | S3AccessException.ListingIncomplete e) {
         // ADR-0027, Entscheidung 3: a scope that cannot be listed is no deletion finding - the
-        // run says so, the rest of the selection is still processed, nothing is reconciled.
+        // run says so, the rest of the selection is still processed, nothing is reconciled. A
+        // store that keeps throttling or is unreachable fails the run instead (the catch below).
         log.warn(
             "S3 scope {} not listable for library {}: {}",
             scope.key(),
@@ -130,6 +137,8 @@ final class S3FullSync {
       for (S3ObjectSummary object : page.objects()) {
         if (patterns.admits(object.key())) {
           admitted.add(object);
+        } else {
+          excludedKeys++;
         }
       }
       total += admitted.size();
@@ -155,23 +164,28 @@ final class S3FullSync {
     String key = object.key();
     String filePath = filePath(bucket, key);
     frame.markPresent(filePath);
-    if (object.isFolderMarker()) {
-      skip(IndexingEventCategory.UNSUPPORTED_FORMAT, FOLDER_MARKER_MESSAGE, filePath);
+    String fileName = object.fileName();
+    if (object.isFolderMarker() || fileName.isEmpty()) {
+      // one summary note per run instead of one entry per marker: a console-created bucket
+      // carries a marker per folder, and the protocol holds 500 entries
+      folderMarkers++;
+      frame.progress().recordSkipped();
       return;
     }
     if (object.isArchived()) {
-      skip(IndexingEventCategory.REJECTED, archivedMessage(object.storageClass()), filePath);
+      skip(
+          IndexingEventCategory.REJECTED,
+          archivedMessage(filePath, object.storageClass()),
+          filePath);
       return;
     }
     if (object.size() > properties.maxObjectSizeBytes()) {
       skip(
           IndexingEventCategory.REJECTED,
-          new S3AccessException.ObjectTooLarge(bucket, key, properties.maxObjectSizeBytes())
-              .getMessage(),
+          S3AccessException.ObjectTooLarge.describe(bucket, key, properties.maxObjectSizeBytes()),
           filePath);
       return;
     }
-    String fileName = object.fileName();
     boolean supportedByName = SupportedDocumentFormats.isSupported(fileName);
     if (!supportedByName && hasExtension(fileName)) {
       skip(IndexingEventCategory.UNSUPPORTED_FORMAT, UNSUPPORTED_FORMAT_MESSAGE, filePath);
@@ -200,7 +214,8 @@ final class S3FullSync {
       return handleObjectFailure(filePath, e);
     }
     if (head.archived()) {
-      skip(IndexingEventCategory.REJECTED, archivedMessage(head.storageClass()), filePath);
+      skip(
+          IndexingEventCategory.REJECTED, archivedMessage(filePath, head.storageClass()), filePath);
       return false;
     }
     if (SupportedDocumentFormats.extensionForContentType(head.contentType()) == null) {
@@ -270,8 +285,10 @@ final class S3FullSync {
   /**
    * What one object's failed head or download means: a missing object is the positive finding a
    * deletion needs (Entscheidung 3) and leaves the reconciliation set, a refused read or an archive
-   * state keeps the stored version, a throttled call counts as failed and the run goes on, a spent
-   * budget ends the run, and everything else (credentials, clock, TLS, reachability) fails it.
+   * state keeps the stored version, a spent budget ends the run, a store-wide failure (credentials,
+   * clock, TLS, blocked target, wrong region, unreachable) fails it, and anything else - a throttle
+   * that outlasted its retries, an unexpected answer for this one object - counts as failed while
+   * the run goes on.
    *
    * @return always {@code false}: the object is not admitted to a download
    */
@@ -292,18 +309,47 @@ final class S3FullSync {
           skip(IndexingEventCategory.REJECTED, archived.getMessage(), filePath);
       case S3AccessException.ObjectTooLarge tooLarge ->
           skip(IndexingEventCategory.REJECTED, tooLarge.getMessage(), filePath);
-      case S3AccessException.RateLimited throttled -> {
-        frame.events().record(IndexingEventCategory.UNREACHABLE, throttled.getMessage(), filePath);
+      default -> {
+        if (failsTheRun(e)) {
+          throw new IndexingRunFailedException(e.getMessage(), e);
+        }
+        frame.events().record(IndexingEventCategory.UNREACHABLE, e.getMessage(), filePath);
         frame.progress().recordFailed();
       }
-      default -> throw new IndexingRunFailedException(e.getMessage(), e);
     }
     return false;
+  }
+
+  /** A failure that no later object of this run will do better with. */
+  private static boolean failsTheRun(S3AccessException e) {
+    return e instanceof S3AccessException.Authentication
+        || e instanceof S3AccessException.ClockSkew
+        || e instanceof S3AccessException.Tls
+        || e instanceof S3AccessException.TargetBlocked
+        || e instanceof S3AccessException.WrongRegionOrStyle
+        || e instanceof S3AccessException.Unreachable;
   }
 
   private void skip(IndexingEventCategory category, String message, String filePath) {
     frame.events().record(category, message, filePath);
     frame.progress().recordSkipped();
+  }
+
+  /** One note per run for what was skipped in bulk - the protocol holds 500 entries. */
+  private void recordSummaries() {
+    if (folderMarkers > 0) {
+      frame
+          .events()
+          .record(
+              IndexingEventCategory.UNSUPPORTED_FORMAT,
+              folderMarkers + FOLDER_MARKERS_SUFFIX,
+              null);
+    }
+    if (excludedKeys > 0) {
+      frame
+          .events()
+          .record(IndexingEventCategory.REJECTED, excludedKeys + EXCLUDED_KEYS_SUFFIX, null);
+    }
   }
 
   private ListingOutcome recordBudgetExhausted(S3AccessException.BudgetExhausted e) {
@@ -314,7 +360,10 @@ final class S3FullSync {
             "Anfragebudget von "
                 + e.budget()
                 + " Anfragen erschöpft; der Lauf endet unvollständig, der nächste Lauf listet"
-                + " alle Geltungsbereiche erneut und lädt nur, was noch fehlt",
+                + " alle Geltungsbereiche erneut und lädt nur, was noch fehlt"
+                + (unlistableScopeKeys.isEmpty()
+                    ? ""
+                    : "; bis dahin nicht auflistbar: " + String.join(", ", unlistableScopeKeys)),
             null);
     if (frame.progress().processedCount() == 0 && frame.progress().attachmentsProcessed() == 0) {
       // a run that stored nothing new will not do better next time - the chain has stalled
@@ -338,10 +387,12 @@ final class S3FullSync {
         + " fassen (Präfixe) oder die Bibliothek aufteilen.";
   }
 
-  private static String archivedMessage(String storageClass) {
-    return "Liegt in der Archivklasse "
+  private static String archivedMessage(String filePath, String storageClass) {
+    return "Das Objekt „"
+        + filePath.substring("s3://".length())
+        + "“ liegt in der Archivklasse "
         + (storageClass == null ? "(unbekannt)" : storageClass)
-        + " und ist ohne Wiederherstellung nicht lesbar, übersprungen";
+        + " und ist ohne Wiederherstellung nicht lesbar.";
   }
 
   /** {@code s3://<bucket>/<key>}, the key as it is - the identity per library (Entscheidung 5). */

@@ -107,6 +107,9 @@ describe('validateS3Values (ADR-0027, Entscheidung 2)', () => {
     expect(
       validateS3Values({ ...complete, scopes: [{ bucket: 'Grossbuchstaben', prefix: '' }] }),
     ).toMatch(/Bucket-Name „Grossbuchstaben“ ist ungültig/)
+    expect(
+      validateS3Values({ ...complete, scopes: [{ bucket: 'dokumente', prefix: 'berichte,2025' }] }),
+    ).toMatch(/enthält ein Komma/)
     expect(validateS3Values(complete)).toBeNull()
   })
 

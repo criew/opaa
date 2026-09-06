@@ -170,18 +170,23 @@ class S3IndexingExecutorTest {
   }
 
   private Set<String> reconciledPaths() {
-    @SuppressWarnings("unchecked")
-    ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
+    return reconciliation().getAllValues().get(0);
+  }
+
+  /** The reconciliation's present paths (index 0) and reprocessed paths (index 1). */
+  @SuppressWarnings("unchecked")
+  private ArgumentCaptor<Set<String>> reconciliation() {
+    ArgumentCaptor<Set<String>> sets = ArgumentCaptor.forClass(Set.class);
     verify(cleanupService)
         .reconcile(
             eq(library),
             eq(DocumentSourceType.S3),
-            current.capture(),
-            any(),
+            sets.capture(),
+            sets.capture(),
             any(),
             eq(executor),
             eq(IndexingRunMode.FULL));
-    return current.getValue();
+    return sets;
   }
 
   private void verifyNoReconciliation() {
@@ -290,9 +295,13 @@ class S3IndexingExecutorTest {
                 .marked(markerOf("dokumente", "2025/anders.pdf"))
                 .match(),
             any());
-    assertThat(reconciledPaths())
+    ArgumentCaptor<Set<String>> sets = reconciliation();
+    assertThat(sets.getAllValues().get(0))
         .containsExactlyInAnyOrder(
             "s3://dokumente/2025/gleich.pdf", "s3://dokumente/2025/anders.pdf");
+    assertThat(sets.getAllValues().get(1))
+        .as("only the re-parsed object had its attachment set freshly enumerated (ADR-0022)")
+        .containsExactly("s3://dokumente/2025/anders.pdf");
     verify(indexingJobService).completeJob(jobId, 1, 0, 1, 1);
   }
 
@@ -402,14 +411,16 @@ class S3IndexingExecutorTest {
             argThat(
                 event(
                     IndexingEventCategory.UNSUPPORTED_FORMAT,
-                    S3FullSync.FOLDER_MARKER_MESSAGE,
-                    "s3://dokumente/2025/")));
+                    "1" + S3FullSync.FOLDER_MARKERS_SUFFIX,
+                    null)));
+    verify(eventRepository, never())
+        .save(argThat(event -> "s3://dokumente/2025/".equals(event.getReference())));
     verify(eventRepository)
         .save(
             argThat(
                 event(
                     IndexingEventCategory.REJECTED,
-                    "Archivklasse DEEP_ARCHIVE",
+                    "Das Objekt „dokumente/2025/eiskalt.pdf“ liegt in der Archivklasse DEEP_ARCHIVE",
                     "s3://dokumente/2025/eiskalt.pdf")));
     verify(eventRepository)
         .save(
@@ -463,7 +474,12 @@ class S3IndexingExecutorTest {
                     "Content-Type image/png",
                     "s3://dokumente/2025/bild")));
     verify(eventRepository)
-        .save(argThat(event(IndexingEventCategory.REJECTED, "Archiv", "s3://dokumente/2025/kalt")));
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.REJECTED,
+                    "Das Objekt „dokumente/2025/kalt“ liegt in der Archivklasse",
+                    "s3://dokumente/2025/kalt")));
     assertThat(reconciledPaths())
         .containsExactlyInAnyOrder(
             "s3://dokumente/2025/protokoll",
@@ -499,6 +515,11 @@ class S3IndexingExecutorTest {
         .as("a key outside the patterns is no longer part of the bestand")
         .containsExactlyInAnyOrder(
             "s3://dokumente/2025/protokoll.pdf", "s3://dokumente/wurzel.pdf");
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.REJECTED, "2" + S3FullSync.EXCLUDED_KEYS_SUFFIX, null)));
     verify(indexingJobService).completeJob(jobId, 2, 0, 0, 2);
   }
 
@@ -543,10 +564,15 @@ class S3IndexingExecutorTest {
   }
 
   @Test
-  void aThrottledDownloadCountsAsFailedAndTheRunGoesOn() throws Exception {
+  void aThrottledOrOddlyAnsweredDownloadCountsAsFailedAndTheRunGoesOn() throws Exception {
     store
         .put("dokumente", "2025/langsam.pdf", "a", PDF)
         .failRead("dokumente", "2025/langsam.pdf", () -> new S3AccessException.RateLimited(5))
+        .put("dokumente", "2025/seltsam.pdf", "c", PDF)
+        .failRead(
+            "dokumente",
+            "2025/seltsam.pdf",
+            () -> new S3AccessException("Der Objektspeicher antwortete mit HTTP 500."))
         .put("dokumente", "2025/ok.pdf", "b", PDF);
     UUID jobId = UUID.randomUUID();
 
@@ -559,9 +585,78 @@ class S3IndexingExecutorTest {
                     IndexingEventCategory.UNREACHABLE,
                     "drosselt",
                     "s3://dokumente/2025/langsam.pdf")));
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.UNREACHABLE,
+                    "HTTP 500",
+                    "s3://dokumente/2025/seltsam.pdf")));
     verify(fileProcessingService)
         .ingest(DocumentIngests.that().file().at("s3://dokumente/2025/ok.pdf").match(), any());
-    verify(indexingJobService).completeJob(jobId, 1, 1, 0, 1);
+    assertThat(reconciledPaths())
+        .as("a failed object is neither gone nor readable - it stays present")
+        .containsExactlyInAnyOrder(
+            "s3://dokumente/2025/langsam.pdf",
+            "s3://dokumente/2025/seltsam.pdf",
+            "s3://dokumente/2025/ok.pdf");
+    verify(indexingJobService).completeJob(jobId, 1, 2, 0, 1);
+  }
+
+  @Test
+  void aListingThatStaysThrottledFailsTheRunInsteadOfDisablingTheReconciliation() throws Exception {
+    store
+        .failNextCall(() -> new S3AccessException.RateLimited(5))
+        .put("dokumente", "2025/a.pdf", "a", PDF);
+    UUID jobId = UUID.randomUUID();
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService).failJob(eq(jobId), argThat(message -> message.contains("drosselt")));
+    verify(indexingJobService, never()).recordListingAssessment(any(), eq(false), any());
+    verifyNoReconciliation();
+  }
+
+  @Test
+  void aTruncatedListingWithoutATokenAndAScopeFailingMidWayBothLeaveTheListingIncomplete()
+      throws Exception {
+    library =
+        library(settings(List.of(S3Scope.of("kaputt", ""), S3Scope.of("dokumente", "2025/"))));
+    FakeS3ObjectStore midway =
+        new FakeS3ObjectStore() {
+          @Override
+          public S3ListPage listObjects(S3Scope scope, String token) throws S3AccessException {
+            if ("2".equals(token)) {
+              throw new S3AccessException.ListForbidden(scope.bucket());
+            }
+            return super.listObjects(scope, token);
+          }
+        };
+    midway
+        .pageSize(1)
+        .failBucket("kaputt", () -> new S3AccessException.ListingIncomplete("kaputt"))
+        .put("dokumente", "2025/a.pdf", "a", PDF)
+        .put("dokumente", "2025/b.pdf", "b", PDF)
+        .put("dokumente", "2025/c.pdf", "c", PDF);
+    UUID jobId = UUID.randomUUID();
+
+    executorOver(midway).execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(eventRepository)
+        .save(
+            argThat(event(IndexingEventCategory.REJECTED, "abgeschnittene Auflistung", "kaputt")));
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(IndexingEventCategory.REJECTED, "s3:ListBucket fehlt", "dokumente/2025/")));
+    verify(fileProcessingService)
+        .ingest(DocumentIngests.that().file().at("s3://dokumente/2025/a.pdf").match(), any());
+    verify(fileProcessingService)
+        .ingest(DocumentIngests.that().file().at("s3://dokumente/2025/b.pdf").match(), any());
+    verifyNoReconciliation();
+    verify(indexingJobService)
+        .recordListingAssessment(jobId, false, List.of("kaputt", "dokumente/2025/"));
+    verify(indexingJobService).completeJob(jobId, 2, 0, 0, 2);
   }
 
   @Test
@@ -603,7 +698,11 @@ class S3IndexingExecutorTest {
   }
 
   @Test
-  void aBudgetThatAdmitsNothingNewIsReportedAsAnError() throws Exception {
+  void aBudgetThatAdmitsNothingNewIsReportedAsAnErrorAndNamesTheUnlistableScopes()
+      throws Exception {
+    library =
+        library(
+            settings(List.of(S3Scope.of("geheim", "intern/"), S3Scope.of("dokumente", "2025/"))));
     FakeS3ObjectStore budgeted =
         new FakeS3ObjectStore() {
           @Override
@@ -612,10 +711,19 @@ class S3IndexingExecutorTest {
             throw new S3AccessException.BudgetExhausted(2);
           }
         };
-    budgeted.put("dokumente", "2025/eins.pdf", "1", PDF);
+    budgeted
+        .failBucket("geheim", () -> new S3AccessException.ListForbidden("geheim"))
+        .put("dokumente", "2025/eins.pdf", "1", PDF);
 
     executorOver(budgeted).execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.BUDGET_EXHAUSTED,
+                    "bis dahin nicht auflistbar: geheim/intern/",
+                    null)));
     verify(eventRepository)
         .save(
             argThat(

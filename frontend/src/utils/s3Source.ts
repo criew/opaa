@@ -259,6 +259,9 @@ export function validateS3Prefix(raw: string): string | null {
   if (/[\u0000-\u0020\u007f]/.test(prefix)) {
     return `Das Präfix „${prefix}“ enthält Leer- oder Steuerzeichen und ist kein Schlüssel.`
   }
+  if (prefix.includes(',')) {
+    return `Das Präfix „${prefix}“ enthält ein Komma; Kommas sind in Geltungsbereichen nicht zulässig.`
+  }
   return null
 }
 

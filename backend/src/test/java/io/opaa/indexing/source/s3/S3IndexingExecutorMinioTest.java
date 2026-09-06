@@ -214,7 +214,6 @@ class S3IndexingExecutorMinioTest {
                 event ->
                     event.getCategory() == IndexingEventCategory.REMOVED
                         && event.getReference().endsWith("/" + vanished)));
-    minio.putObject(bucket, vanished, "o7", "text/plain");
   }
 
   private static long ingestSize(DocumentIngest ingest) {
