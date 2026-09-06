@@ -116,5 +116,12 @@ class S3ScopeTest {
         .as("the scope key is stored comma-separated in the listing assessment")
         .isInstanceOf(S3Scope.InvalidS3ScopeException.class)
         .hasMessageContaining("Komma");
+    assertThatThrownBy(() -> S3Scope.of("dokumente", "archiv\\alt/"))
+        .as("prefix segments become folder names with several scopes")
+        .isInstanceOf(S3Scope.InvalidS3ScopeException.class)
+        .hasMessageContaining("Rückwärtsschrägstrich");
+    assertThatThrownBy(() -> S3Scope.of("dokumente", "archiv/../alt/"))
+        .isInstanceOf(S3Scope.InvalidS3ScopeException.class)
+        .hasMessageContaining("„..“");
   }
 }

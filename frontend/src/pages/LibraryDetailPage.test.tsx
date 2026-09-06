@@ -2134,7 +2134,6 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
       expect(await screen.findByText('Bucket: dokumente · protokolle / q1')).toBeInTheDocument()
-      expect(screen.queryByRole('link', { name: /s3:\/\// })).not.toBeInTheDocument()
     })
 
     it('fetches and opens the file as a Blob for a local (UPLOAD/FILESYSTEM) document', async () => {

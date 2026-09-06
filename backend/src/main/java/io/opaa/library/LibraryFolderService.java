@@ -207,9 +207,11 @@ public class LibraryFolderService {
    * is whatever the filesystem allows (which can differ from what {@link #validateName} accepts for
    * a manually-typed {@code UPLOAD} folder name), and a real directory tree is free to nest deeper
    * than {@link #MAX_DEPTH}; rejecting either would mean silently refusing to mirror part of the
-   * source instead of representing it as-is. {@code createFolder}'s own callers (the CRUD REST
-   * endpoints) never reach this method - see this class's own Javadoc - so neither gap is reachable
-   * through user input.
+   * source instead of representing it as-is. An {@code S3} run caps its chain at {@link #MAX_DEPTH}
+   * on its own side (a key nests freely, ADR-0027 Entscheidung 5) and never hands a segment here
+   * that a folder row could not carry. {@code createFolder}'s own callers (the CRUD REST endpoints)
+   * never reach this method - see this class's own Javadoc - so neither gap is reachable through
+   * user input.
    *
    * <p><b>A single {@code fk_documents_folder} violation can occur if two runs of the same library
    * overlap</b> (#824 review, Befund 4b) - e.g. after {@code IndexingJobRecoveryScheduler} restarts

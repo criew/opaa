@@ -916,7 +916,32 @@ class S3IndexingExecutorTest {
   }
 
   @Test
-  void aSingleScopeMakesItsPrefixTheRootAndAnIncompleteListingPrunesNothing() throws Exception {
+  void aRejectedObjectWithARowKeepsItsPlaceInTheStructureWhileARejectedOneWithoutGetsNone()
+      throws Exception {
+    UUID archiv = UUID.randomUUID();
+    when(folderService.materializeFolderPath(library, List.of("archiv"))).thenReturn(archiv);
+    store
+        .put(
+            "dokumente",
+            "2025/archiv/eiskalt.pdf",
+            new FakeS3ObjectStore.StoredObject(
+                "archiv".getBytes(), PDF, MODIFIED, "DEEP_ARCHIVE", true))
+        .put("dokumente", "2025/bilder/foto.png", "png", "image/png");
+    stored("s3://dokumente/2025/archiv/eiskalt.pdf", "e:alt|6");
+    Document archived = storedDocuments.get(0);
+
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+
+    assertThat(archived.getFolderId()).isEqualTo(archiv);
+    verify(folderService, never()).materializeFolderPath(library, List.of("bilder"));
+    verify(documentRepository, never())
+        .findByLibraryIdAndFilePath(library.getId(), "s3://dokumente/2025/bilder/foto.png");
+    verify(folderService).pruneOrphanedFolders(library, Set.of(archiv));
+  }
+
+  @Test
+  void anIncompleteListingPrunesNothingAndASingleScopeReRootsTheChainAtItsPrefix()
+      throws Exception {
     library =
         library(
             settings(List.of(S3Scope.of("dokumente", "2025/"), S3Scope.of("geheim", "intern/"))));

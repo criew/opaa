@@ -955,12 +955,17 @@ Bereichspräfixes werden als Ordnerkette gespiegelt (`2025/protokolle/q1/sitzung
 Wurzel der Bibliothek; bei **mehreren** Bereichen steht über den Schlüsselsegmenten je Bereich eine
 Segmentkette aus dem Bucket-Namen und den Segmenten des Bereichspräfixes (`dokumente` › `2025` und
 `satzungen`) — nie ein zusammengesetzter Einzelname `bucket/prefix`, denn ein Ordnername ist
-schrägstrichfrei. So bleiben gleichnamige Schlüssel aus zwei Buckets getrennt. Ordnermarker (Schlüssel
-auf `/` mit null Bytes) erzeugen keinen Ordner; Ordner entstehen nur entlang tatsächlich
-aufgenommener Objekte. Ein Segment, das `.` oder `..` lautet, einen Rückwärtsschrägstrich enthält oder
-länger als 255 Zeichen ist, wird abgewiesen — das Objekt liegt dann in der Wurzel, mit Warnung im
-Anwendungsprotokoll; ein Schlüssel, dessen Kette tiefer wäre als das Ordnerlimit (10 Ebenen), liegt
-im tiefsten zulässigen Ordner. Umbenennen kennt S3 nicht: Ein Objekt unter neuem Schlüssel ist ein
+schrägstrichfrei. So bleiben gleichnamige Schlüssel aus zwei Buckets getrennt; die Bucket- und
+Präfixsegmente zählen dabei zum Ordnerlimit, die Schlüssel eines Bereichs mit langem Präfix haben
+entsprechend weniger eigene Ebenen. Ordnermarker (Schlüssel auf `/` mit null Bytes) erzeugen keinen
+Ordner; Ordner entstehen nur entlang tatsächlich aufgenommener Objekte — ein Ordner, dessen einziges
+Objekt die Dokumentstrecke abgewiesen hat, ist leer und verschwindet mit demselben Lauf. Ein
+Segment, das leer ist, `.` oder `..` lautet, einen Rückwärtsschrägstrich oder ein NUL-Byte enthält
+oder länger als 255 Zeichen ist, wird abgewiesen — das Objekt liegt dann in der Wurzel, mit Warnung
+im Anwendungsprotokoll; ein Präfix mit solchen Segmenten wird bereits beim Speichern der
+Bibliothek abgelehnt. Ein Schlüssel, dessen Kette tiefer wäre als das Ordnerlimit (10 Ebenen), liegt
+im tiefsten zulässigen Ordner. Die Folder-CRUD-Endpoints antworten für eine `S3`-Bibliothek mit
+`409`, wie bei jedem gespiegelten Quellentyp. Umbenennen kennt S3 nicht: Ein Objekt unter neuem Schlüssel ist ein
 neues Dokument in seinem neuen Ordner, der alte Schlüssel gilt als entfernt. Aufgeräumt wird nur am
 Ende eines vollständigen Laufs, den kein Geltungsbereich unlesbar und kein Anfragebudget abgeschnitten
 hat. Mail-Objekte (`.eml`, `.msg`) laufen über den Anhangsweg: Ihre Anhänge sind Kinddokumente im

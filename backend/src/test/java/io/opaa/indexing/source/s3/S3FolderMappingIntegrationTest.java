@@ -222,6 +222,7 @@ class S3FolderMappingIntegrationTest {
         .put("dokumente", "2025/protokolle/q1/a.txt", "Protokoll Q1.", "text/plain")
         .put("dokumente", "2025/protokolle/q2/b.txt", "Protokoll Q2.", "text/plain")
         .put("dokumente", "2025/protokolle/", new byte[0], "application/x-directory")
+        .put("dokumente", "leer/", new byte[0], "application/x-directory")
         .put("dokumente", "wurzel.txt", "Wurzeldokument.", "text/plain");
 
     run();
@@ -236,6 +237,7 @@ class S3FolderMappingIntegrationTest {
     assertThat(documentAt("dokumente", "2025/protokolle/"))
         .as("a folder marker never becomes a document")
         .isEmpty();
+    assertThat(findFolder(null, "leer")).as("nor does it create a folder").isEmpty();
     assertThat(folderRepository.findByLibraryId(library.getId())).hasSize(4);
 
     store.remove("dokumente", "2025/protokolle/q2/b.txt");

@@ -61,5 +61,15 @@ class S3FolderPathTest {
     assertThat(path.segments()).hasSize(S3FolderPath.MAX_DEPTH).startsWith("a", "b").endsWith("j");
     assertThat(path.truncated()).isTrue();
     assertThat(S3FolderPath.of(SCOPE, "2025/protokolle/a/x.pdf", false).truncated()).isFalse();
+    // only the segments within the limit are judged: a traversal beyond it never used a folder
+    assertThat(S3FolderPath.of(SCOPE, key.replace("/l/", "/../"), false).rejected()).isFalse();
+  }
+
+  @Test
+  void aNulByteOrABlankSegmentIsRejectedLikeATraversal() {
+    assertThat(S3FolderPath.of(SCOPE, "2025/protokolle/a\u0000b/x.pdf", false).rejectedSegment())
+        .isEqualTo("a\u0000b");
+    assertThat(S3FolderPath.of(SCOPE, "2025/protokolle/ /x.pdf", false).rejectedSegment())
+        .isEqualTo(" ");
   }
 }
