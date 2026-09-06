@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -43,7 +44,9 @@ class MinioS3ObjectStoreTest {
     minio.putObject(bucket, "gross.bin", new byte[4096], "application/octet-stream");
     minio.putMany(bucket, "viele/", 1100, null);
     root =
-        store(minio.rootCredentials(), new S3Properties(0, 0, Duration.ofSeconds(10), 0, null, 0));
+        store(
+            minio.rootCredentials(),
+            new S3Properties(0, 0, Duration.ofSeconds(10), null, null, 0, null));
   }
 
   @AfterAll
@@ -78,7 +81,7 @@ class MinioS3ObjectStoreTest {
   @Test
   void aSmallerPageSizeFollowsMoreTokens() throws Exception {
     try (S3ObjectStore small =
-        store(minio.rootCredentials(), new S3Properties(300, 0, null, 0, null, 0))) {
+        store(minio.rootCredentials(), new S3Properties(300, 0, null, null, null, 0, null))) {
       int pages = 0;
       int objects = 0;
       String token = null;
@@ -135,8 +138,17 @@ class MinioS3ObjectStoreTest {
 
   @Test
   void theByteCeilingRefusesAnOversizeObjectWithoutKeepingAFile() throws Exception {
-    assertThatThrownBy(() -> root.getObject(bucket, "gross.bin", 1024))
-        .isInstanceOf(S3AccessException.ObjectTooLarge.class);
+    Path tempDir = Files.createTempDirectory("opaa-s3-test-");
+    try (S3ObjectStore store =
+        store(minio.rootCredentials(), new S3Properties(0, 1024, null, null, null, 0, tempDir))) {
+      assertThatThrownBy(() -> store.getObject(bucket, "gross.bin", 1024))
+          .isInstanceOf(S3AccessException.ObjectTooLarge.class);
+      assertThatThrownBy(() -> store.getObject(bucket, "gross.bin"))
+          .isInstanceOf(S3AccessException.ObjectTooLarge.class);
+      assertThat(Files.list(tempDir).toList()).as("no partial file survives").isEmpty();
+    } finally {
+      Files.deleteIfExists(tempDir);
+    }
   }
 
   @Test
@@ -211,6 +223,11 @@ class MinioS3ObjectStoreTest {
       assertThatThrownBy(() -> store.listObjects(S3Scope.of(bucket, ""), null))
           .isInstanceOf(S3AccessException.Authentication.class)
           .satisfies(e -> assertThat(e.getMessage()).doesNotContain("falsches-geheimnis"));
+
+      // the probe names refused credentials, not a missing s3:ListBucket
+      S3AccessCheck check = store.testAccess(S3Scope.of(bucket, ""));
+      assertThat(check.bucketReachable()).isFalse();
+      assertThat(check.failure()).isInstanceOf(S3AccessException.Authentication.class);
     }
   }
 

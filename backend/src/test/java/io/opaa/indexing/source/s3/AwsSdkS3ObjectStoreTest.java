@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import software.amazon.awssdk.core.exception.NonRetryableException;
 import software.amazon.awssdk.http.SdkHttpRequest;
 
@@ -32,6 +33,8 @@ class AwsSdkS3ObjectStoreTest {
 
   private StubS3Server server;
   private final List<S3ObjectStore> opened = new ArrayList<>();
+
+  @TempDir private Path tempDir;
 
   @BeforeEach
   void start() throws Exception {
@@ -59,7 +62,7 @@ class AwsSdkS3ObjectStoreTest {
 
   private S3Properties properties(int pageSize, int retries, int budget) {
     return new S3Properties(
-        pageSize, 0, Duration.ofSeconds(5), retries, Duration.ofMillis(1), budget);
+        pageSize, 0, Duration.ofSeconds(5), retries, Duration.ofMillis(1), budget, tempDir);
   }
 
   private S3ObjectStore store(S3Properties properties, boolean pathStyle, boolean run)
@@ -120,6 +123,16 @@ class AwsSdkS3ObjectStoreTest {
     assertThat(server.seen().get(0).query()).contains("prefix=2025%2F").contains("max-keys=2");
     assertThat(server.seen().get(1).query()).contains("continuation-token=t2");
     assertThat(store.meter().requests()).isEqualTo(2);
+  }
+
+  @Test
+  void aTruncatedListingWithoutContinuationTokenIsAFailureNotTheLastPage() throws Exception {
+    server.omitContinuationToken();
+    S3ObjectStore store = store(properties(2, 1, 0), true, false);
+
+    assertThatThrownBy(() -> store.listObjects(S3Scope.of("docs", "2025"), null))
+        .isInstanceOf(S3AccessException.ListingIncomplete.class)
+        .hasMessageContaining("Fortsetzungstoken");
   }
 
   @Test
@@ -209,24 +222,30 @@ class AwsSdkS3ObjectStoreTest {
     server.putObject("docs", "gross-chunked.bin", new byte[5000], "application/octet-stream");
     server.serveChunked("docs", "gross-chunked.bin");
     S3ObjectStore store = store(properties(1000, 1, 0), true, false);
-    Path tempDir = Path.of(System.getProperty("java.io.tmpdir"));
-    long before = countTempFiles(tempDir);
 
     assertThatThrownBy(() -> store.getObject("docs", "gross.bin", 4096))
         .isInstanceOf(S3AccessException.ObjectTooLarge.class)
         .hasMessageContaining("4096")
         .hasMessageContaining("docs/gross.bin");
+    assertThat(store.meter().bytesDownloaded()).as("refused before the first byte").isZero();
+
     assertThatThrownBy(() -> store.getObject("docs", "gross-chunked.bin", 4096))
         .isInstanceOf(S3AccessException.ObjectTooLarge.class);
+    assertThat(store.meter().bytesDownloaded())
+        .as("the bytes read up to the ceiling are counted")
+        .isBetween(4096L, 4999L);
 
-    assertThat(countTempFiles(tempDir)).as("partial files are removed").isEqualTo(before);
-    assertThat(store.meter().bytesDownloaded()).isLessThan(5000);
-  }
+    assertThat(Files.list(tempDir).toList()).as("partial files are removed").isEmpty();
 
-  private static long countTempFiles(Path dir) throws Exception {
-    try (var files = Files.list(dir)) {
-      return files.filter(p -> p.getFileName().toString().startsWith("opaa-s3-")).count();
-    }
+    // without an explicit ceiling the configured object size bound applies
+    S3Properties small =
+        new S3Properties(1000, 4096, Duration.ofSeconds(5), 1, Duration.ofMillis(1), 0, tempDir);
+    S3ObjectStore bounded = store(small, true, false);
+    assertThatThrownBy(() -> bounded.getObject("docs", "gross.bin"))
+        .isInstanceOf(S3AccessException.ObjectTooLarge.class)
+        .hasMessageContaining("4096");
+    assertThat(bounded.getObject("docs", "2025/a.pdf").size()).isEqualTo(4);
+    assertThat(Files.list(tempDir).toList()).hasSize(1);
   }
 
   @Test
@@ -265,6 +284,97 @@ class AwsSdkS3ObjectStoreTest {
         .isInstanceOf(S3AccessException.BudgetExhausted.class)
         .hasMessageContaining("2 Anfragen");
     assertThat(server.seen()).hasSize(2);
+  }
+
+  @Test
+  void theRunBudgetAlsoStopsRetriesMidway() throws Exception {
+    server.failNext(503, "SlowDown", 5);
+    S3ObjectStore store = store(properties(1000, 5, 2), true, true);
+
+    assertThatThrownBy(() -> store.listObjects(S3Scope.of("docs", ""), null))
+        .isInstanceOf(S3AccessException.BudgetExhausted.class);
+    assertThat(server.seen()).as("the third attempt never left").hasSize(2);
+    assertThat(store.meter().requests()).isEqualTo(2);
+  }
+
+  @Test
+  void everyRequestPassesTheTargetValidationBeforeItLeaves() throws Exception {
+    // the factory's up-front check is bypassed on purpose: the interceptor alone must refuse a
+    // loopback target once validation is on
+    S3Connection connection =
+        new S3Connection(
+            URI.create(server.endpoint()),
+            "us-east-1",
+            true,
+            new S3Credentials(ACCESS_KEY, SECRET_KEY, null),
+            null,
+            -1,
+            false);
+    try (S3ObjectStore store =
+        new AwsSdkS3ObjectStore(
+            connection,
+            properties(1000, 1, 0),
+            new TargetAddressValidator(true, List.of()),
+            0,
+            null)) {
+      assertThatThrownBy(() -> store.listObjects(S3Scope.of("docs", ""), null))
+          .isInstanceOf(S3AccessException.TargetBlocked.class)
+          .hasMessageContaining("127.0.0.1")
+          .hasMessageContaining("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
+      assertThat(server.seen()).as("nothing reached the server").isEmpty();
+      assertThat(store.meter().requests()).isZero();
+    }
+
+    // an unresolvable host mid-run is "unreachable", not "blocked"
+    S3Connection unresolvable =
+        new S3Connection(
+            URI.create("http://gibtsnicht.invalid:1"),
+            "us-east-1",
+            true,
+            new S3Credentials(ACCESS_KEY, SECRET_KEY, null),
+            null,
+            -1,
+            false);
+    try (S3ObjectStore store =
+        new AwsSdkS3ObjectStore(
+            unresolvable,
+            properties(1000, 1, 0),
+            new TargetAddressValidator(true, List.of()),
+            0,
+            null)) {
+      assertThatThrownBy(() -> store.listObjects(S3Scope.of("docs", ""), null))
+          .isInstanceOf(S3AccessException.Unreachable.class)
+          .hasMessageContaining("DNS")
+          .satisfies(
+              e ->
+                  assertThat(e.getMessage())
+                      .doesNotContain("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST"));
+    }
+  }
+
+  @Test
+  void aConfiguredProxyCarriesEveryRequest() throws Exception {
+    // the endpoint host does not exist; only a proxy that receives the absolute request can answer
+    int stubPort = URI.create(server.endpoint()).getPort();
+    S3Connection viaProxy =
+        new S3Connection(
+            URI.create("http://s3.beispiel.test"),
+            "us-east-1",
+            true,
+            new S3Credentials(ACCESS_KEY, SECRET_KEY, null),
+            "127.0.0.1",
+            stubPort,
+            false);
+    S3ClientFactory factory =
+        new S3ClientFactory(properties(1000, 1, 0), TargetAddressValidator.disabled());
+    try (S3ObjectStore store = factory.create(viaProxy, List.of())) {
+      S3ObjectHead head = store.headObject("docs", "2025/a.pdf");
+
+      assertThat(head.size()).isEqualTo(4);
+      StubS3Server.Seen seen = server.seen().get(0);
+      assertThat(seen.target()).startsWith("http://s3.beispiel.test");
+      assertThat(seen.headers()).containsEntry("host", "s3.beispiel.test");
+    }
   }
 
   @Test
@@ -363,12 +473,22 @@ class AwsSdkS3ObjectStoreTest {
     assertThat(missing.bucketReachable()).isFalse();
     assertThat(missing.failure()).isInstanceOf(S3AccessException.BucketNotFound.class);
 
-    // HeadBucket answers 403: the bucket exists, the key may not list it
+    // HeadBucket and the listing answer 403 AccessDenied: the bucket exists, the key may not list
+    // it
     server.failNextMatching("HEAD", "/docs", 403, "AccessDenied");
+    server.failNextMatching("GET", "/docs", 403, "AccessDenied");
     S3AccessCheck noList = store.testAccess(S3Scope.of("docs", ""));
     assertThat(noList.bucketReachable()).isTrue();
     assertThat(noList.listAllowed()).isFalse();
     assertThat(noList.failure()).isInstanceOf(S3AccessException.ListForbidden.class);
+
+    // HeadBucket answers 403 without a body, the listing names the real reason: a refused key
+    server.failNextMatching("HEAD", "/docs", 403, "AccessDenied");
+    server.failNextMatching("GET", "/docs", 403, "InvalidAccessKeyId");
+    S3AccessCheck refused = store.testAccess(S3Scope.of("docs", ""));
+    assertThat(refused.bucketReachable()).isFalse();
+    assertThat(refused.listAllowed()).isFalse();
+    assertThat(refused.failure()).isInstanceOf(S3AccessException.Authentication.class);
 
     // HeadBucket and the listing pass, HeadObject on the first object is refused
     server.failNextMatching("HEAD", "/docs/2024/", 403, "AccessDenied");

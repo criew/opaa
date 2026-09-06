@@ -3,6 +3,7 @@ package io.opaa.indexing.source.s3;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.file.Path;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +12,7 @@ class S3PropertiesTest {
 
   @Test
   void fillsDefaults() {
-    S3Properties properties = new S3Properties(0, 0, null, 0, null, 0);
+    S3Properties properties = new S3Properties(0, 0, null, null, null, 0, null);
 
     assertThat(properties.listPageSize()).isEqualTo(1000);
     assertThat(properties.maxObjectSizeBytes()).isEqualTo(50L * 1024 * 1024);
@@ -20,6 +21,12 @@ class S3PropertiesTest {
     assertThat(properties.retryBackoff()).isEqualTo(Duration.ofMillis(500));
     assertThat(properties.requestBudgetPerRun()).isZero();
     assertThat(properties.hasRequestBudget()).isFalse();
+    assertThat(properties.tempDirectory()).isEqualTo(Path.of(System.getProperty("java.io.tmpdir")));
+    assertThat(new S3Properties(0, 0, null, 0, null, 0, Path.of("/srv/tmp")).maxRetries())
+        .as("zero turns retries off, it is not 'absent'")
+        .isZero();
+    assertThat(new S3Properties(0, 0, null, 0, null, 0, Path.of("/srv/tmp")).tempDirectory())
+        .isEqualTo(Path.of("/srv/tmp"));
     assertThat(S3Properties.defaults().requestBudgetPerRun())
         .isEqualTo(S3Properties.DEFAULT_REQUEST_BUDGET_PER_RUN);
     assertThat(S3Properties.defaults().hasRequestBudget()).isTrue();
@@ -27,14 +34,14 @@ class S3PropertiesTest {
 
   @Test
   void rejectsAPageSizeS3CannotServe() {
-    assertThatThrownBy(() -> new S3Properties(1001, 0, null, 0, null, 0))
+    assertThatThrownBy(() -> new S3Properties(1001, 0, null, null, null, 0, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("1000");
-    assertThatThrownBy(() -> new S3Properties(-1, 0, null, 0, null, 0))
+    assertThatThrownBy(() -> new S3Properties(-1, 0, null, null, null, 0, null))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new S3Properties(0, 0, null, -1, null, 0))
+    assertThatThrownBy(() -> new S3Properties(0, 0, null, -1, null, 0, null))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new S3Properties(0, 0, null, 0, null, -1))
+    assertThatThrownBy(() -> new S3Properties(0, 0, null, null, null, -1, null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 }

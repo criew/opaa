@@ -42,6 +42,7 @@ public class S3ClientFactory {
    * @param scopes the buckets the store will address; needed for the per-bucket host check under
    *     virtual-host addressing
    * @throws S3AccessException.TargetBlocked when endpoint, proxy or a bucket host is rejected
+   * @throws S3AccessException.Unreachable when one of them does not resolve
    */
   public S3ObjectStore create(S3Connection connection, Collection<S3Scope> scopes)
       throws S3AccessException {
@@ -69,7 +70,7 @@ public class S3ClientFactory {
    * endpoint itself, the proxy, then one virtual-host name per distinct bucket.
    */
   void validateTargets(S3Connection connection, Collection<S3Scope> scopes)
-      throws S3AccessException.TargetBlocked {
+      throws S3AccessException {
     try {
       targetAddressValidator.validate(connection.endpoint());
       targetAddressValidator.validateHost(connection.proxyHost());
@@ -82,6 +83,8 @@ public class S3ClientFactory {
           targetAddressValidator.validateHost(bucket + "." + connection.endpoint().getHost());
         }
       }
+    } catch (TargetAddressValidator.UnknownTargetHostException e) {
+      throw new S3AccessException.Unreachable(e.getMessage());
     } catch (IOException e) {
       throw new S3AccessException.TargetBlocked(e.getMessage());
     }

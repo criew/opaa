@@ -10,7 +10,7 @@ import java.util.Map;
  * @param eTag the entity tag without its surrounding quotes; {@code null} when the store sent none
  * @param archived whether the object needs a restore before it can be read ({@link S3ArchiveState})
  * @param metadata the user metadata ({@code x-amz-meta-*}, keys without the prefix) - carried for
- *     the Zielbild of ADR-0024, not evaluated in the first Ausbau
+ *     the target state of ADR-0024, not evaluated in the first increment
  */
 public record S3ObjectHead(
     String contentType,

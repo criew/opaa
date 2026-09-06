@@ -43,6 +43,9 @@ public interface S3ObjectStore extends AutoCloseable {
   S3Download getObject(String bucket, String key, long maxBytes)
       throws S3AccessException, InterruptedException;
 
+  /** {@link #getObject(String, String, long)} capped at the configured object size bound. */
+  S3Download getObject(String bucket, String key) throws S3AccessException, InterruptedException;
+
   /**
    * The buckets the credentials may see, or {@link S3BucketListing.NotPermitted} when the account
    * lacks {@code s3:ListAllMyBuckets} - restricted keys are the normal case, never an error.

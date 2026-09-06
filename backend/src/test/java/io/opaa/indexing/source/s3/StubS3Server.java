@@ -29,8 +29,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 final class StubS3Server implements AutoCloseable {
 
-  /** One request as the server saw it. */
-  record Seen(String method, String path, String query, Map<String, String> headers) {}
+  /**
+   * One request as the server saw it; {@code target} is the request-line URI - absolute when the
+   * client talks through a proxy.
+   */
+  record Seen(
+      String method, String path, String query, Map<String, String> headers, String target) {}
 
   private record Failure(String method, String pathPrefix, int status, String code) {
     boolean matches(String method, String path) {
@@ -47,6 +51,7 @@ final class StubS3Server implements AutoCloseable {
   private final Set<String> chunkedKeys = new java.util.HashSet<>();
   private final Deque<Failure> scripted = new ArrayDeque<>();
   private final List<Seen> seen = new CopyOnWriteArrayList<>();
+  private volatile boolean omitContinuationToken;
 
   StubS3Server() throws IOException {
     server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -71,6 +76,11 @@ final class StubS3Server implements AutoCloseable {
   /** Serves {@code key} chunked, without a {@code Content-Length} the client could reject early. */
   void serveChunked(String bucket, String key) {
     chunkedKeys.add(bucket + "/" + key);
+  }
+
+  /** Truncated listings claim {@code IsTruncated=true} but carry no continuation token. */
+  void omitContinuationToken() {
+    omitContinuationToken = true;
   }
 
   /** The next {@code times} requests - whatever they are - answer {@code status}/{@code code}. */
@@ -110,7 +120,7 @@ final class StubS3Server implements AutoCloseable {
     exchange
         .getRequestHeaders()
         .forEach((k, v) -> headers.put(k.toLowerCase(), String.join(",", v)));
-    seen.add(new Seen(method, path, query, headers));
+    seen.add(new Seen(method, path, query, headers, exchange.getRequestURI().toString()));
     try {
       Failure failure = null;
       for (Failure candidate : scripted) {
@@ -217,7 +227,7 @@ final class StubS3Server implements AutoCloseable {
         .append(maxKeys)
         .append("</MaxKeys>");
     xml.append("<IsTruncated>").append(truncated).append("</IsTruncated>");
-    if (truncated) {
+    if (truncated && !omitContinuationToken) {
       xml.append("<NextContinuationToken>t").append(end).append("</NextContinuationToken>");
     }
     for (String key : keys.subList(start, end)) {

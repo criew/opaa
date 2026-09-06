@@ -187,6 +187,11 @@ public final class FakeS3ObjectStore implements S3ObjectStore {
   }
 
   @Override
+  public S3Download getObject(String bucket, String key) throws S3AccessException {
+    return getObject(bucket, key, S3Properties.defaults().maxObjectSizeBytes());
+  }
+
+  @Override
   public S3Download getObject(String bucket, String key, long maxBytes) throws S3AccessException {
     record("get " + bucket + "/" + key);
     StoredObject object = objectOf(bucket, key);

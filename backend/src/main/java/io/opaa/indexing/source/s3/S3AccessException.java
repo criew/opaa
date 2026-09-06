@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 
 /**
@@ -11,13 +12,6 @@ import java.io.IOException;
  * S3LogLeakTest}).
  */
 public class S3AccessException extends IOException {
-
-  /**
-   * Appended to a target-validation rejection so whoever configures an internal object store learns
-   * which setting unblocks it (ADR-0027, Entscheidung 8).
-   */
-  public static final String ALLOWLIST_HINT =
-      "Interne Adressen gibt der Betrieb über OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST frei.";
 
   public S3AccessException(String message) {
     super(message);
@@ -161,10 +155,24 @@ public class S3AccessException extends IOException {
     }
   }
 
-  /** The target-address validation refused the endpoint, the proxy or a bucket host. */
+  /**
+   * The target-address validation refused the endpoint, the proxy or a bucket host; the message
+   * names the allowlist variable (ADR-0027, Entscheidung 8).
+   */
   public static final class TargetBlocked extends S3AccessException {
     public TargetBlocked(String message) {
-      super(message + " " + ALLOWLIST_HINT);
+      super(message + " " + TargetAddressValidator.ALLOWLIST_HINT);
+    }
+  }
+
+  /** A listing answered "truncated" without a continuation token - it cannot be completed. */
+  public static final class ListingIncomplete extends S3AccessException {
+    public ListingIncomplete(String bucket) {
+      super(
+          "Der Objektspeicher meldet für den Bucket „"
+              + bucket
+              + "“ eine abgeschnittene Auflistung ohne Fortsetzungstoken; die Auflistung kann"
+              + " nicht vervollständigt werden.");
     }
   }
 }

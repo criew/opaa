@@ -16,6 +16,7 @@ import java.net.URISyntaxException;
  * @param pathStyle {@code true} addresses {@code endpoint/bucket/key} (MinIO, Ceph), {@code false}
  *     {@code bucket.endpoint/key} (AWS, Hetzner)
  * @param proxyHost {@code null} when no proxy is configured
+ * @param proxyPort a port in 1..65535 whenever {@code proxyHost} is set, ignored otherwise
  */
 public record S3Connection(
     URI endpoint,
@@ -39,6 +40,9 @@ public record S3Connection(
       region = DEFAULT_REGION;
     } else {
       region = region.strip();
+    }
+    if (proxyHost != null && !proxyHost.isBlank() && (proxyPort < 1 || proxyPort > 65535)) {
+      throw new IllegalArgumentException("a proxy needs a port in 1..65535, got " + proxyPort);
     }
   }
 

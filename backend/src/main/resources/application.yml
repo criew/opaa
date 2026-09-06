@@ -363,10 +363,13 @@ management:
 logging:
   level:
     org.hibernate.orm.connections.pooling: WARN
-    # The SDK's SigV4 signer logs the canonical request at DEBUG - session token included. Pinned so
-    # raising software.amazon.awssdk to DEBUG for diagnosis never prints a credential; the pin is
-    # guarded by S3LogLeakTest.
+    # The SDK's SigV4 signer logs the canonical request at DEBUG - session token included - and the
+    # HTTP client underneath prints every request header (Authorization, x-amz-security-token) at
+    # DEBUG. Pinned so raising software.amazon.awssdk or org.apache.hc.client5 to DEBUG for
+    # diagnosis never prints a credential; the pins are guarded by S3LogLeakTest.
     software.amazon.awssdk.http.auth.aws.internal.signer: INFO
+    org.apache.hc.client5.http.headers: INFO
+    org.apache.hc.client5.http.wire: INFO
 
 ---
 spring:

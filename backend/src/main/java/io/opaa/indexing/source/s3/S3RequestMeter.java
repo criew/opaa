@@ -21,6 +21,15 @@ public final class S3RequestMeter {
     requests.incrementAndGet();
   }
 
+  /**
+   * Counts one request unless {@code budget} (positive) is already spent - check and count in one
+   * atomic step, so concurrent callers cannot overshoot the budget. Returns whether it was counted.
+   */
+  boolean recordRequestWithin(int budget) {
+    int before = requests.getAndUpdate(n -> budget > 0 && n >= budget ? n : n + 1);
+    return budget <= 0 || before < budget;
+  }
+
   void recordThrottle() {
     throttles.incrementAndGet();
   }

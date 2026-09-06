@@ -139,23 +139,28 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
     this.requestObserver = requestObserver;
     Duration timeout = properties.requestTimeout();
     this.httpClient = buildHttpClient(connection, timeout);
-    this.s3 =
-        S3Client.builder()
-            .endpointOverride(connection.endpoint())
-            .region(Region.of(connection.region()))
-            .forcePathStyle(connection.pathStyle())
-            .credentialsProvider(StaticCredentialsProvider.create(awsCredentials(connection)))
-            .httpClient(httpClient)
-            // S3-compatible stores do not all understand the SDK's newer request checksums
-            .requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
-            .responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)
-            .overrideConfiguration(
-                override ->
-                    override
-                        .retryStrategy(retryStrategy(properties))
-                        .apiCallAttemptTimeout(timeout)
-                        .addExecutionInterceptor(new Guard()))
-            .build();
+    try {
+      this.s3 =
+          S3Client.builder()
+              .endpointOverride(connection.endpoint())
+              .region(Region.of(connection.region()))
+              .forcePathStyle(connection.pathStyle())
+              .credentialsProvider(StaticCredentialsProvider.create(awsCredentials(connection)))
+              .httpClient(httpClient)
+              // S3-compatible stores do not all understand the SDK's newer request checksums
+              .requestChecksumCalculation(RequestChecksumCalculation.WHEN_REQUIRED)
+              .responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)
+              .overrideConfiguration(
+                  override ->
+                      override
+                          .retryStrategy(retryStrategy(properties))
+                          .apiCallAttemptTimeout(timeout)
+                          .addExecutionInterceptor(new Guard()))
+              .build();
+    } catch (RuntimeException e) {
+      httpClient.close();
+      throw e;
+    }
   }
 
   private static SdkHttpClient buildHttpClient(S3Connection connection, Duration timeout) {
@@ -235,7 +240,12 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
                     object.storageClassAsString()));
           }
           boolean truncated = Boolean.TRUE.equals(response.isTruncated());
-          return new S3ListPage(objects, truncated ? response.nextContinuationToken() : null);
+          String next = response.nextContinuationToken();
+          if (truncated && (next == null || next.isBlank())) {
+            // never reported as the last page: a full sync would take the gap for deletions
+            throw new S3AccessException.ListingIncomplete(scope.bucket());
+          }
+          return new S3ListPage(objects, truncated ? next : null);
         });
   }
 
@@ -262,6 +272,12 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   }
 
   @Override
+  public S3Download getObject(String bucket, String key)
+      throws S3AccessException, InterruptedException {
+    return getObject(bucket, key, properties.maxObjectSizeBytes());
+  }
+
+  @Override
   public S3Download getObject(String bucket, String key, long maxBytes)
       throws S3AccessException, InterruptedException {
     return call(
@@ -269,19 +285,24 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
         bucket,
         key,
         () -> {
-          Path target = Files.createTempFile("opaa-s3-", suffixOf(key));
+          Path target = Files.createTempFile(properties.tempDirectory(), "opaa-s3-", suffixOf(key));
           boolean stored = false;
           try (ResponseInputStream<GetObjectResponse> body =
               s3.getObject(GetObjectRequest.builder().bucket(bucket).key(key).build())) {
             GetObjectResponse response = body.response();
             Long declared = response.contentLength();
             if (declared != null && declared > maxBytes) {
+              body.abort();
               throw new S3AccessException.ObjectTooLarge(bucket, key, maxBytes);
             }
             long copied;
             try (OutputStream out = Files.newOutputStream(target)) {
               copied = BoundedStreams.input(body, maxBytes).transferTo(out);
             } catch (BoundedStreams.LimitExceededException e) {
+              // the bytes read up to the ceiling were real traffic: count them, then drop the
+              // connection instead of draining the rest of the body
+              meter.recordBytes(Files.size(target));
+              body.abort();
               throw new S3AccessException.ObjectTooLarge(bucket, key, maxBytes);
             }
             meter.recordBytes(copied);
@@ -324,13 +345,16 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
           null,
           () -> s3.headBucket(HeadBucketRequest.builder().bucket(scope.bucket()).build()));
     } catch (S3AccessException.ListForbidden e) {
-      return new S3AccessCheck(true, false, null, 0, false, e);
+      // a HEAD answer carries no error code, so a 403 here may be a rights gap or a refused key;
+      // the listing below answers with a body and settles it
     } catch (S3AccessException e) {
       return new S3AccessCheck(false, false, null, 0, false, e);
     }
     S3ListPage page;
     try {
       page = listObjects(scope, null);
+    } catch (S3AccessException.Authentication e) {
+      return new S3AccessCheck(false, false, null, 0, false, e);
     } catch (S3AccessException e) {
       return new S3AccessCheck(true, false, null, 0, false, e);
     }
@@ -390,7 +414,9 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
     }
     TargetSignal target = findCause(e, TargetSignal.class);
     if (target != null) {
-      return new S3AccessException.TargetBlocked(target.getMessage());
+      return target.unknownHost
+          ? new S3AccessException.Unreachable(target.getMessage())
+          : new S3AccessException.TargetBlocked(target.getMessage());
     }
     if (e instanceof NoSuchBucketException) {
       return new S3AccessException.BucketNotFound(bucket);
@@ -536,8 +562,11 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
 
   /** Raised from the interceptor when a request's host fails the target validation. */
   private static final class TargetSignal extends RuntimeException {
-    TargetSignal(String message) {
+    private final boolean unknownHost;
+
+    TargetSignal(String message, boolean unknownHost) {
       super(message);
+      this.unknownHost = unknownHost;
     }
   }
 
@@ -556,17 +585,20 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
         meter.recordThrottleWait(Duration.between(throttledAt, Instant.now()));
         executionAttributes.putAttribute(THROTTLED_AT, Instant.EPOCH);
       }
-      if (requestBudget > 0 && meter.requests() >= requestBudget) {
-        throw NonRetryableException.create(
-            "request budget exhausted", new BudgetSignal(requestBudget));
-      }
       SdkHttpRequest request = context.httpRequest();
       try {
         targetAddressValidator.validateHost(request.host());
+      } catch (TargetAddressValidator.UnknownTargetHostException e) {
+        throw NonRetryableException.create(
+            "target unresolved", new TargetSignal(e.getMessage(), true));
       } catch (IOException e) {
-        throw NonRetryableException.create("target blocked", new TargetSignal(e.getMessage()));
+        throw NonRetryableException.create(
+            "target blocked", new TargetSignal(e.getMessage(), false));
       }
-      meter.recordRequest();
+      if (!meter.recordRequestWithin(requestBudget)) {
+        throw NonRetryableException.create(
+            "request budget exhausted", new BudgetSignal(requestBudget));
+      }
       if (requestObserver != null) {
         requestObserver.accept(request);
       }

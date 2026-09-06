@@ -6,11 +6,11 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * One Geltungsbereich of an S3 library (ADR-0027, Entscheidung 2): a bucket and an optional key
- * prefix. Normalised on construction - the bucket follows the AWS naming rules MinIO and Ceph
- * adopt, the prefix carries no leading slash and, when not empty, ends with one, so {@code
- * 2025/protokolle} means the "folder" and never {@code 2025/protokolle-alt/...}. An empty prefix is
- * the whole bucket.
+ * One scope of an S3 library (ADR-0027, Entscheidung 2): a bucket and an optional key prefix.
+ * Normalised on construction - the bucket follows the AWS naming rules MinIO and Ceph adopt, the
+ * prefix carries no leading slash and, when not empty, ends with one, so {@code 2025/protokolle}
+ * means the "folder" and never {@code 2025/protokolle-alt/...}. An empty prefix is the whole
+ * bucket.
  *
  * <p>Two scopes of one library must not overlap ({@link #requireValidSelection}): the same key
  * under two scopes would collide on {@code uk_documents_library_path}.
@@ -129,7 +129,7 @@ public record S3Scope(String bucket, String prefix) {
     return prefix;
   }
 
-  /** Thrown for a bucket, prefix or selection that cannot be a Geltungsbereich. */
+  /** Thrown for a bucket, prefix or selection that cannot be a scope. */
   public static final class InvalidS3ScopeException extends IllegalArgumentException {
     public InvalidS3ScopeException(String message) {
       super(message);

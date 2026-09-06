@@ -52,6 +52,22 @@ class S3ConnectionTest {
   }
 
   @Test
+  void aProxyNeedsAUsablePort() {
+    assertThatThrownBy(
+            () ->
+                new S3Connection(
+                    URI.create("https://minio.intern"),
+                    "us-east-1",
+                    true,
+                    CREDENTIALS,
+                    "proxy",
+                    -1,
+                    false))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("port");
+  }
+
+  @Test
   void requiresCredentials() {
     assertThatThrownBy(
             () ->
