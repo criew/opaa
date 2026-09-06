@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-09-05</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Samstag, 5. September 2026</h1>
+<nav class="blaettern"><a href="2026-09-04.html" rel="prev" title="Freitag, 4. September 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/33986760804" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">46</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+34</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">18</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">19</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1316">#1316</a> refactor(indexing): Ingestion-Pipeline konsolidieren: Laufrahmen, Dokumentstrecke, Pipeline-Basis, Javadoc</span>
+<span class="epic-progress">7 / 7 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li>Ingestion-Pipeline konsolidiert: Laufrahmen, Dokumentstrecke, Pipeline-Basis</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1356">#1356</a></span>XHTML-Ereignisleser für HTML und Confluence eingeführt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1353">#1353</a></span>Quellentyp-Eigenschaften am Enum, Bounded-Streams, 429-Wartezeit</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1335">#1335</a></span>Gemeinsamer Laufrahmen für alle Konnektoren etabliert</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1356">#1356</a></span>refactor(pipeline): ein XHTML-Ereignisleser für HTML und Confluence, Feed-Detailseiten über die HTML-Pipeline (+1471/−849, 37 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1353">#1353</a></span>refactor(sourceaccess): Quellentyp-Eigenschaften am Enum, Bounded-Streams, 429-Wartezeit und User-Agent für alle Netzkonnektoren (+2100/−876, 82 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1347">#1347</a></span>refactor(confluence): Seitenbesuch und Laufrahmen im Confluence-Executor verdichten (+875/−401, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1344">#1344</a></span>refactor(indexing): eine Dokumentstrecke statt fünf Einstiege in FileProcessingService (+3299/−4059, 49 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1335">#1335</a></span>refactor(indexing): gemeinsamer Laufrahmen für alle Konnektoren (+2757/−1715, 52 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1328">#1328</a></span>refactor(pipeline): Pipeline-Basisklasse, zentrales PARSE_FAILED-Mapping und gemeinsame Helfer (+1656/−995, 44 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1324">#1324</a></span>refactor(indexing): Javadoc und Kommentare auf Vertrag kürzen, toten Code entfernen (+2646/−4720, 220 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1065">#1065</a> feat(indexing): Metadatenschema für Wissensbibliotheken</span>
+<span class="epic-progress">14 / 14 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/1355">#1355</a></span>Modellgestützte Extraktion und freie Schlagworte umgesetzt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1341">#1341</a></span>Metadaten im Kontextpräfix mit Folgekostenanzeige</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1326">#1326</a></span>Bibliotheksfelder mit kontrolliertem Vokabular</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1306">#1306</a></span>Benchmark-Abnahme des Kernfeld-Filters mit Fehlerrichtungen</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1355">#1355</a></span>feat(indexing): Modellgestützte Extraktion, freie Schlagworte und Messung der Extraktionsgüte (#1073) (+4968/−97, 69 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1341">#1341</a></span>feat(indexing): Metadaten im Kontextpräfix mit Folgekostenanzeige und selektivem Nachlauf (+3650/−150, 66 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1339">#1339</a></span>refactor(indexing): Mail-Kopfdaten als Schemafelder, Mail-Sonderfelder der Beleg-Anzeige abgelöst (+2137/−715, 70 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1336">#1336</a></span>test(indexing): TestVocabularies gegen den Migrations-Seed abgleichen (+266/−64, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1326">#1326</a></span>feat(library): Bibliotheksfelder mit kontrolliertem Vokabular und bestätigter Wertelisten-Abbildung (+7604/−537, 96 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1320">#1320</a></span>fix(indexing): Confluence-Seitentitel als synthetischen Namen behandeln (+217/−48, 14 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1306">#1306</a></span>feat(eval): Benchmark-Abnahme des Kernfeld-Filters mit getrennten Fehlerrichtungen (#1070, Teil 2) (+2009/−300, 64 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1294">#1294</a> feat: OIDC-Anbindung mit mehreren Identitätsanbietern</span>
+<span class="epic-progress">0 / 7 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/1327">#1327</a></span>ADR für Mehranbieter-OIDC-Architektur dokumentiert</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1329">#1329</a></span>Anbieterverwaltung mit Datenmodell und Admin-API</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1330">#1330</a></span>Anmeldefluss je Anbieter ohne Identitätsvermischung</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1331">#1331</a></span>Claim-Zuordnung für Rollen, Gruppen, E-Mail, Anzeigename</li></ul>
+
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1364">#1364</a> feat(indexing): Metadatenschema nachkalibrieren — Extraktionsgüte, Konfidenzschwelle, Umschlüsselung</span>
+<span class="epic-progress">0 / 3 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/1359">#1359</a></span>Modell-Extraktion der Dokumentart nachkalibrieren</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1360">#1360</a></span>Generator-Voreinstellungen als Datum verwerfen</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1361">#1361</a></span>Umschlüsselung einer Werteliste wiederaufnehmbar</li></ul>
+
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/1365">#1365</a></span>Abschlussarbeiten Epic #1065: Handbuch, Versionsstempel, Audit</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1358">#1358</a></span>Handausgewertete Stichprobe der Extraktionsgüte dokumentiert</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/1304">#1304</a></span>Confluence-Konnektor und Metadaten-Kernfelder ins Handbuch</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/1365">#1365</a></span>chore(metadata): Abschlussarbeiten Epic #1065 — Handbuch, Versionsstempel, Audit bei Feldlöschung, Tests, ADR (+629/−56, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1358">#1358</a></span>docs(metadata): Handausgewertete Stichprobe der Extraktionsgüte (100 Dokumente) (+383/−0, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1323">#1323</a></span>chore(deps): vitest auf v5.0.0 aktualisieren (+50/−110, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1321">#1321</a></span>chore(deps): com.diffplug.spotless auf v8.10.2 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/1304">#1304</a></span>docs(handbuch): Confluence-Konnektor, Confluence-Pipeline und Metadaten-Kernfelder ins Produkthandbuch aufnehmen (+1030/−441, 9 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-09-06 um 06:56 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-09-05T00:00:00 bis 2026-09-05T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>

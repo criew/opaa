@@ -5,8 +5,37 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-05T04:48:01Z</updated>
+  <updated>2026-09-06T04:56:34Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Samstag, 5. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-05.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-05.html</id>
+    <updated>2026-09-06T04:56:34Z</updated>
+    <summary type="text">refactor(indexing): Ingestion-Pipeline konsolidieren: Laufrahmen, Dokumentstrecke, Pipeline-Basis, Javadoc:
+— Ingestion-Pipeline konsolidiert: Laufrahmen, Dokumentstrecke, Pipeline-Basis
+— XHTML-Ereignisleser für HTML und Confluence eingeführt
+— Quellentyp-Eigenschaften am Enum, Bounded-Streams, 429-Wartezeit
+— Gemeinsamer Laufrahmen für alle Konnektoren etabliert
+feat(indexing): Metadatenschema für Wissensbibliotheken:
+— Modellgestützte Extraktion und freie Schlagworte umgesetzt
+— Metadaten im Kontextpräfix mit Folgekostenanzeige
+— Bibliotheksfelder mit kontrolliertem Vokabular
+— Benchmark-Abnahme des Kernfeld-Filters mit Fehlerrichtungen
+feat: OIDC-Anbindung mit mehreren Identitätsanbietern:
+— ADR für Mehranbieter-OIDC-Architektur dokumentiert
+— Anbieterverwaltung mit Datenmodell und Admin-API
+— Anmeldefluss je Anbieter ohne Identitätsvermischung
+— Claim-Zuordnung für Rollen, Gruppen, E-Mail, Anzeigename
+feat(indexing): Metadatenschema nachkalibrieren — Extraktionsgüte, Konfidenzschwelle, Umschlüsselung:
+— Modell-Extraktion der Dokumentart nachkalibrieren
+— Generator-Voreinstellungen als Datum verwerfen
+— Umschlüsselung einer Werteliste wiederaufnehmbar
+Sonstiges:
+— Abschlussarbeiten Epic #1065: Handbuch, Versionsstempel, Audit
+— Handausgewertete Stichprobe der Extraktionsgüte dokumentiert
+— Confluence-Konnektor und Metadaten-Kernfelder ins Handbuch</summary>
+  </entry>
   <entry>
     <title>Tagesreport Freitag, 4. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-04.html"/>
