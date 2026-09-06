@@ -225,6 +225,13 @@ opaa:
       # object downloads one run keeps in flight while its listing goes on (a bound on the load
       # put on the store; 1 downloads serially, see S3Properties.DEFAULT_DOWNLOAD_CONCURRENCY).
       download-concurrency: ${OPAA_INDEXING_S3_DOWNLOAD_CONCURRENCY:2}
+      # ADR-0027, Entscheidung 6: the event intake - how long reported keys are collected before
+      # one EVENT run checks them, how many keys a batch holds before a full sync runs instead, and
+      # how often a batch waits for a running run (see S3EventProperties).
+      events:
+        debounce: ${OPAA_INDEXING_S3_EVENTS_DEBOUNCE:5s}
+        max-pending-keys: ${OPAA_INDEXING_S3_EVENTS_MAX_PENDING_KEYS:500}
+        max-deferrals: ${OPAA_INDEXING_S3_EVENTS_MAX_DEFERRALS:12}
     # #1058: DoS-hardening limits for TabularDocumentPipeline (XLSX/CSV/ODS) - own property block,
     # own binding prefix, see TabularProperties's own Javadoc for why.
     tabular:

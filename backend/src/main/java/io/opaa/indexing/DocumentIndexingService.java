@@ -175,6 +175,13 @@ public class DocumentIndexingService {
   private static IndexingRunMode resolveRunMode(
       SourceIndexingExecutor executor, KnowledgeLibrary library, IndexingRunMode requested) {
     Set<IndexingRunMode> supported = executor.runModes().keySet();
+    if (requested == IndexingRunMode.EVENT) {
+      // ADR-0027, Entscheidung 3: the event run is bound to its trigger - only a notification
+      // knows which keys to check
+      throw new ValidationException(
+          "Betriebsart EVENT wird nur durch eine Ereignisbenachrichtigung gestartet, nicht von"
+              + " Hand oder nach Zeitplan");
+    }
     if (requested != null) {
       if (!supported.contains(requested)) {
         throw new ValidationException(

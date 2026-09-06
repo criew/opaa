@@ -83,7 +83,7 @@ public class ConfluenceWebhookService {
         libraryRepository
             .findById(libraryId)
             .filter(l -> l.getSourceType() == DocumentSourceType.CONFLUENCE);
-    String secret = library.map(KnowledgeLibrary::getConfluenceWebhookSecret).orElse(null);
+    String secret = library.map(KnowledgeLibrary::getWebhookSecret).orElse(null);
     if (!ConfluenceWebhookSignature.verify(rawBody, hubSignature, sharedSecret, secret)) {
       log.warn("Rejected Confluence webhook for library {}: not authenticated", libraryId);
       throw new UnauthorizedException(UNAUTHORIZED_MESSAGE);
@@ -124,7 +124,7 @@ public class ConfluenceWebhookService {
         libraryRepository
             .findById(libraryId)
             .filter(l -> l.getSourceType() == DocumentSourceType.CONFLUENCE)
-            .filter(l -> l.getConfluenceWebhookSecret() != null);
+            .filter(l -> l.getWebhookSecret() != null);
     if (loaded.isEmpty()) {
       log.info("Dropping webhook batch for library {}: library gone or webhook removed", libraryId);
       return;

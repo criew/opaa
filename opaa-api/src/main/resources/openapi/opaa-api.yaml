@@ -3269,6 +3269,112 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /api/v1/libraries/{libraryId}/s3-events-token:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: generateS3EventsToken
+      tags: [library, indexing]
+      summary: Generate or rotate the event token of an S3 library
+      description: >
+        #1381 (ADR-0027, Entscheidung 6): generates a fresh random token, stores it encrypted
+        (like sourceCredentials) and returns it exactly once, together with the path the object
+        store has to notify. Calling again rotates: the previous token stops authenticating
+        immediately. MANAGER or above. Rejected with 400 for every other sourceType. Recorded in
+        the audit log as LIBRARY_SOURCE_UPDATED with changedFields [s3EventsToken], never with
+        the value.
+      responses:
+        "200":
+          description: The new token, shown once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/S3EventsTokenResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      operationId: removeS3EventsToken
+      tags: [library, indexing]
+      summary: Remove the event token of an S3 library
+      description: >
+        #1381: from the commit on, the library's event endpoint answers every call with 401.
+        Idempotent - removing an absent token succeeds without an audit entry. MANAGER or above.
+      responses:
+        "204":
+          description: Token removed (or none was stored)
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/s3-events:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      operationId: receiveS3Events
+      tags: [indexing]
+      summary: Receive S3 event notifications for a library
+      description: >
+        #1381 (ADR-0027, Entscheidung 6): reachable without a session - the sender has none. The
+        request authenticates itself with the library's event token in one of three forms, all
+        compared in constant time: Authorization: Bearer <token> (MinIO's auth_token),
+        Authorization: Basic with the token as password and any user name (Ceph RGW, whose
+        endpoint URI carries user:password), or the header X-OPAA-Webhook-Secret: <token>
+        (EventBridge API destination, any sender with a free header). An unknown library, a
+        library without a token or of another sourceType, and a wrong or missing token are all
+        answered with the same 401. The body is read in three shapes, recognised by structure:
+        the S3 Records format (Records[].s3.bucket.name, Records[].s3.object.key URL-decoded,
+        eventName with or without the s3: prefix - AWS via SNS/SQS forwarding, Ceph, MinIO),
+        the EventBridge envelope (detail-type, detail.bucket.name, detail.object.key raw,
+        detail.deletion-type) and the s3:TestEvent AWS sends on set-up (accepted, no effect).
+        Every event is a hint, the store's answer the finding: the keys are collected per
+        library, debounced (opaa.indexing.s3.events.debounce) and checked in one EVENT run with
+        triggeredBy WEBHOOK - a HeadObject per key, a changed object re-indexed like in a full
+        sync, a 404 removes the document with its attachments, anything else changes nothing. An
+        event for a bucket or key outside the configured scopes or patterns is dropped and
+        counted. A batch past opaa.indexing.s3.events.max-pending-keys runs an ordinary full sync
+        instead. Rate-limited per library (opaa.rate-limit.webhook).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: The store's own notification; only bucket, key and event name are read.
+      responses:
+        "202":
+          description: Accepted and queued (or nothing to queue)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          description: Body larger than 256 KiB
+        "429":
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/v1/libraries/{libraryId}/indexing:
     parameters:
       - name: libraryId
@@ -4403,9 +4509,9 @@ components:
       type: string
       description: >
         Who started a run (#485): a person via "Jetzt indizieren", the library's own schedule, or
-        an authenticated Confluence webhook notification (#1140) - a WEBHOOK run fetches only the
-        pages the notification named and never removes anything the instance does not itself
-        report as trashed.
+        an authenticated notification (#1140 Confluence webhook, #1381 S3 event) - a WEBHOOK run
+        checks only the pages or objects the notification named and never removes anything the
+        source does not itself confirm as gone.
       enum: [MANUAL, SCHEDULED, WEBHOOK]
       example: MANUAL
 
@@ -4415,9 +4521,13 @@ components:
         The Betriebsart of a run (ADR-0023, Entscheidung 4): FULL listed the source completely,
         so a previously indexed document missing from the listing was removed at the end of the
         run; INCREMENTAL only picked up what changed since the last anchor and never removes
-        anything for being absent. FILESYSTEM and HTTP_DIRECTORY only know FULL, RSS_FEED only
-        INCREMENTAL; CONFLUENCE knows both (#1136, #1139).
-      enum: [FULL, INCREMENTAL]
+        anything for being absent; EVENT (ADR-0027, Entscheidung 3) checked exactly the object
+        keys an S3 event notification named, one by one - no listing, no change search, never a
+        removal by absence, only on the store's own 404 - and is started solely by the
+        notification (triggeredBy WEBHOOK), never by "Jetzt indizieren" or the schedule.
+        FILESYSTEM and HTTP_DIRECTORY only know FULL, RSS_FEED only INCREMENTAL; CONFLUENCE knows
+        FULL and INCREMENTAL (#1136, #1139), S3 knows FULL and EVENT (#1378, #1381).
+      enum: [FULL, INCREMENTAL, EVENT]
       example: FULL
 
     IndexingRunEventCategory:
@@ -5798,6 +5908,22 @@ components:
           description: The endpoint path, relative to the deployment's origin.
           example: /api/v1/libraries/7f9c2b3e-1d4a-4c8b-9e2f-0a1b2c3d4e5f/confluence-webhook
 
+    S3EventsTokenResponse:
+      type: object
+      required: [token, path]
+      description: >
+        The event token of an S3 library, returned exactly once at generation (#1381), and the
+        path the store has to notify. The client composes the absolute URL from its own origin.
+      properties:
+        token:
+          type: string
+          description: 32 random bytes, Base64url without padding.
+          example: 3q2-7wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        path:
+          type: string
+          description: The endpoint path, relative to the deployment's origin.
+          example: /api/v1/libraries/7f9c2b3e-1d4a-4c8b-9e2f-0a1b2c3d4e5f/s3-events
+
     SourceConnectionTestRequest:
       type: object
       required: [sourceType]
@@ -6487,6 +6613,14 @@ components:
             /api/v1/libraries/{libraryId}/confluence-webhook-secret. Only present for sourceType
             CONFLUENCE and only if myRole is at least MANAGER (the same gate as
             sourceCredentialsSet); absent otherwise.
+        s3EventsTokenSet:
+          type: boolean
+          nullable: true
+          description: >
+            Whether an event token is currently stored for this S3 library (#1381) - never the
+            token itself, which is returned exactly once by POST
+            /api/v1/libraries/{libraryId}/s3-events-token. Only present for sourceType S3 and only
+            if myRole is at least MANAGER; absent otherwise.
         confluenceFullSyncIntervalDays:
           type: integer
           nullable: true

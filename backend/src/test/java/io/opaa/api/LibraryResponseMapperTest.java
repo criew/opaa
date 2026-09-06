@@ -138,6 +138,7 @@ class LibraryResponseMapperTest {
             true,
             true,
             true,
+            null,
             14,
             7,
             schedule,
@@ -151,6 +152,7 @@ class LibraryResponseMapperTest {
 
     assertThat(response.getSourcePath()).isEqualTo("/data/documents");
     assertThat(response.getConfluenceWebhookSecretSet()).isTrue();
+    assertThat(response.getS3EventsTokenSet()).isNull();
     // #1200: distinct values prove both rhythm fields are carried, not aliased
     assertThat(response.getConfluenceFullSyncIntervalDays()).isEqualTo(14);
     assertThat(response.getConfluenceFullSyncIntervalDefaultDays()).isEqualTo(7);
@@ -182,7 +184,7 @@ class LibraryResponseMapperTest {
             false);
     LibraryManagementDetail managementDetail =
         new LibraryManagementDetail(
-            null, null, null, false, false, null, null, null, null, null, 0L, 0L);
+            null, null, null, false, false, null, null, null, null, null, null, 0L, 0L);
     LibraryDetail detail = new LibraryDetail(library, AssetRole.OWNER, 0L, managementDetail, true);
 
     LibraryResponse response = LibraryResponseMapper.toResponse(detail);

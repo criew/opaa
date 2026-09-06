@@ -98,6 +98,7 @@ import LibraryGrantsDialog from '../components/LibraryGrantsDialog'
 import EditLibrarySourceDialog from '../components/EditLibrarySourceDialog'
 import EditLibraryScheduleDialog from '../components/EditLibraryScheduleDialog'
 import ConfluenceWebhookSection from '../components/library/ConfluenceWebhookSection'
+import S3EventSection from '../components/library/S3EventSection'
 import DocumentTextPreviewDialog from '../components/DocumentTextPreviewDialog'
 import DocumentMetadataPanel from '../components/metadata/DocumentMetadataPanel'
 import MetadataMaintenanceAnchor from '../components/metadata/MetadataMaintenanceAnchor'
@@ -2634,6 +2635,7 @@ interface LibraryIndexingSectionProps {
     confluenceEdition?: ConfluenceEdition | null
     confluenceSpaces?: ConfluenceSpaceRef[] | null
     confluenceWebhookSecretSet?: boolean | null
+    s3EventsTokenSet?: boolean | null
     confluenceFullSyncIntervalDays?: number | null
     confluenceFullSyncIntervalDefaultDays?: number | null
     s3Settings?: S3Settings | null
@@ -2739,6 +2741,13 @@ function LibraryIndexingSection({
             <ConfluenceWebhookSection
               libraryId={libraryId}
               secretSet={library.confluenceWebhookSecretSet}
+            />
+          )}
+          {configKind === 's3' && (
+            <S3EventSection
+              libraryId={libraryId}
+              tokenSet={library.s3EventsTokenSet}
+              scopes={library.s3Settings?.scopes ?? []}
             />
           )}
         </Stack>

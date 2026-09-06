@@ -26,7 +26,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class ConfluenceWebhookController {
 
-  static final int MAX_BODY_BYTES = 256 * 1024;
+  /** Shared with the S3 event intake (ADR-0027, Entscheidung 6). */
+  public static final int MAX_BODY_BYTES = 256 * 1024;
 
   private final ConfluenceWebhookService webhookService;
 
@@ -48,7 +49,7 @@ public class ConfluenceWebhookController {
   }
 
   /** Rejects by the declared length first, then by what actually arrives (chunked senders). */
-  private static byte[] readBounded(HttpServletRequest request) throws IOException {
+  static byte[] readBounded(HttpServletRequest request) throws IOException {
     if (request.getContentLengthLong() > MAX_BODY_BYTES) {
       throw new PayloadTooLargeException("Webhook-Nachricht zu groß");
     }

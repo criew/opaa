@@ -209,6 +209,7 @@ final class LibraryResponseMapper {
         .sourceInsecureSsl(managementDetail.sourceInsecureSsl())
         .sourceCredentialsSet(managementDetail.sourceCredentialsSet())
         .confluenceWebhookSecretSet(managementDetail.confluenceWebhookSecretSet())
+        .s3EventsTokenSet(managementDetail.s3EventsTokenSet())
         .confluenceFullSyncIntervalDays(managementDetail.confluenceFullSyncIntervalDays())
         .confluenceFullSyncIntervalDefaultDays(
             managementDetail.confluenceFullSyncIntervalDefaultDays())

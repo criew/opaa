@@ -982,7 +982,8 @@ kein Browser, und vorsignierte Links sind Zielbild.
 
 Ein Lauf beginnt auf vier Wegen: nach **Zeitplan je Bibliothek** (**gebaut**, #485: stündlich /
 täglich / wöchentlich, verpasste Termine werden nicht nachgeholt), durch eine **Meldung des
-Quellsystems** (Zielbild), durch **ausdrücklichen
+Quellsystems** (**gebaut** für Confluence-Webhooks, #1140, und S3-Ereignisbenachrichtigungen,
+#1381 nach [ADR-0027](../decisions/0027-s3-konnektor.md), Entscheidung 6), durch **ausdrücklichen
 Anstoß** — `POST /api/v1/libraries/{libraryId}/indexing`, EDITOR an der Bibliothek genügt (**gebaut**,
 ADR-0018) — oder, beim Upload, **unmittelbar** mit der Übergabe.
 

@@ -22,6 +22,7 @@ public record LibraryManagementDetail(
     Boolean sourceInsecureSsl,
     Boolean sourceCredentialsSet,
     Boolean confluenceWebhookSecretSet,
+    Boolean s3EventsTokenSet,
     Integer confluenceFullSyncIntervalDays,
     Integer confluenceFullSyncIntervalDefaultDays,
     LibraryScheduleDetail schedule,
@@ -31,5 +32,5 @@ public record LibraryManagementDetail(
 
   public static final LibraryManagementDetail EMPTY =
       new LibraryManagementDetail(
-          null, null, null, null, null, null, null, null, null, null, null, null);
+          null, null, null, null, null, null, null, null, null, null, null, null, null);
 }

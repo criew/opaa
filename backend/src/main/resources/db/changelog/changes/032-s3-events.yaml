@@ -1,0 +1,39 @@
+databaseChangeLog:
+  # ADR-0027, Entscheidung 6 (#1381): the push path of an S3 library. Each changeset is one schema
+  # change with its own delta test (io.opaa.migration.Migration032S3EventsTest).
+  - changeSet:
+      id: 032-libraries-webhook-secret
+      author: opaa
+      comment: >-
+        ADR-0027, Entscheidung 6: the one push secret a library carries, whatever its type - the
+        Confluence webhook secret (#1140) and the S3 event token share the column, the encryption
+        path and the audit trail. Renamed, not added: a second secret column per connector would be
+        the column growth Entscheidung 1 ended. Values and constraints are untouched.
+      changes:
+        - sql:
+            sql: ALTER TABLE public.knowledge_libraries RENAME COLUMN source_confluence_webhook_secret TO source_webhook_secret;
+      rollback:
+        - sql:
+            sql: ALTER TABLE public.knowledge_libraries RENAME COLUMN source_webhook_secret TO source_confluence_webhook_secret;
+
+  - changeSet:
+      id: 032-indexing-jobs-run-mode-event
+      author: opaa
+      comment: >-
+        ADR-0027, Entscheidung 3: the event run of an S3 library - the keys a notification named,
+        checked one by one - is its own Betriebsart, not another INCREMENTAL. Existing rows are
+        untouched.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.indexing_jobs DROP CONSTRAINT chk_indexing_jobs_run_mode;
+              ALTER TABLE public.indexing_jobs ADD CONSTRAINT chk_indexing_jobs_run_mode
+                  CHECK (run_mode IN ('FULL', 'INCREMENTAL', 'EVENT'));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.indexing_jobs DROP CONSTRAINT chk_indexing_jobs_run_mode;
+              ALTER TABLE public.indexing_jobs ADD CONSTRAINT chk_indexing_jobs_run_mode
+                  CHECK (run_mode IN ('FULL', 'INCREMENTAL'));

@@ -2,6 +2,7 @@ package io.opaa.indexing.source.s3;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,7 +48,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -81,6 +81,7 @@ class S3IndexingExecutorTest {
   private DocumentRepository documentRepository;
   private StaleDocumentCleanupService cleanupService;
   private LibraryFolderService folderService;
+  private VectorChunkStore vectorChunkStore;
   private S3SyncStateRepository syncStateRepository;
 
   /** Serial downloads: the call order the tests assert is the listing order. */
@@ -112,8 +113,8 @@ class S3IndexingExecutorTest {
                     .findFirst());
     when(documentRepository.findByLibraryIdAndSourceType(any(), any()))
         .thenAnswer(invocation -> List.copyOf(storedDocuments));
-    cleanupService =
-        spy(new StaleDocumentCleanupService(documentRepository, mock(VectorChunkStore.class)));
+    vectorChunkStore = mock(VectorChunkStore.class);
+    cleanupService = spy(new StaleDocumentCleanupService(documentRepository, vectorChunkStore));
     folderService = mock(LibraryFolderService.class);
     syncStateRepository = mock(S3SyncStateRepository.class);
     when(syncStateRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -130,6 +131,7 @@ class S3IndexingExecutorTest {
         fileProcessingService,
         documentRepository,
         folderService,
+        vectorChunkStore,
         syncStateRepository,
         Clock.fixed(Instant.parse("2026-09-06T20:00:00Z"), ZoneOffset.UTC),
         new IndexingRunTemplate(
@@ -222,7 +224,8 @@ class S3IndexingExecutorTest {
   void servesS3WithTheFullModeOnly() {
     assertThat(executor.sourceType()).isEqualTo(IndexingSourceType.S3);
     assertThat(executor.runModes())
-        .containsExactly(Map.entry(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE));
+        .containsEntry(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE)
+        .hasSize(2);
     assertThat(executor.defaultRunMode(null)).isEqualTo(IndexingRunMode.FULL);
   }
 
@@ -1202,6 +1205,83 @@ class S3IndexingExecutorTest {
     assertThat(S3FullSync.formatBytes(734_003_200L)).isEqualTo("700 MB");
     assertThat(S3FullSync.formatBytes(2_048)).isEqualTo("2 KB");
     assertThat(S3FullSync.formatBytes(1_572_864)).isEqualTo("1,5 MB");
+  }
+
+  @Test
+  void anEventRunChecksOnlyTheReportedKeysRemovesOnA404AndNeverReconciles() throws Exception {
+    store
+        .put("dokumente", "2025/neu.pdf", "neu", PDF)
+        .put("dokumente", "2025/gleich.pdf", "gleich", PDF)
+        .put("dokumente", "2025/weg.pdf", "weg", PDF)
+        .failRead(
+            "dokumente",
+            "2025/weg.pdf",
+            () -> new S3AccessException.ObjectNotFound("dokumente", "2025/weg.pdf"))
+        .put("dokumente", "2025/nicht-gemeldet.pdf", "x", PDF);
+    stored("s3://dokumente/2025/gleich.pdf", markerOf("dokumente", "2025/gleich.pdf"));
+    stored("s3://dokumente/2025/weg.pdf", "e:alt|3");
+    Document gone = storedDocuments.get(1);
+    Document attachment =
+        new Document(
+            "anlage.txt", "s3://dokumente/2025/weg.pdf#1", "text/plain", 1L, DocumentSourceType.S3);
+    when(documentRepository.findByParentDocumentId(gone.getId())).thenReturn(List.of(attachment));
+    UUID jobId = UUID.randomUUID();
+
+    executor.refreshObjects(
+        jobId,
+        library,
+        Set.of("dokumente/2025/neu.pdf", "dokumente/2025/gleich.pdf", "dokumente/2025/weg.pdf"),
+        2);
+
+    assertThat(store.calls())
+        .as("one HeadObject per reported key, a download only for a changed present object")
+        .containsExactly(
+            "head dokumente/2025/gleich.pdf",
+            "head dokumente/2025/neu.pdf",
+            "get dokumente/2025/neu.pdf",
+            "head dokumente/2025/weg.pdf");
+    verify(fileProcessingService)
+        .ingest(DocumentIngests.that().file().at("s3://dokumente/2025/neu.pdf").match(), any());
+    verify(documentRepository).delete(attachment);
+    verify(documentRepository).delete(gone);
+    verify(vectorChunkStore).deleteByDocumentId(gone.getId());
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.REMOVED,
+                    S3FullSync.GONE_CONFIRMED_MESSAGE,
+                    "s3://dokumente/2025/weg.pdf")));
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.REJECTED, "2" + S3FullSync.DROPPED_EVENTS_SUFFIX, null)));
+    verifyNoReconciliation();
+    verify(indexingJobService, never()).recordListingAssessment(any(), anyBoolean(), any());
+    verify(syncStateRepository, never()).save(any());
+    verify(indexingJobService).completeJob(jobId, 1, 0, 2, 1);
+  }
+
+  @Test
+  void anEventForAnObjectTheStoreStillHoldsChangesNothing() throws Exception {
+    store.put("dokumente", "2025/bleibt.pdf", "bleibt", PDF);
+    stored("s3://dokumente/2025/bleibt.pdf", markerOf("dokumente", "2025/bleibt.pdf"));
+    UUID jobId = UUID.randomUUID();
+
+    executor.refreshObjects(jobId, library, Set.of("dokumente/2025/bleibt.pdf", "fremd/x.pdf"), 0);
+
+    assertThat(store.calls()).containsExactly("head dokumente/2025/bleibt.pdf");
+    verify(documentRepository, never()).delete(any(Document.class));
+    verify(indexingJobService).completeJob(jobId, 0, 0, 2, 0);
+  }
+
+  @Test
+  void theEventModeIsDeclaredButNeverTheDefault() {
+    assertThat(executor.runModes())
+        .containsEntry(IndexingRunMode.EVENT, VanishedDocumentPolicy.KEEP_ON_ABSENCE)
+        .containsEntry(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE);
+    assertThat(executor.defaultRunMode(library)).isEqualTo(IndexingRunMode.FULL);
   }
 
   @Test

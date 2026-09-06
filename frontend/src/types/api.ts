@@ -91,6 +91,7 @@ export type S3BucketListRequest = components['schemas']['S3BucketListRequest']
 export type S3BucketListResponse = components['schemas']['S3BucketListResponse']
 export type ConfluenceWebhookSecretResponse =
   components['schemas']['ConfluenceWebhookSecretResponse']
+export type S3EventsTokenResponse = components['schemas']['S3EventsTokenResponse']
 export type LibraryDocumentResponse = components['schemas']['LibraryDocumentResponse']
 export type LibraryDocumentPageResponse = components['schemas']['LibraryDocumentPageResponse']
 export type MetadataOrigin = components['schemas']['MetadataOrigin']

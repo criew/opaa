@@ -66,6 +66,7 @@ import type {
   S3BucketListResponse,
   IndexingRunMode,
   ConfluenceWebhookSecretResponse,
+  S3EventsTokenResponse,
   BulkMetadataValueRequest,
   BulkMetadataValueResponse,
   DocumentMetadataFieldResponse,
@@ -514,6 +515,30 @@ export async function generateConfluenceWebhookSecret(
 export async function removeConfluenceWebhookSecret(libraryId: string): Promise<void> {
   try {
     await client.delete(`/v1/libraries/${libraryId}/confluence-webhook-secret`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * generates or rotates the S3 event token of a library (ADR-0027, Entscheidung 6). The token is
+ * returned exactly once - the caller shows it, the API never returns it again.
+ */
+export async function generateS3EventsToken(libraryId: string): Promise<S3EventsTokenResponse> {
+  try {
+    const { data } = await client.post<S3EventsTokenResponse>(
+      `/v1/libraries/${libraryId}/s3-events-token`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** removes the event token - the library's event endpoint rejects every call from now on. */
+export async function removeS3EventsToken(libraryId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/libraries/${libraryId}/s3-events-token`)
   } catch (err) {
     normalizeError(err)
   }

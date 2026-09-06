@@ -114,6 +114,7 @@ class S3IndexingExecutorMinioTest {
         fileProcessingService,
         documentRepository,
         folderService,
+        mock(VectorChunkStore.class),
         syncStateRepository,
         Clock.fixed(Instant.parse("2026-09-06T20:00:00Z"), ZoneOffset.UTC),
         new IndexingRunTemplate(

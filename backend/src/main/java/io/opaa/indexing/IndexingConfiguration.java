@@ -487,13 +487,18 @@ public class IndexingConfiguration {
         indexingRunTemplate);
   }
 
+  /**
+   * Declared as the concrete type, like the Confluence executor: the event intake ({@code
+   * S3EventService}) calls {@code refreshObjects}, which the interface does not carry.
+   */
   @Bean
-  SourceIndexingExecutor s3IndexingExecutor(
+  S3IndexingExecutor s3IndexingExecutor(
       S3ClientFactory s3ClientFactory,
       S3Properties s3Properties,
       FileProcessingService fileProcessingService,
       DocumentRepository documentRepository,
       LibraryFolderService libraryFolderService,
+      VectorChunkStore vectorChunkStore,
       S3SyncStateRepository s3SyncStateRepository,
       IndexingRunTemplate indexingRunTemplate) {
     return new S3IndexingExecutor(
@@ -502,6 +507,7 @@ public class IndexingConfiguration {
         fileProcessingService,
         documentRepository,
         libraryFolderService,
+        vectorChunkStore,
         s3SyncStateRepository,
         Clock.systemUTC(),
         indexingRunTemplate);

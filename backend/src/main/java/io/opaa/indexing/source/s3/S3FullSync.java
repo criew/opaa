@@ -9,6 +9,7 @@ import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.SupportedDocumentFormats;
+import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.ListingOutcome;
@@ -85,6 +86,8 @@ final class S3FullSync implements AutoCloseable {
   private final S3Properties properties;
   private final FileProcessingService fileProcessingService;
   private final DocumentRepository documentRepository;
+  private final VectorChunkStore vectorChunkStore;
+  private final List<S3Scope> scopes;
   private final S3KeyPatterns patterns;
   private final SourceFolderMirror folderMirror;
 
@@ -134,6 +137,7 @@ final class S3FullSync implements AutoCloseable {
       FileProcessingService fileProcessingService,
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
+      VectorChunkStore vectorChunkStore,
       S3SyncState state,
       S3SyncStateRepository syncStateRepository,
       Clock clock) {
@@ -142,6 +146,8 @@ final class S3FullSync implements AutoCloseable {
     this.properties = properties;
     this.fileProcessingService = fileProcessingService;
     this.documentRepository = documentRepository;
+    this.vectorChunkStore = vectorChunkStore;
+    this.scopes = settings.scopes();
     this.patterns = S3KeyPatterns.of(settings);
     this.folderMirror = new SourceFolderMirror(folderService, frame.library());
     this.scopeRootChain = settings.scopes().size() > 1;
@@ -198,6 +204,105 @@ final class S3FullSync implements AutoCloseable {
           }
         });
     return ListingOutcome.complete();
+  }
+
+  static final String GONE_CONFIRMED_MESSAGE =
+      "Vom Objektspeicher als gelöscht bestätigt, entfernt";
+  static final String DROPPED_EVENTS_SUFFIX =
+      " gemeldete Objekte liegen außerhalb der Geltungsbereiche oder Muster und wurden verworfen";
+
+  /**
+   * The event run (ADR-0027, Entscheidung 6): one {@code HeadObject} per reported {@code
+   * bucket/key}, then the full sync's own object visit for a present object and a removal with
+   * attachments for a {@code 404} - the store's answer is the finding, the notification only said
+   * where to look. No listing, no state, and {@link ListingOutcome#partial()} at the end, so the
+   * frame reconciles nothing.
+   */
+  ListingOutcome refresh(Set<String> references, int dropped) throws InterruptedException {
+    frame.progress().setTotal(references.size());
+    frame.progress().report();
+    try {
+      for (String reference : references.stream().sorted().toList()) {
+        checkReported(reference);
+      }
+      drainAll();
+    } catch (S3AccessException.BudgetExhausted e) {
+      return recordBudgetExhausted(e);
+    } finally {
+      if (dropped > 0) {
+        frame
+            .events()
+            .recordRunNote(IndexingEventCategory.REJECTED, dropped + DROPPED_EVENTS_SUFFIX);
+      }
+      recordSummaries();
+    }
+    return ListingOutcome.partial();
+  }
+
+  private void checkReported(String reference)
+      throws S3AccessException.BudgetExhausted, InterruptedException {
+    int slash = reference.indexOf('/');
+    String bucket = slash < 0 ? reference : reference.substring(0, slash);
+    String key = slash < 0 ? "" : reference.substring(slash + 1);
+    S3Scope scope =
+        scopes.stream()
+            .filter(s -> s.bucket().equals(bucket) && s.contains(key))
+            .findFirst()
+            .orElse(null);
+    if (scope == null || key.isEmpty()) {
+      frame.progress().recordSkipped();
+      return;
+    }
+    String filePath = filePath(bucket, key);
+    S3ObjectHead head;
+    try {
+      head = store.headObject(bucket, key);
+    } catch (S3AccessException.ObjectNotFound gone) {
+      // the positive finding a deletion needs (Entscheidung 3)
+      removeGone(filePath);
+      return;
+    } catch (S3AccessException e) {
+      handleObjectFailure(filePath, e);
+      return;
+    }
+    if (head.archived()) {
+      frame.markPresent(filePath);
+      skip(
+          IndexingEventCategory.REJECTED, archivedMessage(filePath, head.storageClass()), filePath);
+      return;
+    }
+    listed++;
+    visitObject(
+        scope,
+        new S3ObjectSummary(
+            key, head.eTag(), head.size(), head.lastModified(), head.storageClass()));
+  }
+
+  /** Removes the document under {@code filePath} with every attachment below it, deepest first. */
+  private void removeGone(String filePath) {
+    Optional<Document> document =
+        documentRepository.findByLibraryIdAndFilePath(frame.library().getId(), filePath);
+    if (document.isEmpty()) {
+      frame.progress().recordSkipped();
+      return;
+    }
+    removeWithAttachments(document.get(), new java.util.HashSet<>());
+    frame.markAbsent(filePath);
+    frame.progress().recordSkipped();
+  }
+
+  private void removeWithAttachments(Document document, Set<UUID> visited) {
+    if (!visited.add(document.getId())) {
+      return;
+    }
+    for (Document child : documentRepository.findByParentDocumentId(document.getId())) {
+      removeWithAttachments(child, visited);
+    }
+    vectorChunkStore.deleteByDocumentId(document.getId());
+    documentRepository.delete(document);
+    frame
+        .events()
+        .record(IndexingEventCategory.REMOVED, GONE_CONFIRMED_MESSAGE, document.getFilePath());
   }
 
   /** Unfinished scopes of an interrupted full sync first, then the already completed ones. */

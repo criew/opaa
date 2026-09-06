@@ -87,6 +87,7 @@ import type {
   ConfluenceEdition,
   ConfluenceSpaceRef,
   ConfluenceWebhookSecretResponse,
+  S3EventsTokenResponse,
 } from '../types/api'
 
 // Mirrors SupportedDocumentFormats#EXTENSIONS (backend/src/main/java/io/opaa/indexing) - kept as a
@@ -593,6 +594,45 @@ export const handlers = [
       )
     }
     mockLibraryDetails[libraryId] = { ...library, confluenceWebhookSecretSet: false }
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.post('/api/v1/libraries/:libraryId/s3-events-token', ({ params }) => {
+    const libraryId = params.libraryId as string
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json(
+        { error: 'Bibliothek nicht gefunden', status: 404, timestamp: new Date().toISOString() },
+        { status: 404 },
+      )
+    }
+    if (library.sourceType !== 'S3') {
+      return HttpResponse.json(
+        {
+          error: 'Ein Ereignis-Token gibt es nur für Bibliotheken vom Typ S3',
+          status: 400,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 400 },
+      )
+    }
+    mockLibraryDetails[libraryId] = { ...library, s3EventsTokenSet: true }
+    return HttpResponse.json({
+      token: 'mock-s3-events-token-' + libraryId.slice(0, 8),
+      path: `/api/v1/libraries/${libraryId}/s3-events`,
+    } satisfies S3EventsTokenResponse)
+  }),
+
+  http.delete('/api/v1/libraries/:libraryId/s3-events-token', ({ params }) => {
+    const libraryId = params.libraryId as string
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json(
+        { error: 'Bibliothek nicht gefunden', status: 404, timestamp: new Date().toISOString() },
+        { status: 404 },
+      )
+    }
+    mockLibraryDetails[libraryId] = { ...library, s3EventsTokenSet: false }
     return new HttpResponse(null, { status: 204 })
   }),
 
