@@ -204,7 +204,7 @@ class SourceConnectionTestServiceS3Test {
     assertThatThrownBy(
             () ->
                 service.listS3Buckets(
-                    new S3BucketListing(
+                    new S3BucketListingRequest(
                         URI.create("https://s3.example.org"), null, null, null, null, true, null),
                     caller))
         .isInstanceOf(ValidationException.class)
@@ -212,7 +212,8 @@ class SourceConnectionTestServiceS3Test {
     assertThatThrownBy(
             () ->
                 service.listS3Buckets(
-                    new S3BucketListing(null, "ak:sk", null, null, null, true, null), caller))
+                    new S3BucketListingRequest(null, "ak:sk", null, null, null, true, null),
+                    caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("sourceUrl");
   }
@@ -227,7 +228,7 @@ class SourceConnectionTestServiceS3Test {
 
     S3BucketListResult result =
         service.listS3Buckets(
-            new S3BucketListing(
+            new S3BucketListingRequest(
                 URI.create("https://s3.example.org"),
                 null,
                 "attacker.example:8080",
@@ -246,6 +247,40 @@ class SourceConnectionTestServiceS3Test {
             true,
             "eu-west-1",
             false);
+
+    // without region and style in the request, the stored settings sign the listing
+    service.listS3Buckets(
+        new S3BucketListingRequest(
+            URI.create("https://s3.example.org"), null, null, null, null, null, libraryId),
+        caller);
+    verify(s3ConnectionService)
+        .listBuckets(
+            "https://s3.example.org",
+            "proxy.stored.example:3128",
+            "AKIASTORED:stored-secret",
+            true,
+            "eu-central-1",
+            true);
+  }
+
+  @Test
+  void anInterruptedProbeIsReportedNotThrown() throws Exception {
+    when(s3ConnectionService.probe(anyString(), any(), anyString(), anyBoolean(), any()))
+        .thenThrow(new InterruptedException());
+
+    SourceConnectionTestResult result =
+        service.test(
+            sourceConnectionTest()
+                .sourceType(DocumentSourceType.S3)
+                .sourceUrl(URI.create("https://s3.example.org"))
+                .sourceCredentials("ak:sk")
+                .s3Settings(SETTINGS)
+                .build(),
+            caller);
+
+    assertThat(Thread.interrupted()).as("interrupt flag restored").isTrue();
+    assertThat(result.reachable()).isFalse();
+    assertThat(result.message()).contains("unterbrochen");
   }
 
   @Test
@@ -258,7 +293,7 @@ class SourceConnectionTestServiceS3Test {
     assertThatThrownBy(
             () ->
                 service.listS3Buckets(
-                    new S3BucketListing(
+                    new S3BucketListingRequest(
                         URI.create("https://s3.example.org"),
                         null,
                         null,
@@ -289,7 +324,7 @@ class SourceConnectionTestServiceS3Test {
     assertThatThrownBy(
             () ->
                 service.listS3Buckets(
-                    new S3BucketListing(
+                    new S3BucketListingRequest(
                         URI.create("https://example.org"), null, null, null, null, true, rssId),
                     caller))
         .isInstanceOf(ValidationException.class)

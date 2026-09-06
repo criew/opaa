@@ -11,7 +11,7 @@ import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.indexing.source.confluence.ConfluenceSpace;
 import io.opaa.library.ConfluenceSpaceListing;
 import io.opaa.library.S3BucketListResult;
-import io.opaa.library.S3BucketListing;
+import io.opaa.library.S3BucketListingRequest;
 import io.opaa.library.SourceConnectionTest;
 import io.opaa.library.SourceConnectionTestResult;
 import java.util.List;
@@ -38,8 +38,8 @@ final class SourceConnectionTestResponseMapper {
         LibraryResponseMapper.toS3Settings(request.getS3Settings()));
   }
 
-  static S3BucketListing toDomain(S3BucketListRequest request) {
-    return new S3BucketListing(
+  static S3BucketListingRequest toDomain(S3BucketListRequest request) {
+    return new S3BucketListingRequest(
         request.getSourceUrl(),
         request.getSourceCredentials(),
         request.getSourceProxy(),

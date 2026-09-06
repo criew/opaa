@@ -33,6 +33,19 @@ class S3PropertiesTest {
   }
 
   @Test
+  void aProbeCopyShortensTimeoutAndRetriesAndDropsTheBudget() {
+    S3Properties run = new S3Properties(500, 0, null, null, null, 7, null);
+
+    S3Properties probe = run.forProbe(java.time.Duration.ofSeconds(5), 1);
+
+    assertThat(probe.listPageSize()).isEqualTo(500);
+    assertThat(probe.requestTimeout()).isEqualTo(java.time.Duration.ofSeconds(5));
+    assertThat(probe.maxRetries()).isEqualTo(1);
+    assertThat(probe.requestBudgetPerRun()).isZero();
+    assertThat(run.requestBudgetPerRun()).isEqualTo(7);
+  }
+
+  @Test
   void rejectsAPageSizeS3CannotServe() {
     assertThatThrownBy(() -> new S3Properties(1001, 0, null, null, null, 0, null))
         .isInstanceOf(IllegalArgumentException.class)

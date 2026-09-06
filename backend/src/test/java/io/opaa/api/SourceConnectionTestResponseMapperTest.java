@@ -19,7 +19,7 @@ import io.opaa.indexing.source.confluence.ConfluenceSpace;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.library.ConfluenceSpaceListing;
 import io.opaa.library.S3BucketListResult;
-import io.opaa.library.S3BucketListing;
+import io.opaa.library.S3BucketListingRequest;
 import io.opaa.library.SourceConnectionTest;
 import io.opaa.library.SourceConnectionTestResult;
 import java.net.URI;
@@ -130,7 +130,7 @@ class SourceConnectionTestResponseMapperTest {
             .pathStyle(true)
             .libraryId(libraryId);
 
-    S3BucketListing domain = SourceConnectionTestResponseMapper.toDomain(request);
+    S3BucketListingRequest domain = SourceConnectionTestResponseMapper.toDomain(request);
 
     assertThat(domain.sourceUrl()).isEqualTo(URI.create("https://s3.example.org"));
     assertThat(domain.sourceCredentials()).isEqualTo("ak:sk");

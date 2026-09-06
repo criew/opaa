@@ -74,10 +74,12 @@ import org.springframework.stereotype.Service;
  * by being a single synchronous request instead of "create library, trigger indexing, read job
  * status". FILESYSTEM is therefore gated by the identical {@link FilesystemPathAllowlist} check
  * creation applies, before anything on disk is touched; every per-request HTTP timeout here is kept
- * well under {@code buildHttpClient}'s 30s connect timeout so a single caller cannot tie up
- * Tomcat's worker pool for long by requesting many tests against a filtered address at once -
- * {@code RateLimitConfiguration} additionally caps this endpoint per IP and globally, the same way
- * it already does for the indexing trigger. No response ever reveals more about a directory's
+ * well under {@code buildHttpClient}'s 30s connect timeout (the S3 probe's store likewise carries
+ * {@link io.opaa.indexing.source.s3.S3ClientFactory#PROBE_TIMEOUT} and a single retry, and the
+ * whole S3 test stops after {@link S3ConnectionService#PROBE_DEADLINE}) so a single caller cannot
+ * tie up Tomcat's worker pool for long by requesting many tests against a filtered address at once
+ * - {@code RateLimitConfiguration} additionally caps this endpoint per IP and globally, the same
+ * way it already does for the indexing trigger. No response ever reveals more about a directory's
  * contents than a count - never a file name, a listing, or an exception's raw text. Target
  * validation for the URL-based types' addresses themselves (blocking internal/private ranges,
  * {@code TargetAddressValidator}) applies to every fetch here exactly as to the indexing run - for
@@ -268,7 +270,7 @@ public class SourceConnectionTestService {
    * permission bar, stored-credentials fallback and proxy/TLS forcing as {@link #test}, through the
    * very same {@link #withStoredCredentialsIfOmitted}.
    */
-  public S3BucketListResult listS3Buckets(S3BucketListing request, CurrentUser caller) {
+  public S3BucketListResult listS3Buckets(S3BucketListingRequest request, CurrentUser caller) {
     if (request.sourceUrl() == null) {
       throw new ValidationException("sourceUrl ist erforderlich");
     }
@@ -295,14 +297,24 @@ public class SourceConnectionTestService {
       throw new ValidationException(
           "sourceCredentials sind für die Bucket-Auflistung erforderlich");
     }
+    // region and addressing style: the request's when given, else the library's stored ones (the
+    // same fallback the credentials get - a listing against a stored library must sign for the
+    // region that library is configured for)
+    S3SourceSettings stored = effective.s3Settings();
+    String region =
+        blankToNull(request.region()) != null
+            ? blankToNull(request.region())
+            : stored == null ? null : stored.effectiveRegion();
+    boolean pathStyle =
+        request.pathStyle() != null ? request.pathStyle() : stored != null && stored.pathStyle();
     try {
       return s3ConnectionService.listBuckets(
           effective.sourceUrl().toString(),
           blankToNull(effective.sourceProxy()),
           credentials,
           Boolean.TRUE.equals(effective.sourceInsecureSsl()),
-          blankToNull(request.region()),
-          Boolean.TRUE.equals(request.pathStyle()));
+          region,
+          pathStyle);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new ValidationException("Die Bucket-Auflistung wurde unterbrochen.");

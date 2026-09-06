@@ -79,6 +79,15 @@ public record S3Properties(
     }
   }
 
+  /**
+   * The bounds of a synchronous probe (connection test, bucket listing): {@code timeout} per
+   * attempt and {@code retries} retries instead of the run's, everything else unchanged.
+   */
+  public S3Properties forProbe(Duration timeout, int retries) {
+    return new S3Properties(
+        listPageSize, maxObjectSizeBytes, timeout, retries, retryBackoff, 0, tempDirectory);
+  }
+
   /** {@code true} when a run is bounded by {@link #requestBudgetPerRun}; zero means unbounded. */
   public boolean hasRequestBudget() {
     return requestBudgetPerRun > 0;

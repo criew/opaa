@@ -8,7 +8,7 @@ import java.util.UUID;
  * buckets an S3 key may see. {@code libraryId} names an existing library whose stored credentials
  * may stand in for omitted ones (same-origin rule, see {@link SourceConnectionTestService}).
  */
-public record S3BucketListing(
+public record S3BucketListingRequest(
     URI sourceUrl,
     String sourceCredentials,
     String sourceProxy,

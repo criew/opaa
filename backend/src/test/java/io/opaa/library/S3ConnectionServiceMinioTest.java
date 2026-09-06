@@ -110,7 +110,7 @@ class S3ConnectionServiceMinioTest {
             settings(S3Scope.of(bucket, ""), S3Scope.of("opaa-gibtsnicht", "")));
 
     assertThat(probe.reachable()).isFalse();
-    assertThat(probe.message()).contains("s3:ListBucket").contains("1 weitere Bereiche");
+    assertThat(probe.message()).contains("s3:ListBucket").contains("1 weiterer Bereich");
     assertThat(probe.scopes().get(0).listAllowed()).isFalse();
     // a restricted key cannot tell a missing bucket from a forbidden one - the store answers 403
     // either way, so the scope fails and its message names the bucket
