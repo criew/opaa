@@ -28,13 +28,17 @@ import {
   AWS_REGIONS,
   derivedS3Endpoint,
   HETZNER_LOCATIONS,
+  MAX_S3_ACCESS_KEY_LENGTH,
   MAX_S3_SCOPES,
+  MAX_S3_SECRET_KEY_LENGTH,
+  MAX_S3_SESSION_TOKEN_LENGTH,
   S3_PROVIDER_LABELS,
   S3_PROVIDERS,
   s3CredentialsOf,
   s3ProviderTemplate,
   s3ScopeKey,
   s3SettingsOf,
+  validateS3Prefix,
   validateS3Scope,
   type S3Provider,
   type S3ScopeInput,
@@ -101,7 +105,12 @@ export default function S3SourceForm({
     () =>
       values.includePatterns !== '' || values.excludePatterns !== '' || values.sourceProxy !== '',
   )
+  // two counters: the listing only depends on connection and key, so editing a scope or a
+  // pattern must not discard a bucket listing that is still in flight
   const generation = useRef(0)
+  const listingGeneration = useRef(0)
+  const removeButtons = useRef<Array<HTMLButtonElement | null>>([])
+  const addScopeButton = useRef<HTMLButtonElement | null>(null)
 
   // #542 review finding 1, mirrored for S3: the backend carries the stored key forward only while
   // the endpoint still names the same origin; a host change drops it.
@@ -116,6 +125,7 @@ export default function S3SourceForm({
   const keyComplete =
     (values.accessKey.trim() !== '' && values.secretKey.trim() !== '') || usesStoredCredentials
   const endpointEntered = values.sourceUrl.trim() !== ''
+  const scopeEntered = values.scopes.some((scope) => scope.bucket.trim() !== '')
   const regionSuggestions =
     values.provider === 'AWS' ? AWS_REGIONS : values.provider === 'HETZNER' ? HETZNER_LOCATIONS : []
 
@@ -124,21 +134,25 @@ export default function S3SourceForm({
     setTestMessage(null)
     setScopeChecks(null)
     setTesting(false)
+  }
+
+  function invalidateListing() {
+    listingGeneration.current += 1
+    setBucketOptions([])
+    setBucketsMessage(null)
     setLoadingBuckets(false)
   }
 
   function changeConnection(patch: Partial<S3SourceValues>) {
     invalidate()
-    setBucketOptions([])
-    setBucketsMessage(null)
-    onChange({ ...patch, credentialsVerified: false })
+    invalidateListing()
+    onChange(patch)
   }
 
   function changeKey(patch: Partial<S3SourceValues>) {
     invalidate()
-    setBucketOptions([])
-    setBucketsMessage(null)
-    onChange({ ...patch, credentialsVerified: false })
+    invalidateListing()
+    onChange(patch)
   }
 
   function changeProvider(provider: S3Provider) {
@@ -164,6 +178,14 @@ export default function S3SourceForm({
     changeScopes(values.scopes.map((scope, i) => (i === index ? { ...scope, ...patch } : scope)))
   }
 
+  function removeScope(index: number) {
+    changeScopes(values.scopes.filter((_s, i) => i !== index))
+    // the button that had focus disappears with its row: move to the previous row's button, or
+    // to "Bereich" when only one row remains (its button is disabled after the render)
+    const previous = removeButtons.current[index - 1]
+    ;(values.scopes.length > 2 && previous ? previous : addScopeButton.current)?.focus()
+  }
+
   function connectionPayload() {
     return {
       sourceUrl: values.sourceUrl.trim(),
@@ -175,7 +197,7 @@ export default function S3SourceForm({
   }
 
   async function loadBuckets() {
-    const mine = generation.current
+    const mine = listingGeneration.current
     setLoadingBuckets(true)
     setBucketsMessage(null)
     try {
@@ -184,7 +206,7 @@ export default function S3SourceForm({
         region: values.region.trim() || undefined,
         pathStyle: values.pathStyle,
       })
-      if (generation.current !== mine) return
+      if (listingGeneration.current !== mine) return
       if (result.listingPermitted) {
         setBucketOptions(result.buckets)
         setBucketsMessage({
@@ -204,14 +226,14 @@ export default function S3SourceForm({
         })
       }
     } catch (err) {
-      if (generation.current !== mine) return
+      if (listingGeneration.current !== mine) return
       setBucketOptions([])
       setBucketsMessage({
         severity: 'error',
         text: err instanceof Error ? err.message : 'Die Buckets konnten nicht geladen werden',
       })
     } finally {
-      if (generation.current === mine) setLoadingBuckets(false)
+      if (listingGeneration.current === mine) setLoadingBuckets(false)
     }
   }
 
@@ -227,7 +249,6 @@ export default function S3SourceForm({
         s3Settings: s3SettingsOf(values),
       })
       if (generation.current !== mine) return
-      onChange({ credentialsVerified: Boolean(result.credentialsVerified) })
       setTestMessage({
         severity: result.reachable ? 'success' : 'warning',
         text: result.message,
@@ -257,10 +278,9 @@ export default function S3SourceForm({
         <Typography component="h3" sx={{ fontSize: 16, fontWeight: 600, mb: 1.75 }}>
           Verbindung zum Objektspeicher
         </Typography>
-        <FieldLabel htmlFor={`${idPrefix}-provider`}>Anbieter</FieldLabel>
+        <FieldLabel id={`${idPrefix}-provider-label`}>Anbieter</FieldLabel>
         <RadioGroup
-          id={`${idPrefix}-provider`}
-          aria-label="Anbieter"
+          aria-labelledby={`${idPrefix}-provider-label`}
           row
           value={values.provider}
           onChange={(e) => changeProvider(e.target.value as S3Provider)}
@@ -360,7 +380,12 @@ export default function S3SourceForm({
               error={originChanged && values.accessKey.trim() === ''}
               helperText="Ohne Doppelpunkt."
               fullWidth
-              slotProps={{ htmlInput: { maxLength: 200, sx: { fontFamily: 'monospace' } } }}
+              slotProps={{
+                htmlInput: {
+                  maxLength: MAX_S3_ACCESS_KEY_LENGTH,
+                  sx: { fontFamily: 'monospace' },
+                },
+              }}
             />
           </Box>
           <Box>
@@ -377,7 +402,7 @@ export default function S3SourceForm({
               error={originChanged && values.secretKey.trim() === ''}
               helperText={secretHelperText}
               fullWidth
-              slotProps={{ htmlInput: { maxLength: 300 } }}
+              slotProps={{ htmlInput: { maxLength: MAX_S3_SECRET_KEY_LENGTH } }}
             />
           </Box>
           <Box sx={{ gridColumn: '1 / -1' }}>
@@ -389,9 +414,9 @@ export default function S3SourceForm({
               value={values.sessionToken}
               onChange={(e) => changeKey({ sessionToken: e.target.value })}
               autoComplete="off"
-              helperText="Nur für zeitlich begrenzte Schlüssel (STS); läuft mit dem Token ab."
+              helperText="Nur für zeitlich begrenzte Schlüssel (STS); läuft mit dem Token ab. Access Key, Secret Key und Token dürfen zusammen höchstens 500 Zeichen umfassen."
               fullWidth
-              slotProps={{ htmlInput: { maxLength: 4000 } }}
+              slotProps={{ htmlInput: { maxLength: MAX_S3_SESSION_TOKEN_LENGTH } }}
             />
           </Box>
         </Box>
@@ -416,7 +441,11 @@ export default function S3SourceForm({
         </Typography>
         <List disablePadding aria-label="Geltungsbereiche">
           {values.scopes.map((scope, index) => {
-            const rowError = scope.bucket.trim() === '' ? null : validateS3Scope(scope)
+            const bucketError =
+              scope.bucket.trim() === ''
+                ? null
+                : validateS3Scope({ bucket: scope.bucket, prefix: '' })
+            const prefixError = scope.prefix.trim() === '' ? null : validateS3Prefix(scope.prefix)
             return (
               <ListItem
                 key={index}
@@ -439,8 +468,8 @@ export default function S3SourceForm({
                         {...params}
                         size="small"
                         placeholder="dokumente"
-                        error={rowError !== null}
-                        helperText={rowError ?? undefined}
+                        error={bucketError !== null}
+                        helperText={bucketError ?? undefined}
                       />
                     )}
                   />
@@ -455,16 +484,21 @@ export default function S3SourceForm({
                     value={scope.prefix}
                     onChange={(e) => updateScope(index, { prefix: e.target.value })}
                     placeholder="2025/protokolle/"
+                    error={prefixError !== null}
+                    helperText={prefixError ?? undefined}
                     fullWidth
                     slotProps={{ htmlInput: { maxLength: 1023, sx: { fontFamily: 'monospace' } } }}
                   />
                 </Box>
                 <IconButton
+                  ref={(node) => {
+                    removeButtons.current[index] = node
+                  }}
                   size="small"
                   aria-label={`Bereich ${index + 1} entfernen`}
                   disabled={values.scopes.length === 1}
-                  onClick={() => changeScopes(values.scopes.filter((_s, i) => i !== index))}
-                  sx={{ alignSelf: 'end', mb: rowError ? 3 : 0.5 }}
+                  onClick={() => removeScope(index)}
+                  sx={{ alignSelf: 'end', mb: bucketError || prefixError ? 3 : 0.5 }}
                 >
                   <DeleteIcon sx={{ fontSize: 18 }} />
                 </IconButton>
@@ -474,6 +508,7 @@ export default function S3SourceForm({
         </List>
         <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mt: 1 }}>
           <Button
+            ref={addScopeButton}
             size="small"
             variant="outlined"
             startIcon={<AddIcon />}
@@ -591,7 +626,7 @@ export default function S3SourceForm({
       <Box>
         <Button
           onClick={() => void testConnection()}
-          disabled={testing || !endpointEntered || !keyComplete}
+          disabled={testing || !endpointEntered || !keyComplete || !scopeEntered}
           variant="outlined"
         >
           {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}

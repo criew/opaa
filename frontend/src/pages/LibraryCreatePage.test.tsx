@@ -132,7 +132,8 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
         ),
       )
       expect(mockCreateNewLibrary.mock.calls[0][0]).not.toHaveProperty('confluenceSpaces')
-      expect(mockTriggerIndexing).toHaveBeenCalledWith('lib-neu', 'S3')
+      // no immediate first run until the full sync of #1378 exists
+      expect(mockTriggerIndexing).not.toHaveBeenCalled()
       expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu')
     }, 30000)
 

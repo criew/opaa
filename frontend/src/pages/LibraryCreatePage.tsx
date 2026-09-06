@@ -171,6 +171,8 @@ export default function LibraryCreatePage() {
     confluence.sourceInsecureSsl ||
     s3.sourceUrl !== '' ||
     s3.accessKey !== '' ||
+    s3.secretKey !== '' ||
+    s3.sessionToken !== '' ||
     s3.scopes.some((scope) => scope.bucket !== '' || scope.prefix !== '') ||
     pendingGrants.length > 0
 
@@ -306,7 +308,7 @@ export default function LibraryCreatePage() {
         setSubmitting(false)
         return
       }
-      if ((configKind === 'confluence' || configKind === 's3') && startFirstRun) {
+      if (configKind === 'confluence' && startFirstRun) {
         // Awaited so the run is already in the indexing store when the detail page mounts and its
         // progress strip picks it up. triggerIndexing never throws - a failure surfaces through
         // the global indexing snackbar, and the detail page still offers "Jetzt indizieren".
@@ -511,20 +513,11 @@ export default function LibraryCreatePage() {
                     setError(null)
                   }}
                 />
-                <FormControlLabel
-                  sx={{ mt: 2 }}
-                  control={
-                    <Switch
-                      checked={startFirstRun}
-                      onChange={(e) => setStartFirstRun(e.target.checked)}
-                    />
-                  }
-                  label="Erste Indizierung sofort nach dem Anlegen starten"
-                />
-                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
-                  {startFirstRun
-                    ? 'Der erste Lauf ist ein Vollabgleich über alle Geltungsbereiche; sein Stand bleibt auf der Detailseite sichtbar.'
-                    : 'Ohne Sofortstart beginnt die Indizierung erst über „Jetzt indizieren“ auf der Detailseite oder über den Zeitplan.'}
+                {/* No immediate first run for S3 until the full sync of #1378 exists - the
+                    registered executor would only end the run as FAILED. */}
+                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 2 }}>
+                  Die Indizierung beginnt über „Jetzt indizieren“ auf der Detailseite oder über den
+                  Zeitplan.
                 </Typography>
               </Box>
             )}

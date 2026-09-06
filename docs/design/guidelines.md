@@ -385,6 +385,8 @@ UI-Sprache ist Deutsch, Anrede „Sie", `aria-label` deutsch. Verbindliche Begri
 | **Wissensbibliothek**     | benannter Wissensbestand; kurz „Bibliothek", im Fließtext auch „Bestand"                     |
 | **Datenquellen**          | die einem Space zugeordneten Bibliotheken                                                    |
 | **Herkunft**              | woher eine Bibliothek ihre Dokumente bezieht (Upload, Dateisystem, Webverzeichnis, RSS-Feed, Confluence, S3-Objektspeicher) |
+| **Geltungsbereich**       | ein Bucket mit optionalem Präfix, aus dem eine S3-Bibliothek liest; eine Bibliothek hat einen bis fünfzig, die sich nicht überschneiden |
+| **Endpoint**              | die Adresse eines S3-Objektspeichers (`https://host[:port]`, ohne Pfad) |
 | **Verteilungsstufe**      | privat · geteilt · organisationsweit                                                         |
 | **Rolle**                 | Leser · Bearbeiter · Verwalter · Eigentümer                                                  |
 | **Fundstellen**           | Belegblock unter einer Antwort                                                               |

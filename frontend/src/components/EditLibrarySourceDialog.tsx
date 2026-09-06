@@ -105,7 +105,6 @@ export default function EditLibrarySourceDialog({
       library.sourceProxy,
       library.sourceInsecureSsl,
       library.s3Settings,
-      Boolean(library.sourceCredentialsSet),
     ),
   )
   const [error, setError] = useState<string | null>(null)
@@ -149,7 +148,9 @@ export default function EditLibrarySourceDialog({
       sourceUrl,
       confluence,
       s3,
-      s3CredentialsStored: credentialsStored,
+      // the stored key survives only on the same origin (KnowledgeLibraryService, #516/#542)
+      s3CredentialsStored:
+        credentialsStored && sameLibrarySourceOrigin(library.sourceUrl, s3.sourceUrl),
     })
     if (validationError) {
       setError(validationError)
@@ -192,7 +193,9 @@ export default function EditLibrarySourceDialog({
       sourceUrl,
       confluence,
       s3,
-      s3CredentialsStored: credentialsStored,
+      // the stored key survives only on the same origin (KnowledgeLibraryService, #516/#542)
+      s3CredentialsStored:
+        credentialsStored && sameLibrarySourceOrigin(library.sourceUrl, s3.sourceUrl),
     })
     if (validationError) {
       setError(validationError)

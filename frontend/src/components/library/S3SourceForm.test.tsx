@@ -101,16 +101,40 @@ describe('S3SourceForm (#1377, ADR-0027)', () => {
     expect(screen.getByText(/keine Ereignisbenachrichtigungen/)).toBeInTheDocument()
   })
 
-  it('adds and removes scopes with a labelled control and never below one row', async () => {
+  it('adds and removes scopes with a labelled control, never below one row, and keeps the focus', async () => {
     const user = userEvent.setup()
     renderWithProviders(<Harness />)
 
     expect(screen.getByRole('button', { name: 'Bereich 1 entfernen' })).toBeDisabled()
+    // the test needs a scope before it can run at all
+    expect(screen.getByRole('button', { name: 'Verbindung testen' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Bereich' }))
     expect(screen.getByLabelText('Bucket 2')).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('2 von höchstens 50 Bereichen.')
+    await user.click(screen.getByRole('button', { name: 'Bereich' }))
+    await user.click(screen.getByRole('button', { name: 'Bereich 3 entfernen' }))
+    expect(screen.getByRole('button', { name: 'Bereich 2 entfernen' })).toHaveFocus()
     await user.click(screen.getByRole('button', { name: 'Bereich 2 entfernen' }))
     expect(screen.queryByLabelText('Bucket 2')).not.toBeInTheDocument()
+    // the previous row's button is disabled as the only one left - the focus goes to "Bereich"
+    expect(screen.getByRole('button', { name: 'Bereich' })).toHaveFocus()
+    // a prefix problem is reported at the prefix field, a bucket problem at the bucket field
+    await user.type(screen.getByLabelText('Bucket 1'), 'Gross')
+    expect(screen.getByLabelText('Bucket 1')).toHaveAccessibleDescription(/Bucket-Name „Gross“/)
+  })
+
+  it('does not drop a bucket listing in flight when a scope row is edited meanwhile', async () => {
+    const user = userEvent.setup()
+    let resolveListing: (value: S3BucketListResponse) => void = () => {}
+    mockListS3Buckets.mockImplementationOnce(
+      () => new Promise<S3BucketListResponse>((resolve) => (resolveListing = resolve)),
+    )
+    renderWithProviders(<Harness initial={keyed} />)
+
+    await user.click(screen.getByRole('button', { name: 'Buckets laden' }))
+    await user.type(screen.getByLabelText(/^Präfix 1/), 'x')
+    resolveListing({ listingPermitted: true, buckets: ['protokolle'], message: null })
+    expect(await screen.findByText(/1 Bucket geladen/)).toBeInTheDocument()
   })
 
   it('loads the buckets and falls back to manual entry without an error state when not permitted', async () => {
@@ -180,7 +204,6 @@ describe('S3SourceForm (#1377, ADR-0027)', () => {
         },
       ],
     })
-    const seen: S3SourceValues[] = []
     renderWithProviders(
       <Harness
         initial={{
@@ -190,7 +213,6 @@ describe('S3SourceForm (#1377, ADR-0027)', () => {
             { bucket: 'archiv', prefix: '' },
           ],
         }}
-        onValues={(values) => seen.push(values)}
       />,
     )
 
@@ -220,14 +242,12 @@ describe('S3SourceForm (#1377, ADR-0027)', () => {
     )
     expect(checks).toHaveTextContent('✗ archiv: darf nicht gelesen werden (s3:GetObject fehlt).')
     expect(screen.getByText('Bereich „archiv“: s3:GetObject fehlt')).toBeInTheDocument()
-    expect(seen.at(-1)?.credentialsVerified).toBe(true)
 
     // editing the key withdraws the result
     await user.type(screen.getByLabelText('Access Key'), 'X')
     await waitFor(() =>
       expect(screen.queryByTestId('test-s3-scope-checks')).not.toBeInTheDocument(),
     )
-    expect(seen.at(-1)?.credentialsVerified).toBe(false)
   })
 
   it('is fully operable by keyboard in reading order (docs/design/accessibility.md §3.2)', async () => {
@@ -280,7 +300,7 @@ describe('S3SourceForm (#1377, ADR-0027)', () => {
         libraryId="lib-s3"
         credentialsStored
         originalSourceUrl="https://minio.intern.example:9000"
-        initial={{ ...keyed, accessKey: '', secretKey: '', credentialsVerified: true }}
+        initial={{ ...keyed, accessKey: '', secretKey: '' }}
       />,
     )
 

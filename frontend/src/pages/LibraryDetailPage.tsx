@@ -824,8 +824,7 @@ export default function LibraryDetailPage() {
                 Diese Bibliothek spiegelt Geltungsbereiche eines S3-Objektspeichers. Alles, was
                 daraus indiziert wurde, ist für alle Leseberechtigten dieser Bibliothek sichtbar —
                 unabhängig davon, wer es im Objektspeicher lesen dürfte. Was der hinterlegte
-                Schlüssel nicht lesen darf, nimmt OPAA nicht auf; wo ein Bereich nicht gelistet
-                werden kann, weist das Laufprotokoll das aus.
+                Schlüssel nicht lesen darf, nimmt OPAA nicht auf.
               </Typography>
             </Stack>
           </Box>

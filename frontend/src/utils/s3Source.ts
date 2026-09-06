@@ -27,8 +27,6 @@ export interface S3SourceValues {
   accessKey: string
   secretKey: string
   sessionToken: string
-  /** True once the store accepted the key (or, in edit mode, while the stored one stands). */
-  credentialsVerified: boolean
   scopes: S3ScopeInput[]
   includePatterns: string
   excludePatterns: string
@@ -36,10 +34,18 @@ export interface S3SourceValues {
 
 /** Mirrors S3Scope.MAX_PER_LIBRARY - the backend rejects a larger selection with 400. */
 export const MAX_S3_SCOPES = 50
-/** Mirrors S3SourceSettings.MAX_PATTERNS / MAX_PATTERN_LENGTH. */
-export const MAX_S3_PATTERNS = 50
-export const MAX_S3_PATTERN_LENGTH = 255
+/** Mirrors S3SourceSettings.MAX_PATTERNS / MAX_PATTERN_LENGTH / MAX_REGION_LENGTH. */
+const MAX_S3_PATTERNS = 50
+const MAX_S3_PATTERN_LENGTH = 255
+const MAX_S3_REGION_LENGTH = 64
+/** Mirrors S3ScopeRef.prefix maxLength - on the normalised form, so the trailing slash counts. */
 const MAX_S3_PREFIX_LENGTH = 1023
+/** Mirrors sourceCredentials maxLength of every request that carries the joined key. */
+export const MAX_S3_CREDENTIALS_LENGTH = 500
+/** Field bounds whose sum (plus two separators) stays within MAX_S3_CREDENTIALS_LENGTH. */
+export const MAX_S3_ACCESS_KEY_LENGTH = 128
+export const MAX_S3_SECRET_KEY_LENGTH = 128
+export const MAX_S3_SESSION_TOKEN_LENGTH = 242
 
 export const S3_PROVIDER_LABELS: Record<S3Provider, string> = {
   AWS: 'AWS S3',
@@ -80,7 +86,6 @@ export const EMPTY_S3_VALUES: S3SourceValues = {
   accessKey: '',
   secretKey: '',
   sessionToken: '',
-  credentialsVerified: false,
   scopes: [{ bucket: '', prefix: '' }],
   includePatterns: '',
   excludePatterns: '',
@@ -207,7 +212,6 @@ export function s3ValuesFromSettings(
   sourceProxy: string | null | undefined,
   sourceInsecureSsl: boolean | null | undefined,
   settings: S3Settings | null | undefined,
-  credentialsStored: boolean,
 ): S3SourceValues {
   const url = sourceUrl ?? ''
   const host = hostnameOf(url)
@@ -226,7 +230,6 @@ export function s3ValuesFromSettings(
     pathStyle: settings?.pathStyle ?? true,
     sourceProxy: sourceProxy ?? '',
     sourceInsecureSsl: Boolean(sourceInsecureSsl),
-    credentialsVerified: credentialsStored,
     scopes:
       settings?.scopes && settings.scopes.length > 0
         ? settings.scopes.map((scope) => ({ bucket: scope.bucket, prefix: scope.prefix ?? '' }))
@@ -243,9 +246,14 @@ export function validateS3Scope(scope: S3ScopeInput): string | null {
   if (!isValidS3BucketName(bucket)) {
     return `Der Bucket-Name „${bucket}“ ist ungültig: 3 bis 63 Zeichen, nur Kleinbuchstaben, Ziffern, Punkte und Bindestriche, beginnend und endend mit Buchstabe oder Ziffer, keine IP-Adresse.`
   }
-  const prefix = normalizeS3Prefix(scope.prefix)
-  if (prefix.length > MAX_S3_PREFIX_LENGTH + 1) {
-    return `Das Präfix darf höchstens ${MAX_S3_PREFIX_LENGTH} Zeichen lang sein.`
+  return validateS3Prefix(scope.prefix)
+}
+
+/** The German message for a prefix, or null when it can be a key prefix. */
+export function validateS3Prefix(raw: string): string | null {
+  const prefix = normalizeS3Prefix(raw)
+  if (prefix.length > MAX_S3_PREFIX_LENGTH) {
+    return `Das Präfix darf mit abschließendem Schrägstrich höchstens ${MAX_S3_PREFIX_LENGTH} Zeichen lang sein.`
   }
   // eslint-disable-next-line no-control-regex
   if (/[\u0000-\u0020\u007f]/.test(prefix)) {
@@ -269,6 +277,10 @@ export function validateS3Values(
   if (!/^https?:\/\//i.test(url)) {
     return 'Endpoint des Objektspeichers muss mit http:// oder https:// beginnen'
   }
+  const region = values.region.trim()
+  if (region && !new RegExp(`^[A-Za-z0-9-]{1,${MAX_S3_REGION_LENGTH}}$`).test(region)) {
+    return `Die Region „${region}“ ist ungültig: nur Buchstaben, Ziffern und Bindestriche, höchstens ${MAX_S3_REGION_LENGTH} Zeichen`
+  }
   const accessKey = values.accessKey.trim()
   const secretKey = values.secretKey.trim()
   if (!credentialsMayBeStored || accessKey || secretKey) {
@@ -279,6 +291,9 @@ export function validateS3Values(
     }
     if (values.sessionToken.includes(':')) {
       return 'Das Session-Token darf keinen Doppelpunkt enthalten'
+    }
+    if ((s3CredentialsOf(values) ?? '').length > MAX_S3_CREDENTIALS_LENGTH) {
+      return `Access Key, Secret Key und Session-Token dürfen zusammen höchstens ${MAX_S3_CREDENTIALS_LENGTH} Zeichen lang sein`
     }
   }
   const scopes = values.scopes.filter(

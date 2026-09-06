@@ -69,28 +69,21 @@ describe('s3CredentialsOf / s3SettingsOf', () => {
   })
 
   it('reads a stored configuration back and recognises the provider from the endpoint', () => {
-    const values = s3ValuesFromSettings(
-      'https://s3.eu-central-1.amazonaws.com',
-      null,
-      false,
-      {
-        region: 'eu-central-1',
-        pathStyle: false,
-        scopes: [{ bucket: 'dokumente', prefix: '2025/' }],
-        includePatterns: ['**/*.pdf'],
-        excludePatterns: null,
-      },
-      true,
-    )
+    const values = s3ValuesFromSettings('https://s3.eu-central-1.amazonaws.com', null, false, {
+      region: 'eu-central-1',
+      pathStyle: false,
+      scopes: [{ bucket: 'dokumente', prefix: '2025/' }],
+      includePatterns: ['**/*.pdf'],
+      excludePatterns: null,
+    })
     expect(values.provider).toBe('AWS')
-    expect(values.credentialsVerified).toBe(true)
     expect(values.scopes).toEqual([{ bucket: 'dokumente', prefix: '2025/' }])
     expect(values.includePatterns).toBe('**/*.pdf')
+    expect(s3ValuesFromSettings('https://minio.intern:9000', null, null, null).provider).toBe(
+      'MINIO',
+    )
     expect(
-      s3ValuesFromSettings('https://minio.intern:9000', null, null, null, false).provider,
-    ).toBe('MINIO')
-    expect(
-      s3ValuesFromSettings('https://fsn1.your-objectstorage.com', null, null, null, false).provider,
+      s3ValuesFromSettings('https://fsn1.your-objectstorage.com', null, null, null).provider,
     ).toBe('HETZNER')
   })
 })
@@ -102,6 +95,12 @@ describe('validateS3Values (ADR-0027, Entscheidung 2)', () => {
     expect(validateS3Values({ ...complete, accessKey: '' })).toBe('Access Key ist erforderlich')
     expect(validateS3Values({ ...complete, secretKey: '' })).toBe('Secret Key ist erforderlich')
     expect(validateS3Values({ ...complete, accessKey: 'a:b' })).toMatch(/Doppelpunkt/)
+    expect(validateS3Values({ ...complete, region: 'eu central 1' })).toMatch(
+      /Region „eu central 1“ ist ungültig/,
+    )
+    expect(validateS3Values({ ...complete, sessionToken: 'x'.repeat(490) })).toMatch(
+      /zusammen höchstens 500 Zeichen/,
+    )
     expect(validateS3Values({ ...complete, scopes: [{ bucket: '', prefix: '' }] })).toMatch(
       /mindestens einen Geltungsbereich/,
     )
