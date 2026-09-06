@@ -45,6 +45,7 @@ potenziell veraltete Kopie):
 | `SpaceService.personalSpaceProvisioned` | Flag "persönlicher Space bereits angelegt" pro Nutzer (max. 50.000 Einträge) | kein TTL, nur additiv gesetzt (Flag kann nie fälschlich `true` werden, nur fälschlich fehlen) |
 | `RateLimitService.requestLog` | Zeitfenster-Anfragehistorie pro Client-IP | `expireAfterAccess`, kein aktives Invalidieren |
 | `ActiveChatModelResolver.cache` | Der eine `ChatClient` des systemweit aktiven LLM-Modells (Single-Slot, kein Map-Cache) | Ereignisgesteuert via `ActiveChatModelChangedEvent` nach Commit (`TransactionalEventListener`) |
+| `OidcProviderRegistry` (ADR-0025, #1329) | Ein `JwtDecoder` samt `AuthenticationManager` je aktiviertem Identitätsanbieter, geschlüsselt nach Issuer; dazu der Fehlzustand nicht aufbaubarer Anbieter | Ereignisgesteuert via `OidcProvidersChangedEvent` nach Commit (`TransactionalEventListener`); fehlerhafte Anbieter werden beim nächsten Token ihres Issuers nach kurzer Wartezeit erneut versucht |
 | `CaffeineChatMemoryRepository` | Chatverlauf, LRU auf 50 gleichzeitige Konversationen begrenzt | TTL nach letztem Zugriff |
 | `FullTextIndexCompleteness.complete`/`.incompleteUntil` | Ob der Volltextindex einer Bibliothek vollständig ist — rein meldend im Erklärprotokoll der Suche (#1270), nie den Suchbereich verengend | Vollständig: kein Verfall für die Prozesslaufzeit (kann nur ein Deployment mit erhöhter `content_tsv_version` ungültig machen, und das startet den Prozess neu). Unvollständig: 60 Sekunden, danach neu gezählt |
 
