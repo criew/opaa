@@ -203,7 +203,23 @@ deaktiviert, erklärt die Seite das und führt zurück zur Anmeldung. Die Abmeld
 RP-initiierter Logout beim Anbieter der aktiven Sitzung; ein Anbieter ohne
 `end_session_endpoint` endet in einer lokalen Abmeldung mit Hinweis. Antwortet das Backend auf
 ein Token mit `unknown_issuer` (Anbieter deaktiviert oder gelöscht), wird die Sitzung ohne
-Erneuerungsversuch beendet und der Grund benannt. Die Verwaltungsoberfläche (#1333) folgt.
+Erneuerungsversuch beendet und der Grund benannt.
+
+**Verwaltungsoberfläche (gebaut, #1333).** Unter Administration → Identitätsanbieter (nur
+`SYSTEM_ADMIN`) stehen die Anbieter in Anmeldereihenfolge mit Standard-Kennzeichen, Zustand
+(erreichbar, nicht erreichbar mit Grund aus der Registry, deaktiviert) und dem Hinweis, wenn ein
+Anbieter die Rollen führt. Reihenfolge per Pfeilschaltflächen, Standardanbieter wechseln,
+aktivieren/deaktivieren und löschen jeweils mit Konsequenz-Hinweis (Nutzer des Anbieters können
+sich nicht mehr anmelden, Konten bleiben); der Standardanbieter bietet weder Deaktivieren noch
+Löschen an. Der Formulardialog führt Anzeigename, Issuer-URI, Client-ID, die Backend-seitige
+JWK-Set-Adresse (als Vertrauensanker benannt) und die Claim-Zuordnung — kein Secret-Feld, die SPA
+ist Public Client. Das Setzen eines Rollen-Claims verlangt eine ausdrückliche Bestätigung; ein
+Verbindungstest prüft Discovery-Dokument und JWK-Set vor dem Speichern; Fehlermeldungen des
+Backends (etwa die verweigerte Issuer-Änderung eines Anbieters mit Konten) erscheinen im Dialog.
+Eine Anleitung nennt die aus dem eigenen Origin zusammengesetzte Weiterleitungs-URI
+`<Origin>/auth/callback` und den Origin, den CSP-Schritt (`OPAA_CSP_CONNECT_SRC_EXTRA`, Neustart
+des Frontend-Containers) und die Adress-Allowlist des Backends. Im `dev`-Modus weist die Seite
+darauf hin, dass Anbieter erst im OIDC-Modus wirken.
 
 ---
 
