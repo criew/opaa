@@ -2,6 +2,7 @@ package io.opaa;
 
 import io.opaa.auth.AuthProperties;
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.SourceHttpProperties;
 import io.opaa.indexing.pipeline.mail.MailProperties;
 import io.opaa.indexing.pipeline.office.OdfProperties;
 import io.opaa.indexing.pipeline.tabular.TabularProperties;
@@ -25,6 +26,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableConfigurationProperties({
   IndexingProperties.class,
+  SourceHttpProperties.class,
   AuthProperties.class,
   UploadProperties.class,
   LibraryProperties.class,

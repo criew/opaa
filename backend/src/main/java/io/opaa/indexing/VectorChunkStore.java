@@ -35,18 +35,21 @@ public class VectorChunkStore {
   private final BatchingStrategy batchingStrategy;
   private final VectorStoreWriter vectorStoreWriter;
   private final FullTextChunkStore fullTextChunkStore;
+  private final EmbeddingRateEstimator embeddingRateEstimator;
 
   public VectorChunkStore(
       VectorStore vectorStore,
       EmbeddingModel embeddingModel,
       BatchingStrategy batchingStrategy,
       VectorStoreWriter vectorStoreWriter,
-      FullTextChunkStore fullTextChunkStore) {
+      FullTextChunkStore fullTextChunkStore,
+      EmbeddingRateEstimator embeddingRateEstimator) {
     this.vectorStore = vectorStore;
     this.embeddingModel = embeddingModel;
     this.batchingStrategy = batchingStrategy;
     this.vectorStoreWriter = vectorStoreWriter;
     this.fullTextChunkStore = fullTextChunkStore;
+    this.embeddingRateEstimator = embeddingRateEstimator;
   }
 
   /**
@@ -60,9 +63,26 @@ public class VectorChunkStore {
     if (chunks.isEmpty()) {
       return;
     }
-    List<float[]> embeddings =
-        embeddingModel.embed(chunks, EmbeddingOptions.builder().build(), batchingStrategy);
+    // Measured around the embedding round trip only, never the write: the Folgekosten estimate
+    // names the cost of embedding calls, and a slow disk must not make a reindex look expensive.
+    long measurementToken = embeddingRateEstimator.started();
+    long startedAt = System.nanoTime();
+    List<float[]> embeddings;
+    try {
+      embeddings =
+          embeddingModel.embed(chunks, EmbeddingOptions.builder().build(), batchingStrategy);
+    } finally {
+      embeddingRateEstimator.record(chunks.size(), System.nanoTime() - startedAt, measurementToken);
+    }
     vectorStoreWriter.writeEmbeddedChunks(chunks, embeddings);
+  }
+
+  /**
+   * The stored text of a document, its chunks in order and capped at {@code limit} characters - the
+   * model step's input for a document whose file is not being parsed anyway (the Bestandslauf).
+   */
+  public String documentText(UUID documentId, int limit) {
+    return vectorStoreWriter.documentText(documentId, limit);
   }
 
   /**

@@ -2,6 +2,7 @@ package io.opaa.query;
 
 import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.indexing.metadata.FormatFieldCondition;
 import io.opaa.indexing.metadata.LibraryFieldCondition;
 import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.ArrayList;
@@ -85,6 +86,12 @@ class MetadataFilterStage implements RetrievalStage {
       notes.add(
           RetrievalNote.METADATA_FILTER_LIBRARY_FIELD.format(
               condition.fieldKey(), condition.libraryId(), describe(condition)));
+    }
+    for (FormatFieldCondition condition : filter.formatFields()) {
+      notes.add(
+          RetrievalNote.METADATA_FILTER_FORMAT_FIELD.format(
+              condition.fieldKey(),
+              String.join(", ", condition.values().stream().sorted().toList())));
     }
     notes.add(RetrievalNote.METADATA_FILTER_SUBORDINATE.format());
     return new StageOutcome(

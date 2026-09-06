@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -28,7 +29,10 @@ import io.opaa.common.ValidationException;
 import io.opaa.indexing.AttachmentExtractor;
 import io.opaa.indexing.ChecksumService;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
+import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.EmbeddingRateEstimator;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.VectorChunkStore;
@@ -132,7 +136,8 @@ class LibraryDocumentServiceTest {
             mock(org.springframework.ai.embedding.EmbeddingModel.class),
             mock(org.springframework.ai.embedding.BatchingStrategy.class),
             mock(VectorStoreWriter.class),
-            mock(FullTextChunkStore.class));
+            mock(FullTextChunkStore.class),
+            new EmbeddingRateEstimator(4.0));
     uploadProperties = new UploadProperties(storageDir.toString(), 10L * 1024, null, 0);
     storageQuotaService = mock(LibraryStorageQuotaService.class);
     // Default: plenty of headroom, so existing tests exercising other behaviour never trip the
@@ -222,7 +227,7 @@ class LibraryDocumentServiceTest {
         folderRepository,
         folderService,
         attachmentExtractor,
-        new AttachmentProperties(0),
+        new AttachmentProperties(0, 0, 0),
         new AttachmentExtractionLimiter(limits));
   }
 
@@ -246,12 +251,15 @@ class LibraryDocumentServiceTest {
 
     // The stored file lives under the library's own subdirectory of the storage path, and async
     // processing was handed exactly that path.
-    ArgumentCaptor<Path> pathCaptor = ArgumentCaptor.forClass(Path.class);
-    verify(fileProcessingService)
-        .processUploadedFileAsync(eq(response.document().getId()), pathCaptor.capture());
-    assertThat(pathCaptor.getValue()).isNotNull();
-    assertThat(pathCaptor.getValue().startsWith(storageDir.resolve(libraryId.toString()))).isTrue();
-    assertThat(pathCaptor.getValue().getFileName().toString()).endsWith(".pdf");
+    ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
+    verify(fileProcessingService).processUploadedFileAsync(ingest.capture(), any());
+    // The row is handed over as it is: identified by its own stored path, admitted already.
+    assertThat(ingest.getValue().filePath()).isEqualTo(response.document().getFilePath());
+    assertThat(ingest.getValue().existingRow()).isTrue();
+    assertThat(ingest.getValue().sourceType()).isEqualTo(DocumentSourceType.UPLOAD);
+    Path storedFile = DocumentIngests.fileOf(ingest.getValue());
+    assertThat(storedFile.startsWith(storageDir.resolve(libraryId.toString()))).isTrue();
+    assertThat(storedFile.getFileName().toString()).endsWith(".pdf");
   }
 
   @Test
@@ -348,7 +356,9 @@ class LibraryDocumentServiceTest {
         service.uploadDocument(libraryId, pdfFile("report.pdf", "%PDF content"), null, caller);
 
     assertThat(response.document().getFileName()).isEqualTo("report.pdf");
-    verify(fileProcessingService).processUploadedFileAsync(eq(response.document().getId()), any());
+    verify(fileProcessingService)
+        .processUploadedFileAsync(
+            argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())), any());
   }
 
   @Test
@@ -371,7 +381,9 @@ class LibraryDocumentServiceTest {
         service.uploadDocument(libraryId, realDocxFile("vertrag.docx"), null, caller);
 
     assertThat(response.document().getFileName()).isEqualTo("vertrag.docx");
-    verify(fileProcessingService).processUploadedFileAsync(eq(response.document().getId()), any());
+    verify(fileProcessingService)
+        .processUploadedFileAsync(
+            argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())), any());
   }
 
   private MultipartFile realDocxFile(String originalFileName) throws IOException {
@@ -428,7 +440,9 @@ class LibraryDocumentServiceTest {
     LibraryDocumentEntry response = service.uploadDocument(libraryId, markdown, null, caller);
 
     assertThat(response.document().getFileName()).isEqualTo("notes.md");
-    verify(fileProcessingService).processUploadedFileAsync(eq(response.document().getId()), any());
+    verify(fileProcessingService)
+        .processUploadedFileAsync(
+            argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())), any());
   }
 
   @Test
@@ -535,7 +549,9 @@ class LibraryDocumentServiceTest {
     assertThat(Files.exists(oldFailedFile))
         .as("The old FAILED row's own file must be cleaned up when it is replaced")
         .isFalse();
-    verify(fileProcessingService).processUploadedFileAsync(eq(response.document().getId()), any());
+    verify(fileProcessingService)
+        .processUploadedFileAsync(
+            argThat(ingest -> response.document().getFilePath().equals(ingest.filePath())), any());
   }
 
   @Test
@@ -618,10 +634,9 @@ class LibraryDocumentServiceTest {
             caller);
 
     assertThat(response.document().getFileName()).isEqualTo("evil.pdf");
-    ArgumentCaptor<Path> pathCaptor = ArgumentCaptor.forClass(Path.class);
-    verify(fileProcessingService)
-        .processUploadedFileAsync(eq(response.document().getId()), pathCaptor.capture());
-    Path storedPath = pathCaptor.getValue().toAbsolutePath().normalize();
+    ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
+    verify(fileProcessingService).processUploadedFileAsync(ingest.capture(), any());
+    Path storedPath = DocumentIngests.fileOf(ingest.getValue()).toAbsolutePath().normalize();
     Path libraryDir = storageDir.resolve(libraryId.toString()).toAbsolutePath().normalize();
     assertThat(storedPath.startsWith(libraryDir))
         .as("Stored file must stay inside the library's own storage directory")
@@ -1417,7 +1432,7 @@ class LibraryDocumentServiceTest {
             folderRepository,
             folderService,
             attachmentExtractor,
-            new AttachmentProperties(0),
+            new AttachmentProperties(0, 0, 0),
             new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)));
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
         .thenReturn(AssetRole.VIEWER);

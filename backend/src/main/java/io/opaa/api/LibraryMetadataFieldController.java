@@ -1,17 +1,22 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.CoreContextPrefixRequest;
+import io.opaa.api.dto.CoreContextPrefixResponse;
 import io.opaa.api.dto.CreateLibraryMetadataFieldRequest;
 import io.opaa.api.dto.LibraryMetadataFieldResponse;
 import io.opaa.api.dto.LibraryMetadataFieldValueLabelRequest;
 import io.opaa.api.dto.LibraryMetadataFieldValueRequest;
 import io.opaa.api.dto.LibraryMetadataFieldsResponse;
+import io.opaa.api.dto.MetadataChangeImpactResponse;
 import io.opaa.api.dto.MetadataFieldUsageResponse;
 import io.opaa.api.dto.RemapLibraryMetadataFieldValueRequest;
 import io.opaa.api.dto.RemapLibraryMetadataFieldValueResponse;
 import io.opaa.api.dto.UpdateLibraryMetadataFieldRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ValidationException;
 import io.opaa.indexing.metadata.LibraryMetadataFieldService;
+import io.opaa.indexing.metadata.MetadataChangeKind;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -24,6 +29,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -46,7 +52,45 @@ public class LibraryMetadataFieldController {
   @GetMapping
   public LibraryMetadataFieldsResponse listLibraryMetadataFields(
       @PathVariable UUID libraryId, @Caller CurrentUser caller) {
-    return LibraryMetadataFieldResponseMapper.toResponse(fieldService.fieldsOf(libraryId, caller));
+    return LibraryMetadataFieldResponseMapper.toResponse(
+        fieldService.overviewOf(libraryId, caller));
+  }
+
+  /**
+   * The Folgekosten of a planned schema change, asked before it is saved (#1072). A literal path
+   * segment beside {@code /{fieldKey}} - no field key can look like it, its pattern forbids the
+   * hyphen.
+   */
+  @GetMapping("/change-impact")
+  public MetadataChangeImpactResponse getMetadataChangeImpact(
+      @PathVariable UUID libraryId,
+      @RequestParam String fieldKey,
+      @RequestParam String change,
+      @RequestParam(required = false) String valueCode,
+      @Caller CurrentUser caller) {
+    MetadataChangeKind kind =
+        MetadataChangeKind.fromName(change)
+            .orElseThrow(() -> new ValidationException("Unbekannte Änderungsart: " + change));
+    if (kind == MetadataChangeKind.VALUE_REMOVED && valueCode != null) {
+      return LibraryMetadataFieldResponseMapper.toImpactResponse(
+          fieldService.valueChangeImpact(libraryId, fieldKey, valueCode, caller));
+    }
+    return LibraryMetadataFieldResponseMapper.toImpactResponse(
+        fieldService.changeImpact(libraryId, fieldKey, kind, caller));
+  }
+
+  /** Switches the Kontextpräfix-Wirkstelle of the two switchable core fields (#1072). */
+  @PutMapping("/core-context-prefix")
+  public CoreContextPrefixResponse updateCoreContextPrefix(
+      @PathVariable UUID libraryId,
+      @Valid @RequestBody CoreContextPrefixRequest request,
+      @Caller CurrentUser caller) {
+    return LibraryMetadataFieldResponseMapper.toCoreContextPrefixResponse(
+        fieldService.updateCoreContextPrefix(
+            libraryId,
+            Boolean.TRUE.equals(request.getDocumentType()),
+            Boolean.TRUE.equals(request.getDocumentDate()),
+            caller));
   }
 
   @PostMapping

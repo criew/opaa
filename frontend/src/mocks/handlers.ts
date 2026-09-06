@@ -3,6 +3,11 @@ import { assetRoleLabel } from '../utils/labels'
 
 /** Per-library countdown of the mock metadata backfill; see the handler below. */
 const mockMetadataBackfillRemaining = new Map<string, number>()
+const mockContextPrefixRerunRemaining = new Map<string, number>()
+const mockCoreContextPrefix: Record<
+  string,
+  { title: boolean; documentType: boolean; documentDate: boolean }
+> = {}
 import {
   mockHealthResponse,
   mockIndexingIdle,
@@ -457,6 +462,30 @@ function getRunningStatus(step: number): IndexingStatusResponse {
  * settings section writes it and the value-mapping dialog reads it back.
  */
 const mockLibraryMetadataFields: Record<string, LibraryMetadataFieldResponse[]> = {}
+
+// the model-backed extraction switches per library, off until a PUT turns them on (#1073).
+const mockExtractionSettings: Record<
+  string,
+  { modelExtractionEnabled: boolean; keywordsEnabled: boolean }
+> = {}
+
+function extractionSettingsOf(libraryId: string) {
+  const stored = mockExtractionSettings[libraryId] ?? {
+    modelExtractionEnabled: false,
+    keywordsEnabled: false,
+  }
+  return {
+    libraryId,
+    modelExtractionEnabled: stored.modelExtractionEnabled,
+    keywordsEnabled: stored.keywordsEnabled,
+    confidenceThreshold: 0.8,
+    chatModel: {
+      baseUrl: 'https://api.openai.com/v1',
+      modelIdentifier: 'gpt-4o-mini',
+      local: false,
+    },
+  }
+}
 
 export const handlers = [
   http.get('/api/health', () => {
@@ -1148,6 +1177,25 @@ export const handlers = [
     return HttpResponse.json({
       processedDocuments: processed,
       markedForNextRun: 0,
+      skippedDocuments: 0,
+      done: processed === 0,
+    })
+  }),
+
+  // Same countdown as the backfill above, so the page's batch loop terminates in mock mode.
+  http.post('/api/v1/admin/indexing/context-prefix-rerun', async ({ request }) => {
+    const body = (await request.json()) as { libraryId?: string; batchSize?: number }
+    const library = mockSearchStatus.libraries.find((l) => l.libraryId === body.libraryId)
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const remaining =
+      mockContextPrefixRerunRemaining.get(library.libraryId) ??
+      library.contextPrefixRerun.pendingDocuments
+    const processed = Math.min(remaining, 1)
+    mockContextPrefixRerunRemaining.set(library.libraryId, remaining - processed)
+    return HttpResponse.json({
+      processedDocuments: processed,
       skippedDocuments: 0,
       done: processed === 0,
     })
@@ -1861,6 +1909,93 @@ export const handlers = [
     })
   }),
 
+  // the two model-backed extraction switches, kept in memory so the switch reflects its own PUT.
+  http.get('/api/v1/libraries/:libraryId/metadata/extraction-settings', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json(extractionSettingsOf(libraryId))
+  }),
+
+  http.put(
+    '/api/v1/libraries/:libraryId/metadata/extraction-settings',
+    async ({ params, request }) => {
+      const libraryId = String(params.libraryId)
+      if (!mockLibraryDetails[libraryId]) {
+        return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+      }
+      const body = (await request.json()) as {
+        modelExtractionEnabled: boolean
+        keywordsEnabled: boolean
+      }
+      mockExtractionSettings[libraryId] = {
+        modelExtractionEnabled: body.modelExtractionEnabled,
+        keywordsEnabled: body.keywordsEnabled,
+      }
+      return HttpResponse.json(extractionSettingsOf(libraryId))
+    },
+  ),
+
+  // the Extraktionsgüte - counted over the same mock documents the Pflege-Anker uses.
+  http.get('/api/v1/libraries/:libraryId/metadata/quality', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    if (!mockLibraryDetails[libraryId]) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const documents = mockLibraryDocuments[libraryId] ?? []
+    const totalDocuments = documents.length
+    const settings = extractionSettingsOf(libraryId)
+    return HttpResponse.json({
+      libraryId,
+      totalDocuments,
+      modelExtractionEnabled: settings.modelExtractionEnabled,
+      keywordsEnabled: settings.keywordsEnabled,
+      confidenceThreshold: settings.confidenceThreshold,
+      fields: Object.entries(CORE_METADATA_LABELS).map(([fieldKey, label]) => {
+        const values = documents.map((doc) =>
+          (mockDocumentMetadata[doc.id] ?? []).find((field) => field.fieldKey === fieldKey),
+        )
+        const countOf = (origin: string) =>
+          values.filter((value) => value?.state === 'SET' && value.origin === origin).length
+        const deterministicDocuments = countOf('DETERMINISTIC')
+        const derivedDocuments = countOf('DERIVED')
+        const manualDocuments = countOf('MANUAL')
+        const notDeterminableDocuments = values.filter(
+          (value) => value?.state === 'NOT_DETERMINABLE',
+        ).length
+        const emptyDocuments =
+          totalDocuments -
+          deterministicDocuments -
+          derivedDocuments -
+          manualDocuments -
+          notDeterminableDocuments
+        return {
+          fieldKey,
+          label,
+          totalDocuments,
+          deterministicDocuments,
+          derivedDocuments,
+          manualDocuments,
+          notDeterminableDocuments,
+          emptyDocuments,
+          derivedShare: totalDocuments === 0 ? 0 : derivedDocuments / totalDocuments,
+          emptyShare: totalDocuments === 0 ? 0 : emptyDocuments / totalDocuments,
+        }
+      }),
+      modelExtraction: {
+        calls: 12,
+        acceptedValues: 8,
+        rejectedBelowThreshold: 2,
+        rejectedOutsideVocabulary: 1,
+        failures: 1,
+        rejectedPoolFull: 0,
+        keywordsAssigned: 20,
+        lastCallAt: '2026-09-01T06:05:00Z',
+      },
+    })
+  }),
+
   // the library's own metadata fields. Kept in memory so the settings section, the
   // Abbildungsdialog and the filter popover all read the same schema in dev mode.
   http.get('/api/v1/libraries/:libraryId/metadata-fields', ({ params }) => {
@@ -1868,8 +2003,56 @@ export const handlers = [
     if (!mockLibraryDetails[libraryId]) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
     }
-    return HttpResponse.json({ items: mockLibraryMetadataFields[libraryId] ?? [] })
+    return HttpResponse.json({
+      items: mockLibraryMetadataFields[libraryId] ?? [],
+      coreContextPrefix: mockCoreContextPrefix[libraryId] ?? {
+        title: true,
+        documentType: false,
+        documentDate: false,
+      },
+      documentsAwaitingContextPrefixRerun: 0,
+    })
   }),
+
+  http.get('/api/v1/libraries/:libraryId/metadata-fields/change-impact', ({ request }) => {
+    const change = new URL(request.url).searchParams.get('change')
+    if (change === 'VALUE_ADDED' || change === 'FIELD_ADDED') {
+      return HttpResponse.json({
+        affectedDocuments: 0,
+        affectedChunks: 0,
+        embeddingCalls: 0,
+        estimatedSeconds: 0,
+        reembeddingRequired: false,
+        rateSource: 'CONFIGURED',
+      })
+    }
+    return HttpResponse.json({
+      affectedDocuments: 12,
+      affectedChunks: 4812,
+      embeddingCalls: 4812,
+      estimatedSeconds: 2400,
+      reembeddingRequired: true,
+      rateSource: 'MEASURED',
+    })
+  }),
+
+  http.put(
+    '/api/v1/libraries/:libraryId/metadata-fields/core-context-prefix',
+    async ({ params, request }) => {
+      const libraryId = String(params.libraryId)
+      if (!canManageMockLibrary(libraryId)) {
+        return HttpResponse.json({ error: 'Kein Zugriff auf diese Bibliothek' }, { status: 403 })
+      }
+      const body = (await request.json()) as { documentType?: boolean; documentDate?: boolean }
+      const next = {
+        title: true,
+        documentType: body.documentType === true,
+        documentDate: body.documentDate === true,
+      }
+      mockCoreContextPrefix[libraryId] = next
+      return HttpResponse.json(next)
+    },
+  ),
 
   http.post('/api/v1/libraries/:libraryId/metadata-fields', async ({ params, request }) => {
     const libraryId = String(params.libraryId)

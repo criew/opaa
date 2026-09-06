@@ -100,6 +100,32 @@ public class VectorStoreWriter {
   }
 
   /**
+   * The stored text of {@code documentId}, its chunks in order and capped at {@code limit}
+   * characters - what the model step reads for a document whose file is not being parsed anyway.
+   */
+  public String documentText(UUID documentId, int limit) {
+    List<String> texts =
+        jdbcTemplate.query(
+            "SELECT content FROM "
+                + schemaName
+                + "."
+                + tableName
+                + " WHERE metadata->>'"
+                + VectorChunkStore.DOCUMENT_ID_METADATA_KEY
+                + "' = ? ORDER BY (metadata->>'chunk_index')::int",
+            (rs, row) -> rs.getString("content"),
+            documentId.toString());
+    StringBuilder text = new StringBuilder();
+    for (String chunk : texts) {
+      if (text.length() >= limit) {
+        break;
+      }
+      text.append(chunk == null ? "" : chunk).append('\n');
+    }
+    return text.length() <= limit ? text.toString() : text.substring(0, limit);
+  }
+
+  /**
    * Rewrites document-level keys on every chunk of {@code documentId} in place (ADR-0024): removes
    * every key in {@code keysToClear} first, then merges {@code values}. Touches neither content nor
    * embedding nor {@code chunk_full_text}, which is what lets a metadata correction skip

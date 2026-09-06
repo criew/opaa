@@ -1,0 +1,101 @@
+databaseChangeLog:
+  - changeSet:
+      id: 028-model-metadata-extraction
+      author: opaa
+      comment: >-
+        #1073 (docs/features/metadata-schema.md, Teil II (c) and "Die modellgestützte Extraktion im
+        Betrieb"): step 2 of the extraction order - the model-backed extraction and the freie
+        Schlagworte - as two switches per library, both off by default, plus the bookkeeping the
+        specification demands for them. One changeset, because the four pieces are one capability:
+        a switch without a Zählwerk gives no feedback about its cost but the model provider's
+        invoice, and keywords without their own table would have to live in
+        document_metadata_values, where every row is a typisiertes Feld a filter may name - exactly
+        what a Schlagwort must never become. documents.model_extraction_version and
+        documents.keyword_extraction_version are the drain markers of the Bestandslauf, one per
+        capability: NULL means that step never ran for this document, so switching one of them on
+        hands the whole Altbestand to the next Bestandslauf call once - and only that one, so a
+        library that ran with keywords alone still reaches its Altbestand when the model-backed
+        value extraction follows later. A document whose call yielded nothing is not asked (and
+        paid for) a second time. metadata_model_extraction_stats holds one counting row per library;
+        metadata_model_rejections keeps the discarded values with their confidence, capped per
+        library by the application, because the distribution of what the threshold rejects is the
+        only way to calibrate it on a real bestand (ADR-0012).
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries
+                  ADD COLUMN model_extraction_enabled boolean NOT NULL DEFAULT false,
+                  ADD COLUMN keywords_enabled boolean NOT NULL DEFAULT false;
+
+              ALTER TABLE public.documents
+                  ADD COLUMN model_extraction_version integer,
+                  ADD COLUMN keyword_extraction_version integer;
+
+              CREATE TABLE public.document_keywords (
+                  id uuid NOT NULL,
+                  document_id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  keyword character varying(40) NOT NULL,
+                  model_id character varying(255),
+                  extraction_version integer,
+                  created_at timestamp with time zone NOT NULL DEFAULT now(),
+                  CONSTRAINT document_keywords_pkey PRIMARY KEY (id),
+                  CONSTRAINT uq_document_keywords_document_keyword UNIQUE (document_id, keyword),
+                  CONSTRAINT fk_document_keywords_document FOREIGN KEY (document_id)
+                      REFERENCES public.documents(id) ON DELETE CASCADE,
+                  CONSTRAINT fk_document_keywords_library FOREIGN KEY (library_id)
+                      REFERENCES public.knowledge_libraries(id) ON DELETE CASCADE
+              );
+
+              CREATE INDEX idx_document_keywords_document
+                  ON public.document_keywords (document_id);
+
+              CREATE TABLE public.metadata_model_extraction_stats (
+                  library_id uuid NOT NULL,
+                  calls bigint NOT NULL DEFAULT 0,
+                  accepted_values bigint NOT NULL DEFAULT 0,
+                  rejected_below_threshold bigint NOT NULL DEFAULT 0,
+                  rejected_outside_vocabulary bigint NOT NULL DEFAULT 0,
+                  failures bigint NOT NULL DEFAULT 0,
+                  rejected_pool_full bigint NOT NULL DEFAULT 0,
+                  keywords_assigned bigint NOT NULL DEFAULT 0,
+                  last_call_at timestamp with time zone,
+                  CONSTRAINT metadata_model_extraction_stats_pkey PRIMARY KEY (library_id),
+                  CONSTRAINT fk_metadata_model_extraction_stats_library FOREIGN KEY (library_id)
+                      REFERENCES public.knowledge_libraries(id) ON DELETE CASCADE
+              );
+
+              CREATE TABLE public.metadata_model_rejections (
+                  id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  document_id uuid,
+                  field_key character varying(100) NOT NULL,
+                  proposed_value character varying(200),
+                  confidence double precision,
+                  reason character varying(30) NOT NULL,
+                  created_at timestamp with time zone NOT NULL DEFAULT now(),
+                  CONSTRAINT metadata_model_rejections_pkey PRIMARY KEY (id),
+                  CONSTRAINT fk_metadata_model_rejections_library FOREIGN KEY (library_id)
+                      REFERENCES public.knowledge_libraries(id) ON DELETE CASCADE,
+                  CONSTRAINT fk_metadata_model_rejections_document FOREIGN KEY (document_id)
+                      REFERENCES public.documents(id) ON DELETE SET NULL,
+                  CONSTRAINT chk_metadata_model_rejections_reason
+                      CHECK ((reason IN ('BELOW_THRESHOLD', 'OUTSIDE_VOCABULARY')))
+              );
+
+              CREATE INDEX idx_metadata_model_rejections_library_created
+                  ON public.metadata_model_rejections (library_id, created_at DESC);
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TABLE IF EXISTS public.metadata_model_rejections;
+              DROP TABLE IF EXISTS public.metadata_model_extraction_stats;
+              DROP TABLE IF EXISTS public.document_keywords;
+              ALTER TABLE public.documents
+                  DROP COLUMN IF EXISTS keyword_extraction_version,
+                  DROP COLUMN IF EXISTS model_extraction_version;
+              ALTER TABLE public.knowledge_libraries
+                  DROP COLUMN IF EXISTS keywords_enabled,
+                  DROP COLUMN IF EXISTS model_extraction_enabled;

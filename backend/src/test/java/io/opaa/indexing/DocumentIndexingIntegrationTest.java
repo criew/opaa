@@ -559,8 +559,8 @@ class DocumentIndexingIntegrationTest {
     var completedJob = indexingJobRepository.findById(job.getId()).orElseThrow();
     assertThat(completedJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
     // The mail file is the one processed entry of this run - the attachment is not a discrete
-    // processed/skipped/failed unit of its own (IndexingRunProgress#recordDocumentIndexed, see its
-    // own Javadoc), only a second indexed document.
+    // processed/skipped/failed unit of its own (IndexingRunProgress#recordAttachment, see its own
+    // Javadoc), only a second indexed document.
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(1);
     assertThat(completedJob.getDocumentsFailed()).isZero();
     assertThat(completedJob.getDocumentsSkipped()).isZero();

@@ -85,7 +85,6 @@ public class PipelineReindexService {
             + ChunkPipelineMetadata.PIPELINE_VERSION_METADATA_KEY
             + "')::int, ?) AS pipeline_version, "
             + "       d.file_name AS file_name, "
-            + "       d.source_type AS source_type, "
             + "       v.metadata->>'"
             + ChunkPipelineMetadata.ROUTING_EXTENSION_METADATA_KEY
             + "' AS routing_extension, "
@@ -105,7 +104,7 @@ public class PipelineReindexService {
             + "LEFT JOIN chunk_full_text f ON f.chunk_id = v.id AND f.content_tsv_version = ? "
             + "WHERE v.metadata->>'library_id' IS NOT NULL "
             + "  AND v.metadata->>'organization_id' = ? "
-            + "GROUP BY 1, 2, 3, 4, 5, 6";
+            + "GROUP BY 1, 2, 3, 4, 5";
 
     Map<UUID, long[]> byLibrary = new HashMap<>();
     jdbcTemplate.query(
@@ -115,29 +114,26 @@ public class PipelineReindexService {
           String pipelineId = rs.getString("pipeline_id");
           int version = rs.getInt("pipeline_version");
           String fileName = rs.getString("file_name");
-          String sourceType = rs.getString("source_type");
           String routingExtension = rs.getString("routing_extension");
           long count = rs.getLong("chunk_count");
           long tsvStale = rs.getLong("tsv_stale_count");
           long[] counters = byLibrary.computeIfAbsent(libraryId, key -> new long[3]);
           counters[0] += count;
-          boolean isRss = DocumentSourceType.RSS_FEED.name().equals(sourceType);
           if (routingExtension != null) {
             // Exact via pipelineIdForRoutingExtension: stale in both directions - out of the
             // fallback, out of another specialized pipeline, or out of a pipeline_id this
             // deployment does not register at all - since resolving the target needs only the
-            // stored routing key. Never for an RSS entry (ADR-0017, decision 2).
+            // stored routing key.
             String targetPipelineId =
                 pipelineRegistry.pipelineIdForRoutingExtension(routingExtension);
-            if (!isRss && !pipelineId.equals(targetPipelineId)) {
+            if (!pipelineId.equals(targetPipelineId)) {
               counters[2] += count;
               return;
             }
             Short currentVersion = currentVersions.get(pipelineId);
             if (currentVersion == null) {
-              // Routing-current but a pipeline_id this deployment does not register - only
-              // reachable for an RSS entry. Counted in the total only, so it is visible without
-              // being promised.
+              // Routing-current but a pipeline_id this deployment does not register. Counted in
+              // the total only, so it is visible without being promised.
               return;
             }
             if (version >= currentVersion) {
@@ -158,8 +154,7 @@ public class PipelineReindexService {
             return;
           }
           boolean routingStale =
-              !isRss
-                  && pipelineId.equals(pipelineRegistry.fallbackPipeline().id())
+              pipelineId.equals(pipelineRegistry.fallbackPipeline().id())
                   && fileName != null
                   && !pipelineId.equals(currentPipelineIdForFileName(fileName));
           if (!routingStale && version >= currentVersion) {
@@ -247,12 +242,7 @@ public class PipelineReindexService {
       // Re-runs the current pipeline over an attachment re-extracted from its root ancestor, so a
       // raised sub-pipeline version (e.g. PDF) reaches an attachment inside a Mail without waiting
       // for the Mail file itself to change.
-      advanced =
-          sourceAccess.withReextractedAttachment(
-              document,
-              file ->
-                  fileProcessingService.reindexStoredDocument(
-                      document.getId(), file, attachmentAccessFor(document)));
+      advanced = sourceAccess.withReextractedAttachment(document, file -> reindex(document, file));
     } else {
       Path localFile = sourceAccess.localSourceFile(document);
       if (localFile == null) {
@@ -262,9 +252,7 @@ public class PipelineReindexService {
             documentId);
         return Advance.SKIPPED;
       }
-      advanced =
-          fileProcessingService.reindexStoredDocument(
-              documentId, localFile, attachmentAccessFor(document));
+      advanced = reindex(document, localFile);
     }
     if (!advanced) {
       return Advance.SKIPPED;
@@ -299,19 +287,49 @@ public class PipelineReindexService {
   }
 
   /**
-   * The {@link AttachmentAccess} a re-index hands to {@code
-   * FileProcessingService#reindexStoredDocument} so attachments a re-run pipeline discovers reach
-   * the generalized attachment path - FILESYSTEM and UPLOAD, the two source types whose files this
-   * machine can re-read. There is no job here, so events are only logged and no progress counted.
+   * Re-runs the current pipeline over {@code document}'s file {@code file} and replaces its chunks
+   * under the same row id, so citations survive. A document that cannot be re-chunked keeps its
+   * chunks and its {@code INDEXED} row (ingestion-pipelines.md, "Übergabepunkt") - that is {@link
+   * DocumentIngest.Builder#reindex}'s contract, and a failure is reported as "not re-indexed".
+   *
+   * @return whether the document was actually re-indexed
    */
-  private AttachmentAccess attachmentAccessFor(Document document) {
-    if ((document.getSourceType() != DocumentSourceType.FILESYSTEM
-            && document.getSourceType() != DocumentSourceType.UPLOAD)
-        || document.getLibraryId() == null) {
-      return null;
-    }
-    KnowledgeLibrary library = libraryRepository.findById(document.getLibraryId()).orElse(null);
+  private boolean reindex(Document document, Path file) {
+    KnowledgeLibrary library =
+        document.getLibraryId() == null
+            ? null
+            : libraryRepository.findById(document.getLibraryId()).orElse(null);
     if (library == null) {
+      log.warn(
+          "Skipping document {} in the pipeline re-index: its library is gone", document.getId());
+      return false;
+    }
+    try {
+      return fileProcessingService.ingest(
+              DocumentIngest.builder(library)
+                  .file(file)
+                  .filePath(document.getFilePath())
+                  .fileName(document.getFileName())
+                  .sourceType(document.getSourceType())
+                  .changeMarker(document.getLastModifiedRemote())
+                  .reindex()
+                  .build(),
+              attachmentAccessFor(document, library))
+          == FileProcessingResult.PROCESSED;
+    } catch (Exception e) {
+      log.error("Failed to re-index document {}", document.getFileName(), e);
+      return false;
+    }
+  }
+
+  /**
+   * The {@link AttachmentAccess} a re-index hands to {@link FileProcessingService#ingest} so
+   * attachments a re-run pipeline discovers reach the generalized attachment path - FILESYSTEM and
+   * UPLOAD, the two source types whose files this machine can re-read. There is no job here, so
+   * events are only logged and no progress counted.
+   */
+  private static AttachmentAccess attachmentAccessFor(Document document, KnowledgeLibrary library) {
+    if (StoredDocumentSourceAccess.isRemote(document)) {
       return null;
     }
     return new StandaloneAttachmentAccess(library, "Pipeline re-index");
@@ -343,6 +361,17 @@ public class PipelineReindexService {
     return pipelineIds.contains(fallbackId);
   }
 
+  /**
+   * The SQL literal list of every {@link DocumentSourceType} whose file this machine can re-read -
+   * derived from the enum, so a new source type is never missed here.
+   */
+  static String localSourceTypeSqlList() {
+    return java.util.Arrays.stream(DocumentSourceType.values())
+        .filter(type -> !type.isRemote())
+        .map(type -> "'" + type.name() + "'")
+        .collect(Collectors.joining(", "));
+  }
+
   private List<UUID> selectStaleDocuments(
       UUID organizationId, String pipelineId, int belowVersion, int batchSize, int offset) {
     MisroutedPredicate misrouted = misroutedPredicateFor(pipelineId);
@@ -372,11 +401,9 @@ public class PipelineReindexService {
             // The routing gap: a document whose routing key or, absent that, its file name names
             // pipelineId as claiming it today, but whose chunks still carry a different
             // pipeline_id - stale regardless of the stored pipeline's own version, since no request
-            // naming that stored pipeline would select it. Excludes RSS_FEED, whose body always
-            // goes to the fallback pipeline regardless of its name (ADR-0017, decision 2).
-            + "       OR ("
+            // naming that stored pipeline would select it.
+            + "       OR "
             + misrouted.sql()
-            + "            AND COALESCE(d.source_type, '') <> 'RSS_FEED')"
             // The lexical-index gap: a chunk without a chunk_full_text row at the current
             // FullTextChunkStore#CURRENT_TSV_VERSION is invisible to lexical search, and this
             // re-index is the only thing that repairs it. Deliberately independent of pipelineId
@@ -391,7 +418,9 @@ public class PipelineReindexService {
             // run can do; keeping it selected would make every further batch report the same
             // document as newly marked and never drain.
             + "  AND (d.id IS NULL "
-            + "       OR d.source_type IN ('FILESYSTEM', 'UPLOAD') "
+            + "       OR d.source_type IN ("
+            + localSourceTypeSqlList()
+            + ") "
             + "       OR d.checksum IS NOT NULL) "
             // Stable order so the offset below actually scans past the documents this call already
             // found unadvanceable, instead of reshuffling them back into view.

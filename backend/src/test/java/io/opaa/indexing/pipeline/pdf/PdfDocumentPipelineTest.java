@@ -5,13 +5,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
+import io.opaa.indexing.pipeline.DocumentPipelineRunner;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Set;
+import java.util.TimeZone;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -219,7 +223,8 @@ class PdfDocumentPipelineTest {
     Files.writeString(file, "das ist kein pdf");
 
     DocumentPipelineResult result =
-        pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.pdf", ".pdf"));
+        DocumentPipelineRunner.run(
+            pipeline, DocumentPipelineSource.ofFile(file, "kaputt.pdf", ".pdf"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
@@ -233,6 +238,49 @@ class PdfDocumentPipelineTest {
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
     assertThat(result.chunks()).isEmpty();
+  }
+
+  /**
+   * ADR-0024: the Info dictionary, the first top-level outline entry and the head area's first line
+   * reach the extractor without the chunk stream - {@code readProperties} extracts the first page
+   * alone and must still agree with what {@code run} attaches.
+   */
+  @Test
+  void readsInfoDictionaryOutlineAndTitleLineWithoutChunking() throws IOException {
+    Path file = tempDir.resolve("satzung-eigenschaften.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page1 = addPage(doc, "Satzung der Stadt Musterstadt");
+      addPage(doc, "Fuer Personalausweise werden 37,00 EUR erhoben.");
+      PDDocumentOutline outline = new PDDocumentOutline();
+      doc.getDocumentCatalog().setDocumentOutline(outline);
+      outline.addLast(outlineItem("§ 1 Geltungsbereich", page1));
+      doc.getDocumentInformation().setTitle("Gebuehrensatzung");
+      Calendar created = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+      created.set(2026, Calendar.MARCH, 12, 9, 15, 0);
+      doc.getDocumentInformation().setCreationDate(created);
+      doc.save(file.toFile());
+    }
+    DocumentPipelineSource source =
+        DocumentPipelineSource.ofFile(file, "satzung-eigenschaften.pdf", ".pdf");
+
+    var properties = pipeline.readProperties(source);
+
+    assertThat(properties.title()).isEqualTo("Gebuehrensatzung");
+    assertThat(properties.createdAt()).isEqualTo(LocalDate.of(2026, 3, 12));
+    assertThat(properties.firstHeading()).isEqualTo("§ 1 Geltungsbereich");
+    assertThat(properties.titleLine()).isEqualTo("Satzung der Stadt Musterstadt");
+    assertThat(pipeline.run(source).properties()).isEqualTo(properties);
+  }
+
+  @Test
+  void aFileThatIsNotAValidPdfHasNoProperties() throws IOException {
+    Path file = tempDir.resolve("kaputt-eigenschaften.pdf");
+    Files.writeString(file, "das ist kein pdf");
+
+    assertThat(
+            pipeline.readProperties(
+                DocumentPipelineSource.ofFile(file, "kaputt-eigenschaften.pdf", ".pdf")))
+        .isEqualTo(io.opaa.indexing.pipeline.DocumentProperties.EMPTY);
   }
 
   private static PDPage addPage(PDDocument doc, String text) throws IOException {

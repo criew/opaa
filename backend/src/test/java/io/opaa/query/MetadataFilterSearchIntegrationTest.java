@@ -7,12 +7,14 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.LibraryMetadataFieldType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.MetadataFilterMatch;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.ChatSource;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -22,6 +24,10 @@ import io.opaa.indexing.metadata.DocumentMetadataCorrectionService;
 import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
+import io.opaa.indexing.metadata.FormatFieldCondition;
+import io.opaa.indexing.metadata.LibraryFieldCondition;
+import io.opaa.indexing.metadata.LibraryMetadataFieldInput;
+import io.opaa.indexing.metadata.LibraryMetadataFieldService;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataValueInput;
 import io.opaa.library.AssetGrant;
@@ -84,6 +90,7 @@ class MetadataFilterSearchIntegrationTest {
   @Autowired private FileProcessingService fileProcessingService;
   @Autowired private DocumentMetadataService documentMetadataService;
   @Autowired private DocumentMetadataCorrectionService correctionService;
+  @Autowired private LibraryMetadataFieldService fieldService;
   @Autowired private DocumentTypeVocabularyRepository vocabularyRepository;
   @Autowired private DocumentRepository documentRepository;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
@@ -256,6 +263,77 @@ class MetadataFilterSearchIntegrationTest {
   }
 
   /**
+   * The same ceiling for the two condition forms whose first operand looks as if it opened the set
+   * up again: a library condition starts with {@code fremde Bibliothek OR …} and a format condition
+   * carries no library guard at all. Each condition here names the forbidden library and exactly
+   * the value its document carries - the strongest case for the bracketing - and still no chunk of
+   * that library reaches either path.
+   */
+  @Test
+  void neitherALibraryNorAFormatFieldFilterReachesIntoAForbiddenLibrary() throws IOException {
+    Document readable = indexed(library, "2024-03-12_Vermerk_Nutzung.pdf");
+    Document forbidden = indexed(forbiddenLibrary, "2024-03-12_Protokoll_Nutzung.pdf");
+    indexedMail(forbiddenLibrary, "fremd.eml", "max@stadt.de");
+    UUID forbiddenId = forbiddenLibrary.getId();
+    createLibraryField(forbiddenLibrary, "fassung", LibraryMetadataFieldType.SELECT, null);
+    createLibraryField(forbiddenLibrary, "stand", LibraryMetadataFieldType.DATE, null);
+    createLibraryField(
+        forbiddenLibrary, "aktenzeichen", LibraryMetadataFieldType.PATTERN, "^RF-[A-Z]+-[0-9]+$");
+    setValue(forbidden, "lib:fassung", MetadataValueInput.text("A"));
+    setValue(
+        forbidden,
+        "lib:stand",
+        MetadataValueInput.date(LocalDate.of(2026, 3, 1), DatePrecision.DAY));
+    setValue(forbidden, "lib:aktenzeichen", MetadataValueInput.text("RF-KFZ-001"));
+
+    for (MetadataFilter filter :
+        List.of(
+            MetadataFilter.NONE.withLibraryFields(
+                List.of(LibraryFieldCondition.ofCodes(forbiddenId, "fassung", List.of("A")))),
+            MetadataFilter.NONE.withLibraryFields(
+                List.of(
+                    LibraryFieldCondition.ofDateWindow(
+                        forbiddenId,
+                        "stand",
+                        LocalDate.of(2026, 1, 1),
+                        LocalDate.of(2026, 12, 31)))),
+            MetadataFilter.NONE.withLibraryFields(
+                List.of(LibraryFieldCondition.ofValue(forbiddenId, "aktenzeichen", "RF-KFZ-001"))),
+            MetadataFilter.NONE.withFormatFields(
+                List.of(FormatFieldCondition.parse("mail_sender", List.of("max@stadt.de")))))) {
+      RetrievalPipelineResult result = run(filter, Set.of(library.getId()));
+      for (RetrievalStageName path :
+          List.of(RetrievalStageName.VECTOR_SEARCH, RetrievalStageName.FULL_TEXT_SEARCH)) {
+        assertThat(documentKeys(result, path))
+            .as("filter %s, path %s", filter, path)
+            .containsExactly(readable.getId().toString());
+      }
+    }
+  }
+
+  private void createLibraryField(
+      KnowledgeLibrary target, String key, LibraryMetadataFieldType type, String valuePattern) {
+    fieldService.createField(
+        target.getId(),
+        new LibraryMetadataFieldInput(
+            key,
+            key,
+            type,
+            valuePattern,
+            true,
+            false,
+            null,
+            type == LibraryMetadataFieldType.SELECT
+                ? List.of(new LibraryMetadataFieldInput.LibraryFieldValueInput("A", "Wert A"))
+                : List.of()),
+        owner);
+  }
+
+  private void setValue(Document document, String fieldKey, MetadataValueInput input) {
+    correctionService.setValue(document.getLibraryId(), document.getId(), fieldKey, input, owner);
+  }
+
+  /**
    * The permission filter must stay the outer operand of the whole metadata condition, not of its
    * first OR-branch only: a date window is an OR over the three precisions plus the Leerwert
    * branch, and an unbracketed AND would bind the permission filter to the DAY branch alone -
@@ -376,6 +454,37 @@ class MetadataFilterSearchIntegrationTest {
         .containsExactlyInAnyOrder(foreign, selected);
   }
 
+  /**
+   * #1242: the Absender of a mail is a filterable format field, and both paths carry the identical
+   * condition inside their query - a mail of another sender is out, a document that is no mail at
+   * all has no value and stays in (Leerwert-Regel).
+   */
+  @Test
+  void bothPathsApplyTheSameFormatFieldConditionAndKeepDocumentsWithoutASender()
+      throws IOException {
+    Document fromMueller = indexedMail(library, "anfrage.eml", "Max Mueller <max@stadt.de>");
+    Document fromSchmidt = indexedMail(library, "hinweis.eml", "schmidt@kreis.de");
+    Document noMail = indexed(library, "2024-03-12_Vermerk_Nutzung.pdf");
+    indexedMail(forbiddenLibrary, "fremd.eml", "max@stadt.de");
+
+    MetadataFilter filter =
+        MetadataFilter.NONE.withFormatFields(
+            List.of(FormatFieldCondition.parse("mail_sender", List.of("max@stadt.de"))));
+    RetrievalPipelineResult result = run(filter, Set.of(library.getId()));
+
+    Set<String> expected = Set.of(fromMueller.getId().toString(), noMail.getId().toString());
+    assertThat(documentKeys(result, RetrievalStageName.VECTOR_SEARCH)).isEqualTo(expected);
+    assertThat(documentKeys(result, RetrievalStageName.FULL_TEXT_SEARCH)).isEqualTo(expected);
+    assertThat(documentKeys(result, RetrievalStageName.VECTOR_SEARCH))
+        .doesNotContain(fromSchmidt.getId().toString());
+    assertThat(stage(result, RetrievalStageName.METADATA_FILTER).notes())
+        .contains("metadata filter: format field mail_sender in [max@stadt.de]");
+    // The PDF is kept by the Leerwert rule but is not "ohne Angabe": the sender was never a
+    // question its format could answer (#1242). Only a mail without a sender would be.
+    assertThat(stage(result, RetrievalStageName.VECTOR_SEARCH).notes())
+        .contains(RetrievalNote.METADATA_FILTER_NO_VALUE_CANDIDATES.format(0, 2));
+  }
+
   private RetrievalPipelineResult run(MetadataFilter filter, Set<UUID> scope) {
     return retrievalPipeline.run(
         new RetrievalContext(
@@ -465,11 +574,31 @@ class MetadataFilterSearchIntegrationTest {
   private Document indexed(KnowledgeLibrary target, String fileName) throws IOException {
     Path file = Path.of(target.getSourcePath()).resolve(fileName);
     writePdf(file);
-    assertThat(fileProcessingService.processFile(file, target))
+    assertThat(fileProcessingService.ingest(DocumentIngest.localFile(target, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
     return documentRepository.findAll().stream()
         .filter(document -> fileName.equals(document.getFileName()))
         .filter(document -> target.getId().equals(document.getLibraryId()))
+        .findFirst()
+        .orElseThrow();
+  }
+
+  /** An indexed mail of {@code sender}, whose body carries the query term of every run here. */
+  private Document indexedMail(KnowledgeLibrary target, String fileName, String sender)
+      throws IOException {
+    Path file =
+        classTempDir.resolve(target == library ? "readable" : "forbidden").resolve(fileName);
+    Files.writeString(
+        file,
+        "From: "
+            + sender
+            + "\nTo: poststelle@stadt.de\nSubject: Nutzung der IT\n"
+            + "Date: Thu, 12 Mar 2026 09:15:00 +0100\n"
+            + "Content-Type: text/plain; charset=UTF-8\n\n"
+            + "Diese Unterlage regelt die Nutzung der IT.\n");
+    fileProcessingService.ingest(DocumentIngest.localFile(target, file).build(), null);
+    return documentRepository.findAll().stream()
+        .filter(document -> fileName.equals(document.getFileName()))
         .findFirst()
         .orElseThrow();
   }

@@ -3,7 +3,6 @@ package io.opaa.indexing.source.rss;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -19,6 +18,8 @@ import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
+import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.FileProcessingResult;
@@ -28,34 +29,60 @@ import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.StaleDocumentCleanupService;
+import io.opaa.indexing.pipeline.DocumentPipelineResult;
+import io.opaa.indexing.pipeline.DocumentPipelineSource;
+import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.attachment.AttachmentProfile;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
+import io.opaa.sourceaccess.RateLimitPolicy;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 /**
  * Exercises {@link RssFeedIndexingExecutor} against a local {@code
  * com.sun.net.httpserver.HttpServer} stub - never a real address, per the issue's acceptance
  * criteria. {@link FileProcessingService} is mocked here: this class's own job is the
- * feed/detail-page fetch, the change checks and the main-text extraction, all of which are
- * independent of how the shared processing chain later stores the result (that chain has its own
- * tests on {@code FileProcessingServiceTest}).
+ * feed/detail-page fetch, the change checks and the reduction to the main content's HTML, all of
+ * which are independent of how the shared processing chain later stores the result (that chain has
+ * its own tests on {@code FileProcessingServiceTest}).
  */
 class RssFeedIndexingExecutorTest {
+
+  /** The handed-over HTML carries {@code content} and none of the {@code boilerplate} texts. */
+  private static Predicate<String> only(String content, String... boilerplate) {
+    return html -> {
+      if (!html.contains(content)) {
+        return false;
+      }
+      for (String text : boilerplate) {
+        if (html.contains(text)) {
+          return false;
+        }
+      }
+      return true;
+    };
+  }
 
   private HttpServer server;
   private String baseUrl;
@@ -111,13 +138,24 @@ class RssFeedIndexingExecutorTest {
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
     storageQuotaService = mock(LibraryStorageQuotaService.class);
 
-    executor =
-        newExecutor(
-            new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, "OPAA-Indexer/test", null, null, 0, 0));
+    executor = newExecutor(new IndexingProperties.Rss(200, 10_000, 10_000, 0, null, null, 0, 0));
+  }
+
+  /** Every wait the shared rate-limit handling asked for, in order - never slept for real. */
+  private final List<Duration> sleeps = new ArrayList<>();
+
+  /** The shared request policy under test: a test user agent, two retries, no real sleeping. */
+  private SourceRequestPolicy requestPolicy() {
+    return new SourceRequestPolicy(
+        "OPAA-Indexer/test", RateLimitPolicy.of(2, Duration.ofSeconds(1)), sleeps::add);
   }
 
   private RssFeedIndexingExecutor newExecutor(IndexingProperties.Rss rss) {
+    return newExecutor(rss, requestPolicy());
+  }
+
+  private RssFeedIndexingExecutor newExecutor(
+      IndexingProperties.Rss rss, SourceRequestPolicy requestPolicy) {
     IndexingProperties properties = new IndexingProperties(0, 0, 0, null, rss, null, null, 0);
     // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest,
     // RssFeedIndexingExecutorTargetValidationTest) - disabled here since every stub server this
@@ -127,22 +165,26 @@ class RssFeedIndexingExecutorTest {
     return new RssFeedIndexingExecutor(
         new RssFeedParser(),
         fileProcessingService,
-        indexingJobService,
         documentRepository,
         feedStateRepository,
         new io.opaa.indexing.source.attachment.AttachmentIndexer(
-            new BoundedDownloader(targetAddressValidator),
+            new BoundedDownloader(targetAddressValidator, requestPolicy),
             fileProcessingService,
             storageQuotaService,
-            new io.opaa.indexing.source.attachment.AttachmentProperties(5)),
+            new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0)),
         properties,
-        indexingRunEventRepository,
         targetAddressValidator,
-        storageQuotaService);
+        requestPolicy,
+        new IndexingRunTemplate(
+            indexingJobService,
+            indexingRunEventRepository,
+            mock(StaleDocumentCleanupService.class),
+            documentRepository,
+            storageQuotaService));
   }
 
   @AfterEach
-  void tearDown() {
+  void tearDown() throws Exception {
     server.stop(0);
   }
 
@@ -201,7 +243,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void positiveRun_processesEachEntryAndStripsBoilerplateFromMainText() {
+  void positiveRun_processesEachEntryAndStripsBoilerplateFromMainText() throws Exception {
     String detailHtml =
         "<html><body>"
             + "<nav>Navigation</nav><header>Kopf</header>"
@@ -212,31 +254,140 @@ class RssFeedIndexingExecutorTest {
         "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
     serve("/a.html", 200, "text/html", detailHtml);
     serve("/b.html", 200, "text/html", detailHtml);
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(fileProcessingService, timeout(2000))
-        .processRssEntry(
-            eq("Der eigentliche Artikeltext."),
-            anyString(),
-            eq(baseUrl + "/a.html"),
-            any(),
-            eq(library));
+        .ingest(
+            DocumentIngests.that()
+                .text()
+                .textMatching(only("Der eigentliche Artikeltext.", "Navigation", "Kopf", "Fuss"))
+                .via(HtmlDocumentPipeline.ID)
+                .at(baseUrl + "/a.html")
+                .in(library)
+                .match(),
+            any());
     verify(fileProcessingService, timeout(2000))
-        .processRssEntry(
-            eq("Der eigentliche Artikeltext."),
-            anyString(),
-            eq(baseUrl + "/b.html"),
-            any(),
-            eq(library));
+        .ingest(
+            DocumentIngests.that()
+                .text()
+                .textMatching(only("Der eigentliche Artikeltext.", "Navigation", "Kopf", "Fuss"))
+                .via(HtmlDocumentPipeline.ID)
+                .at(baseUrl + "/b.html")
+                .in(library)
+                .match(),
+            any());
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(2), eq(0), eq(0), eq(2));
   }
 
   @Test
-  void constructorNeverAcceptsAStaleDocumentCleanupService() {
+  void aDetailPageIsHandedOverAsHtmlThatTheHtmlPipelineCutsIntoSections() throws Exception {
+    // The entry names the HTML pipeline and hands it the main content as HTML, so a press release
+    // with sub-headings ends up in heading sections - the same cut a .html file gets - rather
+    // than in token windows; the page chrome outside <main> never reaches the pipeline.
+    String detailHtml =
+        """
+        <html><head><title>Stadt</title></head><body>
+          <nav><a href="/">Startseite</a></nav>
+          <main>
+            <h1>Rat beschliesst Hundesteuersatzung</h1>
+            <p>Der Rat hat die neue Satzung beschlossen.</p>
+            <h2>Hintergrund</h2>
+            <p>Die alte Satzung stammt aus dem Jahr 2010.</p>
+          </main>
+          <footer><p>Impressum</p></footer>
+        </body></html>
+        """;
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/rat.html"));
+    serve("/rat.html", 200, "text/html", detailHtml);
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
+    verify(fileProcessingService).ingest(ingest.capture(), any());
+    assertThat(ingest.getValue().pipelineId()).isEqualTo(HtmlDocumentPipeline.ID);
+    assertThat(ingest.getValue().title()).isEqualTo("Titel");
+    String handedOver = DocumentIngests.textOf(ingest.getValue());
+    assertThat(handedOver).doesNotContain("Startseite").doesNotContain("Impressum");
+
+    DocumentPipelineResult cut =
+        new HtmlDocumentPipeline()
+            .run(DocumentPipelineSource.ofExtractedText(handedOver, ingest.getValue().fileName()));
+    assertThat(cut.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(cut.chunks())
+        .extracting(chunk -> chunk.getText())
+        .containsExactly(
+            "Rat beschliesst Hundesteuersatzung\n\nDer Rat hat die neue Satzung beschlossen.",
+            "Rat beschliesst Hundesteuersatzung › Hintergrund\n\nDie alte Satzung stammt aus dem"
+                + " Jahr 2010.");
+  }
+
+  @Test
+  void aConfiguredContentSelectorKeepsHeaderAndTextNextToATeaserThroughThePipeline()
+      throws Exception {
+    // With main-content-selector "#content" the connector's reduction is the only root selection;
+    // the pipeline must not run the default one again (no <main> match -> body fallback, which
+    // would strip the inner header and, via the <article> match, drop the text next to it).
+    executor =
+        newExecutor(new IndexingProperties.Rss(200, 10_000, 10_000, 0, "#content", null, 0, 0));
+    String detailHtml =
+        """
+        <html><body>
+          <nav><a href="/">Startseite</a></nav>
+          <main><p>Nicht der konfigurierte Bereich</p></main>
+          <div id="content">
+            <header><h1>Meldungen der Woche</h1></header>
+            <p>Text neben dem Teaser.</p>
+            <article><p>Teaser der Meldung.</p></article>
+          </div>
+        </body></html>
+        """;
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/woche.html"));
+    serve("/woche.html", 200, "text/html", detailHtml);
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
+    verify(fileProcessingService).ingest(ingest.capture(), any());
+    DocumentPipelineResult cut =
+        new HtmlDocumentPipeline()
+            .run(
+                DocumentPipelineSource.ofExtractedText(
+                    DocumentIngests.textOf(ingest.getValue()), ingest.getValue().fileName()));
+    assertThat(cut.chunks()).hasSize(1);
+    assertThat(cut.chunks().getFirst().getText())
+        .isEqualTo("Meldungen der Woche\n\nText neben dem Teaser.\n\nTeaser der Meldung.")
+        .doesNotContain("Startseite")
+        .doesNotContain("Nicht der konfigurierte Bereich");
+  }
+
+  @Test
+  void aDetailPageWhoseContentIsOnlyNonBreakingSpaceIsSkippedAsHavingNoContent() throws Exception {
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/leer.html"));
+    serve("/leer.html", 200, "text/html", "<html><body><main><p>&nbsp;</p></main></body></html>");
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
+    verify(fileProcessingService, never()).ingest(any(), any());
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.UNSUPPORTED_FORMAT
+                        && "Kein Inhalt extrahierbar".equals(event.getMessage())));
+  }
+
+  @Test
+  void constructorNeverAcceptsAStaleDocumentCleanupService() throws Exception {
     // RSS deliberately never cleans up by absence (ADR-0017, decision 5) - a
     // constructor parameter for StaleDocumentCleanupService here would already be a structural
     // regression before any test exercises behavior, so this guards the constructor's own shape
@@ -249,7 +400,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void anEntryScrolledOutOfTheFeedWindowIsNeverDeleted() {
+  void anEntryScrolledOutOfTheFeedWindowIsNeverDeleted() throws Exception {
     // unlike AsyncIndexingExecutor/UrlIndexingExecutor, RSS never deletes by absence
     // (ADR-0017, decision 5) - an entry missing from this run's own feed fetch only means it fell
     // out of the feed's window, not that its source vanished. The feed shrinks from two entries to
@@ -260,8 +411,7 @@ class RssFeedIndexingExecutorTest {
         "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
     serve("/a.html", 200, "text/html", detailHtml);
     serve("/b.html", 200, "text/html", detailHtml);
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
     execute(baseUrl + "/feed.xml");
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(2), eq(0), eq(0), eq(2));
@@ -277,7 +427,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void boilerplateIsStrippedEvenWithoutAMainElement_fallsBackToBody() {
+  void boilerplateIsStrippedEvenWithoutAMainElement_fallsBackToBody() throws Exception {
     // without a <main>/<article>, the selector matches nothing and the
     // executor falls back to <body> - this is the only case that actually exercises the
     // nav/header/footer .remove() call, since a matched <main> would exclude siblings anyway.
@@ -289,38 +439,49 @@ class RssFeedIndexingExecutorTest {
             + "</body></html>";
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serve("/a.html", 200, "text/html", detailHtml);
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(fileProcessingService, timeout(2000))
-        .processRssEntry(
-            eq("Eigentlicher Inhalt"), anyString(), eq(baseUrl + "/a.html"), any(), eq(library));
+        .ingest(
+            DocumentIngests.that()
+                .text()
+                .textMatching(only("Eigentlicher Inhalt", "Navigation", "Kopf", "Fuss"))
+                .via(HtmlDocumentPipeline.ID)
+                .at(baseUrl + "/a.html")
+                .in(library)
+                .match(),
+            any());
   }
 
   @Test
-  void detailPageCharsetFromContentTypeIsHonouredInsteadOfHardcodedUtf8() {
+  void detailPageCharsetFromContentTypeIsHonouredInsteadOfHardcodedUtf8() throws Exception {
     // an ISO-8859-1 page hardcoded as UTF-8 turns "Behörde für
     // Straßenbau" into U+FFFD replacement characters, silently, while still ending up INDEXED.
     String html = "<html><body><main>Behörde für Straßenbau</main></body></html>";
     byte[] isoBytes = html.getBytes(StandardCharsets.ISO_8859_1);
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serveBytes("/a.html", 200, "text/html; charset=ISO-8859-1", isoBytes);
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(fileProcessingService, timeout(2000))
-        .processRssEntry(
-            eq("Behörde für Straßenbau"), anyString(), eq(baseUrl + "/a.html"), any(), eq(library));
+        .ingest(
+            DocumentIngests.that()
+                .text()
+                .textContaining("Behörde für Straßenbau")
+                .at(baseUrl + "/a.html")
+                .in(library)
+                .match(),
+            any());
   }
 
   @Test
-  void detailPageWithNonHtmlContentTypeIsSkippedAndTheRunContinues() {
+  void detailPageWithNonHtmlContentTypeIsSkippedAndTheRunContinues() throws Exception {
     // a <link> pointing straight at a PDF must never be pushed through
     // Jsoup and indexed as garbled binary text.
     serve(
@@ -330,19 +491,18 @@ class RssFeedIndexingExecutorTest {
         feedXml(baseUrl + "/doc.pdf", baseUrl + "/ok.html"));
     serve("/doc.pdf", 200, "application/pdf", "%PDF-1.4 not real content");
     serve("/ok.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
     verify(fileProcessingService, never())
-        .processRssEntry(anyString(), any(), eq(baseUrl + "/doc.pdf"), any(), any());
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/doc.pdf").match(), any());
   }
 
   @Test
-  void feedNotModified_endsRunWithoutFetchingAnyDetailPage() {
+  void feedNotModified_endsRunWithoutFetchingAnyDetailPage() throws Exception {
     server.createContext(
         "/feed.xml",
         exchange -> {
@@ -362,12 +522,11 @@ class RssFeedIndexingExecutorTest {
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(0), eq(0));
     assertThat(detailPageHits.get()).isZero();
-    verify(fileProcessingService, never())
-        .processRssEntry(anyString(), any(), anyString(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyText(), any());
   }
 
   @Test
-  void conditionalGetHeadersAreSentWhenFeedStateExists() {
+  void conditionalGetHeadersAreSentWhenFeedStateExists() throws Exception {
     // the previous 304 test never actually exercised sending
     // If-None-Match/If-Modified-Since, because the repository stub returned empty.
     RssFeedState state =
@@ -394,7 +553,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void aStateSavedForAnotherLibraryIsNeverSentAsConditionalHeadersForThisOne() {
+  void aStateSavedForAnotherLibraryIsNeverSentAsConditionalHeadersForThisOne() throws Exception {
     // The actual regression guard for the read path this
     // issue fixed - RssFeedState is now looked up by (libraryId, feedUrl), not feedUrl alone.
     // feedStateRepository is a plain mock here, so stubbing findByLibraryIdAndFeedUrl for a
@@ -431,8 +590,7 @@ class RssFeedIndexingExecutorTest {
           exchange.close();
         });
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
@@ -441,11 +599,12 @@ class RssFeedIndexingExecutorTest {
     assertThat(ifNoneMatch.get()).isNull();
     assertThat(ifModifiedSince.get()).isNull();
     verify(fileProcessingService)
-        .processRssEntry(anyString(), anyString(), eq(baseUrl + "/a.html"), any(), eq(library));
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/a.html").in(library).match(), any());
   }
 
   @Test
-  void unchangedEntryWithAttachmentsAlreadyIndexedSkipsTheDetailPageFetchEntirely() {
+  void unchangedEntryWithAttachmentsAlreadyIndexedSkipsTheDetailPageFetchEntirely()
+      throws Exception {
     // the cheap path only stays cheap once attachments already exist for
     // this entry in this run's own library - existsBySourceEntryUrlAndLibraryId(true) is exactly
     // that case.
@@ -484,7 +643,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -506,36 +665,25 @@ class RssFeedIndexingExecutorTest {
     when(documentRepository.existsBySourceEntryUrlAndLibraryId(
             baseUrl + "/a.html", library.getId()))
         .thenReturn(false);
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            any(),
-            anyString(),
-            any(),
-            any()))
+    when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(fileProcessingService, timeout(2000))
-        .processUrlFile(
-            any(),
-            eq("anlage.pdf"),
-            eq(baseUrl + "/downloads/anlage.pdf"),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.RSS_FEED),
-            eq(baseUrl + "/a.html"),
-            any(),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .named("anlage.pdf")
+                .at(baseUrl + "/downloads/anlage.pdf")
+                .in(library)
+                .from(DocumentSourceType.RSS_FEED)
+                .foundOn(baseUrl + "/a.html")
+                .match(),
             any());
     // The entry's own main text was never reprocessed - only its attachment was backfilled.
     verify(fileProcessingService, never())
-        .processRssEntry(anyString(), any(), eq(baseUrl + "/a.html"), any(), any());
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/a.html").match(), any());
     // the backfilled attachment still adds to documentsIndexedTotal even though the entry
     // itself counts as skipped (unchanged), not processed.
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(1));
@@ -552,7 +700,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -577,51 +725,40 @@ class RssFeedIndexingExecutorTest {
     when(documentRepository.existsBySourceEntryUrlAndLibraryId(
             eq(baseUrl + "/a.html"), argThat(id -> !id.equals(library.getId()))))
         .thenReturn(true);
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            any(),
-            anyString(),
-            any(),
-            any()))
+    when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(fileProcessingService, timeout(2000))
-        .processUrlFile(
-            any(),
-            eq("anlage.pdf"),
-            eq(baseUrl + "/downloads/anlage.pdf"),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.RSS_FEED),
-            eq(baseUrl + "/a.html"),
-            any(),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .named("anlage.pdf")
+                .at(baseUrl + "/downloads/anlage.pdf")
+                .in(library)
+                .from(DocumentSourceType.RSS_FEED)
+                .foundOn(baseUrl + "/a.html")
+                .match(),
             any());
   }
 
   @Test
-  void anEntryAlreadyIndexedIntoAnotherLibraryDoesNotSuppressProcessingForThisLibrary() {
+  void anEntryAlreadyIndexedIntoAnotherLibraryDoesNotSuppressProcessingForThisLibrary()
+      throws Exception {
     // isUnchanged's lookup is scoped to the run's own target
     // library (findByLibraryIdAndFilePath) - an entry another library already indexed under the
     // same URL is simply never found here, so its unchanged pubDate there cannot suppress
     // processing here.
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(fileProcessingService, timeout(2000))
-        .processRssEntry(anyString(), anyString(), eq(baseUrl + "/a.html"), any(), eq(library));
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/a.html").in(library).match(), any());
     // Twice, not once: isUnchanged's own change-detection lookup, plus the post-processing
     // lookup that resolves the entry's own row as parentDocumentId for its attachments.
     verify(documentRepository, timeout(2000).times(2))
@@ -629,7 +766,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void aRejectedDetailPageIsSkippedAndTheRunContinues() {
+  void aRejectedDetailPageIsSkippedAndTheRunContinues() throws Exception {
     serve(
         "/feed.xml",
         200,
@@ -637,8 +774,7 @@ class RssFeedIndexingExecutorTest {
         feedXml(baseUrl + "/missing.html", baseUrl + "/ok.html"));
     serve("/missing.html", 404, "text/html", "not found");
     serve("/ok.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
@@ -647,7 +783,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void aRejectedByRemote403DetailPageIsSkippedAndTheRunContinues() {
+  void aRejectedByRemote403DetailPageIsSkippedAndTheRunContinues() throws Exception {
     serve(
         "/feed.xml",
         200,
@@ -655,8 +791,7 @@ class RssFeedIndexingExecutorTest {
         feedXml(baseUrl + "/forbidden.html", baseUrl + "/ok.html"));
     serve("/forbidden.html", 403, "text/html", "denied");
     serve("/ok.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
@@ -679,14 +814,13 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void anEntryOverTheLibraryStorageQuotaIsSkippedAndRecordedAsARejectedEvent() {
+  void anEntryOverTheLibraryStorageQuotaIsSkippedAndRecordedAsARejectedEvent() throws Exception {
     // the connector run protocol must show why a document stopped being added, not
     // just count it as skipped - QUOTA_EXCEEDED becomes its own REJECTED event with the exact
     // wording LibraryStorageQuotaService produces.
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/over-quota.html"));
     serve("/over-quota.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
     when(storageQuotaService.quotaExceededMessage(library.getId()))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
@@ -721,8 +855,7 @@ class RssFeedIndexingExecutorTest {
             + baseUrl
             + "/anhang.pdf\">Anhang</a></main></body>"
             + "</html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.NO_EXTRACTABLE_TEXT);
 
     execute(baseUrl + "/feed.xml");
@@ -735,13 +868,11 @@ class RssFeedIndexingExecutorTest {
                     event.getCategory() == IndexingEventCategory.REJECTED
                         && (baseUrl + "/leer.html").equals(event.getReference())
                         && DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE.equals(event.getMessage())));
-    verify(fileProcessingService, never())
-        .processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyFile(), any());
   }
 
   @Test
-  void aFailedEventWriteNeverPreventsTheRunFromCompleting() {
+  void aFailedEventWriteNeverPreventsTheRunFromCompleting() throws Exception {
     // A DB hiccup while writing the protocol must never leave the
     // job stuck RUNNING - uk_indexing_jobs_library_running (migration 028) would then permanently
     // block every future run of this library. IndexingRunEventRecorder must swallow this itself.
@@ -756,18 +887,17 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void fileSchemeLinkIsSkippedWithoutBeingFetched() {
+  void fileSchemeLinkIsSkippedWithoutBeingFetched() throws Exception {
     serve("/feed.xml", 200, "application/rss+xml", feedXml("file:///etc/passwd"));
 
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
-    verify(fileProcessingService, never())
-        .processRssEntry(anyString(), any(), anyString(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyText(), any());
   }
 
   @Test
-  void anEntryWithASyntacticallyInvalidLinkIsSkippedAndTheRunContinues() {
+  void anEntryWithASyntacticallyInvalidLinkIsSkippedAndTheRunContinues() throws Exception {
     // isHttpOrHttps only checks the scheme prefix - an http(s)-prefixed link with an
     // embedded space is still syntactically invalid and makes URI.create(entryUrl), called deep
     // inside fetchDetailPage, throw IllegalArgumentException. Before this fix, that exception was
@@ -781,8 +911,7 @@ class RssFeedIndexingExecutorTest {
         "application/rss+xml",
         feedXml(baseUrl + "/a b.html", baseUrl + "/ok.html"));
     serve("/ok.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
@@ -792,7 +921,7 @@ class RssFeedIndexingExecutorTest {
     // document indexed in total.
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
     verify(fileProcessingService, timeout(2000))
-        .processRssEntry(anyString(), anyString(), eq(baseUrl + "/ok.html"), any(), eq(library));
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/ok.html").in(library).match(), any());
     verify(indexingRunEventRepository, timeout(2000))
         .save(
             argThat(
@@ -802,7 +931,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void anEntryLinkWithAHostUriCannotParseIsSkippedAndTheRunContinues() {
+  void anEntryLinkWithAHostUriCannotParseIsSkippedAndTheRunContinues() throws Exception {
     // URI.create itself accepts a link whose host it cannot parse
     // (e.g. one containing an underscore) without throwing at all - isValidUri's original
     // URI.create(url) call therefore let this link straight through, both isHttpOrHttps and
@@ -816,15 +945,14 @@ class RssFeedIndexingExecutorTest {
         "application/rss+xml",
         feedXml("http://ex_ample.invalid/a.html", baseUrl + "/ok.html"));
     serve("/ok.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
     verify(fileProcessingService, timeout(2000))
-        .processRssEntry(anyString(), anyString(), eq(baseUrl + "/ok.html"), any(), eq(library));
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/ok.html").in(library).match(), any());
     verify(indexingRunEventRepository, timeout(2000))
         .save(
             argThat(
@@ -834,7 +962,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void aDetailPageRedirectToAnUnresolvableLocationIsSkippedAndTheRunContinues() {
+  void aDetailPageRedirectToAnUnresolvableLocationIsSkippedAndTheRunContinues() throws Exception {
     // A redirect hop's own Location header is server-controlled input
     // no pre-validation of entryUrl can cover - sendDetailPageRequest's
     // currentUri.resolve(location) can itself throw IllegalArgumentException for a Location value
@@ -854,15 +982,14 @@ class RssFeedIndexingExecutorTest {
           exchange.close();
         });
     serve("/ok.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
     verify(fileProcessingService, timeout(2000))
-        .processRssEntry(anyString(), anyString(), eq(baseUrl + "/ok.html"), any(), eq(library));
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/ok.html").in(library).match(), any());
     verify(indexingRunEventRepository, timeout(2000))
         .save(
             argThat(
@@ -872,7 +999,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void aDetailPageRedirectedToAHostUriCannotParseIsRejectedAndTheRunContinues() {
+  void aDetailPageRedirectedToAHostUriCannotParseIsRejectedAndTheRunContinues() throws Exception {
     // The RSS variant of isForeignHostRedirect had no dedicated test -
     // a detail-page redirect whose target host URI cannot parse (here: an underscore) must be
     // rejected as foreign (RejectedByRemoteException -> REJECTED event, entry skipped), not crash
@@ -890,15 +1017,14 @@ class RssFeedIndexingExecutorTest {
           exchange.close();
         });
     serve("/ok.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(1), eq(1));
     verify(fileProcessingService, timeout(2000))
-        .processRssEntry(anyString(), anyString(), eq(baseUrl + "/ok.html"), any(), eq(library));
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/ok.html").in(library).match(), any());
     verify(indexingRunEventRepository, timeout(2000))
         .save(
             argThat(
@@ -914,7 +1040,8 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void aRejectedRedirectsMessageNeverCarriesTheFullTargetUrlOnlyItsSanitizedOrigin() {
+  void aRejectedRedirectsMessageNeverCarriesTheFullTargetUrlOnlyItsSanitizedOrigin()
+      throws Exception {
     // The redirect's own Location header is
     // server-controlled input that can carry a token or other sensitive query parameter - the
     // run-log message must name only the rejected target's scheme and host, never its path or
@@ -935,8 +1062,7 @@ class RssFeedIndexingExecutorTest {
           exchange.close();
         });
     serve("/ok.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
@@ -956,8 +1082,8 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void feedExceedingTheSizeLimitFailsTheJobInstead() {
-    executor = newExecutor(new IndexingProperties.Rss(200, 10, 10_000, 0, null, null, null, 0, 0));
+  void feedExceedingTheSizeLimitFailsTheJobInstead() throws Exception {
+    executor = newExecutor(new IndexingProperties.Rss(200, 10, 10_000, 0, null, null, 0, 0));
     serve(
         "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
 
@@ -967,8 +1093,8 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void detailPageExceedingTheSizeLimitIsSkippedAndTheRunContinues() {
-    executor = newExecutor(new IndexingProperties.Rss(200, 10_000, 10, 0, null, null, null, 0, 0));
+  void detailPageExceedingTheSizeLimitIsSkippedAndTheRunContinues() throws Exception {
+    executor = newExecutor(new IndexingProperties.Rss(200, 10_000, 10, 0, null, null, 0, 0));
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serve(
         "/a.html",
@@ -979,12 +1105,11 @@ class RssFeedIndexingExecutorTest {
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
-    verify(fileProcessingService, never())
-        .processRssEntry(anyString(), any(), anyString(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyText(), any());
   }
 
   @Test
-  void invalidXmlFeedFailsTheJobWithTheParsersGermanMessage() {
+  void invalidXmlFeedFailsTheJobWithTheParsersGermanMessage() throws Exception {
     serve("/feed.xml", 200, "application/rss+xml", "not xml at all &undefined;");
 
     execute(baseUrl + "/feed.xml");
@@ -994,27 +1119,25 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void entryCountBeyondTheConfiguredLimitIsTruncated() {
-    executor =
-        newExecutor(new IndexingProperties.Rss(1, 10_000, 10_000, 0, null, null, null, 0, 0));
+  void entryCountBeyondTheConfiguredLimitIsTruncated() throws Exception {
+    executor = newExecutor(new IndexingProperties.Rss(1, 10_000, 10_000, 0, null, null, 0, 0));
     serve(
         "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).setTotalDocuments(any(), eq(1));
     verify(fileProcessingService, never())
-        .processRssEntry(anyString(), any(), eq(baseUrl + "/b.html"), any(), any());
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/b.html").match(), any());
   }
 
   // --- feed-state persistence must not hide deferred entries ---
 
   @Test
-  void feedStateIsNotPersistedWhenAnEntryWasRejectedByTheRemoteEnd() {
+  void feedStateIsNotPersistedWhenAnEntryWasRejectedByTheRemoteEnd() throws Exception {
     serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/forbidden.html"), "\"etag-rejected\"");
     serve("/forbidden.html", 403, "text/html", "denied");
 
@@ -1025,14 +1148,12 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void feedStateIsNotPersistedWhenEntriesWereTruncatedByTheMaxEntriesLimit() {
-    executor =
-        newExecutor(new IndexingProperties.Rss(1, 10_000, 10_000, 0, null, null, null, 0, 0));
+  void feedStateIsNotPersistedWhenEntriesWereTruncatedByTheMaxEntriesLimit() throws Exception {
+    executor = newExecutor(new IndexingProperties.Rss(1, 10_000, 10_000, 0, null, null, 0, 0));
     serveFeedWithEtag(
         "/feed.xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"), "\"etag-truncated\"");
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
@@ -1042,11 +1163,10 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void feedStateIsPersistedWhenEveryEntrySucceeded() {
+  void feedStateIsPersistedWhenEveryEntrySucceeded() throws Exception {
     serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/a.html"), "\"etag-success\"");
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
@@ -1057,7 +1177,8 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void aTargetLibraryDeletedDuringTheRunSurfacesAsAGermanRunFailureNotARawJdbcMessage() {
+  void aTargetLibraryDeletedDuringTheRunSurfacesAsAGermanRunFailureNotARawJdbcMessage()
+      throws Exception {
     // fk_rss_feed_state_library (migration 045) turns
     // the delete-during-run race into a DataIntegrityViolationException the moment saveFeedState
     // tries to write - simulated here by making the repository throw exactly that, since actually
@@ -1065,8 +1186,7 @@ class RssFeedIndexingExecutorTest {
     // real Spring context.
     serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/a.html"), "\"etag-race\"");
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
     when(feedStateRepository.save(any()))
         .thenThrow(
@@ -1087,7 +1207,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1100,39 +1220,32 @@ class RssFeedIndexingExecutorTest {
         200,
         "application/pdf",
         "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            any(),
-            anyString(),
-            any(),
-            any()))
+    when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(fileProcessingService, timeout(2000))
-        .processUrlFile(
-            any(),
-            eq("anlage.pdf"),
-            eq(baseUrl + "/downloads/anlage.pdf"),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.RSS_FEED),
-            eq(baseUrl + "/a.html"),
-            any(),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .named("anlage.pdf")
+                .at(baseUrl + "/downloads/anlage.pdf")
+                .in(library)
+                .from(DocumentSourceType.RSS_FEED)
+                .foundOn(baseUrl + "/a.html")
+                .match(),
             any());
     // documentsIndexedTotal counts the entry's own document plus its attachment (2), while
     // documentsProcessed still counts only the one feed entry.
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(2));
+    // and the run's cost carries the attachment share, like every connector's - requests and
+    // throttles stay 0, a feed run has no meter for them
+    verify(indexingJobService)
+        .recordRunMetrics(
+            any(), eq(new io.opaa.indexing.IndexingRunCost(0, 0, 0L, 1, 0, 0, false)));
   }
 
   @Test
@@ -1145,7 +1258,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1158,35 +1271,23 @@ class RssFeedIndexingExecutorTest {
         200,
         "text/csv",
         "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            any(),
-            anyString(),
-            any(),
-            any()))
+    when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(fileProcessingService, timeout(2000))
-        .processUrlFile(
-            any(),
-            eq("bescheid.csv"),
-            eq(baseUrl + "/downloads/bescheid.csv"),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.RSS_FEED),
-            eq(baseUrl + "/a.html"),
-            any(),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .named("bescheid.csv")
+                .at(baseUrl + "/downloads/bescheid.csv")
+                .in(library)
+                .from(DocumentSourceType.RSS_FEED)
+                .foundOn(baseUrl + "/a.html")
+                .match(),
             any());
     verify(indexingRunEventRepository, timeout(2000))
         .save(
@@ -1208,7 +1309,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1221,20 +1322,9 @@ class RssFeedIndexingExecutorTest {
         200,
         "application/pdf",
         "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            any(),
-            anyString(),
-            any(),
-            any()))
+    when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
         .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
     when(storageQuotaService.quotaExceededMessage(library.getId()))
         .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
@@ -1268,7 +1358,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1297,20 +1387,9 @@ class RssFeedIndexingExecutorTest {
         200,
         "application/pdf",
         "%PDF-1.4 dritte".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            any(),
-            anyString(),
-            any(),
-            any()))
+    when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
@@ -1325,21 +1404,19 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\"https://anderes-beispiel.gov/anlage.pdf\">Fremd</a></main></body></html>";
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     serve("/a.html", 200, "text/html", detailHtml);
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
-    verify(fileProcessingService, never())
-        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyFile(), any());
   }
 
   @Test
@@ -1350,7 +1427,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GSB, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GSB, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1363,35 +1440,23 @@ class RssFeedIndexingExecutorTest {
         200,
         "application/pdf",
         "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            any(),
-            anyString(),
-            any(),
-            any()))
+    when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(fileProcessingService, timeout(2000))
-        .processUrlFile(
-            any(),
-            eq("mein-dokument.pdf"),
-            eq(baseUrl + "/service/mein-dokument?__blob=publicationFile"),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.RSS_FEED),
-            eq(baseUrl + "/a.html"),
-            any(),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .named("mein-dokument.pdf")
+                .at(baseUrl + "/service/mein-dokument?__blob=publicationFile")
+                .in(library)
+                .from(DocumentSourceType.RSS_FEED)
+                .foundOn(baseUrl + "/a.html")
+                .match(),
             any());
   }
 
@@ -1399,8 +1464,7 @@ class RssFeedIndexingExecutorTest {
   void withoutAConfiguredProfileGenericIsUsed() throws IOException {
     // The default in IndexingProperties.Rss's compact constructor, exercised end to end.
     executor =
-        newExecutor(
-            new IndexingProperties.Rss(200, 10_000, 10_000, 0, null, null, null, 10, 10_000));
+        newExecutor(new IndexingProperties.Rss(200, 10_000, 10_000, 0, null, null, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1413,35 +1477,23 @@ class RssFeedIndexingExecutorTest {
         200,
         "application/pdf",
         "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            any(),
-            anyString(),
-            any(),
-            any()))
+    when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(fileProcessingService, timeout(2000))
-        .processUrlFile(
-            any(),
-            eq("anlage.pdf"),
-            eq(baseUrl + "/downloads/anlage.pdf"),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.RSS_FEED),
-            eq(baseUrl + "/a.html"),
-            any(),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .named("anlage.pdf")
+                .at(baseUrl + "/downloads/anlage.pdf")
+                .in(library)
+                .from(DocumentSourceType.RSS_FEED)
+                .foundOn(baseUrl + "/a.html")
+                .match(),
             any());
   }
 
@@ -1456,7 +1508,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1471,47 +1523,32 @@ class RssFeedIndexingExecutorTest {
         200,
         "application/pdf",
         "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            any(),
-            anyString(),
-            any(),
-            any()))
+    when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(fileProcessingService, timeout(2000))
-        .processUrlFile(
-            any(),
-            anyString(),
-            eq(baseUrl + "/downloads/geteilte-anlage.pdf"),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.RSS_FEED),
-            eq(baseUrl + "/a.html"),
-            any(),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .at(baseUrl + "/downloads/geteilte-anlage.pdf")
+                .in(library)
+                .from(DocumentSourceType.RSS_FEED)
+                .foundOn(baseUrl + "/a.html")
+                .match(),
             any());
     verify(fileProcessingService, timeout(2000))
-        .processUrlFile(
-            any(),
-            anyString(),
-            eq(baseUrl + "/downloads/geteilte-anlage.pdf"),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.RSS_FEED),
-            eq(baseUrl + "/b.html"),
-            any(),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .at(baseUrl + "/downloads/geteilte-anlage.pdf")
+                .in(library)
+                .from(DocumentSourceType.RSS_FEED)
+                .foundOn(baseUrl + "/b.html")
+                .match(),
             any());
   }
 
@@ -1520,7 +1557,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1529,16 +1566,14 @@ class RssFeedIndexingExecutorTest {
     serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/a.html"), "\"etag-lost-attachment\"");
     serve("/a.html", 200, "text/html", detailHtml);
     serve("/downloads/fehlt.pdf", 404, "text/html", "not found");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     // The entry itself still counts as processed - only the attachment failed.
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
-    verify(fileProcessingService, never())
-        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyFile(), any());
     // a lost attachment must defer the feed's ETag persistence the same
     // way a lost entry does - otherwise a future 304 would permanently suppress a retry.
     verify(feedStateRepository, never()).save(any());
@@ -1549,7 +1584,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1562,15 +1597,13 @@ class RssFeedIndexingExecutorTest {
         200,
         "application/pdf",
         "x".repeat(500).getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
-    verify(fileProcessingService, never())
-        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyFile(), any());
     verify(feedStateRepository, never()).save(any());
   }
 
@@ -1579,7 +1612,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 1, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 1, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1600,47 +1633,32 @@ class RssFeedIndexingExecutorTest {
         200,
         "application/pdf",
         "%PDF-1.4 zweite".getBytes(StandardCharsets.UTF_8));
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            any(),
-            anyString(),
-            any(),
-            any()))
+    when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(fileProcessingService, timeout(2000))
-        .processUrlFile(
-            any(),
-            eq("erste.pdf"),
-            eq(baseUrl + "/downloads/erste.pdf"),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.RSS_FEED),
-            eq(baseUrl + "/a.html"),
-            any(),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .named("erste.pdf")
+                .at(baseUrl + "/downloads/erste.pdf")
+                .in(library)
+                .from(DocumentSourceType.RSS_FEED)
+                .foundOn(baseUrl + "/a.html")
+                .match(),
             any());
     verify(fileProcessingService, never())
-        .processUrlFile(
-            any(),
-            eq("zweite.pdf"),
-            eq(baseUrl + "/downloads/zweite.pdf"),
-            any(),
-            anyLong(),
-            eq(library),
-            any(),
-            any(),
-            any(),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .named("zweite.pdf")
+                .at(baseUrl + "/downloads/zweite.pdf")
+                .in(library)
+                .match(),
             any());
     verify(feedStateRepository, never()).save(any());
   }
@@ -1653,7 +1671,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1663,19 +1681,17 @@ class RssFeedIndexingExecutorTest {
     serve("/a.html", 200, "text/html", detailHtml);
     serve(
         "/downloads/anlage.pdf", 200, "text/html", "<html><body>Zugriff verweigert</body></html>");
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
-    verify(fileProcessingService, never())
-        .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyFile(), any());
   }
 
   @Test
-  void detailPageFollowsASameOriginRedirect() {
+  void detailPageFollowsASameOriginRedirect() throws Exception {
     // sendDetailPageRequest's own manual redirect loop needs a
     // same-origin positive test - buildHttpClient no longer auto-follows this at the JDK level
     // (Redirect.NEVER), so a legitimate redirect (e.g. a trailing-slash or path normalization) must
@@ -1691,19 +1707,21 @@ class RssFeedIndexingExecutorTest {
           exchange.close();
         });
     serve("/a-final.html", 200, "text/html", detailHtml);
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(fileProcessingService, timeout(2000))
-        .processRssEntry(
-            eq("Der eigentliche Artikeltext."),
-            anyString(),
-            eq(baseUrl + "/a.html"),
-            any(),
-            eq(library));
+        .ingest(
+            DocumentIngests.that()
+                .text()
+                .textMatching(only("Der eigentliche Artikeltext.", "Navigation", "Kopf", "Fuss"))
+                .via(HtmlDocumentPipeline.ID)
+                .at(baseUrl + "/a.html")
+                .in(library)
+                .match(),
+            any());
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
   }
 
@@ -1730,7 +1748,7 @@ class RssFeedIndexingExecutorTest {
       executor =
           newExecutor(
               new IndexingProperties.Rss(
-                  200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                  200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
       String detailHtml =
           "<html><body><main>Text"
               + "<a href=\""
@@ -1745,36 +1763,28 @@ class RssFeedIndexingExecutorTest {
             exchange.sendResponseHeaders(302, -1);
             exchange.close();
           });
-      when(fileProcessingService.processRssEntry(
-              anyString(), anyString(), anyString(), any(), eq(library)))
+      when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
           .thenReturn(FileProcessingResult.PROCESSED);
 
       execute(baseUrl + "/feed.xml");
 
       verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
-      verify(fileProcessingService, never())
-          .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
+      verify(fileProcessingService, never()).ingest(DocumentIngests.anyFile(), any());
     } finally {
       foreignServer.stop(0);
     }
   }
 
   @Test
-  void attachmentDownloadSendsTheConfiguredUserAgent() throws IOException {
-    // the feed and every detail page already send the configured
-    // User-Agent - an attachment request left it out entirely.
+  void attachmentDownloadSendsTheSharedUserAgent() throws IOException {
+    // the feed and every detail page send the shared User-Agent - an attachment request must not
+    // leave it out.
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200,
-                10_000,
-                10_000,
-                0,
-                "OPAA-Indexer/attachment-test",
-                null,
-                AttachmentProfile.GENERIC,
-                10,
-                10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000),
+            new SourceRequestPolicy(
+                "OPAA-Indexer/attachment-test", RateLimitPolicy.NONE, sleeps::add));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1793,37 +1803,122 @@ class RssFeedIndexingExecutorTest {
           exchange.getResponseBody().write(bytes);
           exchange.close();
         });
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            any(),
-            anyString(),
-            any(),
-            any()))
+    when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml");
 
     verify(fileProcessingService, timeout(2000))
-        .processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            any(),
-            anyString(),
-            any(),
-            any());
+        .ingest(DocumentIngests.that().file().in(library).match(), any());
     assertThat(userAgent.get()).isEqualTo("OPAA-Indexer/attachment-test");
+  }
+
+  /**
+   * Serves {@code path} with one {@code 429} ({@code Retry-After: 1}) before the ordinary answer -
+   * the shape a throttling source has, which the run must wait out rather than defer.
+   */
+  private void serveThrottledOnce(String path, String contentType, String body) {
+    AtomicInteger hits = new AtomicInteger();
+    server.createContext(
+        path,
+        exchange -> {
+          if (hits.getAndIncrement() == 0) {
+            exchange.getResponseHeaders().set("Retry-After", "1");
+            exchange.sendResponseHeaders(429, -1);
+            exchange.close();
+            return;
+          }
+          byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", contentType);
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+  }
+
+  @Test
+  void aThrottledFeedIsWaitedOutAndThenProcessed() throws Exception {
+    serveThrottledOnce("/feed.xml", "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    verify(fileProcessingService)
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/a.html").in(library).match(), any());
+    assertThat(sleeps).containsExactly(Duration.ofSeconds(1));
+  }
+
+  @Test
+  void aThrottledDetailPageIsWaitedOutInsteadOfDeferringTheEntry() throws Exception {
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serveThrottledOnce("/a.html", "text/html", "<html><body><main>Text</main></body></html>");
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    verify(fileProcessingService)
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/a.html").in(library).match(), any());
+    verify(indexingRunEventRepository, never())
+        .save(argThat(event -> event.getCategory() == IndexingEventCategory.REJECTED));
+    assertThat(sleeps).containsExactly(Duration.ofSeconds(1));
+  }
+
+  @Test
+  void aThrottledAttachmentIsWaitedOutAndThenIndexed() throws Exception {
+    executor =
+        newExecutor(
+            new IndexingProperties.Rss(
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    serve(
+        "/a.html",
+        200,
+        "text/html",
+        "<html><body><main>Text<a href=\""
+            + baseUrl
+            + "/downloads/anlage.pdf\">Anlage</a></main></body></html>");
+    serveThrottledOnce("/downloads/anlage.pdf", "application/pdf", "%PDF-1.4 not real content");
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+    when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(fileProcessingService, timeout(2000))
+        .ingest(DocumentIngests.that().file().in(library).match(), any());
+    assertThat(sleeps).containsExactly(Duration.ofSeconds(1));
+  }
+
+  @Test
+  void aDetailPageThrottledPastEveryRetryIsDeferredLikeAnyOtherRejection() throws Exception {
+    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
+    server.createContext(
+        "/a.html",
+        exchange -> {
+          exchange.getResponseHeaders().set("Retry-After", "1");
+          exchange.sendResponseHeaders(429, -1);
+          exchange.close();
+        });
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
+    verify(fileProcessingService, never()).ingest(any(), any());
+    verify(indexingRunEventRepository, timeout(2000))
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.REJECTED
+                        && "Vom Quellserver abgewiesen (HTTP 429)".equals(event.getMessage())));
+    assertThat(sleeps).as("two retries, then deferred").hasSize(2);
   }
 
   // --- sourceCredentials/sourceProxy applied to the feed fetch, detail pages and
@@ -1835,7 +1930,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void feedRequestSendsTheConfiguredAuthorizationHeader() {
+  void feedRequestSendsTheConfiguredAuthorizationHeader() throws Exception {
     AtomicReference<String> authorization = new AtomicReference<>();
     server.createContext(
         "/feed.xml",
@@ -1855,7 +1950,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void detailPageRequestSendsTheConfiguredAuthorizationHeader() {
+  void detailPageRequestSendsTheConfiguredAuthorizationHeader() throws Exception {
     serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
     AtomicReference<String> authorization = new AtomicReference<>();
     server.createContext(
@@ -1869,8 +1964,7 @@ class RssFeedIndexingExecutorTest {
           exchange.getResponseBody().write(bytes);
           exchange.close();
         });
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml", null, "admin:secret");
@@ -1884,7 +1978,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     String detailHtml =
         "<html><body><main>Text"
             + "<a href=\""
@@ -1903,36 +1997,15 @@ class RssFeedIndexingExecutorTest {
           exchange.getResponseBody().write(bytes);
           exchange.close();
         });
-    when(fileProcessingService.processRssEntry(
-            anyString(), anyString(), anyString(), any(), eq(library)))
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
-    when(fileProcessingService.processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            any(),
-            anyString(),
-            any(),
-            any()))
+    when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     execute(baseUrl + "/feed.xml", null, "attachment:credentials");
 
     verify(fileProcessingService, timeout(2000))
-        .processUrlFile(
-            any(),
-            anyString(),
-            anyString(),
-            any(),
-            anyLong(),
-            eq(library),
-            any(),
-            anyString(),
-            any(),
-            any());
+        .ingest(DocumentIngests.that().file().in(library).match(), any());
     assertThat(authorization.get()).isEqualTo(expectedBasicAuth("attachment:credentials"));
   }
 
@@ -1982,8 +2055,7 @@ class RssFeedIndexingExecutorTest {
             exchange.close();
           });
       serve("/feed.xml", 200, "application/rss+xml", feedXml(foreignBaseUrl + "/a.html"));
-      when(fileProcessingService.processRssEntry(
-              anyString(), anyString(), anyString(), any(), eq(library)))
+      when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
           .thenReturn(FileProcessingResult.PROCESSED);
 
       execute(baseUrl + "/feed.xml", null, "admin:secret");
@@ -2006,7 +2078,7 @@ class RssFeedIndexingExecutorTest {
     executor =
         newExecutor(
             new IndexingProperties.Rss(
-                200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
     HttpServer foreignServer = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
     foreignServer.start();
     String foreignBaseUrl = "http://localhost:" + foreignServer.getAddress().getPort();
@@ -2037,36 +2109,15 @@ class RssFeedIndexingExecutorTest {
             exchange.close();
           });
       serve("/feed.xml", 200, "application/rss+xml", feedXml(foreignBaseUrl + "/a.html"));
-      when(fileProcessingService.processRssEntry(
-              anyString(), anyString(), anyString(), any(), eq(library)))
+      when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
           .thenReturn(FileProcessingResult.PROCESSED);
-      when(fileProcessingService.processUrlFile(
-              any(),
-              anyString(),
-              anyString(),
-              any(),
-              anyLong(),
-              eq(library),
-              any(),
-              anyString(),
-              any(),
-              any()))
+      when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
           .thenReturn(FileProcessingResult.PROCESSED);
 
       execute(baseUrl + "/feed.xml", null, "attachment:credentials");
 
       verify(fileProcessingService, timeout(2000))
-          .processUrlFile(
-              any(),
-              anyString(),
-              anyString(),
-              any(),
-              anyLong(),
-              eq(library),
-              any(),
-              anyString(),
-              any(),
-              any());
+          .ingest(DocumentIngests.that().file().in(library).match(), any());
       assertThat(authorization.get()).isNull();
     } finally {
       foreignServer.stop(0);
@@ -2103,7 +2154,7 @@ class RssFeedIndexingExecutorTest {
       executor =
           newExecutor(
               new IndexingProperties.Rss(
-                  200, 10_000, 10_000, 0, null, null, AttachmentProfile.GENERIC, 10, 10_000));
+                  200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000));
       String detailHtml =
           "<html><body><main>Text"
               + "<a href=\""
@@ -2118,15 +2169,13 @@ class RssFeedIndexingExecutorTest {
             exchange.sendResponseHeaders(302, -1);
             exchange.close();
           });
-      when(fileProcessingService.processRssEntry(
-              anyString(), anyString(), anyString(), any(), eq(library)))
+      when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
           .thenReturn(FileProcessingResult.PROCESSED);
 
       execute(baseUrl + "/feed.xml", null, "admin:secret");
 
       verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
-      verify(fileProcessingService, never())
-          .processUrlFile(any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any());
+      verify(fileProcessingService, never()).ingest(DocumentIngests.anyFile(), any());
       assertThat(authorization.get()).isEqualTo("(never contacted)");
     } finally {
       foreignServer.stop(0);
@@ -2134,7 +2183,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
-  void anInvalidSourceProxyPortFailsTheJobWithAGermanMessage() {
+  void anInvalidSourceProxyPortFailsTheJobWithAGermanMessage() throws Exception {
     // Reusing the shared ProxyAndCredentials.parse means an invalid
     // port now fails with the same German message SourceConnectionTestService already gave,
     // instead of the JDK's own NumberFormatException text leaking into progress.fail via the

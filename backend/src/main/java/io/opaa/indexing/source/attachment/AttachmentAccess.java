@@ -13,7 +13,7 @@ import io.opaa.library.KnowledgeLibrary;
  * today. {@link #events()}/{@link #progress()} are declared against the narrow {@link
  * IndexingEventSink}/{@link AttachmentProgressSink} interfaces, not the full, job-bound {@code
  * IndexingRunEventRecorder}/{@code IndexingRunProgress} - a caller with no run/job of its own (a
- * single document upload, {@code FileProcessingService#processStoredFile}) supplies a lightweight
+ * single document upload, {@code io.opaa.library.LibraryDocumentService}) supplies a lightweight
  * implementation instead of standing up a job it does not have.
  */
 public interface AttachmentAccess {

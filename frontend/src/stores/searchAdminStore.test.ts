@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
 import { mockDocumentChunks } from '../mocks/fixtures'
-import { METADATA_BACKFILL_STALLED_MESSAGE, useSearchAdminStore } from './searchAdminStore'
+import { BATCH_RUN_STALLED_MESSAGE, useSearchAdminStore } from './searchAdminStore'
 
 describe('searchAdminStore', () => {
   beforeEach(() => {
@@ -45,7 +45,7 @@ describe('searchAdminStore', () => {
 
     const run = useSearchAdminStore.getState().metadataBackfillRuns['lib-satzungen']
     expect(run.running).toBe(false)
-    expect(run.error).toBe(METADATA_BACKFILL_STALLED_MESSAGE)
+    expect(run.error).toBe(BATCH_RUN_STALLED_MESSAGE)
     expect(batchCalls).toBe(3)
   })
 

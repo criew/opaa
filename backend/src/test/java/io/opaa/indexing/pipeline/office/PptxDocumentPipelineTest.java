@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
+import io.opaa.indexing.pipeline.DocumentPipelineRunner;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
 import java.awt.Rectangle;
@@ -239,7 +240,8 @@ class PptxDocumentPipelineTest {
     Files.writeString(file, "das ist kein pptx");
 
     DocumentPipelineResult result =
-        pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.pptx", ".pptx"));
+        DocumentPipelineRunner.run(
+            pipeline, DocumentPipelineSource.ofFile(file, "kaputt.pptx", ".pptx"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }

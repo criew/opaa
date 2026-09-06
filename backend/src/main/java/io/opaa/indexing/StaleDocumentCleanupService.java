@@ -20,13 +20,14 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Removes documents - and their chunks - that a source no longer contains once an indexing run has
- * finished successfully: a document whose {@code filePath} is missing from {@code currentFilePaths}
+ * finished successfully: a document whose {@code filePath} is missing from the run's current paths
  * was not rediscovered. Scoped to one {@code (library, sourceType)} pair.
  *
  * <p><b>Callers carry the "successful, uncapped run" invariant.</b> A run that failed, was
- * cancelled or was truncated must never call {@link #cleanupVanished}; {@code
- * RssFeedIndexingExecutor} never calls it at all (ADR-0017, decision 5). An empty {@code
- * currentFilePaths} deletes nothing either - it is indistinguishable from an unreachable source.
+ * cancelled or was truncated must never call {@link #reconcile} or {@link #cleanupVanished}; the
+ * run frame only does so for a complete listing in a {@link
+ * VanishedDocumentPolicy#REMOVE_ON_ABSENCE} mode. An empty set of current paths deletes nothing
+ * either - it is indistinguishable from an unreachable source.
  */
 public class StaleDocumentCleanupService {
 
@@ -44,6 +45,33 @@ public class StaleDocumentCleanupService {
   }
 
   /**
+   * The reconciliation of one complete run (ADR-0022, Entscheidung 3): the attachments of every
+   * parent in {@code currentPaths} that is not in {@code reprocessedPaths} are preserved from the
+   * database, then every document not present is removed as in {@link #cleanupVanished}.
+   *
+   * @return the number of documents removed
+   */
+  public int reconcile(
+      KnowledgeLibrary library,
+      DocumentSourceType sourceType,
+      Set<String> currentPaths,
+      Set<String> reprocessedPaths,
+      IndexingRunEventRecorder events,
+      SourceIndexingExecutor executor,
+      IndexingRunMode runMode) {
+    requireRemoveOnAbsence(sourceType, executor, runMode);
+    if (currentPaths.isEmpty()) {
+      logEmptyBestand(library, sourceType);
+      return 0;
+    }
+    List<Document> existing =
+        documentRepository.findByLibraryIdAndSourceType(library.getId(), sourceType);
+    Set<String> present = new HashSet<>(currentPaths);
+    foldInPreservedAttachmentPaths(existing, present, reprocessedPaths);
+    return removeVanished(library, sourceType, present, existing, events);
+  }
+
+  /**
    * Deletes every {@code sourceType} document of {@code library} whose {@code filePath} is not in
    * {@code currentFilePaths}, and nothing at all when that set is empty. Chunks go before the row,
    * unlike {@code LibraryDocumentService#deleteDocument}, whose race with a concurrent upload
@@ -58,10 +86,23 @@ public class StaleDocumentCleanupService {
       IndexingRunEventRecorder events,
       SourceIndexingExecutor executor,
       IndexingRunMode runMode) {
-    // ADR-0023, Entscheidung 4: the executor's own declaration decides whether this run mode may
-    // delete by absence - an "ergänzend" run (RSS, an incremental Confluence run) never may, and a
-    // caller that tries anyway has a bug this guard makes loud instead of letting it empty an
-    // index.
+    requireRemoveOnAbsence(sourceType, executor, runMode);
+    if (currentFilePaths.isEmpty()) {
+      logEmptyBestand(library, sourceType);
+      return 0;
+    }
+    List<Document> existing =
+        documentRepository.findByLibraryIdAndSourceType(library.getId(), sourceType);
+    return removeVanished(library, sourceType, currentFilePaths, existing, events);
+  }
+
+  /**
+   * ADR-0023, Entscheidung 4: the executor's own declaration decides whether this run mode may
+   * delete by absence - an "ergänzend" run never may, and a caller that tries anyway has a bug this
+   * guard makes loud instead of letting it empty an index.
+   */
+  private static void requireRemoveOnAbsence(
+      DocumentSourceType sourceType, SourceIndexingExecutor executor, IndexingRunMode runMode) {
     VanishedDocumentPolicy policy = executor.runModes().get(runMode);
     if (policy != VanishedDocumentPolicy.REMOVE_ON_ABSENCE) {
       throw new IllegalStateException(
@@ -73,26 +114,30 @@ public class StaleDocumentCleanupService {
               + policy
               + " - only REMOVE_ON_ABSENCE runs may delete by absence");
     }
-    if (currentFilePaths.isEmpty()) {
-      log.info(
-          "Skipping stale-document cleanup for library {} ({}) - this run's own bestand is empty,"
-              + " which is not distinguishable here from an unreachable or misconfigured source",
-          library.getId(),
-          sourceType);
-      return 0;
-    }
+  }
 
-    List<Document> existing =
-        documentRepository.findByLibraryIdAndSourceType(library.getId(), sourceType);
-    // fk_documents_parent (ADR-0022, Entscheidung 4): an attachment removed in the same batch as
-    // its own now-vanished parent must be deleted first, or the parent's own delete fails the FK
-    // check. findByLibraryIdAndSourceType carries no ORDER BY that would guarantee this on its own
-    // - sorted here instead, deepest nesting level first: a grandchild (a Mail-in-Mail
-    // attachment's own attachment) is deleted before its intermediate parent, which is deleted
-    // before the outermost parent.
-    existing = sortedDeepestFirst(existing);
+  private static void logEmptyBestand(KnowledgeLibrary library, DocumentSourceType sourceType) {
+    log.info(
+        "Skipping stale-document cleanup for library {} ({}) - this run's own bestand is empty,"
+            + " which is not distinguishable here from an unreachable or misconfigured source",
+        library.getId(),
+        sourceType);
+  }
+
+  /**
+   * Removes every document of {@code existing} whose path is not in {@code currentFilePaths},
+   * deepest nesting level first: {@code fk_documents_parent} (ADR-0022, Entscheidung 4) refuses a
+   * parent whose children still exist, and {@code findByLibraryIdAndSourceType} carries no {@code
+   * ORDER BY} that would guarantee this on its own.
+   */
+  private int removeVanished(
+      KnowledgeLibrary library,
+      DocumentSourceType sourceType,
+      Set<String> currentFilePaths,
+      List<Document> existing,
+      IndexingRunEventRecorder events) {
     int removed = 0;
-    for (Document document : existing) {
+    for (Document document : sortedDeepestFirst(existing)) {
       if (currentFilePaths.contains(document.getFilePath())) {
         continue;
       }
@@ -116,7 +161,7 @@ public class StaleDocumentCleanupService {
    * parent is present this run but was not re-parsed - the Nachtragsfall of ADR-0022, Entscheidung
    * 3, applied breadth-first from the roots so a grandchild of an unchanged ancestor is preserved
    * regardless of row order. A child of a re-parsed parent survives only if that parent re-reported
-   * it. Shared by every executor that pairs the attachment path with {@link #cleanupVanished}.
+   * it. The fold-in step of {@link #reconcile}.
    */
   public static void foldInPreservedAttachmentPaths(
       List<Document> existingDocuments,

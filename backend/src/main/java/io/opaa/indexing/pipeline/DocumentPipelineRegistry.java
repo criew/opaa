@@ -114,10 +114,13 @@ public class DocumentPipelineRegistry {
    *     this transient case as a confirmed "no extension".
    */
   public record Routed(
-      DocumentPipeline pipeline, String detectedExtension, boolean formatDetectionFailed) {
+      DocumentPipeline pipeline,
+      String detectedExtension,
+      boolean formatDetectionFailed,
+      String detectedMediaType) {
 
     public Routed(DocumentPipeline pipeline, String detectedExtension) {
-      this(pipeline, detectedExtension, false);
+      this(pipeline, detectedExtension, false, null);
     }
   }
 
@@ -139,7 +142,7 @@ public class DocumentPipelineRegistry {
       return routedPipelineFor(fileName, SupportedDocumentFormats.detectMediaType(file));
     } catch (IOException e) {
       log.warn("Could not read {} to route it to a pipeline, using the fallback pipeline", file, e);
-      return new Routed(fallback, null, true);
+      return new Routed(fallback, null, true, null);
     }
   }
 
@@ -154,15 +157,16 @@ public class DocumentPipelineRegistry {
     SupportedDocumentFormats.ContentDecision decision =
         SupportedDocumentFormats.decideForFileName(fileName, detectedMediaType);
     if (!decision.supported()) {
-      return new Routed(fallback, null);
+      return new Routed(fallback, null, false, detectedMediaType);
     }
     DocumentPipeline pipeline = byFormat.getOrDefault(decision.detectedExtension(), fallback);
-    return new Routed(pipeline, decision.detectedExtension());
+    return new Routed(pipeline, decision.detectedExtension(), false, detectedMediaType);
   }
 
   /**
-   * The pipeline for content that never was a file and therefore has no detectable format - an RSS
-   * entry's already-extracted main text (see {@code FileProcessingService#processRssEntry}).
+   * The pipeline for content no specialized pipeline claims - a file of an admitted but unclaimed
+   * format, or text that never was a file and names no pipeline of its own (see {@code
+   * FileProcessingService#ingest}).
    */
   public DocumentPipeline fallbackPipeline() {
     return fallback;
@@ -170,7 +174,8 @@ public class DocumentPipelineRegistry {
 
   /**
    * The registered pipeline with {@code id}, for a caller that invokes a pipeline directly instead
-   * of routing by format - the Confluence page pipeline claims no format at all.
+   * of routing by format - a Confluence page body or a feed entry's main content, neither of which
+   * is a file.
    */
   public java.util.Optional<DocumentPipeline> pipelineById(String id) {
     return all.stream().filter(pipeline -> pipeline.id().equals(id)).findFirst();

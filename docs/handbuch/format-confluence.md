@@ -17,7 +17,9 @@ HTML-Pipeline).
 
 ## 2. Was gelesen wird
 
-Der Seitenkörper wird mit einem XML-Parser gelesen, damit die Makro-Elemente erhalten bleiben. Die
+Der Seitenkörper wird mit einem XML-Parser gelesen, damit die Makro-Elemente erhalten bleiben. Das
+XHTML selbst (Blöcke, Überschriften, Tabellen, Listen) liest derselbe Ereignisleser wie bei
+[HTML](format-html.md); die Makro-Elemente kommen als Confluence-eigene Erweiterung hinzu. Die
 Kernfrage ist nicht Boilerplate wie bei HTML, sondern **welcher Makro-Inhalt Seiteninhalt ist** und
 welcher erst beim Anzeigen aus anderen Quellen zusammengesetzt wird. Die Trennlinie ist, wo der
 Inhalt lebt:

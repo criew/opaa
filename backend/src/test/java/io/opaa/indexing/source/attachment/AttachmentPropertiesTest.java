@@ -32,6 +32,26 @@ class AttachmentPropertiesTest {
   }
 
   @Test
+  void bindsTheSharedCountAndSizeLimitsAndDefaultsThem() {
+    contextRunner
+        .withPropertyValues(
+            "opaa.indexing.attachments.max-per-parent=3",
+            "opaa.indexing.attachments.max-size-bytes=1024")
+        .run(
+            context -> {
+              AttachmentProperties properties = context.getBean(AttachmentProperties.class);
+              assertThat(properties.limits().maxPerParent()).isEqualTo(3);
+              assertThat(properties.limits().maxSizeBytes()).isEqualTo(1024L);
+            });
+    contextRunner.run(
+        context -> {
+          AttachmentProperties properties = context.getBean(AttachmentProperties.class);
+          assertThat(properties.limits().maxPerParent()).isEqualTo(10);
+          assertThat(properties.limits().maxSizeBytes()).isEqualTo(20_971_520L);
+        });
+  }
+
+  @Test
   void theOldMailSpecificKeyNoLongerHasAnyEffect() {
     contextRunner
         .withPropertyValues("opaa.indexing.mail.max-attachment-depth=2")

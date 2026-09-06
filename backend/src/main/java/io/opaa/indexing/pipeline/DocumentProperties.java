@@ -40,6 +40,10 @@ import java.util.TreeMap;
  *     its URL as a fallback. A naming convention can only be read out of a real file name; a
  *     headline names what a document is <em>about</em>.
  * @param frontmatter a Markdown YAML frontmatter's scalar entries, verbatim, keys lower-cased
+ * @param formatFields values of the built-in format fields ({@code
+ *     io.opaa.indexing.metadata.FormatMetadataField}) the format itself declares - a mail's
+ *     Absender, Empfänger and Betreff -, keyed by the field's own key. Read verbatim, never
+ *     interpreted, and therefore stored as deterministic values of those fields.
  */
 public record DocumentProperties(
     String title,
@@ -50,7 +54,8 @@ public record DocumentProperties(
     String titleLine,
     String formatExtension,
     boolean syntheticName,
-    Map<String, String> frontmatter) {
+    Map<String, String> frontmatter,
+    Map<String, String> formatFields) {
 
   /**
    * Upper bound of {@link #titleLine}, in characters - a "line" a format hands over without any
@@ -59,7 +64,7 @@ public record DocumentProperties(
   public static final int MAX_TITLE_LINE_LENGTH = 300;
 
   public static final DocumentProperties EMPTY =
-      new DocumentProperties(null, null, null, null, null, null, null, false, Map.of());
+      new DocumentProperties(null, null, null, null, null, null, null, false, Map.of(), Map.of());
 
   public DocumentProperties {
     title = blankToNull(title);
@@ -76,124 +81,154 @@ public record DocumentProperties(
           });
     }
     frontmatter = Map.copyOf(normalized);
+    formatFields = formatFields == null ? Map.of() : Map.copyOf(formatFields);
   }
 
   public DocumentProperties withTitle(String title) {
-    return new DocumentProperties(
-        title,
-        createdAt,
-        modifiedAt,
-        documentDate,
-        firstHeading,
-        titleLine,
-        formatExtension,
-        syntheticName,
-        frontmatter);
+    return toBuilder().title(title).build();
   }
 
   public DocumentProperties withCreatedAt(LocalDate createdAt) {
-    return new DocumentProperties(
-        title,
-        createdAt,
-        modifiedAt,
-        documentDate,
-        firstHeading,
-        titleLine,
-        formatExtension,
-        syntheticName,
-        frontmatter);
+    return toBuilder().createdAt(createdAt).build();
   }
 
   public DocumentProperties withModifiedAt(LocalDate modifiedAt) {
-    return new DocumentProperties(
-        title,
-        createdAt,
-        modifiedAt,
-        documentDate,
-        firstHeading,
-        titleLine,
-        formatExtension,
-        syntheticName,
-        frontmatter);
+    return toBuilder().modifiedAt(modifiedAt).build();
   }
 
   public DocumentProperties withDocumentDate(LocalDate documentDate) {
-    return new DocumentProperties(
-        title,
-        createdAt,
-        modifiedAt,
-        documentDate,
-        firstHeading,
-        titleLine,
-        formatExtension,
-        syntheticName,
-        frontmatter);
+    return toBuilder().documentDate(documentDate).build();
   }
 
   public DocumentProperties withFirstHeading(String firstHeading) {
-    return new DocumentProperties(
-        title,
-        createdAt,
-        modifiedAt,
-        documentDate,
-        firstHeading,
-        titleLine,
-        formatExtension,
-        syntheticName,
-        frontmatter);
+    return toBuilder().firstHeading(firstHeading).build();
   }
 
   public DocumentProperties withTitleLine(String titleLine) {
-    return new DocumentProperties(
-        title,
-        createdAt,
-        modifiedAt,
-        documentDate,
-        firstHeading,
-        titleLine,
-        formatExtension,
-        syntheticName,
-        frontmatter);
+    return toBuilder().titleLine(titleLine).build();
   }
 
   /** Marks the document's name as free text rather than a file name. */
   public DocumentProperties withSyntheticName(boolean syntheticName) {
-    return new DocumentProperties(
-        title,
-        createdAt,
-        modifiedAt,
-        documentDate,
-        firstHeading,
-        titleLine,
-        formatExtension,
-        syntheticName,
-        frontmatter);
+    return toBuilder().syntheticName(syntheticName).build();
   }
 
   public DocumentProperties withFormatExtension(String formatExtension) {
-    return new DocumentProperties(
-        title,
-        createdAt,
-        modifiedAt,
-        documentDate,
-        firstHeading,
-        titleLine,
-        formatExtension,
-        syntheticName,
-        frontmatter);
+    return toBuilder().formatExtension(formatExtension).build();
   }
 
   public DocumentProperties withFrontmatter(Map<String, String> frontmatter) {
-    return new DocumentProperties(
-        title,
-        createdAt,
-        modifiedAt,
-        documentDate,
-        firstHeading,
-        titleLine,
-        formatExtension,
-        syntheticName,
-        frontmatter);
+    return toBuilder().frontmatter(frontmatter).build();
+  }
+
+  /** The same properties with the format fields {@code formatFields} declared. */
+  public DocumentProperties withFormatFields(Map<String, String> formatFields) {
+    return toBuilder().formatFields(formatFields).build();
+  }
+
+  /** An empty builder; every field a pipeline does not set stays absent. */
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /** A builder pre-filled with this instance's fields - the basis of every {@code with*} above. */
+  public Builder toBuilder() {
+    return new Builder()
+        .title(title)
+        .createdAt(createdAt)
+        .modifiedAt(modifiedAt)
+        .documentDate(documentDate)
+        .firstHeading(firstHeading)
+        .titleLine(titleLine)
+        .formatExtension(formatExtension)
+        .syntheticName(syntheticName)
+        .frontmatter(frontmatter)
+        .formatFields(formatFields);
+  }
+
+  /**
+   * Names each field a pipeline fills, so an unset one cannot be swapped with its neighbour the way
+   * a positional constructor call of nine mostly-null arguments can. {@link #build()} applies the
+   * same normalization every other construction path goes through.
+   */
+  public static final class Builder {
+
+    private String title;
+    private LocalDate createdAt;
+    private LocalDate modifiedAt;
+    private LocalDate documentDate;
+    private String firstHeading;
+    private String titleLine;
+    private String formatExtension;
+    private boolean syntheticName;
+    private Map<String, String> frontmatter = Map.of();
+    private Map<String, String> formatFields = Map.of();
+
+    private Builder() {}
+
+    public Builder title(String title) {
+      this.title = title;
+      return this;
+    }
+
+    public Builder createdAt(LocalDate createdAt) {
+      this.createdAt = createdAt;
+      return this;
+    }
+
+    public Builder modifiedAt(LocalDate modifiedAt) {
+      this.modifiedAt = modifiedAt;
+      return this;
+    }
+
+    public Builder documentDate(LocalDate documentDate) {
+      this.documentDate = documentDate;
+      return this;
+    }
+
+    public Builder firstHeading(String firstHeading) {
+      this.firstHeading = firstHeading;
+      return this;
+    }
+
+    public Builder titleLine(String titleLine) {
+      this.titleLine = titleLine;
+      return this;
+    }
+
+    public Builder formatExtension(String formatExtension) {
+      this.formatExtension = formatExtension;
+      return this;
+    }
+
+    public Builder syntheticName(boolean syntheticName) {
+      this.syntheticName = syntheticName;
+      return this;
+    }
+
+    public Builder frontmatter(Map<String, String> frontmatter) {
+      this.frontmatter = frontmatter;
+      return this;
+    }
+
+    public Builder formatFields(Map<String, String> formatFields) {
+      this.formatFields = formatFields;
+      return this;
+    }
+
+    public DocumentProperties build() {
+      return new DocumentProperties(
+          title,
+          createdAt,
+          modifiedAt,
+          documentDate,
+          firstHeading,
+          titleLine,
+          formatExtension,
+          syntheticName,
+          frontmatter,
+          formatFields);
+    }
   }
 
   /** A format's {@link Calendar} property (PDFBox) as the calendar's own local date. */

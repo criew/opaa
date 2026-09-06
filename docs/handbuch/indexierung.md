@@ -237,6 +237,15 @@ beginnt:
   oder eine bedingte HTTP-Anfrage, und sich den Download sparen. Das ist eine Optimierung; die
   verbindliche Entscheidung trifft immer die Prüfsumme in der Dokumentstrecke.
 
+Alles Übrige ist nicht Sache des Konnektors, sondern eines **gemeinsamen Laufrahmens**, in dem
+jeder Konnektor läuft: das Anlegen von Zählern und Protokoll, die Prüfung der Betriebsart, die
+Zuordnung jedes Elementergebnisses zu Zähler und Protokolleintrag (Abschnitt 8.1), die Buchführung
+über Anhänge, die Bereinigung verschwundener Dokumente nach vollständiger Aufzählung (Abschnitt 7),
+die Kennzahlen des Laufs (Abschnitt 8.3) und die Übersetzung von Abbrüchen in eine verständliche
+Fehlermeldung. Deshalb lauten die Meldungen eines Laufabbruchs bei allen Konnektoren gleich, etwa
+„Lauf unterbrochen" oder „Die Bibliothek wurde während des Laufs gelöscht.", und ein neuer Konnektor bringt nur die drei oben
+genannten Dinge mit.
+
 > Welche Mechanismen und Grenzwerte das je Quelle konkret sind, steht in den Kapiteln
 > [Verzeichnis im Dateisystem](konnektor-filesystem.md),
 > [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md) und
@@ -274,7 +283,10 @@ geparst und gechunkt vorliegt, nicht schon vor dem Parsen.
 Über den Inhalt wird eine SHA-256-Prüfsumme gebildet. Dann wird die Dokumentzeile über das Paar
 aus Bibliothek und Quellpfad gesucht. Ist die Prüfsumme unverändert und stand das Dokument zuletzt
 auf „indiziert", ist der Fall erledigt: **übersprungen**, keine Chunks angefasst. Das ist der
-Normalfall in jedem Folgelauf und der Grund, warum Folgeläufe schnell sind.
+Normalfall in jedem Folgelauf und der Grund, warum Folgeläufe schnell sind. Was die Quelle sonst
+über das Element sagt — Titel, Ort in der Quelle, Änderungsmarke, Ordner — wird dabei trotzdem auf
+den aktuellen Stand gebracht: So überspringt der nächste Lauf das Element schon vor dem Abruf, und
+Dokumentliste wie Zitat zeigen den aktuellen Titel.
 
 Hat sich der Inhalt geändert, bleibt die Dokumentzeile mit ihrer ID bestehen. Nur die Chunks
 werden ausgetauscht. Dadurch überleben Verweise auf das Dokument, etwa aus Chat-Zitaten oder von
@@ -303,11 +315,15 @@ Die Formaterkennung schaut in den **Inhalt** (Magic Bytes), nicht auf die Dateie
 überein, wird das Dokument trotzdem indiziert, aber ein Protokolleintrag „Formatabweichung"
 gesetzt, damit der Fall auffällt.
 
-Anhand des erkannten Formats wird eine **Format-Pipeline** gewählt. Für jedes Format gibt es
+Als Inhaltstyp des Dokuments wird der kanonische Medientyp des erkannten Formats gespeichert (etwa
+`text/markdown` für Markdown, auch wenn die Byte-Erkennung nur „Text" sagt); nur ein Dokument ohne
+erkanntes Format behält den roh erkannten Typ. Anhand des erkannten Formats wird eine
+**Format-Pipeline** gewählt. Für jedes Format gibt es
 genau eine zuständige Pipeline; für alles Unbekannte oder Strukturlose gibt es eine
 Auffang-Pipeline auf Basis von Apache Tika. Zwei Inhalte waren nie eine Datei und überspringen die
-Formaterkennung: Der Text einer Feed-Detailseite geht direkt an die Auffang-Pipeline, der Körper
-einer Confluence-Seite direkt an die [Confluence-Pipeline](format-confluence.md). Zugelassen sind grob: Text und Markdown, PDF, die
+Formaterkennung: Der Hauptinhalt einer Feed-Detailseite geht als HTML direkt an die
+[HTML-Pipeline](format-html.md), der Körper einer Confluence-Seite direkt an die
+[Confluence-Pipeline](format-confluence.md). Zugelassen sind grob: Text und Markdown, PDF, die
 Office-Formate von Microsoft und OpenDocument, Tabellen, HTML und E-Mails. Welche Endungen das
 genau sind, welche Pipeline sie bedient und welche Formate bewusst nicht aufgenommen werden,
 steht in der [Formatübersicht](#anhang-formatübersicht) am Ende dieses Kapitels.
@@ -450,8 +466,9 @@ Konsequenzen für den Betrieb:
 
 Die Dokumentstrecke weiß nicht, woher ein Anhang stammt. Jeder Konnektor, der Anhänge
 liefert, und jede Format-Pipeline, die welche findet, nutzt denselben Weg; die Grenzwerte für
-Anzahl und Größe je Elternteil setzt die jeweilige Quelle bzw. das Format, die Tiefe ist
-allgemein (`opaa.indexing.attachments.max-depth`).
+Anzahl und Größe je Elternteil setzt die jeweilige Quelle bzw. das Format (ersatzweise
+`opaa.indexing.attachments.max-per-parent`/`max-size-bytes`, derzeit von keinem Konnektor
+genutzt); die Tiefe ist allgemein (`opaa.indexing.attachments.max-depth`).
 
 ## 7. Änderungen und Löschungen erkennen
 
@@ -526,9 +543,11 @@ MANAGER an der Bibliothek, weil sie interne Pfade und URLs der Quellkonfiguratio
 Scheitern zwei geplante Läufe hintereinander, zeigt die Bibliothek ein Warnbanner. Manuelle
 Versuche zählen dafür nicht mit, damit ein Testlauf den Befund nicht überschreibt.
 
-Bei Confluence zeigt jeder Lauf zusätzlich seine Betriebsart, das Kennzeichen „unvollständig,
-wird fortgesetzt" und eine Kennzahlenzeile (Anfragen, Drosselungen, Anhänge, Dauer); eine
-unvollständige Auflistung bleibt dauerhaft an der Bibliothek sichtbar.
+Jeder Lauf zeigt zusätzlich eine Kennzahlenzeile mit Anhängen (indiziert, übersprungen,
+fehlgeschlagen) und Dauer. Anfragen an die Quelle und Drosselungen erscheinen nur bei Confluence,
+dem einzigen Konnektor, der sie zählt. Bei Confluence kommen außerdem die Betriebsart und das
+Kennzeichen „unvollständig, wird fortgesetzt" hinzu; eine unvollständige Auflistung bleibt
+dauerhaft an der Bibliothek sichtbar.
 
 Systemweit sieht ein Systemadministrator zusätzlich eine Liste der Dokumente **ohne einen
 einzigen Chunk**, der typische Befund für eingescannte PDFs, sowie den Pipeline-Versionsstand je
@@ -598,6 +617,8 @@ Die wichtigsten Schlüssel unter `opaa.indexing.*`:
 |---|---|---|
 | `filesystem.allowlist` | leer | freigegebene Basisverzeichnisse; leer schaltet `FILESYSTEM` ab |
 | `attachments.max-depth` | 5 | Verschachtelungstiefe von Anhängen (Mail-in-Mail, Feed-Anlage) - ein Wert für jeden Konnektor |
+| `attachments.max-per-parent` / `attachments.max-size-bytes` | 10 / 20 MiB | Reserve für künftige Konnektoren ohne eigene Werte, derzeit ohne Wirkung: RSS und Mail bringen eigene Grenzen mit, Confluence lädt mit eigener Größengrenze und übergibt je Aufruf einen Anhang |
+| `http.user-agent` / `http.max-rate-limit-retries` / `http.max-retry-after` | `OPAA-Indexer/1.0` / 6 / 2m | `User-Agent` jeder Anfrage an eine fremde Quelle und die 429-Wartezeit von RSS- und Webverzeichnis-Konnektor; Confluence hat eigene 429-Werte |
 | `chunk-size` / `chunk-overlap` | 1000 / 100 Tokens | nur Auffang-Pipeline und strukturlose Texte |
 | `batch-size` | 50 | Chunks je Embedding-Aufruf |
 | `embedding-concurrency` | 3 | parallele Embedding-Pakete je Dokument |
@@ -644,12 +665,12 @@ muss nur als Text erkennbar sein und die Datei muss die Endung selbst tragen.
 | `.ods` | `tabular` | strikt | Blätter, Kopfzeile, Zeilengruppen | [Tabellen](format-tabular.md) |
 | `.odt` | `odt` | strikt | Überschriften bis Ebene 3, Tabellen, Kopf- und Fußzeilen | [OpenDocument Text](format-odt.md) |
 | `.odp` | `odp` | strikt | eine Folie je Chunk, Titel, Notizen, Masterfolie | [OpenDocument Präsentation](format-odp.md) |
-| `.html` | `html` | strikt | Überschriften h1 bis h3, Hauptinhalt ohne Navigation | [HTML](format-html.md) |
+| `.html` | `html` | strikt | Überschriften h1 bis h3, Hauptinhalt ohne Navigation, Tabellen, Listen | [HTML](format-html.md) |
 | `.md` | `markdown` | text-tolerant | Überschriften bis Ebene 3, Frontmatter | [Markdown](format-markdown.md) |
 | `.txt` | `tika-fallback` | text-tolerant | keine, Token-Fenster | [Auffang-Pipeline](format-fallback.md) |
 | `.eml` | `email` | text-tolerant | Kopfdaten, Nachrichtentext, Thread-Segmente, Anhänge | [E-Mail](format-mail.md) |
 | `.msg` | `email` | strikt | wie `.eml` | [E-Mail](format-mail.md) |
-| Feed-Text | `tika-fallback` | entfällt | keine, Token-Fenster | [Auffang-Pipeline](format-fallback.md) |
+| Feed-Detailseite | `html` | entfällt | wie `.html`; der Konnektor übergibt die Inhaltsbereiche als HTML | [HTML](format-html.md) |
 | Confluence-Seite | `confluence` | entfällt | Überschriften h1 bis h3, Tabellen, Listen, Makros nach Regelwerk | [Confluence-Seite](format-confluence.md) |
 
 ### Bewusst nicht zugelassen

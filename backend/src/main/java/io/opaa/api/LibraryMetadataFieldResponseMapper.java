@@ -1,17 +1,24 @@
 package io.opaa.api;
 
+import io.opaa.api.dto.CoreContextPrefixResponse;
 import io.opaa.api.dto.CreateLibraryMetadataFieldRequest;
+import io.opaa.api.dto.EmbeddingRateSource;
 import io.opaa.api.dto.LibraryMetadataFieldResponse;
 import io.opaa.api.dto.LibraryMetadataFieldValueRequest;
 import io.opaa.api.dto.LibraryMetadataFieldValueResponse;
 import io.opaa.api.dto.LibraryMetadataFieldsResponse;
+import io.opaa.api.dto.MetadataChangeImpactResponse;
 import io.opaa.api.dto.MetadataFieldUsageResponse;
 import io.opaa.api.dto.RemapLibraryMetadataFieldValueResponse;
+import io.opaa.indexing.EmbeddingRateEstimator;
+import io.opaa.indexing.metadata.CoreContextPrefixSettings;
 import io.opaa.indexing.metadata.LibraryFieldValueRemapResult;
 import io.opaa.indexing.metadata.LibraryMetadataField;
 import io.opaa.indexing.metadata.LibraryMetadataFieldDefinition;
 import io.opaa.indexing.metadata.LibraryMetadataFieldInput;
+import io.opaa.indexing.metadata.LibraryMetadataFieldOverview;
 import io.opaa.indexing.metadata.LibraryMetadataFieldValue;
+import io.opaa.indexing.metadata.MetadataChangeImpact;
 import java.util.List;
 
 /**
@@ -22,9 +29,30 @@ final class LibraryMetadataFieldResponseMapper {
 
   private LibraryMetadataFieldResponseMapper() {}
 
-  static LibraryMetadataFieldsResponse toResponse(List<LibraryMetadataFieldDefinition> fields) {
+  static LibraryMetadataFieldsResponse toResponse(LibraryMetadataFieldOverview overview) {
     return new LibraryMetadataFieldsResponse(
-        fields.stream().map(LibraryMetadataFieldResponseMapper::toFieldResponse).toList());
+        overview.fields().stream()
+            .map(LibraryMetadataFieldResponseMapper::toFieldResponse)
+            .toList(),
+        toCoreContextPrefixResponse(overview.coreContextPrefix()),
+        overview.documentsAwaitingContextPrefixRerun());
+  }
+
+  static CoreContextPrefixResponse toCoreContextPrefixResponse(CoreContextPrefixSettings settings) {
+    return new CoreContextPrefixResponse(
+        settings.title(), settings.documentType(), settings.documentDate());
+  }
+
+  static MetadataChangeImpactResponse toImpactResponse(MetadataChangeImpact impact) {
+    return new MetadataChangeImpactResponse(
+        impact.affectedDocuments(),
+        impact.affectedChunks(),
+        impact.embeddingCalls(),
+        impact.estimatedSeconds(),
+        impact.reembeddingRequired(),
+        impact.rateSource() == EmbeddingRateEstimator.RateSource.MEASURED
+            ? EmbeddingRateSource.MEASURED
+            : EmbeddingRateSource.CONFIGURED);
   }
 
   static LibraryMetadataFieldResponse toFieldResponse(LibraryMetadataFieldDefinition definition) {

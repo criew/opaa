@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   buildCitationIndex,
   describeMetadata,
+  formatMetadataDetails,
   formatMetadataLine,
   metadataFilterMatchLabel,
 } from './citations'
@@ -36,6 +37,7 @@ describe('formatMetadataLine', () => {
           value: 'VERMERK',
           displayValue: 'Vermerk',
           origin: 'DERIVED',
+          detailOnly: false,
         },
         {
           fieldKey: 'document_date',
@@ -44,6 +46,7 @@ describe('formatMetadataLine', () => {
           displayValue: '2024',
           origin: 'MANUAL',
           datePrecision: 'YEAR',
+          detailOnly: false,
         },
       ],
     }
@@ -240,5 +243,46 @@ describe('buildCitationIndex', () => {
 
     expect(index.locationByNumber.size).toBe(0)
     expect(index.docs[0].locations).toEqual([])
+  })
+})
+
+// #1242: a value that belongs into the Beleg detail view, not into the one-line Fundstellenzeile.
+describe('metadata detail entries', () => {
+  const source = {
+    fileName: 'anfrage.eml',
+    relevanceScore: 1,
+    matchCount: 1,
+    cited: true,
+    metadata: [
+      {
+        fieldKey: 'fmt:mail_sender',
+        label: 'Absender',
+        value: 'max@stadt.de',
+        displayValue: 'max@stadt.de',
+        origin: 'DETERMINISTIC' as const,
+        detailOnly: false,
+      },
+      {
+        fieldKey: 'fmt:mail_recipients',
+        label: 'An',
+        value: 'a@x.de; b@y.de',
+        displayValue: 'a@x.de; b@y.de',
+        origin: 'DETERMINISTIC' as const,
+        detailOnly: true,
+      },
+    ],
+  } as SourceReference
+
+  test('keeps a detail-only value out of the one-line Beleg', () => {
+    expect(formatMetadataLine(source)).toBe('max@stadt.de')
+  })
+
+  test('leaves a detail-only value out of the accessible name of the line', () => {
+    expect(describeMetadata(source)).toBe('Absender: max@stadt.de')
+  })
+
+  test('shows the detail-only values labelled, for the Belegfenster alone', () => {
+    expect(formatMetadataDetails(source)).toBe('An: a@x.de; b@y.de')
+    expect(formatMetadataDetails({ ...source, metadata: [] })).toBeUndefined()
   })
 })

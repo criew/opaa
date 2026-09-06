@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
+import io.opaa.indexing.pipeline.DocumentPipelineRunner;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
 import java.io.IOException;
@@ -469,7 +470,8 @@ class OdtDocumentPipelineTest {
     }
 
     DocumentPipelineResult result =
-        pipeline.run(DocumentPipelineSource.ofFile(file, "ohne-content-xml.odt", ".odt"));
+        DocumentPipelineRunner.run(
+            pipeline, DocumentPipelineSource.ofFile(file, "ohne-content-xml.odt", ".odt"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
@@ -480,7 +482,8 @@ class OdtDocumentPipelineTest {
     Files.writeString(file, "das ist kein odt");
 
     DocumentPipelineResult result =
-        pipeline.run(DocumentPipelineSource.ofFile(file, "kaputt.odt", ".odt"));
+        DocumentPipelineRunner.run(
+            pipeline, DocumentPipelineSource.ofFile(file, "kaputt.odt", ".odt"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
@@ -504,7 +507,8 @@ class OdtDocumentPipelineTest {
     }
 
     DocumentPipelineResult result =
-        pipeline.run(DocumentPipelineSource.ofFile(file, "xxe.odt", ".odt"));
+        DocumentPipelineRunner.run(
+            pipeline, DocumentPipelineSource.ofFile(file, "xxe.odt", ".odt"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
@@ -517,7 +521,8 @@ class OdtDocumentPipelineTest {
     writeOdt(file, odtHeading(1, "Ueberschrift") + odtParagraph("Ein laengerer Textkoerper."));
 
     DocumentPipelineResult result =
-        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "gross.odt", ".odt"));
+        DocumentPipelineRunner.run(
+            tinyLimitPipeline, DocumentPipelineSource.ofFile(file, "gross.odt", ".odt"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
@@ -568,7 +573,9 @@ class OdtDocumentPipelineTest {
                 + "<text:s text:c=\"5\"/>"));
 
     DocumentPipelineResult result =
-        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odt", ".odt"));
+        DocumentPipelineRunner.run(
+            tinyLimitPipeline,
+            DocumentPipelineSource.ofFile(file, "viele-leerzeichen.odt", ".odt"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }
@@ -601,7 +608,8 @@ class OdtDocumentPipelineTest {
     writeOdt(file, odtParagraph("Erster Absatz.") + odtParagraph("Zweiter Absatz."));
 
     DocumentPipelineResult result =
-        tinyLimitPipeline.run(DocumentPipelineSource.ofFile(file, "viele-absaetze.odt", ".odt"));
+        DocumentPipelineRunner.run(
+            tinyLimitPipeline, DocumentPipelineSource.ofFile(file, "viele-absaetze.odt", ".odt"));
 
     assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.PARSE_FAILED);
   }

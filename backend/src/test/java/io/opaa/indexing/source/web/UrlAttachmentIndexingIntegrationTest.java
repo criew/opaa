@@ -12,12 +12,10 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingJob;
 import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.JobTriggerSource;
-import io.opaa.indexing.StaleDocumentCleanupService;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
-import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.organization.Organization;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
@@ -54,9 +52,7 @@ class UrlAttachmentIndexingIntegrationTest {
   @Autowired private FileProcessingService fileProcessingService;
   @Autowired private IndexingJobService indexingJobService;
   @Autowired private DocumentRepository documentRepository;
-  @Autowired private IndexingRunEventRepository indexingRunEventRepository;
-  @Autowired private LibraryStorageQuotaService storageQuotaService;
-  @Autowired private StaleDocumentCleanupService staleDocumentCleanupService;
+  @Autowired private IndexingRunTemplate indexingRunTemplate;
   @Autowired private io.opaa.library.LibraryFolderService folderService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private io.opaa.indexing.VectorChunkStore vectorChunkStore;
@@ -142,13 +138,10 @@ class UrlAttachmentIndexingIntegrationTest {
             new AutoindexCrawlerService(validator, new CrawlProperties(0, 0, 0)),
             new BoundedDownloader(validator),
             fileProcessingService,
-            indexingJobService,
             documentRepository,
-            indexingRunEventRepository,
-            storageQuotaService,
-            staleDocumentCleanupService,
             new CrawlProperties(0, 0, 0),
-            folderService);
+            folderService,
+            indexingRunTemplate);
   }
 
   @AfterEach

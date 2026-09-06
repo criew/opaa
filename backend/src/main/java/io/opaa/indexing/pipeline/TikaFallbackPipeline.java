@@ -96,9 +96,9 @@ public class TikaFallbackPipeline implements DocumentPipeline {
   }
 
   /**
-   * {@code null} for a source without a file: that is text extracted upstream, today an RSS entry's
-   * body. A title line only names a Dokumentart if the document names <em>itself</em> - a press
-   * release names the Satzung it reports about, and would inherit its Dokumentart.
+   * {@code null} for a source without a file: that is text extracted upstream. A title line only
+   * names a Dokumentart if the document names <em>itself</em> - a press release names the Satzung
+   * it reports about, and would inherit its Dokumentart.
    */
   private static String titleLine(DocumentPipelineSource source, List<Document> parsed) {
     if (source.file() == null) {

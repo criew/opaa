@@ -18,11 +18,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     survives before giving up with a rate-limit error. Default 6.
  * @param maxRetryAfter the longest single wait honoured from a {@code Retry-After} header; a longer
  *     value is capped to this (a run should slow down, not stall for an hour on one header).
- *     Default 2 minutes.
+ *     Default 2 minutes. {@code maxRateLimitRetries} and this value are Confluence's own numbers,
+ *     applied by the shared {@code io.opaa.sourceaccess} rate-limit handling; the {@code
+ *     User-Agent} is the deployment-wide {@code opaa.indexing.http.user-agent}.
  * @param maxResponseBytes upper bound for a single JSON response body. Default 10 MiB.
  * @param maxAttachmentSizeBytes upper bound for a single attachment download. Default 20 MiB.
- * @param userAgent truthful {@code User-Agent} sent with every request. Default {@code
- *     OPAA-Indexer/1.0}.
  * @param maxListingPages how many pages one listing (spaces, pages of a space, attachments, a
  *     search) may follow before it is abandoned as unbounded - a server whose {@code next} link
  *     never runs out must not become an endless loop (the same reasoning as {@code
@@ -51,13 +51,10 @@ public record ConfluenceProperties(
     Duration maxRetryAfter,
     long maxResponseBytes,
     long maxAttachmentSizeBytes,
-    String userAgent,
     int maxListingPages,
     Duration fullSyncInterval,
     Duration incrementalOverlap,
     int requestBudgetPerRun) {
-
-  static final String DEFAULT_USER_AGENT = "OPAA-Indexer/1.0";
 
   /**
    * Calls per run before the run ends as incomplete. Measured against a real Data Center in the
@@ -100,9 +97,6 @@ public record ConfluenceProperties(
     if (maxAttachmentSizeBytes <= 0) {
       maxAttachmentSizeBytes = 20_971_520L;
     }
-    if (userAgent == null || userAgent.isBlank()) {
-      userAgent = DEFAULT_USER_AGENT;
-    }
     if (maxListingPages < 0) {
       throw new IllegalArgumentException(
           "maxListingPages must not be negative, got " + maxListingPages);
@@ -138,6 +132,6 @@ public record ConfluenceProperties(
   /** All defaults - for callers and tests that need a properties instance without configuration. */
   public static ConfluenceProperties defaults() {
     return new ConfluenceProperties(
-        0, null, null, 0, null, 0, 0, null, 0, null, null, DEFAULT_REQUEST_BUDGET_PER_RUN);
+        0, null, null, 0, null, 0, 0, 0, null, null, DEFAULT_REQUEST_BUDGET_PER_RUN);
   }
 }

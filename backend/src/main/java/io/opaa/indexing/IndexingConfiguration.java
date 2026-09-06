@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.indexing.metadata.DocumentMetadataService;
+import io.opaa.indexing.metadata.ModelMetadataExtractor;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
@@ -18,10 +19,11 @@ import io.opaa.indexing.pipeline.office.PptxDocumentPipeline;
 import io.opaa.indexing.pipeline.pdf.PdfDocumentPipeline;
 import io.opaa.indexing.pipeline.tabular.TabularDocumentPipeline;
 import io.opaa.indexing.pipeline.tabular.TabularProperties;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
-import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
+import io.opaa.indexing.source.attachment.AttachmentLimits;
 import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
@@ -43,9 +45,11 @@ import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.library.UploadProperties;
 import io.opaa.observability.IndexingMetrics;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.time.Clock;
 import java.util.List;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -113,7 +117,7 @@ public class IndexingConfiguration {
 
   /**
    * Confluence page pipeline (ingestion-pipelines.md, Teil 3, Punkt 6) - claims no format, {@link
-   * FileProcessingService#processConfluencePage} looks it up by id.
+   * FileProcessingService#ingest} looks it up by id.
    */
   @Bean
   ConfluenceDocumentPipeline confluenceDocumentPipeline() {
@@ -257,14 +261,13 @@ public class IndexingConfiguration {
   /**
    * The generalized attachment path's limits for a Mail attachment (ADR-0022, Entscheidung 6):
    * {@code maxAttachmentsPerMessage}/{@code maxAttachmentBytes} mirror {@code MailProperties}' own
-   * parse-time ceilings, while {@code requestDelayMs}/{@code userAgent} are unused for the {@code
-   * AttachmentSource.LocalFile} a Mail attachment always is. The nesting depth is {@link
-   * AttachmentIndexer}'s, one value for every connector.
+   * parse-time ceilings. The nesting depth is {@link AttachmentIndexer}'s, one value for every
+   * connector.
    */
   @Bean
-  AttachmentDownloadLimits mailAttachmentDownloadLimits(MailProperties mailProperties) {
-    return new AttachmentDownloadLimits(
-        mailProperties.maxAttachmentsPerMessage(), mailProperties.maxAttachmentBytes(), 0L, "");
+  AttachmentLimits mailAttachmentLimits(MailProperties mailProperties) {
+    return new AttachmentLimits(
+        mailProperties.maxAttachmentsPerMessage(), mailProperties.maxAttachmentBytes());
   }
 
   @Bean
@@ -278,9 +281,9 @@ public class IndexingConfiguration {
       IndexingProperties indexingProperties,
       TaskExecutor embeddingTaskExecutor,
       ObjectProvider<AttachmentIndexer> attachmentIndexer,
-      AttachmentDownloadLimits mailAttachmentDownloadLimits,
-      KnowledgeLibraryRepository knowledgeLibraryRepository,
-      DocumentMetadataService documentMetadataService) {
+      AttachmentLimits mailAttachmentLimits,
+      DocumentMetadataService documentMetadataService,
+      ModelMetadataExtractor modelMetadataExtractor) {
     return new FileProcessingService(
         documentPipelineRegistry,
         documentRepository,
@@ -291,9 +294,9 @@ public class IndexingConfiguration {
         indexingProperties,
         embeddingTaskExecutor,
         attachmentIndexer,
-        mailAttachmentDownloadLimits,
-        knowledgeLibraryRepository,
-        documentMetadataService);
+        mailAttachmentLimits,
+        documentMetadataService,
+        modelMetadataExtractor);
   }
 
   @Bean
@@ -313,24 +316,51 @@ public class IndexingConfiguration {
   }
 
   /**
-   * Builds per-library Confluence clients (ADR-0023); shares the target validation every other
-   * outbound source fetch uses.
+   * What every request to a source OPAA does not operate carries and tolerates ({@code
+   * opaa.indexing.http}) - one instance, so every connector identifies itself and waits out a
+   * {@code 429} the same way.
    */
   @Bean
-  ConfluenceClientFactory confluenceClientFactory(
-      ConfluenceProperties confluenceProperties, TargetAddressValidator targetAddressValidator) {
-    return new ConfluenceClientFactory(confluenceProperties, targetAddressValidator);
+  SourceRequestPolicy sourceRequestPolicy(SourceHttpProperties sourceHttpProperties) {
+    return sourceHttpProperties.toRequestPolicy();
   }
 
   /**
-   * Shared by every {@link SourceIndexingExecutor} bean below that runs a full, "vollständig
-   * auflistend" crawl (FILESYSTEM, HTTP_DIRECTORY) - {@code RssFeedIndexingExecutor} deliberately
-   * does not depend on this (ADR-0017 decision 5).
+   * Builds per-library Confluence clients (ADR-0023); shares the target validation and the request
+   * policy every other outbound source fetch uses.
    */
+  @Bean
+  ConfluenceClientFactory confluenceClientFactory(
+      ConfluenceProperties confluenceProperties,
+      TargetAddressValidator targetAddressValidator,
+      SourceRequestPolicy sourceRequestPolicy) {
+    return new ConfluenceClientFactory(
+        confluenceProperties, targetAddressValidator, sourceRequestPolicy);
+  }
+
   @Bean
   StaleDocumentCleanupService staleDocumentCleanupService(
       DocumentRepository documentRepository, VectorChunkStore vectorChunkStore) {
     return new StaleDocumentCleanupService(documentRepository, vectorChunkStore);
+  }
+
+  /**
+   * The run frame every {@link SourceIndexingExecutor} bean below runs inside: job bookkeeping,
+   * protocol, result mapping, reconciliation and cost, once for all connectors.
+   */
+  @Bean
+  IndexingRunTemplate indexingRunTemplate(
+      IndexingJobService indexingJobService,
+      IndexingRunEventRepository indexingRunEventRepository,
+      StaleDocumentCleanupService staleDocumentCleanupService,
+      DocumentRepository documentRepository,
+      LibraryStorageQuotaService libraryStorageQuotaService) {
+    return new IndexingRunTemplate(
+        indexingJobService,
+        indexingRunEventRepository,
+        staleDocumentCleanupService,
+        documentRepository,
+        libraryStorageQuotaService);
   }
 
   // Declared as SourceIndexingExecutor, not the concrete executor type: all three beans below
@@ -341,34 +371,30 @@ public class IndexingConfiguration {
   SourceIndexingExecutor asyncIndexingExecutor(
       DocumentService documentService,
       FileProcessingService fileProcessingService,
-      IndexingJobService indexingJobService,
       FilesystemPathAllowlist filesystemPathAllowlist,
-      IndexingRunEventRepository indexingRunEventRepository,
-      LibraryStorageQuotaService libraryStorageQuotaService,
       LibraryFolderService libraryFolderService,
-      StaleDocumentCleanupService staleDocumentCleanupService,
-      DocumentRepository documentRepository) {
+      IndexingRunTemplate indexingRunTemplate) {
     return new AsyncIndexingExecutor(
         documentService,
         fileProcessingService,
-        indexingJobService,
         filesystemPathAllowlist,
-        indexingRunEventRepository,
-        libraryStorageQuotaService,
         libraryFolderService,
-        staleDocumentCleanupService,
-        documentRepository);
+        indexingRunTemplate);
   }
 
   @Bean
   AutoindexCrawlerService autoindexCrawlerService(
-      TargetAddressValidator targetAddressValidator, CrawlProperties crawlProperties) {
-    return new AutoindexCrawlerService(targetAddressValidator, crawlProperties);
+      TargetAddressValidator targetAddressValidator,
+      CrawlProperties crawlProperties,
+      SourceRequestPolicy sourceRequestPolicy) {
+    return new AutoindexCrawlerService(
+        targetAddressValidator, crawlProperties, sourceRequestPolicy);
   }
 
   @Bean
-  BoundedDownloader boundedDownloader(TargetAddressValidator targetAddressValidator) {
-    return new BoundedDownloader(targetAddressValidator);
+  BoundedDownloader boundedDownloader(
+      TargetAddressValidator targetAddressValidator, SourceRequestPolicy sourceRequestPolicy) {
+    return new BoundedDownloader(targetAddressValidator, sourceRequestPolicy);
   }
 
   @Bean
@@ -376,24 +402,18 @@ public class IndexingConfiguration {
       AutoindexCrawlerService autoindexCrawlerService,
       BoundedDownloader boundedDownloader,
       FileProcessingService fileProcessingService,
-      IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
-      IndexingRunEventRepository indexingRunEventRepository,
-      LibraryStorageQuotaService libraryStorageQuotaService,
-      StaleDocumentCleanupService staleDocumentCleanupService,
       CrawlProperties crawlProperties,
-      LibraryFolderService libraryFolderService) {
+      LibraryFolderService libraryFolderService,
+      IndexingRunTemplate indexingRunTemplate) {
     return new UrlIndexingExecutor(
         autoindexCrawlerService,
         boundedDownloader,
         fileProcessingService,
-        indexingJobService,
         documentRepository,
-        indexingRunEventRepository,
-        libraryStorageQuotaService,
-        staleDocumentCleanupService,
         crawlProperties,
-        libraryFolderService);
+        libraryFolderService,
+        indexingRunTemplate);
   }
 
   @Bean
@@ -405,25 +425,23 @@ public class IndexingConfiguration {
   SourceIndexingExecutor rssFeedIndexingExecutor(
       RssFeedParser rssFeedParser,
       FileProcessingService fileProcessingService,
-      IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
       RssFeedStateRepository rssFeedStateRepository,
       AttachmentIndexer attachmentIndexer,
       IndexingProperties properties,
-      IndexingRunEventRepository indexingRunEventRepository,
       TargetAddressValidator targetAddressValidator,
-      LibraryStorageQuotaService libraryStorageQuotaService) {
+      SourceRequestPolicy sourceRequestPolicy,
+      IndexingRunTemplate indexingRunTemplate) {
     return new RssFeedIndexingExecutor(
         rssFeedParser,
         fileProcessingService,
-        indexingJobService,
         documentRepository,
         rssFeedStateRepository,
         attachmentIndexer,
         properties,
-        indexingRunEventRepository,
         targetAddressValidator,
-        libraryStorageQuotaService);
+        sourceRequestPolicy,
+        indexingRunTemplate);
   }
 
   /**
@@ -438,26 +456,20 @@ public class IndexingConfiguration {
       ConfluenceProperties confluenceProperties,
       FileProcessingService fileProcessingService,
       AttachmentIndexer attachmentIndexer,
-      IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
-      IndexingRunEventRepository indexingRunEventRepository,
-      LibraryStorageQuotaService libraryStorageQuotaService,
-      StaleDocumentCleanupService staleDocumentCleanupService,
       ConfluenceSyncStateRepository confluenceSyncStateRepository,
-      VectorChunkStore vectorChunkStore) {
+      VectorChunkStore vectorChunkStore,
+      IndexingRunTemplate indexingRunTemplate) {
     return new ConfluenceIndexingExecutor(
         confluenceClientFactory,
         confluenceProperties,
         fileProcessingService,
         attachmentIndexer,
-        indexingJobService,
         documentRepository,
-        indexingRunEventRepository,
-        libraryStorageQuotaService,
-        staleDocumentCleanupService,
         confluenceSyncStateRepository,
         vectorChunkStore,
-        Clock.systemUTC());
+        Clock.systemUTC(),
+        indexingRunTemplate);
   }
 
   /**
@@ -524,6 +536,30 @@ public class IndexingConfiguration {
     executor.setMaxPoolSize(properties.embeddingConcurrency());
     executor.setQueueCapacity(Integer.MAX_VALUE);
     executor.setThreadNamePrefix("embedding-");
+    executor.initialize();
+    return executor;
+  }
+
+  /**
+   * Backs the model step's one call per document (#1073) - deliberately not the common {@code
+   * ForkJoinPool}: that pool is shared with everything else in the JVM, and a saturated one would
+   * let the 30-second limit expire on a call that never started, counted as a model failure nobody
+   * caused. Sized for every thread that can ingest at once (indexing plus upload pool), so a
+   * rejection means every ingest thread is already inside a model call. {@code AbortPolicy}, never
+   * caller-runs: an inline call would return only after the model answered, which is exactly the
+   * unbounded wait the limit exists to prevent - a rejected call is counted and skipped instead.
+   */
+  @Bean
+  TaskExecutor modelExtractionTaskExecutor(
+      IndexingProperties indexingProperties, UploadProperties uploadProperties) {
+    int concurrency =
+        indexingProperties.threadPool().maxSize() + uploadProperties.threadPool().maxSize();
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(concurrency);
+    executor.setMaxPoolSize(concurrency);
+    executor.setQueueCapacity(0);
+    executor.setThreadNamePrefix("model-extraction-");
+    executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
     executor.initialize();
     return executor;
   }

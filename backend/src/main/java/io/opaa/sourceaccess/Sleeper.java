@@ -1,8 +1,8 @@
-package io.opaa.indexing.source.confluence;
+package io.opaa.sourceaccess;
 
 import java.time.Duration;
 
-/** How the access layer waits on a {@code Retry-After}; replaced in tests to avoid real sleeps. */
+/** How a wait on a {@code Retry-After} is performed; replaced in tests to avoid real sleeps. */
 @FunctionalInterface
 public interface Sleeper {
 

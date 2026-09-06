@@ -2,6 +2,7 @@ package io.opaa.api;
 
 import io.opaa.api.dto.MetadataFilterDocumentTypeOption;
 import io.opaa.api.dto.MetadataFilterFieldOption;
+import io.opaa.api.dto.MetadataFilterFormatFieldOption;
 import io.opaa.api.dto.MetadataFilterLibraryFieldOption;
 import io.opaa.api.dto.MetadataFilterLibraryFieldValueOption;
 import io.opaa.api.dto.MetadataFilterOptionsResponse;
@@ -29,7 +30,28 @@ final class MetadataFilterOptionsResponseMapper {
         .libraryFields(
             options.libraryFields().stream()
                 .map(MetadataFilterOptionsResponseMapper::toLibraryField)
+                .toList())
+        .formatFields(
+            options.formatFields().stream()
+                .map(MetadataFilterOptionsResponseMapper::toFormatField)
                 .toList());
+  }
+
+  private static MetadataFilterFormatFieldOption toFormatField(
+      MetadataFilterOptions.FormatFieldOption field) {
+    return new MetadataFilterFormatFieldOption(
+            field.field().key(),
+            field.field().label(),
+            field.filledDocuments(),
+            field.totalDocuments(),
+            field.values().stream()
+                .map(
+                    value ->
+                        new MetadataFilterLibraryFieldValueOption(
+                            value.code(), value.label(), value.documentCount()))
+                .toList(),
+            field.offered())
+        .valuesCapped(field.valuesCapped());
   }
 
   private static MetadataFilterLibraryFieldOption toLibraryField(

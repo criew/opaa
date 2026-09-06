@@ -12,12 +12,19 @@ public sealed interface AttachmentSource {
 
   /**
    * A remote attachment the indexer must download itself, exactly what RSS ({@code
-   * AttachmentProfile}) and, in the future, Confluence discover: a link, resolved into the {@link
-   * HttpClient}/{@code Authorization} header the caller has already picked for it (same-origin
-   * politeness/SSL relaxation is a decision only the caller's own run context can make - see {@code
+   * AttachmentProfile}) discovers: a link, resolved into the {@link HttpClient}/{@code
+   * Authorization} header the caller has already picked for it (same-origin politeness/SSL
+   * relaxation is a decision only the caller's own run context can make - see {@code
    * RssFeedRunContext#httpClientFor}, not something this package re-derives).
+   *
+   * @param requestDelayMs the politeness delay applied before this download; {@code 0} for none
    */
-  record Download(String url, String suggestedFileName, HttpClient httpClient, String authHeader)
+  record Download(
+      String url,
+      String suggestedFileName,
+      HttpClient httpClient,
+      String authHeader,
+      long requestDelayMs)
       implements AttachmentSource {}
 
   /**

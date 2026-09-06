@@ -54,8 +54,8 @@ public record DocumentPipelineResult(
      * The source could not be read at all - a corrupt container, a rejected XXE attempt, a
      * DoS-hardening limit. Distinct from {@link #NO_CONTENT}, since nothing is known about the
      * content, so the caller must not treat it as "the new version is empty". A pipeline reports it
-     * by catching what its parser can throw; HTML, Markdown and the Tika fallback still propagate
-     * an unchecked exception instead - a known gap the caller handles identically.
+     * by letting its parser's exception out; {@link DocumentPipelineRunner} maps it here for every
+     * format alike, so a caller never sees the failure in any other form.
      */
     PARSE_FAILED,
     /**

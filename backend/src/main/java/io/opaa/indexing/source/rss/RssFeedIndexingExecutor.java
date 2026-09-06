@@ -1,32 +1,35 @@
 package io.opaa.indexing.source.rss;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.IndexingRunEventRecorder;
-import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.IndexingRunProgress;
+import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
+import io.opaa.indexing.source.IndexingRun;
+import io.opaa.indexing.source.IndexingRunFailedException;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceType;
+import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.indexing.source.attachment.AttachmentCandidate;
-import io.opaa.indexing.source.attachment.AttachmentDownloadLimits;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
+import io.opaa.indexing.source.attachment.AttachmentLimits;
 import io.opaa.indexing.source.attachment.AttachmentSource;
 import io.opaa.indexing.source.web.DetailPageExtractor;
 import io.opaa.library.KnowledgeLibrary;
-import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.RequestPoliteness;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.net.URI;
@@ -40,15 +43,15 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Async;
 
 /**
  * Executes indexing runs for {@link IndexingSourceType#RSS_FEED} (ADR-0017): fetches the feed,
- * resolves every entry's detail page and hands the page's main text - not the whole page - into
- * {@link FileProcessingService#processRssEntry}. Transport, page reduction and attachments belong
- * to {@link FeedFetcher}, {@link DetailPageExtractor} and {@link AttachmentIndexer}; this class
- * keeps the orchestration and the per-run state ({@link RssFeedRunContext}).
+ * resolves every entry's detail page and hands the page's main content - not the whole page - as
+ * HTML into {@link FileProcessingService#ingest}, naming the HTML pipeline, so an entry is cut into
+ * sections like a {@code .html} file. Transport, page reduction and attachments belong to {@link
+ * FeedFetcher}, {@link DetailPageExtractor} and {@link AttachmentIndexer}; this class keeps the
+ * orchestration and the per-run state ({@link RssFeedRunContext}).
  *
  * <p>Change detection is three-staged: a conditional {@code GET} on the feed, each entry's stored
  * {@code pubDate}, then the SHA-256 checksum. <b>No deletion by absence</b> (decision 5): a feed's
@@ -60,43 +63,41 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private static final Logger log = LoggerFactory.getLogger(RssFeedIndexingExecutor.class);
 
   private final FileProcessingService fileProcessingService;
-  private final IndexingJobService indexingJobService;
   private final DocumentRepository documentRepository;
   private final IndexingProperties.Rss properties;
-  private final IndexingRunEventRepository indexingRunEventRepository;
-  private final LibraryStorageQuotaService storageQuotaService;
   private final FeedFetcher feedFetcher;
   private final DetailPageExtractor detailPageExtractor;
   private final AttachmentIndexer attachmentIndexer;
-  private final AttachmentDownloadLimits attachmentLimits;
+  private final AttachmentLimits attachmentLimits;
+  private final IndexingRunTemplate runTemplate;
 
   public RssFeedIndexingExecutor(
       RssFeedParser feedParser,
       FileProcessingService fileProcessingService,
-      IndexingJobService indexingJobService,
       DocumentRepository documentRepository,
       RssFeedStateRepository feedStateRepository,
       AttachmentIndexer attachmentIndexer,
       IndexingProperties properties,
-      IndexingRunEventRepository indexingRunEventRepository,
       TargetAddressValidator targetAddressValidator,
-      LibraryStorageQuotaService storageQuotaService) {
+      SourceRequestPolicy requestPolicy,
+      IndexingRunTemplate runTemplate) {
     this.fileProcessingService = fileProcessingService;
-    this.indexingJobService = indexingJobService;
     this.documentRepository = documentRepository;
     this.properties = properties.rss();
-    this.indexingRunEventRepository = indexingRunEventRepository;
-    this.storageQuotaService = storageQuotaService;
     this.feedFetcher =
-        new FeedFetcher(targetAddressValidator, feedStateRepository, feedParser, this.properties);
-    this.detailPageExtractor = new DetailPageExtractor(targetAddressValidator, this.properties);
+        new FeedFetcher(
+            targetAddressValidator,
+            feedStateRepository,
+            feedParser,
+            this.properties,
+            requestPolicy);
+    this.detailPageExtractor =
+        new DetailPageExtractor(targetAddressValidator, this.properties, requestPolicy);
     this.attachmentIndexer = attachmentIndexer;
     this.attachmentLimits =
-        new AttachmentDownloadLimits(
-            this.properties.maxAttachmentsPerEntry(),
-            this.properties.maxAttachmentSizeBytes(),
-            this.properties.requestDelayMs(),
-            this.properties.userAgent());
+        new AttachmentLimits(
+            this.properties.maxAttachmentsPerEntry(), this.properties.maxAttachmentSizeBytes());
+    this.runTemplate = runTemplate;
   }
 
   @Override
@@ -113,100 +114,74 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   @Override
   @Async("indexingTaskExecutor")
   public void execute(UUID jobId, KnowledgeLibrary targetLibrary, IndexingRunMode runMode) {
-    var progress = new IndexingRunProgress(indexingJobService, jobId);
-    var events =
-        new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId);
-    if (!runModes().containsKey(runMode)) {
-      progress.fail("Betriebsart " + runMode + " wird für diesen Quellentyp nicht unterstützt");
-      return;
-    }
-    // ADR-0018: the feed's address is the library's own sourceUrl, not a per-request field.
-    String feedUrl = targetLibrary.getSourceUrl();
-
-    try {
-      ProxyAndCredentials config;
-      try {
-        config =
-            ProxyAndCredentials.parse(
-                targetLibrary.getSourceProxy(), targetLibrary.getSourceCredentials());
-      } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-        progress.fail(e.getMessage());
-        return;
-      }
-      String authHeader =
-          SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
-
-      // secureClient always validates certificates normally; insecureClient relaxes validation
-      // only when the library asks for it and is used exclusively for same-origin requests - see
-      // RssFeedRunContext#httpClientFor's own Javadoc.
-      HttpClient secureClient =
-          SourceHttpClientFactory.buildHttpClient(config.proxyHost(), config.proxyPort(), false);
-      HttpClient insecureClient =
-          targetLibrary.isSourceInsecureSsl()
-              ? SourceHttpClientFactory.buildHttpClient(
-                  config.proxyHost(), config.proxyPort(), true)
-              : secureClient;
-
-      Optional<FeedFetcher.LoadedFeed> loaded =
-          feedFetcher.fetchAndParse(
-              insecureClient, targetLibrary.getId(), feedUrl, authHeader, progress);
-      if (loaded.isEmpty()) {
-        return;
-      }
-      List<RssFeedEntry> entries = loaded.get().entries();
-      progress.setTotal(entries.size());
-      progress.report();
-
-      var ctx =
-          new RssFeedRunContext(
-              secureClient,
-              insecureClient,
-              targetLibrary,
-              authHeader,
-              feedUrl,
-              progress,
-              events,
-              new AtomicBoolean(loaded.get().truncated()));
-      for (RssFeedEntry entry : entries) {
-        processEntry(ctx, entry);
-        progress.report();
-      }
-
-      // An ETag/Last-Modified saved after a run that deferred entries would let a future 304
-      // permanently hide those entries - the conditional-GET state only advances once a run has
-      // accounted for every entry it saw.
-      if (!ctx.anyEntryDeferred().get() && progress.failedCount() == 0) {
-        feedFetcher.saveState(targetLibrary.getId(), feedUrl, loaded.get().feedResponse());
-      } else {
-        log.info(
-            "Not persisting RSS feed state for {} - this run deferred or failed at least one"
-                + " entry, so a future 304 must not suppress it",
-            feedUrl);
-      }
-      events.finalizeRun();
-      progress.complete();
-    } catch (IOException | InterruptedException e) {
-      log.error("RSS feed indexing failed: {}", feedUrl, e);
-      events.finalizeRun();
-      progress.fail(e.getMessage());
-      if (e instanceof InterruptedException) {
-        Thread.currentThread().interrupt();
-      }
-    } catch (DataIntegrityViolationException e) {
-      // fk_rss_feed_state_library makes the delete-during-run race visible as a constraint
-      // violation - the target library was deleted between this run starting and saveState's
-      // write. The raw JDBC/Hibernate message must never reach the user-facing run status.
-      log.error("RSS feed indexing failed - target library no longer exists: {}", feedUrl, e);
-      events.finalizeRun();
-      progress.fail("Die Bibliothek wurde während des Laufs gelöscht.");
-    } catch (Exception e) {
-      log.error("RSS feed indexing failed unexpectedly: {}", feedUrl, e);
-      events.finalizeRun();
-      progress.fail(e.getMessage());
-    }
+    runTemplate.run(jobId, targetLibrary, runMode, this, this::indexFeed);
   }
 
-  private void processEntry(RssFeedRunContext ctx, RssFeedEntry entry) {
+  private ListingOutcome indexFeed(IndexingRun run) throws IOException, InterruptedException {
+    KnowledgeLibrary targetLibrary = run.library();
+    // ADR-0018: the feed's address is the library's own sourceUrl, not a per-request field.
+    String feedUrl = targetLibrary.getSourceUrl();
+    ProxyAndCredentials config;
+    try {
+      config =
+          ProxyAndCredentials.parse(
+              targetLibrary.getSourceProxy(), targetLibrary.getSourceCredentials());
+    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
+      throw new IndexingRunFailedException(e.getMessage());
+    }
+    String authHeader =
+        SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
+
+    // secureClient always validates certificates normally; insecureClient relaxes validation
+    // only when the library asks for it and is used exclusively for same-origin requests - see
+    // RssFeedRunContext#httpClientFor's own Javadoc.
+    HttpClient secureClient =
+        SourceHttpClientFactory.buildHttpClient(config.proxyHost(), config.proxyPort(), false);
+    HttpClient insecureClient =
+        targetLibrary.isSourceInsecureSsl()
+            ? SourceHttpClientFactory.buildHttpClient(config.proxyHost(), config.proxyPort(), true)
+            : secureClient;
+
+    Optional<FeedFetcher.LoadedFeed> loaded =
+        feedFetcher.fetchAndParse(insecureClient, targetLibrary.getId(), feedUrl, authHeader);
+    if (loaded.isEmpty()) {
+      run.progress().setTotal(0);
+      return ListingOutcome.partial();
+    }
+    List<RssFeedEntry> entries = loaded.get().entries();
+    run.progress().setTotal(entries.size());
+    run.progress().report();
+
+    var ctx =
+        new RssFeedRunContext(
+            secureClient,
+            insecureClient,
+            targetLibrary,
+            authHeader,
+            feedUrl,
+            run.progress(),
+            run.events(),
+            new AtomicBoolean(loaded.get().truncated()));
+    for (RssFeedEntry entry : entries) {
+      processEntry(run, ctx, entry);
+      run.progress().report();
+    }
+
+    // An ETag/Last-Modified saved after a run that deferred entries would let a future 304
+    // permanently hide those entries - the conditional-GET state only advances once a run has
+    // accounted for every entry it saw.
+    if (!ctx.anyEntryDeferred().get() && run.progress().failedCount() == 0) {
+      feedFetcher.saveState(targetLibrary.getId(), feedUrl, loaded.get().feedResponse());
+    } else {
+      log.info(
+          "Not persisting RSS feed state for {} - this run deferred or failed at least one"
+              + " entry, so a future 304 must not suppress it",
+          feedUrl);
+    }
+    return ListingOutcome.partial();
+  }
+
+  private void processEntry(IndexingRun run, RssFeedRunContext ctx, RssFeedEntry entry) {
     String entryUrl = entry.link();
     IndexingRunProgress progress = ctx.progress();
     IndexingRunEventRecorder events = ctx.events();
@@ -236,7 +211,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     }
 
     Optional<Instant> publishedAt = entry.publishedAt();
-    if (isUnchanged(entryUrl, publishedAt, ctx.targetLibrary())) {
+    if (run.isUnchanged(entryUrl, publishedAt.map(Instant::toString).orElse(null))) {
       processUnchangedEntry(ctx, entryUrl);
       return;
     }
@@ -250,7 +225,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     }
     DetailPageExtractor.DetailPage detailPage = fetched.get();
 
-    if (detailPage.mainText() == null || detailPage.mainText().isBlank()) {
+    if (detailPage.mainHtml().isBlank()) {
       log.warn("RSS detail page yielded no extractable text, skipping: {}", entryUrl);
       events.record(IndexingEventCategory.UNSUPPORTED_FORMAT, "Kein Inhalt extrahierbar", entryUrl);
       progress.recordSkipped();
@@ -259,48 +234,25 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     }
 
     try {
+      // The entry body never was a file: the main content's HTML for the HTML pipeline, its
+      // headline as the declared title and its publication instant as the document's own date.
       FileProcessingResult result =
-          fileProcessingService.processRssEntry(
-              detailPage.mainText(),
-              entry.title(),
-              entryUrl,
-              publishedAt.map(Instant::toString).orElse(null),
-              ctx.targetLibrary());
-      if (result == FileProcessingResult.QUOTA_EXCEEDED) {
-        // See AsyncIndexingExecutor's own handling of this outcome.
-        events.record(
-            IndexingEventCategory.REJECTED,
-            storageQuotaService.quotaExceededMessage(ctx.targetLibrary().getId()),
-            entryUrl);
-        progress.recordSkipped();
-      } else if (result == FileProcessingResult.NO_EXTRACTABLE_TEXT) {
-        // See AsyncIndexingExecutor's own handling of this outcome. Reachable on this path since
-        // the entry's own document was rejected and marked FAILED, so it is reported as
-        // rejected rather than counted as processed - and its attachments are deliberately not
-        // indexed, mirroring every other rejected entry.
-        events.record(
-            IndexingEventCategory.REJECTED, DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE, entryUrl);
-        progress.recordSkipped();
-      } else if (result == FileProcessingResult.FAILED) {
-        // See AsyncIndexingExecutor's own handling of this outcome. Its attachments are
-        // deliberately not indexed, mirroring every other rejected entry.
-        events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", entryUrl);
-        progress.recordFailed();
-      } else if (result == FileProcessingResult.SKIPPED) {
-        progress.recordSkipped();
-      } else {
-        progress.recordProcessed();
+          fileProcessingService.ingest(
+              DocumentIngest.text(ctx.targetLibrary(), entryUrl, detailPage.mainHtml())
+                  .pipelineId(HtmlDocumentPipeline.ID)
+                  .sourceType(DocumentSourceType.RSS_FEED)
+                  .title(entry.title())
+                  .changeMarker(publishedAt.map(Instant::toString).orElse(null))
+                  .documentDate(DocumentProperties.instantToLocalDate(publishedAt.orElse(null)))
+                  .build(),
+              null);
+      // A rejected or failed entry's attachments are deliberately not indexed.
+      if (run.recordOutcome(result, entryUrl)) {
         log.info("Indexed RSS entry: {}", entryUrl);
         indexAttachments(ctx, detailPage.attachments(), entryUrl);
       }
-    } catch (Exception e) {
-      log.error("Failed to process RSS entry: {}", entryUrl, e);
-      events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", entryUrl);
-      progress.recordFailed();
-    } catch (Error e) {
-      log.error("Fatal error while processing RSS entry: {}", entryUrl, e);
-      events.record(IndexingEventCategory.ERROR, "Verarbeitung fehlgeschlagen", entryUrl);
-      progress.recordFailed();
+    } catch (Exception | Error e) {
+      run.recordFailure(entryUrl, e);
     }
   }
 
@@ -352,7 +304,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
                             candidate.url(),
                             candidate.suggestedFileName(),
                             ctx.httpClientFor(candidate.url()),
-                            ctx.authHeaderFor(candidate.url())))
+                            ctx.authHeaderFor(candidate.url()),
+                            properties.requestDelayMs()))
             .toList();
     attachmentIndexer.indexAll(
         ctx,
@@ -491,23 +444,5 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     } catch (IllegalArgumentException e) {
       return false;
     }
-  }
-
-  /**
-   * Whether an RSS entry's document is unchanged by its {@code pubDate}, before its detail page is
-   * ever requested (ADR-0017) - the mirror of {@code UrlIndexingExecutor#isUnchanged}. A missing
-   * {@code pubDate} counts as changed, leaving the SHA-256 checksum as the deciding signal. Scoped
-   * to {@code targetLibrary}, since the same entry in another library is an independent document.
-   */
-  private boolean isUnchanged(
-      String entryUrl, Optional<Instant> publishedAt, KnowledgeLibrary targetLibrary) {
-    if (publishedAt.isEmpty()) {
-      return false;
-    }
-    Optional<Document> existing =
-        documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), entryUrl);
-    return existing.isPresent()
-        && publishedAt.get().toString().equals(existing.get().getLastModifiedRemote())
-        && existing.get().getStatus() == DocumentStatus.INDEXED;
   }
 }

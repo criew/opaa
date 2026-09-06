@@ -1,7 +1,6 @@
 package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentStatus;
@@ -98,7 +97,9 @@ class ChunkReplacementOrderIntegrationTest {
     Files.writeString(file, FIRST_TEXT);
     when(documentService.parseDocument(file))
         .thenReturn(List.of(new org.springframework.ai.document.Document(FIRST_TEXT)));
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
     UUID documentId = onlyDocumentId();
     long previousVectorChunks = vectorChunks(documentId);
@@ -109,8 +110,12 @@ class ChunkReplacementOrderIntegrationTest {
     Files.writeString(file, SECOND_TEXT);
     when(documentService.parseDocument(file)).thenThrow(new IllegalStateException("Reader kaputt"));
 
-    assertThatThrownBy(() -> fileProcessingService.processFile(file, targetLibrary))
-        .isInstanceOf(IllegalStateException.class);
+    // A reader that throws is the same answer as one that reports PARSE_FAILED - the exception is
+    // mapped in DocumentPipelineRunner, so the run ends FAILED instead of propagating.
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
+        .isEqualTo(FileProcessingResult.FAILED);
 
     Document doc = documentRepository.findById(documentId).orElseThrow();
     assertThat(doc.getStatus()).isEqualTo(DocumentStatus.FAILED);
@@ -124,7 +129,9 @@ class ChunkReplacementOrderIntegrationTest {
   void changedPdfThatCannotBeParsedKeepsItsPreviousChunks() throws IOException {
     Path file = classTempDir.resolve("kaputt.pdf");
     writePdf(file);
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
     UUID documentId = onlyDocumentId();
     long previousVectorChunks = vectorChunks(documentId);
@@ -134,7 +141,9 @@ class ChunkReplacementOrderIntegrationTest {
     // the body and reports PARSE_FAILED rather than throwing.
     Files.write(file, "%PDF-1.7\nnicht wirklich ein PDF".getBytes(StandardCharsets.UTF_8));
 
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.FAILED);
 
     Document doc = documentRepository.findById(documentId).orElseThrow();
@@ -150,7 +159,9 @@ class ChunkReplacementOrderIntegrationTest {
     Files.writeString(file, FIRST_TEXT);
     when(documentService.parseDocument(file))
         .thenReturn(List.of(new org.springframework.ai.document.Document(FIRST_TEXT)));
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
     UUID documentId = onlyDocumentId();
     assertThat(vectorChunks(documentId)).isPositive();
@@ -158,7 +169,9 @@ class ChunkReplacementOrderIntegrationTest {
     Files.writeString(file, "");
     when(documentService.parseDocument(file)).thenReturn(List.of());
 
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.FAILED);
 
     Document doc = documentRepository.findById(documentId).orElseThrow();
@@ -173,14 +186,18 @@ class ChunkReplacementOrderIntegrationTest {
   void changedPdfWithoutATextLayerLosesItsChunks() throws IOException {
     Path file = classTempDir.resolve("scan.pdf");
     writePdf(file);
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
     UUID documentId = onlyDocumentId();
     assertThat(vectorChunks(documentId)).isPositive();
 
     writeTextlessPdf(file);
 
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.NO_EXTRACTABLE_TEXT);
 
     Document doc = documentRepository.findById(documentId).orElseThrow();
@@ -197,7 +214,9 @@ class ChunkReplacementOrderIntegrationTest {
     Files.writeString(file, FIRST_TEXT);
     when(documentService.parseDocument(file))
         .thenReturn(List.of(new org.springframework.ai.document.Document(FIRST_TEXT)));
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
     UUID documentId = onlyDocumentId();
     long previousVectorChunks = vectorChunks(documentId);
@@ -206,7 +225,9 @@ class ChunkReplacementOrderIntegrationTest {
     when(documentService.parseDocument(file))
         .thenReturn(List.of(new org.springframework.ai.document.Document(SECOND_TEXT)));
 
-    assertThat(fileProcessingService.processFile(file, targetLibrary))
+    assertThat(
+            fileProcessingService.ingest(
+                DocumentIngest.localFile(targetLibrary, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     Document doc = documentRepository.findById(documentId).orElseThrow();
@@ -281,17 +302,26 @@ class ChunkReplacementOrderIntegrationTest {
   }
 
   @Test
-  void changedRssEntryWithoutUsableTextLosesItsChunks() {
+  void changedRssEntryWithoutUsableTextLosesItsChunks() throws IOException {
     assertThat(
-            fileProcessingService.processRssEntry(
-                FIRST_TEXT, "Meldung", "https://example.test/1", null, targetLibrary))
+            fileProcessingService.ingest(
+                DocumentIngests.rssEntry(
+                    targetLibrary, FIRST_TEXT, "Meldung", "https://example.test/1", null),
+                null))
         .isEqualTo(FileProcessingResult.PROCESSED);
     UUID documentId = onlyDocumentId();
     assertThat(vectorChunks(documentId)).isPositive();
 
+    // a page whose main content is nothing but chrome yields no chunk in the HTML pipeline
     assertThat(
-            fileProcessingService.processRssEntry(
-                "x", "Meldung", "https://example.test/1", null, targetLibrary))
+            fileProcessingService.ingest(
+                DocumentIngests.rssEntry(
+                    targetLibrary,
+                    "<html><body><nav>x</nav></body></html>",
+                    "Meldung",
+                    "https://example.test/1",
+                    null),
+                null))
         .isEqualTo(FileProcessingResult.NO_EXTRACTABLE_TEXT);
 
     assertThat(documentRepository.findById(documentId).orElseThrow().getChunkCount()).isZero();
@@ -300,16 +330,21 @@ class ChunkReplacementOrderIntegrationTest {
   }
 
   @Test
-  void changedRssEntryThatParsesSuccessfullyReplacesItsChunksWithoutDuplicates() {
+  void changedRssEntryThatParsesSuccessfullyReplacesItsChunksWithoutDuplicates()
+      throws IOException {
     assertThat(
-            fileProcessingService.processRssEntry(
-                FIRST_TEXT, "Meldung", "https://example.test/2", null, targetLibrary))
+            fileProcessingService.ingest(
+                DocumentIngests.rssEntry(
+                    targetLibrary, FIRST_TEXT, "Meldung", "https://example.test/2", null),
+                null))
         .isEqualTo(FileProcessingResult.PROCESSED);
     UUID documentId = onlyDocumentId();
 
     assertThat(
-            fileProcessingService.processRssEntry(
-                SECOND_TEXT, "Meldung", "https://example.test/2", null, targetLibrary))
+            fileProcessingService.ingest(
+                DocumentIngests.rssEntry(
+                    targetLibrary, SECOND_TEXT, "Meldung", "https://example.test/2", null),
+                null))
         .isEqualTo(FileProcessingResult.PROCESSED);
 
     Document doc = documentRepository.findById(documentId).orElseThrow();
@@ -319,13 +354,16 @@ class ChunkReplacementOrderIntegrationTest {
   }
 
   private FileProcessingResult processUrl(Path localFile, String fileName) throws IOException {
-    return fileProcessingService.processUrlFile(
-        localFile,
-        fileName,
-        "https://example.test/dateien/" + fileName,
-        null,
-        Files.size(localFile),
-        targetLibrary);
+    return fileProcessingService.ingest(
+        DocumentIngests.downloadedFile(
+                targetLibrary,
+                localFile,
+                fileName,
+                "https://example.test/dateien/" + fileName,
+                null,
+                Files.size(localFile))
+            .build(),
+        null);
   }
 
   private UUID onlyDocumentId() {

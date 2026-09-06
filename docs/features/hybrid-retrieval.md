@@ -1130,8 +1130,16 @@ Arbeitspaket 1 die Erklärbarkeit jeder Stufe verlangt.
   `documents`-Selektionsspalte, aus der der Bestandslauf seine Auswahl bildet; „ausstehend" ist die
   Obermenge dieser Auswahl. Der Bestandslauf wird auf dieser Seite je Bibliothek gestartet, angehalten und
   wieder aufgenommen (siehe
-  [Metadatenschema, Umgesetzt (#1067)](./metadata-schema.md#umgesetzt-1067)); er ist der einzige
-  Eingriff, den die Seite erlaubt.
+  [Metadatenschema, Umgesetzt (#1067)](./metadata-schema.md#umgesetzt-1067)).
+- der **Stand des Kontextpräfix** je Bibliothek (seit #1072): wie viele indizierte Dokumente unter der
+  aktuellen Präfix-Fassung eingebettet sind, wie viele auf das Neu-Einbetten warten und wie viele der
+  letzte Nachlauf nicht voranbringen konnte. Das ist der definierte Mischzustand einer Bibliothek,
+  deren Metadaten gerade umgestellt werden — an dieser Anzeige erkennbar, nicht nur an schwankenden
+  Suchergebnissen. Der Nachlauf wird hier je Bibliothek gestartet, angehalten und wieder aufgenommen
+  (siehe [Metadatenschema, Umgesetzt (#1072)](./metadata-schema.md#umgesetzt-1072)).
+
+Die beiden Chargenläufe — Bestandslauf und Kontextpräfix-Nachlauf — sind die einzigen Eingriffe, die
+die Seite erlaubt.
 
 ### Das Diagnosewerkzeug
 

@@ -1,4 +1,4 @@
-# Format: Auffang-Pipeline (TXT, DOC, Feed-Text)
+# Format: Auffang-Pipeline (TXT, DOC)
 
 > **Entwurf.** Pipeline `tika-fallback`, Version 1. Der gemeinsame Rahmen aller
 > Format-Pipelines steht im Kapitel [Indexierung](indexierung.md), Abschnitt 5.
@@ -12,8 +12,11 @@ Pipeline registriert ist:
 |---|---|
 | `.txt` | text-tolerant: Inhalt muss Text sein und die Datei muss `.txt` heißen |
 | `.doc` (Word-Binärformat) | strikt: `application/msword`. Die Word-Pipeline kann das alte Format nicht öffnen. |
-| Feed-Einträge | kein Format: Der [Feed-Konnektor](konnektor-rss-feed.md) übergibt bereits extrahierten Text, der nie eine Datei war |
 | Dateien, deren Format nicht lesbar war | Rückfall mit Vermerk am Chunk, dass die Formaterkennung gescheitert ist |
+
+Inhalte, die nie eine Datei waren, laufen **nicht** hier: Die Detailseiten des
+[Feed-Konnektors](konnektor-rss-feed.md) gehen an die [HTML-Pipeline](format-html.md), die
+Seiten des Confluence-Konnektors an die [Confluence-Pipeline](format-confluence.md).
 
 ## 2. Was gelesen wird
 

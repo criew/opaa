@@ -16,15 +16,19 @@ import com.sun.net.httpserver.HttpsServer;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.IndexingRunEventRepository;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.RateLimitPolicy;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.File;
 import java.io.IOException;
@@ -213,8 +217,13 @@ class RssFeedIndexingExecutorInsecureSslTest {
         });
   }
 
+  /** The shared request policy: a test user agent, no retries, no real sleeping. */
+  private static SourceRequestPolicy requestPolicy() {
+    return new SourceRequestPolicy("OPAA-Indexer/test", RateLimitPolicy.NONE, duration -> {});
+  }
+
   @BeforeEach
-  void setUp() {
+  void setUp() throws Exception {
     fileProcessingService = mock(FileProcessingService.class);
     indexingJobService = mock(IndexingJobService.class);
     documentRepository = mock(DocumentRepository.class);
@@ -224,7 +233,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
     indexingRunEventRepository = mock(IndexingRunEventRepository.class);
 
     IndexingProperties.Rss rss =
-        new IndexingProperties.Rss(200, 10_000, 10_000, 0, "OPAA-Indexer/test", null, null, 0, 0);
+        new IndexingProperties.Rss(200, 10_000, 10_000, 0, null, null, 0, 0);
     IndexingProperties properties = new IndexingProperties(0, 0, 0, null, rss, null, null, 0);
     // Target validation is exercised on its own dedicated stand (TargetAddressValidatorTest) -
     // disabled here since every server this class talks to is deliberately loopback.
@@ -233,18 +242,22 @@ class RssFeedIndexingExecutorInsecureSslTest {
         new RssFeedIndexingExecutor(
             new RssFeedParser(),
             fileProcessingService,
-            indexingJobService,
             documentRepository,
             feedStateRepository,
             new io.opaa.indexing.source.attachment.AttachmentIndexer(
                 new BoundedDownloader(targetAddressValidator),
                 fileProcessingService,
                 mock(LibraryStorageQuotaService.class),
-                new io.opaa.indexing.source.attachment.AttachmentProperties(5)),
+                new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0)),
             properties,
-            indexingRunEventRepository,
             targetAddressValidator,
-            mock(LibraryStorageQuotaService.class));
+            requestPolicy(),
+            new IndexingRunTemplate(
+                indexingJobService,
+                indexingRunEventRepository,
+                mock(io.opaa.indexing.StaleDocumentCleanupService.class),
+                documentRepository,
+                mock(LibraryStorageQuotaService.class)));
   }
 
   private KnowledgeLibrary library(String feedUrl, boolean sourceInsecureSsl) {
@@ -264,7 +277,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
   }
 
   @Test
-  void sourceInsecureSslTrueAcceptsTheSelfSignedCertificateOfTheFeedsOwnOrigin() {
+  void sourceInsecureSslTrueAcceptsTheSelfSignedCertificateOfTheFeedsOwnOrigin() throws Exception {
     executor.execute(
         UUID.randomUUID(),
         library(feedServer.baseUrl() + EMPTY_FEED_PATH, true),
@@ -275,7 +288,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
   }
 
   @Test
-  void sourceInsecureSslFalseStillRejectsTheSelfSignedCertificate() {
+  void sourceInsecureSslFalseStillRejectsTheSelfSignedCertificate() throws Exception {
     executor.execute(
         UUID.randomUUID(),
         library(feedServer.baseUrl() + EMPTY_FEED_PATH, false),
@@ -299,7 +312,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
   }
 
   @Test
-  void sourceInsecureSslTrueDoesNotWeakenValidationForAForeignOriginDetailPage() {
+  void sourceInsecureSslTrueDoesNotWeakenValidationForAForeignOriginDetailPage() throws Exception {
     // feedServer's own certificate is trusted (sourceInsecureSsl: true), but the feed's single
     // entry links to foreignServer - a different origin whose self-signed
     // certificate must still be validated normally, exactly as it would be with
@@ -312,7 +325,6 @@ class RssFeedIndexingExecutorInsecureSslTest {
     // The run still completes - a foreign detail page's TLS failure only skips that one entry, it
     // never fails the whole run (ADR-0017's "Verhalten gegenüber fremden Zielen").
     verify(indexingJobService, timeout(5000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
-    verify(fileProcessingService, never())
-        .processRssEntry(anyString(), anyString(), anyString(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyText(), any());
   }
 }

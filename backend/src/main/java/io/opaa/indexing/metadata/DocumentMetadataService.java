@@ -2,12 +2,15 @@ package io.opaa.indexing.metadata;
 
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.MetadataOrigin;
+import io.opaa.indexing.ChunkContextPrefix;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
+import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.KnowledgeLibraryRepository;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -17,10 +20,12 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -42,6 +47,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Service
 public class DocumentMetadataService {
 
+  /** How the freie Schlagworte appear in the Kontextpraefix. */
+  static final String KEYWORD_SEGMENT_PREFIX = "Schlagworte: ";
+
   private static final Logger log = LoggerFactory.getLogger(DocumentMetadataService.class);
 
   private final DocumentMetadataValueRepository valueRepository;
@@ -50,6 +58,9 @@ public class DocumentMetadataService {
   private final DocumentPipelineRegistry pipelineRegistry;
   private final VectorChunkStore vectorChunkStore;
   private final LibraryMetadataFieldRepository libraryFieldRepository;
+  private final DocumentKeywordRepository keywordRepository;
+  private final LibraryMetadataFieldValueRepository libraryValueRepository;
+  private final KnowledgeLibraryRepository libraryRepository;
   private final TransactionTemplate transactionTemplate;
 
   public DocumentMetadataService(
@@ -59,6 +70,9 @@ public class DocumentMetadataService {
       DocumentPipelineRegistry pipelineRegistry,
       VectorChunkStore vectorChunkStore,
       LibraryMetadataFieldRepository libraryFieldRepository,
+      DocumentKeywordRepository keywordRepository,
+      LibraryMetadataFieldValueRepository libraryValueRepository,
+      KnowledgeLibraryRepository libraryRepository,
       PlatformTransactionManager transactionManager) {
     this.valueRepository = valueRepository;
     this.vocabularyRepository = vocabularyRepository;
@@ -66,6 +80,9 @@ public class DocumentMetadataService {
     this.pipelineRegistry = pipelineRegistry;
     this.vectorChunkStore = vectorChunkStore;
     this.libraryFieldRepository = libraryFieldRepository;
+    this.keywordRepository = keywordRepository;
+    this.libraryValueRepository = libraryValueRepository;
+    this.libraryRepository = libraryRepository;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
   }
 
@@ -110,11 +127,49 @@ public class DocumentMetadataService {
 
   private DocumentChunkMetadata chunkMetadataOf(
       Document document, List<DocumentMetadataValue> rows) {
-    Map<String, Object> values =
-        new LinkedHashMap<>(toCoreMetadata(rows, DocumentTypeVocabulary.empty()).chunkMetadata());
+    CoreMetadata core = toCoreMetadata(rows, vocabularyRepository.snapshot());
+    Map<String, Object> values = new LinkedHashMap<>(core.chunkMetadata());
     Set<String> managed = new LinkedHashSet<>(CoreMetadataChunkKeys.ALL);
-    if (document.getLibraryId() == null) {
-      return new DocumentChunkMetadata(values, managed);
+    // Format fields are built in and library-independent, so their keys are managed on every
+    // document - a document that stops carrying a value loses them on the next rewrite.
+    managed.addAll(FormatMetadataField.MANAGED_CHUNK_KEYS);
+    for (DocumentMetadataValue row : rows) {
+      FormatMetadataField.fromFieldKey(row.getFieldKey())
+          .filter(FormatMetadataField::isFilterable)
+          .ifPresent(
+              field -> {
+                if (row.getState() == MetadataValueState.SET && row.getTextValue() != null) {
+                  values.put(field.chunkKey(), row.getTextValue());
+                  values.put(field.presenceChunkKey(), FormatMetadataField.PRESENCE_VALUE);
+                }
+              });
+    }
+    // A Format field carries no Kontextpraefix-Wirkstelle: nobody defines it, so nobody chose one,
+    // and the Wirkstelle is never a default (metadata-schema.md, "Formatfelder der
+    // Aufnahmestrecke", Wirkung).
+    KnowledgeLibrary library =
+        document.getLibraryId() == null
+            ? null
+            : libraryRepository.findById(document.getLibraryId()).orElse(null);
+    List<String> prefixValues = new ArrayList<>();
+    // The freie Schlagworte ride in the Kontextpraefix like every other prefix-effective value
+    // (metadata-schema.md, Teil II (c)): one segment, hashed into the Abdruck with the rest, so a
+    // changed keyword set hands the document to the Nachlauf exactly like a changed field value -
+    // and reaches the full-text index through the same formatter, never through a key a filter
+    // could name.
+    String keywordSegment = keywordSegmentOf(document.getId());
+    if (library != null && library.isCoreContextPrefixDocumentType()) {
+      addIfSet(prefixValues, core.documentTypeLabel());
+    }
+    if (library != null
+        && library.isCoreContextPrefixDocumentDate()
+        && core.documentDate() != null) {
+      prefixValues.add(
+          MetadataValueDisplay.displayDate(core.documentDate(), core.documentDatePrecision()));
+    }
+    if (library == null) {
+      addIfSet(prefixValues, keywordSegment);
+      return new DocumentChunkMetadata(values, managed, core.title(), prefixValues);
     }
     Map<String, DocumentMetadataValue> byKey = new HashMap<>();
     for (DocumentMetadataValue row : rows) {
@@ -123,6 +178,12 @@ public class DocumentMetadataService {
     for (LibraryMetadataField field :
         libraryFieldRepository.findByLibraryIdOrderBySortOrderAscFieldKeyAsc(
             document.getLibraryId())) {
+      DocumentMetadataValue row = byKey.get(field.documentFieldKey());
+      if (field.isContextPrefixEnabled()
+          && row != null
+          && row.getState() == MetadataValueState.SET) {
+        addIfSet(prefixValues, libraryFieldDisplayValue(row));
+      }
       // Owned regardless of the field's current Wirkstelle: the managed set is what a rewrite may
       // remove, so a field that stopped filtering loses its keys on the next rewrite instead of
       // leaving a stale "has a value" marker behind that a later filter would exclude the document
@@ -130,7 +191,6 @@ public class DocumentMetadataService {
       managed.add(field.chunkKey());
       managed.add(LibraryMetadataFieldKeys.precisionChunkKey(field.getFieldKey()));
       managed.add(LibraryMetadataFieldKeys.presenceChunkKey(field.getFieldKey()));
-      DocumentMetadataValue row = byKey.get(field.documentFieldKey());
       if (!field.isFilterEnabled() || row == null || row.getState() != MetadataValueState.SET) {
         continue;
       }
@@ -148,7 +208,43 @@ public class DocumentMetadataService {
           LibraryMetadataFieldKeys.presenceChunkKey(field.getFieldKey()),
           LibraryMetadataFieldKeys.PRESENCE_VALUE);
     }
-    return new DocumentChunkMetadata(values, managed);
+    addIfSet(prefixValues, keywordSegment);
+    return new DocumentChunkMetadata(values, managed, core.title(), prefixValues);
+  }
+
+  /** The document's freie Schlagworte as one prefix segment, or {@code null} when it has none. */
+  private String keywordSegmentOf(UUID documentId) {
+    List<DocumentKeyword> keywords =
+        keywordRepository.findByDocumentIdOrderByKeywordAsc(documentId);
+    if (keywords.isEmpty()) {
+      return null;
+    }
+    return KEYWORD_SEGMENT_PREFIX
+        + keywords.stream().map(DocumentKeyword::getKeyword).collect(Collectors.joining(", "));
+  }
+
+  /**
+   * A library field's value as it appears in the Kontextpraefix: the label of a SELECT value - the
+   * chunk metadata carries the code, but the prefix is text a model and a person read - the German
+   * display form of a DATE, the identifier itself for PATTERN.
+   */
+  private String libraryFieldDisplayValue(DocumentMetadataValue row) {
+    if (row.getDateValue() != null) {
+      return MetadataValueDisplay.displayDate(row.getDateValue(), row.getDatePrecision());
+    }
+    if (row.getLibraryValueId() != null) {
+      return libraryValueRepository
+          .findById(row.getLibraryValueId())
+          .map(LibraryMetadataFieldValue::getLabel)
+          .orElse(row.getTextValue());
+    }
+    return row.getTextValue();
+  }
+
+  private static void addIfSet(List<String> target, String value) {
+    if (value != null && !value.isBlank()) {
+      target.add(value);
+    }
   }
 
   /**
@@ -186,6 +282,9 @@ public class DocumentMetadataService {
           DocumentChunkMetadata chunkMetadata = chunkMetadataFor(document);
           vectorChunkStore.updateDocumentMetadata(
               document.getId(), chunkMetadata.values(), chunkMetadata.managedKeys());
+          // An extraction that first fills the Kernfeld Titel changes the prefix of every chunk -
+          // no less than a manual correction does, and it must reach the Nachlauf the same way.
+          markContextPrefixStaleIfChanged(document.getId());
           return core;
         });
   }
@@ -216,6 +315,7 @@ public class DocumentMetadataService {
         CoreMetadataField.DOCUMENT_DATE,
         existing,
         extracted.date().map(date -> value -> value.assignDate(date.date(), date.precision())));
+    reconcileFormatFields(documentId, properties, existing);
 
     int updated =
         documentRepository.updateMetadataExtractionVersion(
@@ -229,6 +329,24 @@ public class DocumentMetadataService {
   }
 
   /**
+   * The format fields (metadata-schema.md, Teil II (c)) of the document: whatever the pipeline read
+   * verbatim out of the format, stored as deterministic text values under {@code fmt:<key>}. A
+   * field the format does not declare loses its deterministic row; a manual row stays untouched,
+   * exactly like a core field.
+   */
+  private void reconcileFormatFields(
+      UUID documentId, DocumentProperties properties, Map<String, DocumentMetadataValue> existing) {
+    for (FormatMetadataField field : FormatMetadataField.values()) {
+      Optional<String> value = field.normalize(properties.formatFields().get(field.key()));
+      reconcileValue(
+          documentId,
+          field.documentFieldKey(),
+          existing,
+          value.map(text -> row -> row.assignText(text)));
+    }
+  }
+
+  /**
    * Applies {@code assign} to {@code field}'s row - reusing an existing non-manual row, creating
    * one otherwise. An empty {@code assign} deletes only a {@code DETERMINISTIC} row: a {@code
    * DERIVED} value fills exactly the gap the deterministic step leaves and survives it; a {@code
@@ -239,7 +357,16 @@ public class DocumentMetadataService {
       CoreMetadataField field,
       Map<String, DocumentMetadataValue> existing,
       Optional<Consumer<DocumentMetadataValue>> assign) {
-    DocumentMetadataValue current = existing.get(field.key());
+    reconcileValue(documentId, field.key(), existing, assign);
+  }
+
+  /** The keyed half of {@link #reconcile} - the same rules for a core and a format field. */
+  private void reconcileValue(
+      UUID documentId,
+      String fieldKey,
+      Map<String, DocumentMetadataValue> existing,
+      Optional<Consumer<DocumentMetadataValue>> assign) {
+    DocumentMetadataValue current = existing.get(fieldKey);
     if (current != null && current.getOrigin() == MetadataOrigin.MANUAL) {
       return;
     }
@@ -256,10 +383,64 @@ public class DocumentMetadataService {
     } else {
       target =
           DocumentMetadataValue.deterministic(
-              documentId, field, CoreMetadataExtractor.EXTRACTION_VERSION);
+              documentId, fieldKey, CoreMetadataExtractor.EXTRACTION_VERSION);
     }
     assign.get().accept(target);
     valueRepository.save(target);
+  }
+
+  /**
+   * Stores the values the model-backed extraction accepted (metadata-schema.md, Schritt 2) and
+   * rewrites the document's filterable chunk keys in the same transaction. A field that already
+   * carries a row - of any origin - is skipped: step 2 only ever fills what step 1 left empty, and
+   * a manual correction is never overwritten. Returns the effective chunk metadata afterwards.
+   *
+   * <p>A row written here carries {@link ModelMetadataExtractor#EXTRACTION_VERSION}, never the
+   * deterministic step's: the version names the producer of the value, so raising step 1 must not
+   * make every model-filled value claim a prompt it never saw.
+   */
+  public DocumentChunkMetadata applyDerivedValues(
+      Document document, List<DerivedMetadataValue> values) {
+    return transactionTemplate.execute(
+        status -> {
+          for (DerivedMetadataValue value : values) {
+            if (valueRepository
+                .findByDocumentIdAndFieldKey(document.getId(), value.field().key())
+                .isPresent()) {
+              continue;
+            }
+            DocumentMetadataValue row =
+                DocumentMetadataValue.derived(
+                    document.getId(),
+                    value.field().key(),
+                    value.field().libraryFieldId(),
+                    value.modelId(),
+                    value.confidence(),
+                    ModelMetadataExtractor.EXTRACTION_VERSION);
+            if (value.libraryValueId() == null) {
+              row.assignVocabularyCode(value.code());
+            } else {
+              row.assignLibraryValue(value.code(), value.libraryValueId());
+            }
+            valueRepository.save(row);
+          }
+          valueRepository.flush();
+          DocumentChunkMetadata chunkMetadata = chunkMetadataFor(document);
+          vectorChunkStore.updateDocumentMetadata(
+              document.getId(), chunkMetadata.values(), chunkMetadata.managedKeys());
+          markContextPrefixStaleIfChanged(document.getId());
+          return chunkMetadata;
+        });
+  }
+
+  /**
+   * Hands {@code documentId} to the Kontextpraefix-Nachlauf when its prefix changed - the entry
+   * point of the model step, whose freie Schlagworte are a prefix segment (metadata-schema.md, Teil
+   * II (c)). During the ingest this is a no-op in effect: the chunks are written afterwards and
+   * record their own Abdruck.
+   */
+  public void markContextPrefixStale(UUID documentId) {
+    transactionTemplate.executeWithoutResult(status -> markContextPrefixStaleIfChanged(documentId));
   }
 
   /**
@@ -291,6 +472,7 @@ public class DocumentMetadataService {
           input.applyTo(target);
           valueRepository.save(target);
           propagateToChunks(documentId, field);
+          markContextPrefixStaleIfChanged(documentId);
           return new ManualValueChange(before, MetadataValueSnapshot.of(target), true);
         });
   }
@@ -318,6 +500,7 @@ public class DocumentMetadataService {
             documentRepository.clearMetadataExtractionVersion(documentId);
           }
           propagateToChunks(documentId, field);
+          markContextPrefixStaleIfChanged(documentId);
           return new ManualValueChange(before, null, true);
         });
   }
@@ -340,6 +523,38 @@ public class DocumentMetadataService {
         chunkMetadataOf(document, valueRepository.findByDocumentId(documentId));
     vectorChunkStore.updateDocumentMetadata(
         documentId, chunkMetadata.values(), chunkMetadata.managedKeys());
+  }
+
+  /**
+   * Hands {@code documentId} to the Kontextpraefix-Nachlauf when its prefix actually changed
+   * (metadata-schema.md, "Nachlauf im Betrieb") - compared, not guessed from the field: the stored
+   * Abdruck against the one this document's values would produce now. Re-embedding stays an
+   * explicit release, never a side effect of a value change; a field that only filters or only
+   * appears in the Beleg leaves the Abdruck alone because it does not enter it.
+   */
+  private void markContextPrefixStaleIfChanged(UUID documentId) {
+    Document document = documentRepository.findById(documentId).orElse(null);
+    if (document == null || document.getLibraryId() == null) {
+      return;
+    }
+    valueRepository.flush();
+    DocumentChunkMetadata chunkMetadata =
+        chunkMetadataOf(document, valueRepository.findByDocumentId(documentId));
+    if (!Objects.equals(
+        currentContextPrefixStamp(document, chunkMetadata), document.getContextPrefixStamp())) {
+      documentRepository.clearContextPrefixStamp(documentId);
+    }
+  }
+
+  /** The Abdruck this document's chunks would carry if they were written now. */
+  private static String currentContextPrefixStamp(
+      Document document, DocumentChunkMetadata chunkMetadata) {
+    String title =
+        ChunkContextPrefix.titleAtRest(
+            !Boolean.FALSE.equals(document.getContextPrefixEligible()),
+            chunkMetadata.contextTitle(),
+            document.getContextPrefixTitle());
+    return chunkMetadata.contextPrefixStamp(title);
   }
 
   /** Every stored row of {@code documentId} as detached snapshots, in no particular order. */

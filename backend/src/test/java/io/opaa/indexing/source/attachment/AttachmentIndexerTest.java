@@ -16,7 +16,9 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.indexing.AttachmentOutcome;
 import io.opaa.indexing.AttachmentProgressSink;
+import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
@@ -58,21 +60,21 @@ class AttachmentIndexerTest {
   private IndexingRunEventRepository indexingRunEventRepository;
   private AttachmentIndexer indexer;
   private RssFeedRunContext ctx;
-  private AttachmentDownloadLimits limits;
+  private AttachmentLimits limits;
   private UUID parentDocumentId;
 
   @BeforeEach
-  void setUp() {
+  void setUp() throws Exception {
     attachmentDownloader = mock(BoundedDownloader.class);
     fileProcessingService = mock(FileProcessingService.class);
     LibraryStorageQuotaService storageQuotaService = mock(LibraryStorageQuotaService.class);
-    limits = new AttachmentDownloadLimits(10, 5_242_880L, 0, "opaa-test-agent");
+    limits = new AttachmentLimits(10, 5_242_880L);
     indexer =
         new AttachmentIndexer(
             attachmentDownloader,
             fileProcessingService,
             storageQuotaService,
-            new AttachmentProperties(5));
+            new AttachmentProperties(5, 0, 0));
     parentDocumentId = UUID.randomUUID();
 
     indexingJobService = mock(IndexingJobService.class);
@@ -114,11 +116,9 @@ class AttachmentIndexerTest {
     // feed's ETag persistence (anyEntryDeferred) and log an ERROR event, never call recordFailed().
     Path downloaded = tempDir.resolve("attachment.txt");
     Files.writeString(downloaded, "content");
-    when(attachmentDownloader.downloadBounded(
-            any(), anyString(), anyString(), anyLong(), any(), any()))
+    when(attachmentDownloader.downloadBounded(any(), anyString(), anyString(), anyLong(), any()))
         .thenReturn(new BoundedDownloader.DownloadedFile(downloaded, "text/plain"));
-    when(fileProcessingService.processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any()))
+    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
         .thenReturn(FileProcessingResult.FAILED);
 
     List<String> indexed =
@@ -129,7 +129,8 @@ class AttachmentIndexerTest {
                     "https://example.org/attachment.txt",
                     "attachment.txt",
                     HttpClient.newHttpClient(),
-                    null)),
+                    null,
+                    0)),
             parentDocumentId,
             "https://example.org/entry.html",
             DocumentSourceType.RSS_FEED,
@@ -175,10 +176,11 @@ class AttachmentIndexerTest {
     AttachmentAccess access = mock(AttachmentAccess.class);
     when(access.targetLibrary()).thenReturn(filesystemLibrary);
     when(access.events()).thenReturn((category, message, reference) -> {});
+    AttachmentProgressSink progress = mock(AttachmentProgressSink.class);
+    when(access.progress()).thenReturn(progress);
     Path extracted = tempDir.resolve("anlage.txt");
     Files.writeString(extracted, "Anhangsinhalt");
-    when(fileProcessingService.processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any()))
+    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
         .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
 
     List<String> indexed =
@@ -191,25 +193,25 @@ class AttachmentIndexerTest {
             DocumentSourceType.FILESYSTEM,
             limits);
 
-    // Not part of the created/confirmed return value - but reported as present.
+    // Not part of the created/confirmed return value - but reported as present, and counted as
+    // failed: an attempt was made and is retried next time.
     assertThat(indexed).isEmpty();
     verify(access).recordIndexedAttachment("/mail.eml/0/anlage.txt", false);
     verify(access).markDeferred();
+    verify(progress).recordAttachment(AttachmentOutcome.FAILED);
   }
 
   @Test
   void theSameConfiguredDepthGovernsBothMailInMailAndFeedAttachmentChains()
       throws IOException, InterruptedException {
-    // the recursion-depth cutoff moved out of AttachmentDownloadLimits (a per-source,
-    // per-connector record) into AttachmentProperties, one value AttachmentIndexer applies
-    // regardless of which connector's own, differently-shaped AttachmentDownloadLimits (count,
-    // size, politeness, user agent) a given call carries.
+    // the recursion-depth cutoff is AttachmentProperties', one value AttachmentIndexer applies
+    // regardless of which connector's own AttachmentLimits (count, size) a given call carries.
     AttachmentIndexer shallowIndexer =
         new AttachmentIndexer(
             attachmentDownloader,
             fileProcessingService,
             mock(LibraryStorageQuotaService.class),
-            new AttachmentProperties(1));
+            new AttachmentProperties(1, 0, 0));
 
     // Mail-in-Mail: a LocalFile attachment whose own processing reports one more nested LocalFile
     // attachment - mirrors FileProcessingService#processUrlFile routing a discovered .eml back
@@ -253,8 +255,7 @@ class AttachmentIndexerTest {
               return FileProcessingResult.PROCESSED;
             })
         .when(fileProcessingService)
-        .processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any());
+        .ingest(DocumentIngests.anyFile(), any());
 
     List<String> mailIndexed =
         shallowIndexer.indexAll(
@@ -272,18 +273,15 @@ class AttachmentIndexerTest {
 
     // Feed-Anlage: the RSS/HTTP-directory analogue, a Download attachment whose own processing
     // reports one more nested Download attachment - a different, feed-shaped
-    // AttachmentDownloadLimits (its own count/size/politeness/user-agent), the same
-    // AttachmentProperties.maxDepth() cutoff.
-    AttachmentDownloadLimits feedLimits =
-        new AttachmentDownloadLimits(20, 1_048_576L, 250, "opaa-feed-agent");
+    // AttachmentLimits (its own count/size), the same AttachmentProperties.maxDepth() cutoff.
+    AttachmentLimits feedLimits = new AttachmentLimits(20, 1_048_576L);
     Path outerFeedFile = tempDir.resolve("aussen.txt");
     Files.writeString(outerFeedFile, "outer feed content");
-    when(attachmentDownloader.downloadBounded(
-            any(), anyString(), anyString(), anyLong(), any(), any()))
+    when(attachmentDownloader.downloadBounded(any(), anyString(), anyString(), anyLong(), any()))
         .thenReturn(new BoundedDownloader.DownloadedFile(outerFeedFile, "text/plain"));
     AttachmentSource.Download nestedFeedSource =
         new AttachmentSource.Download(
-            "https://example.org/innen.txt", "innen.txt", HttpClient.newHttpClient(), null);
+            "https://example.org/innen.txt", "innen.txt", HttpClient.newHttpClient(), null, 0);
     // doAnswer again - restubbing processUrlFile via when(...) here would evaluate the call
     // eagerly and re-trigger the mail answer above as a side effect (the mock is still stubbed
     // with it at this point).
@@ -299,8 +297,7 @@ class AttachmentIndexerTest {
               return FileProcessingResult.PROCESSED;
             })
         .when(fileProcessingService)
-        .processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any());
+        .ingest(DocumentIngests.anyFile(), any());
 
     List<String> feedIndexed =
         shallowIndexer.indexAll(
@@ -310,7 +307,8 @@ class AttachmentIndexerTest {
                     "https://example.org/aussen.txt",
                     "aussen.txt",
                     HttpClient.newHttpClient(),
-                    null)),
+                    null,
+                    0)),
             parentDocumentId,
             "https://example.org/entry.html",
             DocumentSourceType.RSS_FEED,
@@ -345,12 +343,12 @@ class AttachmentIndexerTest {
     AttachmentAccess access = mock(AttachmentAccess.class);
     when(access.targetLibrary()).thenReturn(confluenceLibrary);
     when(access.events()).thenReturn((category, message, reference) -> {});
-    when(access.progress()).thenReturn(() -> {});
+    AttachmentProgressSink progress = mock(AttachmentProgressSink.class);
+    when(access.progress()).thenReturn(progress);
     when(access.sourceContext()).thenReturn(pageContext);
     Path downloaded = tempDir.resolve("notizen.txt");
     Files.writeString(downloaded, "Notizen");
-    when(fileProcessingService.processUrlFile(
-            any(), anyString(), anyString(), any(), anyLong(), any(), any(), any(), any(), any()))
+    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
 
     List<String> indexed =
@@ -369,17 +367,76 @@ class AttachmentIndexerTest {
 
     assertThat(indexed).containsExactly("https://wiki.example/download/900/notizen.txt");
     verify(fileProcessingService)
-        .processUrlFile(
-            eq(downloaded),
-            eq("notizen.txt"),
-            eq("https://wiki.example/download/900/notizen.txt"),
-            eq("3"),
-            eq(7L),
-            eq(confluenceLibrary),
-            eq(DocumentSourceType.CONFLUENCE),
-            eq("https://wiki.example/pages/102"),
-            eq(parentDocumentId),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .file(downloaded)
+                .named("notizen.txt")
+                .at("https://wiki.example/download/900/notizen.txt")
+                .marked("3")
+                .sized(7L)
+                .in(confluenceLibrary)
+                .from(DocumentSourceType.CONFLUENCE)
+                .foundOn("https://wiki.example/pages/102")
+                .childOf(parentDocumentId)
+                .match(),
             eq(access));
     verify(access).recordIndexedAttachment("https://wiki.example/download/900/notizen.txt", true);
+    verify(progress).recordAttachment(AttachmentOutcome.PROCESSED);
+  }
+
+  @Test
+  void everyOutcomeOfALocalAttachmentIsCountedExactlyOnce() throws IOException {
+    // The attachment path counts each attachment itself, so every connector's cost carries the
+    // same attachment share: a document created is processed, a confirmed-unchanged or text-free
+    // one skipped, a quota refusal or a failed pipeline failed.
+    AttachmentAccess access = mock(AttachmentAccess.class);
+    when(access.targetLibrary()).thenReturn(ctx.targetLibrary());
+    when(access.events()).thenReturn((category, message, reference) -> {});
+    AttachmentProgressSink progress = mock(AttachmentProgressSink.class);
+    when(access.progress()).thenReturn(progress);
+    Path file = tempDir.resolve("anlage.txt");
+    Files.writeString(file, "Anhangsinhalt");
+    AttachmentSource.LocalFile source =
+        new AttachmentSource.LocalFile(file, "anlage.txt", "/mail.eml/0/anlage.txt");
+
+    for (FileProcessingResult result : FileProcessingResult.values()) {
+      when(fileProcessingService.ingest(DocumentIngests.anyFile(), any())).thenReturn(result);
+      indexer.indexAll(
+          access,
+          List.of(source),
+          parentDocumentId,
+          "/mail.eml",
+          DocumentSourceType.FILESYSTEM,
+          limits);
+    }
+
+    verify(progress, org.mockito.Mockito.times(1)).recordAttachment(AttachmentOutcome.PROCESSED);
+    verify(progress, org.mockito.Mockito.times(2)).recordAttachment(AttachmentOutcome.SKIPPED);
+    verify(progress, org.mockito.Mockito.times(2)).recordAttachment(AttachmentOutcome.FAILED);
+    verify(access, org.mockito.Mockito.times(5))
+        .recordIndexedAttachment(eq("/mail.eml/0/anlage.txt"), anyBoolean());
+  }
+
+  @Test
+  void anUnsupportedLocalAttachmentIsCountedAsSkipped() throws IOException {
+    AttachmentAccess access = mock(AttachmentAccess.class);
+    when(access.targetLibrary()).thenReturn(ctx.targetLibrary());
+    when(access.events()).thenReturn((category, message, reference) -> {});
+    AttachmentProgressSink progress = mock(AttachmentProgressSink.class);
+    when(access.progress()).thenReturn(progress);
+    Path file = tempDir.resolve("werkzeug.exe");
+    Files.write(file, new byte[] {0x4d, 0x5a, 0, 0, 1, 2});
+
+    indexer.indexAll(
+        access,
+        List.of(new AttachmentSource.LocalFile(file, "werkzeug.exe", "/mail.eml/0/werkzeug.exe")),
+        parentDocumentId,
+        "/mail.eml",
+        DocumentSourceType.FILESYSTEM,
+        limits);
+
+    verify(progress).recordAttachment(AttachmentOutcome.SKIPPED);
+    verifyNoInteractions(fileProcessingService);
   }
 }

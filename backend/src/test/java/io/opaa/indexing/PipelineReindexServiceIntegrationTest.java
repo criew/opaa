@@ -4,14 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import io.opaa.indexing.pipeline.TikaFallbackPipeline;
-import io.opaa.indexing.source.web.AutoindexCrawlerService;
-import io.opaa.indexing.source.web.UrlIndexingExecutor;
+import io.opaa.indexing.source.IndexingRun;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.UploadProperties;
@@ -396,14 +396,46 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   @Test
-  void anRssFeedDocumentWithAnHtmlLookingFileNameIsNotSelectedByAnHtmlPipelineReindex() {
-    // Regression guard for #1125: an RSS entry's body always goes to the fallback
-    // pipeline (ADR-0017, decision 2), so its file name (title or entry URL) is never a routing
-    // signal - the exact case the "d.source_type <> RSS_FEED" guard exists for. RSS was the
-    // originally reported trigger of the routing-gap blocker; without this test it could return
-    // unnoticed.
+  void anRssEntryBelowTheHtmlPipelineVersionIsMarkedForItsNextRun() {
+    // An RSS entry's body goes through the HTML pipeline, so a raised HTML pipeline version reaches
+    // it like any other remote document: counted stale, handed to the next feed run by clearing
+    // its change markers, and out of the backlog afterwards.
     DocumentPipeline htmlPipeline = htmlPipeline();
-    Document document = persistedRssFeedDocument("https://example.test/feed/artikel.html");
+    Document document =
+        persistedRssFeedDocument("Rat beschliesst Satzung", "https://example.test/feed/rat");
+    seedChunk(
+        document.getId(), "alter chunk", htmlPipeline.id(), (short) (htmlPipeline.version() - 1));
+
+    PipelineVersionProgress progress =
+        reindexService.progressForOrganization(Organization.DEFAULT_ID).getFirst();
+    assertThat(progress.staleChunks()).isEqualTo(1);
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(
+            Organization.DEFAULT_ID, htmlPipeline.id(), htmlPipeline.version(), 10);
+
+    assertThat(result.markedForNextRun()).isEqualTo(1);
+    assertThat(result.reindexedDocuments()).isZero();
+    Document marked = documentRepository.findById(document.getId()).orElseThrow();
+    assertThat(marked.getChecksum()).isNull();
+    assertThat(marked.getLastModifiedRemote()).isNull();
+    assertThat(
+            reindexService
+                .reindexBatch(
+                    Organization.DEFAULT_ID, htmlPipeline.id(), htmlPipeline.version(), 10)
+                .isEmpty())
+        .isTrue();
+  }
+
+  @Test
+  void anRssEntryStillChunkedByTheFallbackPipelineIsPulledIntoTheHtmlPipelineByItsName() {
+    // No special rule for RSS in the routing comparison any more: an entry left over from the
+    // fallback era is treated like every other fallback-labeled remote document without a routing
+    // key - selected by the file-name approximation and marked for its next run, whose fetch then
+    // hands the body to the HTML pipeline by id.
+    DocumentPipeline htmlPipeline = htmlPipeline();
+    Document document =
+        persistedRssFeedDocument("artikel.html", "https://example.test/feed/artikel.html");
     seedChunk(
         document.getId(), "alter chunk", TikaFallbackPipeline.ID, TikaFallbackPipeline.VERSION);
 
@@ -411,18 +443,17 @@ class PipelineReindexServiceIntegrationTest {
         reindexService.reindexBatch(
             Organization.DEFAULT_ID, htmlPipeline.id(), htmlPipeline.version(), 10);
 
-    assertThat(result.isEmpty()).isTrue();
+    assertThat(result.markedForNextRun()).isEqualTo(1);
     assertThat(result.reindexedDocuments()).isZero();
-    assertThat(result.markedForNextRun()).isZero();
-    assertThat(pipelineIdsOf(document.getId())).containsOnly(TikaFallbackPipeline.ID);
+    assertThat(documentRepository.findById(document.getId()).orElseThrow().getChecksum()).isNull();
   }
 
-  private Document persistedRssFeedDocument(String url) {
-    Document document =
-        new Document("artikel.html", url, "text/html", 1024L, DocumentSourceType.RSS_FEED);
+  private Document persistedRssFeedDocument(String title, String url) {
+    Document document = new Document(title, url, "text/html", 1024L, DocumentSourceType.RSS_FEED);
     document.setLibraryId(library.getId());
     document.setOrganizationId(Organization.DEFAULT_ID);
     document.setChecksum("checksum-rss");
+    document.setLastModifiedRemote("2026-03-12T10:00:00Z");
     return documentRepository.save(document);
   }
 
@@ -880,8 +911,8 @@ class PipelineReindexServiceIntegrationTest {
 
   @Test
   void aMarkedRemoteDocumentIsActuallyReprocessedByItsOwnConnectorRun() {
-    // The gate that decides it, before anything is downloaded: UrlIndexingExecutor#isUnchanged
-    // reads last_modified_remote plus INDEXED - never the checksum, because the bytes it would be
+    // The gate that decides it, before anything is downloaded: IndexingRun#isUnchanged reads
+    // last_modified_remote plus INDEXED - never the checksum, because the bytes it would be
     // computed from have deliberately not been fetched yet. Clearing the checksum alone would
     // therefore have been a no-op the run never notices.
     String remoteUrl = "https://example.test/satzung.pdf";
@@ -892,14 +923,14 @@ class PipelineReindexServiceIntegrationTest {
     documentRepository.save(document);
     seedChunk(document.getId(), "alter chunk", null, null);
 
-    UrlIndexingExecutor executor = urlIndexingExecutorForGateCheck();
-    assertThat(executor.isUnchanged(remoteUrl, lastModified, library))
+    IndexingRun run = runForGateCheck();
+    assertThat(run.isUnchanged(remoteUrl, lastModified))
         .as("before the re-index the run would skip this document as unchanged")
         .isTrue();
 
     assertThat(reindexBatch(10).markedForNextRun()).isEqualTo(1);
 
-    assertThat(executor.isUnchanged(remoteUrl, lastModified, library))
+    assertThat(run.isUnchanged(remoteUrl, lastModified))
         .as("after being marked the very same run re-reads it instead of skipping it")
         .isFalse();
     Document marked = documentRepository.findById(document.getId()).orElseThrow();
@@ -909,22 +940,23 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   /**
-   * The real {@link UrlIndexingExecutor}, with only the collaborators its change decision does not
+   * The real {@link IndexingRun} change gate, with only the collaborators the decision does not
    * touch mocked away - the decision itself runs against this test's own database rows, not a
    * reimplementation of the rule.
    */
-  private UrlIndexingExecutor urlIndexingExecutorForGateCheck() {
-    return new UrlIndexingExecutor(
-        org.mockito.Mockito.mock(AutoindexCrawlerService.class),
-        org.mockito.Mockito.mock(io.opaa.sourceaccess.BoundedDownloader.class),
-        org.mockito.Mockito.mock(FileProcessingService.class),
-        org.mockito.Mockito.mock(IndexingJobService.class),
+  private IndexingRun runForGateCheck() {
+    UUID jobId = UUID.randomUUID();
+    IndexingJobService jobService = org.mockito.Mockito.mock(IndexingJobService.class);
+    return new IndexingRun(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        DocumentSourceType.HTTP_DIRECTORY,
+        new IndexingRunProgress(jobService, jobId),
+        new IndexingRunEventRecorder(
+            org.mockito.Mockito.mock(IndexingRunEventRepository.class), jobService, jobId),
         documentRepository,
-        org.mockito.Mockito.mock(IndexingRunEventRepository.class),
-        org.mockito.Mockito.mock(io.opaa.library.LibraryStorageQuotaService.class),
-        org.mockito.Mockito.mock(StaleDocumentCleanupService.class),
-        new io.opaa.indexing.source.web.CrawlProperties(0, 0, 0),
-        org.mockito.Mockito.mock(io.opaa.library.LibraryFolderService.class));
+        org.mockito.Mockito.mock(io.opaa.library.LibraryStorageQuotaService.class));
   }
 
   @Test

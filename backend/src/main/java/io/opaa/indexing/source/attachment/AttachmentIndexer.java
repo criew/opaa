@@ -1,7 +1,9 @@
 package io.opaa.indexing.source.attachment;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.indexing.DocumentService;
+import io.opaa.indexing.AttachmentOutcome;
+import io.opaa.indexing.DocumentIngest;
+import io.opaa.indexing.FileProcessingOutcomes;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
@@ -14,7 +16,6 @@ import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -32,7 +33,12 @@ import org.slf4j.LoggerFactory;
  * on the parent's outcome, but marks {@link AttachmentAccess#markDeferred()} so a later conditional
  * {@code GET} cannot suppress the retry. Every attachment created or confirmed unchanged becomes a
  * child of {@code parentDocumentId} (Entscheidung 4) and its {@code file_path} is returned, for a
- * caller that folds those paths into its own {@code currentFilePaths} (Entscheidung 3).
+ * caller that folds those paths into its own reconciliation set (Entscheidung 3).
+ *
+ * <p>Every attachment handed in is counted exactly once on {@link AttachmentAccess#progress()}:
+ * {@code PROCESSED} when it became a document, {@code SKIPPED} when nothing was attempted for it
+ * (unchanged, unsupported, rejected by a limit or policy), {@code FAILED} when an attempt did not
+ * succeed (download, read or processing error, quota).
  */
 public class AttachmentIndexer {
 
@@ -42,8 +48,8 @@ public class AttachmentIndexer {
    * How many levels of attachment-in-attachment recursion the current thread is at - {@code null}
    * outside of any {@link #indexAll} call. An attachment whose own pipeline reports further {@code
    * discoveredAttachments} (e.g. a nested {@code .eml}) re-enters this class synchronously, through
-   * {@code FileProcessingService#processUrlFile}'s own attachment handling, on the same thread. The
-   * depth cutoff is this class's alone (ADR-0022, Entscheidung 6), never a pipeline's.
+   * {@code FileProcessingService#ingest}'s own attachment handling, on the same thread. The depth
+   * cutoff is this class's alone (ADR-0022, Entscheidung 6), never a pipeline's.
    */
   private static final ThreadLocal<Integer> RECURSION_DEPTH = new ThreadLocal<>();
 
@@ -64,9 +70,24 @@ public class AttachmentIndexer {
   }
 
   /**
-   * Indexes every attachment {@code sources} lists, up to {@link
-   * AttachmentDownloadLimits#maxPerParent()}. The politeness delay applies before each {@link
-   * AttachmentSource.Download} and is a no-op before an {@link AttachmentSource.LocalFile}.
+   * {@link #indexAll(AttachmentAccess, List, UUID, String, DocumentSourceType, AttachmentLimits)}
+   * under the shared {@link AttachmentProperties#limits()} - for a connector without attachment
+   * numbers of its own.
+   */
+  public List<String> indexAll(
+      AttachmentAccess access,
+      List<AttachmentSource> sources,
+      UUID parentDocumentId,
+      String parentPath,
+      DocumentSourceType sourceType) {
+    return indexAll(
+        access, sources, parentDocumentId, parentPath, sourceType, attachmentProperties.limits());
+  }
+
+  /**
+   * Indexes every attachment {@code sources} lists, up to {@link AttachmentLimits#maxPerParent()}.
+   * A {@link AttachmentSource.Download}'s own politeness delay applies before it; an {@link
+   * AttachmentSource.LocalFile} makes no request.
    *
    * @param parentDocumentId the row every indexed attachment becomes a child of
    * @param parentPath the parent document's own {@code file_path} - recorded on every attachment
@@ -80,7 +101,7 @@ public class AttachmentIndexer {
       UUID parentDocumentId,
       String parentPath,
       DocumentSourceType sourceType,
-      AttachmentDownloadLimits limits) {
+      AttachmentLimits limits) {
     if (sources.isEmpty()) {
       return List.of();
     }
@@ -93,6 +114,7 @@ public class AttachmentIndexer {
           parentPath,
           sources.size());
       access.markDeferred();
+      countSkipped(access, sources.size());
       return List.of();
     }
     if (topLevel) {
@@ -108,13 +130,14 @@ public class AttachmentIndexer {
             sources.size(),
             limit);
         access.markDeferred();
+        countSkipped(access, sources.size() - limit);
       }
       List<String> indexedPaths = new ArrayList<>();
       RECURSION_DEPTH.set(depth + 1);
       try {
         for (AttachmentSource source : sources.subList(0, limit)) {
-          if (source instanceof AttachmentSource.Download) {
-            RequestPoliteness.delayBeforeRequest(limits.requestDelayMs());
+          if (source instanceof AttachmentSource.Download download) {
+            RequestPoliteness.delayBeforeRequest(download.requestDelayMs());
           }
           indexOne(access, source, parentDocumentId, parentPath, sourceType, limits)
               .ifPresent(indexedPaths::add);
@@ -130,13 +153,19 @@ public class AttachmentIndexer {
     }
   }
 
+  private static void countSkipped(AttachmentAccess access, int count) {
+    for (int i = 0; i < count; i++) {
+      access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
+    }
+  }
+
   private Optional<String> indexOne(
       AttachmentAccess access,
       AttachmentSource source,
       UUID parentDocumentId,
       String parentPath,
       DocumentSourceType sourceType,
-      AttachmentDownloadLimits limits) {
+      AttachmentLimits limits) {
     return switch (source) {
       case AttachmentSource.Download download ->
           indexDownload(access, download, parentDocumentId, parentPath, sourceType, limits);
@@ -151,7 +180,7 @@ public class AttachmentIndexer {
       UUID parentDocumentId,
       String parentPath,
       DocumentSourceType sourceType,
-      AttachmentDownloadLimits limits) {
+      AttachmentLimits limits) {
     BoundedDownloader.DownloadedFile downloaded = null;
     try {
       downloaded =
@@ -159,8 +188,7 @@ public class AttachmentIndexer {
               download.httpClient(),
               download.url(),
               download.suggestedFileName(),
-              limits.maxAttachmentSizeBytes(),
-              limits.userAgent(),
+              limits.maxSizeBytes(),
               download.authHeader());
 
       String contentType = downloaded.contentType();
@@ -180,6 +208,7 @@ public class AttachmentIndexer {
                 "Anlage antwortete mit HTML statt einem Dokument (vermutlich Bot-Schutz)",
                 download.url());
         access.markDeferred();
+        access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
         return Optional.empty();
       }
 
@@ -207,6 +236,7 @@ public class AttachmentIndexer {
                 "Anlage konnte nach dem Herunterladen nicht auf ihr Format geprüft werden",
                 download.url());
         access.markDeferred();
+        access.progress().recordAttachment(AttachmentOutcome.FAILED);
         return Optional.empty();
       }
       SupportedDocumentFormats.ContentDecision decision =
@@ -224,6 +254,7 @@ public class AttachmentIndexer {
                 "Anlagenformat wird nicht unterstützt",
                 download.url());
         access.markDeferred();
+        access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
         return Optional.empty();
       }
       if (decision.extensionMismatch()) {
@@ -238,14 +269,10 @@ public class AttachmentIndexer {
                 download.url());
       }
 
-      // Files.probeContentType inside FileProcessingService#processUrlFile probes the physical
-      // temp file, which for a GSB attachment carries no extension (".tmp") - renaming it to match
-      // the resolved name's extension lets that probe succeed.
-      Path indexedFile = withMatchingExtension(downloaded.path(), fileName);
-      long size = Files.size(indexedFile);
+      long size = Files.size(downloaded.path());
       return storeAttachment(
           access,
-          indexedFile,
+          downloaded.path(),
           fileName,
           download.url(),
           null,
@@ -256,7 +283,7 @@ public class AttachmentIndexer {
     } catch (BoundedDownloader.AttachmentTooLargeException e) {
       log.warn(
           "Skipping attachment exceeding the size limit of {} bytes: {} (from {})",
-          limits.maxAttachmentSizeBytes(),
+          limits.maxSizeBytes(),
           download.url(),
           parentPath);
       access
@@ -266,6 +293,7 @@ public class AttachmentIndexer {
               "Anlage überschreitet die zulässige Größe",
               download.url());
       access.markDeferred();
+      access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
     } catch (RedirectFollowingFetcher.RedirectRejectedException e) {
       log.warn(
           "Attachment redirected to a foreign host, skipping: {} (from {}, {})",
@@ -276,6 +304,7 @@ public class AttachmentIndexer {
           .events()
           .record(IndexingEventCategory.REJECTED, e.userMessage() + " (Anlage)", download.url());
       access.markDeferred();
+      access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
     } catch (TargetAddressValidator.TargetAddressBlockedException e) {
       log.warn(
           "Attachment target rejected, skipping: {} (from {}, {})",
@@ -286,6 +315,7 @@ public class AttachmentIndexer {
           .events()
           .record(IndexingEventCategory.REJECTED, e.getMessage() + " (Anlage)", download.url());
       access.markDeferred();
+      access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
     } catch (IOException | InterruptedException e) {
       log.warn(
           "Attachment unreachable, skipping: {} (from {}, {})",
@@ -296,6 +326,7 @@ public class AttachmentIndexer {
           .events()
           .record(IndexingEventCategory.UNREACHABLE, "Anlage nicht erreichbar", download.url());
       access.markDeferred();
+      access.progress().recordAttachment(AttachmentOutcome.FAILED);
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
@@ -305,9 +336,10 @@ public class AttachmentIndexer {
           .events()
           .record(
               IndexingEventCategory.ERROR,
-              "Verarbeitung der Anlage fehlgeschlagen",
+              FileProcessingOutcomes.ATTACHMENT_FAILED_MESSAGE,
               download.url());
       access.markDeferred();
+      access.progress().recordAttachment(AttachmentOutcome.FAILED);
     } finally {
       if (downloaded != null) {
         try {
@@ -346,6 +378,7 @@ public class AttachmentIndexer {
                 IndexingEventCategory.UNSUPPORTED_FORMAT,
                 "Anlagenformat wird nicht unterstützt",
                 localFile.fileName());
+        access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
         return Optional.empty();
       }
       if (decision.extensionMismatch()) {
@@ -383,15 +416,20 @@ public class AttachmentIndexer {
               localFile.fileName());
       // See storeAttachment's own comment: present in the parent, only not readable this run.
       access.recordIndexedAttachment(localFile.filePathIdentity(), false);
+      access.progress().recordAttachment(AttachmentOutcome.FAILED);
       return Optional.empty();
     }
   }
 
   /**
-   * The {@link FileProcessingService#processUrlFile} call and outcome handling both branches share.
-   * {@code remoteVersion} is the source's change marker for the attachment ({@link
+   * The {@link FileProcessingService#ingest} call and outcome handling both branches share. {@code
+   * remoteVersion} is the source's change marker for the attachment ({@link
    * AttachmentSource.LocalFile#remoteVersion()}), {@code null} for a download; {@code access}
    * carries the parent's {@link AttachmentAccess#sourceContext()} to the attachment.
+   *
+   * <p>Whatever the outcome, an attachment that reached this point is present in its parent and is
+   * reported so - without that, a transient failure of an already-indexed attachment of a re-parsed
+   * parent would let the caller's reconciliation delete its row permanently.
    */
   private Optional<String> storeAttachment(
       AttachmentAccess access,
@@ -405,64 +443,49 @@ public class AttachmentIndexer {
       DocumentSourceType sourceType) {
     try {
       FileProcessingResult result =
-          fileProcessingService.processUrlFile(
-              localFile,
-              fileName,
-              filePathIdentity,
-              remoteVersion,
-              size,
-              access.targetLibrary(),
-              sourceType,
-              parentPath,
-              parentDocumentId,
+          fileProcessingService.ingest(
+              DocumentIngest.builder(access.targetLibrary())
+                  .file(localFile, size)
+                  .filePath(filePathIdentity)
+                  .fileName(fileName)
+                  .sourceType(sourceType)
+                  .parentDocumentId(parentDocumentId)
+                  .sourceEntryUrl(parentPath)
+                  .context(access.sourceContext())
+                  .changeMarker(remoteVersion)
+                  .build(),
               access);
-      if (result == FileProcessingResult.QUOTA_EXCEEDED) {
-        // Deferred, not recordSkipped: an attachment was never a discrete unit of the run's own
-        // total, so there is nothing to mark skipped - only the deferred flag, so a caller with a
-        // conditional-GET retries it on a future run.
-        access
-            .events()
-            .record(
-                IndexingEventCategory.REJECTED,
-                storageQuotaService.quotaExceededMessage(access.targetLibrary().getId()),
-                filePathIdentity);
-        access.markDeferred();
-        // Still present in the parent, just not (re)processed this run - without this a transient
-        // failure of an already-indexed attachment of a re-parsed parent would let the caller's
-        // vanished-cleanup delete its row permanently (a checksum-skipped parent never retries).
-        access.recordIndexedAttachment(filePathIdentity, false);
-        return Optional.empty();
+      FileProcessingOutcomes.record(
+          access.events(),
+          result,
+          filePathIdentity,
+          () -> storageQuotaService.quotaExceededMessage(access.targetLibrary().getId()),
+          FileProcessingOutcomes.ATTACHMENT_FAILED_MESSAGE);
+      switch (result) {
+        case QUOTA_EXCEEDED, FAILED -> {
+          // Retried on a future run: deferred, so a conditional GET cannot suppress it.
+          access.markDeferred();
+          access.recordIndexedAttachment(filePathIdentity, false);
+          access.progress().recordAttachment(AttachmentOutcome.FAILED);
+          return Optional.empty();
+        }
+        case NO_EXTRACTABLE_TEXT -> {
+          // Rejected and marked FAILED for good - a scan PDF will not gain a text layer on retry.
+          access.recordIndexedAttachment(filePathIdentity, false);
+          access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
+          return Optional.empty();
+        }
+        case SKIPPED -> {
+          // Unchanged (same checksum as an already-indexed document): confirmed present, not a
+          // document again.
+          access.recordIndexedAttachment(filePathIdentity, false);
+          access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
+        }
+        case PROCESSED -> {
+          access.recordIndexedAttachment(filePathIdentity, true);
+          access.progress().recordAttachment(AttachmentOutcome.PROCESSED);
+        }
       }
-      if (result == FileProcessingResult.NO_EXTRACTABLE_TEXT) {
-        // The document was already rejected and marked FAILED - not deferred: unlike a transient
-        // quota/availability issue, a scan PDF will not gain a text layer on retry.
-        access
-            .events()
-            .record(
-                IndexingEventCategory.REJECTED,
-                DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE,
-                filePathIdentity);
-        access.recordIndexedAttachment(filePathIdentity, false);
-        return Optional.empty();
-      }
-      if (result == FileProcessingResult.FAILED) {
-        access
-            .events()
-            .record(
-                IndexingEventCategory.ERROR,
-                "Verarbeitung der Anlage fehlgeschlagen",
-                filePathIdentity);
-        access.markDeferred();
-        access.recordIndexedAttachment(filePathIdentity, false);
-        return Optional.empty();
-      }
-      // An unchanged attachment (same checksum as an already-indexed document) is deduplicated by
-      // processUrlFile itself and returns SKIPPED - must not inflate the document count again, but
-      // it is still an attachment this run confirmed present.
-      if (result == FileProcessingResult.PROCESSED) {
-        access.progress().recordDocumentIndexed();
-      }
-      access.recordIndexedAttachment(filePathIdentity, result == FileProcessingResult.PROCESSED);
       log.info("Indexed attachment: {} (from {})", filePathIdentity, parentPath);
       return Optional.of(filePathIdentity);
     } catch (IOException e) {
@@ -471,10 +494,11 @@ public class AttachmentIndexer {
           .events()
           .record(
               IndexingEventCategory.ERROR,
-              "Verarbeitung der Anlage fehlgeschlagen",
+              FileProcessingOutcomes.ATTACHMENT_FAILED_MESSAGE,
               filePathIdentity);
       access.markDeferred();
       access.recordIndexedAttachment(filePathIdentity, false);
+      access.progress().recordAttachment(AttachmentOutcome.FAILED);
       return Optional.empty();
     }
   }
@@ -497,32 +521,6 @@ public class AttachmentIndexer {
     String baseName =
         suggestedFileName == null || suggestedFileName.isBlank() ? "attachment" : suggestedFileName;
     return baseName + extension;
-  }
-
-  /**
-   * Renames {@code tempFile} to a new temp file carrying {@code fileName}'s own extension, when it
-   * does not already have it. A no-op when the extension already matches, which covers every {@link
-   * AttachmentProfile#GENERIC} attachment.
-   */
-  private static Path withMatchingExtension(Path tempFile, String fileName) throws IOException {
-    String desiredSuffix = extractExtension(fileName);
-    if (tempFile.toString().toLowerCase(Locale.ROOT).endsWith(desiredSuffix)) {
-      return tempFile;
-    }
-    Path renamed = Files.createTempFile("opaa-", desiredSuffix);
-    Files.move(tempFile, renamed, StandardCopyOption.REPLACE_EXISTING);
-    return renamed;
-  }
-
-  private static String extractExtension(String fileName) {
-    if (fileName == null) {
-      return ".tmp";
-    }
-    int dotIndex = fileName.lastIndexOf('.');
-    if (dotIndex >= 0) {
-      return fileName.substring(dotIndex).toLowerCase(Locale.ROOT);
-    }
-    return ".tmp";
   }
 
   /** Whether {@code contentType} (the raw {@code Content-Type} header value) denotes HTML. */

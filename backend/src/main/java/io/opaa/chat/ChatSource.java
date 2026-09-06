@@ -2,7 +2,6 @@ package io.opaa.chat;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.MetadataFilterMatch;
-import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -33,10 +32,6 @@ public final class ChatSource {
   private String sourceEntryUrl;
   private Boolean citationValid;
   private List<ChatSourceLocation> chunkLocations;
-  private String mailFrom;
-  private String mailTo;
-  private String mailSubject;
-  private String mailDate;
   private List<ChatSourceMetadataEntry> metadata;
   private MetadataFilterMatch metadataFilterMatch;
 
@@ -81,33 +76,6 @@ public final class ChatSource {
 
   public ChatSource chunkLocations(List<ChatSourceLocation> chunkLocations) {
     this.chunkLocations = chunkLocations;
-    return this;
-  }
-
-  /** #1164: the {@code mail_from} Kopfdatum, null for any source that is not a mail message. */
-  public ChatSource mailFrom(String mailFrom) {
-    this.mailFrom = mailFrom;
-    return this;
-  }
-
-  /** #1164: the {@code mail_to} Kopfdatum, null for any source that is not a mail message. */
-  public ChatSource mailTo(String mailTo) {
-    this.mailTo = mailTo;
-    return this;
-  }
-
-  /** #1164: the {@code mail_subject} Kopfdatum, null for any source that is not a mail message. */
-  public ChatSource mailSubject(String mailSubject) {
-    this.mailSubject = mailSubject;
-    return this;
-  }
-
-  /**
-   * #1164: the {@code mail_date} Kopfdatum as {@link ChunkMailMetadata} wrote it (an {@link
-   * Instant#toString()} rendering), null for any source that is not a mail message.
-   */
-  public ChatSource mailDate(String mailDate) {
-    this.mailDate = mailDate;
     return this;
   }
 
@@ -220,38 +188,6 @@ public final class ChatSource {
 
   public void setChunkLocations(List<ChatSourceLocation> chunkLocations) {
     this.chunkLocations = chunkLocations;
-  }
-
-  public String getMailFrom() {
-    return mailFrom;
-  }
-
-  public void setMailFrom(String mailFrom) {
-    this.mailFrom = mailFrom;
-  }
-
-  public String getMailTo() {
-    return mailTo;
-  }
-
-  public void setMailTo(String mailTo) {
-    this.mailTo = mailTo;
-  }
-
-  public String getMailSubject() {
-    return mailSubject;
-  }
-
-  public void setMailSubject(String mailSubject) {
-    this.mailSubject = mailSubject;
-  }
-
-  public String getMailDate() {
-    return mailDate;
-  }
-
-  public void setMailDate(String mailDate) {
-    this.mailDate = mailDate;
   }
 
   public List<ChatSourceMetadataEntry> getMetadata() {

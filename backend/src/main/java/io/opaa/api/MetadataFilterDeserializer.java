@@ -1,6 +1,7 @@
 package io.opaa.api;
 
 import io.opaa.api.dto.MetadataFilter;
+import io.opaa.api.dto.MetadataFilterFormatFieldCondition;
 import io.opaa.api.dto.MetadataFilterLibraryFieldCondition;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,8 +27,10 @@ public class MetadataFilterDeserializer extends ValueDeserializer<MetadataFilter
   private static final String DOCUMENT_DATE_FROM = "documentDateFrom";
   private static final String DOCUMENT_DATE_TO = "documentDateTo";
   private static final String LIBRARY_FIELDS = "libraryFields";
+  private static final String FORMAT_FIELDS = "formatFields";
   private static final Set<String> KNOWN_FIELDS =
-      Set.of(DOCUMENT_TYPES, DOCUMENT_DATE_FROM, DOCUMENT_DATE_TO, LIBRARY_FIELDS);
+      Set.of(DOCUMENT_TYPES, DOCUMENT_DATE_FROM, DOCUMENT_DATE_TO, LIBRARY_FIELDS, FORMAT_FIELDS);
+  private static final Set<String> KNOWN_FORMAT_FIELD_PROPERTIES = Set.of("fieldKey", "values");
   private static final Set<String> KNOWN_LIBRARY_FIELD_PROPERTIES =
       Set.of("libraryId", "fieldKey", "codes", "dateFrom", "dateTo", "value");
 
@@ -44,8 +47,8 @@ public class MetadataFilterDeserializer extends ValueDeserializer<MetadataFilter
             MetadataFilter.class,
             "metadata filter field '"
                 + property.getKey()
-                + "' is not filterable; only documentTypes, documentDateFrom and documentDateTo"
-                + " are");
+                + "' is not filterable; only documentTypes, documentDateFrom, documentDateTo,"
+                + " libraryFields and formatFields are");
       }
     }
     MetadataFilter filter = new MetadataFilter();
@@ -106,6 +109,42 @@ public class MetadataFilterDeserializer extends ValueDeserializer<MetadataFilter
         conditions.add(condition);
       }
       filter.setLibraryFields(conditions);
+    }
+    JsonNode formatFields = node.get(FORMAT_FIELDS);
+    if (formatFields != null && !formatFields.isNull()) {
+      if (!formatFields.isArray()) {
+        return context.reportInputMismatch(
+            MetadataFilter.class, "formatFields must be an array of conditions");
+      }
+      List<MetadataFilterFormatFieldCondition> conditions = new ArrayList<>();
+      for (JsonNode entry : formatFields) {
+        if (!entry.isObject()) {
+          return context.reportInputMismatch(
+              MetadataFilter.class, "a format field condition must be a JSON object");
+        }
+        for (Map.Entry<String, JsonNode> property : entry.properties()) {
+          if (!KNOWN_FORMAT_FIELD_PROPERTIES.contains(property.getKey())) {
+            return context.reportInputMismatch(
+                MetadataFilter.class,
+                "format field condition property '"
+                    + property.getKey()
+                    + "' is not filterable; only fieldKey and values are");
+          }
+        }
+        List<String> values = new ArrayList<>();
+        JsonNode valueNode = entry.get("values");
+        if (valueNode != null && !valueNode.isNull()) {
+          if (!valueNode.isArray()) {
+            return context.reportInputMismatch(
+                MetadataFilter.class, "values must be an array of field values");
+          }
+          for (JsonNode value : valueNode) {
+            values.add(value.asString());
+          }
+        }
+        conditions.add(new MetadataFilterFormatFieldCondition(text(entry, "fieldKey"), values));
+      }
+      filter.setFormatFields(conditions);
     }
     return filter;
   }

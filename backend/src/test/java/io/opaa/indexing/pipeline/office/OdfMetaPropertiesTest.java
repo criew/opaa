@@ -141,6 +141,41 @@ class OdfMetaPropertiesTest {
   }
 
   @Test
+  void anUnreadableContentXmlStillYieldsTheMetaXmlValues() throws IOException {
+    // The two entries fail independently: a document whose body cannot be read still declares its
+    // title and dates, and the Bestandslauf must not lose them over an unreadable body.
+    Path odtFile = write(tempDir.resolve("kaputter-inhalt.odt"), "<office:document-content>", META);
+    Path odpFile = write(tempDir.resolve("kaputter-inhalt.odp"), "<office:document-content>", META);
+
+    DocumentProperties odtProperties =
+        odt.readProperties(DocumentPipelineSource.ofFile(odtFile, "kaputter-inhalt.odt", ".odt"));
+    DocumentProperties odpProperties =
+        odp.readProperties(DocumentPipelineSource.ofFile(odpFile, "kaputter-inhalt.odp", ".odp"));
+
+    assertThat(odtProperties.title()).isEqualTo("Gebührensatzung der Stadt");
+    assertThat(odtProperties.createdAt()).isEqualTo(LocalDate.of(2023, 5, 2));
+    assertThat(odtProperties.firstHeading()).isNull();
+    assertThat(odpProperties.title()).isEqualTo("Gebührensatzung der Stadt");
+    assertThat(odpProperties.modifiedAt()).isEqualTo(LocalDate.of(2024, 11, 5));
+  }
+
+  @Test
+  void aZipWithoutAContentXmlEntryStillYieldsTheMetaXmlValues() throws IOException {
+    Path file = tempDir.resolve("ohne-content-xml.odt");
+    try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(file))) {
+      out.putNextEntry(new ZipEntry("meta.xml"));
+      out.write(META.getBytes(StandardCharsets.UTF_8));
+      out.closeEntry();
+    }
+
+    DocumentProperties properties =
+        odt.readProperties(DocumentPipelineSource.ofFile(file, "ohne-content-xml.odt", ".odt"));
+
+    assertThat(properties.title()).isEqualTo("Gebührensatzung der Stadt");
+    assertThat(properties.firstHeading()).isNull();
+  }
+
+  @Test
   void aSourceWithoutAFileHasNoProperties() {
     assertThat(odt.readProperties(DocumentPipelineSource.ofExtractedText("x", "x.odt")))
         .isEqualTo(DocumentProperties.EMPTY);

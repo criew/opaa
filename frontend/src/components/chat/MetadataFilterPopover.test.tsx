@@ -171,6 +171,40 @@ describe('MetadataFilterPopover (#1070)', () => {
     )
   })
 
+  /**
+   * #1242: the Absender is a built-in format field - the popover offers the addresses occurring in
+   * the scope, and a chosen one travels as an exact value.
+   */
+  it('offers the Absender with the addresses of the scope and applies the chosen ones', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    renderWithProviders(<MetadataFilterPopover scope={SCOPE} filter={null} onChange={onChange} />)
+
+    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    expect(await screen.findByText('Absender bei 3 von 40 Dokumenten vorhanden')).toBeVisible()
+    await user.click(screen.getByRole('checkbox', { name: 'mueller@stadt.de (2)' }))
+    await user.click(screen.getByRole('button', { name: 'Anwenden' }))
+
+    expect(onChange).toHaveBeenCalledWith({
+      formatFields: [{ fieldKey: 'mail_sender', values: ['mueller@stadt.de'] }],
+    })
+  })
+
+  /** #1242: the value set is open, so an address outside the offered ones is typed exactly. */
+  it('takes an exact Absender from the free input beside the offered addresses', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    renderWithProviders(<MetadataFilterPopover scope={SCOPE} filter={null} onChange={onChange} />)
+
+    await user.click(screen.getByRole('button', { name: 'Metadatenfilter setzen' }))
+    await user.type(await screen.findByLabelText('Absender genau'), 'neu@stadt.de')
+    await user.click(screen.getByRole('button', { name: 'Anwenden' }))
+
+    expect(onChange).toHaveBeenCalledWith({
+      formatFields: [{ fieldKey: 'mail_sender', values: ['neu@stadt.de'] }],
+    })
+  })
+
   const LIBRARY_A = '11111111-1111-1111-1111-111111111111'
   const LIBRARY_B = '22222222-2222-2222-2222-222222222222'
 

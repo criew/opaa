@@ -12,12 +12,11 @@ import io.opaa.chat.ChatSourceMetadataEntry;
 import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.metadata.CitationFieldValue;
+import io.opaa.indexing.metadata.CitationMetadataReader;
 import io.opaa.indexing.metadata.CoreMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
-import io.opaa.indexing.metadata.LibraryCitationMetadataReader;
 import io.opaa.indexing.metadata.MetadataFilter;
 import io.opaa.indexing.metadata.MetadataFilterValidator;
-import io.opaa.indexing.pipeline.mail.ChunkMailMetadata;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryAccessService;
 import io.opaa.library.PermissionHistoryService;
@@ -70,7 +69,7 @@ public class QueryService {
   private final RerankModelRole rerankModelRole;
   private final DocumentMetadataService documentMetadataService;
   private final MetadataFilterValidator metadataFilterValidator;
-  private final LibraryCitationMetadataReader citationMetadataReader;
+  private final CitationMetadataReader citationMetadataReader;
 
   public QueryService(
       RetrievalPipeline retrievalPipeline,
@@ -88,7 +87,7 @@ public class QueryService {
       RerankModelRole rerankModelRole,
       DocumentMetadataService documentMetadataService,
       MetadataFilterValidator metadataFilterValidator,
-      LibraryCitationMetadataReader citationMetadataReader) {
+      CitationMetadataReader citationMetadataReader) {
     this.metadataFilterValidator = metadataFilterValidator;
     this.citationMetadataReader = citationMetadataReader;
     this.retrievalPipeline = retrievalPipeline;
@@ -759,13 +758,6 @@ public class QueryService {
                           .sourceEntryUrl(sourceEntryUrl)
                           .citationValid(citationValid)
                           .chunkLocations(chunkLocationOf(chunk))
-                          .mailFrom(
-                              mailMetadataValue(chunk, ChunkMailMetadata.MAIL_FROM_METADATA_KEY))
-                          .mailTo(mailMetadataValue(chunk, ChunkMailMetadata.MAIL_TO_METADATA_KEY))
-                          .mailSubject(
-                              mailMetadataValue(chunk, ChunkMailMetadata.MAIL_SUBJECT_METADATA_KEY))
-                          .mailDate(
-                              mailMetadataValue(chunk, ChunkMailMetadata.MAIL_DATE_METADATA_KEY))
                           .metadata(metadataEntries.isEmpty() ? null : metadataEntries)
                           .metadataFilterMatch(metadataFilterMatch(metadataFilter, core, chunk));
                   return Map.entry(groupKey, reference);
@@ -907,18 +899,6 @@ public class QueryService {
     // #667: every retrieved chunk keeps its own location entry, ordered by chunk index, so the
     // frontend can resolve any footnote of this document - not only the best-scoring chunk's.
     List<ChatSourceLocation> mergedChunkLocations = mergeChunkLocations(a, b);
-    // #1164: only a message's own body chunks carry mail_* metadata, never an attachment's
-    // recursively produced chunks (ChunkMailMetadata's contract) - so when one side of the merge
-    // is an attachment chunk of the same document, only the other side actually knows the
-    // Kopfdaten. preferred's own value wins when both sides happen to carry one (they always
-    // agree, since both come from the same message).
-    String mergedMailFrom =
-        preferMailField(preferred.getMailFrom(), a.getMailFrom(), b.getMailFrom());
-    String mergedMailTo = preferMailField(preferred.getMailTo(), a.getMailTo(), b.getMailTo());
-    String mergedMailSubject =
-        preferMailField(preferred.getMailSubject(), a.getMailSubject(), b.getMailSubject());
-    String mergedMailDate =
-        preferMailField(preferred.getMailDate(), a.getMailDate(), b.getMailDate());
     // ADR-0024: schema metadata hangs on the document, so both sides carry the same list or none.
     List<ChatSourceMetadataEntry> mergedMetadata =
         preferred.getMetadata() != null
@@ -938,30 +918,14 @@ public class QueryService {
           .sourceEntryUrl(mergedSourceEntryUrl)
           .citationValid(mergedCitationValid)
           .chunkLocations(mergedChunkLocations)
-          .mailFrom(mergedMailFrom)
-          .mailTo(mergedMailTo)
-          .mailSubject(mergedMailSubject)
-          .mailDate(mergedMailDate)
           .metadata(mergedMetadata);
     }
 
     preferred.setSourceEntryUrl(mergedSourceEntryUrl);
     preferred.setCitationValid(mergedCitationValid);
     preferred.setChunkLocations(mergedChunkLocations);
-    preferred.setMailFrom(mergedMailFrom);
-    preferred.setMailTo(mergedMailTo);
-    preferred.setMailSubject(mergedMailSubject);
-    preferred.setMailDate(mergedMailDate);
     preferred.setMetadata(mergedMetadata);
     return preferred;
-  }
-
-  /** {@code preferredValue} if present, otherwise whichever of {@code a}/{@code b} is non-null. */
-  private static String preferMailField(String preferredValue, String a, String b) {
-    if (preferredValue != null) {
-      return preferredValue;
-    }
-    return a != null ? a : b;
   }
 
   private static List<ChatSourceLocation> mergeChunkLocations(ChatSource a, ChatSource b) {
@@ -971,16 +935,6 @@ public class QueryService {
         .flatMap(List::stream)
         .forEach(location -> byIndex.putIfAbsent(location.getChunkIndex(), location));
     return new ArrayList<>(byIndex.values());
-  }
-
-  /**
-   * #1164: the {@code mail_*} Kopfdaten {@link ChunkMailMetadata} declares, read back from a chunk
-   * that carries them - null for any other chunk (a non-mail document, or an attachment's own
-   * recursively produced chunk, which never carries them per that class's contract).
-   */
-  private static String mailMetadataValue(Document chunk, String metadataKey) {
-    Object value = chunk.getMetadata().get(metadataKey);
-    return value != null ? value.toString() : null;
   }
 
   /**

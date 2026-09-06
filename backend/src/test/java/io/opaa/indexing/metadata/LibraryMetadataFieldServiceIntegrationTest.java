@@ -14,6 +14,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -58,7 +59,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   @Autowired private LibraryMetadataFieldService fieldService;
   @Autowired private DocumentMetadataCorrectionService correctionService;
   @Autowired private LibraryMetadataMaintenanceService maintenanceService;
-  @Autowired private LibraryCitationMetadataReader citationReader;
+  @Autowired private CitationMetadataReader citationReader;
   @Autowired private FileProcessingService fileProcessingService;
   @Autowired private DocumentMetadataValueRepository valueRepository;
   @Autowired private LibraryMetadataFieldValueRepository fieldValueRepository;
@@ -267,6 +268,45 @@ class LibraryMetadataFieldServiceIntegrationTest {
                     .doesNotContainKey("lfs_fassung"));
   }
 
+  /**
+   * Deleting a field destroys manual values no run can reproduce, so it is protokollpflichtig like
+   * every other removal: one event per document, each with its old value, all under one
+   * correlationRef - without them a restore from the audit bestand would resurrect exactly the
+   * values somebody deliberately removed, and nobody could say who removed them.
+   */
+  @Test
+  void deletingAFieldAuditsEveryRemovedValueWithItsOldValue() throws IOException {
+    fieldService.createField(
+        library.getId(),
+        input("fassung", LibraryMetadataFieldType.SELECT, true, false, null),
+        owner);
+    Document first = indexed("satzung.pdf");
+    Document second = indexed("gebuehren.pdf");
+    setLibraryValue(first, "A");
+    setLibraryValue(second, "B");
+
+    // The audit log outlives the per-test cleanup, so only the refs this deletion adds count.
+    Set<String> earlierRuns =
+        deletionAuditPayloads().stream()
+            .map(payload -> String.valueOf(payload.get("correlationRef")))
+            .collect(java.util.stream.Collectors.toSet());
+    fieldService.deleteField(library.getId(), "fassung", owner);
+
+    List<Map<String, Object>> events =
+        deletionAuditPayloads().stream()
+            .filter(payload -> !earlierRuns.contains(String.valueOf(payload.get("correlationRef"))))
+            .toList();
+    assertThat(events).hasSize(2);
+    assertThat(events)
+        .extracting(payload -> payload.get("correlationRef"))
+        .as("one correlationRef for the whole deletion, like a Sammelzuweisung")
+        .hasSize(2)
+        .containsOnly(events.getFirst().get("correlationRef"));
+    assertThat(events)
+        .extracting(payload -> payload.get("before"))
+        .containsExactlyInAnyOrder("A", "B");
+  }
+
   @Test
   void atMostTwoLibraryFieldsReachTheBelegAndAnEmptyOneNeverDoes() throws IOException {
     fieldService.createField(
@@ -432,6 +472,119 @@ class LibraryMetadataFieldServiceIntegrationTest {
         .containsExactly("B");
   }
 
+  @Test
+  void theFolgekostenOfAPrefixEffectiveChangeNameDocumentsChunksCallsAndRuntime()
+      throws IOException {
+    fieldService.createField(
+        library.getId(),
+        input("fassung", LibraryMetadataFieldType.SELECT, false, true, null),
+        owner);
+    Document first = indexed("satzung.pdf");
+    Document second = indexed("gebuehren.pdf");
+    correctionService.setValue(
+        library.getId(), first.getId(), "lib:fassung", MetadataValueInput.text("A"), editor);
+    correctionService.setValue(
+        library.getId(), second.getId(), "lib:fassung", MetadataValueInput.text("A"), editor);
+    long chunks =
+        documentRepository.findById(first.getId()).orElseThrow().getChunkCount()
+            + documentRepository.findById(second.getId()).orElseThrow().getChunkCount();
+
+    MetadataChangeImpact impact =
+        fieldService.changeImpact(
+            library.getId(), "fassung", MetadataChangeKind.CONTEXT_PREFIX_DISABLED, owner);
+
+    assertThat(impact.affectedDocuments()).isEqualTo(2);
+    assertThat(impact.affectedChunks()).isEqualTo(chunks);
+    assertThat(impact.embeddingCalls())
+        .as("one embedding call per chunk - that is what the runtime estimate multiplies")
+        .isEqualTo(chunks);
+    assertThat(impact.reembeddingRequired()).isTrue();
+    assertThat(impact.estimatedSeconds()).isPositive();
+  }
+
+  @Test
+  void extendingAValueListCostsNothingAndAFilterOnlyFieldCostsNoEmbeddingCall() throws IOException {
+    fieldService.createField(
+        library.getId(),
+        input("projekt", LibraryMetadataFieldType.SELECT, true, false, null),
+        owner);
+    Document document = indexed("projekt.pdf");
+    correctionService.setValue(
+        library.getId(), document.getId(), "lib:projekt", MetadataValueInput.text("A"), editor);
+
+    assertThat(
+            fieldService.changeImpact(
+                library.getId(), "projekt", MetadataChangeKind.VALUE_ADDED, owner))
+        .satisfies(
+            impact -> {
+              assertThat(impact.affectedDocuments()).isZero();
+              assertThat(impact.reembeddingRequired()).isFalse();
+              assertThat(impact.estimatedSeconds()).isZero();
+            });
+
+    MetadataChangeImpact removal =
+        fieldService.changeImpact(
+            library.getId(), "projekt", MetadataChangeKind.FIELD_REMOVED, owner);
+    assertThat(removal.affectedDocuments())
+        .as("the values are gone even though no chunk has to be re-embedded")
+        .isEqualTo(1);
+    assertThat(removal.affectedChunks()).isZero();
+    assertThat(removal.embeddingCalls()).isZero();
+    assertThat(removal.reembeddingRequired()).isFalse();
+  }
+
+  @Test
+  void theFolgekostenOfRemovingOneValueCountOnlyTheDocumentsThatCarryIt() throws IOException {
+    fieldService.createField(
+        library.getId(),
+        input("fassung", LibraryMetadataFieldType.SELECT, false, true, null),
+        owner);
+    Document first = indexed("satzung.pdf");
+    Document second = indexed("gebuehren.pdf");
+    correctionService.setValue(
+        library.getId(), first.getId(), "lib:fassung", MetadataValueInput.text("A"), editor);
+    correctionService.setValue(
+        library.getId(), second.getId(), "lib:fassung", MetadataValueInput.text("B"), editor);
+
+    MetadataChangeImpact impact =
+        fieldService.valueChangeImpact(library.getId(), "fassung", "A", owner);
+
+    assertThat(impact.affectedDocuments()).isEqualTo(1);
+    assertThat(impact.affectedChunks())
+        .isEqualTo(documentRepository.findById(first.getId()).orElseThrow().getChunkCount());
+    assertThat(impact.reembeddingRequired()).isTrue();
+  }
+
+  @Test
+  void askingForTheFolgekostenNeedsTheManagementRightAndChangesNothing() throws IOException {
+    fieldService.createField(
+        library.getId(),
+        input("fassung", LibraryMetadataFieldType.SELECT, false, true, null),
+        owner);
+    indexed("satzung.pdf");
+
+    assertThatThrownBy(
+            () ->
+                fieldService.changeImpact(
+                    library.getId(), "fassung", MetadataChangeKind.CONTEXT_PREFIX_ENABLED, editor))
+        .isInstanceOf(AccessDeniedException.class);
+    assertThatThrownBy(
+            () -> fieldService.valueChangeImpact(library.getId(), "fassung", "A", viewer))
+        .isInstanceOf(AccessDeniedException.class);
+  }
+
+  @Test
+  void theCoreFieldWirkstellenAreOffByDefaultAndTheTitleIsAlwaysPrefixEffective() {
+    assertThat(fieldService.coreContextPrefix(library.getId(), viewer))
+        .isEqualTo(new CoreContextPrefixSettings(true, false, false));
+
+    assertThat(fieldService.updateCoreContextPrefix(library.getId(), true, false, owner))
+        .isEqualTo(new CoreContextPrefixSettings(true, true, false));
+    assertThatThrownBy(
+            () -> fieldService.updateCoreContextPrefix(library.getId(), true, true, editor))
+        .isInstanceOf(AccessDeniedException.class);
+  }
+
   private LibraryMetadataFieldInput input(
       String key,
       LibraryMetadataFieldType type,
@@ -485,6 +638,19 @@ class LibraryMetadataFieldServiceIntegrationTest {
         "SELECT before FROM audit_log WHERE correlation_ref = ? ORDER BY recorded_at, event_id",
         (rs, i) -> Map.of("before", valueOf(rs.getString("before"))),
         correlationRef);
+  }
+
+  private List<Map<String, Object>> deletionAuditPayloads() {
+    return jdbcTemplate.query(
+        "SELECT correlation_ref, before FROM audit_log WHERE correlation_ref LIKE ?"
+            + " ORDER BY recorded_at, event_id",
+        (rs, i) ->
+            Map.of(
+                "correlationRef",
+                rs.getString("correlation_ref"),
+                "before",
+                valueOf(rs.getString("before"))),
+        LibraryMetadataFieldService.DELETE_CORRELATION_PREFIX + "%");
   }
 
   private static String valueOf(String json) {
@@ -550,7 +716,7 @@ class LibraryMetadataFieldServiceIntegrationTest {
   private Document indexed(String fileName) throws IOException {
     Path file = classTempDir.resolve(fileName);
     writePdf(file);
-    assertThat(fileProcessingService.processFile(file, library))
+    assertThat(fileProcessingService.ingest(DocumentIngest.localFile(library, file).build(), null))
         .isEqualTo(FileProcessingResult.PROCESSED);
     return documentRepository.findAll().stream()
         .filter(document -> fileName.equals(document.getFileName()))

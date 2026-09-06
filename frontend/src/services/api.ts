@@ -9,8 +9,14 @@ import type {
   ChatSummary,
   ChatUpdateRequest,
   EmbeddingInfoResponse,
+  ContextPrefixRerunRequest,
+  ContextPrefixRerunResponse,
+  CoreContextPrefixRequest,
+  CoreContextPrefixResponse,
   MetadataBackfillRequest,
   MetadataBackfillResponse,
+  MetadataChangeImpactResponse,
+  MetadataChangeKind,
   SearchStatusResponse,
   SearchDiagnosisContextResponse,
   SearchDiagnosisRequest,
@@ -72,7 +78,11 @@ import type {
   UpdateLibraryMetadataFieldRequest,
   MetadataFilter,
   MetadataFilterOptionsResponse,
+  LibraryMetadataExtractionSettingsRequest,
+  LibraryMetadataExtractionSettingsResponse,
   LibraryMetadataMaintenanceResponse,
+  LibraryMetadataQualityResponse,
+  LibraryMetadataSampleResponse,
   MetadataValueRequest,
 } from '../types/api'
 import { isErrorResponse } from '../types/api'
@@ -1018,6 +1028,65 @@ export async function getLibraryMetadataMaintenance(
   }
 }
 
+/** the two model-backed extraction switches of a library, with the chat role behind them. */
+export async function getLibraryMetadataExtractionSettings(
+  libraryId: string,
+): Promise<LibraryMetadataExtractionSettingsResponse> {
+  try {
+    const { data } = await client.get<LibraryMetadataExtractionSettingsResponse>(
+      `/v1/libraries/${libraryId}/metadata/extraction-settings`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function updateLibraryMetadataExtractionSettings(
+  libraryId: string,
+  request: LibraryMetadataExtractionSettingsRequest,
+): Promise<LibraryMetadataExtractionSettingsResponse> {
+  try {
+    const { data } = await client.put<LibraryMetadataExtractionSettingsResponse>(
+      `/v1/libraries/${libraryId}/metadata/extraction-settings`,
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** the Extraktionsgüte per field plus the Zählwerk of the model-backed extraction. */
+export async function getLibraryMetadataQuality(
+  libraryId: string,
+): Promise<LibraryMetadataQualityResponse> {
+  try {
+    const { data } = await client.get<LibraryMetadataQualityResponse>(
+      `/v1/libraries/${libraryId}/metadata/quality`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** the Stichproben-Export for the Handauswertung; management right. */
+export async function getLibraryMetadataSample(
+  libraryId: string,
+  size = 100,
+): Promise<LibraryMetadataSampleResponse> {
+  try {
+    const { data } = await client.get<LibraryMetadataSampleResponse>(
+      `/v1/libraries/${libraryId}/metadata/sample`,
+      { params: { size } },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 /**
  * the library's own metadata fields with their configured value lists. Schema, not an
  * aggregate - readable by everyone who may use the library.
@@ -1152,6 +1221,46 @@ export async function remapLibraryMetadataFieldValue(
     const { data } = await client.post<RemapLibraryMetadataFieldValueResponse>(
       `/v1/libraries/${libraryId}/metadata-fields/${fieldKey}/values/${encodeURIComponent(code)}/remap`,
       { targetCode },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * The Folgekosten of a planned schema change, before it is saved: documents, chunks, embedding
+ * calls and expected runtime. Read-only - asking changes nothing.
+ */
+export async function getMetadataChangeImpact(
+  libraryId: string,
+  fieldKey: string,
+  change: MetadataChangeKind,
+  valueCode?: string,
+): Promise<MetadataChangeImpactResponse> {
+  try {
+    const { data } = await client.get<MetadataChangeImpactResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/change-impact`,
+      { params: { fieldKey, change, ...(valueCode ? { valueCode } : {}) } },
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Switches the Kontextpräfix-Wirkstelle of the two switchable core fields. Saving moves no
+ * bestand; the Nachlauf is started separately on the administration page.
+ */
+export async function updateCoreContextPrefix(
+  libraryId: string,
+  request: CoreContextPrefixRequest,
+): Promise<CoreContextPrefixResponse> {
+  try {
+    const { data } = await client.put<CoreContextPrefixResponse>(
+      `/v1/libraries/${libraryId}/metadata-fields/core-context-prefix`,
+      request,
     )
     return data
   } catch (err) {
@@ -1333,6 +1442,24 @@ export async function runMetadataBackfillBatch(
   try {
     const { data } = await client.post<MetadataBackfillResponse>(
       '/v1/admin/indexing/metadata-backfill',
+      request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * One batch of the Kontextpräfix-Nachlauf of a library, repeated until `done` exactly like the
+ * backfill above: stopping the repetition is the pause, the next call the resumption.
+ */
+export async function runContextPrefixRerunBatch(
+  request: ContextPrefixRerunRequest,
+): Promise<ContextPrefixRerunResponse> {
+  try {
+    const { data } = await client.post<ContextPrefixRerunResponse>(
+      '/v1/admin/indexing/context-prefix-rerun',
       request,
     )
     return data

@@ -1021,6 +1021,46 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/admin/indexing/context-prefix-rerun:
+    post:
+      operationId: rerunContextPrefixBatch
+      tags: [admin, indexing]
+      summary: >
+        Re-embed one batch of a library's documents under the current Kontextpräfix (system admin
+        only, #1072, metadata-schema.md "Nachlauf im Betrieb")
+      description: >
+        Processes at most batchSize INDEXED documents of libraryId (which must belong to the
+        caller's own organization, otherwise 404) whose context-prefix stamp was cleared - the
+        marking every prefix-effective schema change and every manual correction of a
+        prefix-effective value applies to exactly the documents whose prefix it alters, so the
+        number the Folgekosten preview shows and the number this run processes are the same set. The existing chunks are kept and re-embedded in place under
+        their own ids with the new prefix; the full-text row is rewritten from the same prefixed
+        text. No re-chunking, no model call beyond the embedding, no citation or deep link is lost.
+        Nothing is destroyed before its replacement exists: a document that cannot be advanced keeps
+        its chunks and stays selected. The search stays available throughout, and a document carries
+        either its old or its new prefix, never a mixture. Repeat until done is true; pausing is
+        simply not calling again. Nothing triggers this automatically - saving a schema change moves
+        no bestand.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContextPrefixRerunRequest"
+      responses:
+        "200":
+          description: What this batch did
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContextPrefixRerunResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/admin/search/status:
     get:
       operationId: getSearchStatus
@@ -2266,6 +2306,132 @@ paths:
               schema:
                 $ref: "#/components/schemas/DocumentTypeVocabularyResponse"
 
+  /api/v1/libraries/{libraryId}/metadata/extraction-settings:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLibraryMetadataExtractionSettings
+      tags: [library]
+      summary: >
+        The two model-backed extraction switches of a library (#1073, metadata-schema.md "Die
+        modellgestützte Extraktion im Betrieb"), both off by default, together with the chat role
+        the extraction would use - Basis-Adresse and Modell-Kennung, never an access key. The
+        endpoint the Datenschutzhinweis at the switch is built from: with an externally operated
+        model, every ingested document leaves the house without a person triggering it. Requires
+        the management right at the library.
+      responses:
+        "200":
+          description: The switches and the active chat role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataExtractionSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: updateLibraryMetadataExtractionSettings
+      tags: [library]
+      summary: >
+        Switches the model-backed extraction and the freie Schlagworte of this library on or off
+        (#1073). Takes effect on the next ingest and on the next Bestandslauf call; already stored
+        values are not touched by switching either flag off. Requires the management right at the
+        library.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LibraryMetadataExtractionSettingsRequest"
+      responses:
+        "200":
+          description: The switches after the change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataExtractionSettingsResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata/quality:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getLibraryMetadataQuality
+      tags: [library]
+      summary: >
+        The Extraktionsgüte of a library (#1073, metadata-schema.md "Messung und Abnahme", Punkt
+        3): per field the share of deterministically filled, model-filled, manually set, empty and
+        "kein Wert ermittelbar" documents, plus the Zählwerk of the model-backed extraction. Without
+        it, a weak filter result cannot be told apart from a weak extraction. Counted on every
+        request in the rights context of the asking person and never precomputed or cached
+        (metadata-schema.md, Rechte-Invariante); reading needs VIEWER on the library.
+      responses:
+        "200":
+          description: The extraction quality per field
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataQualityResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata/sample:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 100
+        description: How many documents the sample covers; 100 is the size the specification fixes.
+
+    get:
+      operationId: getLibraryMetadataSample
+      tags: [library]
+      summary: >
+        A sample of documents with every stored metadata value and its provenance (#1073) - the
+        basis of the handausgewertete Stichprobe of 100 documents the QA role runs before the
+        model-backed extraction is accepted. Deterministically ordered by document id, so a repeat
+        run examines the same documents. Requires the management right at the library.
+      responses:
+        "200":
+          description: The sampled documents with their values
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LibraryMetadataSampleResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries/{libraryId}/metadata-fields:
     parameters:
       - name: libraryId
@@ -2604,6 +2770,97 @@ paths:
                 $ref: "#/components/schemas/RemapLibraryMetadataFieldValueResponse"
         "400":
           $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/change-impact:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: fieldKey
+        in: query
+        required: true
+        description: >
+          The field the planned change applies to - a core field key (title, document_type,
+          document_date) or a library field key.
+        schema:
+          type: string
+      - name: change
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/MetadataChangeKind"
+      - name: valueCode
+        in: query
+        required: false
+        description: >
+          The value of a SELECT field's list that is about to be removed. Only evaluated for
+          change=VALUE_REMOVED, where it narrows the answer to the documents carrying exactly this
+          value; without it that change is answered with the whole field's usage, the honest upper
+          bound.
+        schema:
+          type: string
+
+    get:
+      operationId: getMetadataChangeImpact
+      tags: [library]
+      summary: >
+        The Folgekosten of a planned schema change before it is saved (#1072,
+        metadata-schema.md "Der Reindex-Preis, ehrlich ausgewiesen"): affected documents and
+        chunks, the resulting number of embedding calls and the expected runtime. Concrete
+        numbers, not a general warning. Requires the management right at the library.
+      responses:
+        "200":
+          description: The Folgekosten of the planned change
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetadataChangeImpactResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/libraries/{libraryId}/metadata-fields/core-context-prefix:
+    parameters:
+      - name: libraryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      operationId: updateCoreContextPrefix
+      tags: [library]
+      summary: >
+        Switches the Kontextpräfix-Wirkstelle of the two switchable core fields Dokumentart and
+        Datum/Stand for this library (#1072). Deliberately no installation-wide default: the
+        Wirkstelle "Kontextpräfix" is a deliberate decision per field. The Kernfeld Titel is always
+        prefix-effective and therefore not switchable. Saving hands exactly the documents carrying a
+        value for a switched field to the Nachlauf; it moves no bestand - the run is started
+        separately on the administration page. Requires the management right at the library.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoreContextPrefixRequest"
+      responses:
+        "200":
+          description: The stored Wirkstellen of the core fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoreContextPrefixResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -4506,37 +4763,6 @@ components:
             indexing pipeline could not determine one (plain text without headings, a format without
             page breaks). Absent for a synthetic entry (#386).
 
-        mailFrom:
-          type: string
-          nullable: true
-          description: >-
-            The message's Absender (#1164), read back from the mail_from chunk metadata
-            ChunkMailMetadata declares (Teil 3, Punkt 5 of docs/features/ingestion-pipelines.md).
-            Null for a source that is not an EML/MSG message's own body chunk.
-          example: mueller@stadt.de
-        mailTo:
-          type: string
-          nullable: true
-          description: >-
-            The message's Empfänger (#1164), read back from the mail_to chunk metadata. Null for a
-            source that is not an EML/MSG message's own body chunk.
-          example: poststelle@stadt.de
-        mailSubject:
-          type: string
-          nullable: true
-          description: >-
-            The message's Betreff (#1164), read back from the mail_subject chunk metadata. Null for
-            a source that is not an EML/MSG message's own body chunk.
-          example: Bebauungsplan Nord
-        mailDate:
-          type: string
-          nullable: true
-          description: >-
-            The message's Datum (#1164), read back from the mail_date chunk metadata as the indexing
-            pipeline wrote it (an ISO-8601 instant, truncated to whole seconds so it stays
-            lexicographically sortable). Null for a source that is not an EML/MSG message's own body
-            chunk.
-          example: "2026-03-14T09:15:00Z"
         metadata:
           type: array
           nullable: true
@@ -6229,6 +6455,15 @@ components:
           allOf:
             - $ref: "#/components/schemas/DatePrecision"
           description: Set for a date value only.
+        detailOnly:
+          type: boolean
+          nullable: true
+          default: false
+          description: >-
+            True for a value that belongs into the Beleg detail view but not into the one-line
+            Fundstellenzeile (#1242): a mail's recipient list is unbounded and names nobody useful
+            for identifying the passage, while the line has to stay readable in the flow of an
+            answer. Absent/false for every other entry.
 
     LibraryDocumentResponse:
       type: object
@@ -6669,6 +6904,271 @@ components:
           items:
             $ref: "#/components/schemas/MetadataFieldMaintenanceResponse"
 
+    LibraryMetadataExtractionSettingsRequest:
+      type: object
+      description: >-
+        The two switches of the model-backed extraction (#1073). Both are off by default; switching
+        one off leaves already stored values untouched.
+      required: [modelExtractionEnabled, keywordsEnabled]
+      properties:
+        modelExtractionEnabled:
+          type: boolean
+          description: >
+            Whether the chat role is asked for the unscharfe fields the deterministic extraction
+            left empty (Dokumentart and the library's own SELECT fields).
+        keywordsEnabled:
+          type: boolean
+          description: >
+            Whether the model assigns up to five freie Schlagworte per document. They reach the
+            full-text index and the Kontextpräfix and never filter.
+
+    LibraryMetadataExtractionSettingsResponse:
+      type: object
+      description: >-
+        The stored switches plus the chat role the extraction uses (#1073) - the facts a client
+        needs for the Datenschutzhinweis at the switch.
+      required: [libraryId, modelExtractionEnabled, keywordsEnabled, confidenceThreshold]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        modelExtractionEnabled:
+          type: boolean
+        keywordsEnabled:
+          type: boolean
+        confidenceThreshold:
+          type: number
+          format: double
+          description: >
+            The confidence a model-proposed value must reach to be stored, fixed before the first
+            measurement (ADR-0012). Below it the field stays empty.
+          example: 0.8
+        chatModel:
+          $ref: "#/components/schemas/ActiveChatModelSummaryResponse"
+
+    ActiveChatModelSummaryResponse:
+      type: object
+      description: >-
+        Basis-Adresse and Modell-Kennung of the systemwide active chat role, never an access key
+        (#1073). Absent when no chat model is active at all.
+      required: [baseUrl, modelIdentifier, local]
+      properties:
+        baseUrl:
+          type: string
+          example: https://api.openai.com/v1
+        modelIdentifier:
+          type: string
+          example: gpt-4o-mini
+        local:
+          type: boolean
+          description: >
+            Whether the endpoint is a loopback or private address, i.e. whether the extraction runs
+            without an outgoing connection. Decides which of the two Datenschutzhinweise a client
+            shows.
+
+    MetadataModelExtractionStatsResponse:
+      type: object
+      description: >-
+        The Zählwerk of the model-backed extraction of one library (#1073, metadata-schema.md "Die
+        Zahl der Extraktionsaufrufe wird je Bibliothek geführt"). Without it, the only feedback about
+        the cost of this capability is the model provider's invoice.
+      required:
+        [
+          calls,
+          acceptedValues,
+          rejectedBelowThreshold,
+          rejectedOutsideVocabulary,
+          failures,
+          rejectedPoolFull,
+          keywordsAssigned,
+        ]
+      properties:
+        calls:
+          type: integer
+          format: int64
+          description: Model calls made for this library, successful or not.
+        acceptedValues:
+          type: integer
+          format: int64
+          description: Values stored - confidence at or above the threshold and inside the vocabulary.
+        rejectedBelowThreshold:
+          type: integer
+          format: int64
+        rejectedOutsideVocabulary:
+          type: integer
+          format: int64
+          description: >
+            Values discarded because the answer was not a code of the offered list - discarded
+            regardless of the confidence, never mapped onto the most similar value.
+        failures:
+          type: integer
+          format: int64
+          description: Calls that timed out, failed or answered unusably. The document is indexed regardless.
+        rejectedPoolFull:
+          type: integer
+          format: int64
+          description: >
+            Documents whose model call was skipped because every extraction thread was busy - no
+            call was made, the field stayed empty and the document was indexed regardless.
+        keywordsAssigned:
+          type: integer
+          format: int64
+        lastCallAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    MetadataFieldQualityResponse:
+      type: object
+      description: >-
+        The Extraktionsgüte of one field over one library (#1073): where the values of this field
+        came from, and how much of the bestand carries none.
+      required:
+        [
+          fieldKey,
+          label,
+          totalDocuments,
+          deterministicDocuments,
+          derivedDocuments,
+          manualDocuments,
+          notDeterminableDocuments,
+          emptyDocuments,
+          derivedShare,
+          emptyShare,
+        ]
+      properties:
+        fieldKey:
+          type: string
+          example: document_type
+        label:
+          type: string
+          example: Dokumentart
+        totalDocuments:
+          type: integer
+          format: int64
+        deterministicDocuments:
+          type: integer
+          format: int64
+        derivedDocuments:
+          type: integer
+          format: int64
+          description: Documents whose value came from the model.
+        manualDocuments:
+          type: integer
+          format: int64
+        notDeterminableDocuments:
+          type: integer
+          format: int64
+          description: Documents a person marked as having no value to find.
+        emptyDocuments:
+          type: integer
+          format: int64
+        derivedShare:
+          type: number
+          format: double
+        emptyShare:
+          type: number
+          format: double
+
+    LibraryMetadataQualityResponse:
+      type: object
+      description: >-
+        The extraction quality of one library, one entry per field in schema order, plus the
+        Zählwerk of the model-backed extraction (#1073). Built at query time in the rights context
+        of the asking person and never cached (metadata-schema.md, Rechte-Invariante).
+      required:
+        [
+          libraryId,
+          totalDocuments,
+          modelExtractionEnabled,
+          keywordsEnabled,
+          confidenceThreshold,
+          fields,
+          modelExtraction,
+        ]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        totalDocuments:
+          type: integer
+          format: int64
+        modelExtractionEnabled:
+          type: boolean
+        keywordsEnabled:
+          type: boolean
+        confidenceThreshold:
+          type: number
+          format: double
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataFieldQualityResponse"
+        modelExtraction:
+          $ref: "#/components/schemas/MetadataModelExtractionStatsResponse"
+
+    MetadataSampleValueResponse:
+      type: object
+      description: One stored value of a sampled document, with its provenance (#1073).
+      required: [fieldKey, label, origin]
+      properties:
+        fieldKey:
+          type: string
+        label:
+          type: string
+        value:
+          type: string
+          nullable: true
+          description: The stored value as displayed; null for "kein Wert ermittelbar".
+        origin:
+          $ref: "#/components/schemas/MetadataOrigin"
+        confidence:
+          type: number
+          format: double
+          nullable: true
+          description: Only set for a model-derived value.
+        modelId:
+          type: string
+          nullable: true
+
+    MetadataSampleDocumentResponse:
+      type: object
+      description: One sampled document with every stored value (#1073).
+      required: [documentId, fileName, values]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        title:
+          type: string
+          nullable: true
+          description: The document's Kernfeld Titel, the Titelzeile of the handauswertung.
+        values:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataSampleValueResponse"
+
+    LibraryMetadataSampleResponse:
+      type: object
+      description: >-
+        The Stichproben-Export for the handausgewertete Auswertung of the QA role (#1073), ordered
+        by document id so a repeat run examines the same documents. Freie Schlagworte are not part
+        of it - they carry no claim the product stands behind.
+      required: [libraryId, size, documents]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+        size:
+          type: integer
+          description: The requested sample size; fewer documents are returned when the library holds fewer.
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataSampleDocumentResponse"
+
     DocumentTypeVocabularyEntryResponse:
       type: object
       required: [code, label]
@@ -6684,9 +7184,10 @@ components:
       type: object
       additionalProperties: false
       description: >-
-        A filter on the filterable core fields (#1070, docs/features/metadata-schema.md, Wirkstelle
-        1). Only Dokumentart and Datum/Stand are filterable - the title is not, and free keywords
-        never are; a request naming any other field is rejected with 400. Every condition is
+        A filter on the filterable schema fields (#1070, docs/features/metadata-schema.md,
+        Wirkstelle 1): the core fields Dokumentart and Datum/Stand, a library's own fields and the
+        filterable format fields. The title is not filterable, a display field like a mail's Betreff
+        is not, and free keywords never are; a request naming any other field is rejected with 400. Every condition is
         applied inside both search paths, AND-ed to the permission filter, so a filter can narrow
         the readable set but never widen it. A document without a value for a filtered field is
         not excluded ("Leerwerte schließen nicht aus"); its source entry carries
@@ -6724,10 +7225,20 @@ components:
           type: array
           nullable: true
           description: >-
-            Conditions on library fields (#1071) - the third and last kind of condition a filter
-            can carry. Absent or empty: no condition on any library field.
+            Conditions on library fields (#1071) - the third kind of condition a filter can carry.
+            Absent or empty: no condition on any library field.
           items:
             $ref: "#/components/schemas/MetadataFilterLibraryFieldCondition"
+        formatFields:
+          type: array
+          nullable: true
+          description: >-
+            Conditions on the filterable format fields (#1242) - the fourth and last kind. A format
+            field is built in and only filled where the format declares it (a mail's Absender);
+            naming a field that is not filterable - the Betreff is a display field - or a value the
+            field's pattern does not accept is rejected with 400.
+          items:
+            $ref: "#/components/schemas/MetadataFilterFormatFieldCondition"
 
     MetadataFilterMatch:
       type: string
@@ -6834,6 +7345,12 @@ components:
             each with its own Füllstand, entry condition and occurring values.
           items:
             $ref: "#/components/schemas/MetadataFilterLibraryFieldOption"
+        formatFields:
+          type: array
+          description: >-
+            The filterable format fields with the values occurring in the scope (#1242).
+          items:
+            $ref: "#/components/schemas/MetadataFilterFormatFieldOption"
 
     LibraryMetadataFieldType:
       type: string
@@ -6910,8 +7427,10 @@ components:
         contextPrefix:
           type: boolean
           description: >-
-            Whether the field's value belongs into the Kontextpräfix of every chunk. Stored here,
-            effective with #1072.
+            Whether the field's value belongs into the Kontextpräfix of every chunk, which goes
+            into embedding and full-text index alike (#1072). Switching it hands exactly the
+            documents that carry a value to the Nachlauf - see GET
+            /api/v1/libraries/{libraryId}/metadata-fields/change-impact.
         citationPosition:
           type: integer
           nullable: true
@@ -6930,12 +7449,197 @@ components:
 
     LibraryMetadataFieldsResponse:
       type: object
-      required: [items]
+      required: [items, coreContextPrefix, documentsAwaitingContextPrefixRerun]
       properties:
         items:
           type: array
           items:
             $ref: "#/components/schemas/LibraryMetadataFieldResponse"
+        coreContextPrefix:
+          $ref: "#/components/schemas/CoreContextPrefixResponse"
+        documentsAwaitingContextPrefixRerun:
+          type: integer
+          format: int64
+          description: >-
+            Indexed documents of this library whose chunks were embedded under an older
+            context-prefix configuration (#1072) - the "N Dokumente warten auf Neu-Einbetten" hint
+            in the library settings. Saving a schema change never starts the Nachlauf; it runs from
+            the administration page "Suche & Indexierung", started by a system administrator.
+
+    CoreContextPrefixRequest:
+      type: object
+      required: [documentType, documentDate]
+      description: >-
+        Which of the two switchable core fields belong into the Kontextpraefix of this library's
+        chunks. Titel is always prefix-effective and has no switch.
+      properties:
+        documentType:
+          type: boolean
+        documentDate:
+          type: boolean
+
+    CoreContextPrefixResponse:
+      type: object
+      required: [title, documentType, documentDate]
+      description: The Kontextpraefix-Wirkstelle of the three core fields (#1072).
+      properties:
+        title:
+          type: boolean
+          description: >-
+            Always true: the Titel replaces the file-name humanisation the prefix used before, and
+            a prefix without it would name nothing.
+        documentType:
+          type: boolean
+        documentDate:
+          type: boolean
+
+    MetadataChangeKind:
+      type: string
+      description: >-
+        The planned schema change whose Folgekosten are being asked for (#1072,
+        metadata-schema.md, Kostentabelle): FIELD_ADDED - a new field is defined, which no document
+        carries a value for yet; CONTEXT_PREFIX_ENABLED / CONTEXT_PREFIX_DISABLED - the
+        Kontextpraefix-Wirkstelle of the field is switched on or off; FIELD_REMOVED - the field is
+        deleted with everything hanging on it; VALUE_REMOVED - a value of the list is removed with
+        a confirmed mapping; VALUE_ADDED - the list is extended, which has no effect on stored
+        values and costs nothing.
+      enum:
+        [
+          FIELD_ADDED,
+          CONTEXT_PREFIX_ENABLED,
+          CONTEXT_PREFIX_DISABLED,
+          FIELD_REMOVED,
+          VALUE_REMOVED,
+          VALUE_ADDED,
+        ]
+      example: CONTEXT_PREFIX_ENABLED
+
+    EmbeddingRateSource:
+      type: string
+      description: >-
+        Where the runtime estimate's rate comes from: MEASURED - the mean duration per chunk of the
+        embedding calls this process has actually made; CONFIGURED - the configured
+        opaa.indexing.embedding-rate-estimate, used until enough calls have been measured.
+      enum: [MEASURED, CONFIGURED]
+
+    MetadataChangeImpactResponse:
+      type: object
+      required:
+        [
+          affectedDocuments,
+          affectedChunks,
+          embeddingCalls,
+          estimatedSeconds,
+          reembeddingRequired,
+          rateSource,
+        ]
+      description: >-
+        The Folgekosten of one planned schema change (#1072). Concrete numbers a decision can be
+        made on ("4.812 Chunks neu einzubetten, rund 40 Minuten"), never a general warning.
+      properties:
+        affectedDocuments:
+          type: integer
+          format: int64
+          description: Documents whose stored values the change touches.
+        affectedChunks:
+          type: integer
+          format: int64
+          description: >-
+            Chunks of those documents. 0 when the change is not prefix-effective, because then no
+            chunk changes.
+        embeddingCalls:
+          type: integer
+          format: int64
+          description: >-
+            Embedding calls the Nachlauf will make - one per chunk, so equal to affectedChunks for
+            a prefix-effective change and 0 otherwise.
+        estimatedSeconds:
+          type: integer
+          format: int64
+          description: Expected runtime of the Nachlauf, from embeddingCalls and the rate below.
+        reembeddingRequired:
+          type: boolean
+          description: >-
+            Whether the change makes re-embedding necessary at all. False for a pure filter or
+            Beleg field and for extending a value list - the two rows of the Kostentabelle that
+            cost nothing.
+        rateSource:
+          $ref: "#/components/schemas/EmbeddingRateSource"
+
+    ContextPrefixRerunRequest:
+      type: object
+      required: [libraryId]
+      properties:
+        libraryId:
+          type: string
+          format: uuid
+          description: >
+            The library whose documents are to be re-embedded under the current Kontextpraefix. Per
+            library on purpose: starting the run is the explicit, library-wise release the
+            specification demands.
+        batchSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: >
+            The maximum number of documents one call processes. Repeat until done is true; an
+            interrupted run loses at most one batch.
+
+    ContextPrefixRerunResponse:
+      type: object
+      required: [processedDocuments, skippedDocuments, done]
+      properties:
+        processedDocuments:
+          type: integer
+          description: >
+            Documents re-embedded under their current prefix: their chunks were rewritten in place
+            under their own ids, vector and full-text row together, and the document's new prefix
+            stamp was recorded.
+        skippedDocuments:
+          type: integer
+          description: >
+            Documents this call could not advance (embedding call failed, chunks vanished).
+            Nothing about them changed - they keep their old chunks and stay pending.
+        done:
+          type: boolean
+          description: >
+            True when this call advanced nothing - the signal to stop repeating it, ignoring
+            skippedDocuments for the same reason MetadataBackfillResponse.done does.
+
+    ContextPrefixRerunStatusResponse:
+      type: object
+      required:
+        [totalDocuments, currentDocuments, pendingDocuments, lastSkippedDocuments, complete]
+      description: >
+        The Kontextpraefix state of one library (#1072, metadata-schema.md "Nachlauf im Betrieb"):
+        the defined, permitted Mischzustand of a library whose prefix is being changed -
+        verarbeitet, ausstehend, fehlgeschlagen. The search stays available over both halves.
+      properties:
+        totalDocuments:
+          type: integer
+          format: int64
+        currentDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents already embedded under their current prefix.
+        pendingDocuments:
+          type: integer
+          format: int64
+          description: >
+            Indexed documents whose prefix stamp was cleared by a change to their own prefix, plus
+            the bestand that never carried one. A manual correction of a prefix-effective value
+            lands here too - it hands the document to the Nachlauf instead of re-embedding on the
+            spot.
+        lastSkippedDocuments:
+          type: integer
+          format: int64
+          description: >
+            Documents the most recent Nachlauf call for this library could not advance - a
+            process-lifetime figure (ADR-0021), 0 before the first call.
+        complete:
+          type: boolean
+          description: True when pendingDocuments is 0.
 
     LibraryMetadataFieldValueRequest:
       type: object
@@ -7185,6 +7889,77 @@ components:
         dateMax:
           type: string
           nullable: true
+
+    MetadataFilterFormatFieldCondition:
+      type: object
+      additionalProperties: false
+      required: [fieldKey, values]
+      description: >-
+        One condition on a built-in format field (#1242). The values are matched exactly - the
+        field carries a checked identifier, and a partial match would turn it back into the text
+        search the specification rules out. A document without a value for the field - every
+        document that is not of this format - is not excluded ("Leerwerte schließen nicht aus").
+      properties:
+        fieldKey:
+          type: string
+          description: The field's own key, without the namespace prefix.
+          example: mail_sender
+        values:
+          type: array
+          items:
+            type: string
+          description: >-
+            The values a document may carry; a document matches when its value is one of them or it
+            has none.
+          example: [poststelle@stadt.de]
+
+    MetadataFilterFormatFieldOption:
+      type: object
+      required: [fieldKey, label, filledDocuments, totalDocuments, values, offered]
+      description: >-
+        The values of one filterable format field occurring in the caller's search scope (#1242),
+        and whether the filter interface offers it. Unlike a core or library field, a format field
+        is offered as soon as at least one document of the scope carries a value: it is filled
+        deterministically for every document of its format and structurally absent for every other,
+        so a share over a mixed bestand would measure the format mix, not the metadata quality.
+      properties:
+        fieldKey:
+          type: string
+          example: mail_sender
+        label:
+          type: string
+          example: Absender
+        filledDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents of the scope carrying a value for the field.
+        totalDocuments:
+          type: integer
+          format: int64
+          description: Indexed documents of the scope.
+        values:
+          type: array
+          items:
+            $ref: "#/components/schemas/MetadataFilterLibraryFieldValueOption"
+          description: >-
+            The values documents in the caller's rights context actually carry, most frequent first
+            and capped at 20: the value set of a format field is open - a postbox has as many
+            senders as correspondents -, and a complete list would be an unbounded response of
+            personal addresses.
+        valuesCapped:
+          type: boolean
+          nullable: true
+          default: false
+          description: >-
+            True when the scope carries more values than the list shows. A client then offers a free
+            input for an exact value beside the list.
+        offered:
+          type: boolean
+          description: >-
+            True as soon as one document of the scope carries a value. Unlike a core or library
+            field there is no Füllstand threshold: the field is filled deterministically for every
+            document of its format and structurally absent for every other, so a share over a mixed
+            bestand would measure the format mix rather than the metadata quality.
 
     DocumentTypeVocabularyResponse:
       type: object
@@ -7939,6 +8714,7 @@ components:
           CONNECTOR_LIBRARY_SHARE_LIMIT_CHANGED,
           INDEXING_PIPELINE_REINDEX_TRIGGERED,
           INDEXING_METADATA_BACKFILL_TRIGGERED,
+          INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED,
           DOCUMENT_METADATA_CHANGED,
           BRANDING_SETTINGS_CHANGED,
           OIDC_PROVIDER_CREATED,
@@ -8916,6 +9692,8 @@ components:
           fullTextIndexedChunks,
           fullTextMissingChunks,
           metadataBackfill,
+          modelExtraction,
+          contextPrefixRerun,
         ]
       properties:
         libraryId:
@@ -8975,6 +9753,10 @@ components:
             The same data source the "Volltextpfad inaktiv oder unvollständig" alarm reads.
         metadataBackfill:
           $ref: "#/components/schemas/MetadataBackfillStatusResponse"
+        modelExtraction:
+          $ref: "#/components/schemas/MetadataModelExtractionStatsResponse"
+        contextPrefixRerun:
+          $ref: "#/components/schemas/ContextPrefixRerunStatusResponse"
 
     SearchStatusResponse:
       type: object

@@ -36,5 +36,12 @@
  * auto-commit problem in place for the next statement executed on the same connection. {@code
  * setAutoCommit(true)} was chosen as the binding pattern for this package during the review of
  * #283; new migration tests (see #201, #202, #238) must follow it.
+ *
+ * <p><b>One deliberate exception to the delta pattern:</b> {@link
+ * io.opaa.migration.DocumentTypeVocabularySeedReconciliationTest} applies the whole {@code
+ * db.changelog-master.yaml} instead of a single changelog file. It proves no property of one
+ * changeSet but reconciles the delivered Dokumentart seed with the database-free snapshot {@code
+ * TestVocabularies} - so any later changeSet extending or correcting that seed must reach the
+ * comparison too.
  */
 package io.opaa.migration;

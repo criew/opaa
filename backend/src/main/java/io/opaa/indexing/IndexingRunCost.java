@@ -1,9 +1,9 @@
 package io.opaa.indexing;
 
 /**
- * What one run cost and how much of it was attachments - recorded once, at the end of a run, by the
- * executors that can measure it (today the Confluence executor); {@code null} on a job means the
- * run did not report them.
+ * What one run cost and how much of it was attachments - recorded once, at the end of every
+ * connector run, by the shared run frame; {@code null} on a job means the run never reached its
+ * body. Request and throttle counts stay 0 for a source that has no meter for them.
  *
  * @param requestsSent requests the run sent to its source, retries included
  * @param throttleCount how often the source answered 429 and the run waited

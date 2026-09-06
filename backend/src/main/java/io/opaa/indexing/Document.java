@@ -146,6 +146,53 @@ public class Document {
   @Column(name = "metadata_extraction_version", insertable = false, updatable = false)
   private Integer metadataExtractionVersion;
 
+  /**
+   * The extraction version whose model-backed value extraction (metadata-schema.md, Schritt 2) last
+   * ran over this document, or {@code null} when it never did - the drain marker of the
+   * Bestandslauf for that capability, so switching it on hands the Altbestand to it exactly once.
+   * Written only through {@link DocumentRepository#updateModelExtractionVersion}.
+   */
+  @Column(name = "model_extraction_version", insertable = false, updatable = false)
+  private Integer modelExtractionVersion;
+
+  /**
+   * The same marker for the freie Schlagworte, kept apart from {@link #modelExtractionVersion}: a
+   * library that ran with only one of the two capabilities must still reach its Altbestand when the
+   * other one is switched on later.
+   */
+  @Column(name = "keyword_extraction_version", insertable = false, updatable = false)
+  private Integer keywordExtractionVersion;
+
+  /**
+   * The fingerprint of the Kontextpraefix this document's chunks were last embedded with (#1072),
+   * or {@code null} when it waits for the Nachlauf - which is the run's whole selection. Written
+   * only through {@link DocumentRepository#recordContextPrefix} and cleared by exactly the schema
+   * changes and manual corrections that alter this document's prefix.
+   */
+  @Column(name = "context_prefix_stamp", insertable = false, updatable = false, length = 64)
+  private String contextPrefixStamp;
+
+  /**
+   * Whether the ingest gave this document a Kontextpraefix at all - an RSS entry without a headline
+   * gets none (#1072). Recorded so the Nachlauf honours the same decision instead of guessing it
+   * from the file name; {@code null} for a document last written before this was recorded.
+   */
+  @Column(name = "context_prefix_eligible", insertable = false, updatable = false)
+  private Boolean contextPrefixEligible;
+
+  /**
+   * The title the ingest put into this document's Kontextpraefix (#1072) - a Confluence hierarchy
+   * path, a humanised file name, an RSS headline - or {@code null} when it got no prefix. Read back
+   * by the Nachlauf through {@link ChunkContextPrefix#titleAtRest}, so it reproduces the ingest's
+   * own choice instead of deriving a different one.
+   */
+  @Column(
+      name = "context_prefix_title",
+      insertable = false,
+      updatable = false,
+      columnDefinition = "text")
+  private String contextPrefixTitle;
+
   protected Document() {}
 
   public Document(String fileName, String filePath, String contentType, Long fileSize) {
@@ -255,6 +302,19 @@ public class Document {
     this.lastModifiedRemote = lastModifiedRemote;
   }
 
+  /**
+   * Whether this row already holds {@code remoteVersion} of its source item (a listing's
+   * last-modified stamp, a feed entry's pubDate, a Confluence version) and is {@link
+   * DocumentStatus#INDEXED}, so a run may skip the item before fetching it. A missing or blank
+   * {@code remoteVersion} is unknown, never unchanged - the checksum then decides after the fetch.
+   */
+  public boolean isUnchangedAt(String remoteVersion) {
+    return remoteVersion != null
+        && !remoteVersion.isBlank()
+        && status == DocumentStatus.INDEXED
+        && remoteVersion.equals(lastModifiedRemote);
+  }
+
   public UUID getLibraryId() {
     return libraryId;
   }
@@ -340,6 +400,26 @@ public class Document {
     return metadataExtractionVersion;
   }
 
+  public Integer getModelExtractionVersion() {
+    return modelExtractionVersion;
+  }
+
+  public Integer getKeywordExtractionVersion() {
+    return keywordExtractionVersion;
+  }
+
+  public String getContextPrefixStamp() {
+    return contextPrefixStamp;
+  }
+
+  public Boolean getContextPrefixEligible() {
+    return contextPrefixEligible;
+  }
+
+  public String getContextPrefixTitle() {
+    return contextPrefixTitle;
+  }
+
   /**
    * The deep link target for a document with no local file: {@link #getFilePath()} holds the remote
    * URL itself for {@code HTTP_DIRECTORY} and {@code RSS_FEED}, but a server-local storage path for
@@ -348,11 +428,6 @@ public class Document {
    * VIEWER: it names one document's origin, not the library's source configuration.
    */
   public String getDeepLinkSourceUrl() {
-    if (sourceType == DocumentSourceType.HTTP_DIRECTORY
-        || sourceType == DocumentSourceType.RSS_FEED
-        || sourceType == DocumentSourceType.CONFLUENCE) {
-      return filePath;
-    }
-    return null;
+    return sourceType != null && sourceType.isRemote() ? filePath : null;
   }
 }

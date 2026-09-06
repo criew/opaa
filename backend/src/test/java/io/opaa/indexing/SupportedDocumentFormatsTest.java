@@ -23,6 +23,27 @@ class SupportedDocumentFormatsTest {
   }
 
   @Test
+  void contentTypeForExtensionIsTheCanonicalTypeOfEveryAcceptedFormat() {
+    // Tika's raw detection reports .md as text/plain and a text file with header lines as
+    // message/rfc822 - the row must carry the type its format is known by downstream.
+    assertThat(SupportedDocumentFormats.contentTypeForExtension(".md")).isEqualTo("text/markdown");
+    assertThat(SupportedDocumentFormats.contentTypeForExtension(".txt")).isEqualTo("text/plain");
+    assertThat(SupportedDocumentFormats.contentTypeForExtension(".PDF"))
+        .isEqualTo("application/pdf");
+    assertThat(SupportedDocumentFormats.contentTypeForExtension(".eml"))
+        .isEqualTo("message/rfc822");
+    assertThat(SupportedDocumentFormats.contentTypeForExtension(".msg"))
+        .isEqualTo("application/vnd.ms-outlook");
+    for (String extension : SupportedDocumentFormats.extensions()) {
+      assertThat(SupportedDocumentFormats.contentTypeForExtension(extension))
+          .as(extension)
+          .isNotNull();
+    }
+    assertThat(SupportedDocumentFormats.contentTypeForExtension(".exe")).isNull();
+    assertThat(SupportedDocumentFormats.contentTypeForExtension(null)).isNull();
+  }
+
+  @Test
   void extensionForContentTypeReturnsNullForUnknownOrMissingType() {
     assertThat(SupportedDocumentFormats.extensionForContentType("application/octet-stream"))
         .isNull();

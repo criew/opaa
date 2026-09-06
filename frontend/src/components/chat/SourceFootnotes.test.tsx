@@ -100,50 +100,6 @@ describe('SourceFootnotes', () => {
     ).toBeInTheDocument()
   })
 
-  // #1164: a source whose retrieved chunk carried mail_* metadata shows a summary line at the
-  // Fundstelle; a non-mail source (indexWithDocs' plain fixtures) shows none.
-  describe('mail Kopfdaten summary', () => {
-    it('shows sender, date and Betreff for a source with mail metadata', () => {
-      const citations = buildCitationIndex('Satz【source: doc-1#0 | anfrage.eml】', [
-        source('anfrage.eml', true, {
-          documentId: 'doc-1',
-          mailFrom: 'mueller@stadt.de',
-          mailDate: '2026-03-14T09:15:00Z',
-          mailSubject: 'Bebauungsplan Nord',
-        }),
-      ])
-
-      renderFootnotes(citations)
-
-      expect(screen.getByTestId('source-mail-summary')).toHaveTextContent(
-        'Mail von mueller@stadt.de, 14.03.2026 — Bebauungsplan Nord',
-      )
-    })
-
-    it('shows no summary line for a source without mail metadata', () => {
-      renderFootnotes(indexWithDocs(1))
-
-      expect(screen.queryByTestId('source-mail-summary')).not.toBeInTheDocument()
-    })
-
-    // #1164 review: mailTo alone satisfies formatMailSummary's presence guard (a mail source
-    // with only a recipient is still a mail source), but mailTo itself never feeds a rendered
-    // segment (a distribution list is long and not useful for identifying the passage) - with
-    // no from/date/subject to build a segment from, the line still renders nothing at all.
-    it('renders no summary for a mailTo-only source, same as a non-mail source', () => {
-      const citations = buildCitationIndex('Satz【source: doc-1#0 | rundschreiben.eml】', [
-        source('rundschreiben.eml', true, {
-          documentId: 'doc-1',
-          mailTo: 'verteiler@stadt.de',
-        }),
-      ])
-
-      renderFootnotes(citations)
-
-      expect(screen.queryByTestId('source-mail-summary')).not.toBeInTheDocument()
-    })
-  })
-
   // #1066 (metadata-schema.md, Wirkstelle 3; Maintainer-Beschluss 04.09.2026): the Beleg renders
   // the generic metadata list without field knowledge; an empty field is not in the list and so
   // never renders, a derived value is marked, a year-only date arrives already as "2024".
@@ -159,6 +115,7 @@ describe('SourceFootnotes', () => {
               value: 'Dienstanweisung IT-Nutzung',
               displayValue: 'Dienstanweisung IT-Nutzung',
               origin: 'DETERMINISTIC',
+              detailOnly: false,
             },
             {
               fieldKey: 'document_type',
@@ -166,6 +123,7 @@ describe('SourceFootnotes', () => {
               value: 'DIENSTANWEISUNG',
               displayValue: 'Dienstanweisung',
               origin: 'DETERMINISTIC',
+              detailOnly: false,
             },
             {
               fieldKey: 'document_date',
@@ -174,6 +132,7 @@ describe('SourceFootnotes', () => {
               displayValue: '12.03.2026',
               origin: 'DETERMINISTIC',
               datePrecision: 'DAY',
+              detailOnly: false,
             },
           ],
         }),
@@ -201,6 +160,7 @@ describe('SourceFootnotes', () => {
               displayValue: '2024',
               origin: 'DERIVED',
               datePrecision: 'YEAR',
+              detailOnly: false,
             },
           ],
         }),

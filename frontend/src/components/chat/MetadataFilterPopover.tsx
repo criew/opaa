@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography'
 import FilterListIcon from '@mui/icons-material/FilterList'
 import type {
   MetadataFilter,
+  MetadataFilterFormatFieldOption,
   MetadataFilterLibraryFieldCondition,
   MetadataFilterLibraryFieldOption,
   MetadataFilterOptionsResponse,
@@ -34,6 +35,15 @@ interface MetadataFilterPopoverProps {
 
 function fieldOf(options: MetadataFilterOptionsResponse, fieldKey: string) {
   return options.fields.find((field) => field.fieldKey === fieldKey)
+}
+
+/** A format field is built in and global - its key alone identifies it. */
+function formatValuesByKey(filter: MetadataFilter | null): Record<string, string[]> {
+  const byKey: Record<string, string[]> = {}
+  for (const condition of filter?.formatFields ?? []) {
+    byKey[condition.fieldKey] = condition.values
+  }
+  return byKey
 }
 
 /** A library field's identity is the pair (library, key) - two libraries may use the same key. */
@@ -80,6 +90,10 @@ export default function MetadataFilterPopover({
   const [draftLibraryFields, setDraftLibraryFields] = useState<
     Record<string, MetadataFilterLibraryFieldCondition>
   >(conditionsByKey(filter))
+  const [draftFormatFields, setDraftFormatFields] = useState<Record<string, string[]>>(
+    formatValuesByKey(filter),
+  )
+  const [draftFormatInput, setDraftFormatInput] = useState<Record<string, string>>({})
   const popoverId = useId()
 
   const options = useMetadataFilterOptionsStore((s) => s.options)
@@ -109,10 +123,15 @@ export default function MetadataFilterPopover({
     () => (optionsCurrent ? (options?.libraryFields ?? []) : []),
     [options, optionsCurrent],
   )
+  const formatFields: MetadataFilterFormatFieldOption[] = useMemo(
+    () => (optionsCurrent ? (options?.formatFields ?? []) : []),
+    [options, optionsCurrent],
+  )
   const anyOffered =
     (typeField?.offered ?? false) ||
     (dateField?.offered ?? false) ||
-    libraryFields.some((field) => field.offered)
+    libraryFields.some((field) => field.offered) ||
+    formatFields.some((field) => field.offered)
 
   // A field below the threshold is not offered, but a condition already set on it stays in force
   // (Koordinator-Festlegung an): its existing value is carried through untouched, and only
@@ -137,6 +156,27 @@ export default function MetadataFilterPopover({
       .filter((condition) => !isEmptyCondition(condition))
     const conditions = [...carried, ...chosen]
     if (conditions.length > 0) next.libraryFields = conditions
+    const offeredFormatKeys = new Set(
+      formatFields.filter((field) => field.offered).map((field) => field.fieldKey),
+    )
+    const formatConditions = [
+      ...(filter?.formatFields ?? []).filter(
+        (condition) => !offeredFormatKeys.has(condition.fieldKey),
+      ),
+      ...formatFields
+        .filter((field) => field.offered)
+        .map((field) => ({
+          fieldKey: field.fieldKey,
+          values: [
+            ...(draftFormatFields[field.fieldKey] ?? []),
+            ...((draftFormatInput[field.fieldKey] ?? '').trim() === ''
+              ? []
+              : [(draftFormatInput[field.fieldKey] ?? '').trim()]),
+          ],
+        }))
+        .filter((condition) => condition.values.length > 0),
+    ]
+    if (formatConditions.length > 0) next.formatFields = formatConditions
     return Object.keys(next).length === 0 ? null : next
   }, [
     dateField?.offered,
@@ -144,7 +184,10 @@ export default function MetadataFilterPopover({
     draftTo,
     draftTypes,
     draftLibraryFields,
+    draftFormatFields,
+    draftFormatInput,
     filter,
+    formatFields,
     libraryFields,
     typeField?.offered,
   ])
@@ -154,6 +197,8 @@ export default function MetadataFilterPopover({
     setDraftFrom(filter?.documentDateFrom ?? '')
     setDraftTo(filter?.documentDateTo ?? '')
     setDraftLibraryFields(conditionsByKey(filter))
+    setDraftFormatFields(formatValuesByKey(filter))
+    setDraftFormatInput({})
     setAnchorEl(event.currentTarget)
   }
 
@@ -310,6 +355,60 @@ export default function MetadataFilterPopover({
                 )
               )}
             </Box>
+            {/* A format field only exists where its format does: a scope without a single mail
+                shows no Absender section at all rather than a permanent "not offered" note. */}
+            {formatFields
+              .filter((field) => field.offered)
+              .map((field) => (
+                <Box key={field.fieldKey} data-testid="filter-format-field">
+                  <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{field.label}</Typography>
+                  <Typography variant="caption" color="text.secondary" component="p">
+                    {`${field.label} bei ${field.filledDocuments} von ${field.totalDocuments} Dokumenten vorhanden`}
+                    {field.valuesCapped && ` · die ${field.values.length} häufigsten Werte`}
+                  </Typography>
+                  <FormGroup aria-label={field.label}>
+                    {field.values.map((value) => (
+                      <FormControlLabel
+                        key={value.code}
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={(draftFormatFields[field.fieldKey] ?? []).includes(value.code)}
+                            onChange={(e) =>
+                              setDraftFormatFields((current) => {
+                                const values = current[field.fieldKey] ?? []
+                                return {
+                                  ...current,
+                                  [field.fieldKey]: e.target.checked
+                                    ? [...values, value.code]
+                                    : values.filter((code) => code !== value.code),
+                                }
+                              })
+                            }
+                          />
+                        }
+                        label={`${value.label} (${value.documentCount})`}
+                        slotProps={{ typography: { sx: { fontSize: 13 } } }}
+                      />
+                    ))}
+                  </FormGroup>
+                  {/* The value set is open - whoever looks for an address outside the offered
+                      ones types it exactly; a value the field's pattern rejects is a 400. */}
+                  <TextField
+                    label={`${field.label} genau`}
+                    size="small"
+                    fullWidth
+                    helperText="Genau dieser Wert, kein Teiltreffer."
+                    value={draftFormatInput[field.fieldKey] ?? ''}
+                    onChange={(e) =>
+                      setDraftFormatInput((current) => ({
+                        ...current,
+                        [field.fieldKey]: e.target.value,
+                      }))
+                    }
+                  />
+                </Box>
+              ))}
             {libraryFields.map((field) => (
               <Box key={libraryFieldKey(field)} data-testid="filter-library-field">
                 <Typography sx={{ fontSize: 13, fontWeight: 500 }}>

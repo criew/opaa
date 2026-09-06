@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.ConfluenceEdition;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -15,7 +16,9 @@ class ConfluenceEditionDetectorTest {
 
   private final ConfluenceEditionDetector detector =
       new ConfluenceEditionDetector(
-          ConfluenceProperties.defaults(), TargetAddressValidator.disabled(), duration -> {});
+          ConfluenceProperties.defaults(),
+          TargetAddressValidator.disabled(),
+          SourceRequestPolicy.defaults().withSleeper(duration -> {}));
 
   @Test
   void recognisesCloudBySiteSignatureAndStripsWikiFromTheAddress() throws Exception {

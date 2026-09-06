@@ -6,8 +6,10 @@ import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
+import io.opaa.indexing.pipeline.TableText;
 import io.opaa.indexing.pipeline.office.OdfContentXml;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
@@ -109,7 +111,9 @@ public class TabularDocumentPipeline implements DocumentPipeline {
 
   @Override
   public DocumentPipelineResult run(DocumentPipelineSource source) {
-    String extension = resolveExtension(source);
+    // A source with neither a detected extension nor a suffix in its name is read as XLSX, the
+    // format POI can reject outright rather than mis-parse.
+    String extension = source.effectiveExtension() == null ? "" : source.effectiveExtension();
     List<Document> chunks;
     try {
       chunks =
@@ -118,12 +122,10 @@ public class TabularDocumentPipeline implements DocumentPipeline {
             case ".ods" -> readOds(source);
             default -> readXlsx(source);
           };
-    } catch (IOException | RuntimeException e) {
-      // Unparsable content (a corrupt workbook, an invalid ZIP, a rejected XXE attempt) is reported
-      // the same way as PDF/DOCX/PPTX/ODT/ODP - see DocumentPipelineResult's own Javadoc for the
-      // shared contract.
-      log.warn("Could not read tabular document {}", source.fileName(), e);
-      return DocumentPipelineResult.parseFailed();
+    } catch (IOException e) {
+      // Unparsable content (a corrupt workbook, an invalid ZIP, a rejected XXE attempt) is
+      // reported as a parse failure by DocumentPipelineRunner, for every format alike.
+      throw new UncheckedIOException("Could not read tabular document " + source.fileName(), e);
     }
     if (chunks.isEmpty()) {
       // Covers an empty file and a workbook whose every sheet is empty - the same "parsed, but
@@ -131,26 +133,6 @@ public class TabularDocumentPipeline implements DocumentPipeline {
       return DocumentPipelineResult.noExtractableText();
     }
     return DocumentPipelineResult.chunked(chunks);
-  }
-
-  /**
-   * The format to dispatch on: {@link DocumentPipelineSource#detectedExtension()} where the
-   * registry resolved one, falling back to the file name's suffix only where it did not. Trusting
-   * the name over the detected content would reintroduce what content-based admission prevents - an
-   * XLSX misnamed {@code .csv} parsed as CSV, or POI handed bytes it cannot open at all.
-   */
-  private static String resolveExtension(DocumentPipelineSource source) {
-    if (source.detectedExtension() != null) {
-      return source.detectedExtension();
-    }
-    String fileName = source.fileName() == null ? "" : source.fileName().toLowerCase(Locale.ROOT);
-    if (fileName.endsWith(".csv")) {
-      return ".csv";
-    }
-    if (fileName.endsWith(".ods")) {
-      return ".ods";
-    }
-    return ".xlsx";
   }
 
   // --- CSV ---------------------------------------------------------------------------------
@@ -568,7 +550,7 @@ public class TabularDocumentPipeline implements DocumentPipeline {
             ? "Blatt: " + sheetName + " · Tabelle: " + tableName
             : "Tabelle: " + tableName;
     String text =
-        HeadingSectionSplitter.capChunkLength(prefix + "\n\n" + String.join(" | ", row.values()));
+        HeadingSectionSplitter.capChunkLength(prefix + "\n\n" + TableText.row(row.values()));
 
     String rowRange = "Zeile " + row.number();
     String location = sheetName != null ? "Blatt " + sheetName + " · " + rowRange : rowRange;
@@ -599,7 +581,7 @@ public class TabularDocumentPipeline implements DocumentPipeline {
         sheetName != null
             ? "Blatt: " + sheetName + " · Tabelle: " + tableName
             : "Tabelle: " + tableName;
-    String headerLine = String.join(" | ", header);
+    String headerLine = TableText.row(header);
     int baseChars = prefix.length() + headerLine.length();
 
     List<Document> chunks = new ArrayList<>();
@@ -611,7 +593,7 @@ public class TabularDocumentPipeline implements DocumentPipeline {
     for (int i = 0; i < dataRows.size(); i++) {
       List<String> row = dataRows.get(i);
       long rowNumber = dataRowNumbers.get(i);
-      int rowLineLength = String.join(" | ", row).length();
+      int rowLineLength = TableText.row(row).length();
 
       boolean exceedsRowCount = currentRows.size() >= MAX_ROWS_PER_CHUNK;
       boolean exceedsCharBudget =

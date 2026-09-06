@@ -17,6 +17,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -288,6 +289,184 @@ class RedirectFollowingFetcherTest {
 
     assertThat(response.statusCode()).isEqualTo(200);
     assertThat(receivedAuthorization.get()).isNull();
+  }
+
+  // --- 429 handling ----------------------------------------------------------------------------
+
+  /** Records what the fetcher told it, so a test can assert on waits and retries. */
+  private static final class RecordingListener implements RateLimitListener {
+    final List<Duration> throttled = new ArrayList<>();
+    int retries;
+
+    @Override
+    public void throttled(int statusCode, Duration wait) {
+      throttled.add(wait);
+    }
+
+    @Override
+    public void retrying() {
+      retries++;
+    }
+  }
+
+  private final List<Duration> sleeps = new ArrayList<>();
+
+  private RateLimitHandling handling(RateLimitPolicy policy, RateLimitListener listener) {
+    return new RateLimitHandling(policy, sleeps::add, listener);
+  }
+
+  /** Answers {@code 429} with {@code retryAfter} (none when {@code null}) for the first n hits. */
+  private static void throttle(com.sun.net.httpserver.HttpExchange exchange, String retryAfter)
+      throws IOException {
+    if (retryAfter != null) {
+      exchange.getResponseHeaders().set("Retry-After", retryAfter);
+    }
+    exchange.sendResponseHeaders(429, -1);
+    exchange.close();
+  }
+
+  private HttpResponse<InputStream> fetch(String url, RateLimitHandling rateLimit)
+      throws IOException, InterruptedException {
+    return RedirectFollowingFetcher.sendFollowingRedirects(
+        productionClient(),
+        url,
+        Duration.ofSeconds(5),
+        Map.of(),
+        TargetAddressValidator.disabled(),
+        RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN,
+        rateLimit);
+  }
+
+  @Test
+  void rateLimit_waitsRetryAfterAndRetriesFromTheOriginalUrl()
+      throws IOException, InterruptedException {
+    AtomicInteger startHits = new AtomicInteger();
+    AtomicInteger targetHits = new AtomicInteger();
+    origin.createContext(
+        "/start",
+        exchange -> {
+          startHits.incrementAndGet();
+          redirectTo(exchange, originUrl + "/target");
+        });
+    origin.createContext(
+        "/target",
+        exchange -> {
+          if (targetHits.getAndIncrement() == 0) {
+            throttle(exchange, "3");
+          } else {
+            respond(exchange, 200, "content");
+          }
+        });
+    RecordingListener listener = new RecordingListener();
+
+    HttpResponse<InputStream> response =
+        fetch(
+            originUrl + "/start", handling(RateLimitPolicy.of(3, Duration.ofMinutes(2)), listener));
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(new String(response.body().readAllBytes(), StandardCharsets.UTF_8))
+        .isEqualTo("content");
+    assertThat(sleeps).containsExactly(Duration.ofSeconds(3));
+    assertThat(listener.throttled).containsExactly(Duration.ofSeconds(3));
+    assertThat(listener.retries).isEqualTo(1);
+    assertThat(startHits.get()).as("the retry starts over at the original URL").isEqualTo(2);
+  }
+
+  @Test
+  void rateLimit_defaultsTheWaitWithoutAUsableHeaderAndCapsItAtMaxWait()
+      throws IOException, InterruptedException {
+    AtomicInteger hits = new AtomicInteger();
+    origin.createContext(
+        "/throttled",
+        exchange -> {
+          switch (hits.getAndIncrement()) {
+            case 0 -> throttle(exchange, null);
+            case 1 -> throttle(exchange, "bald");
+            case 2 -> throttle(exchange, "600");
+            default -> respond(exchange, 200, "content");
+          }
+        });
+
+    HttpResponse<InputStream> response =
+        fetch(
+            originUrl + "/throttled",
+            handling(
+                new RateLimitPolicy(3, Duration.ofSeconds(5), Duration.ofSeconds(20)),
+                RateLimitListener.NONE));
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(sleeps)
+        .containsExactly(Duration.ofSeconds(5), Duration.ofSeconds(5), Duration.ofSeconds(20));
+  }
+
+  @Test
+  void rateLimit_returnsTheLastTooManyRequestsOnceRetriesAreSpent()
+      throws IOException, InterruptedException {
+    origin.createContext("/throttled", exchange -> throttle(exchange, "1"));
+    RecordingListener listener = new RecordingListener();
+
+    HttpResponse<InputStream> response =
+        fetch(
+            originUrl + "/throttled",
+            handling(RateLimitPolicy.of(2, Duration.ofMinutes(2)), listener));
+
+    assertThat(response.statusCode()).isEqualTo(429);
+    assertThat(sleeps).hasSize(2);
+    assertThat(listener.throttled).hasSize(2);
+    assertThat(listener.retries).isEqualTo(2);
+  }
+
+  @Test
+  void rateLimit_noneReturnsTheFirstTooManyRequestsWithoutWaiting()
+      throws IOException, InterruptedException {
+    AtomicInteger hits = new AtomicInteger();
+    origin.createContext(
+        "/throttled",
+        exchange -> {
+          hits.incrementAndGet();
+          throttle(exchange, "1");
+        });
+
+    HttpResponse<InputStream> response =
+        RedirectFollowingFetcher.sendFollowingRedirects(
+            productionClient(),
+            originUrl + "/throttled",
+            Duration.ofSeconds(5),
+            Map.of(),
+            TargetAddressValidator.disabled(),
+            RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN);
+
+    assertThat(response.statusCode()).isEqualTo(429);
+    assertThat(hits.get()).isEqualTo(1);
+    assertThat(sleeps).isEmpty();
+  }
+
+  @Test
+  void rateLimit_aListenerAbortingTheRetryEndsTheFetchWithItsException() {
+    AtomicInteger hits = new AtomicInteger();
+    origin.createContext(
+        "/throttled",
+        exchange -> {
+          hits.incrementAndGet();
+          throttle(exchange, "1");
+        });
+    RateLimitListener budgetExhausted =
+        new RateLimitListener() {
+          @Override
+          public void retrying() throws IOException {
+            throw new IOException("budget spent");
+          }
+        };
+
+    assertThatThrownBy(
+            () ->
+                fetch(
+                    originUrl + "/throttled",
+                    handling(RateLimitPolicy.of(3, Duration.ofMinutes(2)), budgetExhausted)))
+        .isInstanceOf(IOException.class)
+        .hasMessage("budget spent");
+    assertThat(hits.get()).as("no retry was sent").isEqualTo(1);
+    assertThat(sleeps).hasSize(1);
   }
 
   private static HttpClient productionClient() {

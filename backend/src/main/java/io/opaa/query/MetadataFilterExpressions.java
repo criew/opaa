@@ -3,9 +3,12 @@ package io.opaa.query;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
+import io.opaa.indexing.metadata.FormatFieldCondition;
+import io.opaa.indexing.metadata.FormatMetadataField;
 import io.opaa.indexing.metadata.LibraryFieldCondition;
 import io.opaa.indexing.metadata.LibraryMetadataFieldKeys;
 import io.opaa.indexing.metadata.MetadataFilter;
+import io.opaa.indexing.pipeline.ChunkPipelineMetadata;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -105,6 +108,10 @@ public final class MetadataFilterExpressions {
       FilterExpressionBuilder.Op libraryCondition = libraryFieldOp(b, condition);
       combined = combined == null ? libraryCondition : b.and(combined, libraryCondition);
     }
+    for (FormatFieldCondition condition : filter.formatFields()) {
+      FilterExpressionBuilder.Op formatCondition = formatFieldOp(b, condition);
+      combined = combined == null ? formatCondition : b.and(combined, formatCondition);
+    }
     return combined == null ? null : combined.build();
   }
 
@@ -149,6 +156,21 @@ public final class MetadataFilterExpressions {
     FilterExpressionBuilder.Op foreignLibrary =
         b.nin(VectorChunkStore.LIBRARY_ID_METADATA_KEY, List.of(condition.libraryId().toString()));
     return b.group(b.or(b.or(foreignLibrary, matches), noValue));
+  }
+
+  /**
+   * One format-field condition as {@code (value among selected OR no value)}. There is no library
+   * guard: a format field is built in and means the same in every library - a document that is not
+   * of the format simply has no value and stays in. "No value" reads the presence marker for the
+   * same reason a library field does: the set of sender addresses is not closed at query time.
+   */
+  private static FilterExpressionBuilder.Op formatFieldOp(
+      FilterExpressionBuilder b, FormatFieldCondition condition) {
+    FilterExpressionBuilder.Op matches =
+        b.in(condition.chunkKey(), List.copyOf(condition.values()));
+    FilterExpressionBuilder.Op noValue =
+        b.nin(condition.presenceChunkKey(), List.of(FormatMetadataField.PRESENCE_VALUE));
+    return b.group(b.or(matches, noValue));
   }
 
   /**
@@ -218,6 +240,9 @@ public final class MetadataFilterExpressions {
     for (LibraryFieldCondition condition : filter.libraryFields()) {
       appendLibraryFieldPredicate(condition, metadataColumn, sql, parameters);
     }
+    for (FormatFieldCondition condition : filter.formatFields()) {
+      appendFormatFieldPredicate(condition, metadataColumn, sql, parameters);
+    }
     return sql.toString();
   }
 
@@ -275,6 +300,24 @@ public final class MetadataFilterExpressions {
     sql.append(")");
   }
 
+  /** The lexical twin of {@link #formatFieldOp}, stating the identical rule. */
+  private static void appendFormatFieldPredicate(
+      FormatFieldCondition condition,
+      String metadataColumn,
+      StringBuilder sql,
+      List<Object> parameters) {
+    String valueKey = metadataColumn + "->>'" + condition.chunkKey() + "'";
+    String presenceKey = metadataColumn + "->>'" + condition.presenceChunkKey() + "'";
+    sql.append(" AND (")
+        .append(presenceKey)
+        .append(" IS NULL OR ")
+        .append(presenceKey)
+        .append(" <> ALL(?)");
+    parameters.add(new String[] {FormatMetadataField.PRESENCE_VALUE});
+    sql.append(" OR ").append(valueKey).append(" = ANY(?))");
+    parameters.add(condition.values().toArray(String[]::new));
+  }
+
   /** Whether {@code chunk} was kept by the Leerwert rule alone - see {@link MetadataFilter}. */
   static boolean keptWithoutValue(MetadataFilter filter, Document chunk) {
     Map<String, Object> metadata = chunk.getMetadata();
@@ -294,6 +337,18 @@ public final class MetadataFilterExpressions {
         continue;
       }
       if (metadata.get(LibraryMetadataFieldKeys.presenceChunkKey(condition.fieldKey())) == null) {
+        return true;
+      }
+    }
+    Object pipelineId = metadata.get(ChunkPipelineMetadata.PIPELINE_ID_METADATA_KEY);
+    for (FormatFieldCondition condition : filter.formatFields()) {
+      // A document of another format was never in this field's scope: it is neither matched nor
+      // "kept without a value", and marking every PDF of the bestand as "ohne Angabe" would say
+      // nothing about the sender it never could have had.
+      if (pipelineId == null || !condition.field().pipelineId().equals(pipelineId.toString())) {
+        continue;
+      }
+      if (metadata.get(condition.presenceChunkKey()) == null) {
         return true;
       }
     }

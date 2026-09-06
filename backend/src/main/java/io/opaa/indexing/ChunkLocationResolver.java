@@ -1,5 +1,6 @@
 package io.opaa.indexing;
 
+import io.opaa.indexing.pipeline.MarkdownHeading;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -24,8 +25,7 @@ final class ChunkLocationResolver {
 
   // A heading starts a line - or a page: Tika's page marker (\f) is not a line terminator to
   // Java's MULTILINE "^", yet a page always starts fresh.
-  private static final Pattern HEADING =
-      Pattern.compile("(?m)(?:^|\\f)[ \\t]{0,3}(#{1,6})[ \\t]+(\\S.*?)[ \\t#]*$");
+  private static final Pattern HEADING = MarkdownHeading.IN_TEXT;
 
   private record Heading(int offset, int end, int level, String title) {}
 
@@ -49,7 +49,10 @@ final class ChunkLocationResolver {
     while (matcher.find()) {
       headings.add(
           new Heading(
-              matcher.start(1), matcher.end(), matcher.group(1).length(), matcher.group(2).trim()));
+              matcher.start(MarkdownHeading.LEVEL_GROUP),
+              matcher.end(),
+              matcher.group(MarkdownHeading.LEVEL_GROUP).length(),
+              matcher.group(MarkdownHeading.TITLE_GROUP).trim()));
     }
     return new ChunkLocationResolver(
         text, breaks.stream().mapToInt(Integer::intValue).toArray(), headings);

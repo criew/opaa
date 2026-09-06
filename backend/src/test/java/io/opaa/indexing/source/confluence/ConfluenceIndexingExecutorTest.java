@@ -4,14 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -23,6 +24,8 @@ import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.indexing.Document;
+import io.opaa.indexing.DocumentIngest;
+import io.opaa.indexing.DocumentIngests;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
@@ -34,6 +37,7 @@ import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.library.ConfluenceSpaceSelection;
@@ -112,8 +116,7 @@ class ConfluenceIndexingExecutorTest {
   @BeforeEach
   void setUp() throws Exception {
     fileProcessingService = mock(FileProcessingService.class);
-    when(fileProcessingService.processUrlFile(
-            any(), any(), any(), any(), anyLong(), any(), any(), any(), any(), any()))
+    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
         .thenReturn(FileProcessingResult.PROCESSED);
     indexingJobService = mock(IndexingJobService.class);
     documentRepository = mock(DocumentRepository.class);
@@ -123,28 +126,31 @@ class ConfluenceIndexingExecutorTest {
                 storedPages.stream()
                     .filter(d -> d.getFilePath().equals(inv.getArgument(1)))
                     .findFirst());
+    when(documentRepository.findByLibraryIdAndSourceType(any(), any())).thenReturn(List.of());
     // Mockito invokes the stubbed method with null arguments while a test re-stubs it - such a
     // call must not leave a page without a path behind.
     eventRepository = mock(IndexingRunEventRepository.class);
     storageQuotaService = mock(LibraryStorageQuotaService.class);
     when(storageQuotaService.quotaExceededMessage(any()))
         .thenReturn("Speicherkontingent erschöpft");
-    cleanupService = mock(StaleDocumentCleanupService.class);
+    vectorChunkStore = mock(VectorChunkStore.class);
+    // A spy, not a mock: the reconciliation runs for real over the mocked repository, so what a
+    // run hands over and what the fold-in preserves are both observable.
+    cleanupService = spy(new StaleDocumentCleanupService(documentRepository, vectorChunkStore));
     syncStateRepository = mock(ConfluenceSyncStateRepository.class);
     when(syncStateRepository.findByLibraryId(any())).thenReturn(Optional.empty());
     when(syncStateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-    vectorChunkStore = mock(VectorChunkStore.class);
-    when(fileProcessingService.processConfluencePage(
-            any(), any(), any(), any(), any(), any(), any()))
+    when(fileProcessingService.ingest(DocumentIngests.anyText(), any()))
         .thenAnswer(
             inv -> {
-              if (inv.getArgument(2) != null) {
+              DocumentIngest ingest = inv.getArgument(0);
+              if (ingest != null) {
                 storedPages.add(
                     storedPage(
-                        inv.getArgument(1),
-                        inv.getArgument(2),
-                        inv.getArgument(3),
-                        inv.getArgument(5)));
+                        ingest.fileName(),
+                        ingest.filePath(),
+                        ingest.changeMarker(),
+                        ingest.context()));
               }
               return FileProcessingResult.PROCESSED;
             });
@@ -173,7 +179,7 @@ class ConfluenceIndexingExecutorTest {
   }
 
   @AfterEach
-  void tearDown() {
+  void tearDown() throws Exception {
     if (server != null) {
       server.close();
     }
@@ -233,7 +239,6 @@ class ConfluenceIndexingExecutorTest {
             Duration.ofSeconds(2),
             0,
             0,
-            null,
             0,
             FULL_SYNC_INTERVAL,
             OVERLAP,
@@ -246,14 +251,21 @@ class ConfluenceIndexingExecutorTest {
             properties,
             fileProcessingService,
             attachmentIndexer(),
-            indexingJobService,
             documentRepository,
-            eventRepository,
-            storageQuotaService,
-            cleanupService,
             syncStateRepository,
             vectorChunkStore,
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            runTemplate());
+  }
+
+  /** The real run frame over the mocked job bookkeeping and the spied reconciliation. */
+  private IndexingRunTemplate runTemplate() {
+    return new IndexingRunTemplate(
+        indexingJobService,
+        eventRepository,
+        cleanupService,
+        documentRepository,
+        storageQuotaService);
   }
 
   /** The real generalized attachment path over the mocked processing. */
@@ -262,7 +274,7 @@ class ConfluenceIndexingExecutorTest {
         new BoundedDownloader(TargetAddressValidator.disabled()),
         fileProcessingService,
         storageQuotaService,
-        new io.opaa.indexing.source.attachment.AttachmentProperties(5));
+        new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0));
   }
 
   private String pagePath(ConfluenceEdition edition, String spaceKey, String id) {
@@ -281,43 +293,49 @@ class ConfluenceIndexingExecutorTest {
 
     String abschnitt = pagePath(edition, "ENG", "102");
     verify(fileProcessingService)
-        .processConfluencePage(
-            contains("Zuständigkeiten"),
-            eq("Abschnitt 1.1"),
-            eq(abschnitt),
-            eq("1"),
-            // The page version's instant is the document's Stand - the title supplies no
-            // date, so this is the only date source a page has.
-            eq(SEEDED_AT),
-            eq(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1")),
-            eq(library));
+        .ingest(
+            DocumentIngests.that()
+                .text()
+                .textContaining("Zuständigkeiten")
+                .titled("Abschnitt 1.1")
+                .at(abschnitt)
+                .marked("1")
+                .modifiedAt(SEEDED_AT)
+                .withContext(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1"))
+                .in(library)
+                .match(),
+            any());
     verify(fileProcessingService)
-        .processConfluencePage(
-            any(),
-            eq("Onboarding"),
-            eq(pagePath(edition, "HR", "200")),
-            eq("1"),
-            any(),
-            eq(new SourceDocumentContext("HR", null)),
-            eq(library));
+        .ingest(
+            DocumentIngests.that()
+                .text()
+                .titled("Onboarding")
+                .at(pagePath(edition, "HR", "200"))
+                .marked("1")
+                .withContext(new SourceDocumentContext("HR", null))
+                .in(library)
+                .match(),
+            any());
     verify(fileProcessingService, never())
-        .processConfluencePage(any(), eq("Streng geheim"), any(), any(), any(), any(), any());
+        .ingest(DocumentIngests.that().text().titled("Streng geheim").match(), any());
     // ADR-0022: the attachment goes the generalized path - a child of the page's own row,
     // with the page's place as its context and the version as its change marker
-    ArgumentCaptor<String> attachmentPath = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<DocumentIngest> attachment = ArgumentCaptor.forClass(DocumentIngest.class);
     verify(fileProcessingService)
-        .processUrlFile(
-            any(),
-            eq("notizen.txt"),
-            attachmentPath.capture(),
-            eq("1"),
-            eq(19L),
-            eq(library),
-            eq(DocumentSourceType.CONFLUENCE),
-            eq(abschnitt),
-            eq(storedPage(abschnitt).getId()),
+        .ingest(
+            attachment.capture(),
             withContext(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1 / Abschnitt 1.1")));
-    assertThat(attachmentPath.getValue()).doesNotContain("?").contains("notizen.txt");
+    DocumentIngest notizen = attachment.getValue();
+    assertThat(notizen.content()).isInstanceOf(DocumentIngest.File.class);
+    assertThat(notizen.fileName()).isEqualTo("notizen.txt");
+    assertThat(notizen.filePath()).doesNotContain("?").contains("notizen.txt");
+    assertThat(notizen.changeMarker()).isEqualTo("1");
+    assertThat(((DocumentIngest.File) notizen.content()).byteSize()).isEqualTo(19L);
+    assertThat(notizen.library()).isSameAs(library);
+    assertThat(notizen.sourceType()).isEqualTo(DocumentSourceType.CONFLUENCE);
+    assertThat(notizen.sourceEntryUrl()).isEqualTo(abschnitt);
+    assertThat(notizen.parentDocumentId()).isEqualTo(storedPage(abschnitt).getId());
+    String attachmentPath = notizen.filePath();
 
     // the listing carried identifiers and versions only - every body was fetched individually
     assertThat(server.requests())
@@ -328,10 +346,11 @@ class ConfluenceIndexingExecutorTest {
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
     verify(cleanupService, timeout(5000))
-        .cleanupVanished(
+        .reconcile(
             eq(library),
             eq(DocumentSourceType.CONFLUENCE),
             current.capture(),
+            any(),
             any(),
             eq(executor),
             eq(IndexingRunMode.FULL));
@@ -341,7 +360,7 @@ class ConfluenceIndexingExecutorTest {
             pagePath(edition, "ENG", "101"),
             abschnitt,
             pagePath(edition, "HR", "200"),
-            attachmentPath.getValue());
+            attachmentPath);
     verify(indexingJobService).completeJob(jobId, 4, 0, 0, 5);
     // a complete listing records a positive assessment, clearing any earlier warning
     verify(indexingJobService).recordListingAssessment(jobId, true, List.of());
@@ -370,21 +389,18 @@ class ConfluenceIndexingExecutorTest {
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
     verify(fileProcessingService, never())
-        .processConfluencePage(any(), eq("Abschnitt 1.1"), any(), any(), any(), any(), any());
+        .ingest(DocumentIngests.that().text().titled("Abschnitt 1.1").match(), any());
     assertThat(server.requests())
         .as("no body fetch for the unchanged page")
         .noneMatch(r -> r.matches(".*/(content|pages)/102(\\?.*)?$"));
     verify(fileProcessingService)
-        .processUrlFile(
-            any(),
-            eq("notizen.txt"),
-            any(),
-            any(),
-            anyLong(),
-            any(),
-            any(),
-            eq(abschnitt),
-            eq(indexed.getId()),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .named("notizen.txt")
+                .foundOn(abschnitt)
+                .childOf(indexed.getId())
+                .match(),
             any());
     verify(indexingJobService).completeJob(jobId, 2, 0, 1, 3);
   }
@@ -409,10 +425,10 @@ class ConfluenceIndexingExecutorTest {
                         + ConfluenceIndexingExecutor.UNREADABLE_PAGE_SUFFIX,
                     kapitel)));
     verify(fileProcessingService, never())
-        .processConfluencePage(any(), eq("Kapitel 1"), any(), any(), any(), any(), any());
+        .ingest(DocumentIngests.that().text().titled("Kapitel 1").match(), any());
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
-    verify(cleanupService).cleanupVanished(any(), any(), current.capture(), any(), any(), any());
+    verify(cleanupService).reconcile(any(), any(), current.capture(), any(), any(), any(), any());
     assertThat(current.getValue()).as("a 404 is no deletion finding").contains(kapitel);
     verify(indexingJobService).completeJob(jobId, 2, 0, 1, 3);
   }
@@ -432,7 +448,7 @@ class ConfluenceIndexingExecutorTest {
                     IndexingEventCategory.REJECTED,
                     "Space SEC " + ConfluenceIndexingExecutor.UNREADABLE_SPACE_SUFFIX,
                     "SEC")));
-    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 3, 0, 0, 4);
     // the run's assessment names the unreadable space, for the warning at the library
     verify(indexingJobService).recordListingAssessment(jobId, false, List.of("SEC"));
@@ -455,7 +471,7 @@ class ConfluenceIndexingExecutorTest {
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
-    verify(cleanupService).cleanupVanished(any(), any(), current.capture(), any(), any(), any());
+    verify(cleanupService).reconcile(any(), any(), current.capture(), any(), any(), any(), any());
     assertThat(current.getValue())
         .doesNotContain(pagePath(edition, "ENG", "101"), pagePath(edition, "HR", "200"))
         .contains(pagePath(edition, "ENG", "100"), pagePath(edition, "ENG", "102"));
@@ -503,7 +519,7 @@ class ConfluenceIndexingExecutorTest {
     assertThat(server.requests())
         .as("no listing with a token the instance did not accept")
         .noneMatch(r -> r.contains("/pages?") || r.contains("/content?"));
-    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(indexingJobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
   }
 
@@ -537,8 +553,7 @@ class ConfluenceIndexingExecutorTest {
   void anExhaustedQuotaIsReportedAsRejectedNotAsFailure(ConfluenceEdition edition)
       throws Exception {
     start(edition, null, "HR");
-    when(fileProcessingService.processConfluencePage(
-            any(), any(), any(), any(), any(), any(), any()))
+    when(fileProcessingService.ingest(DocumentIngests.anyText(), any()))
         .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
@@ -580,9 +595,15 @@ class ConfluenceIndexingExecutorTest {
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
-    verify(cleanupService).cleanupVanished(any(), any(), current.capture(), any(), any(), any());
-    assertThat(current.getValue())
-        .contains(abschnitt, knownAttachment.getFilePath(), nestedAttachment.getFilePath());
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Set<String>> reprocessed = ArgumentCaptor.forClass(Set.class);
+    verify(cleanupService)
+        .reconcile(any(), any(), current.capture(), reprocessed.capture(), any(), any(), any());
+    // present but not reprocessed, so the reconciliation preserves its attachments from the
+    // database - and indeed removes nothing
+    assertThat(current.getValue()).contains(abschnitt);
+    assertThat(reprocessed.getValue()).doesNotContain(abschnitt);
+    verify(documentRepository, never()).delete(any(Document.class));
   }
 
   private Document confluenceAttachment(String fileName, String filePath, Document parent) {
@@ -609,19 +630,23 @@ class ConfluenceIndexingExecutorTest {
     when(documentRepository.findByLibraryIdAndSourceType(
             library.getId(), DocumentSourceType.CONFLUENCE))
         .thenReturn(List.of(knownPage, knownAttachment));
-    when(fileProcessingService.processConfluencePage(
-            any(), eq("Abschnitt 1.1"), any(), any(), any(), any(), any()))
+    when(fileProcessingService.ingest(
+            DocumentIngests.that().text().titled("Abschnitt 1.1").match(), any()))
         .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
-    verify(cleanupService).cleanupVanished(any(), any(), current.capture(), any(), any(), any());
-    assertThat(current.getValue()).contains(knownAttachment.getFilePath());
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Set<String>> reprocessed = ArgumentCaptor.forClass(Set.class);
+    verify(cleanupService)
+        .reconcile(any(), any(), current.capture(), reprocessed.capture(), any(), any(), any());
+    assertThat(current.getValue()).contains(abschnitt);
+    assertThat(reprocessed.getValue()).doesNotContain(abschnitt);
+    verify(documentRepository, never()).delete(any(Document.class));
     verify(fileProcessingService, never())
-        .processUrlFile(
-            any(), eq("notizen.txt"), any(), any(), anyLong(), any(), any(), any(), any(), any());
+        .ingest(DocumentIngests.that().file().named("notizen.txt").match(), any());
   }
 
   @ParameterizedTest
@@ -629,8 +654,9 @@ class ConfluenceIndexingExecutorTest {
   void aFailedReconciliationLeavesTheFullSyncOpenAndSaysSo(ConfluenceEdition edition)
       throws Exception {
     start(edition, null, "HR");
-    when(cleanupService.cleanupVanished(any(), any(), any(), any(), any(), any()))
-        .thenThrow(new IllegalStateException("Datenbank nicht erreichbar"));
+    doThrow(new IllegalStateException("Datenbank nicht erreichbar"))
+        .when(cleanupService)
+        .reconcile(any(), any(), any(), any(), any(), any(), any());
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
@@ -683,11 +709,14 @@ class ConfluenceIndexingExecutorTest {
     for (ConfluenceEdition edition : editions().toList()) {
       start(edition, null, "ENG");
       executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
-      ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
-      verify(fileProcessingService)
-          .processConfluencePage(
-              body.capture(), eq("Abschnitt 1.1"), any(), any(), any(), any(), eq(library));
-      bodies.put(edition, body.getValue());
+      ArgumentCaptor<DocumentIngest> pages = ArgumentCaptor.forClass(DocumentIngest.class);
+      verify(fileProcessingService, atLeast(1)).ingest(pages.capture(), any());
+      DocumentIngest abschnitt =
+          pages.getAllValues().stream()
+              .filter(page -> "Abschnitt 1.1".equals(page.title()) && page.library() == library)
+              .findFirst()
+              .orElseThrow();
+      bodies.put(edition, DocumentIngests.textOf(abschnitt));
       server.close();
       server = null;
       org.mockito.Mockito.clearInvocations(fileProcessingService);
@@ -718,12 +747,11 @@ class ConfluenceIndexingExecutorTest {
                     "Anlagenformat wird nicht unterstützt",
                     null)));
     verify(fileProcessingService, never())
-        .processUrlFile(
-            any(), eq("werkzeug.exe"), any(), any(), anyLong(), any(), any(), any(), any(), any());
+        .ingest(DocumentIngests.that().file().named("werkzeug.exe").match(), any());
     // the unsupported attachment is still part of the bestand the reconciliation compares against
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Set<String>> current = ArgumentCaptor.forClass(Set.class);
-    verify(cleanupService).cleanupVanished(any(), any(), current.capture(), any(), any(), any());
+    verify(cleanupService).reconcile(any(), any(), current.capture(), any(), any(), any(), any());
     assertThat(current.getValue()).anyMatch(path -> path.endsWith("/werkzeug.exe"));
   }
 
@@ -752,27 +780,32 @@ class ConfluenceIndexingExecutorTest {
     executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
 
     verify(fileProcessingService)
-        .processConfluencePage(
-            contains("überarbeitet"),
-            eq("Kapitel 1"),
-            eq(pagePath(edition, "ENG", "101")),
-            eq("2"),
-            any(),
-            eq(new SourceDocumentContext("ENG", "Handbuch")),
-            eq(library));
+        .ingest(
+            DocumentIngests.that()
+                .text()
+                .textContaining("überarbeitet")
+                .titled("Kapitel 1")
+                .at(pagePath(edition, "ENG", "101"))
+                .marked("2")
+                .withContext(new SourceDocumentContext("ENG", "Handbuch"))
+                .in(library)
+                .match(),
+            any());
     verify(fileProcessingService)
-        .processConfluencePage(any(), eq("Onboarding"), any(), eq("2"), any(), any(), eq(library));
+        .ingest(
+            DocumentIngests.that().text().titled("Onboarding").marked("2").in(library).match(),
+            any());
     verify(fileProcessingService, never())
-        .processConfluencePage(any(), eq("Handbuch"), any(), any(), any(), any(), any());
+        .ingest(DocumentIngests.that().text().titled("Handbuch").match(), any());
     verify(fileProcessingService, never())
-        .processConfluencePage(any(), eq("Abschnitt 1.1"), any(), any(), any(), any(), any());
+        .ingest(DocumentIngests.that().text().titled("Abschnitt 1.1").match(), any());
     // the change search asked for identifiers only, never for bodies
     assertThat(server.requests())
         .filteredOn(r -> r.contains("search"))
         .isNotEmpty()
         .noneMatch(r -> r.contains("body"));
     // "ergänzend": nothing is ever removed for being absent from the window
-    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 2, 0, 0, 2);
     // an incremental run cannot see an unreadable space and never assesses the listing
     verify(indexingJobService, never()).recordListingAssessment(any(), anyBoolean(), any());
@@ -807,8 +840,7 @@ class ConfluenceIndexingExecutorTest {
     assertThat(searchWindowMinutes()).isBetween(expectedMinutes - 1, expectedMinutes + 1);
     // the version came with the search: known and unchanged, so the body is never fetched
     assertThat(server.requests()).noneMatch(r -> r.matches(".*/(content|pages)/100(\\?.*)?$"));
-    verify(fileProcessingService, never())
-        .processConfluencePage(any(), any(), any(), any(), any(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyText(), any());
     verify(indexingJobService).completeJob(jobId, 0, 0, 1, 0);
   }
 
@@ -844,7 +876,6 @@ class ConfluenceIndexingExecutorTest {
             Duration.ofSeconds(2),
             0,
             0,
-            null,
             0,
             FULL_SYNC_INTERVAL,
             Duration.ofMinutes(1),
@@ -856,14 +887,11 @@ class ConfluenceIndexingExecutorTest {
             smallOverlap,
             fileProcessingService,
             attachmentIndexer(),
-            indexingJobService,
             documentRepository,
-            eventRepository,
-            storageQuotaService,
-            cleanupService,
             syncStateRepository,
             vectorChunkStore,
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            runTemplate());
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
 
     assertThat(withDefaultOverlap - searchWindowMinutes()).isBetween(8L, 10L);
@@ -888,8 +916,15 @@ class ConfluenceIndexingExecutorTest {
 
     String newPath = pagePath(edition, "ENG", "200");
     verify(fileProcessingService)
-        .processConfluencePage(
-            any(), eq("Onboarding"), eq(newPath), eq("2"), any(), any(), eq(library));
+        .ingest(
+            DocumentIngests.that()
+                .text()
+                .titled("Onboarding")
+                .at(newPath)
+                .marked("2")
+                .in(library)
+                .match(),
+            any());
     if (edition == ConfluenceEdition.CLOUD) {
       // the identity URL carries the space key: the old document is a positive finding to remove
       verify(documentRepository).delete(oldDocument);
@@ -906,7 +941,7 @@ class ConfluenceIndexingExecutorTest {
       assertThat(newPath).isEqualTo(oldPath);
       verify(documentRepository, never()).delete(any(Document.class));
     }
-    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
   }
 
   @ParameterizedTest
@@ -917,8 +952,8 @@ class ConfluenceIndexingExecutorTest {
     Instant anchor = NOW.minus(Duration.ofHours(2));
     ConfluenceSyncState state = completedFullSync(anchor);
     server.updatePage("101", "<p>geändert</p>", NOW.minus(Duration.ofMinutes(20)));
-    when(fileProcessingService.processConfluencePage(
-            any(), eq("Kapitel 1"), any(), any(), any(), any(), any()))
+    when(fileProcessingService.ingest(
+            DocumentIngests.that().text().titled("Kapitel 1").match(), any()))
         .thenReturn(FileProcessingResult.FAILED);
 
     executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
@@ -937,8 +972,7 @@ class ConfluenceIndexingExecutorTest {
     executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
 
     verify(indexingJobService).failJob(eq(jobId), contains("abgeschlossenen Vollabgleich"));
-    verify(fileProcessingService, never())
-        .processConfluencePage(any(), any(), any(), any(), any(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyText(), any());
     assertThat(server.requests()).noneMatch(r -> r.contains("search"));
   }
 
@@ -999,35 +1033,37 @@ class ConfluenceIndexingExecutorTest {
     executor.refreshPages(jobId, library, Set.of("101", "102", "200"));
 
     verify(fileProcessingService)
-        .processConfluencePage(
-            contains("per Webhook"),
-            eq("Kapitel 1"),
-            eq(pagePath(edition, "ENG", "101")),
-            eq("2"),
-            any(),
-            eq(new SourceDocumentContext("ENG", "Handbuch")),
-            eq(library));
+        .ingest(
+            DocumentIngests.that()
+                .text()
+                .textContaining("per Webhook")
+                .titled("Kapitel 1")
+                .at(pagePath(edition, "ENG", "101"))
+                .marked("2")
+                .withContext(new SourceDocumentContext("ENG", "Handbuch"))
+                .in(library)
+                .match(),
+            any());
     // unchanged: no body processing, but the attachments are checked
     verify(fileProcessingService, never())
-        .processConfluencePage(any(), eq("Abschnitt 1.1"), any(), any(), any(), any(), any());
+        .ingest(DocumentIngests.that().text().titled("Abschnitt 1.1").match(), any());
     verify(fileProcessingService)
-        .processUrlFile(
-            any(),
-            eq("notizen.txt"),
-            any(),
-            any(),
-            anyLong(),
-            eq(library),
-            eq(DocumentSourceType.CONFLUENCE),
-            eq(abschnitt),
-            eq(indexed.getId()),
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .named("notizen.txt")
+                .in(library)
+                .from(DocumentSourceType.CONFLUENCE)
+                .foundOn(abschnitt)
+                .childOf(indexed.getId())
+                .match(),
             withContext(new SourceDocumentContext("ENG", "Handbuch / Kapitel 1 / Abschnitt 1.1")));
     verify(eventRepository)
         .save(argThat(event(IndexingEventCategory.REJECTED, "nicht ausgewählten Space", "200")));
     assertThat(server.requests())
         .noneMatch(r -> r.contains("search"))
         .noneMatch(r -> r.matches(".*/(content|pages)/100(\\?.*)?$"));
-    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(indexingJobService).completeJob(jobId, 1, 0, 2, 2);
     // a webhook run fetches named pages only and never judges the listing
     verify(indexingJobService, never()).recordListingAssessment(any(), anyBoolean(), any());
@@ -1110,8 +1146,7 @@ class ConfluenceIndexingExecutorTest {
     executor.refreshPages(jobId, library, Set.of("101"));
 
     verify(indexingJobService).failJob(eq(jobId), any());
-    verify(fileProcessingService, never())
-        .processConfluencePage(any(), any(), any(), any(), any(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyText(), any());
   }
 
   @ParameterizedTest
@@ -1141,7 +1176,7 @@ class ConfluenceIndexingExecutorTest {
     // a budget-truncated run has not seen every space and must not overwrite the verdict
     verify(indexingJobService, never()).recordListingAssessment(any(), anyBoolean(), any());
     // no reconciliation on an incomplete listing, and the full sync stays open
-    verify(cleanupService, never()).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     ArgumentCaptor<ConfluenceSyncState> state = ArgumentCaptor.forClass(ConfluenceSyncState.class);
     verify(syncStateRepository, atLeast(1)).save(state.capture());
     assertThat(state.getValue().isFullSyncInterrupted()).isTrue();
@@ -1154,25 +1189,22 @@ class ConfluenceIndexingExecutorTest {
     sleeps.clear();
     ConfluenceProperties unbounded =
         new ConfluenceProperties(
-            2, null, null, 3, Duration.ofSeconds(2), 0, 0, null, 0, FULL_SYNC_INTERVAL, OVERLAP, 0);
+            2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, FULL_SYNC_INTERVAL, OVERLAP, 0);
     executor =
         new ConfluenceIndexingExecutor(
             new ConfluenceClientFactory(unbounded, TargetAddressValidator.disabled(), sleeps::add),
             unbounded,
             fileProcessingService,
             attachmentIndexer(),
-            indexingJobService,
             documentRepository,
-            eventRepository,
-            storageQuotaService,
-            cleanupService,
             syncStateRepository,
             vectorChunkStore,
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            runTemplate());
     UUID second = UUID.randomUUID();
     executor.execute(second, library, IndexingRunMode.FULL);
 
-    verify(cleanupService).cleanupVanished(any(), any(), any(), any(), any(), any());
+    verify(cleanupService).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(syncStateRepository, atLeast(2)).save(state.capture());
     assertThat(state.getValue().isFullSyncInterrupted()).isFalse();
     assertThat(state.getValue().getIncrementalAnchor()).isEqualTo(NOW);
@@ -1233,20 +1265,23 @@ class ConfluenceIndexingExecutorTest {
     requestBudget = 7;
     start(edition, null, "ENG");
     List<Document> stored = new ArrayList<>();
-    when(fileProcessingService.processConfluencePage(
-            any(), any(), any(), any(), any(), any(), any()))
+    when(fileProcessingService.ingest(DocumentIngests.anyText(), any()))
         .thenAnswer(
             inv -> {
+              DocumentIngest ingest = inv.getArgument(0);
+              if (ingest == null) {
+                return FileProcessingResult.PROCESSED;
+              }
               Document doc =
                   new Document(
-                      inv.getArgument(1),
-                      inv.getArgument(2),
+                      ingest.fileName(),
+                      ingest.filePath(),
                       "text/html",
                       10L,
                       DocumentSourceType.CONFLUENCE);
               doc.setStatus(DocumentStatus.INDEXED);
-              doc.setLastModifiedRemote(inv.getArgument(3));
-              doc.applySourceContext(inv.getArgument(5));
+              doc.setLastModifiedRemote(ingest.changeMarker());
+              doc.applySourceContext(ingest.context());
               stored.add(doc);
               return FileProcessingResult.PROCESSED;
             });
@@ -1298,8 +1333,7 @@ class ConfluenceIndexingExecutorTest {
         .save(
             argThat(
                 event(IndexingEventCategory.ERROR, "reicht für diese Bibliothek nicht aus", null)));
-    verify(fileProcessingService, never())
-        .processConfluencePage(any(), any(), any(), any(), any(), any(), any());
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyText(), any());
   }
 
   @ParameterizedTest
@@ -1339,8 +1373,7 @@ class ConfluenceIndexingExecutorTest {
     executor.refreshPages(jobId, library, Set.of("100", "101"));
 
     verify(indexingJobService, never()).failJob(any(), any());
-    verify(fileProcessingService, times(1))
-        .processConfluencePage(any(), any(), any(), any(), any(), any(), any());
+    verify(fileProcessingService, times(1)).ingest(DocumentIngests.anyText(), any());
     verify(eventRepository)
         .save(
             argThat(

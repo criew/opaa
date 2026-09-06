@@ -207,6 +207,11 @@ die Registry noch `FileProcessingService` noch `SupportedDocumentFormats` änder
 Zwei Pipelines, die dasselbe Format beanspruchen, sind ein Verdrahtungsfehler und lassen den Kontext
 beim Start scheitern, statt die Bean-Reihenfolge entscheiden zu lassen.
 
+Für ein Format, das immer als Datei ankommt (PDF, DOCX, PPTX, ODT, ODP), übernimmt die
+Basisklasse `FileDocumentPipeline<T>` das Gerüst: einmal lesen (`read`), daraus Chunks (`chunks`)
+und Eigenschaften (`properties`). Die Datei wird damit je Aufnahme genau einmal geöffnet — vorher
+lasen `run` und `readProperties` sie getrennt (#1313).
+
 Die Ausgänge, die `FileProcessingService` bisher selbst entschied — „Scan ohne Textebene",
 „gar nichts geparst", „Text, aber keine Chunks" — entscheidet jetzt die Pipeline für ihr eigenes
 Format. Genau das braucht eine PDF-Pipeline später, um Scan-Erkennung anders zu beantworten als eine
@@ -217,9 +222,10 @@ unterscheidbare Fälle: die Quelle war lesbar und ist leer (`NO_CONTENT`), und d
 gar nicht erst lesen — beschädigter Container, abgewiesene XXE-Auflösung, überschrittene
 Schutzgrenze. Der zweite Fall heißt jetzt `PARSE_FAILED`. Eine Pipeline, die beides nicht
 auseinanderhalten kann, meldet `PARSE_FAILED`; sie sagt damit nur, dass sie nichts über den Inhalt
-weiß. Die Pipelines für PDF, DOCX, PPTX, ODT, ODP und XLSX/CSV/ODS fangen ihre Lesefehler selbst ab
-und melden diesen Ausgang; HTML, Markdown und der Tika-Fallback werfen weiterhin eine Ausnahme —
-der Aufrufer behandelt beides gleich.
+weiß. Eine Pipeline meldet diesen Ausgang, indem sie die Ausnahme ihres Parsers herauslässt:
+`DocumentPipelineRunner` — der einzige Aufrufpunkt von `DocumentPipeline#run` — bildet jede
+Laufzeitausnahme auf `PARSE_FAILED` ab und protokolliert sie einmal, für jedes Format gleich. Der
+Aufrufer sieht einen Lesefehler damit nur noch in dieser einen Form (#1313).
 
 ### Übergabepunkt: die Reihenfolge, in der Chunks ersetzt werden
 
@@ -235,8 +241,8 @@ das Dokument bis zum nächsten erfolgreichen Lauf ohne Chunks im Bestand — der
 durchsuchbare Stand war verloren, obwohl er fachlich weiterhin der beste verfügbare war. Der
 Pipeline-Nachzug (`PipelineReindexService`) verfuhr schon vorher nach der jetzt allgemeinen Regel.
 
-Welcher Ausgang was bedeutet — für die Konnektorwege (`processFile`, `processUrlFile`,
-`processRssEntry`), die eine geänderte Quelle verarbeiten:
+Welcher Ausgang was bedeutet — für `FileProcessingService#ingest`, die eine Dokumentstrecke aller
+Konnektoren, wenn sie eine geänderte Quelle verarbeitet:
 
 | Ausgang | Alte Chunks | Dokumentzustand |
 |---|---|---|
@@ -251,7 +257,7 @@ null heißt „noch mit dem alten Stand durchsuchbar", null heißt „ohne Chunk
 nicht der Ausgang, sondern ob gelöscht wurde — eine Ausnahme, die erst nach dem Löschen auftritt,
 hinterlässt ebenfalls eine Null.
 
-Auf dem **Nachzugsweg** (`PipelineReindexService` → `reindexStoredDocument`) bleiben auch die leeren
+Auf dem **Nachzugsweg** (`PipelineReindexService`, `DocumentIngest` mit `reindex`) bleiben auch die leeren
 Ausgänge folgenlos: Dort ist die Datei unverändert und nur die Pipeline-Version neu, ein leeres
 Ergebnis sagt also nichts über eine neue Fassung aus. Das Dokument behält seine Chunks und seine
 `INDEXED`-Zeile und wird als nicht nachgezogen zurückgemeldet.
@@ -806,7 +812,7 @@ adressieren. Der Zuschnitt folgt den Überschriften h1–h3.
 
 #### Umgesetzt (#1059)
 
-`HtmlDocumentPipeline` (`id` `html`, Version 1) beansprucht `.html` in der
+`HtmlDocumentPipeline` (`id` `html`, Version 1; seit #1315 Version 2, siehe unten) beansprucht `.html` in der
 `DocumentPipelineRegistry`; `.html` ist dafür neu in `SupportedDocumentFormats` zugelassen, über
 den unzweideutigen Tika-Medientyp `text/html` (bzw. `application/xhtml+xml`) — wie bei PDF/DOCX ein
 strenger, inhaltsbasierter Treffer, keine text-tolerante Sonderregel wie bei Markdown/Klartext/CSV.
@@ -878,14 +884,35 @@ Endung müssen passen) deshalb **vor** jeder strengen Erkennung, nicht nur als R
 eine solche Datei stillschweigend über die HTML-Pipeline laufen, ohne dass auch nur ein
 `FORMAT_MISMATCH` gemeldet würde.
 
-**Grenze: Feed-Detailseiten laufen weiterhin über die Fallback-Pipeline, nicht über diese.**
-`FileProcessingService#processRssEntry` übergibt den bereits extrahierten Haupttext eines
-RSS-Eintrags direkt an die Tika-Fallback-Pipeline (ADR-0017, Entscheidung 2) — dieser Text war nie
-eine Datei und durchläuft das inhaltsbasierte Routing der `DocumentPipelineRegistry` gar nicht, kann
-diese Pipeline also grundsätzlich nicht erreichen. Nur echte `.html`-Dateien — Verzeichnis-Crawl,
-Dateisystem oder ein Anhang eines RSS-Eintrags — profitieren von `HtmlDocumentPipeline`.
+**Feed-Detailseiten laufen seit #1315 ebenfalls über diese Pipeline.** Bis dahin übergab der
+RSS-Konnektor den bereits extrahierten Haupttext als Text an die Tika-Fallback-Pipeline, und eine
+Pressemitteilung mit Zwischenüberschriften wurde in Token-Fenster geschnitten, dieselbe Seite als
+`.html`-Datei in Abschnitte. Jetzt reduziert `DetailPageExtractor` die Seite über die geteilten
+`HtmlContentRoots` (Boilerplate- und Hauptinhalt-Selektoren stehen einmal, der Feed-Konnektor
+setzt nur seinen konfigurierbaren Selektor ein) und übergibt das HTML der Inhaltsbereiche per
+`DocumentIngest#pipelineId` an `HtmlDocumentPipeline` — kein inhaltsbasiertes Routing, sondern der
+direkte Aufruf, den der Confluence-Konnektor bereits nutzt. Anlagen-Erkennung und
+Boilerplate-Entfernung bleiben im Konnektor. RSS-Chunks tragen `pipeline_id=html`; der
+Pipeline-Nachzug (`PipelineReindexService`) erfasst Feed-Einträge deshalb wie jedes andere
+Netzdokument (Vormerkung für den nächsten Lauf), die Sonderregel „RSS ist immer Fallback" ist
+entfallen. Eine Titelzeile liest die Pipeline nur aus Dateien, nicht aus übergebenem Text: Eine
+Meldung benennt andere Dokumente als sich selbst (dieselbe Regel, die der Fallback für Textquellen
+anwendete).
 
-**Baseline unberührt** — der bestehende Evaluierungskorpus enthält keine HTML-Dokumente.
+**Ein XHTML-Ereignisleser für HTML und Confluence (#1315, Version 2).** `XhtmlEventBuilder` im
+Paket `pipeline` erzeugt die Heading/Paragraph-Ereignisse für `HtmlDocumentPipeline` und
+`ConfluenceDocumentPipeline`; Blocktags, Whitespace-Normalisierung, Tabellen- und Listenrendering
+stehen einmal. Die Confluence-Makroregeln sind ein `ElementRule`-Hook (`ConfluenceElementRule`),
+der vor dem eingebauten Lauf befragt wird. Für HTML-Dateien ändert sich damit der Zuschnitt
+(daher Version 2): Tabellen werden eine Zeile je Tabellenzeile mit „ | "-getrennten Zellen,
+Listen eine Zeile je Eintrag mit Verschachtelungsmarker, `pre` behält Zeilenumbrüche, geschützte
+Leerzeichen zählen als Leerraum. Der Confluence-Zuschnitt ist unverändert (Version 1, Golden-Chunks
+der Tests unverändert).
+
+**Baseline unberührt** — der bestehende Evaluierungskorpus enthält keine HTML-Dokumente. Der
+Versionsschritt verschiebt `ingestionPipelineFingerprint` (`html:1` → `html:2`); die sechs
+Baselines sind als reine Fixpunkt-Ergänzung nachgezogen (Rohvektor-Messvertrag 7 → 8, Pipeline 9 →
+10), siehe „Baseline-Aktualisierung als Schritt jedes Format-Issues".
 
 ### 5. EML und MSG
 
@@ -894,14 +921,15 @@ aus Kopfdaten, Text und Anhangstext.
 
 Die Pipeline trennt drei Dinge:
 
-- **Kopfdaten landen sowohl als Metadaten als auch als Kontextzeilen im Text des ersten Chunks.** Von,
-  An, Betreff, Datum werden auf jeden Kopfdaten tragenden Chunk als Metadatenfeld geschrieben — seit
-  #1164 mit Leser: `QueryService#mapSources` liest sie zurück und reicht sie bis in die
-  Fundstellen-Anzeige durch (Beleganzeige; die strukturierte Filterung nach Absender/Zeitraum/Betreff
-  selbst steht noch aus, siehe Issue #1211) — und zusätzlich
-  einmalig, deutsch beschriftet, vor den Nachrichtentext des jeweils ersten erzeugten Chunks gesetzt —
-  nicht wiederholt auf jedes Thread-Segment oder jedes weiter zerlegte Teilstück, sonst würde derselbe
-  Verteilerkopf jeden Chunk eines langen Threads verwässern (#1130 Befund 1).
+- **Kopfdaten landen sowohl als Schemafelder am Dokument als auch als Kontextzeilen im Text des
+  ersten Chunks.** Absender, An und Betreff sind seit #1242 **Formatfelder des Metadatenschemas**
+  (`metadata-schema.md`, „Formatfelder der Aufnahmestrecke"), das Datum ist die ranghöchste Quelle
+  des Kernfelds Datum/Stand; die Pipeline liefert sie über `DocumentProperties`, nicht mehr über
+  eigene `mail_*`-Chunk-Schlüssel. Der filterbare Absender erreicht die Chunks von dort aus wie jedes
+  andere filterbare Schemafeld. Zusätzlich stehen dieselben Kopfdaten einmalig, deutsch beschriftet,
+  vor dem Nachrichtentext des jeweils ersten erzeugten Chunks — nicht wiederholt auf jedes
+  Thread-Segment oder jedes weiter zerlegte Teilstück, sonst würde derselbe Verteilerkopf jeden Chunk
+  eines langen Threads verwässern (#1130 Befund 1).
 - **Ein Chunk je Nachricht**, bei langen Threads je Nachricht im Thread. Ein Thread ist kein Dokument,
   sondern eine Folge von Dokumenten.
 - **Ein Anhang ist ein eigenes Dokument, das durch die Pipeline seines eigenen Typs läuft** (ADR-0022,
@@ -989,21 +1017,18 @@ werden müssen, statt in einen Block zu fließen:
 - **MSG** über Apache POI HSMF (`org.apache.poi.hsmf.MAPIMessage`, `poi-scratchpad` jetzt direkt
   referenziert): liest Betreff/Von/An/Datum/Text sowie `AttachmentChunks` für Anhänge.
 
-**Kopfdaten landen als Chunk-Metadaten** — `ChunkMailMetadata` definiert
-`mail_from`/`mail_to`/`mail_subject`/`mail_date`, deklariert über
-`MailDocumentPipeline#passthroughMetadataKeys()` (#1107); `FileProcessingService#storeChunks` kopiert
-sie auf den gespeicherten Chunk, genau wie es das schon für `location` tut (Teil 5, Übergabepunkt).
-Seit #1164 (PR #1201) haben diese Felder einen Leser: `QueryService#mapSources` liest sie zurück, die
-Fundstellen-Anzeige zeigt Absender/Datum/Betreff. Die strukturierte Filterung nach
-Absender/Zeitraum/Betreff selbst steht noch aus (Issue #1211, keine Fehlmodellierung — siehe
-`ChunkMailMetadata`-Javadoc). `mail_date` wird seit PR #1201 auf Sekundenpräzision gekürzt
-geschrieben (`MailDocumentPipeline#renderMailDate`), damit ein künftiger Zeitraumfilter
-lexikografisch sortieren kann — `Instant#toString()` allein wäre das nicht zuverlässig (siehe
-`ChunkMailMetadata`-Javadoc). `MailDocumentPipeline#version()` stieg dafür 2 → 3; ein bereits
-indizierter Mail-Bestand unterhalb dieser Version trägt weiterhin den alten, potenziell nicht
-sortierbaren `mail_date`-Wert, bis die Betreiberin ihn über die vorhandenen
-Administrationsendpunkte (`GET /pipeline-versions`, `POST /pipeline-reindex`) nachzieht — Regel (d):
-„Ausgelöst wird nichts von selbst", unverändert.
+**Kopfdaten landen als Schemafelder am Dokument (#1242).** `FormatMetadataField` definiert die drei
+Formatfelder `mail_sender`/`mail_recipients`/`mail_subject`; die Pipeline liefert sie über
+`DocumentProperties#formatFields`, `DocumentMetadataService` schreibt sie wie ein Kernfeld
+(deterministisch, mit Extraktionsversion, manuell gesetzte Werte unangetastet), und der filterbare
+Absender reist als `ff_mail_sender` mit Präsenzmarke `ffs_mail_sender` auf jedem Chunk mit — auf
+demselben Weg, den auch Dokumentart und Datum nehmen. Das Mail-Datum bleibt das Kernfeld
+Datum/Stand. Die früheren Sonderschlüssel `mail_from`/`mail_to`/`mail_subject`/`mail_date`
+(`ChunkMailMetadata`) und die vier gleichnamigen Felder am `SourceReference` sind entfallen; die
+Beleg-Anzeige liest die Kopfdaten über die generische Feld-Wert-Liste aus #1066.
+`MailDocumentPipeline#version()` stieg dafür 4 → 5; ein Altbestand unterhalb dieser Version trägt die
+Kopfdaten erst nach einem Pipeline-Reindex (`GET /pipeline-versions`, `POST /pipeline-reindex`) oder
+dem Bestandslauf des Metadatenschemas — Regel (d): „Ausgelöst wird nichts von selbst", unverändert.
 
 **Dieselben Kopfdaten landen zusätzlich, deutsch beschriftet, als Kontextzeilen vor dem
 Nachrichtentext** (#1130 Befund 1, entschieden gegen die zuvor offene Formfrage aus Teil 5, Punkt 1)
@@ -1184,7 +1209,7 @@ sie wird von ihrer URL geholt, statt aus dem Eintrag extrahiert zu werden.
 **Die Rekursionstiefe (Mail-in-Mail) lebt auf dem verallgemeinerten Anhangsweg, nicht mehr in dieser
 Pipeline** (ADR-0022, Entscheidung 6): `AttachmentIndexer` zählt die Verschachtelungstiefe über einen
 threadlokalen Zähler, sobald ein gemeldeter Anhang selbst wieder über `FileProcessingService
-#processUrlFile` verarbeitet wird und dabei erneut Anhänge meldet — dieselbe Rolle, die
+#ingest` verarbeitet wird und dabei erneut Anhänge meldet — dieselbe Rolle, die
 `MailDocumentPipeline`s eigenes `RECURSION_DEPTH`-Feld vor #1183 gespielt hat, jetzt auf der
 gemeinsamen Ebene, weil auch RSS/Confluence-Anhänge grundsätzlich verschachtelt sein können.
 
@@ -1206,7 +1231,7 @@ schützen Platte und nachgelagerte Verarbeitung, nicht den Parse-Vorgang selbst*
 Anhänge eingeschlossen, vollständig im Heap, bevor dieser Code auch nur entscheidet, ob ein Teil ein
 Anhang ist. Die eigentliche Speichergrenze ist eine dritte, neue Eigenschaft: `max-message-bytes`
 (gesetzt 100 MiB) — geprüft gegen die Größe der `.eml`/`.msg`-Datei selbst, bevor überhaupt geparst
-wird, denn `FileProcessingService#processFile` erzwingt keine Einzeldateigrößen-Grenze (nur die
+wird, denn `FileProcessingService#ingest` erzwingt keine Einzeldateigrößen-Grenze (nur die
 Speicherplatz-Quote der Bibliothek insgesamt). Bei MSG bleibt die Anhangsgrenze zusätzlich
 Best-Effort: `MAPIMessage` liest die gesamte Datei samt aller Anhangsbytes vollständig in den Speicher,
 bevor dieser Code sie zu sehen bekommt, sodass `max-attachment-bytes` dort nur noch verhindert, dass
@@ -1242,11 +1267,14 @@ Makro-Inhalt Seiteninhalt ist** und welcher zur Laufzeit aus anderen Quellen zus
 #### Umgesetzt (#1137)
 
 `ConfluenceDocumentPipeline` (`id` `confluence`, Version 1) beansprucht **kein** Format in der
-`DocumentPipelineRegistry` — `FileProcessingService#processConfluencePage` ruft sie über
-`pipelineById` direkt auf, so wie ein Feed-Eintrag den Fallback direkt erhält; ohne registrierte
-Pipeline (reduzierte Testregistry) nimmt der Fallback den Körper als Text. Der Vollabgleich (#1136)
+`DocumentPipelineRegistry` — der Confluence-Konnektor benennt sie im `DocumentIngest`
+(`pipelineId`), und `FileProcessingService#ingest` ruft sie über `pipelineById` direkt auf, so wie
+seit #1315 auch ein Feed-Eintrag die HTML-Pipeline benennt; ohne registrierte Pipeline ist das ein
+Verdrahtungsfehler. Der Vollabgleich (#1136)
 übergibt den Storage-Körper unverändert; die Pipeline liest ihn mit dem XML-Parser von Jsoup, damit
-die Makro-Elemente erhalten bleiben (der HTML-Parser verwirft namensraum-präfigierte Elemente).
+die Makro-Elemente erhalten bleiben (der HTML-Parser verwirft namensraum-präfigierte Elemente). Das
+XHTML selbst liest seit #1315 der mit der HTML-Pipeline geteilte `XhtmlEventBuilder`; die
+Makro-Elemente behandelt `ConfluenceElementRule` als dessen Hook.
 
 **Regelwerk je Makro-Klasse** (`ConfluenceMacroRules`). Die Trennlinie ist, wo der Inhalt lebt:
 
@@ -1280,7 +1308,7 @@ Dokuments; der Seitentitel steht am Chunk als `file_name`), die die Pipeline als
 zitierten Rohtext) ist der Ort der Seite im Space — `[Handbuch / Kapitel 1 / Abschnitt 1.1]` —, nicht
 nur ihr Titel. Die Zitatanzeige liest diese Metadaten noch nicht (siehe Offene Punkte).
 
-**Anhänge** laufen weiter über den bestehenden Anhangsweg (`processUrlFile`, Routing nach Inhalt):
+**Anhänge** laufen weiter über den bestehenden Anhangsweg (`FileProcessingService#ingest`, Routing nach Inhalt):
 ein `.html`-Anhang trifft `HtmlDocumentPipeline`, ein PDF den PDF-Weg; ein nicht unterstützter Typ
 wird als `UNSUPPORTED_FORMAT` sichtbar übersprungen und bleibt Teil der Abgleichsmenge.
 
@@ -1364,6 +1392,37 @@ ist. Das ist die LLM-freie Ausbaustufe des Contextual Chunking, dessen Wirksamke
 Der Präfix geht in Embedding **und** Volltextindex — die Anthropic-Zahlen zeigen den größeren Effekt
 gerade bei der kontextualisierten lexikalischen Seite. Er ist Teil der Chunk-Darstellung, nicht seines
 Rohtexts: Der zitierte Auszug im Beleg bleibt der Originalwortlaut.
+
+#### Umgesetzt (#1072)
+
+`ChunkContextPrefix#forChunk` ist die eine Stelle, an der der Präfix entsteht — für den Aufnahmeweg
+(`FileProcessingService#storeChunks`) und für den Nachlauf gleichermaßen, samt der Entscheidung, ob es
+überhaupt einen gibt. Er setzt sich aus dem Titel,
+den präfixwirksamen Metadatenwerten des Dokuments und dem Strukturkontext des Chunks zusammen, getrennt
+durch `›`; ein leeres Segment entfällt vollständig, und ein Präfix ohne jedes Segment existiert nicht.
+
+- **Der Titel ist das Kernfeld Titel** (ADR-0024) und ersetzt damit die Dateinamens-Humanisierung von
+  `ChunkContextTitle`; die bleibt der Rückfall, wo kein Titel ermittelt wurde. Die Entscheidung „dieser
+  Dokumenttyp bekommt gar keinen Präfix" (RSS-Eintrag ohne Überschrift) trifft der Aufrufer und wird an
+  `documents.context_prefix_eligible` festgehalten — sonst müsste der Nachlauf sie raten und gäbe
+  demselben Dokument einen Präfix, den die Aufnahme ihm bewusst verweigert hatte.
+- **Der Strukturkontext ist der Abschnittspfad des Chunks**, gelesen aus seinem Fundort und nur dort,
+  wo dieser einen Abschnitt nennt (`Abschn. …`). Eine Seiten-, Folien- oder Zeilenangabe benennt keinen
+  Inhalt und würde beide Indizes nur verdünnen. Beginnt der Chunk-Text bereits mit der Überschrift —
+  eine Pipeline, die an Überschriften schneidet, behält sie im Text —, entfällt das Segment ebenfalls:
+  Es davorzustellen fügt nichts hinzu.
+- **Der Volltextindex liest dieselbe `EMBED`-Form wie die Einbettung** (`FullTextChunkStore`), statt
+  den Präfix ein zweites Mal zu bilden — die beiden können damit nicht auseinanderlaufen. Der
+  gespeicherte Chunk-Text bleibt unangetastet, der Beleg zitiert weiter den Originalwortlaut. Weil sich
+  die gespeicherten Lexeme damit ändern, steigt `content_tsv_version` auf 5; der Altbestand wird über
+  denselben Reparaturpfad nachgezogen wie jede andere Lexem-Änderung
+  (`PipelineReindexService`, Regel (d)).
+- **Ein Dokument aus einem einzigen Chunk bekommt weiterhin keinen Titel vorangestellt** — es trägt
+  seinen ganzen Text —, wohl aber einen Präfix, sobald ein präfixwirksamer Metadatenwert vorliegt: der
+  steht gerade nicht in diesem Text.
+
+Was eine Änderung an einem präfixwirksamen Feld kostet und wie der Nachlauf sie einholt, steht in
+[Metadatenschema, Umgesetzt (#1072)](./metadata-schema.md#umgesetzt-1072).
 
 ### (c) Chunk-Größen entscheidet die Pipeline, nicht ein Admin-Regler
 
@@ -1618,13 +1677,15 @@ Hier wird nur der **Übergabepunkt** definiert:
    `MailDocumentPipeline` nutzte ausschließlich eigene Metadatenfelder (`mail_from` usw.), während
    `TabularDocumentPipeline`/`HtmlDocumentPipeline`/`PptxDocumentPipeline` ihren Strukturkontext in den
    Chunk-Text backen (`location` plus eine Kontextzeile). **Entschieden mit #1130 Befund 1: beides.**
-   Die Metadatenfelder bleiben — seit #1164 (PR #1201) gelesen für die Fundstellen-Anzeige, als
-   Grundlage einer künftigen strukturierten Filterung nach Absender/Zeitraum/Betreff (Issue #1211)
-   noch offen —, zusätzlich trägt `MailDocumentPipeline` dieselben Kopfdaten jetzt auch als deutsch
-   beschriftete Kontextzeilen in den Chunk-Text, einmalig auf dem ersten erzeugten Chunk, damit sie
-   Embedding und Volltextindex tatsächlich erreichen. Ein Metadatenfeld ohne Leser ist wirkungslos —
-   zum Zeitpunkt dieser Entscheidung galt das noch für beide Wege: Die Textform war die einzige, die
-   vor Retrieval-Filterung/Beleganzeige in Suchtreffern ankam.
+   Die Kontextzeilen der Mail-Kopfdaten bleiben — deutsch beschriftet, einmalig auf dem ersten
+   erzeugten Chunk, damit sie Embedding und Volltextindex erreichen. Die *Metadaten*-Hälfte hat
+   dagegen mit **#1242** die Seite gewechselt: Absender, Empfänger und Betreff sind keine eigenen
+   Chunk-Schlüssel dieser Pipeline mehr, sondern Formatfelder des Metadatenschemas am Dokument
+   (`metadata-schema.md`, „Formatfelder der Aufnahmestrecke"), das Datum ist Kernfeld. Damit bleibt
+   `passthroughMetadataKeys()` der offene Mechanismus für echten *Chunk*-Kontext — heute die
+   Ortsangabe und der Confluence-Space —, und eine Angabe, die für das ganze Dokument gilt, nimmt
+   den Schemaweg. Ein Metadatenfeld ohne Leser ist wirkungslos; genau daran ist die frühere
+   Doppelung gescheitert.
 2. Struktur-Metadaten sind **abgeleitet, nicht geraten**. Sie stammen aus dem Dokument selbst
    (Gliederung, Folienzähler, Blattname, Mail-Header). Inhaltlich interpretierende Felder — Dokumentart,
    Fassung, Thema — entstehen hier ausdrücklich nicht; sie gehören in die Metadaten-Spezifikation, mit

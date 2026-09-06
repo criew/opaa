@@ -18,6 +18,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.group.GroupMembershipResolver;
 import io.opaa.group.GroupRepository;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.EmbeddingRateEstimator;
 import io.opaa.indexing.FullTextChunkStore;
 import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingJobService;
@@ -73,7 +74,8 @@ class KnowledgeLibraryServiceDeleteLockTest {
             mock(org.springframework.ai.embedding.EmbeddingModel.class),
             mock(org.springframework.ai.embedding.BatchingStrategy.class),
             mock(VectorStoreWriter.class),
-            mock(FullTextChunkStore.class));
+            mock(FullTextChunkStore.class),
+            new EmbeddingRateEstimator(4.0));
     FilesystemPathAllowlist filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     indexingJobRepository = mock(IndexingJobRepository.class);
     RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);
@@ -84,7 +86,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
 
     // #1200: every null/zero component falls back to the record's own defaults (7-day rhythm).
     ConfluenceProperties confluenceProperties =
-        new ConfluenceProperties(0, null, null, 0, null, 0, 0, null, 0, null, null, 0);
+        new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0);
     libraryService =
         new KnowledgeLibraryService(
             libraryRepository,

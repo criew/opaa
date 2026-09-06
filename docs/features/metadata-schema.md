@@ -1,6 +1,10 @@
 # Metadatenschema für Wissensbibliotheken
 
-> **Status: Entwurf zur Review.**
+> **Status: umgesetzt bis auf Arbeitspaket 9** (Stand 05.09.2026, Epic #1065). Die Arbeitspakete 1
+> bis 8 sind gebaut und gemergt; jedes trägt unten seinen eigenen „Umgesetzt"-Abschnitt. Offen ist
+> allein der geführte Assistent (Paket 9, Issue #1362), der keine neue Fähigkeit hinzufügt. Die
+> modellgestützte Extraktion ist gebaut, aber **nicht abgenommen** — siehe den Abnahmestand am
+> Ende von [Umgesetzt (#1073)](#umgesetzt-1073).
 >
 > Diese Spezifikation setzt die Maintainer-Entscheidungen um, die aus Abschnitt 3 des
 > Diskussionspapiers
@@ -34,8 +38,12 @@ getrennt ausgewiesenen Fehlerrichtungen (#1070, Teil 2, siehe
 [`retrieval-benchmark.md`, „Umgesetzt (#1070, Teil 2)"](./retrieval-benchmark.md#umgesetzt-1070-teil-2)),
 **und Arbeitspaket 5**: die Bibliotheksfelder mit kontrolliertem Vokabular, bestätigter
 Wertelisten-Abbildung, Filter, Beleg-Anzeige und Verwaltungsansicht (#1071, siehe
-[Umgesetzt (#1071)](#umgesetzt-1071)). Der Kontextpräfix-Anteil der Wirkstellen (#1072) und die
-Modell-Extraktion sind noch nicht gebaut.
+[Umgesetzt (#1071)](#umgesetzt-1071)), **Arbeitspaket 6**: Metadaten im Kontextpräfix mit
+Folgekostenanzeige und selektivem Nachlauf (#1072, siehe [Umgesetzt (#1072)](#umgesetzt-1072)), **und
+die Arbeitspakete 7 und 8**: modellgestützte Extraktion, freie Schlagworte und die Messung der
+Extraktionsgüte (#1073, siehe [Umgesetzt (#1073)](#umgesetzt-1073)) — Letztere gebaut, aber nach der
+Handstichprobe **nicht abgenommen**. Nicht gebaut ist allein Arbeitspaket 9, der geführte Assistent
+(Issue #1362).
 
 ---
 
@@ -175,7 +183,9 @@ Antwort mit Beleg            → 3. Beleg-Anzeige: „§ 3 Verwaltungsgebührens
 ## Drei Arten von Metadaten
 
 Das Schema kennt drei Arten, und sie unterscheiden sich nicht im Format, sondern in **wer sie
-festlegt** und **wie viel sie dürfen**.
+festlegt** und **wie viel sie dürfen**. Seit #1242 tritt ein vierter, bewusst kleiner Kreis daneben:
+die [Formatfelder](#formatfelder-der-aufnahmestrecke-1242) — fest eingebaut wie die Kernfelder, aber
+nur von der Pipeline eines bestimmten Formats befüllt.
 
 | | (a) Kernfelder | (b) Bibliotheksfelder | (c) Freie Schlagworte |
 |---|---|---|---|
@@ -391,9 +401,8 @@ Kernfeldern die Bibliotheksfelder mit Zitierposition — höchstens zwei, in der
 Position, leere Felder gar nicht.
 
 **Kontextpräfix.** Die Wirkstelle wird gespeichert und ist in der Verwaltungsansicht sichtbar; der
-Präfix selbst und der Reindex-Nachlauf, den eine Änderung daran kostet, kommen mit **#1072**. Ein
-Feld, das heute nur den Kontextpräfix bedient, ist ein gültiger Schemazustand ohne heutige Wirkung —
-das ist der Preis dafür, die Wirkstellen vollständig am Feld zu führen, statt sie später nachzurüsten.
+Präfix selbst und der Nachlauf, den eine Änderung daran kostet, kamen mit **#1072** (siehe
+[Umgesetzt (#1072)](#umgesetzt-1072)).
 
 **Oberfläche.** In den Bibliothekseinstellungen steht der Abschnitt „Metadatenfelder": die Liste mit
 Typ, Wirkstellen und Werteliste, das Anlegen (mit der Pflicht, Filter oder Kontextpräfix zu wählen),
@@ -407,6 +416,67 @@ des Suchbereichs an.
 **Bewusst nicht gebaut.** Kein geführter Assistent (Teil V, spätere Ausbaustufe); keine automatische
 Befüllung eines Bibliotheksfeldes; keine Umbenennung eines Wertecodes im Bestand (das ist eine
 Entfernung mit Abbildung); kein Freitextfeld.
+
+## Formatfelder der Aufnahmestrecke (#1242)
+
+Manche Formate erklären eine Angabe, die kein anderes Format kennt: eine Mail nennt ihren Absender,
+ihre Empfänger und ihren Betreff. Ein Kernfeld ist das nicht — es gilt nicht für jedes Dokument —,
+und ein Bibliotheksfeld auch nicht: Niemand konfiguriert es, es entsteht beim Lesen. Deshalb gibt es
+einen dritten, fest eingebauten Feldkreis mit eigenem Schlüsselraum (`fmt:<key>` in
+`document_metadata_values`):
+
+| Feld | Format | Typ | Wirkstellen |
+|---|---|---|---|
+| `mail_sender` („Absender") | E-Mail | Kennung nach Muster (E-Mail-Adresse) | Filter + Beleg |
+| `mail_recipients` („An") | E-Mail | Text, auf 200 Zeichen gekürzt | nur Beleg |
+| `mail_subject` („Betreff") | E-Mail | Text | nur Beleg |
+
+Vier Festlegungen (Maintainer-Entscheidung vom 04.09.2026 an #1242, Option 1):
+
+- **Der Absender ist eine Kennung, kein Freitext.** Er wird auf die reine Adresse reduziert und
+  kleingeschrieben (`Max Mustermann <Max.Mueller@Stadt.de>` → `max.mueller@stadt.de`) und gegen ein
+  Muster geprüft; ein `From`-Kopf ohne Adresse (eine MSG mit reinem Anzeigenamen) ergibt **keinen**
+  Wert. Gefiltert wird auf den **ganzen** Wert, nie auf einen Teilstring — dieselbe Regel wie beim
+  PATTERN-Bibliotheksfeld und aus demselben Grund.
+- **Betreff und Empfänger sind Anzeigefelder.** Sie stehen im Beleg und filtern nie. Damit bleibt die
+  Regel „Freitextfelder gibt es nicht" unverändert: Es wird kein Teilstring-Filtertyp eingeführt. Ein
+  Filter auf ein Anzeigefeld ist ein Aufrufer-Fehler (400), keine still verworfene Bedingung. Die
+  Betreffsuche deckt die Volltextsuche ab — der Betreff steht im deutsch beschrifteten Kopfblock des
+  Chunk-Textes.
+- **„Nur Beleg-Anzeige" ist hier zulässig**, anders als bei einem Bibliotheksfeld. Die
+  [Aufnahmeregel](#die-aufnahmeregel) ist gegen ein wachsendes, von Hand gepflegtes Schema gerichtet;
+  ein Formatfeld legt niemand an, es kostet keine Pflege und kann nicht wuchern.
+- **Ein Wert wird gelesen, nicht gedeutet**, und trägt deshalb immer Herkunft `DETERMINISTIC` mit
+  Extraktionsversion — dieselbe Reihenfolge und derselbe Schutz manuell gesetzter Werte wie bei den
+  Kernfeldern. Das Datum einer Mail bleibt das **Kernfeld** Datum/Stand (der `Date`-Kopf ist seine
+  ranghöchste Quelle), kein eigenes Formatfeld.
+
+**Wirkung.** Der Absender rides wie ein filterbares Bibliotheksfeld auf jedem Chunk (`ff_mail_sender`,
+Präsenzmarke `ffs_mail_sender`) und wird in beiden Suchpfaden nach denselben Regeln übersetzt —
+Leerwert-Regel, Nachordnung unter den Rechtefilter, explizite Klammerung. Eine Bibliotheksgrenze
+braucht die Bedingung nicht: Ein Formatfeld bedeutet überall dasselbe, und ein Dokument, das keine
+Mail ist, hat schlicht keinen Wert. Im Filter-Popover erscheint „Absender" mit den im Suchbereich
+**vorkommenden** Adressen; angeboten wird das Feld, sobald mindestens ein Dokument einen Wert trägt —
+ein Füllstandsanteil am gemischten Bestand misst dort die Formatverteilung, nicht die
+Metadatenqualität. Im Beleg stehen die Formatfelder hinter den Kernfeldern und vor den
+Bibliotheksfeldern; ein Wert, den der Titel bereits wörtlich zeigt (bei einer Mail der Betreff, der
+zugleich Titelquelle ist), erscheint nicht zweimal. **Der Empfänger steht nur im Belegfenster, nicht
+in der Fundstellenzeile**: Eine Verteilerliste ist unbegrenzt lang und benennt niemanden, der die
+Fundstelle einordnet — sie würde genau die Angaben aus der einen Zeile verdrängen, die es tun. Die
+Obergrenze von zwei Nicht-Kernfeldern der Belegzeile zählt die Formatfelder mit; knapp ist die
+Zeile, nicht die Feldart. **Kein Formatfeld steht im Kontextpräfix** (#1072): Die Wirkstelle
+„Kontextpräfix" ist je Feld eine bewusste Entscheidung — bei einem Bibliotheksfeld beim Anlegen, bei
+Dokumentart und Datum/Stand je Bibliothek —, und ein Formatfeld legt niemand an, also hat sie auch
+niemand getroffen. Sie stillschweigend zu setzen hieße, jedem Bestand mit Mails einen Nachlauf
+aufzuerlegen, den er nicht beauftragt hat; der Betreff einer Mail steht ohnehin im deutsch
+beschrifteten Kopfblock des Chunk-Textes und ist damit lexikalisch auffindbar.
+
+**Abgelöst.** Die mail-eigenen Chunk-Schlüssel `mail_from`/`mail_to`/`mail_subject`/`mail_date`, die
+vier Felder `mailFrom`/`mailTo`/`mailSubject`/`mailDate` am `SourceReference` und `formatMailSummary`
+im Frontend sind entfallen — kein Parallelbetrieb. Ein Chat, dessen gespeicherte Belege die alten
+Felder noch tragen, bleibt lesbar (unbekannte JSON-Felder werden ignoriert, Test). Ein vor #1242
+indizierter Mail-Bestand zieht über den Pipeline-Reindex (Mail-Pipeline-Version 5) oder den
+Bestandslauf nach; bis dahin zeigt er Fundstelle und Dateiname wie bisher.
 
 ## (c) Freie Schlagworte
 
@@ -515,8 +585,8 @@ Bibliotheksfelder (#1071) hängen sich an dieselbe Liste. Fundstellenzeile und B
 Liste ohne Feldwissen (Anzeigewerte mit „ · " verbunden, Label als barrierefreie Beschreibung) — ein
 leeres Feld ist nicht in der Liste und erscheint gar nicht, ein `DERIVED`-Wert ist mit „(abgeleitet)"
 gekennzeichnet; `location` bleibt die Fundstelle. Die vier Mail-Sonderfelder
-`mailFrom`/`mailTo`/`mailSubject`/`mailDate` bleiben in diesem Schnitt unverändert; ihre Ablösung
-über Schemafelder ist ein eigenes Sub-Issue nach #1071.
+`mailFrom`/`mailTo`/`mailSubject`/`mailDate` blieben in diesem Schnitt unverändert; **mit #1242 sind
+sie abgelöst** (siehe [Formatfelder der Aufnahmestrecke](#formatfelder-der-aufnahmestrecke-1242)).
 
 **Abweichungen und bewusst nicht Gebautes.** Das Abnahmekriterium „Die Extraktion läuft im
 Rechtekontext" ist durch Beschluss 1 des Maintainers ersetzt (Systemprozess; die Rechte-Invariante gilt
@@ -611,7 +681,7 @@ Datumsangabe aus dem Namen. Als **Titel** bleibt der Name, denn genau das ist er
 | RSS-Eintragskörper | Überschrift des Eintrags, ersatzweise seine URL | **nein** |
 | Confluence-Seite | Seitentitel, ersatzweise seine URL | **nein** |
 
-Anhänge stehen ausnahmslos auf der Ja-Seite: Sie laufen über `FileProcessingService#processUrlFile`
+Anhänge stehen ausnahmslos auf der Ja-Seite: Sie laufen über `FileProcessingService#ingest`
 mit dem Namen, den die Quelle für die Datei nennt — auch der Anhang eines RSS-Eintrags und der einer
 Confluence-Seite, deren Elternzeile selbst einen synthetischen Namen trägt.
 
@@ -620,13 +690,13 @@ Ein Seitentitel im Wiki folgt derselben freien Schreibweise wie eine Feed-Übers
 haben stattdessen eine echte Datumsquelle aus den Eigenschaften der Quelle: der Feed-Eintrag sein
 Veröffentlichungsdatum (`documentDate`), die Confluence-Seite den Zeitpunkt, zu dem ihre aktuelle
 Version geschrieben wurde (`modifiedAt`, aus `ConfluencePage#lastModified`). Beide
-synthetischen Zuflüsse setzen das Kennzeichen im Ingest, in `FileProcessingService#processRssEntry`
-und `#processConfluencePage`. Im **Bestandslauf** gibt es zwei Wege zur selben Regel: Ein
+synthetischen Zuflüsse setzen das Kennzeichen im `DocumentIngest`, den ihr Konnektor an
+`FileProcessingService#ingest` übergibt (`DocumentIngest.text(...)`). Im **Bestandslauf** gibt es zwei Wege zur selben Regel: Ein
 RSS-Eintragskörper wird in `MetadataBackfillService#advanceRemote` ohne Download aus seiner Zeile neu
 ermittelt und setzt das Kennzeichen dort selbst; eine Confluence-Seite hat keine zeilenweise
 Ersatzquelle (ihr `last_modified_remote` ist die Versionsnummer, kein Datum, und Titelzeile wie
 Überschriften stehen nur im Seitenkörper) und wird deshalb für ihren nächsten Konnektorlauf
-vorgemerkt — der läuft durch `#processConfluencePage` und damit durch dieselbe Regel.
+vorgemerkt — der läuft durch den Confluence-Konnektor und damit durch dieselbe Regel.
 
 **Dateiformat.** PPTX/ODP → `PRAESENTATION` (die beiden Präsentationsformate, die
 `SupportedDocumentFormats` überhaupt zulässt), als letzte Quelle: Jede Textquelle geht vor, und ein
@@ -769,6 +839,135 @@ Dokumentinhalte an ein Modell übergibt. Er wird deshalb als eigenständig steue
   Zustandsübersicht wie der übrige Indexzustand (siehe
   [Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)). Ohne dieses Zählwerk ist die
   einzige Rückmeldung über die Kosten dieser Fähigkeit die Rechnung des Modellanbieters.
+
+### Umgesetzt (#1073)
+
+Arbeitspaket 7 und 8 — die modellgestützte Extraktion (Schritt 2 der Reihenfolge), die freien
+Schlagworte und die eigenständige Messung der Extraktionsgüte. Die Architekturentscheidungen dieses
+Schnitts stehen in
+[ADR-0026](../decisions/0026-kontextpraefix-abdruck-und-modellgestuetzte-extraktion.md).
+
+**Zwei Schalter je Bibliothek, beide voreingestellt aus** (`knowledge_libraries.model_extraction_enabled`,
+`keywords_enabled`, Migration 028): `GET`/`PUT /api/v1/libraries/{id}/metadata/extraction-settings`
+(Verwaltungsrecht) liefern sie zusammen mit der aktiven Chat-Rolle — Basis-Adresse und
+Modell-Kennung, nie ein Zugangsschlüssel — und der Angabe, ob diese Adresse lokal ist
+(Loopback/privates Netz). Der Schalter in den Bibliothekseinstellungen zeigt daraus zwei
+verschiedene Datenschutzhinweise: Bei einem extern betriebenen Modell benennt er ausdrücklich, dass
+**der Inhalt jedes aufgenommenen Dokuments dauerhaft das Haus verlässt**, ohne dass eine Person den
+Vorgang auslöst; bei einem lokal betriebenen Modell, dass keine ausgehende Verbindung entsteht.
+
+**Was das Modell gefragt wird.** `ModelMetadataExtractor` läuft im Ingest **nach** der
+deterministischen Extraktion und nur für Felder, die keine Zeile tragen — und nur für die unscharfen:
+Kernfeld Dokumentart und die SELECT-Felder der Bibliothek. Titel, Datum/Stand und PATTERN-Felder sind
+deterministisch oder nichts und werden nie gefragt. Ein Aufruf je Dokument über die zentrale
+Chat-Rolle (`ActiveChatModelResolver`, keine eigene Modellrolle), Zeitlimit 30 s. Der Prompt trägt die
+Werteliste mit Codes und deutschen Labels, die Anweisung „nur ein aufgeführter Code, sonst null",
+das Antwortformat `{"fields": {"<feld>": {"value", "confidence"}}, "keywords": [...]}`, die Titelzeile
+und den auf **4.000 Zeichen** gekürzten Textanfang. Titelzeile und Text stehen zwischen Markierungen
+und sind ausdrücklich als Inhalt, nicht als Anweisung deklariert. Das ist eine Minderung, keine
+Zusicherung: Ein präpariertes Dokument kann weiterhin versuchen, sich selbst einen **zulässigen** Code
+mit hoher Konfidenz zuzuweisen. Die bindende Schranke bleibt die serverseitige Prüfung — gespeichert
+wird nur ein Code der angebotenen Liste, und ein solcher Wert trägt sichtbar die Herkunft
+„abgeleitet". Der Deckel ist bewusst klein: Die unscharfen
+Felder entscheiden sich im Dokumentkopf, der Rest des Textes bewegt die Entscheidung nicht mehr, wohl
+aber Kosten, Laufzeit und die Menge dessen, was das Haus verlässt.
+
+**Übernahme.** Nur bei Konfidenz **≥ 0,80** — vorab festgelegt und committet nach der Regel von
+[ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md), Maintainer-Freigabe 05.09.2026;
+`ModelMetadataExtractor.CONFIDENCE_THRESHOLD`) **und** einem Code aus der angebotenen Liste. Ein Wert
+außerhalb der Liste wird unabhängig von der Konfidenz verworfen — keine Abbildung auf den
+nächstähnlichen Wert. Übernommene Werte tragen `origin = DERIVED`, die gelieferte Konfidenz, die
+Modell-Kennung und die **eigene Extraktionsversion des Modellschritts** — nie die des
+deterministischen Schritts, sonst behauptete ein modellbefüllter Wert nach einer korrigierten Regel
+in Schritt 1 einen Prompt, den es nie gab; ein manueller Wert wird nie berührt. **Senken verlangt
+eine neue Messung, Anheben nicht** — der Schaden ist asymmetrisch
+([ADR-0026](../decisions/0026-kontextpraefix-abdruck-und-modellgestuetzte-extraktion.md),
+Entscheidung 5; die erste Messung hat die Richtung der ursprünglichen Formulierung umgekehrt). Jede
+Änderung ist ein Commit mit Datum und gemessener Verteilung.
+
+**Ein Ausfall blockiert nie die Aufnahme.** Zeitüberschreitung, Transportfehler und unbrauchbare
+Antwort enden gleich: Feld leer, Dokument regulär aufgenommen und durchsuchbar, Aufruf als Fehler
+gezählt. Kein Retry, keine Warteschlange. Der Aufruf läuft auf einem **eigenen, beschränkten
+Threadpool** (`modelExtractionTaskExecutor`, so groß wie Indexierungs- und Upload-Pool zusammen),
+nicht auf dem gemeinsamen `ForkJoinPool`: Dessen Auslastung ließe das Zeitlimit an einem Aufruf
+ablaufen, der nie gestartet ist — ein gezählter „Fehler", den kein Modell verursacht hat. Ist der
+Pool dennoch voll, unterbleibt der Aufruf (eigener Zähler „nicht angefragt (ausgelastet)"; das
+Dokument bekommt dann **keine Abtragsmarke** und bleibt in der Auswahl des Bestandslaufs — anders als
+bei einer Zeitüberschreitung, die bezahlt wurde),
+nicht eingereiht und nicht auf dem aufrufenden Faden ausgeführt: Ein Inline-Aufruf kehrte erst nach
+der Antwort des Modells zurück, das Zeitlimit griffe also gerade dann nicht, wenn es gebraucht wird.
+Das Feld bleibt leer, die Aufnahme läuft weiter. Ein überschrittener Aufruf wird **aufgegeben, nicht
+abgebrochen** — ein blockierender HTTP-Lesevorgang lässt sich nicht unterbrechen. Beendet wird er
+vom **Anfrage-Zeitlimit des Clients**, den dieser Schritt eigens auflöst
+(`ActiveChatModelResolver#resolveChatClient(Duration)`, dieselben 30 s): Spätestens dort scheitert
+der aufgegebene Aufruf und gibt seinen Faden zurück, sodass ein hängendes Modell den Pool nicht
+aufbraucht. Seine Antwort wird verworfen, abgerechnet wird er trotzdem.
+
+**Zählwerk und verworfene Werte.** `metadata_model_extraction_stats` führt je Bibliothek Aufrufe,
+übernommene Werte, verworfen wegen Schwelle, verworfen wegen Vokabular, Fehler, vergebene Schlagworte
+und den letzten Aufruf; es erscheint in den Bibliothekseinstellungen und in derselben
+Zustandsübersicht wie der übrige Indexzustand. `metadata_model_rejections` hält zusätzlich jeden
+verworfenen Wert **mit seiner Konfidenz** (je Bibliothek auf die 1.000 jüngsten Zeilen gedeckelt,
+rotierend) — ohne diese Verteilung ist die Schwelle auf einem echten Bestand nicht kalibrierbar.
+
+**Freie Schlagworte.** Bei eingeschaltetem Schalter liefert dasselbe Antwortobjekt bis zu **fünf**
+Schlagworte je Dokument, je höchstens 40 Zeichen (längere werden verworfen, nicht gekürzt),
+Personennamen sind Prompt-Regel und nicht prüfbar. Sie liegen in einer **eigenen Tabelle**
+(`document_keywords`), nicht in `document_metadata_values`: Jede Zeile dort ist ein typisiertes Feld,
+das ein Filter benennen darf — genau das darf ein Schlagwort nie werden. Sie fließen als **ein
+Segment des Kontextpräfix** (`Schlagworte: …`) durch dasselbe Gate wie jeder andere
+präfixwirksame Wert (`ChunkContextPrefix#forChunk`, #1072) und erreichen darüber **Einbettung und
+Volltextindex** zugleich; der gespeicherte Chunk-Text bleibt unverändert, und ein geänderter
+Schlagwortsatz verändert den Abdruck genau wie ein geänderter Feldwert. Sie tragen **keinen
+Chunk-Schlüssel**, erscheinen **nicht im Beleg** und sind **nicht zu Bibliotheksfeldern beförderbar**;
+ein Filter, der sie benennt, ist ein Aufruferfehler (400). Alle vier Zusagen sind Testfälle, keine
+Absichtserklärungen.
+
+**Bestandslauf.** `documents.model_extraction_version` und `documents.keyword_extraction_version`
+sind die Abtragsmarken — **eine je Fähigkeit** (NULL = nie gelaufen), damit eine Bibliothek, die
+zuerst nur mit Schlagworten lief, ihren Altbestand noch erreicht, wenn die Modell-Extraktion später
+dazukommt. Der Modellschritt trägt eine **eigene Versionsnummer**
+(`ModelMetadataExtractor.EXTRACTION_VERSION`): Eine korrigierte Regex in Schritt 1 macht damit nicht
+jedes Dokument jeder eingeschalteten Bibliothek erneut zu einem bezahlten Modellaufruf. Wird ein
+Schalter eingeschaltet, nimmt der nächste Bestandslauf den Altbestand genau einmal mit; ein Dokument,
+dessen Aufruf nichts ergab, wird kein zweites Mal bezahlt. **Zählung und Auswahl sind dieselbe
+Menge:** Die Fortschrittszahlen der Zustandsübersicht berücksichtigen dieselben Schalter wie die
+Auswahl — sonst zeigte die Seite „0 ausstehend" und keinen Startknopf für genau die Bibliothek,
+deren Altbestand wartet. Der Lauf liest
+den Text aus den vorhandenen Chunks statt neu zu parsen; ein dort vergebenes Schlagwort oder ein dort
+übernommener präfixwirksamer Wert leert den Abdruck und übergibt das Dokument dem
+Kontextpräfix-Nachlauf (#1072) — dieser eine Lauf zahlt das Neu-Einbetten, der Bestandslauf nie.
+
+**Messung der Extraktionsgüte.** `GET /api/v1/libraries/{id}/metadata/quality` (Leserecht, im
+Rechtekontext, nie zwischengespeichert) liefert je Feld die Anteile deterministisch / modellbefüllt /
+manuell / „kein Wert ermittelbar" / leer plus das Zählwerk; die Bibliothekseinstellungen zeigen es
+neben dem Pflege-Anker. `GET /api/v1/libraries/{id}/metadata/sample?size=100` (Verwaltungsrecht)
+liefert die Grundlage der Handauswertung: Dokumente in stabiler Reihenfolge mit Titelzeile und jedem
+Wert samt Herkunft, Konfidenz und Modell — ohne Schlagworte, die keine Aussage tragen, für die das
+Produkt geradesteht.
+
+**Abnahmestand: die Handstichprobe ist gelaufen, die Modell-Extraktion ist nicht abgenommen.** Die
+verbindliche 100er-Handstichprobe der QA-Rolle liegt seit dem 05.09.2026 vor
+(`eval/reports/metadata-extraction-sample-2026-09-05.md`, Demo-Instanz, Modell `claude-haiku-4-5`,
+Schwelle 0,80). Ergebnis: Von 49 modellbefüllten Dokumentart-Werten sind **46 falsch** (93,9 %),
+während die **deterministische Dokumentart** auf derselben Stichprobe fehlerfrei ist (0 von 23
+Werten falsch). Das gilt für dieses eine Feld, nicht für die deterministische Extraktion insgesamt:
+Titel (14 % falsch) und Datum/Stand (27 % falsch) sind ausschließlich deterministisch befüllt und
+haben ihre eigenen Befunde (#1360). Die
+Kalibrierungsregel („Anteil falsch trotz Konfidenz ≥ 0,80 unter 5 %") ist um mehr als das
+Achtzehnfache verfehlt, und die Konfidenz ist **nicht trennscharf** — sie trennt „das Modell hat
+geantwortet" von „das Modell hat sich enthalten", nicht richtig von falsch. Ursache ist die
+Vokabularlücke: Für 63 der 100 Dokumente gibt es keinen passenden Wert, und das Modell greift dann
+zum nächstbesten. Folgen, alle in **#1359**: Schwelle auf 0,90 (nur Anheben ist ohne neue Messung
+erlaubt), Vokabular um Verwaltungswerte erweitern, Prompt um Negativbeispiele. Der Schalter bleibt
+**voreingestellt aus**, und auf der Demo ist er abgeschaltet. Zwei Befunde derselben Stichprobe
+betreffen die deterministische Extraktion (Generator-Voreinstellungen als Datum, zu früher
+Titel-Fallback) und liegen als **#1360** außerhalb dieses Epics.
+
+**Abweichung.** Der Textdeckel (4.000 Zeichen), die Speicherform der Schlagworte (eigene Tabelle),
+der Deckel des Verwerfungsprotokolls (1.000 Zeilen je Bibliothek, rotierend alle 100 Aufrufe) und die
+eigene Versionsnummer des Modellschritts sind Festlegungen dieses Schnitts, keine Vorgaben der
+Spezifikation.
 
 ## Jeder Wert trägt seine Herkunft
 
@@ -978,7 +1177,7 @@ definiert den Übergabepunkt. Die Trennung ist scharf und in beide Richtungen ge
 
 | | Struktur-Metadaten (Aufnahmestrecke) | Schema-Metadaten (dieses Dokument) |
 |---|---|---|
-| **Beispiele** | Gliederungspfad, Überschriftenpfad, Foliennummer, Blattname, Mail-Kopfdaten, Seitenzahl | Dokumentart, Datum/Stand, Fassung, Rechtsebene, Projekt |
+| **Beispiele** | Gliederungspfad, Überschriftenpfad, Foliennummer, Blattname, Seitenzahl | Dokumentart, Datum/Stand, Fassung, Rechtsebene, Projekt, Mail-Kopfdaten (#1242) |
 | **Entstehung** | **abgeleitet** — aus dem Dokument selbst, während der Reader es strukturiert vor sich hat | **interpretiert** — deterministisch, wo möglich; sonst Modell mit Konfidenz |
 | **Geltung** | je Chunk | je Dokument, an alle seine Chunks vererbt |
 | **Kann fehlschlagen** | nein, nur fehlen | ja — deshalb Konfidenz, Herkunft und Leerwert |
@@ -1007,8 +1206,8 @@ Volltextpfad tragen ihn identisch — dasselbe Prinzip und derselbe Grund wie be
 obwohl passende Dokumente im Bestand liegen: Der Filter hat dann nicht die Menge eingeschränkt,
 sondern das bereits gezogene Fenster leergeräumt.
 
-**Nur (a) und (b) filtern.** Freie Schlagworte nicht — siehe oben, und dies ist die Stelle, an der die
-Zusage eingelöst wird.
+**Nur (a), (b) und die filterbaren Formatfelder filtern.** Freie Schlagworte nicht und ein
+Anzeigefeld auch nicht — siehe oben, und dies ist die Stelle, an der die Zusage eingelöst wird.
 
 **Der Filter ist dem Rechtefilter nachgeordnet, nie nebengeordnet.** Metadaten sind eine
 Komfort-Einschränkung, Rechte sind eine Zusicherung. Ein Metadatenfilter kann die lesbare Menge
@@ -1133,8 +1332,9 @@ erscheint als entfernbare Chips („Dokumentart: Vermerk", „Datum: 01.01.2024 
 bleibt am Chat. Die Optionen werden bei jedem Öffnen für den aktuellen Suchbereich geladen.
 
 **Zu #1211 (Mail-Filter).** Der Zeitraumfilter für Mails ist damit abgedeckt, sofern das Mail-Datum
-als Kernfeld Datum/Stand extrahiert ist (#1066 tut das); Absender kommt mit #1242 als typisiertes
-Feld, der Betreff bleibt nach Maintainer-Entscheidung ein Anzeigefeld. Das Datumsfenster vergleicht
+als Kernfeld Datum/Stand extrahiert ist (#1066 tut das); der Absender ist mit #1242 als Formatfeld
+filterbar (Genau-Treffer statt des dort vorgeschlagenen Teilstrings), der Betreff bleibt nach
+Maintainer-Entscheidung ein Anzeigefeld. Das Datumsfenster vergleicht
 Kalendertage des gespeicherten Werts, nicht UTC-Zeitstempel — die in #1211 genannte
 Lokaltag-Abweichung entsteht hier nicht, weil `doc_date` bereits ein Kalendertag ist.
 
@@ -1221,6 +1421,107 @@ Extraktionsversion entsteht:
   [Ingestion-Pipelines, Regel (d)](./ingestion-pipelines.md#d-jeder-chunk-trägt-die-version-des-verfahrens-das-ihn-erzeugt-hat));
   es wird kein zweiter gebaut.
 
+**Eine benannte Ausnahme: die Umschlüsselung einer Werteliste und das Löschen eines Feldes.** Beide
+laufen heute als **eine Transaktion** — der Listeneintrag beziehungsweise das Feld wird erst gelöscht,
+wenn jedes Dokument umgeschrieben ist — und sind damit weder dokumentgranular wiederaufnehmbar noch je
+Bibliothek im Fortschritt abfragbar. Das ist
+bewusst so: Sie ist die einzige Stelle, an der ein Zwischenzustand den Zustand „Dokument trägt einen
+Wert, den es im Schema nicht mehr gibt" erzeugen könnte, und die Regel „nicht einmal kurz" wiegt hier
+schwerer als die Wiederaufnahme; für die Feldlöschung gilt dieselbe Abwägung. Der Preis ist eine
+lange Schreibtransaktion, sobald zehntausende Dokumente denselben Code tragen; die zweiphasige
+Ablösung (Listeneintrag zuerst stilllegen, dann chargenweise umschlüsseln, dann löschen) ist als
+**Issue #1361** außerhalb dieses Epics erfasst und deckt beide Wege ab.
+
+### Umgesetzt (#1072)
+
+Arbeitspaket 6: der Kontextpräfix selbst, die Folgekostenanzeige vor dem Speichern und der selektive
+Nachlauf. Die Architekturentscheidungen dieses Schnitts stehen in
+[ADR-0026](../decisions/0026-kontextpraefix-abdruck-und-modellgestuetzte-extraktion.md).
+
+**Präfixbildung an einer Stelle.** `ChunkContextPrefix` bildet `Titel › Fassung 2026 › § 7 Gebühren`
+für den Aufnahmeweg und für den Nachlauf gleichermaßen; Aufbau und Regeln stehen in
+[Ingestion-Pipelines, Umgesetzt (#1072)](./ingestion-pipelines.md#umgesetzt-1072). Der Präfix geht in
+Embedding **und** Volltextindex — Letzterer liest dieselbe `EMBED`-Form, statt ihn ein zweites Mal zu
+bilden —, und er bleibt außerhalb des gespeicherten Chunk-Texts: Der Auszug im Beleg ist unverändert
+der Originalwortlaut, abgesichert durch einen Test, der beides zugleich prüft.
+
+**Welche Felder präfixwirksam sind, entscheidet die Bibliothek.** Der **Titel ist immer**
+präfixwirksam — er ersetzt die bisherige Dateinamens-Humanisierung, und ein Präfix ohne ihn benennt
+nichts. **Dokumentart und Datum/Stand sind je Bibliothek schaltbar und ab Werk aus**, genau wie ein
+Bibliotheksfeld: Die Wirkstelle „Kontextpräfix" ist je Feld eine bewusste Entscheidung, keine
+Voreinstellung für alle Felder. Eine installationsweite Voreinstellung gäbe es nicht umsonst — sie
+machte jede spätere Schemaänderung an diesen Feldern für jede Bibliothek zu einem Reindex-Vorgang, den
+niemand beauftragt hat. Gespeichert wird das an der Bibliothek
+(`core_context_prefix_document_type`/`-document_date`, Migration 027); geändert über `PUT
+…/metadata-fields/core-context-prefix` mit dem Verwaltungsrecht.
+
+**Die Folgekosten stehen vor dem Speichern.** `GET
+/api/v1/libraries/{libraryId}/metadata-fields/change-impact?fieldKey=&change=` beantwortet eine
+geplante Änderung mit betroffenen Dokumenten, betroffenen Chunks, der daraus folgenden Zahl der
+Einbettungsaufrufe (einer je Chunk) und der erwarteten Laufzeit — „4.812 Abschnitte in 12 Dokumenten
+neu einzubetten, rund 40 Minuten". Die Rate dahinter ist die **gemessene** mittlere Dauer je Chunk der
+Einbettungsaufrufe dieses Prozesses (`EmbeddingRateEstimator`); gemessen wird nur, was allein lief —
+die Wandzeiten nebenläufiger Teilchargen überlappen und ergäben summiert eine bis zum
+Nebenläufigkeitsfaktor zu pessimistische Rate. Solange zu wenige Aufrufe gemessen sind, gilt die
+konfigurierte `opaa.indexing.embedding-rate-estimate` (Chunks je Sekunde, Voreinstellung 4). Die
+Antwort nennt, welche der beiden gerade zählt — eine geschätzte Zahl als gemessene auszugeben wäre
+genau die Sorte Angabe, gegen die diese Anzeige gebaut ist.
+
+Die Kostentabelle oben verhält sich damit wie beschrieben: Werteliste erweitern kostet nichts; ein
+**neu angelegtes** Feld kostet zunächst ebenfalls nichts, weil noch kein Dokument einen Wert dafür
+trägt (der Preis entsteht dokumentweise, sobald Werte hineinkommen); ein Feld, das nur filtert oder nur
+im Beleg steht, kostet keinen Einbettungsaufruf; eine Änderung an einem präfixwirksamen Feld kostet
+einen Einbettungsaufruf je Chunk **der Dokumente, die dafür einen Wert tragen**. Die Anzeige erscheint
+im Bestätigungsdialog jeder dieser Änderungen — Feld anlegen, Feld bearbeiten, Feld löschen, Wert
+abbilden, Kernfeld schalten.
+
+**Der angezeigte Preis ist der bezahlte Preis.** Die Auswahl des Nachlaufs steht auf **Dokumentebene**:
+Jedes Dokument trägt in `documents.context_prefix_stamp` den Abdruck des Präfix, mit dem seine Chunks
+zuletzt eingebettet wurden (`ChunkContextPrefix#stampOf` über Titel und präfixwirksame Werte; der
+Strukturkontext hängt am Chunk und kann sich ohne Neu-Chunking nicht ändern). Eine präfixwirksame
+Schemaänderung leert diesen Abdruck bei **genau den Dokumenten, deren Präfix sich dadurch ändert** —
+dieselbe Menge, die die Vorschau zählt. Eine bibliotheksweite Markierung gäbe es nicht umsonst: Sie
+ließe die Vorschau „12 Dokumente" sagen und den Lauf danach 10.000 neu einbetten, und genau diese
+Überraschung ist der Grund, aus dem es die Anzeige überhaupt gibt.
+
+**Das Speichern setzt nichts in Bewegung.** Es markiert nur; gestartet wird der Nachlauf über `POST
+/api/v1/admin/indexing/context-prefix-rerun`, bibliotheksweise, von einer Person mit `SYSTEM_ADMIN` auf
+der Seite „Suche & Indexierung" — dieselbe Schranke wie beim Pipeline-Reindex und beim Bestandslauf,
+und aus demselben Grund: Es ist ein Systemprozess über einen ganzen Bestand. In den
+Bibliothekseinstellungen steht dafür der Hinweis „N Dokumente warten auf Neu-Einbetten" mit Verweis auf
+diese Seite — die Fachperson, die die Änderung veranlasst, ist selten selbst Administratorin.
+
+**Der Nachlauf ist kein zweiter Mechanismus.** Er läuft über dieselbe Chargen-Schleife
+(`DocumentBatchLoop`) wie Bestandslauf und Reindex, und seine Auswahl ist der eine Abdruck.
+Verarbeitungseinheit ist das Dokument, und seine Chunks bleiben: Sie werden **unter ihren eigenen IDs**
+neu eingebettet, Vektorzeile und `chunk_full_text` zusammen, ohne Neu-Chunking und ohne den
+gespeicherten Text anzufassen — Belege und Deep Links überleben. Ändert sich das Zerlegungsverfahren
+selbst, ist das weiterhin der reguläre Pipeline-Reindex nach Regel (d). Die vier Betriebszusagen gelten
+damit unverändert: Die Suche bleibt verfügbar (ein noch nicht neu eingebetteter Chunk bleibt gültig und
+auffindbar), der Mischzustand ist je Bibliothek abfragbar und erscheint in derselben Zustandsübersicht
+wie der übrige Indexzustand (siehe
+[Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)), die Wiederaufnahme ist
+dokumentgranular und idempotent (ein zweiter Lauf über bereits verarbeitete Dokumente kostet keinen
+Einbettungsaufruf), und Anhalten ist schlicht das Ausbleiben des nächsten Aufrufs. Ein Dokument, das
+nicht verarbeitet werden kann, behält alles, was es hatte, und bleibt ausstehend — nichts wird
+zerstört, bevor der Ersatz existiert. Jeder Aufruf wird auditiert
+(`INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED`, ein Eintrag je Aufruf, Objekt ist die Bibliothek).
+
+**Eine manuelle Korrektur eines präfixwirksamen Wertes bettet nicht sofort neu ein** (#1068): Sie leert
+den Abdruck dieses einen Dokuments und gibt es damit an den Nachlauf, dessen Start eine ausdrückliche
+Freigabe bleibt. Die Korrektur selbst bleibt, was sie war — ein JSON-Update der Chunk-Schlüssel ohne
+Modellaufruf. Ein Feld, das nur filtert oder nur im Beleg steht, lässt den Abdruck unangetastet.
+
+**Der Bestand vor #1072 trägt keinen Abdruck** und gilt damit unmittelbar nach dem Upgrade als
+ausstehend, ohne dass jemand etwas geändert hätte. Das ist der ehrliche Zustand — die Kernfeld-Titel
+gab es beim Einbetten dieser Chunks noch nicht —, aber es heißt, dass die erste Administratorin nach
+dem Upgrade „N Dokumente warten auf Neu-Einbetten" für den ganzen Bestand liest. Wann dieser eine
+Nachlauf gefahren wird, entscheidet sie; die Suche läuft bis dahin über den alten Stand.
+
+**Bewusst nicht gebaut.** Kein automatischer Start nach einer Schemaänderung; keine bibliotheksweite
+Markierung neben dem Abdruck je Dokument; keine installationsweite Voreinstellung für präfixwirksame
+Kernfelder; kein Präfix im gespeicherten Chunk-Text.
+
 ## Wirkstelle 3: Beleg-Anzeige
 
 Ein Beleg ist heute Dokument plus Fundstelle. Mit Metadaten wird er einordbar:
@@ -1232,8 +1533,8 @@ nachher:  § 3 Verwaltungsgebührensatzung, Fassung 2026 — Seite 4
 
 Drei Regeln:
 
-- **Der Beleg zeigt nur, was das Produkt verantworten kann.** Kernfelder und Bibliotheksfelder mit der
-  Wirkstelle „Beleg-Anzeige"; keine Schlagworte.
+- **Der Beleg zeigt nur, was das Produkt verantworten kann.** Kernfelder, Formatfelder und
+  Bibliotheksfelder mit der Wirkstelle „Beleg-Anzeige"; keine Schlagworte.
 - **Die Belegzeile bleibt lesbar: höchstens zwei Bibliotheksfelder** neben den Kernfeldern und der
   Fundstelle. Ein Beleg ist eine Zeile, die im Lesefluss der Antwort steht; trägt sie fünf Angaben,
   liest sie niemand mehr, und die eine Angabe, auf die es ankommt — die Fassung — geht in der
@@ -1452,6 +1753,13 @@ Daraus folgen drei bindende Punkte:
    trotz vorhandener Angabe" — die erste ist der stille Schaden, die zweite eine Lücke der
    Extraktionsregeln.
 
+   Die erste Stichprobe dieser Art liegt vor:
+   [Handausgewertete Stichprobe der Extraktionsgüte, 05.09.2026](../../eval/reports/metadata-extraction-sample-2026-09-05.md)
+   (Extraktionsversion 4 auf der Demo-Instanz). Ihr Ergebnis: Die deterministische Dokumentart ist
+   fehlerfrei, die modellgestützte trägt 93,9 % falsche Werte oberhalb der Konfidenzschwelle, und die
+   Konfidenz ist nicht trennscharf — die modellgestützte Extraktion der Dokumentart ist auf diesem
+   Bestand damit nicht abnahmefähig.
+
 ### Eintrittsbedingung für den Kernfeld-Filter
 
 Der `metadata_filter`-Korpus misst den Filter unter Idealbedingungen: Seine Dokumente tragen die
@@ -1483,11 +1791,11 @@ solange keine Füllstandsverteilung eines echten Bestands vorliegt.
 | 2 | **Deterministischer Bestandslauf** über den Altbestand, bibliotheksweise, mit den Nachlauf-Zusagen — **umgesetzt mit #1067**, siehe [Umgesetzt (#1067)](#umgesetzt-1067) | 1 | Die Kernfelder gelten für den vorhandenen Bestand, nicht nur für künftige Dokumente |
 | 3 | Manuelle Korrektur, Sammelzuweisung, Audit-Ereignis — **umgesetzt mit #1068**, siehe [Umgesetzt (#1068)](#umgesetzt-1068) — und Pflege-Anker („N ohne Wert", absolut und anteilig) samt drittem Zustand — **umgesetzt mit #1069**, siehe [Umgesetzt (#1069)](#umgesetzt-1069) | 1, 2 | Die Leerwert-Regel wird behebbar statt Dauerzustand |
 | 4 | Metadatenfilter in beiden Suchpfaden, mit Füllstandsanzeige je Feld — **vollständig umgesetzt**: Filter, API, Oberfläche und Füllstand mit #1070 (Teil 1), siehe [Umgesetzt (#1070, Teil 1)](#umgesetzt-1070-teil-1); Benchmark-Abnahme mit #1070 (Teil 2), siehe [`retrieval-benchmark.md`](./retrieval-benchmark.md#umgesetzt-1070-teil-2) | 2, 3, Hybrid-Suche AP 3 | Löst Szenario 9; die `metadata_filter`-Fälle werden erstmals lösbar |
-| 5 | Bibliotheksfelder: Schemakonfiguration je Bibliothek, Wertelisten mit bestätigter Abbildung | 1, 4 | Fassung und Rechtsebene werden führbar |
-| 6 | Metadaten im Kontextpräfix, mit Folgekostenanzeige und selektivem Nachlauf | 5, Ingestion Regel (b)/(d) | Wirkung auch ohne gesetzten Filter |
-| 7 | Modellgestützte Extraktion mit Konfidenz, je Bibliothek abschaltbar | 1, 5 | Felder, die deterministisch nicht erreichbar sind |
-| 8 | Freie Schlagworte (optional je Bibliothek) | 7, Volltextpfad | Zusätzlicher Fundweg bei Vokabellücken |
-| 9 | Geführter Assistent | 5, 7 | Bedienkomfort beim Anlegen; keine neue Fähigkeit |
+| 5 | Bibliotheksfelder: Schemakonfiguration je Bibliothek, Wertelisten mit bestätigter Abbildung — **umgesetzt mit #1071**, siehe [Umgesetzt (#1071)](#umgesetzt-1071) | 1, 4 | Fassung und Rechtsebene werden führbar |
+| 6 | Metadaten im Kontextpräfix, mit Folgekostenanzeige und selektivem Nachlauf — **umgesetzt mit #1072**, siehe [Umgesetzt (#1072)](#umgesetzt-1072) | 5, Ingestion Regel (b)/(d) | Wirkung auch ohne gesetzten Filter |
+| 7 | Modellgestützte Extraktion mit Konfidenz, je Bibliothek abschaltbar — **umgesetzt mit #1073**, siehe [Umgesetzt (#1073)](#umgesetzt-1073); gebaut, aber **nicht abgenommen** (Handstichprobe 05.09.2026, Nachkalibrierung in #1359) | 1, 5 | Felder, die deterministisch nicht erreichbar sind |
+| 8 | Freie Schlagworte (optional je Bibliothek) — **umgesetzt mit #1073**, siehe [Umgesetzt (#1073)](#umgesetzt-1073) | 7, Volltextpfad | Zusätzlicher Fundweg bei Vokabellücken |
+| 9 | Geführter Assistent — **offen**, als Issue #1362 aus dem Epic herausgeführt | 5, 7 | Bedienkomfort beim Anlegen; keine neue Fähigkeit |
 
 Paket 2 ist kein Nachzügler, sondern die Bedingung dafür, dass Paket 4 überhaupt beurteilbar ist: Ein
 Filter auf Felder, die nur bei den seit gestern aufgenommenen Dokumenten befüllt sind, lässt sich
@@ -1581,15 +1889,20 @@ Jede Zeile ist eine Entscheidung, keine Auslassung.
 
 Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung entschieden werden müssen.
 
-- **Ab welcher Konfidenz wird ein modellbefüllter Wert übernommen?** Die Regel „unsicher bleibt leer"
-  steht fest, die Schwelle nicht. Sie ist erst mit gemessenen Konfidenzverteilungen auf einem echten
-  Bestand festlegbar — und sie muss, wie jede Benchmark-Schwelle, **vor** dem ersten Variantenvergleich
-  festgelegt und committet sein.
+- ~~**Ab welcher Konfidenz wird ein modellbefüllter Wert übernommen?**~~ **Entschieden.** Vorab
+  festgelegt und committet nach [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md),
+  Maintainer-Freigabe 05.09.2026: **0,80**. Die erste Messung an einem echten Bestand liegt vor —
+  die Handstichprobe über 100 Dokumente (`eval/reports/metadata-extraction-sample-2026-09-05.md`)
+  weist die gemessene Verteilung aus (fünf Konfidenzstufen, 93,9 % falsch oberhalb 0,80, davon
+  100 % falsch auf der Stufe 0,85). Die Kalibrierungsregel verlangt daraus eine Anhebung auf
+  **0,90**; sie erfolgt mit #1359, zusammen mit der eigentlichen Ursache — der Vokabularlücke.
 - **Darf ein Filterwert aus der Frage abgeleitet werden, und wenn ja, wie sichtbar?** Die
   Ableitung ist der eigentliche Bedienkomfort („Galt das auch 2024?" ohne Filterklick), und ihr
   Fehlerfall ist besonders unangenehm. Denkbar ist ein Mittelweg: Ableiten, aber sichtbar als
-  gesetzter Filter anzeigen und mit einem Klick entfernbar machen. Zu entscheiden nach den ersten
-  Messwerten des gesetzten Filters, nicht davor.
+  gesetzter Filter anzeigen und mit einem Klick entfernbar machen. **Entschieden:** Die Messwerte des
+  gesetzten Filters liegen seit #1070 (Teil 2) vor; die Ableitung wird als eigenes Vorhaben verfolgt
+  (Issue #1363, außerhalb dieses Epics) und behält den sichtbaren, entfernbaren Filter als
+  Bedingung.
 - **Wie verhalten sich Fassungen zu den Gültigkeitszuständen des Dokumentlebenszyklus?**
   „archiviert"/„abgelaufen" (siehe
   [Ablauf und Archivierung](./data-indexing-rag.md#ablauf-und-archivierung-von-dokumenten--phase-2))
@@ -1597,12 +1910,17 @@ Nur Fragen, die tatsächlich offen sind und vor oder während der Umsetzung ents
   Zustand **nicht** in ein Schemafeld dupliziert wird, ist entschieden; wie beide in derselben Abfrage
   zusammenwirken — insbesondere ob eine Fassungsfrage abgelaufene Dokumente erreichen darf — ist es
   nicht.
-- **Woher kommt der Wertevorrat für `Rechtsebene` und `Dokumentart` bei einer Erweiterung?** Die
-  ausgelieferte Liste ist je Installation erweiterbar. Offen ist, ob eine Erweiterung auf
-  Organisationsebene oder je Bibliothek gilt — Ersteres hält das Vokabular zusammen, Letzteres passt
-  zur Ebene-3-Zuordnung des übrigen Schemas.
-- **Welcher Füllstand genügt, damit ein Kernfeld als Filter angeboten wird?** Vorab committet
-  (Koordinator-Festlegung 04.09.2026, siehe [Umgesetzt (#1070, Teil 1)](#umgesetzt-1070-teil-1)):
-  Dokumentart 0,90, Datum/Stand 0,75. Offen bleibt die Kalibrierung an der Demo-Instanz nach dem
-  Nachzug von #1263 — ob die Werte dort tragen, zeigt erst der Füllstandsnachweis auf dem echten
-  Bestand.
+- **Woher kommt der Wertevorrat für `Rechtsebene` und `Dokumentart` bei einer Erweiterung?**
+  **Teilweise entschieden:** Das Dokumentart-Vokabular ist heute **installationsweit** und wird über
+  Seed-Zeilen erweitert (`document_type_vocabulary`); die Bibliotheksfelder tragen ihre Wertelisten
+  dagegen je Bibliothek (#1071) — die Zuordnungsfrage stellt sich damit nur noch für die
+  Dokumentart. Die erste inhaltliche Erweiterung um Verwaltungswerte
+  (`LEISTUNGSBESCHREIBUNG`, `PRESSEMITTEILUNG`, `FAQ_MERKBLATT`) ist mit #1359 beauftragt; ob eine
+  Erweiterung künftig je Organisation gelten soll, bleibt offen.
+- ~~**Welcher Füllstand genügt, damit ein Kernfeld als Filter angeboten wird?**~~ **Entschieden.**
+  Vorab committet (Koordinator-Festlegung 04.09.2026, siehe
+  [Umgesetzt (#1070, Teil 1)](#umgesetzt-1070-teil-1)): Dokumentart **0,90**, Datum/Stand **0,75**.
+  Die Kalibrierung an der Demo-Instanz ist erfolgt (dritter Füllstandsnachweis am Epic #1065, nach
+  dem Nachzug von #1263/#1289): Die Schwellen tragen und wirken wie beabsichtigt — im Suchbereich
+  „alle Bibliotheken" wird keines der beiden Felder angeboten, in „Satzungen &
+  Gebührenordnungen" beide. Die Werte bleiben unverändert.

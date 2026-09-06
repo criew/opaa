@@ -11,6 +11,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIndexingIntegrationTest;
+import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -77,7 +78,8 @@ class ConfluencePageIndexingIntegrationTest {
   }
 
   @Test
-  void aRepresentativePageIsAnswerableAfterChunkingWithItsSectionSpaceAndHierarchy() {
+  void aRepresentativePageIsAnswerableAfterChunkingWithItsSectionSpaceAndHierarchy()
+      throws IOException {
     String storageBody =
         "<ac:structured-macro ac:name=\"toc\"/>"
             + "<h1>Zuständigkeiten</h1>"
@@ -92,14 +94,16 @@ class ConfluencePageIndexingIntegrationTest {
             + " BAU</ac:parameter></ac:structured-macro>";
 
     FileProcessingResult result =
-        fileProcessingService.processConfluencePage(
-            storageBody,
-            "Abschnitt 1.1",
-            PAGE_URL,
-            "3",
-            Instant.parse("2026-02-01T08:00:00Z"),
-            new SourceDocumentContext("ENG", "Handbuch / Kapitel 1"),
-            library);
+        fileProcessingService.ingest(
+            DocumentIngests.confluencePage(
+                library,
+                storageBody,
+                "Abschnitt 1.1",
+                PAGE_URL,
+                "3",
+                Instant.parse("2026-02-01T08:00:00Z"),
+                new SourceDocumentContext("ENG", "Handbuch / Kapitel 1")),
+            null);
 
     assertThat(result).isEqualTo(FileProcessingResult.PROCESSED);
     Document document =

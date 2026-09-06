@@ -38,9 +38,11 @@ public interface DocumentPipeline {
   Set<String> handledFormats();
 
   /**
-   * Parses and splits {@code source} into chunks, never throwing for a parse failure of {@code
-   * source} itself - that is reported as {@link DocumentPipelineResult.Outcome#PARSE_FAILED}. A
-   * pipeline that finds embedded objects without turning them into chunks reports them via {@link
+   * Parses and splits {@code source} into chunks. A parse failure of {@code source} itself is
+   * reported by throwing: {@link DocumentPipelineRunner} maps that to {@link
+   * DocumentPipelineResult.Outcome#PARSE_FAILED} for every format alike, which is why no pipeline
+   * carries a catch-and-map block of its own. A pipeline that finds embedded objects without
+   * turning them into chunks reports them via {@link
    * DocumentPipelineResult#discoveredAttachments()} (ADR-0022) and must honour {@link
    * DocumentPipelineSource#attachmentIndex()}; {@link DocumentPipelineRunner} owns the temp files.
    */

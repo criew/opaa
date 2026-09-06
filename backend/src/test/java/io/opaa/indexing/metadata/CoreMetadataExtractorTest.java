@@ -235,7 +235,9 @@ class CoreMetadataExtractorTest {
               "Beschaffungen in dieser Größenordnung beduerfen der Zustimmung des Rates.",
               "Die Tagesordnung wird zu Beginn der Sitzung festgestellt.",
               "Der Vorgang traegt einen Sperrvermerk.",
-              "Diese Gebuehrensatzung wurde am 12.03.2026 beschlossen.")) {
+              // Not "Gebuehrensatzung": that one is a seeded synonym and therefore an exact
+              // vocabulary term, which the title line is allowed to resolve.
+              "Diese Verwaltungsgebuehrensatzung wurde am 12.03.2026 beschlossen.")) {
         assertThat(
                 extract("anlage.pdf", DocumentProperties.EMPTY.withTitleLine(head))
                     .documentTypeCode())
@@ -444,12 +446,13 @@ class CoreMetadataExtractorTest {
                   .documentTypeCode())
           .contains("PRAESENTATION");
       assertThat(
-              extract("folien.odp", DocumentProperties.EMPTY.withFormatExtension(".odp"))
+              extract("anlage.odp", DocumentProperties.EMPTY.withFormatExtension(".odp"))
                   .documentTypeCode())
           .contains("PRAESENTATION");
-      // Only the two formats SupportedDocumentFormats admits as presentations.
+      // Only the two formats SupportedDocumentFormats admits as presentations. The file name stays
+      // neutral here: "folien" is a seeded synonym and would resolve without any format rule.
       assertThat(
-              extract("folien.ppt", DocumentProperties.EMPTY.withFormatExtension(".ppt"))
+              extract("anlage.ppt", DocumentProperties.EMPTY.withFormatExtension(".ppt"))
                   .documentTypeCode())
           .isEmpty();
     }
