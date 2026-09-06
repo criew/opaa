@@ -3,6 +3,7 @@ package io.opaa.library;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.indexing.source.s3.S3SourceSettings;
 import java.net.URI;
 import java.util.List;
 
@@ -16,6 +17,8 @@ import java.util.List;
  *     null} means the caller did not send one.
  * @param schedule {@code null} means the caller does not intend to change the schedule; the stored
  *     one stays untouched. Present (even if {@code DISABLED}) replaces it as a whole.
+ * @param s3Settings replaces an {@code S3} library's typed configuration as a whole when present;
+ *     {@code null} leaves the stored one untouched
  */
 public record LibraryUpdate(
     String name,
@@ -31,4 +34,5 @@ public record LibraryUpdate(
     LibraryScheduleUpdate schedule,
     ConfluenceEdition confluenceEdition,
     List<ConfluenceSpaceSelection> confluenceSpaces,
-    Integer confluenceFullSyncIntervalDays) {}
+    Integer confluenceFullSyncIntervalDays,
+    S3SourceSettings s3Settings) {}

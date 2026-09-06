@@ -7,7 +7,12 @@ import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibrarySchedule;
 import io.opaa.api.dto.LibraryScheduleRequest;
 import io.opaa.api.dto.LibraryUpdateRequest;
+import io.opaa.api.dto.S3ScopeRef;
+import io.opaa.api.dto.S3Settings;
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.s3.S3Scope;
+import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.library.ConfluenceSpaceSelection;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryCreation;
@@ -46,7 +51,8 @@ final class LibraryResponseMapper {
         request.getSourceInsecureSsl(),
         request.getConfluenceEdition(),
         toSelections(request.getConfluenceSpaces()),
-        request.getConfluenceFullSyncIntervalDays());
+        request.getConfluenceFullSyncIntervalDays(),
+        toS3Settings(request.getS3Settings()));
   }
 
   static LibraryUpdate toUpdate(LibraryUpdateRequest request) {
@@ -64,7 +70,47 @@ final class LibraryResponseMapper {
         toScheduleUpdate(request.getSchedule()),
         request.getConfluenceEdition(),
         toSelections(request.getConfluenceSpaces()),
-        request.getConfluenceFullSyncIntervalDays());
+        request.getConfluenceFullSyncIntervalDays(),
+        toS3Settings(request.getS3Settings()));
+  }
+
+  /**
+   * {@code null} stays {@code null} ("leave the settings alone"); the record validates buckets,
+   * prefixes, overlap and patterns on construction (ADR-0027, Entscheidung 2) and its German
+   * message becomes the 400 the caller sees.
+   */
+  private static S3SourceSettings toS3Settings(S3Settings settings) {
+    if (settings == null) {
+      return null;
+    }
+    try {
+      List<S3Scope> scopes =
+          settings.getScopes() == null
+              ? List.of()
+              : settings.getScopes().stream()
+                  .map(ref -> S3Scope.of(ref.getBucket(), ref.getPrefix()))
+                  .toList();
+      return new S3SourceSettings(
+          settings.getRegion(),
+          Boolean.TRUE.equals(settings.getPathStyle()),
+          scopes,
+          settings.getIncludePatterns(),
+          settings.getExcludePatterns());
+    } catch (S3Scope.InvalidS3ScopeException
+        | S3SourceSettings.InvalidS3SourceSettingsException e) {
+      throw new ValidationException("s3Settings: " + e.getMessage());
+    }
+  }
+
+  private static S3Settings toS3SettingsRef(S3SourceSettings settings) {
+    return new S3Settings(
+            settings.scopes().stream()
+                .map(scope -> new S3ScopeRef(scope.bucket()).prefix(scope.prefix()))
+                .toList())
+        .region(settings.region())
+        .pathStyle(settings.pathStyle())
+        .includePatterns(settings.includePatterns())
+        .excludePatterns(settings.excludePatterns());
   }
 
   /** {@code null} stays {@code null} ("leave the selection alone"), an empty list stays empty. */
@@ -116,6 +162,12 @@ final class LibraryResponseMapper {
       response
           .confluenceEdition(library.getSourceConfluenceEdition())
           .confluenceSpaces(toRefs(library.getConfluenceSpaces()));
+    }
+    S3SourceSettings s3Settings = library.getS3Settings();
+    if (library.getSourceType() == DocumentSourceType.S3 && s3Settings != null) {
+      // ADR-0027: the scopes are the scope every reader sees - visible like confluenceSpaces, and
+      // the record carries no credential by construction.
+      response.s3Settings(toS3SettingsRef(s3Settings));
     }
     LibraryManagementDetail managementDetail = detail.managementDetail();
     response

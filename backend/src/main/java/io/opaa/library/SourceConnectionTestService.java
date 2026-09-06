@@ -186,6 +186,10 @@ public class SourceConnectionTestService {
       case HTTP_DIRECTORY -> testHttpDirectory(effectiveRequest);
       case RSS_FEED -> testRssFeed(effectiveRequest);
       case CONFLUENCE -> testConfluence(effectiveRequest);
+      // the S3 probe arrives with #1376; until then the test is refused, never answered as ok
+      case S3 ->
+          throw new ValidationException(
+              "Der Verbindungstest für sourceType S3 ist noch nicht verfügbar");
     };
   }
 

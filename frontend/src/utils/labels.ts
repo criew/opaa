@@ -172,6 +172,7 @@ const documentSourceTypeLabels: Record<DocumentSourceType, string> = {
   HTTP_DIRECTORY: 'Webverzeichnis',
   RSS_FEED: 'RSS-Feed',
   CONFLUENCE: 'Confluence',
+  S3: 'S3-Objektspeicher',
 }
 
 export function documentSourceTypeLabel(
@@ -188,6 +189,7 @@ const documentSourceTypeDescriptions: Record<DocumentSourceType, string> = {
   HTTP_DIRECTORY: 'Eine interne Webadresse wird durchlaufen und indiziert.',
   RSS_FEED: 'Neue Beiträge werden laufend übernommen, Anhänge wahlweise.',
   CONFLUENCE: 'Ausgewählte Spaces eines Confluence (Cloud oder Data Center) werden eingelesen.',
+  S3: 'Buckets und Präfixe eines S3-kompatiblen Objektspeichers werden eingelesen.',
 }
 
 export function documentSourceTypeDescription(
@@ -204,7 +206,13 @@ export function documentSourceTypeDescription(
 // openapi-typescript erases enums to a type-only union - there is no runtime array to import
 // straight from the generated spec types - so this is the closest a purely frontend change gets
 // to "the template list follows the spec automatically" without a build-time codegen step.
-export const allDocumentSourceTypes = Object.keys(documentSourceTypeLabels) as DocumentSourceType[]
+export const allDocumentSourceTypes = (
+  Object.keys(documentSourceTypeLabels) as DocumentSourceType[]
+).filter(
+  // S3 can be created via the API (#1375) but has no wizard step yet - it joins the cards with
+  // the S3 step of #1377; until then the card would only lead to a rejected request.
+  (type) => type !== 'S3',
+)
 
 /**
  * Which configuration fields LibraryCreatePage renders and validates for each source type,
@@ -215,12 +223,14 @@ export const allDocumentSourceTypes = Object.keys(documentSourceTypeLabels) as D
  *   RSS_FEED - both run-based, URL-fetched source types with the identical configuration shape).
  * - 'confluence': base address, edition-dependent credentials and a space selection (CONFLUENCE,
  *   ADR-0023) - its own multi-stage flow, see LibraryCreatePage.
+ * - 's3': endpoint, static key and a scope selection (S3, ADR-0027) - no form yet, the wizard step
+ *   is #1377; the kind exists so nothing renders S3 as a path or URL template meanwhile.
  *
  * Just like documentSourceTypeLabels, this is a Record over the full DocumentSourceType union, so
  * a future enum value forces a compile error here instead of silently rendering as a template with
  * no configuration fields at all.
  */
-export type DocumentSourceConfigKind = 'none' | 'path' | 'url' | 'confluence'
+export type DocumentSourceConfigKind = 'none' | 'path' | 'url' | 'confluence' | 's3'
 
 export const documentSourceTypeConfigKind: Record<DocumentSourceType, DocumentSourceConfigKind> = {
   UPLOAD: 'none',
@@ -228,6 +238,7 @@ export const documentSourceTypeConfigKind: Record<DocumentSourceType, DocumentSo
   HTTP_DIRECTORY: 'url',
   RSS_FEED: 'url',
   CONFLUENCE: 'confluence',
+  S3: 's3',
 }
 
 // #513: German, understandable categories for a skipped/rejected item or error in a run's

@@ -1,6 +1,7 @@
 package io.opaa.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 import io.opaa.api.dto.ConfluenceSpaceRef;
@@ -8,6 +9,8 @@ import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibraryScheduleRequest;
 import io.opaa.api.dto.LibraryUpdateRequest;
+import io.opaa.api.dto.S3ScopeRef;
+import io.opaa.api.dto.S3Settings;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
@@ -15,6 +18,9 @@ import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.ScheduleFrequency;
 import io.opaa.api.types.ScheduleWeekday;
+import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.s3.S3Scope;
+import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.library.ConfluenceSpaceSelection;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryCreation;
@@ -327,6 +333,116 @@ class LibraryResponseMapperTest {
 
     // absent means "leave the selection alone", not "clear it"
     assertThat(LibraryResponseMapper.toUpdate(new LibraryUpdateRequest("Wiki")).confluenceSpaces())
+        .isNull();
+  }
+
+  @Test
+  void toCreationAndToUpdateCarryS3SettingsAndTranslateARefusedScopeIntoA400() {
+    LibraryRequest request =
+        new LibraryRequest("Protokolle", DocumentSourceType.S3)
+            .sourceUrl(URI.create("https://s3.example.org"))
+            .sourceCredentials("AKIA:geheim")
+            .s3Settings(
+                new S3Settings(
+                        List.of(
+                            new S3ScopeRef("protokolle").prefix("/2025"),
+                            new S3ScopeRef("satzungen")))
+                    .region("eu-central-1")
+                    .pathStyle(true)
+                    .includePatterns(List.of("**/*.pdf")));
+
+    LibraryCreation creation = LibraryResponseMapper.toCreation(request);
+
+    assertThat(creation.s3Settings().region()).isEqualTo("eu-central-1");
+    assertThat(creation.s3Settings().pathStyle()).isTrue();
+    assertThat(creation.s3Settings().scopes())
+        .containsExactly(S3Scope.of("protokolle", "2025/"), S3Scope.of("satzungen", ""));
+    assertThat(creation.s3Settings().includePatterns()).containsExactly("**/*.pdf");
+
+    LibraryUpdate update =
+        LibraryResponseMapper.toUpdate(
+            new LibraryUpdateRequest("Protokolle")
+                .s3Settings(new S3Settings(List.of(new S3ScopeRef("archiv")))));
+    assertThat(update.s3Settings().scopes()).containsExactly(S3Scope.of("archiv", ""));
+    assertThat(update.s3Settings().pathStyle()).isFalse();
+    // absent means "leave the settings alone", not "clear them"
+    assertThat(LibraryResponseMapper.toUpdate(new LibraryUpdateRequest("Protokolle")).s3Settings())
+        .isNull();
+
+    assertThatThrownBy(
+            () ->
+                LibraryResponseMapper.toCreation(
+                    new LibraryRequest("Kaputt", DocumentSourceType.S3)
+                        .s3Settings(new S3Settings(List.of(new S3ScopeRef("Grossbuchstaben"))))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("s3Settings:")
+        .hasMessageContaining("Bucket-Name");
+    assertThatThrownBy(
+            () ->
+                LibraryResponseMapper.toCreation(
+                    new LibraryRequest("Leer", DocumentSourceType.S3)
+                        .s3Settings(new S3Settings(List.of()))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Mindestens ein Geltungsbereich");
+    assertThatThrownBy(
+            () ->
+                LibraryResponseMapper.toCreation(
+                    new LibraryRequest("Doppelt", DocumentSourceType.S3)
+                        .s3Settings(
+                            new S3Settings(
+                                List.of(
+                                    new S3ScopeRef("dokumente").prefix("a/"),
+                                    new S3ScopeRef("dokumente").prefix("a/b/"))))))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("überschneiden");
+  }
+
+  @Test
+  void toResponseCarriesTheS3SettingsWithoutCredentialsAndNothingForOtherTypes() {
+    KnowledgeLibrary s3 =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Protokolle",
+            null,
+            UUID.randomUUID(),
+            LibraryVisibility.PRIVATE,
+            false,
+            DocumentSourceType.S3,
+            null,
+            "https://s3.example.org",
+            null,
+            "AKIA:hochgeheim",
+            false);
+    s3.updateS3Settings(
+        new S3SourceSettings(
+            "eu-central-1",
+            true,
+            List.of(S3Scope.of("protokolle", "2025/")),
+            List.of("**/*.pdf"),
+            List.of("**/~*")));
+
+    LibraryResponse response =
+        LibraryResponseMapper.toResponse(
+            new LibraryDetail(s3, AssetRole.VIEWER, 0, LibraryManagementDetail.EMPTY, false));
+
+    assertThat(response.getS3Settings().getRegion()).isEqualTo("eu-central-1");
+    assertThat(response.getS3Settings().getPathStyle()).isTrue();
+    assertThat(response.getS3Settings().getScopes())
+        .extracting(S3ScopeRef::getBucket, S3ScopeRef::getPrefix)
+        .containsExactly(tuple("protokolle", "2025/"));
+    assertThat(response.getS3Settings().getIncludePatterns()).containsExactly("**/*.pdf");
+    assertThat(response.getS3Settings().getExcludePatterns()).containsExactly("**/~*");
+    assertThat(response.toString()).doesNotContain("hochgeheim");
+    assertThat(response.getConfluenceSpaces()).isNull();
+
+    KnowledgeLibrary upload =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(), "Upload", null, UUID.randomUUID(), LibraryVisibility.PRIVATE, false);
+    assertThat(
+            LibraryResponseMapper.toResponse(
+                    new LibraryDetail(
+                        upload, AssetRole.VIEWER, 0, LibraryManagementDetail.EMPTY, false))
+                .getS3Settings())
         .isNull();
   }
 
