@@ -1715,10 +1715,14 @@ function LibraryDocumentsSection({
             </Typography>
             {/* ADR-0023 (#1136): a Confluence row names its space (resolved to the name the library's
               selection carries) and, where present, the page's position in the space's hierarchy -
-              without this a reader cannot tell which space a document belongs to. */}
+              without this a reader cannot tell which space a document belongs to. An S3 row names
+              its bucket and the key's folders below the scope prefix the same way (ADR-0027) - as
+              text, since an s3:// path is no link a browser could open. */}
             {document.sourceContainerKey && (
               <Typography variant="caption" color="text.secondary">
-                Space: {confluenceSpaceLabel(document.sourceContainerKey)}
+                {document.sourceType === 'S3'
+                  ? `Bucket: ${document.sourceContainerKey}`
+                  : `Space: ${confluenceSpaceLabel(document.sourceContainerKey)}`}
                 {document.sourceHierarchyPath ? ` · ${document.sourceHierarchyPath}` : ''}
               </Typography>
             )}

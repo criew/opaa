@@ -59,7 +59,7 @@ public class LibraryFolderService {
    * still bounding the recursive {@link #depthOfParentChain}/{@link #countDocumentsRecursive}/
    * {@link #deleteRecursive} walks this class performs.
    */
-  private static final int MAX_DEPTH = 10;
+  public static final int MAX_DEPTH = 10;
 
   private final LibraryFolderRepository folderRepository;
   private final KnowledgeLibraryRepository libraryRepository;
@@ -242,11 +242,12 @@ public class LibraryFolderService {
   /**
    * The source types whose folders mirror a crawled directory structure instead of being managed
    * through this service's CRUD methods: run-based types that actually have one ({@code
-   * HTTP_DIRECTORY} since #1277). {@code RSS_FEED} is deliberately absent - a feed has no directory
-   * structure to mirror.
+   * HTTP_DIRECTORY} since #1277, {@code S3} with its key prefixes since ADR-0027). {@code RSS_FEED}
+   * is deliberately absent - a feed has no directory structure to mirror.
    */
   private static final Set<DocumentSourceType> MIRRORED_SOURCE_TYPES =
-      Set.of(DocumentSourceType.FILESYSTEM, DocumentSourceType.HTTP_DIRECTORY);
+      Set.of(
+          DocumentSourceType.FILESYSTEM, DocumentSourceType.HTTP_DIRECTORY, DocumentSourceType.S3);
 
   /**
    * The internal counterpart to {@link #requireUploadLibrary}, guarding the opposite direction

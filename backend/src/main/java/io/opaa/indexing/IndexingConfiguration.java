@@ -491,9 +491,16 @@ public class IndexingConfiguration {
       S3ClientFactory s3ClientFactory,
       S3Properties s3Properties,
       FileProcessingService fileProcessingService,
+      DocumentRepository documentRepository,
+      LibraryFolderService libraryFolderService,
       IndexingRunTemplate indexingRunTemplate) {
     return new S3IndexingExecutor(
-        s3ClientFactory, s3Properties, fileProcessingService, indexingRunTemplate);
+        s3ClientFactory,
+        s3Properties,
+        fileProcessingService,
+        documentRepository,
+        libraryFolderService,
+        indexingRunTemplate);
   }
 
   /**

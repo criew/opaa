@@ -2098,6 +2098,45 @@ describe('LibraryDetailPage', () => {
       ).toBeInTheDocument()
     })
 
+    it("names an S3 document's bucket and key folders in its row, as text (ADR-0027)", async () => {
+      setLibraryState(
+        managerLibrary,
+        detailsOf(managerLibrary, {
+          sourceType: 'S3',
+          sourceUrl: 'https://minio.intern.example:9000',
+          s3Settings: {
+            region: 'us-east-1',
+            pathStyle: true,
+            scopes: [{ bucket: 'dokumente', prefix: '2025/' }],
+            includePatterns: [],
+            excludePatterns: [],
+          },
+        }),
+      )
+      mockGetLibraryDocuments.mockResolvedValueOnce(
+        pageOf([
+          {
+            id: 'doc-s3',
+            fileName: 'sitzung.pdf',
+            contentType: 'application/pdf',
+            fileSize: 512,
+            status: 'INDEXED',
+            sourceType: 'S3',
+            chunkCount: 2,
+            indexedAt: '2026-09-06T10:00:00Z',
+            uploadedByUserId: null,
+            sourceUrl: null,
+            sourceContainerKey: 'dokumente',
+            sourceHierarchyPath: 'protokolle / q1',
+          },
+        ]),
+      )
+      renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+      expect(await screen.findByText('Bucket: dokumente · protokolle / q1')).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /s3:\/\// })).not.toBeInTheDocument()
+    })
+
     it('fetches and opens the file as a Blob for a local (UPLOAD/FILESYSTEM) document', async () => {
       mockGetLibraryDocuments.mockResolvedValueOnce(
         pageOf([

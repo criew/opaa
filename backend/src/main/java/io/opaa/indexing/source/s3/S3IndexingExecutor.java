@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.s3;
 
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingRunEventRecorder;
@@ -12,6 +13,7 @@ import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryFolderService;
 import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -22,8 +24,10 @@ import org.springframework.scheduling.annotation.Async;
  * Executes indexing runs for {@link IndexingSourceType#S3} (ADR-0027): exactly one mode, the full
  * sync ({@link S3FullSync}) that lists every scope completely, fetches what its change feature says
  * has changed, and reports a complete listing so the run frame removes what it did not meet. The
- * run's store is bounded by the request budget and closed with the run; its throttling and request
- * cost are reported whether the sync succeeded or not.
+ * key prefixes below each scope are mirrored as read-only folders (ADR-0020, ADR-0027 Entscheidung
+ * 5) and pruned after the reconciliation. The run's store is bounded by the request budget and
+ * closed with the run; its throttling and request cost are reported whether the sync succeeded or
+ * not.
  */
 public class S3IndexingExecutor implements SourceIndexingExecutor {
 
@@ -32,16 +36,22 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
   private final S3ClientFactory clientFactory;
   private final S3Properties properties;
   private final FileProcessingService fileProcessingService;
+  private final DocumentRepository documentRepository;
+  private final LibraryFolderService folderService;
   private final IndexingRunTemplate runTemplate;
 
   public S3IndexingExecutor(
       S3ClientFactory clientFactory,
       S3Properties properties,
       FileProcessingService fileProcessingService,
+      DocumentRepository documentRepository,
+      LibraryFolderService folderService,
       IndexingRunTemplate runTemplate) {
     this.clientFactory = clientFactory;
     this.properties = properties;
     this.fileProcessingService = fileProcessingService;
+    this.documentRepository = documentRepository;
+    this.folderService = folderService;
     this.runTemplate = runTemplate;
   }
 
@@ -84,7 +94,14 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
       throw accessFailure(run, e);
     }
     try (store) {
-      return new S3FullSync(run, store, settings, properties, fileProcessingService)
+      return new S3FullSync(
+              run,
+              store,
+              settings,
+              properties,
+              fileProcessingService,
+              documentRepository,
+              folderService)
           .run(settings.scopes());
     } finally {
       reportThrottling(store, run.events());

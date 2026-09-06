@@ -26,6 +26,7 @@ import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.time.Duration;
@@ -61,6 +62,7 @@ class S3IndexingExecutorMinioTest {
   private IndexingRunEventRepository eventRepository;
   private DocumentRepository documentRepository;
   private StaleDocumentCleanupService cleanupService;
+  private LibraryFolderService folderService;
 
   @BeforeAll
   static void seed() throws Exception {
@@ -94,6 +96,7 @@ class S3IndexingExecutorMinioTest {
         .thenAnswer(invocation -> List.copyOf(storedDocuments));
     cleanupService =
         spy(new StaleDocumentCleanupService(documentRepository, mock(VectorChunkStore.class)));
+    folderService = mock(LibraryFolderService.class);
   }
 
   private S3IndexingExecutor executor() {
@@ -103,6 +106,8 @@ class S3IndexingExecutorMinioTest {
         new S3ClientFactory(properties, TargetAddressValidator.disabled()),
         properties,
         fileProcessingService,
+        documentRepository,
+        folderService,
         new IndexingRunTemplate(
             indexingJobService,
             eventRepository,

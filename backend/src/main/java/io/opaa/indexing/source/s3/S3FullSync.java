@@ -1,7 +1,9 @@
 package io.opaa.indexing.source.s3;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIngest;
+import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
@@ -11,13 +13,18 @@ import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.ReconcilingAttachmentAccess;
+import io.opaa.indexing.source.SourceFolderMirror;
+import io.opaa.library.LibraryFolderService;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +57,12 @@ final class S3FullSync {
   private final S3ObjectStore store;
   private final S3Properties properties;
   private final FileProcessingService fileProcessingService;
+  private final DocumentRepository documentRepository;
   private final S3KeyPatterns patterns;
+  private final SourceFolderMirror folderMirror;
+
+  /** Whether bucket and prefix segments open every folder chain - a library with several scopes. */
+  private final boolean scopeRootChain;
 
   /** The scopes behind an incomplete listing as {@code bucket/prefix}, in the order met. */
   private final Set<String> unlistableScopeKeys = new LinkedHashSet<>();
@@ -65,12 +77,17 @@ final class S3FullSync {
       S3ObjectStore store,
       S3SourceSettings settings,
       S3Properties properties,
-      FileProcessingService fileProcessingService) {
+      FileProcessingService fileProcessingService,
+      DocumentRepository documentRepository,
+      LibraryFolderService folderService) {
     this.frame = frame;
     this.store = store;
     this.properties = properties;
     this.fileProcessingService = fileProcessingService;
+    this.documentRepository = documentRepository;
     this.patterns = S3KeyPatterns.of(settings);
+    this.folderMirror = new SourceFolderMirror(folderService, frame.library());
+    this.scopeRootChain = settings.scopes().size() > 1;
   }
 
   ListingOutcome run(List<S3Scope> scopes) throws InterruptedException {
@@ -91,6 +108,9 @@ final class S3FullSync {
           unlistableScopeKeys);
       return ListingOutcome.incomplete(List.copyOf(unlistableScopeKeys));
     }
+    // folders are pruned only after the document cleanup of a complete listing, so a folder
+    // emptied by that cleanup goes in the same run (ADR-0020, like FILESYSTEM and HTTP_DIRECTORY)
+    frame.afterReconciliation(reconciled -> folderMirror.prune());
     return ListingOutcome.complete();
   }
 
@@ -172,6 +192,11 @@ final class S3FullSync {
       frame.progress().recordSkipped();
       return;
     }
+    // A row an earlier run stored keeps (or receives) its folder whatever this run does with the
+    // object - a rejected object with a row still has a place in the structure.
+    Optional<Document> existing =
+        documentRepository.findByLibraryIdAndFilePath(frame.library().getId(), filePath);
+    existing.ifPresent(document -> mirrorFolder(scope, key, document));
     if (object.isArchived()) {
       skip(
           IndexingEventCategory.REJECTED,
@@ -192,7 +217,7 @@ final class S3FullSync {
       return;
     }
     String marker = S3ChangeMarker.of(object);
-    if (marker != null && frame.isUnchanged(filePath, marker)) {
+    if (marker != null && existing.filter(document -> document.isUnchangedAt(marker)).isPresent()) {
       log.debug("Skipping unchanged S3 object: {}", filePath);
       frame.progress().recordSkipped();
       return;
@@ -202,6 +227,49 @@ final class S3FullSync {
     }
     download(scope, object, filePath, fileName, marker);
     frame.progress().report();
+  }
+
+  /**
+   * The folder the object's key maps to (ADR-0027, Entscheidung 5), materialised through the run's
+   * mirror; a segment no folder row can carry leaves the object at the root, a chain deeper than
+   * the folder limit is cut - both with a warning, never with a made-up name.
+   */
+  private UUID folderFor(S3Scope scope, String key, String filePath) {
+    S3FolderPath path = S3FolderPath.of(scope, key, scopeRootChain);
+    if (path.rejected()) {
+      log.warn(
+          "Cannot map key segment \"{}\" of {} to a folder name - leaving the document at the"
+              + " library root",
+          path.rejectedSegment(),
+          filePath);
+    } else if (path.truncated()) {
+      log.warn(
+          "Key {} nests deeper than {} folders - placing the document in the deepest allowed one",
+          filePath,
+          S3FolderPath.MAX_DEPTH);
+    }
+    UUID folderId = folderMirror.folderFor(path.segments());
+    folderMirror.markSeen(folderId);
+    return folderId;
+  }
+
+  /** Places an existing row and its attachments in the object's folder; a failure is logged. */
+  private void mirrorFolder(S3Scope scope, String key, Document document) {
+    try {
+      applyFolder(document, folderFor(scope, key, document.getFilePath()));
+    } catch (Exception e) {
+      log.warn("Failed to mirror the source folder of {}", document.getFilePath(), e);
+    }
+  }
+
+  private void applyFolder(Document document, UUID folderId) {
+    if (!Objects.equals(document.getFolderId(), folderId)) {
+      document.setFolderId(folderId);
+      documentRepository.save(document);
+    }
+    for (Document child : documentRepository.findByParentDocumentId(document.getId())) {
+      applyFolder(child, folderId);
+    }
   }
 
   /** The {@code HeadObject} of an extension-less key: admitted when its content type is. */
@@ -250,6 +318,7 @@ final class S3FullSync {
       SourceDocumentContext context =
           new SourceDocumentContext(scope.bucket(), hierarchyPath(scope, object.key()));
       ReconcilingAttachmentAccess attachmentAccess = frame.attachmentAccess(context);
+      UUID folderId = folderFor(scope, object.key(), filePath);
       FileProcessingResult result =
           fileProcessingService.ingest(
               DocumentIngest.builder(frame.library())
@@ -259,11 +328,16 @@ final class S3FullSync {
                   .sourceType(DocumentSourceType.S3)
                   .context(context)
                   .changeMarker(changeMarker)
+                  .folder(folderId)
                   .build(),
               attachmentAccess);
       if (frame.recordOutcome(result, filePath)) {
         frame.markReprocessed(filePath);
         log.info("Indexed S3 object: {}", filePath);
+        // the mail attachments a re-parse enumerated are new rows without a folder of their own
+        documentRepository
+            .findByLibraryIdAndFilePath(frame.library().getId(), filePath)
+            .ifPresent(document -> applyFolder(document, folderId));
       } else if (result == FileProcessingResult.SKIPPED) {
         // a new feature over the same bytes (multipart re-upload, re-encryption): the row keeps
         // its id and chunks, only the feature was refreshed
