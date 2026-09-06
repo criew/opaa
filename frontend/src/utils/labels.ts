@@ -206,13 +206,7 @@ export function documentSourceTypeDescription(
 // openapi-typescript erases enums to a type-only union - there is no runtime array to import
 // straight from the generated spec types - so this is the closest a purely frontend change gets
 // to "the template list follows the spec automatically" without a build-time codegen step.
-export const allDocumentSourceTypes = (
-  Object.keys(documentSourceTypeLabels) as DocumentSourceType[]
-).filter(
-  // S3 can be created via the API (#1375) but has no wizard step yet - it joins the cards with
-  // the S3 step of #1377; until then the card would only lead to a rejected request.
-  (type) => type !== 'S3',
-)
+export const allDocumentSourceTypes = Object.keys(documentSourceTypeLabels) as DocumentSourceType[]
 
 /**
  * Which configuration fields LibraryCreatePage renders and validates for each source type,
@@ -223,8 +217,8 @@ export const allDocumentSourceTypes = (
  *   RSS_FEED - both run-based, URL-fetched source types with the identical configuration shape).
  * - 'confluence': base address, edition-dependent credentials and a space selection (CONFLUENCE,
  *   ADR-0023) - its own multi-stage flow, see LibraryCreatePage.
- * - 's3': endpoint, static key and a scope selection (S3, ADR-0027) - no form yet, the wizard step
- *   is #1377; the kind exists so nothing renders S3 as a path or URL template meanwhile.
+ * - 's3': endpoint, region and addressing style from a provider template, a static key and one to
+ *   fifty scopes (S3, ADR-0027) - its own staged form, see S3SourceForm.
  *
  * Just like documentSourceTypeLabels, this is a Record over the full DocumentSourceType union, so
  * a future enum value forces a compile error here instead of silently rendering as a template with

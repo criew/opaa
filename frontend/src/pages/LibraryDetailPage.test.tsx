@@ -735,6 +735,45 @@ describe('LibraryDetailPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('shows an S3 library with its scopes in the page head, the configuration card and "Bearbeiten" (#1377)', async () => {
+    const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
+    setLibraryState(
+      ownerLibrary,
+      detailsOf(ownerLibrary, {
+        sourceType: 'S3',
+        sourceUrl: 'https://minio.intern.example:9000',
+        sourceCredentialsSet: true,
+        s3Settings: {
+          region: 'eu-central-1',
+          pathStyle: true,
+          scopes: [
+            { bucket: 'protokolle', prefix: '2025/' },
+            { bucket: 'satzungen', prefix: null },
+          ],
+          includePatterns: ['**/*.pdf'],
+          excludePatterns: [],
+        },
+      }),
+    )
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(await screen.findByTestId('s3-sharing-consequence')).toHaveTextContent(
+      'für alle Leseberechtigten dieser Bibliothek sichtbar',
+    )
+    expect(screen.getByText('protokolle/2025/')).toBeInTheDocument()
+    expect(screen.getByText('satzungen')).toBeInTheDocument()
+
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('tab', { name: 'Indizierung' }))
+    expect(
+      await screen.findByRole('button', { name: /^quellkonfiguration bearbeiten$/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('https://minio.intern.example:9000')).toBeInTheDocument()
+    expect(screen.getByText(/eu-central-1/)).toBeInTheDocument()
+    expect(screen.getByText(/Path-Style/)).toBeInTheDocument()
+    expect(screen.getByText(/\*\*\/\*\.pdf/)).toBeInTheDocument()
+  })
+
   it('shows a Confluence library read-only with edition and spaces, and still offers "Bearbeiten" (#1135)', async () => {
     const ownerLibrary = { ...managerLibrary, myRole: 'MANAGER' as const }
     setLibraryState(

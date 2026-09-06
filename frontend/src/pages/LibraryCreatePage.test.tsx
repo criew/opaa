@@ -13,11 +13,13 @@ vi.mock('react-router', async () => {
   return { ...actual, useNavigate: () => mockNavigate }
 })
 
-const { mockGetMyGroups, mockTestLibrarySource, mockListConfluenceSpaces } = vi.hoisted(() => ({
-  mockGetMyGroups: vi.fn().mockResolvedValue([]),
-  mockTestLibrarySource: vi.fn(),
-  mockListConfluenceSpaces: vi.fn(),
-}))
+const { mockGetMyGroups, mockTestLibrarySource, mockListConfluenceSpaces, mockListS3Buckets } =
+  vi.hoisted(() => ({
+    mockGetMyGroups: vi.fn().mockResolvedValue([]),
+    mockTestLibrarySource: vi.fn(),
+    mockListConfluenceSpaces: vi.fn(),
+    mockListS3Buckets: vi.fn(),
+  }))
 
 vi.mock('../services/api', async () => {
   const actual = await vi.importActual<typeof import('../services/api')>('../services/api')
@@ -27,6 +29,7 @@ vi.mock('../services/api', async () => {
     getUserSummaries: vi.fn().mockResolvedValue([]),
     testLibrarySource: mockTestLibrarySource,
     listConfluenceSpaces: mockListConfluenceSpaces,
+    listS3Buckets: mockListS3Buckets,
   }
 })
 
@@ -58,6 +61,125 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
     expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
     await user.type(screen.getByLabelText(/Name/), 'Rechtsquellen Soziales')
     expect(screen.getByRole('button', { name: 'Weiter' })).toBeEnabled()
+  })
+
+  describe('S3 origin (#1377, ADR-0027)', () => {
+    beforeEach(() => {
+      mockTestLibrarySource.mockReset()
+      mockListS3Buckets.mockReset()
+    })
+
+    async function openS3Step() {
+      const user = userEvent.setup()
+      renderPage()
+      await user.type(screen.getByLabelText(/^Name/), 'Protokolle')
+      await user.click(screen.getByRole('button', { name: 'Weiter' }))
+      await user.click(screen.getByRole('radio', { name: /S3-Objektspeicher/ }))
+      return user
+    }
+
+    it('offers the S3 card, states the sharing consequence before the scopes, and blocks Weiter until the stages are complete', async () => {
+      const user = await openS3Step()
+
+      const consequence = screen.getByTestId('library-create-s3-sharing-consequence')
+      const scopes = screen.getByRole('list', { name: 'Geltungsbereiche' })
+      expect(consequence).toHaveTextContent(
+        'Wer diese Bibliothek lesen darf, sieht alles aus allen Geltungsbereichen.',
+      )
+      expect(
+        consequence.compareDocumentPosition(scopes) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+
+      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      expect(screen.getByText('Endpoint des Objektspeichers ist erforderlich')).toBeInTheDocument()
+      await user.type(screen.getByLabelText('Endpoint'), 'https://minio.intern.example:9000')
+      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      expect(screen.getByText('Access Key ist erforderlich')).toBeInTheDocument()
+    }, 15000)
+
+    it('creates a MinIO library with the template values and sends s3Settings', async () => {
+      // the bucket suggestion itself is covered in S3SourceForm.test.tsx; this flow types by hand
+      const user = await openS3Step()
+      await user.type(screen.getByLabelText('Endpoint'), 'https://minio.intern.example:9000')
+      await user.type(screen.getByLabelText('Access Key'), 'AKIAEXAMPLE')
+      await user.type(screen.getByLabelText('Secret Key'), 'geheim')
+      await user.type(screen.getByLabelText('Bucket 1'), 'protokolle')
+      await user.type(screen.getByLabelText(/^Präfix 1/), '2025/protokolle')
+      await user.click(screen.getByRole('button', { name: 'Bereich' }))
+      await user.type(screen.getByLabelText('Bucket 2'), 'satzungen')
+      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+      await waitFor(() =>
+        expect(mockCreateNewLibrary).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'Protokolle',
+            sourceType: 'S3',
+            sourceUrl: 'https://minio.intern.example:9000',
+            sourceCredentials: 'AKIAEXAMPLE:geheim',
+            sourceInsecureSsl: false,
+            s3Settings: {
+              region: 'us-east-1',
+              pathStyle: true,
+              scopes: [
+                { bucket: 'protokolle', prefix: '2025/protokolle/' },
+                { bucket: 'satzungen', prefix: null },
+              ],
+              includePatterns: [],
+              excludePatterns: [],
+            },
+          }),
+        ),
+      )
+      expect(mockCreateNewLibrary.mock.calls[0][0]).not.toHaveProperty('confluenceSpaces')
+      expect(mockTriggerIndexing).toHaveBeenCalledWith('lib-neu', 'S3')
+      expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu')
+    }, 30000)
+
+    it('creates an AWS library from the template with a derived virtual-host endpoint', async () => {
+      const user = await openS3Step()
+      await user.click(screen.getByRole('radio', { name: 'AWS S3' }))
+      expect(screen.getByLabelText('Endpoint')).toHaveValue('https://s3.eu-central-1.amazonaws.com')
+      await user.type(screen.getByLabelText('Access Key'), 'AKIAEXAMPLE')
+      await user.type(screen.getByLabelText('Secret Key'), 'geheim')
+      await user.type(screen.getByLabelText('Bucket 1'), 'verwaltung-dokumente')
+      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+      await waitFor(() =>
+        expect(mockCreateNewLibrary).toHaveBeenCalledWith(
+          expect.objectContaining({
+            sourceType: 'S3',
+            sourceUrl: 'https://s3.eu-central-1.amazonaws.com',
+            s3Settings: expect.objectContaining({
+              region: 'eu-central-1',
+              pathStyle: false,
+              scopes: [{ bucket: 'verwaltung-dokumente', prefix: null }],
+            }),
+          }),
+        ),
+      )
+    }, 20000)
+
+    it('refuses overlapping scopes before anything is sent', async () => {
+      const user = await openS3Step()
+      await user.type(screen.getByLabelText('Endpoint'), 'https://minio.intern.example:9000')
+      await user.type(screen.getByLabelText('Access Key'), 'AKIAEXAMPLE')
+      await user.type(screen.getByLabelText('Secret Key'), 'geheim')
+      await user.type(screen.getByLabelText('Bucket 1'), 'dokumente')
+      await user.type(screen.getByLabelText(/^Präfix 1/), '2025')
+      await user.click(screen.getByRole('button', { name: 'Bereich' }))
+      await user.type(screen.getByLabelText('Bucket 2'), 'dokumente')
+      await user.type(screen.getByLabelText(/^Präfix 2/), '2025/q1')
+      await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
+
+      expect(
+        screen.getByText(
+          /Die Geltungsbereiche „dokumente\/2025\/“ und „dokumente\/2025\/q1\/“ überschneiden sich/,
+        ),
+      ).toBeInTheDocument()
+      expect(mockCreateNewLibrary).not.toHaveBeenCalled()
+    }, 20000)
   })
 
   describe('Confluence origin (#1135, ADR-0023)', () => {

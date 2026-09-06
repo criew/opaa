@@ -1,10 +1,16 @@
-import type { ConfluenceEdition, ConfluenceSpaceRef, DocumentSourceType } from '../types/api'
+import type {
+  ConfluenceEdition,
+  ConfluenceSpaceRef,
+  DocumentSourceType,
+  S3Settings,
+} from '../types/api'
 import {
   confluenceCredentialsOf,
   validateConfluenceValues,
   type ConfluenceSourceValues,
 } from './confluenceSource'
 import { documentSourceTypeConfigKind } from './labels'
+import { s3CredentialsOf, s3SettingsOf, validateS3Values, type S3SourceValues } from './s3Source'
 
 /** Raw, untyped field state as entered in LibraryCreatePage/EditLibrarySourceDialog. */
 export interface LibrarySourceFieldValues {
@@ -15,6 +21,10 @@ export interface LibrarySourceFieldValues {
   sourceInsecureSsl: boolean
   /** Only read for configKind 'confluence' (ADR-0023). */
   confluence?: ConfluenceSourceValues
+  /** Only read for configKind 's3' (ADR-0027). */
+  s3?: S3SourceValues
+  /** Edit mode with a stored key (S3): the key fields may stay empty. */
+  s3CredentialsStored?: boolean
 }
 
 /**
@@ -30,6 +40,7 @@ export interface LibrarySourceConfigPayload {
   sourceInsecureSsl: boolean
   confluenceEdition?: ConfluenceEdition
   confluenceSpaces?: ConfluenceSpaceRef[]
+  s3Settings?: S3Settings
 }
 
 /**
@@ -43,11 +54,17 @@ export interface LibrarySourceConfigPayload {
  */
 export function validateLibrarySourceFields(
   sourceType: DocumentSourceType,
-  values: Pick<LibrarySourceFieldValues, 'sourcePath' | 'sourceUrl' | 'confluence'>,
+  values: Pick<
+    LibrarySourceFieldValues,
+    'sourcePath' | 'sourceUrl' | 'confluence' | 's3' | 's3CredentialsStored'
+  >,
 ): string | null {
   const configKind = documentSourceTypeConfigKind[sourceType]
   if (configKind === 'confluence') {
     return validateConfluenceValues(values.confluence)
+  }
+  if (configKind === 's3') {
+    return validateS3Values(values.s3, Boolean(values.s3CredentialsStored))
   }
   const trimmedPath = values.sourcePath.trim()
   if (configKind === 'path' && !trimmedPath) {
@@ -79,6 +96,16 @@ export function deriveLibrarySourceConfigPayload(
   values: LibrarySourceFieldValues,
 ): LibrarySourceConfigPayload {
   const configKind = documentSourceTypeConfigKind[sourceType]
+  if (configKind === 's3' && values.s3) {
+    const s3 = values.s3
+    return {
+      sourceUrl: s3.sourceUrl.trim(),
+      sourceProxy: s3.sourceProxy.trim() || undefined,
+      sourceCredentials: s3CredentialsOf(s3),
+      sourceInsecureSsl: s3.sourceInsecureSsl,
+      s3Settings: s3SettingsOf(s3),
+    }
+  }
   if (configKind === 'confluence' && values.confluence) {
     const c = values.confluence
     return {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_CONFLUENCE_VALUES } from './confluenceSource'
+import { EMPTY_S3_VALUES } from './s3Source'
 import {
   deriveLibrarySourceConfigPayload,
   sameLibrarySourceOrigin,
@@ -76,6 +77,52 @@ describe('deriveLibrarySourceConfigPayload', () => {
     })
     expect(payload.sourceCredentials).toBeUndefined()
     expect(payload.confluenceEdition).toBe('DATA_CENTER')
+  })
+})
+
+describe('S3 (#1377, ADR-0027)', () => {
+  const s3 = {
+    ...EMPTY_S3_VALUES,
+    sourceUrl: ' https://minio.intern.example:9000 ',
+    sourceProxy: ' proxy.intern:3128 ',
+    accessKey: 'AKIAEXAMPLE',
+    secretKey: 'geheim',
+    scopes: [{ bucket: 'dokumente', prefix: '2025' }],
+    excludePatterns: '**/~*',
+  }
+
+  it('derives endpoint, key and settings and nothing of the other types', () => {
+    expect(deriveLibrarySourceConfigPayload('S3', { ...generic, s3 })).toEqual({
+      sourceUrl: 'https://minio.intern.example:9000',
+      sourceProxy: 'proxy.intern:3128',
+      sourceCredentials: 'AKIAEXAMPLE:geheim',
+      sourceInsecureSsl: false,
+      s3Settings: {
+        region: 'us-east-1',
+        pathStyle: true,
+        scopes: [{ bucket: 'dokumente', prefix: '2025/' }],
+        includePatterns: [],
+        excludePatterns: ['**/~*'],
+      },
+    })
+  })
+
+  it('validates through the S3 stages and lets a stored key stand in edit mode', () => {
+    expect(validateLibrarySourceFields('S3', { ...generic, s3 })).toBeNull()
+    expect(
+      validateLibrarySourceFields('S3', {
+        ...generic,
+        s3: { ...s3, accessKey: '', secretKey: '' },
+      }),
+    ).toBe('Access Key ist erforderlich')
+    expect(
+      validateLibrarySourceFields('S3', {
+        ...generic,
+        s3: { ...s3, accessKey: '', secretKey: '' },
+        s3CredentialsStored: true,
+      }),
+    ).toBeNull()
+    expect(validateLibrarySourceFields('S3', { ...generic })).toMatch(/Endpoint/)
   })
 })
 

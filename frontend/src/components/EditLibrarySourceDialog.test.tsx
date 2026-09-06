@@ -46,6 +46,11 @@ vi.mock('../services/api', async () => {
     getLibrary: vi.fn(async () => undefined),
     testLibrarySource: mockTestLibrarySource,
     listConfluenceSpaces: mockListConfluenceSpaces,
+    listS3Buckets: vi.fn(async () => ({
+      listingPermitted: true,
+      buckets: ['protokolle'],
+      message: null,
+    })),
   }
 })
 
@@ -495,6 +500,94 @@ describe('EditLibrarySourceDialog', () => {
 
       expect(mockUpdateLibrary).not.toHaveBeenCalled()
     })
+  })
+
+  describe('S3 library (#1377, ADR-0027)', () => {
+    const s3Library = {
+      name: 'Protokolle',
+      description: null,
+      visibility: 'SHARED' as const,
+      listed: false,
+      sourceType: 'S3' as const,
+      sourcePath: null,
+      sourceUrl: 'https://minio.intern.example:9000',
+      sourceProxy: null,
+      sourceInsecureSsl: false,
+      sourceCredentialsSet: true,
+      s3Settings: {
+        region: 'us-east-1',
+        pathStyle: true,
+        scopes: [{ bucket: 'protokolle', prefix: '2025/' }],
+        includePatterns: ['**/*.pdf'],
+        excludePatterns: [],
+      },
+    }
+
+    it('prefills the stored settings, keeps the stored key and saves the new scopes as a whole', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog open onClose={() => {}} libraryId="lib-s3" library={s3Library} />,
+      )
+
+      expect(screen.getByLabelText('Endpoint')).toHaveValue('https://minio.intern.example:9000')
+      expect(screen.getByLabelText('Bucket 1')).toHaveValue('protokolle')
+      expect(screen.getByLabelText(/^Präfix 1/)).toHaveValue('2025/')
+      expect(screen.getByLabelText('Neuer Secret Key')).toHaveValue('')
+      expect(screen.getByRole('status')).toHaveTextContent(/Ein entfernter Bereich verschwindet/)
+
+      await user.click(screen.getByRole('button', { name: 'Bereich' }))
+      await user.type(screen.getByLabelText('Bucket 2'), 'satzungen')
+      await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+      await waitFor(() => expect(mockUpdateLibrary).toHaveBeenCalledTimes(1))
+      const [, request] = mockUpdateLibrary.mock.calls[0]
+      expect(request.sourceUrl).toBe('https://minio.intern.example:9000')
+      expect(request.sourceCredentials).toBeUndefined()
+      expect(request.s3Settings).toEqual({
+        region: 'us-east-1',
+        pathStyle: true,
+        scopes: [
+          { bucket: 'protokolle', prefix: '2025/' },
+          { bucket: 'satzungen', prefix: null },
+        ],
+        includePatterns: ['**/*.pdf'],
+        excludePatterns: [],
+      })
+    }, 15000)
+
+    it('closes on Escape and returns focus (docs/design/accessibility.md §2.1)', async () => {
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+      renderWithProviders(
+        <EditLibrarySourceDialog open onClose={onClose} libraryId="lib-s3" library={s3Library} />,
+      )
+
+      await user.click(screen.getByLabelText('Endpoint'))
+      await user.keyboard('{Escape}')
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('requires both halves of a new key and drops the stored one on a host change', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog open onClose={() => {}} libraryId="lib-s3" library={s3Library} />,
+      )
+
+      await user.type(screen.getByLabelText('Neuer Access Key'), 'AKIANEU')
+      await user.click(screen.getByRole('button', { name: 'Speichern' }))
+      expect(screen.getByText('Secret Key ist erforderlich')).toBeInTheDocument()
+      expect(mockUpdateLibrary).not.toHaveBeenCalled()
+
+      await user.clear(screen.getByLabelText('Neuer Access Key'))
+      const endpoint = screen.getByLabelText('Endpoint')
+      await user.clear(endpoint)
+      await user.type(endpoint, 'https://other.example:9000')
+      expect(
+        screen.getByText(
+          /der hinterlegte Schlüssel gilt dort nicht und muss neu eingegeben werden/,
+        ),
+      ).toBeInTheDocument()
+    }, 15000)
   })
 
   describe('Confluence library (#1135, ADR-0023)', () => {
