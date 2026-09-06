@@ -81,7 +81,8 @@ class SourceConnectionTestServiceTest {
             new IndexingProperties(1000, 0, 50, null, null, null, null, 0),
             TargetAddressValidator.disabled(),
             SourceRequestPolicy.defaults(),
-            org.mockito.Mockito.mock(ConfluenceConnectionService.class));
+            org.mockito.Mockito.mock(ConfluenceConnectionService.class),
+            org.mockito.Mockito.mock(S3ConnectionService.class));
   }
 
   @AfterEach
@@ -466,7 +467,8 @@ class SourceConnectionTestServiceTest {
                 0),
             TargetAddressValidator.disabled(),
             SourceRequestPolicy.defaults(),
-            org.mockito.Mockito.mock(ConfluenceConnectionService.class));
+            org.mockito.Mockito.mock(ConfluenceConnectionService.class),
+            org.mockito.Mockito.mock(S3ConnectionService.class));
     String html = "<table>" + "x".repeat(100) + "</table>";
     server.createContext(
         "/dir/",
@@ -606,7 +608,8 @@ class SourceConnectionTestServiceTest {
                 0),
             TargetAddressValidator.disabled(),
             SourceRequestPolicy.defaults(),
-            org.mockito.Mockito.mock(ConfluenceConnectionService.class));
+            org.mockito.Mockito.mock(ConfluenceConnectionService.class),
+            org.mockito.Mockito.mock(S3ConnectionService.class));
     String rss =
         """
         <?xml version="1.0"?>
@@ -662,7 +665,8 @@ class SourceConnectionTestServiceTest {
                 0),
             TargetAddressValidator.disabled(),
             SourceRequestPolicy.defaults(),
-            org.mockito.Mockito.mock(ConfluenceConnectionService.class));
+            org.mockito.Mockito.mock(ConfluenceConnectionService.class),
+            org.mockito.Mockito.mock(S3ConnectionService.class));
     String rss =
         "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel>"
             + "x".repeat(50)

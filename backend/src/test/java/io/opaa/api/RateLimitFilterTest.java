@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,15 +45,18 @@ class RateLimitFilterTest {
     Map<String, RateLimitService> perIpLimiters = new LinkedHashMap<>();
     perIpLimiters.put("^/api/v1/query", queryLimiter);
     perIpLimiters.put("^/api/v1/libraries/([^/]+)/indexing$", indexingLimiter);
-    // #514/PR #537 review, finding 3: mirrors RateLimitConfiguration's own registration of
-    // POST /api/v1/libraries/source-test.
-    perIpLimiters.put("^/api/v1/libraries/source-test$", sourceTestLimiter);
+    // #514/PR #537 review, finding 3: mirrors RateLimitConfiguration's own registration of the
+    // probe endpoints - the connection test and the two listings share one bucket.
+    perIpLimiters.put(
+        "^/api/v1/libraries/(?:source-test|confluence/spaces|s3/buckets)$", sourceTestLimiter);
     perIpLimiters.put("^/api/v1/libraries/([^/]+)/confluence-webhook$", webhookLimiter);
 
     Map<String, RateLimitService> globalLimiters = new LinkedHashMap<>();
     globalLimiters.put("^/api/v1/query", globalQueryLimiter);
     globalLimiters.put("^/api/v1/libraries/([^/]+)/indexing$", globalIndexingLimiter);
-    globalLimiters.put("^/api/v1/libraries/source-test$", globalSourceTestLimiter);
+    globalLimiters.put(
+        "^/api/v1/libraries/(?:source-test|confluence/spaces|s3/buckets)$",
+        globalSourceTestLimiter);
     globalLimiters.put("^/api/v1/libraries/([^/]+)/confluence-webhook$", globalWebhookLimiter);
     when(globalWebhookLimiter.isAllowed(anyString())).thenReturn(true);
 
@@ -143,6 +147,26 @@ class RateLimitFilterTest {
     assertThat(chain.getRequest()).isNull();
     verify(webhookLimiter).isAllowed("203.0.113.7:" + library);
     verify(indexingLimiter, never()).isAllowed(anyString());
+  }
+
+  @Test
+  void theListingsShareTheSourceTestBucket() throws Exception {
+    // ADR-0027: the bucket listing is the same kind of outbound probe as the connection test and
+    // the space listing - one limiter, keyed by the client alone
+    when(sourceTestLimiter.isAllowed(anyString())).thenReturn(false);
+    for (String path :
+        List.of("/api/v1/libraries/s3/buckets", "/api/v1/libraries/confluence/spaces")) {
+      var request = new MockHttpServletRequest("POST", path);
+      request.setRemoteAddr("203.0.113.7");
+      var response = new MockHttpServletResponse();
+      var chain = new MockFilterChain();
+
+      filter.doFilter(request, response, chain);
+
+      assertThat(response.getStatus()).as(path).isEqualTo(429);
+      assertThat(chain.getRequest()).isNull();
+    }
+    verify(sourceTestLimiter, org.mockito.Mockito.times(2)).isAllowed("203.0.113.7");
   }
 
   @Test
