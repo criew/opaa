@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.s3;
 
 import io.opaa.api.types.DocumentSourceType;
+import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
@@ -27,6 +28,7 @@ import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -224,6 +226,7 @@ final class S3FullSync implements AutoCloseable {
     try {
       for (String reference : references.stream().sorted().toList()) {
         checkReported(reference);
+        frame.progress().report();
       }
       drainAll();
     } catch (S3AccessException.BudgetExhausted e) {
@@ -272,10 +275,16 @@ final class S3FullSync implements AutoCloseable {
       return;
     }
     listed++;
+    // the head already judged the archive state (a completed restore reads normally), so the
+    // summary carries the class only when the object really is unreadable
     visitObject(
         scope,
         new S3ObjectSummary(
-            key, head.eTag(), head.size(), head.lastModified(), head.storageClass()));
+            key,
+            head.eTag(),
+            head.size(),
+            head.lastModified(),
+            head.archived() ? head.storageClass() : null));
   }
 
   /** Removes the document under {@code filePath} with every attachment below it, deepest first. */
@@ -286,7 +295,7 @@ final class S3FullSync implements AutoCloseable {
       frame.progress().recordSkipped();
       return;
     }
-    removeWithAttachments(document.get(), new java.util.HashSet<>());
+    removeWithAttachments(document.get(), new HashSet<>());
     frame.markAbsent(filePath);
     frame.progress().recordSkipped();
   }
@@ -792,18 +801,25 @@ final class S3FullSync implements AutoCloseable {
   }
 
   /** The run's figures in one German sentence - what an operator reads throughput against. */
+  private boolean eventRun() {
+    return frame.runMode() == IndexingRunMode.EVENT;
+  }
+
   private String summaryMessage() {
     S3RequestMeter meter = store.meter();
+    long checked =
+        frame.progress().processedCount()
+            + frame.progress().skippedCount()
+            + frame.progress().failedCount();
     StringBuilder message =
         new StringBuilder()
             .append(meter.requests())
             .append(" Anfragen, ")
             .append(formatBytes(meter.bytesDownloaded()))
             .append(" geladen; ")
-            .append(listed)
-            .append(" Objekte gelistet, ")
-            .append(excludedKeys)
-            .append(" durch Muster ausgeschlossen, ")
+            .append(eventRun() ? checked : listed)
+            .append(eventRun() ? " gemeldete Objekte geprüft, " : " Objekte gelistet, ")
+            .append(eventRun() ? "" : excludedKeys + " durch Muster ausgeschlossen, ")
             .append(frame.progress().skippedCount())
             .append(" übersprungen, ")
             .append(frame.progress().processedCount())
@@ -839,6 +855,18 @@ final class S3FullSync implements AutoCloseable {
   }
 
   private ListingOutcome recordBudgetExhausted(S3AccessException.BudgetExhausted e) {
+    if (eventRun()) {
+      // no next event run continues this batch: the scheduled run covers the rest
+      frame
+          .events()
+          .recordRunNote(
+              IndexingEventCategory.BUDGET_EXHAUSTED,
+              "Anfragebudget von "
+                  + e.budget()
+                  + " Anfragen erschöpft; die übrigen gemeldeten Objekte nimmt der nächste"
+                  + " geplante Lauf auf");
+      return ListingOutcome.truncated();
+    }
     frame
         .events()
         .recordRunNote(

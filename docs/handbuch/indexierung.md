@@ -573,7 +573,8 @@ Jeder Lauf zeigt zusätzlich eine Kennzahlenzeile mit Anhängen (indiziert, übe
 fehlgeschlagen) und Dauer. Anfragen an die Quelle und Drosselungen erscheinen bei den Konnektoren,
 die sie zählen (Confluence, S3), geladene Bytes bei S3. Bei Confluence und S3 kommen außerdem das
 Kennzeichen „unvollständig, wird fortgesetzt" und die dauerhaft sichtbare Warnung einer
-unvollständigen Auflistung hinzu; die Betriebsart nur bei Confluence.
+unvollständigen Auflistung hinzu; die Betriebsart bei Confluence (Vollabgleich, inkrementell) und
+S3 (Vollabgleich, Ereignislauf).
 
 Systemweit sieht ein Systemadministrator zusätzlich eine Liste der Dokumente **ohne einen
 einzigen Chunk**, der typische Befund für eingescannte PDFs, sowie den Pipeline-Versionsstand je

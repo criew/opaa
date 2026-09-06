@@ -94,7 +94,18 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
   public void execute(UUID jobId, KnowledgeLibrary targetLibrary, IndexingRunMode runMode) {
     if (runMode == IndexingRunMode.EVENT) {
       // an event run without reported keys has nothing to check - the frame ends it cleanly
-      runTemplate.run(jobId, targetLibrary, runMode, this, run -> ListingOutcome.partial());
+      runTemplate.run(
+          jobId,
+          targetLibrary,
+          runMode,
+          this,
+          run -> {
+            run.events()
+                .recordRunNote(
+                    IndexingEventCategory.SUMMARY,
+                    "Ereignislauf ohne gemeldete Objekte - nichts zu prüfen");
+            return ListingOutcome.partial();
+          });
       return;
     }
     runTemplate.run(jobId, targetLibrary, runMode, this, this::indexScopes);

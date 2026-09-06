@@ -37,6 +37,14 @@ class S3EventAuthenticationTest {
         .as("the token is the password, never the user name")
         .isFalse();
     assertThat(S3EventAuthentication.verify("Basic %%%", null, TOKEN)).isFalse();
+    assertThat(
+            S3EventAuthentication.verify(
+                "Basic "
+                    + Base64.getEncoder().encodeToString(TOKEN.getBytes(StandardCharsets.UTF_8)),
+                null,
+                TOKEN))
+        .as("no user:password separator is no Basic credential")
+        .isFalse();
     assertThat(S3EventAuthentication.verify("Digest " + TOKEN, null, TOKEN)).isFalse();
     assertThat(S3EventAuthentication.verify(null, "falsch", TOKEN)).isFalse();
     assertThat(S3EventAuthentication.verify(null, null, TOKEN)).isFalse();

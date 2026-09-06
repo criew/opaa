@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -36,7 +37,6 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.scheduling.TaskScheduler;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -191,8 +191,8 @@ class S3EventServiceTest {
 
     scheduled.clear();
     acceptWithBearer(records("fremd/x.pdf"));
-    scheduled.get(0).run();
-    verify(indexingJobService, org.mockito.Mockito.times(1)).startJob(any(), any(), any(), any());
+    assertThat(scheduled).as("nothing inside the scopes: no timer, no run").isEmpty();
+    verify(indexingJobService, times(1)).startJob(any(), any(), any(), any());
   }
 
   @Test
@@ -229,7 +229,5 @@ class S3EventServiceTest {
 
     verify(indexingJobService, never()).startJob(any(), any(), any(), any());
     verifyNoInteractions(executor);
-    ArgumentCaptor<Runnable> none = ArgumentCaptor.forClass(Runnable.class);
-    assertThat(none.getAllValues()).isEmpty();
   }
 }

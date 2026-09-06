@@ -295,8 +295,9 @@ angezeigt, verschlüsselt abgelegt wie das Token, jederzeit neu erzeugbar oder e
 Audit-Protokoll als `LIBRARY_SOURCE_UPDATED` mit dem Feldnamen, nie mit dem Wert) und hinterlegt es in
 Confluence — Data Center signiert jede Nachricht damit (`X-Hub-Signature`, HMAC-SHA256 über den
 Rohkörper), eine Cloud-Automation-Regel „Web-Anfrage senden“ schickt es als Header
-`X-OPAA-Webhook-Secret` mit. Der Eingang `POST /api/v1/libraries/{id}/confluence-webhook` ist der
-einzige Pfad unter `/api/v1`, der ohne Sitzung erreichbar ist; er antwortet auf jede nicht
+`X-OPAA-Webhook-Secret` mit. Der Eingang `POST /api/v1/libraries/{id}/confluence-webhook` ist —
+neben dem S3-Ereigniseingang `s3-events` (#1381) — einer von zwei Pfaden unter `/api/v1`, die ohne
+Sitzung erreichbar sind; er antwortet auf jede nicht
 authentifizierte Anfrage gleichförmig mit `401`, ist je Bibliothek ratenbegrenzt
 (`OPAA_RATE_LIMIT_WEBHOOK_*`) und liest aus dem Körper nur die genannten Seiten-IDs — **nicht die
 Ereignisart**. Die gemeldeten Seiten werden je Bibliothek gesammelt

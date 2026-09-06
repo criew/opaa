@@ -4,6 +4,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -14,6 +16,7 @@ import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.source.s3.events.S3EventService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,7 +82,7 @@ class S3EventPublicAccessTest {
         .andExpect(status().isAccepted());
 
     verify(eventService).accept(eq(libraryId), eq(BODY), eq("Bearer minio-auth-token"), eq(null));
-    org.mockito.Mockito.verifyNoInteractions(oidcAuthenticationManagerResolver);
+    verifyNoInteractions(oidcAuthenticationManagerResolver);
   }
 
   @Test
@@ -102,7 +105,7 @@ class S3EventPublicAccessTest {
   @Test
   void anOversizedBodyIsRefusedBeforeItReachesTheIntake() throws Exception {
     byte[] oversized = new byte[ConfluenceWebhookController.MAX_BODY_BYTES + 1];
-    java.util.Arrays.fill(oversized, (byte) ' ');
+    Arrays.fill(oversized, (byte) ' ');
 
     mockMvc
         .perform(
@@ -111,7 +114,7 @@ class S3EventPublicAccessTest {
                 .content(oversized))
         .andExpect(status().isPayloadTooLarge());
 
-    org.mockito.Mockito.verifyNoInteractions(eventService);
+    verifyNoInteractions(eventService);
   }
 
   @Test
@@ -125,9 +128,7 @@ class S3EventPublicAccessTest {
         .andExpect(status().isUnauthorized());
     // a GET on the intake path is not the intake: the own chain matches POST only
     mockMvc
-        .perform(
-            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
-                "/api/v1/libraries/" + libraryId + "/s3-events"))
+        .perform(get("/api/v1/libraries/" + libraryId + "/s3-events"))
         .andExpect(status().isUnauthorized());
   }
 }

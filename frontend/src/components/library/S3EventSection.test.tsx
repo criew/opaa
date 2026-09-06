@@ -60,7 +60,14 @@ describe('S3EventSection (#1381, ADR-0027)', () => {
     expect(dialog).toHaveTextContent(
       'mc event add ALIAS/dokumente arn:minio:sqs::opaa:webhook --event put,delete --prefix "2025/"',
     )
-    expect(dialog).toHaveTextContent('mc event add ALIAS/satzungen')
+    expect(dialog).toHaveTextContent(
+      'mc event add ALIAS/satzungen arn:minio:sqs::opaa:webhook --event put,delete',
+    )
+    expect(dialog).not.toHaveTextContent(
+      'ALIAS/satzungen arn:minio:sqs::opaa:webhook --event put,delete --prefix',
+    )
+    // jsdom serves http://localhost - the plaintext warning shows, and would not under https
+    expect(screen.getByTestId('s3-event-insecure-origin')).toBeInTheDocument()
     expect(dialog).toHaveTextContent(/X-OPAA-Webhook-Secret/)
     expect(dialog).toHaveTextContent('opaa:ereignis-token-43@')
     expect(loadLibraryDetails).toHaveBeenCalledWith('lib-1')
@@ -76,9 +83,7 @@ describe('S3EventSection (#1381, ADR-0027)', () => {
     renderWithProviders(<S3EventSection libraryId="lib-1" tokenSet={true} scopes={scopes} />)
     const user = userEvent.setup()
 
-    expect(
-      screen.getByText(/eingerichtet — Änderungen werden sofort aufgenommen/),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/Token hinterlegt/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Benachrichtigung entfernen' }))
     expect(mockRemove).not.toHaveBeenCalled()
     const confirmDialog = await screen.findByRole('dialog', {

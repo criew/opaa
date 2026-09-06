@@ -117,8 +117,9 @@ public class S3EventService {
           dropped,
           parsed.events().size());
     }
-    if (admitted.isEmpty() && dropped == 0) {
-      log.debug("S3 event notification for library {} named no object - nothing queued", libraryId);
+    if (admitted.isEmpty()) {
+      // nothing inside the scopes: no timer, no run - a dropped count was logged above
+      log.debug("S3 event notification for library {} named no object to check", libraryId);
       return;
     }
     enqueue(libraryId, admitted, dropped);
@@ -167,15 +168,6 @@ public class S3EventService {
       return;
     }
     KnowledgeLibrary library = loaded.get();
-    if (batch.keys.isEmpty() && !batch.overflowed) {
-      // every reported object lay outside the scopes: nothing to check, nothing to start
-      log.info(
-          "S3 event batch for library {} named {} objects outside the scopes and none inside -"
-              + " no run",
-          libraryId,
-          batch.dropped);
-      return;
-    }
     if (indexingJobService.isJobRunning(library.getId(), library.getOrganizationId())) {
       defer(libraryId, batch);
       return;

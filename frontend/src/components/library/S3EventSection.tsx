@@ -64,15 +64,27 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
     }
   }
 
-  const buckets = Array.from(new Set(scopes.map((scope) => scope.bucket)))
-  const firstScope = scopes[0]
-  const prefixOption = firstScope?.prefix ? ` --prefix "${firstScope.prefix}"` : ''
+  // one subscription per scope, each with its own prefix - a bucket listed twice with two
+  // prefixes needs two lines, a bucket without prefix one without --prefix
+  const subscriptions = Array.from(
+    new Map(
+      scopes.map((scope) => [
+        `${scope.bucket}\u0000${scope.prefix ?? ''}`,
+        `mc event add ALIAS/${scope.bucket} arn:minio:sqs::opaa:webhook --event put,delete${
+          scope.prefix ? ` --prefix "${scope.prefix}"` : ''
+        }`,
+      ]),
+    ).values(),
+  )
+  const insecureOrigin = window.location.protocol !== 'https:'
 
   return (
     <Box data-testid="s3-event-section">
       <Typography variant="body2">
         <strong>Ereignisbenachrichtigung:</strong>{' '}
-        {tokenSet ? 'eingerichtet — Änderungen werden sofort aufgenommen' : 'nicht eingerichtet'}
+        {tokenSet
+          ? 'Token hinterlegt — gemeldete Änderungen werden wenige Sekunden später geprüft'
+          : 'nicht eingerichtet'}
       </Typography>
       <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.25 }}>
         Der Objektspeicher kann OPAA über erzeugte und gelöschte Objekte benachrichtigen; die
@@ -147,6 +159,12 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
             Dieses Token wird nur jetzt angezeigt. Hinterlegen Sie es im Objektspeicher, bevor Sie
             den Dialog schließen — danach lässt es sich nur noch neu erzeugen.
           </Alert>
+          {insecureOrigin && (
+            <Alert severity="error" sx={{ mb: 2 }} data-testid="s3-event-insecure-origin">
+              Diese Adresse ist nicht über https erreichbar. Der Objektspeicher würde das Token
+              unverschlüsselt senden — für den Betrieb OPAA hinter TLS betreiben.
+            </Alert>
+          )}
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
             Token
           </Typography>
@@ -178,10 +196,7 @@ export default function S3EventSection({ libraryId, tokenSet, scopes }: S3EventS
             {[
               `mc admin config set ALIAS notify_webhook:opaa endpoint="${revealed?.url ?? ''}" auth_token="${revealed?.token ?? ''}"`,
               'mc admin service restart ALIAS',
-              ...buckets.map(
-                (bucket) =>
-                  `mc event add ALIAS/${bucket} arn:minio:sqs::opaa:webhook --event put,delete${prefixOption}`,
-              ),
+              ...subscriptions,
             ].join('\n')}
           </Typography>
           <Typography variant="body2" sx={{ mb: 0.5 }}>

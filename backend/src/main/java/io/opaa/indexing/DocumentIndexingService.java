@@ -190,7 +190,11 @@ public class DocumentIndexingService {
                 + " ist für Bibliotheken vom Typ "
                 + library.getSourceType()
                 + " nicht verfügbar; möglich: "
-                + supported.stream().sorted().map(Enum::name).collect(Collectors.joining(", ")));
+                + supported.stream()
+                    .filter(mode -> mode != IndexingRunMode.EVENT)
+                    .sorted()
+                    .map(Enum::name)
+                    .collect(Collectors.joining(", ")));
       }
       return requested;
     }

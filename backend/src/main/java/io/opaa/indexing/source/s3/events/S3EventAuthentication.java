@@ -52,12 +52,17 @@ public final class S3EventAuthentication {
     return matched;
   }
 
-  /** The password half of a Basic credential; an undecodable value compares as empty. */
+  /**
+   * The password half of a Basic credential; an undecodable value or one without the {@code
+   * user:password} separator compares as empty.
+   */
   private static byte[] basicPassword(String encoded) {
     try {
       String decoded = new String(Base64.getDecoder().decode(encoded), StandardCharsets.UTF_8);
       int colon = decoded.indexOf(':');
-      return (colon < 0 ? decoded : decoded.substring(colon + 1)).getBytes(StandardCharsets.UTF_8);
+      return colon < 0
+          ? new byte[0]
+          : decoded.substring(colon + 1).getBytes(StandardCharsets.UTF_8);
     } catch (IllegalArgumentException e) {
       return new byte[0];
     }
