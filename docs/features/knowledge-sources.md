@@ -337,7 +337,9 @@ Einrichtungsassistent, 3-Stunden-Testlizenz, Administrator, zwei Token mit unter
 Space-Rechten und ein definierter Testinhalt vollautomatisch — und prüft Editionserkennung,
 Space-Auflistung, Seiten- und Anhangsabruf und das sichtbare Überspringen nicht lesbarer Inhalte
 dagegen; in CI nächtlich und je PR per Label `confluence-suite`, nie im regulären Build. Cloud lässt
-sich nicht containerisieren und bleibt Sache des Testdoppels. Weitere Quellklassen kommen bedarfsgetrieben hinzu, jede
+sich nicht containerisieren und bleibt Sache des Testdoppels. Als sechster Typ ist **`S3`** geplant
+(Epic #1291, [ADR-0027](../decisions/0027-s3-konnektor.md)), siehe
+[S3-Objektspeicher](#s3-objektspeicher-geplant). Weitere Quellklassen kommen bedarfsgetrieben hinzu, jede
 als neuer Bibliothekstyp (Template); die Anbindung an Dokumentenmanagement und elektronische Akte
 gehört in den Ausblick der Produktvision.
 
@@ -577,6 +579,57 @@ Auslösen darf, wer an der Bibliothek mindestens `EDITOR` ist, wie bei jedem lau
 Zeitplan (#485) und Zielprüfung (#267) gelten wie bei der Verzeichnisliste; die Zielprüfung greift
 hier zusätzlich auf jede Detailseite und jede Anlage, und für fremde Ursprünge werden weder
 Zugangsdaten noch eine ausgesetzte Zertifikatsprüfung angewendet.
+
+### S3-Objektspeicher (geplant)
+
+Eine Bibliothek vom Typ `S3` liest Objekte aus einem S3-kompatiblen Objektspeicher — AWS S3, MinIO,
+Ceph RGW, Hetzner Object Storage und jeder weitere Dienst, der die S3-API mit Signature v4 bedient
+(Epic #1291, [ADR-0027](../decisions/0027-s3-konnektor.md)). Sie trägt den Endpoint als Adresse,
+die Zugangsdaten (`accessKey:secretKey[:sessionToken]`, verschlüsselt, nie zurückgegeben) und im
+neuen typisierten Feld `source_settings` Region, Adressstil (Path-Style oder Virtual-Host),
+Ein-/Ausschlussmuster auf den Objektschlüssel und **einen bis fünfzig Geltungsbereiche** aus Bucket
+und optionalem Präfix. Zwei Bereiche derselben Bibliothek dürfen sich nicht überlappen; zwei
+Bibliotheken dürfen denselben Bereich tragen (getrennter Bestand, getrennte Freigabe). **Die
+Freigabe der Bibliothek gilt für alle Bereiche gemeinsam** — der Wizard sagt das, bevor Bereiche
+eingetragen werden. `ListBuckets` ist Komfort; ein Schlüssel ohne dieses Recht bekommt die manuelle
+Eingabe, keinen Fehler.
+
+**Konnektor-Vertrag.** Ein Lauf ist immer ein **Vollabgleich**: Er listet jeden Bereich seitenweise
+vollständig (`ListObjectsV2`, 1000 Schlüssel je Aufruf), vergleicht **ETag und Größe** mit dem
+gespeicherten Änderungsmerkmal, lädt nur Abweichendes in eine temporäre Datei mit Byte-Obergrenze
+und übergibt es der Dokumentstrecke, deren SHA-256 verbindlich bleibt (der ETag ist bei
+Multipart-Uploads und serverseitiger Verschlüsselung kein Inhaltshash). Ordnermarker (`…/`, null
+Bytes) und Objekte in Archivklassen (`GLACIER`, `DEEP_ARCHIVE`, nicht wiederhergestellte
+Archivstufen) werden mit Protokolleintrag übersprungen und gelten als gesehen; der Vorfilter aus
+Endung und `Content-Type` spart Bandbreite, entscheidet aber nichts. Verschwundenes wird **nur nach
+vollständiger, erfolgreicher Auflistung aller Bereiche** entfernt; ein Bereich ohne Leserecht (`403`)
+oder ohne Bucket (`404`) macht die Auflistung unvollständig, steht im Laufprotokoll und lässt den
+Bestand stehen. Eine inkrementelle Betriebsart gibt es nicht — S3 kennt keine Änderungssuche, und die
+vollständige Auflistung ist billig genug, um die Regelbetriebsart zu sein. Identität ist
+`s3://bucket/key`; Umbenennen ist ein neues Dokument; in versionierten Buckets zählt nur die aktuelle
+Version, ein Löschmarker gilt als gelöscht. Schlüsselpräfixe werden wie bei `HTTP_DIRECTORY` als
+schreibgeschützte Ordner gespiegelt (bei mehreren Bereichen unter je einem Wurzelordner
+`bucket/prefix`); Mail-Objekte gehen über den Anhangsweg (ADR-0022). Einen Beleg-Link gibt es im
+ersten Ausbau nicht — ein `s3://`-Pfad öffnet kein Browser, vorsignierte Links sind Zielbild.
+
+**Ereignisse als Beschleuniger.** Ein sitzungsloser Eingang `POST /api/v1/libraries/{id}/s3-events`
+nimmt S3-Ereignisbenachrichtigungen an (MinIO-Webhook, Ceph-RGW-Topic, AWS EventBridge
+API-Destination), gesichert über ein je Bibliothek erzeugtes Token (`Authorization: Bearer`, HTTP
+Basic mit dem Token als Passwort oder `X-OPAA-Webhook-Secret`; jede nicht authentifizierte Anfrage
+antwortet gleichförmig `401`). Ein Ereignis ist ein Hinweis: `ObjectCreated` führt zu `HeadObject`
+und dem Weg des Vollabgleichs, `ObjectRemoved` löscht das Dokument samt Anhängen erst, wenn
+`HeadObject` mit `404` bestätigt, dass das Objekt weg ist. Der Ereignislauf (`EVENT`) löscht nie
+durch Abwesenheit; verlorene Ereignisse holt der nächste geplante Lauf nach. SNS-Handshake und
+SQS-Abfrage sind nicht Teil des ersten Ausbaus.
+
+**Grenzen.** Nextcloud und ownCloud sind kein Ziel: Beide nutzen S3 als Primärspeicher mit opaken
+Objektnamen (`urn:oid:<id>`), Dateinamen und Ordner stehen nur in ihrer Datenbank; nur ein als
+externer Speicher eingebundener Bucket ist ein lesbarer S3-Bucket. Hetzner Object Storage bietet
+keine Bucket-Benachrichtigungen. Die schlüssellose Anmeldung über die Instanzrolle ist Zielbild,
+weil sie jeder Bibliothek die Identität des Hosts gäbe. Der Endpoint unterliegt der Zielprüfung
+(#267): Ein internes MinIO braucht den Eintrag in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, und die
+Fehlermeldung nennt ihn. Objektmetadaten und Tags als Metadatenquelle, Rechteübernahme aus
+Bucket-Policies und schreibender Zugriff sind ausdrücklich außerhalb des Umfangs.
 
 ---
 
