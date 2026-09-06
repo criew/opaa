@@ -3,12 +3,20 @@ package io.opaa.group;
 import io.opaa.api.types.GroupKind;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface GroupRepository extends JpaRepository<Group, UUID> {
+
+  /**
+   * Namespace of {@link #lockIdentityProviderGroups}'s advisory locks - see {@code
+   * AssetGrantRepository#ASSET_GRANT_MUTATION_LOCK_NAMESPACE} for the list every namespace is
+   * registered in.
+   */
+  int IDENTITY_PROVIDER_GROUP_LOCK_NAMESPACE = 204;
 
   List<Group> findByOrganizationId(UUID organizationId);
 
@@ -40,4 +48,31 @@ public interface GroupRepository extends JpaRepository<Group, UUID> {
       "select distinct g from Group g left join fetch g.memberships "
           + "where g.organizationId = :organizationId and g.kind = io.opaa.api.types.GroupKind.ORG_UNIT")
   List<Group> findByOrganizationIdAndKindOrgUnit(@Param("organizationId") UUID organizationId);
+
+  /**
+   * The external ids of the {@link GroupKind#IDENTITY_PROVIDER} groups a user is a member of within
+   * one provider's namespace ({@code prefix} = {@code oidc:<provider-id>:}) - the one read {@code
+   * TokenGroupSynchronizer} pays per request to tell "nothing changed" from "resync".
+   */
+  @Query(
+      "select g.externalId from GroupMembership m join m.group g"
+          + " where m.userId = :userId and g.kind = io.opaa.api.types.GroupKind.IDENTITY_PROVIDER"
+          + " and g.externalId like concat(:prefix, '%')")
+  Set<String> findIdentityProviderExternalIdsOfUser(
+      @Param("userId") UUID userId, @Param("prefix") String prefix);
+
+  Optional<Group> findByOrganizationIdAndKindAndExternalId(
+      UUID organizationId, GroupKind kind, String externalId);
+
+  /**
+   * Serializes {@code TokenGroupSynchronizer}'s writes for one provider for the rest of the
+   * transaction, so two first sign-ins naming the same new group create it once.
+   */
+  @Query(
+      value =
+          "SELECT 1 FROM (SELECT pg_advisory_xact_lock("
+              + IDENTITY_PROVIDER_GROUP_LOCK_NAMESPACE
+              + ", hashtext(CAST(:providerId AS text)))) acquired",
+      nativeQuery = true)
+  int lockIdentityProviderGroups(@Param("providerId") UUID providerId);
 }

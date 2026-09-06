@@ -13,16 +13,4 @@ class JwtUserClaimsTest {
 
     assertThat(JwtUserClaims.issuer(jwt)).isEqualTo("unknown");
   }
-
-  @Test
-  void displayNameFallsBackToPreferredUsernameWhenNameMissing() {
-    Jwt jwt =
-        Jwt.withTokenValue("token")
-            .header("alg", "HS256")
-            .claim("sub", "admin")
-            .claim("preferred_username", "admin")
-            .build();
-
-    assertThat(JwtUserClaims.displayName(jwt)).isEqualTo("admin");
-  }
 }

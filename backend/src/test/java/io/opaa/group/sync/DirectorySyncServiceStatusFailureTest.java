@@ -53,6 +53,7 @@ class DirectorySyncServiceStatusFailureTest {
   @Autowired private GroupRepository groupRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private FakeDirectoryClient directoryClient;
+  @Autowired private io.opaa.auth.AuthProperties authProperties;
   @MockitoBean private DirectorySyncStatusRecorder statusRecorder;
 
   private UUID organizationId;
@@ -69,7 +70,8 @@ class DirectorySyncServiceStatusFailureTest {
   }
 
   private UUID createUser(String subject) {
-    User user = new User(subject, "test-issuer", subject + "@example.com", "Test User");
+    User user =
+        new User(subject, authProperties.dev().issuer(), subject + "@example.com", "Test User");
     user.setOrganizationId(organizationId);
     return userRepository.save(user).getId();
   }

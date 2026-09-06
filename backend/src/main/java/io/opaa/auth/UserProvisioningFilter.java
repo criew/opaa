@@ -29,11 +29,7 @@ public class UserProvisioningFilter extends OncePerRequestFilter {
       throws ServletException, IOException {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) {
-      String subject = jwt.getSubject();
-      String issuer = JwtUserClaims.issuer(jwt);
-      String email = jwt.getClaimAsString("email");
-      String displayName = JwtUserClaims.displayName(jwt);
-      User user = userService.findOrCreateUser(subject, issuer, email, displayName);
+      User user = userService.provisionFromToken(jwt);
       request.setAttribute(CurrentUserArgumentResolver.REQUEST_ATTRIBUTE, CurrentUser.from(user));
 
       Collection<GrantedAuthority> authorities = new ArrayList<>(authentication.getAuthorities());

@@ -85,7 +85,9 @@ class LlmModelControllerTest {
     User actingAdmin = new User(TEST_SUBJECT, TEST_ISSUER, "admin@example.com", "Admin");
     actingAdmin.setOrganizationId(actingAdminOrganizationId);
     setId(actingAdmin, actingAdminId);
-    when(userService.findOrCreateUser(eq(TEST_SUBJECT), eq(TEST_ISSUER), any(), any()))
+    when(userService.provisionFromToken(
+            org.mockito.ArgumentMatchers.argThat(
+                token -> token != null && TEST_SUBJECT.equals(token.getSubject()))))
         .thenReturn(actingAdmin);
   }
 

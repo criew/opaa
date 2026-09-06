@@ -2,7 +2,7 @@ package io.opaa.auth;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -123,7 +123,7 @@ class OidcUnknownIssuerAccessTest {
   void aTokenOfAnEnabledProviderIsProvisionedOnceByTheFilterAndAnsweredFromThatSnapshot()
       throws Exception {
     User alice = new User("alice", ENABLED_ISSUER, "alice@behoerde.example", "Alice");
-    when(userService.findOrCreateUser(any(), any(), any(), any())).thenReturn(alice);
+    when(userService.provisionFromToken(any())).thenReturn(alice);
 
     mockMvc
         .perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token(ENABLED_ISSUER)))
@@ -132,7 +132,11 @@ class OidcUnknownIssuerAccessTest {
         .andExpect(jsonPath("$.displayName").value("Alice"));
     // the filter's load is the only one; without the filter @Caller has nothing to resolve
     verify(userService, times(1))
-        .findOrCreateUser(eq("alice"), eq(ENABLED_ISSUER), eq("alice@behoerde.example"), any());
+        .provisionFromToken(
+            argThat(
+                token ->
+                    "alice".equals(token.getSubject())
+                        && ENABLED_ISSUER.equals(token.getClaimAsString("iss"))));
   }
 
   @Test

@@ -366,11 +366,17 @@ public class GroupService {
         });
   }
 
+  /** Only {@link GroupKind#AD_HOC} groups are managed here; the other kinds have their source. */
   private void rejectOrgUnit(Group group) {
     if (group.isOrgUnit()) {
       throw new ValidationException(
           "Organisationseinheiten werden aus dem Verzeichnis synchronisiert und können hier"
               + " nicht bearbeitet werden");
+    }
+    if (group.getKind() == GroupKind.IDENTITY_PROVIDER) {
+      throw new ValidationException(
+          "Diese Gruppe stammt aus dem Identitätsanbieter und wird bei jeder Anmeldung abgeglichen;"
+              + " sie kann hier nicht bearbeitet werden");
     }
   }
 

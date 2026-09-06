@@ -65,3 +65,5 @@ databaseChangeLog:
       file: db/changelog/changes/027-context-prefix-stamp.yaml
   - include:
       file: db/changelog/changes/028-model-metadata-extraction.yaml
+  - include:
+      file: db/changelog/changes/029-identity-provider-groups.yaml

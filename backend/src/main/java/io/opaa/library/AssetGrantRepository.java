@@ -28,9 +28,10 @@ public interface AssetGrantRepository extends JpaRepository<AssetGrant, UUID> {
 
   /**
    * A namespace for {@link #lockLibraryGrantsForMutation}'s Postgres advisory locks, arbitrary but
-   * fixed and documented so a future, unrelated advisory lock elsewhere in the codebase (e.g. the
-   * one sketched in {@code DirectorySyncService}'s Javadoc) can pick a different one instead of
-   * colliding.
+   * fixed and documented so a future, unrelated advisory lock elsewhere in the codebase can pick a
+   * different one instead of colliding. Namespaces in use: 202 (this), 203 ({@code
+   * UserRepository#TOKEN_ROLE_CHANGE_LOCK_NAMESPACE}), 204 ({@code
+   * GroupRepository#IDENTITY_PROVIDER_GROUP_LOCK_NAMESPACE}).
    */
   int ASSET_GRANT_MUTATION_LOCK_NAMESPACE = 202;
 
