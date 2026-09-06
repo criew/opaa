@@ -88,6 +88,9 @@ describe('LoginPage', () => {
       screen.getByRole('button', { name: /anmelden bei verzeichnisdienst/i }),
     ).toBeInTheDocument()
     expect(screen.getByText('Fragen. Belegen. Entscheiden.')).toBeInTheDocument()
+    // the choice is one named group; the trust line explains where the password goes (#1369)
+    expect(screen.getByRole('group', { name: 'Anmeldung' })).toBeInTheDocument()
+    expect(screen.getByText(/OPAA erhält kein Kennwort/)).toBeInTheDocument()
   })
 
   it('offers no credential form — there is no password-based mode', () => {
@@ -135,10 +138,12 @@ describe('LoginPage', () => {
       renderWithProviders(<LoginPage />, { withRouter: true })
 
       const buttons = screen.getAllByRole('button', { name: /anmelden bei/i })
-      expect(buttons.map((b) => b.textContent)).toEqual([
-        'Anmelden bei Verzeichnisdienst',
-        'Anmelden bei Partnerportal',
-      ])
+      expect(buttons).toHaveLength(2)
+      expect(buttons[0]).toHaveAccessibleName('Anmelden bei Verzeichnisdienst')
+      expect(buttons[1]).toHaveAccessibleName('Anmelden bei Partnerportal')
+      // the host of the issuer is the line a person recognises their provider by
+      expect(screen.getByText('idp.example.test')).toBeInTheDocument()
+      expect(screen.getByText('partner.example.test')).toBeInTheDocument()
       // the default is the one primary (contained) button
       expect(buttons[0].className).toMatch(/MuiButton-contained/)
       expect(buttons[1].className).toMatch(/MuiButton-outlined/)

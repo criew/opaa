@@ -5,6 +5,8 @@ interface SectionHeadProps {
   component?: 'h2' | 'h3'
   /** Set false when the surrounding row carries the hairline (e.g. a head with a trailing action). */
   underline?: boolean
+  /** Lets a surrounding `section` name itself after this head via `aria-labelledby`. */
+  id?: string
 }
 
 /**
@@ -15,9 +17,11 @@ export default function SectionHead({
   children,
   component = 'h2',
   underline = true,
+  id,
 }: SectionHeadProps) {
   return (
     <Typography
+      id={id}
       component={component}
       sx={{
         fontFamily: 'monospace',
