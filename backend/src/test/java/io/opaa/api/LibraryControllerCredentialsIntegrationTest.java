@@ -143,6 +143,36 @@ class LibraryControllerCredentialsIntegrationTest {
   }
 
   @Test
+  void anS3ValidationErrorNeverEchoesTheSubmittedKeys() throws Exception {
+    // ADR-0027, Entscheidung 7: a loopback endpoint is refused by the target validation before
+    // anything is stored - the 400 names the allowlist variable, never the key.
+    String secret = "hochgeheimer-secret-key-4711";
+    String body =
+        """
+        {
+          "name": "MinIO intern",
+          "sourceType": "S3",
+          "sourceUrl": "http://127.0.0.1:9000",
+          "sourceCredentials": "AKIAEXAMPLE:%s",
+          "s3Settings": {"pathStyle": true, "scopes": [{"bucket": "dokumente"}]}
+        }
+        """
+            .formatted(secret);
+
+    var result =
+        mockMvc
+            .perform(post("/api/v1/libraries").with(devUser()).content(body))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+
+    String rawResponseBody = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
+    assertThat(rawResponseBody)
+        .contains("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST")
+        .doesNotContain(secret)
+        .doesNotContain("AKIAEXAMPLE");
+  }
+
+  @Test
   void confluenceConnectionTestAndSpaceListingNeverEchoCredentials() throws Exception {
     // A loopback address: with the default target validation active, both probes are refused
     // before any connection is attempted - the test reports that as a result with the allowlist

@@ -5,7 +5,8 @@ package io.opaa.indexing.source.s3;
  * optionally with a session token, stored as one string {@code accessKey:secretKey[:sessionToken]}
  * in {@code knowledge_libraries.source_credentials}. Neither key may contain a colon - MinIO and
  * Ceph let an operator choose them freely, and a colon would be split silently and show up as a
- * misleading {@code SignatureDoesNotMatch}.
+ * misleading {@code SignatureDoesNotMatch}; the stored form therefore never carries more than two
+ * separators (a session token is base64 or a JWT and contains none).
  *
  * <p>{@link #toString()} never reveals any part; the adapter is the only place that hands the
  * values to the SDK, so a credential can appear in no log line, exception message or API response
@@ -33,7 +34,7 @@ public record S3Credentials(String accessKey, String secretKey, String sessionTo
    * Parses the stored form.
    *
    * @throws InvalidCredentialsFormatException with a German, user-facing message when the value is
-   *     blank or lacks the {@code accessKey:secretKey} separator
+   *     blank, lacks the {@code accessKey:secretKey} separator or carries a third colon
    */
   public static S3Credentials parse(String stored) {
     if (stored == null || stored.isBlank()) {
@@ -51,6 +52,11 @@ public record S3Credentials(String accessKey, String secretKey, String sessionTo
     int second = rest.indexOf(':');
     String secretKey = second < 0 ? rest : rest.substring(0, second);
     String sessionToken = second < 0 ? null : rest.substring(second + 1);
+    if (sessionToken != null && sessionToken.indexOf(':') >= 0) {
+      throw new InvalidCredentialsFormatException(
+          "S3-Zugangsdaten enthalten mehr als zwei Doppelpunkte: Access Key und Secret Key dürfen"
+              + " keinen Doppelpunkt enthalten, und ein Session-Token trägt keinen.");
+    }
     return new S3Credentials(accessKey, secretKey, sessionToken);
   }
 

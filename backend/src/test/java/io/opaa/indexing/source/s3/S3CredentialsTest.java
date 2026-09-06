@@ -45,6 +45,18 @@ class S3CredentialsTest {
   }
 
   @Test
+  void aThirdColonIsRefusedInsteadOfBeingReadAsASessionToken() {
+    // ADR-0027, Entscheidung 7: the rule is enforced on the stored form, where a colon inside a key
+    // is indistinguishable from the separator
+    assertThatThrownBy(() -> S3Credentials.parse("AK:IA:geheim:x"))
+        .isInstanceOf(S3Credentials.InvalidCredentialsFormatException.class)
+        .hasMessageContaining("Doppelpunkt");
+    assertThatThrownBy(() -> new S3Credentials("AK:IA", "geheim", null))
+        .isInstanceOf(S3Credentials.InvalidCredentialsFormatException.class)
+        .hasMessageContaining("Doppelpunkt");
+  }
+
+  @Test
   void neverPrintsTheSecret() {
     S3Credentials credentials = S3Credentials.parse("AKIAEXAMPLE:geheim-4711:token-0815");
 

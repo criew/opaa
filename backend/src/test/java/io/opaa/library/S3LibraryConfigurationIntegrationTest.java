@@ -4,11 +4,16 @@ import static io.opaa.library.LibraryCreationBuilder.libraryCreation;
 import static io.opaa.library.LibraryUpdateBuilder.libraryUpdate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ValidationException;
@@ -18,6 +23,7 @@ import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -25,21 +31,33 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * {@code S3} as a library's quellentyp (ADR-0027, #1375): endpoint normalised and stored in {@code
- * sourceUrl}, credentials parsed and never returned, the typed settings validated and stored as
- * JSON, the scopes changeable, the type immutable - and the target validation of the shared context
- * refusing a private endpoint before anything is stored. No object store is contacted: saving
- * resolves and checks addresses only.
+ * sourceUrl}, credentials parsed and never returned - not even in the raw HTTP body -, the typed
+ * settings validated and stored as JSON, the scopes changeable, the type immutable, and the target
+ * validation refusing a private endpoint, proxy or bucket host before anything is stored. No object
+ * store is contacted: saving resolves and checks addresses only.
  */
+// Own Spring context on purpose: saving an S3 library passes its endpoint through the target
+// validation, and the only endpoint a test can name without depending on public DNS is localhost -
+// which that validation rejects unless allowlisted. The validation itself stays on, so the private
+// endpoint, proxy and bucket-host refusals below are the real ones. MockMvc for the raw-body check
+// of the API responses.
 @OpaaIntegrationTest
+@AutoConfigureMockMvc
+@TestPropertySource(properties = "opaa.indexing.target-validation.allowlist=localhost")
 class S3LibraryConfigurationIntegrationTest {
 
-  private static final String ENDPOINT = "https://s3.eu-central-1.amazonaws.com";
+  private static final String ENDPOINT = "http://localhost:9000";
 
   @Autowired private KnowledgeLibraryService libraryService;
+  @Autowired private MockMvc mockMvc;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
@@ -103,7 +121,75 @@ class S3LibraryConfigurationIntegrationTest {
     KnowledgeLibrary reloaded = libraryRepository.findById(library.getId()).orElseThrow();
     assertThat(reloaded.getS3Settings()).isEqualTo(library.getS3Settings());
     assertThat(reloaded.getSourceCredentials()).isEqualTo("AKIAEXAMPLE:geheim/4711:session-token");
-    assertThat(reloaded.getSourceSettingsJsonForTest()).doesNotContain("geheim");
+    String storedSettings =
+        jdbcTemplate.queryForObject(
+            "SELECT source_settings::text FROM knowledge_libraries WHERE id = ?",
+            String.class,
+            library.getId());
+    assertThat(storedSettings).contains("\"scopes\"").doesNotContain("geheim");
+  }
+
+  @Test
+  void theRawHttpResponsesCarryTheSettingsButNeverTheKeys() throws Exception {
+    String secret = "hochgeheimer-secret-key-4711";
+    String body =
+        """
+        {
+          "name": "Protokolle per HTTP",
+          "sourceType": "S3",
+          "sourceUrl": "%s",
+          "sourceCredentials": "AKIAEXAMPLE:%s",
+          "s3Settings": {
+            "region": "eu-central-1",
+            "pathStyle": true,
+            "scopes": [{"bucket": "protokolle", "prefix": "2025"}],
+            "includePatterns": ["**/*.pdf"]
+          }
+        }
+        """
+            .formatted(ENDPOINT, secret);
+
+    String created =
+        mockMvc
+            .perform(
+                post("/api/v1/libraries")
+                    .header(DevAuthFilter.DEV_USER_HEADER, "dev-user")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+    String libraryId = created.replaceAll("(?s).*\"id\":\"([0-9a-f-]{36})\".*", "$1");
+    try {
+      String fetched =
+          mockMvc
+              .perform(
+                  get("/api/v1/libraries/" + libraryId)
+                      .header(DevAuthFilter.DEV_USER_HEADER, "dev-user"))
+              .andExpect(status().isOk())
+              .andReturn()
+              .getResponse()
+              .getContentAsString(StandardCharsets.UTF_8);
+      for (String raw : List.of(created, fetched)) {
+        assertThat(raw)
+            .contains("\"sourceType\":\"S3\"")
+            .contains("\"sourceUrl\":\"" + ENDPOINT + "\"")
+            .contains("\"s3Settings\":{")
+            .contains("\"bucket\":\"protokolle\"")
+            .contains("\"prefix\":\"2025/\"")
+            .contains("\"sourceCredentialsSet\":true")
+            .doesNotContain("\"sourceCredentials\":")
+            .doesNotContain(secret)
+            .doesNotContain("AKIAEXAMPLE");
+      }
+    } finally {
+      mockMvc
+          .perform(
+              delete("/api/v1/libraries/" + libraryId)
+                  .header(DevAuthFilter.DEV_USER_HEADER, "dev-user"))
+          .andExpect(status().isNoContent());
+    }
   }
 
   @Test
@@ -122,6 +208,13 @@ class S3LibraryConfigurationIntegrationTest {
                     s3("ohne Schlüssel", ENDPOINT).sourceCredentials(null).build(), caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("sourceCredentials sind erforderlich");
+    assertThatThrownBy(
+            () ->
+                libraryService.createLibrary(
+                    s3("Doppelpunkt", ENDPOINT).sourceCredentials("AK:IA:geheim:x").build(),
+                    caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("Doppelpunkt");
     assertThatThrownBy(
             () ->
                 libraryService.createLibrary(
@@ -174,17 +267,19 @@ class S3LibraryConfigurationIntegrationTest {
                     s3("Proxy intern", ENDPOINT).sourceProxy("10.0.0.9:3128").build(), caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("10.0.0.9");
-    // virtual-host addressing contacts <bucket>.<host>: a bucket host that does not resolve is
-    // reported as unreachable, not as an allowlist problem
+    // virtual-host addressing contacts <bucket>.<host>: the allowlisted endpoint passes, the
+    // bucket host "dokumente.localhost" is not allowlisted and is refused - as blocked where the
+    // resolver maps *.localhost to loopback, as unreachable where it resolves nothing; either way
+    // the message names the host and nothing is stored
     assertThatThrownBy(
             () ->
                 libraryService.createLibrary(
-                    s3("Virtual-Host", "https://s3.gibtsnicht.invalid")
+                    s3("Virtual-Host", ENDPOINT)
                         .s3Settings(settings(null, false, S3Scope.of("dokumente", "")))
                         .build(),
                     caller))
         .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("nicht erreichbar");
+        .hasMessageContaining("dokumente.localhost");
     assertThat(
             libraryRepository.findAll().stream()
                 .filter(l -> organizationId.equals(l.getOrganizationId())))
@@ -242,7 +337,7 @@ class S3LibraryConfigurationIntegrationTest {
                 libraryService.updateLibrary(
                     libraryId,
                     libraryUpdate("Sitzungen")
-                        .sourceUrl(URI.create("https://s3.us-east-1.amazonaws.com"))
+                        .sourceUrl(URI.create("http://localhost:9001"))
                         .build(),
                     caller))
         .isInstanceOf(ValidationException.class)

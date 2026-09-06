@@ -494,11 +494,6 @@ public class KnowledgeLibrary {
     return S3SourceSettingsJson.read(sourceSettings);
   }
 
-  /** The raw {@code source_settings} column, for tests that assert on what is persisted. */
-  String getSourceSettingsJsonForTest() {
-    return sourceSettings;
-  }
-
   /**
    * Replaces this library's own full-sync rhythm (#1200) - {@code null} returns it to the
    * instance-wide default; a value is always positive, validated by {@code KnowledgeLibraryService}

@@ -24,6 +24,8 @@ import io.opaa.library.LibrarySummary;
 import io.opaa.library.LibraryUpdate;
 import java.net.URI;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Maps {@link LibraryDetail} and {@link LibrarySummary} onto their generated response counterparts,
@@ -32,6 +34,8 @@ import java.util.List;
  * never hand-written).
  */
 final class LibraryResponseMapper {
+
+  private static final Logger log = LoggerFactory.getLogger(LibraryResponseMapper.class);
 
   private LibraryResponseMapper() {}
 
@@ -88,7 +92,14 @@ final class LibraryResponseMapper {
           settings.getScopes() == null
               ? List.of()
               : settings.getScopes().stream()
-                  .map(ref -> S3Scope.of(ref.getBucket(), ref.getPrefix()))
+                  .map(
+                      ref -> {
+                        if (ref == null) {
+                          throw new ValidationException(
+                              "s3Settings: jeder Geltungsbereich braucht einen Bucket");
+                        }
+                        return S3Scope.of(ref.getBucket(), ref.getPrefix());
+                      })
                   .toList();
       return new S3SourceSettings(
           settings.getRegion(),
@@ -113,13 +124,23 @@ final class LibraryResponseMapper {
         .excludePatterns(settings.excludePatterns());
   }
 
-  /** {@code null} stays {@code null} ("leave the selection alone"), an empty list stays empty. */
+  /**
+   * {@code null} stays {@code null} ("leave the selection alone"), an empty list stays empty; a
+   * {@code null} element (which bean validation lets through) is the caller's 400, never a 500.
+   */
   private static List<ConfluenceSpaceSelection> toSelections(List<ConfluenceSpaceRef> refs) {
     if (refs == null) {
       return null;
     }
     return refs.stream()
-        .map(ref -> new ConfluenceSpaceSelection(ref.getKey(), ref.getName()))
+        .map(
+            ref -> {
+              if (ref == null) {
+                throw new ValidationException(
+                    "confluenceSpaces: jeder Eintrag braucht einen Space-Schlüssel");
+              }
+              return new ConfluenceSpaceSelection(ref.getKey(), ref.getName());
+            })
         .toList();
   }
 
@@ -163,11 +184,21 @@ final class LibraryResponseMapper {
           .confluenceEdition(library.getSourceConfluenceEdition())
           .confluenceSpaces(toRefs(library.getConfluenceSpaces()));
     }
-    S3SourceSettings s3Settings = library.getS3Settings();
-    if (library.getSourceType() == DocumentSourceType.S3 && s3Settings != null) {
+    if (library.getSourceType() == DocumentSourceType.S3) {
       // ADR-0027: the scopes are the scope every reader sees - visible like confluenceSpaces, and
-      // the record carries no credential by construction.
-      response.s3Settings(toS3SettingsRef(s3Settings));
+      // the record carries no credential by construction. A stored document the record no longer
+      // accepts hides the settings from this one response instead of failing the whole request.
+      try {
+        S3SourceSettings s3Settings = library.getS3Settings();
+        if (s3Settings != null) {
+          response.s3Settings(toS3SettingsRef(s3Settings));
+        }
+      } catch (S3SourceSettings.InvalidS3SourceSettingsException e) {
+        log.warn(
+            "Library {} carries S3 settings the record rejects; omitted from the response: {}",
+            library.getId(),
+            e.getMessage());
+      }
     }
     LibraryManagementDetail managementDetail = detail.managementDetail();
     response

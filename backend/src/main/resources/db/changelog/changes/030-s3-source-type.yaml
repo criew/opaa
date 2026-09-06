@@ -68,9 +68,10 @@ databaseChangeLog:
         ADR-0027: adds the S3 arm to chk_knowledge_libraries_source_configuration - endpoint
         (source_url), credentials and source_settings with a non-empty scopes array are required,
         a filesystem path and an edition are forbidden, proxy and source_insecure_ssl stay optional
-        - and binds source_settings to NULL for every other type. The scopes guard is wrapped in
-        COALESCE because jsonb_typeof of a missing key is NULL and a NULL CHECK result would pass.
-        The five existing arms keep their shape from migration 010 otherwise.
+        - and binds source_settings to NULL for every other type. The scopes guard is a CASE:
+        jsonb_typeof of a missing key is NULL (and a NULL CHECK result would pass), and
+        jsonb_array_length of a non-array raises instead of returning false. The five existing arms
+        keep their shape from migration 010 otherwise.
       changes:
         - sql:
             splitStatements: false
@@ -94,8 +95,9 @@ databaseChangeLog:
                       OR ((source_type)::text = 'S3'::text AND source_path IS NULL AND source_url IS NOT NULL
                           AND source_credentials IS NOT NULL AND source_confluence_edition IS NULL
                           AND source_settings IS NOT NULL
-                          AND COALESCE(jsonb_typeof(source_settings -> 'scopes'), 'missing') = 'array'
-                          AND jsonb_array_length(source_settings -> 'scopes') >= 1)
+                          AND CASE WHEN jsonb_typeof(source_settings -> 'scopes') = 'array'
+                              THEN jsonb_array_length(source_settings -> 'scopes') >= 1
+                              ELSE false END)
                   );
       rollback:
         - sql:

@@ -6442,8 +6442,10 @@ components:
         prefix:
           type: string
           nullable: true
-          maxLength: 1024
-          description: The key prefix inside the bucket; absent or empty for the whole bucket.
+          maxLength: 1023
+          description: >
+            The key prefix inside the bucket; absent or empty for the whole bucket. At most 1023
+            characters, so the normalised form with its trailing slash stays within S3's key limit.
           example: 2025/protokolle/
 
     S3Settings:
