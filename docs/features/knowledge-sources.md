@@ -608,15 +608,18 @@ Bestand stehen. Eine inkrementelle Betriebsart gibt es nicht — S3 kennt keine 
 vollständige Auflistung ist billig genug, um die Regelbetriebsart zu sein. Identität ist
 `s3://bucket/key`; Umbenennen ist ein neues Dokument; in versionierten Buckets zählt nur die aktuelle
 Version, ein Löschmarker gilt als gelöscht. Schlüsselpräfixe werden wie bei `HTTP_DIRECTORY` als
-schreibgeschützte Ordner gespiegelt (bei mehreren Bereichen unter je einem Wurzelordner
-`bucket/prefix`); Mail-Objekte gehen über den Anhangsweg (ADR-0022). Einen Beleg-Link gibt es im
+schreibgeschützte Ordner gespiegelt (bei mehreren Bereichen unter einer Segmentkette aus Bucket und
+Bereichspräfix); Mail-Objekte gehen über den Anhangsweg (ADR-0022). Ein Lauf, der wegen des
+Anfragebudgets endet, wird vom nächsten fortgesetzt, der jeden Bereich erneut listet und nur die
+Downloads spart — eine Bereinigung stützt sich nie auf eine Auflistung aus zwei Läufen. Einen Beleg-Link gibt es im
 ersten Ausbau nicht — ein `s3://`-Pfad öffnet kein Browser, vorsignierte Links sind Zielbild.
 
 **Ereignisse als Beschleuniger.** Ein sitzungsloser Eingang `POST /api/v1/libraries/{id}/s3-events`
 nimmt S3-Ereignisbenachrichtigungen an (MinIO-Webhook, Ceph-RGW-Topic, AWS EventBridge
 API-Destination), gesichert über ein je Bibliothek erzeugtes Token (`Authorization: Bearer`, HTTP
 Basic mit dem Token als Passwort oder `X-OPAA-Webhook-Secret`; jede nicht authentifizierte Anfrage
-antwortet gleichförmig `401`). Ein Ereignis ist ein Hinweis: `ObjectCreated` führt zu `HeadObject`
+antwortet gleichförmig `401`; der Pfad hat eine eigene Sicherheitskette, damit der
+Resource-Server-Filter des `oidc`-Profils die Bearer-Form nicht vorher abweist). Ein Ereignis ist ein Hinweis: `ObjectCreated` führt zu `HeadObject`
 und dem Weg des Vollabgleichs, `ObjectRemoved` löscht das Dokument samt Anhängen erst, wenn
 `HeadObject` mit `404` bestätigt, dass das Objekt weg ist. Der Ereignislauf (`EVENT`) löscht nie
 durch Abwesenheit; verlorene Ereignisse holt der nächste geplante Lauf nach. SNS-Handshake und

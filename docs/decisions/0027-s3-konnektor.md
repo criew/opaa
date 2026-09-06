@@ -113,8 +113,9 @@ Drop-und-Neuanlage-Muster einen `S3`-Zweig: `source_url` Pflicht, `source_settin
 `source_settings` **`NULL`** — der Umzug bestehender Typen in das Feld ist nicht Teil dieses ADR
 (siehe „Ausdrücklich offen"). Beide Enums, `DocumentSourceType` (`io.opaa.api.types`,
 `isRemote() = true`, `hasIndexingRun() = true`) und `IndexingSourceType`, und die drei Wertelisten
-der Baseline (`chk_documents_source_type`, `chk_knowledge_libraries_source_type`,
-`chk_knowledge_libraries_source_configuration`) werden um `S3` erweitert.
+(`chk_documents_source_type`, `chk_knowledge_libraries_source_type`,
+`chk_knowledge_libraries_source_configuration`, zuletzt neu angelegt in Changeset 010 für
+`CONFLUENCE`) werden um `S3` erweitert.
 
 **Der Nachtrag zu ADR-0018:** Entscheidung 1 dort kennt Quellkonfiguration als Einzelwerte; ADR-0023
 hat den ersten Listenwert als Kindtabelle angelegt. Dieses ADR legt fest, dass **typspezifische
@@ -124,8 +125,11 @@ Confluence-Entscheidung ist nicht, dass eine Liste vorkommt, sondern dass die Ko
 *Bündel* zusammengehöriger Werte ist, deren Form je Anbieter variiert; Confluence hatte genau einen
 Listenwert und sonst zwei Spalten. Die Argumente von ADR-0023 gegen JSON — Eindeutigkeit,
 Nichtleere, ein Ort für den Fortschritt je Element — werden hier anders beantwortet: Eindeutigkeit
-und Nichtleere prüft der Record im Kompaktkonstruktor und eine `CHECK`-Constraint auf
-`jsonb_array_length(source_settings -> 'scopes') >= 1`; der Fortschritt je Bereich lebt in der
+und Nichtüberlappung prüft der Record im Kompaktkonstruktor; die Nichtleere zusätzlich eine
+`CHECK`-Constraint im `S3`-Zweig, die beide Fälle fängt, die ein `jsonb_array_length` allein
+durchließe (`NULL`-Ergebnis bei fehlendem Schlüssel gilt als erfüllt; ein Nicht-Array wirft
+statt zu verletzen): `jsonb_typeof(source_settings -> 'scopes') = 'array' AND
+jsonb_array_length(source_settings -> 'scopes') >= 1`. Der Fortschritt je Bereich lebt in der
 Zustandstabelle (Entscheidung 3), nicht an der Konfiguration. Eine Abfrage „welche Bibliotheken
 lesen Bucket X" braucht heute niemand; wird sie gebraucht, ist ein Ausdrucksindex über
 `jsonb_path_query` billiger als eine Kindtabelle je Typ.
@@ -177,19 +181,33 @@ Der Vollabgleich folgt dem Laufrahmen aus ADR-0023 ohne Sonderregel:
   groß, nicht lesbar), weil unlesbar nicht verschwunden ist.
 - `ListingOutcome.Complete` nur, wenn **jeder** Bereich bis zur letzten Seite gelistet wurde. Ein
   Bereich, dessen Bucket nicht existiert (`404 NoSuchBucket`) oder nicht gelistet werden darf
-  (`403 AccessDenied`), macht die Auflistung `Incomplete` mit dem Bereich als
-  `unreadableContainerKey` — die übrigen Bereiche werden trotzdem verarbeitet, bereinigt wird
-  nichts, der Bereich steht im Laufprotokoll. **Rechteentzug ist kein Löschbefund**, wie bei
-  Confluence.
-- Ein erschöpftes Anfragebudget oder eine erreichte Mengengrenze beendet den Lauf als `Truncated`:
-  keine Bereinigung, der Zustand bleibt stehen, der nächste Lauf setzt an. Wiederaufnahme lebt in
-  einer Zustandstabelle `s3_sync_state` je Bibliothek — Kennung des Bereichs **als `bucket/prefix`,
-  nicht als Listenindex** (ein Index verschiebt sich, wenn ein Bereich entfernt wird), letzter
-  `ContinuationToken`, Zeitstempel. Erst ein Lauf, der ab dem gespeicherten Zustand alle
-  verbleibenden Bereiche vollständig listet, gilt als `Complete` und bereinigt; ein
-  `ContinuationToken` ist nur für dieselbe Auflistung gültig, ein abgelehnter Token (Bucket
-  zwischenzeitlich geändert) startet den Bereich von vorn. Änderung der Bereiche oder des Endpoints
-  verwirft den Zustand.
+  (`403 AccessDenied`), macht die Auflistung `Incomplete`; alle nicht listbaren Bereiche stehen als
+  `bucket/prefix` in `unreadableContainerKeys` — die übrigen Bereiche werden trotzdem verarbeitet,
+  bereinigt wird nichts, jeder betroffene Bereich steht im Laufprotokoll. **Rechteentzug ist kein
+  Löschbefund**, wie bei Confluence.
+- Ein erschöpftes Anfragebudget beendet den Lauf als `Truncated`: keine Bereinigung, der nächste
+  Lauf setzt an. **Wiederaufnahme heißt nicht „ab dem Token weiterlisten".** `currentPaths` — die
+  Menge, gegen die `StaleDocumentCleanupService#reconcile` löscht — ist je Lauf neu; ein Lauf, der
+  nur den Rest einer abgebrochenen Auflistung listet und dann `Complete` meldet, würde alles
+  entfernen, was der Vorlauf gesehen hat. Deshalb **listet ein wiederaufsetzender Lauf jeden
+  Bereich erneut von vorn** — das ist billig (tausend Aufrufe je Million Objekte) — und spart nur
+  die Downloads: Ein Objekt, dessen Merkmal (Entscheidung 4) bereits gespeichert ist, kostet keinen
+  weiteren Aufruf. Die Kette der Wiederaufnahmeläufe konvergiert damit, solange das Budget die
+  Auflistung aller Bereiche plus eine Handvoll Downloads übersteigt; ein Lauf, der trotz
+  erschöpftem Budget kein Objekt neu aufgenommen hat, meldet das als Fehler („reicht für diese
+  Bibliothek nicht aus") — dieselbe Regel wie bei Confluence (#1141). Der `ContinuationToken` gilt
+  nur innerhalb eines Laufs und wird nie gespeichert. Die Zustandstabelle `s3_sync_state` je
+  Bibliothek trägt, was ein Neustart der Kette braucht: die Kennung des laufenden Vollabgleichs,
+  die in ihm bereits vollständig gelisteten Bereiche **als `bucket/prefix`, nicht als
+  Listenindex** (ein Index verschiebt sich, wenn ein Bereich entfernt wird) — sie bestimmen nur die
+  Reihenfolge, unvollendete Bereiche zuerst — und den Zeitpunkt des letzten vollständigen Laufs.
+  Änderung der Bereiche oder des Endpoints verwirft den Zustand.
+- Eine Bibliothek, deren Bereiche zusammen mehr als `max-objects-per-run` Objekte listen, ist für
+  einen Lauf zu groß: Der Lauf endet **sichtbar als Fehler** mit dem Hinweis, die Bereiche
+  enger zu fassen — nicht als `Truncated`, das nie `Complete` würde und nie bereinigte, und nicht
+  als stiller Schnitt (dieselbe Haltung wie `maxListingPages` bei Confluence). Die Grenze ist eine
+  Notbremse für Speicher und Laufzeit (`currentPaths` hält jeden Pfad im Heap), keine
+  Regelgrenze; #1380 misst, wo sie liegen muss.
 - Die Bereinigung ist die gemeinsame `StaleDocumentCleanupService#reconcile`, begrenzt auf
   `(Bibliothek, S3)` und die Menge `currentPaths`; ein abgewählter Bereich steuert nichts bei und
   fällt weg. Ein Lauf, der null Objekte sieht, löscht nichts (bestehender Failsafe).
@@ -198,8 +216,12 @@ Der **Ereignislauf** (`EVENT`) ist eine neue Betriebsart im geteilten Enum `Inde
 (Spec-Änderung nach ADR-0006, Changeset für `chk_indexing_jobs_run_mode`, Label im Frontend), nicht
 ein weiterer `INCREMENTAL`: Er listet nichts, sondern prüft gemeldete Schlüssel einzeln; ihn
 „inkrementell" zu nennen, würde im Laufprotokoll eine Änderungssuche vortäuschen, die es nicht gibt.
-Er läuft nur mit `JobTriggerSource.WEBHOOK`, löscht nie durch Abwesenheit und rührt den
-Wiederaufnahmezustand nicht an. Löschen darf er — nach der Regel aus ADR-0023, die dieses ADR
+Er läuft nur mit `JobTriggerSource.WEBHOOK`: Der Anstoß-Endpunkt und der Zeitplan weisen
+`runMode = EVENT` mit einer deutschen `400`-Meldung ab (`DocumentIndexingService#resolveRunMode`
+akzeptiert heute jeden deklarierten Modus — für `EVENT` braucht es die Bindung an den Auslöser),
+`S3IndexingExecutor#defaultRunMode` liefert konstant `FULL`, und der Ereignislauf meldet
+`ListingOutcome.Partial`, den einzigen für `KEEP_ON_ABSENCE` zulässigen Wert. Er löscht nie durch
+Abwesenheit und rührt den Wiederaufnahmezustand nicht an. Löschen darf er — nach der Regel aus ADR-0023, die dieses ADR
 unverändert übernimmt: **Löschung braucht einen positiven Befund der Quelle.** Für S3 ist der
 Befund billig und eindeutig: Ein `ObjectRemoved`-Ereignis stößt ein `HeadObject` an; antwortet der
 Speicher `404 NoSuchKey` (eindeutig, weil `s3:ListBucket` Pflichtrecht ist — sonst wäre es `403`),
@@ -220,20 +242,27 @@ ADR — für Confluence `status = trashed`, für S3 ein `404 NoSuchKey` unter Pf
 
 Das Änderungsmerkmal im Sinne von ADR-0017, Entscheidung 2 — geprüft **vor** dem Download — ist
 für ein S3-Objekt die Kombination **ETag und Größe**, gespeichert in `documents.last_modified_remote`
-als `<ETag ohne Anführungszeichen>|<Größe in Bytes>` (höchstens rund 55 Zeichen; die Spalte fasst
-64, Confluence hält dort die Versionsnummer). Der ETag ändert sich laut Herstellerdokumentation nur
-mit dem Inhalt, nie mit Metadaten — genau die Eigenschaft eines Änderungsmerkmals —, und die Größe
-fängt den theoretischen Fall eines Speichers ab, der einen ETag wiederverwendet. Stimmt das
-Merkmal mit dem gespeicherten überein, wird das Objekt **nicht heruntergeladen** und als
-übersprungen gezählt; weicht es ab, wird es geladen und der Dokumentstrecke übergeben.
+als `e:<ETag ohne Anführungszeichen>|<Größe in Bytes>` (für die bei AWS, MinIO und Ceph
+vorkommenden Formen höchstens rund 55 Zeichen; die Spalte fasst 64, Confluence hält dort die
+Versionsnummer). Der ETag ändert sich laut Herstellerdokumentation nur mit dem Inhalt, nie mit
+Metadaten — genau die Eigenschaft eines Änderungsmerkmals —, und die Größe fängt den theoretischen
+Fall eines Speichers ab, der einen ETag wiederverwendet. Stimmt das Merkmal mit dem gespeicherten
+überein, wird das Objekt **nicht heruntergeladen** und als übersprungen gezählt; weicht es ab,
+wird es geladen und der Dokumentstrecke übergeben.
 
-`LastModified` ist **nicht** Teil des Merkmals: Ein erneutes Hochladen desselben Inhalts (Kopie,
-Metadatenänderung per `CopyObject` auf sich selbst, Replikation) setzt den Zeitstempel neu, ohne
-dass sich etwas geändert hat; der ETag bleibt dann gleich, und der Download unterbleibt zu Recht.
-Fehlt der ETag (ein Speicher, der ihn nicht liefert), tritt `LastModified|Größe` an seine Stelle,
-gekennzeichnet durch das Präfix `t:`. `LastModified` erscheint im Laufprotokoll und in der
-Dokumentanzeige, wird aber nicht als Kernfeld „Datum/Stand" gesetzt — ADR-0024 leitet Datum aus
-dem Inhalt ab, ein Upload-Zeitpunkt ist kein Dokumentdatum.
+**Das weicht von Vorentscheidung 1 des Epics ab**, die „ETag, Größe und `LastModified`" nennt (so
+auch das Abnahmekriterium des Epics und #1378): `LastModified` ist **nicht** Teil des Merkmals. Ein
+erneutes Hochladen desselben Inhalts (Kopie, Metadatenänderung per `CopyObject` auf sich selbst,
+Replikation) setzt den Zeitstempel neu, ohne dass sich etwas geändert hat; der ETag bleibt dann
+gleich, und der Download unterbleibt zu Recht — mit `LastModified` im Merkmal würde er
+stattfinden. Umgekehrt gibt es keinen Fall, in dem sich der Inhalt ändert und ETag *und* Größe
+gleich bleiben, den `LastModified` fangen könnte. Fehlt der ETag (ein Speicher, der ihn nicht
+liefert) oder wäre das Merkmal länger als 64 Zeichen (ein S3-kompatibler Speicher mit eigener
+ETag-Form), tritt die Rückfallform `t:<LastModified als Epochenmillisekunden>|<Größe>` an seine
+Stelle; die beiden Präfixe `e:` und `t:` halten die Formen unterscheidbar, gleich wie ein ETag
+aussieht. `LastModified` erscheint im Laufprotokoll und in der Dokumentanzeige, wird aber nicht als
+Kernfeld „Datum/Stand" gesetzt — ADR-0024 leitet Datum aus dem Inhalt ab, ein Upload-Zeitpunkt
+ist kein Dokumentdatum.
 
 **Verbindlich bleibt die SHA-256 nach dem Download** (`ChecksumService`, `FileProcessingService#ingest`):
 Ein geändertes Merkmal bei gleicher Prüfsumme (Multipart-Upload desselben Inhalts, Wechsel der
@@ -257,13 +286,19 @@ wird nie mit ihr verglichen.
   Bibliotheksschlüssel an den Browser geben und ein eigenes Rechtemodell brauchen (wer den Beleg
   sieht, darf dann das Objekt laden).
 - **Ordner:** Die Präfixsegmente eines Schlüssels relativ zum Präfix seines Bereichs werden als
-  schreibgeschützte Ordner gespiegelt (`SourceFolderMirror`, #1277). Bei genau **einem** Bereich ist
-  dessen Präfix die Wurzel der Bibliothek; bei **mehreren** Bereichen bekommt jeder einen
-  Wurzelordner `bucket/prefix` (bzw. `bucket` ohne Präfix), damit gleichnamige Pfade aus zwei
-  Buckets getrennt bleiben. Aufgeräumt wird nur nach vollständiger Auflistung, wie bei
-  `HTTP_DIRECTORY`. **Ordnermarker** — Schlüssel, die auf `/` enden, mit null Bytes — werden
-  übersprungen und nie zu Dokumenten; sie erzeugen auch keinen leeren Ordner (Ordner entstehen nur
-  entlang gefundener Dateien, #824).
+  schreibgeschützte Ordner gespiegelt (`SourceFolderMirror`, #1277; `S3` kommt in
+  `LibraryFolderService.MIRRORED_SOURCE_TYPES`). Bei genau **einem** Bereich ist dessen Präfix die
+  Wurzel der Bibliothek; bei **mehreren** Bereichen steht über den Präfixsegmenten eine
+  **Segmentkette** aus dem Bucket-Namen und den Segmenten des Bereichspräfixes — nie ein
+  zusammengesetzter Einzelname `bucket/prefix`, denn ein Ordnername ist schrägstrichfrei und auf
+  255 Zeichen begrenzt (`LibraryFolderService#validateName`, `library_folders.name`). So bleiben
+  gleichnamige Pfade aus zwei Buckets getrennt. Ein Schlüssel, dessen Ordnerkette tiefer wäre als
+  `LibraryFolderService.MAX_DEPTH`, liegt im tiefsten zulässigen Ordner, mit Warnung im
+  Anwendungsprotokoll — der Konnektorpfad prüft die Tiefe heute nicht, ein S3-Schlüssel darf
+  beliebig tief sein. Aufgeräumt wird nur nach vollständiger Auflistung, wie bei `HTTP_DIRECTORY`.
+  **Ordnermarker** — Schlüssel, die auf `/` enden, mit null Bytes — werden übersprungen und nie zu
+  Dokumenten; sie erzeugen auch keinen leeren Ordner (Ordner entstehen nur entlang gefundener
+  Dateien, #824).
 - **Versionierte Buckets:** nur die aktuelle Version. `ListObjectsV2` zeigt nichts anderes; ein
   Schlüssel mit Löschmarker fehlt und gilt als gelöscht; `versionId` wird weder gespeichert noch
   angefragt. Eine Wiederherstellung einer alten Version ist für OPAA eine Änderung (neuer ETag).
@@ -273,29 +308,54 @@ wird nie mit ihr verglichen.
   `InvalidObjectState`, eine Wiederherstellung anzustoßen wäre ein Schreibvorgang mit Kosten.
   `GLACIER_IR` ist sofort lesbar und wird normal verarbeitet. Ein übersprungenes Archivobjekt
   gilt als gesehen (`markPresent`).
-- **Vorfilter vor dem Download:** Endung des Schlüssels und `Content-Type` aus der Auflistung bzw.
-  `HeadObject` gegen `SupportedDocumentFormats`, Größe gegen `max-object-size-bytes`. Ein Objekt
-  ohne Endung, aber mit zugelassenem `Content-Type`, wird geladen; ein Objekt mit unbekannter
-  Endung *und* unbekanntem `Content-Type` nicht. Die verbindliche Formaterkennung bleibt die aus
-  dem Inhalt in der Dokumentstrecke — der Vorfilter spart Bandbreite, entscheidet aber nichts.
+- **Vorfilter vor dem Download:** Die Auflistung liefert Schlüssel, ETag, Größe, Zeitstempel und
+  Speicherklasse — **keinen `Content-Type`**; der steht nur in `HeadObject` und `GetObject`. Der
+  Vorfilter entscheidet deshalb primär über die **Endung** des Schlüssels gegen
+  `SupportedDocumentFormats` und die Größe gegen `max-object-size-bytes`. Ein Objekt mit
+  unbekannter Endung wird nicht geladen. Ein Objekt **ohne** Endung kostet genau einen
+  `HeadObject` (gezählt im `S3RequestMeter`): Ist sein `Content-Type` zugelassen, wird es geladen,
+  sonst übersprungen. Die verbindliche Formaterkennung bleibt die aus dem Inhalt in der
+  Dokumentstrecke — der Vorfilter spart Bandbreite, entscheidet aber nichts.
 - **Anhänge:** Mail-Objekte (`.eml`, `.msg`) laufen über `AttachmentIndexer` mit
   `AttachmentSource.LocalFile` — die Bytes hat die Zugriffsschicht bereits in eine temporäre Datei
   geladen, wie bei Confluence. Anhänge hängen per `parent_document_id` an ihrem Objekt und werden
-  mit ihm entfernt (ADR-0022, Entscheidung 3).
+  mit ihm entfernt (ADR-0022, Entscheidung 3). Ein Objekt, dessen Bytes geladen und dessen
+  Anhangsmenge neu aufgezählt wurden, meldet `markReprocessed`; jedes andere gesehene Objekt
+  `markPresent` — nur so faltet `StaleDocumentCleanupService` die alten Anhänge eines *nicht*
+  neu verarbeiteten Elternobjekts ein und entfernt die eines neu verarbeiteten, die es nicht mehr
+  gibt (ADR-0022, Entscheidung 3, Nachtragsfall).
 - **Objektmetadaten (`x-amz-meta-*`) und Tags** sind Zielbild (ADR-0024), nicht erster Ausbau; der
   Bucket als Metadatum genügt.
 
 ### 6. Der Push-Weg: ein Endpunkt je Bibliothek, drei Absicherungsformen, jedes Ereignis ein Hinweis
 
-`POST /api/v1/libraries/{libraryId}/s3-events` ist der zweite sitzungslose Pfad unter `/api/v1`,
-nach dem Muster von `confluence-webhook`: Rate-Limit-Topf `webhook`, jede nicht authentifizierte
-Anfrage antwortet gleichförmig `401` — auch für eine unbekannte Bibliothek, einen anderen
-Quellentyp oder eine Bibliothek ohne Token. Angenommen werden **drei** Formen, weil die Anbieter
-sie vorgeben (Belege oben): `Authorization: Bearer <Token>` (MinIO baut genau das aus
-`auth_token`), `Authorization: Basic` mit dem Token als Passwort und beliebigem Benutzernamen
-(Ceph kann nur `user:password` in der Endpunkt-URI — dort ist `https` Pflicht, das Handbuch sagt
-es) und die Kopfzeile `X-OPAA-Webhook-Secret: <Token>` (EventBridge API-Destination mit
-API-Key-Verbindung, jeder Absender mit freier Kopfzeile). Alle drei Vergleiche sind zeitkonstant.
+`POST /api/v1/libraries/{libraryId}/s3-events` ist nach `confluence-webhook` der zweite
+schreibende Eingang unter `/api/v1`, der ohne Sitzung erreichbar ist, und folgt dessen Muster:
+Rate-Limit-Topf `webhook` (dessen Pfadmuster in `RateLimitConfiguration` heute nur
+`confluence-webhook` kennt und erweitert wird), Antwort `202 Accepted` wie dort, jede nicht
+authentifizierte Anfrage antwortet gleichförmig `401` — auch für eine unbekannte Bibliothek, einen
+anderen Quellentyp oder eine Bibliothek ohne Token. Angenommen werden **drei** Formen, weil die
+Anbieter sie vorgeben (Belege oben): `Authorization: Bearer <Token>` (MinIO baut genau das aus
+einem einteiligen `auth_token`), `Authorization: Basic` mit dem Token als Passwort und beliebigem
+Benutzernamen (Ceph kann nur `user:password` in der Endpunkt-URI — dort ist `https` Pflicht, das
+Handbuch sagt es) und die Kopfzeile `X-OPAA-Webhook-Secret: <Token>` (EventBridge API-Destination
+mit API-Key-Verbindung, jeder Absender mit freier Kopfzeile). Alle drei Vergleiche sind
+zeitkonstant.
+
+**Die Bearer-Form braucht eine eigene Sicherheitskette.** Im `oidc`-Profil hängt
+`OidcSecurityConfig` den `BearerTokenAuthenticationFilter` des Resource-Servers vor *jede*
+Anfrage; `permitAll` überspringt nur die Autorisierung, nicht diesen Filter. Ein
+`Authorization: Bearer <Token>`, der kein JWT eines bekannten Anbieters ist, würde dort mit `401`
+abgewiesen, bevor der Ereignis-Endpunkt je läuft — und die Zusicherung „jede nicht
+authentifizierte Anfrage antwortet `401`" ließe den Defekt wie korrektes Verhalten aussehen. Der
+Endpunkt bekommt deshalb eine **eigene, früher geordnete `SecurityFilterChain`** mit
+`securityMatcher("/api/v1/libraries/*/s3-events")`, ohne Resource-Server, ohne Sitzung, ohne
+CSRF, in beiden Profilen (`oidc` und `dev`); die Prüfung des Tokens ist allein Sache des
+Endpunkts. Das ist ein bewusster Eingriff in die Auth-Konfiguration und Abnahmekriterium von
+#1381, mit Test gegen die echte `oidc`-Kette. Als Rückfall für einen Betreiber, der die Kette
+nicht ändern kann, dokumentiert das Handbuch den zweiteiligen `auth_token` (`Basic <Base64>`):
+MinIO setzt einen Wert mit Leerzeichen unverändert als `Authorization` und präfixt nur einteilige
+Werte mit `Bearer` (Quelltext oben).
 
 **Das Token ist das Push-Geheimnis der Bibliothek**, verwaltet über
 `POST`/`DELETE /api/v1/libraries/{libraryId}/s3-events-token` (MANAGER+, einmal angezeigt,
@@ -304,7 +364,12 @@ Es lebt in der Spalte, die heute `source_confluence_webhook_secret` heißt: Die 
 `source_webhook_secret` **umbenannt** und trägt je Bibliothek das eine Geheimnis ihres
 Push-Eingangs, gleich welchen Typs — dieselbe Semantik, derselbe Verschlüsselungspfad, derselbe
 Bearbeitungsweg. Eine zweite Geheimnisspalte je Konnektor wäre genau die Spaltenvermehrung, die
-Entscheidung 1 beendet; in `source_settings` darf ein Geheimnis nicht (unverschlüsselt).
+Entscheidung 1 beendet; in `source_settings` darf ein Geheimnis nicht (unverschlüsselt). Die
+Endpunkte und der Property-Block bleiben dagegen typspezifisch benannt (`s3-events`,
+`s3-events-token`, `opaa.indexing.s3.events.*` neben `confluence-webhook`,
+`confluence-webhook-secret`, `opaa.indexing.confluence.webhook.*`), weil Nutzlast,
+Absicherungsformen und Einrichtungsanleitung je Typ verschieden sind — gemeinsam ist nur die
+Ablage des Geheimnisses.
 
 **Nutzlast.** Der Endpunkt liest drei Formen und erkennt sie am Aufbau, nicht am Absender:
 
@@ -314,11 +379,13 @@ Entscheidung 1 beendet; in `source_settings` darf ein Geheimnis nicht (unverschl
   Leerzeichen), `eventName` mit oder ohne Präfix `s3:`;
 - den EventBridge-Umschlag (`detail-type` „Object Created"/„Object Deleted", `detail.bucket.name`,
   `detail.object.key` **roh**, `detail.deletion-type`);
-- die Testnachricht `s3:TestEvent`, die AWS beim Einrichten sendet: `200`, keine Wirkung.
+- die Testnachricht `s3:TestEvent`, die AWS beim Einrichten sendet: `202`, keine Wirkung.
 
 Ein Ereignis für einen Bucket oder Schlüssel **außerhalb der konfigurierten Bereiche** wird
 verworfen und gezählt; ein Ereignis mit einem Schlüssel, der die Ein-/Ausschlussmuster nicht
-passiert, ebenso. Der Körper ist auf 256 KiB begrenzt (AWS deckelt eine Nachricht bei 64 KB).
+passiert, ebenso. Der Körper ist auf dieselbe Grenze wie beim Confluence-Webhook begrenzt
+(`ConfluenceWebhookController.MAX_BODY_BYTES`, 256 KiB, als geteilte Konstante) — reichlich, denn
+AWS begrenzt eine Ereignisnachricht laut der oben zitierten Strukturbeschreibung auf 64 KB.
 
 **Verarbeitung.** Ein Ereignis ist ein Hinweis, die Antwort des Speichers der Befund:
 `ObjectCreated:*` → `HeadObject`, dann derselbe Weg wie im Vollabgleich (Merkmal vergleichen,
@@ -344,13 +411,20 @@ Ereignis holt der nächste geplante Lauf nach.
 ### 7. Zugangsdaten: statischer Schlüssel mit optionalem Session-Token; die Instanzrolle ist Zielbild
 
 `source_credentials` trägt `accessKey:secretKey[:sessionToken]`, zerlegt am ersten und — falls
-vorhanden — zweiten Doppelpunkt (ein AWS Access Key enthält keinen; ein Secret Key ist Base64-artig
-ohne Doppelpunkt; ein Session-Token enthält ebenfalls keinen). Der Adapter setzt daraus
-`StaticCredentialsProvider` mit `AwsBasicCredentials` bzw. `AwsSessionCredentials`. **Die
-Default-Credential-Kette des SDK wird nie benutzt**: Sie läse Umgebungsvariablen, Profile und den
-Instanz-Metadatendienst (IMDS) des OPAA-Hosts und gäbe damit *jeder* S3-Bibliothek die Identität
-des Hosts — wer eine Bibliothek anlegen darf (jeder Berechtigte, ADR-0018, Entscheidung 6), könnte
-jeden Bucket lesen, den die Hostrolle lesen darf. Zugangsdaten sind je Bibliothek, nicht je Host.
+vorhanden — zweiten Doppelpunkt. Bei AWS-erzeugten Schlüsseln kommt ein Doppelpunkt nicht vor; bei
+MinIO und Ceph wählt der Betreiber Access- und Secret-Key frei, und ein Doppelpunkt darin würde
+still falsch zerlegt und als `SignatureDoesNotMatch` auf die falsche Ursache zeigen. Die Eingabe
+weist Access- und Secret-Key mit Doppelpunkt deshalb mit deutscher `400`-Meldung ab („Zugangsdaten
+dürfen keinen Doppelpunkt enthalten"); das Handbuch nennt die Regel beim Anlegen des Schlüssels.
+Der Adapter setzt daraus `StaticCredentialsProvider` mit `AwsBasicCredentials` bzw.
+`AwsSessionCredentials`. **Die Default-Credential-Kette des SDK wird nie benutzt**: Sie läse
+Umgebungsvariablen, Profile und den Instanz-Metadatendienst (IMDS) des OPAA-Hosts und gäbe damit
+*jeder* S3-Bibliothek die Identität des Hosts — wer eine Bibliothek anlegen darf (jeder
+Berechtigte, ADR-0018, Entscheidung 6), könnte jeden Bucket lesen, den die Hostrolle lesen darf.
+Zugangsdaten sind je Bibliothek, nicht je Host. Aus demselben Grund wird auch die
+**Default-Region-Kette** nie benutzt: Der Client wird immer mit expliziter Region gebaut — die
+konfigurierte, bei leerer Angabe `us-east-1`, was MinIO und Ceph erwarten —, damit keine Auflösung
+des SDK je den Metadatendienst erreicht.
 
 Die **schlüssellose Anmeldung über die Instanzrolle** bleibt deshalb Zielbild: Sie kommt, wenn
 überhaupt, als ausdrücklich vom Betrieb freigeschaltete Zugangsdaten-Art
@@ -373,9 +447,13 @@ Das SDK bringt seinen eigenen HTTP-Client mit und läuft an `SourceHttpClientFac
 bewusst nach — Stück für Stück, mit Test je Stück:
 
 - **Zieladressprüfung:** `TargetAddressValidator.validate(URI)` auf den Endpoint-Host beim
-  Speichern, im Verbindungstest und **vor jedem Lauf** (die Auflösung kann sich ändern). Bei
-  Virtual-Host-Adressierung spricht das SDK `<bucket>.<host>` an — geprüft wird deshalb je Bereich
-  auch dieser Hostname, nicht nur der Endpoint. Ein internes MinIO im privaten Adressbereich
+  Speichern, im Verbindungstest und beim Bau jedes Clients — und, in derselben Granularität wie
+  bei den HTTP-Konnektoren (`RedirectFollowingFetcher` prüft vor jedem Abruf), **vor jeder
+  Anfrage**: Ein `ExecutionInterceptor` des SDK prüft in `beforeTransmission` den Host der
+  signierten Anfrage, sodass das Rebinding-Fenster nicht länger ist als das im Javadoc von
+  `TargetAddressValidator` benannte. Bei Virtual-Host-Adressierung spricht das SDK
+  `<bucket>.<host>` an — geprüft wird deshalb je Bereich auch dieser Hostname, nicht nur der
+  Endpoint, beim Bau des Clients und je Anfrage. Ein internes MinIO im privaten Adressbereich
   braucht wie ein Confluence Data Center den Eintrag in
   `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`; die Meldung nennt die Variable. Weil der Endpoint
   vor der Anlage geprüft wird, ist die Anlage netzabhängig wie bei Confluence.
@@ -383,7 +461,8 @@ bewusst nach — Stück für Stück, mit Test je Stück:
   `BoundedStreams` in eine temporäre Datei und bricht beim Überschreiten von
   `max-object-size-bytes` ab, ohne die Datei zu übernehmen. Die Größe aus der Auflistung ist der
   Vorfilter, die Byte-Grenze beim Kopieren die Sicherung (die Auflistung kann lügen).
-- **Timeouts:** Verbindungs- und Lese-Timeout am HTTP-Client, `apiCallAttemptTimeout` am Client.
+- **Timeouts:** Verbindungs- und Lese-Timeout am HTTP-Client und `apiCallAttemptTimeout` am
+  Client, alle drei aus dem einen Wert `request-timeout` abgeleitet.
 - **Proxy und TLS:** `source_proxy` als `ProxyConfiguration`, `source_insecure_ssl` als
   `TRUST_ALL_CERTIFICATES` des HTTP-Clients — dieselbe Warnung an der Oberfläche wie heute.
 - **Weiterleitungen:** keine; ein `301 PermanentRedirect` ist ein Konfigurationsfehler (falsche
@@ -455,17 +534,19 @@ Ticket dieselben Schlüssel benutzt:
 | Schlüssel | Vorgabe | Wirkung |
 |---|---|---|
 | `list-page-size` | 1000 | `MaxKeys` je Auflistungsaufruf, höchstens 1000 |
-| `max-objects-per-run` | 200 000 | gelistete Objekte je Lauf; erreicht → `Truncated` |
+| `max-objects-per-run` | 1 000 000 | gelistete Objekte je Lauf; erreicht → sichtbarer Fehler „Bereiche enger fassen" (Notbremse für Heap und Laufzeit, keine Regelgrenze) |
 | `max-object-size-bytes` | 50 MiB | Vorfilter und Byte-Obergrenze beim Download |
-| `request-budget-per-run` | 20 000 | Aufrufe je Lauf einschließlich Wiederholungen; erschöpft → `Truncated`; 0 = unbegrenzt |
-| `request-timeout` | 30 s | je Aufruf |
+| `request-budget-per-run` | 20 000 | Aufrufe je Lauf einschließlich Wiederholungen und `HeadObject` für endungslose Schlüssel; erschöpft → `Truncated`; 0 = unbegrenzt. Rechnung: ein Aufruf je 1000 gelistete Objekte, plus einer je endungslosem Objekt, plus einer je geändertem Objekt — 20 000 decken eine Million unveränderter Objekte mit Endung und rund 18 000 Downloads |
+| `request-timeout` | 30 s | je Aufruf (Verbindungs-, Lese- und Versuchs-Timeout) |
 | `download-concurrency` | 2 | gleichzeitige Downloads je Lauf (Semaphore) |
 | `max-retries` / `retry-backoff` | 5 / 500 ms | Wiederholungen bei `503 SlowDown` und `429`, exponentiell |
-| `max-scopes-per-library` | 50 | Obergrenze der Geltungsbereiche |
 | `events.debounce` | 5 s | Sammelzeit gemeldeter Schlüssel |
 | `events.max-pending-keys` | 500 | darüber läuft ein Vollabgleich statt des Ereignislaufs |
 | `events.max-deferrals` | 12 | wie oft ein Stapel auf einen laufenden Lauf wartet |
-| `events.max-body-bytes` | 256 KiB | Obergrenze des Ereigniskörpers |
+
+Die Obergrenze von **fünfzig Geltungsbereichen** ist keine Property, sondern eine feste Konstante
+des Records (Entscheidung 2): Sie schützt vor Fehlbedienung, nicht vor Last, und ein
+Kompaktkonstruktor liest keine Spring-Property.
 
 ## Ausdrücklich offen
 
@@ -595,33 +676,48 @@ abweicht: Bucket und Schlüssel sind die Identität, der Endpoint ist der Weg.
 
 | Issue | Folgt aus diesem ADR |
 |---|---|
-| #1374 Zugriffsschicht | Port `S3ObjectStore` mit einem Adapter; `apache-client`; **nur** `StaticCredentialsProvider`; Zieladressprüfung auch für `<bucket>.<host>` bei Virtual-Host; `getObject` mit `BoundedStreams` in eine temporäre Datei; `S3RequestMeter` zählt Aufrufe **und** Bytes; Fehlerabbildung aus Entscheidung 8 einschließlich `InvalidAccessKeyId`/`SignatureDoesNotMatch` und `InvalidObjectState`; Log-Capture-Test, dass keine SDK-Ausnahme mit Geheimnis durchsickert; `MinioFixture` im regulären `test`-Task; Einstellung von `chunkedEncoding`/Anfrage-Prüfsummen als Teil der Anbietervorlage |
-| #1375 Quellentyp | `source_settings jsonb` mit `@JdbcTypeCode(SqlTypes.JSON)` auf einem String und Record-Validierung; `CHECK` für `S3`-Zweig **und** `jsonb_array_length(scopes) >= 1`; Überlappungsregel und Obergrenze 50 im Record; `Document#getDeepLinkSourceUrl` liefert für `S3` `null`; kein `EVENT`-Laufmodus (kommt mit #1381); Platzhalter-Executor deklariert nur `FULL` |
+| #1374 Zugriffsschicht | Port `S3ObjectStore` mit einem Adapter; `apache5-client`; **nur** `StaticCredentialsProvider` und explizite Region; Zieladressprüfung beim Bau des Clients (Endpoint, Proxy, `<bucket>.<host>` bei Virtual-Host) **und je Anfrage** im `ExecutionInterceptor`; `getObject` mit `BoundedStreams` in eine temporäre Datei; `S3RequestMeter` zählt Aufrufe **und** Bytes; Fehlerabbildung aus Entscheidung 8 einschließlich `InvalidAccessKeyId`/`SignatureDoesNotMatch` und `InvalidObjectState`; Log-Capture-Test, dass keine SDK-Ausnahme mit Geheimnis durchsickert; `MinioFixture` im regulären `test`-Task; Anfrage-Prüfsummen `WHEN_REQUIRED` für S3-kompatible Ziele |
+| #1375 Quellentyp | `source_settings jsonb` mit `@JdbcTypeCode(SqlTypes.JSON)` auf einem String und Record-Validierung; `CHECK` für `S3`-Zweig **und** `jsonb_typeof(scopes) = 'array' AND jsonb_array_length(scopes) >= 1`; Überlappungsregel und feste Obergrenze 50 im Record; Doppelpunkt in Access-/Secret-Key abgewiesen; `Document#getDeepLinkSourceUrl` liefert für `S3` `null`; kein `EVENT`-Laufmodus (kommt mit #1381); Platzhalter-Executor deklariert nur `FULL` |
 | #1376 Verbindungstest | `HeadBucket`, `ListObjectsV2` (`MaxKeys` 1), `HeadObject` auf das erste Objekt; `301` → Region/Adressstil; `403` beim Listen vs. Lesen; `ListBuckets` ohne Recht → Rückfallmeldung, nie `500`; beide im Topf `source-test`; Zieladressprüfung je Bereich bei Virtual-Host |
 | #1377 Wizard | Freigabefolge **vor** der Bereichsliste; Anbietervorlagen aus Entscheidung 10 (Hetzner: Virtual-Host, Hinweis auf fehlende Benachrichtigungen); Überlappungsmeldung; Wortliste „Herkunft" um „S3-Objektspeicher" |
-| #1378 Vollabgleich | Merkmal `<ETag>\|<Größe>` in `last_modified_remote` (`t:`-Präfix als Rückfall); `LastModified` nur im Protokoll; `markPresent` für Übersprungenes; `Incomplete(bucket/prefix)` bei `403`/`404` je Bereich; `Truncated` bei Mengengrenze; Archivklassen laut Entscheidung 5 (`GLACIER_IR` lesbar) |
-| #1379 Ordner, Anhänge, Vorfilter | Wurzelregel „ein Bereich = Präfix ist Wurzel, mehrere = `bucket/prefix` je Bereich"; `source_container_key` = Bucket, `source_hierarchy_path` = Präfix relativ zum Bereich; `AttachmentSource.LocalFile`; kein Beleg-Link |
-| #1380 Betriebsgrenzen | `s3_sync_state` mit Bereichskennung `bucket/prefix` (nicht Index) und `ContinuationToken`; abgelehnter Token startet den Bereich neu; Schlüssel aus Entscheidung 11; Vorgaben gegen MinIO messen |
-| #1381 Push | `IndexingRunMode.EVENT` (Spec, `typeMappings`, Changeset für `chk_indexing_jobs_run_mode`, Frontend-Label); Umbenennung `source_confluence_webhook_secret` → `source_webhook_secret` mit Changeset und Delta-Test; drei Absicherungsformen einschließlich HTTP Basic (Ceph); Nutzlastformen mit unterschiedlicher Schlüsseldekodierung; `s3:TestEvent` → `200`; Löschung nur nach `HeadObject` mit `404`; SNS als Folge-Issue, nicht optional |
-| #1382 Container-Tests | Suite im regulären `test`; Szenarien aus Entscheidung 3 (`Incomplete` je Bereich, `Truncated`, Wiederaufnahme) und 6 (MinIO-Webhook mit `Bearer`); Virtual-Host nur im Unit-Test |
-| #1383 Handbuch, Demo | 17 Abschnitte nach Confluence-Vorbild; Grenzen aus Entscheidung 5 (Archiv, Versionen, kein Beleg-Link), 6 (SNS, SQS, Hetzner ohne Benachrichtigungen), 7 (keine Instanzrolle), 10 (Nextcloud/ownCloud); Kostenhinweis `LIST` bei AWS im Zeitplan-Abschnitt |
+| #1378 Vollabgleich | Merkmal `e:<ETag>\|<Größe>` in `last_modified_remote` (`t:`-Form als Rückfall); `LastModified` nur im Protokoll; Vorfilter über die Endung, `HeadObject` nur für endungslose Schlüssel; `markPresent` für Übersprungenes, `markReprocessed` für neu Verarbeitetes; `Incomplete` mit allen nicht listbaren Bereichen; `max-objects-per-run` als sichtbarer Fehler; Archivklassen laut Entscheidung 5 (`GLACIER_IR` lesbar); ein wiederaufsetzender Lauf listet jeden Bereich erneut |
+| #1379 Ordner, Anhänge, Vorfilter | Wurzelregel „ein Bereich = Präfix ist Wurzel, mehrere = Segmentkette Bucket + Präfixsegmente je Bereich" (kein Einzelname `bucket/prefix`); `S3` in `LibraryFolderService.MIRRORED_SOURCE_TYPES`; Tiefe über `MAX_DEPTH` → tiefster zulässiger Ordner mit Warnung; `source_container_key` = Bucket, `source_hierarchy_path` = Präfix relativ zum Bereich; `AttachmentSource.LocalFile` mit `markReprocessed`; kein Beleg-Link |
+| #1380 Betriebsgrenzen | `s3_sync_state` mit Kennung des laufenden Vollabgleichs, abgeschlossenen Bereichen als `bucket/prefix` (nicht Index, nur Reihenfolge) und Zeitstempel — **ohne** `ContinuationToken`; ein Wiederaufnahmelauf listet alle Bereiche erneut und spart nur Downloads; „Budget reicht nicht" als Fehler; Schlüssel aus Entscheidung 11; Vorgaben und den Heap-Bedarf von `currentPaths` gegen MinIO messen |
+| #1381 Push | `IndexingRunMode.EVENT` (Spec, `typeMappings`, Changeset für `chk_indexing_jobs_run_mode`, Frontend-Label) mit Ablehnung im Anstoß-Endpunkt, `defaultRunMode = FULL`, `ListingOutcome.Partial`; eigene `SecurityFilterChain` für `/api/v1/libraries/*/s3-events` in `oidc` **und** `dev` mit Test gegen die echte `oidc`-Kette; Umbenennung `source_confluence_webhook_secret` → `source_webhook_secret` mit Changeset und Delta-Test; drei Absicherungsformen einschließlich HTTP Basic (Ceph); Nutzlastformen mit unterschiedlicher Schlüsseldekodierung; `s3:TestEvent` → `202`; Körpergrenze `MAX_BODY_BYTES` geteilt; `webhook`-Topf in `RateLimitConfiguration` um den Pfad erweitert; Löschung nur nach `HeadObject` mit `404`; SNS als Folge-Issue, nicht optional |
+| #1382 Container-Tests | Suite im regulären `test`; Szenarien aus Entscheidung 3 (`Incomplete` je Bereich, `Truncated` mit erneuter Auflistung, Wiederaufnahme ohne Löschung des Vorlaufs) und 6 (MinIO-Webhook mit `Bearer` gegen die `oidc`-Kette); Virtual-Host nur im Unit-Test |
+| #1383 Handbuch, Demo | 17 Abschnitte nach Confluence-Vorbild; Grenzen aus Entscheidung 5 (Archiv, Versionen, kein Beleg-Link), 6 (SNS, SQS, Hetzner ohne Benachrichtigungen, zweiteiliger `auth_token` als Rückfall), 7 (keine Instanzrolle, kein Doppelpunkt in Schlüsseln), 10 (Nextcloud/ownCloud); Kostenhinweis `LIST` bei AWS im Zeitplan-Abschnitt; `S3` in den Ordner- und Zielprüfungstabellen von `knowledge-sources.md` |
 
 ### Was in den Sub-Issues zu korrigieren ist
 
-- **#1375:** ergänzt um `Document#getDeepLinkSourceUrl` → `null` für `S3` und um die
-  Überlappungsregel; die Zieladressprüfung beim Speichern prüft bei Virtual-Host je Bereich.
-- **#1378:** Die Änderungserkennung vergleicht ETag und Größe, **nicht** `LastModified`; das Merkmal
-  steht in `last_modified_remote`, eine neue Spalte entfällt.
+- **#1374:** Die Zieladressprüfung gilt nicht nur beim Bau des Clients, sondern je Anfrage
+  (`ExecutionInterceptor`); die Region ist immer explizit gesetzt.
+- **#1375:** ergänzt um `Document#getDeepLinkSourceUrl` → `null` für `S3`, die Überlappungsregel,
+  die `jsonb_typeof`-Constraint und die Doppelpunkt-Regel für Zugangsdaten; die Zieladressprüfung
+  beim Speichern prüft bei Virtual-Host je Bereich.
+- **#1378:** Die Änderungserkennung vergleicht ETag und Größe, **nicht** `LastModified` (das
+  Abnahmekriterium des Epics trägt dieselbe Formulierung); das Merkmal steht in
+  `last_modified_remote`, eine neue Spalte entfällt. Der Vorfilter hat in der Auflistung keinen
+  `Content-Type`; endungslose Schlüssel kosten einen `HeadObject`. Die Mengengrenze ist ein
+  sichtbarer Fehler, kein `Truncated`. Ein wiederaufsetzender Lauf listet jeden Bereich erneut.
 - **#1379:** „`lastModifiedRemote` aus `LastModified`" ist falsch — die Spalte trägt das
   ETag-Merkmal aus #1378; `LastModified` erscheint nur in Protokoll und Anzeige. Die Herkunftsanzeige
-  ist ein Text, kein Link.
-- **#1380:** Der Zustand kennt Bereiche über `bucket/prefix`, nicht über den Bereichsindex.
+  ist ein Text, kein Link. Der Wurzelordner je Bereich ist eine Segmentkette, kein Name mit
+  Schrägstrich; `MIRRORED_SOURCE_TYPES` und `MAX_DEPTH` sind zu behandeln; ein neu verarbeitetes
+  Mail-Objekt meldet `markReprocessed` (Abnahmekriterium: `.eml` mit zwei Anhängen → Neufassung
+  mit einem → ein Kinddokument).
+- **#1380:** Der Zustand kennt Bereiche über `bucket/prefix`, nicht über den Bereichsindex, und
+  speichert **keinen** `ContinuationToken`: Ein Wiederaufnahmelauf listet alle Bereiche erneut (nur
+  Downloads werden gespart), sonst löscht der Folgelauf den Bestand des Vorlaufs.
 - **#1381:** Löschereignisse löschen nach einem bestätigenden `HeadObject` (`404`), nicht blind; die
-  Absicherung kennt drei Formen (Basic für Ceph kommt hinzu); die Geheimnisspalte wird umbenannt
-  statt ergänzt; der SNS-Handshake ist ein Folge-Issue, nicht „optional, wenn der Aufwand
-  vertretbar ist".
+  Absicherung kennt drei Formen (Basic für Ceph kommt hinzu) und braucht eine eigene
+  `SecurityFilterChain`, weil der Resource-Server-Filter jede Bearer-Form sonst vorher abweist;
+  `EVENT` wird im Anstoß-Endpunkt abgewiesen, `defaultRunMode` bleibt `FULL`; die Geheimnisspalte
+  wird umbenannt statt ergänzt; Antwort `202`; der SNS-Handshake ist ein Folge-Issue, nicht
+  „optional, wenn der Aufwand vertretbar ist".
 - **#1383:** Hetzner ist belegt ohne Bucket-Benachrichtigungen und nur mit SSE-C — beides in §2 und
-  §14 nennen; §16 nennt die `LIST`-Kosten bei AWS.
+  §14 nennen; §2 nennt die Doppelpunkt-Regel; §8 den zweiteiligen `auth_token` als Rückfall; §16
+  nennt die `LIST`-Kosten bei AWS; die Ordner- und Zielprüfungstabellen in `knowledge-sources.md`
+  nehmen `S3` auf.
 
 ## Referenzen
 
