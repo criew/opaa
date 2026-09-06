@@ -1,8 +1,8 @@
 # #1331, ADR-0025 Entscheidung 4: groups whose membership comes from a provider's token. Delta test:
-# backend/src/test/java/io/opaa/migration/Migration027IdentityProviderGroupsTest.java
+# backend/src/test/java/io/opaa/migration/Migration029IdentityProviderGroupsTest.java
 databaseChangeLog:
   - changeSet:
-      id: 027-groups-kind-identity-provider
+      id: 029-groups-kind-identity-provider
       author: opaa
       comment: >-
         #1331, ADR-0025 Entscheidung 4: widens chk_groups_kind to accept 'IDENTITY_PROVIDER' - a
@@ -27,7 +27,7 @@ databaseChangeLog:
                   CHECK (kind IN ('ORG_UNIT', 'AD_HOC'));
 
   - changeSet:
-      id: 027-group-membership-history-cause-identity-provider
+      id: 029-group-membership-history-cause-identity-provider
       author: opaa
       comment: >-
         #1331: widens chk_group_membership_history_cause by the two causes a token-derived

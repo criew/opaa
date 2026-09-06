@@ -12,14 +12,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Delta test for {@code changes/027-identity-provider-groups.yaml} (#1331, ADR-0025 Entscheidung
+ * Delta test for {@code changes/029-identity-provider-groups.yaml} (#1331, ADR-0025 Entscheidung
  * 4): the {@code IDENTITY_PROVIDER} group kind, the per-provider uniqueness of its namespaced
  * external id, and the two token-derived membership history causes.
  */
-class Migration027IdentityProviderGroupsTest extends AbstractMigrationTest {
+class Migration029IdentityProviderGroupsTest extends AbstractMigrationTest {
 
   private static final String CHANGELOG_PATH =
-      "db/changelog/changes/027-identity-provider-groups.yaml";
+      "db/changelog/changes/029-identity-provider-groups.yaml";
   private static final String ORGANIZATION_ID = "00000000-0000-0000-0000-000000000001";
 
   private Connection connection;
