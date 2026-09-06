@@ -135,6 +135,22 @@ Sitzung.
 > Erstadministrator-Regel nur für den Standardanbieter, Verzeichnisabgleich an den Standardanbieter
 > gebunden. Der Ist-Stand der Umsetzung steht im Epic.
 
+**Anbieterverwaltung (gebaut, #1329).** Die Identitätsanbieter liegen in der Tabelle
+`oidc_providers` und werden über die Admin-API `/api/v1/admin/oidc-providers` (nur `SYSTEM_ADMIN`)
+gepflegt: Anzeigename, Issuer-URI (eindeutig), Client-ID, optional die Backend-seitige
+JWK-Set-Adresse, die Claim-Zuordnung, Reihenfolge, Standardanbieter, aktiviert/deaktiviert. Jede
+Änderung ist ein Audit-Ereignis (`OIDC_PROVIDER_*`) und wirkt ohne Neustart des Backends: Das
+Backend prüft jedes Token gegen den Anbieter seines Issuers, ein deaktivierter Anbieter wird ab dem
+nächsten Token abgewiesen (`unknown_issuer`). Der erste Anbieter ist automatisch der Standardanbieter;
+er kann weder deaktiviert noch gelöscht werden, bevor ein anderer aktivierter Anbieter Standard ist.
+Die Issuer-URI eines Anbieters, über den bereits Konten angelegt wurden, ist nicht änderbar. Beim
+ersten Start im `oidc`-Modus übernimmt OPAA den bisherigen `OPAA_OIDC_*`-Anbieter einmalig als
+Standardanbieter „Verzeichnisdienst"; `OPAA_OIDC_BOOTSTRAP=force` stellt ihn im Notfall wieder
+her. Vom Betreiber eingegebene Adressen durchlaufen eine eigene Adressprüfung
+(`OPAA_OIDC_TARGET_VALIDATION_*`); die Bootstrap-Adressen sind immer erlaubt. Ein Verbindungstest
+prüft Discovery-Dokument und JWK-Set vor dem Speichern. Die Anmeldeseite (#1332) und die
+Verwaltungsoberfläche (#1333) folgen.
+
 ---
 
 ## Verzeichnisdienst: Synchronisation und Kontenlebenszyklus

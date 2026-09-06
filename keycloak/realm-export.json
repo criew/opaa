@@ -28,12 +28,26 @@
     },
     {
       "clientId": "opaa-seed",
-      "description": "Resource-Owner-Password-Grant-Client ausschliesslich fuer demo/seed/seed.py (Issue #712) - nie fuer die Anmeldung im Frontend gedacht, deshalb ohne Redirect-URI und getrennt von opaa-frontend, dessen directAccessGrantsEnabled bewusst false bleibt.",
+      "description": "ROPC-Client nur fuer demo/seed/seed.py (#712), nie fuer die Anmeldung im Frontend - ohne Redirect-URI, getrennt von opaa-frontend (directAccessGrantsEnabled bleibt dort false). Der Audience-Mapper traegt opaa-frontend in aud ein (ADR-0025, azp-Pruefung).",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": true,
-      "serviceAccountsEnabled": false
+      "serviceAccountsEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "opaa-frontend-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "opaa-frontend",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "users": [

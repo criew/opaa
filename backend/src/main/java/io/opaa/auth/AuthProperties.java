@@ -12,14 +12,57 @@ public record AuthProperties(String mode, OidcAuth oidc, DevAuth dev, String ini
       mode = "";
     }
     if (oidc == null) {
-      oidc = new OidcAuth(null, null);
+      oidc = new OidcAuth(null, null, null, null, null, null);
     }
     if (dev == null) {
       dev = new DevAuth(null, null, null);
     }
   }
 
-  public record OidcAuth(String authority, String clientId) {}
+  /**
+   * The bootstrap block of the {@code oidc} mode (ADR-0025, Entscheidung 3): read once by {@code
+   * io.opaa.auth.oidc.OidcProviderSeeder} to create the first provider row, and by the address
+   * policy for the hosts that are always allowed. {@code bootstrap = "force"} makes the seeder
+   * ignore its marker once and restore the environment provider; {@code targetValidation} is the
+   * anmeldeseitige SSRF allowlist, deliberately separate from the indexing one.
+   */
+  public record OidcAuth(
+      String authority,
+      String clientId,
+      String issuerUri,
+      String jwkSetUri,
+      String bootstrap,
+      TargetValidation targetValidation) {
+
+    public static final String BOOTSTRAP_FORCE = "force";
+
+    public OidcAuth {
+      if (targetValidation == null) {
+        targetValidation = new TargetValidation(true, List.of());
+      }
+    }
+
+    public boolean isBootstrapForced() {
+      return BOOTSTRAP_FORCE.equalsIgnoreCase(bootstrap == null ? "" : bootstrap.trim());
+    }
+  }
+
+  /**
+   * {@code opaa.auth.oidc.target-validation} - see {@link OidcAuth}. {@code enabled} is a boxed
+   * {@link Boolean} so an operator who sets only the allowlist does not silently switch the check
+   * off (a missing primitive would bind as {@code false}); {@code null} means enabled.
+   */
+  public record TargetValidation(Boolean enabled, List<String> allowlist) {
+
+    public TargetValidation {
+      if (enabled == null) {
+        enabled = true;
+      }
+      if (allowlist == null) {
+        allowlist = List.of();
+      }
+    }
+  }
 
   /**
    * Configuration of the development authentication mode. There is no login and no token exchange:
