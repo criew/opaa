@@ -5,6 +5,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.opaa.auth.oidc.OidcClaimMapping;
+import io.opaa.auth.oidc.OidcProvider;
+import io.opaa.auth.oidc.OidcProviderRepository;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -12,24 +16,77 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+/**
+ * {@code GET /api/v1/auth/config} (#1332, ADR-0025 Entscheidung 5): the mode, and in the {@code
+ * oidc} mode every enabled provider in sign-in page order - whether or not the backend's decoder
+ * for it is ready yet - with exactly the fields the sign-in page shows; nothing else about a
+ * provider leaves the backend unauthenticated.
+ */
 @WebMvcTest(AuthConfigController.class)
 @Import(TestSecurityConfig.class)
 class AuthConfigControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private AuthProperties authProperties;
+  @MockitoBean private OidcProviderRepository providerRepository;
 
   // TestSecurityConfig's UserProvisioningFilter needs a UserService bean even though this
   // unauthenticated endpoint never calls it.
   @MockitoBean private UserService userService;
 
   @Test
-  void getAuthConfigReturnsModeFromProperties() throws Exception {
+  void inTheDevModeThereAreNoProviders() throws Exception {
     when(authProperties.mode()).thenReturn("dev");
 
     mockMvc
         .perform(get("/api/v1/auth/config"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.mode").value("dev"));
+        .andExpect(jsonPath("$.mode").value("dev"))
+        .andExpect(jsonPath("$.providers").isEmpty());
+  }
+
+  @Test
+  void inTheOidcModeEveryEnabledProviderIsListedInSignInOrderWithItsPublicFields()
+      throws Exception {
+    when(authProperties.mode()).thenReturn("oidc");
+    OidcProvider standard =
+        new OidcProvider(
+            "Beschäftigte",
+            "https://idp.example/realms/a",
+            "opaa-frontend",
+            "http://keycloak:8180/certs",
+            new OidcClaimMapping(null, null, "realm_access.roles", "opaa-admin", null, null));
+    standard.markDefault();
+    OidcProvider partner =
+        new OidcProvider(
+            "Partner",
+            "https://partner.example/realms/b/",
+            "opaa-partner",
+            null,
+            OidcClaimMapping.keycloakDefaults());
+    partner.setSortOrder(1);
+    // the partner's decoder is not built yet (its IdP may still be starting) - it is listed anyway
+    when(providerRepository.findAllByEnabledTrueOrderBySortOrderAscDisplayNameAsc())
+        .thenReturn(List.of(standard, partner));
+
+    mockMvc
+        .perform(get("/api/v1/auth/config"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.mode").value("oidc"))
+        .andExpect(jsonPath("$.providers.length()").value(2))
+        .andExpect(jsonPath("$.providers[0].id").value(standard.getId().toString()))
+        .andExpect(jsonPath("$.providers[0].displayName").value("Beschäftigte"))
+        .andExpect(jsonPath("$.providers[0].issuerUri").value("https://idp.example/realms/a"))
+        .andExpect(jsonPath("$.providers[0].clientId").value("opaa-frontend"))
+        .andExpect(jsonPath("$.providers[0].isDefault").value(true))
+        .andExpect(jsonPath("$.providers[0].sortOrder").value(0))
+        .andExpect(jsonPath("$.providers[1].displayName").value("Partner"))
+        .andExpect(jsonPath("$.providers[1].issuerUri").value("https://partner.example/realms/b/"))
+        .andExpect(jsonPath("$.providers[1].isDefault").value(false))
+        .andExpect(jsonPath("$.providers[1].sortOrder").value(1))
+        // nothing beyond the sign-in page's needs: no claim mapping, no backend-side address
+        .andExpect(jsonPath("$.providers[0].jwkSetUri").doesNotExist())
+        .andExpect(jsonPath("$.providers[0].claimMapping").doesNotExist())
+        .andExpect(jsonPath("$.providers[0].rolesClaim").doesNotExist());
   }
 }

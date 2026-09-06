@@ -20,17 +20,64 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       route.fulfill({
         json: {
           mode: "oidc",
-          authority: "http://localhost/oidc-stub",
-          clientId: "e2e",
+          providers: [
+            {
+              id: "00000000-0000-0000-0000-00000000e2e1",
+              displayName: "Verzeichnisdienst",
+              issuerUri: "http://localhost/oidc-stub",
+              clientId: "e2e",
+              isDefault: true,
+              sortOrder: 0,
+            },
+          ],
         },
       }),
     );
     await page.goto("/login");
     await expect(
-      page.getByRole("button", { name: "Anmelden über den Verzeichnisdienst" }),
+      page.getByRole("button", { name: "Anmelden bei Verzeichnisdienst" }),
     ).toBeVisible();
 
     await expectNoSeriousA11yViolations(page, "Anmeldeseite");
+  });
+
+  test("Anmeldeseite mit zwei Anbietern", async ({ page }) => {
+    // The second provider brings the "Zuletzt verwendet" hint and the secondary button variant
+    // onto the page (ADR-0025, #1332) - both must pass the contrast check like the single-provider
+    // page does.
+    // A string script: the E2E suite compiles without DOM typings, so `window` is unknown here.
+    await page.addInitScript(
+      "window.localStorage.setItem('opaa.oidc.lastProvider', '00000000-0000-0000-0000-00000000e2e2')",
+    );
+    await page.route("**/api/v1/auth/config", (route) =>
+      route.fulfill({
+        json: {
+          mode: "oidc",
+          providers: [
+            {
+              id: "00000000-0000-0000-0000-00000000e2e1",
+              displayName: "Verzeichnisdienst",
+              issuerUri: "http://localhost/oidc-stub",
+              clientId: "e2e",
+              isDefault: true,
+              sortOrder: 0,
+            },
+            {
+              id: "00000000-0000-0000-0000-00000000e2e2",
+              displayName: "Partnerportal",
+              issuerUri: "http://localhost/oidc-stub-partner",
+              clientId: "e2e-partner",
+              isDefault: false,
+              sortOrder: 1,
+            },
+          ],
+        },
+      }),
+    );
+    await page.goto("/login");
+    await expect(page.getByRole("button", { name: "Anmelden bei Partnerportal" })).toBeVisible();
+    await expect(page.getByText("Zuletzt verwendet")).toBeVisible();
+    await expectNoSeriousA11yViolations(page, "Anmeldeseite mit zwei Anbietern");
   });
 
   test("Chat in beiden Farbschemata", async ({ authenticatedPage: page }) => {
