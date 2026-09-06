@@ -219,6 +219,9 @@ opaa:
       # requests one run may send before it ends as "unvollständig, wird fortgesetzt"; 0 disables
       # the budget (see S3Properties.DEFAULT_REQUEST_BUDGET_PER_RUN).
       request-budget-per-run: ${OPAA_INDEXING_S3_REQUEST_BUDGET_PER_RUN:20000}
+      # listed objects one run may hold before it fails visibly asking for narrower scopes - an
+      # emergency brake for heap and runtime (see S3Properties.DEFAULT_MAX_OBJECTS_PER_RUN).
+      max-objects-per-run: ${OPAA_INDEXING_S3_MAX_OBJECTS_PER_RUN:1000000}
     # #1058: DoS-hardening limits for TabularDocumentPipeline (XLSX/CSV/ODS) - own property block,
     # own binding prefix, see TabularProperties's own Javadoc for why.
     tabular:

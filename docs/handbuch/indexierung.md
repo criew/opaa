@@ -207,6 +207,7 @@ Was ein Konnektor liefern muss, ist für alle gleich:
 | HTTP_DIRECTORY | vollständig | ja, wenn der Crawl weder abgeschnitten noch unvollständig war |
 | RSS_FEED | ergänzend | nie |
 | CONFLUENCE | Vollabgleich (vollständig), inkrementell (ergänzend) | nur der Vollabgleich, und nur bei vollständiger Auflistung aller Spaces |
+| S3 | Vollabgleich (vollständig) | ja, nur bei vollständiger Auflistung aller Geltungsbereiche; ein Bereich, der nicht gelistet werden darf oder dessen Bucket fehlt, lässt den Bestand stehen |
 
 ```mermaid
 flowchart LR
@@ -215,11 +216,13 @@ flowchart LR
         H[HTTP_DIRECTORY<br/>Autoindex crawlen]
         R[RSS_FEED<br/>Feed + Detailseiten]
         C[CONFLUENCE<br/>Spaces, Seiten, Anhänge]
+        S[S3<br/>Buckets, Präfixe, Objekte]
     end
     F --> DS
     H --> DS
     R --> DS
     C --> DS
+    S --> DS
     U[Upload] --> DS
     DS[Dokumentstrecke<br/>je Element identisch]
 ```
@@ -249,7 +252,9 @@ genannten Dinge mit.
 > Welche Mechanismen und Grenzwerte das je Quelle konkret sind, steht in den Kapiteln
 > [Verzeichnis im Dateisystem](konnektor-filesystem.md),
 > [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md) und
-> [Confluence](konnektor-confluence.md).
+> [Confluence](konnektor-confluence.md); für den S3-Objektspeicher bis zum eigenen Kapitel in
+> [ADR-0027](../decisions/0027-s3-konnektor.md) und den Grenzwerten `OPAA_INDEXING_S3_*` in
+> [deployment.md](deployment.md).
 
 ## 5. Die Dokumentstrecke: was mit jedem Element passiert
 
@@ -478,14 +483,25 @@ genutzt); die Tiefe ist allgemein (`opaa.indexing.attachments.max-depth`).
 | Datei geändert | alte Chunks entfernt, neue erzeugt, Dokument-ID bleibt |
 | Datei umbenannt oder verschoben | neuer Pfad ist ein neues Dokument, alter Pfad gilt als entfernt |
 | Datei verschwunden | Dokument samt Chunks wird am Ende eines **vollständig auflistenden, erfolgreichen** Laufs entfernt |
-| Quelle meldet die Löschung selbst (Confluence: Seite im Papierkorb, Seite in einen anderen Space verschoben) | Dokument samt Anhängen wird sofort entfernt, in jeder Betriebsart |
+| Quelle meldet die Löschung selbst (Confluence: Seite im Papierkorb, Seite in einen anderen Space verschoben; S3: Objekt zwischen Auflistung und Abruf verschwunden) | Dokument samt Anhängen wird sofort entfernt (Confluence, in jeder Betriebsart) bzw. am Ende des vollständigen Laufs (S3) |
+| S3-Objekt mit neuem ETag, aber gleichem Inhalt (erneuter Upload, Multipart, Verschlüsselungswechsel) | heruntergeladen, Prüfsumme gleich: Merkmal nachgetragen, Dokument-ID und Chunks bleiben |
+| S3-Objekt übersprungen (Ordnermarker, Archivklasse, nicht unterstütztes Format, zu groß, nicht lesbar) | gilt als gesehen, nichts wird entfernt; das Protokoll nennt es |
+| S3-Schlüssel außerhalb der Ein-/Ausschlussmuster oder eines abgewählten Geltungsbereichs | nicht mehr Teil des Bestands, wird am Ende des vollständigen Laufs entfernt |
 | Quelle nicht erreichbar, Teil der Quelle nicht lesbar | Lauf `FAILED` bzw. Aufzählung unvollständig, **nichts** wird entfernt |
 
 Die letzte Zeile ist die wichtigste Sicherung: Ein Lauf, der null Dateien sieht, kann eine leere
 Quelle oder ein nicht eingebundenes Netzlaufwerk bedeuten. Deshalb löscht ein leeres Ergebnis nie,
 und die Bereinigung läuft nur, wenn der Konnektor die Quelle vollständig aufgezählt hat. Ein
 abgebrochener Crawl bereinigt nicht; ein Confluence-Space, den das Dienstkonto nicht lesen darf,
-lässt den ganzen Bestand stehen. Ein entzogenes Recht ist kein Löschbefund.
+lässt den ganzen Bestand stehen, ebenso ein S3-Geltungsbereich, den die Zugangsdaten nicht
+auflisten dürfen oder dessen Bucket fehlt. Ein entzogenes Recht ist kein Löschbefund. Ein
+S3-Lauf, dessen Anfragebudget erschöpft ist, endet unvollständig und bereinigt ebenfalls nicht;
+der nächste Lauf listet alle Geltungsbereiche erneut und lädt nur, was noch fehlt.
+
+Für S3 ist das Änderungsmerkmal vor dem Download die Kombination aus ETag und Größe des
+Objekts (`e:<ETag>|<Größe>` in `last_modified_remote`), nicht der Zeitstempel: Ein erneuter
+Upload desselben Inhalts setzt `LastModified` neu, ändert aber nichts. Stimmt das Merkmal, wird
+das Objekt nicht geladen; weicht es ab, entscheidet nach dem Download die Prüfsumme.
 
 Auch abgewiesene Dateien, etwa nicht unterstützte Formate, gelten dabei als „gesehen". Unlesbar
 ist nicht dasselbe wie verschwunden.
@@ -625,7 +641,7 @@ Die wichtigsten Schlüssel unter `opaa.indexing.*`:
 | `stale-job-timeout` | 4h | Frist ohne Fortschritt, bis ein Lauf als verwaist gilt |
 | `thread-pool.*` | 2 / 4 / 20 | Lauf-Pool |
 | `target-validation.*` | aktiv | Zieladressprüfung für Netzquellen |
-| `rss.*`, `crawl.*`, `confluence.*`, `s3.*`, `mail.*`, `tabular.*`, `odf.*` | siehe Konnektor- und Format-Kapitel; `s3.*` bis zum eigenen Kapitel in [deployment.md](deployment.md) (`OPAA_INDEXING_S3_*`) | Grenzwerte je Quelle und Format |
+| `rss.*`, `crawl.*`, `confluence.*`, `s3.*`, `mail.*`, `tabular.*`, `odf.*` | siehe Konnektor- und Format-Kapitel; `s3.*` bis zum eigenen Kapitel in [deployment.md](deployment.md) (`OPAA_INDEXING_S3_*`, darunter `max-objects-per-run` als sichtbare Notbremse und `request-budget-per-run` als geordnetes Laufende) | Grenzwerte je Quelle und Format |
 
 ### 10.4 Was nicht gebaut ist
 

@@ -12,7 +12,7 @@ class S3PropertiesTest {
 
   @Test
   void fillsDefaults() {
-    S3Properties properties = new S3Properties(0, 0, null, null, null, 0, null);
+    S3Properties properties = new S3Properties(0, 0, null, null, null, 0, null, 0);
 
     assertThat(properties.listPageSize()).isEqualTo(1000);
     assertThat(properties.maxObjectSizeBytes()).isEqualTo(50L * 1024 * 1024);
@@ -22,19 +22,22 @@ class S3PropertiesTest {
     assertThat(properties.requestBudgetPerRun()).isZero();
     assertThat(properties.hasRequestBudget()).isFalse();
     assertThat(properties.tempDirectory()).isEqualTo(Path.of(System.getProperty("java.io.tmpdir")));
-    assertThat(new S3Properties(0, 0, null, 0, null, 0, Path.of("/srv/tmp")).maxRetries())
+    assertThat(new S3Properties(0, 0, null, 0, null, 0, Path.of("/srv/tmp"), 0).maxRetries())
         .as("zero turns retries off, it is not 'absent'")
         .isZero();
-    assertThat(new S3Properties(0, 0, null, 0, null, 0, Path.of("/srv/tmp")).tempDirectory())
+    assertThat(new S3Properties(0, 0, null, 0, null, 0, Path.of("/srv/tmp"), 0).tempDirectory())
         .isEqualTo(Path.of("/srv/tmp"));
     assertThat(S3Properties.defaults().requestBudgetPerRun())
         .isEqualTo(S3Properties.DEFAULT_REQUEST_BUDGET_PER_RUN);
     assertThat(S3Properties.defaults().hasRequestBudget()).isTrue();
+    assertThat(properties.maxObjectsPerRun()).isEqualTo(S3Properties.DEFAULT_MAX_OBJECTS_PER_RUN);
+    assertThat(new S3Properties(0, 0, null, null, null, 0, null, 5000).maxObjectsPerRun())
+        .isEqualTo(5000);
   }
 
   @Test
   void aProbeCopyShortensTimeoutAndRetriesAndDropsTheBudget() {
-    S3Properties run = new S3Properties(500, 0, null, null, null, 7, null);
+    S3Properties run = new S3Properties(500, 0, null, null, null, 7, null, 0);
 
     S3Properties probe = run.forProbe(java.time.Duration.ofSeconds(5), 1);
 
@@ -42,19 +45,23 @@ class S3PropertiesTest {
     assertThat(probe.requestTimeout()).isEqualTo(java.time.Duration.ofSeconds(5));
     assertThat(probe.maxRetries()).isEqualTo(1);
     assertThat(probe.requestBudgetPerRun()).isZero();
+    assertThat(probe.maxObjectsPerRun()).isEqualTo(run.maxObjectsPerRun());
     assertThat(run.requestBudgetPerRun()).isEqualTo(7);
   }
 
   @Test
   void rejectsAPageSizeS3CannotServe() {
-    assertThatThrownBy(() -> new S3Properties(1001, 0, null, null, null, 0, null))
+    assertThatThrownBy(() -> new S3Properties(1001, 0, null, null, null, 0, null, 0))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("1000");
-    assertThatThrownBy(() -> new S3Properties(-1, 0, null, null, null, 0, null))
+    assertThatThrownBy(() -> new S3Properties(-1, 0, null, null, null, 0, null, 0))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new S3Properties(0, 0, null, -1, null, 0, null))
+    assertThatThrownBy(() -> new S3Properties(0, 0, null, -1, null, 0, null, 0))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> new S3Properties(0, 0, null, null, null, -1, null))
+    assertThatThrownBy(() -> new S3Properties(0, 0, null, null, null, -1, null, 0))
         .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new S3Properties(0, 0, null, null, null, 0, null, -1))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("maxObjectsPerRun");
   }
 }

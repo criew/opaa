@@ -26,6 +26,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     disables the budget; the default is {@link #DEFAULT_REQUEST_BUDGET_PER_RUN}.
  * @param tempDirectory where downloads are written before the caller takes them over; {@code null}
  *     means the JVM's temporary directory.
+ * @param maxObjectsPerRun how many objects one run may list across all scopes before it ends as a
+ *     visible failure asking for narrower scopes - an emergency brake for heap and runtime (every
+ *     listed path is held for the reconciliation), not a working limit. Default {@link
+ *     #DEFAULT_MAX_OBJECTS_PER_RUN}; {@code 0} falls back to it.
  */
 @ConfigurationProperties(prefix = "opaa.indexing.s3")
 public record S3Properties(
@@ -35,9 +39,13 @@ public record S3Properties(
     Integer maxRetries,
     Duration retryBackoff,
     int requestBudgetPerRun,
-    Path tempDirectory) {
+    Path tempDirectory,
+    int maxObjectsPerRun) {
 
   public static final int MAX_LIST_PAGE_SIZE = 1000;
+
+  /** Listed objects per run before the run fails visibly (ADR-0027, Entscheidung 3). */
+  public static final int DEFAULT_MAX_OBJECTS_PER_RUN = 1_000_000;
 
   /**
    * Calls per run before the run ends as truncated: one call per {@link #MAX_LIST_PAGE_SIZE} listed
@@ -77,6 +85,13 @@ public record S3Properties(
     if (tempDirectory == null) {
       tempDirectory = Path.of(System.getProperty("java.io.tmpdir"));
     }
+    if (maxObjectsPerRun < 0) {
+      throw new IllegalArgumentException(
+          "maxObjectsPerRun must not be negative, got " + maxObjectsPerRun);
+    }
+    if (maxObjectsPerRun == 0) {
+      maxObjectsPerRun = DEFAULT_MAX_OBJECTS_PER_RUN;
+    }
   }
 
   /**
@@ -85,7 +100,14 @@ public record S3Properties(
    */
   public S3Properties forProbe(Duration timeout, int retries) {
     return new S3Properties(
-        listPageSize, maxObjectSizeBytes, timeout, retries, retryBackoff, 0, tempDirectory);
+        listPageSize,
+        maxObjectSizeBytes,
+        timeout,
+        retries,
+        retryBackoff,
+        0,
+        tempDirectory,
+        maxObjectsPerRun);
   }
 
   /** {@code true} when a run is bounded by {@link #requestBudgetPerRun}; zero means unbounded. */
@@ -95,6 +117,6 @@ public record S3Properties(
 
   /** All defaults - for callers and tests that need a properties instance without configuration. */
   public static S3Properties defaults() {
-    return new S3Properties(0, 0, null, null, null, DEFAULT_REQUEST_BUDGET_PER_RUN, null);
+    return new S3Properties(0, 0, null, null, null, DEFAULT_REQUEST_BUDGET_PER_RUN, null, 0);
   }
 }
