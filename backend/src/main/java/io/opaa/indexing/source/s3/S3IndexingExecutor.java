@@ -138,13 +138,12 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
     if (meter.throttles() == 0) {
       return;
     }
-    events.record(
+    events.recordRunNote(
         IndexingEventCategory.RATE_LIMITED,
         "Der Objektspeicher hat den Lauf "
             + meter.throttles()
             + "-mal gedrosselt (503 SlowDown/429); der Lauf hat insgesamt "
             + meter.throttledTime().toSeconds()
-            + " Sekunden gewartet statt abzubrechen",
-        null);
+            + " Sekunden gewartet statt abzubrechen");
   }
 }

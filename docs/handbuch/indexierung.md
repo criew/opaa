@@ -546,12 +546,15 @@ Eintrag. Die Kategorien:
 | in der Quelle entfernt | Dokument wurde gelöscht, wegen Abwesenheit oder auf Befund der Quelle |
 | Ratenbegrenzung | die Quelle hat den Lauf gebremst (HTTP 429); eine Zeile je Lauf mit Anzahl und Wartezeit |
 | Anfragebudget erschöpft | der Lauf endete geordnet unvollständig, der nächste setzt fort |
+| Kennzahlen | die Zahlen des Laufs (Anfragen, geladene Bytes, gelistete / übersprungene / verarbeitete Objekte, Dauer je Geltungsbereich); eine Zeile je Lauf bei Konnektoren, die sie zählen (S3) |
 | Fehler | Verarbeitung begonnen, unerwartet gescheitert |
 
 Drei Betriebsregeln dazu:
 
 - Je Lauf werden **höchstens 500 Ereignisse** gespeichert. Darüber hinaus wird nur gezählt
   („… und N weitere"), damit ein Lauf mit zehntausend Abweisungen nicht am Protokoll erstickt.
+  Notizen über den Lauf als Ganzes (Kennzahlen, Anfragebudget, Ratenbegrenzung, Sammelnotizen)
+  zählen nicht gegen diese Grenze, damit sie auch am Ende eines vollen Protokolls stehen.
 - Je Bibliothek bleiben die **letzten zehn Läufe** samt Protokoll erhalten; ältere werden beim
   Start eines neuen Laufs entfernt.
 - Ein Fehler beim Schreiben des Protokolls bricht den Lauf nie ab. Sonst bliebe der Lauf für
@@ -567,10 +570,10 @@ Scheitern zwei geplante Läufe hintereinander, zeigt die Bibliothek ein Warnbann
 Versuche zählen dafür nicht mit, damit ein Testlauf den Befund nicht überschreibt.
 
 Jeder Lauf zeigt zusätzlich eine Kennzahlenzeile mit Anhängen (indiziert, übersprungen,
-fehlgeschlagen) und Dauer. Anfragen an die Quelle und Drosselungen erscheinen nur bei Confluence,
-dem einzigen Konnektor, der sie zählt. Bei Confluence kommen außerdem die Betriebsart und das
-Kennzeichen „unvollständig, wird fortgesetzt" hinzu; eine unvollständige Auflistung bleibt
-dauerhaft an der Bibliothek sichtbar.
+fehlgeschlagen) und Dauer. Anfragen an die Quelle und Drosselungen erscheinen bei den Konnektoren,
+die sie zählen (Confluence, S3), geladene Bytes bei S3. Bei Confluence und S3 kommen außerdem das
+Kennzeichen „unvollständig, wird fortgesetzt" und die dauerhaft sichtbare Warnung einer
+unvollständigen Auflistung hinzu; die Betriebsart nur bei Confluence.
 
 Systemweit sieht ein Systemadministrator zusätzlich eine Liste der Dokumente **ohne einen
 einzigen Chunk**, der typische Befund für eingescannte PDFs, sowie den Pipeline-Versionsstand je

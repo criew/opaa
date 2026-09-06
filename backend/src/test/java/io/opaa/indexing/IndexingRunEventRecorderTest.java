@@ -59,6 +59,21 @@ class IndexingRunEventRecorderTest {
     verify(repository, times(IndexingRunEventRecorder.MAX_EVENTS_PER_RUN))
         .save(any(IndexingRunEvent.class));
     assertThat(recorder.overflowCount()).isEqualTo(7);
+
+    // a note about the run as a whole is not an item event: it still lands, bounded on its own
+    recorder.recordRunNote(IndexingEventCategory.SUMMARY, "12 Anfragen, 1 KB geladen");
+    verify(repository, times(IndexingRunEventRecorder.MAX_EVENTS_PER_RUN + 1))
+        .save(any(IndexingRunEvent.class));
+    for (int i = 0; i < IndexingRunEventRecorder.MAX_RUN_NOTES_PER_RUN + 3; i++) {
+      recorder.recordRunNote(IndexingEventCategory.RATE_LIMITED, "gedrosselt");
+    }
+    verify(
+            repository,
+            times(
+                IndexingRunEventRecorder.MAX_EVENTS_PER_RUN
+                    + IndexingRunEventRecorder.MAX_RUN_NOTES_PER_RUN))
+        .save(any(IndexingRunEvent.class));
+    assertThat(recorder.overflowCount()).isEqualTo(7 + 4);
   }
 
   @Test

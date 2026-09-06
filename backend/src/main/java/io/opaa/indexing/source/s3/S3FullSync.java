@@ -18,6 +18,8 @@ import io.opaa.library.LibraryFolderService;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -27,15 +29,18 @@ import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,8 +59,9 @@ import org.slf4j.LoggerFactory;
  * scopes the interrupted run did not finish first - and saves only the downloads, since an object
  * stored at its listed feature costs no call. Downloads run {@code downloadConcurrency} at a time
  * on their own threads while the listing goes on; every download is handed to the document path on
- * the listing thread in listing order, so counters, folders and the protocol stay sequential. The
- * sync must be {@link #close() closed} so no download thread or temp file outlives the run.
+ * the listing thread in listing order, so counters, folders, repository writes and the entries of
+ * downloaded objects stay sequential. The sync must be {@link #close() closed} so no download
+ * thread or temp file outlives the run.
  */
 final class S3FullSync implements AutoCloseable {
 
@@ -94,6 +100,12 @@ final class S3FullSync implements AutoCloseable {
 
   /** Downloads in flight, oldest first; drained on the listing thread in this order. */
   private final Deque<PendingDownload> pending = new ArrayDeque<>();
+
+  /**
+   * Temp files a download thread wrote and the listing thread has not consumed yet - what {@link
+   * #close()} sweeps, independent of whether the future still hands its result over.
+   */
+  private final Set<Path> landed = ConcurrentHashMap.newKeySet();
 
   private final AtomicInteger downloadThreads = new AtomicInteger();
   private ExecutorService downloadPool;
@@ -155,10 +167,11 @@ final class S3FullSync implements AutoCloseable {
       }
     } catch (S3AccessException.BudgetExhausted e) {
       // the state holds every scope listed completely so far - the next run starts with the rest
-      recordSummaries();
       return recordBudgetExhausted(e);
+    } finally {
+      // the figures belong to a failed run as well - they are the diagnosis of "too many objects"
+      recordSummaries();
     }
-    recordSummaries();
     if (!unlistableScopeKeys.isEmpty()) {
       log.info(
           "S3 full sync for library {} listed incompletely ({}) - keeping the bestand, no"
@@ -179,7 +192,9 @@ final class S3FullSync implements AutoCloseable {
             completedState.completeFullSync(clock.instant());
             syncStateRepository.save(completedState);
           } else {
-            frame.events().record(IndexingEventCategory.ERROR, RECONCILIATION_FAILED_MESSAGE, null);
+            frame
+                .events()
+                .recordRunNote(IndexingEventCategory.ERROR, RECONCILIATION_FAILED_MESSAGE);
           }
         });
     return ListingOutcome.complete();
@@ -202,27 +217,32 @@ final class S3FullSync implements AutoCloseable {
     return ordered;
   }
 
-  /** Abandons every download still in flight and deletes what already landed on disk. */
+  /**
+   * Abandons every download still in flight, waits briefly for the download threads to end and
+   * deletes every temp file a download wrote that the listing thread never consumed - a cancelled
+   * task may have finished its transfer before the cancellation reached it.
+   */
   @Override
   public void close() {
     for (PendingDownload item : pending) {
       item.download().cancel(true);
     }
+    pending.clear();
     if (downloadPool != null) {
       downloadPool.shutdownNow();
-    }
-    for (PendingDownload item : pending) {
-      if (item.download().isDone() && !item.download().isCancelled()) {
-        try {
-          deleteQuietly(item.download().get().file());
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        } catch (ExecutionException e) {
-          // the download failed - nothing on disk
+      try {
+        if (!downloadPool.awaitTermination(10, TimeUnit.SECONDS)) {
+          log.warn(
+              "S3 download threads of library {} did not end within 10 s", frame.library().getId());
         }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
       }
     }
-    pending.clear();
+    for (Path file : landed) {
+      deleteQuietly(file);
+    }
+    landed.clear();
   }
 
   /**
@@ -355,7 +375,9 @@ final class S3FullSync implements AutoCloseable {
   /**
    * Fetches the object off the listing thread when downloads may run concurrently, serially
    * otherwise; with {@code downloadConcurrency} downloads in flight the oldest is ingested first,
-   * so the queue never grows past that bound and the protocol keeps listing order.
+   * so the queue never grows past that bound and downloads are ingested among themselves in listing
+   * order. An object skipped without a download is noted the moment it is met, so its entry may
+   * precede that of an earlier object still downloading.
    */
   private void enqueueDownload(
       S3Scope scope,
@@ -379,8 +401,13 @@ final class S3FullSync implements AutoCloseable {
     Future<S3Download> future =
         downloadPool()
             .submit(
-                () ->
-                    store.getObject(scope.bucket(), object.key(), properties.maxObjectSizeBytes()));
+                () -> {
+                  S3Download download =
+                      store.getObject(
+                          scope.bucket(), object.key(), properties.maxObjectSizeBytes());
+                  landed.add(download.file());
+                  return download;
+                });
     pending.add(new PendingDownload(scope, object, filePath, fileName, marker, folderId, future));
   }
 
@@ -576,6 +603,7 @@ final class S3FullSync implements AutoCloseable {
     } catch (Exception e) {
       frame.recordFailure(filePath, e);
     } finally {
+      landed.remove(file);
       deleteQuietly(file);
       frame.progress().report();
     }
@@ -647,17 +675,15 @@ final class S3FullSync implements AutoCloseable {
     if (folderMarkers > 0) {
       frame
           .events()
-          .record(
-              IndexingEventCategory.UNSUPPORTED_FORMAT,
-              folderMarkers + FOLDER_MARKERS_SUFFIX,
-              null);
+          .recordRunNote(
+              IndexingEventCategory.UNSUPPORTED_FORMAT, folderMarkers + FOLDER_MARKERS_SUFFIX);
     }
     if (excludedKeys > 0) {
       frame
           .events()
-          .record(IndexingEventCategory.REJECTED, excludedKeys + EXCLUDED_KEYS_SUFFIX, null);
+          .recordRunNote(IndexingEventCategory.REJECTED, excludedKeys + EXCLUDED_KEYS_SUFFIX);
     }
-    frame.events().record(IndexingEventCategory.SUMMARY, summaryMessage(), null);
+    frame.events().recordRunNote(IndexingEventCategory.SUMMARY, summaryMessage());
   }
 
   /** The run's figures in one German sentence - what an operator reads throughput against. */
@@ -689,23 +715,28 @@ final class S3FullSync implements AutoCloseable {
     return message.toString();
   }
 
+  /** The app-wide size form ({@code formatFileSize} in the frontend): 1024-based, one decimal. */
   static String formatBytes(long bytes) {
-    if (bytes >= 1L << 30) {
-      return String.format(java.util.Locale.GERMANY, "%.1f GiB", bytes / (double) (1L << 30));
+    if (bytes < 1024) {
+      return bytes + " B";
     }
-    if (bytes >= 1L << 20) {
-      return String.format(java.util.Locale.GERMANY, "%.1f MiB", bytes / (double) (1L << 20));
+    String[] units = {"KB", "MB", "GB", "TB"};
+    double value = bytes / 1024.0;
+    int unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit++;
     }
-    if (bytes >= 1L << 10) {
-      return String.format(java.util.Locale.GERMANY, "%.1f KiB", bytes / (double) (1L << 10));
-    }
-    return bytes + " Bytes";
+    return new DecimalFormat("#,##0.#", DecimalFormatSymbols.getInstance(Locale.GERMANY))
+            .format(value)
+        + " "
+        + units[unit];
   }
 
   private ListingOutcome recordBudgetExhausted(S3AccessException.BudgetExhausted e) {
     frame
         .events()
-        .record(
+        .recordRunNote(
             IndexingEventCategory.BUDGET_EXHAUSTED,
             "Anfragebudget von "
                 + e.budget()
@@ -713,19 +744,17 @@ final class S3FullSync implements AutoCloseable {
                 + " alle Geltungsbereiche erneut und lädt nur, was noch fehlt"
                 + (unlistableScopeKeys.isEmpty()
                     ? ""
-                    : "; bis dahin nicht auflistbar: " + String.join(", ", unlistableScopeKeys)),
-            null);
+                    : "; bis dahin nicht auflistbar: " + String.join(", ", unlistableScopeKeys)));
     if (frame.progress().processedCount() == 0 && frame.progress().attachmentsProcessed() == 0) {
       // a run that stored nothing new will not do better next time - the chain has stalled
       frame
           .events()
-          .record(
+          .recordRunNote(
               IndexingEventCategory.ERROR,
               "Das Anfragebudget von "
                   + e.budget()
                   + " Anfragen reicht für diese Bibliothek nicht aus: Der Lauf hat kein Objekt"
-                  + " neu aufgenommen. Budget anheben oder die Geltungsbereiche aufteilen.",
-              null);
+                  + " neu aufgenommen. Budget anheben oder die Geltungsbereiche aufteilen.");
     }
     return ListingOutcome.truncated();
   }

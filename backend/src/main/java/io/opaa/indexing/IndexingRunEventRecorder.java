@@ -21,10 +21,17 @@ public final class IndexingRunEventRecorder implements IndexingEventSink {
 
   static final int MAX_EVENTS_PER_RUN = 500;
 
+  /**
+   * Notes about the run as a whole ({@link #recordRunNote}) are bounded separately from the item
+   * cap, so a run with ten thousand rejections still ends with its figures in the protocol.
+   */
+  static final int MAX_RUN_NOTES_PER_RUN = 20;
+
   private final IndexingRunEventRepository repository;
   private final IndexingJobService indexingJobService;
   private final UUID jobId;
   private int persistedCount;
+  private int runNoteCount;
   private int overflowCount;
 
   public IndexingRunEventRecorder(
@@ -53,6 +60,25 @@ public final class IndexingRunEventRecorder implements IndexingEventSink {
       // eventsTruncatedCount still reflects "the protocol is incomplete", even though the true
       // cause here is a write failure rather than the cap.
       log.warn("Failed to record indexing run event for job {}, continuing the run", jobId, e);
+      overflowCount++;
+    }
+  }
+
+  /**
+   * Records a note about the run as a whole - a summary, a spent budget, a throttling tally - that
+   * must survive a protocol full of item events: counted against {@link #MAX_RUN_NOTES_PER_RUN}
+   * instead of the item cap. Same contract as {@link #record} otherwise.
+   */
+  public void recordRunNote(IndexingEventCategory category, String message) {
+    if (runNoteCount >= MAX_RUN_NOTES_PER_RUN) {
+      overflowCount++;
+      return;
+    }
+    try {
+      repository.save(new IndexingRunEvent(jobId, category, message, null));
+      runNoteCount++;
+    } catch (Exception e) {
+      log.warn("Failed to record indexing run note for job {}, continuing the run", jobId, e);
       overflowCount++;
     }
   }

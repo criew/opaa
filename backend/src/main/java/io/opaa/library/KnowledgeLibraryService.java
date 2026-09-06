@@ -686,7 +686,9 @@ public class KnowledgeLibraryService {
       if (updated.getSourceType() == DocumentSourceType.S3
           && (sourceUrlChanged || s3SettingsChanged)) {
         // ADR-0027, Entscheidung 3: a changed endpoint or selection discards the resumption state
-        // - the next run lists every scope from scratch
+        // - the next run lists every scope from scratch. Any settings change counts (region,
+        // addressing style and patterns included): discarding is safe, keeping a stale state is
+        // not.
         s3SyncStateRepository.deleteByLibraryId(updated.getId());
       }
       if (updated.getSourceType() == DocumentSourceType.CONFLUENCE

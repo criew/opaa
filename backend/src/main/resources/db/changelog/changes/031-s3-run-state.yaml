@@ -9,7 +9,8 @@ databaseChangeLog:
         ADR-0027, Entscheidung 3: one row per S3 library (the confluence_sync_state pattern) holding
         the job of the full sync in progress, the scopes it has already listed completely as
         bucket/prefix keys (never a list index - an index shifts when a scope is removed) and the
-        time of the last completed full sync. A run after an interrupted one lists every scope
+        time the last full sync completed - cleared again when the next one begins, so the column
+        reads "completed" only between two full syncs. A run after an interrupted one lists every scope
         again, unfinished scopes first, and only saves the downloads. Deleted with the library
         (cascade) and by KnowledgeLibraryService whenever the endpoint or the scopes change.
       changes:
@@ -37,8 +38,8 @@ databaseChangeLog:
       author: opaa
       comment: >-
         #1380: the bytes a run downloaded from its source - what an operator reads bandwidth and the
-        object size bound against. NULL for runs recorded before this change and for source types
-        that do not count them.
+        object size bound against. NULL for runs recorded before this change; 0 for a run of a
+        source type that does not count them.
       changes:
         - sql:
             sql: ALTER TABLE public.indexing_jobs ADD COLUMN bytes_downloaded bigint;

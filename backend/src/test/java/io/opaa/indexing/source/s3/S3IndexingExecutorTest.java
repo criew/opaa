@@ -5,8 +5,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -49,6 +51,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -771,6 +775,8 @@ class S3IndexingExecutorTest {
             eq(jobId),
             argThat(
                 message -> message.contains("mehr als 2 Objekte") && message.contains("enger")));
+    verify(eventRepository)
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "3 Objekte gelistet", null)));
     verifyNoReconciliation();
   }
 
@@ -1036,7 +1042,7 @@ class S3IndexingExecutorTest {
 
     executorOver(budgeted).execute(jobId, library, IndexingRunMode.FULL);
 
-    verify(syncStateRepository, org.mockito.Mockito.atLeastOnce()).save(saved.capture());
+    verify(syncStateRepository, atLeastOnce()).save(saved.capture());
     S3SyncState state = saved.getValue();
     assertThat(state.isFullSyncInterrupted()).isTrue();
     assertThat(state.getFullSyncJobId()).isEqualTo(jobId);
@@ -1055,13 +1061,13 @@ class S3IndexingExecutorTest {
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
-    verify(syncStateRepository, org.mockito.Mockito.atLeastOnce()).save(saved.capture());
+    verify(syncStateRepository, atLeastOnce()).save(saved.capture());
     assertThat(saved.getValue().completedScopeKeys()).containsExactly("dokumente/2025/");
     assertThat(saved.getValue().isFullSyncInterrupted()).isTrue();
 
     // a complete listing whose reconciliation throws: the state stays open, the protocol says so
     library = library(settings(List.of(S3Scope.of("dokumente", "2025/"))));
-    org.mockito.Mockito.doThrow(new IllegalStateException("db weg"))
+    doThrow(new IllegalStateException("db weg"))
         .when(cleanupService)
         .reconcile(any(), any(), any(), any(), any(), any(), any());
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
@@ -1071,7 +1077,7 @@ class S3IndexingExecutorTest {
             argThat(
                 event(
                     IndexingEventCategory.ERROR, S3FullSync.RECONCILIATION_FAILED_MESSAGE, null)));
-    verify(syncStateRepository, org.mockito.Mockito.atLeastOnce()).save(saved.capture());
+    verify(syncStateRepository, atLeastOnce()).save(saved.capture());
     assertThat(saved.getValue().isFullSyncInterrupted()).isTrue();
     verify(folderService).pruneOrphanedFolders(eq(library), any());
   }
@@ -1081,6 +1087,8 @@ class S3IndexingExecutorTest {
     properties = new S3Properties(0, 0, null, null, null, 0, null, 0, 2);
     AtomicInteger inFlight = new AtomicInteger();
     AtomicInteger maxInFlight = new AtomicInteger();
+    // two downloads must be in flight together before either returns - deterministic, not timed
+    CountDownLatch pair = new CountDownLatch(2);
     FakeS3ObjectStore slow =
         new FakeS3ObjectStore() {
           @Override
@@ -1089,7 +1097,8 @@ class S3IndexingExecutorTest {
             int now = inFlight.incrementAndGet();
             maxInFlight.accumulateAndGet(now, Math::max);
             try {
-              Thread.sleep(40);
+              pair.countDown();
+              pair.await(5, TimeUnit.SECONDS);
               return super.getObject(bucket, key, maxBytes);
             } catch (InterruptedException e) {
               Thread.currentThread().interrupt();
@@ -1116,7 +1125,7 @@ class S3IndexingExecutorTest {
 
     executorOver(slow).execute(jobId, library, IndexingRunMode.FULL);
 
-    assertThat(maxInFlight.get()).as("bounded by download-concurrency").isEqualTo(2);
+    assertThat(maxInFlight.get()).as("bounded by download-concurrency, and used").isEqualTo(2);
     assertThat(ingested)
         .as("ingested on the listing thread in listing order")
         .containsExactly(
@@ -1157,6 +1166,9 @@ class S3IndexingExecutorTest {
         .save(argThat(event(IndexingEventCategory.BUDGET_EXHAUSTED, "Anfragebudget von 4", null)));
     verifyNoReconciliation();
     assertThat(ingestedFiles).allSatisfy(file -> assertThat(file).doesNotExist());
+    assertThat(budgeted.landedFiles())
+        .as("a download that finished behind the abort is swept by close()")
+        .allSatisfy(file -> assertThat(file).doesNotExist());
     ArgumentCaptor<IndexingRunCost> cost = ArgumentCaptor.forClass(IndexingRunCost.class);
     verify(indexingJobService).recordRunMetrics(eq(jobId), cost.capture());
     assertThat(cost.getValue().incomplete()).isTrue();
@@ -1180,15 +1192,16 @@ class S3IndexingExecutorTest {
             argThat(
                 event(
                     IndexingEventCategory.SUMMARY,
-                    "3 Anfragen, 1 Bytes geladen; 3 Objekte gelistet, 0 durch Muster"
+                    "3 Anfragen, 1 B geladen; 3 Objekte gelistet, 0 durch Muster"
                         + " ausgeschlossen, 2 übersprungen, 1 neu verarbeitet, 0 fehlgeschlagen;"
                         + " Dauer je Geltungsbereich: dokumente/2025/ 0 s, satzungen 0 s",
                     null)));
     ArgumentCaptor<IndexingRunCost> cost = ArgumentCaptor.forClass(IndexingRunCost.class);
     verify(indexingJobService).recordRunMetrics(eq(jobId), cost.capture());
     assertThat(cost.getValue().bytesDownloaded()).isEqualTo(1);
-    assertThat(S3FullSync.formatBytes(734_003_200L)).isEqualTo("700,0 MiB");
-    assertThat(S3FullSync.formatBytes(2_048)).isEqualTo("2,0 KiB");
+    assertThat(S3FullSync.formatBytes(734_003_200L)).isEqualTo("700 MB");
+    assertThat(S3FullSync.formatBytes(2_048)).isEqualTo("2 KB");
+    assertThat(S3FullSync.formatBytes(1_572_864)).isEqualTo("1,5 MB");
   }
 
   @Test
