@@ -51,6 +51,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -96,6 +97,14 @@ class ConfluenceIndexingExecutorTest {
   private SourceSyncStateRepository syncStateRepository;
   private VectorChunkStore vectorChunkStore;
   private final List<Duration> sleeps = new ArrayList<>();
+
+  /**
+   * The executor's clock: stands at {@link #NOW} unless a test sets {@code clockStep}, in which
+   * case every reading advances it - so a run's start and its completion are distinguishable.
+   */
+  private Instant clockNow = NOW;
+
+  private Duration clockStep = Duration.ZERO;
 
   /**
    * Every page {@code processConfluencePage} stored this test - the default {@code
@@ -256,8 +265,29 @@ class ConfluenceIndexingExecutorTest {
             documentRepository,
             syncStateRepository,
             cleanupService,
-            Clock.fixed(NOW, ZoneOffset.UTC),
+            testClock(),
             runTemplate());
+  }
+
+  private Clock testClock() {
+    return new Clock() {
+      @Override
+      public ZoneId getZone() {
+        return ZoneOffset.UTC;
+      }
+
+      @Override
+      public Clock withZone(ZoneId zone) {
+        return this;
+      }
+
+      @Override
+      public Instant instant() {
+        Instant reading = clockNow;
+        clockNow = clockNow.plus(clockStep);
+        return reading;
+      }
+    };
   }
 
   /** The real run frame over the mocked job bookkeeping and the spied reconciliation. */
@@ -290,6 +320,8 @@ class ConfluenceIndexingExecutorTest {
   void indexesEverySelectedPageAndAttachmentWithItsContextAndReconcilesTheBestand(
       ConfluenceEdition edition) throws Exception {
     start(edition, null, "ENG", "HR");
+    // the run starts at NOW and takes time: its completion is read from a later clock
+    clockStep = Duration.ofMinutes(5);
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
@@ -370,8 +402,9 @@ class ConfluenceIndexingExecutorTest {
     ArgumentCaptor<SourceSyncState> state = ArgumentCaptor.forClass(SourceSyncState.class);
     verify(syncStateRepository, timeout(5000).atLeast(2)).save(state.capture());
     SourceSyncState finalState = state.getValue();
-    assertThat(finalState.getFullSyncCompletedAt()).isNotNull();
+    // the anchor is the run's start, the completion time the later end of the run
     assertThat(finalState.getIncrementalAnchor()).isEqualTo(NOW);
+    assertThat(finalState.getFullSyncCompletedAt()).isAfter(NOW);
     assertThat(finalState.isFullSyncInterrupted()).isFalse();
   }
 

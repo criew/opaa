@@ -27,11 +27,13 @@ class SourceSyncStateTest {
     assertThat(state.isFullSyncInterrupted()).as("in progress counts as interrupted").isTrue();
     assertThat(state.completedScopeKeys()).containsExactly("ENG", "HR");
 
+    // the anchor is the run's start, the completion time its end - never the same instant
     Instant anchor = Instant.parse("2026-09-03T10:00:00Z");
-    state.completeFullSync(anchor, anchor);
+    Instant completedAt = Instant.parse("2026-09-03T10:42:00Z");
+    state.completeFullSync(completedAt, anchor);
     assertThat(state.isFullSyncInterrupted()).isFalse();
     assertThat(state.getIncrementalAnchor()).isEqualTo(anchor);
-    assertThat(state.getFullSyncCompletedAt()).isNotNull();
+    assertThat(state.getFullSyncCompletedAt()).isEqualTo(completedAt);
     assertThat(state.getFullSyncJobId()).isNull();
     assertThat(state.completedScopeKeys()).isEmpty();
   }

@@ -102,7 +102,7 @@ final class S3FullSync implements AutoCloseable {
   private final boolean scopeRootChain;
 
   /** The scopes behind an incomplete listing as {@code bucket/prefix}, in the order met. */
-  private final Set<String> unlistableScopeKeys = new LinkedHashSet<>();
+  private final Set<String> unlistedScopeKeys = new LinkedHashSet<>();
 
   private final SourceSyncState state;
   private final SourceSyncStateRepository syncStateRepository;
@@ -185,13 +185,13 @@ final class S3FullSync implements AutoCloseable {
       // the figures belong to a failed run as well - they are the diagnosis of "too many objects"
       recordSummaries();
     }
-    if (!unlistableScopeKeys.isEmpty()) {
+    if (!unlistedScopeKeys.isEmpty()) {
       log.info(
           "S3 full sync for library {} listed incompletely ({}) - keeping the bestand, no"
               + " reconciliation",
           frame.library().getId(),
-          unlistableScopeKeys);
-      return ListingOutcome.incomplete(List.copyOf(unlistableScopeKeys));
+          unlistedScopeKeys);
+      return ListingOutcome.incomplete(List.copyOf(unlistedScopeKeys));
     }
     // Folders are pruned only after the document cleanup of a complete listing, so a folder
     // emptied by that cleanup goes in the same run (ADR-0020, like FILESYSTEM and HTTP_DIRECTORY);
@@ -381,7 +381,7 @@ final class S3FullSync implements AutoCloseable {
                     + e.getMessage()
                     + UNLISTABLE_SCOPE_SUFFIX,
                 scope.key());
-        unlistableScopeKeys.add(scope.key());
+        unlistedScopeKeys.add(scope.key());
         return false;
       } catch (S3AccessException e) {
         throw new IndexingRunFailedException(e.getMessage(), e);
@@ -832,9 +832,9 @@ final class S3FullSync implements AutoCloseable {
   private String fullSyncContinuation() {
     return "der Lauf endet unvollständig, der nächste Lauf listet alle Geltungsbereiche erneut und"
         + " lädt nur, was noch fehlt"
-        + (unlistableScopeKeys.isEmpty()
+        + (unlistedScopeKeys.isEmpty()
             ? ""
-            : "; bis dahin nicht auflistbar: " + String.join(", ", unlistableScopeKeys));
+            : "; bis dahin nicht auflistbar: " + String.join(", ", unlistedScopeKeys));
   }
 
   private String tooManyObjectsMessage() {
