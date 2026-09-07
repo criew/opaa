@@ -315,10 +315,10 @@ public class AutoindexCrawlerService {
 
   /**
    * Whether any raw, query/fragment-stripped path segment of {@code relativePath} decodes to a
-   * literal {@code .}/{@code ..} or a segment carrying a path separator - the same check {@link
-   * UrlFolderPath#of} applies through {@link SourceFolderPath#rejects}, reused so {@link
-   * #staysUnderBase} rejects a link a web server would resolve outside the crawled subtree. Plain
-   * text in, so this can always answer.
+   * literal {@code .}/{@code ..} or a segment carrying a path separator - {@link
+   * SourceFolderPath#isPathTraversalName}, the traversal part of the check {@link UrlFolderPath#of}
+   * applies, reused so {@link #staysUnderBase} rejects a link a web server would resolve outside
+   * the crawled subtree. Plain text in, so this can always answer.
    */
   private static boolean hasEncodedPathTraversalSegment(String relativePath) {
     int query = relativePath.indexOf('?');

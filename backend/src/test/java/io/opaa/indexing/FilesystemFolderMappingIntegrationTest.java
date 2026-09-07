@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
@@ -19,11 +20,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -171,6 +175,31 @@ class FilesystemFolderMappingIntegrationTest {
 
     assertThat(topDoc.getFolderId()).isNull();
     assertThat(januarDoc.getFolderId()).isEqualTo(jahr2026.getId());
+  }
+
+  /**
+   * A directory name no {@code library_folders} row can carry - whitespace only, or with a
+   * backslash, both legal on a POSIX filesystem - leaves the file at the library root instead of a
+   * folder the manual folder API would refuse too. Windows cannot create either name, so the case
+   * runs on POSIX (the CI runner) only.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {" ", "a\\b"})
+  void aDirectoryNameNoFolderRowCanCarryLeavesTheFileAtTheRoot(String directoryName)
+      throws IOException {
+    assumeFalse(System.getProperty("os.name").toLowerCase(Locale.ROOT).startsWith("windows"));
+    Files.createDirectories(classTempDir.resolve(directoryName));
+    Files.writeString(classTempDir.resolve(directoryName).resolve("wurzel.txt"), "In der Wurzel.");
+
+    awaitJobCompletion(triggerIndexing());
+
+    Document document =
+        documentRepository.findAll().stream()
+            .filter(d -> d.getFileName().equals("wurzel.txt"))
+            .findFirst()
+            .orElseThrow();
+    assertThat(document.getFolderId()).isNull();
+    assertThat(folderRepository.findByLibraryId(targetLibraryId)).isEmpty();
   }
 
   @Test
