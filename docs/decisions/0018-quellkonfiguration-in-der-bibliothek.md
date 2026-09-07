@@ -67,6 +67,14 @@ mehrere Zuflüsse in einen Topf.
 > Konfigurationsattributs, keine Quellen-Tabelle im Sinne der unten verworfenen Alternative, und der
 > Geltungsbereich der Abwesenheitsprüfung bleibt „je Bibliothek und Quellentyp" (ADR-0017,
 > Entscheidung 5).
+>
+> **Nachtrag (2026-09-06, #1373):** Mit dem S3-Konnektor ([ADR-0027](0027-s3-konnektor.md),
+> Entscheidung 1) erhält `knowledge_libraries` ein typisiertes JSON-Feld `source_settings`, das je
+> Quellentyp ein Java-Record validiert (für S3: Region, Adressstil, Geltungsbereiche,
+> Ein-/Ausschlussmuster). Typspezifische Konfiguration **neuer** Typen lebt ab jetzt dort; die
+> Bibliothek trägt als Spalten nur noch, was typübergreifend Regeln hat (Adresse, Zugangsdaten,
+> Proxy, TLS, Zeitplan). Geheimnisse bleiben in `source_credentials`. `CONFLUENCE` behält seine
+> Spalten und Kindtabelle; ein Umzug ist nicht Teil des Nachtrags.
 
 ### 2. Der Anstoß eines Laufs verweist nur noch auf die Bibliothek
 

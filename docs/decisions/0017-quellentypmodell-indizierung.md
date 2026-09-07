@@ -196,6 +196,13 @@ Standardwert. `UPLOAD` braucht keine solche Registrierung, da es ohnehin keinen 
 > dass sie je unterstützter Betriebsart erfolgt. Ergänzend gilt für explizite Lösch-Ereignisse
 > (Webhook) und für `404`/`trashed` beim Einzelabruf die Regel aus ADR-0023: Löschung braucht einen
 > positiven Befund der Instanz — Abwesenheit in einem ergänzenden Lauf ist nie einer.
+>
+> **Nachtrag (2026-09-06, #1373):** [ADR-0027](0027-s3-konnektor.md), Entscheidung 3 wendet die
+> Regel auf S3 an: `S3` kennt genau eine auflistende Betriebsart (`FULL`, vollständig auflistend)
+> und einen ergänzenden Ereignislauf (`EVENT`, `KEEP_ON_ABSENCE`). Was als positiver Befund zählt,
+> benennt der jeweilige Konnektor-ADR — für S3 ein `404 NoSuchKey` auf `HeadObject` unter dem
+> Pflichtrecht `s3:ListBucket` oder das Fehlen in einer vollständigen Auflistung aller
+> Geltungsbereiche.
 
 ## Ausdrücklich offen
 
