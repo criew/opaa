@@ -6,12 +6,11 @@ import io.opaa.indexing.SourceHttpProperties;
 import io.opaa.indexing.pipeline.mail.MailProperties;
 import io.opaa.indexing.pipeline.office.OdfProperties;
 import io.opaa.indexing.pipeline.tabular.TabularProperties;
+import io.opaa.indexing.source.SourceEventProperties;
 import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
-import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookProperties;
 import io.opaa.indexing.source.filesystem.FilesystemProperties;
 import io.opaa.indexing.source.s3.S3Properties;
-import io.opaa.indexing.source.s3.events.S3EventProperties;
 import io.opaa.indexing.source.web.CrawlProperties;
 import io.opaa.library.AttachmentExtractionProperties;
 import io.opaa.library.LibraryProperties;
@@ -39,8 +38,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   CrawlProperties.class,
   ConfluenceProperties.class,
   S3Properties.class,
-  ConfluenceWebhookProperties.class,
-  S3EventProperties.class,
+  SourceEventProperties.class,
   FilesystemProperties.class,
   AttachmentProperties.class,
   TabularProperties.class,

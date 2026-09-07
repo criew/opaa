@@ -51,6 +51,8 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -2422,17 +2424,25 @@ class RssFeedIndexingExecutorTest {
   void anInterruptionWhileFetchingADetailPageEndsTheRunAsInterrupted() throws Exception {
     serve(
         "/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"));
-    Thread runThread = Thread.currentThread();
+    // The run is stopped while it waits for this page: the handler holds the answer back until
+    // the test has interrupted the run thread, so the interrupt always lands inside the blocking
+    // send and never after the page was read.
+    CountDownLatch pageRequested = new CountDownLatch(1);
+    CountDownLatch releasePage = new CountDownLatch(1);
     server.createContext(
         "/a.html",
         exchange -> {
-          // the run is stopped while it waits for this page - the answer arrives on an
-          // interrupted thread
-          runThread.interrupt();
-          byte[] bytes = DETAIL_HTML.getBytes(StandardCharsets.UTF_8);
-          exchange.getResponseHeaders().set("Content-Type", "text/html");
-          exchange.sendResponseHeaders(200, bytes.length);
-          exchange.getResponseBody().write(bytes);
+          pageRequested.countDown();
+          try {
+            releasePage.await();
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          try {
+            exchange.sendResponseHeaders(200, -1);
+          } catch (IOException ignored) {
+            // the client has already given up on this exchange
+          }
           exchange.close();
         });
     AtomicInteger bRequests = new AtomicInteger();
@@ -2443,6 +2453,20 @@ class RssFeedIndexingExecutorTest {
           exchange.sendResponseHeaders(200, -1);
           exchange.close();
         });
+    Thread runThread = Thread.currentThread();
+    Thread interrupter =
+        new Thread(
+            () -> {
+              try {
+                if (pageRequested.await(30, TimeUnit.SECONDS)) {
+                  runThread.interrupt();
+                }
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+            },
+            "run-interrupter");
+    interrupter.start();
 
     UUID jobId;
     try {
@@ -2450,7 +2474,10 @@ class RssFeedIndexingExecutorTest {
       assertThat(Thread.currentThread().isInterrupted()).as("the flag is restored").isTrue();
     } finally {
       Thread.interrupted();
+      releasePage.countDown();
+      interrupter.join();
     }
+    assertThat(pageRequested.getCount()).as("the page was asked for").isZero();
 
     verify(indexingJobService).failJob(jobId, IndexingRunTemplate.INTERRUPTED_MESSAGE);
     verify(indexingJobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());

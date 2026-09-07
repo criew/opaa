@@ -544,6 +544,8 @@ Ticket dieselben Schlüssel benutzt:
 | `events.max-pending-keys` | 500 | darüber läuft ein Vollabgleich statt des Ereignislaufs |
 | `events.max-deferrals` | 12 | wie oft ein Stapel auf einen laufenden Lauf wartet |
 
+Nachtrag: Seit 07.09.2026 teilen sich Ereignisweg und Confluence-Webhook den gemeinsamen Schlüssel `opaa.indexing.events.*` (Standard `max-deferrals` 120, `max-pending-keys` 500); die drei `events.*`-Zeilen oben beschreiben den Stand zur Entscheidung.
+
 Die Obergrenze von **fünfzig Geltungsbereichen** ist keine Property, sondern eine feste Konstante
 des Records (Entscheidung 2): Sie schützt vor Fehlbedienung, nicht vor Last, und ein
 Kompaktkonstruktor liest keine Spring-Property.

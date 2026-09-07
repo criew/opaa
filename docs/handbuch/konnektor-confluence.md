@@ -315,12 +315,16 @@ Eine site-weite Regel genügt für mehrere Spaces: Seiten außerhalb der Auswahl
   `attachment.pageId`, `attachment.container.id`, `pageId`, `pageIds`); die Ereignisart wird nicht
   ausgewertet. Was mit der Seite geschah, sagt der Abruf: geändert, dann neu indiziert; von der
   Instanz als im Papierkorb ausgewiesen, dann entfernt; 404 oder 403, dann unverändert.
-- Nachrichten werden je Bibliothek **gesammelt** (Standard fünf Sekunden) und in **einem** kurzen
-  Lauf geholt. Mehr als 200 Seiten in einem Stapel ergeben statt Einzelabrufen einen gewöhnlichen
-  Lauf in der Betriebsart, die der Zustand vorgibt.
-- Läuft für die Bibliothek gerade ein Lauf, wartet der Stapel bis zu 120 Sammelzeiten (zehn Minuten)
-  und wird dann **verworfen**: Der nächste geplante Lauf deckt dieselben Seiten ab. Ein Verwerfen
-  kostet Aktualität, nie Korrektheit.
+- Nachrichten werden je Bibliothek **gesammelt** (`opaa.indexing.events.debounce`, Standard fünf
+  Sekunden) und in **einem** kurzen Lauf geholt. Mehr als `opaa.indexing.events.max-pending-keys`
+  (500) Seiten in einem Stapel ergeben statt Einzelabrufen einen gewöhnlichen Lauf in der
+  Betriebsart, die der Zustand vorgibt.
+- Läuft für die Bibliothek gerade ein Lauf, wartet der Stapel bis zu
+  `opaa.indexing.events.max-deferrals` (120) Sammelzeiten — zehn Minuten — und wird dann
+  **verworfen**: Der nächste geplante Lauf deckt dieselben Seiten ab. Ein Verwerfen kostet
+  Aktualität, nie Korrektheit.
+- Sammeln, Stapelgrenze und Warten sind der gemeinsame Ereigniseingang aller Push-Wege; der
+  [S3-Ereignisweg](konnektor-s3.md) nutzt dieselben Werte.
 - Der **Anker des inkrementellen Abgleichs bewegt sich nicht**; der nächste inkrementelle Lauf liest
   die gemeldeten Seiten noch einmal, je ein Auflistungseintrag.
 - **Kein Replay-Schutz:** Eine mitgeschnittene, gültig signierte Nachricht lässt sich wieder
@@ -485,9 +489,15 @@ Alle Schlüssel unter `opaa.indexing.confluence.*`, Umgebungsvariablen als
 | `full-sync-interval` | 7d | instanzweite Vorgabe für den Vollabgleich-Rhythmus; je Bibliothek überschreibbar |
 | `incremental-overlap` | 10m | Überlappung des Änderungsfensters nach hinten |
 | `request-budget-per-run` | 50000 | Anfragen je Lauf; `0` schaltet das Budget ab |
-| `webhook.debounce` | 5s | Sammelzeit des Webhook-Eingangs |
-| `webhook.max-pending-pages` | 200 | über dieser Stapelgröße ein gewöhnlicher Lauf statt Einzelabrufen |
-| `webhook.max-deferrals` | 120 | Wartezyklen, bevor ein Stapel verworfen wird |
+
+Der Webhook-Eingang selbst wird nicht hier, sondern über den gemeinsamen Ereigniseingang aller
+Push-Wege konfiguriert (`opaa.indexing.events.*`, Umgebungsvariablen `OPAA_INDEXING_EVENTS_*`):
+
+| Schlüssel | Standard | Wirkung |
+|---|---|---|
+| `events.debounce` | 5s | Sammelzeit je Bibliothek |
+| `events.max-pending-keys` | 500 | über dieser Stapelgröße ein gewöhnlicher Lauf statt Einzelabrufen |
+| `events.max-deferrals` | 120 | Wartezyklen, bevor ein Stapel verworfen wird |
 
 Dazu die Ratenbegrenzung des Webhook-Eingangs (`OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS` je
 Client-Adresse und Bibliothek, `OPAA_RATE_LIMIT_WEBHOOK_GLOBAL_MAX_REQUESTS`, Fenster in Sekunden)

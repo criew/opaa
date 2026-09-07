@@ -2,41 +2,30 @@ package io.opaa.indexing.source.confluence.webhook;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.common.ConflictException;
 import io.opaa.common.UnauthorizedException;
-import io.opaa.indexing.IndexingJob;
-import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.JobTriggerSource;
+import io.opaa.indexing.source.SourceEventIntake;
+import io.opaa.indexing.source.SourceEventTarget;
+import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
-import java.time.Clock;
-import java.time.Instant;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.core.task.TaskRejectedException;
-import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The intake behind {@code POST /api/v1/libraries/{libraryId}/confluence-webhook}. Authentication
+ * The adapter behind {@code POST /api/v1/libraries/{libraryId}/confluence-webhook}. Authentication
  * is uniform: an unknown library, a missing secret, a wrong source type and a bad signature all
  * answer 401, since the endpoint is reachable without a session and must not say which it hit.
  *
- * <p>Page ids are then queued per library and, {@code debounce} later, one {@link
- * JobTriggerSource#WEBHOOK} run fetches exactly those pages; a batch past {@code maxPendingPages}
- * runs an ordinary run instead. A notification never deletes and never moves the incremental anchor
- * - it is a hint to look, the instance's answer is the finding (ADR-0023, Entscheidung 4). While
- * another run is in progress the batch waits up to {@code maxDeferrals} times, then is dropped: the
- * next run covers the same pages, so a drop costs freshness, never correctness.
+ * <p>The page ids the body names go to the shared {@link SourceEventIntake}; its targeted run
+ * fetches exactly those pages under {@link IndexingRunMode#INCREMENTAL}, an overflowed batch runs
+ * an ordinary run in the mode the library's state calls for (ADR-0023, Entscheidung 4). The
+ * incremental anchor never moves for a webhook.
  */
 @Service
 public class ConfluenceWebhookService {
@@ -46,30 +35,40 @@ public class ConfluenceWebhookService {
   static final String UNAUTHORIZED_MESSAGE = "Webhook nicht autorisiert";
 
   private final KnowledgeLibraryRepository libraryRepository;
-  private final IndexingJobService indexingJobService;
-  private final ConfluenceIndexingExecutor executor;
-  private final ConfluenceWebhookProperties properties;
-  private final TaskScheduler scheduler;
+  private final SourceEventIntake intake;
   private final JsonMapper jsonMapper;
-  private final Clock clock;
-
-  private final Map<UUID, PendingBatch> pending = new HashMap<>();
+  private final SourceEventTarget target;
 
   public ConfluenceWebhookService(
       KnowledgeLibraryRepository libraryRepository,
-      IndexingJobService indexingJobService,
       ConfluenceIndexingExecutor executor,
-      ConfluenceWebhookProperties properties,
-      @Qualifier("confluenceWebhookScheduler") TaskScheduler scheduler,
-      JsonMapper jsonMapper,
-      Clock clock) {
+      SourceEventIntake intake,
+      JsonMapper jsonMapper) {
     this.libraryRepository = libraryRepository;
-    this.indexingJobService = indexingJobService;
-    this.executor = executor;
-    this.properties = properties;
-    this.scheduler = scheduler;
+    this.intake = intake;
     this.jsonMapper = jsonMapper;
-    this.clock = clock;
+    this.target =
+        new SourceEventTarget() {
+          @Override
+          public DocumentSourceType sourceType() {
+            return DocumentSourceType.CONFLUENCE;
+          }
+
+          @Override
+          public SourceIndexingExecutor executor() {
+            return executor;
+          }
+
+          @Override
+          public IndexingRunMode targetedRunMode() {
+            return IndexingRunMode.INCREMENTAL;
+          }
+
+          @Override
+          public void refresh(UUID jobId, KnowledgeLibrary library, Set<String> keys, int dropped) {
+            executor.refreshPages(jobId, library, keys);
+          }
+        };
   }
 
   /**
@@ -93,124 +92,6 @@ public class ConfluenceWebhookService {
       log.debug("Confluence webhook for library {} named no page - nothing queued", libraryId);
       return;
     }
-    enqueue(libraryId, pageIds);
-  }
-
-  private synchronized void enqueue(UUID libraryId, Set<String> pageIds) {
-    PendingBatch batch = pending.get(libraryId);
-    if (batch == null) {
-      batch = new PendingBatch();
-      pending.put(libraryId, batch);
-      schedule(libraryId);
-    }
-    batch.add(pageIds, properties.maxPendingPages());
-  }
-
-  private void schedule(UUID libraryId) {
-    Instant at = clock.instant().plus(properties.debounce());
-    scheduler.schedule(() -> drain(libraryId), at);
-  }
-
-  /** Runs on the webhook scheduler once the debounce elapsed. */
-  void drain(UUID libraryId) {
-    PendingBatch batch;
-    synchronized (this) {
-      batch = pending.remove(libraryId);
-    }
-    if (batch == null) {
-      return;
-    }
-    Optional<KnowledgeLibrary> loaded =
-        libraryRepository
-            .findById(libraryId)
-            .filter(l -> l.getSourceType() == DocumentSourceType.CONFLUENCE)
-            .filter(l -> l.getWebhookSecret() != null);
-    if (loaded.isEmpty()) {
-      log.info("Dropping webhook batch for library {}: library gone or webhook removed", libraryId);
-      return;
-    }
-    KnowledgeLibrary library = loaded.get();
-    if (indexingJobService.isJobRunning(library.getId(), library.getOrganizationId())) {
-      defer(libraryId, batch);
-      return;
-    }
-    // A targeted refresh never lists, so it is INCREMENTAL by nature (nothing is removed for being
-    // absent). An overflowed batch becomes an ordinary run, in the mode the library's own state
-    // calls for - FULL while no full sync completed or one is due, INCREMENTAL otherwise.
-    IndexingRunMode runMode =
-        batch.overflowed ? executor.defaultRunMode(library) : IndexingRunMode.INCREMENTAL;
-    IndexingJob job;
-    try {
-      job =
-          indexingJobService.startJob(
-              library.getId(), library.getOrganizationId(), JobTriggerSource.WEBHOOK, runMode);
-    } catch (ConflictException e) {
-      defer(libraryId, batch);
-      return;
-    }
-    try {
-      if (batch.overflowed) {
-        executor.execute(job.getId(), library, runMode);
-      } else {
-        executor.refreshPages(job.getId(), library, batch.pageIds());
-      }
-    } catch (TaskRejectedException e) {
-      indexingJobService.failJob(
-          job.getId(), "Indizierungslauf abgelehnt: Kapazität derzeit erschöpft");
-      log.warn("Webhook run for library {} rejected: executor queue full", libraryId);
-    }
-  }
-
-  private synchronized void defer(UUID libraryId, PendingBatch batch) {
-    if (batch.deferrals >= properties.maxDeferrals()) {
-      log.info(
-          "Dropping webhook batch for library {} after {} deferrals: a run is still in progress,"
-              + " the next run covers the reported pages",
-          libraryId,
-          batch.deferrals);
-      return;
-    }
-    batch.deferrals++;
-    PendingBatch current = pending.get(libraryId);
-    if (current == null) {
-      pending.put(libraryId, batch);
-      schedule(libraryId);
-    } else {
-      // notifications arrived while this batch was being drained - they wait together
-      current.merge(batch, properties.maxPendingPages());
-    }
-  }
-
-  /** What is pending for one library. Guarded by the service's monitor. */
-  private static final class PendingBatch {
-    private final Set<String> ids = new LinkedHashSet<>();
-    private boolean overflowed;
-    private int deferrals;
-
-    void add(Set<String> pageIds, int maxPendingPages) {
-      if (overflowed) {
-        return;
-      }
-      ids.addAll(pageIds);
-      if (ids.size() > maxPendingPages) {
-        overflowed = true;
-        ids.clear();
-      }
-    }
-
-    void merge(PendingBatch other, int maxPendingPages) {
-      // a batch that already waited keeps its count - new notifications do not reset the clock
-      deferrals = Math.max(deferrals, other.deferrals);
-      if (other.overflowed) {
-        overflowed = true;
-        ids.clear();
-        return;
-      }
-      add(other.ids, maxPendingPages);
-    }
-
-    Set<String> pageIds() {
-      return Set.copyOf(ids);
-    }
+    intake.enqueue(target, libraryId, pageIds, 0);
   }
 }
