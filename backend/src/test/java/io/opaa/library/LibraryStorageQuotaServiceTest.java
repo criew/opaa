@@ -48,17 +48,17 @@ class LibraryStorageQuotaServiceTest {
 
   @Test
   void quotaExceededMessageNamesUsedAndTotalQuotaAdaptivelyFormatted() {
-    // PR #700 review finding 3: adaptive units (mirrors the frontend's formatFileSize), so a
-    // sub-GB quota never reads as the indistinguishable "0,0 GB von 0,0 GB belegt".
+    // adaptive units in the app-wide form (ByteSizes, the frontend's formatFileSize), so a sub-GB
+    // quota never reads as the indistinguishable "0 GB von 0 GB belegt".
     LibraryStorageQuotaService gibQuotaService = service(10L * 1024 * 1024 * 1024);
     when(documentRepository.sumFileSizeByLibraryId(libraryId)).thenReturn(3L * 1024 * 1024 * 1024);
     assertThat(gibQuotaService.quotaExceededMessage(libraryId))
-        .isEqualTo("Speicherkontingent der Bibliothek erschöpft (3,0 GB von 10,0 GB belegt)");
+        .isEqualTo("Speicherkontingent der Bibliothek erschöpft (3 GB von 10 GB belegt)");
 
     LibraryStorageQuotaService smallQuotaService = service(200L * 1024 * 1024);
-    when(documentRepository.sumFileSizeByLibraryId(libraryId)).thenReturn(150L * 1024 * 1024);
+    when(documentRepository.sumFileSizeByLibraryId(libraryId)).thenReturn(157L * 1024 * 1024 / 2);
     assertThat(smallQuotaService.quotaExceededMessage(libraryId))
-        .isEqualTo("Speicherkontingent der Bibliothek erschöpft (150,0 MB von 200,0 MB belegt)");
+        .isEqualTo("Speicherkontingent der Bibliothek erschöpft (78,5 MB von 200 MB belegt)");
   }
 
   @Test
@@ -66,7 +66,7 @@ class LibraryStorageQuotaServiceTest {
     LibraryStorageQuotaService quotaService = service(10L * 1024 * 1024 * 1024);
 
     assertThat(quotaService.quotaExceededMessage(libraryId, 3L * 1024 * 1024 * 1024))
-        .isEqualTo("Speicherkontingent der Bibliothek erschöpft (3,0 GB von 10,0 GB belegt)");
+        .isEqualTo("Speicherkontingent der Bibliothek erschöpft (3 GB von 10 GB belegt)");
     // The overload never consults the repository at all - the caller supplies usedBytes itself.
     verifyNoInteractions(documentRepository);
   }

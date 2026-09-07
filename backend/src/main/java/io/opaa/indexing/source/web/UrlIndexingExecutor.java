@@ -17,6 +17,7 @@ import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.ReconcilingAttachmentAccess;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.SourceFolderMirror;
+import io.opaa.indexing.source.SourceFolderPath;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
@@ -362,7 +363,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       if (document.isEmpty()) {
         return;
       }
-      UrlFolderPath path = UrlFolderPath.of(normalizedUrl, entryUrl);
+      SourceFolderPath path = UrlFolderPath.of(normalizedUrl, entryUrl);
       if (path.rejected()) {
         // Mirrors AsyncIndexingExecutor's own "does not sit under sourcePath" case: the document
         // stays at the library root rather than being dropped or mapped to a made-up name.

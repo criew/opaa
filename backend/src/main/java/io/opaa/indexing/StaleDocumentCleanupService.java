@@ -19,9 +19,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Removes documents - and their chunks - that a source no longer contains once an indexing run has
- * finished successfully: a document whose {@code filePath} is missing from the run's current paths
- * was not rediscovered. Scoped to one {@code (library, sourceType)} pair.
+ * Removes documents - and their chunks - that a source no longer contains: after a successful run,
+ * every document whose {@code filePath} is missing from the run's current paths ({@link
+ * #reconcile}, {@link #cleanupVanished}, scoped to one {@code (library, sourceType)} pair), and on
+ * a source's own positive finding one document with its attachments ({@link
+ * #removeWithAttachments}). Children always go before their parent.
  *
  * <p><b>Callers carry the "successful, uncapped run" invariant.</b> A run that failed, was
  * cancelled or was truncated must never call {@link #reconcile} or {@link #cleanupVanished}; the
@@ -125,6 +127,32 @@ public class StaleDocumentCleanupService {
   }
 
   /**
+   * Deletes {@code document} and every attachment below it - a source's positive finding that an
+   * item is gone, outside the reconciliation. The children come from the repository, not from the
+   * caller: an attachment can carry children of its own (a {@code .eml} attached to a page). Each
+   * removal is its own {@link IndexingEventCategory#REMOVED} event with {@code message}, deepest
+   * first as in {@link #sortedDeepestFirst}; a cyclic {@code parent_document_id} chain is walked
+   * once.
+   */
+  public void removeWithAttachments(
+      Document document, IndexingRunEventRecorder events, String message) {
+    List<Document> subtree = new ArrayList<>();
+    Set<UUID> visited = new HashSet<>();
+    Deque<Document> queue = new ArrayDeque<>(List.of(document));
+    while (!queue.isEmpty()) {
+      Document next = queue.removeFirst();
+      if (!visited.add(next.getId())) {
+        continue;
+      }
+      subtree.add(next);
+      queue.addAll(documentRepository.findByParentDocumentId(next.getId()));
+    }
+    for (Document doomed : sortedDeepestFirst(subtree)) {
+      remove(doomed, events, message);
+    }
+  }
+
+  /**
    * Removes every document of {@code existing} whose path is not in {@code currentFilePaths},
    * deepest nesting level first: {@code fk_documents_parent} (ADR-0022, Entscheidung 4) refuses a
    * parent whose children still exist, and {@code findByLibraryIdAndSourceType} carries no {@code
@@ -141,9 +169,7 @@ public class StaleDocumentCleanupService {
       if (currentFilePaths.contains(document.getFilePath())) {
         continue;
       }
-      vectorChunkStore.deleteByDocumentId(document.getId());
-      documentRepository.delete(document);
-      events.record(IndexingEventCategory.REMOVED, REMOVED_MESSAGE, document.getFilePath());
+      remove(document, events, REMOVED_MESSAGE);
       removed++;
     }
     if (removed > 0) {
@@ -154,6 +180,13 @@ public class StaleDocumentCleanupService {
           library.getId());
     }
     return removed;
+  }
+
+  /** Chunks go before the row; the removal is then its own {@code REMOVED} event. */
+  private void remove(Document document, IndexingRunEventRecorder events, String message) {
+    vectorChunkStore.deleteByDocumentId(document.getId());
+    documentRepository.delete(document);
+    events.record(IndexingEventCategory.REMOVED, message, document.getFilePath());
   }
 
   /**

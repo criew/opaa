@@ -25,7 +25,6 @@ import io.opaa.indexing.IndexingRunEvent;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.StaleDocumentCleanupService;
-import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
@@ -103,7 +102,7 @@ class ConfluenceDataCenterFullSyncTest {
                 new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0)),
             documentRepository,
             syncStateRepository,
-            mock(VectorChunkStore.class),
+            cleanupService,
             Clock.systemUTC(),
             new IndexingRunTemplate(
                 indexingJobService,

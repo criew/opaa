@@ -28,6 +28,7 @@ import io.opaa.indexing.IndexingRunEventRecorder;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.IndexingRunProgress;
 import io.opaa.indexing.SourceDocumentContext;
+import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -140,7 +141,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
             mock(AttachmentIndexer.class),
             documentRepository,
             mock(ConfluenceSyncStateRepository.class),
-            vectorChunkStore,
+            new StaleDocumentCleanupService(documentRepository, vectorChunkStore),
             Clock.systemUTC(),
             mock(IndexingRunTemplate.class));
   }

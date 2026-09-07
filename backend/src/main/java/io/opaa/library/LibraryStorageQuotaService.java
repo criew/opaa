@@ -1,7 +1,7 @@
 package io.opaa.library;
 
+import io.opaa.common.ByteSizes;
 import io.opaa.indexing.DocumentRepository;
-import java.util.Locale;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -104,32 +104,11 @@ public class LibraryStorageQuotaService {
    * avoids a second identical aggregate query per rejected document (PR #700 review, nit 8).
    */
   public String quotaExceededMessage(UUID libraryId, long usedBytes) {
+    // adaptive units, so a sub-GB quota never reads as "0 GB von 0 GB belegt" in every rejection
     return "Speicherkontingent der Bibliothek erschöpft ("
-        + formatBytes(usedBytes)
+        + ByteSizes.format(usedBytes)
         + " von "
-        + formatBytes(quotaBytes())
+        + ByteSizes.format(quotaBytes())
         + " belegt)";
-  }
-
-  /**
-   * Formats a byte count adaptively (B/KB/MB/GB/TB, one decimal above B, German locale) - mirrors
-   * the frontend's own {@code formatFileSize} (frontend/src/utils/labels.ts) so the same figure
-   * reads the same way in a quota rejection message as it does on the library detail page (PR #700
-   * review, finding 3). A fixed "GB" unit would render a sub-MB quota as the same "0,0 GB von 0,0
-   * GB belegt" for every rejection, indistinguishable from every other one in a connector run's
-   * protocol (up to 500 events, see {@code IndexingRunEventRecorder}).
-   */
-  private String formatBytes(long bytes) {
-    if (bytes < 1024) {
-      return bytes + " B";
-    }
-    String[] units = {"KB", "MB", "GB", "TB"};
-    double value = bytes / 1024.0;
-    int unitIndex = 0;
-    while (value >= 1024 && unitIndex < units.length - 1) {
-      value /= 1024;
-      unitIndex++;
-    }
-    return String.format(Locale.GERMANY, "%.1f %s", value, units[unitIndex]);
   }
 }

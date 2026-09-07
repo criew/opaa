@@ -14,6 +14,7 @@ import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.ReconcilingAttachmentAccess;
 import io.opaa.indexing.source.SourceFolderMirror;
+import io.opaa.indexing.source.SourceFolderPath;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
@@ -188,8 +189,9 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
    * defensive {@link Path#startsWith} guard is enough to catch an unexpected escape rather than
    * needing to resolve symlinks up front.
    *
-   * @return {@code null} for a file directly in {@code documentDir} (the library's root), or when
-   *     {@code file} unexpectedly does not sit under {@code documentDir} at all
+   * @return {@code null} for a file directly in {@code documentDir} (the library's root), when
+   *     {@code file} unexpectedly does not sit under {@code documentDir} at all, or when a
+   *     directory name cannot be a folder row ({@link SourceFolderPath#rejects})
    */
   private UUID materializeFolder(Path documentDir, Path file, SourceFolderMirror folderMirror) {
     Path normalizedFile = file.toAbsolutePath().normalize();
@@ -209,6 +211,16 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     for (Path part : relativeDir) {
       segments.add(part.toString());
     }
-    return folderMirror.folderFor(segments);
+    // uncapped: a real directory tree is free to nest deeper than the folder limit
+    SourceFolderPath path = SourceFolderPath.of(segments);
+    if (path.rejected()) {
+      log.warn(
+          "Cannot map directory segment \"{}\" of {} to a folder name - leaving the document at"
+              + " the library root",
+          path.rejectedSegment(),
+          normalizedFile);
+      return null;
+    }
+    return folderMirror.folderFor(path.segments());
   }
 }

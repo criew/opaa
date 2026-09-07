@@ -3,9 +3,11 @@ package io.opaa.indexing;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -24,7 +26,8 @@ import org.mockito.InOrder;
 
 /**
  * Unit-level coverage of {@link StaleDocumentCleanupService}: the children-before-parents delete
- * order (ADR-0022, Entscheidung 4) and the reconciliation's fold-in of attachments whose parent is
+ * order (ADR-0022, Entscheidung 4) for both the reconciliation and a source's own positive finding
+ * ({@code removeWithAttachments}), and the reconciliation's fold-in of attachments whose parent is
  * present but was not re-parsed (Entscheidung 3). {@code StaleDocumentCleanupIntegrationTest}
  * covers the (library, sourceType)-scoped behaviour end-to-end against a real schema.
  */
@@ -36,8 +39,9 @@ class StaleDocumentCleanupServiceTest {
   private final VectorChunkStore vectorChunkStore = mock(VectorChunkStore.class);
   private final StaleDocumentCleanupService service =
       new StaleDocumentCleanupService(documentRepository, vectorChunkStore);
+  private final IndexingRunEventRepository eventRepository = mock(IndexingRunEventRepository.class);
   private final IndexingRunEventRecorder events =
-      new IndexingRunEventRecorder(mock(IndexingRunEventRepository.class), null, null);
+      new IndexingRunEventRecorder(eventRepository, null, null);
 
   private final KnowledgeLibrary library =
       KnowledgeLibrary.ownedByUser(
@@ -133,6 +137,69 @@ class StaleDocumentCleanupServiceTest {
     order.verify(documentRepository).delete(innerMail);
     order.verify(vectorChunkStore).deleteByDocumentId(outerMail.getId());
     order.verify(documentRepository).delete(outerMail);
+  }
+
+  // --- removeWithAttachments: a source's positive finding -----------------------------------
+
+  @Test
+  void removeWithAttachmentsDeletesTheSubtreeDeepestFirstWithTheCallersMessage() {
+    Document page = document("Kapitel 1", "https://wiki/101", null);
+    Document attachment = document("notizen.eml", "https://wiki/101#900", page);
+    Document nested = document("anlage.pdf", "https://wiki/101#900/0/anlage.pdf", attachment);
+    Document sibling = document("foto.png", "https://wiki/101#901", page);
+    when(documentRepository.findByParentDocumentId(page.getId()))
+        .thenReturn(List.of(attachment, sibling));
+    when(documentRepository.findByParentDocumentId(attachment.getId())).thenReturn(List.of(nested));
+
+    service.removeWithAttachments(page, events, "Im Papierkorb, entfernt");
+
+    InOrder order = inOrder(documentRepository, vectorChunkStore);
+    order.verify(vectorChunkStore).deleteByDocumentId(nested.getId());
+    order.verify(documentRepository).delete(nested);
+    order.verify(vectorChunkStore).deleteByDocumentId(attachment.getId());
+    order.verify(documentRepository).delete(attachment);
+    order.verify(vectorChunkStore).deleteByDocumentId(sibling.getId());
+    order.verify(documentRepository).delete(sibling);
+    order.verify(vectorChunkStore).deleteByDocumentId(page.getId());
+    order.verify(documentRepository).delete(page);
+    for (Document removed : List.of(page, attachment, nested, sibling)) {
+      verify(eventRepository)
+          .save(
+              argThat(
+                  event ->
+                      event.getCategory() == IndexingEventCategory.REMOVED
+                          && event.getMessage().equals("Im Papierkorb, entfernt")
+                          && event.getReference().equals(removed.getFilePath())));
+    }
+  }
+
+  @Test
+  void removeWithAttachmentsRemovesADocumentWithoutChildrenOnItsOwn() {
+    Document page = document("Kapitel 1", "https://wiki/101", null);
+
+    service.removeWithAttachments(page, events, "verschoben");
+
+    verify(vectorChunkStore).deleteByDocumentId(page.getId());
+    verify(documentRepository).delete(page);
+    verify(documentRepository).findByParentDocumentId(page.getId());
+  }
+
+  @Test
+  void removeWithAttachmentsWalksACyclicParentChainOnce() {
+    // corrupt data: the attachment names the page as its child again - each row goes exactly once,
+    // and the walk terminates instead of recursing forever
+    Document page = document("Kapitel 1", "https://wiki/101", null);
+    Document attachment = document("notizen.txt", "https://wiki/101#900", page);
+    page.setParentDocumentId(attachment.getId());
+    when(documentRepository.findByParentDocumentId(page.getId())).thenReturn(List.of(attachment));
+    when(documentRepository.findByParentDocumentId(attachment.getId())).thenReturn(List.of(page));
+
+    service.removeWithAttachments(page, events, "entfernt");
+
+    verify(documentRepository, times(1)).delete(page);
+    verify(documentRepository, times(1)).delete(attachment);
+    verify(vectorChunkStore, times(1)).deleteByDocumentId(page.getId());
+    verify(vectorChunkStore, times(1)).deleteByDocumentId(attachment.getId());
   }
 
   // --- reconcile: the fold-in of ADR-0022, Entscheidung 3 -----------------------------------
