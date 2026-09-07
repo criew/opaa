@@ -231,7 +231,7 @@ Anhänge unveränderter Mails gelten als weiterhin vorhanden.
 | abgewiesen | kein extrahierbarer Text | typisch Scan-PDF |
 | Fehler | Verarbeitung fehlgeschlagen | Download- oder Pipeline-Fehler, auch HTTP 403 einzelner Dateien oder 429 nach erschöpften Wiederholungen |
 | entfernt | In der Quelle nicht mehr gefunden, entfernt | Löscherkennung |
-| Ratenbegrenzung | Die Quelle hat den Lauf n-mal gedrosselt (HTTP 429/503, Retry-After); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen | eine Zeile je Lauf, wenn mindestens einmal gewartet wurde |
+| Ratenbegrenzung | Die Quelle hat den Lauf n-mal gedrosselt (HTTP 429/503); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen | eine Zeile je Lauf, wenn mindestens einmal gewartet wurde |
 | Anfragebudget erschöpft | Anfragebudget von … Anfragen erschöpft; der Lauf endet unvollständig, der nächste Lauf durchsucht das Verzeichnis erneut | Anfragebudget je Lauf verbraucht (Abschnitt 4.4) |
 | Anfragebudget erschöpft | Deckel der 429-Wartezeit von … je Lauf erreicht; der Lauf endet unvollständig, der nächste Lauf durchsucht das Verzeichnis erneut | Summe der 429-Wartezeiten am Deckel (Abschnitt 4.4) |
 

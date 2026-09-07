@@ -79,7 +79,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     runTemplate.run(jobId, targetLibrary, runMode, this, this::indexDirectory);
   }
 
-  private ListingOutcome indexDirectory(IndexingRun run) throws IOException {
+  private ListingOutcome indexDirectory(IndexingRun run) throws IOException, InterruptedException {
     KnowledgeLibrary targetLibrary = run.library();
     // ADR-0018 Entscheidung 6: re-checked at run time, not only at library creation/update time -
     // the operator-configured allowlist can be narrowed after a FILESYSTEM library was created.
@@ -162,6 +162,7 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
           log.info("Indexing completed: {}", fileName);
         }
       } catch (Exception e) {
+        IndexingRun.rethrowRunEnding(e);
         run.recordFailure(fileName, e);
       }
       run.progress().report();

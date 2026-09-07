@@ -115,6 +115,9 @@ public class IndexingRunTemplate {
       failure = e.getMessage();
     } catch (InterruptedException e) {
       log.warn("Indexing run {} for library {} interrupted", jobId, library.getId());
+      // a body may rethrow with the flag already set; it is cleared for the writes below and
+      // restored in the finally
+      Thread.interrupted();
       failed = true;
       failure = INTERRUPTED_MESSAGE;
       interrupted = true;
@@ -243,7 +246,7 @@ public class IndexingRunTemplate {
             IndexingEventCategory.RATE_LIMITED,
             "Die Quelle hat den Lauf "
                 + meter.throttles()
-                + "-mal gedrosselt (HTTP 429/503, Retry-After); der Lauf hat insgesamt "
+                + "-mal gedrosselt (HTTP 429/503); der Lauf hat insgesamt "
                 + meter.throttledTime().toSeconds()
                 + " Sekunden gewartet statt abzubrechen");
   }

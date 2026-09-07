@@ -1270,7 +1270,7 @@ class FileProcessingServiceTest {
 
     @Test
     void withAnAttachmentAccessTheParentSizeIsCorrectedBeforeTheAttachmentsAreIndexed()
-        throws IOException {
+        throws IOException, InterruptedException {
       Path attachmentTempFile = fileNamed("discovered-attachment.tmp", "attachment bytes");
       var attachment =
           new DiscoveredAttachment("anlage.pdf", attachmentTempFile, "application/pdf");

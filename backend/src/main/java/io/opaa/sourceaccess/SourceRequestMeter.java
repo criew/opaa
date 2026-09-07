@@ -47,6 +47,22 @@ public final class SourceRequestMeter implements RateLimitListener {
     throttledMillis.addAndGet(Math.max(0, waited.toMillis()));
   }
 
+  /**
+   * Counts a throttled answer and its wait unless the total waiting time would then exceed {@code
+   * cap} - check and count in one atomic step, so concurrent callers cannot overshoot the cap.
+   * Returns whether it was counted.
+   */
+  public boolean recordThrottleWithin(Duration waited, Duration cap) {
+    long millis = Math.max(0, waited.toMillis());
+    long capMillis = cap.toMillis();
+    long before = throttledMillis.getAndUpdate(n -> n + millis > capMillis ? n : n + millis);
+    if (before + millis > capMillis) {
+      return false;
+    }
+    throttles.incrementAndGet();
+    return true;
+  }
+
   public void recordBytes(long bytes) {
     bytesDownloaded.addAndGet(bytes);
   }

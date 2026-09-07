@@ -88,6 +88,46 @@ class SourceRequestMeterTest {
   }
 
   @Test
+  void recordThrottleWithinCountsUpToTheCapAndRefusesTheWaitThatWouldCrossIt() {
+    assertThat(meter.recordThrottleWithin(Duration.ofSeconds(2), Duration.ofSeconds(3))).isTrue();
+    assertThat(meter.recordThrottleWithin(Duration.ofSeconds(1), Duration.ofSeconds(3))).isTrue();
+    assertThat(meter.recordThrottleWithin(Duration.ofSeconds(1), Duration.ofSeconds(3)))
+        .as("refused, neither counted nor added")
+        .isFalse();
+    assertThat(meter.throttles()).isEqualTo(2);
+    assertThat(meter.throttledTime()).isEqualTo(Duration.ofSeconds(3));
+  }
+
+  @Test
+  void concurrentWaitsNeverOvershootTheCap() throws Exception {
+    ExecutorService pool = Executors.newFixedThreadPool(8);
+    AtomicInteger admitted = new AtomicInteger();
+    try {
+      Future<?>[] tasks = new Future<?>[8];
+      for (int t = 0; t < tasks.length; t++) {
+        tasks[t] =
+            pool.submit(
+                () -> {
+                  for (int i = 0; i < 1000; i++) {
+                    if (meter.recordThrottleWithin(Duration.ofMillis(10), Duration.ofSeconds(5))) {
+                      admitted.incrementAndGet();
+                    }
+                  }
+                });
+      }
+      for (Future<?> task : tasks) {
+        task.get(10, TimeUnit.SECONDS);
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+
+    assertThat(admitted.get()).isEqualTo(500);
+    assertThat(meter.throttles()).isEqualTo(500);
+    assertThat(meter.throttledTime()).isEqualTo(Duration.ofSeconds(5));
+  }
+
+  @Test
   void asAListenerItCountsEveryAttemptAndEveryWait() throws Exception {
     RateLimitListener listener = meter;
 

@@ -187,6 +187,41 @@ class IndexingRunTemplateTest {
   }
 
   @Test
+  void anInterruptionRethrownWithTheFlagAlreadySetStillWritesTheJobOnAClearedThread() {
+    // IndexingRun.rethrowRunEnding restores the flag before it throws; the frame must clear it
+    // for the terminal writes and set it again afterwards.
+    AtomicReference<Boolean> interruptedDuringFailJob = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              interruptedDuringFailJob.set(Thread.currentThread().isInterrupted());
+              return null;
+            })
+        .when(jobService)
+        .failJob(any(), any());
+    try {
+      template.run(
+          jobId,
+          library,
+          IndexingRunMode.FULL,
+          fullListingExecutor,
+          run -> {
+            try {
+              throw new IllegalStateException("wrapped", new InterruptedException());
+            } catch (Exception e) {
+              IndexingRun.rethrowRunEnding(e);
+              throw e;
+            }
+          });
+
+      assertThat(Thread.currentThread().isInterrupted()).isTrue();
+    } finally {
+      Thread.interrupted();
+    }
+    verify(jobService).failJob(jobId, IndexingRunTemplate.INTERRUPTED_MESSAGE);
+    assertThat(interruptedDuringFailJob.get()).isFalse();
+  }
+
+  @Test
   void aBrokenForeignKeyToTheLibraryFailsTheJobAsDeletedDuringTheRun() {
     template.run(
         jobId,
@@ -478,7 +513,7 @@ class IndexingRunTemplateTest {
             argThat(
                 note(
                     IndexingEventCategory.RATE_LIMITED,
-                    "2-mal gedrosselt (HTTP 429/503, Retry-After); der Lauf hat insgesamt 3"
+                    "2-mal gedrosselt (HTTP 429/503); der Lauf hat insgesamt 3"
                         + " Sekunden gewartet statt abzubrechen")));
     verify(jobService)
         .recordRunMetrics(jobId, new IndexingRunCost(0, 2, 3500L, 0, 0, 0, false, 0L));

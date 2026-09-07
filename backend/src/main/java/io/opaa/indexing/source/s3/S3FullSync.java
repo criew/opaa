@@ -683,7 +683,8 @@ final class S3FullSync implements AutoCloseable {
       String fileName,
       String marker,
       UUID folderId,
-      S3Download download) {
+      S3Download download)
+      throws InterruptedException {
     Path file = download.file();
     try {
       String changeMarker =
@@ -722,6 +723,7 @@ final class S3FullSync implements AutoCloseable {
             filePath);
       }
     } catch (Exception e) {
+      IndexingRun.rethrowRunEnding(e);
       frame.recordFailure(filePath, e);
     } finally {
       landed.remove(file);

@@ -2294,7 +2294,7 @@ class RssFeedIndexingExecutorTest {
             argThat(
                 runNote(
                     IndexingEventCategory.BUDGET_EXHAUSTED,
-                    "Deckel der 429-Wartezeit von 1 Sekunden je Lauf erreicht; der Lauf endet"
+                    "Deckel der 429-Wartezeit von 1 Sekunde je Lauf erreicht; der Lauf endet"
                         + " unvollständig")));
     verify(indexingRunEventRepository)
         .save(argThat(runNote(IndexingEventCategory.RATE_LIMITED, "1-mal gedrosselt")));
@@ -2303,6 +2303,120 @@ class RssFeedIndexingExecutorTest {
         .save(argThat(event -> event.getCategory() == IndexingEventCategory.REJECTED));
     verify(indexingJobService).completeJob(eq(jobId), eq(0), eq(0), eq(0), eq(0));
     verify(indexingJobService, never()).failJob(any(), any());
+    verify(feedStateRepository, never()).save(any());
+  }
+
+  private static final IndexingProperties.Rss RSS_WITH_ATTACHMENTS =
+      new IndexingProperties.Rss(
+          200, 10_000, 10_000, 0, null, AttachmentProfile.GENERIC, 10, 10_000);
+
+  private String detailHtmlWithAttachments(String... names) {
+    StringBuilder html = new StringBuilder("<html><body><main>Text");
+    for (String name : names) {
+      html.append("<a href=\"")
+          .append(baseUrl)
+          .append("/downloads/")
+          .append(name)
+          .append("\">")
+          .append(name)
+          .append("</a>");
+    }
+    return html.append("</main></body></html>").toString();
+  }
+
+  @Test
+  void aBudgetSpentOnAnAttachmentEndsTheRunTruncatedWithoutAnAttachmentFailure() throws Exception {
+    // budget 2: the feed and a.html - the first attachment is the third request and is refused
+    // before it leaves; neither it nor the two attachments behind it are an attachment failure
+    executor =
+        newExecutor(RSS_WITH_ATTACHMENTS, requestPolicy().withRunBounds(2, Duration.ofMinutes(15)));
+    serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"), "\"v1\"");
+    serve(
+        "/a.html", 200, "text/html", detailHtmlWithAttachments("eins.pdf", "zwei.pdf", "drei.pdf"));
+    serve("/b.html", 200, "text/html", DETAIL_HTML);
+    AtomicInteger attachmentRequests = new AtomicInteger();
+    server.createContext(
+        "/downloads/",
+        exchange -> {
+          attachmentRequests.incrementAndGet();
+          byte[] bytes = "%PDF-1.4 not real content".getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "application/pdf");
+          exchange.sendResponseHeaders(200, bytes.length);
+          exchange.getResponseBody().write(bytes);
+          exchange.close();
+        });
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    UUID jobId = executeJob(baseUrl + "/feed.xml");
+
+    assertThat(attachmentRequests.get()).as("refused before it left").isZero();
+    verify(fileProcessingService, never()).ingest(DocumentIngests.anyFile(), any());
+    verify(fileProcessingService, never())
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/b.html").in(library).match(), any());
+    verify(indexingRunEventRepository)
+        .save(argThat(runNote(IndexingEventCategory.BUDGET_EXHAUSTED, "Anfragebudget von 2")));
+    verify(indexingRunEventRepository, never())
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.ERROR
+                        || event.getCategory() == IndexingEventCategory.UNREACHABLE));
+    ArgumentCaptor<io.opaa.indexing.IndexingRunCost> cost =
+        ArgumentCaptor.forClass(io.opaa.indexing.IndexingRunCost.class);
+    verify(indexingJobService).recordRunMetrics(eq(jobId), cost.capture());
+    assertThat(cost.getValue().attachmentsFailed()).isZero();
+    assertThat(cost.getValue().incomplete()).isTrue();
+    verify(indexingJobService).completeJob(eq(jobId), eq(1), eq(0), eq(0), eq(1));
+    // the entry is deferred: the next run sees it again
+    verify(feedStateRepository, never()).save(any());
+  }
+
+  @Test
+  void theWaitCapReachedOnAnAttachmentEndsTheRunTruncatedWithoutAnAttachmentFailure()
+      throws Exception {
+    executor =
+        newExecutor(RSS_WITH_ATTACHMENTS, requestPolicy().withRunBounds(0, Duration.ofSeconds(1)));
+    serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/a.html", baseUrl + "/b.html"), "\"v1\"");
+    serve("/a.html", 200, "text/html", detailHtmlWithAttachments("eins.pdf", "zwei.pdf"));
+    serve("/b.html", 200, "text/html", DETAIL_HTML);
+    server.createContext(
+        "/downloads/eins.pdf",
+        exchange -> {
+          exchange.getResponseHeaders().set("Retry-After", "1");
+          exchange.sendResponseHeaders(429, -1);
+          exchange.close();
+        });
+    AtomicInteger secondAttachmentRequests = new AtomicInteger();
+    server.createContext(
+        "/downloads/zwei.pdf",
+        exchange -> {
+          secondAttachmentRequests.incrementAndGet();
+          exchange.sendResponseHeaders(200, -1);
+          exchange.close();
+        });
+    when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    UUID jobId = executeJob(baseUrl + "/feed.xml");
+
+    assertThat(sleeps).containsExactly(Duration.ofSeconds(1));
+    assertThat(secondAttachmentRequests.get()).isZero();
+    verify(fileProcessingService, never())
+        .ingest(DocumentIngests.that().text().at(baseUrl + "/b.html").in(library).match(), any());
+    verify(indexingRunEventRepository)
+        .save(argThat(runNote(IndexingEventCategory.BUDGET_EXHAUSTED, "Deckel der 429-Wartezeit")));
+    verify(indexingRunEventRepository, never())
+        .save(
+            argThat(
+                event ->
+                    event.getCategory() == IndexingEventCategory.ERROR
+                        || event.getCategory() == IndexingEventCategory.UNREACHABLE));
+    ArgumentCaptor<io.opaa.indexing.IndexingRunCost> cost =
+        ArgumentCaptor.forClass(io.opaa.indexing.IndexingRunCost.class);
+    verify(indexingJobService).recordRunMetrics(eq(jobId), cost.capture());
+    assertThat(cost.getValue().attachmentsFailed()).isZero();
+    verify(indexingJobService).completeJob(eq(jobId), eq(1), eq(0), eq(0), eq(1));
     verify(feedStateRepository, never()).save(any());
   }
 

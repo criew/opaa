@@ -296,7 +296,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         entryUrl);
     RequestPoliteness.delayBeforeRequest(properties.requestDelayMs());
     Optional<DetailPageExtractor.DetailPage> fetched = fetchDetailPageForEntry(ctx, entryUrl, true);
-    fetched.ifPresent(detailPage -> indexAttachments(ctx, detailPage.attachments(), entryUrl));
+    if (fetched.isPresent()) {
+      indexAttachments(ctx, fetched.get().attachments(), entryUrl);
+    }
   }
 
   /**
@@ -306,7 +308,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * as {@code parentDocumentId}, which every call site has already ensured exists.
    */
   private void indexAttachments(
-      RssFeedRunContext ctx, List<AttachmentCandidate> candidates, String entryUrl) {
+      RssFeedRunContext ctx, List<AttachmentCandidate> candidates, String entryUrl)
+      throws InterruptedException {
     Optional<Document> entryDocument =
         documentRepository.findByLibraryIdAndFilePath(ctx.targetLibrary().getId(), entryUrl);
     if (entryDocument.isEmpty()) {

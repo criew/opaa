@@ -543,7 +543,7 @@ Eintrag. Die Kategorien:
 | Allowlist | Quellpfad liegt außerhalb der Freigabe |
 | Zeitplan übersprungen | fällig, aber ein Lauf lief bereits |
 | in der Quelle entfernt | Dokument wurde gelöscht, wegen Abwesenheit oder auf Befund der Quelle |
-| Ratenbegrenzung | die Quelle hat den Lauf gebremst (HTTP 429, bei S3 auch 503); eine Zeile je Lauf mit Anzahl und Wartezeit, bei jedem Netzkonnektor gleich formuliert: „Die Quelle hat den Lauf n-mal gedrosselt (HTTP 429/503, Retry-After); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen" |
+| Ratenbegrenzung | die Quelle hat den Lauf gebremst (HTTP 429, bei S3 auch 503); eine Zeile je Lauf mit Anzahl und Wartezeit, bei jedem Netzkonnektor gleich formuliert: „Die Quelle hat den Lauf n-mal gedrosselt (HTTP 429/503); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen" |
 | Anfragebudget erschöpft | der Lauf endete geordnet unvollständig, weil sein Anfragebudget verbraucht oder der Deckel seiner 429-Wartezeit erreicht ist; die Zeile nennt, wo der nächste Lauf fortsetzt |
 | Kennzahlen | die Zahlen des Laufs (Anfragen, geladene Bytes, gelistete / übersprungene / verarbeitete Objekte, Dauer je Geltungsbereich); eine Zeile je Lauf bei Konnektoren, die sie zählen (S3) |
 | Fehler | Verarbeitung begonnen, unerwartet gescheitert |

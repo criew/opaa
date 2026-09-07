@@ -36,13 +36,14 @@ public final class RequestBudgetExhaustedException extends RuntimeException {
         "Der Deckel der 429-Wartezeit von " + bound + " reicht für diese Bibliothek nicht aus: ");
   }
 
-  /** Whole minutes as minutes, anything else as seconds. */
+  /** Whole minutes as minutes, anything else as seconds - singular for one. */
   private static String german(Duration duration) {
     long seconds = duration.toSeconds();
     if (seconds >= 60 && seconds % 60 == 0) {
-      return (seconds / 60) + " Minuten";
+      long minutes = seconds / 60;
+      return minutes == 1 ? "1 Minute" : minutes + " Minuten";
     }
-    return seconds + " Sekunden";
+    return seconds == 1 ? "1 Sekunde" : seconds + " Sekunden";
   }
 
   /**

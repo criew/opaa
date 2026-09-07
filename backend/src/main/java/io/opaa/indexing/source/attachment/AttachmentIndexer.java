@@ -8,6 +8,7 @@ import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.SupportedDocumentFormats;
+import io.opaa.indexing.source.IndexingRun;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
@@ -32,10 +33,10 @@ import org.slf4j.LoggerFactory;
  * <p>An attachment failure never propagates: a lost attachment is logged and skipped with no effect
  * on the parent's outcome, but marks {@link AttachmentAccess#markDeferred()} so a later conditional
  * {@code GET} cannot suppress the retry. What ends the run - an interruption, a spent request
- * budget - is not an attachment failure and passes through. Every attachment created or confirmed
- * unchanged becomes a child of {@code parentDocumentId} (Entscheidung 4) and its {@code file_path}
- * is returned, for a caller that folds those paths into its own reconciliation set (Entscheidung
- * 3).
+ * budget - is not an attachment failure and passes through ({@link IndexingRun#rethrowRunEnding}).
+ * Every attachment created or confirmed unchanged becomes a child of {@code parentDocumentId}
+ * (Entscheidung 4) and its {@code file_path} is returned, for a caller that folds those paths into
+ * its own reconciliation set (Entscheidung 3).
  *
  * <p>Every attachment handed in is counted exactly once on {@link AttachmentAccess#progress()}:
  * {@code PROCESSED} when it became a document, {@code SKIPPED} when nothing was attempted for it
@@ -81,7 +82,8 @@ public class AttachmentIndexer {
       List<AttachmentSource> sources,
       UUID parentDocumentId,
       String parentPath,
-      DocumentSourceType sourceType) {
+      DocumentSourceType sourceType)
+      throws InterruptedException {
     return indexAll(
         access, sources, parentDocumentId, parentPath, sourceType, attachmentProperties.limits());
   }
@@ -103,7 +105,8 @@ public class AttachmentIndexer {
       UUID parentDocumentId,
       String parentPath,
       DocumentSourceType sourceType,
-      AttachmentLimits limits) {
+      AttachmentLimits limits)
+      throws InterruptedException {
     if (sources.isEmpty()) {
       return List.of();
     }
@@ -167,7 +170,8 @@ public class AttachmentIndexer {
       UUID parentDocumentId,
       String parentPath,
       DocumentSourceType sourceType,
-      AttachmentLimits limits) {
+      AttachmentLimits limits)
+      throws InterruptedException {
     return switch (source) {
       case AttachmentSource.Download download ->
           indexDownload(access, download, parentDocumentId, parentPath, sourceType, limits);
@@ -182,7 +186,8 @@ public class AttachmentIndexer {
       UUID parentDocumentId,
       String parentPath,
       DocumentSourceType sourceType,
-      AttachmentLimits limits) {
+      AttachmentLimits limits)
+      throws InterruptedException {
     BoundedDownloader.DownloadedFile downloaded = null;
     try {
       downloaded =
@@ -320,7 +325,8 @@ public class AttachmentIndexer {
           .record(IndexingEventCategory.REJECTED, e.getMessage() + " (Anlage)", download.url());
       access.markDeferred();
       access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
-    } catch (IOException | InterruptedException e) {
+    } catch (IOException e) {
+      IndexingRun.rethrowRunEnding(e);
       log.warn(
           "Attachment unreachable, skipping: {} (from {}, {})",
           download.url(),
@@ -331,10 +337,8 @@ public class AttachmentIndexer {
           .record(IndexingEventCategory.UNREACHABLE, "Anlage nicht erreichbar", download.url());
       access.markDeferred();
       access.progress().recordAttachment(AttachmentOutcome.FAILED);
-      if (e instanceof InterruptedException) {
-        Thread.currentThread().interrupt();
-      }
     } catch (Exception e) {
+      IndexingRun.rethrowRunEnding(e);
       log.error("Failed to process attachment: {} (from {})", download.url(), parentPath, e);
       access
           .events()

@@ -608,15 +608,22 @@ public class FileProcessingService {
               attachment.fileName(),
               AttachmentFilePath.of(parentFilePath, i, attachment.fileName())));
     }
-    attachmentIndexerProvider
-        .getObject()
-        .indexAll(
-            attachmentAccess,
-            sources,
-            parentDocumentId,
-            parentFilePath,
-            sourceType,
-            mailAttachmentLimits);
+    try {
+      attachmentIndexerProvider
+          .getObject()
+          .indexAll(
+              attachmentAccess,
+              sources,
+              parentDocumentId,
+              parentFilePath,
+              sourceType,
+              mailAttachmentLimits);
+    } catch (InterruptedException e) {
+      // no download here, so this is the run's own stop signal - carried as the cause, which
+      // every connector's item catch unwraps and ends its run on
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("interrupted while indexing attachments", e);
+    }
   }
 
   /**

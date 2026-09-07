@@ -155,7 +155,7 @@ class AttachmentIndexerTest {
 
   @Test
   void aTransientlyFailingAttachmentIsStillReportedAsPresentAndNotLeftToVanish()
-      throws IOException {
+      throws IOException, InterruptedException {
     // recordIndexedAttachment must also fire on the failure branches.
     // A still-present, earlier-indexed attachment of a re-parsed parent that fails transiently
     // (quota momentarily full, temp read error) would otherwise appear in neither the recorded
@@ -325,7 +325,8 @@ class AttachmentIndexerTest {
   }
 
   @Test
-  void aLocalFileCarriesItsSourcesVersionAndTheAccessCarriesTheParentsContext() throws IOException {
+  void aLocalFileCarriesItsSourcesVersionAndTheAccessCarriesTheParentsContext()
+      throws IOException, InterruptedException {
     // a Confluence attachment reaches this path as a LocalFile (the edition-aware client
     // downloaded it) - its version must land in last_modified_remote so the executor's
     // pre-download check can skip it next run, and the page's context travels via the access.
@@ -390,7 +391,8 @@ class AttachmentIndexerTest {
   }
 
   @Test
-  void everyOutcomeOfALocalAttachmentIsCountedExactlyOnce() throws IOException {
+  void everyOutcomeOfALocalAttachmentIsCountedExactlyOnce()
+      throws IOException, InterruptedException {
     // The attachment path counts each attachment itself, so every connector's cost carries the
     // same attachment share: a document created is processed, a confirmed-unchanged or text-free
     // one skipped, a quota refusal or a failed pipeline failed.
@@ -423,7 +425,7 @@ class AttachmentIndexerTest {
   }
 
   @Test
-  void anUnsupportedLocalAttachmentIsCountedAsSkipped() throws IOException {
+  void anUnsupportedLocalAttachmentIsCountedAsSkipped() throws IOException, InterruptedException {
     AttachmentAccess access = mock(AttachmentAccess.class);
     when(access.targetLibrary()).thenReturn(ctx.targetLibrary());
     when(access.events()).thenReturn((category, message, reference) -> {});

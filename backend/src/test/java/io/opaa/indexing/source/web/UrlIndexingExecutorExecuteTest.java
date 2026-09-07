@@ -818,7 +818,7 @@ class UrlIndexingExecutorExecuteTest {
             argThat(
                 runNote(
                     IndexingEventCategory.BUDGET_EXHAUSTED,
-                    "Deckel der 429-Wartezeit von 1 Sekunden je Lauf erreicht; der Lauf endet"
+                    "Deckel der 429-Wartezeit von 1 Sekunde je Lauf erreicht; der Lauf endet"
                         + " unvollständig")));
     verify(indexingRunEventRepository)
         .save(argThat(runNote(IndexingEventCategory.RATE_LIMITED, "1-mal gedrosselt")));

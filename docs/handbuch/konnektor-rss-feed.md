@@ -218,7 +218,7 @@ ist als künftiger Mechanismus benannt, aber nicht gebaut.
 | abgewiesen | Speicherkontingent-Meldung | Kontingent erreicht |
 | abgewiesen | kein extrahierbarer Text | Eintrag und seine Anlagen entfallen |
 | Fehler | Verarbeitung fehlgeschlagen | Pipeline-Fehler oder Ausnahme |
-| Ratenbegrenzung | Die Quelle hat den Lauf n-mal gedrosselt (HTTP 429/503, Retry-After); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen | eine Zeile je Lauf, wenn mindestens einmal gewartet wurde |
+| Ratenbegrenzung | Die Quelle hat den Lauf n-mal gedrosselt (HTTP 429/503); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen | eine Zeile je Lauf, wenn mindestens einmal gewartet wurde |
 | Anfragebudget erschöpft | Anfragebudget von … Anfragen erschöpft; der Lauf endet unvollständig, der nächste Lauf nimmt die übrigen Einträge auf | Anfragebudget je Lauf verbraucht (Abschnitt 4) |
 | Anfragebudget erschöpft | Deckel der 429-Wartezeit von … je Lauf erreicht; der Lauf endet unvollständig, der nächste Lauf nimmt die übrigen Einträge auf | Summe der 429-Wartezeiten am Deckel (Abschnitt 4) |
 

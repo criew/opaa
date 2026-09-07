@@ -57,11 +57,13 @@ public final class RequestBudget implements RateLimitListener {
 
   @Override
   public void throttled(int statusCode, Duration wait) {
-    if (maxThrottleWait != null
-        && meter.throttledTime().plus(wait).compareTo(maxThrottleWait) > 0) {
+    if (maxThrottleWait == null) {
+      meter.recordThrottle(wait);
+      return;
+    }
+    if (!meter.recordThrottleWithin(wait, maxThrottleWait)) {
       throw RequestBudgetExhaustedException.throttleWait(maxThrottleWait);
     }
-    meter.recordThrottle(wait);
   }
 
   @Override
