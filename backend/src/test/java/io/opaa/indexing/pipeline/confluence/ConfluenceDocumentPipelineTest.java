@@ -61,7 +61,7 @@ class ConfluenceDocumentPipelineTest {
   void claimsNoFormatAndDeclaresItsContextKeys() {
     assertThat(pipeline.handledFormats()).isEmpty();
     assertThat(pipeline.id()).isEqualTo("confluence");
-    assertThat(pipeline.version()).isEqualTo((short) 1);
+    assertThat(pipeline.version()).isEqualTo((short) 2);
     assertThat(pipeline.passthroughMetadataKeys())
         .containsExactlyInAnyOrder(
             ChunkingService.LOCATION_METADATA_KEY,
@@ -239,6 +239,30 @@ class ConfluenceDocumentPipelineTest {
 
     assertThat(chunks.getFirst().getText())
         .isEqualTo("1. Eins\n\n2. Zwei\n\n2.1. Zwei-a\n\n2.2. Zwei-b");
+  }
+
+  // regression guard for #1357: Cloud's editor wraps item text in <p>; the marker must survive
+  @Test
+  void aListItemWrappingItsTextInAParagraphKeepsItsMarker() {
+    List<Document> chunks =
+        chunk(
+            "<ul><li><p>Lageplan</p></li><li><p>Bauzeichnungen</p><ul><li><p>Grundriss</p></li>"
+                + "</ul></li></ul>");
+
+    assertThat(chunks.getFirst().getText())
+        .isEqualTo("• Lageplan\n\n• Bauzeichnungen\n\n◦ Grundriss");
+  }
+
+  @Test
+  void aMacroAsTheFirstContentOfAListItemKeepsTheMarkerOnItsTitle() {
+    List<Document> chunks =
+        chunk(
+            "<ul><li><ac:structured-macro ac:name=\"info\">"
+                + "<ac:parameter ac:name=\"title\">Hinweis</ac:parameter>"
+                + "<ac:rich-text-body><p>Frist beachten.</p></ac:rich-text-body>"
+                + "</ac:structured-macro></li><li>Lageplan</li></ul>");
+
+    assertThat(chunks.getFirst().getText()).isEqualTo("• Hinweis\n\nFrist beachten.\n\n• Lageplan");
   }
 
   @Test

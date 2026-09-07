@@ -32,7 +32,7 @@ class HtmlDocumentPipelineTest {
   void claimsExactlyHtml() {
     assertThat(pipeline.handledFormats()).containsExactly(".html");
     assertThat(pipeline.id()).isEqualTo("html");
-    assertThat(pipeline.version()).isEqualTo((short) 2);
+    assertThat(pipeline.version()).isEqualTo((short) 3);
   }
 
   /** ADR-0024: the page title and the first h1 are the HTML format's declared properties. */
@@ -398,6 +398,26 @@ class HtmlDocumentPipelineTest {
         .isEqualTo(
             "Unterlagen\n\n• Lichtbild\n\n• Nachweise\n\n◦ Meldebescheinigung\n\n"
                 + "1. Termin buchen\n\n2. Vorsprechen");
+  }
+
+  // regression guard for #1357: CMS output wraps item text in <p>; the marker must survive
+  @Test
+  void aListItemWrappingItsTextInAParagraphKeepsItsMarker() throws IOException {
+    String page =
+        """
+        <html><body><main>
+          <h1>Unterlagen</h1>
+          <ul>
+            <li><p>Lichtbild</p></li>
+            <li><p>Nachweise</p><ul><li><p>Meldebescheinigung</p></li></ul></li>
+          </ul>
+        </main></body></html>
+        """;
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(page));
+
+    assertThat(result.chunks().getFirst().getText())
+        .isEqualTo("Unterlagen\n\n• Lichtbild\n\n• Nachweise\n\n◦ Meldebescheinigung");
   }
 
   @Test

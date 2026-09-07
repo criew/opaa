@@ -817,7 +817,7 @@ adressieren. Der Zuschnitt folgt den Überschriften h1–h3.
 
 #### Umgesetzt (#1059)
 
-`HtmlDocumentPipeline` (`id` `html`, Version 1; seit #1315 Version 2, siehe unten) beansprucht `.html` in der
+`HtmlDocumentPipeline` (`id` `html`, Version 1; seit #1315 Version 2, seit #1357 Version 3, siehe unten) beansprucht `.html` in der
 `DocumentPipelineRegistry`; `.html` ist dafür neu in `SupportedDocumentFormats` zugelassen, über
 den unzweideutigen Tika-Medientyp `text/html` (bzw. `application/xhtml+xml`) — wie bei PDF/DOCX ein
 strenger, inhaltsbasierter Treffer, keine text-tolerante Sonderregel wie bei Markdown/Klartext/CSV.
@@ -918,6 +918,26 @@ der Tests unverändert).
 Versionsschritt verschiebt `ingestionPipelineFingerprint` (`html:1` → `html:2`); die sechs
 Baselines sind als reine Fixpunkt-Ergänzung nachgezogen (Rohvektor-Messvertrag 7 → 8, Pipeline 9 →
 10), siehe „Baseline-Aktualisierung als Schritt jedes Format-Issues".
+
+**Listenpunkt mit Block-Inhalt (#1357, HTML Version 3, Confluence Version 2).** Ein Listenpunkt,
+dessen Text in einem Block-Element steht (`<li><p>Text</p></li>` — Confluence-Cloud-Editor und
+CMS-Ausgaben schreiben das regelmäßig), behält im `XhtmlEventBuilder` seinen Marker: Der erste
+Absatz, den ein Listenpunkt liefert, trägt ihn, gleich ob der Text inline oder in einem Block
+steht; weitere Blöcke desselben Punkts folgen unmarkiert als Fortsetzung, eine verschachtelte
+Liste mit dem Marker der nächsten Tiefe — auch dann, wenn sie nicht direktes `<li>`-Kind ist
+(`<li><div><ul>…`, vorher begann sie wieder bei Tiefe 0). Eine Zeile, die ein Formathook selbst
+ausgibt (der Titel eines Confluence-Makros als erster Inhalt eines Listenpunkts), oder die erste
+Tabellenzeile einer Tabelle im Listenpunkt (`<li><table>…` ergibt „• a | b") trägt den Marker
+ebenso. Vorher gab der Block-Flush den Absatz ohne Marker aus und der Punkt hinterließ keine
+markierte Zeile. Damit verschiebt sich auch der Marker bei einem Zeilenumbruch im Listenpunkt:
+`<li>Zeile1<br>Zeile2</li>` ergab vorher „Zeile1" und „• Zeile2", jetzt „• Zeile1" und „Zeile2".
+Beide Pipelines steigen, weil sich der Zuschnitt dieser Seiten ändert; die Golden-Chunks aller
+übrigen Fälle sind unverändert.
+
+**Baseline unberührt** — kein Korpusdokument läuft durch eine der beiden Pipelines. Der
+Versionsschritt verschiebt `ingestionPipelineFingerprint` (`confluence:1` → `confluence:2`,
+`html:2` → `html:3`); die sechs Baselines sind als reine Fixpunkt-Ergänzung nachgezogen
+(Rohvektor-Messvertrag 8 → 9, Pipeline 10 → 11).
 
 ### 5. EML und MSG
 
@@ -1271,7 +1291,7 @@ Makro-Inhalt Seiteninhalt ist** und welcher zur Laufzeit aus anderen Quellen zus
 
 #### Umgesetzt (#1137)
 
-`ConfluenceDocumentPipeline` (`id` `confluence`, Version 1) beansprucht **kein** Format in der
+`ConfluenceDocumentPipeline` (`id` `confluence`, Version 1; seit #1357 Version 2, siehe HTML-Pipeline) beansprucht **kein** Format in der
 `DocumentPipelineRegistry` — der Confluence-Konnektor benennt sie im `DocumentIngest`
 (`pipelineId`), und `FileProcessingService#ingest` ruft sie über `pipelineById` direkt auf, so wie
 seit #1315 auch ein Feed-Eintrag die HTML-Pipeline benennt; ohne registrierte Pipeline ist das ein
@@ -1297,7 +1317,8 @@ der **Anzeigetext eines Links** bleibt, sein Ziel nicht.
 **Struktur:** h1–h3 schneiden einen Chunk, h4–h6 falten in den Text (wie HTML und Markdown);
 Tabellen werden eine Zeile je Tabellenzeile mit „ | " zwischen den Zellen; Listen eine Zeile je
 Eintrag mit Marker (•, ◦, ▪ nach Verschachtelungstiefe bzw. verschachtelte Nummer wie „2.1.“ —
-Einrückung überlebt den Schnitt nicht, der Marker trägt die Tiefe); Aufgabenlisten behalten ihren
+Einrückung überlebt den Schnitt nicht, der Marker trägt die Tiefe; seit #1357 auch dann, wenn der Text
+des Listenpunkts in einem `<p>` steht); Aufgabenlisten behalten ihren
 Zustand (`[x]`/`[ ]`);
 Code behält seine Zeilenumbrüche. Der Überschriftenpfad steht als erste Zeile im Chunk und als
 `location` („Abschn. …") in den Metadaten — geteilt mit den anderen Pipelines über

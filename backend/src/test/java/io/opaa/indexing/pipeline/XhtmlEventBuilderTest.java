@@ -117,6 +117,97 @@ class XhtmlEventBuilderTest {
             new Paragraph("2.1. Zwei-a"));
   }
 
+  // regression guard for #1357: a block child inside an item must not flush the item's text
+  // without its marker (Confluence Cloud and CMS output wrap item text in <p>)
+  @Test
+  void aListItemWhoseTextIsWrappedInABlockKeepsItsMarker() {
+    assertThat(events("<ul><li><p>Lageplan</p></li><li><p>Bauzeichnungen</p></li></ul>"))
+        .containsExactly(new Paragraph("• Lageplan"), new Paragraph("• Bauzeichnungen"));
+  }
+
+  @Test
+  void aListItemWithSeveralBlocksMarksTheFirstAndContinuesUnmarked() {
+    assertThat(
+            events(
+                "<ol><li><p>Antrag stellen</p><p>Frist: 14 Tage</p></li>"
+                    + "<li><p>Bescheid abwarten</p></li></ol>"))
+        .containsExactly(
+            new Paragraph("1. Antrag stellen"),
+            new Paragraph("Frist: 14 Tage"),
+            new Paragraph("2. Bescheid abwarten"));
+  }
+
+  @Test
+  void aNestedListInsideABlockItemStaysNestedUnderItsMarkedItem() {
+    assertThat(
+            events(
+                "<ul><li><p>Nachweise</p><ul><li>Meldebescheinigung</li><li><p>Lichtbild</p></li>"
+                    + "</ul></li><li>Gebühr</li></ul>"
+                    + "<ol><li><p>Eins</p><ol><li><p>Eins-a</p></li></ol></li></ol>"))
+        .containsExactly(
+            new Paragraph("• Nachweise"),
+            new Paragraph("◦ Meldebescheinigung"),
+            new Paragraph("◦ Lichtbild"),
+            new Paragraph("• Gebühr"),
+            new Paragraph("1. Eins"),
+            new Paragraph("1.1. Eins-a"));
+  }
+
+  @Test
+  void inlineTextBeforeABlockCarriesTheMarkerAndTheBlockFollowsUnmarked() {
+    assertThat(events("<ul><li>Text<p>Mehr</p></li></ul>"))
+        .containsExactly(new Paragraph("• Text"), new Paragraph("Mehr"));
+  }
+
+  // A line break inside an item ends its first paragraph: the marker leads the first line (before
+  // #1357 the first line was unmarked and the marker landed on the last one).
+  @Test
+  void aLineBreakInsideAnItemLeavesTheMarkerOnTheFirstLine() {
+    assertThat(events("<ul><li>Zeile1<br>Zeile2</li><li>Weiter</li></ul>"))
+        .containsExactly(
+            new Paragraph("• Zeile1"), new Paragraph("Zeile2"), new Paragraph("• Weiter"));
+  }
+
+  @Test
+  void aLineEmittedByARuleAsTheItemsFirstContentCarriesTheMarker() {
+    XhtmlEventBuilder.ElementRule rule =
+        (element, builder) -> {
+          if (!element.tagName().equals("x:box")) {
+            return false;
+          }
+          builder.flushBlock();
+          builder.emitLine("[" + element.attr("title") + "]");
+          builder.walkChildren(element);
+          builder.flushBlock();
+          return true;
+        };
+
+    assertThat(
+            xmlEvents(
+                "<ul><li><x:box title=\"Hinweis\"><p>Im Kasten</p></x:box></li>"
+                    + "<li>Zweiter</li></ul>",
+                rule))
+        .containsExactly(
+            new Paragraph("• [Hinweis]"), new Paragraph("Im Kasten"), new Paragraph("• Zweiter"));
+  }
+
+  @Test
+  void aListInsideAWrapperOfAnItemContinuesAtTheNextDepth() {
+    assertThat(
+            events(
+                "<ul><li>Aussen<div><ul><li>Innen<div><ul><li>Tief</li></ul></div></li></ul></div>"
+                    + "</li><li>Danach</li></ul>"
+                    + "<ol><li>Eins<div><ol><li>Eins-a</li></ol></div></li><li>Zwei</li></ol>"))
+        .containsExactly(
+            new Paragraph("• Aussen"),
+            new Paragraph("◦ Innen"),
+            new Paragraph("▪ Tief"),
+            new Paragraph("• Danach"),
+            new Paragraph("1. Eins"),
+            new Paragraph("1.1. Eins-a"),
+            new Paragraph("2. Zwei"));
+  }
+
   @Test
   void preformattedTextKeepsItsLineBreaks() {
     assertThat(events("<pre>  zeile 1\n    zeile 2  </pre><p>danach</p>"))

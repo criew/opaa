@@ -55,7 +55,7 @@ class PipelinePathIsolationTest {
                 + "committed raw-vector baselines' measurementContractVersion or "
                 + "BaselineComparator's fixed-point list being updated to match — reconcile all "
                 + "four rather than adjusting only this assertion")
-        .isEqualTo(8);
+        .isEqualTo(9);
   }
 
   @Test
@@ -68,11 +68,14 @@ class PipelinePathIsolationTest {
     // fullTextIndexComplete), plus 1 from issue #1070 (metadataFilterEnabled, the golden filters
     // carried into the pipeline run), plus 1 from issue #1242 (MailDocumentPipeline#version()
     // moved 4 -> 5, shifting the collective fingerprint again), plus 1 from issue #1315
-    // (HtmlDocumentPipeline#version() moved 1 -> 2, shared XHTML event walk) — counted
-    // independently of the raw-vector path above, whose own count (2 plus the same
-    // #1144/#1164/#1183/#1070/#1242/#1315 bumps) moves for unrelated reasons at unrelated points
+    // (HtmlDocumentPipeline#version() moved 1 -> 2, shared XHTML event walk), plus 1 from issue
+    // #1357 (HtmlDocumentPipeline#version() 2 -> 3 and ConfluenceDocumentPipeline#version() 1 ->
+    // 2, list items with block content keep their marker) — counted independently of the
+    // raw-vector path above, whose own count (2 plus the same
+    // #1144/#1164/#1183/#1070/#1242/#1315/#1357 bumps) moves for unrelated reasons at unrelated
+    // points
     // in its history.
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(10);
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(11);
   }
 
   @Test
