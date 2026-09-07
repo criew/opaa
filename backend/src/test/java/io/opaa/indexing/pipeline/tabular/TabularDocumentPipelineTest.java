@@ -10,7 +10,8 @@ import io.opaa.indexing.pipeline.DocumentPipelineRunner;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.PassthroughMetadataKeysTestSupport;
-import io.opaa.indexing.pipeline.office.OdfContentXml;
+import io.opaa.indexing.pipeline.office.CountingOdfOpener;
+import io.opaa.indexing.pipeline.office.OdfPackage;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -483,6 +484,21 @@ class TabularDocumentPipelineTest {
 
   // --- ODS (POI does not read OpenDocument, see readOds) --------------------
 
+  /** An ODS ingest opens the ZIP package exactly once, through the shared ODF reader. */
+  @Test
+  void anOdsRunOpensThePackageExactlyOnce() throws IOException {
+    CountingOdfOpener opener = new CountingOdfOpener();
+    TabularDocumentPipeline counting =
+        new TabularDocumentPipeline(new TabularProperties(0, 0, 0, 0), opener);
+    Path file = tempDir.resolve("einmal.ods");
+    writeOds(file, odsTable("Gebühren", odsRow("Leistung", "Betrag"), odsRow("Ausweis", "37")));
+
+    DocumentPipelineResult result = counting.run(DocumentPipelineSource.ofFile(file, "einmal.ods"));
+
+    assertThat(opener.opens).hasValue(1);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+  }
+
   @Test
   void aSingleOdsSheetProducesOneChunkWithRepeatedHeaderAndSheetContext() throws IOException {
     Path file = tempDir.resolve("gebuehren.ods");
@@ -693,12 +709,12 @@ class TabularDocumentPipelineTest {
   void theOdsByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit() throws IOException {
     // the pipeline's own catch-all collapses every parse failure into
     // the same NO_CONTENT outcome, so a wrong-reason failure would stay green there. This test
-    // goes straight at OdfContentXml.parse instead, the one place the byte limit's own message
+    // goes straight at OdfPackage.parse instead, the one place the byte limit's own message
     // survives.
     Path file = tempDir.resolve("gross-direkt.ods");
     writeOds(file, odsTable("Blatt1", odsRow("Name", "Amt"), odsRow("Müller", "Bauamt")));
 
-    assertThatThrownBy(() -> OdfContentXml.parse(file, 50, new DefaultHandler()))
+    assertThatThrownBy(() -> OdfPackage.parse(file, 50, new DefaultHandler()))
         .isInstanceOf(IOException.class)
         .hasMessageContaining("size limit");
   }
@@ -734,7 +750,7 @@ class TabularDocumentPipelineTest {
     TabularDocumentPipeline.OdsContentHandler handler =
         new TabularDocumentPipeline.OdsContentHandler(1_000, 1_000, 2);
 
-    assertThatThrownBy(() -> OdfContentXml.parse(file, 10_485_760L, handler))
+    assertThatThrownBy(() -> OdfPackage.parse(file, 10_485_760L, handler))
         .isInstanceOf(IOException.class)
         .rootCause()
         .hasMessageContaining("row limit");

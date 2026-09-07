@@ -24,9 +24,9 @@ import org.xml.sax.helpers.DefaultHandler;
 /**
  * The ODP pipeline (ingestion-pipelines.md, Teil 3, Punkt 2: eine Folie = ein Chunk) - the ODP
  * counterpart of {@link PptxDocumentPipeline}, reading {@code content.xml} through the hardened SAX
- * parser {@link OdfContentXml}, since POI never reads OpenDocument. Every {@code draw:page} with
- * text becomes one chunk, a {@code presentation:class} of {@code "title"} its leading line and
- * {@link ChunkingService#LOCATION_METADATA_KEY location}, notes a final labeled paragraph.
+ * parser {@link OdfPackage}, since POI never reads OpenDocument. Every {@code draw:page} with text
+ * becomes one chunk, a {@code presentation:class} of {@code "title"} its leading line and {@link
+ * ChunkingService#LOCATION_METADATA_KEY location}, notes a final labeled paragraph.
  *
  * <p>{@code styles.xml}'s master page text becomes one deduplicated leading chunk (see {@link
  * RepeatingHeaderChunk}); a malformed one forfeits only that chunk. A presentation whose slides
@@ -46,9 +46,15 @@ public class OdpDocumentPipeline extends FileDocumentPipeline<OdpDocumentPipelin
       Set.of("header", "footer", "date-time", "page-number");
 
   private final OdfProperties odfProperties;
+  private final OdfPackage.Opener opener;
 
   public OdpDocumentPipeline(OdfProperties odfProperties) {
+    this(odfProperties, OdfPackage::open);
+  }
+
+  OdpDocumentPipeline(OdfProperties odfProperties, OdfPackage.Opener opener) {
     this.odfProperties = odfProperties;
+    this.opener = opener;
   }
 
   @Override
@@ -80,13 +86,23 @@ public class OdpDocumentPipeline extends FileDocumentPipeline<OdpDocumentPipelin
             odfProperties.maxOdpSlides(),
             odfProperties.maxSpaceRepeat(),
             odfProperties.maxTextCharacters());
-    if (!OdfContentXml.parse(source.file(), odfProperties.maxContentXmlBytes(), handler)) {
-      // Not a genuine ODF ZIP (no content.xml entry at all) - the same "could not be parsed" case
-      // a corrupt .odp reaches, distinct from a well-formed but empty presentation.
-      throw new IOException("No content.xml entry in ODP file " + source.fileName());
+    try (OdfPackage odf = opener.open(source.file())) {
+      if (!odf.parse("content.xml", odfProperties.maxContentXmlBytes(), handler)) {
+        // Not a genuine ODF ZIP (no content.xml entry at all) - the same "could not be parsed"
+        // case a corrupt .odp reaches, distinct from a well-formed but empty presentation.
+        throw new IOException("No content.xml entry in ODP file " + source.fileName());
+      }
     }
-    return new OdpContent(
-        handler.chunks(), handler.anySlideHasText(), OdfMetaProperties.read(source, odfProperties));
+    return new OdpContent(handler.chunks(), handler.anySlideHasText(), readMeta(source));
+  }
+
+  private DocumentProperties readMeta(DocumentPipelineSource source) {
+    try (OdfPackage odf = opener.open(source.file())) {
+      return OdfMetaProperties.read(odf, source.fileName(), odfProperties.maxContentXmlBytes());
+    } catch (IOException | RuntimeException e) {
+      log.warn("Could not read meta.xml of ODP document {}", source.fileName(), e);
+      return DocumentProperties.EMPTY;
+    }
   }
 
   @Override
@@ -120,7 +136,7 @@ public class OdpDocumentPipeline extends FileDocumentPipeline<OdpDocumentPipelin
    */
   @Override
   protected DocumentProperties declaredProperties(DocumentPipelineSource source) {
-    return OdfMetaProperties.read(source, odfProperties);
+    return readMeta(source);
   }
 
   /**
@@ -131,9 +147,8 @@ public class OdpDocumentPipeline extends FileDocumentPipeline<OdpDocumentPipelin
   private String readMasterSlideText(DocumentPipelineSource source) {
     OdpStylesHandler stylesHandler =
         new OdpStylesHandler(odfProperties.maxSpaceRepeat(), odfProperties.maxTextCharacters());
-    try {
-      OdfContentXml.parse(
-          source.file(), "styles.xml", odfProperties.maxContentXmlBytes(), stylesHandler);
+    try (OdfPackage odf = opener.open(source.file())) {
+      odf.parse("styles.xml", odfProperties.maxContentXmlBytes(), stylesHandler);
     } catch (IOException | RuntimeException e) {
       log.warn(
           "Could not read styles.xml of ODP document {}; continuing without master-slide text",
