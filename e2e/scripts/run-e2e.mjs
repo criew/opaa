@@ -208,7 +208,7 @@ function runSeed() {
     `http://localhost:${backendPort}/api`,
   ]
   if (isDemo) {
-    // The Rheinfurt corpus (~150-300 documents across four connector-fed libraries plus 26
+    // The Rheinfurt corpus (~150-300 documents across five connector-fed libraries plus 26
     // uploads) takes noticeably longer to index than the "e2e" profile's single seed document,
     // even with ai-stub's deterministic, near-instant embeddings - most of the time goes into
     // Tika parsing the PDF/DOCX/PPTX uploads and the HTTP_DIRECTORY/RSS_FEED crawls themselves.
@@ -245,11 +245,21 @@ async function main() {
 
   // The "e2e" target names its services explicitly (only the ones this suite needs); the "demo"
   // target relies on `--profile demo` (already in composeArgs above) to pull in
-  // keycloak/demo-corpus/demo-presse alongside the always-on postgres/backend/frontend/ai-stub -
+  // keycloak/demo-corpus/demo-presse/minio alongside the always-on postgres/backend/frontend/ai-stub -
   // naming a profile-gated service explicitly does not start it without its profile also active,
   // so composeArgs' `--profile demo` is what actually does the work either way.
   const services = isDemo
-    ? ['postgres', 'backend', 'frontend', 'keycloak', 'demo-corpus', 'demo-presse', 'ai-stub']
+    ? [
+        'postgres',
+        'backend',
+        'frontend',
+        'keycloak',
+        'demo-corpus',
+        'demo-presse',
+        'minio',
+        'minio-seed',
+        'ai-stub',
+      ]
     : ['ai-stub', 'rss-feed', 'postgres', 'backend', 'frontend']
   console.log(
     `> Starting ${isDemo ? 'demo' : 'E2E'} stack (${services.join(', ')}) as Compose project "${composeProjectName}"` +

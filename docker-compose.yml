@@ -165,6 +165,59 @@ services:
     profiles:
       - demo
 
+  # The S3 source of the Rheinfurt demo (#1383, ADR-0027): one MinIO holding the bucket
+  # "rheinfurt-archiv", from which the sixth demo library ("Ratsinformationen Stadt Rheinfurt",
+  # source type S3, key prefix "ratsinformationen/") reads. The backend reaches it over the Compose
+  # network under its service name ("minio", path-style, http) - which the target validation
+  # rejects as a private address unless "minio" is on OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST
+  # (demo/README.md, "Installation mit einem Befehl", same reasoning as demo-corpus/demo-presse).
+  # Root credentials are documented demo values (demo/README.md, "Nutzerkonten"), never secrets;
+  # the seed hands them to the library as accessKey:secretKey. Same pinned image line as the
+  # backend's MinIO test fixture (MinioFixture.IMAGE): the community line of minio/minio ended
+  # with this release, and the "mc" client the seed step below needs still ships in it. No volume:
+  # the bucket is refilled from the committed corpus on every start by "minio-seed" below.
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: rheinfurt-archiv
+      MINIO_ROOT_PASSWORD: RheinfurtDemo!2026
+    # Published to 127.0.0.1 only, for the "prüfen im Browser" step (the console at 8094 shows the
+    # bucket, the API at 8093 answers "mc"/"aws s3" from the host) - the backend never uses these.
+    ports:
+      - "127.0.0.1:${OPAA_DEMO_MINIO_PORT:-8093}:9000"
+      - "127.0.0.1:${OPAA_DEMO_MINIO_CONSOLE_PORT:-8094}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+    profiles:
+      - demo
+
+  # One-shot init step (pattern: ollama-pull): creates the bucket and mirrors the committed
+  # corpus directory demo/corpus/ratsinformationen/ into it under the key prefix the seed's
+  # library scope names (bucket "rheinfurt-archiv", prefix "ratsinformationen/"), year folders
+  # included - so the S3 library shows one folder per year. Idempotent ("mc mb --ignore-existing",
+  # "mc mirror --overwrite --remove": the bucket ends up as an exact copy of the directory, an
+  # object removed from the corpus disappears on the next start), runs to completion and exits; e2e/docker-compose.demo-smoke.yml makes
+  # the backend wait for it so the seed never indexes a half-filled bucket.
+  minio-seed:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    volumes:
+      - ./demo/corpus/ratsinformationen:/corpus/ratsinformationen:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command: >-
+      "mc alias set demo http://minio:9000 rheinfurt-archiv 'RheinfurtDemo!2026' >/dev/null &&
+      mc mb --ignore-existing demo/rheinfurt-archiv &&
+      mc mirror --overwrite --remove /corpus/ratsinformationen demo/rheinfurt-archiv/ratsinformationen &&
+      mc ls --recursive demo/rheinfurt-archiv"
+    depends_on:
+      minio:
+        condition: service_healthy
+    profiles:
+      - demo
+
   # Optional locally-run Ollama service (#720): entirely opt-in via the "ollama" Compose profile,
   # started with `docker compose --profile ollama up`. Without the profile, this service does not
   # exist and the stack behaves exactly as before - the backend's own defaults still assume a

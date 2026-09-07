@@ -82,6 +82,7 @@ Demo-Bibliotheken unten nutzen davon nur eine Teilmenge:
 | Satzungen & Gebührenordnungen | Verwaltungsgebührensatzung, Satzungsauszüge mit Gebührentabellen | `.pdf` | `HTTP_DIRECTORY` |
 | Pressemitteilungen Stadt Rheinfurt | ~20–30 Meldungen (Sperrungen, geänderte Öffnungszeiten, Stadtfest, Jubiläen) | RSS-XML, je Eintrag eine HTML-Detailseite auf demselben Host | `RSS_FEED` (statisch, selbst gehostet) |
 | Interne Dienstanweisungen Meldewesen | Dienstanweisungen, Eskalationsregeln, interne FAQ, Schulungsfolien | `.docx`, `.pdf`, `.pptx` | `UPLOAD` (manueller Upload, im Seed automatisiert) |
+| Ratsinformationen Stadt Rheinfurt | Niederschriften und Beschlussvorlagen des Stadtrats und des Hauptausschusses 2024–2026, ein Schlüsselpräfix je Jahrgang | `.md`, `.txt` | `S3` (MinIO im Demo-Stack, Bucket `rheinfurt-archiv`, Präfix `ratsinformationen/`; #1383, [ADR-0027](../decisions/0027-s3-konnektor.md)) |
 
 Zielgröße: 150–300 Dokumente insgesamt — genug für glaubwürdige, belegte Antworten, klein genug für eine
 schnelle Demo-Indizierung. Der Generator folgt dem Muster aus `eval/` (deterministisch, versioniert),
@@ -120,11 +121,12 @@ Admin-Konto:
 | Satzungen & Gebührenordnungen | ✔ | ✔ | ✔ |
 | Pressemitteilungen | ✔ | ✔ | ✔ |
 | Interne Dienstanweisungen Meldewesen | ✔ | — | ✔ |
+| Ratsinformationen Stadt Rheinfurt | ✔ | ✔ | ✔ |
 
 Dieselben Bibliotheken sind den fachlichen Spaces zusätzlich als **Datenquellen zugeordnet**
-(Space↔Bibliothek-Assoziation als reine Kuratierung, #706): „Meldewesen & Ausweise" trägt die vier
-für das Sachgebiet lesbaren Bibliotheken, „Kfz-Zulassung" seine drei, „Amtsleitung Bürgerbüro" alle
-fünf. `@Alles-Wissen` durchsucht in diesen Spaces genau die zugeordneten Bibliotheken, geschnitten
+(Space↔Bibliothek-Assoziation als reine Kuratierung, #706): „Meldewesen & Ausweise" trägt die fünf
+für das Sachgebiet lesbaren Bibliotheken, „Kfz-Zulassung" seine vier, „Amtsleitung Bürgerbüro" alle
+sechs. `@Alles-Wissen` durchsucht in diesen Spaces genau die zugeordneten Bibliotheken, geschnitten
 mit den Leserechten der fragenden Person. Marias persönlicher Space bleibt bewusst ohne Zuordnung —
 dort greift `@Alles-Wissen` auf alle für sie lesbaren Bibliotheken zurück. Die Zuordnung gewährt
 keinerlei Zugriff; die Matrix oben bleibt die alleinige Rechtequelle.
@@ -172,7 +174,7 @@ Passwörtern (Demo-Werte, keine Secrets), öffentliche Instanz, Korpus-Aktualisi
   [access-control.md](./access-control.md) — sie führt keinen neuen Mechanismus ein, sie führt die
   vorhandenen vor.
 - **Quellzuordnung:** Dass eine Konnektorquelle zu genau einer Wissensbibliothek gehört, ist seit
-  ADR-0018 strukturell gegeben und damit Voraussetzung dafür, dass die fünf Bibliotheken sauber getrennt
+  ADR-0018 strukturell gegeben und damit Voraussetzung dafür, dass die sechs Bibliotheken sauber getrennt
   befüllt werden. Offen sind in **#207** unter anderem die Obergrenze der Freigabe für
   konnektorgespeiste Bibliotheken und der Ausschluss einzelner Konnektordokumente; für die Demo genügen
   gezielte Grants an die vier Nutzer.

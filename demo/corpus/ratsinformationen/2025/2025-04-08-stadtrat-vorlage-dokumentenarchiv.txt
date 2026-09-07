@@ -1,0 +1,28 @@
+STADT RHEINFURT
+Beschlussvorlage Nr. 2025/014
+
+Gremium:        Stadtrat der Stadt Rheinfurt
+Sitzung am:     8. April 2025
+Federführung:   Amt für Organisation und IT
+Beteiligt:      Datenschutzbeauftragte, Stadtarchiv
+Status:         öffentlich
+
+Betreff: Zentrales Dokumentenarchiv für Niederschriften und Vorlagen
+
+Beschlussvorschlag
+------------------
+Der Stadtrat beschließt, alle Niederschriften und Beschlussvorlagen des Stadtrats und seiner Ausschüsse ab dem Jahrgang 2024 in einem zentralen, revisionssicheren Dokumentenarchiv abzulegen und dieses Archiv als Quelle für den Wissensassistenten der Verwaltung freizugeben.
+
+Begründung
+----------
+Die Digitalisierungsstrategie 2024 bis 2028 sieht ein Ratsinformationssystem vor. Dessen Dokumente sollen nicht nur im System selbst, sondern in einem systemunabhängigen Archiv nach Jahrgängen abgelegt werden, damit sie auch nach einem Systemwechsel auffindbar bleiben.
+
+Die Ablage nach Jahrgängen ermöglicht es, einzelne Jahrgänge gezielt freizugeben oder zu sperren.
+
+Finanzielle Auswirkungen
+------------------------
+Keine zusätzlichen Kosten; Speicher und Betrieb sind im Vertrag über das Ratsinformationssystem enthalten.
+
+Rheinfurt, im Auftrag: Amtsleitung Amt für Organisation und IT
+
+Dieses Dokument ist Teil des synthetischen Demo-Korpus der fiktiven Stadt Rheinfurt (siehe SOURCE.md im Wurzelverzeichnis dieses Korpus). Gremien, Personen, Beschlüsse und Beträge sind frei erfunden.

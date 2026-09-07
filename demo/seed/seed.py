@@ -162,6 +162,10 @@ def ensure_library(admin_client: Client, library_def: LibraryDef) -> str:
     }
     if library_def.source_url:
         body["sourceUrl"] = library_def.source_url
+    if library_def.source_credentials:
+        body["sourceCredentials"] = library_def.source_credentials
+    if library_def.s3_settings:
+        body["s3Settings"] = library_def.s3_settings
     created = admin_client.post_ok("/v1/libraries", json=body, expected=(201,))
     print(f"  Bibliothek angelegt: {library_def.name} ({created['id']})")
     return created["id"]

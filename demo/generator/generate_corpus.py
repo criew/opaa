@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Deterministic generator for the Rheinfurt demo corpus (Issue #711).
 
-Builds all five demo libraries described in
+Builds all six demo libraries described in
 docs/features/demo-instance.md ("Behördenlandschaft, Bibliotheken und
 Formate") under demo/corpus/:
 
@@ -10,6 +10,7 @@ Formate") under demo/corpus/:
 - satzungen-gebuehrenordnungen/    (.pdf)          — synthetic, hand-authored
 - pressemitteilungen/              (RSS + .html)   — synthetic, hand-authored
 - interne-dienstanweisungen-meldewesen/ (.docx/.pdf/.pptx) — synthetic
+- ratsinformationen/<jahr>/       (.md, .txt)     — synthetic, one prefix per year
 
 No network access is required once the pinned LHM raw files are cached under
 generator/raw-source/ (see leistungen_quelle.py); no `random`, no wall-clock
@@ -42,6 +43,7 @@ import intern
 import leistungen
 import leistungen_quelle
 import presse
+import rat
 import satzungen
 from rheinfurt_text import RHEINFURT_BIC, RHEINFURT_IBAN, RHEINFURT_PLZ, RHEINFURT_VORWAHL
 from validation import validate_all
@@ -55,6 +57,7 @@ LIBRARIES = [
     "satzungen-gebuehrenordnungen",
     "pressemitteilungen",
     "interne-dienstanweisungen-meldewesen",
+    "ratsinformationen",
 ]
 
 LIBRARY_LABELS = {
@@ -63,6 +66,7 @@ LIBRARY_LABELS = {
     "satzungen-gebuehrenordnungen": "Satzungen & Gebührenordnungen",
     "pressemitteilungen": "Pressemitteilungen Stadt Rheinfurt",
     "interne-dienstanweisungen-meldewesen": "Interne Dienstanweisungen Meldewesen",
+    "ratsinformationen": "Ratsinformationen Stadt Rheinfurt",
 }
 LIBRARY_FORMATS = {
     "leistungen-meldewesen-ausweise": "`.md`",
@@ -70,6 +74,7 @@ LIBRARY_FORMATS = {
     "satzungen-gebuehrenordnungen": "`.pdf`",
     "pressemitteilungen": "RSS-XML, HTML",
     "interne-dienstanweisungen-meldewesen": "`.docx`, `.pdf`, `.pptx`",
+    "ratsinformationen": "`.md`, `.txt` (ein Präfix je Jahrgang)",
 }
 
 
@@ -83,9 +88,12 @@ def clean_library_dirs() -> None:
     for library in LIBRARIES:
         directory = CORPUS_DIR / library
         if directory.exists():
-            for existing in directory.iterdir():
+            # depth-first: files first, then the (year) subdirectories they leave empty
+            for existing in sorted(directory.rglob("*"), reverse=True):
                 if existing.is_file():
                     existing.unlink()
+                elif existing.is_dir() and not any(existing.iterdir()):
+                    existing.rmdir()
         directory.mkdir(parents=True, exist_ok=True)
 
 
@@ -184,6 +192,29 @@ def build_intern() -> list[tuple[str, str, bytes]]:
 # strategies named in the PR #717 review.
 
 
+def build_rat() -> list[tuple[str, str, bytes]]:
+    """One key prefix per year, as the demo's MinIO bucket is seeded with them (the prefixes
+    become folders of the S3 library)."""
+    written = []
+    for n in rat.NIEDERSCHRIFTEN:
+        written.append(
+            (
+                f"ratsinformationen/{rat.year_of(n.datum)}/{n.slug}.md",
+                n.slug,
+                rat.render_niederschrift_md(n),
+            )
+        )
+    for v in rat.BESCHLUSSVORLAGEN:
+        written.append(
+            (
+                f"ratsinformationen/{rat.year_of(v.sitzungsdatum)}/{v.slug}.txt",
+                v.slug,
+                rat.render_vorlage_txt(v),
+            )
+        )
+    return sorted(written, key=lambda item: item[0])
+
+
 def _satzung_text(satzung: satzungen.Satzung) -> str:
     parts = [satzung.titel, satzung.kurzbezeichnung, satzung.aktenzeichen, *satzung.praeambel]
     for paragraf in satzung.paragrafen:
@@ -243,6 +274,10 @@ def collect_validation_texts(
         texts.append(
             (f"interne-dienstanweisungen-meldewesen/{schulung.slug} (Quelltext)", _schulung_text(schulung))
         )
+    for n in rat.NIEDERSCHRIFTEN:
+        texts.append((f"ratsinformationen/{n.slug} (Quelltext)", rat.niederschrift_text(n)))
+    for v in rat.BESCHLUSSVORLAGEN:
+        texts.append((f"ratsinformationen/{v.slug} (Quelltext)", rat.vorlage_text(v)))
     return texts
 
 
@@ -261,7 +296,7 @@ def verify_manifest_completeness(all_files: list[tuple[Path, bytes]]) -> None:
     verify_manifest_completeness)."""
     on_disk = set()
     for library in LIBRARIES:
-        for existing in (CORPUS_DIR / library).iterdir():
+        for existing in (CORPUS_DIR / library).rglob("*"):
             if existing.is_file():
                 on_disk.add(existing.relative_to(CORPUS_DIR).as_posix())
     written = {path.relative_to(CORPUS_DIR).as_posix() for path, _ in all_files}
@@ -321,7 +356,7 @@ Dokument trägt zusätzlich ein Aktenzeichen- und Formularnummer-Muster sowie ei
 synthetische Herkunft.
 
 Ein abschließender Validierungslauf (`generator/validation.py`) prüft die erzeugten Inhalte aller
-fünf Bibliotheken gegen eine Liste von Verbotsmustern (reale Ortsnamen, Straßen außerhalb einer
+sechs Bibliotheken gegen eine Liste von Verbotsmustern (reale Ortsnamen, Straßen außerhalb einer
 Whitelist, reale Postleitzahlen, reale Bankverbindungen) und bricht den Generator-Lauf mit Fehler
 ab, falls eines davon gefunden wird.
 
@@ -363,7 +398,7 @@ sha256sum -c MANIFEST.sha256
 
 ## Umfang
 
-{total_docs} Dokumente über fünf Bibliotheken (Zielkorridor 150–300 laut Issue #711):
+{total_docs} Dokumente über sechs Bibliotheken (Zielkorridor 150–300 laut Issue #711):
 
 | Bibliothek | Verzeichnis | Anzahl | Formate |
 |---|---|---|---|
@@ -382,17 +417,24 @@ def main() -> None:
     satzungen_files = build_satzungen()
     presse_files = build_presse()
     intern_files = build_intern()
+    rat_files = build_rat()
 
     validate_all(collect_validation_texts(leistungen_meldewesen + leistungen_kfz))
 
     all_files: list[tuple[Path, bytes]] = [
         (CORPUS_DIR / relative_path, content)
         for relative_path, _slug, content in (
-            leistungen_meldewesen + leistungen_kfz + satzungen_files + presse_files + intern_files
+            leistungen_meldewesen
+            + leistungen_kfz
+            + satzungen_files
+            + presse_files
+            + intern_files
+            + rat_files
         )
     ]
 
     for path, content in all_files:
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
 
     verify_manifest_completeness(all_files)

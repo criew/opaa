@@ -85,6 +85,7 @@ Ordnerpfad an. Wer Ordner anlegt, hängt vom Quellentyp ab:
 | `HTTP_DIRECTORY` | Der Lauf spiegelt den gecrawlten Verzeichnisbaum: der URL-Pfad unterhalb der Start-URL, je Segment prozentdekodiert. Wie beim Dateisystem entstehen Ordner nur entlang gefundener Dateien; aufgeräumt wird nur nach einem vollständigen Crawl. | nein, die Quelle ist führend |
 | `RSS_FEED` | keine Ordner; ein Feed hat keine Struktur | entfällt |
 | `CONFLUENCE` | keine Ordner. Space und Gliederungspfad einer Seite stehen am Dokument und erscheinen in Zitat, Protokoll und Chunk-Kontext, nicht als Ordner. | entfällt |
+| `S3` | Der Lauf spiegelt die Schlüsselpräfixe der Geltungsbereiche: bei einem Bereich ist dessen Präfix die Wurzel, bei mehreren beginnt jede Kette mit dem Bucket und seinen Präfixsegmenten. Ordner entstehen nur entlang gefundener Objekte; ein Ordnermarker (`…/`) allein erzeugt keinen. Siehe [Konnektor S3](konnektor-s3.md), Abschnitt 10. | nein |
 
 Das Löschen eines Ordners in einer Upload-Bibliothek löscht die enthaltenen Dokumente samt
 Chunks und Dateien, nach einer Bestätigung, die deren Anzahl nennt.
@@ -258,10 +259,8 @@ genannten Dinge mit.
 
 > Welche Mechanismen und Grenzwerte das je Quelle konkret sind, steht in den Kapiteln
 > [Verzeichnis im Dateisystem](konnektor-filesystem.md),
-> [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md) und
-> [Confluence](konnektor-confluence.md); für den S3-Objektspeicher bis zum eigenen Kapitel in
-> [ADR-0027](../decisions/0027-s3-konnektor.md) und den Grenzwerten `OPAA_INDEXING_S3_*` in
-> [deployment.md](deployment.md).
+> [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md),
+> [Confluence](konnektor-confluence.md) und [S3-Objektspeicher](konnektor-s3.md).
 
 ## 5. Die Dokumentstrecke: was mit jedem Element passiert
 
@@ -652,7 +651,8 @@ Die wichtigsten Schlüssel unter `opaa.indexing.*`:
 | `stale-job-timeout` | 4h | Frist ohne Fortschritt, bis ein Lauf als verwaist gilt |
 | `thread-pool.*` | 2 / 4 / 20 | Lauf-Pool |
 | `target-validation.*` | aktiv | Zieladressprüfung für Netzquellen |
-| `rss.*`, `crawl.*`, `confluence.*`, `s3.*`, `mail.*`, `tabular.*`, `odf.*` | siehe Konnektor- und Format-Kapitel; `s3.*` bis zum eigenen Kapitel in [deployment.md](deployment.md) (`OPAA_INDEXING_S3_*`, darunter `max-objects-per-run` als sichtbare Notbremse, `request-budget-per-run` als geordnetes Laufende und `download-concurrency` als Obergrenze gleichzeitiger Downloads) | Grenzwerte je Quelle und Format |
+| `rss.*`, `crawl.*`, `confluence.*`, `mail.*`, `tabular.*`, `odf.*` | siehe Konnektor- und Format-Kapitel | Grenzwerte je Quelle und Format |
+| `s3.*` | siehe [S3-Objektspeicher, Abschnitt 15](konnektor-s3.md#15-konfiguration) (`OPAA_INDEXING_S3_*`, darunter `max-objects-per-run` als sichtbare Notbremse, `request-budget-per-run` als geordnetes Laufende, `download-concurrency` als Obergrenze gleichzeitiger Downloads und `events.*` für den Ereigniseingang) | Grenzwerte des S3-Konnektors |
 
 ### 10.4 Was nicht gebaut ist
 
@@ -670,7 +670,7 @@ Betriebsart) ist Teil dieser Pipeline und wächst nicht je Konnektor.
 
 - Konnektoren je Quellentyp: [Verzeichnis im Dateisystem](konnektor-filesystem.md),
   [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md),
-  [Confluence](konnektor-confluence.md)
+  [Confluence](konnektor-confluence.md), [S3-Objektspeicher](konnektor-s3.md)
 - Format-Pipelines je Dokumenttyp: siehe [Formatübersicht](#anhang-formatübersicht)
 - Kernfelder je Dokument, ihre Ermittlung, Pflege und Wirkung in der Suche: [Metadaten](metadaten.md)
 - Installation, Umgebungsvariablen und Update-Verhalten des Index: [Deployment](deployment.md)

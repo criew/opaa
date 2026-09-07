@@ -39,7 +39,7 @@ Dokument trägt zusätzlich ein Aktenzeichen- und Formularnummer-Muster sowie ei
 synthetische Herkunft.
 
 Ein abschließender Validierungslauf (`generator/validation.py`) prüft die erzeugten Inhalte aller
-fünf Bibliotheken gegen eine Liste von Verbotsmustern (reale Ortsnamen, Straßen außerhalb einer
+sechs Bibliotheken gegen eine Liste von Verbotsmustern (reale Ortsnamen, Straßen außerhalb einer
 Whitelist, reale Postleitzahlen, reale Bankverbindungen) und bricht den Generator-Lauf mit Fehler
 ab, falls eines davon gefunden wird.
 
@@ -81,7 +81,7 @@ sha256sum -c MANIFEST.sha256
 
 ## Umfang
 
-156 Dokumente über fünf Bibliotheken (Zielkorridor 150–300 laut Issue #711):
+168 Dokumente über sechs Bibliotheken (Zielkorridor 150–300 laut Issue #711):
 
 | Bibliothek | Verzeichnis | Anzahl | Formate |
 |---|---|---|---|
@@ -90,5 +90,6 @@ sha256sum -c MANIFEST.sha256
 | Satzungen & Gebührenordnungen | `satzungen-gebuehrenordnungen/` | 19 | `.pdf` |
 | Pressemitteilungen Stadt Rheinfurt | `pressemitteilungen/` | 28 | RSS-XML, HTML |
 | Interne Dienstanweisungen Meldewesen | `interne-dienstanweisungen-meldewesen/` | 26 | `.docx`, `.pdf`, `.pptx` |
+| Ratsinformationen Stadt Rheinfurt | `ratsinformationen/` | 12 | `.md`, `.txt` (ein Präfix je Jahrgang) |
 
 Gesamtgröße rund 1,1 MB.
