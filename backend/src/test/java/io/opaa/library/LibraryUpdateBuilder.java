@@ -3,6 +3,7 @@ package io.opaa.library;
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.indexing.source.s3.S3SourceSettings;
 import java.net.URI;
 import java.util.List;
 
@@ -27,6 +28,7 @@ public final class LibraryUpdateBuilder {
   private ConfluenceEdition confluenceEdition;
   private List<ConfluenceSpaceSelection> confluenceSpaces;
   private Integer confluenceFullSyncIntervalDays;
+  private S3SourceSettings s3Settings;
 
   private LibraryUpdateBuilder(String name) {
     this.name = name;
@@ -101,6 +103,11 @@ public final class LibraryUpdateBuilder {
     return this;
   }
 
+  public LibraryUpdateBuilder s3Settings(S3SourceSettings s3Settings) {
+    this.s3Settings = s3Settings;
+    return this;
+  }
+
   public LibraryUpdate build() {
     return new LibraryUpdate(
         name,
@@ -116,6 +123,7 @@ public final class LibraryUpdateBuilder {
         schedule,
         confluenceEdition,
         confluenceSpaces,
-        confluenceFullSyncIntervalDays);
+        confluenceFullSyncIntervalDays,
+        s3Settings);
   }
 }

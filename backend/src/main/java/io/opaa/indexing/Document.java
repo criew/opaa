@@ -422,12 +422,13 @@ public class Document {
 
   /**
    * The deep link target for a document with no local file: {@link #getFilePath()} holds the remote
-   * URL itself for {@code HTTP_DIRECTORY} and {@code RSS_FEED}, but a server-local storage path for
-   * {@code UPLOAD}/{@code FILESYSTEM}, which must stay internal. Shared by the library listing and
-   * the citation deep links, so both compute it from one place. Deliberately visible to every
+   * URL itself for the HTTP-based remote types, but a server-local storage path for {@code
+   * UPLOAD}/{@code FILESYSTEM}, which must stay internal, and an {@code s3://} identity for {@code
+   * S3} that opens nowhere ({@link DocumentSourceType#hasDeepLink}). Shared by the library listing
+   * and the citation deep links, so both compute it from one place. Deliberately visible to every
    * VIEWER: it names one document's origin, not the library's source configuration.
    */
   public String getDeepLinkSourceUrl() {
-    return sourceType != null && sourceType.isRemote() ? filePath : null;
+    return sourceType != null && sourceType.hasDeepLink() ? filePath : null;
   }
 }

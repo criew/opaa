@@ -625,7 +625,7 @@ Die wichtigsten Schlüssel unter `opaa.indexing.*`:
 | `stale-job-timeout` | 4h | Frist ohne Fortschritt, bis ein Lauf als verwaist gilt |
 | `thread-pool.*` | 2 / 4 / 20 | Lauf-Pool |
 | `target-validation.*` | aktiv | Zieladressprüfung für Netzquellen |
-| `rss.*`, `crawl.*`, `confluence.*`, `mail.*`, `tabular.*`, `odf.*` | siehe Konnektor- und Format-Kapitel | Grenzwerte je Quelle und Format |
+| `rss.*`, `crawl.*`, `confluence.*`, `s3.*`, `mail.*`, `tabular.*`, `odf.*` | siehe Konnektor- und Format-Kapitel; `s3.*` bis zum eigenen Kapitel in [deployment.md](deployment.md) (`OPAA_INDEXING_S3_*`) | Grenzwerte je Quelle und Format |
 
 ### 10.4 Was nicht gebaut ist
 

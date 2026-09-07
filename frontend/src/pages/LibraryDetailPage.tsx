@@ -2585,7 +2585,9 @@ function LibraryIndexingSection({
         title="Quellkonfiguration"
         description="Woher diese Bibliothek ihre Dokumente bezieht. Nur für Verwaltende sichtbar."
         action={
-          canEditSource ? (
+          // S3 has no edit form until the wizard step of #1377 - an empty dialog would only end
+          // in a rejected request.
+          canEditSource && configKind !== 's3' ? (
             <Button
               size="small"
               variant="outlined"
@@ -2640,7 +2642,7 @@ function LibraryIndexingSection({
             />
           )}
         </Stack>
-        {canEditSource && (
+        {canEditSource && configKind !== 's3' && (
           <EditLibrarySourceDialog
             // Forces a remount every time the dialog opens, so its internal field state always
             // starts fresh from the current library configuration without an effect calling

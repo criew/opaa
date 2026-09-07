@@ -4,6 +4,8 @@ import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.indexing.source.s3.S3SourceSettings;
+import io.opaa.indexing.source.s3.S3SourceSettingsJson;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
@@ -25,6 +27,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * The first asset type (#201, see docs/features/spaces-and-assets.md#assets): a document container
@@ -173,6 +177,18 @@ public class KnowledgeLibrary {
    */
   @Column(name = "source_confluence_full_sync_interval_days")
   private Integer confluenceFullSyncIntervalDays;
+
+  /**
+   * The typed configuration of an {@code S3} library (ADR-0027, Entscheidung 1) as {@link
+   * S3SourceSettingsJson} writes it - region, addressing style, scopes, key patterns; never a
+   * credential. {@code NULL} for every other type ({@code
+   * chk_knowledge_libraries_source_configuration}, migration 030), which also guards that an {@code
+   * S3} row carries at least one scope. Kept as the JSON text so the entity needs no Hibernate
+   * format mapper; the record validates on the way in and out.
+   */
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "source_settings", columnDefinition = "jsonb")
+  private String sourceSettings;
 
   /**
    * Whether this library's indexing runs are triggered automatically on a schedule (#485) - always
@@ -457,6 +473,25 @@ public class KnowledgeLibrary {
     }
     this.sourceConfluenceEdition = Objects.requireNonNull(edition, "edition");
     updateConfluenceSpaces(selection);
+  }
+
+  /**
+   * Sets the typed half of an {@code S3} library's configuration at creation (ADR-0027) and
+   * replaces it as a whole afterwards; the endpoint, credentials, proxy and TLS switch travel
+   * through {@link #updateSourceConfiguration} like every URL-based type's. Only valid on a library
+   * of that type - {@code KnowledgeLibraryService} validates before calling.
+   */
+  public void updateS3Settings(S3SourceSettings settings) {
+    if (sourceType != DocumentSourceType.S3) {
+      throw new IllegalStateException("only an S3 library carries S3 settings");
+    }
+    this.sourceSettings = S3SourceSettingsJson.write(Objects.requireNonNull(settings, "settings"));
+    this.updatedAt = Instant.now();
+  }
+
+  /** The typed configuration of an {@code S3} library, {@code null} for every other type. */
+  public S3SourceSettings getS3Settings() {
+    return S3SourceSettingsJson.read(sourceSettings);
   }
 
   /**

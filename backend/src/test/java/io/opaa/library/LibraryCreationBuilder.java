@@ -4,6 +4,7 @@ import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.LibraryOwnerType;
 import io.opaa.api.types.LibraryVisibility;
+import io.opaa.indexing.source.s3.S3SourceSettings;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -30,6 +31,7 @@ public final class LibraryCreationBuilder {
   private ConfluenceEdition confluenceEdition;
   private List<ConfluenceSpaceSelection> confluenceSpaces;
   private Integer confluenceFullSyncIntervalDays;
+  private S3SourceSettings s3Settings;
 
   private LibraryCreationBuilder(String name, DocumentSourceType sourceType) {
     this.name = name;
@@ -105,6 +107,11 @@ public final class LibraryCreationBuilder {
     return this;
   }
 
+  public LibraryCreationBuilder s3Settings(S3SourceSettings s3Settings) {
+    this.s3Settings = s3Settings;
+    return this;
+  }
+
   public LibraryCreation build() {
     return new LibraryCreation(
         name,
@@ -121,6 +128,7 @@ public final class LibraryCreationBuilder {
         sourceInsecureSsl,
         confluenceEdition,
         confluenceSpaces,
-        confluenceFullSyncIntervalDays);
+        confluenceFullSyncIntervalDays,
+        s3Settings);
   }
 }

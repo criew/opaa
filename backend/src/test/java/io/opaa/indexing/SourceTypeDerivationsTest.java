@@ -16,14 +16,24 @@ class SourceTypeDerivationsTest {
 
   @ParameterizedTest
   @EnumSource(DocumentSourceType.class)
-  void theDeepLinkIsTheFilePathForARemoteTypeAndAbsentForALocalOne(DocumentSourceType type) {
+  void theDeepLinkIsTheFilePathForALinkableRemoteTypeAndAbsentOtherwise(DocumentSourceType type) {
     Document document =
         new Document("bericht.pdf", "https://quelle.example/bericht.pdf", "application/pdf", 12L);
     document.setSourceType(type);
 
     assertThat(document.getDeepLinkSourceUrl())
-        .isEqualTo(type.isRemote() ? "https://quelle.example/bericht.pdf" : null);
+        .isEqualTo(type.hasDeepLink() ? "https://quelle.example/bericht.pdf" : null);
     assertThat(StoredDocumentSourceAccess.isRemote(document)).isEqualTo(type.isRemote());
+  }
+
+  @Test
+  void anS3IdentityIsRemoteButNoDeepLink() {
+    Document document =
+        new Document("sitzung.pdf", "s3://protokolle/2025/sitzung.pdf", "application/pdf", 12L);
+    document.setSourceType(DocumentSourceType.S3);
+
+    assertThat(document.getDeepLinkSourceUrl()).isNull();
+    assertThat(StoredDocumentSourceAccess.isRemote(document)).isTrue();
   }
 
   @Test

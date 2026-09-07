@@ -54,6 +54,7 @@ class DocumentIndexingServiceTest {
   @Mock private SourceIndexingExecutor urlIndexingExecutor;
   @Mock private SourceIndexingExecutor rssFeedIndexingExecutor;
   @Mock private SourceIndexingExecutor confluenceIndexingExecutor;
+  @Mock private SourceIndexingExecutor s3IndexingExecutor;
   @Mock private KnowledgeLibraryRepository libraryRepository;
   @Mock private LibraryAccessService libraryAccessService;
   @Mock private IndexingRunEventRepository indexingRunEventRepository;
@@ -72,6 +73,7 @@ class DocumentIndexingServiceTest {
     when(urlIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.HTTP_DIRECTORY);
     when(rssFeedIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.RSS_FEED);
     when(confluenceIndexingExecutor.sourceType()).thenReturn(IndexingSourceType.CONFLUENCE);
+    when(s3IndexingExecutor.sourceType()).thenReturn(IndexingSourceType.S3);
     // ADR-0023, Entscheidung 4: without a requested mode the executor decides; the mocks
     // answer like the one-mode executors do
     lenient().when(asyncIndexingExecutor.defaultRunMode(any())).thenReturn(IndexingRunMode.FULL);
@@ -85,7 +87,8 @@ class DocumentIndexingServiceTest {
                 asyncIndexingExecutor,
                 urlIndexingExecutor,
                 rssFeedIndexingExecutor,
-                confluenceIndexingExecutor));
+                confluenceIndexingExecutor,
+                s3IndexingExecutor));
     service =
         new DocumentIndexingService(
             indexingJobService,
@@ -403,7 +406,8 @@ class DocumentIndexingServiceTest {
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("FILESYSTEM")
         .hasMessageContaining("HTTP_DIRECTORY")
-        .hasMessageContaining("RSS_FEED");
+        .hasMessageContaining("RSS_FEED")
+        .hasMessageContaining("S3");
   }
 
   // --- getStatus ---

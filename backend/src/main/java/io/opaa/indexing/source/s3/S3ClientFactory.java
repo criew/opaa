@@ -67,9 +67,11 @@ public class S3ClientFactory {
 
   /**
    * The hosts this connection will contact, in the order a misconfiguration is most likely: the
-   * endpoint itself, the proxy, then one virtual-host name per distinct bucket.
+   * endpoint itself, the proxy, then one virtual-host name per distinct bucket. Also the check a
+   * library's configuration passes when it is saved (ADR-0027, Entscheidung 8), so a blocked
+   * address is refused before the first run.
    */
-  void validateTargets(S3Connection connection, Collection<S3Scope> scopes)
+  public void validateTargets(S3Connection connection, Collection<S3Scope> scopes)
       throws S3AccessException {
     try {
       targetAddressValidator.validate(connection.endpoint());

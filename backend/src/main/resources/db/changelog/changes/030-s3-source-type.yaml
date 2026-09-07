@@ -1,0 +1,121 @@
+databaseChangeLog:
+  # ADR-0027: S3 as the sixth source type. Each changeset is one schema change with its own delta
+  # test (io.opaa.migration.Migration030S3SourceTypeTest); CHECK constraints are dropped and
+  # recreated (ADR-0017 migration pattern), never edited in place.
+  - changeSet:
+      id: 030-documents-source-type-s3
+      author: opaa
+      comment: >-
+        ADR-0027: widens chk_documents_source_type to accept 'S3' - the value an S3 run writes into
+        documents.source_type for objects and their attachments.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.documents DROP CONSTRAINT chk_documents_source_type;
+              ALTER TABLE public.documents ADD CONSTRAINT chk_documents_source_type
+                  CHECK (source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY', 'UPLOAD', 'RSS_FEED', 'CONFLUENCE', 'S3'));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.documents DROP CONSTRAINT chk_documents_source_type;
+              ALTER TABLE public.documents ADD CONSTRAINT chk_documents_source_type
+                  CHECK (source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY', 'UPLOAD', 'RSS_FEED', 'CONFLUENCE'));
+
+  - changeSet:
+      id: 030-libraries-source-type-s3
+      author: opaa
+      comment: >-
+        ADR-0027: widens chk_knowledge_libraries_source_type to accept 'S3' as a library's
+        quellentyp (ADR-0018: one type per library, chosen at creation, immutable).
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_source_type;
+              ALTER TABLE public.knowledge_libraries ADD CONSTRAINT chk_knowledge_libraries_source_type
+                  CHECK (source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY', 'UPLOAD', 'RSS_FEED', 'CONFLUENCE', 'S3'));
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_source_type;
+              ALTER TABLE public.knowledge_libraries ADD CONSTRAINT chk_knowledge_libraries_source_type
+                  CHECK (source_type IN ('FILESYSTEM', 'HTTP_DIRECTORY', 'UPLOAD', 'RSS_FEED', 'CONFLUENCE'));
+
+  - changeSet:
+      id: 030-libraries-source-settings
+      author: opaa
+      comment: >-
+        ADR-0027, Entscheidung 1 (Nachtrag zu ADR-0018): the typed, per-type source configuration
+        as one jsonb document - for S3 the region, addressing style, scopes and key patterns; never
+        a credential, which stays encrypted in source_credentials. NULL for every other type until
+        a later ADR moves one.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries ADD COLUMN source_settings jsonb;
+      rollback:
+        - sql:
+            sql: ALTER TABLE public.knowledge_libraries DROP COLUMN IF EXISTS source_settings;
+
+  - changeSet:
+      id: 030-libraries-source-configuration-s3
+      author: opaa
+      comment: >-
+        ADR-0027: adds the S3 arm to chk_knowledge_libraries_source_configuration - endpoint
+        (source_url), credentials and source_settings with a non-empty scopes array are required,
+        a filesystem path and an edition are forbidden, proxy and source_insecure_ssl stay optional
+        - and binds source_settings to NULL for every other type. The scopes guard is a CASE:
+        jsonb_typeof of a missing key is NULL (and a NULL CHECK result would pass), and
+        jsonb_array_length of a non-array raises instead of returning false. The five existing arms
+        keep their shape from migration 010 otherwise.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_source_configuration;
+              ALTER TABLE public.knowledge_libraries ADD CONSTRAINT chk_knowledge_libraries_source_configuration
+                  CHECK (
+                      ((source_type)::text = 'UPLOAD'::text AND source_path IS NULL AND source_url IS NULL
+                          AND source_proxy IS NULL AND source_credentials IS NULL AND source_insecure_ssl = false
+                          AND source_confluence_edition IS NULL AND source_settings IS NULL)
+                      OR ((source_type)::text = 'FILESYSTEM'::text AND source_path IS NOT NULL AND source_url IS NULL
+                          AND source_proxy IS NULL AND source_credentials IS NULL AND source_insecure_ssl = false
+                          AND source_confluence_edition IS NULL AND source_settings IS NULL)
+                      OR ((source_type)::text = 'HTTP_DIRECTORY'::text AND source_path IS NULL AND source_url IS NOT NULL
+                          AND source_confluence_edition IS NULL AND source_settings IS NULL)
+                      OR ((source_type)::text = 'RSS_FEED'::text AND source_path IS NULL AND source_url IS NOT NULL
+                          AND source_confluence_edition IS NULL AND source_settings IS NULL)
+                      OR ((source_type)::text = 'CONFLUENCE'::text AND source_path IS NULL AND source_url IS NOT NULL
+                          AND source_credentials IS NOT NULL AND source_confluence_edition IS NOT NULL
+                          AND source_settings IS NULL)
+                      OR ((source_type)::text = 'S3'::text AND source_path IS NULL AND source_url IS NOT NULL
+                          AND source_credentials IS NOT NULL AND source_confluence_edition IS NULL
+                          AND source_settings IS NOT NULL
+                          AND CASE WHEN jsonb_typeof(source_settings -> 'scopes') = 'array'
+                              THEN jsonb_array_length(source_settings -> 'scopes') >= 1
+                              ELSE false END)
+                  );
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              ALTER TABLE public.knowledge_libraries DROP CONSTRAINT chk_knowledge_libraries_source_configuration;
+              ALTER TABLE public.knowledge_libraries ADD CONSTRAINT chk_knowledge_libraries_source_configuration
+                  CHECK (
+                      ((source_type)::text = 'UPLOAD'::text AND source_path IS NULL AND source_url IS NULL
+                          AND source_proxy IS NULL AND source_credentials IS NULL AND source_insecure_ssl = false
+                          AND source_confluence_edition IS NULL)
+                      OR ((source_type)::text = 'FILESYSTEM'::text AND source_path IS NOT NULL AND source_url IS NULL
+                          AND source_proxy IS NULL AND source_credentials IS NULL AND source_insecure_ssl = false
+                          AND source_confluence_edition IS NULL)
+                      OR ((source_type)::text = 'HTTP_DIRECTORY'::text AND source_path IS NULL AND source_url IS NOT NULL
+                          AND source_confluence_edition IS NULL)
+                      OR ((source_type)::text = 'RSS_FEED'::text AND source_path IS NULL AND source_url IS NOT NULL
+                          AND source_confluence_edition IS NULL)
+                      OR ((source_type)::text = 'CONFLUENCE'::text AND source_path IS NULL AND source_url IS NOT NULL
+                          AND source_credentials IS NOT NULL AND source_confluence_edition IS NOT NULL)
+                  );

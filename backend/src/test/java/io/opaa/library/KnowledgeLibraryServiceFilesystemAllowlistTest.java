@@ -26,6 +26,9 @@ import io.opaa.indexing.VectorStoreWriter;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
+import io.opaa.indexing.source.s3.S3ClientFactory;
+import io.opaa.indexing.source.s3.S3Properties;
+import io.opaa.sourceaccess.TargetAddressValidator;
 import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
@@ -106,7 +109,8 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             folderRepository,
             eventPublisher,
             org.mockito.Mockito.mock(ConfluenceConnectionService.class),
-            confluenceProperties);
+            confluenceProperties,
+            new S3ClientFactory(S3Properties.defaults(), TargetAddressValidator.disabled()));
 
     ownerId = UUID.randomUUID();
     User owner = new User("subject", "issuer", "owner@example.com", "Owner");

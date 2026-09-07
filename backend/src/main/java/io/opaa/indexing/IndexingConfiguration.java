@@ -36,6 +36,7 @@ import io.opaa.indexing.source.rss.RssFeedIndexingExecutor;
 import io.opaa.indexing.source.rss.RssFeedParser;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import io.opaa.indexing.source.s3.S3ClientFactory;
+import io.opaa.indexing.source.s3.S3IndexingExecutor;
 import io.opaa.indexing.source.s3.S3Properties;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
 import io.opaa.indexing.source.web.CrawlProperties;
@@ -483,6 +484,11 @@ public class IndexingConfiguration {
         vectorChunkStore,
         Clock.systemUTC(),
         indexingRunTemplate);
+  }
+
+  @Bean
+  SourceIndexingExecutor s3IndexingExecutor(IndexingRunTemplate indexingRunTemplate) {
+    return new S3IndexingExecutor(indexingRunTemplate);
   }
 
   /**
