@@ -1812,6 +1812,45 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/libraries/s3/buckets:
+    post:
+      operationId: listS3Buckets
+      tags: [library]
+      summary: >
+        List the buckets an S3 key may see, for the scope selection of an S3 library (ADR-0027,
+        #1376).
+      description: >
+        One ListBuckets call with the given key against the given endpoint. A key without
+        s3:ListAllMyBuckets - the normal case for a restricted key - is answered with
+        listingPermitted false and a hint to enter the bucket name by hand, never with an error;
+        refused credentials, a blocked or unreachable endpoint are a 400 with the same German
+        message the connection test would give. A POST because the credentials travel in the
+        body and no library needs to exist yet. Permission bar like the connection test: any
+        authenticated user without libraryId, AssetRole.MANAGER on that library with it.
+        Rate-limited like the connection test (opaa.rate-limit.source-test) and subject to the
+        same outbound target validation. Credentials appear in no response and no error message.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/S3BucketListRequest"
+      responses:
+        "200":
+          description: The visible buckets, or the fallback for a key that may not list them.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/S3BucketListResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/libraries/{libraryId}:
     parameters:
       - name: libraryId
@@ -5825,6 +5864,15 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/ConfluenceEdition"
+        s3Settings:
+          description: >
+            Required for sourceType S3 (ADR-0027, #1376): region, addressing style and the scopes
+            to probe. sourceUrl is the endpoint, sourceCredentials the static key as
+            accessKey:secretKey[:sessionToken]. Every scope is probed in three steps - bucket
+            reachable, listing allowed, reading allowed - and reported in response.s3Scopes.
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/S3Settings"
 
     SourceConnectionTestResponse:
       type: object
@@ -5846,8 +5894,10 @@ components:
             Number of supported documents found (FILESYSTEM: recursively, matching the run's
             own SupportedDocumentFormats filter; HTTP_DIRECTORY: only the top-level listing,
             filtered the same way, not a recursive crawl of the whole tree; RSS_FEED: entries,
-            capped at opaa.indexing.rss.max-entries like the run itself) - null when reachable
-            is false, since nothing could be counted, and always null for CONFLUENCE, whose test
+            capped at opaa.indexing.rss.max-entries like the run itself; S3: the objects the
+            first listing page of every scope showed, at most opaa.indexing.s3.list-page-size per
+            scope - a lower bound when a scope has more, see s3Scopes) - null when reachable is
+            false, since nothing could be counted, and always null for CONFLUENCE, whose test
             verifies the credentials with a single request and leaves counting to the space
             listing endpoint.
         message:
@@ -5866,9 +5916,113 @@ components:
           type: boolean
           nullable: true
           description: >
-            Only for sourceType CONFLUENCE: whether the credentials were accepted by the instance.
+            For sourceType CONFLUENCE: whether the credentials were accepted by the instance.
             false after a detection-only test (no credentials given) or when the instance rejected
-            them; absent for other source types.
+            them. For sourceType S3: whether the store accepted the key (a refused key, a blocked
+            endpoint or an unreachable store report false). Absent for other source types.
+        s3Scopes:
+          type: array
+          nullable: true
+          description: >
+            Only for sourceType S3 (ADR-0027, #1376): one entry per requested scope, in request
+            order, with how far the three-step probe got. Absent for other source types.
+          items:
+            $ref: "#/components/schemas/S3ScopeCheck"
+
+    S3ScopeCheck:
+      type: object
+      required: [bucket, prefix, bucketReachable, listAllowed, objectCount, objectCountIsLowerBound]
+      description: >
+        The outcome of the connection test for one scope of an S3 library: HeadBucket, then
+        ListObjectsV2 with the prefix, then HeadObject on the first listed object. A refused step
+        ends the probe for that scope; message carries its German diagnosis (which right is
+        missing, a redirect to another region or addressing style, a blocked or unreachable host)
+        and is null when every step passed.
+      properties:
+        bucket:
+          type: string
+        prefix:
+          type: string
+          description: The normalised prefix, empty for the whole bucket.
+        bucketReachable:
+          type: boolean
+        listAllowed:
+          type: boolean
+        readAllowed:
+          type: boolean
+          nullable: true
+          description: null when the scope holds no object to try reading.
+        objectCount:
+          type: integer
+          format: int64
+          description: The objects (folder markers included) the first listing page showed.
+        objectCountIsLowerBound:
+          type: boolean
+          description: true when that page was not the last one - "mindestens objectCount".
+        message:
+          type: string
+          nullable: true
+
+    S3BucketListRequest:
+      type: object
+      required: [sourceUrl]
+      description: >
+        Connection data for listing the buckets an S3 key may see (ADR-0027, #1376; the wizard's
+        bucket suggestion). Credentials are used for this one request only, never persisted or
+        echoed. With libraryId (an existing S3 library the caller manages), omitted credentials
+        fall back to the stored ones when sourceUrl names the same origin - the same rule the
+        connection test applies.
+      properties:
+        sourceUrl:
+          type: string
+          format: uri
+          description: The endpoint, normalised like LibraryRequest.sourceUrl for sourceType S3.
+        sourceCredentials:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: accessKey:secretKey[:sessionToken] (see LibraryRequest.sourceCredentials).
+        sourceProxy:
+          type: string
+          maxLength: 255
+          nullable: true
+        sourceInsecureSsl:
+          type: boolean
+          nullable: true
+          default: false
+        region:
+          type: string
+          maxLength: 64
+          nullable: true
+          description: The signing region; absent means us-east-1.
+        pathStyle:
+          type: boolean
+          nullable: true
+          default: false
+        libraryId:
+          type: string
+          format: uuid
+          nullable: true
+
+    S3BucketListResponse:
+      type: object
+      required: [listingPermitted, buckets]
+      description: >
+        The buckets the key may see, in the store's order - or, when the key lacks
+        s3:ListAllMyBuckets, listingPermitted false with an empty list and a message inviting
+        manual entry: a restricted key is the normal case, never an error. Stores like MinIO
+        answer a restricted key with the filtered list instead, which arrives as permitted.
+      properties:
+        listingPermitted:
+          type: boolean
+        buckets:
+          type: array
+          items:
+            type: string
+        message:
+          type: string
+          nullable: true
+          description: German, user-facing; set when the listing was not permitted.
 
     ConfluenceSpaceListRequest:
       type: object

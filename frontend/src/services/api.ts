@@ -62,6 +62,8 @@ import type {
   UserSummary,
   ConfluenceSpaceListRequest,
   ConfluenceSpaceListResponse,
+  S3BucketListRequest,
+  S3BucketListResponse,
   IndexingRunMode,
   ConfluenceWebhookSecretResponse,
   BulkMetadataValueRequest,
@@ -686,6 +688,16 @@ export async function testLibrarySource(
       '/v1/libraries/source-test',
       request,
     )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** the buckets an S3 key may see - basis of the wizard's scope entry (ADR-0027). */
+export async function listS3Buckets(request: S3BucketListRequest): Promise<S3BucketListResponse> {
+  try {
+    const { data } = await client.post<S3BucketListResponse>('/v1/libraries/s3/buckets', request)
     return data
   } catch (err) {
     normalizeError(err)

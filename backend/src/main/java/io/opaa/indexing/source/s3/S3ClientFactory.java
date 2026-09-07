@@ -2,6 +2,7 @@ package io.opaa.indexing.source.s3;
 
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -47,6 +48,28 @@ public class S3ClientFactory {
   public S3ObjectStore create(S3Connection connection, Collection<S3Scope> scopes)
       throws S3AccessException {
     return create(connection, scopes, 0);
+  }
+
+  /** Per-attempt timeout of a probe's store - well under a request thread's patience. */
+  public static final Duration PROBE_TIMEOUT = Duration.ofSeconds(5);
+
+  /** Retries of a probe's store: one, so a throttled answer is retried once and not six times. */
+  public static final int PROBE_RETRIES = 1;
+
+  /**
+   * A store for the connection test and the bucket listing: no request budget, but a short
+   * per-attempt timeout and a single retry, so one synchronous request against a store that
+   * swallows packets ends within seconds per call, never in the run's 30-second-times-six patience.
+   */
+  public S3ObjectStore createForProbe(S3Connection connection, Collection<S3Scope> scopes)
+      throws S3AccessException {
+    validateTargets(connection, scopes);
+    return new AwsSdkS3ObjectStore(
+        connection,
+        properties.forProbe(PROBE_TIMEOUT, PROBE_RETRIES),
+        targetAddressValidator,
+        0,
+        requestObserver);
   }
 
   /**

@@ -418,7 +418,7 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
           ? new S3AccessException.Unreachable(target.getMessage())
           : new S3AccessException.TargetBlocked(target.getMessage());
     }
-    if (e instanceof NoSuchBucketException) {
+    if (e instanceof NoSuchBucketException && op != Operation.LIST_BUCKETS) {
       return new S3AccessException.BucketNotFound(bucket);
     }
     if (e instanceof NoSuchKeyException) {
@@ -468,7 +468,15 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
     String code = e.awsErrorDetails() == null ? null : e.awsErrorDetails().errorCode();
     int status = e.statusCode();
     if (status == 301 || status == 307 || (code != null && REDIRECT_CODES.contains(code))) {
-      return new S3AccessException.WrongRegionOrStyle(bucket);
+      return op == Operation.LIST_BUCKETS
+          ? new S3AccessException.WrongRegionOrStyle()
+          : new S3AccessException.WrongRegionOrStyle(bucket);
+    }
+    if (op == Operation.LIST_BUCKETS && (status == 404 || "NoSuchBucket".equals(code))) {
+      // the listing names no bucket: a 404 here means the address is no S3 endpoint at all
+      return new S3AccessException(
+          "Der Endpoint antwortet nicht wie ein S3-Objektspeicher (HTTP 404 auf die"
+              + " Bucket-Liste).");
     }
     if ("RequestTimeTooSkewed".equals(code) || e.isClockSkewException()) {
       return new S3AccessException.ClockSkew();

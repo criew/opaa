@@ -23,6 +23,8 @@ import io.opaa.api.dto.LibraryRequest;
 import io.opaa.api.dto.LibraryResponse;
 import io.opaa.api.dto.LibrarySpaceAssociationResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
+import io.opaa.api.dto.S3BucketListRequest;
+import io.opaa.api.dto.S3BucketListResponse;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.api.types.IndexingRunMode;
@@ -135,6 +137,19 @@ public class LibraryController {
         SourceConnectionTestResponseMapper.toRefs(
             sourceConnectionTestService.listConfluenceSpaces(
                 SourceConnectionTestResponseMapper.toDomain(request), caller)));
+  }
+
+  /**
+   * Bucket suggestion for an S3 library (ADR-0027, #1376) - same permission bar and rate limit as
+   * the connection test above; credentials travel in the body and never come back. A key that may
+   * not list buckets gets the fallback answer, not an error.
+   */
+  @PostMapping("/s3/buckets")
+  public S3BucketListResponse listS3Buckets(
+      @Valid @RequestBody S3BucketListRequest request, @Caller CurrentUser caller) {
+    return SourceConnectionTestResponseMapper.toResponse(
+        sourceConnectionTestService.listS3Buckets(
+            SourceConnectionTestResponseMapper.toDomain(request), caller));
   }
 
   @GetMapping

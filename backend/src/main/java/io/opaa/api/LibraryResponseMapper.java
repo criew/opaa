@@ -83,7 +83,7 @@ final class LibraryResponseMapper {
    * prefixes, overlap and patterns on construction (ADR-0027, Entscheidung 2) and its German
    * message becomes the 400 the caller sees.
    */
-  private static S3SourceSettings toS3Settings(S3Settings settings) {
+  static S3SourceSettings toS3Settings(S3Settings settings) {
     if (settings == null) {
       return null;
     }
@@ -113,7 +113,7 @@ final class LibraryResponseMapper {
     }
   }
 
-  private static S3Settings toS3SettingsRef(S3SourceSettings settings) {
+  static S3Settings toS3SettingsRef(S3SourceSettings settings) {
     return new S3Settings(
             settings.scopes().stream()
                 .map(scope -> new S3ScopeRef(scope.bucket()).prefix(scope.prefix()))

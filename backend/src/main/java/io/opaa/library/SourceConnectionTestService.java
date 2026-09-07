@@ -13,6 +13,7 @@ import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedEntry;
 import io.opaa.indexing.source.rss.RssFeedParseException;
 import io.opaa.indexing.source.rss.RssFeedParser;
+import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
 import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.sourceaccess.BoundedStreams;
@@ -73,10 +74,12 @@ import org.springframework.stereotype.Service;
  * by being a single synchronous request instead of "create library, trigger indexing, read job
  * status". FILESYSTEM is therefore gated by the identical {@link FilesystemPathAllowlist} check
  * creation applies, before anything on disk is touched; every per-request HTTP timeout here is kept
- * well under {@code buildHttpClient}'s 30s connect timeout so a single caller cannot tie up
- * Tomcat's worker pool for long by requesting many tests against a filtered address at once -
- * {@code RateLimitConfiguration} additionally caps this endpoint per IP and globally, the same way
- * it already does for the indexing trigger. No response ever reveals more about a directory's
+ * well under {@code buildHttpClient}'s 30s connect timeout (the S3 probe's store likewise carries
+ * {@link io.opaa.indexing.source.s3.S3ClientFactory#PROBE_TIMEOUT} and a single retry, and the
+ * whole S3 test stops after {@link S3ConnectionService#PROBE_DEADLINE}) so a single caller cannot
+ * tie up Tomcat's worker pool for long by requesting many tests against a filtered address at once
+ * - {@code RateLimitConfiguration} additionally caps this endpoint per IP and globally, the same
+ * way it already does for the indexing trigger. No response ever reveals more about a directory's
  * contents than a count - never a file name, a listing, or an exception's raw text. Target
  * validation for the URL-based types' addresses themselves (blocking internal/private ranges,
  * {@code TargetAddressValidator}) applies to every fetch here exactly as to the indexing run - for
@@ -123,6 +126,7 @@ public class SourceConnectionTestService {
   private final int maxFeedEntries;
   private final TargetAddressValidator targetAddressValidator;
   private final ConfluenceConnectionService confluenceConnectionService;
+  private final S3ConnectionService s3ConnectionService;
 
   public SourceConnectionTestService(
       DocumentService documentService,
@@ -134,7 +138,8 @@ public class SourceConnectionTestService {
       IndexingProperties properties,
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy requestPolicy,
-      ConfluenceConnectionService confluenceConnectionService) {
+      ConfluenceConnectionService confluenceConnectionService,
+      S3ConnectionService s3ConnectionService) {
     this.documentService = documentService;
     this.crawlerService = crawlerService;
     this.rssFeedParser = rssFeedParser;
@@ -147,6 +152,7 @@ public class SourceConnectionTestService {
     this.maxFeedEntries = properties.rss().maxEntries();
     this.targetAddressValidator = targetAddressValidator;
     this.confluenceConnectionService = confluenceConnectionService;
+    this.s3ConnectionService = s3ConnectionService;
   }
 
   /**
@@ -186,10 +192,7 @@ public class SourceConnectionTestService {
       case HTTP_DIRECTORY -> testHttpDirectory(effectiveRequest);
       case RSS_FEED -> testRssFeed(effectiveRequest);
       case CONFLUENCE -> testConfluence(effectiveRequest);
-      // the S3 probe arrives with #1376; until then the test is refused, never answered as ok
-      case S3 ->
-          throw new ValidationException(
-              "Der Verbindungstest für sourceType S3 ist noch nicht verfügbar");
+      case S3 -> testS3(effectiveRequest);
     };
   }
 
@@ -228,6 +231,97 @@ public class SourceConnectionTestService {
   }
 
   /**
+   * ADR-0027, #1376: probes every scope of the settings in three steps through the access layer.
+   * {@code sourceCredentials} and {@code s3Settings} may already be the stored fallback ({@link
+   * #withStoredCredentialsIfOmitted}). A store problem is the test's result, not an exception.
+   */
+  private SourceConnectionTestResult testS3(SourceConnectionTest request) {
+    if (request.sourcePath() != null && !request.sourcePath().isBlank()) {
+      throw new ValidationException("sourcePath ist für sourceType S3 nicht zulässig");
+    }
+    if (request.sourceUrl() == null) {
+      throw new ValidationException(
+          "sourceUrl (Endpoint des Objektspeichers) ist erforderlich, wenn sourceType S3 ist");
+    }
+    S3ConnectionService.Probe probe;
+    try {
+      probe =
+          s3ConnectionService.probe(
+              request.sourceUrl().toString(),
+              blankToNull(request.sourceProxy()),
+              blankToNull(request.sourceCredentials()),
+              Boolean.TRUE.equals(request.sourceInsecureSsl()),
+              request.s3Settings());
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return unreachable("Der Verbindungstest wurde unterbrochen.");
+    }
+    return new SourceConnectionTestResult(
+        probe.reachable(),
+        probe.message(),
+        probe.objectCount(),
+        null,
+        probe.credentialsVerified(),
+        probe.scopes());
+  }
+
+  /**
+   * The buckets an S3 key may see (ADR-0027, #1376), for the wizard's scope entry - the same
+   * permission bar, stored-credentials fallback and proxy/TLS forcing as {@link #test}, through the
+   * very same {@link #withStoredCredentialsIfOmitted}.
+   */
+  public S3BucketListResult listS3Buckets(S3BucketListingRequest request, CurrentUser caller) {
+    if (request.sourceUrl() == null) {
+      throw new ValidationException("sourceUrl ist erforderlich");
+    }
+    SourceConnectionTest effective =
+        new SourceConnectionTest(
+            DocumentSourceType.S3,
+            null,
+            request.sourceUrl(),
+            request.sourceProxy(),
+            request.sourceCredentials(),
+            request.sourceInsecureSsl(),
+            request.libraryId(),
+            null,
+            null);
+    if (request.libraryId() != null) {
+      KnowledgeLibrary library = requireManagedLibrary(request.libraryId(), caller);
+      if (library.getSourceType() != DocumentSourceType.S3) {
+        throw new ValidationException("Die Bibliothek ist keine S3-Bibliothek");
+      }
+      effective = withStoredCredentialsIfOmitted(effective, library);
+    }
+    String credentials = blankToNull(effective.sourceCredentials());
+    if (credentials == null) {
+      throw new ValidationException(
+          "sourceCredentials sind für die Bucket-Auflistung erforderlich");
+    }
+    // region and addressing style: the request's when given, else the library's stored ones (the
+    // same fallback the credentials get - a listing against a stored library must sign for the
+    // region that library is configured for)
+    S3SourceSettings stored = effective.s3Settings();
+    String region =
+        blankToNull(request.region()) != null
+            ? blankToNull(request.region())
+            : stored == null ? null : stored.effectiveRegion();
+    boolean pathStyle =
+        request.pathStyle() != null ? request.pathStyle() : stored != null && stored.pathStyle();
+    try {
+      return s3ConnectionService.listBuckets(
+          effective.sourceUrl().toString(),
+          blankToNull(effective.sourceProxy()),
+          credentials,
+          Boolean.TRUE.equals(effective.sourceInsecureSsl()),
+          region,
+          pathStyle);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ValidationException("Die Bucket-Auflistung wurde unterbrochen.");
+    }
+  }
+
+  /**
    * The spaces a Confluence token may read (ADR-0023), for the wizard's selection - the same
    * permission bar, stored-credentials fallback and proxy/TLS forcing as {@link #test}, through the
    * very same {@link #withStoredCredentialsIfOmitted}, so the two paths cannot drift apart.
@@ -246,7 +340,8 @@ public class SourceConnectionTestService {
             request.sourceCredentials(),
             request.sourceInsecureSsl(),
             request.libraryId(),
-            request.confluenceEdition());
+            request.confluenceEdition(),
+            null);
     if (request.libraryId() != null) {
       KnowledgeLibrary library = requireManagedLibrary(request.libraryId(), caller);
       if (library.getSourceType() != DocumentSourceType.CONFLUENCE) {
@@ -320,12 +415,18 @@ public class SourceConnectionTestService {
    */
   private SourceConnectionTest withStoredCredentialsIfOmitted(
       SourceConnectionTest request, KnowledgeLibrary library) {
+    // ADR-0027: an S3 test without its own scopes probes the library's stored ones - settings
+    // are not a secret, so unlike the credential they stand in regardless of the origin
+    S3SourceSettings s3Settings =
+        request.s3Settings() == null && library.getSourceType() == DocumentSourceType.S3
+            ? library.getS3Settings()
+            : request.s3Settings();
     if (blankToNull(request.sourceCredentials()) != null) {
-      return request;
+      return withS3Settings(request, s3Settings);
     }
     String requestSourceUrl = request.sourceUrl() == null ? null : request.sourceUrl().toString();
     if (!SourceOriginMatcher.sameOrigin(library.getSourceUrl(), requestSourceUrl)) {
-      return request;
+      return withS3Settings(request, s3Settings);
     }
     return new SourceConnectionTest(
         request.sourceType(),
@@ -335,7 +436,25 @@ public class SourceConnectionTestService {
         library.getSourceCredentials(),
         library.isSourceInsecureSsl(),
         request.libraryId(),
-        request.confluenceEdition());
+        request.confluenceEdition(),
+        s3Settings);
+  }
+
+  private static SourceConnectionTest withS3Settings(
+      SourceConnectionTest request, S3SourceSettings s3Settings) {
+    if (s3Settings == request.s3Settings()) {
+      return request;
+    }
+    return new SourceConnectionTest(
+        request.sourceType(),
+        request.sourcePath(),
+        request.sourceUrl(),
+        request.sourceProxy(),
+        request.sourceCredentials(),
+        request.sourceInsecureSsl(),
+        request.libraryId(),
+        request.confluenceEdition(),
+        s3Settings);
   }
 
   private SourceConnectionTestResult testFilesystem(SourceConnectionTest request) {

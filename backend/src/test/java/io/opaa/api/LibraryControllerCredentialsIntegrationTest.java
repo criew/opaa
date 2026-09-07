@@ -173,6 +173,66 @@ class LibraryControllerCredentialsIntegrationTest {
   }
 
   @Test
+  void s3ConnectionTestAndBucketListingNeverEchoTheKeys() throws Exception {
+    // A loopback endpoint: with the default target validation active, both probes are refused
+    // before any connection is attempted - the test reports that as a result with the allowlist
+    // hint, the listing as a 400; neither carries the submitted key.
+    String secret = "hochgeheimer-secret-key-4711";
+    String test =
+        """
+        {
+          "sourceType": "S3",
+          "sourceUrl": "http://127.0.0.1:9000",
+          "sourceCredentials": "AKIAEXAMPLE:%s",
+          "s3Settings": {"pathStyle": true, "scopes": [{"bucket": "dokumente"}]}
+        }
+        """
+            .formatted(secret);
+    var testResult =
+        mockMvc
+            .perform(post("/api/v1/libraries/source-test").with(devUser()).content(test))
+            .andExpect(status().isOk())
+            .andReturn();
+    String testBody = testResult.getResponse().getContentAsString(StandardCharsets.UTF_8);
+    assertThat(testBody)
+        .contains("\"reachable\":false")
+        .contains("\"credentialsVerified\":false")
+        .contains("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST")
+        .doesNotContain(secret)
+        .doesNotContain("AKIAEXAMPLE");
+
+    String listing =
+        """
+        {"sourceUrl": "http://127.0.0.1:9000", "sourceCredentials": "AKIAEXAMPLE:%s", "pathStyle": true}
+        """
+            .formatted(secret);
+    var listingResult =
+        mockMvc
+            .perform(post("/api/v1/libraries/s3/buckets").with(devUser()).content(listing))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+    assertThat(listingResult.getResponse().getContentAsString(StandardCharsets.UTF_8))
+        .contains("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST")
+        .doesNotContain(secret)
+        .doesNotContain("AKIAEXAMPLE");
+
+    // without settings the test is the caller's mistake, still without the key in the answer
+    String noSettings =
+        """
+        {"sourceType": "S3", "sourceUrl": "http://127.0.0.1:9000", "sourceCredentials": "AKIAEXAMPLE:%s"}
+        """
+            .formatted(secret);
+    var noSettingsResult =
+        mockMvc
+            .perform(post("/api/v1/libraries/source-test").with(devUser()).content(noSettings))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+    assertThat(noSettingsResult.getResponse().getContentAsString(StandardCharsets.UTF_8))
+        .contains("s3Settings")
+        .doesNotContain(secret);
+  }
+
+  @Test
   void confluenceConnectionTestAndSpaceListingNeverEchoCredentials() throws Exception {
     // A loopback address: with the default target validation active, both probes are refused
     // before any connection is attempted - the test reports that as a result with the allowlist

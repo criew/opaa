@@ -516,6 +516,17 @@ class AwsSdkS3ObjectStoreTest {
 
     server.failNext(403, "AccessDenied", 1);
     assertThat(store.listBuckets()).isInstanceOf(S3BucketListing.NotPermitted.class);
+
+    // the listing names no bucket, so neither do its failures
+    server.failNext(404, "NoSuchBucket", 1);
+    assertThatThrownBy(store::listBuckets)
+        .isInstanceOf(S3AccessException.class)
+        .hasMessageContaining("nicht wie ein S3-Objektspeicher")
+        .satisfies(e -> assertThat(e.getMessage()).doesNotContain("*"));
+    server.failNext(301, "PermanentRedirect", 1);
+    assertThatThrownBy(store::listBuckets)
+        .isInstanceOf(S3AccessException.WrongRegionOrStyle.class)
+        .satisfies(e -> assertThat(e.getMessage()).doesNotContain("*"));
   }
 
   @Test

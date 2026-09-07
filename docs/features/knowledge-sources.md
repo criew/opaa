@@ -196,7 +196,17 @@ Edition nicht erneut — die Edition ist unveränderlich, die Adresse muss diese
 die Space-Auswahl kommt aus einer eigenen Auflistung (`POST /api/v1/libraries/confluence/spaces`),
 die nur mit gültigen Zugangsdaten antwortet. Beide Sonden unterliegen wie jeder Lauf der Zielprüfung
 (#267) — ein selbst betriebenes Confluence Data Center im privaten Adressbereich braucht deshalb den
-Eintrag in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, und die Fehlermeldung nennt ihn. Für die
+Eintrag in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, und die Fehlermeldung nennt ihn. `S3` (#1376,
+[ADR-0027](../decisions/0027-s3-konnektor.md)) prüft **je Geltungsbereich** in drei Schritten — Bucket
+erreichbar (`HeadBucket`), Auflisten erlaubt (`ListObjectsV2` mit Präfix), Lesen erlaubt (`HeadObject`
+auf das erste Objekt) — und zählt die Objekte der ersten Auflistungsseite („mindestens 1000“, wenn sie
+voll ist); die Meldung nennt das fehlende Recht (`s3:ListBucket`, `s3:GetObject`), einen Verweis auf
+eine andere Region oder einen anderen Adressstil, abgelehnte Zugangsdaten oder einen gesperrten Host,
+und nennt beim Zertifikatsfehler das Aussetzen der TLS-Prüfung nur als letzte Option. Eine eigene
+Auflistung (`POST /api/v1/libraries/s3/buckets`) nennt die Buckets, die der Schlüssel sehen darf —
+ein Schlüssel ohne `s3:ListAllMyBuckets` bekommt keine Fehlermeldung, sondern den Hinweis, den
+Bucket-Namen von Hand einzutragen; beide Sonden teilen den Rate-Limit-Topf `source-test` und die
+Zielprüfung mit dem Verbindungstest. Für die
 übrigen Typen ist der Test optional und
 ersetzt weder die Ziel- noch die Formatprüfung des eigentlichen Laufs. Er nutzt für `HTTP_DIRECTORY`
 und `RSS_FEED` dieselben ausgehenden Verbindungen wie ein Lauf und unterliegt deshalb **derselben

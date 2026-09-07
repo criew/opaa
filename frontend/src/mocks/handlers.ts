@@ -1659,6 +1659,29 @@ export const handlers = [
     return HttpResponse.json({ spaces: mockConfluenceSpaces })
   }),
 
+  // the buckets the mock key may see (ADR-0027) - a fixed set for the wizard's scope entry
+  http.post('/api/v1/libraries/s3/buckets', async ({ request }) => {
+    const body = (await request.json()) as {
+      sourceUrl?: string
+      sourceCredentials?: string | null
+      libraryId?: string | null
+    }
+    if (!body.sourceUrl) {
+      return HttpResponse.json({ error: 'sourceUrl ist erforderlich' }, { status: 400 })
+    }
+    if (!body.sourceCredentials && !body.libraryId) {
+      return HttpResponse.json(
+        { error: 'sourceCredentials sind für die Bucket-Auflistung erforderlich' },
+        { status: 400 },
+      )
+    }
+    return HttpResponse.json({
+      listingPermitted: true,
+      buckets: ['protokolle', 'satzungen', 'archiv'],
+      message: null,
+    })
+  }),
+
   // mirrors SourceConnectionTestService's per-type validation just enough that the mock
   // dialog's "Verbindung testen" button gets a plausible response in mock mode instead of an
   // unhandled request (onUnhandledRequest: 'bypass' would otherwise leave it hanging forever).
@@ -1669,6 +1692,45 @@ export const handlers = [
       sourceUrl?: string | null
       sourceCredentials?: string | null
       confluenceEdition?: ConfluenceEdition | null
+    }
+    if (body.sourceType === 'S3') {
+      // Mirrors S3ConnectionService#probe just enough for the mock: every scope passes with a
+      // small count; without settings the request is the caller's mistake.
+      const settings = (
+        body as { s3Settings?: { scopes?: { bucket: string; prefix?: string | null }[] } }
+      ).s3Settings
+      if (!body.sourceUrl) {
+        return HttpResponse.json(
+          {
+            error:
+              'sourceUrl (Endpoint des Objektspeichers) ist erforderlich, wenn sourceType S3 ist',
+          },
+          { status: 400 },
+        )
+      }
+      if (!settings?.scopes?.length) {
+        return HttpResponse.json(
+          { error: 's3Settings sind für den Verbindungstest erforderlich' },
+          { status: 400 },
+        )
+      }
+      const scopes = settings.scopes.map((scope) => ({
+        bucket: scope.bucket,
+        prefix: scope.prefix ? scope.prefix.replace(/^\/+/, '').replace(/\/?$/, '/') : '',
+        bucketReachable: true,
+        listAllowed: true,
+        readAllowed: true,
+        objectCount: 12,
+        objectCountIsLowerBound: false,
+        message: null,
+      }))
+      return HttpResponse.json({
+        reachable: true,
+        credentialsVerified: true,
+        documentCount: 12 * scopes.length,
+        message: `${scopes.length === 1 ? 'Der Bereich ist' : `Alle ${scopes.length} Bereiche sind`} erreichbar, Auflistung und Lesen sind erlaubt. ${12 * scopes.length} Objekte gefunden.`,
+        s3Scopes: scopes,
+      })
     }
     if (body.sourceType === 'CONFLUENCE') {
       // Mirrors ConfluenceConnectionService#probe: the mock treats *.atlassian.net as Cloud and

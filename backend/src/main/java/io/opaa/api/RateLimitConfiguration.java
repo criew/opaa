@@ -32,9 +32,10 @@ public class RateLimitConfiguration {
     // No capture group here (unlike the indexing trigger above): these probes carry no library -
     // there is none yet - so the per-IP limiter is keyed by the client alone. The alternation is
     // non-capturing on purpose: a capturing group would give each path its own bucket and double
-    // the outbound probe budget. The Confluence space listing (ADR-0023) is the same kind of
-    // synchronous outbound probe as the connection test and shares its limit.
-    String sourceTestPattern = "^/api/v1/libraries/(?:source-test|confluence/spaces)$";
+    // the outbound probe budget. The Confluence space listing (ADR-0023) and the S3 bucket
+    // listing (ADR-0027) are the same kind of synchronous outbound probe as the connection test
+    // and share its limit.
+    String sourceTestPattern = "^/api/v1/libraries/(?:source-test|confluence/spaces|s3/buckets)$";
     // #748 review, finding 1: a flat pattern, mirroring source-test above rather than the
     // per-library indexing trigger's capture group - unlike triggering an indexing run, "Im
     // Dokument öffnen" is a routine per-document click any VIEWER can make on any document, so

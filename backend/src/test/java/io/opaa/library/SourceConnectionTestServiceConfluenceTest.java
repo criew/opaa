@@ -71,7 +71,8 @@ class SourceConnectionTestServiceConfluenceTest {
             new IndexingProperties(1000, 0, 50, null, null, null, null, 0),
             TargetAddressValidator.disabled(),
             SourceRequestPolicy.defaults(),
-            confluenceConnectionService);
+            confluenceConnectionService,
+            mock(S3ConnectionService.class));
   }
 
   private KnowledgeLibrary confluenceLibrary(UUID libraryId, String url) {
@@ -113,7 +114,8 @@ class SourceConnectionTestServiceConfluenceTest {
                 "pat",
                 false,
                 null,
-                ConfluenceEdition.DATA_CENTER),
+                ConfluenceEdition.DATA_CENTER,
+                null),
             caller);
 
     assertThat(result.reachable()).isTrue();
@@ -131,6 +133,7 @@ class SourceConnectionTestServiceConfluenceTest {
                         DocumentSourceType.CONFLUENCE,
                         "/srv/docs",
                         URI.create("https://wiki.example.org"),
+                        null,
                         null,
                         null,
                         null,

@@ -121,6 +121,13 @@ class ConfluenceWebhookPublicAccessTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"sourceUrl\":\"http://127.0.0.1:9/confluence\"}"))
         .andExpect(status().isUnauthorized());
+    // the S3 bucket listing (#1376) is the same kind of outbound probe
+    mockMvc
+        .perform(
+            post("/api/v1/libraries/s3/buckets")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"sourceUrl\":\"http://127.0.0.1:9000\"}"))
+        .andExpect(status().isUnauthorized());
     org.mockito.Mockito.verifyNoInteractions(oidcAuthenticationManagerResolver);
   }
 }

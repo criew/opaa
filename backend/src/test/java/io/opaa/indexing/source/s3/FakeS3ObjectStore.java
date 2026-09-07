@@ -226,7 +226,8 @@ public final class FakeS3ObjectStore implements S3ObjectStore {
     S3ListPage page;
     try {
       page = listObjects(scope, null);
-    } catch (S3AccessException.BucketNotFound e) {
+    } catch (S3AccessException.BucketNotFound | S3AccessException.Authentication e) {
+      // like the adapter: a missing bucket or a refused key reports the bucket as not reached
       return new S3AccessCheck(false, false, null, 0, false, e);
     } catch (S3AccessException e) {
       return new S3AccessCheck(true, false, null, 0, false, e);

@@ -68,6 +68,13 @@ public class S3AccessException extends IOException {
 
   /** {@code 301 PermanentRedirect} or a malformed authorization: region or addressing style. */
   public static final class WrongRegionOrStyle extends S3AccessException {
+    /** The bucket-free form, for the bucket listing. */
+    public WrongRegionOrStyle() {
+      super(
+          "Der Objektspeicher verweist auf einen anderen Endpoint: Region oder Adressstil"
+              + " (Path-Style/Virtual-Host) passen nicht zur Konfiguration.");
+    }
+
     public WrongRegionOrStyle(String bucket) {
       super(
           "Der Objektspeicher verweist für den Bucket „"
