@@ -27,7 +27,7 @@ jobs:
   demo-smoke:
     runs-on: ubuntu-latest
     # The demo seed itself budgets up to 600s per indexing run (scripts/run-e2e.mjs --target
-    # demo); this workflow's own budget has to cover four such runs plus 26 upload waits, on top
+    # demo); this workflow's own budget has to cover five such runs plus 26 upload waits, on top
     # of the image build below - generous on purpose, this job is not on any merge-blocking path.
     timeout-minutes: 45
     steps:

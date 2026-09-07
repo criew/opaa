@@ -70,10 +70,15 @@ class SpaceDef:
 class LibraryDef:
     name: str
     description: str
-    source_type: str  # DocumentSourceType: HTTP_DIRECTORY, RSS_FEED, UPLOAD
+    source_type: str  # DocumentSourceType: HTTP_DIRECTORY, RSS_FEED, UPLOAD, S3
     viewer_keys: tuple[str, ...]
     source_url: str | None = None
     upload_dir: Path | None = None  # every file directly inside is uploaded (non-recursive)
+    # S3 only (ADR-0027): the static key as accessKey:secretKey (write-only in the API) and the
+    # typed settings the API's S3Settings schema takes (pathStyle, scopes, patterns). Documented
+    # demo values, never secrets - the bucket lives in the demo stack's own MinIO (docker-compose.yml).
+    source_credentials: str | None = None
+    s3_settings: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -143,6 +148,7 @@ DEMO_PROFILE = Profile(
                 "Satzungen & Gebührenordnungen",
                 "Pressemitteilungen Stadt Rheinfurt",
                 "Interne Dienstanweisungen Meldewesen",
+                "Ratsinformationen Stadt Rheinfurt",
             ),
         ),
         SpaceDef(
@@ -158,6 +164,7 @@ DEMO_PROFILE = Profile(
                 "Leistungen Kfz-Zulassung",
                 "Satzungen & Gebührenordnungen",
                 "Pressemitteilungen Stadt Rheinfurt",
+                "Ratsinformationen Stadt Rheinfurt",
             ),
         ),
         SpaceDef(
@@ -170,6 +177,7 @@ DEMO_PROFILE = Profile(
                 "Satzungen & Gebührenordnungen",
                 "Pressemitteilungen Stadt Rheinfurt",
                 "Interne Dienstanweisungen Meldewesen",
+                "Ratsinformationen Stadt Rheinfurt",
             ),
         ),
     ),
@@ -208,6 +216,22 @@ DEMO_PROFILE = Profile(
             source_type="UPLOAD",
             viewer_keys=("maria", "selin", "andrea"),
             upload_dir=DEMO_CORPUS_ROOT / "interne-dienstanweisungen-meldewesen",
+        ),
+        # The S3 library (#1383, ADR-0027): reads the demo stack's MinIO (service "minio",
+        # path-style over the Compose network), bucket "rheinfurt-archiv" under the prefix the
+        # "minio-seed" init step mirrors demo/corpus/ratsinformationen/ to. Public council
+        # information, readable by every fach account like the press releases.
+        LibraryDef(
+            name="Ratsinformationen Stadt Rheinfurt",
+            description="Niederschriften und Beschlussvorlagen des Stadtrats und des Hauptausschusses, nach Jahrgängen abgelegt.",
+            source_type="S3",
+            source_url="http://minio:9000",
+            source_credentials="rheinfurt-archiv:RheinfurtDemo!2026",  # nosec - documented demo credential
+            s3_settings={
+                "pathStyle": True,
+                "scopes": [{"bucket": "rheinfurt-archiv", "prefix": "ratsinformationen/"}],
+            },
+            viewer_keys=("maria", "selin", "thomas", "andrea"),
         ),
     ),
 )

@@ -7,12 +7,13 @@ import { askQuestion, expectAnyCitedSource, gotoLibraries, startFreshChat } from
  * scripts/run-e2e.mjs's own module doc for why, and demo/README.md/docs/features/demo-instance.md
  * for the "demo" profile and its seed itself.
  *
- * By design there is exactly one scenario here, per the issue's own acceptance criteria: this
- * proves the chain Compose -> Seed -> Keycloak login -> connectors -> search works end to end,
- * nothing about the Rheinfurt corpus's actual content - assertions on demo content belong to
+ * Few scenarios by design, per the issue's own acceptance criteria: the first proves the chain
+ * Compose -> Seed -> Keycloak login -> connectors -> search works end to end, nothing about the
+ * Rheinfurt corpus's actual content - assertions on demo content belong to
  * docs/market/demo-drehbuch.md's manually verified drehbuch, not to a test that runs in CI against a
  * corpus that is explicitly allowed to keep evolving (docs/features/demo-instance.md, "Grund ist
- * Kopplung").
+ * Kopplung"). The later scenarios each cover one more piece of the stack the same way (a second
+ * identity provider, the S3-fed library) without pinning corpus wording either.
  */
 
 const DEMO_USERNAME = 'maria.weber'
@@ -20,6 +21,12 @@ const DEMO_USERNAME = 'maria.weber'
 // demo/seed/profiles.py's DEMO_PASSWORD) - shared by every account in both realms.
 const DEMO_PASSWORD = 'RheinfurtDemo!2026'
 const DEMO_ADMIN_USERNAME = 'demo-admin'
+
+// The sixth demo library (#1383): fed from the demo stack's MinIO bucket over the S3 connector
+// (demo/seed/profiles.py, docker-compose.yml's "minio"/"minio-seed"). Its documents are the
+// council records under demo/corpus/ratsinformationen/<jahr>/, named <datum>-<gremium>-<art>-….
+const S3_LIBRARY_NAME = 'Ratsinformationen Stadt Rheinfurt'
+const S3_DOCUMENT_NAME_PATTERN = /\d{4}-\d{2}-\d{2}-(stadtrat|hauptausschuss)-/
 
 // The second identity provider of the demo stack (keycloak/realm-partner-export.json, ADR-0025):
 // the same origin, another realm, another public client - and a maria.weber with the same
@@ -189,5 +196,36 @@ test.describe('Demo-Smoke (#232)', () => {
     expect(mariaAtVerzeichnisdienst.id).not.toBe(mariaAtPartner.id)
     await gotoLibraries(page)
     await expect(page.getByText('Leistungen Meldewesen & Ausweise', { exact: true })).toBeVisible()
+  })
+
+  /**
+   * #1383 / ADR-0027: the S3 connector against the stack's own MinIO. The seed created the library
+   * with the bucket scope and waited for its full run, so by now the council records are indexed.
+   * Scoping the question to that library with an @-reference (#560) makes the assertion
+   * deterministic regardless of corpus size: with ai-stub every readable chunk ties on relevance,
+   * so only the scope decides which library the cited sources come from - and a cited source that
+   * carries a council-record name can only have arrived through the S3 path.
+   */
+  test('S3-Bibliothek aus dem MinIO-Bucket: belegte Antwort zu einem Ratsbeschluss', async ({
+    page,
+  }) => {
+    await loginViaKeycloak(page, { providerName: 'Verzeichnisdienst', realm: 'opaa', username: DEMO_USERNAME })
+    await startFreshChat(page)
+
+    // Mirrors ChatInput.tsx's findActiveMention: the fragment after '@' must not contain
+    // whitespace, so the first word narrows the suggestions and the option is picked by its
+    // full name (see space-chats.spec.ts's referenceLibrary for the single-word variant).
+    const input = page.getByPlaceholder('Frage stellen … mit @ auf eine Quelle eingrenzen')
+    await input.fill('@Ratsinformationen')
+    await page.getByRole('option', { name: S3_LIBRARY_NAME }).click()
+    await expect(page.getByLabel(`Bibliotheksreferenz ${S3_LIBRARY_NAME} entfernen`)).toBeVisible()
+
+    // A question only the council records can answer (demo/generator/rat.py, Vorlage 2026/006);
+    // the wording is symbolic with ai-stub, see the first scenario.
+    await askQuestion(page, 'Wann hat der Stadtrat den Grundsatzbeschluss zum Neubau der Feuerwache Süd gefasst?')
+
+    const citedCard = page.locator('[data-testid="source-card"][data-cited="true"]').first()
+    await expect(citedCard).toBeVisible({ timeout: 15_000 })
+    await expect(citedCard).toContainText(S3_DOCUMENT_NAME_PATTERN)
   })
 })

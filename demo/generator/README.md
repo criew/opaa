@@ -41,7 +41,7 @@ Das Skript:
    oder nutzt die dort bereits vorhandenen Dateien, falls ihr SHA-256 zu den in
    `leistungen_quelle.py` hinterlegten Werten passt. Bricht bei Abweichung mit einer klaren
    Fehlermeldung ab, statt still weiterzuarbeiten.
-2. Schreibt alle fünf Bibliotheken deterministisch neu (vorhandener Inhalt der jeweiligen
+2. Schreibt alle sechs Bibliotheken deterministisch neu (vorhandener Inhalt der jeweiligen
    Zielverzeichnisse wird vorher gelöscht):
    - `leistungen-meldewesen-ausweise/` (`.md`) und `leistungen-kfz-zulassung/` (`.md`/`.txt`):
      46 bzw. 37 Dokumente, aus den LHM-Rohdateien München→Rheinfurt umgeschrieben
@@ -52,7 +52,10 @@ Das Skript:
      (`presse.py`).
    - `interne-dienstanweisungen-meldewesen/` (`.docx`/`.pdf`/`.pptx`): 26 Dienstanweisungen,
      Eskalationsregeln, FAQ-Dokumente und Schulungsfolien (`intern.py`).
-3. Validiert die erzeugten Inhalte aller fünf Bibliotheken gegen eine Liste von Verbotsmustern
+   - `ratsinformationen/<jahr>/` (`.md`/`.txt`): 12 Niederschriften und Beschlussvorlagen des
+     Stadtrats und des Hauptausschusses, je Jahrgang ein Unterverzeichnis (`rat.py`) — der
+     Ausschnitt, den der Demo-Stack in seinen MinIO-Bucket spiegelt (`S3`-Bibliothek, #1383).
+3. Validiert die erzeugten Inhalte aller sechs Bibliotheken gegen eine Liste von Verbotsmustern
    (`validation.py`): reale Ortsnamen (München/KVR/Pasing/Landeshauptstadt/Fischerei), Straßen
    außerhalb einer festen Whitelist fiktiver Rheinfurter Straßen, Postleitzahlen ungleich der
    fiktiven Rheinfurt-PLZ, sowie IBAN/BIC ungleich der fiktiven Rheinfurt-Bankverbindung. Bricht
@@ -61,7 +64,7 @@ Das Skript:
 4. Prüft, dass Verzeichnisinhalt und geschriebene Dateiliste exakt übereinstimmen (keine
    Karteileichen aus einem früheren, abweichenden Lauf).
 5. Schreibt `demo/corpus/MANIFEST.sha256` mit dem SHA-256 jeder erzeugten Datei (relativ zu
-   `demo/corpus/`, über alle fünf Bibliotheken hinweg) sowie `demo/corpus/SOURCE.md` selbst — die
+   `demo/corpus/`, über alle sechs Bibliotheken hinweg) sowie `demo/corpus/SOURCE.md` selbst — die
    dort genannten Dokumentzahlen sind damit immer die tatsächlich erzeugten, nicht von Hand
    nachgeführte Werte (siehe PR #717 Review, NIT/KLEIN d).
 
@@ -112,13 +115,14 @@ sauber extrahierbar.
 
 ```
 demo/generator/
-├── generate_corpus.py     Orchestriert alle fünf Bibliotheken, schreibt MANIFEST.sha256/SOURCE.md
+├── generate_corpus.py     Orchestriert alle sechs Bibliotheken, schreibt MANIFEST.sha256/SOURCE.md
 ├── leistungen_quelle.py    Pinning/Download der 83 ausgewählten LHM-Rohdateien
 ├── rheinfurt_text.py       München→Rheinfurt-Texttransformation (Orte, Straßen, Kontakte, Gebühren)
 ├── leistungen.py            Rendert die zwei Leistungs-Bibliotheken (.md/.txt)
 ├── satzungen.py              Satzungsdaten + PDF-Rendering (reportlab)
 ├── presse.py                 Pressemitteilungsdaten + RSS/HTML-Rendering
 ├── intern.py                  Interne-Dienstanweisungen-Daten + DOCX/PDF/PPTX-Rendering
+├── rat.py                     Ratsinformationen (Niederschriften, Beschlussvorlagen) + Markdown/Text-Rendering
 ├── zip_utils.py               Entfernt nicht-reproduzierbare Zip-Zeitstempel aus DOCX/PPTX
 ├── validation.py               Abschluss-Assert gegen reale Münchner Identifikatoren
 ├── requirements.txt             Gepinnte Versionen von reportlab/python-docx/python-pptx
@@ -145,7 +149,7 @@ demo/generator/
 
 ## Was nicht in diesem Korpus vorkommt
 
-- Zur Fischereierlaubnis findet sich in keiner der fünf Bibliotheken irgendein Dokument — bewusst
+- Zur Fischereierlaubnis findet sich in keiner der sechs Bibliotheken irgendein Dokument — bewusst
   so belassen, damit die Drehbuchfrage „Wie beantrage ich in Rheinfurt eine Fischereierlaubnis?"
   aus `docs/features/demo-instance.md` unbeantwortbar bleibt.
 - Keine echte Münchner Straße, kein echter Stadtbezirk, keine echte Postleitzahl und keine echte
