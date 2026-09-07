@@ -62,7 +62,7 @@ class AwsSdkS3ObjectStoreTest {
 
   private S3Properties properties(int pageSize, int retries, int budget) {
     return new S3Properties(
-        pageSize, 0, Duration.ofSeconds(5), retries, Duration.ofMillis(1), budget, tempDir);
+        pageSize, 0, Duration.ofSeconds(5), retries, Duration.ofMillis(1), budget, tempDir, 0);
   }
 
   private S3ObjectStore store(S3Properties properties, boolean pathStyle, boolean run)
@@ -239,7 +239,7 @@ class AwsSdkS3ObjectStoreTest {
 
     // without an explicit ceiling the configured object size bound applies
     S3Properties small =
-        new S3Properties(1000, 4096, Duration.ofSeconds(5), 1, Duration.ofMillis(1), 0, tempDir);
+        new S3Properties(1000, 4096, Duration.ofSeconds(5), 1, Duration.ofMillis(1), 0, tempDir, 0);
     S3ObjectStore bounded = store(small, true, false);
     assertThatThrownBy(() -> bounded.getObject("docs", "gross.bin"))
         .isInstanceOf(S3AccessException.ObjectTooLarge.class)

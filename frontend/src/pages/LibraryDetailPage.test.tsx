@@ -1046,6 +1046,44 @@ describe('LibraryDetailPage', () => {
     )
   })
 
+  it('names an S3 scope the last full sync could not list, for every reader (#1378)', async () => {
+    setLibraryState(
+      viewerLibrary,
+      detailsOf(viewerLibrary, {
+        sourceType: 'S3',
+        sourceUrl: 'https://minio.intern.example:9000',
+        s3Settings: {
+          region: 'us-east-1',
+          pathStyle: true,
+          scopes: [
+            { bucket: 'geheim', prefix: 'intern/' },
+            { bucket: 'dokumente', prefix: null },
+          ],
+          includePatterns: [],
+          excludePatterns: [],
+        },
+      }),
+    )
+    mockGetIndexingStatus.mockResolvedValueOnce({
+      status: 'COMPLETED',
+      documentCount: 3,
+      totalDocuments: 4,
+      documentsSkipped: 0,
+      documentsFailed: 0,
+      documentsIndexedTotal: 3,
+      message: null,
+      timestamp: '2026-09-06T10:00:00Z',
+      unreadableSpaceKeys: ['geheim/intern/'],
+    } as IndexingStatusResponse)
+
+    renderWithProviders(<LibraryDetailPage />, { withRouter: true })
+
+    expect(await screen.findByTestId('s3-incomplete-listing-warning')).toHaveTextContent(
+      'Der letzte Vollabgleich konnte den Geltungsbereich „geheim/intern/“ nicht auflisten; sein' +
+        ' Bestand ist möglicherweise veraltet.',
+    )
+  })
+
   it('shows no incomplete-listing warning while the assessment is clean (#1191)', async () => {
     setLibraryState(
       viewerLibrary,

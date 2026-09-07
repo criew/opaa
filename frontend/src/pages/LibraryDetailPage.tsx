@@ -827,6 +827,36 @@ export default function LibraryDetailPage() {
                 Schlüssel nicht lesen darf, nimmt OPAA nicht auf.
               </Typography>
             </Stack>
+            {run.unreadableSpaceKeys.length > 0 && (
+              <Stack
+                direction="row"
+                spacing={1}
+                role="note"
+                data-testid="s3-incomplete-listing-warning"
+                sx={{
+                  alignItems: 'flex-start',
+                  mt: 0.5,
+                  px: 1.25,
+                  py: 1,
+                  borderRadius: 2,
+                  border: 1,
+                  borderColor: 'warning.main',
+                  bgcolor: (theme) => alpha(theme.palette.warning.main, 0.08),
+                }}
+              >
+                <WarningAmberIcon
+                  aria-hidden
+                  sx={{ fontSize: 16, color: 'warning.main', mt: '2px', flexShrink: 0 }}
+                />
+                <Typography sx={{ fontSize: 12.5 }}>
+                  {run.unreadableSpaceKeys.length === 1
+                    ? `Der letzte Vollabgleich konnte den Geltungsbereich „${run.unreadableSpaceKeys[0]}“ nicht auflisten; sein Bestand ist möglicherweise veraltet.`
+                    : `Der letzte Vollabgleich konnte die Geltungsbereiche ${run.unreadableSpaceKeys.map((key) => `„${key}“`).join(', ')} nicht auflisten; ihr Bestand ist möglicherweise veraltet.`}{' '}
+                  Der Hinweis bleibt, bis ein Vollabgleich wieder alle Geltungsbereiche auflisten
+                  kann.
+                </Typography>
+              </Stack>
+            )}
           </Box>
         )}
 

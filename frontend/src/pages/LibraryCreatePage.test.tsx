@@ -132,8 +132,9 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
         ),
       )
       expect(mockCreateNewLibrary.mock.calls[0][0]).not.toHaveProperty('confluenceSpaces')
-      // no immediate first run until the full sync of #1378 exists
-      expect(mockTriggerIndexing).not.toHaveBeenCalled()
+      // the "Erste Indizierung sofort ..." switch defaults to on: the full sync starts right after
+      // creation, before the navigation to the detail page
+      expect(mockTriggerIndexing).toHaveBeenCalledWith('lib-neu', 'S3')
       expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu')
     }, 30000)
 
@@ -144,6 +145,9 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
       await user.type(screen.getByLabelText('Access Key'), 'AKIAEXAMPLE')
       await user.type(screen.getByLabelText('Secret Key'), 'geheim')
       await user.type(screen.getByLabelText('Bucket 1'), 'verwaltung-dokumente')
+      await user.click(
+        screen.getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' }),
+      )
       await user.click(screen.getByRole('button', { name: 'Weiter zu Rechten' }))
       await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
 
@@ -160,6 +164,9 @@ describe('LibraryCreatePage (#596, Mockup 1e)', () => {
           }),
         ),
       )
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu'))
+      // switched off: no first run, the detail page's "Jetzt indizieren" or the schedule starts it
+      expect(mockTriggerIndexing).not.toHaveBeenCalled()
     }, 20000)
 
     it('refuses overlapping scopes before anything is sent', async () => {

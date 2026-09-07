@@ -126,6 +126,14 @@ public record S3Scope(String bucket, String prefix) {
             "Das Präfix „" + prefix + "“ enthält Leer- oder Steuerzeichen und ist kein Schlüssel.");
       }
     }
+    // the scope key `bucket/prefix` is stored comma-separated in a run's listing assessment
+    if (prefix.indexOf(',') >= 0) {
+      throw new InvalidS3ScopeException(
+          "Das Präfix „"
+              + prefix
+              + "“ enthält ein Komma; Kommas sind in Geltungsbereichen nicht"
+              + " zulässig.");
+    }
     return prefix;
   }
 

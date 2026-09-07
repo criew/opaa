@@ -112,5 +112,9 @@ class S3ScopeTest {
     assertThatThrownBy(() -> S3Scope.of("dokumente", "x".repeat(1025)))
         .isInstanceOf(S3Scope.InvalidS3ScopeException.class)
         .hasMessageContaining("1024");
+    assertThatThrownBy(() -> S3Scope.of("dokumente", "berichte,2025"))
+        .as("the scope key is stored comma-separated in the listing assessment")
+        .isInstanceOf(S3Scope.InvalidS3ScopeException.class)
+        .hasMessageContaining("Komma");
   }
 }

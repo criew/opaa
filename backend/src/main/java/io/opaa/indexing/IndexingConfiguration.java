@@ -487,8 +487,13 @@ public class IndexingConfiguration {
   }
 
   @Bean
-  SourceIndexingExecutor s3IndexingExecutor(IndexingRunTemplate indexingRunTemplate) {
-    return new S3IndexingExecutor(indexingRunTemplate);
+  SourceIndexingExecutor s3IndexingExecutor(
+      S3ClientFactory s3ClientFactory,
+      S3Properties s3Properties,
+      FileProcessingService fileProcessingService,
+      IndexingRunTemplate indexingRunTemplate) {
+    return new S3IndexingExecutor(
+        s3ClientFactory, s3Properties, fileProcessingService, indexingRunTemplate);
   }
 
   /**

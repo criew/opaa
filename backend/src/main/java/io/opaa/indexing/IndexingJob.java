@@ -121,15 +121,17 @@ public class IndexingJob {
    * ADR-0023, Entscheidung 4: whether this run assessed its source listing. {@code null} for every
    * run that did not - incremental, webhook, failed or budget-truncated runs, other source types -
    * so the library view can hold on to the most recent actual assessment instead of the most recent
-   * run. Only a successful Confluence full sync writes {@code true}/{@code false}.
+   * run. Only a successful full sync of a container source (Confluence, S3) writes {@code
+   * true}/{@code false}.
    */
   @Column(name = "listing_complete")
   private Boolean listingComplete;
 
   /**
-   * the comma-separated Confluence space keys behind {@code listingComplete == false} - the spaces
-   * this run could not read or list completely, named so the warning at the library can say which
-   * bestand may be stale. {@code null} whenever the assessment is absent or complete.
+   * the comma-separated container keys behind {@code listingComplete == false} - the Confluence
+   * spaces or S3 scopes ({@code bucket/prefix}, comma-free by construction) this run could not read
+   * or list completely, named so the warning at the library can say which bestand may be stale.
+   * {@code null} whenever the assessment is absent or complete.
    */
   @Column(name = "unreadable_space_keys")
   private String unreadableSpaceKeys;

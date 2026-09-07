@@ -46,7 +46,7 @@ class MinioS3ObjectStoreTest {
     root =
         store(
             minio.rootCredentials(),
-            new S3Properties(0, 0, Duration.ofSeconds(10), null, null, 0, null));
+            new S3Properties(0, 0, Duration.ofSeconds(10), null, null, 0, null, 0));
   }
 
   @AfterAll
@@ -81,7 +81,7 @@ class MinioS3ObjectStoreTest {
   @Test
   void aSmallerPageSizeFollowsMoreTokens() throws Exception {
     try (S3ObjectStore small =
-        store(minio.rootCredentials(), new S3Properties(300, 0, null, null, null, 0, null))) {
+        store(minio.rootCredentials(), new S3Properties(300, 0, null, null, null, 0, null, 0))) {
       int pages = 0;
       int objects = 0;
       String token = null;
@@ -140,7 +140,8 @@ class MinioS3ObjectStoreTest {
   void theByteCeilingRefusesAnOversizeObjectWithoutKeepingAFile() throws Exception {
     Path tempDir = Files.createTempDirectory("opaa-s3-test-");
     try (S3ObjectStore store =
-        store(minio.rootCredentials(), new S3Properties(0, 1024, null, null, null, 0, tempDir))) {
+        store(
+            minio.rootCredentials(), new S3Properties(0, 1024, null, null, null, 0, tempDir, 0))) {
       assertThatThrownBy(() -> store.getObject(bucket, "gross.bin", 1024))
           .isInstanceOf(S3AccessException.ObjectTooLarge.class);
       assertThatThrownBy(() -> store.getObject(bucket, "gross.bin"))

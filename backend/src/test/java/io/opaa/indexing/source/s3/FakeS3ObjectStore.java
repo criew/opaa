@@ -21,7 +21,7 @@ import java.util.function.Supplier;
  * an optional archive flag, listed in key order with a configurable page size, and failures a test
  * scripts per bucket, per key or for the next call.
  */
-public final class FakeS3ObjectStore implements S3ObjectStore {
+public class FakeS3ObjectStore implements S3ObjectStore {
 
   /** One stored object. */
   public record StoredObject(
