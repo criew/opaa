@@ -75,8 +75,8 @@ Am Chunk trägt die Mail-Pipeline nur die Ortsangabe wie jede andere Pipeline:
 |---|---|
 | `location` | `Nachricht 2 von 4`, `Teil 3 von 7` oder `Nachricht 2 von 4 · Teil 3 von 7`; bei einer ungeteilten Nachricht leer |
 
-Die Kopfdaten selbst sind seit #1242 **Werte des Metadatenschemas am Dokument**, keine
-mail-eigenen Chunk-Schlüssel mehr — dieselbe Mechanik wie bei den Kernfeldern, mit Herkunft
+Die Kopfdaten selbst sind **Werte des Metadatenschemas am Dokument**, keine
+mail-eigenen Chunk-Schlüssel — dieselbe Mechanik wie bei den Kernfeldern, mit Herkunft
 „deterministisch" und Extraktionsversion (siehe [Metadaten](metadaten.md), Abschnitt 2a):
 
 | Feld | Inhalt | Filterbar |
@@ -96,9 +96,9 @@ und damit in der Volltextsuche.
 Rang für das Metadatenschema. Weil der Betreff zugleich der Titel ist, zeigt die Belegzeile ihn
 nur einmal.
 
-**Altbestand.** Eine vor #1242 indizierte Mail trägt die Kopfdaten noch nicht als Schemafelder.
-Sie kommen mit dem nächsten Lauf über das Dokument: Pipeline-Reindex (die Pipeline-Version ist
-auf 5 gestiegen) oder Bestandslauf des Metadatenschemas.
+**Altbestand.** Eine mit einer Pipeline-Version unter 5 indizierte Mail trägt die Kopfdaten noch
+nicht als Schemafelder. Sie kommen mit dem nächsten Lauf über das Dokument: Pipeline-Reindex oder
+Bestandslauf des Metadatenschemas.
 
 ## 5. Anhänge
 
@@ -143,7 +143,7 @@ Schlüssel unter `opaa.indexing.mail.*`:
 | `max-attachments-per-message` | 50 | ab dieser Zahl wird kein Anhang mehr ausgepackt |
 | `max-attachment-bytes` | 50 MiB | je Anhang |
 
-Die Verschachtelungstiefe für Mail-in-Mail ist seit #1269 kein eigener Mail-Schlüssel mehr, sondern
+Die Verschachtelungstiefe für Mail-in-Mail ist kein eigener Mail-Schlüssel, sondern
 die allgemeine `opaa.indexing.attachments.max-depth` (siehe [Indexierung](indexierung.md)) - dieselbe
 Grenze gilt für jede Anhangskette, unabhängig vom Konnektor.
 
