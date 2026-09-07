@@ -9,7 +9,7 @@ import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.SourceDocumentContext;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import io.opaa.indexing.pipeline.confluence.ConfluenceDocumentPipeline;
 import io.opaa.indexing.source.IndexingRun;
@@ -26,7 +26,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -82,7 +81,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private final FileProcessingService fileProcessingService;
   private final DocumentRepository documentRepository;
   private final ConfluenceSyncStateRepository syncStateRepository;
-  private final VectorChunkStore vectorChunkStore;
+  private final StaleDocumentCleanupService cleanupService;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
   private final ConfluenceAttachmentIndexing attachments;
@@ -94,7 +93,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       AttachmentIndexer attachmentIndexer,
       DocumentRepository documentRepository,
       ConfluenceSyncStateRepository syncStateRepository,
-      VectorChunkStore vectorChunkStore,
+      StaleDocumentCleanupService cleanupService,
       Clock clock,
       IndexingRunTemplate runTemplate) {
     this.clientFactory = clientFactory;
@@ -102,7 +101,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     this.fileProcessingService = fileProcessingService;
     this.documentRepository = documentRepository;
     this.syncStateRepository = syncStateRepository;
-    this.vectorChunkStore = vectorChunkStore;
+    this.cleanupService = cleanupService;
     this.clock = clock;
     this.runTemplate = runTemplate;
     this.attachments = new ConfluenceAttachmentIndexing(attachmentIndexer, documentRepository);
@@ -489,7 +488,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
    */
   private void discardTrashed(ConfluenceRun run, Optional<Document> existing, String pagePath) {
     existing.ifPresent(
-        document -> removeWithAttachments(run, document, TRASHED_MESSAGE, new HashSet<>()));
+        document -> cleanupService.removeWithAttachments(document, run.events, TRASHED_MESSAGE));
     run.frame.markAbsent(pagePath);
     run.progress.recordSkipped();
   }
@@ -510,7 +509,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       }
       documentRepository
           .findByLibraryIdAndFilePath(run.library.getId(), oldPath)
-          .ifPresent(old -> removeWithAttachments(run, old, MOVED_MESSAGE, new HashSet<>()));
+          .ifPresent(old -> cleanupService.removeWithAttachments(old, run.events, MOVED_MESSAGE));
     }
   }
 
@@ -603,24 +602,5 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
   private static boolean isUnchanged(Optional<Document> existing, String version) {
     return existing.isPresent() && existing.get().isUnchangedAt(version);
-  }
-
-  /**
-   * Deletes {@code document} and every attachment below it, deepest first - {@code
-   * fk_documents_parent} refuses a parent whose children still exist, and an attachment can carry
-   * children of its own (a {@code .eml} attached to a page). {@code visited} guards a cyclic {@code
-   * parent_document_id} chain, never expected from well-formed data.
-   */
-  private void removeWithAttachments(
-      ConfluenceRun run, Document document, String message, Set<UUID> visited) {
-    if (!visited.add(document.getId())) {
-      return;
-    }
-    for (Document child : documentRepository.findByParentDocumentId(document.getId())) {
-      removeWithAttachments(run, child, message, visited);
-    }
-    vectorChunkStore.deleteByDocumentId(document.getId());
-    documentRepository.delete(document);
-    run.events.record(IndexingEventCategory.REMOVED, message, document.getFilePath());
   }
 }

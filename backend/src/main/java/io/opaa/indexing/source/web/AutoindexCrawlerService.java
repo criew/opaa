@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.web;
 
+import io.opaa.indexing.source.SourceFolderPath;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RateLimitListener;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
@@ -314,9 +315,10 @@ public class AutoindexCrawlerService {
 
   /**
    * Whether any raw, query/fragment-stripped path segment of {@code relativePath} decodes to a
-   * literal {@code .}/{@code ..} or a segment carrying a path separator - the same check {@link
-   * UrlFolderPath#of} applies, reused so {@link #staysUnderBase} rejects a link a web server would
-   * resolve outside the crawled subtree. Plain text in, so this can always answer.
+   * literal {@code .}/{@code ..} or a segment carrying a path separator - {@link
+   * SourceFolderPath#isPathTraversalName}, the traversal part of the check {@link UrlFolderPath#of}
+   * applies, reused so {@link #staysUnderBase} rejects a link a web server would resolve outside
+   * the crawled subtree. Plain text in, so this can always answer.
    */
   private static boolean hasEncodedPathTraversalSegment(String relativePath) {
     int query = relativePath.indexOf('?');
@@ -326,7 +328,7 @@ public class AutoindexCrawlerService {
       path = path.substring(0, fragment);
     }
     for (String rawSegment : path.split("/", -1)) {
-      if (UrlFolderPath.isPathTraversalName(UrlFolderPath.decodeSegment(rawSegment))) {
+      if (SourceFolderPath.isPathTraversalName(UrlFolderPath.decodeSegment(rawSegment))) {
         return true;
       }
     }

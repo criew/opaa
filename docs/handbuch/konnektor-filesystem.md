@@ -126,6 +126,11 @@ Das Aufräumen der Ordner läuft nach der Löscherkennung der Dokumente, damit e
 leer gewordener Ordner sofort verschwindet. Ein Fehler beim Aufräumen der Ordner lässt den Lauf
 nicht scheitern.
 
+Ein Verzeichnisname, der nur aus Leerraum besteht oder einen Rückwärtsschrägstrich (`\`) enthält
+— auf Linux-Dateisystemen zulässig —, lässt sich nicht als Ordnername darstellen. Die Dateien
+darunter landen dann in der Wurzel der Bibliothek, und im Anwendungsprotokoll steht eine Warnung
+mit dem betroffenen Pfad. Die Verschachtelungstiefe ist nicht begrenzt.
+
 ## 8. Anhänge
 
 Anhänge entstehen aus dem Inhalt, nicht aus dem Verzeichnis: Eine EML- oder MSG-Datei im

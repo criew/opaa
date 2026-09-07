@@ -2,6 +2,7 @@ package io.opaa.indexing.source.s3;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
+import io.opaa.common.ByteSizes;
 import io.opaa.indexing.Document;
 import io.opaa.indexing.DocumentIngest;
 import io.opaa.indexing.DocumentRepository;
@@ -9,32 +10,29 @@ import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.SourceDocumentContext;
+import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.SupportedDocumentFormats;
-import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.ReconcilingAttachmentAccess;
 import io.opaa.indexing.source.RequestBudgetExhaustedException;
 import io.opaa.indexing.source.SourceFolderMirror;
+import io.opaa.indexing.source.SourceFolderPath;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -93,7 +91,7 @@ final class S3FullSync implements AutoCloseable {
   private final S3Properties properties;
   private final FileProcessingService fileProcessingService;
   private final DocumentRepository documentRepository;
-  private final VectorChunkStore vectorChunkStore;
+  private final StaleDocumentCleanupService cleanupService;
   private final List<S3Scope> scopes;
   private final S3KeyPatterns patterns;
   private final SourceFolderMirror folderMirror;
@@ -144,7 +142,7 @@ final class S3FullSync implements AutoCloseable {
       FileProcessingService fileProcessingService,
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
-      VectorChunkStore vectorChunkStore,
+      StaleDocumentCleanupService cleanupService,
       S3SyncState state,
       S3SyncStateRepository syncStateRepository,
       Clock clock) {
@@ -153,7 +151,7 @@ final class S3FullSync implements AutoCloseable {
     this.properties = properties;
     this.fileProcessingService = fileProcessingService;
     this.documentRepository = documentRepository;
-    this.vectorChunkStore = vectorChunkStore;
+    this.cleanupService = cleanupService;
     this.scopes = settings.scopes();
     this.patterns = S3KeyPatterns.of(settings);
     this.folderMirror = new SourceFolderMirror(folderService, frame.library());
@@ -300,23 +298,9 @@ final class S3FullSync implements AutoCloseable {
       frame.progress().recordSkipped();
       return;
     }
-    removeWithAttachments(document.get(), new HashSet<>());
+    cleanupService.removeWithAttachments(document.get(), frame.events(), GONE_CONFIRMED_MESSAGE);
     frame.markAbsent(filePath);
     frame.progress().recordSkipped();
-  }
-
-  private void removeWithAttachments(Document document, Set<UUID> visited) {
-    if (!visited.add(document.getId())) {
-      return;
-    }
-    for (Document child : documentRepository.findByParentDocumentId(document.getId())) {
-      removeWithAttachments(child, visited);
-    }
-    vectorChunkStore.deleteByDocumentId(document.getId());
-    documentRepository.delete(document);
-    frame
-        .events()
-        .record(IndexingEventCategory.REMOVED, GONE_CONFIRMED_MESSAGE, document.getFilePath());
   }
 
   /** Unfinished scopes of an interrupted full sync first, then the already completed ones. */
@@ -591,7 +575,7 @@ final class S3FullSync implements AutoCloseable {
    * each with a warning, never with a made-up name and never at the document's expense.
    */
   private UUID folderFor(S3Scope scope, String key, String filePath) {
-    S3FolderPath path = S3FolderPath.of(scope, key, scopeRootChain);
+    SourceFolderPath path = S3FolderPath.of(scope, key, scopeRootChain);
     if (path.rejected()) {
       log.warn(
           "Cannot map key segment \"{}\" of {} to a folder name - leaving the document at the"
@@ -602,7 +586,7 @@ final class S3FullSync implements AutoCloseable {
       log.warn(
           "Key {} nests deeper than {} folders - placing the document in the deepest allowed one",
           filePath,
-          S3FolderPath.MAX_DEPTH);
+          SourceFolderPath.MAX_DEPTH);
     }
     try {
       return folderMirror.folderFor(path.segments());
@@ -821,7 +805,7 @@ final class S3FullSync implements AutoCloseable {
         new StringBuilder()
             .append(meter.requests())
             .append(" Anfragen, ")
-            .append(formatBytes(meter.bytesDownloaded()))
+            .append(ByteSizes.format(meter.bytesDownloaded()))
             .append(" geladen; ")
             .append(eventRun() ? checked : listed)
             .append(eventRun() ? " gemeldete Objekte geprüft, " : " Objekte gelistet, ")
@@ -840,24 +824,6 @@ final class S3FullSync implements AutoCloseable {
       message.append(String.join(", ", parts));
     }
     return message.toString();
-  }
-
-  /** The app-wide size form ({@code formatFileSize} in the frontend): 1024-based, one decimal. */
-  static String formatBytes(long bytes) {
-    if (bytes < 1024) {
-      return bytes + " B";
-    }
-    String[] units = {"KB", "MB", "GB", "TB"};
-    double value = bytes / 1024.0;
-    int unit = 0;
-    while (value >= 1024 && unit < units.length - 1) {
-      value /= 1024;
-      unit++;
-    }
-    return new DecimalFormat("#,##0.#", DecimalFormatSymbols.getInstance(Locale.GERMANY))
-            .format(value)
-        + " "
-        + units[unit];
   }
 
   /** Where the next full sync continues once this one's budget is spent, for the frame's note. */

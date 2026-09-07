@@ -475,7 +475,7 @@ public class IndexingConfiguration {
       AttachmentIndexer attachmentIndexer,
       DocumentRepository documentRepository,
       ConfluenceSyncStateRepository confluenceSyncStateRepository,
-      VectorChunkStore vectorChunkStore,
+      StaleDocumentCleanupService staleDocumentCleanupService,
       IndexingRunTemplate indexingRunTemplate) {
     return new ConfluenceIndexingExecutor(
         confluenceClientFactory,
@@ -484,7 +484,7 @@ public class IndexingConfiguration {
         attachmentIndexer,
         documentRepository,
         confluenceSyncStateRepository,
-        vectorChunkStore,
+        staleDocumentCleanupService,
         Clock.systemUTC(),
         indexingRunTemplate);
   }
@@ -500,7 +500,7 @@ public class IndexingConfiguration {
       FileProcessingService fileProcessingService,
       DocumentRepository documentRepository,
       LibraryFolderService libraryFolderService,
-      VectorChunkStore vectorChunkStore,
+      StaleDocumentCleanupService staleDocumentCleanupService,
       S3SyncStateRepository s3SyncStateRepository,
       IndexingRunTemplate indexingRunTemplate) {
     return new S3IndexingExecutor(
@@ -509,7 +509,7 @@ public class IndexingConfiguration {
         fileProcessingService,
         documentRepository,
         libraryFolderService,
-        vectorChunkStore,
+        staleDocumentCleanupService,
         s3SyncStateRepository,
         Clock.systemUTC(),
         indexingRunTemplate);

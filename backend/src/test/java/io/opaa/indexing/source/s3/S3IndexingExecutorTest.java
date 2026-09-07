@@ -132,7 +132,7 @@ class S3IndexingExecutorTest {
         fileProcessingService,
         documentRepository,
         folderService,
-        vectorChunkStore,
+        cleanupService,
         syncStateRepository,
         Clock.fixed(Instant.parse("2026-09-06T20:00:00Z"), ZoneOffset.UTC),
         new IndexingRunTemplate(
@@ -1203,9 +1203,6 @@ class S3IndexingExecutorTest {
     ArgumentCaptor<IndexingRunCost> cost = ArgumentCaptor.forClass(IndexingRunCost.class);
     verify(indexingJobService).recordRunMetrics(eq(jobId), cost.capture());
     assertThat(cost.getValue().bytesDownloaded()).isEqualTo(1);
-    assertThat(S3FullSync.formatBytes(734_003_200L)).isEqualTo("700 MB");
-    assertThat(S3FullSync.formatBytes(2_048)).isEqualTo("2 KB");
-    assertThat(S3FullSync.formatBytes(1_572_864)).isEqualTo("1,5 MB");
   }
 
   @Test

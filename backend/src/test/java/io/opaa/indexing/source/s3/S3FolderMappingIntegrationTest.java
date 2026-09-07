@@ -18,6 +18,7 @@ import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.JobStatus;
 import io.opaa.indexing.JobTriggerSource;
+import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.library.KnowledgeLibrary;
@@ -67,6 +68,7 @@ class S3FolderMappingIntegrationTest {
   @Autowired private LibraryFolderRepository folderRepository;
   @Autowired private LibraryFolderService folderService;
   @Autowired private S3SyncStateRepository syncStateRepository;
+  @Autowired private StaleDocumentCleanupService cleanupService;
   @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private JdbcTemplate jdbcTemplate;
 
@@ -166,7 +168,7 @@ class S3FolderMappingIntegrationTest {
         fileProcessingService,
         documentRepository,
         folderService,
-        vectorChunkStore,
+        cleanupService,
         syncStateRepository,
         Clock.systemUTC(),
         indexingRunTemplate);

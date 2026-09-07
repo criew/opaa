@@ -4,7 +4,7 @@ import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -40,7 +40,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
   private final FileProcessingService fileProcessingService;
   private final DocumentRepository documentRepository;
   private final LibraryFolderService folderService;
-  private final VectorChunkStore vectorChunkStore;
+  private final StaleDocumentCleanupService cleanupService;
   private final S3SyncStateRepository syncStateRepository;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
@@ -51,7 +51,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
       FileProcessingService fileProcessingService,
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
-      VectorChunkStore vectorChunkStore,
+      StaleDocumentCleanupService cleanupService,
       S3SyncStateRepository syncStateRepository,
       Clock clock,
       IndexingRunTemplate runTemplate) {
@@ -60,7 +60,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
     this.fileProcessingService = fileProcessingService;
     this.documentRepository = documentRepository;
     this.folderService = folderService;
-    this.vectorChunkStore = vectorChunkStore;
+    this.cleanupService = cleanupService;
     this.syncStateRepository = syncStateRepository;
     this.clock = clock;
     this.runTemplate = runTemplate;
@@ -172,7 +172,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
                 fileProcessingService,
                 documentRepository,
                 folderService,
-                vectorChunkStore,
+                cleanupService,
                 state,
                 syncStateRepository,
                 clock)) {
