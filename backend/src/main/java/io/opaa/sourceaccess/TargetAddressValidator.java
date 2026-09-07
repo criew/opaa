@@ -23,6 +23,13 @@ public class TargetAddressValidator {
 
   private static final Logger log = LoggerFactory.getLogger(TargetAddressValidator.class);
 
+  /**
+   * Appended by callers to a rejection so whoever configures an internal source learns which
+   * setting unblocks it; one constant, so every connector names the same variable.
+   */
+  public static final String ALLOWLIST_HINT =
+      "Interne Adressen gibt der Betrieb über OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST frei.";
+
   private final boolean enabled;
   private final List<String> allowedHosts;
 
@@ -93,7 +100,7 @@ public class TargetAddressValidator {
       // blocked target are different diagnoses for whoever configured this source. Same wording
       // SourceConnectionTestService#translateConnectionError already used for an ordinary
       // UnknownHostException.
-      throw new TargetAddressBlockedException(
+      throw new UnknownTargetHostException(
           "Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen): " + host);
     }
     for (InetAddress address : addresses) {
@@ -244,8 +251,19 @@ public class TargetAddressValidator {
   /**
    * Thrown by {@link #validate} when the target is rejected - message is German and user-facing.
    */
-  public static final class TargetAddressBlockedException extends IOException {
+  public static class TargetAddressBlockedException extends IOException {
     TargetAddressBlockedException(String message) {
+      super(message);
+    }
+  }
+
+  /**
+   * The DNS branch of a rejection: the host resolved to nothing, so no address could be checked. A
+   * {@link TargetAddressBlockedException} for every existing caller; a caller that wants to report
+   * it as "unreachable" rather than "blocked" can tell the two apart.
+   */
+  public static final class UnknownTargetHostException extends TargetAddressBlockedException {
+    UnknownTargetHostException(String message) {
       super(message);
     }
   }

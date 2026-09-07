@@ -36,8 +36,7 @@ final class ConfluenceHttp {
    * Appended to the target-validation rejection so whoever configures an on-premises instance
    * learns which setting unblocks it (ADR-0023: private address ranges are rejected by default).
    */
-  static final String ALLOWLIST_HINT =
-      "Interne Adressen gibt der Betrieb über OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST frei.";
+  static final String ALLOWLIST_HINT = TargetAddressValidator.ALLOWLIST_HINT;
 
   private static final JsonMapper JSON = JsonMapper.builder().build();
 

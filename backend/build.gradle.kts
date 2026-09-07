@@ -59,6 +59,13 @@ dependencies {
     implementation(libs.mime4j.dom)
     implementation(libs.commons.csv)
     implementation(libs.pdfbox)
+    // ADR-0027: the S3 access layer configures apache5-client explicitly; the SDK's own default
+    // HTTP clients would otherwise sit unused on the classpath (and netty is sizeable).
+    implementation(libs.bundles.aws.sdk) {
+        exclude(group = "software.amazon.awssdk", module = "apache-client")
+        exclude(group = "software.amazon.awssdk", module = "netty-nio-client")
+        exclude(group = "software.amazon.awssdk", module = "url-connection-client")
+    }
     runtimeOnly(libs.bundles.runtime)
     testImplementation(libs.bundles.test.deps)
     testRuntimeOnly(libs.bundles.test.runtime.deps)

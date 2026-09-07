@@ -72,6 +72,12 @@ pdfbox = "3.0.8"
 junit-jupiter = "6.1.3"
 assertj-core = "3.27.7"
 junit-platform = "6.1.3"
+# AWS SDK for Java v2 (Apache License 2.0) for the S3 connector's access layer
+# (io.opaa.indexing.source.s3, ADR-0027): the s3 service client plus apache5-client as the one HTTP
+# client the adapter configures explicitly (proxy, relaxed TLS, timeouts); the SDK's default HTTP
+# clients (apache-client 4.x, netty-nio-client) are excluded in build.gradle.kts so exactly one is
+# on the classpath. Not managed by the Spring Boot BOM, hence pinned here.
+aws-sdk = "2.54.6"
 
 [libraries]
 # Spring Boot starters (versions managed by Spring Boot BOM)
@@ -108,6 +114,8 @@ poi-scratchpad = { module = "org.apache.poi:poi-scratchpad", version.ref = "poi-
 mime4j-dom = { module = "org.apache.james:apache-mime4j-dom", version.ref = "mime4j" }
 pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
 commons-csv = { module = "org.apache.commons:commons-csv", version.ref = "commons-csv" }
+aws-sdk-s3 = { module = "software.amazon.awssdk:s3", version.ref = "aws-sdk" }
+aws-sdk-apache5-client = { module = "software.amazon.awssdk:apache5-client", version.ref = "aws-sdk" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-jupiter" }
 assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj-core" }
@@ -137,6 +145,8 @@ spring-boot-starter-security-test = { module = "org.springframework.boot:spring-
 testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
 testcontainers-ollama = { module = "org.testcontainers:testcontainers-ollama" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
+# MinIO in a container as the S3 connector's test double (ADR-0027), in the regular test task
+testcontainers-minio = { module = "org.testcontainers:testcontainers-minio" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 awaitility = { module = "org.awaitility:awaitility" }
 
@@ -157,6 +167,7 @@ spring-ai = [
     "spring-ai-retry",
 ]
 runtime = ["micrometer-registry-prometheus", "postgresql"]
+aws-sdk = ["aws-sdk-s3", "aws-sdk-apache5-client"]
 test-deps = [
     "spring-boot-starter-test",
     "spring-boot-starter-webmvc-test",
@@ -166,6 +177,7 @@ test-deps = [
     "testcontainers-junit-jupiter",
     "testcontainers-ollama",
     "testcontainers-postgresql",
+    "testcontainers-minio",
     "awaitility",
 ]
 test-runtime-deps = ["junit-platform-launcher"]
