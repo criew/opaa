@@ -921,7 +921,8 @@ Absatz, den ein Listenpunkt liefert, trägt ihn, gleich ob der Text inline oder 
 steht; weitere Blöcke desselben Punkts folgen unmarkiert als Fortsetzung, eine verschachtelte
 Liste mit dem Marker der nächsten Tiefe — auch dann, wenn sie nicht direktes `<li>`-Kind ist
 (`<li><div><ul>…`, vorher begann sie wieder bei Tiefe 0). Eine Zeile, die ein Formathook selbst
-ausgibt (der Titel eines Confluence-Makros als erster Inhalt eines Listenpunkts), trägt den Marker
+ausgibt (der Titel eines Confluence-Makros als erster Inhalt eines Listenpunkts), oder die erste
+Tabellenzeile einer Tabelle im Listenpunkt (`<li><table>…` ergibt „• a | b") trägt den Marker
 ebenso. Vorher gab der Block-Flush den Absatz ohne Marker aus und der Punkt hinterließ keine
 markierte Zeile. Damit verschiebt sich auch der Marker bei einem Zeilenumbruch im Listenpunkt:
 `<li>Zeile1<br>Zeile2</li>` ergab vorher „Zeile1" und „• Zeile2", jetzt „• Zeile1" und „Zeile2".
