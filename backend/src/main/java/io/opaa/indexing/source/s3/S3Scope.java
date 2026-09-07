@@ -134,6 +134,25 @@ public record S3Scope(String bucket, String prefix) {
               + "“ enthält ein Komma; Kommas sind in Geltungsbereichen nicht"
               + " zulässig.");
     }
+    // with several scopes the prefix segments become folder names (ADR-0027, Entscheidung 5)
+    if (prefix.indexOf('\\') >= 0) {
+      throw new InvalidS3ScopeException(
+          "Das Präfix „"
+              + prefix
+              + "“ enthält einen Rückwärtsschrägstrich und kann kein Ordner"
+              + " sein.");
+    }
+    for (String segment : prefix.split("/")) {
+      if (segment.equals(".") || segment.equals("..")) {
+        throw new InvalidS3ScopeException(
+            "Das Präfix „"
+                + prefix
+                + "“ enthält „"
+                + segment
+                + "“ als Segment und kann kein"
+                + " Ordner sein.");
+      }
+    }
     return prefix;
   }
 

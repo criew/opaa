@@ -262,6 +262,13 @@ export function validateS3Prefix(raw: string): string | null {
   if (prefix.includes(',')) {
     return `Das Präfix „${prefix}“ enthält ein Komma; Kommas sind in Geltungsbereichen nicht zulässig.`
   }
+  if (prefix.includes('\\')) {
+    return `Das Präfix „${prefix}“ enthält einen Rückwärtsschrägstrich und kann kein Ordner sein.`
+  }
+  const traversal = prefix.split('/').find((segment) => segment === '.' || segment === '..')
+  if (traversal !== undefined) {
+    return `Das Präfix „${prefix}“ enthält „${traversal}“ als Segment und kann kein Ordner sein.`
+  }
   return null
 }
 

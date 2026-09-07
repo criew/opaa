@@ -1003,6 +1003,33 @@ Webverzeichnis liegt im Ordner seiner Elternmail
 ([ADR-0022](../decisions/0022-anhang-als-eigenes-dokument.md)); `RSS_FEED`-Bibliotheken haben
 weiterhin keine Ordner, da ein Feed keine Verzeichnisstruktur hat.
 
+**Eine `S3`-Bibliothek spiegelt die Schlüsselpräfixe ihrer Geltungsbereiche nach denselben Regeln
+([ADR-0027](../decisions/0027-s3-konnektor.md), Entscheidung 5).** Ein Objektspeicher kennt keine
+Verzeichnisse, nur Schlüssel mit Schrägstrichen; die Segmente eines Schlüssels unterhalb des
+Bereichspräfixes werden als Ordnerkette gespiegelt (`2025/protokolle/q1/sitzung.pdf` im Bereich
+`dokumente/` → `2025` › `protokolle` › `q1`). Bei genau **einem** Geltungsbereich ist dessen Präfix die
+Wurzel der Bibliothek; bei **mehreren** Bereichen steht über den Schlüsselsegmenten je Bereich eine
+Segmentkette aus dem Bucket-Namen und den Segmenten des Bereichspräfixes (`dokumente` › `2025` und
+`satzungen`) — nie ein zusammengesetzter Einzelname `bucket/prefix`, denn ein Ordnername ist
+schrägstrichfrei. So bleiben gleichnamige Schlüssel aus zwei Buckets getrennt; die Bucket- und
+Präfixsegmente zählen dabei zum Ordnerlimit, die Schlüssel eines Bereichs mit langem Präfix haben
+entsprechend weniger eigene Ebenen. Ordnermarker (Schlüssel auf `/` mit null Bytes) erzeugen keinen
+Ordner; Ordner entstehen nur entlang tatsächlich aufgenommener Objekte — ein Ordner, dessen einziges
+Objekt die Dokumentstrecke abgewiesen hat, ist leer und verschwindet mit demselben Lauf. Ein
+Segment, das leer ist, `.` oder `..` lautet, einen Rückwärtsschrägstrich oder ein NUL-Byte enthält
+oder länger als 255 Zeichen ist, wird abgewiesen — das Objekt liegt dann in der Wurzel, mit Warnung
+im Anwendungsprotokoll; ein Präfix mit solchen Segmenten wird bereits beim Speichern der
+Bibliothek abgelehnt. Ein Schlüssel, dessen Kette tiefer wäre als das Ordnerlimit (10 Ebenen), liegt
+im tiefsten zulässigen Ordner. Die Folder-CRUD-Endpoints antworten für eine `S3`-Bibliothek mit
+`409`, wie bei jedem gespiegelten Quellentyp. Umbenennen kennt S3 nicht: Ein Objekt unter neuem Schlüssel ist ein
+neues Dokument in seinem neuen Ordner, der alte Schlüssel gilt als entfernt. Aufgeräumt wird nur am
+Ende eines vollständigen Laufs, den kein Geltungsbereich unlesbar und kein Anfragebudget abgeschnitten
+hat. Mail-Objekte (`.eml`, `.msg`) laufen über den Anhangsweg: Ihre Anhänge sind Kinddokumente im
+Ordner der Mail und folgen ihrer Neufassung (eine Mail, die beim nächsten Lauf nur noch einen von zwei
+Anhängen trägt, behält genau ein Kinddokument). Die Herkunft eines S3-Dokuments zeigt die
+Dokumentliste als Text — Bucket und Schlüsselordner —, nicht als Link: eine `s3://`-Adresse öffnet
+kein Browser, und vorsignierte Links sind Zielbild.
+
 ---
 
 ## Zeitpläne, Vorrang und Betrieb

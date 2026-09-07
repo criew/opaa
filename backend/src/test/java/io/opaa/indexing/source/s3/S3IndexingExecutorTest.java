@@ -35,6 +35,7 @@ import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -71,6 +72,7 @@ class S3IndexingExecutorTest {
   private IndexingRunEventRepository eventRepository;
   private DocumentRepository documentRepository;
   private StaleDocumentCleanupService cleanupService;
+  private LibraryFolderService folderService;
   private S3Properties properties = S3Properties.defaults();
   private KnowledgeLibrary library;
   private S3IndexingExecutor executor;
@@ -100,6 +102,7 @@ class S3IndexingExecutorTest {
         .thenAnswer(invocation -> List.copyOf(storedDocuments));
     cleanupService =
         spy(new StaleDocumentCleanupService(documentRepository, mock(VectorChunkStore.class)));
+    folderService = mock(LibraryFolderService.class);
     library = library(settings(List.of(S3Scope.of("dokumente", "2025/"))));
     executor = executorOver(store);
   }
@@ -111,6 +114,8 @@ class S3IndexingExecutorTest {
         clientFactory,
         properties,
         fileProcessingService,
+        documentRepository,
+        folderService,
         new IndexingRunTemplate(
             indexingJobService,
             eventRepository,
@@ -870,6 +875,90 @@ class S3IndexingExecutorTest {
     verify(indexingJobService).completeJob(jobId, 0, 1, 0, 0);
     assertThat(ingestedFiles).hasSize(1).allSatisfy(file -> assertThat(file).doesNotExist());
     assertThat(reconciledPaths()).containsExactly("s3://dokumente/2025/a.pdf");
+  }
+
+  @Test
+  void mirrorsTheKeysFoldersAndOpensEveryChainWithBucketAndPrefixForSeveralScopes()
+      throws Exception {
+    library =
+        library(settings(List.of(S3Scope.of("dokumente", "2025/"), S3Scope.of("satzungen", ""))));
+    UUID q1 = UUID.randomUUID();
+    UUID satzungen = UUID.randomUUID();
+    when(folderService.materializeFolderPath(library, List.of("dokumente", "2025", "q1")))
+        .thenReturn(q1);
+    when(folderService.materializeFolderPath(library, List.of("satzungen"))).thenReturn(satzungen);
+    store
+        .put("dokumente", "2025/q1/neu.pdf", "neu", PDF)
+        .put("dokumente", "2025/q1/alt.pdf", "alt", PDF)
+        .put("satzungen", "haupt.txt", "haupt", "text/plain");
+    stored("s3://dokumente/2025/q1/alt.pdf", markerOf("dokumente", "2025/q1/alt.pdf"));
+    Document unchanged = storedDocuments.get(0);
+
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+
+    verify(fileProcessingService)
+        .ingest(
+            DocumentIngests.that().file().at("s3://dokumente/2025/q1/neu.pdf").inFolder(q1).match(),
+            any());
+    verify(fileProcessingService)
+        .ingest(
+            DocumentIngests.that()
+                .file()
+                .at("s3://satzungen/haupt.txt")
+                .inFolder(satzungen)
+                .match(),
+            any());
+    assertThat(unchanged.getFolderId())
+        .as("a row that was not downloaded still receives its place in the structure")
+        .isEqualTo(q1);
+    verify(documentRepository).save(unchanged);
+    verify(folderService).pruneOrphanedFolders(library, Set.of(q1, satzungen));
+  }
+
+  @Test
+  void aRejectedObjectWithARowKeepsItsPlaceInTheStructureWhileARejectedOneWithoutGetsNone()
+      throws Exception {
+    UUID archiv = UUID.randomUUID();
+    when(folderService.materializeFolderPath(library, List.of("archiv"))).thenReturn(archiv);
+    store
+        .put(
+            "dokumente",
+            "2025/archiv/eiskalt.pdf",
+            new FakeS3ObjectStore.StoredObject(
+                "archiv".getBytes(), PDF, MODIFIED, "DEEP_ARCHIVE", true))
+        .put("dokumente", "2025/bilder/foto.png", "png", "image/png");
+    stored("s3://dokumente/2025/archiv/eiskalt.pdf", "e:alt|6");
+    Document archived = storedDocuments.get(0);
+
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+
+    assertThat(archived.getFolderId()).isEqualTo(archiv);
+    verify(folderService, never()).materializeFolderPath(library, List.of("bilder"));
+    verify(documentRepository, never())
+        .findByLibraryIdAndFilePath(library.getId(), "s3://dokumente/2025/bilder/foto.png");
+    verify(folderService).pruneOrphanedFolders(library, Set.of(archiv));
+  }
+
+  @Test
+  void anIncompleteListingPrunesNothingAndASingleScopeReRootsTheChainAtItsPrefix()
+      throws Exception {
+    library =
+        library(
+            settings(List.of(S3Scope.of("dokumente", "2025/"), S3Scope.of("geheim", "intern/"))));
+    store
+        .failBucket("geheim", () -> new S3AccessException.ListForbidden("geheim"))
+        .put("dokumente", "2025/q1/a.pdf", "a", PDF);
+
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+
+    verify(folderService).materializeFolderPath(library, List.of("dokumente", "2025", "q1"));
+    verify(folderService, never()).pruneOrphanedFolders(any(), any());
+
+    library = library(settings(List.of(S3Scope.of("dokumente", "2025/"))));
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+
+    verify(folderService).materializeFolderPath(library, List.of("q1"));
+    verify(folderService).pruneOrphanedFolders(eq(library), any());
   }
 
   @Test

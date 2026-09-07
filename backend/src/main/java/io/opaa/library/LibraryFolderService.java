@@ -59,7 +59,7 @@ public class LibraryFolderService {
    * still bounding the recursive {@link #depthOfParentChain}/{@link #countDocumentsRecursive}/
    * {@link #deleteRecursive} walks this class performs.
    */
-  private static final int MAX_DEPTH = 10;
+  public static final int MAX_DEPTH = 10;
 
   private final LibraryFolderRepository folderRepository;
   private final KnowledgeLibraryRepository libraryRepository;
@@ -207,9 +207,11 @@ public class LibraryFolderService {
    * is whatever the filesystem allows (which can differ from what {@link #validateName} accepts for
    * a manually-typed {@code UPLOAD} folder name), and a real directory tree is free to nest deeper
    * than {@link #MAX_DEPTH}; rejecting either would mean silently refusing to mirror part of the
-   * source instead of representing it as-is. {@code createFolder}'s own callers (the CRUD REST
-   * endpoints) never reach this method - see this class's own Javadoc - so neither gap is reachable
-   * through user input.
+   * source instead of representing it as-is. An {@code S3} run caps its chain at {@link #MAX_DEPTH}
+   * on its own side (a key nests freely, ADR-0027 Entscheidung 5) and never hands a segment here
+   * that a folder row could not carry. {@code createFolder}'s own callers (the CRUD REST endpoints)
+   * never reach this method - see this class's own Javadoc - so neither gap is reachable through
+   * user input.
    *
    * <p><b>A single {@code fk_documents_folder} violation can occur if two runs of the same library
    * overlap</b> (#824 review, Befund 4b) - e.g. after {@code IndexingJobRecoveryScheduler} restarts
@@ -242,11 +244,12 @@ public class LibraryFolderService {
   /**
    * The source types whose folders mirror a crawled directory structure instead of being managed
    * through this service's CRUD methods: run-based types that actually have one ({@code
-   * HTTP_DIRECTORY} since #1277). {@code RSS_FEED} is deliberately absent - a feed has no directory
-   * structure to mirror.
+   * HTTP_DIRECTORY} since #1277, {@code S3} with its key prefixes since ADR-0027). {@code RSS_FEED}
+   * is deliberately absent - a feed has no directory structure to mirror.
    */
   private static final Set<DocumentSourceType> MIRRORED_SOURCE_TYPES =
-      Set.of(DocumentSourceType.FILESYSTEM, DocumentSourceType.HTTP_DIRECTORY);
+      Set.of(
+          DocumentSourceType.FILESYSTEM, DocumentSourceType.HTTP_DIRECTORY, DocumentSourceType.S3);
 
   /**
    * The internal counterpart to {@link #requireUploadLibrary}, guarding the opposite direction
