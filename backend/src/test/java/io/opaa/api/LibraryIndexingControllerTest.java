@@ -297,8 +297,8 @@ class LibraryIndexingControllerTest {
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.unreadableSpaceKeys[0]").value("SEC"))
-        .andExpect(jsonPath("$.unreadableSpaceKeys[1]").value("IT"));
+        .andExpect(jsonPath("$.unlistedScopeKeys[0]").value("SEC"))
+        .andExpect(jsonPath("$.unlistedScopeKeys[1]").value("IT"));
   }
 
   @Test
@@ -314,7 +314,7 @@ class LibraryIndexingControllerTest {
     mockMvc
         .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.unreadableSpaceKeys").doesNotExist());
+        .andExpect(jsonPath("$.unlistedScopeKeys").doesNotExist());
   }
 
   @Test

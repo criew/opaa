@@ -57,7 +57,7 @@ class S3LibraryConfigurationIntegrationTest {
   private static final String ENDPOINT = "http://localhost:9000";
 
   @Autowired private KnowledgeLibraryService libraryService;
-  @Autowired private io.opaa.indexing.source.s3.S3SyncStateRepository syncStateRepository;
+  @Autowired private io.opaa.indexing.source.SourceSyncStateRepository syncStateRepository;
   @Autowired private MockMvc mockMvc;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private UserRepository userRepository;
@@ -347,8 +347,8 @@ class S3LibraryConfigurationIntegrationTest {
     CurrentUser caller = currentUser(owner);
     UUID libraryId =
         libraryService.createLibrary(s3("Protokolle", ENDPOINT).build(), caller).library().getId();
-    io.opaa.indexing.source.s3.S3SyncState resumption =
-        new io.opaa.indexing.source.s3.S3SyncState(libraryId);
+    io.opaa.indexing.source.SourceSyncState resumption =
+        new io.opaa.indexing.source.SourceSyncState(libraryId);
     resumption.beginFullSync(UUID.randomUUID());
     resumption.markScopeCompleted("protokolle/2025/");
     syncStateRepository.save(resumption);
@@ -384,7 +384,7 @@ class S3LibraryConfigurationIntegrationTest {
         .satisfies(payload -> assertThat(payload).contains("s3Settings"));
 
     // a rename alone leaves the settings - and the resumption state - untouched
-    syncStateRepository.save(new io.opaa.indexing.source.s3.S3SyncState(libraryId));
+    syncStateRepository.save(new io.opaa.indexing.source.SourceSyncState(libraryId));
     LibraryDetail renamed =
         libraryService.updateLibrary(libraryId, libraryUpdate("Sitzungen").build(), caller);
     assertThat(renamed.library().getS3Settings()).isEqualTo(widened.library().getS3Settings());

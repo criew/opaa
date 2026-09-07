@@ -181,7 +181,7 @@ public class IndexingRunTemplate {
       }
       case ListingOutcome.Incomplete incomplete ->
           indexingJobService.recordListingAssessment(
-              run.jobId(), false, incomplete.unreadableContainerKeys());
+              run.jobId(), false, incomplete.unlistedScopeKeys());
       case ListingOutcome.Truncated truncated -> {}
       case ListingOutcome.Partial partial ->
           throw new IllegalStateException(

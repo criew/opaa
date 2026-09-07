@@ -33,6 +33,7 @@ import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.RequestBudgetExhaustedException;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor.PageVisitPolicy;
 import io.opaa.library.ConfluenceSpaceSelection;
@@ -140,7 +141,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
             fileProcessingService,
             mock(AttachmentIndexer.class),
             documentRepository,
-            mock(ConfluenceSyncStateRepository.class),
+            mock(SourceSyncStateRepository.class),
             new StaleDocumentCleanupService(documentRepository, vectorChunkStore),
             Clock.systemUTC(),
             mock(IndexingRunTemplate.class));

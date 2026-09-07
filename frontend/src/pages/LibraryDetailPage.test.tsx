@@ -1036,7 +1036,7 @@ describe('LibraryDetailPage', () => {
       documentsIndexedTotal: 3,
       message: null,
       timestamp: '2026-03-01T10:00:00Z',
-      unreadableSpaceKeys: ['SEC'],
+      unlistedScopeKeys: ['SEC'],
     } as IndexingStatusResponse)
 
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -1074,7 +1074,7 @@ describe('LibraryDetailPage', () => {
       documentsIndexedTotal: 3,
       message: null,
       timestamp: '2026-09-06T10:00:00Z',
-      unreadableSpaceKeys: ['geheim/intern/'],
+      unlistedScopeKeys: ['geheim/intern/'],
     } as IndexingStatusResponse)
 
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })

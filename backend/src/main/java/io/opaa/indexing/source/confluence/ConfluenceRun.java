@@ -28,7 +28,7 @@ final class ConfluenceRun {
    * that could not be listed at all, or the space of a page whose attachments could not be.
    * Persisted by a successful full sync so the library view can name them.
    */
-  final Set<String> unreadableSpaceKeys = new LinkedHashSet<>();
+  final Set<String> unlistedScopeKeys = new LinkedHashSet<>();
 
   /**
    * True when this full sync continues an interrupted one: a page already stored at the listed

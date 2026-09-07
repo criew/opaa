@@ -25,6 +25,7 @@ import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -66,7 +67,7 @@ class S3IndexingExecutorMinioTest {
   private DocumentRepository documentRepository;
   private StaleDocumentCleanupService cleanupService;
   private LibraryFolderService folderService;
-  private S3SyncStateRepository syncStateRepository;
+  private SourceSyncStateRepository syncStateRepository;
 
   @BeforeAll
   static void seed() throws Exception {
@@ -101,7 +102,7 @@ class S3IndexingExecutorMinioTest {
     cleanupService =
         spy(new StaleDocumentCleanupService(documentRepository, mock(VectorChunkStore.class)));
     folderService = mock(LibraryFolderService.class);
-    syncStateRepository = mock(S3SyncStateRepository.class);
+    syncStateRepository = mock(SourceSyncStateRepository.class);
     when(syncStateRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
   }
 

@@ -642,7 +642,7 @@ Vorfilter entscheidet über die Endung, weil die Auflistung keinen `Content-Type
 endungsloser Schlüssel kostet einen `HeadObject`. Ein Anfragebudget je Lauf beendet einen zu großen
 Lauf geordnet als „unvollständig, wird fortgesetzt"; die Wiederaufnahme listet jeden Bereich erneut
 und spart nur die Downloads, weil die Bereinigungsmenge je Lauf neu entsteht — ein
-`ContinuationToken` wird nie gespeichert (`s3_sync_state` trägt nur die vollständig gelisteten
+`ContinuationToken` wird nie gespeichert (`source_sync_state` trägt nur die vollständig gelisteten
 Bereiche als `bucket/prefix` und den Zeitpunkt des letzten vollständigen Laufs). Eine
 Objektobergrenze je Lauf beendet eine zu große Bibliothek sichtbar als Fehler, nie als stiller
 Schnitt.

@@ -760,7 +760,7 @@ export default function LibraryDetailPage() {
                 das aus.
               </Typography>
             </Stack>
-            {run.unreadableSpaceKeys.length > 0 && (
+            {run.unlistedScopeKeys.length > 0 && (
               <Stack
                 direction="row"
                 spacing={1}
@@ -782,9 +782,9 @@ export default function LibraryDetailPage() {
                   sx={{ fontSize: 16, color: 'warning.main', mt: '2px', flexShrink: 0 }}
                 />
                 <Typography sx={{ fontSize: 12.5 }}>
-                  {run.unreadableSpaceKeys.length === 1
-                    ? `Der letzte Vollabgleich konnte den Space ${confluenceSpaceHeroLabel(run.unreadableSpaceKeys[0], details.confluenceSpaces)} nicht vollständig lesen; sein Bestand ist möglicherweise veraltet.`
-                    : `Der letzte Vollabgleich konnte die Spaces ${run.unreadableSpaceKeys.map((key) => confluenceSpaceHeroLabel(key, details.confluenceSpaces)).join(', ')} nicht vollständig lesen; ihr Bestand ist möglicherweise veraltet.`}{' '}
+                  {run.unlistedScopeKeys.length === 1
+                    ? `Der letzte Vollabgleich konnte den Space ${confluenceSpaceHeroLabel(run.unlistedScopeKeys[0], details.confluenceSpaces)} nicht vollständig lesen; sein Bestand ist möglicherweise veraltet.`
+                    : `Der letzte Vollabgleich konnte die Spaces ${run.unlistedScopeKeys.map((key) => confluenceSpaceHeroLabel(key, details.confluenceSpaces)).join(', ')} nicht vollständig lesen; ihr Bestand ist möglicherweise veraltet.`}{' '}
                   Der Hinweis bleibt, bis ein Vollabgleich wieder alle Spaces lesen kann.
                 </Typography>
               </Stack>
@@ -828,7 +828,7 @@ export default function LibraryDetailPage() {
                 Schlüssel nicht lesen darf, nimmt OPAA nicht auf.
               </Typography>
             </Stack>
-            {run.unreadableSpaceKeys.length > 0 && (
+            {run.unlistedScopeKeys.length > 0 && (
               <Stack
                 direction="row"
                 spacing={1}
@@ -850,9 +850,9 @@ export default function LibraryDetailPage() {
                   sx={{ fontSize: 16, color: 'warning.main', mt: '2px', flexShrink: 0 }}
                 />
                 <Typography sx={{ fontSize: 12.5 }}>
-                  {run.unreadableSpaceKeys.length === 1
-                    ? `Der letzte Vollabgleich konnte den Geltungsbereich „${run.unreadableSpaceKeys[0]}“ nicht auflisten; sein Bestand ist möglicherweise veraltet.`
-                    : `Der letzte Vollabgleich konnte die Geltungsbereiche ${run.unreadableSpaceKeys.map((key) => `„${key}“`).join(', ')} nicht auflisten; ihr Bestand ist möglicherweise veraltet.`}{' '}
+                  {run.unlistedScopeKeys.length === 1
+                    ? `Der letzte Vollabgleich konnte den Geltungsbereich „${run.unlistedScopeKeys[0]}“ nicht auflisten; sein Bestand ist möglicherweise veraltet.`
+                    : `Der letzte Vollabgleich konnte die Geltungsbereiche ${run.unlistedScopeKeys.map((key) => `„${key}“`).join(', ')} nicht auflisten; ihr Bestand ist möglicherweise veraltet.`}{' '}
                   Der Hinweis bleibt, bis ein Vollabgleich wieder alle Geltungsbereiche auflisten
                   kann.
                 </Typography>

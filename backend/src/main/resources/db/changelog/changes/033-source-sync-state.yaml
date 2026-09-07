@@ -1,0 +1,102 @@
+databaseChangeLog:
+  # #1399: one resumption state for every connector that lists its source completely, and the
+  # listing-assessment column named for every connector. Each changeset is one schema change with
+  # its own delta test (io.opaa.migration.Migration033SourceSyncStateTest).
+  - changeSet:
+      id: 033-source-sync-state
+      author: opaa
+      comment: >-
+        ADR-0023, Entscheidung 4 / ADR-0027, Entscheidung 3: confluence_sync_state and s3_sync_state
+        were the same table apart from the incremental anchor, which only Confluence sets. One row
+        per library holds the job of the full sync in progress, the scopes it has already completed
+        (space keys or bucket/prefix keys, newline-separated), the time the last full sync completed
+        and the nullable incremental anchor. Every row of both old tables is carried over with its
+        id and values (an S3 row without an anchor), then the old tables are dropped. Deleted with
+        the library (cascade) and by KnowledgeLibraryService whenever the address or the selection
+        changes.
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.source_sync_state (
+                  id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  full_sync_job_id uuid,
+                  completed_scope_keys text,
+                  full_sync_completed_at timestamp with time zone,
+                  incremental_anchor timestamp with time zone,
+                  updated_at timestamp with time zone NOT NULL,
+                  CONSTRAINT source_sync_state_pkey PRIMARY KEY (id),
+                  CONSTRAINT uk_source_sync_state_library UNIQUE (library_id),
+                  CONSTRAINT fk_source_sync_state_library FOREIGN KEY (library_id)
+                      REFERENCES public.knowledge_libraries(id) ON DELETE CASCADE
+              );
+              INSERT INTO public.source_sync_state (id, library_id, full_sync_job_id,
+                  completed_scope_keys, full_sync_completed_at, incremental_anchor, updated_at)
+                  SELECT id, library_id, full_sync_job_id, completed_space_keys,
+                      full_sync_completed_at, incremental_anchor, updated_at
+                  FROM public.confluence_sync_state;
+              INSERT INTO public.source_sync_state (id, library_id, full_sync_job_id,
+                  completed_scope_keys, full_sync_completed_at, incremental_anchor, updated_at)
+                  SELECT id, library_id, full_sync_job_id, completed_scope_keys,
+                      full_sync_completed_at, NULL, updated_at
+                  FROM public.s3_sync_state;
+              DROP TABLE public.confluence_sync_state;
+              DROP TABLE public.s3_sync_state;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE public.confluence_sync_state (
+                  id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  full_sync_job_id uuid,
+                  completed_space_keys text,
+                  full_sync_completed_at timestamp with time zone,
+                  incremental_anchor timestamp with time zone,
+                  updated_at timestamp with time zone NOT NULL,
+                  CONSTRAINT confluence_sync_state_pkey PRIMARY KEY (id),
+                  CONSTRAINT uk_confluence_sync_state_library UNIQUE (library_id),
+                  CONSTRAINT fk_confluence_sync_state_library FOREIGN KEY (library_id)
+                      REFERENCES public.knowledge_libraries(id) ON DELETE CASCADE
+              );
+              CREATE TABLE public.s3_sync_state (
+                  id uuid NOT NULL,
+                  library_id uuid NOT NULL,
+                  full_sync_job_id uuid,
+                  completed_scope_keys text,
+                  full_sync_completed_at timestamp with time zone,
+                  updated_at timestamp with time zone NOT NULL,
+                  CONSTRAINT s3_sync_state_pkey PRIMARY KEY (id),
+                  CONSTRAINT uk_s3_sync_state_library UNIQUE (library_id),
+                  CONSTRAINT fk_s3_sync_state_library FOREIGN KEY (library_id)
+                      REFERENCES public.knowledge_libraries(id) ON DELETE CASCADE
+              );
+              INSERT INTO public.confluence_sync_state (id, library_id, full_sync_job_id,
+                  completed_space_keys, full_sync_completed_at, incremental_anchor, updated_at)
+                  SELECT s.id, s.library_id, s.full_sync_job_id, s.completed_scope_keys,
+                      s.full_sync_completed_at, s.incremental_anchor, s.updated_at
+                  FROM public.source_sync_state s
+                  JOIN public.knowledge_libraries l ON l.id = s.library_id
+                  WHERE l.source_type = 'CONFLUENCE';
+              INSERT INTO public.s3_sync_state (id, library_id, full_sync_job_id,
+                  completed_scope_keys, full_sync_completed_at, updated_at)
+                  SELECT s.id, s.library_id, s.full_sync_job_id, s.completed_scope_keys,
+                      s.full_sync_completed_at, s.updated_at
+                  FROM public.source_sync_state s
+                  JOIN public.knowledge_libraries l ON l.id = s.library_id
+                  WHERE l.source_type = 'S3';
+              DROP TABLE public.source_sync_state;
+
+  - changeSet:
+      id: 033-indexing-jobs-unlisted-scope-keys
+      author: opaa
+      comment: >-
+        #1399: the scopes behind an incomplete listing assessment have carried S3 bucket/prefix keys
+        next to Confluence space keys since ADR-0027 - renamed to say so. Values are untouched.
+      changes:
+        - sql:
+            sql: ALTER TABLE public.indexing_jobs RENAME COLUMN unreadable_space_keys TO unlisted_scope_keys;
+      rollback:
+        - sql:
+            sql: ALTER TABLE public.indexing_jobs RENAME COLUMN unlisted_scope_keys TO unreadable_space_keys;

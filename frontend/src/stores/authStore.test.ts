@@ -183,7 +183,7 @@ describe('authStore', () => {
           timestamp: '2026-03-01T10:00:00Z',
           isPolling: true,
           sourceType: 'FILESYSTEM',
-          unreadableSpaceKeys: [],
+          unlistedScopeKeys: [],
         },
       },
     })

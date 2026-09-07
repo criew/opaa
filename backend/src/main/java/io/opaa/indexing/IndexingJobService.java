@@ -209,12 +209,12 @@ public class IndexingJobService {
 
   /**
    * Records whether {@code jobId}'s run assessed its source listing as complete and, if not, which
-   * containers (Confluence spaces) it could not read - called at most once per run, by the run
-   * frame of every fully listing connector whose run was not cut short. A no-op once the job is no
-   * longer {@link JobStatus#RUNNING}, like {@link #recordRunMetrics}.
+   * scopes (Confluence spaces, S3 bucket/prefix) it could not list - called at most once per run,
+   * by the run frame of every fully listing connector whose run was not cut short. A no-op once the
+   * job is no longer {@link JobStatus#RUNNING}, like {@link #recordRunMetrics}.
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
-  public void recordListingAssessment(UUID jobId, boolean complete, List<String> unreadableKeys) {
+  public void recordListingAssessment(UUID jobId, boolean complete, List<String> unlistedKeys) {
     var job =
         indexingJobRepository
             .findById(jobId)
@@ -222,7 +222,7 @@ public class IndexingJobService {
     if (job.getStatus() != JobStatus.RUNNING) {
       return;
     }
-    job.recordListingAssessment(complete, unreadableKeys);
+    job.recordListingAssessment(complete, unlistedKeys);
     indexingJobRepository.save(job);
   }
 

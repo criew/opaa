@@ -18,6 +18,8 @@ import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.SourceSyncState;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.library.ConfluenceSpaceSelection;
@@ -45,8 +47,8 @@ import org.springframework.scheduling.annotation.Async;
  * <p>What may delete is narrow (Entscheidung 4): credentials are verified before the first listing,
  * an unlistable space removes nothing, an unreadable page stays indexed, and only {@code trashed}
  * or a page found under a new space's URL removes a page outside the reconciliation. An interrupted
- * full sync resumes from {@link ConfluenceSyncState}, unfinished spaces first; a spent request
- * budget ends the run through the frame, which notes where the next run continues.
+ * full sync resumes from {@link SourceSyncState}, unfinished spaces first; a spent request budget
+ * ends the run through the frame, which notes where the next run continues.
  */
 public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
@@ -80,7 +82,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private final ConfluenceProperties properties;
   private final FileProcessingService fileProcessingService;
   private final DocumentRepository documentRepository;
-  private final ConfluenceSyncStateRepository syncStateRepository;
+  private final SourceSyncStateRepository syncStateRepository;
   private final StaleDocumentCleanupService cleanupService;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
@@ -92,7 +94,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       FileProcessingService fileProcessingService,
       AttachmentIndexer attachmentIndexer,
       DocumentRepository documentRepository,
-      ConfluenceSyncStateRepository syncStateRepository,
+      SourceSyncStateRepository syncStateRepository,
       StaleDocumentCleanupService cleanupService,
       Clock clock,
       IndexingRunTemplate runTemplate) {
@@ -223,10 +225,10 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private ListingOutcome fullSync(ConfluenceRun run, Instant startedAt)
       throws ConfluenceAccessException, InterruptedException {
     UUID libraryId = run.library.getId();
-    ConfluenceSyncState state =
+    SourceSyncState state =
         syncStateRepository
             .findByLibraryId(libraryId)
-            .orElseGet(() -> new ConfluenceSyncState(libraryId));
+            .orElseGet(() -> new SourceSyncState(libraryId));
     List<ConfluenceSpaceSelection> spaces = orderForResumption(run.library, state);
     run.resumed = state.isFullSyncInterrupted();
     state.beginFullSync(run.frame.jobId());
@@ -247,7 +249,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
         run.events.record(
             IndexingEventCategory.REJECTED, "Space " + key + " " + UNREADABLE_SPACE_SUFFIX, key);
         run.listingComplete = false;
-        run.unreadableSpaceKeys.add(key);
+        run.unlistedScopeKeys.add(key);
         continue;
       }
       run.total += pages.size();
@@ -264,7 +266,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
         visitPage(run, page, PageVisitPolicy.FULL_SYNC);
         run.progress.report();
       }
-      state.markSpaceCompleted(key);
+      state.markScopeCompleted(key);
       state = syncStateRepository.save(state);
     }
 
@@ -273,15 +275,15 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
           "Confluence full sync for library {} listed incompletely - keeping the bestand, no"
               + " reconciliation",
           libraryId);
-      return ListingOutcome.incomplete(List.copyOf(run.unreadableSpaceKeys));
+      return ListingOutcome.incomplete(List.copyOf(run.unlistedScopeKeys));
     }
     // Without the reconciliation the full sync is not complete: the state stays open, so the next
     // run reconciles again instead of anchoring an incremental run on a stale bestand.
-    ConfluenceSyncState completedState = state;
+    SourceSyncState completedState = state;
     run.frame.afterReconciliation(
         reconciled -> {
           if (reconciled) {
-            completedState.completeFullSync(startedAt, clock.instant());
+            completedState.completeFullSync(clock.instant(), startedAt);
             syncStateRepository.save(completedState);
           } else {
             run.events.record(
@@ -301,7 +303,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private ListingOutcome incrementalSync(ConfluenceRun run, Instant startedAt)
       throws ConfluenceAccessException, InterruptedException {
     UUID libraryId = run.library.getId();
-    ConfluenceSyncState state =
+    SourceSyncState state =
         syncStateRepository
             .findByLibraryId(libraryId)
             .filter(s -> s.getIncrementalAnchor() != null && !s.isFullSyncInterrupted())
@@ -515,8 +517,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
   /** Unfinished spaces of an interrupted full sync first, then the already completed ones. */
   static List<ConfluenceSpaceSelection> orderForResumption(
-      KnowledgeLibrary library, ConfluenceSyncState state) {
-    Set<String> completed = state.isFullSyncInterrupted() ? state.completedSpaceKeys() : Set.of();
+      KnowledgeLibrary library, SourceSyncState state) {
+    Set<String> completed = state.isFullSyncInterrupted() ? state.completedScopeKeys() : Set.of();
     List<ConfluenceSpaceSelection> ordered = new ArrayList<>();
     for (ConfluenceSpaceSelection space : library.getConfluenceSpaces()) {
       if (!completed.contains(space.getSpaceKey())) {

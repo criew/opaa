@@ -339,13 +339,13 @@ public class LibraryController {
   public IndexingStatusResponse getIndexingStatus(
       @PathVariable UUID libraryId, @Caller CurrentUser caller) {
     IndexingStatusView view = indexingService.getStatus(libraryId, caller);
-    List<String> unreadableSpaceKeys =
-        view.unreadableSpaceKeys().isEmpty() ? null : view.unreadableSpaceKeys();
+    List<String> unlistedScopeKeys =
+        view.unlistedScopeKeys().isEmpty() ? null : view.unlistedScopeKeys();
     return view.job()
         .map(
             job ->
                 toIndexingStatusResponse(job, view.canSeeErrorDetail())
-                    .unreadableSpaceKeys(unreadableSpaceKeys))
+                    .unlistedScopeKeys(unlistedScopeKeys))
         .orElse(
             new IndexingStatusResponse(IndexingStatus.IDLE, 0, 0, 0, 0, 0, Instant.now())
                 .message("Kein Indizierungslauf gefunden")
@@ -384,8 +384,8 @@ public class LibraryController {
         .message(message)
         .completedAt(job.getCompletedAt())
         .incomplete(job.isIncomplete())
-        .unreadableSpaceKeys(
-            Boolean.FALSE.equals(job.getListingComplete()) ? job.getUnreadableSpaceKeys() : null)
+        .unlistedScopeKeys(
+            Boolean.FALSE.equals(job.getListingComplete()) ? job.getUnlistedScopeKeys() : null)
         .metrics(toIndexingRunMetrics(job.getMetrics()));
   }
 
