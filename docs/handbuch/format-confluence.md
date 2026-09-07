@@ -1,6 +1,6 @@
 # Format: Confluence-Seite
 
-> **Entwurf.** Pipeline `confluence`, Version 1. Der gemeinsame Rahmen aller Format-Pipelines
+> **Entwurf.** Pipeline `confluence`, Version 2. Der gemeinsame Rahmen aller Format-Pipelines
 > steht im Kapitel [Indexierung](indexierung.md), Abschnitt 5; wie die Seiten in die Bibliothek
 > gelangen, im Kapitel [Confluence](konnektor-confluence.md).
 
@@ -61,7 +61,9 @@ flowchart TB
 - **Tabellen** werden eine Zeile je Tabellenzeile, Zellen mit „ | " getrennt. Eine Tabelle in einer
   Zelle wird in diese Zelle geglättet. Listen und Makros in einer Zelle werden zu einer Zeile.
 - **Listen** werden eine Zeile je Eintrag; die Verschachtelung trägt der Marker (•, ◦, ▪ nach
-  Tiefe, bei nummerierten Listen „2.1."), weil eine Einrückung den Zuschnitt nicht überlebt.
+  Tiefe, bei nummerierten Listen „2.1."), weil eine Einrückung den Zuschnitt nicht überlebt. Der
+  Marker bleibt auch, wenn der Cloud-Editor den Text des Eintrags in einen Absatz einschließt
+  (`<li><p>…</p></li>`); weitere Absätze desselben Eintrags folgen ohne Marker.
 - **Aufgabenlisten** behalten ihren Zustand (`[x]` / `[ ]`).
 - **Code** und `noformat` behalten ihre Zeilenumbrüche.
 - Leerzeilen des Editors (`<p>&nbsp;</p>`) werden entfernt.

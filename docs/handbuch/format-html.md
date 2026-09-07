@@ -1,6 +1,6 @@
 # Format: HTML
 
-> **Entwurf.** Pipeline `html`, Version 2. Der gemeinsame Rahmen aller Format-Pipelines steht im
+> **Entwurf.** Pipeline `html`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines steht im
 > Kapitel [Indexierung](indexierung.md), Abschnitt 5.
 
 ## 1. Wann sie läuft
@@ -46,7 +46,9 @@ ohne Pfad.
 - **Tabellen** werden eine Zeile je Tabellenzeile, Zellen mit „ | " getrennt; eine Tabelle in
   einer Zelle wird in diese Zelle geglättet.
 - **Listen** werden eine Zeile je Eintrag; die Verschachtelung trägt der Marker (•, ◦, ▪ nach
-  Tiefe, bei nummerierten Listen „2.1.").
+  Tiefe, bei nummerierten Listen „2.1."). Der Marker bleibt auch, wenn der Text des Eintrags in
+  einem Absatz-Element steht (`<li><p>…</p></li>`, wie viele CMS es schreiben); weitere Absätze
+  desselben Eintrags folgen ohne Marker.
 - **Vorformatierter Text** (`pre`) behält seine Zeilenumbrüche.
 - Geschützte Leerzeichen zählen als Leerraum; ein Absatz nur aus Leerraum entfällt.
 

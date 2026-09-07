@@ -33,7 +33,7 @@ import org.springframework.ai.document.Document;
 public class ConfluenceDocumentPipeline implements DocumentPipeline {
 
   public static final String ID = "confluence";
-  static final short VERSION = 1;
+  static final short VERSION = 2;
 
   /** Chunk metadata: the Confluence space key the page belongs to. */
   public static final String SPACE_METADATA_KEY = "source_container_key";

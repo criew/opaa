@@ -90,8 +90,13 @@ public record PipelineEvaluationReport(
    * METADATA_FILTER} stage applies it in both search paths. Unlike versions 4 to 7 this is not a
    * fingerprint-only bump: the filter moves the measured selection of the {@code metadata_filter}
    * class, and the {@code verwaltung} baseline was re-drawn.
+   *
+   * <p>Version 11 (issue #1357): {@code HtmlDocumentPipeline#version()} moved 2 → 3 and {@code
+   * ConfluenceDocumentPipeline#version()} 1 → 2 (a list item whose text sits in a block child keeps
+   * its marker) - fingerprint-only, same collective-fingerprint reasoning as versions 5 and 6
+   * above; no corpus in this repository routes a document through either pipeline.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 10;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 11;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be

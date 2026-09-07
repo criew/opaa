@@ -74,6 +74,13 @@ public final class XhtmlEventBuilder {
   private final List<Event> events = new ArrayList<>();
   private final StringBuilder inline = new StringBuilder();
 
+  /**
+   * The marker of the list item being walked, prefixed to the first paragraph that item yields -
+   * whether its text is inline or wrapped in a block child - and cleared with it; {@code null}
+   * outside an item or once the item has its marked line.
+   */
+  private String pendingMarker;
+
   public XhtmlEventBuilder() {
     this(NO_RULE);
   }
@@ -106,11 +113,18 @@ public final class XhtmlEventBuilder {
     flushBlock();
   }
 
-  /** Ends the paragraph collected so far, if it holds any text. */
+  /**
+   * Ends the paragraph collected so far, if it holds any text; inside a list item, the item's
+   * marker leads the first such paragraph.
+   */
   public void flushBlock() {
     String text = normalize(inline.toString());
     inline.setLength(0);
     if (!text.isEmpty()) {
+      if (pendingMarker != null) {
+        text = pendingMarker + text;
+        pendingMarker = null;
+      }
       events.add(new Paragraph(text));
     }
   }
@@ -194,6 +208,11 @@ public final class XhtmlEventBuilder {
   }
 
   /**
+   * One line per item, led by its marker: the item's first paragraph carries it, whether the text
+   * is inline or wrapped in a block child ({@code <li><p>Text</p></li>}); further blocks of the
+   * same item and text after a nested list follow unmarked, a nested list follows with the next
+   * depth's marker.
+   *
    * @param numbering the enclosing ordered list's number prefix ("2." for the second item's nested
    *     list), so nesting is carried by the marker ("2.1.") - HeadingSectionSplitter strips every
    *     block, leading spaces would not survive the cut
@@ -207,33 +226,18 @@ public final class XhtmlEventBuilder {
       }
       index++;
       String number = numbering + index + ".";
-      String marker = ordered ? number + " " : bulletFor(depth);
-      StringBuilder line = new StringBuilder(marker);
+      pendingMarker = ordered ? number + " " : bulletFor(depth);
       for (Node child : item.childNodes()) {
         if (child instanceof Element nested
             && (nested.tagName().equalsIgnoreCase("ul")
                 || nested.tagName().equalsIgnoreCase("ol"))) {
-          // the item's own text so far becomes its line, the nested list follows indented
-          String ownText = normalize(inline.toString());
-          inline.setLength(0);
-          if (line.length() > 0) {
-            emitLine(ownText.isEmpty() ? "" : line + ownText);
-            line.setLength(0);
-          } else if (!ownText.isEmpty()) {
-            emitLine(ownText);
-          }
           list(nested, nested.tagName().equalsIgnoreCase("ol"), depth + 1, ordered ? number : "");
           continue;
         }
         walk(child);
       }
-      String itemText = normalize(inline.toString());
-      inline.setLength(0);
-      if (line.length() > 0) {
-        emitLine(itemText.isEmpty() ? "" : line + itemText);
-      } else if (!itemText.isEmpty()) {
-        emitLine(itemText);
-      }
+      flushBlock();
+      pendingMarker = null;
     }
   }
 

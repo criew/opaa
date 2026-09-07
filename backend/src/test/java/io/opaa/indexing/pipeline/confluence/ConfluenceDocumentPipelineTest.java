@@ -61,7 +61,7 @@ class ConfluenceDocumentPipelineTest {
   void claimsNoFormatAndDeclaresItsContextKeys() {
     assertThat(pipeline.handledFormats()).isEmpty();
     assertThat(pipeline.id()).isEqualTo("confluence");
-    assertThat(pipeline.version()).isEqualTo((short) 1);
+    assertThat(pipeline.version()).isEqualTo((short) 2);
     assertThat(pipeline.passthroughMetadataKeys())
         .containsExactlyInAnyOrder(
             ChunkingService.LOCATION_METADATA_KEY,
