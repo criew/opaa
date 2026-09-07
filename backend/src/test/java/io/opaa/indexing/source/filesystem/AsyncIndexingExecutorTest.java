@@ -137,12 +137,11 @@ class AsyncIndexingExecutorTest {
             DocumentIngests.that().file().file(file).in(library).inFolder(null).match(), any()))
         .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
     when(storageQuotaService.quotaExceededMessage(library.getId()))
-        .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
+        .thenReturn("Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)");
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 
-    String expectedMessage =
-        "Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)";
+    String expectedMessage = "Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)";
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), anyInt());
     verify(indexingRunEventRepository, timeout(2000))
         .save(

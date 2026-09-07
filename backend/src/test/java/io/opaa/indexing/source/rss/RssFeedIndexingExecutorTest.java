@@ -823,13 +823,12 @@ class RssFeedIndexingExecutorTest {
     when(fileProcessingService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
     when(storageQuotaService.quotaExceededMessage(library.getId()))
-        .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
+        .thenReturn("Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)");
 
     execute(baseUrl + "/feed.xml");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
-    String expectedMessage =
-        "Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)";
+    String expectedMessage = "Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)";
     verify(indexingRunEventRepository, timeout(2000))
         .save(
             argThat(
@@ -1327,12 +1326,11 @@ class RssFeedIndexingExecutorTest {
     when(fileProcessingService.ingest(DocumentIngests.that().file().in(library).match(), any()))
         .thenReturn(FileProcessingResult.QUOTA_EXCEEDED);
     when(storageQuotaService.quotaExceededMessage(library.getId()))
-        .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
+        .thenReturn("Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)");
 
     execute(baseUrl + "/feed.xml");
 
-    String expectedMessage =
-        "Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)";
+    String expectedMessage = "Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)";
     // The entry itself still counts as processed and its own document as indexed - only the
     // attachment was rejected, so documentsIndexedTotal stays at 1 (the entry), not 2.
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));

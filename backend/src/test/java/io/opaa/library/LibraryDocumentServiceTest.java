@@ -483,13 +483,13 @@ class LibraryDocumentServiceTest {
     grantEditor();
     when(storageQuotaService.wouldExceedQuota(eq(libraryId), anyLong())).thenReturn(true);
     when(storageQuotaService.quotaExceededMessage(libraryId))
-        .thenReturn("Speicherkontingent der Bibliothek erschöpft (10,0 GB von 10,0 GB belegt)");
+        .thenReturn("Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)");
 
     assertThatThrownBy(
             () -> service.uploadDocument(libraryId, pdfFile("report.pdf", "content"), null, caller))
         .isInstanceOf(PayloadTooLargeException.class)
         .hasMessageContaining("Speicherkontingent der Bibliothek erschöpft")
-        .hasMessageContaining("10,0 GB von 10,0 GB belegt");
+        .hasMessageContaining("10 GB von 10 GB belegt");
 
     assertNoFilesWereStored();
     verify(documentRepository, never()).save(any(Document.class));
