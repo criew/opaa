@@ -92,6 +92,7 @@ public class SourceEventIntake {
     }
     SourceEventTarget target = batch.target;
     KnowledgeLibrary library;
+    boolean running;
     try {
       Optional<KnowledgeLibrary> loaded =
           libraryRepository
@@ -106,10 +107,7 @@ public class SourceEventIntake {
         return;
       }
       library = loaded.get();
-      if (indexingJobService.isJobRunning(library.getId(), library.getOrganizationId())) {
-        defer(libraryId, batch);
-        return;
-      }
+      running = indexingJobService.isJobRunning(library.getId(), library.getOrganizationId());
     } catch (RuntimeException e) {
       // the batch already left the queue; a lookup that fails (database briefly away) must not
       // lose it - it goes back as one more deferral, so a lasting outage still ends at the bound
@@ -118,6 +116,11 @@ public class SourceEventIntake {
           target.sourceType(),
           libraryId,
           e.getMessage());
+      defer(libraryId, batch);
+      return;
+    }
+    // outside the try: a deferral must never be caught and repeated for the same batch
+    if (running) {
       defer(libraryId, batch);
       return;
     }
