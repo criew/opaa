@@ -62,7 +62,8 @@ public class SourceEventIntake {
   /**
    * Queues {@code keys} for {@code libraryId} and starts the debounce timer if none is pending.
    * {@code dropped} is carried along to the targeted run. A library has one source type, so every
-   * batch of one library comes from the same {@code target}.
+   * batch of one library comes from the same {@code target} (the adapters filter by source type
+   * before enqueueing).
    */
   public synchronized void enqueue(
       SourceEventTarget target, UUID libraryId, Set<String> keys, int dropped) {
@@ -90,20 +91,33 @@ public class SourceEventIntake {
       return;
     }
     SourceEventTarget target = batch.target;
-    Optional<KnowledgeLibrary> loaded =
-        libraryRepository
-            .findById(libraryId)
-            .filter(l -> l.getSourceType() == target.sourceType())
-            .filter(l -> l.getWebhookSecret() != null);
-    if (loaded.isEmpty()) {
-      log.info(
-          "Dropping {} event batch for library {}: library gone or push secret removed",
+    KnowledgeLibrary library;
+    try {
+      Optional<KnowledgeLibrary> loaded =
+          libraryRepository
+              .findById(libraryId)
+              .filter(l -> l.getSourceType() == target.sourceType())
+              .filter(l -> l.getWebhookSecret() != null);
+      if (loaded.isEmpty()) {
+        log.info(
+            "Dropping {} event batch for library {}: library gone or push secret removed",
+            target.sourceType(),
+            libraryId);
+        return;
+      }
+      library = loaded.get();
+      if (indexingJobService.isJobRunning(library.getId(), library.getOrganizationId())) {
+        defer(libraryId, batch);
+        return;
+      }
+    } catch (RuntimeException e) {
+      // the batch already left the queue; a lookup that fails (database briefly away) must not
+      // lose it - it goes back as one more deferral, so a lasting outage still ends at the bound
+      log.warn(
+          "{} event batch for library {} could not be checked, putting it back: {}",
           target.sourceType(),
-          libraryId);
-      return;
-    }
-    KnowledgeLibrary library = loaded.get();
-    if (indexingJobService.isJobRunning(library.getId(), library.getOrganizationId())) {
+          libraryId,
+          e.getMessage());
       defer(libraryId, batch);
       return;
     }

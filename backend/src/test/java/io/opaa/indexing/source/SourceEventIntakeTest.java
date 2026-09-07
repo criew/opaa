@@ -36,6 +36,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.core.task.TaskRejectedException;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.scheduling.TaskScheduler;
 
 /**
@@ -277,6 +278,34 @@ class SourceEventIntakeTest {
 
     verifyNoInteractions(indexingJobService, executor);
     verify(target, never()).refresh(any(), any(), any(), anyInt());
+  }
+
+  @Test
+  void aFailedLookupAtDrainTimePutsTheBatchBackAsADeferral() {
+    intake.enqueue(target, libraryId, Set.of("102", "103"), 1);
+    when(libraryRepository.findById(libraryId))
+        .thenThrow(new DataAccessResourceFailureException("Datenbank nicht erreichbar"))
+        .thenReturn(Optional.of(library));
+
+    scheduled.get(0).run();
+
+    assertThat(scheduled).as("put back, not lost: one more timer").hasSize(2);
+    verify(indexingJobService, never()).startJob(any(), any(), any(), any());
+    scheduled.get(1).run();
+    verify(target).refresh(any(), eq(library), eq(Set.of("102", "103")), eq(1));
+  }
+
+  @Test
+  void aFailedLookupCountsAsADeferralAndEndsAtTheBound() {
+    enqueue("102");
+    when(libraryRepository.findById(libraryId))
+        .thenThrow(new DataAccessResourceFailureException("Datenbank nicht erreichbar"));
+
+    scheduled.get(0).run();
+    scheduled.get(1).run();
+    scheduled.get(2).run();
+
+    assertThat(scheduled).as("two deferrals, then dropped").hasSize(3);
   }
 
   @Test
