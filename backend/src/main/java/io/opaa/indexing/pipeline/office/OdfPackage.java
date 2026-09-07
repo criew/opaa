@@ -47,13 +47,17 @@ public final class OdfPackage implements Closeable {
     return new OdfPackage(file, new ZipFile(file.toFile()));
   }
 
-  /** One-shot convenience: opens {@code file}, parses {@code content.xml}, closes. */
+  /**
+   * One-shot form for {@code content.xml}: opens {@code file}, parses, closes. Not used by any
+   * pipeline (they read every entry from one {@link #open}); kept for the limit tests, which assert
+   * the parser's own exception message without a pipeline in between.
+   */
   public static boolean parse(Path file, long maxEntryBytes, DefaultHandler handler)
       throws IOException {
     return parse(file, "content.xml", maxEntryBytes, handler);
   }
 
-  /** One-shot convenience: opens {@code file}, parses {@code entryName}, closes. */
+  /** One-shot form for any entry - see {@link #parse(Path, long, DefaultHandler)}. */
   public static boolean parse(
       Path file, String entryName, long maxEntryBytes, DefaultHandler handler) throws IOException {
     try (OdfPackage odf = open(file)) {
@@ -80,7 +84,8 @@ public final class OdfPackage implements Closeable {
       SAXParserFactory factory = SAXParserFactory.newInstance();
       factory.setNamespaceAware(false);
       factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-      // XXE hardening: entryName originates from an uploaded/indexed file, never trusted input.
+      // XXE hardening: the entry's content comes from an uploaded/indexed file, never trusted
+      // input (entryName itself is one of the fixed ODF entry names).
       factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
       factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
       factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
