@@ -1,6 +1,5 @@
 package io.opaa.indexing.pipeline.office;
 
-import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.DocumentProperties;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -12,9 +11,10 @@ import org.xml.sax.helpers.DefaultHandler;
 
 /**
  * Reads an ODF package's {@code meta.xml} ({@code dc:title}, {@code meta:creation-date}, {@code
- * dc:date} = last modified) into {@link DocumentProperties} through the same hardened reader as
- * {@code content.xml} (ADR-0024). A missing or broken {@code meta.xml} yields {@link
- * DocumentProperties#EMPTY} - supplementary data never fails a document.
+ * dc:date} = last modified) into {@link DocumentProperties} from an already opened {@link
+ * OdfPackage}, through the same hardened reader as {@code content.xml} (ADR-0024). A missing or
+ * broken {@code meta.xml} yields {@link DocumentProperties#EMPTY} - supplementary data never fails
+ * a document.
  */
 final class OdfMetaProperties {
 
@@ -22,15 +22,12 @@ final class OdfMetaProperties {
 
   private OdfMetaProperties() {}
 
-  static DocumentProperties read(DocumentPipelineSource source, OdfProperties odfProperties) {
-    if (source.file() == null) {
-      return DocumentProperties.EMPTY;
-    }
+  static DocumentProperties read(OdfPackage odf, String fileName, long maxEntryBytes) {
     MetaHandler handler = new MetaHandler();
     try {
-      OdfContentXml.parse(source.file(), "meta.xml", odfProperties.maxContentXmlBytes(), handler);
+      odf.parse("meta.xml", maxEntryBytes, handler);
     } catch (IOException | RuntimeException e) {
-      log.warn("Could not read meta.xml of ODF document {}", source.fileName(), e);
+      log.warn("Could not read meta.xml of ODF document {}", fileName, e);
       return DocumentProperties.EMPTY;
     }
     return DocumentProperties.builder()

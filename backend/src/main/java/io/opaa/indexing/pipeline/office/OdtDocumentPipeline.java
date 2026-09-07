@@ -22,9 +22,9 @@ import org.xml.sax.helpers.DefaultHandler;
 /**
  * The ODT pipeline (ingestion-pipelines.md, Teil 3, Punkt 2) - the ODT counterpart of {@link
  * DocxDocumentPipeline}, reading {@code content.xml} through the hardened SAX parser {@link
- * OdfContentXml}, since POI never reads OpenDocument. Heading level comes from {@code text:h}'s
- * {@code text:outline-level}; cutting stops at {@link #MAX_CUTTING_LEVEL}. A table becomes one text
- * block, a table nested in a cell is discarded, {@code text:tracked-changes} is skipped.
+ * OdfPackage}, since POI never reads OpenDocument. Heading level comes from {@code text:h}'s {@code
+ * text:outline-level}; cutting stops at {@link #MAX_CUTTING_LEVEL}. A table becomes one text block,
+ * a table nested in a cell is discarded, {@code text:tracked-changes} is skipped.
  *
  * <p>{@code styles.xml}'s header/footer text, every variant of it, becomes one deduplicated leading
  * chunk (see {@link RepeatingHeaderChunk}); a malformed {@code styles.xml} forfeits only that
@@ -44,9 +44,15 @@ public class OdtDocumentPipeline extends FileDocumentPipeline<OdtDocumentPipelin
   private static final int MAX_CUTTING_LEVEL = 3;
 
   private final OdfProperties odfProperties;
+  private final OdfPackage.Opener opener;
 
   public OdtDocumentPipeline(OdfProperties odfProperties) {
+    this(odfProperties, OdfPackage::open);
+  }
+
+  OdtDocumentPipeline(OdfProperties odfProperties, OdfPackage.Opener opener) {
     this.odfProperties = odfProperties;
+    this.opener = opener;
   }
 
   @Override
@@ -64,25 +70,39 @@ public class OdtDocumentPipeline extends FileDocumentPipeline<OdtDocumentPipelin
     return Set.of(".odt");
   }
 
-  /** One document's reading: {@code content.xml}'s event stream and {@code meta.xml}'s data. */
-  public record OdtContent(List<HeadingSectionSplitter.Event> events, DocumentProperties meta) {}
+  /**
+   * One document's reading, all from one opening of the package: {@code content.xml}'s event
+   * stream, {@code meta.xml}'s data and {@code styles.xml}'s header/footer text ("" when absent).
+   */
+  public record OdtContent(
+      List<HeadingSectionSplitter.Event> events,
+      DocumentProperties meta,
+      String headerFooterText) {}
 
   @Override
   protected OdtContent read(DocumentPipelineSource source) throws IOException {
-    return new OdtContent(readEvents(source), OdfMetaProperties.read(source, odfProperties));
+    try (OdfPackage odf = opener.open(source.file())) {
+      DocumentProperties meta = readMeta(odf, source.fileName());
+      List<HeadingSectionSplitter.Event> events = readEvents(odf, source.fileName());
+      return new OdtContent(events, meta, readHeaderFooterText(odf, source.fileName()));
+    }
   }
 
-  private List<HeadingSectionSplitter.Event> readEvents(DocumentPipelineSource source)
+  private DocumentProperties readMeta(OdfPackage odf, String fileName) {
+    return OdfMetaProperties.read(odf, fileName, odfProperties.maxContentXmlBytes());
+  }
+
+  private List<HeadingSectionSplitter.Event> readEvents(OdfPackage odf, String fileName)
       throws IOException {
     OdtContentHandler handler =
         new OdtContentHandler(
             odfProperties.maxOdtParagraphs(),
             odfProperties.maxSpaceRepeat(),
             odfProperties.maxTextCharacters());
-    if (!OdfContentXml.parse(source.file(), odfProperties.maxContentXmlBytes(), handler)) {
+    if (!odf.parse("content.xml", odfProperties.maxContentXmlBytes(), handler)) {
       // Not a genuine ODF ZIP (no content.xml entry at all) - the same "could not be parsed" case
       // a corrupt .odt reaches, distinct from a well-formed but empty document.
-      throw new IOException("No content.xml entry in ODT file " + source.fileName());
+      throw new IOException("No content.xml entry in ODT file " + fileName);
     }
     return handler.events();
   }
@@ -90,16 +110,19 @@ public class OdtDocumentPipeline extends FileDocumentPipeline<OdtDocumentPipelin
   /**
    * {@code meta.xml} is read first and kept even when {@code content.xml} cannot be read at all:
    * the two entries fail independently, and a document whose body is unreadable still declares its
-   * title and dates.
+   * title and dates. {@code styles.xml} is not read - the Bestandslauf needs no header/footer.
    */
   @Override
-  protected DocumentProperties declaredProperties(DocumentPipelineSource source) {
-    DocumentProperties meta = OdfMetaProperties.read(source, odfProperties);
-    try {
-      return properties(new OdtContent(readEvents(source), meta));
-    } catch (IOException | RuntimeException e) {
-      log.warn("Could not read headings of ODT document {}", source.fileName(), e);
-      return meta;
+  protected DocumentProperties declaredProperties(DocumentPipelineSource source)
+      throws IOException {
+    try (OdfPackage odf = opener.open(source.file())) {
+      DocumentProperties meta = readMeta(odf, source.fileName());
+      try {
+        return properties(new OdtContent(readEvents(odf, source.fileName()), meta, ""));
+      } catch (IOException | RuntimeException e) {
+        log.warn("Could not read headings of ODT document {}", source.fileName(), e);
+        return meta;
+      }
     }
   }
 
@@ -116,7 +139,7 @@ public class OdtDocumentPipeline extends FileDocumentPipeline<OdtDocumentPipelin
     }
     List<Document> allChunks = new ArrayList<>(chunks);
     Document headerFooterChunk =
-        RepeatingHeaderChunk.ofOrNull(HEADER_FOOTER_LOCATION, readHeaderFooterText(source));
+        RepeatingHeaderChunk.ofOrNull(HEADER_FOOTER_LOCATION, content.headerFooterText());
     if (headerFooterChunk != null) {
       allChunks.add(0, headerFooterChunk);
     }
@@ -140,16 +163,15 @@ public class OdtDocumentPipeline extends FileDocumentPipeline<OdtDocumentPipelin
    * text - this is supplementary content, and a broken {@code styles.xml} must not fail a document
    * whose {@code content.xml} parsed successfully.
    */
-  private String readHeaderFooterText(DocumentPipelineSource source) {
+  private String readHeaderFooterText(OdfPackage odf, String fileName) {
     OdtStylesHandler stylesHandler =
         new OdtStylesHandler(odfProperties.maxSpaceRepeat(), odfProperties.maxTextCharacters());
     try {
-      OdfContentXml.parse(
-          source.file(), "styles.xml", odfProperties.maxContentXmlBytes(), stylesHandler);
+      odf.parse("styles.xml", odfProperties.maxContentXmlBytes(), stylesHandler);
     } catch (IOException | RuntimeException e) {
       log.warn(
           "Could not read styles.xml of ODT document {}; continuing without header/footer text",
-          source.fileName(),
+          fileName,
           e);
       return "";
     }

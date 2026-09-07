@@ -24,9 +24,9 @@ import org.xml.sax.helpers.DefaultHandler;
 /**
  * The ODP pipeline (ingestion-pipelines.md, Teil 3, Punkt 2: eine Folie = ein Chunk) - the ODP
  * counterpart of {@link PptxDocumentPipeline}, reading {@code content.xml} through the hardened SAX
- * parser {@link OdfContentXml}, since POI never reads OpenDocument. Every {@code draw:page} with
- * text becomes one chunk, a {@code presentation:class} of {@code "title"} its leading line and
- * {@link ChunkingService#LOCATION_METADATA_KEY location}, notes a final labeled paragraph.
+ * parser {@link OdfPackage}, since POI never reads OpenDocument. Every {@code draw:page} with text
+ * becomes one chunk, a {@code presentation:class} of {@code "title"} its leading line and {@link
+ * ChunkingService#LOCATION_METADATA_KEY location}, notes a final labeled paragraph.
  *
  * <p>{@code styles.xml}'s master page text becomes one deduplicated leading chunk (see {@link
  * RepeatingHeaderChunk}); a malformed one forfeits only that chunk. A presentation whose slides
@@ -46,9 +46,15 @@ public class OdpDocumentPipeline extends FileDocumentPipeline<OdpDocumentPipelin
       Set.of("header", "footer", "date-time", "page-number");
 
   private final OdfProperties odfProperties;
+  private final OdfPackage.Opener opener;
 
   public OdpDocumentPipeline(OdfProperties odfProperties) {
+    this(odfProperties, OdfPackage::open);
+  }
+
+  OdpDocumentPipeline(OdfProperties odfProperties, OdfPackage.Opener opener) {
     this.odfProperties = odfProperties;
+    this.opener = opener;
   }
 
   @Override
@@ -67,11 +73,15 @@ public class OdpDocumentPipeline extends FileDocumentPipeline<OdpDocumentPipelin
   }
 
   /**
-   * One presentation's reading: one chunk per slide, whether any of them carried text at all, and
-   * {@code meta.xml}'s data.
+   * One presentation's reading, all from one opening of the package: one chunk per slide, whether
+   * any of them carried text at all, {@code meta.xml}'s data and {@code styles.xml}'s master-slide
+   * text ("" when absent).
    */
   public record OdpContent(
-      List<Document> slideChunks, boolean anySlideHasText, DocumentProperties meta) {}
+      List<Document> slideChunks,
+      boolean anySlideHasText,
+      DocumentProperties meta,
+      String masterSlideText) {}
 
   @Override
   protected OdpContent read(DocumentPipelineSource source) throws IOException {
@@ -80,13 +90,23 @@ public class OdpDocumentPipeline extends FileDocumentPipeline<OdpDocumentPipelin
             odfProperties.maxOdpSlides(),
             odfProperties.maxSpaceRepeat(),
             odfProperties.maxTextCharacters());
-    if (!OdfContentXml.parse(source.file(), odfProperties.maxContentXmlBytes(), handler)) {
-      // Not a genuine ODF ZIP (no content.xml entry at all) - the same "could not be parsed" case
-      // a corrupt .odp reaches, distinct from a well-formed but empty presentation.
-      throw new IOException("No content.xml entry in ODP file " + source.fileName());
+    try (OdfPackage odf = opener.open(source.file())) {
+      DocumentProperties meta = readMeta(odf, source.fileName());
+      if (!odf.parse("content.xml", odfProperties.maxContentXmlBytes(), handler)) {
+        // Not a genuine ODF ZIP (no content.xml entry at all) - the same "could not be parsed"
+        // case a corrupt .odp reaches, distinct from a well-formed but empty presentation.
+        throw new IOException("No content.xml entry in ODP file " + source.fileName());
+      }
+      return new OdpContent(
+          handler.chunks(),
+          handler.anySlideHasText(),
+          meta,
+          readMasterSlideText(odf, source.fileName()));
     }
-    return new OdpContent(
-        handler.chunks(), handler.anySlideHasText(), OdfMetaProperties.read(source, odfProperties));
+  }
+
+  private DocumentProperties readMeta(OdfPackage odf, String fileName) {
+    return OdfMetaProperties.read(odf, fileName, odfProperties.maxContentXmlBytes());
   }
 
   @Override
@@ -100,7 +120,7 @@ public class OdpDocumentPipeline extends FileDocumentPipeline<OdpDocumentPipelin
     }
     List<Document> chunks = new ArrayList<>(content.slideChunks());
     Document masterSlideChunk =
-        RepeatingHeaderChunk.ofOrNull(MASTER_SLIDE_LOCATION, readMasterSlideText(source));
+        RepeatingHeaderChunk.ofOrNull(MASTER_SLIDE_LOCATION, content.masterSlideText());
     if (masterSlideChunk != null) {
       chunks.add(0, masterSlideChunk);
     }
@@ -119,8 +139,11 @@ public class OdpDocumentPipeline extends FileDocumentPipeline<OdpDocumentPipelin
    * presentation whose {@code content.xml} is unreadable.
    */
   @Override
-  protected DocumentProperties declaredProperties(DocumentPipelineSource source) {
-    return OdfMetaProperties.read(source, odfProperties);
+  protected DocumentProperties declaredProperties(DocumentPipelineSource source)
+      throws IOException {
+    try (OdfPackage odf = opener.open(source.file())) {
+      return readMeta(odf, source.fileName());
+    }
   }
 
   /**
@@ -128,16 +151,15 @@ public class OdpDocumentPipeline extends FileDocumentPipeline<OdpDocumentPipelin
    * this is supplementary content, and a broken {@code styles.xml} must not fail a presentation
    * whose {@code content.xml} parsed successfully.
    */
-  private String readMasterSlideText(DocumentPipelineSource source) {
+  private String readMasterSlideText(OdfPackage odf, String fileName) {
     OdpStylesHandler stylesHandler =
         new OdpStylesHandler(odfProperties.maxSpaceRepeat(), odfProperties.maxTextCharacters());
     try {
-      OdfContentXml.parse(
-          source.file(), "styles.xml", odfProperties.maxContentXmlBytes(), stylesHandler);
+      odf.parse("styles.xml", odfProperties.maxContentXmlBytes(), stylesHandler);
     } catch (IOException | RuntimeException e) {
       log.warn(
           "Could not read styles.xml of ODP document {}; continuing without master-slide text",
-          source.fileName(),
+          fileName,
           e);
       return "";
     }

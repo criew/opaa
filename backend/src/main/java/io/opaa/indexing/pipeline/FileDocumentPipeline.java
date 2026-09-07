@@ -32,8 +32,8 @@ public abstract class FileDocumentPipeline<T> implements DocumentPipeline {
 
   /**
    * The chunks of an already-read document; {@link #run} attaches {@link #properties} to them.
-   * {@code source} is passed on for supplementary content only a chunking run needs (an ODF
-   * package's {@code styles.xml}), never to re-read what {@link #read} already returned.
+   * {@code source} names the document (file name, extension) - a subclass never re-reads it, since
+   * everything the one {@link #read} yielded is in {@code content}.
    */
   protected abstract DocumentPipelineResult chunks(DocumentPipelineSource source, T content);
 

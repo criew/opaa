@@ -7,7 +7,7 @@ import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.HeadingSectionSplitter;
 import io.opaa.indexing.pipeline.TableText;
-import io.opaa.indexing.pipeline.office.OdfContentXml;
+import io.opaa.indexing.pipeline.office.OdfPackage;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
@@ -86,12 +86,18 @@ public class TabularDocumentPipeline implements DocumentPipeline {
   private final int maxOdsCellRepeat;
   private final long maxOdsContentXmlBytes;
   private final int maxOdsRows;
+  private final OdfPackage.Opener odfOpener;
 
   public TabularDocumentPipeline(TabularProperties properties) {
+    this(properties, OdfPackage::open);
+  }
+
+  TabularDocumentPipeline(TabularProperties properties, OdfPackage.Opener odfOpener) {
     this.maxRowColumns = properties.maxRowColumns();
     this.maxOdsCellRepeat = properties.maxOdsCellRepeat();
     this.maxOdsContentXmlBytes = properties.maxOdsContentXmlBytes();
     this.maxOdsRows = properties.maxOdsRows();
+    this.odfOpener = odfOpener;
   }
 
   @Override
@@ -336,17 +342,21 @@ public class TabularDocumentPipeline implements DocumentPipeline {
 
   /**
    * Reads an ODS spreadsheet directly from its {@code content.xml} - not POI, which never reads
-   * OpenDocument - through {@link OdfContentXml}, the hardened ZIP/SAX reader the ODT and ODP
-   * pipelines share. Two independent zip-bomb guards apply, a byte ceiling on the decompressed
-   * entry ({@link #maxOdsContentXmlBytes}) and a row count on the parse ({@link #maxOdsRows});
-   * either one aborts with an {@link IOException} naming the limit, never an {@code OutOfMemory}.
+   * OpenDocument - through {@link OdfPackage}, the hardened ZIP/SAX reader the ODT and ODP
+   * pipelines share, opened once per ingest. Two independent zip-bomb guards apply, a byte ceiling
+   * on the decompressed entry ({@link #maxOdsContentXmlBytes}) and a row count on the parse ({@link
+   * #maxOdsRows}); either one aborts with an {@link IOException} naming the limit, never an {@code
+   * OutOfMemory}.
    */
   private List<Document> readOds(DocumentPipelineSource source) throws IOException {
     if (source.file() == null) {
       return List.of();
     }
     OdsContentHandler handler = new OdsContentHandler(maxRowColumns, maxOdsCellRepeat, maxOdsRows);
-    boolean found = OdfContentXml.parse(source.file(), maxOdsContentXmlBytes, handler);
+    boolean found;
+    try (OdfPackage odf = odfOpener.open(source.file())) {
+      found = odf.parse("content.xml", maxOdsContentXmlBytes, handler);
+    }
     if (!found) {
       // Not a genuine ODF ZIP (no content.xml entry at all) - the same "could not be parsed" case
       // OdtDocumentPipeline/OdpDocumentPipeline report for a corrupt .odt/.odp, distinct from a

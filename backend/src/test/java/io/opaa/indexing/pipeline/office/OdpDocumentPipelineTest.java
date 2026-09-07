@@ -32,6 +32,61 @@ class OdpDocumentPipelineTest {
   private final OdpDocumentPipeline pipeline =
       new OdpDocumentPipeline(new OdfProperties(0, 0, 0, 0, 0));
 
+  private static final String META_XML =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+          + "<office:document-meta"
+          + " xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\""
+          + " xmlns:meta=\"urn:oasis:names:tc:opendocument:xmlns:meta:1.0\""
+          + " xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
+          + "<office:meta><dc:title>Haushaltsplan 2026</dc:title>"
+          + "<dc:date>2026-03-12T09:15:00</dc:date></office:meta>"
+          + "</office:document-meta>";
+
+  /**
+   * One ingest opens the ZIP package once; meta.xml, content.xml and styles.xml all come out of
+   * that one opening - the ODF counterpart of FileDocumentPipelineTest's read counter.
+   */
+  @Test
+  void oneRunOpensThePackageOnceAndReadsMetaContentAndStylesFromIt() throws IOException {
+    CountingOdfOpener opener = new CountingOdfOpener();
+    OdpDocumentPipeline counting =
+        new OdpDocumentPipeline(new OdfProperties(0, 0, 0, 0, 0), opener);
+    Path file = tempDir.resolve("einmal.odp");
+    writeOdpWithRawStyles(
+        file,
+        odpSlide(odpFrame("title", "Einfuehrung") + odpFrame(null, "Willkommen.")),
+        wrapOdpMasterStyles(
+            "<style:master-page><draw:frame><draw:text-box><text:p>Stadt Musterstadt</text:p>"
+                + "</draw:text-box></draw:frame></style:master-page>"),
+        META_XML);
+
+    DocumentPipelineResult result =
+        counting.run(DocumentPipelineSource.ofFile(file, "einmal.odp", ".odp"));
+
+    assertThat(opener.opens).hasValue(1);
+    assertThat(result.outcome()).isEqualTo(DocumentPipelineResult.Outcome.CHUNKED);
+    assertThat(result.chunks()).hasSize(2);
+    assertThat(result.chunks().getFirst().getText()).contains("Stadt Musterstadt");
+    assertThat(result.chunks().get(1).getText()).startsWith("Einfuehrung");
+    assertThat(result.properties().title()).isEqualTo("Haushaltsplan 2026");
+  }
+
+  @Test
+  void readingPropertiesAloneOpensThePackageOnceForMeta() throws IOException {
+    CountingOdfOpener opener = new CountingOdfOpener();
+    OdpDocumentPipeline counting =
+        new OdpDocumentPipeline(new OdfProperties(0, 0, 0, 0, 0), opener);
+    Path file = tempDir.resolve("einmal-eigenschaften.odp");
+    writeOdpWithRawStyles(file, odpSlide(odpFrame("title", "Einfuehrung")), null, META_XML);
+
+    io.opaa.indexing.pipeline.DocumentProperties properties =
+        counting.readProperties(
+            DocumentPipelineSource.ofFile(file, "einmal-eigenschaften.odp", ".odp"));
+
+    assertThat(opener.opens).hasValue(1);
+    assertThat(properties.title()).isEqualTo("Haushaltsplan 2026");
+  }
+
   @Test
   void claimsExactlyOdp() {
     assertThat(pipeline.handledFormats()).containsExactly(".odp");
@@ -476,11 +531,11 @@ class OdpDocumentPipelineTest {
   void theByteLimitDirectlyThrowsAnIOExceptionNamingWhichLimitWasHit() throws IOException {
     // the pipeline's own catch-all collapses every parse failure into the
     // same NO_CONTENT outcome, so a wrong-reason failure would stay green there. This test goes
-    // straight at OdfContentXml.parse instead, the one place the byte limit's own message survives.
+    // straight at OdfPackage.parse instead, the one place the byte limit's own message survives.
     Path file = tempDir.resolve("gross-direkt.odp");
     writeOdp(file, odpSlide(odpFrame("title", "Titel") + odpFrame(null, "Ein laengerer Text.")));
 
-    assertThatThrownBy(() -> OdfContentXml.parse(file, 50, new DefaultHandler()))
+    assertThatThrownBy(() -> OdfPackage.parse(file, 50, new DefaultHandler()))
         .isInstanceOf(IOException.class)
         .hasMessageContaining("size limit");
   }
@@ -542,7 +597,7 @@ class OdpDocumentPipelineTest {
     OdpDocumentPipeline.OdpContentHandler handler =
         new OdpDocumentPipeline.OdpContentHandler(5_000, 5, 12);
 
-    assertThatThrownBy(() -> OdfContentXml.parse(file, 10_485_760L, handler))
+    assertThatThrownBy(() -> OdfPackage.parse(file, 10_485_760L, handler))
         .isInstanceOf(IOException.class)
         .rootCause()
         .hasMessageContaining("text character limit");
@@ -573,7 +628,7 @@ class OdpDocumentPipelineTest {
     OdpDocumentPipeline.OdpContentHandler handler =
         new OdpDocumentPipeline.OdpContentHandler(1, 1_000, 10_000_000L);
 
-    assertThatThrownBy(() -> OdfContentXml.parse(file, 10_485_760L, handler))
+    assertThatThrownBy(() -> OdfPackage.parse(file, 10_485_760L, handler))
         .isInstanceOf(IOException.class)
         .rootCause()
         .hasMessageContaining("slide limit");
@@ -612,6 +667,11 @@ class OdpDocumentPipelineTest {
 
   private static void writeOdpWithRawStyles(Path file, String presentationBodyXml, String stylesXml)
       throws IOException {
+    writeOdpWithRawStyles(file, presentationBodyXml, stylesXml, null);
+  }
+
+  private static void writeOdpWithRawStyles(
+      Path file, String presentationBodyXml, String stylesXml, String metaXml) throws IOException {
     String content =
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<office:document-content"
@@ -630,6 +690,11 @@ class OdpDocumentPipelineTest {
       if (stylesXml != null) {
         out.putNextEntry(new ZipEntry("styles.xml"));
         out.write(stylesXml.getBytes(StandardCharsets.UTF_8));
+        out.closeEntry();
+      }
+      if (metaXml != null) {
+        out.putNextEntry(new ZipEntry("meta.xml"));
+        out.write(metaXml.getBytes(StandardCharsets.UTF_8));
         out.closeEntry();
       }
     }
