@@ -210,7 +210,11 @@ beim Start scheitern, statt die Bean-Reihenfolge entscheiden zu lassen.
 Für ein Format, das immer als Datei ankommt (PDF, DOCX, PPTX, ODT, ODP), übernimmt die
 Basisklasse `FileDocumentPipeline<T>` das Gerüst: einmal lesen (`read`), daraus Chunks (`chunks`)
 und Eigenschaften (`properties`). Die Datei wird damit je Aufnahme genau einmal geöffnet — vorher
-lasen `run` und `readProperties` sie getrennt (#1313).
+lasen `run` und `readProperties` sie getrennt (#1313). Für ein ODF-Paket gilt das seit #1338 auch auf
+ZIP-Ebene: `OdfPackage` öffnet das Archiv einmal, `meta.xml`, `content.xml` und `styles.xml` kommen
+aus demselben Öffnen (vorher bis zu drei Öffnungen je Aufnahme); der Bestandslauf
+(`declaredProperties`) liest aus diesem einen Öffnen nur `meta.xml` und die Überschriften und behält
+`meta.xml` auch bei unlesbarem `content.xml`.
 
 Die Ausgänge, die `FileProcessingService` bisher selbst entschied — „Scan ohne Textebene",
 „gar nichts geparst", „Text, aber keine Chunks" — entscheidet jetzt die Pipeline für ihr eigenes
@@ -627,7 +631,8 @@ Abschnitt "Baseline-Aktualisierung als Schritt jedes Format-Issues".)
 `OdtDocumentPipeline` (`id` `odt`, Version 2) und `OdpDocumentPipeline` (`id` `odp`, Version 2)
 beanspruchen `.odt` bzw. `.odp` in der `DocumentPipelineRegistry` und lösen damit die
 `TikaFallbackPipeline` für beide Formate ab. Beide lesen `content.xml` (eine ODT-/ODP-Datei ist wie
-ODS ein ZIP-Archiv) direkt über einen gehärteten SAX-Parser, geteilt über `OdfContentXml` — dieselbe
+ODS ein ZIP-Archiv) direkt über einen gehärteten SAX-Parser, geteilt über `OdfPackage` (bis #1338
+`OdfContentXml`) — dieselbe
 XXE-Härtung (kein `<!DOCTYPE …>`, keine externen Entitäten) und derselbe Byte-Deckel auf den
 entpackten `content.xml`-Strom (`opaa.indexing.odf.max-content-xml-bytes`, gesetzt 10 MiB) wie
 `TabularDocumentPipeline`s ODS-Leser. Ein zweiter Element-Deckel gilt zusätzlich pro Format
@@ -663,7 +668,7 @@ mit den beiden ODF-Pipelines ist er es nicht mehr (#1110/#1143).
   für alle drei Kopf-/Fußzeilen-/Masterfolien-tragenden Formate einheitlich gilt.
 
 **`styles.xml` wird seit #1145 mitgelesen.** Beide Pipelines lesen zusätzlich `styles.xml` — über
-denselben gehärteten `OdfContentXml`-Leser, mit demselben Byte-Deckel je Eintrag
+denselben gehärteten `OdfPackage`-Leser, mit demselben Byte-Deckel je Eintrag
 (`opaa.indexing.odf.max-content-xml-bytes`, gilt pro Lesevorgang, nicht als über beide Einträge
 geteiltes Budget) und derselben `text:s`-Härtung wie `content.xml`; der Zeichen-Budget-Zähler
 (`opaa.indexing.odf.max-text-characters`) läuft dagegen je Handler eigenständig, ist also ebenfalls
