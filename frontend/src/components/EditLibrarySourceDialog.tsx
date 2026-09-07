@@ -15,11 +15,14 @@ import type {
   ConfluenceSpaceRef,
   DocumentSourceType,
   LibraryVisibility,
+  S3Settings,
   SourceConnectionTestResponse,
 } from '../types/api'
 import { testLibrarySource } from '../services/api'
 import FieldLabel from './wizard/FieldLabel'
 import ConfluenceSourceForm from './library/ConfluenceSourceForm'
+import S3SourceForm from './library/S3SourceForm'
+import { s3ValuesFromSettings, type S3SourceValues } from '../utils/s3Source'
 import { EMPTY_CONFLUENCE_VALUES, type ConfluenceSourceValues } from '../utils/confluenceSource'
 import { useLibraryStore } from '../stores/libraryStore'
 import { documentSourceTypeConfigKind } from '../utils/labels'
@@ -51,6 +54,7 @@ export interface EditableLibrarySource {
   sourceCredentialsSet?: boolean | null
   confluenceEdition?: ConfluenceEdition | null
   confluenceSpaces?: ConfluenceSpaceRef[] | null
+  s3Settings?: S3Settings | null
 }
 
 interface EditLibrarySourceDialogProps {
@@ -93,6 +97,16 @@ export default function EditLibrarySourceDialog({
     credentialsVerified: Boolean(library.sourceCredentialsSet),
     spaces: library.confluenceSpaces ?? [],
   }))
+  // ADR-0027: endpoint, region, addressing style and scopes come back from the stored settings;
+  // the stored key stands until a new one is typed.
+  const [s3, setS3] = useState<S3SourceValues>(() =>
+    s3ValuesFromSettings(
+      library.sourceUrl,
+      library.sourceProxy,
+      library.sourceInsecureSsl,
+      library.s3Settings,
+    ),
+  )
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   // #544: mirrors LibraryCreatePage's connection test - the result belongs to the currently
@@ -133,6 +147,10 @@ export default function EditLibrarySourceDialog({
       sourcePath,
       sourceUrl,
       confluence,
+      s3,
+      // the stored key survives only on the same origin (KnowledgeLibraryService, #516/#542)
+      s3CredentialsStored:
+        credentialsStored && sameLibrarySourceOrigin(library.sourceUrl, s3.sourceUrl),
     })
     if (validationError) {
       setError(validationError)
@@ -174,6 +192,10 @@ export default function EditLibrarySourceDialog({
       sourcePath,
       sourceUrl,
       confluence,
+      s3,
+      // the stored key survives only on the same origin (KnowledgeLibraryService, #516/#542)
+      s3CredentialsStored:
+        credentialsStored && sameLibrarySourceOrigin(library.sourceUrl, s3.sourceUrl),
     })
     if (validationError) {
       setError(validationError)
@@ -203,6 +225,7 @@ export default function EditLibrarySourceDialog({
           sourceCredentials,
           sourceInsecureSsl,
           confluence,
+          s3,
         }),
       })
       onClose()
@@ -331,6 +354,21 @@ export default function EditLibrarySourceDialog({
               values={confluence}
               onChange={(patch) => {
                 setConfluence((prev) => ({ ...prev, ...patch }))
+                setError(null)
+              }}
+            />
+          )}
+
+          {configKind === 's3' && (
+            <S3SourceForm
+              mode="edit"
+              idPrefix="edit-source-s3"
+              libraryId={libraryId}
+              credentialsStored={credentialsStored}
+              originalSourceUrl={library.sourceUrl}
+              values={s3}
+              onChange={(patch) => {
+                setS3((prev) => ({ ...prev, ...patch }))
                 setError(null)
               }}
             />

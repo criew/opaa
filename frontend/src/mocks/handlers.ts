@@ -80,6 +80,7 @@ import type {
   LibraryOwnerType,
   LibraryScheduleRequest,
   LibraryVisibility,
+  S3Settings,
   LlmModelRequest,
   LlmModelTestRequest,
   QueryRequest,
@@ -1474,6 +1475,7 @@ export const handlers = [
       sourceInsecureSsl?: boolean | null
       confluenceEdition?: ConfluenceEdition | null
       confluenceSpaces?: ConfluenceSpaceRef[] | null
+      s3Settings?: S3Settings | null
     }
     if (!body.name || body.name.trim() === '') {
       return HttpResponse.json(
@@ -1586,6 +1588,30 @@ export const handlers = [
         )
       }
     }
+    if (body.sourceType === 'S3') {
+      // Mirrors KnowledgeLibraryService#validateS3Configuration just enough for the wizard.
+      if (!body.sourceUrl) {
+        return HttpResponse.json(
+          {
+            error:
+              'sourceUrl (Endpoint des Objektspeichers) ist erforderlich, wenn sourceType S3 ist',
+          },
+          { status: 400 },
+        )
+      }
+      if (!body.sourceCredentials) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind erforderlich, wenn sourceType S3 ist' },
+          { status: 400 },
+        )
+      }
+      if (!body.s3Settings?.scopes?.length) {
+        return HttpResponse.json(
+          { error: 's3Settings sind erforderlich, wenn sourceType S3 ist' },
+          { status: 400 },
+        )
+      }
+    }
     const id = `library-${crypto.randomUUID().slice(0, 8)}`
     const now = new Date().toISOString()
     const ownerType = body.ownerType ?? 'USER'
@@ -1613,22 +1639,30 @@ export const handlers = [
       sourceUrl:
         body.sourceType === 'HTTP_DIRECTORY' ||
         body.sourceType === 'RSS_FEED' ||
-        body.sourceType === 'CONFLUENCE'
+        body.sourceType === 'CONFLUENCE' ||
+        body.sourceType === 'S3'
           ? (body.sourceUrl ?? null)
           : null,
       sourceProxy:
         body.sourceType === 'HTTP_DIRECTORY' ||
         body.sourceType === 'RSS_FEED' ||
-        body.sourceType === 'CONFLUENCE'
+        body.sourceType === 'CONFLUENCE' ||
+        body.sourceType === 'S3'
           ? (body.sourceProxy ?? null)
           : null,
       confluenceEdition: body.sourceType === 'CONFLUENCE' ? (body.confluenceEdition ?? null) : null,
       confluenceSpaces: body.sourceType === 'CONFLUENCE' ? (body.confluenceSpaces ?? null) : null,
+      s3Settings: body.sourceType === 'S3' ? (body.s3Settings ?? null) : null,
+      sourceCredentialsSet:
+        body.sourceType === 'S3' || body.sourceType === 'CONFLUENCE'
+          ? Boolean(body.sourceCredentials)
+          : undefined,
       // sourceCredentials ist Nur-Schreiben (ADR-0018) - bewusst nicht in der Detailantwort.
       sourceInsecureSsl:
         body.sourceType === 'HTTP_DIRECTORY' ||
         body.sourceType === 'RSS_FEED' ||
-        body.sourceType === 'CONFLUENCE'
+        body.sourceType === 'CONFLUENCE' ||
+        body.sourceType === 'S3'
           ? Boolean(body.sourceInsecureSsl)
           : null,
     }
@@ -1837,8 +1871,19 @@ export const handlers = [
       visibility?: LibraryVisibility
       listed?: boolean
       schedule?: LibraryScheduleRequest
+      sourceUrl?: string | null
+      sourceProxy?: string | null
+      sourceInsecureSsl?: boolean | null
+      s3Settings?: S3Settings | null
     }
     library.name = body.name
+    if (library.sourceType === 'S3') {
+      // the S3 edit dialog resends the typed configuration as a whole (ADR-0027)
+      if (body.sourceUrl !== undefined) library.sourceUrl = body.sourceUrl
+      if (body.sourceProxy !== undefined) library.sourceProxy = body.sourceProxy
+      if (body.sourceInsecureSsl !== undefined) library.sourceInsecureSsl = body.sourceInsecureSsl
+      if (body.s3Settings) library.s3Settings = body.s3Settings
+    }
     library.description = body.description ?? null
     library.visibility = body.visibility ?? library.visibility
     library.listed = body.listed ?? library.listed

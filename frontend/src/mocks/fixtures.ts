@@ -1195,6 +1195,19 @@ export const mockLibraries: LibraryListResponse[] = [
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
+  {
+    id: 'library-s3-protokolle',
+    name: 'Protokolle (S3)',
+    description: 'Sitzungsprotokolle aus dem Objektspeicher',
+    ownerType: 'USER',
+    visibility: 'SHARED',
+    listed: true,
+    myRole: 'MANAGER',
+    sourceType: 'S3',
+    documentCount: 0,
+    createdAt: '2026-09-06T10:00:00Z',
+    updatedAt: '2026-09-06T10:00:00Z',
+  },
 ]
 
 // #782/#783: GET /api/v1/spaces/{spaceId}/libraries fixture. 'space-phoenix' is curated (#203/#706)
@@ -1286,6 +1299,36 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     diagnosticsLockToggleable: true,
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
+  },
+  'library-s3-protokolle': {
+    id: 'library-s3-protokolle',
+    name: 'Protokolle (S3)',
+    description: 'Sitzungsprotokolle aus dem Objektspeicher',
+    ownerType: 'USER',
+    ownerId: 'mock-user-id',
+    visibility: 'SHARED',
+    listed: true,
+    myRole: 'MANAGER',
+    documentCount: 0,
+    sourceType: 'S3',
+    sourceUrl: 'https://minio.intern.example:9000',
+    sourceProxy: null,
+    sourceInsecureSsl: false,
+    sourceCredentialsSet: true,
+    s3Settings: {
+      region: 'us-east-1',
+      pathStyle: true,
+      scopes: [
+        { bucket: 'protokolle', prefix: '2025/' },
+        { bucket: 'satzungen', prefix: null },
+      ],
+      includePatterns: ['**/*.pdf'],
+      excludePatterns: [],
+    },
+    diagnosticsLocked: false,
+    diagnosticsLockToggleable: false,
+    createdAt: '2026-09-06T10:00:00Z',
+    updatedAt: '2026-09-06T10:00:00Z',
   },
 }
 

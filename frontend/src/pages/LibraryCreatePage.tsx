@@ -21,7 +21,9 @@ import PageHeading from '../components/a11y/PageHeading'
 import { blue } from '../theme/tokens'
 import FieldLabel from '../components/wizard/FieldLabel'
 import ConfluenceSourceForm from '../components/library/ConfluenceSourceForm'
+import S3SourceForm from '../components/library/S3SourceForm'
 import { EMPTY_CONFLUENCE_VALUES, type ConfluenceSourceValues } from '../utils/confluenceSource'
+import { EMPTY_S3_VALUES, type S3SourceValues } from '../utils/s3Source'
 import WizardStepBar from '../components/wizard/WizardStepBar'
 import { getMyGroups, testLibrarySource, upsertLibraryGrant } from '../services/api'
 import { useLibraryStore } from '../stores/libraryStore'
@@ -94,6 +96,7 @@ export default function LibraryCreatePage() {
   const [sourceCredentials, setSourceCredentials] = useState('')
   const [sourceInsecureSsl, setSourceInsecureSsl] = useState(false)
   const [confluence, setConfluence] = useState<ConfluenceSourceValues>(EMPTY_CONFLUENCE_VALUES)
+  const [s3, setS3] = useState<S3SourceValues>(EMPTY_S3_VALUES)
   // Opt-out, not opt-in: whoever just configured a source expects content - the first run (a full
   // reconciliation over the selected spaces) starts right after creation unless switched off.
   const [startFirstRun, setStartFirstRun] = useState(true)
@@ -166,6 +169,11 @@ export default function LibraryCreatePage() {
     confluence.sourceUrl !== '' ||
     confluence.sourceProxy !== '' ||
     confluence.sourceInsecureSsl ||
+    s3.sourceUrl !== '' ||
+    s3.accessKey !== '' ||
+    s3.secretKey !== '' ||
+    s3.sessionToken !== '' ||
+    s3.scopes.some((scope) => scope.bucket !== '' || scope.prefix !== '') ||
     pendingGrants.length > 0
 
   const handleCancel = () => {
@@ -185,6 +193,7 @@ export default function LibraryCreatePage() {
         sourcePath,
         sourceUrl,
         confluence,
+        s3,
       })
       if (validationError) {
         setError(validationError)
@@ -200,6 +209,7 @@ export default function LibraryCreatePage() {
       sourcePath,
       sourceUrl,
       confluence,
+      s3,
     })
     if (validationError) {
       setError(validationError)
@@ -275,6 +285,7 @@ export default function LibraryCreatePage() {
           sourceCredentials,
           sourceInsecureSsl,
           confluence,
+          s3,
         }),
         visibility,
       })
@@ -487,6 +498,26 @@ export default function LibraryCreatePage() {
                   {startFirstRun
                     ? 'Der erste Lauf ist ein Vollabgleich über alle ausgewählten Spaces; sein Stand bleibt auf der Detailseite sichtbar.'
                     : 'Ohne Sofortstart beginnt die Indizierung erst über „Jetzt indizieren“ auf der Detailseite oder über den Zeitplan.'}
+                </Typography>
+              </Box>
+            )}
+
+            {configKind === 's3' && (
+              <Box sx={{ maxWidth: 640 }}>
+                <S3SourceForm
+                  mode="create"
+                  idPrefix="library-create-s3"
+                  values={s3}
+                  onChange={(patch) => {
+                    setS3((prev) => ({ ...prev, ...patch }))
+                    setError(null)
+                  }}
+                />
+                {/* No immediate first run for S3 until the full sync of #1378 exists - the
+                    registered executor would only end the run as FAILED. */}
+                <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 2 }}>
+                  Die Indizierung beginnt über „Jetzt indizieren“ auf der Detailseite oder über den
+                  Zeitplan.
                 </Typography>
               </Box>
             )}

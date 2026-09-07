@@ -45,6 +45,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import LanguageIcon from '@mui/icons-material/Language'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import RssFeedIcon from '@mui/icons-material/RssFeed'
+import StorageIcon from '@mui/icons-material/Storage'
 import DataUsageIcon from '@mui/icons-material/DataUsage'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 import HistoryIcon from '@mui/icons-material/History'
@@ -63,6 +64,7 @@ import type {
   LibraryDocumentResponse,
   LibraryFolderListItem,
   LibrarySchedule,
+  S3Settings,
   LibrarySpaceAssociationResponse,
   LibraryVisibility,
   ConfluenceEdition,
@@ -213,6 +215,8 @@ function sourceGlyphIcon(sourceType: DocumentSourceType | undefined) {
       return <LanguageIcon sx={{ fontSize: 24 }} />
     case 'RSS_FEED':
       return <RssFeedIcon sx={{ fontSize: 24 }} />
+    case 'S3':
+      return <StorageIcon sx={{ fontSize: 24 }} />
     default:
       return <UploadFileIcon sx={{ fontSize: 24 }} />
   }
@@ -784,6 +788,45 @@ export default function LibraryDetailPage() {
                 </Typography>
               </Stack>
             )}
+          </Box>
+        )}
+
+        {/* ADR-0027: the scopes of an S3 library are the scope every reader sees - shown in the
+            page head like the Confluence selection, with the same consequence. */}
+        {details?.sourceType === 'S3' && (
+          <Box
+            sx={{
+              mt: 2.5,
+              pt: 2,
+              borderTop: 1,
+              borderTopColor: 'divider',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1,
+            }}
+          >
+            <S3ScopesSummary settings={details.s3Settings} />
+            <Typography variant="caption" color="text.secondary">
+              Dieser Umfang gilt für alle Leseberechtigten der Bibliothek.
+            </Typography>
+            <Stack
+              direction="row"
+              spacing={1}
+              role="note"
+              data-testid="s3-sharing-consequence"
+              sx={{ alignItems: 'flex-start', mt: 0.5 }}
+            >
+              <InfoOutlinedIcon
+                aria-hidden
+                sx={{ fontSize: 16, color: 'primary.main', mt: '2px', flexShrink: 0 }}
+              />
+              <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                Diese Bibliothek spiegelt Geltungsbereiche eines S3-Objektspeichers. Alles, was
+                daraus indiziert wurde, ist für alle Leseberechtigten dieser Bibliothek sichtbar —
+                unabhängig davon, wer es im Objektspeicher lesen dürfte. Was der hinterlegte
+                Schlüssel nicht lesen darf, nimmt OPAA nicht auf.
+              </Typography>
+            </Stack>
           </Box>
         )}
 
@@ -2559,6 +2602,7 @@ interface LibraryIndexingSectionProps {
     confluenceWebhookSecretSet?: boolean | null
     confluenceFullSyncIntervalDays?: number | null
     confluenceFullSyncIntervalDefaultDays?: number | null
+    s3Settings?: S3Settings | null
     schedule?: LibrarySchedule | null
     lastScheduledRunsFailed?: boolean | null
   }
@@ -2585,9 +2629,7 @@ function LibraryIndexingSection({
         title="Quellkonfiguration"
         description="Woher diese Bibliothek ihre Dokumente bezieht. Nur für Verwaltende sichtbar."
         action={
-          // S3 has no edit form until the wizard step of #1377 - an empty dialog would only end
-          // in a rejected request.
-          canEditSource && configKind !== 's3' ? (
+          canEditSource ? (
             <Button
               size="small"
               variant="outlined"
@@ -2620,7 +2662,31 @@ function LibraryIndexingSection({
               <strong>Adresse:</strong> {library.sourceUrl ?? '—'}
             </Typography>
           )}
-          {(configKind === 'url' || configKind === 'confluence') && (
+          {configKind === 's3' && (
+            <>
+              <Typography variant="body2">
+                <strong>Endpoint:</strong> {library.sourceUrl ?? '—'}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Region:</strong> {library.s3Settings?.region ?? 'us-east-1 (Vorgabe)'} ·{' '}
+                <strong>Adressstil:</strong>{' '}
+                {library.s3Settings?.pathStyle ? 'Path-Style' : 'Virtual-Host'}
+              </Typography>
+              {(library.s3Settings?.includePatterns?.length ?? 0) > 0 && (
+                <Typography variant="body2">
+                  <strong>Einschlussmuster:</strong>{' '}
+                  {library.s3Settings?.includePatterns?.join(', ')}
+                </Typography>
+              )}
+              {(library.s3Settings?.excludePatterns?.length ?? 0) > 0 && (
+                <Typography variant="body2">
+                  <strong>Ausschlussmuster:</strong>{' '}
+                  {library.s3Settings?.excludePatterns?.join(', ')}
+                </Typography>
+              )}
+            </>
+          )}
+          {(configKind === 'url' || configKind === 'confluence' || configKind === 's3') && (
             <>
               <Typography variant="body2">
                 <strong>Proxy:</strong> {library.sourceProxy ?? 'nicht konfiguriert'}
@@ -2642,7 +2708,7 @@ function LibraryIndexingSection({
             />
           )}
         </Stack>
-        {canEditSource && configKind !== 's3' && (
+        {canEditSource && (
           <EditLibrarySourceDialog
             // Forces a remount every time the dialog opens, so its internal field state always
             // starts fresh from the current library configuration without an effect calling
@@ -2847,6 +2913,25 @@ function ConfluenceSpacesSummary({ spaces }: { spaces?: ConfluenceSpaceRef[] | n
             key={space.key}
             size="small"
             label={space.name ? `${space.name} (${space.key})` : space.key}
+          />
+        ))}
+      </Stack>
+    </Typography>
+  )
+}
+
+// ADR-0027: the scopes of an S3 library, one chip per bucket/prefix, for every reader.
+function S3ScopesSummary({ settings }: { settings?: S3Settings | null }) {
+  return (
+    <Typography variant="body2" component="div">
+      <strong>Geltungsbereiche:</strong>{' '}
+      <Stack direction="row" spacing={0.5} useFlexGap component="span" sx={{ flexWrap: 'wrap' }}>
+        {(settings?.scopes ?? []).map((scope) => (
+          <Chip
+            key={`${scope.bucket}/${scope.prefix ?? ''}`}
+            size="small"
+            label={scope.prefix ? `${scope.bucket}/${scope.prefix}` : scope.bucket}
+            sx={{ fontFamily: 'monospace' }}
           />
         ))}
       </Stack>
