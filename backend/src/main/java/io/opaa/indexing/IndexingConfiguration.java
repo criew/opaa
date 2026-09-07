@@ -490,7 +490,7 @@ public class IndexingConfiguration {
   }
 
   /**
-   * Declared as the concrete type, like the Confluence executor: the event intake ({@code
+   * Declared as the concrete type, like the Confluence executor: the event adapter ({@code
    * S3EventService}) calls {@code refreshObjects}, which the interface does not carry.
    */
   @Bean

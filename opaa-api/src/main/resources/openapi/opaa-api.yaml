@@ -3243,7 +3243,7 @@ paths:
         a secret or of another sourceType, and a wrong or missing signature are all answered with
         the same 401; no other information leaves this endpoint. Once authenticated, the page ids
         the body names (page.id, content.id, attachment.pageId, pageId, pageIds) are queued and,
-        a few seconds later (opaa.indexing.confluence.webhook.debounce), one WEBHOOK run fetches
+        a few seconds later (opaa.indexing.events.debounce), one WEBHOOK run fetches
         exactly those pages: a page the instance reports as trashed is removed with its
         attachments, a changed page is re-indexed, a 404 or 403 changes nothing (ADR-0023,
         Entscheidung 4 - deletion needs the instance's own positive finding, the notification is
@@ -3347,11 +3347,11 @@ paths:
         the EventBridge envelope (detail-type, detail.bucket.name, detail.object.key raw,
         detail.deletion-type) and the s3:TestEvent AWS sends on set-up (accepted, no effect).
         Every event is a hint, the store's answer the finding: the keys are collected per
-        library, debounced (opaa.indexing.s3.events.debounce) and checked in one EVENT run with
+        library, debounced (opaa.indexing.events.debounce) and checked in one EVENT run with
         triggeredBy WEBHOOK - a HeadObject per key, a changed object re-indexed like in a full
         sync, a 404 removes the document with its attachments, anything else changes nothing. An
         event for a bucket or key outside the configured scopes or patterns is dropped and
-        counted. A batch past opaa.indexing.s3.events.max-pending-keys runs an ordinary full sync
+        counted. A batch past opaa.indexing.events.max-pending-keys runs an ordinary full sync
         instead. Rate-limited per library (opaa.rate-limit.webhook).
       requestBody:
         required: false

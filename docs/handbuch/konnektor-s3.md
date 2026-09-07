@@ -530,14 +530,18 @@ bliebe unbestätigt. Eine SQS-Warteschlange fragt OPAA nicht ab. Beides steht in
 - Ein Ereignis für einen Bucket oder Schlüssel **außerhalb der Geltungsbereiche oder Muster** wird
   verworfen und gezählt; der Ereignislauf trägt dann „N gemeldete Objekte liegen außerhalb der
   Geltungsbereiche oder Muster und wurden verworfen". Bleibt nichts übrig, startet kein Lauf.
-- Nachrichten werden je Bibliothek **gesammelt** (`events.debounce`, Standard fünf Sekunden) und in
-  **einem** Ereignislauf mit Auslöser „per Webhook" geprüft — ein Skript, das fünfzig Objekte
-  hochlädt, kostet einen Lauf, nicht fünfzig. Mehr als `events.max-pending-keys` (500) verschiedene
-  Schlüssel in einem Stapel ergeben statt Einzelprüfungen einen gewöhnlichen **Vollabgleich**: Ein
-  Massenimport listet billiger, als er einzeln prüft.
-- Läuft für die Bibliothek gerade ein Lauf, wartet der Stapel bis zu `events.max-deferrals` (12)
-  Sammelzeiten — eine Minute — und wird dann **verworfen**: Der nächste Lauf deckt dieselben
-  Schlüssel ab. Ein Verwerfen kostet Aktualität, nie Korrektheit.
+- Nachrichten werden je Bibliothek **gesammelt** (`opaa.indexing.events.debounce`, Standard fünf
+  Sekunden) und in **einem** Ereignislauf mit Auslöser „per Webhook" geprüft — ein Skript, das
+  fünfzig Objekte hochlädt, kostet einen Lauf, nicht fünfzig. Mehr als
+  `opaa.indexing.events.max-pending-keys` (500) verschiedene Schlüssel in einem Stapel ergeben
+  statt Einzelprüfungen einen gewöhnlichen **Vollabgleich**: Ein Massenimport listet billiger, als
+  er einzeln prüft.
+- Läuft für die Bibliothek gerade ein Lauf, wartet der Stapel bis zu
+  `opaa.indexing.events.max-deferrals` (120) Sammelzeiten — zehn Minuten — und wird dann
+  **verworfen**: Der nächste Lauf deckt dieselben Schlüssel ab. Ein Verwerfen kostet Aktualität,
+  nie Korrektheit.
+- Sammeln, Stapelgrenze und Warten sind der gemeinsame Ereigniseingang aller Push-Wege; der
+  [Confluence-Webhook](konnektor-confluence.md) nutzt dieselben Werte.
 - **Je Schlüssel ein `HeadObject`**, die Antwort des Speichers ist der Befund:
   - `404` — das Objekt ist weg: Das Dokument wird **samt Anhängen** entfernt, Protokolleintrag „Vom
     Objektspeicher als gelöscht bestätigt, entfernt". Eindeutig nur, weil `s3:ListBucket`
@@ -773,9 +777,15 @@ mit ausführlichen Erläuterungen steht im [Deployment](deployment.md).
 | `max-objects-per-run` | `OPAA_INDEXING_S3_MAX_OBJECTS_PER_RUN` | 1000000 | gelistete Objekte je Lauf über alle Geltungsbereiche, bevor der Lauf sichtbar als Fehler endet („Geltungsbereiche enger fassen") — Notbremse, keine Regelgrenze; `0` fällt auf den Standard zurück |
 | `download-concurrency` | `OPAA_INDEXING_S3_DOWNLOAD_CONCURRENCY` | 2 | gleichzeitige Objekt-Downloads je Lauf, während die Auflistung weiterläuft; `1` lädt seriell; `0` fällt auf den Standard zurück |
 | `temp-directory` | `OPAA_INDEXING_S3_TEMP_DIRECTORY` (kein Eintrag in `application.yml`; greift über die Relaxed-Binding-Regel von Spring Boot) | Temp-Verzeichnis der JVM | Verzeichnis, in das Objekte vor der Übergabe an die Dokumentstrecke geladen werden |
-| `events.debounce` | `OPAA_INDEXING_S3_EVENTS_DEBOUNCE` | 5s | Sammelzeit des Ereigniseingangs je Bibliothek |
-| `events.max-pending-keys` | `OPAA_INDEXING_S3_EVENTS_MAX_PENDING_KEYS` | 500 | über dieser Stapelgröße ein gewöhnlicher Vollabgleich statt des Ereignislaufs |
-| `events.max-deferrals` | `OPAA_INDEXING_S3_EVENTS_MAX_DEFERRALS` | 12 | Wartezyklen je Sammelzeit, bevor ein Stapel wegen eines laufenden Laufs verworfen wird (Standard: eine Minute) |
+
+Der Ereigniseingang selbst wird nicht hier, sondern über den gemeinsamen Ereigniseingang aller
+Push-Wege konfiguriert (`opaa.indexing.events.*`):
+
+| Schlüssel | Umgebungsvariable | Standard | Wirkung |
+|---|---|---|---|
+| `events.debounce` | `OPAA_INDEXING_EVENTS_DEBOUNCE` | 5s | Sammelzeit je Bibliothek |
+| `events.max-pending-keys` | `OPAA_INDEXING_EVENTS_MAX_PENDING_KEYS` | 500 | über dieser Stapelgröße ein gewöhnlicher Vollabgleich statt des Ereignislaufs |
+| `events.max-deferrals` | `OPAA_INDEXING_EVENTS_MAX_DEFERRALS` | 120 | Wartezyklen je Sammelzeit, bevor ein Stapel wegen eines laufenden Laufs verworfen wird (Standard: zehn Minuten) |
 
 Dazu die Ratenbegrenzung des Ereigniseingangs (`OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS` je
 Client-Adresse und Bibliothek, `OPAA_RATE_LIMIT_WEBHOOK_GLOBAL_MAX_REQUESTS`, Fenster

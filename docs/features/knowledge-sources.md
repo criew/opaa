@@ -301,14 +301,14 @@ Sitzung erreichbar sind; er antwortet auf jede nicht
 authentifizierte Anfrage gleichförmig mit `401`, ist je Bibliothek ratenbegrenzt
 (`OPAA_RATE_LIMIT_WEBHOOK_*`) und liest aus dem Körper nur die genannten Seiten-IDs — **nicht die
 Ereignisart**. Die gemeldeten Seiten werden je Bibliothek gesammelt
-(`OPAA_INDEXING_CONFLUENCE_WEBHOOK_DEBOUNCE`, Standard fünf Sekunden) und dann in einem kurzen Lauf
+(`OPAA_INDEXING_EVENTS_DEBOUNCE`, Standard fünf Sekunden) und dann in einem kurzen Lauf
 mit Auslöser `WEBHOOK` gezielt geholt: Was die Instanz als geändert liefert, wird neu indiziert; was
 sie **selbst als im Papierkorb ausweist**, wird mitsamt Anhängen entfernt (der positive Befund aus
 ADR-0023, Entscheidung 4); ein `404` oder `403` ändert nichts. Der Anker des inkrementellen
 Abgleichs bleibt unberührt. Läuft für die Bibliothek gerade ein anderer Lauf, wartet der Stapel und
-wird nach `OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_DEFERRALS` Verschiebungen verworfen — der nächste
+wird nach `OPAA_INDEXING_EVENTS_MAX_DEFERRALS` Verschiebungen verworfen — der nächste
 Lauf deckt dieselben Seiten ab, ein Verwerfen kostet Aktualität, nie Korrektheit; ein Stapel mit
-mehr als `OPAA_INDEXING_CONFLUENCE_WEBHOOK_MAX_PENDING_PAGES` Seiten läuft als gewöhnlicher
+mehr als `OPAA_INDEXING_EVENTS_MAX_PENDING_KEYS` Seiten läuft als gewöhnlicher
 inkrementeller Abgleich. Der Webhook ersetzt weder Zeitplan noch Vollabgleich: Ohne ihn ist
 nichts falsch, nur später. Bewusste Grenze: **kein Replay-Schutz** — eine mitgeschnittene, gültig
 signierte Nachricht (oder der Cloud-Header) lässt sich wieder einspielen und kostet dann je einen
