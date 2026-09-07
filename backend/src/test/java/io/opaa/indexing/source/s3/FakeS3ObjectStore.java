@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -45,7 +46,7 @@ public class FakeS3ObjectStore implements S3ObjectStore {
   private final Map<String, Supplier<S3AccessException>> readFailures = new LinkedHashMap<>();
   private final List<Supplier<S3AccessException>> nextCallFailures =
       java.util.Collections.synchronizedList(new ArrayList<>());
-  private final S3RequestMeter meter = new S3RequestMeter();
+  private final SourceRequestMeter meter = new SourceRequestMeter();
   private final List<Path> landedFiles = java.util.Collections.synchronizedList(new ArrayList<>());
   private final List<String> calls = java.util.Collections.synchronizedList(new ArrayList<>());
   private int pageSize = 1000;
@@ -254,7 +255,7 @@ public class FakeS3ObjectStore implements S3ObjectStore {
   }
 
   @Override
-  public S3RequestMeter meter() {
+  public SourceRequestMeter meter() {
     return meter;
   }
 

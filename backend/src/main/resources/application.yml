@@ -163,11 +163,14 @@ opaa:
       queue-capacity: ${OPAA_INDEXING_THREAD_POOL_QUEUE_CAPACITY:20}
     # What every request to a source OPAA does not operate carries and tolerates - RSS feed, web
     # directory and Confluence alike; see SourceHttpProperties. Confluence keeps its own
-    # rate-limit numbers below.
+    # rate-limit numbers below. The two per-run bounds apply to the feed and web-directory
+    # connectors only; Confluence and S3 keep their own request budgets.
     http:
       user-agent: ${OPAA_INDEXING_HTTP_USER_AGENT:OPAA-Indexer/1.0}
       max-rate-limit-retries: ${OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_RETRIES:6}
       max-retry-after: ${OPAA_INDEXING_HTTP_MAX_RETRY_AFTER:2m}
+      request-budget-per-run: ${OPAA_INDEXING_HTTP_REQUEST_BUDGET_PER_RUN:0}
+      max-rate-limit-wait-per-run: ${OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_WAIT_PER_RUN:15m}
     rss:
       max-entries: ${OPAA_INDEXING_RSS_MAX_ENTRIES:200}
       max-feed-size-bytes: ${OPAA_INDEXING_RSS_MAX_FEED_SIZE_BYTES:10485760}

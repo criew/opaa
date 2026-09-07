@@ -86,7 +86,7 @@ public final class RedirectFollowingFetcher {
    * without a {@code Location}, ends the loop and returns that response as-is. A {@code 429} is
    * waited out ({@link RateLimitPolicy#waitFor}) and the whole fetch retried from {@code url}, up
    * to {@link RateLimitPolicy#maxRetries()} times; {@code rateLimit}'s listener is told before
-   * every wait and before every retry.
+   * every attempt and before every wait.
    *
    * @throws RedirectRejectedException (an {@link IOException}) under {@link
    *     RedirectPolicy#REJECT_OFF_ORIGIN}, when a redirect would leave the original URL's origin or
@@ -94,7 +94,7 @@ public final class RedirectFollowingFetcher {
    * @throws IOException under {@link RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN}, when a redirect
    *     would downgrade the protocol from {@code https} to {@code http} - refused unconditionally
    *     regardless of policy, only the exception shape differs; or whatever {@link
-   *     RateLimitListener#retrying()} threw to abort a retry.
+   *     RateLimitListener#sending()} threw to abort an attempt.
    */
   public static HttpResponse<InputStream> sendFollowingRedirects(
       HttpClient httpClient,
@@ -107,6 +107,7 @@ public final class RedirectFollowingFetcher {
       throws IOException, InterruptedException {
     RateLimitPolicy rateLimitPolicy = rateLimit.policy();
     for (int attempt = 0; ; attempt++) {
+      rateLimit.listener().sending();
       HttpResponse<InputStream> response =
           sendOnce(httpClient, url, timeout, headers, targetAddressValidator, policy);
       if (response.statusCode() != TOO_MANY_REQUESTS || attempt >= rateLimitPolicy.maxRetries()) {
@@ -123,7 +124,6 @@ public final class RedirectFollowingFetcher {
           rateLimitPolicy.maxRetries());
       rateLimit.listener().throttled(response.statusCode(), wait);
       rateLimit.sleeper().sleep(wait);
-      rateLimit.listener().retrying();
     }
   }
 

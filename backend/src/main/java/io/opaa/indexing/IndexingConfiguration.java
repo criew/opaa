@@ -418,6 +418,7 @@ public class IndexingConfiguration {
       BoundedDownloader boundedDownloader,
       FileProcessingService fileProcessingService,
       DocumentRepository documentRepository,
+      SourceRequestPolicy sourceRequestPolicy,
       CrawlProperties crawlProperties,
       LibraryFolderService libraryFolderService,
       IndexingRunTemplate indexingRunTemplate) {
@@ -428,6 +429,7 @@ public class IndexingConfiguration {
         documentRepository,
         crawlProperties,
         libraryFolderService,
+        sourceRequestPolicy,
         indexingRunTemplate);
   }
 

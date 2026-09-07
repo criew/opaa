@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
  * generalized attachment path (ADR-0022). The download stays with the edition-aware {@link
  * ConfluenceClient}, which owns the credentials, the redirect policy Cloud's media service needs,
  * the request budget and the meter; everything after the bytes is {@link AttachmentIndexer}'s, the
- * outcome count included.
+ * outcome count included. A spent budget passes through untouched, as the run's own end.
  */
 final class ConfluenceAttachmentIndexing {
 
@@ -53,12 +53,10 @@ final class ConfluenceAttachmentIndexing {
       String pagePath,
       UUID pageDocumentId,
       SourceDocumentContext context)
-      throws InterruptedException, ConfluenceAccessException.BudgetExhausted {
+      throws InterruptedException {
     List<ConfluenceAttachment> attachments;
     try {
       attachments = run.client.listAttachments(pageId);
-    } catch (ConfluenceAccessException.BudgetExhausted e) {
-      throw e;
     } catch (ConfluenceAccessException e) {
       run.events.record(
           IndexingEventCategory.UNREACHABLE,
@@ -97,7 +95,7 @@ final class ConfluenceAttachmentIndexing {
       String pagePath,
       UUID pageDocumentId,
       SourceDocumentContext context)
-      throws InterruptedException, ConfluenceAccessException.BudgetExhausted {
+      throws InterruptedException {
     BoundedDownloader.DownloadedFile downloaded = null;
     try {
       downloaded = run.client.downloadAttachment(attachment);
@@ -116,8 +114,6 @@ final class ConfluenceAttachmentIndexing {
       run.events.record(
           IndexingEventCategory.REJECTED, "Anhang überschreitet die Größengrenze", path);
       run.progress.recordAttachment(AttachmentOutcome.SKIPPED);
-    } catch (ConfluenceAccessException.BudgetExhausted e) {
-      throw e;
     } catch (ConfluenceAccessException e) {
       run.events.record(IndexingEventCategory.UNREACHABLE, e.getMessage(), path);
       run.progress.recordAttachment(AttachmentOutcome.FAILED);

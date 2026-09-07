@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.web;
 
 import io.opaa.sourceaccess.BoundedStreams;
+import io.opaa.sourceaccess.RateLimitListener;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import io.opaa.sourceaccess.SourceRequestPolicy;
@@ -90,8 +91,8 @@ public class AutoindexCrawlerService {
   }
 
   /**
-   * Crawls an Apache mod_autoindex URL recursively and returns all discovered file entries
-   * (non-directory entries only).
+   * {@link #crawl(String, String, int, String, String, boolean, RateLimitListener)} without a
+   * listener - for a caller with no run to count on.
    */
   public CrawlResult crawl(
       String baseUrl,
@@ -100,6 +101,24 @@ public class AutoindexCrawlerService {
       String username,
       String password,
       boolean insecureSsl)
+      throws IOException, InterruptedException {
+    return crawl(
+        baseUrl, proxyHost, proxyPort, username, password, insecureSsl, RateLimitListener.NONE);
+  }
+
+  /**
+   * Crawls an Apache mod_autoindex URL recursively and returns all discovered file entries
+   * (non-directory entries only). {@code rateLimitListener} is told about every wait and retry on a
+   * {@code 429}; what it throws ends the crawl.
+   */
+  public CrawlResult crawl(
+      String baseUrl,
+      String proxyHost,
+      int proxyPort,
+      String username,
+      String password,
+      boolean insecureSsl,
+      RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
 
     HttpClient httpClient =
@@ -110,7 +129,15 @@ public class AutoindexCrawlerService {
     List<String> rejectedLinks = new ArrayList<>();
     TruncationTracker truncation = new TruncationTracker();
     crawlRecursive(
-        httpClient, authHeader, baseUrl, 0, results, new HashSet<>(), truncation, rejectedLinks);
+        httpClient,
+        authHeader,
+        baseUrl,
+        0,
+        results,
+        new HashSet<>(),
+        truncation,
+        rejectedLinks,
+        rateLimitListener);
     return new CrawlResult(
         results,
         truncation.depthLimitReached,
@@ -174,7 +201,8 @@ public class AutoindexCrawlerService {
       List<CrawledFileEntry> results,
       Set<String> visited,
       TruncationTracker truncation,
-      List<String> rejectedLinks)
+      List<String> rejectedLinks,
+      RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
 
     if (depth > crawlProperties.maxDepth()) {
@@ -191,7 +219,7 @@ public class AutoindexCrawlerService {
     }
 
     log.debug("Crawling directory: {}", url);
-    String html = fetchPage(httpClient, authHeader, url);
+    String html = fetchPage(httpClient, authHeader, url, rateLimitListener);
     List<CrawledFileEntry> entries = parseDirectory(html, url, depth, rejectedLinks);
 
     for (CrawledFileEntry entry : entries) {
@@ -209,7 +237,8 @@ public class AutoindexCrawlerService {
               results,
               visited,
               truncation,
-              rejectedLinks);
+              rejectedLinks,
+              rateLimitListener);
         } catch (IOException e) {
           truncation.markIncomplete(entry.url(), e);
         }
@@ -311,13 +340,21 @@ public class AutoindexCrawlerService {
    */
   static final int MAX_LISTING_BYTES = 8 * 1024 * 1024;
 
+  /** {@link #fetchPage(HttpClient, String, String, RateLimitListener)} without a listener. */
+  String fetchPage(HttpClient httpClient, String authHeader, String url)
+      throws IOException, InterruptedException {
+    return fetchPage(httpClient, authHeader, url, RateLimitListener.NONE);
+  }
+
   /**
    * Fetches one directory page with the shared {@code User-Agent}, waiting out a {@code 429} under
-   * the shared {@link SourceRequestPolicy}. A directory page is read under a fixed cap, never
-   * unbounded: an oversized page is an {@link IOException} like any other fetch failure, so a
-   * subdirectory is marked incomplete and the root fails the run with a message.
+   * the shared {@link SourceRequestPolicy} and telling {@code rateLimitListener}. A directory page
+   * is read under a fixed cap, never unbounded: an oversized page is an {@link IOException} like
+   * any other fetch failure, so a subdirectory is marked incomplete and the root fails the run with
+   * a message.
    */
-  String fetchPage(HttpClient httpClient, String authHeader, String url)
+  String fetchPage(
+      HttpClient httpClient, String authHeader, String url, RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
     HttpResponse<InputStream> response =
         RedirectFollowingFetcher.sendFollowingRedirects(
@@ -327,7 +364,7 @@ public class AutoindexCrawlerService {
             requestPolicy.headers(authHeader),
             targetAddressValidator,
             RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
-            requestPolicy.rateLimitHandling());
+            requestPolicy.rateLimitHandling(rateLimitListener));
 
     try (InputStream body = response.body()) {
       if (response.statusCode() == 401) {

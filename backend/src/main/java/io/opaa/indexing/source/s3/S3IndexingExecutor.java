@@ -4,7 +4,6 @@ import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.IndexingRunEventRecorder;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
@@ -29,8 +28,8 @@ import org.springframework.scheduling.annotation.Async;
  * has changed, and reports a complete listing so the run frame removes what it did not meet. The
  * key prefixes below each scope are mirrored as read-only folders (ADR-0020, ADR-0027 Entscheidung
  * 5) and pruned after the reconciliation. The run's store is bounded by the request budget and
- * closed with the run; its throttling and request cost are reported whether the sync succeeded or
- * not.
+ * closed with the run; its request meter is handed to the frame, which reports throttling and cost
+ * whether the sync succeeded or not.
  */
 public class S3IndexingExecutor implements SourceIndexingExecutor {
 
@@ -159,6 +158,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
     } catch (S3AccessException e) {
       throw accessFailure(run, e);
     }
+    run.recordRequestCost(store.meter());
     UUID libraryId = library.getId();
     S3SyncState state =
         syncStateRepository.findByLibraryId(libraryId).orElseGet(() -> new S3SyncState(libraryId));
@@ -177,33 +177,11 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
                 syncStateRepository,
                 clock)) {
       return body.run(sync);
-    } finally {
-      reportThrottling(store, run.events());
-      S3RequestMeter meter = store.meter();
-      run.recordRequestCost(
-          meter.requests(),
-          meter.throttles(),
-          meter.throttledTime().toMillis(),
-          meter.bytesDownloaded());
     }
   }
 
   private static IndexingRunFailedException accessFailure(IndexingRun run, S3AccessException e) {
     log.warn("S3 run for library {} failed: {}", run.library().getId(), e.getMessage());
     return new IndexingRunFailedException(e.getMessage(), e);
-  }
-
-  private static void reportThrottling(S3ObjectStore store, IndexingRunEventRecorder events) {
-    S3RequestMeter meter = store.meter();
-    if (meter.throttles() == 0) {
-      return;
-    }
-    events.recordRunNote(
-        IndexingEventCategory.RATE_LIMITED,
-        "Der Objektspeicher hat den Lauf "
-            + meter.throttles()
-            + "-mal gedrosselt (503 SlowDown/429); der Lauf hat insgesamt "
-            + meter.throttledTime().toSeconds()
-            + " Sekunden gewartet statt abzubrechen");
   }
 }

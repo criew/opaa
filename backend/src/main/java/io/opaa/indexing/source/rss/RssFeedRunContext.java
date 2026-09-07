@@ -2,8 +2,10 @@ package io.opaa.indexing.source.rss;
 
 import io.opaa.indexing.IndexingRunEventRecorder;
 import io.opaa.indexing.IndexingRunProgress;
+import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.sourceaccess.RateLimitListener;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -16,8 +18,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <p>{@link #httpClientFor}/{@link #authHeaderFor} withhold {@code sourceInsecureSsl} and {@code
  * Authorization} for any target outside the feed's own origin - an entry's {@code <link>} is
- * content the feed operator controls. {@link #anyEntryDeferred} is the only mutable field: set by
- * the executor or {@code AttachmentIndexer} on any deferral, never reset, and read once before
+ * content the feed operator controls. {@link #requestBudget} counts and bounds every request of the
+ * run - feed, detail pages, attachments. {@link #anyEntryDeferred} is the only mutable field: set
+ * by the executor or {@code AttachmentIndexer} on any deferral, never reset, and read once before
  * deciding whether the conditional-GET state may be saved.
  */
 public record RssFeedRunContext(
@@ -28,13 +31,19 @@ public record RssFeedRunContext(
     String feedUrl,
     IndexingRunProgress progress,
     IndexingRunEventRecorder events,
-    AtomicBoolean anyEntryDeferred)
+    AtomicBoolean anyEntryDeferred,
+    RequestBudget requestBudget)
     implements AttachmentAccess {
 
   /** {@link AttachmentAccess#markDeferred()} - delegates to {@link #anyEntryDeferred}. */
   @Override
   public void markDeferred() {
     anyEntryDeferred.set(true);
+  }
+
+  @Override
+  public RateLimitListener rateLimitListener() {
+    return requestBudget;
   }
 
   /**

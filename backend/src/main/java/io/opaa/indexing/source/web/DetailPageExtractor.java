@@ -5,6 +5,7 @@ import io.opaa.indexing.pipeline.Whitespace;
 import io.opaa.indexing.pipeline.html.HtmlContentRoots;
 import io.opaa.indexing.source.attachment.AttachmentCandidate;
 import io.opaa.sourceaccess.BoundedStreams;
+import io.opaa.sourceaccess.RateLimitListener;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
@@ -56,7 +57,8 @@ public class DetailPageExtractor {
    * Fetches {@code entryUrl} and extracts its main content, following redirects only within {@code
    * entryUrl}'s own origin ({@link RedirectFollowingFetcher.RedirectPolicy#REJECT_OFF_ORIGIN}) - an
    * entry's {@code <link>} is content the feed operator controls, so a redirect leaving that origin
-   * is refused outright rather than followed anonymized.
+   * is refused outright rather than followed anonymized. {@code rateLimitListener} is told about
+   * every wait and retry on a {@code 429}.
    *
    * @throws RejectedByRemoteException if the remote end declined outright (403, or 429 past the
    *     {@link SourceRequestPolicy}'s retries) or a redirect would leave {@code entryUrl}'s own
@@ -65,9 +67,14 @@ public class DetailPageExtractor {
    * @throws IOException if the page exceeds {@link IndexingProperties.Rss#maxPageSizeBytes()} or
    *     any other transport failure
    */
-  public DetailPage fetch(HttpClient httpClient, String entryUrl, String authHeader)
+  public DetailPage fetch(
+      HttpClient httpClient,
+      String entryUrl,
+      String authHeader,
+      RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
-    HttpResponse<InputStream> response = sendDetailPageRequest(httpClient, entryUrl, authHeader);
+    HttpResponse<InputStream> response =
+        sendDetailPageRequest(httpClient, entryUrl, authHeader, rateLimitListener);
 
     // Every path below - the early rejections and the ordinary 200 - must close the response
     // body, hence try-with-resources around the whole evaluation. A foreign-host redirect is
@@ -144,7 +151,10 @@ public class DetailPageExtractor {
    * own origin. A {@code 429} is waited out under the shared {@link SourceRequestPolicy}.
    */
   private HttpResponse<InputStream> sendDetailPageRequest(
-      HttpClient httpClient, String entryUrl, String authHeader)
+      HttpClient httpClient,
+      String entryUrl,
+      String authHeader,
+      RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
     try {
       return RedirectFollowingFetcher.sendFollowingRedirects(
@@ -154,7 +164,7 @@ public class DetailPageExtractor {
           requestPolicy.headers(authHeader),
           targetAddressValidator,
           RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN,
-          requestPolicy.rateLimitHandling());
+          requestPolicy.rateLimitHandling(rateLimitListener));
     } catch (RedirectFollowingFetcher.RedirectRejectedException e) {
       throw new RejectedByRemoteException(e.getMessage(), e.userMessage());
     }

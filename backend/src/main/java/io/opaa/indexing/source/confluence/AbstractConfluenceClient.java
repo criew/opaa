@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.confluence;
 
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.SourceRequestMeter;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -25,7 +26,7 @@ abstract class AbstractConfluenceClient implements ConfluenceClient {
   }
 
   @Override
-  public ConfluenceRequestMeter meter() {
+  public SourceRequestMeter meter() {
     return http.meter();
   }
 

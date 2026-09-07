@@ -3,6 +3,7 @@ package io.opaa.indexing.source.rss;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.sourceaccess.BoundedStreams;
+import io.opaa.sourceaccess.RateLimitListener;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
@@ -58,13 +59,19 @@ class FeedFetcher {
   /**
    * Fetches, reads and parses {@code feedUrl} in one step. An unchanged feed ({@code 304}) returns
    * {@link Optional#empty()} - the run ends with nothing to do; an HTTP error, an unparseable or an
-   * oversized feed ends the run with a German message ({@link IndexingRunFailedException}).
+   * oversized feed ends the run with a German message ({@link IndexingRunFailedException}). {@code
+   * rateLimitListener} is told about every wait and retry on a {@code 429}.
    */
   Optional<LoadedFeed> fetchAndParse(
-      HttpClient httpClient, UUID libraryId, String feedUrl, String authHeader)
+      HttpClient httpClient,
+      UUID libraryId,
+      String feedUrl,
+      String authHeader,
+      RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
     Optional<RssFeedState> feedState = findState(libraryId, feedUrl);
-    HttpResponse<InputStream> feedResponse = fetchFeed(httpClient, feedUrl, feedState, authHeader);
+    HttpResponse<InputStream> feedResponse =
+        fetchFeed(httpClient, feedUrl, feedState, authHeader, rateLimitListener);
 
     if (feedResponse.statusCode() == 304) {
       closeQuietly(feedResponse.body());
@@ -134,7 +141,11 @@ class FeedFetcher {
    * {@code 429} is waited out under the shared {@link SourceRequestPolicy}.
    */
   private HttpResponse<InputStream> fetchFeed(
-      HttpClient httpClient, String feedUrl, Optional<RssFeedState> feedState, String authHeader)
+      HttpClient httpClient,
+      String feedUrl,
+      Optional<RssFeedState> feedState,
+      String authHeader,
+      RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
     Map<String, String> headers = requestPolicy.headers(authHeader);
     feedState.ifPresent(
@@ -153,7 +164,7 @@ class FeedFetcher {
         headers,
         targetAddressValidator,
         RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
-        requestPolicy.rateLimitHandling());
+        requestPolicy.rateLimitHandling(rateLimitListener));
   }
 
   /**

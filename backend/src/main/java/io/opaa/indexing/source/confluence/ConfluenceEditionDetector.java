@@ -2,6 +2,7 @@ package io.opaa.indexing.source.confluence;
 
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
+import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.net.URI;
@@ -55,7 +56,7 @@ public final class ConfluenceEditionDetector {
         ConfluenceConnection.normalizeBaseUrl(rawBaseUrl, ConfluenceEdition.DATA_CENTER);
     URI cloudBase = ConfluenceConnection.normalizeBaseUrl(rawBaseUrl, ConfluenceEdition.CLOUD);
     HttpClient client = SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, insecureSsl);
-    ConfluenceRequestMeter meter = new ConfluenceRequestMeter();
+    SourceRequestMeter meter = new SourceRequestMeter();
     String resource = "die Editionserkennung";
 
     ConfluenceConnection cloud =
@@ -139,7 +140,7 @@ public final class ConfluenceEditionDetector {
       throws ConfluenceAccessException, InterruptedException {
     ConfluenceHttp.validateProxy(targetAddressValidator, proxyHost);
     HttpClient client = SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, insecureSsl);
-    ConfluenceRequestMeter meter = new ConfluenceRequestMeter();
+    SourceRequestMeter meter = new SourceRequestMeter();
     String resource = "die Editionsprüfung";
     URI base = ConfluenceConnection.normalizeBaseUrl(rawBaseUrl, expected);
     ConfluenceConnection connection =

@@ -1,6 +1,8 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.indexing.source.RequestBudgetExhaustedException;
 import io.opaa.sourceaccess.BoundedStreams;
+import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -69,8 +71,8 @@ import software.amazon.awssdk.utils.AttributeMap;
  * the target validation of every request's host in {@link Guard}, the byte ceiling while a download
  * streams, one timeout for connection, socket and attempt, proxy and relaxed TLS from the library's
  * configuration, exponential retries on {@code 503 SlowDown}/{@code 429} counted on the {@link
- * S3RequestMeter}, and the mapping of every failure to a German message without a credential and
- * without the SDK's own exception as cause.
+ * SourceRequestMeter}, and the mapping of every failure to a German message without a credential
+ * and without the SDK's own exception as cause.
  */
 final class AwsSdkS3ObjectStore implements S3ObjectStore {
 
@@ -122,7 +124,7 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   private final TargetAddressValidator targetAddressValidator;
   private final int requestBudget;
   private final Consumer<SdkHttpRequest> requestObserver;
-  private final S3RequestMeter meter = new S3RequestMeter();
+  private final SourceRequestMeter meter = new SourceRequestMeter();
   private final SdkHttpClient httpClient;
   private final S3Client s3;
 
@@ -208,7 +210,7 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
   }
 
   @Override
-  public S3RequestMeter meter() {
+  public SourceRequestMeter meter() {
     return meter;
   }
 
@@ -389,6 +391,10 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
     } catch (S3AccessException e) {
       throw e;
     } catch (Exception e) {
+      BudgetSignal budget = findCause(e, BudgetSignal.class);
+      if (budget != null) {
+        throw RequestBudgetExhaustedException.requests(budget.budget);
+      }
       S3AccessException translated = translate(op, bucket, key, e);
       // the translated message is credential-free by contract; the SDK's own text is not logged
       log.debug(
@@ -408,10 +414,6 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
    * own exception is never attached: its message can carry the request URL and the access key id.
    */
   private S3AccessException translate(Operation op, String bucket, String key, Throwable e) {
-    BudgetSignal budget = findCause(e, BudgetSignal.class);
-    if (budget != null) {
-      return new S3AccessException.BudgetExhausted(budget.budget);
-    }
     TargetSignal target = findCause(e, TargetSignal.class);
     if (target != null) {
       return target.unknownHost

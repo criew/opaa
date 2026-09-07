@@ -1,9 +1,11 @@
 package io.opaa.indexing.source.confluence;
 
+import io.opaa.indexing.source.RequestBudget;
+import io.opaa.indexing.source.RequestBudgetExhaustedException;
 import io.opaa.sourceaccess.BoundedDownloader;
-import io.opaa.sourceaccess.RateLimitListener;
 import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
+import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
@@ -26,9 +28,10 @@ import tools.jackson.databind.json.JsonMapper;
  * The one place both adapters send requests through: adds {@code Authorization}, {@code Accept} and
  * the shared {@code User-Agent}, follows redirects under the shared target validation, waits out
  * {@code 429}/{@code Retry-After} under Confluence's own rate-limit numbers while charging every
- * attempt to the run's budget and meter, bounds every response body, and maps every failure to a
- * {@link ConfluenceAccessException} whose message names resource and status but never a header
- * value or a raw upstream body.
+ * attempt to the run's {@link RequestBudget}, bounds every response body, and maps every failure to
+ * a {@link ConfluenceAccessException} whose message names resource and status but never a header
+ * value or a raw upstream body. A spent budget leaves as {@link RequestBudgetExhaustedException},
+ * untouched by the failure mapping.
  */
 final class ConfluenceHttp {
 
@@ -47,26 +50,12 @@ final class ConfluenceHttp {
   private final TargetAddressValidator targetAddressValidator;
   private final SourceRequestPolicy requestPolicy;
   private final BoundedDownloader downloader;
-  private final ConfluenceRequestMeter meter;
-  private final int requestBudget;
 
   /**
-   * Every attempt after a {@code 429} is a call to the instance like the first: charged to the
-   * budget and counted on the meter, which also records the wait.
+   * Every call is charged here, retries after a {@code 429} included: the budget is the rate-limit
+   * listener of every fetch, charged before each attempt leaves and told every wait.
    */
-  private final RateLimitListener budgetedRetries =
-      new RateLimitListener() {
-        @Override
-        public void throttled(int statusCode, Duration wait) {
-          meter.recordThrottle(wait);
-        }
-
-        @Override
-        public void retrying() throws IOException {
-          chargeBudget();
-          meter.recordRequest();
-        }
-      };
+  private final RequestBudget budget;
 
   ConfluenceHttp(
       HttpClient httpClient,
@@ -74,7 +63,7 @@ final class ConfluenceHttp {
       ConfluenceProperties properties,
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy requestPolicy,
-      ConfluenceRequestMeter meter) {
+      SourceRequestMeter meter) {
     this(httpClient, connection, properties, targetAddressValidator, requestPolicy, meter, null);
   }
 
@@ -85,7 +74,7 @@ final class ConfluenceHttp {
       ConfluenceProperties properties,
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy requestPolicy,
-      ConfluenceRequestMeter meter,
+      SourceRequestMeter meter,
       Duration requestTimeout) {
     this(
         httpClient,
@@ -104,7 +93,8 @@ final class ConfluenceHttp {
    * edition detection, which have no run to continue in. Counted are calls, not wire requests: a
    * redirect chain the fetcher follows counts once, a retry after a {@code 429} counts again.
    * {@code requestPolicy} contributes {@code User-Agent} and sleeper; the rate-limit numbers are
-   * {@code properties}' own.
+   * {@code properties}' own, and its per-run bounds do not apply - Confluence has its own budget
+   * and no cap on the waiting time.
    */
   ConfluenceHttp(
       HttpClient httpClient,
@@ -112,10 +102,10 @@ final class ConfluenceHttp {
       ConfluenceProperties properties,
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy requestPolicy,
-      ConfluenceRequestMeter meter,
+      SourceRequestMeter meter,
       Duration requestTimeout,
       int requestBudget) {
-    this.requestBudget = requestBudget;
+    this.budget = new RequestBudget(meter, requestBudget, null);
     this.requestTimeout = requestTimeout == null ? properties.requestTimeout() : requestTimeout;
     this.httpClient = httpClient;
     this.connection = connection;
@@ -125,13 +115,6 @@ final class ConfluenceHttp {
         requestPolicy.withRateLimit(
             RateLimitPolicy.of(properties.maxRateLimitRetries(), properties.maxRetryAfter()));
     this.downloader = new BoundedDownloader(targetAddressValidator, this.requestPolicy);
-    this.meter = meter;
-  }
-
-  private void chargeBudget() throws ConfluenceAccessException.BudgetExhausted {
-    if (requestBudget > 0 && meter.requests() >= requestBudget) {
-      throw new ConfluenceAccessException.BudgetExhausted(requestBudget);
-    }
   }
 
   private String authorizationHeader() {
@@ -180,10 +163,8 @@ final class ConfluenceHttp {
   Response get(String url, String resource) throws ConfluenceAccessException, InterruptedException {
     Map<String, String> headers = requestPolicy.headers(authorizationHeader());
     headers.put("Accept", "application/json");
-    // the budget counts every call, retries after a 429 included (budgetedRetries) - the meter is
-    // per client, a client is per run, so this is the run's bound.
-    chargeBudget();
-    meter.recordRequest();
+    // the budget counts every call, retries after a 429 included (the fetcher charges it before
+    // each attempt) - the meter is per client, a client is per run, so this is the run's bound.
     HttpResponse<InputStream> response;
     try {
       response =
@@ -194,7 +175,7 @@ final class ConfluenceHttp {
               headers,
               targetAddressValidator,
               RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN,
-              requestPolicy.rateLimitHandling(budgetedRetries));
+              requestPolicy.rateLimitHandling(budget));
     } catch (ConfluenceAccessException e) {
       throw e;
     } catch (IOException e) {
@@ -222,8 +203,6 @@ final class ConfluenceHttp {
       throws ConfluenceAccessException, InterruptedException {
     String resource = "der Anhang " + fileName;
     // a download is a call to the instance like any other - it counts against the budget
-    chargeBudget();
-    meter.recordRequest();
     try {
       return downloader.downloadBounded(
           httpClient,
@@ -232,7 +211,7 @@ final class ConfluenceHttp {
           maxBytes,
           authorizationHeader(),
           RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
-          budgetedRetries);
+          budget);
     } catch (BoundedDownloader.AttachmentTooLargeException e) {
       throw e;
     } catch (ConfluenceAccessException e) {
@@ -265,8 +244,8 @@ final class ConfluenceHttp {
     }
   }
 
-  ConfluenceRequestMeter meter() {
-    return meter;
+  SourceRequestMeter meter() {
+    return budget.meter();
   }
 
   ConfluenceProperties properties() {

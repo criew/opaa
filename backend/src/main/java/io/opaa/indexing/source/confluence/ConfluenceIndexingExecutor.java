@@ -8,7 +8,6 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.IndexingRunEventRecorder;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.pipeline.DocumentProperties;
@@ -47,7 +46,8 @@ import org.springframework.scheduling.annotation.Async;
  * <p>What may delete is narrow (Entscheidung 4): credentials are verified before the first listing,
  * an unlistable space removes nothing, an unreadable page stays indexed, and only {@code trashed}
  * or a page found under a new space's URL removes a page outside the reconciliation. An interrupted
- * full sync resumes from {@link ConfluenceSyncState}, unfinished spaces first.
+ * full sync resumes from {@link ConfluenceSyncState}, unfinished spaces first; a spent request
+ * budget ends the run through the frame, which notes where the next run continues.
  */
 public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
@@ -73,6 +73,9 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   static final String NOT_SELECTED_SUFFIX =
       "liegt in einem nicht ausgewählten Space; der bisherige Stand bleibt bis zum nächsten"
           + " Vollabgleich";
+
+  static final String BUDGET_STALL_ADVICE =
+      "Der Lauf hat keine Seite neu aufgenommen. Budget anheben oder die Space-Auswahl aufteilen.";
 
   private final ConfluenceClientFactory clientFactory;
   private final ConfluenceProperties properties;
@@ -181,8 +184,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
   /**
    * Opens the run's client and verifies the credentials before the first listing (ADR-0023,
-   * Entscheidung 2). Throttling and the request cost are reported whether the sync succeeded or
-   * not; an access failure ends the run with the access layer's own German message.
+   * Entscheidung 2). The request cost is handed to the frame whether the sync succeeded or not; an
+   * access failure ends the run with the access layer's own German message.
    */
   private ListingOutcome withClient(IndexingRun frame, Sync sync) throws InterruptedException {
     ConfluenceConnection connection;
@@ -197,16 +200,13 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     } catch (ConfluenceAccessException e) {
       throw accessFailure(frame, e);
     }
+    frame.recordRequestCost(client.meter());
+    frame.budgetStallAdvice(BUDGET_STALL_ADVICE);
     try {
       client.verifyCredentials();
       return sync.run(new ConfluenceRun(frame, client));
     } catch (ConfluenceAccessException e) {
       throw accessFailure(frame, e);
-    } finally {
-      reportThrottling(client, frame.events());
-      ConfluenceRequestMeter meter = client.meter();
-      frame.recordRequestCost(
-          meter.requests(), meter.throttles(), meter.throttledTime().toMillis());
     }
   }
 
@@ -216,30 +216,9 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     return new IndexingRunFailedException(e.getMessage(), e);
   }
 
-  /**
-   * One protocol note when the budget ran out, naming where the next run continues; the listing
-   * outcome the sync returns for it.
-   */
-  private static ListingOutcome recordBudgetExhausted(
-      ConfluenceRun run, ConfluenceAccessException.BudgetExhausted e, String continuation) {
-    run.events.record(
-        IndexingEventCategory.BUDGET_EXHAUSTED,
-        "Anfragebudget von "
-            + e.budget()
-            + " Anfragen erschöpft; der Lauf endet unvollständig, "
-            + continuation,
-        null);
-    if (run.progress.processedCount() == 0 && run.progress.attachmentsProcessed() == 0) {
-      // a run that stored nothing new will not do better next time - the chain has stalled
-      run.events.record(
-          IndexingEventCategory.ERROR,
-          "Das Anfragebudget von "
-              + e.budget()
-              + " Anfragen reicht für diese Bibliothek nicht aus: Der Lauf hat keine Seite neu"
-              + " aufgenommen. Budget anheben oder die Space-Auswahl aufteilen.",
-          null);
-    }
-    return ListingOutcome.truncated();
+  /** Where the next run continues once this one's budget is spent, for the frame's note. */
+  private static void continuesWith(ConfluenceRun run, String continuation) {
+    run.frame.budgetContinuation(() -> "der Lauf endet unvollständig, " + continuation);
   }
 
   private ListingOutcome fullSync(ConfluenceRun run, Instant startedAt)
@@ -256,12 +235,11 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
     for (ConfluenceSpaceSelection space : spaces) {
       String key = space.getSpaceKey();
+      // the state already holds every completed space - the next run starts with this one
+      continuesWith(run, "der nächste Lauf setzt bei Space " + key + " fort");
       List<ConfluencePageSummary> pages;
       try {
         pages = run.client.listPages(key);
-      } catch (ConfluenceAccessException.BudgetExhausted e) {
-        // the state already holds every completed space - the next run starts with this one
-        return recordBudgetExhausted(run, e, "der nächste Lauf setzt bei Space " + key + " fort");
       } catch (ConfluenceAccessException.Forbidden | ConfluenceAccessException.NotFound e) {
         // ADR-0023, Entscheidung 4: a revoked right is no deletion finding - the run says so and
         // leaves this space's bestand alone.
@@ -276,19 +254,15 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       run.total += pages.size();
       run.progress.setTotal(run.total);
       run.progress.report();
+      // pages already stored keep their version, so the next run re-lists this space cheaply
+      // (listing entries only) and fetches only what is still missing
+      continuesWith(
+          run,
+          "der nächste Lauf setzt bei Space "
+              + key
+              + " fort; bereits gespeicherte Seiten kosten dabei keinen Abruf");
       for (ConfluencePageSummary page : pages) {
-        try {
-          visitPage(run, page, PageVisitPolicy.FULL_SYNC);
-        } catch (ConfluenceAccessException.BudgetExhausted e) {
-          // pages already stored keep their version, so the next run re-lists this space
-          // cheaply (listing entries only) and fetches only what is still missing
-          return recordBudgetExhausted(
-              run,
-              e,
-              "der nächste Lauf setzt bei Space "
-                  + key
-                  + " fort; bereits gespeicherte Seiten kosten dabei keinen Abruf");
-        }
+        visitPage(run, page, PageVisitPolicy.FULL_SYNC);
         run.progress.report();
       }
       state.markSpaceCompleted(key);
@@ -338,23 +312,15 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
                         "Ein inkrementeller Abgleich braucht einen abgeschlossenen Vollabgleich;"
                             + " bitte zuerst einen Vollabgleich starten."));
     Instant since = state.getIncrementalAnchor().minus(properties.incrementalOverlap());
-    String continuation = "der nächste Lauf durchsucht dasselbe Änderungsfenster erneut";
-    List<ConfluencePageSummary> changed;
-    try {
-      changed = run.client.searchPagesModifiedSince(run.selectedKeys, since);
-    } catch (ConfluenceAccessException.BudgetExhausted e) {
-      return recordBudgetExhausted(run, e, continuation);
-    }
+    // the anchor stays when the budget runs out, so the next run searches the same window again
+    continuesWith(run, "der nächste Lauf durchsucht dasselbe Änderungsfenster erneut");
+    List<ConfluencePageSummary> changed =
+        run.client.searchPagesModifiedSince(run.selectedKeys, since);
     run.total = changed.size();
     run.progress.setTotal(run.total);
     run.progress.report();
     for (ConfluencePageSummary summary : changed) {
-      try {
-        visitPage(run, summary, PageVisitPolicy.INCREMENTAL);
-      } catch (ConfluenceAccessException.BudgetExhausted e) {
-        // the anchor stays, so the next run searches the same window again
-        return recordBudgetExhausted(run, e, continuation);
-      }
+      visitPage(run, summary, PageVisitPolicy.INCREMENTAL);
       run.progress.report();
     }
     if (run.progress.failedCount() == 0) {
@@ -372,13 +338,9 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   private ListingOutcome refreshPages(ConfluenceRun run, Set<String> pageIds)
       throws InterruptedException, ConfluenceAccessException {
     run.progress.setTotal(pageIds.size());
+    continuesWith(run, "die übrigen gemeldeten Seiten nimmt der nächste Lauf auf");
     for (String pageId : pageIds.stream().sorted().toList()) {
-      try {
-        visitPage(run, reported(pageId), PageVisitPolicy.WEBHOOK);
-      } catch (ConfluenceAccessException.BudgetExhausted e) {
-        return recordBudgetExhausted(
-            run, e, "die übrigen gemeldeten Seiten nimmt der nächste Lauf auf");
-      }
+      visitPage(run, reported(pageId), PageVisitPolicy.WEBHOOK);
       run.progress.report();
     }
     return ListingOutcome.partial();
@@ -415,7 +377,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
    * present without being reprocessed, so the reconciliation preserves its attachments.
    */
   void visitPage(ConfluenceRun run, ConfluencePageSummary summary, PageVisitPolicy policy)
-      throws InterruptedException, ConfluenceAccessException.BudgetExhausted {
+      throws InterruptedException {
     ConfluencePage page = null;
     if (policy == PageVisitPolicy.WEBHOOK) {
       String id = summary.id();
@@ -502,12 +464,10 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
    * is unreachable and counts as failed. {@code label} opens the note, {@code reference} names it.
    */
   private ConfluencePage fetchPage(ConfluenceRun run, String pageId, String label, String reference)
-      throws InterruptedException, ConfluenceAccessException.BudgetExhausted {
+      throws InterruptedException {
     Optional<ConfluencePage> fetched;
     try {
       fetched = run.client.fetchPage(pageId);
-    } catch (ConfluenceAccessException.BudgetExhausted e) {
-      throw e;
     } catch (ConfluenceAccessException.Forbidden e) {
       fetched = Optional.empty();
     } catch (ConfluenceAccessException e) {
@@ -583,7 +543,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       String pagePath,
       String version,
       SourceDocumentContext pageContext)
-      throws InterruptedException, ConfluenceAccessException.BudgetExhausted {
+      throws InterruptedException {
     String storageBody = page.storageBody() == null ? "" : page.storageBody();
     SourceDocumentContext attachmentContext = pageContext.descend(page.title());
     if (storageBody.isBlank()) {
@@ -618,6 +578,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       pageStored =
           result != FileProcessingResult.QUOTA_EXCEEDED && result != FileProcessingResult.FAILED;
     } catch (Exception e) {
+      IndexingRun.rethrowRunEnding(e);
       run.frame.recordFailure(pagePath, e);
       pageStored = false;
     }
@@ -661,21 +622,5 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
     vectorChunkStore.deleteByDocumentId(document.getId());
     documentRepository.delete(document);
     run.events.record(IndexingEventCategory.REMOVED, message, document.getFilePath());
-  }
-
-  private static void reportThrottling(ConfluenceClient client, IndexingRunEventRecorder events) {
-    ConfluenceRequestMeter meter = client.meter();
-    if (meter.throttles() == 0) {
-      return;
-    }
-    Duration waited = meter.throttledTime();
-    events.record(
-        IndexingEventCategory.RATE_LIMITED,
-        "Confluence hat den Lauf "
-            + meter.throttles()
-            + "-mal gedrosselt (Retry-After); der Lauf hat insgesamt "
-            + waited.toSeconds()
-            + " Sekunden gewartet statt abzubrechen",
-        null);
   }
 }

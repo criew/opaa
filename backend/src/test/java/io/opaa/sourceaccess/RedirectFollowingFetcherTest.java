@@ -293,19 +293,19 @@ class RedirectFollowingFetcherTest {
 
   // --- 429 handling ----------------------------------------------------------------------------
 
-  /** Records what the fetcher told it, so a test can assert on waits and retries. */
+  /** Records what the fetcher told it, so a test can assert on attempts and waits. */
   private static final class RecordingListener implements RateLimitListener {
     final List<Duration> throttled = new ArrayList<>();
-    int retries;
+    int attempts;
+
+    @Override
+    public void sending() {
+      attempts++;
+    }
 
     @Override
     public void throttled(int statusCode, Duration wait) {
       throttled.add(wait);
-    }
-
-    @Override
-    public void retrying() {
-      retries++;
     }
   }
 
@@ -368,7 +368,7 @@ class RedirectFollowingFetcherTest {
         .isEqualTo("content");
     assertThat(sleeps).containsExactly(Duration.ofSeconds(3));
     assertThat(listener.throttled).containsExactly(Duration.ofSeconds(3));
-    assertThat(listener.retries).isEqualTo(1);
+    assertThat(listener.attempts).as("the first attempt and one retry").isEqualTo(2);
     assertThat(startHits.get()).as("the retry starts over at the original URL").isEqualTo(2);
   }
 
@@ -413,7 +413,7 @@ class RedirectFollowingFetcherTest {
     assertThat(response.statusCode()).isEqualTo(429);
     assertThat(sleeps).hasSize(2);
     assertThat(listener.throttled).hasSize(2);
-    assertThat(listener.retries).isEqualTo(2);
+    assertThat(listener.attempts).isEqualTo(3);
   }
 
   @Test
@@ -452,9 +452,13 @@ class RedirectFollowingFetcherTest {
         });
     RateLimitListener budgetExhausted =
         new RateLimitListener() {
+          private int attempts;
+
           @Override
-          public void retrying() throws IOException {
-            throw new IOException("budget spent");
+          public void sending() throws IOException {
+            if (++attempts > 1) {
+              throw new IOException("budget spent");
+            }
           }
         };
 

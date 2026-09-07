@@ -19,6 +19,7 @@ import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.util.List;
 import java.util.UUID;
@@ -78,6 +79,7 @@ class UrlIndexingExecutorTest {
             documentRepository,
             new CrawlProperties(0, 0, 0),
             mock(io.opaa.library.LibraryFolderService.class),
+            SourceRequestPolicy.defaults(),
             new IndexingRunTemplate(
                 jobService,
                 mock(IndexingRunEventRepository.class),

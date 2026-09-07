@@ -102,26 +102,6 @@ public class S3AccessException extends IOException {
     }
   }
 
-  /**
-   * The run's request budget is spent - not a failure of the store or the credentials but the run's
-   * own bound; the executor ends the run in an orderly way and the next run continues.
-   */
-  public static final class BudgetExhausted extends S3AccessException {
-    private final int budget;
-
-    public BudgetExhausted(int budget) {
-      super(
-          "Anfragebudget von "
-              + budget
-              + " Anfragen für diesen Lauf erschöpft; der nächste Lauf setzt fort");
-      this.budget = budget;
-    }
-
-    public int budget() {
-      return budget;
-    }
-  }
-
   public static final class ObjectTooLarge extends S3AccessException {
     public ObjectTooLarge(String bucket, String key, long maxBytes) {
       super(describe(bucket, key, maxBytes));

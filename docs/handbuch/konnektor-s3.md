@@ -265,10 +265,10 @@ Antwortet der Speicher mit `503 SlowDown` oder `429` (oder scheitert ein Versuch
 vorübergehenden Transportfehler), wiederholt der Adapter den Aufruf mit exponentiellem Backoff:
 Basis `retry-backoff` (500 ms), Obergrenze 20 Sekunden, höchstens `max-retries` (5) Wiederholungen.
 Jede Drosselung und jede Wartezeit wird gezählt, nie stillschweigend: Das Protokoll enthält eine
-Zeile der Kategorie „Ratenbegrenzung" — „Der Objektspeicher hat den Lauf n-mal gedrosselt (503
-SlowDown/429); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen" —, egal wie der Lauf
-endet. Bleibt der Speicher auch nach der letzten Wiederholung bei der Drosselung, lautet die
-Meldung „Der Objektspeicher drosselt die Anfragen (HTTP 503/429) auch nach 5 Wiederholungen.":
+Zeile der Kategorie „Ratenbegrenzung" — „Die Quelle hat den Lauf n-mal gedrosselt (HTTP
+429/503); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen", bei jedem Netzkonnektor
+gleich formuliert —, egal wie der Lauf endet. Bleibt der Speicher auch nach der letzten
+Wiederholung bei der Drosselung, lautet die Meldung „Der Objektspeicher drosselt die Anfragen (HTTP 503/429) auch nach 5 Wiederholungen.":
 Trifft das einen **Download**, zählt das Objekt als fehlgeschlagen und der Lauf geht weiter; trifft
 es eine **Auflistung**, scheitert der Lauf — eine dauerhaft gedrosselte Auflistung darf nie als
 unvollständiger Bereich durchgehen, der die Bereinigung nur abschaltet. `max-retries` `0` schaltet
@@ -636,7 +636,7 @@ noch kein Dokument), „Jetzt indizieren", und prüfen, dass dieser Lauf vollst�
 | Format nicht unterstützt | Dateiformat wird nicht unterstützt / … (Content-Type …) | Endung bzw. `Content-Type` eines endungslosen Schlüssels; erwartbar bei Bildern und Archiven |
 | Format nicht unterstützt | N Ordnermarker (Schlüssel endet auf „/“) übersprungen; sie sind keine Dokumente | Sammelnotiz; ein per Konsole angelegter Bucket trägt je Ordner einen Marker |
 | In der Quelle entfernt | In der Quelle nicht mehr gefunden, entfernt / Vom Objektspeicher als gelöscht bestätigt, entfernt | positiver Befund (Vollabgleich bzw. Ereignislauf) |
-| Ratenbegrenzung | Der Objektspeicher hat den Lauf n-mal gedrosselt (503 SlowDown/429); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen | eine Zeile je Lauf; bei Häufung Zeitpläne entzerren oder `download-concurrency` senken |
+| Ratenbegrenzung | Die Quelle hat den Lauf n-mal gedrosselt (HTTP 429/503); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen | eine Zeile je Lauf, bei jedem Netzkonnektor gleich formuliert; bei Häufung Zeitpläne entzerren oder `download-concurrency` senken |
 | Anfragebudget erschöpft | Anfragebudget von … Anfragen erschöpft; der Lauf endet unvollständig, der nächste Lauf listet alle Geltungsbereiche erneut und lädt nur, was noch fehlt | der nächste Lauf setzt fort; bei Dauerzustand Abschnitt 6.3 |
 | Fehler | Das Anfragebudget von … Anfragen reicht für diese Bibliothek nicht aus: Der Lauf hat kein Objekt neu aufgenommen. Budget anheben oder die Geltungsbereiche aufteilen. | Budget anheben oder Bibliothek aufteilen |
 | Fehler | Abgleich des Bestands fehlgeschlagen; der nächste Lauf holt ihn nach | Datenbankfehler beim Bereinigen; der Vollabgleich gilt als nicht abgeschlossen |

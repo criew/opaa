@@ -15,8 +15,10 @@ import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.ReconcilingAttachmentAccess;
+import io.opaa.indexing.source.RequestBudgetExhaustedException;
 import io.opaa.indexing.source.SourceFolderMirror;
 import io.opaa.library.LibraryFolderService;
+import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -54,9 +56,9 @@ import org.slf4j.LoggerFactory;
  * present whatever its outcome, the change feature (Entscheidung 4) decides before any download,
  * and only a listing that reached the last page of every scope reports {@link
  * ListingOutcome.Complete}. A scope the credentials cannot list leaves its bestand alone and is
- * named in the protocol and the assessment; a spent request budget ends the run truncated; a
- * store-wide failure (credentials, clock, TLS, reachability) fails the run with the access layer's
- * own sentence.
+ * named in the protocol and the assessment; a spent request budget ends the run truncated through
+ * the frame, which notes where the next run continues; a store-wide failure (credentials, clock,
+ * TLS, reachability) fails the run with the access layer's own sentence.
  *
  * <p>Resumption ({@link S3SyncState}): a run after an interrupted one lists every scope again - the
  * scopes the interrupted run did not finish first - and saves only the downloads, since an object
@@ -82,6 +84,9 @@ final class S3FullSync implements AutoCloseable {
           + " und werden entfernt, falls ein früherer Lauf sie aufgenommen hat";
   static final String RECONCILIATION_FAILED_MESSAGE =
       "Abgleich des Bestands fehlgeschlagen; der nächste Lauf holt ihn nach";
+  static final String BUDGET_STALL_ADVICE =
+      "Der Lauf hat kein Objekt neu aufgenommen. Budget anheben oder die Geltungsbereiche"
+          + " aufteilen.";
 
   private final IndexingRun frame;
   private final S3ObjectStore store;
@@ -162,6 +167,9 @@ final class S3FullSync implements AutoCloseable {
     List<S3Scope> ordered = orderForResumption(scopes, state);
     state.beginFullSync(frame.jobId());
     S3SyncState saved = syncStateRepository.save(state);
+    // the state holds every scope listed completely so far - the next run starts with the rest
+    frame.budgetContinuation(this::fullSyncContinuation);
+    frame.budgetStallAdvice(BUDGET_STALL_ADVICE);
     try {
       for (S3Scope scope : ordered) {
         Instant scopeStart = clock.instant();
@@ -173,9 +181,6 @@ final class S3FullSync implements AutoCloseable {
           saved = syncStateRepository.save(saved);
         }
       }
-    } catch (S3AccessException.BudgetExhausted e) {
-      // the state holds every scope listed completely so far - the next run starts with the rest
-      return recordBudgetExhausted(e);
     } finally {
       // the figures belong to a failed run as well - they are the diagnosis of "too many objects"
       recordSummaries();
@@ -223,14 +228,15 @@ final class S3FullSync implements AutoCloseable {
   ListingOutcome refresh(Set<String> references, int dropped) throws InterruptedException {
     frame.progress().setTotal(references.size());
     frame.progress().report();
+    // no next event run continues this batch: the scheduled run covers the rest
+    frame.budgetContinuation(
+        () -> "die übrigen gemeldeten Objekte nimmt der nächste geplante Lauf auf");
     try {
       for (String reference : references.stream().sorted().toList()) {
         checkReported(reference);
         frame.progress().report();
       }
       drainAll();
-    } catch (S3AccessException.BudgetExhausted e) {
-      return recordBudgetExhausted(e);
     } finally {
       if (dropped > 0) {
         frame
@@ -242,8 +248,7 @@ final class S3FullSync implements AutoCloseable {
     return ListingOutcome.partial();
   }
 
-  private void checkReported(String reference)
-      throws S3AccessException.BudgetExhausted, InterruptedException {
+  private void checkReported(String reference) throws InterruptedException {
     int slash = reference.indexOf('/');
     String bucket = slash < 0 ? reference : reference.substring(0, slash);
     String key = slash < 0 ? "" : reference.substring(slash + 1);
@@ -363,15 +368,12 @@ final class S3FullSync implements AutoCloseable {
    * @return whether the scope was listed to its last page - {@code false} for a scope the
    *     credentials cannot list, which stays out of the state and is listed first next time
    */
-  private boolean listScope(S3Scope scope)
-      throws S3AccessException.BudgetExhausted, InterruptedException {
+  private boolean listScope(S3Scope scope) throws InterruptedException {
     String token = null;
     do {
       S3ListPage page;
       try {
         page = store.listObjects(scope, token);
-      } catch (S3AccessException.BudgetExhausted e) {
-        throw e;
       } catch (S3AccessException.ListForbidden
           | S3AccessException.BucketNotFound
           | S3AccessException.ListingIncomplete e) {
@@ -428,8 +430,7 @@ final class S3FullSync implements AutoCloseable {
    * document path. An extension-less key costs one {@code HeadObject} whose content type decides
    * (Entscheidung 5).
    */
-  private void visitObject(S3Scope scope, S3ObjectSummary object)
-      throws S3AccessException.BudgetExhausted, InterruptedException {
+  private void visitObject(S3Scope scope, S3ObjectSummary object) throws InterruptedException {
     String bucket = scope.bucket();
     String key = object.key();
     String filePath = filePath(bucket, key);
@@ -500,7 +501,7 @@ final class S3FullSync implements AutoCloseable {
       String fileName,
       String marker,
       UUID folderId)
-      throws S3AccessException.BudgetExhausted, InterruptedException {
+      throws InterruptedException {
     int concurrency = properties.downloadConcurrency();
     if (concurrency <= 1) {
       S3Download download = fetch(scope, object, filePath);
@@ -542,8 +543,11 @@ final class S3FullSync implements AutoCloseable {
     return downloadPool;
   }
 
-  /** Ingests the oldest download in flight, waiting for it if it is not done yet. */
-  private void drainOne() throws S3AccessException.BudgetExhausted, InterruptedException {
+  /**
+   * Ingests the oldest download in flight, waiting for it if it is not done yet. A budget spent on
+   * the download thread ends the run like one spent on the listing thread.
+   */
+  private void drainOne() throws InterruptedException {
     PendingDownload item = pending.poll();
     if (item == null) {
       return;
@@ -552,6 +556,9 @@ final class S3FullSync implements AutoCloseable {
     try {
       download = item.download().get();
     } catch (ExecutionException e) {
+      if (e.getCause() instanceof RequestBudgetExhaustedException exhausted) {
+        throw exhausted;
+      }
       if (e.getCause() instanceof S3AccessException failure) {
         handleObjectFailure(item.filePath(), failure);
       } else {
@@ -569,7 +576,7 @@ final class S3FullSync implements AutoCloseable {
         download);
   }
 
-  private void drainAll() throws S3AccessException.BudgetExhausted, InterruptedException {
+  private void drainAll() throws InterruptedException {
     while (!pending.isEmpty()) {
       drainOne();
     }
@@ -633,7 +640,7 @@ final class S3FullSync implements AutoCloseable {
 
   /** The {@code HeadObject} of an extension-less key: admitted when its content type is. */
   private boolean headAdmits(String bucket, String key, String filePath)
-      throws S3AccessException.BudgetExhausted, InterruptedException {
+      throws InterruptedException {
     S3ObjectHead head;
     try {
       head = store.headObject(bucket, key);
@@ -660,7 +667,7 @@ final class S3FullSync implements AutoCloseable {
 
   /** The object's bytes in a temp file, or {@code null} once the failure was handled. */
   private S3Download fetch(S3Scope scope, S3ObjectSummary object, String filePath)
-      throws S3AccessException.BudgetExhausted, InterruptedException {
+      throws InterruptedException {
     try {
       return store.getObject(scope.bucket(), object.key(), properties.maxObjectSizeBytes());
     } catch (S3AccessException e) {
@@ -676,7 +683,8 @@ final class S3FullSync implements AutoCloseable {
       String fileName,
       String marker,
       UUID folderId,
-      S3Download download) {
+      S3Download download)
+      throws InterruptedException {
     Path file = download.file();
     try {
       String changeMarker =
@@ -715,6 +723,7 @@ final class S3FullSync implements AutoCloseable {
             filePath);
       }
     } catch (Exception e) {
+      IndexingRun.rethrowRunEnding(e);
       frame.recordFailure(filePath, e);
     } finally {
       landed.remove(file);
@@ -734,17 +743,14 @@ final class S3FullSync implements AutoCloseable {
   /**
    * What one object's failed head or download means: a missing object is the positive finding a
    * deletion needs (Entscheidung 3) and leaves the reconciliation set, a refused read or an archive
-   * state keeps the stored version, a spent budget ends the run, a store-wide failure (credentials,
-   * clock, TLS, blocked target, wrong region, unreachable) fails it, and anything else - a throttle
-   * that outlasted its retries, an unexpected answer for this one object - counts as failed while
-   * the run goes on.
+   * state keeps the stored version, a store-wide failure (credentials, clock, TLS, blocked target,
+   * wrong region, unreachable) fails the run, and anything else - a throttle that outlasted its
+   * retries, an unexpected answer for this one object - counts as failed while the run goes on.
    *
    * @return always {@code false}: the object is not admitted to a download
    */
-  private boolean handleObjectFailure(String filePath, S3AccessException e)
-      throws S3AccessException.BudgetExhausted {
+  private boolean handleObjectFailure(String filePath, S3AccessException e) {
     switch (e) {
-      case S3AccessException.BudgetExhausted budget -> throw budget;
       case S3AccessException.ObjectNotFound gone -> {
         frame.markAbsent(filePath);
         skip(IndexingEventCategory.REJECTED, gone.getMessage() + GONE_SUFFIX, filePath);
@@ -806,7 +812,7 @@ final class S3FullSync implements AutoCloseable {
   }
 
   private String summaryMessage() {
-    S3RequestMeter meter = store.meter();
+    SourceRequestMeter meter = store.meter();
     long checked =
         frame.progress().processedCount()
             + frame.progress().skippedCount()
@@ -854,42 +860,13 @@ final class S3FullSync implements AutoCloseable {
         + units[unit];
   }
 
-  private ListingOutcome recordBudgetExhausted(S3AccessException.BudgetExhausted e) {
-    if (eventRun()) {
-      // no next event run continues this batch: the scheduled run covers the rest
-      frame
-          .events()
-          .recordRunNote(
-              IndexingEventCategory.BUDGET_EXHAUSTED,
-              "Anfragebudget von "
-                  + e.budget()
-                  + " Anfragen erschöpft; die übrigen gemeldeten Objekte nimmt der nächste"
-                  + " geplante Lauf auf");
-      return ListingOutcome.truncated();
-    }
-    frame
-        .events()
-        .recordRunNote(
-            IndexingEventCategory.BUDGET_EXHAUSTED,
-            "Anfragebudget von "
-                + e.budget()
-                + " Anfragen erschöpft; der Lauf endet unvollständig, der nächste Lauf listet"
-                + " alle Geltungsbereiche erneut und lädt nur, was noch fehlt"
-                + (unlistableScopeKeys.isEmpty()
-                    ? ""
-                    : "; bis dahin nicht auflistbar: " + String.join(", ", unlistableScopeKeys)));
-    if (frame.progress().processedCount() == 0 && frame.progress().attachmentsProcessed() == 0) {
-      // a run that stored nothing new will not do better next time - the chain has stalled
-      frame
-          .events()
-          .recordRunNote(
-              IndexingEventCategory.ERROR,
-              "Das Anfragebudget von "
-                  + e.budget()
-                  + " Anfragen reicht für diese Bibliothek nicht aus: Der Lauf hat kein Objekt"
-                  + " neu aufgenommen. Budget anheben oder die Geltungsbereiche aufteilen.");
-    }
-    return ListingOutcome.truncated();
+  /** Where the next full sync continues once this one's budget is spent, for the frame's note. */
+  private String fullSyncContinuation() {
+    return "der Lauf endet unvollständig, der nächste Lauf listet alle Geltungsbereiche erneut und"
+        + " lädt nur, was noch fehlt"
+        + (unlistableScopeKeys.isEmpty()
+            ? ""
+            : "; bis dahin nicht auflistbar: " + String.join(", ", unlistableScopeKeys));
   }
 
   private String tooManyObjectsMessage() {
