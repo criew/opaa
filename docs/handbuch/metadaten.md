@@ -521,7 +521,7 @@ nicht.** Eine handausgewertete Stichprobe über 100 Dokumente der Demo-Instanz (
 waren **46 falsch** (93,9 %), während die **regelbasiert** ermittelte Dokumentart auf derselben
 Stichprobe fehlerfrei blieb (0 von 23). Fehlerfrei ist damit die Dokumentart, nicht die
 regelbasierte Ermittlung insgesamt: Titel (14 %) und Datum/Stand (27 %) tragen falsche Werte, die
-sämtlich deterministisch entstanden sind — dazu die beiden Befunde unter #1360. Die Konfidenz trennt dabei nicht richtig von falsch, sondern nur „geantwortet" von
+sämtlich deterministisch entstanden sind (dazu der letzte Punkt unten). Die Konfidenz trennt dabei nicht richtig von falsch, sondern nur „geantwortet" von
 „enthalten": Auf der Stufe 0,85 war kein einziger der 42 Werte richtig. Ursache ist nicht die
 Schwelle, sondern eine Vokabularlücke — für 63 der 100 Dokumente gibt es keinen passenden Wert, und
 das Modell greift dann zum nächstbesten.
@@ -531,12 +531,13 @@ Daraus folgt für den Betrieb:
 - Der Schalter bleibt **voreingestellt aus**, und er sollte auf einem Bestand ohne passendes
   Vokabular ausgeschaltet bleiben. Die regelbasierte Ermittlung und die Sammelzuweisung (Abschnitt 7)
   sind dort der verlässliche Weg.
-- Die Konfidenzschwelle wird mit **Ticket #1359** von 0,80 auf **0,90** angehoben, das Vokabular um
-  Verwaltungswerte erweitert und der Prompt um Negativbeispiele ergänzt. Bis dahin gilt der in
-  Abschnitt 5.3 beschriebene Stand.
-- Zwei weitere Befunde derselben Stichprobe betreffen die regelbasierte Ermittlung und sind in
-  **Ticket #1360** erfasst: Datumsangaben aus Dateieigenschaften sind bei generierten Dokumenten
-  unbrauchbar, und der Titel-Fallback auf den Dateinamen greift zu früh.
+- Noch nicht gebaut (Ticket #1359): Die Konfidenzschwelle steigt von 0,80 auf **0,90**, das
+  Vokabular wird um Verwaltungswerte erweitert und der Prompt um Negativbeispiele ergänzt. Bis dahin
+  gilt der in Abschnitt 5.3 beschriebene Stand.
+- Noch nicht gebaut (Ticket #1360): Datumsangaben aus Dateieigenschaften werden bei generierten
+  Dokumenten verworfen, und der Titel-Fallback auf den Dateinamen greift später. Heute sind beide
+  Werte in solchen Fällen unbrauchbar bzw. zu früh gesetzt — die Titel- und Datumsfehler der
+  Stichprobe oben gehen darauf zurück.
 
 ## 15. Nicht gebaut
 

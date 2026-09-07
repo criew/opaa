@@ -3,8 +3,7 @@
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für S3-kompatible Objektspeicher — AWS S3,
 > MinIO, Ceph RGW, Hetzner Object Storage und jeden weiteren Dienst, der `ListObjectsV2`,
 > `HeadBucket`, `HeadObject` und `GetObject` mit Signature v4 bedient. Der gemeinsame Ablauf eines
-> Indexierungslaufs und die Dokumentstrecke stehen im Kapitel [Indexierung](indexierung.md); die
-> Entwurfsentscheidungen in [ADR-0027](../decisions/0027-s3-konnektor.md).
+> Indexierungslaufs und die Dokumentstrecke stehen im Kapitel [Indexierung](indexierung.md).
 
 **Kurzfassung für den eiligen Betrieb**
 

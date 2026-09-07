@@ -176,10 +176,10 @@ Anhangs-Einträge (nicht unterstützt, Formatabweichung, nicht lesbar, Verarbeit
 
 | Schlüssel | Umgebungsvariable | Standard | Wirkung |
 |---|---|---|---|
-| `opaa.indexing.filesystem.allowlist` | `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` | leer | Kommagetrennte absolute Basisverzeichnisse. Leer schaltet den Quellentyp ab. Bis zur Umsetzung von #1271 heißt der Schlüssel noch `opaa.indexing.filesystem-allowlist`. |
+| `opaa.indexing.filesystem.allowlist` | `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` | leer | Kommagetrennte absolute Basisverzeichnisse. Leer schaltet den Quellentyp ab. |
 | `opaa.indexing.thread-pool.core-size` / `max-size` / `queue-capacity` | `OPAA_INDEXING_THREAD_POOL_*` | 2 / 4 / 20 | Pool für alle Konnektorläufe |
 | `opaa.indexing.stale-job-timeout` | `OPAA_INDEXING_STALE_JOB_TIMEOUT` | `4h` | Lauf ohne Fortschritt gilt danach als verwaist |
-| `opaa.library.quota-bytes` | `OPAA_LIBRARY_QUOTA_BYTES` | 10 GiB | Speicherkontingent je Bibliothek, 0 oder negativ hebt es auf. Bis zur Umsetzung von #1273 heißt der Schlüssel noch `opaa.upload.library-quota-bytes`. |
+| `opaa.library.quota-bytes` | `OPAA_LIBRARY_QUOTA_BYTES` | 10 GiB | Speicherkontingent je Bibliothek, 0 oder negativ hebt es auf. |
 
 Chunking- und Embedding-Einstellungen gelten für alle Quellen und stehen im Kapitel
 [Indexierung](indexierung.md); die Grenzen für Mail-Anhänge im Kapitel [E-Mail](format-mail.md).
