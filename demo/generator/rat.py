@@ -7,9 +7,11 @@ records archive an administration keeps in an object store. The keys are what th
 MinIO bucket is seeded with (docker-compose.yml, service "minio-seed"), so the year prefixes
 become folders in the library.
 
-Every subject here is deliberately absent from the other five libraries (no fees, no
-Meldewesen rules, no press-office topics): a question about a council decision is only
-answerable from this library, which is what the demo smoke run asserts (e2e/demo-smoke).
+The council decisions here (budgets, the digitalisation strategy, the mobile citizen office, the
+fire station, the school bus, heat planning) are covered by no other library - a question about
+one of them is only answerable from here. Shared background such as the town festival or the
+citizen office's staffing may appear elsewhere; the demo smoke run does not rely on exclusivity
+but scopes its question to this library with an @-reference (e2e/demo-smoke).
 
 All dates are fixed literals; the output is byte-identical across generator runs.
 """

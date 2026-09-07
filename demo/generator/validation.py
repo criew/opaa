@@ -3,9 +3,9 @@ still carries a real Munich identifier (PR #717 review, WICHTIG 2).
 
 Runs against two kinds of text, per library:
 
-- Leistungen Meldewesen & Ausweise / Kfz-Zulassung: the actually rendered
-  `.md`/`.txt` file content (these are plain text, so validating the final
-  output costs nothing extra).
+- Leistungen Meldewesen & Ausweise / Kfz-Zulassung and Ratsinformationen:
+  the actually rendered `.md`/`.txt` file content (these are plain text, so
+  validating the final output costs nothing extra).
 - Satzungen, Pressemitteilungen, Interne Dienstanweisungen: the underlying
   Python string content *before* it is handed to reportlab/python-docx/
   python-pptx ("auf Quelltextebene vor dem Rendern" — the two are

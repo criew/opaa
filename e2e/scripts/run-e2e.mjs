@@ -208,7 +208,7 @@ function runSeed() {
     `http://localhost:${backendPort}/api`,
   ]
   if (isDemo) {
-    // The Rheinfurt corpus (~150-300 documents across four connector-fed libraries plus 26
+    // The Rheinfurt corpus (~150-300 documents across five connector-fed libraries plus 26
     // uploads) takes noticeably longer to index than the "e2e" profile's single seed document,
     // even with ai-stub's deterministic, near-instant embeddings - most of the time goes into
     // Tika parsing the PDF/DOCX/PPTX uploads and the HTTP_DIRECTORY/RSS_FEED crawls themselves.

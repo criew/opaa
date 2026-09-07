@@ -348,9 +348,10 @@ Einrichtungsassistent, 3-Stunden-Testlizenz, Administrator, zwei Token mit unter
 Space-Rechten und ein definierter Testinhalt vollautomatisch — und prüft Editionserkennung,
 Space-Auflistung, Seiten- und Anhangsabruf und das sichtbare Überspringen nicht lesbarer Inhalte
 dagegen; in CI nächtlich und je PR per Label `confluence-suite`, nie im regulären Build. Cloud lässt
-sich nicht containerisieren und bleibt Sache des Testdoppels. Als sechster Typ ist **`S3`** geplant
-(Epic #1291, [ADR-0027](../decisions/0027-s3-konnektor.md)), siehe
-[S3-Objektspeicher](#s3-objektspeicher-geplant). Weitere Quellklassen kommen bedarfsgetrieben hinzu, jede
+sich nicht containerisieren und bleibt Sache des Testdoppels. Der sechste Typ ist **`S3`** (Epic
+#1291, [ADR-0027](../decisions/0027-s3-konnektor.md)), gebaut mit MinIO im Container als Testdoppel
+im regulären Build, siehe [S3-Objektspeicher](#s3-objektspeicher-gebaut). Weitere Quellklassen
+kommen bedarfsgetrieben hinzu, jede
 als neuer Bibliothekstyp (Template); die Anbindung an Dokumentenmanagement und elektronische Akte
 gehört in den Ausblick der Produktvision.
 

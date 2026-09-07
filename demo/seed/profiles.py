@@ -26,6 +26,7 @@ obtained.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -78,7 +79,7 @@ class LibraryDef:
     # typed settings the API's S3Settings schema takes (pathStyle, scopes, patterns). Documented
     # demo values, never secrets - the bucket lives in the demo stack's own MinIO (docker-compose.yml).
     source_credentials: str | None = None
-    s3_settings: dict | None = None
+    s3_settings: Mapping[str, object] | None = None  # read-only by contract, like every field here
 
 
 @dataclass(frozen=True)

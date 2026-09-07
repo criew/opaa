@@ -199,7 +199,8 @@ services:
   # corpus directory demo/corpus/ratsinformationen/ into it under the key prefix the seed's
   # library scope names (bucket "rheinfurt-archiv", prefix "ratsinformationen/"), year folders
   # included - so the S3 library shows one folder per year. Idempotent ("mc mb --ignore-existing",
-  # "mc mirror --overwrite"), runs to completion and exits; e2e/docker-compose.demo-smoke.yml makes
+  # "mc mirror --overwrite --remove": the bucket ends up as an exact copy of the directory, an
+  # object removed from the corpus disappears on the next start), runs to completion and exits; e2e/docker-compose.demo-smoke.yml makes
   # the backend wait for it so the seed never indexes a half-filled bucket.
   minio-seed:
     image: minio/minio:RELEASE.2025-09-07T16-13-09Z
@@ -209,7 +210,7 @@ services:
     command: >-
       "mc alias set demo http://minio:9000 rheinfurt-archiv 'RheinfurtDemo!2026' >/dev/null &&
       mc mb --ignore-existing demo/rheinfurt-archiv &&
-      mc mirror --overwrite /corpus/ratsinformationen demo/rheinfurt-archiv/ratsinformationen &&
+      mc mirror --overwrite --remove /corpus/ratsinformationen demo/rheinfurt-archiv/ratsinformationen &&
       mc ls --recursive demo/rheinfurt-archiv"
     depends_on:
       minio:
