@@ -64,8 +64,14 @@ class MinioS3ObjectStoreTest {
 
   @Test
   void aPrivateEndpointIsRefusedWithoutAnAllowlistEntryAndReachedWithOne() throws Exception {
-    // Assurance (ADR-0027, Entscheidung 8): the container's loopback address is exactly the
-    // private target the validation blocks; only an operator's allowlist entry opens it.
+    // Assurance (ADR-0027, Entscheidung 8): the container's address is exactly the private target
+    // the validation blocks; only an operator's allowlist entry opens it. Holds for a local Docker
+    // socket (loopback or bridge gateway) - a remote DOCKER_HOST on a public address is not that
+    // case, so the test steps aside there instead of failing for the wrong reason.
+    java.net.InetAddress host = java.net.InetAddress.getByName(minio.endpoint().getHost());
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        host.isLoopbackAddress() || host.isSiteLocalAddress(),
+        "the MinIO endpoint is not a private address; the blocking case needs a local Docker host");
     S3Properties properties = S3Properties.defaults();
     List<S3Scope> scopes = List.of(S3Scope.of(bucket, ""));
     assertThatThrownBy(

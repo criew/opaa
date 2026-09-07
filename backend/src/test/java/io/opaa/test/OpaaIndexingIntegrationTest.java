@@ -31,10 +31,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * creates its own subdirectory under that base via {@link
  * OpaaIndexingTestDirectory#subdirectory(String)}, but that subdirectory is a filesystem
  * convenience, not a data-isolation boundary: every class carrying this signature shares one
- * database against one Spring context, so a class's own {@code @BeforeEach} must wipe the shared
- * tables it touches (e.g. {@code TRUNCATE TABLE vector_store}, {@code
- * documentRepository.deleteAll()}) exactly as it already does today, and must never assert against
- * an unfiltered table - only against rows scoped to the library/document ids it created itself.
+ * database against one Spring context ({@link OpaaIndexingTargetAllowlistInitializer} likewise
+ * opens the target validation for the Docker host address once, for the whole signature), so a
+ * class's own {@code @BeforeEach} must wipe the shared tables it touches (e.g. {@code TRUNCATE
+ * TABLE vector_store}, {@code documentRepository.deleteAll()}) exactly as it already does today,
+ * and must never assert against an unfiltered table - only against rows scoped to the
+ * library/document ids it created itself.
  *
  * <p>{@link OpaaIndexingMockConfiguration} supplies the shared {@code ChatModel}/{@code
  * ActiveChatModelResolver}/{@code EmbeddingModel} beans; {@link OpaaIndexingMockResetListener}
@@ -63,7 +65,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Import({TestcontainersConfiguration.class, OpaaIndexingMockConfiguration.class})
 @ActiveProfiles({"local", "dev"})
 @Testcontainers(disabledWithoutDocker = true)
-@ContextConfiguration(initializers = OpaaIndexingFilesystemAllowlistInitializer.class)
+@ContextConfiguration(
+    initializers = {
+      OpaaIndexingFilesystemAllowlistInitializer.class,
+      OpaaIndexingTargetAllowlistInitializer.class
+    })
 @TestExecutionListeners(
     listeners = OpaaIndexingMockResetListener.class,
     mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)

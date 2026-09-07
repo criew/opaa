@@ -29,7 +29,6 @@ import io.opaa.organization.Organization;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.time.Clock;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -42,7 +41,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * The full sync against a real object store over the real, Spring-wired document path (ADR-0027,
@@ -53,9 +51,13 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * MinIO container per JVM (~3 s start), a handful of small objects per test, well under a minute in
  * total.
  */
-@Testcontainers(disabledWithoutDocker = true)
 @OpaaIndexingIntegrationTest
 class S3FullSyncMinioIntegrationTest {
+
+  private static final String FIRST_TEXT = "Erste Fassung.";
+  private static final String SECOND_TEXT = "Zweite Fassung mit mehr Text.";
+  private static final String SMALL_TEXT = "klein";
+  private static final String SESSION_TEXT = "Sitzung vom 6. September.";
 
   @Autowired private FileProcessingService fileProcessingService;
   @Autowired private IndexingJobService indexingJobService;
@@ -161,11 +163,25 @@ class S3FullSyncMinioIntegrationTest {
     return library(minio.rootCredentials(), scopes, null, null);
   }
 
+  /** The production defaults (request budget included) with only the size bound replaced. */
+  private static S3Properties withMaxObjectSize(long maxObjectSizeBytes) {
+    S3Properties defaults = S3Properties.defaults();
+    return new S3Properties(
+        defaults.listPageSize(),
+        maxObjectSizeBytes,
+        defaults.requestTimeout(),
+        defaults.maxRetries(),
+        defaults.retryBackoff(),
+        defaults.requestBudgetPerRun(),
+        defaults.tempDirectory(),
+        defaults.maxObjectsPerRun(),
+        defaults.downloadConcurrency());
+  }
+
   private S3IndexingExecutor executor(long maxObjectSizeBytes) {
-    // the container lives on the loopback address: the target validation is switched off for this
-    // hand-built executor exactly as for the URL directory tests, not in the shared context
-    S3Properties properties =
-        new S3Properties(0, maxObjectSizeBytes, Duration.ofSeconds(10), null, null, 0, null, 0, 0);
+    // the hand-built executor carries its own, disabled validator exactly as the URL directory
+    // tests do; the shared context's validator is not involved
+    S3Properties properties = withMaxObjectSize(maxObjectSizeBytes);
     return new S3IndexingExecutor(
         new S3ClientFactory(properties, TargetAddressValidator.disabled()),
         properties,
@@ -198,6 +214,10 @@ class S3FullSyncMinioIntegrationTest {
     return run(library, 0);
   }
 
+  private static long utf8Length(String text) {
+    return text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+  }
+
   private Optional<Document> documentAt(KnowledgeLibrary library, String bucketName, String key) {
     return documentRepository.findByLibraryIdAndFilePath(
         library.getId(), S3FullSync.filePath(bucketName, key));
@@ -221,8 +241,7 @@ class S3FullSyncMinioIntegrationTest {
     // Assurance: the first run takes up every supported object of the scope with the real store's
     // ETag as change feature; a folder marker and an unsupported format never become documents.
     minio.putObject(bucket, "2025/protokolle/", new byte[0], "application/x-directory");
-    minio.putObject(
-        bucket, "2025/protokolle/sitzung.txt", "Sitzung vom 6. September.", "text/plain");
+    minio.putObject(bucket, "2025/protokolle/sitzung.txt", SESSION_TEXT, "text/plain");
     minio.putObject(bucket, "2025/protokolle/foto.png", new byte[64], "image/png");
     KnowledgeLibrary library = library(List.of(S3Scope.of(bucket, "2025/")));
 
@@ -231,7 +250,9 @@ class S3FullSyncMinioIntegrationTest {
     Document sitzung = documentAt(library, bucket, "2025/protokolle/sitzung.txt").orElseThrow();
     assertThat(sitzung.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(sitzung.getSourceType()).isEqualTo(DocumentSourceType.S3);
-    assertThat(sitzung.getLastModifiedRemote()).startsWith("e:").endsWith("|25");
+    assertThat(sitzung.getLastModifiedRemote())
+        .startsWith("e:")
+        .endsWith("|" + utf8Length(SESSION_TEXT));
     assertThat(sitzung.getSourceContainerKey()).isEqualTo(bucket);
     assertThat(sitzung.getSourceHierarchyPath()).isEqualTo("protokolle");
     assertThat(documentAt(library, bucket, "2025/protokolle/")).isEmpty();
@@ -248,7 +269,7 @@ class S3FullSyncMinioIntegrationTest {
   void anUnchangedObjectCostsNoDownloadAndAChangedOneKeepsItsDocumentId() {
     // Assurance: the ETag the real store reports is stable across runs, so the second run lists
     // only (one request, nothing downloaded); a changed object is re-indexed under the same id.
-    minio.putObject(bucket, "a.txt", "Erste Fassung.", "text/plain");
+    minio.putObject(bucket, "a.txt", FIRST_TEXT, "text/plain");
     KnowledgeLibrary library = library(List.of(S3Scope.of(bucket, "")));
     run(library);
     Document first = documentAt(library, bucket, "a.txt").orElseThrow();
@@ -259,20 +280,20 @@ class S3FullSyncMinioIntegrationTest {
     assertThat(unchanged.getMetrics().requestsSent()).as("the listing only").isEqualTo(1);
     assertThat(unchanged.getMetrics().bytesDownloaded()).isZero();
 
-    minio.putObject(bucket, "a.txt", "Zweite Fassung mit mehr Text.", "text/plain");
+    minio.putObject(bucket, "a.txt", SECOND_TEXT, "text/plain");
     IndexingJob changed = run(library);
     Document second = documentAt(library, bucket, "a.txt").orElseThrow();
     assertThat(changed.getDocumentsProcessed()).isEqualTo(1);
     assertThat(second.getId()).isEqualTo(first.getId());
     assertThat(second.getChecksum()).isNotEqualTo(first.getChecksum());
     assertThat(second.getLastModifiedRemote()).isNotEqualTo(first.getLastModifiedRemote());
-    assertThat(changed.getMetrics().bytesDownloaded()).isEqualTo(29);
+    assertThat(changed.getMetrics().bytesDownloaded()).isEqualTo(utf8Length(SECOND_TEXT));
   }
 
   @Test
   void aRemovedObjectDisappearsAfterACompleteRunButNotAfterAnUnlistableScope() {
     // Assurance: deletion needs a complete listing; a scope the credentials cannot list (a real
-    // 403 from the store) keeps the whole bestand and is named in the assessment.
+    // 403 from the store) keeps the whole document set and is named in the assessment.
     minio.putObject(bucket, "bleibt.txt", "Bleibt.", "text/plain");
     minio.putObject(bucket, "geht.txt", "Geht.", "text/plain");
     String geheim = minio.createBucket("opaa-geheim");
@@ -313,7 +334,7 @@ class S3FullSyncMinioIntegrationTest {
   }
 
   @Test
-  void patternsPrefixesAndSeveralScopesShapeTheBestandAndTheFolderTree() {
+  void patternsPrefixesAndSeveralScopesShapeTheDocumentSetAndTheFolderTree() {
     // Assurance: include/exclude globs apply to the full key; with one scope its prefix is the
     // root, with two scopes each has its own root chain of bucket and prefix segments.
     minio.putObject(bucket, "2025/q1/a.txt", "A.", "text/plain");
@@ -351,8 +372,8 @@ class S3FullSyncMinioIntegrationTest {
   @Test
   void anObjectOverTheSizeBoundIsRefusedBeforeItsDownloadAndStaysPresent() {
     // Assurance: the listed size is checked against the bound before any transfer; the object is
-    // named in the protocol, stays part of the bestand and never becomes a document.
-    minio.putObject(bucket, "klein.txt", "klein", "text/plain");
+    // named in the protocol, stays part of the document set and never becomes a document.
+    minio.putObject(bucket, "klein.txt", SMALL_TEXT, "text/plain");
     minio.putObject(bucket, "riesig.txt", new byte[4096], "text/plain");
     KnowledgeLibrary library = library(List.of(S3Scope.of(bucket, "")));
 
@@ -360,7 +381,7 @@ class S3FullSyncMinioIntegrationTest {
 
     assertThat(documentAt(library, bucket, "klein.txt")).isPresent();
     assertThat(documentAt(library, bucket, "riesig.txt")).isEmpty();
-    assertThat(job.getMetrics().bytesDownloaded()).isEqualTo(5);
+    assertThat(job.getMetrics().bytesDownloaded()).isEqualTo(utf8Length(SMALL_TEXT));
     assertThat(eventsOf(job, IndexingEventCategory.REJECTED))
         .extracting(IndexingRunEvent::getMessage)
         .anySatisfy(message -> assertThat(message).contains("Größenobergrenze von 1024 Bytes"));

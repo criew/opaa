@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,12 +32,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.MinIOContainer;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -51,32 +48,36 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 /**
  * The event path against MinIO's real webhook (ADR-0027, Entscheidung 6; #1382): a dedicated MinIO
- * container notifies the running test backend through the sshd port forward Testcontainers opens
- * for the backend's random port, so the bytes on the wire are what a real store sends - MinIO's
- * {@code Authorization: Bearer <auth_token>}, its {@code Records} envelope, its URL-encoded keys.
- * The whole chain runs for real: the security chain of the intake, the token check, the debounce,
- * the EVENT run with its {@code HeadObject} finding, the document path. Skipped without Docker; the
- * CI runs it. Budget: one extra MinIO container (~3 s), one sshd sidecar, and two debounce waits (5
- * s each) - under 30 s. The webhook target is configured through MinIO's environment at start, the
- * way a Compose deployment would do it.
+ * container per test notifies the running test backend through the sshd port forward Testcontainers
+ * opens for the backend's random port, so the bytes on the wire are what a real store sends -
+ * MinIO's {@code Authorization: Bearer <auth_token>}, its {@code Records} envelope, its URL-encoded
+ * keys. The whole chain runs for real: the security chain of the intake, the token check, the
+ * debounce, the EVENT run with its {@code HeadObject} finding, the document path. The webhook
+ * target is configured through MinIO's environment at start, the way a Compose deployment would do
+ * it.
  *
- * <p>The context forks on the target-validation allowlist: the real executor bean must be allowed
- * to reach the container on the Docker host address, which the shared context refuses by design.
- * The address is only known at runtime (loopback on a plain host, the bridge gateway inside a
- * container), hence the {@code @DynamicPropertySource}.
+ * <p>The real executor bean reaches the container because the shared context's target-validation
+ * allowlist names the Docker host address ({@code OpaaIndexingTargetAllowlistInitializer}); this
+ * class therefore shares its context with every other {@link OpaaIndexingIntegrationTest}. Budget:
+ * one extra MinIO container and one sshd sidecar per test method (~3 s each), plus one debounce
+ * wait per expected run; the CI runs it.
  */
-@Testcontainers(disabledWithoutDocker = true)
 @OpaaIndexingIntegrationTest
 class S3EventPathMinioIntegrationTest {
 
   private static final String TOKEN = "ereignis-token-fuer-den-test";
+  private static final String FOREIGN_BUCKET = "opaa-fremd";
 
-  @DynamicPropertySource
-  static void allowTheDockerHost(DynamicPropertyRegistry registry) {
-    registry.add(
-        "opaa.indexing.target-validation.allowlist",
-        () -> DockerClientFactory.instance().dockerHostIpAddress());
-  }
+  /** Longer than the intake's debounce (5 s) plus one run over a few small objects. */
+  private static final Duration RUN_TIMEOUT = Duration.ofSeconds(60);
+
+  /**
+   * The negative case has to outlast the debounce window it must not trigger: the 5 s debounce plus
+   * slack for a batch that waited on a running run.
+   */
+  private static final Duration SILENCE = Duration.ofSeconds(8);
+
+  private static final Duration POLL = Duration.ofMillis(500);
 
   @Autowired private Environment environment;
   @Autowired private DocumentRepository documentRepository;
@@ -154,9 +155,9 @@ class S3EventPathMinioIntegrationTest {
             .responseChecksumValidation(ResponseChecksumValidation.WHEN_REQUIRED)
             .build();
     admin.createBucket(CreateBucketRequest.builder().bucket(bucket).build());
-    admin.createBucket(CreateBucketRequest.builder().bucket("opaa-fremd").build());
+    admin.createBucket(CreateBucketRequest.builder().bucket(FOREIGN_BUCKET).build());
     mc("mc event add local/" + bucket + " arn:minio:sqs::OPAA:webhook --event put,delete");
-    mc("mc event add local/opaa-fremd arn:minio:sqs::OPAA:webhook --event put,delete");
+    mc("mc event add local/" + FOREIGN_BUCKET + " arn:minio:sqs::OPAA:webhook --event put,delete");
 
     library.updateSourceConfiguration(
         null, minio.getS3URL(), null, minio.getUserName() + ":" + minio.getPassword(), false);
@@ -165,24 +166,36 @@ class S3EventPathMinioIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    List<Document> documents =
-        documentRepository.findByLibraryIdAndSourceType(library.getId(), DocumentSourceType.S3);
-    documents.stream()
-        .sorted(Comparator.comparingInt((Document d) -> d.getFilePath().length()).reversed())
-        .forEach(
-            document -> {
-              vectorChunkStore.deleteByDocumentId(document.getId());
-              documentRepository.delete(document);
-            });
-    jdbcTemplate.update(
-        "DELETE FROM indexing_run_events WHERE job_id IN"
-            + " (SELECT id FROM indexing_jobs WHERE library_id = ?)",
-        library.getId());
-    jdbcTemplate.update("DELETE FROM indexing_jobs WHERE library_id = ?", library.getId());
-    libraryRepository.deleteById(library.getId());
-    jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
-    admin.close();
-    minio.stop();
+    try {
+      if (library != null) {
+        List<Document> documents =
+            documentRepository.findByLibraryIdAndSourceType(library.getId(), DocumentSourceType.S3);
+        documents.stream()
+            .sorted(Comparator.comparingInt((Document d) -> d.getFilePath().length()).reversed())
+            .forEach(
+                document -> {
+                  vectorChunkStore.deleteByDocumentId(document.getId());
+                  documentRepository.delete(document);
+                });
+        jdbcTemplate.update(
+            "DELETE FROM indexing_run_events WHERE job_id IN"
+                + " (SELECT id FROM indexing_jobs WHERE library_id = ?)",
+            library.getId());
+        jdbcTemplate.update("DELETE FROM indexing_jobs WHERE library_id = ?", library.getId());
+        libraryRepository.deleteById(library.getId());
+      }
+      if (userId != null) {
+        jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
+      }
+    } finally {
+      // the container must go even when a delete above throws - Ryuk would only reap it at exit
+      if (admin != null) {
+        admin.close();
+      }
+      if (minio != null) {
+        minio.stop();
+      }
+    }
   }
 
   private void mc(String command) throws Exception {
@@ -205,70 +218,89 @@ class S3EventPathMinioIntegrationTest {
         RequestBody.fromBytes(text.getBytes(StandardCharsets.UTF_8)));
   }
 
-  private java.util.Optional<Document> documentAt(String key) {
+  private Optional<Document> documentAt(String key) {
     return documentRepository.findByLibraryIdAndFilePath(
         library.getId(), S3FullSync.filePath(bucket, key));
   }
 
-  private long runsOfLibrary() {
-    return indexingJobRepository.findAll().stream()
-        .filter(job -> library.getId().equals(job.getLibraryId()))
-        .count();
+  private List<IndexingJob> runsOfLibrary() {
+    return indexingJobRepository.findByLibraryIdOrderByStartedAtDesc(library.getId());
+  }
+
+  /**
+   * Waits until the library has exactly {@code count} runs and the newest one has completed - the
+   * job's end state is the later anchor: the run template records cost and counters after the last
+   * document became visible.
+   */
+  private IndexingJob awaitRuns(int count) {
+    await()
+        .atMost(RUN_TIMEOUT)
+        .pollInterval(POLL)
+        .untilAsserted(
+            () -> {
+              List<IndexingJob> runs = runsOfLibrary();
+              assertThat(runs).hasSize(count);
+              assertThat(runs.getFirst().getStatus()).isEqualTo(JobStatus.COMPLETED);
+            });
+    return runsOfLibrary().getFirst();
   }
 
   @Test
-  void aCreatedObjectIsIndexedAndARemovedOneRemovedThroughMinIOsOwnWebhook() {
-    // Assurance: MinIO's notification reaches the intake with its Bearer auth_token and Records
-    // body, is debounced into one EVENT run with trigger WEBHOOK, and the run indexes exactly the
-    // reported object; the removal event leads to a HeadObject 404 that removes the document.
-    put(bucket, "eingang/Sitzung 1.txt", "Protokoll der ersten Sitzung.");
+  void createdObjectsAreDebouncedIntoOneRunAndARemovedOneIsRemovedThroughMinIOsOwnWebhook() {
+    // Assurance: MinIO's notifications reach the intake with the Bearer auth_token and Records
+    // body; three objects put within the debounce window cost ONE event run (trigger WEBHOOK, no
+    // listing assessment) that indexes exactly those three; a removal event leads to a HeadObject
+    // 404 that removes the document in a second run.
+    List<String> keys =
+        List.of("eingang/Sitzung 1.txt", "eingang/Sitzung 2.txt", "eingang/Sitzung 3.txt");
+    for (String key : keys) {
+      put(bucket, key, "Protokoll: " + key);
+    }
 
-    await()
-        .atMost(Duration.ofSeconds(60))
-        .pollInterval(Duration.ofMillis(500))
-        .untilAsserted(
-            () ->
-                assertThat(documentAt("eingang/Sitzung 1.txt"))
-                    .hasValueSatisfying(
-                        document ->
-                            assertThat(document.getStatus()).isEqualTo(DocumentStatus.INDEXED)));
-    List<IndexingJob> runs =
-        indexingJobRepository.findAll().stream()
-            .filter(job -> library.getId().equals(job.getLibraryId()))
-            .toList();
-    assertThat(runs).hasSize(1);
-    IndexingJob eventRun = runs.getFirst();
+    IndexingJob eventRun = awaitRuns(1);
     assertThat(eventRun.getRunMode()).isEqualTo(IndexingRunMode.EVENT);
     assertThat(eventRun.getTriggeredBy()).isEqualTo(JobTriggerSource.WEBHOOK);
-    assertThat(eventRun.getStatus()).isEqualTo(JobStatus.COMPLETED);
-    assertThat(eventRun.getDocumentsProcessed()).isEqualTo(1);
+    assertThat(eventRun.getDocumentsProcessed()).as("one run, three objects").isEqualTo(3);
     assertThat(eventRun.getListingComplete())
         .as("an event run never assesses the listing")
         .isNull();
+    for (String key : keys) {
+      assertThat(documentAt(key))
+          .as(key)
+          .hasValueSatisfying(
+              document -> assertThat(document.getStatus()).isEqualTo(DocumentStatus.INDEXED));
+    }
 
     admin.deleteObject(
-        DeleteObjectRequest.builder().bucket(bucket).key("eingang/Sitzung 1.txt").build());
+        DeleteObjectRequest.builder().bucket(bucket).key("eingang/Sitzung 2.txt").build());
 
-    await()
-        .atMost(Duration.ofSeconds(60))
-        .pollInterval(Duration.ofMillis(500))
-        .untilAsserted(() -> assertThat(documentAt("eingang/Sitzung 1.txt")).isEmpty());
-    assertThat(runsOfLibrary()).isEqualTo(2);
+    IndexingJob removalRun = awaitRuns(2);
+    assertThat(removalRun.getRunMode()).isEqualTo(IndexingRunMode.EVENT);
+    assertThat(documentAt("eingang/Sitzung 2.txt")).isEmpty();
+    assertThat(documentAt("eingang/Sitzung 1.txt")).isPresent();
+    assertThat(documentAt("eingang/Sitzung 3.txt")).isPresent();
   }
 
   @Test
-  void anEventForABucketOutsideTheScopesStartsNoRun() {
+  void anEventForABucketOutsideTheScopesIsDroppedWhileTheInScopeOneOfTheSameBatchRuns() {
     // Assurance: a notification for a bucket the library does not cover is authenticated, dropped
-    // and never turned into a run - MinIO delivers it, OPAA counts it away.
-    long before = runsOfLibrary();
-    put("opaa-fremd", "x.txt", "fremd");
+    // and never turned into a run. The in-scope object put in the same debounce window is the
+    // control: its run proves the wire was up, and that run carries exactly one object - the
+    // foreign one contributed nothing. Then silence: no second run follows.
+    put(FOREIGN_BUCKET, "x.txt", "Fremdes Protokoll, nicht im Geltungsbereich.");
+    put(bucket, "eigen.txt", "Eigenes Protokoll der Sitzung im Geltungsbereich.");
 
-    await()
-        .during(Duration.ofSeconds(8))
-        .atMost(Duration.ofSeconds(9))
-        .until(() -> runsOfLibrary() == before);
+    IndexingJob run = awaitRuns(1);
+    assertThat(run.getDocumentsProcessed()).isEqualTo(1);
     assertThat(
             documentRepository.findByLibraryIdAndSourceType(library.getId(), DocumentSourceType.S3))
-        .isEmpty();
+        .extracting(Document::getFilePath)
+        .containsExactly(S3FullSync.filePath(bucket, "eigen.txt"));
+
+    await()
+        .during(SILENCE)
+        .atMost(SILENCE.plus(Duration.ofSeconds(4)))
+        .pollInterval(POLL)
+        .until(() -> runsOfLibrary().size() == 1);
   }
 }
