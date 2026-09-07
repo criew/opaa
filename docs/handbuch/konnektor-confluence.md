@@ -269,8 +269,9 @@ Jede Änderung steht im Audit-Protokoll mit dem Feldnamen `confluenceWebhookSecr
 Wert.
 
 Der Eingang muss für die Instanz erreichbar sein (Firewall- oder Proxy-Regel von Confluence zu
-OPAA). Er ist einer der wenigen Pfade unter `/api/v1`, die ohne Anmeldung erreichbar sind, und der
-einzige schreibende; die Nachricht weist sich mit dem Geheimnis aus. Der vorgelagerte Proxy **muss**
+OPAA). Er ist einer der wenigen Pfade unter `/api/v1`, die ohne Anmeldung erreichbar sind, und
+neben dem S3-Ereigniseingang (`s3-events`) einer von zwei schreibenden; die Nachricht weist sich
+mit dem Geheimnis aus. Der vorgelagerte Proxy **muss**
 `X-Forwarded-For` autoritativ setzen (siehe [Deployment](deployment.md)), sonst greift die
 Ratenbegrenzung je Client nicht.
 

@@ -166,6 +166,7 @@ class S3FolderMappingIntegrationTest {
         fileProcessingService,
         documentRepository,
         folderService,
+        vectorChunkStore,
         syncStateRepository,
         Clock.systemUTC(),
         indexingRunTemplate);

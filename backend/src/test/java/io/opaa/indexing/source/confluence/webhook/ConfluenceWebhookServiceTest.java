@@ -89,7 +89,7 @@ class ConfluenceWebhookServiceTest {
             false);
     library.configureConfluence(
         ConfluenceEdition.DATA_CENTER, List.of(new ConfluenceSpaceSelection("ENG", null)));
-    library.setConfluenceWebhookSecret(SECRET);
+    library.setWebhookSecret(SECRET);
     libraryId = UUID.randomUUID();
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     IndexingJob job = new IndexingJob(JobStatus.RUNNING);
@@ -134,7 +134,7 @@ class ConfluenceWebhookServiceTest {
     assertThatThrownBy(() -> service.accept(unknown, body, good, null))
         .isInstanceOf(UnauthorizedException.class)
         .hasMessage(ConfluenceWebhookService.UNAUTHORIZED_MESSAGE);
-    library.setConfluenceWebhookSecret(null);
+    library.setWebhookSecret(null);
     assertThatThrownBy(() -> service.accept(libraryId, body, good, SECRET))
         .as("no secret stored: nothing authenticates, not even the former secret")
         .isInstanceOf(UnauthorizedException.class);
@@ -260,7 +260,7 @@ class ConfluenceWebhookServiceTest {
   @Test
   void aLibraryWhoseWebhookWasRemovedMeanwhileIsDroppedSilently() {
     acceptSigned(body("102"));
-    library.setConfluenceWebhookSecret(null);
+    library.setWebhookSecret(null);
 
     scheduled.get(0).run();
 

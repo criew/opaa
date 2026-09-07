@@ -1689,40 +1689,74 @@ public class KnowledgeLibraryService {
    */
   @Transactional
   public String generateConfluenceWebhookSecret(UUID libraryId, CurrentUser caller) {
-    KnowledgeLibrary library = requireConfluenceLibraryForWebhook(libraryId, caller);
-    byte[] random = new byte[WEBHOOK_SECRET_BYTES];
-    secureRandom.nextBytes(random);
-    String secret = Base64.getUrlEncoder().withoutPadding().encodeToString(random);
-    library.setConfluenceWebhookSecret(secret);
-    libraryRepository.save(library);
-    recordWebhookSecretChange(library, caller);
-    return secret;
+    return generatePushSecret(libraryId, caller, DocumentSourceType.CONFLUENCE);
   }
 
   /** Removes the webhook secret (#1140): the endpoint rejects every call from now on. */
   @Transactional
   public void removeConfluenceWebhookSecret(UUID libraryId, CurrentUser caller) {
-    KnowledgeLibrary library = requireConfluenceLibraryForWebhook(libraryId, caller);
-    if (library.getConfluenceWebhookSecret() == null) {
-      return;
-    }
-    library.setConfluenceWebhookSecret(null);
-    libraryRepository.save(library);
-    recordWebhookSecretChange(library, caller);
+    removePushSecret(libraryId, caller, DocumentSourceType.CONFLUENCE);
   }
 
-  private KnowledgeLibrary requireConfluenceLibraryForWebhook(UUID libraryId, CurrentUser caller) {
+  /**
+   * Generates (or rotates) the event token of an S3 library (ADR-0027, Entscheidung 6) and returns
+   * it exactly once - the same secret column, encryption path and audit trail as the Confluence
+   * webhook secret.
+   */
+  @Transactional
+  public String generateS3EventsToken(UUID libraryId, CurrentUser caller) {
+    return generatePushSecret(libraryId, caller, DocumentSourceType.S3);
+  }
+
+  /** Removes the event token: the library's event endpoint rejects every call from now on. */
+  @Transactional
+  public void removeS3EventsToken(UUID libraryId, CurrentUser caller) {
+    removePushSecret(libraryId, caller, DocumentSourceType.S3);
+  }
+
+  private String generatePushSecret(
+      UUID libraryId, CurrentUser caller, DocumentSourceType expectedType) {
+    KnowledgeLibrary library = requireLibraryWithPushIntake(libraryId, caller, expectedType);
+    byte[] random = new byte[WEBHOOK_SECRET_BYTES];
+    secureRandom.nextBytes(random);
+    String secret = Base64.getUrlEncoder().withoutPadding().encodeToString(random);
+    library.setWebhookSecret(secret);
+    libraryRepository.save(library);
+    recordPushSecretChange(library, caller);
+    return secret;
+  }
+
+  private void removePushSecret(
+      UUID libraryId, CurrentUser caller, DocumentSourceType expectedType) {
+    KnowledgeLibrary library = requireLibraryWithPushIntake(libraryId, caller, expectedType);
+    if (library.getWebhookSecret() == null) {
+      return;
+    }
+    library.setWebhookSecret(null);
+    libraryRepository.save(library);
+    recordPushSecretChange(library, caller);
+  }
+
+  private KnowledgeLibrary requireLibraryWithPushIntake(
+      UUID libraryId, CurrentUser caller, DocumentSourceType expectedType) {
     KnowledgeLibrary library = loadLibrary(libraryId, caller);
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.MANAGER);
-    if (library.getSourceType() != DocumentSourceType.CONFLUENCE) {
+    if (library.getSourceType() != expectedType) {
       throw new ValidationException(
-          "Ein Webhook-Geheimnis gibt es nur für Bibliotheken vom Typ CONFLUENCE");
+          expectedType == DocumentSourceType.S3
+              ? "Ein Ereignis-Token gibt es nur für Bibliotheken vom Typ S3"
+              : "Ein Webhook-Geheimnis gibt es nur für Bibliotheken vom Typ CONFLUENCE");
     }
     return library;
   }
 
-  private void recordWebhookSecretChange(KnowledgeLibrary library, CurrentUser caller) {
-    List<String> changedFields = List.of("confluenceWebhookSecret");
+  /** The audit names the field of the library's type, never the value. */
+  private void recordPushSecretChange(KnowledgeLibrary library, CurrentUser caller) {
+    List<String> changedFields =
+        List.of(
+            library.getSourceType() == DocumentSourceType.S3
+                ? "s3EventsToken"
+                : "confluenceWebhookSecret");
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
             .organizationId(library.getOrganizationId())
@@ -1801,7 +1835,11 @@ public class KnowledgeLibraryService {
         library.getSourceCredentials() != null,
         // #1140: the same yes/no for the webhook secret - it is shown once, at generation.
         library.getSourceType() == DocumentSourceType.CONFLUENCE
-            ? library.getConfluenceWebhookSecret() != null
+            ? library.getWebhookSecret() != null
+            : null,
+        // ADR-0027, Entscheidung 6: the S3 event token, same column, same yes/no
+        library.getSourceType() == DocumentSourceType.S3
+            ? library.getWebhookSecret() != null
             : null,
         library.getSourceType() == DocumentSourceType.CONFLUENCE
             ? library.getConfluenceFullSyncIntervalDays()

@@ -20,5 +20,12 @@ public enum IndexingRunMode {
    * from this run's window. The only mode RSS_FEED knows; for CONFLUENCE the routine run between
    * two full reconciliations.
    */
-  INCREMENTAL
+  INCREMENTAL,
+  /**
+   * Exactly the object keys an event notification named, checked one by one (ADR-0027, Entscheidung
+   * 3): no listing, no change search, a removal only on the store's own {@code 404}. Started by the
+   * notification alone ({@code JobTriggerSource.WEBHOOK}), never requested by hand or by the
+   * schedule. The second mode of S3.
+   */
+  EVENT
 }

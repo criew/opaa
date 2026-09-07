@@ -262,6 +262,9 @@ const indexingRunEventCategoryLabels: Record<IndexingRunEventCategory, string> =
 const indexingRunModeLabels: Record<IndexingRunMode, string> = {
   FULL: 'Vollabgleich',
   INCREMENTAL: 'Inkrementell',
+  // ADR-0027, Entscheidung 3 (#1381): the run an S3 event notification starts - reported keys
+  // checked one by one, never a listing.
+  EVENT: 'Ereignislauf',
 }
 
 export function indexingRunModeLabel(mode: IndexingRunMode | string | undefined): string {

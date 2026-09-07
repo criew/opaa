@@ -108,7 +108,7 @@ flowchart TB
 |---|---|
 | **Manuell** | „Jetzt indizieren" an der Bibliothek, in der Betriebsart, die der Konnektor für den Zustand der Bibliothek vorsieht. Genügt die Rolle EDITOR an der Bibliothek. Bei Confluence gibt es zusätzlich „Vollabgleich starten". |
 | **Zeitplan** | Je Bibliothek einstellbar, Details unten. |
-| **Webhook** | Nur Confluence: Die Instanz meldet geänderte Seiten, OPAA holt wenige Sekunden später genau diese Seiten in einem kurzen Lauf „per Webhook". Ersetzt weder Zeitplan noch Vollabgleich. |
+| **Webhook / Ereignis** | Confluence: Die Instanz meldet geänderte Seiten, OPAA holt wenige Sekunden später genau diese Seiten in einem kurzen Lauf „per Webhook". S3: Der Objektspeicher meldet erzeugte oder gelöschte Objekte (MinIO-Webhook, Ceph-Topic, EventBridge), OPAA prüft die gemeldeten Schlüssel wenige Sekunden später einzeln in einem **Ereignislauf** — ein bestätigtes `404` entfernt das Dokument samt Anhängen, sonst gilt der Stand des Speichers. Ersetzt weder Zeitplan noch Vollabgleich. |
 | **Upload** | Kein Lauf. Jede Datei geht sofort einzeln durch die Dokumentstrecke, auf einem eigenen Thread-Pool, damit ein Upload nie hinter einem langen Verzeichnislauf wartet. |
 | **Nachzug (Admin)** | Kein regulärer Lauf. Ein Systemadministrator stößt die Neuverarbeitung von Dokumenten an, die mit einer älteren Pipeline-Version erzeugt wurden (Abschnitt 9), oder den Bestandslauf der Kernfelder (Kapitel [Metadaten](metadaten.md)). |
 
@@ -214,7 +214,7 @@ Was ein Konnektor liefern muss, ist für alle gleich:
 | HTTP_DIRECTORY | vollständig | ja, wenn der Crawl weder abgeschnitten noch unvollständig war |
 | RSS_FEED | ergänzend | nie |
 | CONFLUENCE | Vollabgleich (vollständig), inkrementell (ergänzend) | nur der Vollabgleich, und nur bei vollständiger Auflistung aller Spaces |
-| S3 | Vollabgleich (vollständig) | ja, nur bei vollständiger Auflistung aller Geltungsbereiche; ein Bereich, der nicht gelistet werden darf oder dessen Bucket fehlt, lässt den Bestand stehen |
+| S3 | Vollabgleich (vollständig), Ereignislauf (ergänzend, nur per Benachrichtigung) | nur der Vollabgleich, und nur bei vollständiger Auflistung aller Geltungsbereiche; ein Bereich, der nicht gelistet werden darf oder dessen Bucket fehlt, lässt den Bestand stehen. Der Ereignislauf löscht nur auf Befund des Speichers (`404`) |
 
 ```mermaid
 flowchart LR
@@ -490,7 +490,7 @@ genutzt); die Tiefe ist allgemein (`opaa.indexing.attachments.max-depth`).
 | Datei geändert | alte Chunks entfernt, neue erzeugt, Dokument-ID bleibt |
 | Datei umbenannt oder verschoben | neuer Pfad ist ein neues Dokument, alter Pfad gilt als entfernt |
 | Datei verschwunden | Dokument samt Chunks wird am Ende eines **vollständig auflistenden, erfolgreichen** Laufs entfernt |
-| Quelle meldet die Löschung selbst (Confluence: Seite im Papierkorb, Seite in einen anderen Space verschoben; S3: Objekt zwischen Auflistung und Abruf verschwunden) | Dokument samt Anhängen wird sofort entfernt (Confluence, in jeder Betriebsart) bzw. am Ende des vollständigen Laufs (S3) |
+| Quelle meldet die Löschung selbst (Confluence: Seite im Papierkorb, Seite in einen anderen Space verschoben; S3: Objekt zwischen Auflistung und Abruf verschwunden oder im Ereignislauf per `HeadObject` als `404` bestätigt) | Dokument samt Anhängen wird sofort entfernt (Confluence in jeder Betriebsart, S3 im Ereignislauf) bzw. am Ende des vollständigen Laufs (S3-Vollabgleich) |
 | S3-Objekt mit neuem ETag, aber gleichem Inhalt (erneuter Upload, Multipart, Verschlüsselungswechsel) | heruntergeladen, Prüfsumme gleich: Merkmal nachgetragen, Dokument-ID und Chunks bleiben |
 | S3-Objekt übersprungen (Ordnermarker, Archivklasse, nicht unterstütztes Format, zu groß, nicht lesbar) | gilt als gesehen, nichts wird entfernt; das Protokoll nennt es |
 | S3-Schlüssel außerhalb der Ein-/Ausschlussmuster oder eines abgewählten Geltungsbereichs | nicht mehr Teil des Bestands, wird am Ende des vollständigen Laufs entfernt |
@@ -573,7 +573,8 @@ Jeder Lauf zeigt zusätzlich eine Kennzahlenzeile mit Anhängen (indiziert, übe
 fehlgeschlagen) und Dauer. Anfragen an die Quelle und Drosselungen erscheinen bei den Konnektoren,
 die sie zählen (Confluence, S3), geladene Bytes bei S3. Bei Confluence und S3 kommen außerdem das
 Kennzeichen „unvollständig, wird fortgesetzt" und die dauerhaft sichtbare Warnung einer
-unvollständigen Auflistung hinzu; die Betriebsart nur bei Confluence.
+unvollständigen Auflistung hinzu; die Betriebsart bei Confluence (Vollabgleich, inkrementell) und
+S3 (Vollabgleich, Ereignislauf).
 
 Systemweit sieht ein Systemadministrator zusätzlich eine Liste der Dokumente **ohne einen
 einzigen Chunk**, der typische Befund für eingescannte PDFs, sowie den Pipeline-Versionsstand je

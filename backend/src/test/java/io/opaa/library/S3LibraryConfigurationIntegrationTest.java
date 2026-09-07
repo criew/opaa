@@ -288,6 +288,60 @@ class S3LibraryConfigurationIntegrationTest {
   }
 
   @Test
+  void theEventTokenIsGeneratedOnceEncryptedAtRestRotatedAndRemovedWithAnAuditTrail() {
+    UUID owner = user();
+    CurrentUser caller = currentUser(owner);
+    UUID libraryId =
+        libraryService.createLibrary(s3("Protokolle", ENDPOINT).build(), caller).library().getId();
+    assertThat(libraryService.getLibrary(libraryId, caller).managementDetail().s3EventsTokenSet())
+        .isFalse();
+
+    String first = libraryService.generateS3EventsToken(libraryId, caller);
+    assertThat(first).hasSize(43).matches("[A-Za-z0-9_-]+");
+    assertThat(libraryRepository.findById(libraryId).orElseThrow().getWebhookSecret())
+        .isEqualTo(first);
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT source_webhook_secret FROM knowledge_libraries WHERE id = ?",
+                String.class,
+                libraryId))
+        .as("encrypted at rest like the credentials")
+        .startsWith("enc:v1:")
+        .doesNotContain(first);
+    assertThat(libraryService.getLibrary(libraryId, caller).managementDetail().s3EventsTokenSet())
+        .isTrue();
+    assertThat(
+            libraryService
+                .getLibrary(libraryId, caller)
+                .managementDetail()
+                .confluenceWebhookSecretSet())
+        .as("the Confluence flag stays absent for an S3 library")
+        .isNull();
+
+    String second = libraryService.generateS3EventsToken(libraryId, caller);
+    assertThat(second).isNotEqualTo(first);
+    libraryService.removeS3EventsToken(libraryId, caller);
+    assertThat(libraryRepository.findById(libraryId).orElseThrow().getWebhookSecret()).isNull();
+    libraryService.removeS3EventsToken(libraryId, caller);
+
+    List<String> audit =
+        jdbcTemplate.queryForList(
+            "SELECT after FROM audit_log WHERE object_id = ? AND event_type = ?"
+                + " ORDER BY recorded_at",
+            String.class,
+            libraryId.toString(),
+            "LIBRARY_SOURCE_UPDATED");
+    assertThat(audit)
+        .as("generate, rotate, remove - the idempotent second removal leaves no entry")
+        .hasSize(3)
+        .allSatisfy(
+            payload -> assertThat(payload).contains("s3EventsToken").doesNotContain(second));
+    assertThatThrownBy(() -> libraryService.generateConfluenceWebhookSecret(libraryId, caller))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("CONFLUENCE");
+  }
+
+  @Test
   void theScopesAreReplaceableTheTypeIsNotAndCredentialsSurviveASameOriginEdit() {
     UUID owner = user();
     CurrentUser caller = currentUser(owner);

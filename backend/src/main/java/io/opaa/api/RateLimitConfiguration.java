@@ -42,10 +42,11 @@ public class RateLimitConfiguration {
     // keying the limiter by document id would let the same caller bypass the limit simply by
     // clicking a different document each time.
     String documentContentPattern = "^/api/v1/documents/[^/]+/content$";
-    // #1140: the webhook intake is the only POST under /api/v1 reachable without a session. The
+    // #1140: the webhook intakes are the only POSTs under /api/v1 reachable without a session. The
     // capture group keys the per-IP limiter by library, like the indexing trigger: one instance
     // notifying several libraries is several senders, not one.
-    String webhookPattern = "^/api/v1/libraries/([^/]+)/confluence-webhook$";
+    // ADR-0027, Entscheidung 6: the S3 event intake shares the pot - same posture, same limits.
+    String webhookPattern = "^/api/v1/libraries/([^/]+)/(?:confluence-webhook|s3-events)$";
 
     Map<String, RateLimitService> perIpLimiters = new LinkedHashMap<>();
     perIpLimiters.put(

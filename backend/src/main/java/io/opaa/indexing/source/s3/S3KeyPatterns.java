@@ -14,7 +14,7 @@ import java.util.List;
  * a scope does. The globs are {@link java.nio.file.FileSystem#getPathMatcher} syntax, validated by
  * {@link S3SourceSettings}; {@code *} stays within one key segment, {@code **} crosses them.
  */
-final class S3KeyPatterns {
+public final class S3KeyPatterns {
 
   private final List<PathMatcher> include;
   private final List<PathMatcher> exclude;
@@ -24,7 +24,7 @@ final class S3KeyPatterns {
     this.exclude = exclude;
   }
 
-  static S3KeyPatterns of(S3SourceSettings settings) {
+  public static S3KeyPatterns of(S3SourceSettings settings) {
     return new S3KeyPatterns(
         compile(settings.includePatterns()), compile(settings.excludePatterns()));
   }
@@ -35,7 +35,7 @@ final class S3KeyPatterns {
         .toList();
   }
 
-  boolean admits(String key) {
+  public boolean admits(String key) {
     if (include.isEmpty() && exclude.isEmpty()) {
       return true;
     }

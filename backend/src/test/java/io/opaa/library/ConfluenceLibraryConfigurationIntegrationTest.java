@@ -510,10 +510,10 @@ class ConfluenceLibraryConfigurationIntegrationTest {
     String first = libraryService.generateConfluenceWebhookSecret(libraryId, currentUser(owner));
     assertThat(first).hasSize(43).matches("[A-Za-z0-9_-]+");
     KnowledgeLibrary stored = libraryRepository.findById(libraryId).orElseThrow();
-    assertThat(stored.getConfluenceWebhookSecret()).isEqualTo(first);
+    assertThat(stored.getWebhookSecret()).isEqualTo(first);
     assertThat(
             jdbcTemplate.queryForObject(
-                "SELECT source_confluence_webhook_secret FROM knowledge_libraries WHERE id = ?",
+                "SELECT source_webhook_secret FROM knowledge_libraries WHERE id = ?",
                 String.class,
                 libraryId))
         .as("encrypted at rest like the credentials")
@@ -528,12 +528,11 @@ class ConfluenceLibraryConfigurationIntegrationTest {
 
     String second = libraryService.generateConfluenceWebhookSecret(libraryId, currentUser(owner));
     assertThat(second).isNotEqualTo(first);
-    assertThat(libraryRepository.findById(libraryId).orElseThrow().getConfluenceWebhookSecret())
+    assertThat(libraryRepository.findById(libraryId).orElseThrow().getWebhookSecret())
         .isEqualTo(second);
 
     libraryService.removeConfluenceWebhookSecret(libraryId, currentUser(owner));
-    assertThat(libraryRepository.findById(libraryId).orElseThrow().getConfluenceWebhookSecret())
-        .isNull();
+    assertThat(libraryRepository.findById(libraryId).orElseThrow().getWebhookSecret()).isNull();
     libraryService.removeConfluenceWebhookSecret(libraryId, currentUser(owner));
 
     List<String> audit =

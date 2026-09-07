@@ -11,6 +11,7 @@ import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookProperties;
 import io.opaa.indexing.source.filesystem.FilesystemProperties;
 import io.opaa.indexing.source.s3.S3Properties;
+import io.opaa.indexing.source.s3.events.S3EventProperties;
 import io.opaa.indexing.source.web.CrawlProperties;
 import io.opaa.library.AttachmentExtractionProperties;
 import io.opaa.library.LibraryProperties;
@@ -39,6 +40,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   ConfluenceProperties.class,
   S3Properties.class,
   ConfluenceWebhookProperties.class,
+  S3EventProperties.class,
   FilesystemProperties.class,
   AttachmentProperties.class,
   TabularProperties.class,

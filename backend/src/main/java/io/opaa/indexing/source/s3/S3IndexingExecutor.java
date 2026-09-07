@@ -5,6 +5,7 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingRunEventRecorder;
+import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -16,6 +17,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
 import java.time.Clock;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +41,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
   private final FileProcessingService fileProcessingService;
   private final DocumentRepository documentRepository;
   private final LibraryFolderService folderService;
+  private final VectorChunkStore vectorChunkStore;
   private final S3SyncStateRepository syncStateRepository;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
@@ -49,6 +52,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
       FileProcessingService fileProcessingService,
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
+      VectorChunkStore vectorChunkStore,
       S3SyncStateRepository syncStateRepository,
       Clock clock,
       IndexingRunTemplate runTemplate) {
@@ -57,6 +61,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
     this.fileProcessingService = fileProcessingService;
     this.documentRepository = documentRepository;
     this.folderService = folderService;
+    this.vectorChunkStore = vectorChunkStore;
     this.syncStateRepository = syncStateRepository;
     this.clock = clock;
     this.runTemplate = runTemplate;
@@ -70,14 +75,64 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
   @Override
   public Map<IndexingRunMode, VanishedDocumentPolicy> runModes() {
     // ADR-0027, Entscheidung 3: no incremental mode - the full listing is cheap enough to be the
-    // regular one.
-    return Map.of(IndexingRunMode.FULL, VanishedDocumentPolicy.REMOVE_ON_ABSENCE);
+    // regular one; the event run checks named keys only and never removes by absence.
+    return Map.of(
+        IndexingRunMode.FULL,
+        VanishedDocumentPolicy.REMOVE_ON_ABSENCE,
+        IndexingRunMode.EVENT,
+        VanishedDocumentPolicy.KEEP_ON_ABSENCE);
+  }
+
+  /** Always the full sync: the event run is started by a notification alone, never by default. */
+  @Override
+  public IndexingRunMode defaultRunMode(KnowledgeLibrary library) {
+    return IndexingRunMode.FULL;
   }
 
   @Override
   @Async("indexingTaskExecutor")
   public void execute(UUID jobId, KnowledgeLibrary targetLibrary, IndexingRunMode runMode) {
+    if (runMode == IndexingRunMode.EVENT) {
+      // an event run without reported keys has nothing to check - the frame ends it cleanly
+      runTemplate.run(
+          jobId,
+          targetLibrary,
+          runMode,
+          this,
+          run -> {
+            run.events()
+                .recordRunNote(
+                    IndexingEventCategory.SUMMARY,
+                    "Ereignislauf ohne gemeldete Objekte - nichts zu prüfen");
+            return ListingOutcome.partial();
+          });
+      return;
+    }
     runTemplate.run(jobId, targetLibrary, runMode, this, this::indexScopes);
+  }
+
+  /**
+   * The event run (ADR-0027, Entscheidung 6): checks exactly {@code references} ({@code
+   * bucket/key}) with one {@code HeadObject} each - a changed object goes the full sync's way, a
+   * {@code 404} removes the document with its attachments, anything else changes nothing. Never a
+   * listing, never a reconciliation, and the resumption state stays untouched. {@code dropped}
+   * events outside the scopes are noted once.
+   */
+  @Async("indexingTaskExecutor")
+  public void refreshObjects(
+      UUID jobId, KnowledgeLibrary targetLibrary, Set<String> references, int dropped) {
+    runTemplate.run(
+        jobId,
+        targetLibrary,
+        IndexingRunMode.EVENT,
+        this,
+        run -> withStore(run, sync -> sync.refresh(references, dropped)));
+  }
+
+  /** One run body over the open store and sync. */
+  @FunctionalInterface
+  private interface SyncBody {
+    ListingOutcome run(S3FullSync sync) throws InterruptedException;
   }
 
   /**
@@ -86,6 +141,10 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
    * layer's own German sentence, before any object is touched.
    */
   ListingOutcome indexScopes(IndexingRun run) throws InterruptedException {
+    return withStore(run, sync -> sync.run(run.library().getS3Settings().scopes()));
+  }
+
+  private ListingOutcome withStore(IndexingRun run, SyncBody body) throws InterruptedException {
     KnowledgeLibrary library = run.library();
     S3SourceSettings settings = library.getS3Settings();
     S3Connection connection;
@@ -113,10 +172,11 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
                 fileProcessingService,
                 documentRepository,
                 folderService,
+                vectorChunkStore,
                 state,
                 syncStateRepository,
                 clock)) {
-      return sync.run(settings.scopes());
+      return body.run(sync);
     } finally {
       reportThrottling(store, run.events());
       S3RequestMeter meter = store.meter();

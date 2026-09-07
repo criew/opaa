@@ -25,6 +25,7 @@ import io.opaa.api.dto.LibrarySpaceAssociationResponse;
 import io.opaa.api.dto.LibraryUpdateRequest;
 import io.opaa.api.dto.S3BucketListRequest;
 import io.opaa.api.dto.S3BucketListResponse;
+import io.opaa.api.dto.S3EventsTokenResponse;
 import io.opaa.api.dto.SourceConnectionTestRequest;
 import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.api.types.IndexingRunMode;
@@ -188,6 +189,24 @@ public class LibraryController {
   public ResponseEntity<Void> removeConfluenceWebhookSecret(
       @PathVariable UUID libraryId, @Caller CurrentUser caller) {
     libraryService.removeConfluenceWebhookSecret(libraryId, caller);
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * Generates (or rotates) the library's S3 event token (ADR-0027, Entscheidung 6) and returns it
+   * exactly once, together with the path the object store has to notify.
+   */
+  @PostMapping("/{libraryId}/s3-events-token")
+  public S3EventsTokenResponse generateS3EventsToken(
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
+    String token = libraryService.generateS3EventsToken(libraryId, caller);
+    return new S3EventsTokenResponse(token, "/api/v1/libraries/" + libraryId + "/s3-events");
+  }
+
+  @DeleteMapping("/{libraryId}/s3-events-token")
+  public ResponseEntity<Void> removeS3EventsToken(
+      @PathVariable UUID libraryId, @Caller CurrentUser caller) {
+    libraryService.removeS3EventsToken(libraryId, caller);
     return ResponseEntity.noContent().build();
   }
 

@@ -130,16 +130,16 @@ public class KnowledgeLibrary {
   private boolean sourceInsecureSsl;
 
   /**
-   * The secret a Confluence webhook (Data Center) or Automation rule (Cloud) authenticates its
-   * notifications to this library with (#1140) - one per library, like {@link #sourceCredentials},
-   * and encrypted at rest the same way. {@code null} until a manager generates one; the library's
-   * webhook endpoint rejects every call while it is {@code null}. Shown to the manager exactly
-   * once, at generation - never readable again through the API (only {@code
-   * confluenceWebhookSecretSet}).
+   * The one push secret of this library: what a Confluence webhook or Automation rule (#1140) or an
+   * S3 event notification (ADR-0027, Entscheidung 6) authenticates itself with - one per library,
+   * like {@link #sourceCredentials}, and encrypted at rest the same way. {@code null} until a
+   * manager generates one; the library's intake rejects every call while it is {@code null}. Shown
+   * to the manager exactly once, at generation - never readable again through the API (only the
+   * yes/no {@code confluenceWebhookSecretSet}/{@code s3EventsTokenSet}).
    */
   @Convert(converter = SourceCredentialsConverter.class)
-  @Column(name = "source_confluence_webhook_secret", length = 3000)
-  private String confluenceWebhookSecret;
+  @Column(name = "source_webhook_secret", length = 3000)
+  private String webhookSecret;
 
   /**
    * The Confluence edition of a {@code CONFLUENCE} library (ADR-0023, Entscheidung 2) - set once
@@ -595,16 +595,21 @@ public class KnowledgeLibrary {
     return sourceConfluenceEdition;
   }
 
-  public String getConfluenceWebhookSecret() {
-    return confluenceWebhookSecret;
+  public String getWebhookSecret() {
+    return webhookSecret;
   }
 
-  /** Stores a freshly generated webhook secret, or removes it with {@code null} (#1140). */
-  public void setConfluenceWebhookSecret(String secret) {
-    if (sourceType != DocumentSourceType.CONFLUENCE) {
-      throw new IllegalStateException("only a CONFLUENCE library carries a webhook secret");
+  /** Whether {@code sourceType} has a push intake whose secret this column carries. */
+  public static boolean hasPushIntake(DocumentSourceType sourceType) {
+    return sourceType == DocumentSourceType.CONFLUENCE || sourceType == DocumentSourceType.S3;
+  }
+
+  /** Stores a freshly generated push secret, or removes it with {@code null}. */
+  public void setWebhookSecret(String secret) {
+    if (!hasPushIntake(sourceType)) {
+      throw new IllegalStateException("only a CONFLUENCE or S3 library carries a push secret");
     }
-    this.confluenceWebhookSecret = secret;
+    this.webhookSecret = secret;
     this.updatedAt = Instant.now();
   }
 
