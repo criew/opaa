@@ -72,6 +72,16 @@
   // github-actions-Manager unsichtbar. Der Regex-Manager liest die Pin-Version stattdessen aus dem
   // "# renovate:"-Kommentar direkt über der Zeile (übliches Renovate-Muster).
   customManagers: [
+    // Das MinIO-Testcontainer-Image (ADR-0027, #1382) ist als Java-Konstante gepinnt, für den
+    // docker-Manager unsichtbar. Der Regex-Manager liest Datasource und Paket aus dem
+    // "// renovate:"-Kommentar direkt über der Konstante.
+    {
+      customType: 'regex',
+      managerFilePatterns: ['backend/src/test/java/io/opaa/indexing/source/s3/MinioFixture.java'],
+      matchStrings: [
+        '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*public static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
+      ],
+    },
     {
       customType: 'regex',
       managerFilePatterns: ['.github/workflows/sbom.yml'],

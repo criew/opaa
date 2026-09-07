@@ -51,6 +51,9 @@ OPAA_CONFLUENCE_IT=true ./gradlew confluenceIntegrationTest
                                   # braucht Docker, ~4 GB RAM und Internet für die 3-Stunden-
                                   # Testlizenz; nicht Teil von build/test, in CI nightly und per
                                   # Label "confluence-suite" (ADR-0023, #1171)
+# Die MinIO-Suite des S3-Konnektors (io.opaa.indexing.source.s3.*Minio*, ADR-0027, #1382)
+# läuft innerhalb von test/build, sobald Docker erreichbar ist (sonst übersprungen):
+# ein MinIO-Container je JVM plus ein zweiter für den Ereignisweg, zusammen unter zwei Minuten
 ./gradlew spotlessCheck
 ./gradlew spotlessApply
 

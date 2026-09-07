@@ -63,6 +63,28 @@ class MinioS3ObjectStoreTest {
   }
 
   @Test
+  void aPrivateEndpointIsRefusedWithoutAnAllowlistEntryAndReachedWithOne() throws Exception {
+    // Assurance (ADR-0027, Entscheidung 8): the container's loopback address is exactly the
+    // private target the validation blocks; only an operator's allowlist entry opens it.
+    S3Properties properties = S3Properties.defaults();
+    List<S3Scope> scopes = List.of(S3Scope.of(bucket, ""));
+    assertThatThrownBy(
+            () ->
+                new S3ClientFactory(properties, new TargetAddressValidator(true, List.of()))
+                    .create(minio.connection(minio.rootCredentials()), scopes))
+        .isInstanceOf(S3AccessException.TargetBlocked.class)
+        .hasMessageContaining(TargetAddressValidator.ALLOWLIST_HINT);
+    try (S3ObjectStore allowed =
+        new S3ClientFactory(
+                properties, new TargetAddressValidator(true, List.of(minio.endpoint().getHost())))
+            .create(minio.connection(minio.rootCredentials()), scopes)) {
+      assertThat(allowed.listObjects(S3Scope.of(bucket, "2024/"), null).objects())
+          .extracting(S3ObjectSummary::key)
+          .containsExactly("2024/alt.docx");
+    }
+  }
+
+  @Test
   void listsMoreThanAThousandKeysAcrossPages() throws Exception {
     List<String> keys = new ArrayList<>();
     String token = null;
