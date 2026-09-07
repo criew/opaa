@@ -63,6 +63,34 @@ class MinioS3ObjectStoreTest {
   }
 
   @Test
+  void aPrivateEndpointIsRefusedWithoutAnAllowlistEntryAndReachedWithOne() throws Exception {
+    // Assurance (ADR-0027, Entscheidung 8): the container's address is exactly the private target
+    // the validation blocks; only an operator's allowlist entry opens it. Holds for a local Docker
+    // socket (loopback or bridge gateway) - a remote DOCKER_HOST on a public address is not that
+    // case, so the test steps aside there instead of failing for the wrong reason.
+    java.net.InetAddress host = java.net.InetAddress.getByName(minio.endpoint().getHost());
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        host.isLoopbackAddress() || host.isSiteLocalAddress(),
+        "the MinIO endpoint is not a private address; the blocking case needs a local Docker host");
+    S3Properties properties = S3Properties.defaults();
+    List<S3Scope> scopes = List.of(S3Scope.of(bucket, ""));
+    assertThatThrownBy(
+            () ->
+                new S3ClientFactory(properties, new TargetAddressValidator(true, List.of()))
+                    .create(minio.connection(minio.rootCredentials()), scopes))
+        .isInstanceOf(S3AccessException.TargetBlocked.class)
+        .hasMessageContaining(TargetAddressValidator.ALLOWLIST_HINT);
+    try (S3ObjectStore allowed =
+        new S3ClientFactory(
+                properties, new TargetAddressValidator(true, List.of(minio.endpoint().getHost())))
+            .create(minio.connection(minio.rootCredentials()), scopes)) {
+      assertThat(allowed.listObjects(S3Scope.of(bucket, "2024/"), null).objects())
+          .extracting(S3ObjectSummary::key)
+          .containsExactly("2024/alt.docx");
+    }
+  }
+
+  @Test
   void listsMoreThanAThousandKeysAcrossPages() throws Exception {
     List<String> keys = new ArrayList<>();
     String token = null;

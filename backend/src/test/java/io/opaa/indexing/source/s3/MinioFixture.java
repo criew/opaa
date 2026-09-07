@@ -35,9 +35,12 @@ public final class MinioFixture {
   private static final Logger log = LoggerFactory.getLogger(MinioFixture.class);
 
   /**
-   * The pinned image; the community line of {@code minio/minio} ended with this release. Renovate
-   * does not track this constant - bump it deliberately, together with the mc commands below.
+   * The pinned image; the community line of {@code minio/minio} ended with this release. The regex
+   * manager in {@code renovate.json5} reads the tag from the comment below and never merges a bump
+   * on its own: the mc commands of this fixture and of the event-path test need the client the
+   * image ships, so a new tag is a deliberate decision.
    */
+  // renovate: datasource=docker depName=minio/minio
   public static final String IMAGE = "minio/minio:RELEASE.2025-09-07T16-13-09Z";
 
   public static final String REGION = "us-east-1";

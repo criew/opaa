@@ -68,10 +68,23 @@
   dependencyDashboardTitle: 'Abhängigkeits-Übersicht (Renovate)',
   dependencyDashboardLabels: ['ci'],
 
-  // Der cdxgen-Aufruf in sbom.yml läuft über "pnpm dlx" statt über eine Manifestdatei — für den
-  // github-actions-Manager unsichtbar. Der Regex-Manager liest die Pin-Version stattdessen aus dem
-  // "# renovate:"-Kommentar direkt über der Zeile (übliches Renovate-Muster).
+  // Regex-Manager für Pins, die kein regulärer Manager sieht; jeder liest Datasource und Paket
+  // aus einem "renovate:"-Kommentar direkt über der gepinnten Zeile (übliches Renovate-Muster).
   customManagers: [
+    // Das MinIO-Testcontainer-Image (ADR-0027, #1382) ist als Java-Konstante gepinnt, für den
+    // docker-Manager unsichtbar. MinIO-Tags ("RELEASE.2025-09-07T16-13-09Z") sind für die
+    // docker-Versionierung ungültig und würden ohne eigenes Schema still übersprungen — das
+    // Regex-Schema ordnet Jahr/Monat/Tag als major/minor/patch, die Uhrzeit als build.
+    {
+      customType: 'regex',
+      managerFilePatterns: ['backend/src/test/java/io/opaa/indexing/source/s3/MinioFixture.java'],
+      matchStrings: [
+        '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*public static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
+      ],
+      versioningTemplate: 'regex:^RELEASE\\.(?<major>\\d{4})-(?<minor>\\d{2})-(?<patch>\\d{2})T(?<build>\\d{2}-\\d{2}-\\d{2}Z)$',
+    },
+    // Der cdxgen-Aufruf in sbom.yml läuft über "pnpm dlx" statt über eine Manifestdatei — für den
+    // github-actions-Manager unsichtbar.
     {
       customType: 'regex',
       managerFilePatterns: ['.github/workflows/sbom.yml'],
@@ -185,6 +198,18 @@
     {
       matchUpdateTypes: ['major'],
       automerge: false,
+    },
+    // Das MinIO-Testimage (MinioFixture.IMAGE) wird nie automatisch gemergt: Die Fixture und der
+    // Ereignisweg-Test brauchen das im Image mitgelieferte "mc", und die Community-Linie von
+    // minio/minio ist mit dem gepinnten Release ausgelaufen — ein neuer Tag kann in die
+    // lizenzierte Linie wechseln oder mc verlieren. Ein Vorschlag bleibt als PR zur Entscheidung.
+    {
+      matchPackageNames: ['minio/minio'],
+      automerge: false,
+      // Dasselbe Versionsschema wie im Regex-Manager oben, hier managerübergreifend: auch die
+      // docker-compose-Zeilen des Demo-Stacks (#1383) tragen diesen Tag, den die docker-
+      // Versionierung sonst still überspringt.
+      versioning: 'regex:^RELEASE\\.(?<major>\\d{4})-(?<minor>\\d{2})-(?<patch>\\d{2})T(?<build>\\d{2}-\\d{2}-\\d{2}Z)$',
     },
     // Temurin-Major bleibt aus, bis die Projekt-Toolchain nachzieht (#1001): build.gradle.kts
     // pinnt die Java-Toolchain auf 21, und im 25-jdk-Image findet Gradle kein JDK 21
