@@ -206,6 +206,10 @@
     {
       matchPackageNames: ['minio/minio'],
       automerge: false,
+      // Dasselbe Versionsschema wie im Regex-Manager oben, hier managerübergreifend: auch die
+      // docker-compose-Zeilen des Demo-Stacks (#1383) tragen diesen Tag, den die docker-
+      // Versionierung sonst still überspringt.
+      versioning: 'regex:^RELEASE\\.(?<major>\\d{4})-(?<minor>\\d{2})-(?<patch>\\d{2})T(?<build>\\d{2}-\\d{2}-\\d{2}Z)$',
     },
     // Temurin-Major bleibt aus, bis die Projekt-Toolchain nachzieht (#1001): build.gradle.kts
     // pinnt die Java-Toolchain auf 21, und im 25-jdk-Image findet Gradle kein JDK 21
