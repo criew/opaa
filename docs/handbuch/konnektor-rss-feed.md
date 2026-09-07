@@ -180,7 +180,9 @@ gebildet. Restlücke: Ein GSB-Server, der eine Nicht-Text-Antwort als `text/plai
 für den Text-Weg geglaubt, weil eine endungslose Adresse keinen anderen Hinweis bietet.
 
 Jede Anlage wird ein eigenes Dokument mit Verweis auf den Feed-Eintrag als Elterndokument und mit
-der URL des Eintrags als Herkunft. Enthält eine Anlage selbst Anhänge, etwa eine verlinkte
+der URL des Eintrags als Herkunft. Im Chat trägt jede Fundstelle aus einem Feed-Eintrag oder einer
+seiner Anlagen neben „Im Dokument öffnen" einen Link „Quelle" auf diese Eintrags-URL. Enthält eine
+Anlage selbst Anhänge, etwa eine verlinkte
 EML-Datei, geht die Kette bis zur Tiefengrenze weiter. Ein Fehler bei einer Anlage wirkt nie auf
 den Eintrag zurück. Wird der Eintrag selbst abgewiesen, weil sein Text nicht extrahierbar ist,
 werden seine Anlagen bewusst nicht indiziert.
@@ -288,6 +290,5 @@ bedingtem GET nur eine Anfrage.
 - Atom-Feeds
 - Anlagenprofil je Bibliothek statt je Installation; bewusst so entschieden
 - Löschung anhand eines positiven Befunds (404 der Detailseite)
-- Nennung der Eintrags-URL als Beleg im Chat (Issue #639)
 - Schonzeitraum, Rechteübernahme, ereignisgesteuerte Aktualisierung, Drosselung nach
   wiederholtem Scheitern

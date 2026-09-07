@@ -90,7 +90,7 @@ Herkunft und Zwang jeder einzelnen Variable:
 - `OPAA_CREDENTIALS_ENCRYPTION_KEY` ist seit #1383 zwingend: Die `S3`-Bibliothek „Ratsinformationen
   Stadt Rheinfurt" ist die erste Demo-Bibliothek mit Zugangsdaten (dem Root-Schlüssel des
   `minio`-Containers), und Zugangsdaten werden nur verschlüsselt gespeichert (#483,
-  [`../docs/handbuch/deployment.md`, „Zugangsdaten-Verschlüsselung"](../docs/handbuch/deployment.md#zugangsdaten-verschlüsselung-483)).
+  [`../docs/handbuch/deployment.md`, „Zugangsdaten-Verschlüsselung"](../docs/handbuch/deployment.md#zugangsdaten-verschlüsselung)).
   Ohne Schlüssel bricht der Seed beim Anlegen dieser Bibliothek mit `503` ab. Der Demo-Stack läuft
   mit `docker,oidc`, nicht mit `dev` — der nur dort hinterlegte Entwicklungsschlüssel greift also
   nicht; einen eigenen Wert mit `openssl rand -base64 32` erzeugen (der Demo-Smoke-Lauf setzt in
@@ -132,7 +132,7 @@ docker compose --profile demo up
 
 Ohne einen extern erreichbaren Ollama-Server (weder auf dem Host noch im eigenen Netz) zusätzlich
 das Compose-Profil `ollama` aktivieren (#720, siehe
-[`../docs/handbuch/deployment.md`, „Lokal betriebenes Ollama im Compose-Stack"](../docs/handbuch/deployment.md#lokal-betriebenes-ollama-im-compose-stack-720)):
+[`../docs/handbuch/deployment.md`, „Lokal betriebenes Ollama im Compose-Stack"](../docs/handbuch/deployment.md#lokal-betriebenes-ollama-im-compose-stack)):
 
 ```bash
 docker compose --profile demo --profile ollama up
