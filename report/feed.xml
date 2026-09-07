@@ -5,8 +5,29 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-06T04:56:34Z</updated>
+  <updated>2026-09-07T05:01:07Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Sonntag, 6. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-06.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-06.html</id>
+    <updated>2026-09-07T05:01:07Z</updated>
+    <summary type="text">feat: OIDC-Anbindung mit mehreren Identitätsanbietern:
+— OIDC-Anbindung mit mehreren Identitätsanbietern abgeschlossen
+— Anmeldeseite mit Anbieterwahl und Verwaltungsoberfläche umgesetzt
+— Claim-Zuordnung für Rollen, Gruppen, E-Mail je Anbieter implementiert
+— Mehranbieter-E2E-Tests und Betriebshandbuch fertiggestellt
+feat: S3-Konnektor als weiterer Quellentyp für S3-kompatible Objektspeicher:
+— S3-Konnektor als neuer Quellentyp konzipiert und Tickets angelegt
+— Datenmodell, Zugriffsschicht und Wizard-Schritt für S3 geplant
+— Push-Aktualisierung über S3-Ereignisbenachrichtigungen vorgesehen
+— Integrationstests gegen MinIO und Betriebshandbuch geplant
+Sonstiges:
+— npm-Verweise nach pnpm-Migration bereinigt
+— UI-Politur der OIDC-Oberflächen abgeschlossen
+— pnpm auf v12.3.4 aktualisiert
+— Retrieval-Regressionstests erkannt und dokumentiert</summary>
+  </entry>
   <entry>
     <title>Tagesreport Samstag, 5. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-05.html"/>
