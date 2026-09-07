@@ -400,6 +400,26 @@ class HtmlDocumentPipelineTest {
                 + "1. Termin buchen\n\n2. Vorsprechen");
   }
 
+  // regression guard for #1357: CMS output wraps item text in <p>; the marker must survive
+  @Test
+  void aListItemWrappingItsTextInAParagraphKeepsItsMarker() throws IOException {
+    String page =
+        """
+        <html><body><main>
+          <h1>Unterlagen</h1>
+          <ul>
+            <li><p>Lichtbild</p></li>
+            <li><p>Nachweise</p><ul><li><p>Meldebescheinigung</p></li></ul></li>
+          </ul>
+        </main></body></html>
+        """;
+
+    DocumentPipelineResult result = pipeline.run(sourceFor(page));
+
+    assertThat(result.chunks().getFirst().getText())
+        .isEqualTo("Unterlagen\n\n• Lichtbild\n\n• Nachweise\n\n◦ Meldebescheinigung");
+  }
+
   @Test
   void preformattedTextKeepsItsLineBreaksAndNonBreakingSpacesCollapse() throws IOException {
     String page =

@@ -117,6 +117,42 @@ class XhtmlEventBuilderTest {
             new Paragraph("2.1. Zwei-a"));
   }
 
+  // regression guard for #1357: a block child inside an item must not flush the item's text
+  // without its marker (Confluence Cloud and CMS output wrap item text in <p>)
+  @Test
+  void aListItemWhoseTextIsWrappedInABlockKeepsItsMarker() {
+    assertThat(events("<ul><li><p>Lageplan</p></li><li><p>Bauzeichnungen</p></li></ul>"))
+        .containsExactly(new Paragraph("• Lageplan"), new Paragraph("• Bauzeichnungen"));
+  }
+
+  @Test
+  void aListItemWithSeveralBlocksMarksTheFirstAndContinuesUnmarked() {
+    assertThat(
+            events(
+                "<ol><li><p>Antrag stellen</p><p>Frist: 14 Tage</p></li>"
+                    + "<li><p>Bescheid abwarten</p></li></ol>"))
+        .containsExactly(
+            new Paragraph("1. Antrag stellen"),
+            new Paragraph("Frist: 14 Tage"),
+            new Paragraph("2. Bescheid abwarten"));
+  }
+
+  @Test
+  void aNestedListInsideABlockItemStaysNestedUnderItsMarkedItem() {
+    assertThat(
+            events(
+                "<ul><li><p>Nachweise</p><ul><li>Meldebescheinigung</li><li><p>Lichtbild</p></li>"
+                    + "</ul></li><li>Gebühr</li></ul>"
+                    + "<ol><li><p>Eins</p><ol><li><p>Eins-a</p></li></ol></li></ol>"))
+        .containsExactly(
+            new Paragraph("• Nachweise"),
+            new Paragraph("◦ Meldebescheinigung"),
+            new Paragraph("◦ Lichtbild"),
+            new Paragraph("• Gebühr"),
+            new Paragraph("1. Eins"),
+            new Paragraph("1.1. Eins-a"));
+  }
+
   @Test
   void preformattedTextKeepsItsLineBreaks() {
     assertThat(events("<pre>  zeile 1\n    zeile 2  </pre><p>danach</p>"))

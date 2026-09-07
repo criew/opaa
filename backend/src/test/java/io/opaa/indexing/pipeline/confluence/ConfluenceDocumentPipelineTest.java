@@ -241,6 +241,18 @@ class ConfluenceDocumentPipelineTest {
         .isEqualTo("1. Eins\n\n2. Zwei\n\n2.1. Zwei-a\n\n2.2. Zwei-b");
   }
 
+  // regression guard for #1357: Cloud's editor wraps item text in <p>; the marker must survive
+  @Test
+  void aListItemWrappingItsTextInAParagraphKeepsItsMarker() {
+    List<Document> chunks =
+        chunk(
+            "<ul><li><p>Lageplan</p></li><li><p>Bauzeichnungen</p><ul><li><p>Grundriss</p></li>"
+                + "</ul></li></ul>");
+
+    assertThat(chunks.getFirst().getText())
+        .isEqualTo("• Lageplan\n\n• Bauzeichnungen\n\n◦ Grundriss");
+  }
+
   @Test
   void headingsDeeperThanH3FoldIntoTheSectionText() {
     List<Document> chunks =
