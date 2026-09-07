@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -26,6 +27,7 @@ import io.opaa.indexing.FileProcessingResult;
 import io.opaa.indexing.FileProcessingService;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJobService;
+import io.opaa.indexing.IndexingRunCost;
 import io.opaa.indexing.IndexingRunEvent;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.StaleDocumentCleanupService;
@@ -55,6 +57,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 /**
  * Exercises {@link UrlIndexingExecutor#execute} end to end against a local {@code
@@ -158,7 +161,7 @@ class UrlIndexingExecutorExecuteTest {
                 return downloaded;
               })
           .when(downloader)
-          .download(any(), any(), anyString(), anyString(), anyLong());
+          .download(any(), any(), anyString(), anyString(), anyLong(), any());
     } catch (IOException | InterruptedException e) {
       throw new IllegalStateException(e);
     }
@@ -169,6 +172,7 @@ class UrlIndexingExecutorExecuteTest {
         documentRepository,
         crawlProperties,
         mock(io.opaa.library.LibraryFolderService.class),
+        requestPolicy,
         new IndexingRunTemplate(
             indexingJobService,
             indexingRunEventRepository,
@@ -725,5 +729,147 @@ class UrlIndexingExecutorExecuteTest {
   private static org.mockito.ArgumentMatcher<IndexingRunEvent> categoryIs(
       IndexingEventCategory category) {
     return event -> event != null && event.getCategory() == category;
+  }
+
+  // --- the run's own bounds and its end ------------------------------------------------------
+
+  private static final byte[] LISTING_WITH_TWO_PDFS =
+      ("<html><head><title>Index of /files/</title></head><body><ul>"
+              + "<li><a href=\"a.pdf\">a.pdf</a></li>"
+              + "<li><a href=\"b.pdf\">b.pdf</a></li>"
+              + "</ul></body></html>")
+          .getBytes(StandardCharsets.UTF_8);
+
+  private static org.mockito.ArgumentMatcher<IndexingRunEvent> runNote(
+      IndexingEventCategory category, String messagePart) {
+    return event ->
+        event != null
+            && event.getCategory() == category
+            && event.getReference() == null
+            && event.getMessage().contains(messagePart);
+  }
+
+  private UUID executeWithoutWaiting() {
+    library.updateSourceConfiguration(null, baseUrl + "/files/", null, null, false);
+    UUID jobId = UUID.randomUUID();
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+    return jobId;
+  }
+
+  @Test
+  void aSpentRequestBudgetEndsTheRunTruncatedBeforeTheNextRequestLeaves() throws IOException {
+    // budget 3: the listing page, a.pdf's detection prefix and its download - b.pdf's prefix is
+    // the fourth request and is refused before it is sent
+    executor =
+        buildExecutor(
+            new CrawlProperties(0, 0, 0),
+            requestPolicy("OPAA-Indexer/test").withRunBounds(3, Duration.ofMinutes(15)));
+    serve("/files/", "text/html", LISTING_WITH_TWO_PDFS);
+    serve("/files/a.pdf", "application/pdf", PDF_BODY);
+    serve("/files/b.pdf", "application/pdf", PDF_BODY);
+    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    UUID jobId = executeWithoutWaiting();
+
+    verify(fileProcessingService)
+        .ingest(DocumentIngests.that().file().named("a.pdf").in(library).match(), any());
+    verify(fileProcessingService, never())
+        .ingest(DocumentIngests.that().file().named("b.pdf").in(library).match(), any());
+    assertThat(requestCounts.get("/files/b.pdf").get()).as("refused before it left").isZero();
+    verify(indexingRunEventRepository)
+        .save(
+            argThat(
+                runNote(
+                    IndexingEventCategory.BUDGET_EXHAUSTED,
+                    "Anfragebudget von 3 Anfragen erschöpft; der Lauf endet unvollständig, der"
+                        + " nächste Lauf durchsucht das Verzeichnis erneut")));
+    verify(indexingRunEventRepository, never())
+        .save(argThat(categoryIs(IndexingEventCategory.ERROR)));
+    verify(indexingJobService).completeJob(eq(jobId), eq(1), eq(0), eq(0), eq(1));
+    verify(indexingJobService, never()).failJob(any(), any());
+    ArgumentCaptor<IndexingRunCost> cost = ArgumentCaptor.forClass(IndexingRunCost.class);
+    verify(indexingJobService).recordRunMetrics(eq(jobId), cost.capture());
+    assertThat(cost.getValue().incomplete()).isTrue();
+    assertThat(cost.getValue().requestsSent()).isEqualTo(3);
+    // a truncated listing is no evidence of absence
+    verifyNoInteractions(staleDocumentCleanupService);
+  }
+
+  @Test
+  void theRunsWaitCapEndsTheRunTruncatedInsteadOfWaitingOn() throws IOException {
+    // cap 1 s: the first Retry-After of one second is waited out, the second would cross the cap
+    // and ends the run before it is slept - the entry is neither failed nor skipped
+    executor =
+        buildExecutor(
+            new CrawlProperties(0, 0, 0),
+            requestPolicy("OPAA-Indexer/test").withRunBounds(0, Duration.ofSeconds(1)));
+    serve("/files/", "text/html", LISTING_WITH_TWO_PDFS);
+    serveThrottled("/files/a.pdf", 2, "application/pdf", PDF_BODY);
+    serve("/files/b.pdf", "application/pdf", PDF_BODY);
+
+    UUID jobId = executeWithoutWaiting();
+
+    assertThat(sleeps).containsExactly(Duration.ofSeconds(1));
+    verify(fileProcessingService, never()).ingest(any(), any());
+    assertThat(requestCounts.get("/files/b.pdf").get()).isZero();
+    verify(indexingRunEventRepository)
+        .save(
+            argThat(
+                runNote(
+                    IndexingEventCategory.BUDGET_EXHAUSTED,
+                    "Deckel der 429-Wartezeit von 1 Sekunden je Lauf erreicht; der Lauf endet"
+                        + " unvollständig")));
+    verify(indexingRunEventRepository)
+        .save(argThat(runNote(IndexingEventCategory.RATE_LIMITED, "1-mal gedrosselt")));
+    verify(indexingJobService).completeJob(eq(jobId), eq(0), eq(0), eq(0), eq(0));
+    verify(indexingJobService, never()).failJob(any(), any());
+    verifyNoInteractions(staleDocumentCleanupService);
+  }
+
+  @Test
+  void anInterruptionWhileFetchingAnEntryEndsTheRunAsInterrupted() throws Exception {
+    serve("/files/", "text/html", LISTING_WITH_TWO_PDFS);
+    serve("/files/a.pdf", "application/pdf", PDF_BODY);
+    serve("/files/b.pdf", "application/pdf", PDF_BODY);
+    doThrow(new InterruptedException())
+        .when(downloader)
+        .downloadPrefix(any(), any(), eq(baseUrl + "/files/a.pdf"), anyInt(), any());
+
+    UUID jobId;
+    try {
+      jobId = executeWithoutWaiting();
+      assertThat(Thread.currentThread().isInterrupted()).as("the flag is restored").isTrue();
+    } finally {
+      Thread.interrupted();
+    }
+
+    verify(indexingJobService).failJob(jobId, IndexingRunTemplate.INTERRUPTED_MESSAGE);
+    verify(indexingJobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
+    assertThat(requestCounts.get("/files/b.pdf").get()).as("no further entry").isZero();
+    verify(fileProcessingService, never()).ingest(any(), any());
+    verify(indexingRunEventRepository, never())
+        .save(argThat(categoryIs(IndexingEventCategory.ERROR)));
+  }
+
+  @Test
+  void anInterruptionWrappedInAnEntrysFailureEndsTheRunAsInterruptedToo() throws Exception {
+    serve("/files/", "text/html", LISTING_WITH_TWO_PDFS);
+    serve("/files/a.pdf", "application/pdf", PDF_BODY);
+    serve("/files/b.pdf", "application/pdf", PDF_BODY);
+    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
+        .thenThrow(new IllegalStateException("Embedding abgebrochen", new InterruptedException()));
+
+    UUID jobId;
+    try {
+      jobId = executeWithoutWaiting();
+    } finally {
+      Thread.interrupted();
+    }
+
+    verify(indexingJobService).failJob(jobId, IndexingRunTemplate.INTERRUPTED_MESSAGE);
+    assertThat(requestCounts.get("/files/b.pdf").get()).isZero();
+    verify(indexingRunEventRepository, never())
+        .save(argThat(categoryIs(IndexingEventCategory.ERROR)));
   }
 }

@@ -1,6 +1,8 @@
 package io.opaa.indexing.source;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -166,6 +168,34 @@ class IndexingRunTest {
         .containsExactlyInAnyOrder("https://host/anlage.pdf", "https://host/unveraendert.pdf");
     assertThat(run.reprocessedPaths()).containsExactly("https://host/anlage.pdf");
     assertThat(run.progress().attachmentsProcessed()).isEqualTo(1);
+  }
+
+  // --- what ends the run past an item catch ----------------------------------------------
+
+  @Test
+  void rethrowRunEndingLetsAnInterruptionPassWithTheFlagSetEvenAsACause() {
+    InterruptedException interrupted = new InterruptedException();
+    try {
+      assertThatThrownBy(
+              () ->
+                  IndexingRun.rethrowRunEnding(
+                      new IllegalStateException("wrapped", new java.io.IOException(interrupted))))
+          .isSameAs(interrupted);
+      assertThat(Thread.currentThread().isInterrupted()).isTrue();
+    } finally {
+      Thread.interrupted();
+    }
+  }
+
+  @Test
+  void rethrowRunEndingLetsASpentBudgetPassAndKeepsEveryOtherFailureWithTheItem() {
+    RequestBudgetExhaustedException exhausted = RequestBudgetExhaustedException.requests(3);
+
+    assertThatThrownBy(() -> IndexingRun.rethrowRunEnding(new RuntimeException(exhausted)))
+        .isSameAs(exhausted);
+    assertThatCode(() -> IndexingRun.rethrowRunEnding(new java.io.IOException("Datei kaputt")))
+        .doesNotThrowAnyException();
+    assertThat(Thread.currentThread().isInterrupted()).isFalse();
   }
 
   private Document indexedDocument(String filePath, String lastModifiedRemote) {

@@ -2,6 +2,7 @@ package io.opaa.indexing.source.confluence;
 
 import io.opaa.api.types.ConfluenceEdition;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.SourceRequestMeter;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -92,5 +93,5 @@ public interface ConfluenceClient {
   String pageUrl(String spaceKey, String pageId);
 
   /** Request statistics of this client since creation - feeds run metrics. */
-  ConfluenceRequestMeter meter();
+  SourceRequestMeter meter();
 }

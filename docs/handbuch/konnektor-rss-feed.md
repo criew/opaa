@@ -56,6 +56,7 @@ Detailseiten abruft und dass der Betreiber des Feeds bestimmt, welche Adressen d
 | Wartezeit | konfigurierbar, Standard eine Sekunde vor jeder Detailseite und vor jedem Anlagen-Download. Nicht vor dem Feed selbst. |
 | Timeouts | 30 s Verbindungsaufbau, 60 s Feed, 30 s Detailseite, 120 s Anlage |
 | Wiederholung | nur bei HTTP 429: Feed, Detailseite und Anlage warten die in `Retry-After` genannte Zeit (gedeckelt auf `opaa.indexing.http.max-retry-after`, ohne Header fünf Sekunden) und wiederholen bis zu `opaa.indexing.http.max-rate-limit-retries`-mal; erst danach greift die Zurückstellung (Abschnitt 6). Jeder andere Fehlschlag wird nicht wiederholt, sondern zurückgestellt |
+| Grenzen je Lauf | die Summe aller 429-Wartezeiten eines Laufs ist auf `opaa.indexing.http.max-rate-limit-wait-per-run` (Standard 15 Minuten) gedeckelt, die Zahl der Anfragen auf `opaa.indexing.http.request-budget-per-run` (Standard 0, unbegrenzt). Beim Erreichen endet der Lauf geordnet als „unvollständig, wird fortgesetzt" (Abschnitt 4) |
 | Weiterleitungen | Feed: bis zu fünf, fremder Ursprung ohne Zugangsdaten. Detailseite und Anlage: ein fremder Ursprung wird gar nicht kontaktiert. |
 
 Die Wartezeit bestimmt die Laufzeit: Bei 200 Einträgen mit je einer Seite und bis zu zehn
@@ -83,6 +84,15 @@ fremde Server nicht belasten.
 
 - **Mengengrenzen:** höchstens 200 Feed-Einträge (Rest wird abgeschnitten), höchstens zehn
   Anlagen je Eintrag, fünf Ebenen Verschachtelung bei Anlagen, die selbst Anhänge enthalten.
+- **Anfragebudget und Wartedeckel je Lauf:** Jede Anfrage eines Laufs (Feed, Detailseiten,
+  Anlagen, Wiederholungen nach 429) zählt auf einem Zähler. Ist das Anfragebudget
+  (`opaa.indexing.http.request-budget-per-run`) verbraucht oder würde die nächste 429-Wartezeit
+  die Summe über `opaa.indexing.http.max-rate-limit-wait-per-run` heben, wird die Anfrage nicht
+  mehr gestellt: Der aktuelle Eintrag bleibt zurückgestellt, die restlichen Einträge werden nicht
+  mehr abgefragt, der Lauf endet erfolgreich mit dem Kennzeichen „unvollständig, wird fortgesetzt"
+  und einem Protokolleintrag der Kategorie „Anfragebudget erschöpft". Der Feed-Zustand
+  (ETag/Last-Modified) wird nicht gespeichert, der nächste Lauf sieht alle Einträge erneut. Eine
+  dauerhaft drosselnde Quelle kann einen Lauf damit nicht mehr über den Deckel hinaus verlängern.
 
 ## 5. Aufzählung
 
@@ -206,6 +216,9 @@ ist als künftiger Mechanismus benannt, aber nicht gebaut.
 | abgewiesen | Speicherkontingent-Meldung | Kontingent erreicht |
 | abgewiesen | kein extrahierbarer Text | Eintrag und seine Anlagen entfallen |
 | Fehler | Verarbeitung fehlgeschlagen | Pipeline-Fehler oder Ausnahme |
+| Ratenbegrenzung | Die Quelle hat den Lauf n-mal gedrosselt (HTTP 429/503, Retry-After); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen | eine Zeile je Lauf, wenn mindestens einmal gewartet wurde |
+| Anfragebudget erschöpft | Anfragebudget von … Anfragen erschöpft; der Lauf endet unvollständig, der nächste Lauf nimmt die übrigen Einträge auf | Anfragebudget je Lauf verbraucht (Abschnitt 4) |
+| Anfragebudget erschöpft | Deckel der 429-Wartezeit von … je Lauf erreicht; der Lauf endet unvollständig, der nächste Lauf nimmt die übrigen Einträge auf | Summe der 429-Wartezeiten am Deckel (Abschnitt 4) |
 
 Beim Nachholen von Anlagen tragen die Meldungen den Zusatz „beim Nachladen von Anlagen".
 
@@ -233,6 +246,8 @@ HTTP-Code, kein gültiges XML, kein RSS-Feed (etwa Atom), Feed zu groß, Proxy-F
 | Feed nicht erreichbar, HTTP-Fehler, kein XML, Atom, zu groß | Lauf `FAILED`, Bestand unverändert |
 | Feed hat mehr als 200 Einträge | Rest abgeschnitten, Lauf erfolgreich, Zustand nicht gespeichert, nächster Lauf holt vollständig |
 | Detailseite 403, oder 429 nach erschöpften Wiederholungen | Eintrag abgewiesen und zurückgestellt, Lauf läuft weiter, nächster Lauf versucht es erneut |
+| Anfragebudget je Lauf verbraucht oder Deckel der 429-Wartezeit erreicht | Lauf endet erfolgreich als „unvollständig, wird fortgesetzt", restliche Einträge unberührt, Feed-Zustand nicht gespeichert |
+| Lauf während eines Eintrags gestoppt | Lauf endet mit „Lauf unterbrochen", die folgenden Einträge werden nicht mehr verarbeitet; der unterbrochene Eintrag zählt nicht als Fehler |
 | Detailseite leitet auf fremden Host | abgelehnt, bevor der fremde Server kontaktiert wird |
 | Detailseite liefert PDF statt HTML | Eintrag „Format nicht unterstützt" |
 | Bibliothek während des Laufs gelöscht | Lauf `FAILED` mit verständlicher Meldung |
@@ -253,8 +268,9 @@ Alle Schlüssel unter `opaa.indexing.rss.*`, Umgebungsvariablen als `OPAA_INDEXI
 | `max-attachments-per-entry` | 10 | Anlagen je Eintrag |
 | `max-attachment-size-bytes` | 20971520 (20 MiB) | darüber entfällt die Anlage |
 
-`User-Agent` und 429-Wartezeit kommen aus dem gemeinsamen Block `opaa.indexing.http.*`
-(`user-agent`, `max-rate-limit-retries`, `max-retry-after`; siehe [Deployment](deployment.md)).
+`User-Agent`, 429-Wartezeit und die Grenzen je Lauf kommen aus dem gemeinsamen Block
+`opaa.indexing.http.*` (`user-agent`, `max-rate-limit-retries`, `max-retry-after`,
+`request-budget-per-run`, `max-rate-limit-wait-per-run`; siehe [Deployment](deployment.md)).
 Nicht konfigurierbar: Timeouts. Verschachtelungstiefe der Anlagen, Zieladressprüfung,
 Thread-Pool, Kontingent und Chunking wie in den anderen Kapiteln.
 

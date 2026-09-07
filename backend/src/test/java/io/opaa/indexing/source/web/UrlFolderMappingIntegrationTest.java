@@ -27,6 +27,7 @@ import io.opaa.library.LibraryFolderRepository;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.organization.Organization;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.io.IOException;
@@ -232,6 +233,7 @@ class UrlFolderMappingIntegrationTest {
         documentRepository,
         crawlProperties,
         folderService,
+        SourceRequestPolicy.defaults(),
         indexingRunTemplate);
   }
 

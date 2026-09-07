@@ -27,6 +27,7 @@ import io.opaa.indexing.IndexingRunEventRecorder;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.IndexingRunProgress;
 import io.opaa.indexing.SourceDocumentContext;
+import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.rss.RssFeedRunContext;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -104,7 +105,8 @@ class AttachmentIndexerTest {
             "https://example.org/feed.xml",
             new IndexingRunProgress(indexingJobService, jobId),
             new IndexingRunEventRecorder(indexingRunEventRepository, indexingJobService, jobId),
-            new AtomicBoolean(false));
+            new AtomicBoolean(false),
+            RequestBudget.unbounded());
   }
 
   @Test
@@ -116,7 +118,8 @@ class AttachmentIndexerTest {
     // feed's ETag persistence (anyEntryDeferred) and log an ERROR event, never call recordFailed().
     Path downloaded = tempDir.resolve("attachment.txt");
     Files.writeString(downloaded, "content");
-    when(attachmentDownloader.downloadBounded(any(), anyString(), anyString(), anyLong(), any()))
+    when(attachmentDownloader.downloadBounded(
+            any(), anyString(), anyString(), anyLong(), any(), any(), any()))
         .thenReturn(new BoundedDownloader.DownloadedFile(downloaded, "text/plain"));
     when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
         .thenReturn(FileProcessingResult.FAILED);
@@ -277,7 +280,8 @@ class AttachmentIndexerTest {
     AttachmentLimits feedLimits = new AttachmentLimits(20, 1_048_576L);
     Path outerFeedFile = tempDir.resolve("aussen.txt");
     Files.writeString(outerFeedFile, "outer feed content");
-    when(attachmentDownloader.downloadBounded(any(), anyString(), anyString(), anyLong(), any()))
+    when(attachmentDownloader.downloadBounded(
+            any(), anyString(), anyString(), anyLong(), any(), any(), any()))
         .thenReturn(new BoundedDownloader.DownloadedFile(outerFeedFile, "text/plain"));
     AttachmentSource.Download nestedFeedSource =
         new AttachmentSource.Download(

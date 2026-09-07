@@ -31,9 +31,11 @@ import org.slf4j.LoggerFactory;
  *
  * <p>An attachment failure never propagates: a lost attachment is logged and skipped with no effect
  * on the parent's outcome, but marks {@link AttachmentAccess#markDeferred()} so a later conditional
- * {@code GET} cannot suppress the retry. Every attachment created or confirmed unchanged becomes a
- * child of {@code parentDocumentId} (Entscheidung 4) and its {@code file_path} is returned, for a
- * caller that folds those paths into its own reconciliation set (Entscheidung 3).
+ * {@code GET} cannot suppress the retry. What ends the run - an interruption, a spent request
+ * budget - is not an attachment failure and passes through. Every attachment created or confirmed
+ * unchanged becomes a child of {@code parentDocumentId} (Entscheidung 4) and its {@code file_path}
+ * is returned, for a caller that folds those paths into its own reconciliation set (Entscheidung
+ * 3).
  *
  * <p>Every attachment handed in is counted exactly once on {@link AttachmentAccess#progress()}:
  * {@code PROCESSED} when it became a document, {@code SKIPPED} when nothing was attempted for it
@@ -189,7 +191,9 @@ public class AttachmentIndexer {
               download.url(),
               download.suggestedFileName(),
               limits.maxSizeBytes(),
-              download.authHeader());
+              download.authHeader(),
+              RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN,
+              access.rateLimitListener());
 
       String contentType = downloaded.contentType();
       if (isHtmlContentType(contentType)) {

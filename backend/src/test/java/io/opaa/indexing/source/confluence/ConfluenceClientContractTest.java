@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.ConfluenceEdition;
+import io.opaa.indexing.source.RequestBudgetExhaustedException;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
@@ -143,7 +144,7 @@ class ConfluenceClientContractTest {
   void theRequestBudgetCountsEveryRequestAndEndsTheClientOrderly(Deployment deployment)
       throws Exception {
     // the budget is the run's own bound - after three calls the next one is refused before
-    // it is sent, as BudgetExhausted rather than a failure of the instance.
+    // it is sent, as RequestBudgetExhaustedException rather than a failure of the instance.
     ConfluenceClient client = runClient(deployment, 3);
 
     client.verifyCredentials();
@@ -154,7 +155,7 @@ class ConfluenceClientContractTest {
                 client.listPages("ENG");
               }
             })
-        .isInstanceOf(ConfluenceAccessException.BudgetExhausted.class)
+        .isInstanceOf(RequestBudgetExhaustedException.class)
         .hasMessageContaining("Anfragebudget von 3 Anfragen");
     assertThat(client.meter().requests()).as("the refused call is not counted").isEqualTo(3);
     assertThat(server.requests()).hasSize(3);
@@ -177,7 +178,7 @@ class ConfluenceClientContractTest {
     List<ConfluenceAttachment> again = client.listAttachments("102");
 
     assertThatThrownBy(() -> client.downloadAttachment(again.get(0)))
-        .isInstanceOf(ConfluenceAccessException.BudgetExhausted.class);
+        .isInstanceOf(RequestBudgetExhaustedException.class);
     assertThat(server.requests())
         .as("nothing was sent for the download")
         .hasSize(callsBeforeDownload);

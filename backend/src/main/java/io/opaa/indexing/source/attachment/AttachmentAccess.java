@@ -4,6 +4,7 @@ import io.opaa.indexing.AttachmentProgressSink;
 import io.opaa.indexing.IndexingEventSink;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.library.KnowledgeLibrary;
+import io.opaa.sourceaccess.RateLimitListener;
 
 /**
  * The narrow, source-agnostic slice of a connector run {@link AttachmentIndexer} needs (ADR-0022,
@@ -54,5 +55,14 @@ public interface AttachmentAccess {
    */
   default SourceDocumentContext sourceContext() {
     return SourceDocumentContext.NONE;
+  }
+
+  /**
+   * What every download the attachment path performs for this run counts on and is bounded by - the
+   * run's request meter and budget. Default {@link RateLimitListener#NONE} for a caller without a
+   * run of its own.
+   */
+  default RateLimitListener rateLimitListener() {
+    return RateLimitListener.NONE;
   }
 }

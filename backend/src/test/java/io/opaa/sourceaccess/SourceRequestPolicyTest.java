@@ -49,4 +49,21 @@ class SourceRequestPolicyTest {
     assertThat(derived.rateLimitHandling().policy()).isEqualTo(confluence);
     assertThat(derived.rateLimitHandling().listener()).isSameAs(RateLimitListener.NONE);
   }
+
+  @Test
+  void theRunBoundsDefaultToNoBudgetAndFifteenMinutesAndSurviveDerivation() {
+    SourceRequestPolicy policy =
+        new SourceRequestPolicy("OPAA-Indexer/test", RateLimitPolicy.NONE, d -> {});
+    assertThat(policy.requestBudgetPerRun()).isZero();
+    assertThat(policy.maxRateLimitWaitPerRun()).isEqualTo(Duration.ofMinutes(15));
+
+    SourceRequestPolicy bounded = policy.withRunBounds(300, Duration.ofMinutes(5));
+    assertThat(bounded.withRateLimit(RateLimitPolicy.NONE).requestBudgetPerRun()).isEqualTo(300);
+    assertThat(bounded.withSleeper(d -> {}).maxRateLimitWaitPerRun())
+        .isEqualTo(Duration.ofMinutes(5));
+    assertThat(policy.withRunBounds(-1, Duration.ZERO).requestBudgetPerRun()).isZero();
+    assertThat(policy.withRunBounds(-1, Duration.ZERO).maxRateLimitWaitPerRun())
+        .as("zero falls back to the default cap")
+        .isEqualTo(Duration.ofMinutes(15));
+  }
 }

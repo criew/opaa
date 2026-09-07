@@ -1,5 +1,7 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.sourceaccess.SourceRequestMeter;
+
 /**
  * The port every S3 run, the connection test and the bucket listing talk to (ADR-0027, Entscheidung
  * 9) - one adapter on the AWS SDK, created by {@link S3ClientFactory}. An instance is bound to one
@@ -9,7 +11,9 @@ package io.opaa.indexing.source.s3;
  * continuation tokens page by page and never a body; {@code 503 SlowDown}/{@code 429} are retried
  * with backoff and counted, never silently; every failure surfaces as an {@link S3AccessException}
  * whose German message names bucket, key and cause but never a credential; the target of every
- * request passes {@code TargetAddressValidator} before it is sent.
+ * request passes {@code TargetAddressValidator} before it is sent. A run's store refuses the call
+ * that would exceed its request budget with a {@link
+ * io.opaa.indexing.source.RequestBudgetExhaustedException}, before it is sent.
  */
 public interface S3ObjectStore extends AutoCloseable {
 
@@ -59,7 +63,7 @@ public interface S3ObjectStore extends AutoCloseable {
   S3AccessCheck testAccess(S3Scope scope) throws S3AccessException, InterruptedException;
 
   /** What this store did so far: requests, throttles, bytes. */
-  S3RequestMeter meter();
+  SourceRequestMeter meter();
 
   @Override
   void close();

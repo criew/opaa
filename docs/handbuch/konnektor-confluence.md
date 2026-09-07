@@ -386,7 +386,7 @@ kein Dokument), dann „Vollabgleich starten", und prüfen, dass dieser Lauf vol
 | nicht erreichbar | Meldung der Zugriffsschicht (Zeitüberschreitung, Verbindung abgelehnt, TLS, HTTP-Status) | Instanz, Proxy, Allowlist prüfen; die Seite zählt als fehlgeschlagen, der Anker rückt nicht vor |
 | nicht erreichbar | Anhänge nicht auflistbar: … | die Auflistung gilt als unvollständig, kein Vollabgleich bereinigt |
 | in der Quelle entfernt | In der Quelle nicht mehr gefunden, entfernt / In Confluence im Papierkorb, entfernt / In Confluence in einen anderen Space verschoben, alter Stand entfernt | positiver Befund |
-| Ratenbegrenzung | Confluence hat den Lauf n-mal gedrosselt (Retry-After); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen | eine Zeile je Lauf; bei Häufung Zeitpläne entzerren |
+| Ratenbegrenzung | Die Quelle hat den Lauf n-mal gedrosselt (HTTP 429/503, Retry-After); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen | eine Zeile je Lauf, bei jedem Netzkonnektor gleich formuliert; bei Häufung Zeitpläne entzerren |
 | Anfragebudget erschöpft | Anfragebudget von … Anfragen erschöpft; der Lauf endet unvollständig, … | der nächste Lauf setzt fort; bei Dauerzustand Abschnitt 6.3 |
 | Fehler | Das Anfragebudget von … Anfragen reicht für diese Bibliothek nicht aus … | Budget anheben oder Auswahl aufteilen |
 | Fehler | Abgleich des Bestands fehlgeschlagen; der nächste Lauf holt ihn nach | Datenbankfehler beim Bereinigen; der Vollabgleich gilt als nicht abgeschlossen |

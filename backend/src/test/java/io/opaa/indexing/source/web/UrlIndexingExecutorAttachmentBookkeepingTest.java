@@ -31,6 +31,7 @@ import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
@@ -92,16 +93,17 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
 
     var entry =
         new AutoindexCrawlerService.CrawledFileEntry("mail.eml", MAIL_URL, null, "1", "FILE", 0);
-    when(crawlerService.crawl(anyString(), any(), anyInt(), any(), any(), anyBoolean()))
+    when(crawlerService.crawl(anyString(), any(), anyInt(), any(), any(), anyBoolean(), any()))
         .thenReturn(
             new AutoindexCrawlerService.CrawlResult(
                 List.of(entry), false, false, false, List.of()));
 
     Path downloaded = tempDir.resolve("mail.eml");
     Files.writeString(downloaded, "From: a@example.org\r\n\r\nInhalt");
-    when(downloader.download(any(HttpClient.class), any(), anyString(), anyString(), anyLong()))
+    when(downloader.download(
+            any(HttpClient.class), any(), anyString(), anyString(), anyLong(), any()))
         .thenReturn(downloaded);
-    when(downloader.downloadPrefix(any(HttpClient.class), any(), anyString(), anyInt()))
+    when(downloader.downloadPrefix(any(HttpClient.class), any(), anyString(), anyInt(), any()))
         .thenReturn("From: a@example.org\r\n\r\nInhalt".getBytes(StandardCharsets.UTF_8));
 
     executor =
@@ -112,6 +114,7 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
             documentRepository,
             new CrawlProperties(0, 0, 0),
             mock(io.opaa.library.LibraryFolderService.class),
+            SourceRequestPolicy.defaults(),
             new IndexingRunTemplate(
                 mock(IndexingJobService.class),
                 mock(IndexingRunEventRepository.class),

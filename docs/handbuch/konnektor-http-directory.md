@@ -62,6 +62,7 @@ Verwaltende sichtbar; das Laufprotokoll ebenso, weil es die URLs enthält.
 | User-Agent | gemeinsam für alle Netzkonnektoren konfigurierbar (`opaa.indexing.http.user-agent`), Standard `OPAA-Indexer/1.0`; wahrheitsgemäß, keine Browser-Imitation |
 | Timeouts | 30 s Verbindungsaufbau, 60 s je Verzeichnisseite, 120 s je Datei |
 | Wiederholung | nur bei HTTP 429: Verzeichnisseite wie Datei warten die in `Retry-After` genannte Zeit (gedeckelt auf `opaa.indexing.http.max-retry-after`, ohne Header fünf Sekunden) und wiederholen bis zu `opaa.indexing.http.max-rate-limit-retries`-mal; danach gilt die Anfrage als gescheitert. Jeder andere Fehlschlag ist für diesen Lauf endgültig |
+| Grenzen je Lauf | die Summe aller 429-Wartezeiten eines Laufs ist auf `opaa.indexing.http.max-rate-limit-wait-per-run` (Standard 15 Minuten) gedeckelt, die Zahl der Anfragen auf `opaa.indexing.http.request-budget-per-run` (Standard 0, unbegrenzt). Beim Erreichen endet der Lauf geordnet als „unvollständig, wird fortgesetzt" (Abschnitt 4.4) |
 | Wartezeit zwischen Anfragen | keine |
 | Weiterleitungen | höchstens fünf; Details in Abschnitt 4 |
 
@@ -117,6 +118,17 @@ andere Adresse wechselt, ist mit dem verwendeten HTTP-Client nicht abzufangen.
 | Anzahl Einträge (`max-entries`) | 50.000, zählt Dateien **und** besuchte Verzeichnisse | Crawl gilt als abgeschnitten |
 | Dateigröße (`max-file-size-bytes`) | 100 MiB | Datei wird abgewiesen, Lauf läuft weiter; geprüft anhand `Content-Length` und erneut während des Downloads |
 | Verzeichnisseite | 8 MiB, fest | Unterverzeichnis gilt als nicht abrufbar; an der Wurzel scheitert der Lauf |
+| Anfragen je Lauf (`opaa.indexing.http.request-budget-per-run`) | 0, unbegrenzt | Lauf endet geordnet als „unvollständig, wird fortgesetzt" |
+| Summe der 429-Wartezeiten je Lauf (`opaa.indexing.http.max-rate-limit-wait-per-run`) | 15 Minuten | Lauf endet geordnet als „unvollständig, wird fortgesetzt" |
+
+Anfragebudget und Wartedeckel zählen jede Anfrage eines Laufs — Verzeichnisseiten, die
+Inhaltsprobe je Datei, den Download, Wiederholungen nach 429. Ist das Budget verbraucht oder würde
+die nächste 429-Wartezeit die Summe über den Deckel heben, wird die Anfrage nicht mehr gestellt: Der
+aktuelle Eintrag bleibt unverarbeitet, die restlichen Einträge werden nicht mehr abgefragt, der Lauf
+endet erfolgreich mit dem Kennzeichen „unvollständig, wird fortgesetzt" und einem Protokolleintrag
+der Kategorie „Anfragebudget erschöpft". Ein so beendeter Lauf gilt nicht als vollständige
+Auflistung: Er löscht nichts (Abschnitt 9), der nächste Lauf durchsucht das Verzeichnis erneut und
+überspringt, was unverändert gespeichert ist.
 
 Die Dateigrenze liegt bewusst unter der Grenze, bis zu der Apache Tika Inhalte im Speicher
 hält. Grenzen gegen komprimierte Inhalte (Zip-Bomben) liegen nicht im Konnektor, sondern in den
@@ -219,6 +231,9 @@ Anhänge unveränderter Mails gelten als weiterhin vorhanden.
 | abgewiesen | kein extrahierbarer Text | typisch Scan-PDF |
 | Fehler | Verarbeitung fehlgeschlagen | Download- oder Pipeline-Fehler, auch HTTP 403 einzelner Dateien oder 429 nach erschöpften Wiederholungen |
 | entfernt | In der Quelle nicht mehr gefunden, entfernt | Löscherkennung |
+| Ratenbegrenzung | Die Quelle hat den Lauf n-mal gedrosselt (HTTP 429/503, Retry-After); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen | eine Zeile je Lauf, wenn mindestens einmal gewartet wurde |
+| Anfragebudget erschöpft | Anfragebudget von … Anfragen erschöpft; der Lauf endet unvollständig, der nächste Lauf durchsucht das Verzeichnis erneut | Anfragebudget je Lauf verbraucht (Abschnitt 4.4) |
+| Anfragebudget erschöpft | Deckel der 429-Wartezeit von … je Lauf erreicht; der Lauf endet unvollständig, der nächste Lauf durchsucht das Verzeichnis erneut | Summe der 429-Wartezeiten am Deckel (Abschnitt 4.4) |
 
 Scheitert der Lauf als Ganzes, steht die Ursache in der Fehlermeldung des Laufs, etwa „HTTP 401
 Unauthorized, check credentials" oder „HTTP 503 for URL …".
@@ -235,6 +250,8 @@ Unauthorized, check credentials" oder „HTTP 503 for URL …".
 | Weiterleitung `https` auf `http` | abgelehnt |
 | Mehr als fünf Weiterleitungen | Anfrage gilt als fehlgeschlagen |
 | HTTP 403 bei einer Datei, oder 429 nach erschöpften Wiederholungen | Eintrag „Fehler", Lauf läuft weiter; keine gesonderte Bot-Schutz-Erkennung |
+| Anfragebudget je Lauf verbraucht oder Deckel der 429-Wartezeit erreicht | Lauf endet erfolgreich als „unvollständig, wird fortgesetzt", restliche Einträge unberührt, keine Löscherkennung |
+| Lauf während einer Datei gestoppt | Lauf endet mit „Lauf unterbrochen", die folgenden Einträge werden nicht mehr verarbeitet; die unterbrochene Datei zählt nicht als Fehler |
 | Bot-Schutzseite als Antwort auf einen Dateilink | wird als „Format nicht unterstützt" abgewiesen |
 | Endlos streamende Verzeichnisseite | bei 8 MiB abgebrochen |
 | Bibliothek während des Laufs gelöscht | Lauf `FAILED` mit „Die Bibliothek wurde während des Laufs gelöscht." |
@@ -249,6 +266,8 @@ Unauthorized, check credentials" oder „HTTP 503 for URL …".
 | `opaa.indexing.http.user-agent` | `OPAA_INDEXING_HTTP_USER_AGENT` | `OPAA-Indexer/1.0` | `User-Agent` aller Anfragen, gemeinsam mit Feed- und Confluence-Konnektor |
 | `opaa.indexing.http.max-rate-limit-retries` | `OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_RETRIES` | 6 | aufeinanderfolgende 429-Antworten, die eine Anfrage abwartet |
 | `opaa.indexing.http.max-retry-after` | `OPAA_INDEXING_HTTP_MAX_RETRY_AFTER` | 2m | Obergrenze einer einzelnen Wartezeit aus `Retry-After` |
+| `opaa.indexing.http.request-budget-per-run` | `OPAA_INDEXING_HTTP_REQUEST_BUDGET_PER_RUN` | 0 (unbegrenzt) | Anfragen je Lauf einschließlich Wiederholungen, gemeinsam mit dem Feed-Konnektor; beim Erreichen endet der Lauf geordnet unvollständig |
+| `opaa.indexing.http.max-rate-limit-wait-per-run` | `OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_WAIT_PER_RUN` | 15m | Summe der 429-Wartezeiten je Lauf, gemeinsam mit dem Feed-Konnektor; beim Erreichen endet der Lauf geordnet unvollständig |
 | `opaa.indexing.target-validation.enabled` | `OPAA_INDEXING_TARGET_VALIDATION_ENABLED` | `true` | Zieladressprüfung |
 | `opaa.indexing.target-validation.allowlist` | `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | leer | Hostnamen, die trotz privater Adresse zulässig sind |
 | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | | | Schlüssel für gespeicherte Zugangsdaten |

@@ -2,6 +2,7 @@ package io.opaa.indexing.source.confluence;
 
 import io.opaa.sourceaccess.Sleeper;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
+import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.net.http.HttpClient;
@@ -83,7 +84,7 @@ public class ConfluenceClientFactory {
             properties,
             targetAddressValidator,
             requestPolicy,
-            new ConfluenceRequestMeter(),
+            new SourceRequestMeter(),
             null,
             requestBudget);
     return switch (connection.edition()) {

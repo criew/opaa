@@ -15,6 +15,7 @@ import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.ReconcilingAttachmentAccess;
+import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.SourceFolderMirror;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
@@ -23,6 +24,7 @@ import io.opaa.library.LibraryFolderService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.net.http.HttpClient;
@@ -45,7 +47,9 @@ import org.springframework.scheduling.annotation.Async;
  * <p>The listing is complete only when the crawl was neither {@link
  * AutoindexCrawlerService.CrawlResult#truncated()} nor {@link
  * AutoindexCrawlerService.CrawlResult#incomplete()}; only then does the run frame reconcile, and
- * only then are the folders pruned afterwards.
+ * only then are the folders pruned afterwards. Every request of a run - directory pages, detection
+ * prefixes, downloads - counts on the run's {@link RequestBudget} under the shared {@link
+ * SourceRequestPolicy}'s bounds; reaching one ends the run through the frame as truncated.
  */
 public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
@@ -57,6 +61,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   private final DocumentRepository documentRepository;
   private final CrawlProperties crawlProperties;
   private final LibraryFolderService folderService;
+  private final SourceRequestPolicy requestPolicy;
   private final IndexingRunTemplate runTemplate;
 
   public UrlIndexingExecutor(
@@ -66,6 +71,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       DocumentRepository documentRepository,
       CrawlProperties crawlProperties,
       LibraryFolderService folderService,
+      SourceRequestPolicy requestPolicy,
       IndexingRunTemplate runTemplate) {
     this.crawlerService = crawlerService;
     this.downloader = downloader;
@@ -73,6 +79,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     this.documentRepository = documentRepository;
     this.crawlProperties = crawlProperties;
     this.folderService = folderService;
+    this.requestPolicy = requestPolicy;
     this.runTemplate = runTemplate;
   }
 
@@ -111,9 +118,21 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     }
     log.info("Starting URL crawl of: {}", url);
 
+    RequestBudget budget = RequestBudget.forRun(requestPolicy);
+    run.recordRequestCost(budget.meter());
+    // a crawl cut short by the budget has listed nothing to reconcile against; the next run
+    // crawls again and skips what is stored unchanged
+    run.budgetContinuation(
+        () -> "der Lauf endet unvollständig, der nächste Lauf durchsucht das Verzeichnis erneut");
     AutoindexCrawlerService.CrawlResult crawlResult =
         crawlerService.crawl(
-            url, proxyHost, proxyPort, config.username(), config.password(), request.insecureSsl());
+            url,
+            proxyHost,
+            proxyPort,
+            config.username(),
+            config.password(),
+            request.insecureSsl(),
+            budget);
     List<AutoindexCrawlerService.CrawledFileEntry> allFiles = crawlResult.entries();
     log.info("Discovered {} files for URL indexing", allFiles.size());
 
@@ -160,7 +179,14 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     for (AutoindexCrawlerService.CrawledFileEntry entry : allFiles) {
       run.markPresent(entry.url());
       processEntry(
-          run, entry, httpClient, authHeader, attachmentAccess, folderMirror, normalizedUrl);
+          run,
+          entry,
+          httpClient,
+          authHeader,
+          attachmentAccess,
+          folderMirror,
+          normalizedUrl,
+          budget);
       run.progress().report();
     }
 
@@ -180,7 +206,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
    * of those in full before rejecting them would fill the temp partition. The one exception is a
    * prefix that ended inside an unresolved container, which carries no verdict at all - see {@link
    * SupportedDocumentFormats#decideForPrefix}; that transfer, like every other one here, is capped
-   * at {@link CrawlProperties#maxFileSizeBytes()}.
+   * at {@link CrawlProperties#maxFileSizeBytes()}. Every request counts on {@code budget}, whose
+   * bound - like an interruption - ends the run rather than this entry.
    */
   private void processEntry(
       IndexingRun run,
@@ -189,7 +216,9 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       String authHeader,
       ReconcilingAttachmentAccess attachmentAccess,
       SourceFolderMirror folderMirror,
-      String normalizedUrl) {
+      String normalizedUrl,
+      RequestBudget budget)
+      throws InterruptedException {
     KnowledgeLibrary targetLibrary = run.library();
     // Checked before any download; a document indexed before folders existed still picks up its
     // folder without being re-indexed.
@@ -205,7 +234,11 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       log.info("Processing URL document: {} ({})", entry.name(), entry.url());
       byte[] prefix =
           downloader.downloadPrefix(
-              httpClient, authHeader, entry.url(), SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
+              httpClient,
+              authHeader,
+              entry.url(),
+              SupportedDocumentFormats.DETECTION_PREFIX_BYTES,
+              budget);
       // Holds whatever the decision below had to download in full to reach a verdict, so the
       // finally block deletes it even when detection on it fails - and so an accepted entry is
       // not transferred a second time.
@@ -223,7 +256,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                             authHeader,
                             entry.url(),
                             entry.name(),
-                            crawlProperties.maxFileSizeBytes()));
+                            crawlProperties.maxFileSizeBytes(),
+                            budget));
       } finally {
         tempFile = downloadedForDecision[0];
       }
@@ -258,7 +292,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                 authHeader,
                 entry.url(),
                 entry.name(),
-                crawlProperties.maxFileSizeBytes());
+                crawlProperties.maxFileSizeBytes(),
+                budget);
       }
       long fileSize = Files.size(tempFile);
       FileProcessingResult result =
@@ -292,6 +327,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       run.events().record(IndexingEventCategory.REJECTED, e.getMessage(), entry.url());
       run.progress().recordSkipped();
     } catch (Exception | Error e) {
+      IndexingRun.rethrowRunEnding(e);
       run.recordFailure(entry.url(), e);
     } finally {
       if (tempFile != null) {

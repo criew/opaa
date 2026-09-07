@@ -12,10 +12,12 @@ import io.opaa.indexing.IndexingRunProgress;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.sourceaccess.SourceRequestMeter;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +25,10 @@ import org.slf4j.LoggerFactory;
  * Everything one connector run shares across its items, handed to the run body by {@link
  * IndexingRunTemplate}: the job's progress and protocol, the result mapping, the change check, the
  * reconciliation set and the request cost. A connector body only adds what its source needs.
+ *
+ * <p>A run's own bound - a spent request budget or an exhausted wait on throttled answers - ends
+ * the body with a {@link RequestBudgetExhaustedException}; the frame notes it with the {@link
+ * #budgetContinuation continuation} the body registered and ends the run as truncated.
  *
  * <p>The reconciliation set carries the {@code file_path} of every item and attachment present this
  * run ({@link #markPresent}) and the subset whose own attachments were freshly enumerated ({@link
@@ -32,6 +38,8 @@ import org.slf4j.LoggerFactory;
 public final class IndexingRun {
 
   private static final Logger log = LoggerFactory.getLogger(IndexingRun.class);
+
+  static final String DEFAULT_BUDGET_CONTINUATION = "der nächste Lauf setzt fort";
 
   /**
    * Runs once the frame has attempted the reconciliation; {@code reconciled} is false if it threw.
@@ -51,10 +59,9 @@ public final class IndexingRun {
   private final LibraryStorageQuotaService storageQuotaService;
   private final Set<String> currentPaths = new HashSet<>();
   private final Set<String> reprocessedPaths = new HashSet<>();
-  private int requestsSent;
-  private int throttleCount;
-  private long throttleWaitMillis;
-  private long bytesDownloaded;
+  private SourceRequestMeter requestMeter = new SourceRequestMeter();
+  private Supplier<String> budgetContinuation = () -> DEFAULT_BUDGET_CONTINUATION;
+  private String budgetStallAdvice;
   private ReconciliationHook reconciliationHook = reconciled -> {};
 
   public IndexingRun(
@@ -178,29 +185,71 @@ public final class IndexingRun {
     reconciliationHook.afterReconciliation(reconciled);
   }
 
-  /** What the run's source meter counted; a source without one leaves the zeros. */
-  public void recordRequestCost(int requestsSent, int throttleCount, long throttleWaitMillis) {
-    recordRequestCost(requestsSent, throttleCount, throttleWaitMillis, 0L);
+  /**
+   * The meter the run's source counted on - read by the frame for the run's cost and the throttle
+   * note once the body has ended; a source without one leaves the zeros.
+   */
+  public void recordRequestCost(SourceRequestMeter meter) {
+    this.requestMeter = meter;
   }
 
-  /** Like {@link #recordRequestCost(int, int, long)}, for a source that also counts bytes. */
-  public void recordRequestCost(
-      int requestsSent, int throttleCount, long throttleWaitMillis, long bytesDownloaded) {
-    this.requestsSent = requestsSent;
-    this.throttleCount = throttleCount;
-    this.throttleWaitMillis = throttleWaitMillis;
-    this.bytesDownloaded = bytesDownloaded;
+  SourceRequestMeter requestMeter() {
+    return requestMeter;
+  }
+
+  /**
+   * Where the next run continues once this run's request budget is spent - the tail of the {@code
+   * BUDGET_EXHAUSTED} note after "erschöpft; ", read the moment the budget runs out so it can name
+   * what the run has met so far. Replaces any earlier continuation; a body updates it as it moves
+   * through its source.
+   */
+  public void budgetContinuation(Supplier<String> continuation) {
+    this.budgetContinuation = continuation;
+  }
+
+  /**
+   * What to change when a run reached its budget without storing a single item or attachment - the
+   * chain of resumed runs has stalled, and the frame says so in an {@code ERROR} note. {@code null}
+   * (the default) writes no such note.
+   */
+  public void budgetStallAdvice(String advice) {
+    this.budgetStallAdvice = advice;
+  }
+
+  String budgetContinuation() {
+    return budgetContinuation.get();
+  }
+
+  String budgetStallAdvice() {
+    return budgetStallAdvice;
+  }
+
+  /**
+   * Lets what must end the run pass an item catch: an {@link InterruptedException} (itself or as a
+   * cause, with the interrupt flag restored) and a {@link RequestBudgetExhaustedException}. Every
+   * other failure returns to the caller, which records it as the item's own.
+   */
+  public static void rethrowRunEnding(Throwable failure) throws InterruptedException {
+    for (Throwable t = failure; t != null; t = t.getCause()) {
+      if (t instanceof InterruptedException interrupted) {
+        Thread.currentThread().interrupt();
+        throw interrupted;
+      }
+      if (t instanceof RequestBudgetExhaustedException exhausted) {
+        throw exhausted;
+      }
+    }
   }
 
   IndexingRunCost cost(boolean incomplete) {
     return new IndexingRunCost(
-        requestsSent,
-        throttleCount,
-        throttleWaitMillis,
+        requestMeter.requests(),
+        requestMeter.throttles(),
+        requestMeter.throttledTime().toMillis(),
         progress.attachmentsProcessed(),
         progress.attachmentsSkipped(),
         progress.attachmentsFailed(),
         incomplete,
-        bytesDownloaded);
+        requestMeter.bytesDownloaded());
   }
 }

@@ -43,18 +43,33 @@ public class BoundedDownloader {
   }
 
   /**
+   * {@link #download(HttpClient, String, String, String, long, RateLimitListener)} without a
+   * listener - for a caller with no run to count on.
+   */
+  public Path download(
+      HttpClient httpClient, String authHeader, String fileUrl, String fileName, long maxBytes)
+      throws IOException, InterruptedException {
+    return download(httpClient, authHeader, fileUrl, fileName, maxBytes, RateLimitListener.NONE);
+  }
+
+  /**
    * Downloads {@code fileUrl} into a temp file <b>the caller must delete</b>, capped at {@code
    * maxBytes} while streaming, so one entry can never fill the temp partition. Follows an
    * off-origin redirect under {@link
    * RedirectFollowingFetcher.RedirectPolicy#DROP_AUTHORIZATION_OFF_ORIGIN}: an admin chose this
-   * URL.
+   * URL. {@code rateLimitListener} is told about every wait and retry on a {@code 429}.
    *
    * @throws HttpStatusException on any status but {@code 200}
    * @throws AttachmentTooLargeException if the response body exceeds {@code maxBytes}; the partial
    *     temp file is deleted before it is thrown
    */
   public Path download(
-      HttpClient httpClient, String authHeader, String fileUrl, String fileName, long maxBytes)
+      HttpClient httpClient,
+      String authHeader,
+      String fileUrl,
+      String fileName,
+      long maxBytes,
+      RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
     log.debug("Downloading: {}", fileUrl);
     return downloadToTempFile(
@@ -64,8 +79,18 @@ public class BoundedDownloader {
             maxBytes,
             authHeader,
             RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
-            RateLimitListener.NONE)
+            rateLimitListener)
         .path();
+  }
+
+  /**
+   * {@link #downloadPrefix(HttpClient, String, String, int, RateLimitListener)} without a listener
+   * - for a caller with no run to count on.
+   */
+  public byte[] downloadPrefix(
+      HttpClient httpClient, String authHeader, String fileUrl, int maxBytes)
+      throws IOException, InterruptedException {
+    return downloadPrefix(httpClient, authHeader, fileUrl, maxBytes, RateLimitListener.NONE);
   }
 
   /**
@@ -73,10 +98,15 @@ public class BoundedDownloader {
    * memory, never on disk, so a rejected listing entry normally costs only this bounded read -
    * except for an unresolved container, which {@code SupportedDocumentFormats#decideForPrefix} then
    * fetches in full. An accepted entry costs two requests, deliberately preferred over streaming
-   * one connection through both phases.
+   * one connection through both phases. {@code rateLimitListener} is told about every wait and
+   * retry on a {@code 429}.
    */
   public byte[] downloadPrefix(
-      HttpClient httpClient, String authHeader, String fileUrl, int maxBytes)
+      HttpClient httpClient,
+      String authHeader,
+      String fileUrl,
+      int maxBytes,
+      RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
 
     log.debug("Downloading (bounded to {} bytes, for detection): {}", maxBytes, fileUrl);
@@ -89,7 +119,7 @@ public class BoundedDownloader {
             requestPolicy.headers(authHeader),
             targetAddressValidator,
             RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
-            requestPolicy.rateLimitHandling());
+            requestPolicy.rateLimitHandling(rateLimitListener));
 
     try (InputStream body = response.body()) {
       if (response.statusCode() != 200) {

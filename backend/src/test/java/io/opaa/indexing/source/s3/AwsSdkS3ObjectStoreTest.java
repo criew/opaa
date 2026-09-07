@@ -3,6 +3,7 @@ package io.opaa.indexing.source.s3;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.indexing.source.RequestBudgetExhaustedException;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -282,7 +283,7 @@ class AwsSdkS3ObjectStoreTest {
     store.headObject("docs", "2025/a.pdf");
 
     assertThatThrownBy(() -> store.headObject("docs", "2025/a.pdf"))
-        .isInstanceOf(S3AccessException.BudgetExhausted.class)
+        .isInstanceOf(RequestBudgetExhaustedException.class)
         .hasMessageContaining("2 Anfragen");
     assertThat(server.seen()).hasSize(2);
   }
@@ -293,7 +294,7 @@ class AwsSdkS3ObjectStoreTest {
     S3ObjectStore store = store(properties(1000, 5, 2), true, true);
 
     assertThatThrownBy(() -> store.listObjects(S3Scope.of("docs", ""), null))
-        .isInstanceOf(S3AccessException.BudgetExhausted.class);
+        .isInstanceOf(RequestBudgetExhaustedException.class);
     assertThat(server.seen()).as("the third attempt never left").hasSize(2);
     assertThat(store.meter().requests()).isEqualTo(2);
   }

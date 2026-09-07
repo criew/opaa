@@ -543,8 +543,8 @@ Eintrag. Die Kategorien:
 | Allowlist | Quellpfad liegt außerhalb der Freigabe |
 | Zeitplan übersprungen | fällig, aber ein Lauf lief bereits |
 | in der Quelle entfernt | Dokument wurde gelöscht, wegen Abwesenheit oder auf Befund der Quelle |
-| Ratenbegrenzung | die Quelle hat den Lauf gebremst (HTTP 429); eine Zeile je Lauf mit Anzahl und Wartezeit |
-| Anfragebudget erschöpft | der Lauf endete geordnet unvollständig, der nächste setzt fort |
+| Ratenbegrenzung | die Quelle hat den Lauf gebremst (HTTP 429, bei S3 auch 503); eine Zeile je Lauf mit Anzahl und Wartezeit, bei jedem Netzkonnektor gleich formuliert: „Die Quelle hat den Lauf n-mal gedrosselt (HTTP 429/503, Retry-After); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen" |
+| Anfragebudget erschöpft | der Lauf endete geordnet unvollständig, weil sein Anfragebudget verbraucht oder der Deckel seiner 429-Wartezeit erreicht ist; die Zeile nennt, wo der nächste Lauf fortsetzt |
 | Kennzahlen | die Zahlen des Laufs (Anfragen, geladene Bytes, gelistete / übersprungene / verarbeitete Objekte, Dauer je Geltungsbereich); eine Zeile je Lauf bei Konnektoren, die sie zählen (S3) |
 | Fehler | Verarbeitung begonnen, unerwartet gescheitert |
 
@@ -569,11 +569,12 @@ Scheitern zwei geplante Läufe hintereinander, zeigt die Bibliothek ein Warnbann
 Versuche zählen dafür nicht mit, damit ein Testlauf den Befund nicht überschreibt.
 
 Jeder Lauf zeigt zusätzlich eine Kennzahlenzeile mit Anhängen (indiziert, übersprungen,
-fehlgeschlagen) und Dauer. Anfragen an die Quelle und Drosselungen erscheinen bei den Konnektoren,
-die sie zählen (Confluence, S3), geladene Bytes bei S3. Bei Confluence und S3 kommen außerdem das
-Kennzeichen „unvollständig, wird fortgesetzt" und die dauerhaft sichtbare Warnung einer
-unvollständigen Auflistung hinzu; die Betriebsart bei Confluence (Vollabgleich, inkrementell) und
-S3 (Vollabgleich, Ereignislauf).
+fehlgeschlagen) und Dauer. Anfragen an die Quelle und Drosselungen zählt jeder Netzkonnektor
+(RSS-Feed, Webverzeichnis, Confluence, S3) auf demselben Zähler des Laufrahmens; geladene Bytes
+zählt S3. Das Kennzeichen „unvollständig, wird fortgesetzt" trägt jeder Lauf, der an seinem
+Anfragebudget oder am Deckel seiner 429-Wartezeit geordnet endete; bei Confluence und S3 kommen die
+dauerhaft sichtbare Warnung einer unvollständigen Auflistung und die Betriebsart hinzu (Confluence:
+Vollabgleich, inkrementell; S3: Vollabgleich, Ereignislauf).
 
 Systemweit sieht ein Systemadministrator zusätzlich eine Liste der Dokumente **ohne einen
 einzigen Chunk**, der typische Befund für eingescannte PDFs, sowie den Pipeline-Versionsstand je
@@ -645,6 +646,7 @@ Die wichtigsten Schlüssel unter `opaa.indexing.*`:
 | `attachments.max-depth` | 5 | Verschachtelungstiefe von Anhängen (Mail-in-Mail, Feed-Anlage) - ein Wert für jeden Konnektor |
 | `attachments.max-per-parent` / `attachments.max-size-bytes` | 10 / 20 MiB | Reserve für künftige Konnektoren ohne eigene Werte, derzeit ohne Wirkung: RSS und Mail bringen eigene Grenzen mit, Confluence lädt mit eigener Größengrenze und übergibt je Aufruf einen Anhang |
 | `http.user-agent` / `http.max-rate-limit-retries` / `http.max-retry-after` | `OPAA-Indexer/1.0` / 6 / 2m | `User-Agent` jeder Anfrage an eine fremde Quelle und die 429-Wartezeit von RSS- und Webverzeichnis-Konnektor; Confluence hat eigene 429-Werte |
+| `http.request-budget-per-run` / `http.max-rate-limit-wait-per-run` | 0 (unbegrenzt) / 15m | Anfragen je Lauf und Summe der 429-Wartezeiten je Lauf beim RSS- und Webverzeichnis-Konnektor; beim Erreichen endet der Lauf geordnet als „unvollständig, wird fortgesetzt". Confluence und S3 haben eigene Budgets |
 | `chunk-size` / `chunk-overlap` | 1000 / 100 Tokens | nur Auffang-Pipeline und strukturlose Texte |
 | `batch-size` | 50 | Chunks je Embedding-Aufruf |
 | `embedding-concurrency` | 3 | parallele Embedding-Pakete je Dokument |

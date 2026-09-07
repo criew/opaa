@@ -18,6 +18,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -141,6 +142,7 @@ class UrlAttachmentIndexingIntegrationTest {
             documentRepository,
             new CrawlProperties(0, 0, 0),
             folderService,
+            SourceRequestPolicy.defaults(),
             indexingRunTemplate);
   }
 

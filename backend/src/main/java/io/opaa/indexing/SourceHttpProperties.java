@@ -9,8 +9,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * What every request to a source OPAA does not operate carries and tolerates - the RSS feed and its
  * pages and attachments, the web directory, Confluence: one {@code User-Agent} and one rate-limit
- * tolerance for the deployment. Its own property block, not a component of {@link
- * IndexingProperties}, which is bound positionally by many call sites.
+ * tolerance for the deployment, plus the bounds of one feed or web-directory run. Its own property
+ * block, not a component of {@link IndexingProperties}, which is bound positionally by many call
+ * sites.
  *
  * @param userAgent the {@code User-Agent} header sent with every request. Truthful by default;
  *     impersonating a browser is out of scope. Default {@code OPAA-Indexer/1.0}.
@@ -21,10 +22,20 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param maxRetryAfter the longest single wait honoured from a {@code Retry-After}; a longer value
  *     is capped to this. Default 2 minutes. Confluence keeps its own value ({@code
  *     opaa.indexing.confluence.max-retry-after}).
+ * @param requestBudgetPerRun how many requests one feed or web-directory run may send, retries
+ *     included, before it ends in an orderly way as incomplete. Default 0: unbounded. Confluence
+ *     and S3 keep their own budgets.
+ * @param maxRateLimitWaitPerRun how long one feed or web-directory run may wait on {@code 429}
+ *     answers in total before it ends in an orderly way as incomplete. Default 15 minutes; zero
+ *     falls back to the default.
  */
 @ConfigurationProperties(prefix = "opaa.indexing.http")
 public record SourceHttpProperties(
-    String userAgent, int maxRateLimitRetries, Duration maxRetryAfter) {
+    String userAgent,
+    int maxRateLimitRetries,
+    Duration maxRetryAfter,
+    int requestBudgetPerRun,
+    Duration maxRateLimitWaitPerRun) {
 
   public SourceHttpProperties {
     if (userAgent == null || userAgent.isBlank()) {
@@ -40,6 +51,15 @@ public record SourceHttpProperties(
     if (maxRetryAfter == null || maxRetryAfter.isZero() || maxRetryAfter.isNegative()) {
       maxRetryAfter = SourceRequestPolicy.DEFAULT_MAX_RETRY_AFTER;
     }
+    if (requestBudgetPerRun < 0) {
+      throw new IllegalArgumentException(
+          "requestBudgetPerRun must not be negative, got " + requestBudgetPerRun);
+    }
+    if (maxRateLimitWaitPerRun == null
+        || maxRateLimitWaitPerRun.isZero()
+        || maxRateLimitWaitPerRun.isNegative()) {
+      maxRateLimitWaitPerRun = SourceRequestPolicy.DEFAULT_MAX_RATE_LIMIT_WAIT_PER_RUN;
+    }
   }
 
   /**
@@ -49,6 +69,10 @@ public record SourceHttpProperties(
    */
   public SourceRequestPolicy toRequestPolicy() {
     return new SourceRequestPolicy(
-        userAgent, RateLimitPolicy.of(maxRateLimitRetries, maxRetryAfter), Sleeper.threadSleep());
+        userAgent,
+        RateLimitPolicy.of(maxRateLimitRetries, maxRetryAfter),
+        Sleeper.threadSleep(),
+        requestBudgetPerRun,
+        maxRateLimitWaitPerRun);
   }
 }

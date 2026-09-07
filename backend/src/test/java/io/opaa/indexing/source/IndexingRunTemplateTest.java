@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -21,16 +22,20 @@ import io.opaa.indexing.DocumentRepository;
 import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunCost;
+import io.opaa.indexing.IndexingRunEvent;
 import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.sourceaccess.SourceRequestMeter;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatcher;
 import org.mockito.InOrder;
 import org.springframework.dao.DataIntegrityViolationException;
 
@@ -116,7 +121,12 @@ class IndexingRunTemplateTest {
           run.progress().recordProcessed();
           run.progress().recordSkipped();
           run.progress().recordAttachment(AttachmentOutcome.PROCESSED);
-          run.recordRequestCost(12, 1, 500L);
+          SourceRequestMeter meter = new SourceRequestMeter();
+          for (int i = 0; i < 12; i++) {
+            meter.recordRequest();
+          }
+          meter.recordThrottle(Duration.ofMillis(500));
+          run.recordRequestCost(meter);
           return ListingOutcome.complete();
         });
 
@@ -356,6 +366,140 @@ class IndexingRunTemplateTest {
 
     verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(jobService).failJob(eq(jobId), any());
+  }
+
+  // --- the run's own bounds ------------------------------------------------------------------
+
+  private static ArgumentMatcher<IndexingRunEvent> note(
+      IndexingEventCategory category, String messagePart) {
+    return event ->
+        event != null
+            && event.getCategory() == category
+            && event.getReference() == null
+            && event.getMessage().contains(messagePart);
+  }
+
+  @Test
+  void aSpentBudgetEndsTheRunTruncatedWithTheBodysContinuationAndNeverFailsIt() {
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          run.progress().recordProcessed();
+          run.markPresent("/srv/dokumente/a.txt");
+          run.budgetContinuation(() -> "der nächste Lauf setzt bei Ordner B fort");
+          run.budgetStallAdvice("Budget anheben.");
+          throw RequestBudgetExhaustedException.requests(40);
+        });
+
+    verify(eventRepository)
+        .save(
+            argThat(
+                note(
+                    IndexingEventCategory.BUDGET_EXHAUSTED,
+                    "Anfragebudget von 40 Anfragen erschöpft; der nächste Lauf setzt bei Ordner B"
+                        + " fort")));
+    verify(eventRepository, never())
+        .save(argThat(note(IndexingEventCategory.ERROR, "reicht für diese Bibliothek")));
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
+    verify(jobService, never()).recordListingAssessment(any(), anyBoolean(), any());
+    verify(jobService).recordRunMetrics(jobId, new IndexingRunCost(0, 0, 0L, 0, 0, 0, true, 0L));
+    verify(jobService).completeJob(jobId, 1, 0, 0, 1);
+    verify(jobService, never()).failJob(any(), any());
+  }
+
+  @Test
+  void aBudgetSpentWithoutStoringAnythingAddsTheBodysAdviceAsAnError() {
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          run.progress().recordSkipped();
+          run.budgetStallAdvice("Budget anheben oder die Auswahl aufteilen.");
+          throw RequestBudgetExhaustedException.requests(40);
+        });
+
+    verify(eventRepository)
+        .save(argThat(note(IndexingEventCategory.BUDGET_EXHAUSTED, "der nächste Lauf setzt fort")));
+    verify(eventRepository)
+        .save(
+            argThat(
+                note(
+                    IndexingEventCategory.ERROR,
+                    "Das Anfragebudget von 40 Anfragen reicht für diese Bibliothek nicht aus:"
+                        + " Budget anheben oder die Auswahl aufteilen.")));
+    verify(jobService).completeJob(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
+  }
+
+  @Test
+  void aBodyWithoutAdviceGetsNoErrorNoteHoweverLittleItStored() {
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.INCREMENTAL,
+        windowExecutor,
+        run -> {
+          throw RequestBudgetExhaustedException.throttleWait(Duration.ofMinutes(15));
+        });
+
+    verify(eventRepository)
+        .save(
+            argThat(
+                note(
+                    IndexingEventCategory.BUDGET_EXHAUSTED,
+                    "Deckel der 429-Wartezeit von 15 Minuten je Lauf erreicht; der nächste Lauf"
+                        + " setzt fort")));
+    verify(eventRepository, never()).save(argThat(note(IndexingEventCategory.ERROR, "")));
+    verify(jobService).recordRunMetrics(jobId, new IndexingRunCost(0, 0, 0L, 0, 0, 0, true, 0L));
+  }
+
+  @Test
+  void aThrottledRunIsNotedOnceFromItsMeterWhetherItSucceededOrNot() {
+    SourceRequestMeter meter = new SourceRequestMeter();
+    meter.recordThrottle(Duration.ofSeconds(2));
+    meter.recordThrottle(Duration.ofMillis(1500));
+
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          run.recordRequestCost(meter);
+          throw new IndexingRunFailedException("Quelle nicht erreichbar");
+        });
+
+    verify(eventRepository)
+        .save(
+            argThat(
+                note(
+                    IndexingEventCategory.RATE_LIMITED,
+                    "2-mal gedrosselt (HTTP 429/503, Retry-After); der Lauf hat insgesamt 3"
+                        + " Sekunden gewartet statt abzubrechen")));
+    verify(jobService)
+        .recordRunMetrics(jobId, new IndexingRunCost(0, 2, 3500L, 0, 0, 0, false, 0L));
+    verify(jobService).failJob(jobId, "Quelle nicht erreichbar");
+  }
+
+  @Test
+  void anUnthrottledRunGetsNoRateLimitNote() {
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          SourceRequestMeter meter = new SourceRequestMeter();
+          meter.recordRequest();
+          run.recordRequestCost(meter);
+          return ListingOutcome.complete();
+        });
+
+    verify(eventRepository, never()).save(argThat(note(IndexingEventCategory.RATE_LIMITED, "")));
   }
 
   // --- robustness --------------------------------------------------------------------------

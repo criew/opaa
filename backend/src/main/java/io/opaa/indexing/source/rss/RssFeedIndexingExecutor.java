@@ -18,6 +18,7 @@ import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.ListingOutcome;
+import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.indexing.source.attachment.AttachmentCandidate;
@@ -56,7 +57,10 @@ import org.springframework.scheduling.annotation.Async;
  * <p>Change detection is three-staged: a conditional {@code GET} on the feed, each entry's stored
  * {@code pubDate}, then the SHA-256 checksum. <b>No deletion by absence</b> (decision 5): a feed's
  * window is a property of the feed. A rejected or unreachable entry never aborts the run, and an
- * attachment failure only marks the run as having deferred something.
+ * attachment failure only marks the run as having deferred something. Every request of a run counts
+ * on its {@link RequestBudget} under the shared {@link SourceRequestPolicy}'s bounds; reaching one
+ * ends the run through the frame as truncated, with the feed state unsaved so no entry is hidden
+ * behind a later {@code 304}.
  */
 public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
@@ -69,6 +73,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
   private final DetailPageExtractor detailPageExtractor;
   private final AttachmentIndexer attachmentIndexer;
   private final AttachmentLimits attachmentLimits;
+  private final SourceRequestPolicy requestPolicy;
   private final IndexingRunTemplate runTemplate;
 
   public RssFeedIndexingExecutor(
@@ -97,6 +102,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     this.attachmentLimits =
         new AttachmentLimits(
             this.properties.maxAttachmentsPerEntry(), this.properties.maxAttachmentSizeBytes());
+    this.requestPolicy = requestPolicy;
     this.runTemplate = runTemplate;
   }
 
@@ -142,8 +148,14 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
             ? SourceHttpClientFactory.buildHttpClient(config.proxyHost(), config.proxyPort(), true)
             : secureClient;
 
+    RequestBudget budget = RequestBudget.forRun(requestPolicy);
+    run.recordRequestCost(budget.meter());
+    // the feed state stays unsaved, so the next run sees every entry again
+    run.budgetContinuation(
+        () -> "der Lauf endet unvollständig, der nächste Lauf nimmt die übrigen Einträge auf");
     Optional<FeedFetcher.LoadedFeed> loaded =
-        feedFetcher.fetchAndParse(insecureClient, targetLibrary.getId(), feedUrl, authHeader);
+        feedFetcher.fetchAndParse(
+            insecureClient, targetLibrary.getId(), feedUrl, authHeader, budget);
     if (loaded.isEmpty()) {
       run.progress().setTotal(0);
       return ListingOutcome.partial();
@@ -161,7 +173,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
             feedUrl,
             run.progress(),
             run.events(),
-            new AtomicBoolean(loaded.get().truncated()));
+            new AtomicBoolean(loaded.get().truncated()),
+            budget);
     for (RssFeedEntry entry : entries) {
       processEntry(run, ctx, entry);
       run.progress().report();
@@ -181,7 +194,12 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     return ListingOutcome.partial();
   }
 
-  private void processEntry(IndexingRun run, RssFeedRunContext ctx, RssFeedEntry entry) {
+  /**
+   * One feed entry. Whatever goes wrong with it is the entry's own - except what ends the run: an
+   * interruption or the run's spent budget passes through with the flag set.
+   */
+  private void processEntry(IndexingRun run, RssFeedRunContext ctx, RssFeedEntry entry)
+      throws InterruptedException {
     String entryUrl = entry.link();
     IndexingRunProgress progress = ctx.progress();
     IndexingRunEventRecorder events = ctx.events();
@@ -252,6 +270,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
         indexAttachments(ctx, detailPage.attachments(), entryUrl);
       }
     } catch (Exception | Error e) {
+      IndexingRun.rethrowRunEnding(e);
       run.recordFailure(entryUrl, e);
     }
   }
@@ -262,7 +281,8 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * that page for attachments alone - not the entry's text - and only while no attachment document
    * exists for it in this run's own library, so an entry that already has them stays cheap.
    */
-  private void processUnchangedEntry(RssFeedRunContext ctx, String entryUrl) {
+  private void processUnchangedEntry(RssFeedRunContext ctx, String entryUrl)
+      throws InterruptedException {
     ctx.progress().recordSkipped();
     if (documentRepository.existsBySourceEntryUrlAndLibraryId(
         entryUrl, ctx.targetLibrary().getId())) {
@@ -321,15 +341,19 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
    * Optional#empty()} - shared by {@link #processEntry} and {@link #processUnchangedEntry}, whose
    * five exception branches differ only in wording ({@code backfill} selects the phrasing used when
    * re-fetching an unchanged entry's page for attachments alone) and in whether the entry itself
-   * still needs {@code recordSkipped()} - already called before backfilling.
+   * still needs {@code recordSkipped()} - already called before backfilling. An interruption is the
+   * run's end, not the entry's failure, and passes through.
    */
   private Optional<DetailPageExtractor.DetailPage> fetchDetailPageForEntry(
-      RssFeedRunContext ctx, String entryUrl, boolean backfill) {
+      RssFeedRunContext ctx, String entryUrl, boolean backfill) throws InterruptedException {
     String suffix = backfill ? " (beim Nachladen von Anlagen)" : "";
     try {
       return Optional.of(
           detailPageExtractor.fetch(
-              ctx.httpClientFor(entryUrl), entryUrl, ctx.authHeaderFor(entryUrl)));
+              ctx.httpClientFor(entryUrl),
+              entryUrl,
+              ctx.authHeaderFor(entryUrl),
+              ctx.requestBudget()));
     } catch (DetailPageExtractor.RejectedByRemoteException e) {
       // ADR-0017: a 403/429/redirect to a foreign host is declined, not a processing failure - the
       // German event message is e.userMessage(), never e.getMessage() (can carry the raw target).
@@ -370,7 +394,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
                   + " nachgeladen werden)"
               : "Inhaltstyp der Detailseite wird nicht unterstützt",
           !backfill);
-    } catch (IOException | InterruptedException e) {
+    } catch (IOException e) {
       log.warn(
           backfill
               ? "RSS detail page unreachable while backfilling attachments, will retry on a"
@@ -386,9 +410,6 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
               ? "Detailseite beim Nachladen von Anlagen nicht erreichbar"
               : "Detailseite nicht erreichbar",
           !backfill);
-      if (e instanceof InterruptedException) {
-        Thread.currentThread().interrupt();
-      }
     } catch (IllegalArgumentException e) {
       // entryUrl already passed isValidUri, but a redirect hop's own Location header can still
       // make currentUri.resolve(location) throw here.

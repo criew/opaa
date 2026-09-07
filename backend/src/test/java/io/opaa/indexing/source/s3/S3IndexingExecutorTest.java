@@ -36,6 +36,7 @@ import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceType;
+import io.opaa.indexing.source.RequestBudgetExhaustedException;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
@@ -694,7 +695,7 @@ class S3IndexingExecutorTest {
           @Override
           public S3ListPage listObjects(S3Scope scope, String token) throws S3AccessException {
             if (token != null) {
-              throw new S3AccessException.BudgetExhausted(3);
+              throw RequestBudgetExhaustedException.requests(3);
             }
             return super.listObjects(scope, token);
           }
@@ -736,7 +737,7 @@ class S3IndexingExecutorTest {
           @Override
           public S3Download getObject(String bucket, String key, long maxBytes)
               throws S3AccessException {
-            throw new S3AccessException.BudgetExhausted(2);
+            throw RequestBudgetExhaustedException.requests(2);
           }
         };
     budgeted
@@ -1034,7 +1035,7 @@ class S3IndexingExecutorTest {
           @Override
           public S3ListPage listObjects(S3Scope scope, String token) throws S3AccessException {
             if (scope.bucket().equals("satzungen")) {
-              throw new S3AccessException.BudgetExhausted(3);
+              throw RequestBudgetExhaustedException.requests(3);
             }
             return super.listObjects(scope, token);
           }
@@ -1153,7 +1154,7 @@ class S3IndexingExecutorTest {
           public S3Download getObject(String bucket, String key, long maxBytes)
               throws S3AccessException {
             if (key.endsWith("1.pdf")) {
-              throw new S3AccessException.BudgetExhausted(4);
+              throw RequestBudgetExhaustedException.requests(4);
             }
             return super.getObject(bucket, key, maxBytes);
           }

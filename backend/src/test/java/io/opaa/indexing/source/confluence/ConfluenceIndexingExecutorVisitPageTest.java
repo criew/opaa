@@ -31,6 +31,7 @@ import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.RequestBudgetExhaustedException;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor.PageVisitPolicy;
 import io.opaa.library.ConfluenceSpaceSelection;
@@ -425,11 +426,11 @@ class ConfluenceIndexingExecutorVisitPageTest {
   @ParameterizedTest
   @EnumSource(PageVisitPolicy.class)
   void anExhaustedBudgetEndsTheVisitWithoutANote(PageVisitPolicy policy) throws Exception {
-    when(client.fetchPage("101")).thenThrow(new ConfluenceAccessException.BudgetExhausted(6));
+    when(client.fetchPage("101")).thenThrow(RequestBudgetExhaustedException.requests(6));
 
     assertThatThrownBy(
             () -> executor.visitPage(run, known(policy, "101", "ENG", "Kapitel 1", 2), policy))
-        .isInstanceOf(ConfluenceAccessException.BudgetExhausted.class);
+        .isInstanceOf(RequestBudgetExhaustedException.class);
 
     verify(eventRepository, never()).save(any());
     assertThat(run.progress.skippedCount()).isZero();

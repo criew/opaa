@@ -2,6 +2,7 @@ package io.opaa.indexing.source;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingRunEventRecorder;
 import io.opaa.indexing.IndexingRunEventRepository;
@@ -9,6 +10,7 @@ import io.opaa.indexing.IndexingRunProgress;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.sourceaccess.SourceRequestMeter;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -19,20 +21,23 @@ import org.springframework.dao.DataIntegrityViolationException;
 /**
  * The frame every connector run shares: it starts the job's progress and protocol, rejects a run
  * mode the executor does not declare, runs the connector's body, reconciles by absence when the
- * body listed the source completely and the mode allows it, persists the listing assessment and the
- * run's cost, and ends the job exactly once - completed, or failed with a German message.
+ * body listed the source completely and the mode allows it, notes throttling and a spent budget
+ * from the run's request meter, persists the listing assessment and the run's cost, and ends the
+ * job exactly once - completed, or failed with a German message.
  *
  * <p>A body ends its run early by throwing {@link IndexingRunFailedException} with the message the
- * job should carry. An {@link InterruptedException} fails the run as interrupted, a {@link
- * DataIntegrityViolationException} as "library deleted during the run" (the only way a foreign key
- * to the library can break mid-run), any other exception with its own message.
+ * job should carry. A {@link RequestBudgetExhaustedException} ends the run as truncated - noted
+ * with the body's {@link IndexingRun#budgetContinuation continuation}, never failed. An {@link
+ * InterruptedException} fails the run as interrupted, a {@link DataIntegrityViolationException} as
+ * "library deleted during the run" (the only way a foreign key to the library can break mid-run),
+ * any other exception with its own message.
  */
 public class IndexingRunTemplate {
 
   private static final Logger log = LoggerFactory.getLogger(IndexingRunTemplate.class);
 
   static final String LIBRARY_DELETED_MESSAGE = "Die Bibliothek wurde während des Laufs gelöscht.";
-  static final String INTERRUPTED_MESSAGE = "Lauf unterbrochen";
+  public static final String INTERRUPTED_MESSAGE = "Lauf unterbrochen";
 
   /**
    * A connector's run body: enumerate the source, hand every item to processing through {@link
@@ -96,6 +101,14 @@ public class IndexingRunTemplate {
       if (policy == VanishedDocumentPolicy.REMOVE_ON_ABSENCE) {
         finishCompleteListing(run, executor, listing);
       }
+    } catch (RequestBudgetExhaustedException e) {
+      log.info(
+          "Indexing run {} for library {} ended at its bound: {}",
+          jobId,
+          library.getId(),
+          e.getMessage());
+      recordBudgetExhausted(run, e);
+      incomplete = true;
     } catch (IndexingRunFailedException e) {
       log.warn("Indexing run {} for library {} failed: {}", jobId, library.getId(), e.getMessage());
       failed = true;
@@ -118,6 +131,7 @@ public class IndexingRunTemplate {
               ? e.getMessage()
               : "Unerwarteter Fehler (" + e.getClass().getSimpleName() + ")";
     }
+    reportThrottling(run);
     recordCost(run, !failed && incomplete);
     log.info(
         "Indexing run {} ({}) for library {}: {} processed, {} failed, {} skipped, attachments"
@@ -198,6 +212,40 @@ public class IndexingRunTemplate {
           e);
       return false;
     }
+  }
+
+  /**
+   * One {@code BUDGET_EXHAUSTED} note naming where the next run continues, and - for a run that
+   * stored nothing new, so the chain of resumed runs has stalled - the body's advice as an {@code
+   * ERROR}; nothing when the body registered none.
+   */
+  private static void recordBudgetExhausted(IndexingRun run, RequestBudgetExhaustedException e) {
+    run.events()
+        .recordRunNote(
+            IndexingEventCategory.BUDGET_EXHAUSTED,
+            e.getMessage() + "; " + run.budgetContinuation());
+    String advice = run.budgetStallAdvice();
+    if (advice != null
+        && run.progress().processedCount() == 0
+        && run.progress().attachmentsProcessed() == 0) {
+      run.events().recordRunNote(IndexingEventCategory.ERROR, e.insufficiencyNote(advice));
+    }
+  }
+
+  /** One {@code RATE_LIMITED} note per run that was throttled at all, from the run's meter. */
+  private static void reportThrottling(IndexingRun run) {
+    SourceRequestMeter meter = run.requestMeter();
+    if (meter.throttles() == 0) {
+      return;
+    }
+    run.events()
+        .recordRunNote(
+            IndexingEventCategory.RATE_LIMITED,
+            "Die Quelle hat den Lauf "
+                + meter.throttles()
+                + "-mal gedrosselt (HTTP 429/503, Retry-After); der Lauf hat insgesamt "
+                + meter.throttledTime().toSeconds()
+                + " Sekunden gewartet statt abzubrechen");
   }
 
   /** A cost write must never keep the job from ending - it is logged and the run goes on. */
