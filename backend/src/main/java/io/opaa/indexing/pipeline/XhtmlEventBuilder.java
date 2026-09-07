@@ -81,6 +81,15 @@ public final class XhtmlEventBuilder {
    */
   private String pendingMarker;
 
+  /**
+   * Nesting of the list item being walked, so a list reached through any wrapper inside an item
+   * ({@code <li><div><ul>}) continues at the next depth and, for ordered lists, under the item's
+   * number; -1 / "" outside any item.
+   */
+  private int itemDepth = -1;
+
+  private String itemNumbering = "";
+
   public XhtmlEventBuilder() {
     this(NO_RULE);
   }
@@ -129,11 +138,19 @@ public final class XhtmlEventBuilder {
     }
   }
 
-  /** Ends the current paragraph and emits {@code line} as a paragraph of its own. */
+  /**
+   * Ends the current paragraph and emits {@code line} as a paragraph of its own; inside a list item
+   * whose marker is still pending (a macro title as the item's first content), the line carries it.
+   */
   public void emitLine(String line) {
     flushBlock();
     if (!line.isBlank()) {
-      events.add(new Paragraph(line.stripTrailing()));
+      String text = line.stripTrailing();
+      if (pendingMarker != null) {
+        text = pendingMarker + text;
+        pendingMarker = null;
+      }
+      events.add(new Paragraph(text));
     }
   }
 
@@ -186,7 +203,7 @@ public final class XhtmlEventBuilder {
     }
     switch (tag) {
       case "h1", "h2", "h3", "h4", "h5", "h6" -> heading(element, tag.charAt(1) - '0');
-      case "ul", "ol" -> list(element, tag.equals("ol"), 0, "");
+      case "ul", "ol" -> list(element, tag.equals("ol"), itemDepth + 1, itemNumbering);
       case "table" -> table(element);
       case "pre" -> verbatim(element.wholeText());
       default -> {
@@ -210,8 +227,8 @@ public final class XhtmlEventBuilder {
   /**
    * One line per item, led by its marker: the item's first paragraph carries it, whether the text
    * is inline or wrapped in a block child ({@code <li><p>Text</p></li>}); further blocks of the
-   * same item and text after a nested list follow unmarked, a nested list follows with the next
-   * depth's marker.
+   * same item and text after a nested list follow unmarked, a nested list (a direct child or inside
+   * any wrapper, reached through {@link #walk}) follows with the next depth's marker.
    *
    * @param numbering the enclosing ordered list's number prefix ("2." for the second item's nested
    *     list), so nesting is carried by the marker ("2.1.") - HeadingSectionSplitter strips every
@@ -219,6 +236,8 @@ public final class XhtmlEventBuilder {
    */
   private void list(Element listElement, boolean ordered, int depth, String numbering) {
     flushBlock();
+    int outerDepth = itemDepth;
+    String outerNumbering = itemNumbering;
     int index = 0;
     for (Element item : listElement.children()) {
       if (!item.tagName().equalsIgnoreCase("li")) {
@@ -227,18 +246,14 @@ public final class XhtmlEventBuilder {
       index++;
       String number = numbering + index + ".";
       pendingMarker = ordered ? number + " " : bulletFor(depth);
-      for (Node child : item.childNodes()) {
-        if (child instanceof Element nested
-            && (nested.tagName().equalsIgnoreCase("ul")
-                || nested.tagName().equalsIgnoreCase("ol"))) {
-          list(nested, nested.tagName().equalsIgnoreCase("ol"), depth + 1, ordered ? number : "");
-          continue;
-        }
-        walk(child);
-      }
+      itemDepth = depth;
+      itemNumbering = ordered ? number : "";
+      walkChildren(item);
       flushBlock();
       pendingMarker = null;
     }
+    itemDepth = outerDepth;
+    itemNumbering = outerNumbering;
   }
 
   private static String bulletFor(int depth) {

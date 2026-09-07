@@ -254,6 +254,18 @@ class ConfluenceDocumentPipelineTest {
   }
 
   @Test
+  void aMacroAsTheFirstContentOfAListItemKeepsTheMarkerOnItsTitle() {
+    List<Document> chunks =
+        chunk(
+            "<ul><li><ac:structured-macro ac:name=\"info\">"
+                + "<ac:parameter ac:name=\"title\">Hinweis</ac:parameter>"
+                + "<ac:rich-text-body><p>Frist beachten.</p></ac:rich-text-body>"
+                + "</ac:structured-macro></li><li>Lageplan</li></ul>");
+
+    assertThat(chunks.getFirst().getText()).isEqualTo("• Hinweis\n\nFrist beachten.\n\n• Lageplan");
+  }
+
+  @Test
   void headingsDeeperThanH3FoldIntoTheSectionText() {
     List<Document> chunks =
         chunk("<h2>Verfahren</h2><p>Einleitung.</p><h4>Schritt 1</h4><p>Antrag stellen.</p>");

@@ -919,9 +919,14 @@ dessen Text in einem Block-Element steht (`<li><p>Text</p></li>` — Confluence-
 CMS-Ausgaben schreiben das regelmäßig), behält im `XhtmlEventBuilder` seinen Marker: Der erste
 Absatz, den ein Listenpunkt liefert, trägt ihn, gleich ob der Text inline oder in einem Block
 steht; weitere Blöcke desselben Punkts folgen unmarkiert als Fortsetzung, eine verschachtelte
-Liste mit dem Marker der nächsten Tiefe. Vorher gab der Block-Flush den Absatz ohne Marker aus und
-der Punkt hinterließ keine markierte Zeile. Beide Pipelines steigen, weil sich der Zuschnitt
-dieser Seiten ändert; die Golden-Chunks aller übrigen Fälle sind unverändert.
+Liste mit dem Marker der nächsten Tiefe — auch dann, wenn sie nicht direktes `<li>`-Kind ist
+(`<li><div><ul>…`, vorher begann sie wieder bei Tiefe 0). Eine Zeile, die ein Formathook selbst
+ausgibt (der Titel eines Confluence-Makros als erster Inhalt eines Listenpunkts), trägt den Marker
+ebenso. Vorher gab der Block-Flush den Absatz ohne Marker aus und der Punkt hinterließ keine
+markierte Zeile. Damit verschiebt sich auch der Marker bei einem Zeilenumbruch im Listenpunkt:
+`<li>Zeile1<br>Zeile2</li>` ergab vorher „Zeile1" und „• Zeile2", jetzt „• Zeile1" und „Zeile2".
+Beide Pipelines steigen, weil sich der Zuschnitt dieser Seiten ändert; die Golden-Chunks aller
+übrigen Fälle sind unverändert.
 
 **Baseline unberührt** — kein Korpusdokument läuft durch eine der beiden Pipelines. Der
 Versionsschritt verschiebt `ingestionPipelineFingerprint` (`confluence:1` → `confluence:2`,
