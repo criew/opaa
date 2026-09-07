@@ -5,8 +5,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -39,13 +41,19 @@ import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -73,7 +81,11 @@ class S3IndexingExecutorTest {
   private DocumentRepository documentRepository;
   private StaleDocumentCleanupService cleanupService;
   private LibraryFolderService folderService;
-  private S3Properties properties = S3Properties.defaults();
+  private S3SyncStateRepository syncStateRepository;
+
+  /** Serial downloads: the call order the tests assert is the listing order. */
+  private S3Properties properties = serial(0, 0);
+
   private KnowledgeLibrary library;
   private S3IndexingExecutor executor;
 
@@ -103,6 +115,8 @@ class S3IndexingExecutorTest {
     cleanupService =
         spy(new StaleDocumentCleanupService(documentRepository, mock(VectorChunkStore.class)));
     folderService = mock(LibraryFolderService.class);
+    syncStateRepository = mock(S3SyncStateRepository.class);
+    when(syncStateRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     library = library(settings(List.of(S3Scope.of("dokumente", "2025/"))));
     executor = executorOver(store);
   }
@@ -116,12 +130,18 @@ class S3IndexingExecutorTest {
         fileProcessingService,
         documentRepository,
         folderService,
+        syncStateRepository,
+        Clock.fixed(Instant.parse("2026-09-06T20:00:00Z"), ZoneOffset.UTC),
         new IndexingRunTemplate(
             indexingJobService,
             eventRepository,
             cleanupService,
             documentRepository,
             mock(LibraryStorageQuotaService.class)));
+  }
+
+  private static S3Properties serial(long maxObjectSizeBytes, int maxObjectsPerRun) {
+    return new S3Properties(0, maxObjectSizeBytes, null, null, null, 0, null, maxObjectsPerRun, 1);
   }
 
   private static S3SourceSettings settings(List<S3Scope> scopes) {
@@ -391,7 +411,7 @@ class S3IndexingExecutorTest {
   @Test
   void folderMarkersArchiveClassesAndOversizedObjectsAreNamedSkippedAndStillPresent()
       throws Exception {
-    properties = new S3Properties(0, 10, null, null, null, 0, null, 0);
+    properties = serial(10, 0);
     executor = executorOver(store);
     store
         .put(
@@ -740,7 +760,7 @@ class S3IndexingExecutorTest {
 
   @Test
   void tooManyListedObjectsFailTheRunVisibly() throws Exception {
-    properties = new S3Properties(0, 0, null, null, null, 0, null, 2);
+    properties = serial(0, 2);
     executor = executorOver(store);
     store
         .put("dokumente", "2025/a.pdf", "a", PDF)
@@ -755,6 +775,8 @@ class S3IndexingExecutorTest {
             eq(jobId),
             argThat(
                 message -> message.contains("mehr als 2 Objekte") && message.contains("enger")));
+    verify(eventRepository)
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "3 Objekte gelistet", null)));
     verifyNoReconciliation();
   }
 
@@ -959,6 +981,227 @@ class S3IndexingExecutorTest {
 
     verify(folderService).materializeFolderPath(library, List.of("q1"));
     verify(folderService).pruneOrphanedFolders(eq(library), any());
+  }
+
+  @Test
+  void aResumedRunListsUnfinishedScopesFirstAndCompletesTheStateAfterTheReconciliation()
+      throws Exception {
+    library =
+        library(
+            settings(
+                List.of(
+                    S3Scope.of("dokumente", "2025/"),
+                    S3Scope.of("satzungen", ""),
+                    S3Scope.of("archiv", ""))));
+    S3SyncState interrupted = new S3SyncState(library.getId());
+    interrupted.beginFullSync(UUID.randomUUID());
+    interrupted.markScopeCompleted("dokumente/2025/");
+    when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(interrupted));
+    store
+        .put("dokumente", "2025/a.pdf", "a", PDF)
+        .put("satzungen", "b.pdf", "b", PDF)
+        .put("archiv", "c.pdf", "c", PDF);
+    UUID jobId = UUID.randomUUID();
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    assertThat(store.calls())
+        .as("the scopes the interrupted run did not finish come first, every scope is re-listed")
+        .containsExactly(
+            "list satzungen",
+            "get satzungen/b.pdf",
+            "list archiv",
+            "get archiv/c.pdf",
+            "list dokumente/2025/",
+            "get dokumente/2025/a.pdf");
+    assertThat(interrupted.isFullSyncInterrupted()).isFalse();
+    assertThat(interrupted.getFullSyncJobId()).isNull();
+    assertThat(interrupted.getFullSyncCompletedAt())
+        .isEqualTo(Instant.parse("2026-09-06T20:00:00Z"));
+    assertThat(interrupted.completedScopeKeys()).isEmpty();
+    verify(indexingJobService).recordListingAssessment(jobId, true, List.of());
+  }
+
+  @Test
+  void aTruncatedRunLeavesTheStateOpenWithTheScopesItListedCompletely() throws Exception {
+    library =
+        library(settings(List.of(S3Scope.of("dokumente", "2025/"), S3Scope.of("satzungen", ""))));
+    FakeS3ObjectStore budgeted =
+        new FakeS3ObjectStore() {
+          @Override
+          public S3ListPage listObjects(S3Scope scope, String token) throws S3AccessException {
+            if (scope.bucket().equals("satzungen")) {
+              throw new S3AccessException.BudgetExhausted(3);
+            }
+            return super.listObjects(scope, token);
+          }
+        };
+    budgeted.put("dokumente", "2025/a.pdf", "a", PDF);
+    ArgumentCaptor<S3SyncState> saved = ArgumentCaptor.forClass(S3SyncState.class);
+    UUID jobId = UUID.randomUUID();
+
+    executorOver(budgeted).execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(syncStateRepository, atLeastOnce()).save(saved.capture());
+    S3SyncState state = saved.getValue();
+    assertThat(state.isFullSyncInterrupted()).isTrue();
+    assertThat(state.getFullSyncJobId()).isEqualTo(jobId);
+    assertThat(state.completedScopeKeys()).containsExactly("dokumente/2025/");
+    verifyNoReconciliation();
+  }
+
+  @Test
+  void anUnlistableScopeStaysOutOfTheStateAndAFailedReconciliationKeepsItOpen() throws Exception {
+    library =
+        library(settings(List.of(S3Scope.of("geheim", ""), S3Scope.of("dokumente", "2025/"))));
+    store
+        .failBucket("geheim", () -> new S3AccessException.ListForbidden("geheim"))
+        .put("dokumente", "2025/a.pdf", "a", PDF);
+    ArgumentCaptor<S3SyncState> saved = ArgumentCaptor.forClass(S3SyncState.class);
+
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+
+    verify(syncStateRepository, atLeastOnce()).save(saved.capture());
+    assertThat(saved.getValue().completedScopeKeys()).containsExactly("dokumente/2025/");
+    assertThat(saved.getValue().isFullSyncInterrupted()).isTrue();
+
+    // a complete listing whose reconciliation throws: the state stays open, the protocol says so
+    library = library(settings(List.of(S3Scope.of("dokumente", "2025/"))));
+    doThrow(new IllegalStateException("db weg"))
+        .when(cleanupService)
+        .reconcile(any(), any(), any(), any(), any(), any(), any());
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.ERROR, S3FullSync.RECONCILIATION_FAILED_MESSAGE, null)));
+    verify(syncStateRepository, atLeastOnce()).save(saved.capture());
+    assertThat(saved.getValue().isFullSyncInterrupted()).isTrue();
+    verify(folderService).pruneOrphanedFolders(eq(library), any());
+  }
+
+  @Test
+  void downloadsRunConcurrentlyWithinTheBoundWhileTheProtocolKeepsListingOrder() throws Exception {
+    properties = new S3Properties(0, 0, null, null, null, 0, null, 0, 2);
+    AtomicInteger inFlight = new AtomicInteger();
+    AtomicInteger maxInFlight = new AtomicInteger();
+    // two downloads must be in flight together before either returns - deterministic, not timed
+    CountDownLatch pair = new CountDownLatch(2);
+    FakeS3ObjectStore slow =
+        new FakeS3ObjectStore() {
+          @Override
+          public S3Download getObject(String bucket, String key, long maxBytes)
+              throws S3AccessException {
+            int now = inFlight.incrementAndGet();
+            maxInFlight.accumulateAndGet(now, Math::max);
+            try {
+              pair.countDown();
+              pair.await(5, TimeUnit.SECONDS);
+              return super.getObject(bucket, key, maxBytes);
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              throw new S3AccessException.Unreachable("unterbrochen");
+            } finally {
+              inFlight.decrementAndGet();
+            }
+          }
+        };
+    for (int i = 0; i < 6; i++) {
+      slow.put("dokumente", "2025/" + i + ".pdf", "inhalt " + i, PDF);
+    }
+    List<String> ingested = new ArrayList<>();
+    doAnswer(
+            invocation -> {
+              DocumentIngest ingest = invocation.getArgument(0);
+              assertThat(DocumentIngests.fileOf(ingest)).exists();
+              ingested.add(ingest.filePath());
+              return FileProcessingResult.PROCESSED;
+            })
+        .when(fileProcessingService)
+        .ingest(any(), any());
+    UUID jobId = UUID.randomUUID();
+
+    executorOver(slow).execute(jobId, library, IndexingRunMode.FULL);
+
+    assertThat(maxInFlight.get()).as("bounded by download-concurrency, and used").isEqualTo(2);
+    assertThat(ingested)
+        .as("ingested on the listing thread in listing order")
+        .containsExactly(
+            "s3://dokumente/2025/0.pdf",
+            "s3://dokumente/2025/1.pdf",
+            "s3://dokumente/2025/2.pdf",
+            "s3://dokumente/2025/3.pdf",
+            "s3://dokumente/2025/4.pdf",
+            "s3://dokumente/2025/5.pdf");
+    verify(indexingJobService).completeJob(jobId, 6, 0, 0, 6);
+    assertThat(Thread.getAllStackTraces().keySet())
+        .as("no download thread outlives the run")
+        .noneMatch(thread -> thread.getName().startsWith("s3-download-") && thread.isAlive());
+  }
+
+  @Test
+  void aBudgetSpentByAConcurrentDownloadEndsTheRunTruncatedAndCleansUp() throws Exception {
+    properties = new S3Properties(0, 0, null, null, null, 0, null, 0, 2);
+    FakeS3ObjectStore budgeted =
+        new FakeS3ObjectStore() {
+          @Override
+          public S3Download getObject(String bucket, String key, long maxBytes)
+              throws S3AccessException {
+            if (key.endsWith("1.pdf")) {
+              throw new S3AccessException.BudgetExhausted(4);
+            }
+            return super.getObject(bucket, key, maxBytes);
+          }
+        };
+    for (int i = 0; i < 4; i++) {
+      budgeted.put("dokumente", "2025/" + i + ".pdf", "inhalt " + i, PDF);
+    }
+    UUID jobId = UUID.randomUUID();
+
+    executorOver(budgeted).execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(eventRepository)
+        .save(argThat(event(IndexingEventCategory.BUDGET_EXHAUSTED, "Anfragebudget von 4", null)));
+    verifyNoReconciliation();
+    assertThat(ingestedFiles).allSatisfy(file -> assertThat(file).doesNotExist());
+    assertThat(budgeted.landedFiles())
+        .as("a download that finished behind the abort is swept by close()")
+        .allSatisfy(file -> assertThat(file).doesNotExist());
+    ArgumentCaptor<IndexingRunCost> cost = ArgumentCaptor.forClass(IndexingRunCost.class);
+    verify(indexingJobService).recordRunMetrics(eq(jobId), cost.capture());
+    assertThat(cost.getValue().incomplete()).isTrue();
+  }
+
+  @Test
+  void theRunEndsWithItsFiguresInTheProtocolAndTheBytesInTheCost() throws Exception {
+    library =
+        library(settings(List.of(S3Scope.of("dokumente", "2025/"), S3Scope.of("satzungen", ""))));
+    store
+        .put("dokumente", "2025/a.pdf", "zwölf bytes!", PDF)
+        .put("dokumente", "2025/foto.png", "png", "image/png")
+        .put("satzungen", "b.txt", "b", "text/plain");
+    stored("s3://dokumente/2025/a.pdf", markerOf("dokumente", "2025/a.pdf"));
+    UUID jobId = UUID.randomUUID();
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.SUMMARY,
+                    "3 Anfragen, 1 B geladen; 3 Objekte gelistet, 0 durch Muster"
+                        + " ausgeschlossen, 2 übersprungen, 1 neu verarbeitet, 0 fehlgeschlagen;"
+                        + " Dauer je Geltungsbereich: dokumente/2025/ 0 s, satzungen 0 s",
+                    null)));
+    ArgumentCaptor<IndexingRunCost> cost = ArgumentCaptor.forClass(IndexingRunCost.class);
+    verify(indexingJobService).recordRunMetrics(eq(jobId), cost.capture());
+    assertThat(cost.getValue().bytesDownloaded()).isEqualTo(1);
+    assertThat(S3FullSync.formatBytes(734_003_200L)).isEqualTo("700 MB");
+    assertThat(S3FullSync.formatBytes(2_048)).isEqualTo("2 KB");
+    assertThat(S3FullSync.formatBytes(1_572_864)).isEqualTo("1,5 MB");
   }
 
   @Test

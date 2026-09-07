@@ -222,6 +222,9 @@ opaa:
       # listed objects one run may hold before it fails visibly asking for narrower scopes - an
       # emergency brake for heap and runtime (see S3Properties.DEFAULT_MAX_OBJECTS_PER_RUN).
       max-objects-per-run: ${OPAA_INDEXING_S3_MAX_OBJECTS_PER_RUN:1000000}
+      # object downloads one run keeps in flight while its listing goes on (a bound on the load
+      # put on the store; 1 downloads serially, see S3Properties.DEFAULT_DOWNLOAD_CONCURRENCY).
+      download-concurrency: ${OPAA_INDEXING_S3_DOWNLOAD_CONCURRENCY:2}
     # #1058: DoS-hardening limits for TabularDocumentPipeline (XLSX/CSV/ODS) - own property block,
     # own binding prefix, see TabularProperties's own Javadoc for why.
     tabular:

@@ -28,6 +28,7 @@ import io.opaa.library.LibraryFolderService;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIndexingIntegrationTest;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -65,6 +66,7 @@ class S3FolderMappingIntegrationTest {
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private LibraryFolderRepository folderRepository;
   @Autowired private LibraryFolderService folderService;
+  @Autowired private S3SyncStateRepository syncStateRepository;
   @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private JdbcTemplate jdbcTemplate;
 
@@ -164,6 +166,8 @@ class S3FolderMappingIntegrationTest {
         fileProcessingService,
         documentRepository,
         folderService,
+        syncStateRepository,
+        Clock.systemUTC(),
         indexingRunTemplate);
   }
 

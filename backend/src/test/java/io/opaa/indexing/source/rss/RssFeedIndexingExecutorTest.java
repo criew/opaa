@@ -1245,7 +1245,7 @@ class RssFeedIndexingExecutorTest {
     // throttles stay 0, a feed run has no meter for them
     verify(indexingJobService)
         .recordRunMetrics(
-            any(), eq(new io.opaa.indexing.IndexingRunCost(0, 0, 0L, 1, 0, 0, false)));
+            any(), eq(new io.opaa.indexing.IndexingRunCost(0, 0, 0L, 1, 0, 0, false, 0L)));
   }
 
   @Test

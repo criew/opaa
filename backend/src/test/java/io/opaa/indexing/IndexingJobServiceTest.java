@@ -58,7 +58,7 @@ class IndexingJobServiceTest {
     var failed = new IndexingJob(JobStatus.FAILED);
     when(indexingJobRepository.findById(running.getId())).thenReturn(Optional.of(running));
     when(indexingJobRepository.findById(failed.getId())).thenReturn(Optional.of(failed));
-    IndexingRunCost cost = new IndexingRunCost(1842, 3, 95_000L, 120, 800, 2, true);
+    IndexingRunCost cost = new IndexingRunCost(1842, 3, 95_000L, 120, 800, 2, true, 0L);
 
     service.recordRunMetrics(running.getId(), cost);
     service.recordRunMetrics(failed.getId(), cost);

@@ -43,9 +43,11 @@ public class FakeS3ObjectStore implements S3ObjectStore {
   private final Map<String, TreeMap<String, StoredObject>> buckets = new LinkedHashMap<>();
   private final Map<String, Supplier<S3AccessException>> bucketFailures = new LinkedHashMap<>();
   private final Map<String, Supplier<S3AccessException>> readFailures = new LinkedHashMap<>();
-  private final List<Supplier<S3AccessException>> nextCallFailures = new ArrayList<>();
+  private final List<Supplier<S3AccessException>> nextCallFailures =
+      java.util.Collections.synchronizedList(new ArrayList<>());
   private final S3RequestMeter meter = new S3RequestMeter();
-  private final List<String> calls = new ArrayList<>();
+  private final List<Path> landedFiles = java.util.Collections.synchronizedList(new ArrayList<>());
+  private final List<String> calls = java.util.Collections.synchronizedList(new ArrayList<>());
   private int pageSize = 1000;
   private boolean bucketListingPermitted = true;
   private boolean closed;
@@ -117,6 +119,11 @@ public class FakeS3ObjectStore implements S3ObjectStore {
 
   public boolean isClosed() {
     return closed;
+  }
+
+  /** Every temp file a download of this store wrote, whether or not a caller consumed it. */
+  public List<Path> landedFiles() {
+    return List.copyOf(landedFiles);
   }
 
   private void record(String call) throws S3AccessException {
@@ -204,6 +211,7 @@ public class FakeS3ObjectStore implements S3ObjectStore {
     try {
       Path file = Files.createTempFile("opaa-s3-fake-", ".bin");
       Files.write(file, object.bytes());
+      landedFiles.add(file);
       meter.recordBytes(object.bytes().length);
       return new S3Download(
           file, object.contentType(), object.eTag(), object.bytes().length, object.lastModified());

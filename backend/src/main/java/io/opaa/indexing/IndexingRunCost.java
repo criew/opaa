@@ -13,6 +13,8 @@ package io.opaa.indexing;
  * @param attachmentsFailed attachments whose download or processing failed
  * @param incomplete {@code true} when the run stopped in an orderly way before covering everything
  *     (the request budget ran out) and the next run continues where this one left off
+ * @param bytesDownloaded the bytes the run downloaded from its source; 0 for a source that does not
+ *     count them
  */
 public record IndexingRunCost(
     int requestsSent,
@@ -21,4 +23,5 @@ public record IndexingRunCost(
     int attachmentsProcessed,
     int attachmentsSkipped,
     int attachmentsFailed,
-    boolean incomplete) {}
+    boolean incomplete,
+    long bytesDownloaded) {}

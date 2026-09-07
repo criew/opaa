@@ -134,6 +134,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
             rssFeedStateRepository,
             org.mockito.Mockito.mock(
                 io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository.class),
+            org.mockito.Mockito.mock(io.opaa.indexing.source.s3.S3SyncStateRepository.class),
             Clock.systemDefaultZone(),
             storageQuotaService,
             folderRepository,

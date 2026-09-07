@@ -34,5 +34,10 @@ public enum IndexingEventCategory {
    * The run spent its request budget and ended in an orderly way as incomplete - one note per run
    * naming the budget and where the next run continues, not an item's outcome.
    */
-  BUDGET_EXHAUSTED
+  BUDGET_EXHAUSTED,
+  /**
+   * The run's own figures at its end - requests, bytes, listed/skipped/processed objects, the time
+   * each container took - one note per run for a source that counts them, never an item outcome.
+   */
+  SUMMARY
 }

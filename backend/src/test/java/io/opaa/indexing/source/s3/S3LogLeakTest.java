@@ -109,7 +109,7 @@ class S3LogLeakTest {
   @Test
   void logsCarryNeitherSecretKeyNorSessionTokenNorAccessKey() throws Exception {
     S3Properties properties =
-        new S3Properties(1000, 0, Duration.ofSeconds(3), 2, Duration.ofMillis(1), 0, null, 0);
+        new S3Properties(1000, 0, Duration.ofSeconds(3), 2, Duration.ofMillis(1), 0, null, 0, 0);
     S3ClientFactory factory = new S3ClientFactory(properties, TargetAddressValidator.disabled());
     S3Connection connection =
         new S3Connection(

@@ -4452,6 +4452,9 @@ components:
             down instead of failing (#1136); one summary note per run, not an item outcome.
           * BUDGET_EXHAUSTED - the run spent its request budget (#1141) and ended in an orderly
             way as incomplete; the next run continues where this one left off.
+          * SUMMARY - the run's own figures at its end (#1380: requests, bytes, listed/skipped/
+            processed objects, time per container) for a source that counts them; one note per
+            run, never an item outcome.
       enum:
         [
           REJECTED,
@@ -4464,6 +4467,7 @@ components:
           REMOVED,
           RATE_LIMITED,
           BUDGET_EXHAUSTED,
+          SUMMARY,
         ]
       example: REJECTED
 
@@ -4624,6 +4628,13 @@ components:
           type: integer
           description: Attachments whose download or processing failed.
           example: 2
+        bytesDownloaded:
+          type: integer
+          format: int64
+          description: >
+            The bytes the run downloaded from its source (#1380) - recorded by executors that
+            count them (S3); absent or 0 for other source types.
+          example: 734003200
     IndexingRunListResponse:
       type: object
       required: [runs]

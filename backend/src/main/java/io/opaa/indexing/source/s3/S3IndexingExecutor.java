@@ -14,6 +14,7 @@ import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
+import java.time.Clock;
 import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -38,6 +39,8 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
   private final FileProcessingService fileProcessingService;
   private final DocumentRepository documentRepository;
   private final LibraryFolderService folderService;
+  private final S3SyncStateRepository syncStateRepository;
+  private final Clock clock;
   private final IndexingRunTemplate runTemplate;
 
   public S3IndexingExecutor(
@@ -46,12 +49,16 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
       FileProcessingService fileProcessingService,
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
+      S3SyncStateRepository syncStateRepository,
+      Clock clock,
       IndexingRunTemplate runTemplate) {
     this.clientFactory = clientFactory;
     this.properties = properties;
     this.fileProcessingService = fileProcessingService;
     this.documentRepository = documentRepository;
     this.folderService = folderService;
+    this.syncStateRepository = syncStateRepository;
+    this.clock = clock;
     this.runTemplate = runTemplate;
   }
 
@@ -93,20 +100,31 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
     } catch (S3AccessException e) {
       throw accessFailure(run, e);
     }
-    try (store) {
-      return new S3FullSync(
-              run,
-              store,
-              settings,
-              properties,
-              fileProcessingService,
-              documentRepository,
-              folderService)
-          .run(settings.scopes());
+    UUID libraryId = library.getId();
+    S3SyncState state =
+        syncStateRepository.findByLibraryId(libraryId).orElseGet(() -> new S3SyncState(libraryId));
+    try (store;
+        S3FullSync sync =
+            new S3FullSync(
+                run,
+                store,
+                settings,
+                properties,
+                fileProcessingService,
+                documentRepository,
+                folderService,
+                state,
+                syncStateRepository,
+                clock)) {
+      return sync.run(settings.scopes());
     } finally {
       reportThrottling(store, run.events());
       S3RequestMeter meter = store.meter();
-      run.recordRequestCost(meter.requests(), meter.throttles(), meter.throttledTime().toMillis());
+      run.recordRequestCost(
+          meter.requests(),
+          meter.throttles(),
+          meter.throttledTime().toMillis(),
+          meter.bytesDownloaded());
     }
   }
 
@@ -120,13 +138,12 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
     if (meter.throttles() == 0) {
       return;
     }
-    events.record(
+    events.recordRunNote(
         IndexingEventCategory.RATE_LIMITED,
         "Der Objektspeicher hat den Lauf "
             + meter.throttles()
             + "-mal gedrosselt (503 SlowDown/429); der Lauf hat insgesamt "
             + meter.throttledTime().toSeconds()
-            + " Sekunden gewartet statt abzubrechen",
-        null);
+            + " Sekunden gewartet statt abzubrechen");
   }
 }

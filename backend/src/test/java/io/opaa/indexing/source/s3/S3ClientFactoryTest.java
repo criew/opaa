@@ -105,7 +105,7 @@ class S3ClientFactoryTest {
 
   @Test
   void aRunClientCarriesTheConfiguredBudgetAndAProbeClientNone() throws Exception {
-    S3Properties properties = new S3Properties(0, 0, null, null, null, 7, null, 0);
+    S3Properties properties = new S3Properties(0, 0, null, null, null, 7, null, 0, 0);
     S3ClientFactory factory = new S3ClientFactory(properties, TargetAddressValidator.disabled());
     S3Connection connection = connection("http://localhost:1", true, null);
 

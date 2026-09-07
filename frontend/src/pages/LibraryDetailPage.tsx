@@ -2887,6 +2887,9 @@ function runMetricsLabel(run: IndexingRunResponse): string | null {
       `${metrics.throttleCount}-mal gedrosselt (${metrics.throttleWaitSeconds} s gewartet)`,
     )
   }
+  if (metrics.bytesDownloaded) {
+    parts.push(`${formatFileSize(metrics.bytesDownloaded)} geladen`)
+  }
   parts.push(
     `Anhänge: ${metrics.attachmentsProcessed} indiziert, ${metrics.attachmentsSkipped} übersprungen, ${metrics.attachmentsFailed} fehlgeschlagen`,
   )

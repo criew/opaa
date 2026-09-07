@@ -69,3 +69,5 @@ databaseChangeLog:
       file: db/changelog/changes/029-identity-provider-groups.yaml
   - include:
       file: db/changelog/changes/030-s3-source-type.yaml
+  - include:
+      file: db/changelog/changes/031-s3-run-state.yaml

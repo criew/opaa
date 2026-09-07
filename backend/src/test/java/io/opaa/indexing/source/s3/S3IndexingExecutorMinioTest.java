@@ -29,7 +29,10 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.TargetAddressValidator;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -63,6 +66,7 @@ class S3IndexingExecutorMinioTest {
   private DocumentRepository documentRepository;
   private StaleDocumentCleanupService cleanupService;
   private LibraryFolderService folderService;
+  private S3SyncStateRepository syncStateRepository;
 
   @BeforeAll
   static void seed() throws Exception {
@@ -97,17 +101,21 @@ class S3IndexingExecutorMinioTest {
     cleanupService =
         spy(new StaleDocumentCleanupService(documentRepository, mock(VectorChunkStore.class)));
     folderService = mock(LibraryFolderService.class);
+    syncStateRepository = mock(S3SyncStateRepository.class);
+    when(syncStateRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
   }
 
   private S3IndexingExecutor executor() {
     S3Properties properties =
-        new S3Properties(0, 0, Duration.ofSeconds(10), null, null, 0, null, 0);
+        new S3Properties(0, 0, Duration.ofSeconds(10), null, null, 0, null, 0, 0);
     return new S3IndexingExecutor(
         new S3ClientFactory(properties, TargetAddressValidator.disabled()),
         properties,
         fileProcessingService,
         documentRepository,
         folderService,
+        syncStateRepository,
+        Clock.fixed(Instant.parse("2026-09-06T20:00:00Z"), ZoneOffset.UTC),
         new IndexingRunTemplate(
             indexingJobService,
             eventRepository,

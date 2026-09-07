@@ -123,7 +123,7 @@ class IndexingRunTemplateTest {
     InOrder order = inOrder(jobService);
     order
         .verify(jobService)
-        .recordRunMetrics(jobId, new IndexingRunCost(12, 1, 500L, 1, 0, 0, false));
+        .recordRunMetrics(jobId, new IndexingRunCost(12, 1, 500L, 1, 0, 0, false, 0L));
     order.verify(jobService).completeJob(jobId, 1, 0, 1, 2);
     verify(jobService, never()).failJob(any(), any());
   }
@@ -310,7 +310,7 @@ class IndexingRunTemplateTest {
     verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     assertThat(hook.get()).isNull();
     verify(jobService).recordListingAssessment(jobId, false, List.of("SEC"));
-    verify(jobService).recordRunMetrics(jobId, new IndexingRunCost(0, 0, 0L, 0, 0, 0, false));
+    verify(jobService).recordRunMetrics(jobId, new IndexingRunCost(0, 0, 0L, 0, 0, 0, false, 0L));
   }
 
   @Test
@@ -324,7 +324,7 @@ class IndexingRunTemplateTest {
 
     verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
     verify(jobService, never()).recordListingAssessment(any(), anyBoolean(), any());
-    verify(jobService).recordRunMetrics(jobId, new IndexingRunCost(0, 0, 0L, 0, 0, 0, true));
+    verify(jobService).recordRunMetrics(jobId, new IndexingRunCost(0, 0, 0L, 0, 0, 0, true, 0L));
     verify(jobService).completeJob(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
   }
 
