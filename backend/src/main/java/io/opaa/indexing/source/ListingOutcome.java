@@ -15,13 +15,12 @@ public sealed interface ListingOutcome {
   record Complete() implements ListingOutcome {}
 
   /**
-   * At least one container could not be listed - named in {@code unreadableContainerKeys}, empty
-   * when the source has no containers to name: no reconciliation, the assessment is recorded as
-   * incomplete.
+   * At least one scope could not be listed - named in {@code unlistedScopeKeys}, empty when the
+   * source has no containers to name: no reconciliation, the assessment is recorded as incomplete.
    */
-  record Incomplete(List<String> unreadableContainerKeys) implements ListingOutcome {
+  record Incomplete(List<String> unlistedScopeKeys) implements ListingOutcome {
     public Incomplete {
-      unreadableContainerKeys = List.copyOf(unreadableContainerKeys);
+      unlistedScopeKeys = List.copyOf(unlistedScopeKeys);
     }
   }
 
@@ -43,8 +42,8 @@ public sealed interface ListingOutcome {
     return new Complete();
   }
 
-  static ListingOutcome incomplete(List<String> unreadableContainerKeys) {
-    return new Incomplete(unreadableContainerKeys);
+  static ListingOutcome incomplete(List<String> unlistedScopeKeys) {
+    return new Incomplete(unlistedScopeKeys);
   }
 
   static ListingOutcome truncated() {

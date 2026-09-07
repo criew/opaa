@@ -26,11 +26,11 @@ import io.opaa.indexing.IndexingRunEventRepository;
 import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
-import io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository;
 import io.opaa.library.ConfluenceSpaceSelection;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -64,7 +64,7 @@ class ConfluenceDataCenterFullSyncTest {
   private IndexingJobService indexingJobService;
   private IndexingRunEventRepository eventRepository;
   private StaleDocumentCleanupService cleanupService;
-  private ConfluenceSyncStateRepository syncStateRepository;
+  private SourceSyncStateRepository syncStateRepository;
   private ConfluenceIndexingExecutor executor;
 
   @BeforeAll
@@ -87,7 +87,7 @@ class ConfluenceDataCenterFullSyncTest {
         .thenReturn(Optional.empty());
     eventRepository = mock(IndexingRunEventRepository.class);
     cleanupService = mock(StaleDocumentCleanupService.class);
-    syncStateRepository = mock(ConfluenceSyncStateRepository.class);
+    syncStateRepository = mock(SourceSyncStateRepository.class);
     when(syncStateRepository.findByLibraryId(any())).thenReturn(Optional.empty());
     when(syncStateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     executor =
@@ -247,14 +247,13 @@ class ConfluenceDataCenterFullSyncTest {
     // #1139 core scenario against the real instance: full run first (anchors the state), then a
     // change in Confluence, then an incremental run that takes it over and reconciles nothing.
     KnowledgeLibrary library = library(confluence.adminToken(), "HR");
-    java.util.Map<UUID, io.opaa.indexing.source.confluence.ConfluenceSyncState> states =
-        new java.util.HashMap<>();
+    java.util.Map<UUID, io.opaa.indexing.source.SourceSyncState> states = new java.util.HashMap<>();
     when(syncStateRepository.findByLibraryId(any()))
         .thenAnswer(inv -> Optional.ofNullable(states.get(inv.<UUID>getArgument(0))));
     when(syncStateRepository.save(any()))
         .thenAnswer(
             inv -> {
-              io.opaa.indexing.source.confluence.ConfluenceSyncState s = inv.getArgument(0);
+              io.opaa.indexing.source.SourceSyncState s = inv.getArgument(0);
               states.put(s.getLibraryId(), s);
               return s;
             });

@@ -134,15 +134,15 @@ public class DocumentIndexingService {
     KnowledgeLibrary library = loadLibraryInOrganization(libraryId, caller);
     libraryAccessService.requireRole(library, currentUserId, systemAdmin, AssetRole.VIEWER);
     boolean canSeeErrorDetail = libraryAccessService.canManage(library, currentUserId, systemAdmin);
-    List<String> unreadableSpaceKeys =
+    List<String> unlistedScopeKeys =
         indexingJobService
             .getLatestListingAssessment(libraryId, library.getOrganizationId())
-            .map(IndexingJob::getUnreadableSpaceKeys)
+            .map(IndexingJob::getUnlistedScopeKeys)
             .orElse(List.of());
     return new IndexingStatusView(
         indexingJobService.getLatestJob(libraryId, library.getOrganizationId()),
         canSeeErrorDetail,
-        unreadableSpaceKeys);
+        unlistedScopeKeys);
   }
 
   /**

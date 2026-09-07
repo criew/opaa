@@ -102,9 +102,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             indexingJobRepository,
             indexingJobService,
             rssFeedStateRepository,
-            org.mockito.Mockito.mock(
-                io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository.class),
-            org.mockito.Mockito.mock(io.opaa.indexing.source.s3.S3SyncStateRepository.class),
+            org.mockito.Mockito.mock(io.opaa.indexing.source.SourceSyncStateRepository.class),
             Clock.systemDefaultZone(),
             storageQuotaService,
             folderRepository,

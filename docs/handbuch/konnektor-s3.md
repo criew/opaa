@@ -362,7 +362,7 @@ fortgesetzt"** und einem Protokolleintrag der Kategorie „Anfragebudget erschö
 — ergänzt um „; bis dahin nicht auflistbar: …", wenn ein Bereich zugleich unlesbar war. Ein
 unvollständiger Lauf **bereinigt nichts**.
 
-**Was gespeichert wird.** Die Zustandstabelle `s3_sync_state` trägt je Bibliothek die Kennung des
+**Was gespeichert wird.** Die Zustandstabelle `source_sync_state` trägt je Bibliothek die Kennung des
 laufenden Vollabgleichs, die in ihm bereits vollständig gelisteten Bereiche als `bucket/präfix`
 und den Zeitpunkt des letzten vollständigen Laufs. **Der `ContinuationToken` wird nie gespeichert**
 — er gilt nur innerhalb eines Laufs. Der Grund: Die Menge, gegen die am Ende gelöscht wird, entsteht

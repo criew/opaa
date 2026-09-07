@@ -73,3 +73,5 @@ databaseChangeLog:
       file: db/changelog/changes/031-s3-run-state.yaml
   - include:
       file: db/changelog/changes/032-s3-events.yaml
+  - include:
+      file: db/changelog/changes/033-source-sync-state.yaml

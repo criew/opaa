@@ -11,6 +11,8 @@ import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.SourceSyncState;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
@@ -41,7 +43,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
   private final DocumentRepository documentRepository;
   private final LibraryFolderService folderService;
   private final StaleDocumentCleanupService cleanupService;
-  private final S3SyncStateRepository syncStateRepository;
+  private final SourceSyncStateRepository syncStateRepository;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
 
@@ -52,7 +54,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
       StaleDocumentCleanupService cleanupService,
-      S3SyncStateRepository syncStateRepository,
+      SourceSyncStateRepository syncStateRepository,
       Clock clock,
       IndexingRunTemplate runTemplate) {
     this.clientFactory = clientFactory;
@@ -160,8 +162,10 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
     }
     run.recordRequestCost(store.meter());
     UUID libraryId = library.getId();
-    S3SyncState state =
-        syncStateRepository.findByLibraryId(libraryId).orElseGet(() -> new S3SyncState(libraryId));
+    SourceSyncState state =
+        syncStateRepository
+            .findByLibraryId(libraryId)
+            .orElseGet(() -> new SourceSyncState(libraryId));
     try (store;
         S3FullSync sync =
             new S3FullSync(

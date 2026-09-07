@@ -84,9 +84,9 @@ class IndexingJobServiceTest {
     service.recordListingAssessment(failed.getId(), false, List.of("SEC"));
 
     assertThat(running.getListingComplete()).isFalse();
-    assertThat(running.getUnreadableSpaceKeys()).containsExactly("SEC", "IT");
+    assertThat(running.getUnlistedScopeKeys()).containsExactly("SEC", "IT");
     assertThat(failed.getListingComplete()).isNull();
-    assertThat(failed.getUnreadableSpaceKeys()).isEmpty();
+    assertThat(failed.getUnlistedScopeKeys()).isEmpty();
     verify(indexingJobRepository, times(1)).save(any());
   }
 
@@ -98,7 +98,7 @@ class IndexingJobServiceTest {
     service.recordListingAssessment(running.getId(), true, List.of());
 
     assertThat(running.getListingComplete()).isTrue();
-    assertThat(running.getUnreadableSpaceKeys()).isEmpty();
+    assertThat(running.getUnlistedScopeKeys()).isEmpty();
   }
 
   @Test

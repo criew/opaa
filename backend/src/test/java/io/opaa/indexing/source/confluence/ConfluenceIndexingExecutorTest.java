@@ -38,6 +38,8 @@ import io.opaa.indexing.SourceDocumentContext;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.SourceSyncState;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.library.ConfluenceSpaceSelection;
@@ -49,6 +51,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -91,9 +94,17 @@ class ConfluenceIndexingExecutorTest {
   private IndexingRunEventRepository eventRepository;
   private LibraryStorageQuotaService storageQuotaService;
   private StaleDocumentCleanupService cleanupService;
-  private ConfluenceSyncStateRepository syncStateRepository;
+  private SourceSyncStateRepository syncStateRepository;
   private VectorChunkStore vectorChunkStore;
   private final List<Duration> sleeps = new ArrayList<>();
+
+  /**
+   * The executor's clock: stands at {@link #NOW} unless a test sets {@code clockStep}, in which
+   * case every reading advances it - so a run's start and its completion are distinguishable.
+   */
+  private Instant clockNow = NOW;
+
+  private Duration clockStep = Duration.ZERO;
 
   /**
    * Every page {@code processConfluencePage} stored this test - the default {@code
@@ -137,7 +148,7 @@ class ConfluenceIndexingExecutorTest {
     // A spy, not a mock: the reconciliation runs for real over the mocked repository, so what a
     // run hands over and what the fold-in preserves are both observable.
     cleanupService = spy(new StaleDocumentCleanupService(documentRepository, vectorChunkStore));
-    syncStateRepository = mock(ConfluenceSyncStateRepository.class);
+    syncStateRepository = mock(SourceSyncStateRepository.class);
     when(syncStateRepository.findByLibraryId(any())).thenReturn(Optional.empty());
     when(syncStateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     when(fileProcessingService.ingest(DocumentIngests.anyText(), any()))
@@ -254,8 +265,29 @@ class ConfluenceIndexingExecutorTest {
             documentRepository,
             syncStateRepository,
             cleanupService,
-            Clock.fixed(NOW, ZoneOffset.UTC),
+            testClock(),
             runTemplate());
+  }
+
+  private Clock testClock() {
+    return new Clock() {
+      @Override
+      public ZoneId getZone() {
+        return ZoneOffset.UTC;
+      }
+
+      @Override
+      public Clock withZone(ZoneId zone) {
+        return this;
+      }
+
+      @Override
+      public Instant instant() {
+        Instant reading = clockNow;
+        clockNow = clockNow.plus(clockStep);
+        return reading;
+      }
+    };
   }
 
   /** The real run frame over the mocked job bookkeeping and the spied reconciliation. */
@@ -288,6 +320,8 @@ class ConfluenceIndexingExecutorTest {
   void indexesEverySelectedPageAndAttachmentWithItsContextAndReconcilesTheBestand(
       ConfluenceEdition edition) throws Exception {
     start(edition, null, "ENG", "HR");
+    // the run starts at NOW and takes time: its completion is read from a later clock
+    clockStep = Duration.ofMinutes(5);
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
@@ -365,11 +399,12 @@ class ConfluenceIndexingExecutorTest {
     // a complete listing records a positive assessment, clearing any earlier warning
     verify(indexingJobService).recordListingAssessment(jobId, true, List.of());
 
-    ArgumentCaptor<ConfluenceSyncState> state = ArgumentCaptor.forClass(ConfluenceSyncState.class);
+    ArgumentCaptor<SourceSyncState> state = ArgumentCaptor.forClass(SourceSyncState.class);
     verify(syncStateRepository, timeout(5000).atLeast(2)).save(state.capture());
-    ConfluenceSyncState finalState = state.getValue();
-    assertThat(finalState.getFullSyncCompletedAt()).isNotNull();
+    SourceSyncState finalState = state.getValue();
+    // the anchor is the run's start, the completion time the later end of the run
     assertThat(finalState.getIncrementalAnchor()).isEqualTo(NOW);
+    assertThat(finalState.getFullSyncCompletedAt()).isAfter(NOW);
     assertThat(finalState.isFullSyncInterrupted()).isFalse();
   }
 
@@ -452,12 +487,12 @@ class ConfluenceIndexingExecutorTest {
     verify(indexingJobService).completeJob(jobId, 3, 0, 0, 4);
     // the run's assessment names the unreadable space, for the warning at the library
     verify(indexingJobService).recordListingAssessment(jobId, false, List.of("SEC"));
-    ArgumentCaptor<ConfluenceSyncState> state = ArgumentCaptor.forClass(ConfluenceSyncState.class);
+    ArgumentCaptor<SourceSyncState> state = ArgumentCaptor.forClass(SourceSyncState.class);
     verify(syncStateRepository, timeout(5000).atLeast(1)).save(state.capture());
     assertThat(state.getValue().isFullSyncInterrupted())
         .as("an incomplete listing leaves the full sync open for the next run")
         .isTrue();
-    assertThat(state.getValue().completedSpaceKeys()).containsExactly("ENG");
+    assertThat(state.getValue().completedScopeKeys()).containsExactly("ENG");
   }
 
   @ParameterizedTest
@@ -528,9 +563,9 @@ class ConfluenceIndexingExecutorTest {
   void anInterruptedFullSyncResumesWithTheUnfinishedSpacesFirst(ConfluenceEdition edition)
       throws Exception {
     start(edition, null, "ENG", "HR");
-    ConfluenceSyncState interrupted = new ConfluenceSyncState(library.getId());
+    SourceSyncState interrupted = new SourceSyncState(library.getId());
     interrupted.beginFullSync(UUID.randomUUID());
-    interrupted.markSpaceCompleted("ENG");
+    interrupted.markScopeCompleted("ENG");
     when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(interrupted));
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
@@ -664,7 +699,7 @@ class ConfluenceIndexingExecutorTest {
         .save(
             argThat(
                 event(IndexingEventCategory.ERROR, "Abgleich des Bestands fehlgeschlagen", null)));
-    ArgumentCaptor<ConfluenceSyncState> state = ArgumentCaptor.forClass(ConfluenceSyncState.class);
+    ArgumentCaptor<SourceSyncState> state = ArgumentCaptor.forClass(SourceSyncState.class);
     verify(syncStateRepository, timeout(5000).atLeast(1)).save(state.capture());
     assertThat(state.getValue().isFullSyncInterrupted()).isTrue();
     assertThat(state.getValue().getIncrementalAnchor()).isNull();
@@ -757,8 +792,8 @@ class ConfluenceIndexingExecutorTest {
 
   // ---- incremental run ----------------------------------------------------------------
 
-  private ConfluenceSyncState completedFullSync(Instant anchor) {
-    ConfluenceSyncState state = new ConfluenceSyncState(library.getId());
+  private SourceSyncState completedFullSync(Instant anchor) {
+    SourceSyncState state = new SourceSyncState(library.getId());
     state.beginFullSync(UUID.randomUUID());
     state.completeFullSync(anchor, anchor);
     when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(state));
@@ -770,7 +805,7 @@ class ConfluenceIndexingExecutorTest {
   void anIncrementalRunTakesTheChangedPagesOnlyAndNeverReconciles(ConfluenceEdition edition)
       throws Exception {
     start(edition, null, "ENG", "HR");
-    ConfluenceSyncState state = completedFullSync(NOW.minus(Duration.ofHours(2)));
+    SourceSyncState state = completedFullSync(NOW.minus(Duration.ofHours(2)));
     // changed after the anchor (minus overlap): Kapitel 1 edited, Onboarding edited; Handbuch and
     // Abschnitt 1.1 are older and must not even be fetched
     server.updatePage(
@@ -950,7 +985,7 @@ class ConfluenceIndexingExecutorTest {
       throws Exception {
     start(edition, null, "ENG");
     Instant anchor = NOW.minus(Duration.ofHours(2));
-    ConfluenceSyncState state = completedFullSync(anchor);
+    SourceSyncState state = completedFullSync(anchor);
     server.updatePage("101", "<p>geändert</p>", NOW.minus(Duration.ofMinutes(20)));
     when(fileProcessingService.ingest(
             DocumentIngests.that().text().titled("Kapitel 1").match(), any()))
@@ -982,7 +1017,7 @@ class ConfluenceIndexingExecutorTest {
     start(edition, null, "ENG");
     assertThat(executor.defaultRunMode(library)).as("no state yet").isEqualTo(IndexingRunMode.FULL);
 
-    ConfluenceSyncState state = completedFullSync(NOW.minus(Duration.ofDays(2)));
+    SourceSyncState state = completedFullSync(NOW.minus(Duration.ofDays(2)));
     assertThat(executor.defaultRunMode(library))
         .as("recent full sync")
         .isEqualTo(IndexingRunMode.INCREMENTAL);
@@ -990,7 +1025,7 @@ class ConfluenceIndexingExecutorTest {
     state.beginFullSync(UUID.randomUUID());
     assertThat(executor.defaultRunMode(library)).as("interrupted").isEqualTo(IndexingRunMode.FULL);
 
-    ConfluenceSyncState old = new ConfluenceSyncState(library.getId());
+    SourceSyncState old = new SourceSyncState(library.getId());
     old.beginFullSync(UUID.randomUUID());
     old.completeFullSync(NOW.minus(Duration.ofDays(8)), NOW.minus(Duration.ofDays(8)));
     when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(old));
@@ -1019,7 +1054,7 @@ class ConfluenceIndexingExecutorTest {
     // the notification named Kapitel 1 (changed), Abschnitt 1.1 (known and unchanged) and
     // a page in a space the library does not select; nothing else is touched.
     start(edition, null, "ENG");
-    ConfluenceSyncState state = completedFullSync(NOW.minus(Duration.ofHours(2)));
+    SourceSyncState state = completedFullSync(NOW.minus(Duration.ofHours(2)));
     server.updatePage("101", "<p>Das erste Kapitel, per Webhook.</p>", NOW);
     String abschnitt = pagePath(edition, "ENG", "102");
     Document indexed =
@@ -1177,7 +1212,7 @@ class ConfluenceIndexingExecutorTest {
     verify(indexingJobService, never()).recordListingAssessment(any(), anyBoolean(), any());
     // no reconciliation on an incomplete listing, and the full sync stays open
     verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
-    ArgumentCaptor<ConfluenceSyncState> state = ArgumentCaptor.forClass(ConfluenceSyncState.class);
+    ArgumentCaptor<SourceSyncState> state = ArgumentCaptor.forClass(SourceSyncState.class);
     verify(syncStateRepository, atLeast(1)).save(state.capture());
     assertThat(state.getValue().isFullSyncInterrupted()).isTrue();
     assertThat(state.getValue().getIncrementalAnchor()).isNull();
@@ -1217,7 +1252,7 @@ class ConfluenceIndexingExecutorTest {
     requestBudget = 3;
     start(edition, null, "ENG", "HR");
     Instant anchor = NOW.minus(Duration.ofHours(2));
-    ConfluenceSyncState state = completedFullSync(anchor);
+    SourceSyncState state = completedFullSync(anchor);
     server.updatePage("101", "<p>neu</p>", NOW.minus(Duration.ofHours(1)));
     server.updatePage("200", "<p>neu</p>", NOW.minus(Duration.ofMinutes(30)));
 
@@ -1291,7 +1326,7 @@ class ConfluenceIndexingExecutorTest {
                 stored.stream()
                     .filter(d -> d.getFilePath().equals(inv.getArgument(1)))
                     .findFirst());
-    ArgumentCaptor<ConfluenceSyncState> state = ArgumentCaptor.forClass(ConfluenceSyncState.class);
+    ArgumentCaptor<SourceSyncState> state = ArgumentCaptor.forClass(SourceSyncState.class);
 
     executor.execute(jobId, library, IndexingRunMode.FULL);
 
@@ -1343,7 +1378,7 @@ class ConfluenceIndexingExecutorTest {
     // the credential check takes the only call; the search itself is refused
     requestBudget = 1;
     start(edition, null, "ENG");
-    ConfluenceSyncState state = completedFullSync(NOW.minus(Duration.ofHours(2)));
+    SourceSyncState state = completedFullSync(NOW.minus(Duration.ofHours(2)));
 
     executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
 

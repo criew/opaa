@@ -19,6 +19,8 @@ import io.opaa.indexing.source.ReconcilingAttachmentAccess;
 import io.opaa.indexing.source.RequestBudgetExhaustedException;
 import io.opaa.indexing.source.SourceFolderMirror;
 import io.opaa.indexing.source.SourceFolderPath;
+import io.opaa.indexing.source.SourceSyncState;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
@@ -58,13 +60,13 @@ import org.slf4j.LoggerFactory;
  * the frame, which notes where the next run continues; a store-wide failure (credentials, clock,
  * TLS, reachability) fails the run with the access layer's own sentence.
  *
- * <p>Resumption ({@link S3SyncState}): a run after an interrupted one lists every scope again - the
- * scopes the interrupted run did not finish first - and saves only the downloads, since an object
- * stored at its listed feature costs no call. Downloads run {@code downloadConcurrency} at a time
- * on their own threads while the listing goes on; every download is handed to the document path on
- * the listing thread in listing order, so counters, folders, repository writes and the entries of
- * downloaded objects stay sequential. The sync must be {@link #close() closed} so no download
- * thread or temp file outlives the run.
+ * <p>Resumption ({@link SourceSyncState}): a run after an interrupted one lists every scope again -
+ * the scopes the interrupted run did not finish first - and saves only the downloads, since an
+ * object stored at its listed feature costs no call. Downloads run {@code downloadConcurrency} at a
+ * time on their own threads while the listing goes on; every download is handed to the document
+ * path on the listing thread in listing order, so counters, folders, repository writes and the
+ * entries of downloaded objects stay sequential. The sync must be {@link #close() closed} so no
+ * download thread or temp file outlives the run.
  */
 final class S3FullSync implements AutoCloseable {
 
@@ -100,10 +102,10 @@ final class S3FullSync implements AutoCloseable {
   private final boolean scopeRootChain;
 
   /** The scopes behind an incomplete listing as {@code bucket/prefix}, in the order met. */
-  private final Set<String> unlistableScopeKeys = new LinkedHashSet<>();
+  private final Set<String> unlistedScopeKeys = new LinkedHashSet<>();
 
-  private final S3SyncState state;
-  private final S3SyncStateRepository syncStateRepository;
+  private final SourceSyncState state;
+  private final SourceSyncStateRepository syncStateRepository;
   private final Clock clock;
 
   /** Downloads in flight, oldest first; drained on the listing thread in this order. */
@@ -143,8 +145,8 @@ final class S3FullSync implements AutoCloseable {
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
       StaleDocumentCleanupService cleanupService,
-      S3SyncState state,
-      S3SyncStateRepository syncStateRepository,
+      SourceSyncState state,
+      SourceSyncStateRepository syncStateRepository,
       Clock clock) {
     this.frame = frame;
     this.store = store;
@@ -164,7 +166,7 @@ final class S3FullSync implements AutoCloseable {
   ListingOutcome run(List<S3Scope> scopes) throws InterruptedException {
     List<S3Scope> ordered = orderForResumption(scopes, state);
     state.beginFullSync(frame.jobId());
-    S3SyncState saved = syncStateRepository.save(state);
+    SourceSyncState saved = syncStateRepository.save(state);
     // the state holds every scope listed completely so far - the next run starts with the rest
     frame.budgetContinuation(this::fullSyncContinuation);
     frame.budgetStallAdvice(BUDGET_STALL_ADVICE);
@@ -183,19 +185,19 @@ final class S3FullSync implements AutoCloseable {
       // the figures belong to a failed run as well - they are the diagnosis of "too many objects"
       recordSummaries();
     }
-    if (!unlistableScopeKeys.isEmpty()) {
+    if (!unlistedScopeKeys.isEmpty()) {
       log.info(
           "S3 full sync for library {} listed incompletely ({}) - keeping the bestand, no"
               + " reconciliation",
           frame.library().getId(),
-          unlistableScopeKeys);
-      return ListingOutcome.incomplete(List.copyOf(unlistableScopeKeys));
+          unlistedScopeKeys);
+      return ListingOutcome.incomplete(List.copyOf(unlistedScopeKeys));
     }
     // Folders are pruned only after the document cleanup of a complete listing, so a folder
     // emptied by that cleanup goes in the same run (ADR-0020, like FILESYSTEM and HTTP_DIRECTORY);
     // and without the reconciliation the full sync is not complete - the state stays open, so the
     // next run reconciles again. The frame holds one hook, so both compose here.
-    S3SyncState completedState = saved;
+    SourceSyncState completedState = saved;
     frame.afterReconciliation(
         reconciled -> {
           folderMirror.prune();
@@ -304,7 +306,7 @@ final class S3FullSync implements AutoCloseable {
   }
 
   /** Unfinished scopes of an interrupted full sync first, then the already completed ones. */
-  static List<S3Scope> orderForResumption(List<S3Scope> scopes, S3SyncState state) {
+  static List<S3Scope> orderForResumption(List<S3Scope> scopes, SourceSyncState state) {
     Set<String> completed = state.isFullSyncInterrupted() ? state.completedScopeKeys() : Set.of();
     List<S3Scope> ordered = new ArrayList<>();
     for (S3Scope scope : scopes) {
@@ -379,7 +381,7 @@ final class S3FullSync implements AutoCloseable {
                     + e.getMessage()
                     + UNLISTABLE_SCOPE_SUFFIX,
                 scope.key());
-        unlistableScopeKeys.add(scope.key());
+        unlistedScopeKeys.add(scope.key());
         return false;
       } catch (S3AccessException e) {
         throw new IndexingRunFailedException(e.getMessage(), e);
@@ -830,9 +832,9 @@ final class S3FullSync implements AutoCloseable {
   private String fullSyncContinuation() {
     return "der Lauf endet unvollständig, der nächste Lauf listet alle Geltungsbereiche erneut und"
         + " lädt nur, was noch fehlt"
-        + (unlistableScopeKeys.isEmpty()
+        + (unlistedScopeKeys.isEmpty()
             ? ""
-            : "; bis dahin nicht auflistbar: " + String.join(", ", unlistableScopeKeys));
+            : "; bis dahin nicht auflistbar: " + String.join(", ", unlistedScopeKeys));
   }
 
   private String tooManyObjectsMessage() {

@@ -64,7 +64,7 @@ final class ConfluenceAttachmentIndexing {
           pagePath);
       run.listingComplete = false;
       if (context.containerKey() != null) {
-        run.unreadableSpaceKeys.add(context.containerKey());
+        run.unlistedScopeKeys.add(context.containerKey());
       }
       return;
     }

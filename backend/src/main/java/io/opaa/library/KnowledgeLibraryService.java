@@ -30,10 +30,10 @@ import io.opaa.indexing.JobStatus;
 import io.opaa.indexing.LibraryScheduleCodec;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.metadata.CoreMetadataField;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.ConfluenceConnection;
 import io.opaa.indexing.source.confluence.ConfluenceCredentials;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
-import io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import io.opaa.indexing.source.s3.S3AccessException;
@@ -42,7 +42,6 @@ import io.opaa.indexing.source.s3.S3Connection;
 import io.opaa.indexing.source.s3.S3Credentials;
 import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.s3.S3SourceSettingsJson;
-import io.opaa.indexing.source.s3.S3SyncStateRepository;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
 import java.security.SecureRandom;
@@ -139,8 +138,7 @@ public class KnowledgeLibraryService {
   private final IndexingJobRepository indexingJobRepository;
   private final IndexingJobService indexingJobService;
   private final RssFeedStateRepository rssFeedStateRepository;
-  private final ConfluenceSyncStateRepository confluenceSyncStateRepository;
-  private final S3SyncStateRepository s3SyncStateRepository;
+  private final SourceSyncStateRepository sourceSyncStateRepository;
   private final ConfluenceProperties confluenceProperties;
   private final Clock schedulingClock;
   private final LibraryStorageQuotaService storageQuotaService;
@@ -165,8 +163,7 @@ public class KnowledgeLibraryService {
       IndexingJobRepository indexingJobRepository,
       IndexingJobService indexingJobService,
       RssFeedStateRepository rssFeedStateRepository,
-      ConfluenceSyncStateRepository confluenceSyncStateRepository,
-      S3SyncStateRepository s3SyncStateRepository,
+      SourceSyncStateRepository sourceSyncStateRepository,
       Clock schedulingClock,
       LibraryStorageQuotaService storageQuotaService,
       LibraryFolderRepository folderRepository,
@@ -189,8 +186,7 @@ public class KnowledgeLibraryService {
     this.indexingJobRepository = indexingJobRepository;
     this.indexingJobService = indexingJobService;
     this.rssFeedStateRepository = rssFeedStateRepository;
-    this.confluenceSyncStateRepository = confluenceSyncStateRepository;
-    this.s3SyncStateRepository = s3SyncStateRepository;
+    this.sourceSyncStateRepository = sourceSyncStateRepository;
     this.schedulingClock = schedulingClock;
     this.storageQuotaService = storageQuotaService;
     this.folderRepository = folderRepository;
@@ -689,7 +685,7 @@ public class KnowledgeLibraryService {
         // - the next run lists every scope from scratch. Any settings change counts (region,
         // addressing style and patterns included): discarding is safe, keeping a stale state is
         // not.
-        s3SyncStateRepository.deleteByLibraryId(updated.getId());
+        sourceSyncStateRepository.deleteByLibraryId(updated.getId());
       }
       if (updated.getSourceType() == DocumentSourceType.CONFLUENCE
           && (sourceUrlChanged
@@ -697,7 +693,7 @@ public class KnowledgeLibraryService {
         // ADR-0023, Entscheidung 4: the first run after a change of address or selection is a
         // full one - "no sync state" is how the next run learns that, and how an interrupted
         // full sync's per-space progress for a now-different selection is discarded.
-        confluenceSyncStateRepository.deleteByLibraryId(updated.getId());
+        sourceSyncStateRepository.deleteByLibraryId(updated.getId());
       }
       if (!changedSourceFields.isEmpty()) {
         auditEventRecorder.recordUserAction(

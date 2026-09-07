@@ -37,6 +37,8 @@ import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceType;
 import io.opaa.indexing.source.RequestBudgetExhaustedException;
+import io.opaa.indexing.source.SourceSyncState;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
@@ -83,7 +85,7 @@ class S3IndexingExecutorTest {
   private StaleDocumentCleanupService cleanupService;
   private LibraryFolderService folderService;
   private VectorChunkStore vectorChunkStore;
-  private S3SyncStateRepository syncStateRepository;
+  private SourceSyncStateRepository syncStateRepository;
 
   /** Serial downloads: the call order the tests assert is the listing order. */
   private S3Properties properties = serial(0, 0);
@@ -117,7 +119,7 @@ class S3IndexingExecutorTest {
     vectorChunkStore = mock(VectorChunkStore.class);
     cleanupService = spy(new StaleDocumentCleanupService(documentRepository, vectorChunkStore));
     folderService = mock(LibraryFolderService.class);
-    syncStateRepository = mock(S3SyncStateRepository.class);
+    syncStateRepository = mock(SourceSyncStateRepository.class);
     when(syncStateRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
     library = library(settings(List.of(S3Scope.of("dokumente", "2025/"))));
     executor = executorOver(store);
@@ -997,7 +999,7 @@ class S3IndexingExecutorTest {
                     S3Scope.of("dokumente", "2025/"),
                     S3Scope.of("satzungen", ""),
                     S3Scope.of("archiv", ""))));
-    S3SyncState interrupted = new S3SyncState(library.getId());
+    SourceSyncState interrupted = new SourceSyncState(library.getId());
     interrupted.beginFullSync(UUID.randomUUID());
     interrupted.markScopeCompleted("dokumente/2025/");
     when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(interrupted));
@@ -1041,13 +1043,13 @@ class S3IndexingExecutorTest {
           }
         };
     budgeted.put("dokumente", "2025/a.pdf", "a", PDF);
-    ArgumentCaptor<S3SyncState> saved = ArgumentCaptor.forClass(S3SyncState.class);
+    ArgumentCaptor<SourceSyncState> saved = ArgumentCaptor.forClass(SourceSyncState.class);
     UUID jobId = UUID.randomUUID();
 
     executorOver(budgeted).execute(jobId, library, IndexingRunMode.FULL);
 
     verify(syncStateRepository, atLeastOnce()).save(saved.capture());
-    S3SyncState state = saved.getValue();
+    SourceSyncState state = saved.getValue();
     assertThat(state.isFullSyncInterrupted()).isTrue();
     assertThat(state.getFullSyncJobId()).isEqualTo(jobId);
     assertThat(state.completedScopeKeys()).containsExactly("dokumente/2025/");
@@ -1061,7 +1063,7 @@ class S3IndexingExecutorTest {
     store
         .failBucket("geheim", () -> new S3AccessException.ListForbidden("geheim"))
         .put("dokumente", "2025/a.pdf", "a", PDF);
-    ArgumentCaptor<S3SyncState> saved = ArgumentCaptor.forClass(S3SyncState.class);
+    ArgumentCaptor<SourceSyncState> saved = ArgumentCaptor.forClass(SourceSyncState.class);
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 

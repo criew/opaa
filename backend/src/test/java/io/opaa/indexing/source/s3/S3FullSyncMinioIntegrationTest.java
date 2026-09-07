@@ -21,6 +21,7 @@ import io.opaa.indexing.JobTriggerSource;
 import io.opaa.indexing.StaleDocumentCleanupService;
 import io.opaa.indexing.VectorChunkStore;
 import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.library.LibraryFolder;
@@ -71,7 +72,7 @@ class S3FullSyncMinioIntegrationTest {
   @Autowired private LibraryFolderService folderService;
   @Autowired private VectorChunkStore vectorChunkStore;
   @Autowired private StaleDocumentCleanupService cleanupService;
-  @Autowired private S3SyncStateRepository syncStateRepository;
+  @Autowired private SourceSyncStateRepository syncStateRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private static MinioFixture minio;
@@ -309,7 +310,7 @@ class S3FullSyncMinioIntegrationTest {
 
     IndexingJob incomplete = run(library);
     assertThat(incomplete.getListingComplete()).isFalse();
-    assertThat(incomplete.getUnreadableSpaceKeys()).containsExactly(geheim);
+    assertThat(incomplete.getUnlistedScopeKeys()).containsExactly(geheim);
     assertThat(documentAt(library, bucket, "bleibt.txt")).isPresent();
     assertThat(documentAt(library, bucket, "geht.txt")).isPresent();
 

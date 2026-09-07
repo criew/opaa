@@ -22,13 +22,13 @@ import io.opaa.indexing.pipeline.tabular.TabularProperties;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.attachment.AttachmentIndexer;
 import io.opaa.indexing.source.attachment.AttachmentLimits;
 import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.confluence.ConfluenceClientFactory;
 import io.opaa.indexing.source.confluence.ConfluenceIndexingExecutor;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
-import io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository;
 import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.indexing.source.filesystem.FilesystemProperties;
@@ -38,7 +38,6 @@ import io.opaa.indexing.source.rss.RssFeedStateRepository;
 import io.opaa.indexing.source.s3.S3ClientFactory;
 import io.opaa.indexing.source.s3.S3IndexingExecutor;
 import io.opaa.indexing.source.s3.S3Properties;
-import io.opaa.indexing.source.s3.S3SyncStateRepository;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
 import io.opaa.indexing.source.web.CrawlProperties;
 import io.opaa.indexing.source.web.UrlIndexingExecutor;
@@ -474,7 +473,7 @@ public class IndexingConfiguration {
       FileProcessingService fileProcessingService,
       AttachmentIndexer attachmentIndexer,
       DocumentRepository documentRepository,
-      ConfluenceSyncStateRepository confluenceSyncStateRepository,
+      SourceSyncStateRepository sourceSyncStateRepository,
       StaleDocumentCleanupService staleDocumentCleanupService,
       IndexingRunTemplate indexingRunTemplate) {
     return new ConfluenceIndexingExecutor(
@@ -483,7 +482,7 @@ public class IndexingConfiguration {
         fileProcessingService,
         attachmentIndexer,
         documentRepository,
-        confluenceSyncStateRepository,
+        sourceSyncStateRepository,
         staleDocumentCleanupService,
         Clock.systemUTC(),
         indexingRunTemplate);
@@ -501,7 +500,7 @@ public class IndexingConfiguration {
       DocumentRepository documentRepository,
       LibraryFolderService libraryFolderService,
       StaleDocumentCleanupService staleDocumentCleanupService,
-      S3SyncStateRepository s3SyncStateRepository,
+      SourceSyncStateRepository sourceSyncStateRepository,
       IndexingRunTemplate indexingRunTemplate) {
     return new S3IndexingExecutor(
         s3ClientFactory,
@@ -510,7 +509,7 @@ public class IndexingConfiguration {
         documentRepository,
         libraryFolderService,
         staleDocumentCleanupService,
-        s3SyncStateRepository,
+        sourceSyncStateRepository,
         Clock.systemUTC(),
         indexingRunTemplate);
   }

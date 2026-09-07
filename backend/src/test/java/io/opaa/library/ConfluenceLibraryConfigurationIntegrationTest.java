@@ -16,8 +16,8 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.confluence.ConfluenceSyncState;
-import io.opaa.indexing.source.confluence.ConfluenceSyncStateRepository;
+import io.opaa.indexing.source.SourceSyncState;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.FakeConfluenceServer;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
@@ -56,7 +56,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private AssetGrantService grantService;
-  @Autowired private ConfluenceSyncStateRepository syncStateRepository;
+  @Autowired private SourceSyncStateRepository syncStateRepository;
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -274,7 +274,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
 
     // ADR-0023, Entscheidung 4: a changed selection discards the run state, so the next run is a
     // full one; a rename leaves it alone
-    syncStateRepository.save(new ConfluenceSyncState(libraryId));
+    syncStateRepository.save(new SourceSyncState(libraryId));
     LibraryDetail updated =
         libraryService.updateLibrary(
             libraryId,
@@ -286,7 +286,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
                 .build(),
             caller);
     assertThat(syncStateRepository.findByLibraryId(libraryId)).isEmpty();
-    syncStateRepository.save(new ConfluenceSyncState(libraryId));
+    syncStateRepository.save(new SourceSyncState(libraryId));
     assertThat(updated.library().getConfluenceSpaces())
         .extracting(ConfluenceSpaceSelection::getSpaceKey)
         .containsExactly("ENG", "OPS");

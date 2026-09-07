@@ -128,13 +128,13 @@ public class IndexingJob {
   private Boolean listingComplete;
 
   /**
-   * the comma-separated container keys behind {@code listingComplete == false} - the Confluence
-   * spaces or S3 scopes ({@code bucket/prefix}, comma-free by construction) this run could not read
-   * or list completely, named so the warning at the library can say which bestand may be stale.
-   * {@code null} whenever the assessment is absent or complete.
+   * the comma-separated scope keys behind {@code listingComplete == false} - the Confluence spaces
+   * or S3 scopes ({@code bucket/prefix}, comma-free by construction) this run could not read or
+   * list completely, named so the warning at the library can say which bestand may be stale. {@code
+   * null} whenever the assessment is absent or complete.
    */
-  @Column(name = "unreadable_space_keys")
-  private String unreadableSpaceKeys;
+  @Column(name = "unlisted_scope_keys")
+  private String unlistedScopeKeys;
 
   /** the run's own cost figures; {@code null} until the executor records them at the end. */
   @Column(name = "requests_sent")
@@ -291,18 +291,18 @@ public class IndexingJob {
     return listingComplete;
   }
 
-  /** The space keys behind an incomplete listing assessment, in run order; empty otherwise. */
-  public List<String> getUnreadableSpaceKeys() {
-    if (unreadableSpaceKeys == null || unreadableSpaceKeys.isBlank()) {
+  /** The scope keys behind an incomplete listing assessment, in run order; empty otherwise. */
+  public List<String> getUnlistedScopeKeys() {
+    if (unlistedScopeKeys == null || unlistedScopeKeys.isBlank()) {
       return List.of();
     }
-    return List.of(unreadableSpaceKeys.split(","));
+    return List.of(unlistedScopeKeys.split(","));
   }
 
   /** Records this run's listing assessment; {@code keys} must be empty for a complete one. */
   public void recordListingAssessment(boolean complete, List<String> keys) {
     this.listingComplete = complete;
-    this.unreadableSpaceKeys = complete || keys.isEmpty() ? null : String.join(",", keys);
+    this.unlistedScopeKeys = complete || keys.isEmpty() ? null : String.join(",", keys);
   }
 
   /** The metrics the run recorded, or {@code null} when it recorded none. */
