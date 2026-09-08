@@ -255,8 +255,8 @@ class UserServiceTest {
     assertThat(user.getSubject()).isEqualTo("sub1");
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
     assertThat(user.getOrganizationId()).isEqualTo(Organization.DEFAULT_ID);
-    // #307/#1423: a genuinely new user (this call's own insert won) is announced as such, which is
-    // what lets PersonalSpaceProvisioner skip the otherwise-redundant existsBy round trip.
+    // #307: a genuinely new user (this call's own insert won) is announced as such, which is what
+    // lets PersonalSpaceProvisioner skip the otherwise-redundant existsBy round trip.
     assertThat(onlyEvent().user()).isSameAs(user);
     assertThat(onlyEvent().createdHere()).isTrue();
   }
@@ -575,7 +575,7 @@ class UserServiceTest {
   }
 
   /**
-   * #1423: exactly one event per call, for a returning user too - the provisioning listeners are
+   * Exactly one event per call, for a returning user too - the provisioning listeners are
    * idempotent, but a second event would double every round trip they make per request.
    */
   @Test
@@ -595,7 +595,7 @@ class UserServiceTest {
   }
 
   /**
-   * #1423: whether a provisioning failure is survivable is each listener's own decision - {@code
+   * Whether a provisioning failure is survivable is each listener's own decision - {@code
    * PersonalSpaceProvisioner} swallows it (a missing personal space must not become a lockout),
    * {@code TokenGroupProvisioner} does not (an unsynchronized membership set must not be authorized
    * against). A blanket catch here would take that decision away from both.

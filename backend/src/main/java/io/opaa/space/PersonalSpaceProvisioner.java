@@ -12,9 +12,9 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * Gives every provisioned account its personal space (#201, #1423), on every sign-in rather than
- * only on the first: {@link SpaceService#ensureDefaultSpace} is idempotent, so an account whose
- * space failed to appear earlier gets one on its next sign-in instead of staying without one.
+ * Gives every provisioned account its personal space, on every sign-in rather than only on the
+ * first: {@link SpaceService#ensureDefaultSpace} is idempotent, so an account whose space failed to
+ * appear earlier gets one on its next sign-in instead of staying without one.
  */
 @Component
 class PersonalSpaceProvisioner {
@@ -41,10 +41,10 @@ class PersonalSpaceProvisioner {
 
   /**
    * {@link SpaceService#ensureDefaultSpace} inserts on its own connection and therefore needs the
-   * {@code users} row committed (#280). Publishers run outside a transaction today (see {@code
+   * {@code users} row committed. The publisher holds no transaction (see {@code
    * UserService#findOrCreateUser}), so the immediate branch is the production path; the
-   * synchronization branch is the fallback for a caller that ever does hold one, which must defer
-   * rather than silently skip the provisioning.
+   * synchronization branch is the fallback for a publisher that ever does hold one, which must
+   * defer rather than silently skip the provisioning.
    */
   private void ensureAfterCommit(UUID userId, UUID organizationId, boolean createdHere) {
     if (!TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -61,13 +61,13 @@ class PersonalSpaceProvisioner {
   }
 
   /**
-   * A failure is counted and logged, never rethrown (code review of #201/#305): this runs on every
-   * sign-in, so a rethrow would turn a failing provisioning into a permanent lockout instead of a
-   * sign-in without (yet) a personal space - the next sign-in retries.
+   * A failure is counted and logged, never rethrown: this runs on every sign-in, so a rethrow would
+   * turn a failing provisioning into a permanent lockout instead of a sign-in without (yet) a
+   * personal space - the next sign-in retries.
    *
-   * <p>{@code createdHere} selects the fast path for an account this very sign-in created (#307):
-   * it cannot already own a personal space, so {@link SpaceService#ensureDefaultSpaceForNewUser}
-   * skips the existence check that only {@link SpaceService#ensureDefaultSpace} is allowed to omit.
+   * <p>{@code createdHere} selects the fast path for an account this very sign-in created: it
+   * cannot already own a personal space, so {@link SpaceService#ensureDefaultSpaceForNewUser} skips
+   * the existence check that only {@link SpaceService#ensureDefaultSpace} is allowed to omit.
    */
   private void ensurePersonalSpace(UUID userId, UUID organizationId, boolean createdHere) {
     try {

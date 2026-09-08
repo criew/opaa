@@ -98,12 +98,12 @@ public class UserService {
   }
 
   /**
-   * Deliberately <b>not</b> {@code @Transactional} (#293/#299 code review): every {@link
-   * UserRepository} call below already commits in its own implicit transaction, so no caller ever
-   * holds two pooled connections at once - the earlier {@code @Transactional} version deadlocked
-   * the whole pool under concurrent first logins. Everything that follows the user row (personal
-   * space, token groups) therefore always sees a committed row, and runs as a listener of the
-   * {@link UserProvisionedEvent} published here rather than inside a transaction opened here.
+   * Deliberately <b>not</b> {@code @Transactional}: every {@link UserRepository} call below already
+   * commits in its own implicit transaction, so no caller ever holds two pooled connections at once
+   * - an earlier {@code @Transactional} version deadlocked the whole pool under concurrent first
+   * logins. Everything that follows the user row (personal space, token groups) therefore always
+   * sees a committed row, and runs as a listener of the {@link UserProvisionedEvent} published here
+   * rather than inside a transaction opened here.
    */
   public User findOrCreateUser(String subject, String issuer, String email, String displayName) {
     UserCreationResult result = findOrCreate(subject, issuer, email, displayName);

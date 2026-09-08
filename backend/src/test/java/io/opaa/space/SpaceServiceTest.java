@@ -133,9 +133,9 @@ class SpaceServiceTest {
 
   @Test
   void ensureDefaultSpaceForNewUserSkipsTheExistenceCheck() {
-    // #307: a caller that already knows userId is brand new (UserService.findOrCreateUser, for a
-    // subject/issuer pair its own insert just created) must not spend an extra pooled connection
-    // confirming a fact it already knows - see SpaceService#ensureDefaultSpaceForNewUser's Javadoc.
+    // #307: a caller that already knows userId is brand new (PersonalSpaceProvisioner, for a
+    // subject/issuer pair the sign-in's own insert just created) must not spend an extra pooled
+    // connection confirming a fact it already knows - see ensureDefaultSpaceForNewUser's Javadoc.
     UUID userId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();
 

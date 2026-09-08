@@ -17,10 +17,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The personal-space half of {@link UserProvisionedEvent} (#1423), carrying over the contract
- * {@code UserService} held before the provisioning moved out of it: the fast path for an account
- * created by this very sign-in (#307), the idempotent path for every other case, and a failure that
- * is counted instead of failing the sign-in (#201/#305).
+ * The personal-space half of {@link UserProvisionedEvent}, carrying over the contract {@code
+ * UserService} held before the provisioning moved out of it: the fast path for an account created
+ * by this very sign-in, the idempotent path for every other case, and a failure that is counted
+ * instead of failing the sign-in.
  */
 class PersonalSpaceProvisionerTest {
 
@@ -31,8 +31,8 @@ class PersonalSpaceProvisionerTest {
   @BeforeEach
   void setUp() {
     spaceService = mock(SpaceService.class);
-    // A real AuthMetrics over a test-local registry, not a mock (#307 review, finding 3): the
-    // counter itself must be observed to increment, not merely a call on a mock.
+    // A real AuthMetrics over a test-local registry, not a mock: the counter itself must be
+    // observed to increment, not merely a call on a mock.
     authMetrics = new AuthMetrics(new SimpleMeterRegistry());
     provisioner = new PersonalSpaceProvisioner(spaceService, authMetrics);
   }
@@ -43,6 +43,7 @@ class PersonalSpaceProvisionerTest {
     return user;
   }
 
+  // regression guard for #307: the extra existsBy round trip is what exhausted the pool.
   @Test
   void anAccountCreatedByThisSignInSkipsTheExistenceCheck() {
     User user = user();

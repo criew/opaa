@@ -2,7 +2,6 @@ package io.opaa.auth;
 
 import io.opaa.auth.oidc.OidcProvider;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * Published by {@link UserService} once per provisioning of an account, after the {@code users} row
@@ -25,6 +24,18 @@ public record UserProvisionedEvent(
   public static final int TOKEN_GROUPS_ORDER = 200;
 
   /**
+   * {@code provider} and {@code tokenGroups} are present together or not at all - a listener that
+   * sees one may rely on the other, and {@link #hasTokenGroups()} decides for both.
+   */
+  public UserProvisionedEvent {
+    if ((provider == null) != (tokenGroups == null)) {
+      throw new IllegalArgumentException(
+          "provider and tokenGroups must be set together or left out together");
+    }
+    tokenGroups = tokenGroups == null ? null : List.copyOf(tokenGroups);
+  }
+
+  /**
    * @param createdHere {@code true} only if this sign-in's own insert created {@code user}'s row -
    *     {@code false} for a returning account and for the loser of a concurrent first sign-in.
    */
@@ -35,8 +46,7 @@ public record UserProvisionedEvent(
   /** {@code provider}'s groups claim named exactly {@code tokenGroups} for {@code user}. */
   public static UserProvisionedEvent withTokenGroups(
       User user, boolean createdHere, OidcProvider provider, List<String> tokenGroups) {
-    return new UserProvisionedEvent(
-        user, createdHere, Objects.requireNonNull(provider), List.copyOf(tokenGroups));
+    return new UserProvisionedEvent(user, createdHere, provider, tokenGroups);
   }
 
   /**

@@ -17,9 +17,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * The groups half of {@link UserProvisionedEvent} (#1423): only a sign-in whose provider declares a
- * groups claim is synchronized, and a failure fails that sign-in instead of letting it be
- * authorized against memberships the token no longer backs.
+ * The groups half of {@link UserProvisionedEvent}: only a sign-in whose provider declares a groups
+ * claim is synchronized, and a failure fails that sign-in instead of letting it be authorized
+ * against memberships the token no longer backs.
  */
 class TokenGroupProvisionerTest {
 

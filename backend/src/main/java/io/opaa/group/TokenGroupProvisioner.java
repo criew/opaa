@@ -6,8 +6,8 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
- * Applies the token's groups claim to the signing-in account (#1423), for the sign-ins whose
- * provider declares one - see {@link TokenGroupSynchronizer} for what applying means.
+ * Applies the token's groups claim to the signing-in account, for the sign-ins whose provider
+ * declares one - see {@link TokenGroupSynchronizer} for what applying means.
  */
 @Component
 class TokenGroupProvisioner {
