@@ -92,8 +92,24 @@ andere Adresse wechselt, ist mit dem verwendeten HTTP-Client nicht abzufangen.
 
 - Höchstens fünf Weiterleitungen je Anfrage.
 - Eine Weiterleitung von `https` auf `http` wird immer abgelehnt.
-- Eine Weiterleitung auf einen fremden Ursprung wird gefolgt, aber **ohne Zugangsdaten**. Ein
-  gleichnamiger Wechsel von `http` auf `https` gilt nicht als fremd.
+- Zugangsdaten gehen nur mit, solange das Weiterleitungsziel auf demselben Ursprung liegt **und**
+  unterhalb der Start-URL bleibt — dieselbe Regel wie für Links in Abschnitt 4.3, Segmente werden
+  vor dem Vergleich dekodiert. Ein Ziel auf einem fremden Ursprung oder außerhalb des
+  Start-Unterbaums (z. B. `/dokumente/unterordner/` → `/intern/`) wird gefolgt, aber **ohne
+  Zugangsdaten**. Ein gleichnamiger Wechsel von `http` auf `https` gilt nicht als fremd.
+- Dasselbe gilt für Dateien: Wird eine Datei aus dem Start-Unterbaum heraus weitergeleitet, wird
+  das Ziel ohne Zugangsdaten abgerufen.
+- Landet eine Verzeichnisseite per Weiterleitung außerhalb des Start-Unterbaums, wird die Antwort
+  nicht gelesen und nicht als Verzeichnisliste ausgewertet. Der Lauf gilt dann als
+  **unvollständig** (wie bei einem nicht abrufbaren Unterverzeichnis, Abschnitt 9: keine
+  Löscherkennung), und das Protokoll nennt die angefragte Adresse sowie vom Ziel nur Schema, Host
+  und Port. Innerhalb des Unterbaums werden die Links der Seite gegen die tatsächlich gelieferte
+  Adresse aufgelöst, nicht gegen die angefragte; das Ziel zählt als besucht.
+- Der Verbindungstest wendet auf die geprüfte Adresse dieselbe Regel an: Eine Weiterleitung
+  außerhalb der Start-URL meldet er als nicht erreichbar, mit dem Ziel nur als Schema, Host und
+  Port.
+- Nennt die Start-URL eine Datei (z. B. `/liste.php`), gehören die Adresse selbst — auch mit
+  anderer Query — und alles darunter zum Unterbaum.
 - Protokolleinträge nennen vom Weiterleitungsziel nur Schema, Host und Port, nie Pfad oder
   Query.
 
@@ -156,8 +172,9 @@ nginx-Datumsformate). Bei `<ul>`-Listen bleiben beide leer.
 Unterverzeichnisse werden rekursiv in Fundreihenfolge betreten. Es gibt keine Sortierung.
 
 Ein Crawl endet mit drei Kennzeichen: **abgeschnitten** (Tiefe oder Menge erreicht),
-**unvollständig** (mindestens ein Unterverzeichnis war nicht abrufbar) oder vollständig. Nur ein
-vollständiger Crawl erlaubt die Löscherkennung.
+**unvollständig** (mindestens ein Unterverzeichnis war nicht abrufbar oder wurde aus dem
+Start-Unterbaum heraus weitergeleitet, Abschnitt 4.2) oder vollständig. Nur ein vollständiger
+Crawl erlaubt die Löscherkennung.
 
 ## 6. Änderungserkennung
 
@@ -223,6 +240,7 @@ Anhänge unveränderter Mails gelten als weiterhin vorhanden.
 |---|---|---|
 | abgewiesen | Crawl wurde durch ein konfiguriertes Limit abgeschnitten (Tiefe oder Anzahl Einträge) | Limit erreicht, keine Löscherkennung |
 | abgewiesen | Mindestens ein Unterverzeichnis konnte nicht abgerufen werden, der Bestand dieses Laufs ist unvollständig | Unterverzeichnis nicht lesbar, keine Löscherkennung |
+| abgewiesen | Verzeichnisseite wurde auf eine Adresse außerhalb der Start-URL weitergeleitet (Ziel: Schema, Host und Port) und nicht ausgewertet; der Bestand dieses Laufs ist unvollständig | Weiterleitung aus dem Start-Unterbaum heraus (Abschnitt 4.2), keine Löscherkennung |
 | Format nicht unterstützt | Dateiformat wird nicht unterstützt | Inhaltsentscheidung negativ |
 | Formatabweichung | Dateiendung passt nicht zum erkannten Inhalt (erkannt: …) | wird trotzdem indiziert |
 | abgewiesen | Datei überschreitet die zulässige Größe von … und wurde nicht indiziert | Größengrenze |
@@ -246,7 +264,8 @@ Unauthorized, check credentials" oder „HTTP 503 for URL …".
 | HTTP 401 an der Wurzel | Lauf `FAILED` mit Hinweis auf die Zugangsdaten |
 | Unterverzeichnis nicht erreichbar | Lauf läuft weiter, gilt als unvollständig, keine Löscherkennung |
 | Wartungsseite mit HTTP 200 | keine Verzeichnisliste erkannt, null Einträge, Lauf erfolgreich, nichts gelöscht |
-| Weiterleitung auf fremden Host | wird ohne Zugangsdaten gefolgt |
+| Weiterleitung einer Verzeichnisseite auf fremden Host oder aus dem Start-Unterbaum heraus | wird ohne Zugangsdaten gefolgt, Antwort nicht gelesen; Lauf gilt als unvollständig, keine Löscherkennung |
+| Weiterleitung einer Datei auf fremden Host oder aus dem Start-Unterbaum heraus | wird ohne Zugangsdaten gefolgt |
 | Weiterleitung `https` auf `http` | abgelehnt |
 | Mehr als fünf Weiterleitungen | Anfrage gilt als fehlgeschlagen |
 | HTTP 403 bei einer Datei, oder 429 nach erschöpften Wiederholungen | Eintrag „Fehler", Lauf läuft weiter; keine gesonderte Bot-Schutz-Erkennung |

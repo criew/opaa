@@ -3,6 +3,7 @@ package io.opaa.sourceaccess;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
@@ -11,6 +12,7 @@ import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +73,30 @@ public class BoundedDownloader {
       long maxBytes,
       RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
+    return download(
+        httpClient,
+        authHeader,
+        fileUrl,
+        fileName,
+        maxBytes,
+        rateLimitListener,
+        RedirectFollowingFetcher.ANY_TARGET);
+  }
+
+  /**
+   * {@link #download(HttpClient, String, String, String, long, RateLimitListener)} for a caller
+   * whose {@code authHeader} belongs to a path subtree, not the whole origin: a redirect target
+   * {@code authorizationScope} rejects is fetched without it.
+   */
+  public Path download(
+      HttpClient httpClient,
+      String authHeader,
+      String fileUrl,
+      String fileName,
+      long maxBytes,
+      RateLimitListener rateLimitListener,
+      Predicate<URI> authorizationScope)
+      throws IOException, InterruptedException {
     log.debug("Downloading: {}", fileUrl);
     return downloadToTempFile(
             httpClient,
@@ -79,7 +105,8 @@ public class BoundedDownloader {
             maxBytes,
             authHeader,
             RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
-            rateLimitListener)
+            rateLimitListener,
+            authorizationScope)
         .path();
   }
 
@@ -108,6 +135,28 @@ public class BoundedDownloader {
       int maxBytes,
       RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
+    return downloadPrefix(
+        httpClient,
+        authHeader,
+        fileUrl,
+        maxBytes,
+        rateLimitListener,
+        RedirectFollowingFetcher.ANY_TARGET);
+  }
+
+  /**
+   * {@link #downloadPrefix(HttpClient, String, String, int, RateLimitListener)} with the credential
+   * scope of {@link #download(HttpClient, String, String, String, long, RateLimitListener,
+   * Predicate)}.
+   */
+  public byte[] downloadPrefix(
+      HttpClient httpClient,
+      String authHeader,
+      String fileUrl,
+      int maxBytes,
+      RateLimitListener rateLimitListener,
+      Predicate<URI> authorizationScope)
+      throws IOException, InterruptedException {
 
     log.debug("Downloading (bounded to {} bytes, for detection): {}", maxBytes, fileUrl);
 
@@ -119,7 +168,8 @@ public class BoundedDownloader {
             requestPolicy.headers(authHeader),
             targetAddressValidator,
             RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
-            requestPolicy.rateLimitHandling(rateLimitListener));
+            requestPolicy.rateLimitHandling(rateLimitListener),
+            authorizationScope);
 
     try (InputStream body = response.body()) {
       if (response.statusCode() != 200) {
@@ -178,7 +228,14 @@ public class BoundedDownloader {
       throws IOException, InterruptedException {
     log.debug("Downloading (bounded to {} bytes): {}", maxBytes, fileUrl);
     return downloadToTempFile(
-        httpClient, fileUrl, fileName, maxBytes, authHeader, redirectPolicy, rateLimitListener);
+        httpClient,
+        fileUrl,
+        fileName,
+        maxBytes,
+        authHeader,
+        redirectPolicy,
+        rateLimitListener,
+        RedirectFollowingFetcher.ANY_TARGET);
   }
 
   /**
@@ -234,7 +291,8 @@ public class BoundedDownloader {
       long maxBytes,
       String authHeader,
       RedirectFollowingFetcher.RedirectPolicy redirectPolicy,
-      RateLimitListener rateLimitListener)
+      RateLimitListener rateLimitListener,
+      Predicate<URI> authorizationScope)
       throws IOException, InterruptedException {
     Map<String, String> headers = requestPolicy.headers(authHeader);
     HttpResponse<InputStream> response =
@@ -245,7 +303,8 @@ public class BoundedDownloader {
             headers,
             targetAddressValidator,
             redirectPolicy,
-            requestPolicy.rateLimitHandling(rateLimitListener));
+            requestPolicy.rateLimitHandling(rateLimitListener),
+            authorizationScope);
 
     try (InputStream body = response.body()) {
       if (response.statusCode() != 200) {

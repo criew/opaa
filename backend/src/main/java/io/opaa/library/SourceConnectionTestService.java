@@ -18,6 +18,7 @@ import io.opaa.indexing.source.web.AutoindexCrawlerService;
 import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.ProxyAndCredentials;
+import io.opaa.sourceaccess.RateLimitHandling;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import io.opaa.sourceaccess.SourceRequestPolicy;
@@ -547,9 +548,9 @@ public class SourceConnectionTestService {
       // URL itself and determines where the TCP connection actually goes - validated the same way
       // before this test (or the run it mirrors) ever contacts it, not just the target host.
       targetAddressValidator.validateHost(config.proxyHost());
-      // #538: Authorization (the tested source configuration's own credentials) must not be
-      // replayed to a redirect target on a different host/scheme - see
-      // RedirectFollowingFetcher.sendFollowingRedirects's Javadoc.
+      // Authorization (the tested source configuration's own credentials) must not be replayed to
+      // a redirect target on a different host/scheme or outside the tested URL's subtree - the
+      // same scope the crawl this test mirrors applies.
       HttpResponse<InputStream> response =
           RedirectFollowingFetcher.sendFollowingRedirects(
               httpClient,
@@ -557,8 +558,17 @@ public class SourceConnectionTestService {
               REQUEST_TIMEOUT,
               headers,
               targetAddressValidator,
-              RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN);
+              RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
+              RateLimitHandling.NONE,
+              AutoindexCrawlerService.credentialScope(url));
       try (InputStream body = response.body()) {
+        // Judged before the status: a run never reads such a page, whatever it answers.
+        if (!AutoindexCrawlerService.staysInsideStartSubtree(url, response.uri())) {
+          return unreachable(
+              "Die Adresse leitet auf eine Adresse außerhalb der Start-URL weiter (Ziel: "
+                  + RedirectFollowingFetcher.sanitizedOrigin(response.uri())
+                  + "); ein Lauf würde diese Seite nicht auswerten.");
+        }
         if (response.statusCode() == 401) {
           return unreachable(
               "Die Zugangsdaten wurden vom Server abgelehnt (HTTP 401 Unauthorized).");

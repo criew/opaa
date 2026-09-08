@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +50,8 @@ public final class RedirectFollowingFetcher {
      * Keeps following an off-origin redirect, dropping {@code Authorization} for the rest of the
      * chain the moment a hop stops matching the original origin - mirrors a browser's own
      * cross-origin redirect handling. Used for directory-listing crawls, where a redirect target is
-     * still a page this system is meant to keep exploring.
+     * still a page this system is meant to keep exploring; such a caller narrows the scope further
+     * to its start URL's subtree via the {@code authorizationScope} overload.
      */
     DROP_AUTHORIZATION_OFF_ORIGIN,
 
@@ -105,11 +107,43 @@ public final class RedirectFollowingFetcher {
       RedirectPolicy policy,
       RateLimitHandling rateLimit)
       throws IOException, InterruptedException {
+    return sendFollowingRedirects(
+        httpClient, url, timeout, headers, targetAddressValidator, policy, rateLimit, ANY_TARGET);
+  }
+
+  /** The {@code authorizationScope} that keeps credentials on every trusted-origin hop. */
+  public static final Predicate<URI> ANY_TARGET = target -> true;
+
+  /**
+   * {@link #sendFollowingRedirects(HttpClient, String, Duration, Map, TargetAddressValidator,
+   * RedirectPolicy, RateLimitHandling)} with a narrower credential scope: {@code Authorization} is
+   * dropped for the rest of the chain as soon as a redirect target is off-origin <em>or</em> {@code
+   * authorizationScope} rejects it, whichever comes first - for a caller whose credentials belong
+   * to a path subtree, not the whole origin. Under {@link RedirectPolicy#REJECT_OFF_ORIGIN} the
+   * scope only drops the header; only an off-origin hop is refused.
+   */
+  public static HttpResponse<InputStream> sendFollowingRedirects(
+      HttpClient httpClient,
+      String url,
+      Duration timeout,
+      Map<String, String> headers,
+      TargetAddressValidator targetAddressValidator,
+      RedirectPolicy policy,
+      RateLimitHandling rateLimit,
+      Predicate<URI> authorizationScope)
+      throws IOException, InterruptedException {
     RateLimitPolicy rateLimitPolicy = rateLimit.policy();
     for (int attempt = 0; ; attempt++) {
       rateLimit.listener().sending();
       HttpResponse<InputStream> response =
-          sendOnce(httpClient, url, timeout, headers, targetAddressValidator, policy);
+          sendOnce(
+              httpClient,
+              url,
+              timeout,
+              headers,
+              targetAddressValidator,
+              policy,
+              authorizationScope);
       if (response.statusCode() != TOO_MANY_REQUESTS || attempt >= rateLimitPolicy.maxRetries()) {
         return response;
       }
@@ -133,7 +167,8 @@ public final class RedirectFollowingFetcher {
       Duration timeout,
       Map<String, String> headers,
       TargetAddressValidator targetAddressValidator,
-      RedirectPolicy policy)
+      RedirectPolicy policy,
+      Predicate<URI> authorizationScope)
       throws IOException, InterruptedException {
     URI originalUri = URI.create(url);
     URI currentUri = originalUri;
@@ -182,6 +217,8 @@ public final class RedirectFollowingFetcher {
         if (policy == RedirectPolicy.REJECT_OFF_ORIGIN) {
           throw new RedirectRejectedException(RedirectRejectionReason.FOREIGN_HOST, redirectUri);
         }
+        currentHeaders.remove("Authorization");
+      } else if (!authorizationScope.test(redirectUri)) {
         currentHeaders.remove("Authorization");
       }
       currentUri = redirectUri;
@@ -279,7 +316,7 @@ public final class RedirectFollowingFetcher {
    * rejected redirect in the German, user-facing message. Not a general-purpose redaction: a
    * caller's own log statements still log the unsanitized target via the exception message.
    */
-  static String sanitizedOrigin(URI uri) {
+  public static String sanitizedOrigin(URI uri) {
     String scheme = uri.getScheme() == null ? "?" : uri.getScheme();
     String host = uri.getHost() == null ? "?" : uri.getHost();
     String portSuffix = uri.getPort() == -1 ? "" : ":" + uri.getPort();

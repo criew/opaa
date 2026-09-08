@@ -96,14 +96,15 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
     when(crawlerService.crawl(anyString(), any(), anyInt(), any(), any(), anyBoolean(), any()))
         .thenReturn(
             new AutoindexCrawlerService.CrawlResult(
-                List.of(entry), false, false, false, List.of()));
+                List.of(entry), false, false, false, List.of(), List.of()));
 
     Path downloaded = tempDir.resolve("mail.eml");
     Files.writeString(downloaded, "From: a@example.org\r\n\r\nInhalt");
     when(downloader.download(
-            any(HttpClient.class), any(), anyString(), anyString(), anyLong(), any()))
+            any(HttpClient.class), any(), anyString(), anyString(), anyLong(), any(), any()))
         .thenReturn(downloaded);
-    when(downloader.downloadPrefix(any(HttpClient.class), any(), anyString(), anyInt(), any()))
+    when(downloader.downloadPrefix(
+            any(HttpClient.class), any(), anyString(), anyInt(), any(), any()))
         .thenReturn("From: a@example.org\r\n\r\nInhalt".getBytes(StandardCharsets.UTF_8));
 
     executor =
