@@ -40,6 +40,7 @@ import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
@@ -178,7 +179,8 @@ class UrlIndexingExecutorExecuteTest {
             indexingRunEventRepository,
             staleDocumentCleanupService,
             documentRepository,
-            mock(LibraryStorageQuotaService.class)));
+            mock(LibraryStorageQuotaService.class)),
+        ProductionDocumentFormats.supportedFormats());
   }
 
   @AfterEach

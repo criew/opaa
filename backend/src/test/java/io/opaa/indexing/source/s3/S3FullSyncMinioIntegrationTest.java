@@ -30,6 +30,7 @@ import io.opaa.library.LibraryFolderService;
 import io.opaa.organization.Organization;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.ProductionDocumentFormats;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -194,7 +195,8 @@ class S3FullSyncMinioIntegrationTest {
         cleanupService,
         syncStateRepository,
         Clock.systemUTC(),
-        indexingRunTemplate);
+        indexingRunTemplate,
+        ProductionDocumentFormats.supportedFormats());
   }
 
   /** One full run, synchronous - the executor is called directly. */

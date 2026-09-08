@@ -107,6 +107,7 @@ final class S3FullSync implements AutoCloseable {
   private final SourceSyncState state;
   private final SourceSyncStateRepository syncStateRepository;
   private final Clock clock;
+  private final SupportedDocumentFormats supportedFormats;
 
   /** Downloads in flight, oldest first; drained on the listing thread in this order. */
   private final Deque<PendingDownload> pending = new ArrayDeque<>();
@@ -147,7 +148,8 @@ final class S3FullSync implements AutoCloseable {
       StaleDocumentCleanupService cleanupService,
       SourceSyncState state,
       SourceSyncStateRepository syncStateRepository,
-      Clock clock) {
+      Clock clock,
+      SupportedDocumentFormats supportedFormats) {
     this.frame = frame;
     this.store = store;
     this.properties = properties;
@@ -161,6 +163,7 @@ final class S3FullSync implements AutoCloseable {
     this.state = state;
     this.syncStateRepository = syncStateRepository;
     this.clock = clock;
+    this.supportedFormats = supportedFormats;
   }
 
   ListingOutcome run(List<S3Scope> scopes) throws InterruptedException {
@@ -429,7 +432,7 @@ final class S3FullSync implements AutoCloseable {
       frame.progress().recordSkipped();
       return;
     }
-    boolean supportedByName = SupportedDocumentFormats.isSupported(fileName);
+    boolean supportedByName = supportedFormats.isSupported(fileName);
     if (!supportedByName && hasExtension(fileName)) {
       // the mass case of an object store (images, archives): no row, no lookup, no folder
       skip(IndexingEventCategory.UNSUPPORTED_FORMAT, UNSUPPORTED_FORMAT_MESSAGE, filePath);
@@ -638,7 +641,7 @@ final class S3FullSync implements AutoCloseable {
           IndexingEventCategory.REJECTED, archivedMessage(filePath, head.storageClass()), filePath);
       return false;
     }
-    if (SupportedDocumentFormats.extensionForContentType(head.contentType()) == null) {
+    if (supportedFormats.extensionForContentType(head.contentType()) == null) {
       skip(
           IndexingEventCategory.UNSUPPORTED_FORMAT,
           UNSUPPORTED_FORMAT_MESSAGE

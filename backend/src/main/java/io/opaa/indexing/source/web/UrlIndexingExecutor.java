@@ -66,6 +66,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   private final LibraryFolderService folderService;
   private final SourceRequestPolicy requestPolicy;
   private final IndexingRunTemplate runTemplate;
+  private final SupportedDocumentFormats supportedFormats;
 
   public UrlIndexingExecutor(
       AutoindexCrawlerService crawlerService,
@@ -75,7 +76,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       CrawlProperties crawlProperties,
       LibraryFolderService folderService,
       SourceRequestPolicy requestPolicy,
-      IndexingRunTemplate runTemplate) {
+      IndexingRunTemplate runTemplate,
+      SupportedDocumentFormats supportedFormats) {
     this.crawlerService = crawlerService;
     this.downloader = downloader;
     this.documentIngestService = documentIngestService;
@@ -84,6 +86,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     this.folderService = folderService;
     this.requestPolicy = requestPolicy;
     this.runTemplate = runTemplate;
+    this.supportedFormats = supportedFormats;
   }
 
   @Override
@@ -266,6 +269,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       try {
         decision =
             decideForEntry(
+                supportedFormats,
                 prefix,
                 entry.name(),
                 () ->
@@ -455,12 +459,16 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
    * Decides whether a crawled entry is supported from its content, never from {@code entryName} -
    * the same decision {@link #processEntry} makes. A leading byte sample normally settles it; only
    * a prefix ending inside an unresolved container makes {@code completeContent} download in full.
-   * Public so the cross-package parity test exercises this call rather than a reimplementation.
+   * Public so the cross-package parity test exercises this call rather than a reimplementation;
+   * {@code supportedFormats} is this executor's own, the application's single derived admission.
    */
   public static SupportedDocumentFormats.ContentDecision decideForEntry(
-      byte[] prefix, String entryName, SupportedDocumentFormats.CompleteContent completeContent)
+      SupportedDocumentFormats supportedFormats,
+      byte[] prefix,
+      String entryName,
+      SupportedDocumentFormats.CompleteContent completeContent)
       throws IOException, InterruptedException {
-    return SupportedDocumentFormats.decideForPrefix(entryName, prefix, completeContent);
+    return supportedFormats.decideForPrefix(entryName, prefix, completeContent);
   }
 
   /**

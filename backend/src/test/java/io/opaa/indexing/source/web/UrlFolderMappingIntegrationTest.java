@@ -30,6 +30,7 @@ import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -234,7 +235,8 @@ class UrlFolderMappingIntegrationTest {
         crawlProperties,
         folderService,
         SourceRequestPolicy.defaults(),
-        indexingRunTemplate);
+        indexingRunTemplate,
+        ProductionDocumentFormats.supportedFormats());
   }
 
   /** Runs one full executor pass - synchronous, since the executor is called directly here. */

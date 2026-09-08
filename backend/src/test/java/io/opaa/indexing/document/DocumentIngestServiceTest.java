@@ -496,12 +496,13 @@ class DocumentIngestServiceTest {
     void theRowsContentTypeIsTheCanonicalTypeOfTheRoutedFormatNotTikasRawDetection()
         throws IOException {
       // Tika sees a Markdown file as text/plain; the row must say text/markdown, the type the
-      // download endpoint serves and the preview renders Markdown for.
+      // download endpoint serves and the preview renders Markdown for. Routed through a registry
+      // that has the Markdown format, since ".md" is admitted by that format's own declaration.
       Path file = fileNamed("notizen.md", "# Notizen\n\nInhalt");
       stubNewRow(file, "sha256-md");
-      stubParsedInto(file, chunks("chunk1"));
 
-      service.ingest(localFile(file), null);
+      serviceWith(TestPipelineRegistries.fallbackAndMarkdown(documentService, chunkingService))
+          .ingest(localFile(file), null);
 
       assertThat(savedDocument().getContentType()).isEqualTo("text/markdown");
       assertThat(storedChunks().getFirst().getMetadata())

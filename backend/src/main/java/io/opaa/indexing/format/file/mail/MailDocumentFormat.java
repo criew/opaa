@@ -6,6 +6,7 @@ import io.opaa.indexing.format.DocumentFormat;
 import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.format.DocumentProperties;
+import io.opaa.indexing.format.FormatAdmission;
 import io.opaa.indexing.metadata.FormatMetadataField;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -74,9 +75,18 @@ public class MailDocumentFormat implements DocumentFormat {
     return VERSION;
   }
 
+  /**
+   * EML is text-tolerant: Tika's {@code message/rfc822} detector is a textual heuristic rather than
+   * a byte signature, so demanding the file's own extension in addition to "looks like text" keeps
+   * an unrelated text file out of this pipeline and still admits a genuine EML. MSG's {@code
+   * application/vnd.ms-outlook} is a genuinely distinctive OLE2/MAPI container type and is matched
+   * strictly.
+   */
   @Override
-  public Set<String> handledFormats() {
-    return Set.of(".eml", ".msg");
+  public Set<FormatAdmission> admittedFormats() {
+    return Set.of(
+        FormatAdmission.textTolerant(".eml", "message/rfc822"),
+        FormatAdmission.detectedAs(".msg", "application/vnd.ms-outlook"));
   }
 
   /**

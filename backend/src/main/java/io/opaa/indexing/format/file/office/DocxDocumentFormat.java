@@ -4,6 +4,7 @@ import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.format.FileDocumentFormat;
+import io.opaa.indexing.format.FormatAdmission;
 import io.opaa.indexing.format.shared.DeduplicatedLines;
 import io.opaa.indexing.format.shared.DocumentTitleLine;
 import io.opaa.indexing.format.shared.HeadingSectionSplitter;
@@ -76,9 +77,16 @@ public class DocxDocumentFormat extends FileDocumentFormat<DocxDocumentFormat.Do
     return VERSION;
   }
 
+  /**
+   * Deliberately not admitting {@code application/x-tika-ooxml}: that is the generic, unresolved
+   * OOXML container type Tika falls back to when its sniffing inside the ZIP fails - any OOXML file
+   * this system cannot actually identify would pass as a "matching" DOCX.
+   */
   @Override
-  public Set<String> handledFormats() {
-    return Set.of(".docx");
+  public Set<FormatAdmission> admittedFormats() {
+    return Set.of(
+        FormatAdmission.detectedAs(
+            ".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
   }
 
   /**

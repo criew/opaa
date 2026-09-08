@@ -28,6 +28,7 @@ import io.opaa.indexing.source.rss.RssFeedParser;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.test.ProductionDocumentFormats;
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
@@ -72,7 +73,8 @@ class SourceConnectionTestServiceConfluenceTest {
             TargetAddressValidator.disabled(),
             SourceRequestPolicy.defaults(),
             confluenceConnectionService,
-            mock(S3ConnectionService.class));
+            mock(S3ConnectionService.class),
+            ProductionDocumentFormats.supportedFormats());
   }
 
   private KnowledgeLibrary confluenceLibrary(UUID libraryId, String url) {

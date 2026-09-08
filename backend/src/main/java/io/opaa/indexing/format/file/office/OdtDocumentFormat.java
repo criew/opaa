@@ -4,6 +4,7 @@ import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.format.FileDocumentFormat;
+import io.opaa.indexing.format.FormatAdmission;
 import io.opaa.indexing.format.shared.DeduplicatedLines;
 import io.opaa.indexing.format.shared.DocumentTitleLine;
 import io.opaa.indexing.format.shared.HeadingSectionSplitter;
@@ -65,9 +66,13 @@ public class OdtDocumentFormat extends FileDocumentFormat<OdtDocumentFormat.OdtC
     return VERSION;
   }
 
+  /**
+   * ODF, unlike DOCX/PPTX, has one specific media type straight from Tika's ZIP-mimetype-entry
+   * detector - there is no generic "unresolved ODF container" type to exclude here.
+   */
   @Override
-  public Set<String> handledFormats() {
-    return Set.of(".odt");
+  public Set<FormatAdmission> admittedFormats() {
+    return Set.of(FormatAdmission.detectedAs(".odt", "application/vnd.oasis.opendocument.text"));
   }
 
   /**

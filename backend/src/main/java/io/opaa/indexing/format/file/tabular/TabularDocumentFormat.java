@@ -5,6 +5,7 @@ import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.format.DocumentFormat;
 import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatSource;
+import io.opaa.indexing.format.FormatAdmission;
 import io.opaa.indexing.format.file.office.OdfPackage;
 import io.opaa.indexing.format.shared.HeadingSectionSplitter;
 import io.opaa.indexing.format.shared.TableText;
@@ -110,9 +111,18 @@ public class TabularDocumentFormat implements DocumentFormat {
     return VERSION;
   }
 
+  /**
+   * CSV is text-tolerant: a CSV file is valid Markdown and barely distinguishable from plain text
+   * by content, so its own extension decides which of them it is. XLSX and ODS carry a ZIP
+   * signature Tika resolves to one specific type each.
+   */
   @Override
-  public Set<String> handledFormats() {
-    return Set.of(".xlsx", ".csv", ".ods");
+  public Set<FormatAdmission> admittedFormats() {
+    return Set.of(
+        FormatAdmission.detectedAs(
+            ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+        FormatAdmission.textTolerant(".csv", "text/csv"),
+        FormatAdmission.detectedAs(".ods", "application/vnd.oasis.opendocument.spreadsheet"));
   }
 
   @Override

@@ -4,6 +4,7 @@ import io.opaa.indexing.format.DocumentFormat;
 import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.format.DocumentProperties;
+import io.opaa.indexing.format.FormatAdmission;
 import io.opaa.indexing.format.shared.DocumentTitleLine;
 import io.opaa.indexing.format.shared.HeadingSectionSplitter;
 import io.opaa.indexing.format.shared.HeadingSectionSplitter.Event;
@@ -57,9 +58,14 @@ public class HtmlDocumentFormat implements DocumentFormat {
     return VERSION;
   }
 
+  /**
+   * HTML has a distinctive enough signature (DOCTYPE/{@code <html>} tag) that Tika tells it apart
+   * from plain text; the XHTML variant means the same format here, mirroring {@code
+   * DetailPageExtractor}'s own {@code isHtmlContentType} (ingestion-pipelines.md, Teil 3, Punkt 4).
+   */
   @Override
-  public Set<String> handledFormats() {
-    return Set.of(".html");
+  public Set<FormatAdmission> admittedFormats() {
+    return Set.of(FormatAdmission.detectedAs(".html", "text/html", "application/xhtml+xml"));
   }
 
   @Override

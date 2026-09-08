@@ -5,6 +5,7 @@ import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentService;
+import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.RejectedDocumentReporter;
 import io.opaa.indexing.source.IndexingRun;
@@ -49,18 +50,21 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
   private final FilesystemPathAllowlist filesystemAllowlist;
   private final LibraryFolderService folderService;
   private final IndexingRunTemplate runTemplate;
+  private final SupportedDocumentFormats supportedFormats;
 
   public AsyncIndexingExecutor(
       DocumentService documentService,
       DocumentIngestService documentIngestService,
       FilesystemPathAllowlist filesystemAllowlist,
       LibraryFolderService folderService,
-      IndexingRunTemplate runTemplate) {
+      IndexingRunTemplate runTemplate,
+      SupportedDocumentFormats supportedFormats) {
     this.documentService = documentService;
     this.documentIngestService = documentIngestService;
     this.filesystemAllowlist = filesystemAllowlist;
     this.folderService = folderService;
     this.runTemplate = runTemplate;
+    this.supportedFormats = supportedFormats;
   }
 
   @Override
@@ -104,7 +108,8 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
     // document key, so a sourcePath that is not in canonical form would re-key the library's
     // documents on every run.
     Path documentDir = Path.of(targetLibrary.getSourcePath()).toAbsolutePath().normalize();
-    DocumentService.DiscoveredFiles discovered = documentService.discoverFiles(documentDir);
+    DocumentService.DiscoveredFiles discovered =
+        documentService.discoverFiles(documentDir, supportedFormats);
     List<Path> files = discovered.supported();
     log.info(
         "Discovered {} files in {}, {} of them indexable",
@@ -126,7 +131,8 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
             RejectedDocumentReporter.reportRejected(
                 IndexingSourceType.FILESYSTEM,
                 documentDir.toString(),
-                discovered.rejected().stream().map(p -> p.getFileName().toString()).toList()));
+                discovered.rejected().stream().map(p -> p.getFileName().toString()).toList(),
+                supportedFormats));
 
     // A file whose own extension does not match its detected content is still indexed - only
     // reported, never rejected or silently reinterpreted.
@@ -183,11 +189,11 @@ public class AsyncIndexingExecutor implements SourceIndexingExecutor {
    * distinct directory, so a directory holding thousands of files still costs one materialization.
    *
    * <p>{@code documentDir} and {@code file} are both already absolute and {@link Path#normalize()
-   * normalize}d - {@code file} because {@link DocumentService#discoverFiles(Path)} only ever
-   * returns entries {@link java.nio.file.Files#walk} found physically under {@code documentDir}
-   * (walked without {@code FOLLOW_LINKS} - a symlink is a leaf, never traversed into), so a
-   * defensive {@link Path#startsWith} guard is enough to catch an unexpected escape rather than
-   * needing to resolve symlinks up front.
+   * normalize}d - {@code file} because {@link DocumentService#discoverFiles} only ever returns
+   * entries {@link java.nio.file.Files#walk} found physically under {@code documentDir} (walked
+   * without {@code FOLLOW_LINKS} - a symlink is a leaf, never traversed into), so a defensive
+   * {@link Path#startsWith} guard is enough to catch an unexpected escape rather than needing to
+   * resolve symlinks up front.
    *
    * @return {@code null} for a file directly in {@code documentDir} (the library's root), when
    *     {@code file} unexpectedly does not sit under {@code documentDir} at all, or when a

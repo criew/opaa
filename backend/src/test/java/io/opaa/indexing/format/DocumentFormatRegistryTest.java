@@ -23,6 +23,7 @@ class DocumentFormatRegistryTest {
   private static final String PLAIN_TEXT = "text/plain";
   private static final String DOCX =
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  private static final FormatAdmission PDF_ADMISSION = FormatAdmission.detectedAs(".pdf", PDF);
 
   private final TikaFallbackFormat fallback =
       new TikaFallbackFormat(new DocumentService(), new ChunkingService(properties()));
@@ -32,7 +33,7 @@ class DocumentFormatRegistryTest {
   }
 
   /** A stand-in for a future format pipeline - the whole point of the open-closed criterion. */
-  private record FakePipeline(String id, short version, Set<String> handledFormats)
+  private record FakePipeline(String id, short version, Set<FormatAdmission> admittedFormats)
       implements DocumentFormat {
 
     @Override
@@ -43,7 +44,10 @@ class DocumentFormatRegistryTest {
 
   /** A stand-in pipeline declaring an arbitrary, non-default passthrough key set. */
   private record FakePipelineWithPassthroughKeys(
-      String id, short version, Set<String> handledFormats, Set<String> passthroughMetadataKeys)
+      String id,
+      short version,
+      Set<FormatAdmission> admittedFormats,
+      Set<String> passthroughMetadataKeys)
       implements DocumentFormat {
 
     @Override
@@ -56,7 +60,7 @@ class DocumentFormatRegistryTest {
    * A stand-in pipeline violating the "never null" contract of {@code passthroughMetadataKeys()}.
    */
   private record FakePipelineWithNullPassthroughKeys(
-      String id, short version, Set<String> handledFormats) implements DocumentFormat {
+      String id, short version, Set<FormatAdmission> admittedFormats) implements DocumentFormat {
 
     @Override
     public DocumentFormatResult run(DocumentFormatSource source) {
@@ -72,10 +76,14 @@ class DocumentFormatRegistryTest {
   @Test
   void allPassthroughMetadataKeysIsTheUnionOverEveryRegisteredPipeline() {
     DocumentFormat pdfPipeline =
-        new FakePipelineWithPassthroughKeys("pdf", (short) 1, Set.of(".pdf"), Set.of("location"));
+        new FakePipelineWithPassthroughKeys(
+            "pdf", (short) 1, Set.of(PDF_ADMISSION), Set.of("location"));
     DocumentFormat mailPipeline =
         new FakePipelineWithPassthroughKeys(
-            "email", (short) 1, Set.of(".eml"), Set.of("location", "mail_subject"));
+            "email",
+            (short) 1,
+            Set.of(FormatAdmission.textTolerant(".eml", "message/rfc822")),
+            Set.of("location", "mail_subject"));
     DocumentFormatRegistry registry = registryWith(pdfPipeline, mailPipeline);
 
     // fallback's own default (location) is part of the union too - it is a registered pipeline
@@ -87,7 +95,10 @@ class DocumentFormatRegistryTest {
   @Test
   void aPipelineReturningNullFromPassthroughMetadataKeysFailsFastAtConstruction() {
     DocumentFormat brokenPipeline =
-        new FakePipelineWithNullPassthroughKeys("broken", (short) 1, Set.of(".broken"));
+        new FakePipelineWithNullPassthroughKeys(
+            "broken",
+            (short) 1,
+            Set.of(FormatAdmission.detectedAs(".broken", "application/x-broken")));
 
     assertThatThrownBy(() -> registryWith(brokenPipeline))
         .isInstanceOf(IllegalStateException.class)
@@ -104,7 +115,7 @@ class DocumentFormatRegistryTest {
         new FakePipelineWithPassthroughKeys(
             "overreaching",
             (short) 1,
-            Set.of(".over"),
+            Set.of(FormatAdmission.detectedAs(".over", "application/x-over")),
             Set.of("location", io.opaa.indexing.metadata.CoreMetadataChunkKeys.DOCUMENT_TYPE));
 
     assertThatThrownBy(() -> registryWith(overreaching))
@@ -134,7 +145,7 @@ class DocumentFormatRegistryTest {
 
   @Test
   void routesOnTheDetectedContentNotOnTheFileExtension() {
-    DocumentFormat pdfPipeline = new FakePipeline("pdf", (short) 1, Set.of(".pdf"));
+    DocumentFormat pdfPipeline = new FakePipeline("pdf", (short) 1, Set.of(PDF_ADMISSION));
     DocumentFormatRegistry registry = registryWith(pdfPipeline);
 
     // Content-based admission carried into routing: a PDF misnamed .docx in a gewachsene Ablage
@@ -146,25 +157,29 @@ class DocumentFormatRegistryTest {
 
   @Test
   void markdownAndPlainTextStillNeedTheirOwnExtension() {
-    DocumentFormat markdownPipeline = new FakePipeline("markdown", (short) 1, Set.of(".md"));
-    DocumentFormat textPipeline = new FakePipeline("text", (short) 1, Set.of(".txt"));
-    DocumentFormatRegistry registry = registryWith(markdownPipeline, textPipeline);
+    DocumentFormat markdownPipeline =
+        new FakePipeline(
+            "markdown", (short) 1, Set.of(FormatAdmission.textTolerant(".md", "text/markdown")));
+    DocumentFormatRegistry registry = registryWith(markdownPipeline);
 
     // Content alone cannot tell the two apart, so the extension decides which of them it is -
-    // exactly the admission rule, reused rather than re-implemented.
+    // exactly the admission rule, reused rather than re-implemented. ".txt" is admitted by the
+    // fallback's own declaration, which is why it lands there rather than in the Markdown pipeline.
     assertThat(registry.pipelineFor("handbuch.md", PLAIN_TEXT)).isSameAs(markdownPipeline);
-    assertThat(registry.pipelineFor("handbuch.txt", PLAIN_TEXT)).isSameAs(textPipeline);
-    // CSV is admitted in its own right, but no pipeline in this registry claims
-    // ".csv" - it falls back exactly like any other admitted format without a specialized
-    // pipeline (see aFormatWithoutItsOwnPipelineKeepsUsingTheFallback below).
+    assertThat(registry.pipelineFor("handbuch.txt", PLAIN_TEXT)).isSameAs(fallback);
+    // ".csv" is admitted by TabularDocumentFormat in the application, by nothing in this registry -
+    // unadmitted content routes to the fallback like any other.
     assertThat(registry.pipelineFor("export.csv", PLAIN_TEXT)).isSameAs(fallback);
   }
 
   @Test
-  void aFormatWithoutItsOwnPipelineKeepsUsingTheFallback() {
-    DocumentFormat pdfPipeline = new FakePipeline("pdf", (short) 1, Set.of(".pdf"));
+  void anAdmittedFormatWithoutItsOwnPipelineKeepsUsingTheFallback() {
+    DocumentFormat pdfPipeline = new FakePipeline("pdf", (short) 1, Set.of(PDF_ADMISSION));
     DocumentFormatRegistry registry = registryWith(pdfPipeline);
 
+    // ".doc" is admitted - by the fallback's own declaration - and claimed by nobody, the case
+    // this fallback exists for. ".docx" is not admitted here at all and lands there as well.
+    assertThat(registry.pipelineFor("altakte.doc", "application/msword")).isSameAs(fallback);
     assertThat(registry.pipelineFor("vermerk.docx", DOCX)).isSameAs(fallback);
   }
 
@@ -187,8 +202,8 @@ class DocumentFormatRegistryTest {
 
   @Test
   void twoPipelinesClaimingTheSameFormatFailFast() {
-    DocumentFormat first = new FakePipeline("pdf-a", (short) 1, Set.of(".pdf"));
-    DocumentFormat second = new FakePipeline("pdf-b", (short) 1, Set.of(".pdf"));
+    DocumentFormat first = new FakePipeline("pdf-a", (short) 1, Set.of(PDF_ADMISSION));
+    DocumentFormat second = new FakePipeline("pdf-b", (short) 1, Set.of(PDF_ADMISSION));
 
     assertThatThrownBy(() -> registryWith(first, second))
         .isInstanceOf(IllegalStateException.class)
@@ -197,7 +212,7 @@ class DocumentFormatRegistryTest {
 
   @Test
   void reportsEveryRegisteredPipelineWithItsCurrentVersion() {
-    DocumentFormat pdfPipeline = new FakePipeline("pdf", (short) 3, Set.of(".pdf"));
+    DocumentFormat pdfPipeline = new FakePipeline("pdf", (short) 3, Set.of(PDF_ADMISSION));
 
     assertThat(registryWith(pdfPipeline).pipelines())
         .extracting(DocumentFormat::id, DocumentFormat::version)

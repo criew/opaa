@@ -5,6 +5,7 @@ import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.format.FileDocumentFormat;
+import io.opaa.indexing.format.FormatAdmission;
 import io.opaa.indexing.format.shared.HeadingSectionSplitter;
 import io.opaa.indexing.format.shared.TableText;
 import java.io.IOException;
@@ -54,9 +55,12 @@ public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.Pp
     return VERSION;
   }
 
+  /** Deliberately not admitting the generic {@code application/x-tika-ooxml} container type. */
   @Override
-  public Set<String> handledFormats() {
-    return Set.of(".pptx");
+  public Set<FormatAdmission> admittedFormats() {
+    return Set.of(
+        FormatAdmission.detectedAs(
+            ".pptx", "application/vnd.openxmlformats-officedocument.presentationml.presentation"));
   }
 
   /**

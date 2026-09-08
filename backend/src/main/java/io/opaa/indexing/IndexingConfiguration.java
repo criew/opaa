@@ -11,6 +11,7 @@ import io.opaa.indexing.document.DocumentService;
 import io.opaa.indexing.document.StoredDocumentSourceAccess;
 import io.opaa.indexing.format.DocumentFormat;
 import io.opaa.indexing.format.DocumentFormatRegistry;
+import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.format.file.fallback.TikaFallbackFormat;
 import io.opaa.indexing.format.file.html.HtmlDocumentFormat;
 import io.opaa.indexing.format.file.mail.MailDocumentFormat;
@@ -211,6 +212,17 @@ public class IndexingConfiguration {
   }
 
   /**
+   * What this deployment accepts for indexing - the union of every registered format's {@link
+   * DocumentFormat#admittedFormats()}, derived by the registry itself so admission and routing can
+   * never disagree. A new format changes this set by being a bean, not by being listed anywhere.
+   */
+  @Bean
+  SupportedDocumentFormats supportedDocumentFormats(
+      DocumentFormatRegistry documentPipelineRegistry) {
+    return documentPipelineRegistry.supportedFormats();
+  }
+
+  /**
    * The shared re-extraction of attachment bytes (ADR-0022) - attachments are never stored, so both
    * the selective re-index and "Im Dokument öffnen" re-derive them from their parent here.
    */
@@ -272,9 +284,14 @@ public class IndexingConfiguration {
       BoundedDownloader boundedDownloader,
       DocumentIngestService documentIngestService,
       LibraryStorageQuotaService libraryStorageQuotaService,
-      AttachmentProperties attachmentProperties) {
+      AttachmentProperties attachmentProperties,
+      SupportedDocumentFormats supportedDocumentFormats) {
     return new AttachmentIndexer(
-        boundedDownloader, documentIngestService, libraryStorageQuotaService, attachmentProperties);
+        boundedDownloader,
+        documentIngestService,
+        libraryStorageQuotaService,
+        attachmentProperties,
+        supportedDocumentFormats);
   }
 
   /**
@@ -403,13 +420,15 @@ public class IndexingConfiguration {
       DocumentIngestService documentIngestService,
       FilesystemPathAllowlist filesystemPathAllowlist,
       LibraryFolderService libraryFolderService,
-      IndexingRunTemplate indexingRunTemplate) {
+      IndexingRunTemplate indexingRunTemplate,
+      SupportedDocumentFormats supportedDocumentFormats) {
     return new AsyncIndexingExecutor(
         documentService,
         documentIngestService,
         filesystemPathAllowlist,
         libraryFolderService,
-        indexingRunTemplate);
+        indexingRunTemplate,
+        supportedDocumentFormats);
   }
 
   @Bean
@@ -436,7 +455,8 @@ public class IndexingConfiguration {
       SourceRequestPolicy sourceRequestPolicy,
       CrawlProperties crawlProperties,
       LibraryFolderService libraryFolderService,
-      IndexingRunTemplate indexingRunTemplate) {
+      IndexingRunTemplate indexingRunTemplate,
+      SupportedDocumentFormats supportedDocumentFormats) {
     return new UrlIndexingExecutor(
         autoindexCrawlerService,
         boundedDownloader,
@@ -445,7 +465,8 @@ public class IndexingConfiguration {
         crawlProperties,
         libraryFolderService,
         sourceRequestPolicy,
-        indexingRunTemplate);
+        indexingRunTemplate,
+        supportedDocumentFormats);
   }
 
   @Bean
@@ -517,7 +538,8 @@ public class IndexingConfiguration {
       LibraryFolderService libraryFolderService,
       StaleDocumentCleanupService staleDocumentCleanupService,
       SourceSyncStateRepository sourceSyncStateRepository,
-      IndexingRunTemplate indexingRunTemplate) {
+      IndexingRunTemplate indexingRunTemplate,
+      SupportedDocumentFormats supportedDocumentFormats) {
     return new S3IndexingExecutor(
         s3ClientFactory,
         s3Properties,
@@ -527,7 +549,8 @@ public class IndexingConfiguration {
         staleDocumentCleanupService,
         sourceSyncStateRepository,
         Clock.systemUTC(),
-        indexingRunTemplate);
+        indexingRunTemplate,
+        supportedDocumentFormats);
   }
 
   /**

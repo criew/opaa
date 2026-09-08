@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import io.opaa.indexing.format.SupportedDocumentFormats;
+import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -16,6 +18,8 @@ import org.junit.jupiter.api.io.TempDir;
 class DocumentServiceTest {
 
   private final DocumentService service = new DocumentService();
+  private final SupportedDocumentFormats supportedFormats =
+      ProductionDocumentFormats.supportedFormats();
 
   @TempDir Path tempDir;
 
@@ -31,7 +35,7 @@ class DocumentServiceTest {
     Files.write(
         tempDir.resolve("data.csv"), new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3});
 
-    var discovered = service.discoverFiles(tempDir);
+    var discovered = service.discoverFiles(tempDir, supportedFormats);
 
     assertThat(discovered.supported())
         .extracting(p -> p.getFileName().toString())
@@ -51,7 +55,7 @@ class DocumentServiceTest {
     Files.writeString(subDir.resolve("deep.md"), "# Deep");
     Files.writeString(tempDir.resolve("top.txt"), "Top");
 
-    assertThat(service.discoverFiles(tempDir).supported()).hasSize(2);
+    assertThat(service.discoverFiles(tempDir, supportedFormats).supported()).hasSize(2);
   }
 
   @Test
@@ -62,7 +66,7 @@ class DocumentServiceTest {
     // would otherwise read that as "every document vanished" and delete the whole library.
     Path nonexistent = tempDir.resolve("nonexistent");
 
-    assertThatThrownBy(() -> service.discoverFiles(nonexistent))
+    assertThatThrownBy(() -> service.discoverFiles(nonexistent, supportedFormats))
         .isInstanceOf(IOException.class)
         .hasMessageContaining(nonexistent.toString());
   }
@@ -72,12 +76,13 @@ class DocumentServiceTest {
     Path file = tempDir.resolve("not-a-directory.txt");
     Files.writeString(file, "content");
 
-    assertThatThrownBy(() -> service.discoverFiles(file)).isInstanceOf(IOException.class);
+    assertThatThrownBy(() -> service.discoverFiles(file, supportedFormats))
+        .isInstanceOf(IOException.class);
   }
 
   @Test
   void discoverFilesReturnsEmptyForEmptyDir() throws IOException {
-    var discovered = service.discoverFiles(tempDir);
+    var discovered = service.discoverFiles(tempDir, supportedFormats);
 
     assertThat(discovered.supported()).isEmpty();
     assertThat(discovered.rejected()).isEmpty();
@@ -92,7 +97,7 @@ class DocumentServiceTest {
     Path file = tempDir.resolve("bescheid.csv");
     Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
 
-    var discovered = service.discoverFiles(tempDir);
+    var discovered = service.discoverFiles(tempDir, supportedFormats);
 
     assertThat(discovered.supported()).containsExactly(file);
     assertThat(discovered.rejected()).isEmpty();
@@ -106,7 +111,7 @@ class DocumentServiceTest {
     Path file = tempDir.resolve("bescheid.pdf");
     Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
 
-    var discovered = service.discoverFiles(tempDir);
+    var discovered = service.discoverFiles(tempDir, supportedFormats);
 
     assertThat(discovered.supported()).containsExactly(file);
     assertThat(discovered.mismatches()).isEmpty();
@@ -120,7 +125,7 @@ class DocumentServiceTest {
     Path file = tempDir.resolve("image.pdf");
     Files.write(file, new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a});
 
-    var discovered = service.discoverFiles(tempDir);
+    var discovered = service.discoverFiles(tempDir, supportedFormats);
 
     assertThat(discovered.rejected()).containsExactly(file);
     assertThat(discovered.supported()).isEmpty();
@@ -138,7 +143,7 @@ class DocumentServiceTest {
     Files.setPosixFilePermissions(file, Set.of());
     assumeTrue(!Files.isReadable(file), "needs a genuinely unreadable file, so not as root");
 
-    var discovered = service.discoverFiles(tempDir);
+    var discovered = service.discoverFiles(tempDir, supportedFormats);
 
     assertThat(discovered.rejected()).containsExactly(file);
     assertThat(discovered.supported()).isEmpty();

@@ -41,6 +41,7 @@ import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.test.ProductionDocumentFormats;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -228,7 +229,8 @@ class LibraryDocumentServiceTest {
         folderService,
         attachmentExtractor,
         new AttachmentProperties(0, 0, 0),
-        new AttachmentExtractionLimiter(limits));
+        new AttachmentExtractionLimiter(limits),
+        ProductionDocumentFormats.supportedFormats());
   }
 
   @Test
@@ -1433,7 +1435,8 @@ class LibraryDocumentServiceTest {
             folderService,
             attachmentExtractor,
             new AttachmentProperties(0, 0, 0),
-            new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)));
+            new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)),
+            ProductionDocumentFormats.supportedFormats());
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
         .thenReturn(AssetRole.VIEWER);
     KnowledgeLibrary library = remoteLibrary(null);

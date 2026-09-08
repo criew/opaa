@@ -51,12 +51,16 @@ public class DocumentService {
   public record FormatMismatch(Path file, String detectedExtension) {}
 
   /**
+   * @param supportedFormats what the caller's run admits - passed in rather than held as a field,
+   *     because it is derived from the registered formats and the fallback format needs this class
+   *     to parse, which a field would close into a bean cycle
    * @throws IOException if {@code directory} does not exist or is not a directory - a missing
    *     source path must fail the run rather than report an empty, successful bestand, which {@code
    *     AsyncIndexingExecutor}'s stale-document cleanup would read as "every indexed document
    *     vanished" and act on by deleting the whole library's content.
    */
-  public DiscoveredFiles discoverFiles(Path directory) throws IOException {
+  public DiscoveredFiles discoverFiles(Path directory, SupportedDocumentFormats supportedFormats)
+      throws IOException {
     if (!Files.exists(directory)) {
       throw new IOException("Document directory does not exist: " + directory);
     }
@@ -68,7 +72,7 @@ public class DocumentService {
     List<FormatMismatch> mismatches = new ArrayList<>();
     try (Stream<Path> walk = Files.walk(directory)) {
       for (Path file : walk.filter(Files::isRegularFile).toList()) {
-        SupportedDocumentFormats.ContentDecision decision = classify(file);
+        SupportedDocumentFormats.ContentDecision decision = classify(file, supportedFormats);
         if (!decision.supported()) {
           rejected.add(file);
           continue;
@@ -98,14 +102,14 @@ public class DocumentService {
    * (deleted or permission-denied between the walk and this call) counts as unsupported rather than
    * propagating the {@link IOException}.
    */
-  private SupportedDocumentFormats.ContentDecision classify(Path file) {
+  private static SupportedDocumentFormats.ContentDecision classify(
+      Path file, SupportedDocumentFormats supportedFormats) {
     try {
       String detectedMimeType = SupportedDocumentFormats.detectMediaType(file);
-      return SupportedDocumentFormats.decideForFileName(
-          file.getFileName().toString(), detectedMimeType);
+      return supportedFormats.decideForFileName(file.getFileName().toString(), detectedMimeType);
     } catch (IOException e) {
       log.warn("Could not read {} to detect its format, treating it as unsupported", file, e);
-      return SupportedDocumentFormats.decideForFileName(file.getFileName().toString(), null);
+      return supportedFormats.decideForFileName(file.getFileName().toString(), null);
     }
   }
 }

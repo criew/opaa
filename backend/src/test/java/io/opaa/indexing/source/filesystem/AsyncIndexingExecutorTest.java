@@ -44,6 +44,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.observability.IndexingMetrics;
+import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -115,7 +116,8 @@ class AsyncIndexingExecutorTest {
             documentIngestService,
             allowlist,
             folderService,
-            runTemplate(storageQuotaService, documentRepository));
+            runTemplate(storageQuotaService, documentRepository),
+            ProductionDocumentFormats.supportedFormats());
   }
 
   private IndexingRunTemplate runTemplate(
@@ -265,7 +267,8 @@ class AsyncIndexingExecutorTest {
             realDocumentIngestService,
             realFlowAllowlist,
             folderService,
-            runTemplate(realFlowQuotaService, realFlowDocumentRepository));
+            runTemplate(realFlowQuotaService, realFlowDocumentRepository),
+            ProductionDocumentFormats.supportedFormats());
 
     realFlowExecutor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
 

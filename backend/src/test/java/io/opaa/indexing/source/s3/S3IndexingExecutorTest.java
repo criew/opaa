@@ -43,6 +43,7 @@ import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
+import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -142,7 +143,8 @@ class S3IndexingExecutorTest {
             eventRepository,
             cleanupService,
             documentRepository,
-            mock(LibraryStorageQuotaService.class)));
+            mock(LibraryStorageQuotaService.class)),
+        ProductionDocumentFormats.supportedFormats());
   }
 
   private static S3Properties serial(long maxObjectSizeBytes, int maxObjectsPerRun) {

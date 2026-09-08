@@ -29,6 +29,7 @@ import io.opaa.library.LibraryFolderRepository;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.organization.Organization;
 import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.ProductionDocumentFormats;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.ArrayList;
@@ -172,7 +173,8 @@ class S3FolderMappingIntegrationTest {
         cleanupService,
         syncStateRepository,
         Clock.systemUTC(),
-        indexingRunTemplate);
+        indexingRunTemplate,
+        ProductionDocumentFormats.supportedFormats());
   }
 
   /** One full run, synchronous - the executor is called directly. */

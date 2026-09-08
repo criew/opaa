@@ -32,6 +32,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
+import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
@@ -121,7 +122,8 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
                 mock(IndexingRunEventRepository.class),
                 staleDocumentCleanupService,
                 documentRepository,
-                mock(LibraryStorageQuotaService.class)));
+                mock(LibraryStorageQuotaService.class)),
+            ProductionDocumentFormats.supportedFormats());
   }
 
   private void stubProcessUrlFile(org.mockito.stubbing.Answer<DocumentIngestResult> answer)

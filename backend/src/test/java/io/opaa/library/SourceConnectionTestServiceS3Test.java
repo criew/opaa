@@ -28,6 +28,7 @@ import io.opaa.indexing.source.s3.S3SourceSettings;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.test.ProductionDocumentFormats;
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
@@ -77,7 +78,8 @@ class SourceConnectionTestServiceS3Test {
             TargetAddressValidator.disabled(),
             SourceRequestPolicy.defaults(),
             mock(ConfluenceConnectionService.class),
-            s3ConnectionService);
+            s3ConnectionService,
+            ProductionDocumentFormats.supportedFormats());
   }
 
   private KnowledgeLibrary s3Library(UUID libraryId, String url) {

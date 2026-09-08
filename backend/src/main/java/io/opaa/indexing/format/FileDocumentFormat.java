@@ -2,6 +2,7 @@ package io.opaa.indexing.format;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +23,13 @@ import org.slf4j.LoggerFactory;
 public abstract class FileDocumentFormat<T> implements DocumentFormat {
 
   private static final Logger log = LoggerFactory.getLogger(FileDocumentFormat.class);
+
+  /**
+   * Abstract here, unlike the interface's own default: a format that only ever arrives as a file is
+   * reached over its admitted extensions alone, so one that declared nothing could never be routed.
+   */
+  @Override
+  public abstract Set<FormatAdmission> admittedFormats();
 
   /**
    * Reads {@code source}'s file into everything {@link #chunks} and {@link #properties} need.

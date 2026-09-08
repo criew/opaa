@@ -30,6 +30,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.test.ProductionDocumentFormats;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -123,7 +124,8 @@ class S3IndexingExecutorMinioTest {
             eventRepository,
             cleanupService,
             documentRepository,
-            mock(LibraryStorageQuotaService.class)));
+            mock(LibraryStorageQuotaService.class)),
+        ProductionDocumentFormats.supportedFormats());
   }
 
   private static KnowledgeLibrary library(S3Credentials credentials, List<S3Scope> scopes) {
