@@ -5,8 +5,28 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-09-07T05:01:07Z</updated>
+  <updated>2026-09-08T04:59:13Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Montag, 7. September 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-09-07.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-09-07.html</id>
+    <updated>2026-09-08T04:59:13Z</updated>
+    <summary type="text">feat: S3-Konnektor als weiterer Quellentyp für S3-kompatible Objektspeicher:
+— S3-Konnektor vollständig implementiert und dokumentiert
+— Zugriffsschicht, Datenmodell und Wizard für S3-Bibliotheken
+— Vollabgleich mit Ordnerspiegelung und Push-Aktualisierung
+— Integrationstests gegen MinIO im Container
+refactor(indexing): Nacharbeit S3/Confluence — sechs doppelte Muster zusammenziehen, Folge-Issues aus #1316, Handbuch-Querverweise:
+— Wiederaufnahme-Zustand für Confluence und S3 vereinheitlicht
+— Ereignis-Intake und Anfragezähler gemeinsam implementiert
+— Löschen, Ordnerpfad und Byte-Formatierung dedupliziert
+— ODF-Paket nur noch einmal pro Aufnahme geöffnet
+Sonstiges:
+— Unterbrechung bei URL- und Feed-Konnektor beendet Lauf
+— Laufdeckel für 429-Wartezeiten bei Feed- und Webverzeichnis
+— Korpus-Generator reproduziert committeten Stand nicht byteidentisch</summary>
+  </entry>
   <entry>
     <title>Tagesreport Sonntag, 6. September 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-09-06.html"/>
