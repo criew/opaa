@@ -1,7 +1,5 @@
 package io.opaa.indexing.job;
 
-import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
-
 /**
  * Why a single item was skipped/rejected during an indexing run, or that the run recorded an error
  * for it. Mirrors {@code IndexingRunEventCategory} in the OpenAPI spec - kept as a separate domain
@@ -23,7 +21,8 @@ public enum IndexingEventCategory {
   SCHEDULE_SKIPPED,
   /**
    * A previously indexed document no longer exists at its source and was removed at the end of a
-   * successful, complete run - see {@link StaleDocumentCleanupService}.
+   * successful, complete run - see {@link
+   * io.opaa.indexing.maintenance.StaleDocumentCleanupService}.
    */
   REMOVED,
   /**

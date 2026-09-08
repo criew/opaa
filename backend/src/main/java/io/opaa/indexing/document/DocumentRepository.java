@@ -2,8 +2,6 @@ package io.opaa.indexing.document;
 
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
-import io.opaa.indexing.maintenance.LowChunkDocumentAuditService;
-import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -73,17 +71,19 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
       Pageable pageable);
 
   /**
-   * Backs {@link LowChunkDocumentAuditService#findLowChunkDocuments}: one organization's {@link
-   * DocumentStatus#INDEXED} documents at or below {@code chunkCountThreshold} chunks, paged. Backed
-   * by the partial index {@code idx_documents_indexed_chunk_count} (migration 002).
+   * Backs {@link io.opaa.indexing.maintenance.LowChunkDocumentAuditService#findLowChunkDocuments}:
+   * one organization's {@link DocumentStatus#INDEXED} documents at or below {@code
+   * chunkCountThreshold} chunks, paged. Backed by the partial index {@code
+   * idx_documents_indexed_chunk_count} (migration 002).
    */
   Page<Document> findByOrganizationIdAndStatusAndChunkCountLessThanEqual(
       UUID organizationId, DocumentStatus status, int chunkCountThreshold, Pageable pageable);
 
   /**
-   * Backs {@link StaleDocumentCleanupService#cleanupVanished}: every document of a single {@code
-   * (libraryId, sourceType)} pair, the candidate set a completed connector run checks against its
-   * own freshly discovered {@code filePath}s to find what vanished from the source.
+   * Backs {@link io.opaa.indexing.maintenance.StaleDocumentCleanupService#cleanupVanished}: every
+   * document of a single {@code (libraryId, sourceType)} pair, the candidate set a completed
+   * connector run checks against its own freshly discovered {@code filePath}s to find what vanished
+   * from the source.
    */
   List<Document> findByLibraryIdAndSourceType(UUID libraryId, DocumentSourceType sourceType);
 

@@ -1,7 +1,5 @@
 package io.opaa.indexing.chunk;
 
-import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.maintenance.FullTextIndexFillStateService;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.ai.document.DefaultContentFormatter;
@@ -15,11 +13,11 @@ import org.springframework.stereotype.Component;
  * A dedicated table, not columns on {@code vector_store} itself: see {@code
  * changes/003-chunk-full-text-table.yaml}'s own comment for why.
  *
- * <p>Never called directly by {@link DocumentIngestService} - {@link VectorChunkStore} owns both
- * writes (see {@link VectorChunkStore#addChunks}) so a chunk can never be vectorized without also
- * being full-text-indexed, and both deletes (see {@link VectorChunkStore#deleteByDocumentId}/{@link
- * VectorChunkStore#deleteByLibraryId}) so a full-text row can never outlive the vector chunk it
- * belongs to.
+ * <p>Never called directly by {@link io.opaa.indexing.document.DocumentIngestService} - {@link
+ * VectorChunkStore} owns both writes (see {@link VectorChunkStore#addChunks}) so a chunk can never
+ * be vectorized without also being full-text-indexed, and both deletes (see {@link
+ * VectorChunkStore#deleteByDocumentId}/{@link VectorChunkStore#deleteByLibraryId}) so a full-text
+ * row can never outlive the vector chunk it belongs to.
  */
 @Component
 public class FullTextChunkStore {
@@ -44,13 +42,14 @@ public class FullTextChunkStore {
   /**
    * The {@code content_tsv_version} every row written by {@link #indexChunks} carries. <b>Raise it
    * whenever the lexemes this class stores change</b>: rows at an older version are counted as
-   * missing by {@link FullTextIndexFillStateService} and brought up to date only by {@link
-   * PipelineReindexService#reindexBatch}, never by a background job. The lexical search path does
-   * not filter on it (ADR-0028): an older row stays searchable and merely lacks the newer lexemes.
-   * <b>That is only sound while every raise is additive.</b> A change that breaks the lexeme form
-   * of existing rows - e.g. a different {@link #TEXT_SEARCH_CONFIGURATION} - must reintroduce a
-   * version filter in {@code io.opaa.query.FullTextChunkSearch} before it ships. Public because the
-   * {@code io.opaa.query} tests seed rows below it to pin that contract.
+   * missing by {@link io.opaa.indexing.maintenance.FullTextIndexFillStateService} and brought up to
+   * date only by {@link io.opaa.indexing.maintenance.PipelineReindexService#reindexBatch}, never by
+   * a background job. The lexical search path does not filter on it (ADR-0028): an older row stays
+   * searchable and merely lacks the newer lexemes. <b>That is only sound while every raise is
+   * additive.</b> A change that breaks the lexeme form of existing rows - e.g. a different {@link
+   * #TEXT_SEARCH_CONFIGURATION} - must reintroduce a version filter in {@code
+   * io.opaa.query.FullTextChunkSearch} before it ships. Public because the {@code io.opaa.query}
+   * tests seed rows below it to pin that contract.
    */
   public static final short CURRENT_TSV_VERSION = 5;
 
@@ -119,10 +118,9 @@ public class FullTextChunkStore {
   /**
    * Deletes every {@code chunk_full_text} row for {@code documentId} - mirrors {@link
    * VectorChunkStore#deleteByDocumentId}, which is what keeps that class's stated invariant true: a
-   * full-text row can never outlive the vector chunk it belongs to. Called only from there;
-   * production code deletes chunks through {@code VectorChunkStore}, never through this class.
+   * full-text row can never outlive the vector chunk it belongs to.
    */
-  public void deleteByDocumentId(UUID documentId) {
+  void deleteByDocumentId(UUID documentId) {
     jdbcTemplate.update("DELETE FROM chunk_full_text WHERE document_id = ?", documentId);
   }
 

@@ -14,6 +14,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -1474,7 +1475,7 @@ class DocumentIngestServiceTest {
 
       assertThat(result).isEqualTo(DocumentIngestResult.FAILED);
       verify(vectorStore, never()).delete(any(Filter.Expression.class));
-      verify(fullTextChunkStore, never()).deleteByDocumentId(any());
+      verifyNoInteractions(fullTextChunkStore);
       verify(documentRepository, never()).markFailed(any(), any());
       verify(documentRepository, never()).markFailedWithoutChunks(any(), any());
       verify(documentRepository, never())

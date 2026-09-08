@@ -22,7 +22,7 @@ public class DocumentService {
    * The user-facing message a document is rejected with when a pipeline finds no extractable text
    * (ingestion-pipelines.md, Teil 3, Punkt 1 "Scan-Erkennung und Bestandsprüfung"). Shared by every
    * caller that both sets it as {@link Document#getErrorMessage()} and reports it as an {@link
-   * IndexingRunEvent}, so the two never drift apart.
+   * io.opaa.indexing.job.IndexingRunEvent}, so the two never drift apart.
    */
   public static final String NO_EXTRACTABLE_TEXT_MESSAGE =
       "Enthält keinen extrahierbaren Text, vermutlich ein Scan; für diese Datei ist"

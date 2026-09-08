@@ -1,17 +1,17 @@
 package io.opaa.indexing.chunk;
 
-import io.opaa.indexing.document.DocumentIngestService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
 /**
- * Derives the human-readable title {@link DocumentIngestService#chunkEmbedFormatterWithPrefix}
- * prepends to a multi-chunk document's chunk embeddings ("Contextual Chunking"), from a
- * filesystem-style {@code file_name}. Contract: strip a trailing suffix that actually looks like an
- * extension, strip a leading run of purely structural tokens (a numbering scheme like {@code
- * "001_"}, a short tag-plus-number pair like {@code "city-0022_"}), turn the remaining {@code
- * _}/{@code -} separators into spaces, and cap at {@value #MAX_TITLE_TOKENS} tokens - so {@code
+ * Derives the human-readable title {@link
+ * io.opaa.indexing.document.DocumentIngestService#chunkEmbedFormatterWithPrefix} prepends to a
+ * multi-chunk document's chunk embeddings ("Contextual Chunking"), from a filesystem-style {@code
+ * file_name}. Contract: strip a trailing suffix that actually looks like an extension, strip a
+ * leading run of purely structural tokens (a numbering scheme like {@code "001_"}, a short
+ * tag-plus-number pair like {@code "city-0022_"}), turn the remaining {@code _}/{@code -}
+ * separators into spaces, and cap at {@value #MAX_TITLE_TOKENS} tokens - so {@code
  * "001_personalausweis.md"} becomes {@code "personalausweis"} and {@code "report.pdf"} becomes
  * {@code "report"}. An RSS headline or URL takes a different route; see {@code
  * DocumentIngestService#deriveContextTitle}.

@@ -1,7 +1,6 @@
 package io.opaa.indexing.document;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.indexing.maintenance.PipelineReindexService;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -25,10 +24,10 @@ import org.slf4j.LoggerFactory;
  * over the bestand: its own file on this machine ({@link #localSourceFile}), re-extracted from its
  * root ancestor's file along the attachment chain ({@link #withReextractedAttachment}, ADR-0022),
  * or only by its next connector run ({@link #markRemoteChainForNextRun}). Shared by the pipeline
- * re-index ({@link PipelineReindexService}) and the core-metadata backfill ({@code
- * io.opaa.indexing.maintenance.MetadataBackfillService}), so both apply the same runtime
- * containment discipline (ADR-0018, Entscheidung 6) and the same chain rules. Every unreachable
- * case is a skip, never an error.
+ * re-index ({@link io.opaa.indexing.maintenance.PipelineReindexService}) and the core-metadata
+ * backfill ({@code io.opaa.indexing.maintenance.MetadataBackfillService}), so both apply the same
+ * runtime containment discipline (ADR-0018, Entscheidung 6) and the same chain rules. Every
+ * unreachable case is a skip, never an error.
  */
 public class StoredDocumentSourceAccess {
 
