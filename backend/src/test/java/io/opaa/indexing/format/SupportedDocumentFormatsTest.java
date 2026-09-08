@@ -191,7 +191,7 @@ class SupportedDocumentFormatsTest {
   void contentMatchesExtensionRejectsAGenericUnresolvedOle2ContainerForDoc() {
     // application/x-tika-msoffice is the generic OLE2 fallback Tika
     // uses when it cannot identify the specific format inside the container - deliberately not
-    // accepted for .doc (see STRICT_CONTENT_TYPES_BY_EXTENSION's Javadoc for why).
+    // accepted for .doc (see TikaFallbackFormat#admittedFormats, which declares it, for why).
     assertThat(supportedFormats.contentMatchesExtension(".doc", "application/x-tika-msoffice"))
         .isFalse();
   }
@@ -478,7 +478,7 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void decideForFileNameKeepsTheEmlRuleWinningOverAHtmlContentDetection() {
-    // .eml joined TEXT_TOLERANT_EXTENSIONS already
+    // .eml is declared text-tolerant (MailDocumentFormat#admittedFormats), and the Markdown case
     // established that the text-tolerant branch must win over a strict detection - the same
     // rationale applies here without any change to decideForFileName itself. An HTML-formatted
     // mail body (common for a genuine .eml exported as raw markup, or one saved without its own

@@ -36,16 +36,6 @@ public final class SupportedDocumentFormats {
 
   private static final Tika TIKA = new Tika();
 
-  /**
-   * Extensions a declared {@code Content-Type} header may not name, however the formats themselves
-   * are declared - the deliberate narrowing of {@link #extensionForContentType}, which is this
-   * class's decision about a header rather than the format's about itself. A mail message reaches
-   * indexing as a file with its own extension; naming one from a header would let {@code
-   * message/rfc822} - Tika's textual heuristic, not a byte signature - turn any header-named
-   * download into a mail document.
-   */
-  private static final Set<String> NOT_NAMED_BY_DECLARED_CONTENT_TYPE = Set.of(".eml", ".msg");
-
   private final Set<String> extensions;
   private final List<String> sortedExtensions;
   private final Map<String, String> canonicalMediaTypeByExtension;
@@ -59,15 +49,18 @@ public final class SupportedDocumentFormats {
    * including the fallback, whose own declaration is what keeps an admitted extension without a
    * specialized format ({@code .txt}, {@code .doc}) a named decision rather than a leftover.
    *
-   * @throws IllegalStateException two formats declare the same extension or the same media type;
-   *     bean order would otherwise silently decide which of them a document reaches
+   * @throws IllegalStateException two formats declare the same extension or the same media type, or
+   *     one format names a media type under two of its extensions; bean order would otherwise
+   *     silently decide which of them a document reaches
    */
   public SupportedDocumentFormats(Collection<? extends DocumentFormat> formats) {
     Map<String, String> canonicalByExtension = new HashMap<>();
     Map<String, Set<String>> detectedByExtension = new HashMap<>();
     Map<String, String> byDetectedMediaType = new HashMap<>();
+    Map<String, String> byDeclaredContentType = new HashMap<>();
     Map<String, String> declaringFormatByExtension = new HashMap<>();
     Map<String, String> declaringFormatByMediaType = new HashMap<>();
+    Map<String, String> namingExtensionByMediaType = new HashMap<>();
     Set<String> textTolerant = new HashSet<>();
     for (DocumentFormat format : formats) {
       for (FormatAdmission admission : format.admittedFormats()) {
@@ -75,12 +68,14 @@ public final class SupportedDocumentFormats {
         String previousFormat = declaringFormatByExtension.put(extension, format.id());
         if (previousFormat != null) {
           throw new IllegalStateException(
-              "Two document formats admit "
-                  + extension
-                  + ": "
-                  + previousFormat
-                  + " and "
-                  + format.id());
+              previousFormat.equals(format.id())
+                  ? "Document format " + format.id() + " admits " + extension + " twice"
+                  : "Two document formats admit "
+                      + extension
+                      + ": "
+                      + previousFormat
+                      + " and "
+                      + format.id());
         }
         canonicalByExtension.put(extension, admission.canonicalMediaType());
         detectedByExtension.put(extension, admission.detectedMediaTypes());
@@ -88,8 +83,10 @@ public final class SupportedDocumentFormats {
           textTolerant.add(extension);
         }
         for (String mediaType : mediaTypesOf(admission)) {
+          // A format may admit one media type under several extensions (".htm" beside ".html");
+          // two formats may not, since nothing but iteration order could then decide between them.
           String previousClaim = declaringFormatByMediaType.put(mediaType, format.id());
-          if (previousClaim != null) {
+          if (previousClaim != null && !previousClaim.equals(format.id())) {
             throw new IllegalStateException(
                 "Two document formats admit the media type "
                     + mediaType
@@ -98,8 +95,28 @@ public final class SupportedDocumentFormats {
                     + " and "
                     + format.id());
           }
+          if (!admission.namesItsMediaTypes()) {
+            continue;
+          }
+          String previousName = namingExtensionByMediaType.put(mediaType, extension);
+          if (previousName != null) {
+            throw new IllegalStateException(
+                "Document format "
+                    + format.id()
+                    + " names the media type "
+                    + mediaType
+                    + " under two extensions, "
+                    + previousName
+                    + " and "
+                    + extension
+                    + " - one of them is an alternate spelling");
+          }
           if (admission.detectedMediaTypes().contains(mediaType)) {
             byDetectedMediaType.put(mediaType, extension);
+          }
+          if (admission.namedByDeclaredContentType()
+              && mediaType.equals(admission.canonicalMediaType())) {
+            byDeclaredContentType.put(mediaType, extension);
           }
         }
       }
@@ -109,15 +126,8 @@ public final class SupportedDocumentFormats {
     this.canonicalMediaTypeByExtension = Map.copyOf(canonicalByExtension);
     this.detectedMediaTypesByExtension = Map.copyOf(detectedByExtension);
     this.extensionByDetectedMediaType = Map.copyOf(byDetectedMediaType);
-    this.textTolerantExtensions = Set.copyOf(textTolerant);
-    Map<String, String> byDeclaredContentType = new HashMap<>();
-    canonicalByExtension.forEach(
-        (extension, canonicalMediaType) -> {
-          if (!NOT_NAMED_BY_DECLARED_CONTENT_TYPE.contains(extension)) {
-            byDeclaredContentType.put(canonicalMediaType, extension);
-          }
-        });
     this.extensionByDeclaredContentType = Map.copyOf(byDeclaredContentType);
+    this.textTolerantExtensions = Set.copyOf(textTolerant);
   }
 
   /** Every media type an admission speaks for - its canonical one and its detections. */
@@ -132,7 +142,7 @@ public final class SupportedDocumentFormats {
     if (fileName == null || fileName.isBlank()) {
       return false;
     }
-    String lowerCased = fileName.toLowerCase();
+    String lowerCased = fileName.toLowerCase(Locale.ROOT);
     return extensions.stream().anyMatch(lowerCased::endsWith);
   }
 
@@ -143,12 +153,13 @@ public final class SupportedDocumentFormats {
 
   /**
    * The extension a declared {@code Content-Type} header names, or {@code null} when the content
-   * type is absent, unrecognized or one of {@link #NOT_NAMED_BY_DECLARED_CONTENT_TYPE} - the caller
-   * then has no better name to fall back to than what the URL already provided. For sources that
-   * cannot expose a supported extension in the URL itself: the Government Site Builder attachment
-   * profile ({@code AttachmentProfile#GSB}), whose addresses carry the file through a query
-   * parameter, and an S3 key without one. Deliberately narrower than what Tika itself could detect:
-   * a declared header only ever names one of the admitted formats.
+   * type is absent, unrecognized or declared as {@link
+   * FormatAdmission#notNamedByDeclaredContentType() not named by a header} - the caller then has no
+   * better name to fall back to than what the URL already provided. For sources that cannot expose
+   * a supported extension in the URL itself: the Government Site Builder attachment profile ({@code
+   * AttachmentProfile#GSB}), whose addresses carry the file through a query parameter, and an S3
+   * key without one. Deliberately narrower than what Tika itself could detect: a declared header
+   * only ever names one of the admitted formats, and only where its format allows it to.
    */
   public String extensionForContentType(String contentType) {
     if (contentType == null) {

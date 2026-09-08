@@ -167,9 +167,15 @@ class DocumentFormatRegistryTest {
     // fallback's own declaration, which is why it lands there rather than in the Markdown pipeline.
     assertThat(registry.pipelineFor("handbuch.md", PLAIN_TEXT)).isSameAs(markdownPipeline);
     assertThat(registry.pipelineFor("handbuch.txt", PLAIN_TEXT)).isSameAs(fallback);
+    // ".txt" reaches the fallback because it is admitted and unclaimed, not because it is
+    // unadmitted - the two are indistinguishable from the routed pipeline alone.
+    assertThat(registry.supportedFormats().decideForFileName("handbuch.txt", PLAIN_TEXT))
+        .isEqualTo(new SupportedDocumentFormats.ContentDecision(true, ".txt", false));
     // ".csv" is admitted by TabularDocumentFormat in the application, by nothing in this registry -
-    // unadmitted content routes to the fallback like any other.
+    // unadmitted content routes to the fallback for the other reason.
     assertThat(registry.pipelineFor("export.csv", PLAIN_TEXT)).isSameAs(fallback);
+    assertThat(registry.supportedFormats().decideForFileName("export.csv", PLAIN_TEXT).supported())
+        .isFalse();
   }
 
   @Test
@@ -178,9 +184,14 @@ class DocumentFormatRegistryTest {
     DocumentFormatRegistry registry = registryWith(pdfPipeline);
 
     // ".doc" is admitted - by the fallback's own declaration - and claimed by nobody, the case
-    // this fallback exists for. ".docx" is not admitted here at all and lands there as well.
+    // this fallback exists for; the decision below is what tells it apart from ".docx", which is
+    // not admitted here at all and reaches the same pipeline for the opposite reason.
     assertThat(registry.pipelineFor("altakte.doc", "application/msword")).isSameAs(fallback);
+    assertThat(registry.supportedFormats().decideForFileName("altakte.doc", "application/msword"))
+        .isEqualTo(new SupportedDocumentFormats.ContentDecision(true, ".doc", false));
     assertThat(registry.pipelineFor("vermerk.docx", DOCX)).isSameAs(fallback);
+    assertThat(registry.supportedFormats().decideForFileName("vermerk.docx", DOCX).supported())
+        .isFalse();
   }
 
   @Test

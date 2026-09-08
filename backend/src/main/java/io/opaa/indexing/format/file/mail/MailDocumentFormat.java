@@ -81,12 +81,17 @@ public class MailDocumentFormat implements DocumentFormat {
    * an unrelated text file out of this pipeline and still admits a genuine EML. MSG's {@code
    * application/vnd.ms-outlook} is a genuinely distinctive OLE2/MAPI container type and is matched
    * strictly.
+   *
+   * <p>Neither is named from a declared {@code Content-Type} header: a mail always arrives as a
+   * file carrying its own extension, and letting a header name one would turn any text-ish download
+   * announced as {@code message/rfc822} into a mail document.
    */
   @Override
   public Set<FormatAdmission> admittedFormats() {
     return Set.of(
-        FormatAdmission.textTolerant(".eml", "message/rfc822"),
-        FormatAdmission.detectedAs(".msg", "application/vnd.ms-outlook"));
+        FormatAdmission.textTolerant(".eml", "message/rfc822").notNamedByDeclaredContentType(),
+        FormatAdmission.detectedAs(".msg", "application/vnd.ms-outlook")
+            .notNamedByDeclaredContentType());
   }
 
   /**

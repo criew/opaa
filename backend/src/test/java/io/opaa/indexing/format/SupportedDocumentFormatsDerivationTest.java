@@ -82,6 +82,98 @@ class SupportedDocumentFormatsDerivationTest {
     assertThat(supported.decideForFileName("notiz.andere", "text/plain").supported()).isFalse();
   }
 
+  /**
+   * Every lookup normalizes what it is asked about; a declaration that is not already in that form
+   * would leave its extension admitted but unmatchable by any content, and would reach a document
+   * row as its {@code content_type}. Rejected where it is written, not where it fails to match.
+   */
+  @Test
+  void aMediaTypeThatIsNotDeclaredInItsNormalizedFormIsRejected() {
+    assertThatThrownBy(() -> FormatAdmission.detectedAs(".foo", "Application/X-Foo"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Application/X-Foo");
+    assertThatThrownBy(() -> FormatAdmission.textTolerant(".foo", "TEXT/X-FOO"))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> FormatAdmission.detectedAs(".foo", "text/x-foo; charset=UTF-8"))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> FormatAdmission.detectedAs(".foo", "text/x-foo", "Text/X-Bar"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  /** The invariant the Javadoc promises, enforced instead of left to the factory methods. */
+  @Test
+  void aStrictAdmissionWhoseDetectedTypesOmitItsCanonicalTypeIsRejected() {
+    assertThatThrownBy(
+            () ->
+                new FormatAdmission(
+                    ".foo", "text/x-foo", Set.of("text/x-other"), false, true, true))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining(".foo");
+  }
+
+  /**
+   * Two spellings of one format ({@code .htm} beside {@code .html}) are one format's business, not
+   * a collision: both are admitted and matched alike, and the declaration - not iteration order -
+   * says which of them a detection is named after.
+   */
+  @Test
+  void oneFormatMayAdmitTheSameMediaTypeUnderTwoExtensions() {
+    DocumentFormat html =
+        new FakeFormat(
+            "html",
+            Set.of(
+                FormatAdmission.detectedAs(".html", "text/html"),
+                FormatAdmission.detectedAs(".htm", "text/html").asAlternateSpelling()));
+
+    SupportedDocumentFormats supported = new SupportedDocumentFormats(List.of(html));
+
+    assertThat(supported.extensions()).containsExactly(".htm", ".html");
+    assertThat(supported.isSupported("seite.htm")).isTrue();
+    assertThat(supported.contentMatchesExtension(".htm", "text/html")).isTrue();
+    assertThat(supported.contentTypeForExtension(".htm")).isEqualTo("text/html");
+    // The alternate spelling is admitted, but never the answer to "which extension is this?".
+    assertThat(supported.extensionForDetectedContent("text/html")).isEqualTo(".html");
+    assertThat(supported.extensionForContentType("text/html")).isEqualTo(".html");
+    // Its own name still decides its routing key, so a .htm file is not reported as a mismatch.
+    assertThat(supported.decideForFileName("seite.htm", "text/html").extensionMismatch()).isFalse();
+    assertThat(html.handledFormats()).containsExactlyInAnyOrder(".htm", ".html");
+  }
+
+  @Test
+  void twoExtensionsOfOneFormatBothNamingTheSameMediaTypeFailFast() {
+    DocumentFormat html =
+        new FakeFormat(
+            "html",
+            Set.of(
+                FormatAdmission.detectedAs(".html", "text/html"),
+                FormatAdmission.detectedAs(".htm", "text/html")));
+
+    assertThatThrownBy(() -> new SupportedDocumentFormats(List.of(html)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("text/html")
+        .hasMessageContaining("alternate spelling");
+  }
+
+  /**
+   * An admission a declared header may not name is still admitted and still detected - only {@link
+   * SupportedDocumentFormats#extensionForContentType} keeps its hands off it.
+   */
+  @Test
+  void anAdmissionCanRefuseToBeNamedByADeclaredContentTypeHeader() {
+    DocumentFormat mailish =
+        new FakeFormat(
+            "mailish",
+            Set.of(
+                FormatAdmission.detectedAs(".fmt", "application/x-fmt")
+                    .notNamedByDeclaredContentType()));
+
+    SupportedDocumentFormats supported = new SupportedDocumentFormats(List.of(mailish));
+
+    assertThat(supported.isSupported("datei.fmt")).isTrue();
+    assertThat(supported.extensionForDetectedContent("application/x-fmt")).isEqualTo(".fmt");
+    assertThat(supported.extensionForContentType("application/x-fmt")).isNull();
+  }
+
   @Test
   void twoFormatsAdmittingTheSameExtensionFailFast() {
     DocumentFormat first =

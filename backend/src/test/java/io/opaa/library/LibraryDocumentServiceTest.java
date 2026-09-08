@@ -365,8 +365,9 @@ class LibraryDocumentServiceTest {
 
   @Test
   void aRealDocxUploadedAsDocxIsAccepted() throws IOException {
-    // #435 code review, finding 1: the riskiest cases in STRICT_CONTENT_TYPES_BY_EXTENSION are the
-    // Office formats, because their correct detection depends on transitive Tika parser modules
+    // #435 code review, finding 1: the riskiest strictly detected declarations
+    // (FormatAdmission#detectedAs) are the Office formats, because their correct detection depends
+    // on transitive Tika parser modules
     // (tika-parsers-standard, POI) actually being on the classpath - a plain byte literal like
     // pdfFile's "%PDF-1.4\n" cannot stand in for them the way it can for PDF. Building a genuine
     // .docx with POI (already on the test classpath via spring-ai-tika-document-reader) exercises
