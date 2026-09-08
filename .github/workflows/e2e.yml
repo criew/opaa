@@ -16,8 +16,8 @@ permissions:
   contents: read
   issues: write
 
-# The SHA in the group means GitHub never discards a pending main/schedule
-# run when the next merge lands.
+# One group per commit: a main push and the nightly schedule never cancel each other, and a
+# workflow_dispatch on the same SHA queues behind the run already in flight.
 concurrency:
   group: ${{ github.workflow }}-${{ github.sha }}
   cancel-in-progress: false
@@ -162,8 +162,10 @@ jobs:
       # which GitHub reports as cancelled) opens an alarm issue listing the failed scenarios, or
       # comments on the one already open - same pattern as retrieval-regression.yml. The body of
       # an existing issue is never overwritten, so an analysis someone added there survives.
+      # Both alarm steps are gated on main: a workflow_dispatch on a feature branch must neither
+      # report its failure as a main failure nor close the alarm issue while main is still red.
       - name: Fehlschlag als Issue melden
-        if: failure() || cancelled()
+        if: (failure() || cancelled()) && github.ref == 'refs/heads/main'
         uses: actions/github-script@v9
         with:
           script: |
@@ -177,11 +179,12 @@ jobs:
             const walk = (suite, path) => {
               const here = suite.title ? [...path, suite.title] : path;
               for (const spec of suite.specs ?? []) {
-                const results = spec.tests.flatMap(t => t.results ?? []);
+                const results = (spec.tests ?? []).flatMap(t => t.results ?? []);
                 const last = results[results.length - 1];
                 if (spec.ok === false || (last && last.status !== 'passed' && last.status !== 'skipped')) {
-                  const error = last && last.error && last.error.message
-                    ? last.error.message.split('\n')[0].replace(/\u001b\[[0-9;]*m/g, '')
+                  const failedResult = results.find(r => r.error && r.error.message) ?? last;
+                  const error = failedResult && failedResult.error && failedResult.error.message
+                    ? failedResult.error.message.split('\n')[0].replace(/\u001b\[[0-9;]*m/g, '')
                     : '';
                   failed.push(`- \`${[...here, spec.title].join(' › ')}\`${error ? ` — ${error}` : ''}`);
                 }
@@ -235,7 +238,7 @@ jobs:
             }
 
       - name: Alarm-Issue bei erneutem Bestehen schließen
-        if: success()
+        if: success() && github.ref == 'refs/heads/main'
         uses: actions/github-script@v9
         with:
           script: |

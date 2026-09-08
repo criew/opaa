@@ -1,6 +1,6 @@
 name: Demo-Smoke
 
-# Not a Required Check and not run on every pull request (unlike .github/workflows/e2e.yml):
+# Not a Required Check and, like .github/workflows/e2e.yml, not run on pull requests:
 # indexing the full Rheinfurt corpus (~150-300 documents across five connector-fed libraries plus
 # 26 uploads, docs/features/demo-instance.md) takes noticeably longer than the "e2e" data profile
 # that e2e.yml's own run covers, and this workflow's only job is to catch regressions in the
@@ -12,7 +12,7 @@ on:
     - cron: '42 3 * * *'
   workflow_dispatch: {}
 
-# Same pattern as e2e.yml:26-27, adapted for this workflow's own triggers (no pull_request here):
+# Same reasoning as the concurrency group in e2e.yml:
 # github.sha in the group means a manual workflow_dispatch and the nightly schedule never share a
 # group unless they happen to target the exact same commit, so triggering one on demand shortly
 # before/after the nightly run cancels neither.

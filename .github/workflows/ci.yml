@@ -87,10 +87,10 @@ jobs:
               - '.github/workflows/ci.yml'
 
   # The backend suite runs as three parallel package shards (see `testShards` in
-  # backend/build.gradle.kts) plus one build job for everything `build` does besides `test`
-  # (spotless, compile, bootJar, SBOM, evalUnitTest, opaa-api tests). The `backend` job below
-  # only aggregates their results so the required status check keeps its name and the
-  # branch protection needs no change.
+  # backend/build.gradle.kts) plus one build job for everything `build` does besides the root
+  # project's `test` task (spotless, compile, bootJar, SBOM, evalUnitTest, the :opaa-api tests).
+  # The `backend` job below only aggregates their results so the required status check keeps
+  # its name and the branch protection needs no change.
   backend-build:
     needs: changes
     if: github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true'
@@ -114,7 +114,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
 
       - name: Build (ohne Testsuite)
-        run: ./gradlew build -x test
+        run: ./gradlew build -x :test
 
       - name: Upload build reports
         if: always()
@@ -149,7 +149,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
 
       - name: Test (Shard ${{ matrix.shard }})
-        run: ./gradlew test -PtestShard=${{ matrix.shard }}
+        run: ./gradlew :test -PtestShard=${{ matrix.shard }}
 
       - name: Upload test reports
         if: always()

@@ -498,7 +498,7 @@ Schlägt ein Lauf fehl, legt der Workflow ein Alarm-Issue mit den fehlgeschlagen
 (Label `e2e`, Marker `<!-- e2e-alert -->`) bzw. kommentiert das bereits offene; ein wieder grüner
 Lauf schließt es. Wer eine Änderung an der Oberfläche vor dem Merge gegen die Suite prüfen will,
 führt sie lokal aus (`pnpm test`, siehe oben) oder startet den Workflow per `workflow_dispatch` auf
-`main` nach dem Merge.
+`main` nach dem Merge. Ein Lauf auf einem Feature-Branch legt kein Alarm-Issue an und schließt keines.
 
 Der Job baut Backend- und Frontend-Image zunächst separat mit einem GitHub-Actions-Layer-Cache
 (`docker/build-push-action`, `cache-from/to: type=gha`) und lädt sie lokal, bevor
