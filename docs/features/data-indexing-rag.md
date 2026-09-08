@@ -583,7 +583,9 @@ heute läuft, und dem, was zum Zielbild gehört.
 Die Liste gilt für **alle dateibasierten Aufnahmewege gleichermaßen** — den Weg über ein Verzeichnis im
 Dateisystem, den Weg über ein Webverzeichnis und Anlagen eines Feed-Eintrags (siehe
 [Wissensquellen und Konnektoren](./knowledge-sources.md#webverzeichnis-gebaut)).
-Sie ist an genau einer Stelle im Code geführt (`SupportedDocumentFormats`); dieselbe Datei wird deshalb
+Sie wird an genau einer Stelle im Code beantwortet (`SupportedDocumentFormats`) und seit #1418 dort
+nicht mehr geführt, sondern aus den Deklarationen der registrierten Formate abgeleitet
+(siehe [Aufnahmepipelines](./ingestion-pipelines.md)); dieselbe Datei wird deshalb
 unabhängig davon, wie sie hereinkommt, gleich behandelt — und zwar anhand ihres **tatsächlichen,
 per Tika erkannten Inhalts (gebaut, #404)**, nicht anhand ihres Namens. Die Endung geht nur noch als
 Hinweis ein: Weicht sie vom erkannten Inhalt ab, wird das im Protokoll des Indizierungslaufs vermerkt

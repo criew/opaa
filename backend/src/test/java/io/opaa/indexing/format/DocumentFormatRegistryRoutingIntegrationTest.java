@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.format.file.markdown.MarkdownDocumentFormat;
 import io.opaa.test.OpaaIndexingIntegrationTest;
+import io.opaa.test.ProductionDocumentFormats;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,45 @@ import org.springframework.context.ApplicationContext;
 class DocumentFormatRegistryRoutingIntegrationTest {
 
   @Autowired private DocumentFormatRegistry registry;
+  @Autowired private SupportedDocumentFormats supportedFormats;
   @Autowired private ApplicationContext applicationContext;
+
+  /**
+   * What this deployment accepts is the union of the registered declarations and nothing else -
+   * derived here rather than listed, because a list would be the parallel bookkeeping this
+   * derivation replaced. The routing matrix below stays literal for the opposite reason: it pins
+   * the <em>intent</em> a declaration is checked against, and would otherwise pass for a wrong one.
+   */
+  @Test
+  void theAdmittedSetIsExactlyTheUnionOfTheRegisteredDeclarations() {
+    Set<String> declaredExtensions =
+        registry.pipelines().stream()
+            .flatMap(format -> format.admittedFormats().stream())
+            .map(FormatAdmission::extension)
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+    assertThat(supportedFormats.extensions())
+        .containsExactlyInAnyOrderElementsOf(declaredExtensions);
+    // One derivation, not two: the bean is the registry's own, so admission and routing cannot
+    // disagree about which formats exist.
+    assertThat(supportedFormats).isSameAs(registry.supportedFormats());
+  }
+
+  /**
+   * {@code ProductionDocumentFormats} builds the same format set without a Spring context, for the
+   * unit tests that need the admission the application actually applies. A format added to {@code
+   * IndexingConfiguration} and forgotten there would silently give those tests a narrower
+   * admission, so the two are compared here, where the wired context is available.
+   */
+  @Test
+  void theDockerFreeTestHelperMirrorsTheWiredFormats() {
+    assertThat(ProductionDocumentFormats.formats())
+        .extracting(DocumentFormat::id)
+        .containsExactlyInAnyOrderElementsOf(
+            registry.pipelines().stream().map(DocumentFormat::id).toList());
+    assertThat(ProductionDocumentFormats.supportedFormats().extensions())
+        .isEqualTo(supportedFormats.extensions());
+  }
 
   @Test
   void routesEveryAdmittedFormatToItsRegisteredPipeline() {

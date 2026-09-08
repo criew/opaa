@@ -6,6 +6,7 @@ import io.opaa.indexing.document.DocumentService;
 import io.opaa.indexing.source.attachment.AttachmentCandidate;
 import io.opaa.indexing.source.attachment.AttachmentProfile;
 import io.opaa.indexing.source.web.UrlIndexingExecutor;
+import io.opaa.test.ProductionDocumentFormats;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -51,11 +52,18 @@ class DocumentFormatParityTest {
 
   @TempDir Path tempDir;
 
+  /** The one derived admission all three paths ask - the same instance the application wires. */
+  private static final SupportedDocumentFormats SUPPORTED_FORMATS =
+      ProductionDocumentFormats.supportedFormats();
+
   private static final String PDF_MAGIC_BYTES = "%PDF-1.4\n%mock-pdf-body-for-magic-byte-detection";
 
   /** The filesystem path's own verdict, taken from the call {@code AsyncIndexingExecutor} makes. */
   private static boolean acceptedFromFilesystem(Path file) throws IOException {
-    return new DocumentService().discoverFiles(file.getParent()).supported().contains(file);
+    return new DocumentService()
+        .discoverFiles(file.getParent(), SUPPORTED_FORMATS)
+        .supported()
+        .contains(file);
   }
 
   private static SupportedDocumentFormats.ContentDecision networkPathDecision(
@@ -67,7 +75,7 @@ class DocumentFormatParityTest {
             : Arrays.copyOf(fullContent, SupportedDocumentFormats.DETECTION_PREFIX_BYTES);
     // The full download the executor performs when the prefix alone stays inconclusive - stands in
     // for BoundedDownloader#download, whose result is likewise the complete file on disk.
-    return UrlIndexingExecutor.decideForEntry(prefix, entryName, () -> file);
+    return UrlIndexingExecutor.decideForEntry(SUPPORTED_FORMATS, prefix, entryName, () -> file);
   }
 
   @ParameterizedTest
@@ -278,6 +286,7 @@ class DocumentFormatParityTest {
     assertThat(acceptedFromFilesystem(file)).isTrue();
     var networkDecision =
         UrlIndexingExecutor.decideForEntry(
+            SUPPORTED_FORMATS,
             prefix,
             "umfangreicher-bericht.docx",
             () -> {
@@ -313,7 +322,7 @@ class DocumentFormatParityTest {
     Files.writeString(file, PDF_MAGIC_BYTES, StandardCharsets.UTF_8);
 
     var rssDecision =
-        SupportedDocumentFormats.decideForFileName(
+        SUPPORTED_FORMATS.decideForFileName(
             candidate.suggestedFileName(), SupportedDocumentFormats.detectMediaType(file));
     var filesystemDecision = acceptedFromFilesystem(file);
     var networkDecision = networkPathDecision(file, "bescheid.csv");

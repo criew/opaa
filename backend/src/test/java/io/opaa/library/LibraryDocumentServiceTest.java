@@ -41,6 +41,7 @@ import io.opaa.indexing.source.attachment.AttachmentProperties;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.test.ProductionDocumentFormats;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -228,7 +229,8 @@ class LibraryDocumentServiceTest {
         folderService,
         attachmentExtractor,
         new AttachmentProperties(0, 0, 0),
-        new AttachmentExtractionLimiter(limits));
+        new AttachmentExtractionLimiter(limits),
+        ProductionDocumentFormats.supportedFormats());
   }
 
   @Test
@@ -363,8 +365,9 @@ class LibraryDocumentServiceTest {
 
   @Test
   void aRealDocxUploadedAsDocxIsAccepted() throws IOException {
-    // #435 code review, finding 1: the riskiest cases in STRICT_CONTENT_TYPES_BY_EXTENSION are the
-    // Office formats, because their correct detection depends on transitive Tika parser modules
+    // #435 code review, finding 1: the riskiest strictly detected declarations
+    // (FormatAdmission#detectedAs) are the Office formats, because their correct detection depends
+    // on transitive Tika parser modules
     // (tika-parsers-standard, POI) actually being on the classpath - a plain byte literal like
     // pdfFile's "%PDF-1.4\n" cannot stand in for them the way it can for PDF. Building a genuine
     // .docx with POI (already on the test classpath via spring-ai-tika-document-reader) exercises
@@ -1433,7 +1436,8 @@ class LibraryDocumentServiceTest {
             folderService,
             attachmentExtractor,
             new AttachmentProperties(0, 0, 0),
-            new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)));
+            new AttachmentExtractionLimiter(new AttachmentExtractionProperties(0, null)),
+            ProductionDocumentFormats.supportedFormats());
     when(accessService.requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.VIEWER)))
         .thenReturn(AssetRole.VIEWER);
     KnowledgeLibrary library = remoteLibrary(null);

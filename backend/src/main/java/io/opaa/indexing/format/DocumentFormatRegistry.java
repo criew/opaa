@@ -20,9 +20,11 @@ import org.slf4j.LoggerFactory;
  * <p>Routing follows the detected content, not the file extension - the same question {@link
  * SupportedDocumentFormats#decideForFileName} already answers for admission, so the text-tolerant
  * special case for Markdown and Klartext is inherited rather than re-implemented. There is no
- * second admission list: an admitted document always gets a pipeline, the fallback one if no
- * specialized pipeline claimed its format. Two pipelines claiming the same format fail at context
- * startup rather than letting bean ordering decide.
+ * second admission list: this registry derives the admission from the same formats it routes on
+ * ({@link #supportedFormats()}), and an admitted document always gets a pipeline, the fallback one
+ * if no specialized pipeline claimed its format. Two pipelines claiming the same format fail at
+ * context startup rather than letting bean ordering decide, as do two formats admitting the same
+ * extension or media type.
  */
 public class DocumentFormatRegistry {
 
@@ -32,6 +34,7 @@ public class DocumentFormatRegistry {
   private final DocumentFormat fallback;
   private final List<DocumentFormat> all;
   private final Set<String> allPassthroughMetadataKeys;
+  private final SupportedDocumentFormats supportedFormats;
 
   /**
    * @param pipelines every registered pipeline, including {@code fallback} itself when it is a bean
@@ -94,6 +97,16 @@ public class DocumentFormatRegistry {
       passthroughKeys.addAll(declared);
     }
     this.allPassthroughMetadataKeys = Set.copyOf(passthroughKeys);
+    this.supportedFormats = new SupportedDocumentFormats(all);
+  }
+
+  /**
+   * What the registered formats admit, derived from the same list this registry routes on - so
+   * admission and routing can never disagree about which formats exist. The application's single
+   * {@link SupportedDocumentFormats} bean is this one.
+   */
+  public SupportedDocumentFormats supportedFormats() {
+    return supportedFormats;
   }
 
   /**
@@ -154,7 +167,7 @@ public class DocumentFormatRegistry {
 
   private Routed routedPipelineFor(String fileName, String detectedMediaType) {
     SupportedDocumentFormats.ContentDecision decision =
-        SupportedDocumentFormats.decideForFileName(fileName, detectedMediaType);
+        supportedFormats.decideForFileName(fileName, detectedMediaType);
     if (!decision.supported()) {
       return new Routed(fallback, null, false, detectedMediaType);
     }

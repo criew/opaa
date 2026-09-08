@@ -6,11 +6,16 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import org.apache.tika.Tika;
 import org.apache.tika.mime.MediaType;
 import org.apache.tika.mime.MediaTypeRegistry;
@@ -21,6 +26,10 @@ import org.apache.tika.mime.MediaTypeRegistry;
  * #decideForFileName} what {@link #detectMediaType} reports for these bytes. A claimed extension
  * that does not match is reported as a mismatch, never silently corrected or used to reject.
  *
+ * <p>The accepted set is not listed here: it is the union of every registered {@link
+ * DocumentFormat}'s {@link DocumentFormat#admittedFormats()}, read once at construction. Adding a
+ * format therefore never changes this class.
+ *
  * <p>The upload path uses {@link #contentMatchesExtension} directly and rejects a mismatch
  * outright: whoever uploads chose file and name in one action.
  */
@@ -28,160 +37,197 @@ public final class SupportedDocumentFormats {
 
   private static final Tika TIKA = new Tika();
 
-  private static final Set<String> EXTENSIONS =
-      Set.of(
-          ".md", ".txt", ".pdf", ".docx", ".doc", ".pptx", ".xlsx", ".csv", ".odt", ".ods", ".odp",
-          ".html", ".eml", ".msg");
+  private final Set<String> extensions;
+  private final List<String> sortedExtensions;
+  private final Map<String, String> canonicalMediaTypeByExtension;
+  private final Map<String, Set<String>> detectedMediaTypesByExtension;
+  private final Map<String, String> extensionByDetectedMediaType;
+  private final Map<String, String> extensionByDeclaredContentType;
+  private final Set<String> textTolerantExtensions;
 
   /**
-   * Maps a {@code Content-Type} header value to one of the {@link #EXTENSIONS} above, for sources
-   * that cannot expose a supported extension in the URL itself - the Government Site Builder
-   * attachment profile ({@code AttachmentProfile#GSB}), whose addresses carry the file through a
-   * query parameter instead of a path extension. Deliberately narrower than what Tika itself could
-   * detect: this map only needs to cover the same formats {@link #EXTENSIONS} already accepts.
+   * Derives the accepted set from {@code formats} - every registered {@link DocumentFormat},
+   * including the fallback, whose own declaration is what keeps an admitted extension without a
+   * specialized format ({@code .txt}, {@code .doc}) a named decision rather than a leftover.
+   *
+   * @throws IllegalStateException two formats declare the same extension or the same media type,
+   *     one format names a media type under two of its extensions, or a strictly detected media
+   *     type is named by none of them; bean order would otherwise silently decide which extension a
+   *     document reaches, or no extension at all would
    */
-  private static final Map<String, String> EXTENSIONS_BY_CONTENT_TYPE =
-      Map.ofEntries(
-          Map.entry("application/pdf", ".pdf"),
-          Map.entry("application/msword", ".doc"),
-          Map.entry(
-              "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx"),
-          Map.entry(
-              "application/vnd.openxmlformats-officedocument.presentationml.presentation", ".pptx"),
-          Map.entry("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx"),
-          Map.entry("text/plain", ".txt"),
-          Map.entry("text/markdown", ".md"),
-          Map.entry("text/csv", ".csv"),
-          Map.entry("application/vnd.oasis.opendocument.text", ".odt"),
-          Map.entry("application/vnd.oasis.opendocument.spreadsheet", ".ods"),
-          Map.entry("application/vnd.oasis.opendocument.presentation", ".odp"),
-          Map.entry("text/html", ".html"));
-
-  /**
-   * The canonical media type of each accepted extension - the inverse of {@link
-   * #EXTENSIONS_BY_CONTENT_TYPE}, plus the two mail formats that map has no header for. What a
-   * document row stores as {@code content_type} once its format is decided: Tika's raw detection
-   * would report {@code .md} as {@code text/plain} and a text file with header lines as {@code
-   * message/rfc822}, and downstream consumers (the download endpoint, the Markdown preview) compare
-   * against the canonical type.
-   */
-  private static final Map<String, String> CONTENT_TYPES_BY_EXTENSION = contentTypesByExtension();
-
-  private static Map<String, String> contentTypesByExtension() {
-    Map<String, String> byExtension = new java.util.HashMap<>();
-    EXTENSIONS_BY_CONTENT_TYPE.forEach(
-        (contentType, extension) -> byExtension.put(extension, contentType));
-    byExtension.put(".eml", "message/rfc822");
-    byExtension.put(".msg", "application/vnd.ms-outlook");
-    return Map.copyOf(byExtension);
+  public SupportedDocumentFormats(Collection<? extends DocumentFormat> formats) {
+    Map<String, String> canonicalByExtension = new HashMap<>();
+    Map<String, Set<String>> detectedByExtension = new HashMap<>();
+    Map<String, String> byDetectedMediaType = new HashMap<>();
+    Map<String, String> byDeclaredContentType = new HashMap<>();
+    Map<String, String> declaringFormatByExtension = new HashMap<>();
+    Map<String, String> declaringFormatByMediaType = new HashMap<>();
+    Map<String, String> namingExtensionByMediaType = new HashMap<>();
+    List<StrictDetection> strictDetections = new ArrayList<>();
+    Set<String> textTolerant = new HashSet<>();
+    for (DocumentFormat format : formats) {
+      for (FormatAdmission admission : format.admittedFormats()) {
+        String extension = admission.extension();
+        String previousFormat = declaringFormatByExtension.put(extension, format.id());
+        if (previousFormat != null) {
+          throw new IllegalStateException(
+              previousFormat.equals(format.id())
+                  ? "Document format " + format.id() + " admits " + extension + " twice"
+                  : "Two document formats admit "
+                      + extension
+                      + ": "
+                      + previousFormat
+                      + " and "
+                      + format.id());
+        }
+        canonicalByExtension.put(extension, admission.canonicalMediaType());
+        detectedByExtension.put(extension, admission.detectedMediaTypes());
+        if (admission.textTolerant()) {
+          textTolerant.add(extension);
+        }
+        for (String mediaType : mediaTypesOf(admission)) {
+          if (!admission.textTolerant()) {
+            strictDetections.add(new StrictDetection(format.id(), extension, mediaType));
+          }
+          // A format may admit one media type under several extensions (".htm" beside ".html");
+          // two formats may not, since nothing but iteration order could then decide between them.
+          String previousClaim = declaringFormatByMediaType.put(mediaType, format.id());
+          if (previousClaim != null && !previousClaim.equals(format.id())) {
+            throw new IllegalStateException(
+                "Two document formats admit the media type "
+                    + mediaType
+                    + ": "
+                    + previousClaim
+                    + " and "
+                    + format.id());
+          }
+          if (!admission.namesItsMediaTypes()) {
+            continue;
+          }
+          String previousName = namingExtensionByMediaType.put(mediaType, extension);
+          if (previousName != null) {
+            throw new IllegalStateException(
+                "Document format "
+                    + format.id()
+                    + " names the media type "
+                    + mediaType
+                    + " under two extensions, "
+                    + previousName
+                    + " and "
+                    + extension
+                    + " - one of them is an alternate spelling");
+          }
+          if (admission.detectedMediaTypes().contains(mediaType)) {
+            byDetectedMediaType.put(mediaType, extension);
+          }
+          if (admission.namedByDeclaredContentType()
+              && mediaType.equals(admission.canonicalMediaType())) {
+            byDeclaredContentType.put(mediaType, extension);
+          }
+        }
+      }
+    }
+    // Every media type a strict admission is matched against has to resolve back to an extension -
+    // an alternate spelling whose type no sibling names would be admitted and then never accepted
+    // from content, the very outcome declaring the admission at the format is meant to rule out.
+    // Text-tolerant admissions are exempt: their name decides, never their media type.
+    for (StrictDetection detection : strictDetections) {
+      if (!byDetectedMediaType.containsKey(detection.mediaType())) {
+        throw new IllegalStateException(
+            "Document format "
+                + detection.formatId()
+                + " admits "
+                + detection.extension()
+                + " for the media type "
+                + detection.mediaType()
+                + ", but no extension of it names that type - an alternate spelling needs a"
+                + " primary declaration to resolve to");
+      }
+    }
+    this.extensions = Set.copyOf(canonicalByExtension.keySet());
+    this.sortedExtensions = List.copyOf(new TreeSet<>(this.extensions));
+    this.canonicalMediaTypeByExtension = Map.copyOf(canonicalByExtension);
+    this.detectedMediaTypesByExtension = Map.copyOf(detectedByExtension);
+    this.extensionByDetectedMediaType = Map.copyOf(byDetectedMediaType);
+    this.extensionByDeclaredContentType = Map.copyOf(byDeclaredContentType);
+    this.textTolerantExtensions = Set.copyOf(textTolerant);
   }
 
-  /**
-   * Extensions whose content is only checked for being text at all. {@code .md}, {@code .txt} and
-   * {@code .csv} are barely distinguishable by content (a CSV file is valid Markdown), and Tika's
-   * {@code message/rfc822} detector is a textual heuristic rather than a byte signature, so {@code
-   * .eml} joins them: requiring the file's own extension in addition to "looks like text" keeps an
-   * unrelated text file out of the mail pipeline and still admits a genuine {@code .eml}.
-   */
-  private static final Set<String> TEXT_TOLERANT_EXTENSIONS = Set.of(".md", ".txt", ".csv", ".eml");
+  /** One media type a strict admission demands a detection to report, for the check above. */
+  private record StrictDetection(String formatId, String extension, String mediaType) {}
 
-  /**
-   * The Tika-detected media type(s) consistent with each non-text extension in {@link #EXTENSIONS}.
-   * Unlike {@link #TEXT_TOLERANT_EXTENSIONS}, these formats have a distinctive enough byte
-   * signature (a PDF header, an OLE/ZIP container) that Tika's {@code AutoDetectParser} reliably
-   * tells them apart from one another and from arbitrary binary content, so a mismatch here is
-   * worth rejecting outright rather than tolerating.
-   */
-  private static final Map<String, Set<String>> STRICT_CONTENT_TYPES_BY_EXTENSION =
-      Map.ofEntries(
-          Map.entry(".pdf", Set.of("application/pdf")),
-          // Deliberately not including application/x-tika-msoffice: that is the generic, unresolved
-          // OLE2 container type Tika falls back to when POI's format-specific sniffing inside the
-          // container fails - any OLE2 file this system cannot actually identify would pass as a
-          // "matching" .doc, defeating the point of this check.
-          Map.entry(".doc", Set.of("application/msword")),
-          Map.entry(
-              ".docx",
-              Set.of("application/vnd.openxmlformats-officedocument.wordprocessingml.document")),
-          Map.entry(
-              ".pptx",
-              Set.of("application/vnd.openxmlformats-officedocument.presentationml.presentation")),
-          Map.entry(
-              ".xlsx", Set.of("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")),
-          // ODF, unlike .docx/.pptx, has one specific, unambiguous media type per format straight
-          // from Tika's ZIP-mimetype-entry detector - there is no generic "unresolved ODF
-          // container" fallback the way there is application/x-tika-ooxml, so no exclusion note
-          // is needed here.
-          Map.entry(".odt", Set.of("application/vnd.oasis.opendocument.text")),
-          Map.entry(".ods", Set.of("application/vnd.oasis.opendocument.spreadsheet")),
-          Map.entry(".odp", Set.of("application/vnd.oasis.opendocument.presentation")),
-          // HTML has a distinctive enough signature (DOCTYPE/<html> tag) that Tika reliably tells
-          // it apart from plain text - both text/html and the XHTML variant are accepted, mirroring
-          // DetailPageExtractor's own isHtmlContentType (ingestion-pipelines.md, Teil 3, Punkt 4).
-          Map.entry(".html", Set.of("text/html", "application/xhtml+xml")),
-          // MSG's application/vnd.ms-outlook is a genuinely distinctive OLE2/MAPI container type,
-          // unlike EML's message/rfc822 (see TEXT_TOLERANT_EXTENSIONS's own Javadoc for why EML
-          // joins the text-tolerant set instead).
-          Map.entry(".msg", Set.of("application/vnd.ms-outlook")));
-
-  private SupportedDocumentFormats() {}
+  /** Every media type an admission speaks for - its canonical one and its detections. */
+  private static Set<String> mediaTypesOf(FormatAdmission admission) {
+    Set<String> mediaTypes = new HashSet<>(admission.detectedMediaTypes());
+    mediaTypes.add(admission.canonicalMediaType());
+    return mediaTypes;
+  }
 
   /** Whether a document with this file name is accepted for indexing, on either path. */
-  public static boolean isSupported(String fileName) {
+  public boolean isSupported(String fileName) {
     if (fileName == null || fileName.isBlank()) {
       return false;
     }
-    String lowerCased = fileName.toLowerCase();
-    return EXTENSIONS.stream().anyMatch(lowerCased::endsWith);
+    String lowerCased = fileName.toLowerCase(Locale.ROOT);
+    return extensions.stream().anyMatch(lowerCased::endsWith);
   }
 
   /** The accepted extensions, sorted, for log and error messages. */
-  public static List<String> extensions() {
-    return EXTENSIONS.stream().sorted().toList();
+  public List<String> extensions() {
+    return sortedExtensions;
   }
 
   /**
-   * The extension {@code EXTENSIONS_BY_CONTENT_TYPE} associates with {@code contentType}, or {@code
-   * null} when the content type is absent or unrecognized - the caller then has no better name to
-   * fall back to than what the URL already provided.
+   * The extension a declared {@code Content-Type} header names, or {@code null} when the content
+   * type is absent, unrecognized or declared as {@link
+   * FormatAdmission#notNamedByDeclaredContentType() not named by a header} - the caller then has no
+   * better name to fall back to than what the URL already provided. For sources that cannot expose
+   * a supported extension in the URL itself: the Government Site Builder attachment profile ({@code
+   * AttachmentProfile#GSB}), whose addresses carry the file through a query parameter, and an S3
+   * key without one. Deliberately narrower than what Tika itself could detect: a declared header
+   * only ever names one of the admitted formats, and only where its format allows it to.
    */
-  public static String extensionForContentType(String contentType) {
+  public String extensionForContentType(String contentType) {
     if (contentType == null) {
       return null;
     }
     String mediaType = contentType.split(";", 2)[0].strip().toLowerCase(Locale.ROOT);
-    return EXTENSIONS_BY_CONTENT_TYPE.get(mediaType);
+    return extensionByDeclaredContentType.get(mediaType);
   }
 
   /**
    * The canonical media type of {@code extension} (lower-cased, with its dot), or {@code null} for
-   * an extension this system does not accept or an absent one.
+   * an extension this system does not accept or an absent one. What a document row stores as {@code
+   * content_type} once its format is decided: Tika's raw detection would report {@code .md} as
+   * {@code text/plain} and a text file with header lines as {@code message/rfc822}, and downstream
+   * consumers (the download endpoint, the Markdown preview) compare against the canonical type.
    */
-  public static String contentTypeForExtension(String extension) {
+  public String contentTypeForExtension(String extension) {
     if (extension == null) {
       return null;
     }
-    return CONTENT_TYPES_BY_EXTENSION.get(extension.toLowerCase(Locale.ROOT));
+    return canonicalMediaTypeByExtension.get(extension.toLowerCase(Locale.ROOT));
   }
 
   /**
    * Whether Tika's detected {@code detectedMimeType} is consistent with a file claiming to be
-   * {@code extension}; an extension outside {@link #EXTENSIONS} returns {@code false}, like a
-   * {@code null} detection. {@link #TEXT_TOLERANT_EXTENSIONS} only demand anything {@link
-   * MediaTypeRegistry#isInstanceOf} recognizes as {@code text/plain}, which PDF and the ZIP/OLE2
-   * office types are not; every other extension demands a specific media type.
+   * {@code extension}; an extension this system does not admit returns {@code false}, like a {@code
+   * null} detection. A {@link FormatAdmission#textTolerant() text-tolerant} extension only demands
+   * anything {@link MediaTypeRegistry#isInstanceOf} recognizes as {@code text/plain}, which PDF and
+   * the ZIP/OLE2 office types are not; every other extension demands one of the media types its
+   * format declared.
    */
-  public static boolean contentMatchesExtension(String extension, String detectedMimeType) {
+  public boolean contentMatchesExtension(String extension, String detectedMimeType) {
     if (detectedMimeType == null) {
       return false;
     }
     String normalized = detectedMimeType.split(";", 2)[0].strip().toLowerCase(Locale.ROOT);
-    if (TEXT_TOLERANT_EXTENSIONS.contains(extension)) {
+    if (textTolerantExtensions.contains(extension)) {
       MediaTypeRegistry registry = MediaTypeRegistry.getDefaultRegistry();
       MediaType detected = registry.normalize(MediaType.parse(normalized));
       return detected != null && registry.isInstanceOf(detected, MediaType.TEXT_PLAIN);
     }
-    Set<String> expected = STRICT_CONTENT_TYPES_BY_EXTENSION.get(extension);
+    Set<String> expected = detectedMediaTypesByExtension.get(extension);
     return expected != null && expected.contains(normalized);
   }
 
@@ -197,11 +243,11 @@ public final class SupportedDocumentFormats {
   }
 
   /**
-   * The number of leading bytes {@link #detectMediaType(byte[])} needs to identify every type
-   * {@link #EXTENSIONS} accepts by its own signature - mirrors the 64 KiB default buffer Tika's own
-   * {@code MimeTypes} magic detection reads from a stream ({@code MimeTypes#getMinLength()}). Not
-   * enough for a container whose identifying part may sit past the sample; {@link #decideForPrefix}
-   * is where that case is resolved.
+   * The number of leading bytes {@link #detectMediaType(byte[])} needs to identify every admitted
+   * type by its own signature - mirrors the 64 KiB default buffer Tika's own {@code MimeTypes}
+   * magic detection reads from a stream ({@code MimeTypes#getMinLength()}). Not enough for a
+   * container whose identifying part may sit past the sample; {@link #decideForPrefix} is where
+   * that case is resolved.
    */
   public static final int DETECTION_PREFIX_BYTES = 65_536;
 
@@ -257,7 +303,7 @@ public final class SupportedDocumentFormats {
    * completeContent} is fetched and decides instead. Tika's {@code markLimit} leaves an OLE2
    * document past 128 MiB unresolved even then; the network path's size cap rejects it earlier.
    */
-  public static ContentDecision decideForPrefix(
+  public ContentDecision decideForPrefix(
       String fileName, byte[] prefix, CompleteContent completeContent)
       throws IOException, InterruptedException {
     String detectedFromPrefix = detectMediaType(prefix);
@@ -269,36 +315,32 @@ public final class SupportedDocumentFormats {
   }
 
   /**
-   * The extension in {@link #STRICT_CONTENT_TYPES_BY_EXTENSION} whose media type {@code
-   * detectedMimeType} matches, or {@code null} otherwise - the content-only counterpart to {@link
-   * #extensionForContentType}. Deliberately excludes {@link #TEXT_TOLERANT_EXTENSIONS}: accepting
-   * any plain-text content as a "text document" regardless of its name would silently widen the
-   * accepted Bestand. {@link #decideForFileName} combines the two.
+   * The admitted extension whose declared media types {@code detectedMimeType} matches, or {@code
+   * null} otherwise - the content-only counterpart to {@link #extensionForContentType}.
+   * Deliberately excludes {@link FormatAdmission#textTolerant() text-tolerant} extensions:
+   * accepting any plain-text content as a "text document" regardless of its name would silently
+   * widen the accepted Bestand. {@link #decideForFileName} combines the two.
    */
-  public static String extensionForDetectedContent(String detectedMimeType) {
+  public String extensionForDetectedContent(String detectedMimeType) {
     if (detectedMimeType == null) {
       return null;
     }
-    for (String extension : STRICT_CONTENT_TYPES_BY_EXTENSION.keySet()) {
-      if (contentMatchesExtension(extension, detectedMimeType)) {
-        return extension;
-      }
-    }
-    return null;
+    return extensionByDetectedMediaType.get(
+        detectedMimeType.split(";", 2)[0].strip().toLowerCase(Locale.ROOT));
   }
 
   /**
-   * The entry of {@link #EXTENSIONS} that {@code fileName} ends with, or empty when it ends with
-   * none of them - the file's own claimed extension, used only as a hint once {@link
-   * #decideForFileName} has already decided acceptance from the content. Package-visible so {@code
+   * The admitted extension that {@code fileName} ends with, or empty when it ends with none of them
+   * - the file's own claimed extension, used only as a hint once {@link #decideForFileName} has
+   * already decided acceptance from the content. Package-visible so {@code
    * io.opaa.library.LibraryDocumentService} can keep using its own equivalent private helper.
    */
-  static Optional<String> matchedExtension(String fileName) {
+  Optional<String> matchedExtension(String fileName) {
     if (fileName == null || fileName.isBlank()) {
       return Optional.empty();
     }
     String lowerCased = fileName.toLowerCase(Locale.ROOT);
-    return EXTENSIONS.stream().filter(lowerCased::endsWith).findFirst();
+    return extensions.stream().filter(lowerCased::endsWith).findFirst();
   }
 
   /**
@@ -313,19 +355,20 @@ public final class SupportedDocumentFormats {
   }
 
   /**
-   * The single decision both indexing paths make once a file's bytes are available. {@link
-   * #TEXT_TOLERANT_EXTENSIONS} is checked <b>first</b>, since {@code text/html} is a Tika
-   * specialization of {@code text/plain} and a Markdown file opening with a raw {@code <div>} would
-   * otherwise reach the HTML pipeline unreported. Otherwise a {@link #extensionForDetectedContent
-   * strictly detected} type is accepted whatever the name; anything else is unsupported.
+   * The single decision both indexing paths make once a file's bytes are available. A {@link
+   * FormatAdmission#textTolerant() text-tolerant} extension is checked <b>first</b>, since {@code
+   * text/html} is a Tika specialization of {@code text/plain} and a Markdown file opening with a
+   * raw {@code <div>} would otherwise reach the HTML pipeline unreported. Otherwise a {@link
+   * #extensionForDetectedContent strictly detected} type is accepted whatever the name; anything
+   * else is unsupported.
    */
-  public static ContentDecision decideForFileName(String fileName, String detectedMimeType) {
+  public ContentDecision decideForFileName(String fileName, String detectedMimeType) {
     if (detectedMimeType == null) {
       return ContentDecision.UNSUPPORTED;
     }
     Optional<String> claimedExtension = matchedExtension(fileName);
     if (claimedExtension.isPresent()
-        && TEXT_TOLERANT_EXTENSIONS.contains(claimedExtension.get())
+        && textTolerantExtensions.contains(claimedExtension.get())
         && contentMatchesExtension(claimedExtension.get(), detectedMimeType)) {
       return new ContentDecision(true, claimedExtension.get(), false);
     }

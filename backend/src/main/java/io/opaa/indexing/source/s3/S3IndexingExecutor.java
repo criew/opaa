@@ -3,6 +3,7 @@ package io.opaa.indexing.source.s3;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRun;
@@ -46,6 +47,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
   private final SourceSyncStateRepository syncStateRepository;
   private final Clock clock;
   private final IndexingRunTemplate runTemplate;
+  private final SupportedDocumentFormats supportedFormats;
 
   public S3IndexingExecutor(
       S3ClientFactory clientFactory,
@@ -56,7 +58,8 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
       StaleDocumentCleanupService cleanupService,
       SourceSyncStateRepository syncStateRepository,
       Clock clock,
-      IndexingRunTemplate runTemplate) {
+      IndexingRunTemplate runTemplate,
+      SupportedDocumentFormats supportedFormats) {
     this.clientFactory = clientFactory;
     this.properties = properties;
     this.documentIngestService = documentIngestService;
@@ -66,6 +69,7 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
     this.syncStateRepository = syncStateRepository;
     this.clock = clock;
     this.runTemplate = runTemplate;
+    this.supportedFormats = supportedFormats;
   }
 
   @Override
@@ -179,7 +183,8 @@ public class S3IndexingExecutor implements SourceIndexingExecutor {
                 cleanupService,
                 state,
                 syncStateRepository,
-                clock)) {
+                clock,
+                supportedFormats)) {
       return body.run(sync);
     }
   }

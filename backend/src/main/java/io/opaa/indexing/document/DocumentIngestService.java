@@ -15,7 +15,6 @@ import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatRunner;
 import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.format.DocumentProperties;
-import io.opaa.indexing.format.SupportedDocumentFormats;
 import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
 import io.opaa.indexing.metadata.DocumentChunkMetadata;
 import io.opaa.indexing.metadata.DocumentMetadataService;
@@ -335,7 +334,9 @@ public class DocumentIngestService {
           DocumentFormat pipeline =
               ingest.pipelineId() == null ? routed.pipeline() : pipelineById(ingest.pipelineId());
           String canonicalType =
-              SupportedDocumentFormats.contentTypeForExtension(routed.detectedExtension());
+              pipelineRegistry
+                  .supportedFormats()
+                  .contentTypeForExtension(routed.detectedExtension());
           yield new Selection(
               pipeline,
               DocumentFormatSource.ofFile(file.path(), fileName, routed.detectedExtension()),

@@ -128,6 +128,7 @@ public class SourceConnectionTestService {
   private final TargetAddressValidator targetAddressValidator;
   private final ConfluenceConnectionService confluenceConnectionService;
   private final S3ConnectionService s3ConnectionService;
+  private final SupportedDocumentFormats supportedFormats;
 
   public SourceConnectionTestService(
       DocumentService documentService,
@@ -140,7 +141,8 @@ public class SourceConnectionTestService {
       TargetAddressValidator targetAddressValidator,
       SourceRequestPolicy requestPolicy,
       ConfluenceConnectionService confluenceConnectionService,
-      S3ConnectionService s3ConnectionService) {
+      S3ConnectionService s3ConnectionService,
+      SupportedDocumentFormats supportedFormats) {
     this.documentService = documentService;
     this.crawlerService = crawlerService;
     this.rssFeedParser = rssFeedParser;
@@ -154,6 +156,7 @@ public class SourceConnectionTestService {
     this.targetAddressValidator = targetAddressValidator;
     this.confluenceConnectionService = confluenceConnectionService;
     this.s3ConnectionService = s3ConnectionService;
+    this.supportedFormats = supportedFormats;
   }
 
   /**
@@ -514,7 +517,8 @@ public class SourceConnectionTestService {
     }
 
     try {
-      DocumentService.DiscoveredFiles discovered = documentService.discoverFiles(directory);
+      DocumentService.DiscoveredFiles discovered =
+          documentService.discoverFiles(directory, supportedFormats);
       long count = discovered.supported().size();
       return reachable(
           "Verzeichnis erreichbar, " + count + " " + documentWord(count) + " gefunden.", count);
@@ -612,7 +616,7 @@ public class SourceConnectionTestService {
         long linkedDocuments =
             entries.stream()
                 .filter(e -> !e.isDirectory())
-                .filter(e -> SupportedDocumentFormats.isSupported(e.name()))
+                .filter(e -> supportedFormats.isSupported(e.name()))
                 .count();
         // #550: an empty result can mean two very different things - a directory listing that is
         // genuinely empty (still a valid, working source), or a page that isn't a directory

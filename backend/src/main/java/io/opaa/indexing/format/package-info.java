@@ -9,11 +9,14 @@
  *
  * <ul>
  *   <li>{@code file} - a file format, reached over its detected content by {@link
- *       io.opaa.indexing.format.DocumentFormatRegistry} and admitted by {@link
- *       io.opaa.indexing.format.SupportedDocumentFormats}.
- *   <li>{@code stream} - a data format only one source delivers, with no extension and no file:
- *       {@link io.opaa.indexing.format.DocumentFormat#handledFormats()} is empty and the source
- *       names the format itself through {@code DocumentIngest.pipelineId}.
+ *       io.opaa.indexing.format.DocumentFormatRegistry}. It declares what it admits ({@link
+ *       io.opaa.indexing.format.FormatAdmission}); {@link
+ *       io.opaa.indexing.format.SupportedDocumentFormats} is the union of those declarations and
+ *       keeps no list of its own, which is what makes a new format cost one class and one bean.
+ *   <li>{@code stream} - a data format only one source delivers, with no extension and no file: it
+ *       admits nothing, {@link io.opaa.indexing.format.DocumentFormat#handledFormats()} is
+ *       therefore empty, and the source names the format itself through {@code
+ *       DocumentIngest.pipelineId}.
  * </ul>
  *
  * <p>{@code shared} holds the building blocks both kinds reuse. Outside its own subtree this
@@ -27,9 +30,9 @@
  * DocumentProperties} and re-reads a document through the registry. {@code chunk} and {@code
  * sourceaccess} do not use this package.
  *
- * <p>One edge runs the other way inside the subtree: {@link
- * io.opaa.indexing.format.ChunkFormatMetadata} names {@code file.fallback} for the id the
- * pre-abstraction corpus is attributed to. That value is persisted and belongs to that format, so
- * the cycle is stated rather than broken by copying the literal.
+ * <p>No edge runs the other way inside the subtree: the id the pre-abstraction corpus is attributed
+ * to is declared here, in {@link io.opaa.indexing.format.ChunkFormatMetadata}, and {@code
+ * file.fallback} points at it - the value is persisted chunk metadata, so it belongs to this
+ * package rather than to whichever class implements that format.
  */
 package io.opaa.indexing.format;

@@ -31,6 +31,7 @@ import io.opaa.indexing.source.rss.RssFeedRunContext;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.net.http.HttpClient;
 import java.nio.file.Files;
@@ -74,7 +75,8 @@ class AttachmentIndexerTest {
             attachmentDownloader,
             documentIngestService,
             storageQuotaService,
-            new AttachmentProperties(5, 0, 0));
+            new AttachmentProperties(5, 0, 0),
+            ProductionDocumentFormats.supportedFormats());
     parentDocumentId = UUID.randomUUID();
 
     indexingJobService = mock(IndexingJobService.class);
@@ -213,7 +215,8 @@ class AttachmentIndexerTest {
             attachmentDownloader,
             documentIngestService,
             mock(LibraryStorageQuotaService.class),
-            new AttachmentProperties(1, 0, 0));
+            new AttachmentProperties(1, 0, 0),
+            ProductionDocumentFormats.supportedFormats());
 
     // Mail-in-Mail: a LocalFile attachment whose own processing reports one more nested LocalFile
     // attachment - mirrors DocumentIngestService#processUrlFile routing a discovered .eml back

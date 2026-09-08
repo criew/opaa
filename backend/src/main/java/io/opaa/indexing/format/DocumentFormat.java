@@ -2,6 +2,7 @@ package io.opaa.indexing.format;
 
 import io.opaa.indexing.chunk.ChunkingService;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * One ingestion pipeline (ingestion-pipelines.md, Teil 1): reader, splitter, metadata enrichment
@@ -9,11 +10,11 @@ import java.util.Set;
  *
  * <p>Open-closed is the acceptance criterion: adding a format means adding an implementation and
  * registering it as a bean, with nothing in {@link DocumentFormatRegistry}, {@code
- * DocumentIngestService} or {@code SupportedDocumentFormats} changing shape. Admission stays with
- * {@code SupportedDocumentFormats}; this interface decides only <em>how</em> an admitted document
- * is processed. Every chunk carries {@link #id()} and {@link #version()}, and {@link #version()} is
- * raised whenever the cut or the emitted structure metadata changes - that is what makes a
- * selective re-index answerable.
+ * DocumentIngestService} or {@link SupportedDocumentFormats} changing shape. Admission is declared
+ * here too, through {@link #admittedFormats()}: {@link SupportedDocumentFormats} is the union of
+ * those declarations over every registered format and keeps no list of its own. Every chunk carries
+ * {@link #id()} and {@link #version()}, and {@link #version()} is raised whenever the cut or the
+ * emitted structure metadata changes - that is what makes a selective re-index answerable.
  */
 public interface DocumentFormat {
 
@@ -30,12 +31,29 @@ public interface DocumentFormat {
   short version();
 
   /**
-   * The canonical {@code SupportedDocumentFormats} extensions this pipeline claims (e.g. {@code
-   * ".pdf"}) - the routing key {@link DocumentFormatRegistry} resolves from a document's
-   * <em>detected content</em>, never from its file name alone. Empty for the fallback pipeline,
-   * which claims no format and handles everything no other pipeline claimed.
+   * What this format admits for indexing: one {@link FormatAdmission} per extension, with the media
+   * types belonging to it. Empty for a format that never arrives as a file and is named by its
+   * source instead (see {@code io.opaa.indexing.format.stream}). Two formats declaring the same
+   * extension or the same media type fail at context startup rather than letting bean order decide
+   * ({@link SupportedDocumentFormats}); an extension the fallback already admits is therefore taken
+   * out of its declaration when a specialized format takes it over.
    */
-  Set<String> handledFormats();
+  default Set<FormatAdmission> admittedFormats() {
+    return Set.of();
+  }
+
+  /**
+   * The extensions this pipeline claims for routing (e.g. {@code ".pdf"}) - the routing key {@link
+   * DocumentFormatRegistry} resolves from a document's <em>detected content</em>, never from its
+   * file name alone. Derived from {@link #admittedFormats()}, since a format routes what it admits;
+   * overridden as empty by the fallback pipeline, which admits extensions without claiming them and
+   * handles everything no other pipeline claimed.
+   */
+  default Set<String> handledFormats() {
+    return admittedFormats().stream()
+        .map(FormatAdmission::extension)
+        .collect(Collectors.toUnmodifiableSet());
+  }
 
   /**
    * Parses and splits {@code source} into chunks. A parse failure of {@code source} itself is

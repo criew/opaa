@@ -132,6 +132,7 @@ public class LibraryDocumentService {
   private final AttachmentExtractor attachmentExtractor;
   private final AttachmentProperties attachmentProperties;
   private final AttachmentExtractionLimiter attachmentExtractionLimiter;
+  private final SupportedDocumentFormats supportedFormats;
 
   public LibraryDocumentService(
       KnowledgeLibraryRepository libraryRepository,
@@ -150,7 +151,8 @@ public class LibraryDocumentService {
       LibraryFolderService folderService,
       AttachmentExtractor attachmentExtractor,
       AttachmentProperties attachmentProperties,
-      AttachmentExtractionLimiter attachmentExtractionLimiter) {
+      AttachmentExtractionLimiter attachmentExtractionLimiter,
+      SupportedDocumentFormats supportedFormats) {
     this.libraryRepository = libraryRepository;
     this.accessService = accessService;
     this.documentRepository = documentRepository;
@@ -168,6 +170,7 @@ public class LibraryDocumentService {
     this.attachmentExtractor = attachmentExtractor;
     this.attachmentProperties = attachmentProperties;
     this.attachmentExtractionLimiter = attachmentExtractionLimiter;
+    this.supportedFormats = supportedFormats;
   }
 
   /**
@@ -222,10 +225,10 @@ public class LibraryDocumentService {
     }
 
     String displayFileName = sanitizeDisplayFileName(file.getOriginalFilename());
-    if (!SupportedDocumentFormats.isSupported(displayFileName)) {
+    if (!supportedFormats.isSupported(displayFileName)) {
       throw new ValidationException(
           "Das Dateiformat wird nicht unterstützt. Erlaubt sind: "
-              + String.join(", ", SupportedDocumentFormats.extensions()));
+              + String.join(", ", supportedFormats.extensions()));
     }
     String extension = matchedExtension(displayFileName);
 
@@ -1263,7 +1266,7 @@ public class LibraryDocumentService {
   /** The accepted extension the given (already validated as supported) file name ends with. */
   private String matchedExtension(String fileName) {
     String lowerCased = fileName.toLowerCase();
-    for (String extension : SupportedDocumentFormats.extensions()) {
+    for (String extension : supportedFormats.extensions()) {
       if (lowerCased.endsWith(extension)) {
         return extension;
       }
@@ -1292,7 +1295,7 @@ public class LibraryDocumentService {
     } catch (IOException e) {
       throw new UncheckedIOException("Datei konnte nicht auf ihr Format geprueft werden", e);
     }
-    if (!SupportedDocumentFormats.contentMatchesExtension(extension, detectedMimeType)) {
+    if (!supportedFormats.contentMatchesExtension(extension, detectedMimeType)) {
       throw new ValidationException(
           "Der Inhalt der Datei entspricht nicht dem Format " + extension);
     }

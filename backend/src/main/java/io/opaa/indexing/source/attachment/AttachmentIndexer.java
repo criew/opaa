@@ -60,16 +60,19 @@ public class AttachmentIndexer {
   private final DocumentIngestService documentIngestService;
   private final LibraryStorageQuotaService storageQuotaService;
   private final AttachmentProperties attachmentProperties;
+  private final SupportedDocumentFormats supportedFormats;
 
   public AttachmentIndexer(
       BoundedDownloader attachmentDownloader,
       DocumentIngestService documentIngestService,
       LibraryStorageQuotaService storageQuotaService,
-      AttachmentProperties attachmentProperties) {
+      AttachmentProperties attachmentProperties,
+      SupportedDocumentFormats supportedFormats) {
     this.attachmentDownloader = attachmentDownloader;
     this.documentIngestService = documentIngestService;
     this.storageQuotaService = storageQuotaService;
     this.attachmentProperties = attachmentProperties;
+    this.supportedFormats = supportedFormats;
   }
 
   /**
@@ -249,7 +252,7 @@ public class AttachmentIndexer {
         return Optional.empty();
       }
       SupportedDocumentFormats.ContentDecision decision =
-          SupportedDocumentFormats.decideForFileName(fileName, detectedMimeType);
+          supportedFormats.decideForFileName(fileName, detectedMimeType);
       if (!decision.supported()) {
         log.info(
             "Skipping attachment with an unsupported format: {} (from {}, Content-Type {})",
@@ -374,7 +377,7 @@ public class AttachmentIndexer {
     try {
       String detectedMimeType = SupportedDocumentFormats.detectMediaType(localFile.file());
       SupportedDocumentFormats.ContentDecision decision =
-          SupportedDocumentFormats.decideForFileName(localFile.fileName(), detectedMimeType);
+          supportedFormats.decideForFileName(localFile.fileName(), detectedMimeType);
       if (!decision.supported()) {
         log.info(
             "Skipping local attachment with an unsupported format: {} (from {})",
@@ -518,11 +521,11 @@ public class AttachmentIndexer {
    * SupportedDocumentFormats#isSupported}, so a candidate with an unrecognized extension gets no
    * second one. From here on only the detected content decides acceptance.
    */
-  private static String resolveFileName(String suggestedFileName, String contentType) {
+  private String resolveFileName(String suggestedFileName, String contentType) {
     if (AttachmentProfile.fileHasSomeExtension(suggestedFileName)) {
       return suggestedFileName;
     }
-    String extension = SupportedDocumentFormats.extensionForContentType(contentType);
+    String extension = supportedFormats.extensionForContentType(contentType);
     if (extension == null) {
       return suggestedFileName;
     }

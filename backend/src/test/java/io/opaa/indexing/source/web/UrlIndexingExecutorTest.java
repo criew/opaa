@@ -21,6 +21,7 @@ import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.test.ProductionDocumentFormats;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -85,7 +86,8 @@ class UrlIndexingExecutorTest {
                 mock(IndexingRunEventRepository.class),
                 mock(StaleDocumentCleanupService.class),
                 documentRepository,
-                mock(LibraryStorageQuotaService.class)));
+                mock(LibraryStorageQuotaService.class)),
+            ProductionDocumentFormats.supportedFormats());
     UUID jobId = UUID.randomUUID();
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(

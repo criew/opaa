@@ -2,6 +2,7 @@ package io.opaa.indexing.format;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -13,41 +14,43 @@ class SupportedDocumentFormatsTest {
 
   @TempDir Path tempDir;
 
+  /**
+   * The admission the application derives from its registered formats - this class asks the same
+   * derived instance the wired context holds, never a hand-built one, so every answer below is the
+   * production answer.
+   */
+  private final SupportedDocumentFormats supportedFormats =
+      ProductionDocumentFormats.supportedFormats();
+
   @Test
   void extensionForContentTypeResolvesKnownTypes() {
-    assertThat(SupportedDocumentFormats.extensionForContentType("application/pdf"))
+    assertThat(supportedFormats.extensionForContentType("application/pdf")).isEqualTo(".pdf");
+    assertThat(supportedFormats.extensionForContentType("application/pdf; charset=binary"))
         .isEqualTo(".pdf");
-    assertThat(SupportedDocumentFormats.extensionForContentType("application/pdf; charset=binary"))
-        .isEqualTo(".pdf");
-    assertThat(SupportedDocumentFormats.extensionForContentType("text/plain")).isEqualTo(".txt");
+    assertThat(supportedFormats.extensionForContentType("text/plain")).isEqualTo(".txt");
   }
 
   @Test
   void contentTypeForExtensionIsTheCanonicalTypeOfEveryAcceptedFormat() {
     // Tika's raw detection reports .md as text/plain and a text file with header lines as
     // message/rfc822 - the row must carry the type its format is known by downstream.
-    assertThat(SupportedDocumentFormats.contentTypeForExtension(".md")).isEqualTo("text/markdown");
-    assertThat(SupportedDocumentFormats.contentTypeForExtension(".txt")).isEqualTo("text/plain");
-    assertThat(SupportedDocumentFormats.contentTypeForExtension(".PDF"))
-        .isEqualTo("application/pdf");
-    assertThat(SupportedDocumentFormats.contentTypeForExtension(".eml"))
-        .isEqualTo("message/rfc822");
-    assertThat(SupportedDocumentFormats.contentTypeForExtension(".msg"))
+    assertThat(supportedFormats.contentTypeForExtension(".md")).isEqualTo("text/markdown");
+    assertThat(supportedFormats.contentTypeForExtension(".txt")).isEqualTo("text/plain");
+    assertThat(supportedFormats.contentTypeForExtension(".PDF")).isEqualTo("application/pdf");
+    assertThat(supportedFormats.contentTypeForExtension(".eml")).isEqualTo("message/rfc822");
+    assertThat(supportedFormats.contentTypeForExtension(".msg"))
         .isEqualTo("application/vnd.ms-outlook");
-    for (String extension : SupportedDocumentFormats.extensions()) {
-      assertThat(SupportedDocumentFormats.contentTypeForExtension(extension))
-          .as(extension)
-          .isNotNull();
+    for (String extension : supportedFormats.extensions()) {
+      assertThat(supportedFormats.contentTypeForExtension(extension)).as(extension).isNotNull();
     }
-    assertThat(SupportedDocumentFormats.contentTypeForExtension(".exe")).isNull();
-    assertThat(SupportedDocumentFormats.contentTypeForExtension(null)).isNull();
+    assertThat(supportedFormats.contentTypeForExtension(".exe")).isNull();
+    assertThat(supportedFormats.contentTypeForExtension(null)).isNull();
   }
 
   @Test
   void extensionForContentTypeReturnsNullForUnknownOrMissingType() {
-    assertThat(SupportedDocumentFormats.extensionForContentType("application/octet-stream"))
-        .isNull();
-    assertThat(SupportedDocumentFormats.extensionForContentType(null)).isNull();
+    assertThat(supportedFormats.extensionForContentType("application/octet-stream")).isNull();
+    assertThat(supportedFormats.extensionForContentType(null)).isNull();
   }
 
   // The correct OOXML/OLE2 media types below depend on the transitive
@@ -60,16 +63,14 @@ class SupportedDocumentFormatsTest {
   // Office upload in production.
   @Test
   void contentMatchesExtensionAcceptsTheExactMediaTypeForEveryStrictExtension() {
-    assertThat(SupportedDocumentFormats.contentMatchesExtension(".pdf", "application/pdf"))
-        .isTrue();
-    assertThat(SupportedDocumentFormats.contentMatchesExtension(".doc", "application/msword"))
-        .isTrue();
+    assertThat(supportedFormats.contentMatchesExtension(".pdf", "application/pdf")).isTrue();
+    assertThat(supportedFormats.contentMatchesExtension(".doc", "application/msword")).isTrue();
     assertThat(
-            SupportedDocumentFormats.contentMatchesExtension(
+            supportedFormats.contentMatchesExtension(
                 ".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
         .isTrue();
     assertThat(
-            SupportedDocumentFormats.contentMatchesExtension(
+            supportedFormats.contentMatchesExtension(
                 ".pptx",
                 "application/vnd.openxmlformats-officedocument.presentationml.presentation"))
         .isTrue();
@@ -80,15 +81,15 @@ class SupportedDocumentFormatsTest {
   @Test
   void contentMatchesExtensionAcceptsTheExactMediaTypeForEveryOdfExtension() {
     assertThat(
-            SupportedDocumentFormats.contentMatchesExtension(
+            supportedFormats.contentMatchesExtension(
                 ".odt", "application/vnd.oasis.opendocument.text"))
         .isTrue();
     assertThat(
-            SupportedDocumentFormats.contentMatchesExtension(
+            supportedFormats.contentMatchesExtension(
                 ".ods", "application/vnd.oasis.opendocument.spreadsheet"))
         .isTrue();
     assertThat(
-            SupportedDocumentFormats.contentMatchesExtension(
+            supportedFormats.contentMatchesExtension(
                 ".odp", "application/vnd.oasis.opendocument.presentation"))
         .isTrue();
   }
@@ -100,11 +101,11 @@ class SupportedDocumentFormatsTest {
   @Test
   void contentMatchesExtensionRejectsDocxContentForOdtAndOdtContentForDocx() {
     assertThat(
-            SupportedDocumentFormats.contentMatchesExtension(
+            supportedFormats.contentMatchesExtension(
                 ".odt", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
         .isFalse();
     assertThat(
-            SupportedDocumentFormats.contentMatchesExtension(
+            supportedFormats.contentMatchesExtension(
                 ".docx", "application/vnd.oasis.opendocument.text"))
         .isFalse();
   }
@@ -112,15 +113,14 @@ class SupportedDocumentFormatsTest {
   @Test
   void extensionForDetectedContentResolvesEveryOdfType() {
     assertThat(
-            SupportedDocumentFormats.extensionForDetectedContent(
-                "application/vnd.oasis.opendocument.text"))
+            supportedFormats.extensionForDetectedContent("application/vnd.oasis.opendocument.text"))
         .isEqualTo(".odt");
     assertThat(
-            SupportedDocumentFormats.extensionForDetectedContent(
+            supportedFormats.extensionForDetectedContent(
                 "application/vnd.oasis.opendocument.spreadsheet"))
         .isEqualTo(".ods");
     assertThat(
-            SupportedDocumentFormats.extensionForDetectedContent(
+            supportedFormats.extensionForDetectedContent(
                 "application/vnd.oasis.opendocument.presentation"))
         .isEqualTo(".odp");
   }
@@ -130,7 +130,7 @@ class SupportedDocumentFormatsTest {
     // Routing (ingestion-pipelines.md, Teil 3, Punkt 2): ODT is admitted purely from its detected
     // content, exactly like DOCX - the file's own extension only decides the mismatch flag.
     var decision =
-        SupportedDocumentFormats.decideForFileName(
+        supportedFormats.decideForFileName(
             "satzung.odt", "application/vnd.oasis.opendocument.text");
 
     assertThat(decision.supported()).isTrue();
@@ -140,9 +140,9 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void isSupportedAcceptsEveryOdfExtensionByName() {
-    assertThat(SupportedDocumentFormats.isSupported("satzung.odt")).isTrue();
-    assertThat(SupportedDocumentFormats.isSupported("haushalt.ods")).isTrue();
-    assertThat(SupportedDocumentFormats.isSupported("vortrag.odp")).isTrue();
+    assertThat(supportedFormats.isSupported("satzung.odt")).isTrue();
+    assertThat(supportedFormats.isSupported("haushalt.ods")).isTrue();
+    assertThat(supportedFormats.isSupported("vortrag.odp")).isTrue();
   }
 
   @Test
@@ -166,16 +166,14 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void contentMatchesExtensionAcceptsAnyTextSpecializationForTheTextTolerantExtensions() {
-    assertThat(SupportedDocumentFormats.contentMatchesExtension(".txt", "text/plain")).isTrue();
-    assertThat(SupportedDocumentFormats.contentMatchesExtension(".md", "text/plain")).isTrue();
-    assertThat(SupportedDocumentFormats.contentMatchesExtension(".csv", "text/plain")).isTrue();
+    assertThat(supportedFormats.contentMatchesExtension(".txt", "text/plain")).isTrue();
+    assertThat(supportedFormats.contentMatchesExtension(".md", "text/plain")).isTrue();
+    assertThat(supportedFormats.contentMatchesExtension(".csv", "text/plain")).isTrue();
     // application/xml and application/rtf are declared sub-class-of text/plain in Tika's own
     // media type registry (tika-mimetypes.xml) - exactly the false positives this check
     // flagged a plain startsWith("text/") check as missing.
-    assertThat(SupportedDocumentFormats.contentMatchesExtension(".txt", "application/xml"))
-        .isTrue();
-    assertThat(SupportedDocumentFormats.contentMatchesExtension(".txt", "application/rtf"))
-        .isTrue();
+    assertThat(supportedFormats.contentMatchesExtension(".txt", "application/xml")).isTrue();
+    assertThat(supportedFormats.contentMatchesExtension(".txt", "application/rtf")).isTrue();
   }
 
   @Test
@@ -183,11 +181,9 @@ class SupportedDocumentFormatsTest {
     // A ZIP archive Tika could not further classify as a specific OOXML format - the fallback a
     // trimmed tika-parsers-standard would produce for every real .docx/.pptx upload (see the class
     // comment above). Must not be tolerated the way the text formats tolerate a generic subtype.
-    assertThat(
-            SupportedDocumentFormats.contentMatchesExtension(".docx", "application/x-tika-ooxml"))
+    assertThat(supportedFormats.contentMatchesExtension(".docx", "application/x-tika-ooxml"))
         .isFalse();
-    assertThat(
-            SupportedDocumentFormats.contentMatchesExtension(".pptx", "application/x-tika-ooxml"))
+    assertThat(supportedFormats.contentMatchesExtension(".pptx", "application/x-tika-ooxml"))
         .isFalse();
   }
 
@@ -195,35 +191,31 @@ class SupportedDocumentFormatsTest {
   void contentMatchesExtensionRejectsAGenericUnresolvedOle2ContainerForDoc() {
     // application/x-tika-msoffice is the generic OLE2 fallback Tika
     // uses when it cannot identify the specific format inside the container - deliberately not
-    // accepted for .doc (see STRICT_CONTENT_TYPES_BY_EXTENSION's Javadoc for why).
-    assertThat(
-            SupportedDocumentFormats.contentMatchesExtension(".doc", "application/x-tika-msoffice"))
+    // accepted for .doc (see TikaFallbackFormat#admittedFormats, which declares it, for why).
+    assertThat(supportedFormats.contentMatchesExtension(".doc", "application/x-tika-msoffice"))
         .isFalse();
   }
 
   @Test
   void contentMatchesExtensionRejectsBinaryContentForTheTextTolerantExtensions() {
-    assertThat(SupportedDocumentFormats.contentMatchesExtension(".txt", "application/pdf"))
-        .isFalse();
-    assertThat(SupportedDocumentFormats.contentMatchesExtension(".md", "application/zip"))
-        .isFalse();
+    assertThat(supportedFormats.contentMatchesExtension(".txt", "application/pdf")).isFalse();
+    assertThat(supportedFormats.contentMatchesExtension(".md", "application/zip")).isFalse();
   }
 
   @Test
   void contentMatchesExtensionRejectsAMissingDetectionResult() {
-    assertThat(SupportedDocumentFormats.contentMatchesExtension(".pdf", null)).isFalse();
+    assertThat(supportedFormats.contentMatchesExtension(".pdf", null)).isFalse();
   }
 
   // --- content decides, the extension is only a hint -----------------------------------
 
   @Test
   void extensionForDetectedContentResolvesEveryStrictType() {
-    assertThat(SupportedDocumentFormats.extensionForDetectedContent("application/pdf"))
-        .isEqualTo(".pdf");
-    assertThat(SupportedDocumentFormats.extensionForDetectedContent("application/msword"))
+    assertThat(supportedFormats.extensionForDetectedContent("application/pdf")).isEqualTo(".pdf");
+    assertThat(supportedFormats.extensionForDetectedContent("application/msword"))
         .isEqualTo(".doc");
     assertThat(
-            SupportedDocumentFormats.extensionForDetectedContent(
+            supportedFormats.extensionForDetectedContent(
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
         .isEqualTo(".docx");
   }
@@ -233,18 +225,18 @@ class SupportedDocumentFormatsTest {
     // Deliberately not resolved here: content alone cannot tell a Markdown file apart from
     // a CSV export or a source file - see decideForFileName for how the ambiguity is resolved
     // using the file's own name as a hint instead.
-    assertThat(SupportedDocumentFormats.extensionForDetectedContent("text/plain")).isNull();
+    assertThat(supportedFormats.extensionForDetectedContent("text/plain")).isNull();
   }
 
   @Test
   void extensionForDetectedContentReturnsNullForUnsupportedOrMissingContent() {
-    assertThat(SupportedDocumentFormats.extensionForDetectedContent("application/zip")).isNull();
-    assertThat(SupportedDocumentFormats.extensionForDetectedContent(null)).isNull();
+    assertThat(supportedFormats.extensionForDetectedContent("application/zip")).isNull();
+    assertThat(supportedFormats.extensionForDetectedContent(null)).isNull();
   }
 
   @Test
   void decideForFileNameAcceptsMatchingExtensionWithoutAMismatch() {
-    var decision = SupportedDocumentFormats.decideForFileName("bescheid.pdf", "application/pdf");
+    var decision = supportedFormats.decideForFileName("bescheid.pdf", "application/pdf");
 
     assertThat(decision.supported()).isTrue();
     assertThat(decision.detectedExtension()).isEqualTo(".pdf");
@@ -257,7 +249,7 @@ class SupportedDocumentFormatsTest {
     // as garbled
     // text; here the reverse - a real PDF mislabeled .csv - would be rejected outright. Both
     // are now accepted from their actual content, with the mismatch surfaced, not hidden.
-    var decision = SupportedDocumentFormats.decideForFileName("bescheid.csv", "application/pdf");
+    var decision = supportedFormats.decideForFileName("bescheid.csv", "application/pdf");
 
     assertThat(decision.supported()).isTrue();
     assertThat(decision.detectedExtension()).isEqualTo(".pdf");
@@ -266,7 +258,7 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void decideForFileNameAcceptsAFileWithNoRecognizedExtensionAtAllAsAMismatch() {
-    var decision = SupportedDocumentFormats.decideForFileName("bescheid", "application/pdf");
+    var decision = supportedFormats.decideForFileName("bescheid", "application/pdf");
 
     assertThat(decision.supported()).isTrue();
     assertThat(decision.extensionMismatch()).isTrue();
@@ -274,13 +266,9 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void decideForFileNameToleratesMdContentClaimedAsTxtAndViceVersa() {
-    assertThat(
-            SupportedDocumentFormats.decideForFileName("notes.md", "text/plain")
-                .extensionMismatch())
+    assertThat(supportedFormats.decideForFileName("notes.md", "text/plain").extensionMismatch())
         .isFalse();
-    assertThat(
-            SupportedDocumentFormats.decideForFileName("notes.txt", "text/plain")
-                .extensionMismatch())
+    assertThat(supportedFormats.decideForFileName("notes.txt", "text/plain").extensionMismatch())
         .isFalse();
   }
 
@@ -289,7 +277,7 @@ class SupportedDocumentFormatsTest {
     // CSV joins .md/.txt as text-tolerant - its own extension has to already claim it,
     // exactly like the other two, since content alone cannot tell a CSV export apart from
     // Markdown or plain text.
-    var decision = SupportedDocumentFormats.decideForFileName("gebuehren.csv", "text/plain");
+    var decision = supportedFormats.decideForFileName("gebuehren.csv", "text/plain");
 
     assertThat(decision.supported()).isTrue();
     assertThat(decision.detectedExtension()).isEqualTo(".csv");
@@ -302,21 +290,21 @@ class SupportedDocumentFormatsTest {
     // mismatch - a log file or source code carrying genuinely readable text must not silently
     // widen the accepted Bestand to "any plain text whatsoever". (CSV itself is a text-tolerant
     // extension, see decideForFileNameAcceptsCsvContentOnlyUnderItsOwnExtension.)
-    var decision = SupportedDocumentFormats.decideForFileName("export.log", "text/plain");
+    var decision = supportedFormats.decideForFileName("export.log", "text/plain");
 
     assertThat(decision.supported()).isFalse();
   }
 
   @Test
   void decideForFileNameRejectsAmbiguousTextContentWithNoExtensionAtAll() {
-    var decision = SupportedDocumentFormats.decideForFileName("README", "text/plain");
+    var decision = supportedFormats.decideForFileName("README", "text/plain");
 
     assertThat(decision.supported()).isFalse();
   }
 
   @Test
   void decideForFileNameRejectsUnsupportedContentRegardlessOfExtension() {
-    var decision = SupportedDocumentFormats.decideForFileName("scan.pdf", "image/png");
+    var decision = supportedFormats.decideForFileName("scan.pdf", "image/png");
 
     assertThat(decision.supported()).isFalse();
     assertThat(decision.detectedExtension()).isNull();
@@ -338,14 +326,13 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void isSupportedAcceptsEmlAndMsgByName() {
-    assertThat(SupportedDocumentFormats.isSupported("vorgang.eml")).isTrue();
-    assertThat(SupportedDocumentFormats.isSupported("vorgang.msg")).isTrue();
+    assertThat(supportedFormats.isSupported("vorgang.eml")).isTrue();
+    assertThat(supportedFormats.isSupported("vorgang.msg")).isTrue();
   }
 
   @Test
   void contentMatchesExtensionAcceptsTheExactMediaTypeForMsg() {
-    assertThat(
-            SupportedDocumentFormats.contentMatchesExtension(".msg", "application/vnd.ms-outlook"))
+    assertThat(supportedFormats.contentMatchesExtension(".msg", "application/vnd.ms-outlook"))
         .isTrue();
   }
 
@@ -354,16 +341,14 @@ class SupportedDocumentFormatsTest {
     // message/rfc822 is a text/plain specialization in Tika's own media
     // type hierarchy, not a distinctive byte signature - .eml is admitted the same tolerant way
     // .md/.txt/.csv are, not as a strictly detected type.
-    assertThat(SupportedDocumentFormats.contentMatchesExtension(".eml", "message/rfc822")).isTrue();
-    assertThat(SupportedDocumentFormats.contentMatchesExtension(".eml", "text/plain")).isTrue();
-    assertThat(SupportedDocumentFormats.contentMatchesExtension(".eml", "application/pdf"))
-        .isFalse();
+    assertThat(supportedFormats.contentMatchesExtension(".eml", "message/rfc822")).isTrue();
+    assertThat(supportedFormats.contentMatchesExtension(".eml", "text/plain")).isTrue();
+    assertThat(supportedFormats.contentMatchesExtension(".eml", "application/pdf")).isFalse();
   }
 
   @Test
   void decideForFileNameAcceptsMsgContentRegardlessOfExtension() {
-    var msg =
-        SupportedDocumentFormats.decideForFileName("vorgang.msg", "application/vnd.ms-outlook");
+    var msg = supportedFormats.decideForFileName("vorgang.msg", "application/vnd.ms-outlook");
     assertThat(msg.supported()).isTrue();
     assertThat(msg.detectedExtension()).isEqualTo(".msg");
     assertThat(msg.extensionMismatch()).isFalse();
@@ -371,11 +356,10 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void decideForFileNameAcceptsEmlOnlyUnderItsOwnExtension() {
-    var wrongExtension =
-        SupportedDocumentFormats.decideForFileName("vorgang.pdf", "message/rfc822");
+    var wrongExtension = supportedFormats.decideForFileName("vorgang.pdf", "message/rfc822");
     assertThat(wrongExtension.supported()).isFalse();
 
-    var eml = SupportedDocumentFormats.decideForFileName("vorgang.eml", "message/rfc822");
+    var eml = supportedFormats.decideForFileName("vorgang.eml", "message/rfc822");
     assertThat(eml.supported()).isTrue();
     assertThat(eml.detectedExtension()).isEqualTo(".eml");
     assertThat(eml.extensionMismatch()).isFalse();
@@ -389,14 +373,14 @@ class SupportedDocumentFormatsTest {
     // classifies
     // by the file's own claimed extension, never by which text-tolerant type the content merely
     // resembles.
-    var log = SupportedDocumentFormats.decideForFileName("system.log", "message/rfc822");
+    var log = supportedFormats.decideForFileName("system.log", "message/rfc822");
     assertThat(log.supported()).isFalse();
 
-    var markdown = SupportedDocumentFormats.decideForFileName("protokoll.md", "message/rfc822");
+    var markdown = supportedFormats.decideForFileName("protokoll.md", "message/rfc822");
     assertThat(markdown.supported()).isTrue();
     assertThat(markdown.detectedExtension()).isEqualTo(".md");
 
-    var csv = SupportedDocumentFormats.decideForFileName("export.csv", "message/rfc822");
+    var csv = supportedFormats.decideForFileName("export.csv", "message/rfc822");
     assertThat(csv.supported()).isTrue();
     assertThat(csv.detectedExtension()).isEqualTo(".csv");
   }
@@ -407,7 +391,7 @@ class SupportedDocumentFormatsTest {
     // (e.g. a leading Authentication-Results: or German Von:/An: pair) can be detected as plain
     // text/plain instead of message/rfc822 - still admitted, since .eml only demands text-tolerant
     // content, not the rfc822 heuristic specifically.
-    var eml = SupportedDocumentFormats.decideForFileName("weiterleitung.eml", "text/plain");
+    var eml = supportedFormats.decideForFileName("weiterleitung.eml", "text/plain");
     assertThat(eml.supported()).isTrue();
     assertThat(eml.detectedExtension()).isEqualTo(".eml");
   }
@@ -424,22 +408,20 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void contentMatchesExtensionAcceptsHtmlAndXhtmlForTheHtmlExtension() {
-    assertThat(SupportedDocumentFormats.contentMatchesExtension(".html", "text/html")).isTrue();
-    assertThat(SupportedDocumentFormats.contentMatchesExtension(".html", "application/xhtml+xml"))
-        .isTrue();
+    assertThat(supportedFormats.contentMatchesExtension(".html", "text/html")).isTrue();
+    assertThat(supportedFormats.contentMatchesExtension(".html", "application/xhtml+xml")).isTrue();
   }
 
   @Test
   void extensionForDetectedContentResolvesHtml() {
-    assertThat(SupportedDocumentFormats.extensionForDetectedContent("text/html"))
-        .isEqualTo(".html");
+    assertThat(supportedFormats.extensionForDetectedContent("text/html")).isEqualTo(".html");
   }
 
   @Test
   void decideForFileNameAcceptsHtmlContentRegardlessOfExtension() {
     // Routing (ingestion-pipelines.md, Teil 3, Punkt 4): HTML is admitted purely from its detected
     // content, exactly like PDF/DOCX - the file's own extension only decides the mismatch flag.
-    var decision = SupportedDocumentFormats.decideForFileName("seite.htm", "text/html");
+    var decision = supportedFormats.decideForFileName("seite.htm", "text/html");
 
     assertThat(decision.supported()).isTrue();
     assertThat(decision.detectedExtension()).isEqualTo(".html");
@@ -448,7 +430,7 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void isSupportedAcceptsHtmlByName() {
-    assertThat(SupportedDocumentFormats.isSupported("seite.html")).isTrue();
+    assertThat(supportedFormats.isSupported("seite.html")).isTrue();
   }
 
   @Test
@@ -476,7 +458,7 @@ class SupportedDocumentFormatsTest {
     String detected = SupportedDocumentFormats.detectMediaType(file);
     assertThat(detected).isEqualTo("text/html");
 
-    var decision = SupportedDocumentFormats.decideForFileName("readme.md", detected);
+    var decision = supportedFormats.decideForFileName("readme.md", detected);
 
     assertThat(decision.supported()).isTrue();
     assertThat(decision.detectedExtension()).isEqualTo(".md");
@@ -487,7 +469,7 @@ class SupportedDocumentFormatsTest {
   void decideForFileNameKeepsTheKlartextRuleWinningOverAHtmlContentDetection() {
     // Same rule for .txt as for .md above - the special rule covers all three text-tolerant
     // extensions (.md/.txt/.csv), not just Markdown.
-    var decision = SupportedDocumentFormats.decideForFileName("notiz.txt", "text/html");
+    var decision = supportedFormats.decideForFileName("notiz.txt", "text/html");
 
     assertThat(decision.supported()).isTrue();
     assertThat(decision.detectedExtension()).isEqualTo(".txt");
@@ -496,7 +478,7 @@ class SupportedDocumentFormatsTest {
 
   @Test
   void decideForFileNameKeepsTheEmlRuleWinningOverAHtmlContentDetection() {
-    // .eml joined TEXT_TOLERANT_EXTENSIONS already
+    // .eml is declared text-tolerant (MailDocumentFormat#admittedFormats), and the Markdown case
     // established that the text-tolerant branch must win over a strict detection - the same
     // rationale applies here without any change to decideForFileName itself. An HTML-formatted
     // mail body (common for a genuine .eml exported as raw markup, or one saved without its own
@@ -506,7 +488,7 @@ class SupportedDocumentFormatsTest {
     // named .html with the same content is unaffected (own extension is not text-tolerant, so it
     // still takes the strict branch and reaches HtmlDocumentFormat as normal) - only a file
     // already claiming .eml benefits from this priority.
-    var decision = SupportedDocumentFormats.decideForFileName("nachricht.eml", "text/html");
+    var decision = supportedFormats.decideForFileName("nachricht.eml", "text/html");
 
     assertThat(decision.supported()).isTrue();
     assertThat(decision.detectedExtension()).isEqualTo(".eml");
@@ -523,7 +505,7 @@ class SupportedDocumentFormatsTest {
     byte[] prefix = new byte[] {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
 
     var decision =
-        SupportedDocumentFormats.decideForPrefix(
+        supportedFormats.decideForPrefix(
             "scan.pdf",
             prefix,
             () -> {
@@ -545,8 +527,7 @@ class SupportedDocumentFormatsTest {
         .as("the fixture must actually reproduce the unresolved-container detection")
         .isEqualTo("application/x-tika-msoffice");
 
-    var decision =
-        SupportedDocumentFormats.decideForPrefix("vorgang.msg", prefix, this::msgFixture);
+    var decision = supportedFormats.decideForPrefix("vorgang.msg", prefix, this::msgFixture);
 
     assertThat(decision.supported()).isTrue();
     assertThat(decision.detectedExtension()).isEqualTo(".msg");

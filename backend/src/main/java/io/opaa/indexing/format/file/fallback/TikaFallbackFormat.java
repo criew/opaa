@@ -7,6 +7,7 @@ import io.opaa.indexing.format.DocumentFormat;
 import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.format.DocumentProperties;
+import io.opaa.indexing.format.FormatAdmission;
 import io.opaa.indexing.format.shared.DocumentTitleLine;
 import java.util.List;
 import java.util.Set;
@@ -28,7 +29,12 @@ public class TikaFallbackFormat implements DocumentFormat {
 
   private static final Logger log = LoggerFactory.getLogger(TikaFallbackFormat.class);
 
-  public static final String ID = "tika-fallback";
+  /**
+   * The persisted identity of this format, declared in {@link ChunkFormatMetadata} because the
+   * Bestand from before the format abstraction is attributed to it (see {@link
+   * ChunkFormatMetadata#LEGACY_PIPELINE_ID}).
+   */
+  public static final String ID = ChunkFormatMetadata.LEGACY_PIPELINE_ID;
 
   /**
    * Chunks carrying no pipeline metadata at all are attributed to {@link
@@ -54,6 +60,30 @@ public class TikaFallbackFormat implements DocumentFormat {
     return VERSION;
   }
 
+  /**
+   * The formats this system accepts without a specialized pipeline for them - a named decision
+   * rather than a leftover, and the only reason {@code .txt} and {@code .doc} are admitted at all.
+   * A future format taking one of them over takes it out of this declaration; two formats admitting
+   * the same extension fail at context startup.
+   *
+   * <p>{@code .txt} is text-tolerant (plain text is what it is); {@code .doc} is matched strictly
+   * against {@code application/msword} and deliberately not against {@code
+   * application/x-tika-msoffice}, the generic OLE2 container type Tika falls back to when POI's
+   * sniffing inside the container fails - any unidentifiable OLE2 file would otherwise pass as a
+   * "matching" DOC.
+   */
+  @Override
+  public Set<FormatAdmission> admittedFormats() {
+    return Set.of(
+        FormatAdmission.textTolerant(".txt", "text/plain"),
+        FormatAdmission.detectedAs(".doc", "application/msword"));
+  }
+
+  /**
+   * Empty although this format admits {@code .txt} and {@code .doc}: it claims no format for
+   * routing and handles everything no specialized pipeline claimed, which is the same thing for an
+   * extension nobody else claims and the reason the two are not derived from each other here.
+   */
   @Override
   public Set<String> handledFormats() {
     return Set.of();

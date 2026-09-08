@@ -47,6 +47,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.test.ProductionDocumentFormats;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
@@ -306,7 +307,8 @@ class ConfluenceIndexingExecutorTest {
         new BoundedDownloader(TargetAddressValidator.disabled()),
         documentIngestService,
         storageQuotaService,
-        new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0));
+        new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0),
+        ProductionDocumentFormats.supportedFormats());
   }
 
   private String pagePath(ConfluenceEdition edition, String spaceKey, String id) {

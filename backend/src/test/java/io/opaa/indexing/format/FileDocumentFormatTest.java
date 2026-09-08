@@ -42,8 +42,8 @@ class FileDocumentFormatTest {
     }
 
     @Override
-    public Set<String> handledFormats() {
-      return Set.of(".txt");
+    public Set<FormatAdmission> admittedFormats() {
+      return Set.of(FormatAdmission.detectedAs(".counting", "application/x-counting"));
     }
 
     @Override

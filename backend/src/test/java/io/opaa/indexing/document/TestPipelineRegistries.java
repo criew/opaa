@@ -32,6 +32,19 @@ public final class TestPipelineRegistries {
         List.of(fallback, new io.opaa.indexing.format.file.html.HtmlDocumentFormat()), fallback);
   }
 
+  /**
+   * The fallback plus the Markdown format - for a test about what {@code .md} is admitted and
+   * routed as. Without it the fallback's own declaration ({@code .txt}, {@code .doc}) is all this
+   * registry admits, exactly as a deployment without the Markdown bean would.
+   */
+  public static DocumentFormatRegistry fallbackAndMarkdown(
+      DocumentService documentService, ChunkingService chunkingService) {
+    TikaFallbackFormat fallback = new TikaFallbackFormat(documentService, chunkingService);
+    return new DocumentFormatRegistry(
+        List.of(fallback, new io.opaa.indexing.format.file.markdown.MarkdownDocumentFormat()),
+        fallback);
+  }
+
   /** The fallback plus the Confluence page pipeline - for processConfluencePage tests. */
   public static DocumentFormatRegistry fallbackAndConfluence(
       DocumentService documentService, ChunkingService chunkingService) {

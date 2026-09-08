@@ -22,6 +22,7 @@ import io.opaa.indexing.source.rss.RssFeedParser;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.test.ProductionDocumentFormats;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -82,7 +83,8 @@ class SourceConnectionTestServiceTest {
             TargetAddressValidator.disabled(),
             SourceRequestPolicy.defaults(),
             org.mockito.Mockito.mock(ConfluenceConnectionService.class),
-            org.mockito.Mockito.mock(S3ConnectionService.class));
+            org.mockito.Mockito.mock(S3ConnectionService.class),
+            ProductionDocumentFormats.supportedFormats());
   }
 
   @AfterEach
@@ -537,7 +539,8 @@ class SourceConnectionTestServiceTest {
             TargetAddressValidator.disabled(),
             SourceRequestPolicy.defaults(),
             org.mockito.Mockito.mock(ConfluenceConnectionService.class),
-            org.mockito.Mockito.mock(S3ConnectionService.class));
+            org.mockito.Mockito.mock(S3ConnectionService.class),
+            ProductionDocumentFormats.supportedFormats());
     String html = "<table>" + "x".repeat(100) + "</table>";
     server.createContext(
         "/dir/",
@@ -678,7 +681,8 @@ class SourceConnectionTestServiceTest {
             TargetAddressValidator.disabled(),
             SourceRequestPolicy.defaults(),
             org.mockito.Mockito.mock(ConfluenceConnectionService.class),
-            org.mockito.Mockito.mock(S3ConnectionService.class));
+            org.mockito.Mockito.mock(S3ConnectionService.class),
+            ProductionDocumentFormats.supportedFormats());
     String rss =
         """
         <?xml version="1.0"?>
@@ -735,7 +739,8 @@ class SourceConnectionTestServiceTest {
             TargetAddressValidator.disabled(),
             SourceRequestPolicy.defaults(),
             org.mockito.Mockito.mock(ConfluenceConnectionService.class),
-            org.mockito.Mockito.mock(S3ConnectionService.class));
+            org.mockito.Mockito.mock(S3ConnectionService.class),
+            ProductionDocumentFormats.supportedFormats());
     String rss =
         "<?xml version=\"1.0\"?><rss version=\"2.0\"><channel>"
             + "x".repeat(50)

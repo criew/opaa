@@ -5,6 +5,7 @@ import io.opaa.indexing.format.DocumentFormatResult;
 import io.opaa.indexing.format.DocumentFormatSource;
 import io.opaa.indexing.format.DocumentProperties;
 import io.opaa.indexing.format.FileDocumentFormat;
+import io.opaa.indexing.format.FormatAdmission;
 import io.opaa.indexing.format.shared.DeduplicatedLines;
 import io.opaa.indexing.format.shared.HeadingSectionSplitter;
 import io.opaa.indexing.format.shared.RepeatingHeaderChunk;
@@ -67,9 +68,11 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
     return VERSION;
   }
 
+  /** One specific media type, like {@code OdtDocumentFormat} - see its own declaration. */
   @Override
-  public Set<String> handledFormats() {
-    return Set.of(".odp");
+  public Set<FormatAdmission> admittedFormats() {
+    return Set.of(
+        FormatAdmission.detectedAs(".odp", "application/vnd.oasis.opendocument.presentation"));
   }
 
   /**

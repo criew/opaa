@@ -36,6 +36,7 @@ import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.TargetAddressValidator;
+import io.opaa.test.ProductionDocumentFormats;
 import java.time.Clock;
 import java.util.Optional;
 import java.util.Set;
@@ -99,7 +100,8 @@ class ConfluenceDataCenterFullSyncTest {
                 new BoundedDownloader(TargetAddressValidator.disabled()),
                 documentIngestService,
                 mock(LibraryStorageQuotaService.class),
-                new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0)),
+                new io.opaa.indexing.source.attachment.AttachmentProperties(5, 0, 0),
+                ProductionDocumentFormats.supportedFormats()),
             documentRepository,
             syncStateRepository,
             cleanupService,

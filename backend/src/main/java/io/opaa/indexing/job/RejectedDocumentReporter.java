@@ -23,10 +23,14 @@ public final class RejectedDocumentReporter {
 
   /**
    * Logs every rejected document name, naming the run's {@code sourceType} and {@code location}
-   * (directory path or URL), and returns how many there were.
+   * (directory path or URL), and returns how many there were. {@code supportedFormats} names what
+   * would have been accepted - derived from the registered formats, never a list of its own.
    */
   public static int reportRejected(
-      IndexingSourceType sourceType, String location, List<String> rejectedNames) {
+      IndexingSourceType sourceType,
+      String location,
+      List<String> rejectedNames,
+      SupportedDocumentFormats supportedFormats) {
     if (rejectedNames.isEmpty()) {
       return 0;
     }
@@ -36,7 +40,7 @@ public final class RejectedDocumentReporter {
         sourceType,
         rejectedNames.size(),
         location,
-        SupportedDocumentFormats.extensions(),
+        supportedFormats.extensions(),
         rejectedNames);
     return rejectedNames.size();
   }
