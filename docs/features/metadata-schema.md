@@ -1397,9 +1397,12 @@ Extraktionsversion entsteht:
 
 - **Die Suche bleibt während des gesamten Nachlaufs verfügbar.** Ein bereits indizierter Chunk bleibt
   gültig und auffindbar, bis seine Neufassung vorliegt; es gibt kein Zeitfenster, in dem eine
-  Bibliothek leer oder halb leer sucht. Der Mischzustand — ein Teil des Bestands trägt die neue
-  Fassung, der Rest die alte — ist damit ein **definierter, zulässiger Betriebszustand** und kein
-  Fehler. Er MUSS je Bibliothek abfragbar sein (verarbeitet, ausstehend, fehlgeschlagen) und erscheint
+  Bibliothek leer oder halb leer sucht. Das gilt für **beide Hälften der Suche**: Auch der
+  lexikalische Pfad liest eine `chunk_full_text`-Zeile alter Fassung weiter — ihr fehlen bis zum
+  Nachzug nur die Lexeme, die die neue Fassung hinzufügt
+  ([ADR-0028](../decisions/0028-tsv-version-uebergang.md)). Der Mischzustand — ein Teil des Bestands
+  trägt die neue Fassung, der Rest die alte — ist damit ein **definierter, zulässiger
+  Betriebszustand** und kein Fehler. Er MUSS je Bibliothek abfragbar sein (verarbeitet, ausstehend, fehlgeschlagen) und erscheint
   in derselben Zustandsübersicht wie der übrige Indexzustand (siehe
   [Was die Seite anzeigt](./hybrid-retrieval.md#was-die-seite-anzeigt)). Eine Bibliothek, deren
   Metadaten gerade umgestellt werden, ist an dieser Anzeige erkennbar — nicht nur an schwankenden

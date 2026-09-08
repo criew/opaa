@@ -10193,7 +10193,10 @@ components:
           type: integer
           format: int64
           description: >
-            Counted by anti-join, never derived as total minus indexed - see
+            Chunks whose full-text index still needs the pipeline re-index: without a
+            chunk_full_text row, or with a row below the current content_tsv_version. A chunk of the
+            latter kind is still found by the lexical path, it only lacks the lexemes the newer
+            version adds (ADR-0028). Counted by anti-join, never derived as total minus indexed - see
             FullTextIndexFillState's own documentation for why the two counts cannot be subtracted.
             The same data source the "Volltextpfad inaktiv oder unvollständig" alarm reads.
         metadataBackfill:

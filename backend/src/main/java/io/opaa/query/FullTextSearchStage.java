@@ -33,12 +33,13 @@ import org.springframework.stereotype.Component;
  *
  * <p><b>A half-filled full-text index is therefore possible and deliberately tolerated.</b> On the
  * regular write path a chunk's full-text row is written in the same transaction as its vector row,
- * so no gap opens there - but a raised {@code FullTextChunkStore#CURRENT_TSV_VERSION}, an orphaned
- * row, or a write that bypassed {@code VectorChunkStore} leaves chunks this path cannot find, and
- * it then contributes a partially filled list to the fusion instead of none. That state is not
- * silent: {@link FullTextIndexCompleteness} puts the number of affected libraries into this stage's
- * notes, the administration page shows the library as incomplete, and the pipeline re-index is what
- * repairs it.
+ * so no gap opens there - but an orphaned row or a write that bypassed {@code VectorChunkStore}
+ * leaves chunks this path cannot find, and it then contributes a partially filled list to the
+ * fusion instead of none. A raised {@code FullTextChunkStore#CURRENT_TSV_VERSION} is the milder
+ * case: rows of an older version are still searched, they only lack the newer lexemes until the
+ * re-index rewrites them (ADR-0028). Neither state is silent: {@link FullTextIndexCompleteness}
+ * puts the number of affected libraries into this stage's notes, the administration page shows the
+ * library as incomplete, and the pipeline re-index is what repairs it.
  *
  * <p><b>A failure degrades the path, never the answer.</b> A missing or broken full-text column may
  * cost search quality and must not raise for the person asking (docs/features/hybrid-retrieval.md,

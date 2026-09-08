@@ -161,9 +161,10 @@ Backfill-Tor ist mit #1270 entfallen (siehe
 [Arbeitspaket 2a](./hybrid-retrieval.md#arbeitspaket-2a-volltextspalte-index-und-füllstand)). Auf dem
 regulären Schreibweg entsteht der Volltexteintrag in derselben Transaktion wie der Vektor, ein halb
 gefüllter Index also nicht — **wohl aber nach einem Bump von `content_tsv_version`** (Bestandszeilen
-gelten dann als fehlend) oder durch verwaiste Zeilen. Der Pfad liefert dann eine unvollständige
-Liste statt gar keiner; das Erklärprotokoll weist die Zahl der betroffenen Bibliotheken aus, und die
-Administrationsseite zeigt sie als unvollständig.
+gelten dann als fehlend, bleiben aber findbar, nur ohne die neuen Lexeme —
+[ADR-0028](../decisions/0028-tsv-version-uebergang.md)) oder durch verwaiste Zeilen. Der Pfad
+liefert dann eine unvollständige Liste statt gar keiner; das Erklärprotokoll weist die Zahl der
+betroffenen Bibliotheken aus, und die Administrationsseite zeigt sie als unvollständig.
 
 **Ein Fehlschlag degradiert den Pfad, nie die Antwort.** Eine defekte oder fehlende Volltextspalte darf
 Suchqualität kosten, aber nie zum Fehler für den fragenden Menschen werden; die Rückfallebene ist eine

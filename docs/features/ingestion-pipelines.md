@@ -1442,7 +1442,9 @@ durch `›`; ein leeres Segment entfällt vollständig, und ein Präfix ohne jed
   gespeicherte Chunk-Text bleibt unangetastet, der Beleg zitiert weiter den Originalwortlaut. Weil sich
   die gespeicherten Lexeme damit ändern, steigt `content_tsv_version` auf 5; der Altbestand wird über
   denselben Reparaturpfad nachgezogen wie jede andere Lexem-Änderung
-  (`PipelineReindexService`, Regel (d)).
+  (`PipelineReindexService`, Regel (d)) und bleibt bis dahin lexikalisch findbar — nur ohne die
+  Präfix-Lexeme, denn der Suchpfad filtert nicht auf die Fassung
+  ([ADR-0028](../decisions/0028-tsv-version-uebergang.md)).
 - **Ein Dokument aus einem einzigen Chunk bekommt weiterhin keinen Titel vorangestellt** — es trägt
   seinen ganzen Text —, wohl aber einen Präfix, sobald ein präfixwirksamer Metadatenwert vorliegt: der
   steht gerade nicht in diesem Text.

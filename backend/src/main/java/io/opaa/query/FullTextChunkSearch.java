@@ -55,6 +55,13 @@ import tools.jackson.databind.ObjectMapper;
  * bekannte Grenze: ts_rank ist kein BM25", and docs/handbuch/deployment.md for the operator-facing
  * statement of the same limit).
  *
+ * <p><b>No {@code content_tsv_version} filter</b> (ADR-0028): a row built under an older {@link
+ * FullTextChunkStore#CURRENT_TSV_VERSION} is searched like any other, it merely lacks the lexemes a
+ * later version added until the pipeline re-index rewrites it. The version steers the fill state
+ * and the re-index selection, never this query - so raising it does not empty the lexical path.
+ * That holds only while every raise stays additive; a breaking change of the lexeme form (e.g. a
+ * different text search configuration) must reintroduce a filter here, see the constant's Javadoc.
+ *
  * <p>Schema/table name of the vector store are read from the same {@code
  * spring.ai.vectorstore.pgvector.*} properties {@code PgVectorStore} itself binds, mirroring {@link
  * ChunkEmbeddingLookup}.
@@ -142,7 +149,6 @@ class FullTextChunkSearch {
             + tableName
             + " v ON v.id = f.chunk_id, q "
             + "WHERE f.library_id = ANY(?) "
-            + "  AND f.content_tsv_version = ? "
             + "  AND f.content_tsv @@ q.tsq "
             + metadataPredicate
             // Ties in ts_rank are common - identically structured documents of one office score the
@@ -174,7 +180,6 @@ class FullTextChunkSearch {
             statement.setString(index++, parameter);
           }
           statement.setArray(index++, connection.createArrayOf("uuid", libraries));
-          statement.setShort(index++, FullTextChunkStore.CURRENT_TSV_VERSION);
           for (Object parameter : metadataParameters) {
             if (parameter instanceof String[] codes) {
               statement.setArray(index++, connection.createArrayOf("text", codes));

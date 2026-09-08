@@ -405,10 +405,12 @@ public class PipelineReindexService {
             + "       OR "
             + misrouted.sql()
             // The lexical-index gap: a chunk without a chunk_full_text row at the current
-            // FullTextChunkStore#CURRENT_TSV_VERSION is invisible to lexical search, and this
-            // re-index is the only thing that repairs it. Deliberately independent of pipelineId
-            // and belowVersion - raising CURRENT_TSV_VERSION raises no DocumentPipeline#version().
-            // It converges, because the rewritten rows carry the current version.
+            // FullTextChunkStore#CURRENT_TSV_VERSION lacks the current lexemes (a missing row is
+            // invisible to lexical search, an older row is searched without the newer lexemes,
+            // ADR-0028), and this re-index is the only thing that repairs it. Deliberately
+            // independent of pipelineId and belowVersion - raising CURRENT_TSV_VERSION raises no
+            // DocumentPipeline#version(). It converges, because the rewritten rows carry the
+            // current version.
             + "       OR NOT EXISTS ("
             + "            SELECT 1 FROM chunk_full_text f "
             + "            WHERE f.chunk_id = v.id AND f.content_tsv_version = ?)"
