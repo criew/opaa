@@ -769,7 +769,9 @@ und keinen Lauf-Datensatz. Damit sind die vier Zusagen aus
   Bibliothek ist Pflichtparameter, nicht Filter. Nichts löst ihn von selbst aus, auch keine
   Erhöhung der Extraktionsversion; der auslösende Aufruf wird protokolliert
   (`INDEXING_METADATA_BACKFILL_TRIGGERED`, Objekt ist die Bibliothek, mit Extraktionsversion und
-  Chargenzählern — ein Eintrag je Aufruf, nicht je Dokument).
+  Chargenzählern — ein Eintrag je Aufruf, nicht je Dokument). Auch der abgewiesene Aufruf (fremde
+  Bibliothek, ungültige Chargengröße) hinterlässt diesen einen Eintrag, dann mit `outcome = FAILURE`
+  und der Abweisung als Begründung statt der Zähler.
 - **Anhaltbar und wieder aufnehmbar:** Der Chargenaufruf **ist** die Wiederaufnahme; Anhalten ist das
   Ausbleiben des nächsten Aufrufs. Die Seite „Suche & Indexierung" treibt den Lauf als Schleife von
   Chargenaufrufen und bietet je Bibliothek „Kernfelder nachrüsten" / „Anhalten" / „Weiter" — „Anhalten"
@@ -1505,7 +1507,8 @@ dokumentgranular und idempotent (ein zweiter Lauf über bereits verarbeitete Dok
 Einbettungsaufruf), und Anhalten ist schlicht das Ausbleiben des nächsten Aufrufs. Ein Dokument, das
 nicht verarbeitet werden kann, behält alles, was es hatte, und bleibt ausstehend — nichts wird
 zerstört, bevor der Ersatz existiert. Jeder Aufruf wird auditiert
-(`INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED`, ein Eintrag je Aufruf, Objekt ist die Bibliothek).
+(`INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED`, ein Eintrag je Aufruf, Objekt ist die Bibliothek) — auch
+der abgewiesene, dann mit `outcome = FAILURE` und der Abweisung als Begründung.
 
 **Eine manuelle Korrektur eines präfixwirksamen Wertes bettet nicht sofort neu ein** (#1068): Sie leert
 den Abdruck dieses einen Dokuments und gibt es damit an den Nachlauf, dessen Start eine ausdrückliche

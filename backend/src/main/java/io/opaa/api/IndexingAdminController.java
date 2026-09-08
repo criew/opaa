@@ -26,8 +26,13 @@ import io.opaa.indexing.metadata.MetadataBackfillService;
 import io.opaa.indexing.pipeline.DocumentPipeline;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -52,6 +57,8 @@ public class IndexingAdminController {
   private static final int MAX_REINDEX_BATCH_SIZE = 100;
 
   private static final int DEFAULT_REINDEX_BATCH_SIZE = 10;
+
+  private static final Logger log = LoggerFactory.getLogger(IndexingAdminController.class);
 
   private final LowChunkDocumentAuditService lowChunkDocumentAuditService;
   private final PipelineReindexService pipelineReindexService;
@@ -108,79 +115,69 @@ public class IndexingAdminController {
         pipelineReindexService.progressForOrganization(caller.organizationId()));
   }
 
+  /**
+   * One batch of the pipeline re-index. Every call - executed or rejected - leaves exactly one
+   * audit event, see {@link #audited}.
+   */
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
   @PostMapping("/pipeline-reindex")
   public PipelineReindexResponse reindexPipelineBatch(
       @RequestBody PipelineReindexRequest request, @Caller CurrentUser caller) {
-    // Validated here rather than left to the service: every user-facing API error is German
-    // (AGENTS.md, Projektsprache), and an unknown pipelineId would otherwise silently return
-    // "done" for a re-index that never had a chance of matching anything.
     String pipelineId = request.getPipelineId();
-    DocumentPipeline pipeline =
-        pipelineRegistry.pipelines().stream()
-            .filter(candidate -> candidate.id().equals(pipelineId))
-            .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Unbekannte Pipeline: " + pipelineId));
-    Integer belowVersion = request.getBelowVersion();
-    if (belowVersion == null || belowVersion < 1) {
-      throw new IllegalArgumentException(
-          "belowVersion muss mindestens 1 sein, war " + belowVersion);
-    }
-    // Above the pipeline's own version there is no version to re-index *to*: the run would rewrite
-    // every chunk at the current version, find it still below the requested bound, and select the
-    // same documents again on every following batch - an unbounded loop of embedding calls, not a
-    // slow run. Note that a chunk selected via the routing gap (#1105, still naming the fallback
-    // pipeline for a format pipelineId now claims) is included regardless of this bound - see
-    // PipelineReindexService#selectStaleDocuments.
-    if (belowVersion > pipeline.version()) {
-      throw new IllegalArgumentException(
-          "belowVersion darf höchstens der aktuellen Version der Pipeline "
-              + pipelineId
-              + " entsprechen ("
-              + pipeline.version()
-              + "), war "
-              + belowVersion);
-    }
-    int batchSize =
-        request.getBatchSize() == null ? DEFAULT_REINDEX_BATCH_SIZE : request.getBatchSize();
-    if (batchSize < 1 || batchSize > MAX_REINDEX_BATCH_SIZE) {
-      throw new IllegalArgumentException(
-          "batchSize muss zwischen 1 und " + MAX_REINDEX_BATCH_SIZE + " liegen, war " + batchSize);
-    }
-
+    int batchSize = effectiveBatchSize(request.getBatchSize());
+    Map<String, Object> requested = new LinkedHashMap<>();
+    requested.put("pipelineId", pipelineId);
+    requested.put("belowVersion", request.getBelowVersion());
+    requested.put("batchSize", batchSize);
     PipelineReindexResult result =
-        pipelineReindexService.reindexBatch(
-            caller.organizationId(), pipelineId, belowVersion, batchSize);
-    recordReindexAudit(caller, pipelineId, belowVersion, result);
-    return PipelineVersionResponseMapper.toReindexResponse(result);
-  }
-
-  /**
-   * Records the triggering call, not one event per document: the call is the administrative
-   * decision, the documents are its effect. The object is the pipeline itself, identified by a
-   * name-derived UUID the way {@code AuditRetentionSettingsService} already identifies a settings
-   * object that has no row of its own.
-   */
-  private void recordReindexAudit(
-      CurrentUser caller, String pipelineId, int belowVersion, PipelineReindexResult result) {
-    auditEventRecorder.recordUserAction(
-        AuditEvent.builder()
-            .organizationId(caller.organizationId())
-            .actor(caller.id())
-            .type(AuditEventType.INDEXING_PIPELINE_REINDEX_TRIGGERED)
-            .object(
-                AuditObjectType.SYSTEM_SETTING,
-                UUID.nameUUIDFromBytes(pipelineId.getBytes(StandardCharsets.UTF_8)),
-                "Ingestion-Pipeline " + pipelineId)
-            .after(
+        audited(
+            caller,
+            AuditEventType.INDEXING_PIPELINE_REINDEX_TRIGGERED,
+            AuditObjectType.SYSTEM_SETTING,
+            pipelineObjectId(pipelineId),
+            "Ingestion-Pipeline " + pipelineId,
+            requested,
+            () -> {
+              // Validated here rather than left to the service: every user-facing API error is
+              // German (AGENTS.md, Projektsprache), and an unknown pipelineId would otherwise
+              // silently return "done" for a re-index that never had a chance of matching anything.
+              DocumentPipeline pipeline =
+                  pipelineRegistry.pipelines().stream()
+                      .filter(candidate -> candidate.id().equals(pipelineId))
+                      .findFirst()
+                      .orElseThrow(
+                          () -> new IllegalArgumentException("Unbekannte Pipeline: " + pipelineId));
+              Integer belowVersion = request.getBelowVersion();
+              if (belowVersion == null || belowVersion < 1) {
+                throw new IllegalArgumentException(
+                    "belowVersion muss mindestens 1 sein, war " + belowVersion);
+              }
+              // Above the pipeline's own version there is no version to re-index *to*: the run
+              // would rewrite every chunk at the current version, find it still below the requested
+              // bound, and select the same documents again on every following batch - an unbounded
+              // loop of embedding calls, not a slow run. Note that a chunk selected via the routing
+              // gap (#1105, still naming the fallback pipeline for a format pipelineId now claims)
+              // is included regardless of this bound - see
+              // PipelineReindexService#selectStaleDocuments.
+              if (belowVersion > pipeline.version()) {
+                throw new IllegalArgumentException(
+                    "belowVersion darf höchstens der aktuellen Version der Pipeline "
+                        + pipelineId
+                        + " entsprechen ("
+                        + pipeline.version()
+                        + "), war "
+                        + belowVersion);
+              }
+              return pipelineReindexService.reindexBatch(
+                  caller.organizationId(), pipelineId, belowVersion, requireBatchSize(batchSize));
+            },
+            outcome ->
                 Map.of(
-                    "belowVersion", belowVersion,
-                    "reindexedDocuments", result.reindexedDocuments(),
-                    "markedForNextRun", result.markedForNextRun(),
-                    "skippedDocuments", result.skippedDocuments(),
-                    "removedOrphanChunkSets", result.removedOrphanChunkSets()))
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
+                    "reindexedDocuments", outcome.reindexedDocuments(),
+                    "markedForNextRun", outcome.markedForNextRun(),
+                    "skippedDocuments", outcome.skippedDocuments(),
+                    "removedOrphanChunkSets", outcome.removedOrphanChunkSets()));
+    return PipelineVersionResponseMapper.toReindexResponse(result);
   }
 
   /**
@@ -192,19 +189,27 @@ public class IndexingAdminController {
   @PostMapping("/metadata-backfill")
   public MetadataBackfillResponse backfillMetadataBatch(
       @RequestBody MetadataBackfillRequest request, @Caller CurrentUser caller) {
-    UUID libraryId = request.getLibraryId();
-    if (libraryId == null) {
-      throw new IllegalArgumentException("libraryId ist erforderlich");
-    }
-    int batchSize =
-        request.getBatchSize() == null ? DEFAULT_REINDEX_BATCH_SIZE : request.getBatchSize();
-    if (batchSize < 1 || batchSize > MAX_REINDEX_BATCH_SIZE) {
-      throw new IllegalArgumentException(
-          "batchSize muss zwischen 1 und " + MAX_REINDEX_BATCH_SIZE + " liegen, war " + batchSize);
-    }
+    UUID libraryId = requireLibraryId(request.getLibraryId());
+    int batchSize = effectiveBatchSize(request.getBatchSize());
+    Map<String, Object> requested = new LinkedHashMap<>();
+    requested.put("extractionVersion", CoreMetadataExtractor.EXTRACTION_VERSION);
+    requested.put("batchSize", batchSize);
     MetadataBackfillResult result =
-        metadataBackfillService.backfillBatch(caller.organizationId(), libraryId, batchSize);
-    recordBackfillAudit(caller, libraryId, result);
+        audited(
+            caller,
+            AuditEventType.INDEXING_METADATA_BACKFILL_TRIGGERED,
+            AuditObjectType.KNOWLEDGE_LIBRARY,
+            libraryId,
+            "Bibliothek " + libraryId,
+            requested,
+            () ->
+                metadataBackfillService.backfillBatch(
+                    caller.organizationId(), libraryId, requireBatchSize(batchSize)),
+            outcome ->
+                Map.of(
+                    "processedDocuments", outcome.processedDocuments(),
+                    "markedForNextRun", outcome.markedForNextRun(),
+                    "skippedDocuments", outcome.skippedDocuments()));
     return MetadataBackfillResponseMapper.toBackfillResponse(result);
   }
 
@@ -217,58 +222,128 @@ public class IndexingAdminController {
   @PostMapping("/context-prefix-rerun")
   public ContextPrefixRerunResponse rerunContextPrefixBatch(
       @RequestBody ContextPrefixRerunRequest request, @Caller CurrentUser caller) {
-    UUID libraryId = request.getLibraryId();
+    UUID libraryId = requireLibraryId(request.getLibraryId());
+    int batchSize = effectiveBatchSize(request.getBatchSize());
+    Map<String, Object> requested = new LinkedHashMap<>();
+    requested.put("batchSize", batchSize);
+    ContextPrefixRerunResult result =
+        audited(
+            caller,
+            AuditEventType.INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED,
+            AuditObjectType.KNOWLEDGE_LIBRARY,
+            libraryId,
+            "Bibliothek " + libraryId,
+            requested,
+            () ->
+                contextPrefixRerunService.rerunBatch(
+                    caller.organizationId(), libraryId, requireBatchSize(batchSize)),
+            outcome ->
+                Map.of(
+                    "processedDocuments", outcome.processedDocuments(),
+                    "skippedDocuments", outcome.skippedDocuments()));
+    return MetadataBackfillResponseMapper.toRerunResponse(result);
+  }
+
+  /**
+   * The one audit mechanism of the three batch endpoints: the triggering call is the administrative
+   * decision and is recorded exactly once, whether it ran or was rejected. {@code SUCCESS} carries
+   * {@code requested} plus the counters derived from the result; any {@code RuntimeException} from
+   * {@code call} yields {@code FAILURE} with the exception's (German, user-facing) message as
+   * reason and {@code requested} alone as {@code after}, and is rethrown unchanged - even if
+   * writing the event itself fails, in which case that failure is logged and attached as
+   * suppressed. No transaction surrounds this method, so the event commits on its own regardless of
+   * what {@code call} rolled back.
+   */
+  private <R> R audited(
+      CurrentUser caller,
+      AuditEventType type,
+      AuditObjectType objectType,
+      UUID objectId,
+      String objectLabel,
+      Map<String, Object> requested,
+      Supplier<R> call,
+      Function<R, Map<String, Object>> counters) {
+    AuditEvent.Builder event =
+        AuditEvent.builder()
+            .organizationId(caller.organizationId())
+            .actor(caller.id())
+            .type(type)
+            .object(objectType, objectId, objectLabel);
+    R result;
+    try {
+      result = call.get();
+    } catch (RuntimeException ex) {
+      try {
+        auditEventRecorder.recordUserAction(
+            event
+                .after(withoutNullValues(requested))
+                .outcome(AuditOutcome.FAILURE)
+                .reason(ex.getMessage())
+                .build());
+      } catch (RuntimeException loggingFailure) {
+        log.error(
+            "Failed to write the audit event for a rejected {} call - the rejection is still"
+                + " reported correctly, but this call is missing its audit_log entry",
+            type,
+            loggingFailure);
+        ex.addSuppressed(loggingFailure);
+      }
+      throw ex;
+    }
+    Map<String, Object> after = withoutNullValues(requested);
+    after.putAll(counters.apply(result));
+    auditEventRecorder.recordUserAction(event.after(after).outcome(AuditOutcome.SUCCESS).build());
+    return result;
+  }
+
+  /**
+   * {@link AuditEvent} copies {@code after} via {@link Map#copyOf}, which rejects {@code null}
+   * values - an omitted optional request field is simply absent from the event.
+   */
+  private static Map<String, Object> withoutNullValues(Map<String, Object> values) {
+    Map<String, Object> copy = new LinkedHashMap<>();
+    values.forEach(
+        (key, value) -> {
+          if (value != null) {
+            copy.put(key, value);
+          }
+        });
+    return copy;
+  }
+
+  /**
+   * The pipeline has no row of its own; a name-derived UUID identifies it the way {@code
+   * AuditRetentionSettingsService} identifies a settings object without one. An absent pipelineId
+   * still yields a stable object id, so the rejected call can be recorded.
+   */
+  private static UUID pipelineObjectId(String pipelineId) {
+    return UUID.nameUUIDFromBytes(String.valueOf(pipelineId).getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * Checked before the audited section: without a library there is no object to record the call
+   * against - the request is malformed rather than an administrative decision.
+   */
+  private static UUID requireLibraryId(UUID libraryId) {
     if (libraryId == null) {
       throw new IllegalArgumentException("libraryId ist erforderlich");
     }
-    int batchSize =
-        request.getBatchSize() == null ? DEFAULT_REINDEX_BATCH_SIZE : request.getBatchSize();
+    return libraryId;
+  }
+
+  /**
+   * The batch size the call is about - defaulted but not yet validated, so a rejected out-of-range
+   * value is recorded as requested.
+   */
+  private static int effectiveBatchSize(Integer requestedBatchSize) {
+    return requestedBatchSize == null ? DEFAULT_REINDEX_BATCH_SIZE : requestedBatchSize;
+  }
+
+  private static int requireBatchSize(int batchSize) {
     if (batchSize < 1 || batchSize > MAX_REINDEX_BATCH_SIZE) {
       throw new IllegalArgumentException(
           "batchSize muss zwischen 1 und " + MAX_REINDEX_BATCH_SIZE + " liegen, war " + batchSize);
     }
-    ContextPrefixRerunResult result =
-        contextPrefixRerunService.rerunBatch(caller.organizationId(), libraryId, batchSize);
-    recordContextPrefixRerunAudit(caller, libraryId, result);
-    return MetadataBackfillResponseMapper.toRerunResponse(result);
-  }
-
-  /** One event per triggering call, mirroring {@link #recordBackfillAudit}. */
-  private void recordContextPrefixRerunAudit(
-      CurrentUser caller, UUID libraryId, ContextPrefixRerunResult result) {
-    auditEventRecorder.recordUserAction(
-        AuditEvent.builder()
-            .organizationId(caller.organizationId())
-            .actor(caller.id())
-            .type(AuditEventType.INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED)
-            .object(AuditObjectType.KNOWLEDGE_LIBRARY, libraryId, "Bibliothek " + libraryId)
-            .after(
-                Map.of(
-                    "processedDocuments", result.processedDocuments(),
-                    "skippedDocuments", result.skippedDocuments()))
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
-  }
-
-  /**
-   * One event per triggering call, mirroring {@link #recordReindexAudit}; the object is the
-   * library.
-   */
-  private void recordBackfillAudit(
-      CurrentUser caller, UUID libraryId, MetadataBackfillResult result) {
-    auditEventRecorder.recordUserAction(
-        AuditEvent.builder()
-            .organizationId(caller.organizationId())
-            .actor(caller.id())
-            .type(AuditEventType.INDEXING_METADATA_BACKFILL_TRIGGERED)
-            .object(AuditObjectType.KNOWLEDGE_LIBRARY, libraryId, "Bibliothek " + libraryId)
-            .after(
-                Map.of(
-                    "extractionVersion", CoreMetadataExtractor.EXTRACTION_VERSION,
-                    "processedDocuments", result.processedDocuments(),
-                    "markedForNextRun", result.markedForNextRun(),
-                    "skippedDocuments", result.skippedDocuments()))
-            .outcome(AuditOutcome.SUCCESS)
-            .build());
+    return batchSize;
   }
 }
