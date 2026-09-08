@@ -7,7 +7,7 @@ import io.micrometer.core.instrument.MeterRegistry;
  * Encapsulates all Micrometer metrics related to authentication and user provisioning.
  *
  * <p>#307 review, finding 3: a repeatedly failing personal-space provisioning (see {@code
- * UserService#ensurePersonalSpace}) must be genuinely visible, not merely logged with a hand-rolled
+ * PersonalSpaceProvisioner}) must be genuinely visible, not merely logged with a hand-rolled
  * counter that resets on every restart and lives outside every dashboard/alerting rule the existing
  * {@link IndexingMetrics}/{@link QueryMetrics} counters already feed - this is that same, already
  * standing Micrometer infrastructure, not new infrastructure of its own.

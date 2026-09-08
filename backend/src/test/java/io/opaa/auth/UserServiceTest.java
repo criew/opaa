@@ -13,7 +13,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.AuditEventType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.audit.AuditEventRecorder;
@@ -22,21 +21,19 @@ import io.opaa.auth.oidc.OidcProvider;
 import io.opaa.auth.oidc.OidcProviderRegistry;
 import io.opaa.auth.oidc.OidcProviderRepository;
 import io.opaa.common.ConflictException;
-import io.opaa.group.TokenGroupSynchronizer;
-import io.opaa.observability.AuthMetrics;
 import io.opaa.organization.Organization;
-import io.opaa.space.SpaceService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -55,16 +52,14 @@ import org.springframework.security.oauth2.jwt.Jwt;
 class UserServiceTest {
 
   private UserRepository userRepository;
-  private SpaceService spaceService;
   private AuthProperties authProperties;
   private AuditEventRecorder auditEventRecorder;
-  private AuthMetrics authMetrics;
   private MutableClock clock;
   private OidcProviderRegistry providerRegistry;
   private OidcProviderRepository providerRepository;
   private TokenRoleSynchronizer roleSynchronizer;
-  private TokenGroupSynchronizer groupSynchronizer;
   private UserService userService;
+  private final List<UserProvisionedEvent> publishedEvents = new ArrayList<>();
 
   /**
    * #833: a settable {@link Clock}, not {@link Clock#fixed}, so a test can advance time between two
@@ -98,13 +93,8 @@ class UserServiceTest {
   @BeforeEach
   void setUp() {
     userRepository = mock(UserRepository.class);
-    spaceService = mock(SpaceService.class);
     authProperties = mock(AuthProperties.class);
     auditEventRecorder = mock(AuditEventRecorder.class);
-    // A real AuthMetrics backed by a real (test-local) registry, not a mock (#307 review, finding
-    // 3): this lets ensuresPersonalSpaceWithoutPropagatingAFailure below assert the Micrometer
-    // counter itself actually incremented, not just that some method was called on a mock.
-    authMetrics = new AuthMetrics(new SimpleMeterRegistry());
     clock = new MutableClock(Instant.parse("2026-01-01T00:00:00Z"));
     // #1330: the initial-admin rule is issuer-bound (ADR-0025); in this mocked "dev" mode the dev
     // issuer "issuer1" is the trusted one, so the address tests below keep their meaning.
@@ -113,22 +103,28 @@ class UserServiceTest {
     providerRegistry = mock(OidcProviderRegistry.class);
     providerRepository = mock(OidcProviderRepository.class);
     roleSynchronizer = mock(TokenRoleSynchronizer.class);
-    groupSynchronizer = mock(TokenGroupSynchronizer.class);
     when(providerRegistry.findEnabledByIssuer(any())).thenReturn(Optional.empty());
     when(providerRepository.findByNormalizedIssuerUri(any())).thenReturn(Optional.empty());
-    userService =
-        new UserService(
-            userRepository,
-            spaceService,
-            new InitialAdminPolicy(
-                authProperties, new TrustedProvider(authProperties, providerRepository)),
-            providerRegistry,
-            providerRepository,
-            roleSynchronizer,
-            groupSynchronizer,
-            auditEventRecorder,
-            authMetrics,
-            clock);
+    userService = userServiceWith(event -> publishedEvents.add((UserProvisionedEvent) event));
+  }
+
+  private UserService userServiceWith(ApplicationEventPublisher eventPublisher) {
+    return new UserService(
+        userRepository,
+        new InitialAdminPolicy(
+            authProperties, new TrustedProvider(authProperties, providerRepository)),
+        providerRegistry,
+        providerRepository,
+        roleSynchronizer,
+        auditEventRecorder,
+        eventPublisher,
+        clock);
+  }
+
+  /** The single {@link UserProvisionedEvent} the call under test published. */
+  private UserProvisionedEvent onlyEvent() {
+    assertThat(publishedEvents).hasSize(1);
+    return publishedEvents.get(0);
   }
 
   private static Jwt tokenOf(String issuer) {
@@ -173,11 +169,15 @@ class UserServiceTest {
 
     assertThat(atBeschaeftigte.getEmail()).isEqualTo("alice@behoerde.example");
     assertThat(atPartner.getEmail()).isEqualTo("alice@partner.example");
-    // no roles/groups claim: the first provider never touches roles or groups
+    // no roles/groups claim: the first provider never touches roles, and names no group source
     verify(roleSynchronizer, never()).apply(eq(atBeschaeftigte), any(), any());
-    verify(groupSynchronizer, never()).apply(eq(atBeschaeftigte), any(), any());
     verify(roleSynchronizer).apply(atPartner, partner, List.of("opaa-admin"));
-    verify(groupSynchronizer).apply(atPartner, partner, List.of("Fachbereich 3"));
+    assertThat(publishedEvents).hasSize(2);
+    assertThat(publishedEvents.get(0).hasTokenGroups()).isFalse();
+    UserProvisionedEvent fromPartner = publishedEvents.get(1);
+    assertThat(fromPartner.user()).isSameAs(atPartner);
+    assertThat(fromPartner.provider()).isSameAs(partner);
+    assertThat(fromPartner.tokenGroups()).containsExactly("Fachbereich 3");
   }
 
   @Test
@@ -189,7 +189,8 @@ class UserServiceTest {
 
     assertThat(user.getEmail()).isEqualTo("alice@behoerde.example");
     assertThat(user.getDisplayName()).isEqualTo("Alice");
-    verifyNoInteractions(roleSynchronizer, groupSynchronizer);
+    verifyNoInteractions(roleSynchronizer);
+    assertThat(onlyEvent().hasTokenGroups()).isFalse();
   }
 
   @Test
@@ -254,9 +255,10 @@ class UserServiceTest {
     assertThat(user.getSubject()).isEqualTo("sub1");
     assertThat(user.getSystemRole()).isEqualTo(SystemRole.USER);
     assertThat(user.getOrganizationId()).isEqualTo(Organization.DEFAULT_ID);
-    // #307: a genuinely new user (this call's own insert won) skips the redundant existsBy round
-    // trip via the ensureDefaultSpaceForNewUser fast path - see UserService#ensurePersonalSpace.
-    verify(spaceService).ensureDefaultSpaceForNewUser(user.getId(), Organization.DEFAULT_ID);
+    // #307: a genuinely new user (this call's own insert won) is announced as such, which is what
+    // lets PersonalSpaceProvisioner skip the otherwise-redundant existsBy round trip.
+    assertThat(onlyEvent().user()).isSameAs(user);
+    assertThat(onlyEvent().createdHere()).isTrue();
   }
 
   @Test
@@ -272,7 +274,8 @@ class UserServiceTest {
 
     assertThat(user.getEmail()).isEqualTo("new@example.com");
     assertThat(user.getDisplayName()).isEqualTo("New Name");
-    verify(spaceService).ensureDefaultSpace(existing.getId(), Organization.DEFAULT_ID);
+    assertThat(onlyEvent().user()).isSameAs(existing);
+    assertThat(onlyEvent().createdHere()).isFalse();
   }
 
   /**
@@ -571,8 +574,12 @@ class UserServiceTest {
             argThat(event -> event.eventType() == AuditEventType.AUDITOR_ROLE_GRANTED));
   }
 
+  /**
+   * Exactly one event per call, for a returning user too - the provisioning listeners are
+   * idempotent, but a second event would double every round trip they make per request.
+   */
   @Test
-  void findOrCreateUserDelegatesPersonalSpaceIdempotencyToItsOwnService() {
+  void findOrCreateUserPublishesExactlyOneProvisioningEventPerCall() {
     User existing = new User("sub1", "issuer1", "old@example.com", "Old Name");
     existing.setOrganizationId(Organization.DEFAULT_ID);
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1"))
@@ -580,34 +587,34 @@ class UserServiceTest {
     when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
     userService.findOrCreateUser("sub1", "issuer1", "old@example.com", "Old Name");
+    clock.instant = clock.instant.plus(Duration.ofMinutes(10));
+    userService.findOrCreateUser("sub1", "issuer1", "old@example.com", "Old Name");
 
-    // UserService no longer checks existence itself; ensureDefaultSpace is idempotent and is
-    // always called, whether the user is new or existing.
-    verify(spaceService).ensureDefaultSpace(existing.getId(), Organization.DEFAULT_ID);
+    assertThat(publishedEvents).hasSize(2);
+    assertThat(publishedEvents).noneMatch(UserProvisionedEvent::createdHere);
   }
 
+  /**
+   * Whether a provisioning failure is survivable is each listener's own decision - {@code
+   * PersonalSpaceProvisioner} swallows it (a missing personal space must not become a lockout),
+   * {@code TokenGroupProvisioner} does not (an unsynchronized membership set must not be authorized
+   * against). A blanket catch here would take that decision away from both.
+   */
   @Test
-  void ensuresPersonalSpaceWithoutPropagatingAFailure() {
-    // The failure must not propagate to the caller (code review of #201/#305): findOrCreateUser
-    // has no ambient transaction to protect (#293/#299), so a rethrown failure here would fail the
-    // login request itself, and because this method runs unconditionally on every login, every
-    // subsequent login for that user too - turning a provisioning failure into a lockout.
-    //
-    // The user is still returned successfully; the failure is only logged (see log output captured
-    // by the test framework, not asserted here - the observable contract is "the call did not
-    // throw") and recorded in AuthMetrics (asserted below, #307 review, finding 3).
+  void aFailingProvisioningListenerIsNotSwallowedHere() {
     when(userRepository.findBySubjectAndIssuer("sub1", "issuer1")).thenReturn(Optional.empty());
     when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
     when(authProperties.initialAdminEmail()).thenReturn(null);
-    Mockito.doThrow(new RuntimeException("space provisioning failed"))
-        .when(spaceService)
-        .ensureDefaultSpaceForNewUser(any(), any());
+    RuntimeException failure = new RuntimeException("listener failed");
+    UserService withFailingListener =
+        userServiceWith(
+            event -> {
+              throw failure;
+            });
 
-    User user = userService.findOrCreateUser("sub1", "issuer1", "test@example.com", "Test");
-
-    assertThat(user.getSubject()).isEqualTo("sub1");
-    verify(spaceService).ensureDefaultSpaceForNewUser(any(), any());
-    assertThat(authMetrics.personalSpaceProvisioningFailedCount()).isEqualTo(1.0);
+    assertThatThrownBy(
+            () -> withFailingListener.findOrCreateUser("sub1", "issuer1", "t@example.com", "Test"))
+        .isSameAs(failure);
   }
 
   @Test
@@ -631,10 +638,10 @@ class UserServiceTest {
     assertThat(user).isEqualTo(winner);
     verify(userRepository, times(2)).findBySubjectAndIssuer("sub1", "issuer1");
     // #307: a race loser did not itself create the row - the winner might already have provisioned
-    // the personal space - so it must keep using the idempotent ensureDefaultSpace, never the
-    // existsBy-skipping ensureDefaultSpaceForNewUser fast path reserved for a genuine winner.
-    verify(spaceService).ensureDefaultSpace(winner.getId(), Organization.DEFAULT_ID);
-    verify(spaceService, Mockito.never()).ensureDefaultSpaceForNewUser(any(), any());
+    // the personal space - so it must be announced as not created here, which keeps the listener on
+    // the idempotent path instead of the fast path reserved for a genuine winner.
+    assertThat(onlyEvent().user()).isSameAs(winner);
+    assertThat(onlyEvent().createdHere()).isFalse();
   }
 
   @Test

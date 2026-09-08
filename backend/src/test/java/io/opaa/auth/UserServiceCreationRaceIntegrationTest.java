@@ -110,10 +110,10 @@ class UserServiceCreationRaceIntegrationTest {
       assertThat(persistedUser.getSubject()).isEqualTo(subject);
       assertThat(persistedUser.getIssuer()).isEqualTo(issuer);
 
-      // Every one of the CONCURRENT_LOGINS calls reaches findOrCreateUser's afterCommit hook for
-      // the same user - unlike before this fix, where only the single winner of the user-creation
-      // race ever got that far. SpaceService.ensureDefaultSpace's own race handling (#265) must
-      // still collapse all of those into exactly one personal space.
+      // Every one of the CONCURRENT_LOGINS calls provisions the personal space of the same user
+      // through its own UserProvisionedEvent - unlike before this fix, where only the single winner
+      // of the user-creation race ever got that far. SpaceService.ensureDefaultSpace's own race
+      // handling (#265) must still collapse all of those into exactly one personal space.
       List<Space> spaces = spaceRepository.findDistinctByMembershipsUserId(persistedUser.getId());
       assertThat(spaces).hasSize(1);
       assertThat(spaces.getFirst().isDefault()).isEqualTo(true);

@@ -514,9 +514,9 @@ public class SpaceService {
    * must already be committed and visible to other connections when this method is called - not
    * merely persisted in a still-open transaction. Calling this from inside the same transaction
    * that first creates the user row will fail with a {@code fk_spaces_owner_organization}
-   * violation, because the {@code REQUIRES_NEW} connection cannot see the uncommitted row (see
-   * {@code UserService#ensurePersonalSpaceAfterCommit}, which defers this call to a post-commit
-   * hook for exactly this reason).
+   * violation, because the {@code REQUIRES_NEW} connection cannot see the uncommitted row. {@code
+   * PersonalSpaceProvisioner}, the sign-in caller, satisfies this by running as a synchronous
+   * {@code UserProvisionedEvent} listener outside any transaction of the publisher.
    *
    * <p><b>{@code Propagation.NOT_SUPPORTED}, overriding the class-level
    * {@code @Transactional(readOnly = true)}:</b> without this override, calling this public method
@@ -545,13 +545,13 @@ public class SpaceService {
 
   /**
    * Same guarantee as {@link #ensureDefaultSpace(UUID, UUID)}, but for a {@code userId} the caller
-   * already knows to be brand new - {@code UserService.findOrCreateUser} calls this only for a
-   * subject/issuer pair its own insert (not a concurrent winner's) just created. A user row that
-   * did not exist a moment ago cannot already own a personal space, so the {@code existsBy} check
-   * {@link #ensureDefaultSpace(UUID, UUID)} performs first is guaranteed to return {@code false}
-   * here - calling it anyway would spend a whole extra pooled connection confirming a fact already
-   * known. Skipping it halves this method's connection consumption to one {@code REQUIRES_NEW}
-   * insert instead of an exists check plus an insert.
+   * already knows to be brand new - {@code PersonalSpaceProvisioner} calls this only for a
+   * subject/issuer pair the sign-in's own insert (not a concurrent winner's) just created. A user
+   * row that did not exist a moment ago cannot already own a personal space, so the {@code
+   * existsBy} check {@link #ensureDefaultSpace(UUID, UUID)} performs first is guaranteed to return
+   * {@code false} here - calling it anyway would spend a whole extra pooled connection confirming a
+   * fact already known. Skipping it halves this method's connection consumption to one {@code
+   * REQUIRES_NEW} insert instead of an exists check plus an insert.
    */
   @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void ensureDefaultSpaceForNewUser(UUID userId, UUID organizationId) {

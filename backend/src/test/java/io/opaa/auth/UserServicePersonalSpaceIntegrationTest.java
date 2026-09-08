@@ -23,37 +23,21 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * Exercises {@link UserService#findOrCreateUser} against a real Postgres database with the real,
- * versioned Liquibase schema applied ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none})
- * - not against Hibernate-generated DDL, and not with a mocked transaction manager. This class
- * predates #288 (it was added in #287, on real foreign keys from the start) and its
- * container/schema setup is the pattern #288 later applied to {@code SpaceServiceIntegrationTest}
- * and {@code SpaceRepositoryTest}. This is deliberate: the regression this test guards against
- * (follow-up to #265/#280) only manifests with real foreign-key constraints and real, separately
- * committed transactions. Even after #288, neither {@code SpaceServiceIntegrationTest} (calls
- * {@code ensureDefaultSpace} directly on an already-committed user, never from inside {@code
- * UserService}'s still-open transaction) nor {@code SpaceServiceTest} (mocked {@link
- * org.springframework.transaction.PlatformTransactionManager} - no real connection, no real
- * propagation, no real visibility semantics) can exercise it - the regression is specific to the
- * transaction-ordering interaction between {@code UserService} and {@code SpaceService}, not to
- * schema alone.
+ * Exercises {@link UserService#findOrCreateUser} against a real Postgres with the real, versioned
+ * Liquibase schema ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}) - not against
+ * Hibernate-generated DDL, and not with a mocked transaction manager: the guarded regression only
+ * manifests with real foreign keys and real, separately committed transactions, which neither
+ * {@code SpaceServiceIntegrationTest} nor {@code SpaceServiceTest} provides.
  *
- * <p><b>The regression:</b> {@code SpaceService.ensureDefaultSpace} (#265) runs its insert in its
- * own {@code REQUIRES_NEW} transaction, on its own connection with its own snapshot, so that a
- * constraint violation there does not poison the caller's transaction. {@code
- * UserService.findOrCreateUser} is itself {@code @Transactional} and - before this fix - called
- * {@code ensureDefaultSpace} from inside that still-open transaction. The {@code users} row it had
- * just inserted was not committed yet, so it was invisible on the {@code REQUIRES_NEW} connection,
- * and the personal-space insert failed on {@code fk_spaces_owner} for every single first login (not
- * just concurrent ones) - the whole outer transaction then rolled back, so not even the user was
- * created. {@link #firstLoginCreatesUserAndPersonalSpaceWithoutError()} reproduces this with a
- * single call and no concurrency at all. {@code UserService} now defers the {@code
- * ensureDefaultSpace} call to a {@code TransactionSynchronization#afterCommit} callback,
- * guaranteeing the user row is committed and visible by the time the personal space is created.
- *
- * <p>#201 had temporarily added an equivalent personal-library provisioning call alongside {@code
- * ensureDefaultSpace}, exercised by this class's now-removed library-race tests; #522 deleted the
- * automatic personal library entirely, so this class is back to covering the personal space alone.
+ * <p><b>Regression guard for #265/#280:</b> {@code SpaceService.ensureDefaultSpace} inserts in its
+ * own {@code REQUIRES_NEW} transaction on its own connection, so a caller that creates the {@code
+ * users} row in a still-open transaction of its own makes that row invisible to the insert, which
+ * then fails on {@code fk_spaces_owner} for every first login. The provisioning therefore runs in
+ * {@code PersonalSpaceProvisioner}, a synchronous {@code UserProvisionedEvent} listener with its
+ * own transaction and none of the publisher's, so the user row is always committed and visible by
+ * the time the personal space is created. {@link
+ * #firstLoginCreatesUserAndPersonalSpaceWithoutError()} reproduces the regression with a single
+ * call and no concurrency at all.
  */
 @OpaaIntegrationTest
 class UserServicePersonalSpaceIntegrationTest {
@@ -140,9 +124,9 @@ class UserServicePersonalSpaceIntegrationTest {
   void concurrentEnsurePersonalSpaceCallsForTheSameAlreadyCommittedUserCreateExactlyOneSpace()
       throws Exception {
     // The race #265 actually targets: two concurrent calls for the SAME user, both starting after
-    // the user row is already committed - exactly what UserService's afterCommit hook now
-    // guarantees. Calling SpaceService directly (bypassing UserService) isolates the
-    // partial-unique-index race from the user-creation race exercised above.
+    // the user row is already committed - exactly what the transaction-free publisher of
+    // UserProvisionedEvent now guarantees. Calling SpaceService directly (bypassing UserService)
+    // isolates the partial-unique-index race from the user-creation race exercised above.
     //
     // Inserted directly via userRepository, not userService.findOrCreateUser (#307): the latter
     // would report this user as brand new and populate SpaceService's personalSpaceProvisioned
