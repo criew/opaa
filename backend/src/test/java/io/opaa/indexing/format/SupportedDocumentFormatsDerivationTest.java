@@ -155,6 +155,65 @@ class SupportedDocumentFormatsDerivationTest {
   }
 
   /**
+   * The other half of the alternate-spelling rule: a strictly detected media type that no extension
+   * of the format names would leave that extension admitted and never accepted from content - the
+   * same silent dead end as a media type declared in the wrong form.
+   */
+  @Test
+  void anAlternateSpellingWhoseMediaTypeNoSiblingNamesFailsFast() {
+    DocumentFormat pdf =
+        new FakeFormat(
+            "pdf",
+            Set.of(
+                FormatAdmission.detectedAs(".pdf", "application/pdf"),
+                FormatAdmission.detectedAs(".pdfa", "application/pdf-a").asAlternateSpelling()));
+
+    assertThatThrownBy(() -> new SupportedDocumentFormats(List.of(pdf)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(".pdfa")
+        .hasMessageContaining("application/pdf-a");
+  }
+
+  @Test
+  void aFormatWhoseOnlyStrictAdmissionIsAnAlternateSpellingFailsFast() {
+    DocumentFormat lonely =
+        new FakeFormat(
+            "lonely",
+            Set.of(FormatAdmission.detectedAs(".foo", "application/x-foo").asAlternateSpelling()));
+
+    assertThatThrownBy(() -> new SupportedDocumentFormats(List.of(lonely)))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("application/x-foo");
+  }
+
+  /**
+   * A text-tolerant admission is exempt: its own name decides, never its media type, so there is
+   * nothing for a detection to resolve back to in the first place.
+   */
+  @Test
+  void aTextTolerantAlternateSpellingNeedsNoPrimaryToResolveTo() {
+    DocumentFormat yaml =
+        new FakeFormat(
+            "yaml",
+            Set.of(
+                FormatAdmission.textTolerant(".yaml", "text/yaml"),
+                FormatAdmission.textTolerant(".yml", "text/yaml").asAlternateSpelling()));
+    DocumentFormat notes =
+        new FakeFormat(
+            "notes",
+            Set.of(FormatAdmission.textTolerant(".note", "text/x-note").asAlternateSpelling()));
+
+    SupportedDocumentFormats supported = new SupportedDocumentFormats(List.of(yaml, notes));
+
+    assertThat(supported.extensions()).containsExactly(".note", ".yaml", ".yml");
+    assertThat(supported.contentMatchesExtension(".yml", "text/plain")).isTrue();
+    assertThat(supported.decideForFileName("liste.yml", "text/plain").detectedExtension())
+        .isEqualTo(".yml");
+    assertThat(supported.extensionForContentType("text/yaml")).isEqualTo(".yaml");
+    assertThat(supported.extensionForContentType("text/x-note")).isNull();
+  }
+
+  /**
    * An admission a declared header may not name is still admitted and still detected - only {@link
    * SupportedDocumentFormats#extensionForContentType} keeps its hands off it.
    */

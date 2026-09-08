@@ -254,12 +254,19 @@ auseinanderlaufen können.
 | Welche Endung beansprucht ein Format fürs Routing? | `handledFormats()`, standardmäßig genau die zugelassenen — der Fallback überschreibt sie auf leer |
 | Welche Endungen sind zugelassen, ohne ein eigenes Format zu haben? | `.txt` und `.doc`, deklariert am `TikaFallbackFormat` — eine benannte Entscheidung statt eines Restes |
 | Was bedeutet „texttolerant"? | Eine Eigenschaft der Deklaration (`.md`, `.txt`, `.csv`, `.eml`); die Regel selbst — Inhalt *und* Endung — bleibt in `decideForFileName` |
-| Welche Endung benennt ein angekündigter `Content-Type`? | `SupportedDocumentFormats#extensionForContentType`, bewusst enger als Tika: der kanonische Typ jeder zugelassenen Endung außer den beiden Mailformaten (GSB-Anhangsprofil, S3-Schlüssel ohne Endung) |
+| Welche Endung benennt ein angekündigter `Content-Type`? | `SupportedDocumentFormats#extensionForContentType`, bewusst enger als Tika: der kanonische Typ jeder zugelassenen Endung — außer wo die Deklaration es ausschließt (`FormatAdmission#notNamedByDeclaredContentType`, heute die beiden Mailformate: ein Header ist kein vertrauenswürdiger Name für eine Mail). Gefragt wird nur, wo die Adresse keine Endung trägt: GSB-Anhangsprofil, S3-Schlüssel ohne Endung |
+| Wie bekommt ein Format eine zweite Schreibweise? | `FormatAdmission#asAlternateSpelling` — `.htm` neben `.html` wird zugelassen und gleich geprüft, benennt seine Medientypen aber nicht; eine Erkennung löst deterministisch auf die erste Schreibweise auf |
 
-Zwei Formate, die dieselbe Endung **oder** denselben Medientyp beanspruchen, lassen den Kontext beim
-Start scheitern — die Zusicherung, die vorher nur für Routing-Ansprüche galt, gilt jetzt auch für die
-Zulassung. Wer ein Format für eine bereits zugelassene Endung ergänzt (etwa `.txt`), nimmt sie beim
-Fallback heraus; still gewinnen kann keines von beiden.
+Fünf Zusicherungen scheitern beim Kontextstart, statt die Bean-Reihenfolge entscheiden zu lassen:
+zwei Formate beanspruchen dieselbe Endung fürs Routing (die Zusicherung, die es schon vorher gab);
+zwei Formate lassen dieselbe Endung zu; zwei **verschiedene** Formate lassen denselben Medientyp zu;
+ein Format benennt denselben Medientyp unter zwei seiner Endungen (dann fehlt an einer von beiden
+`asAlternateSpelling()`); und ein strikt erkannter Medientyp wird von keiner Endung seines Formats
+benannt — eine Zweitschreibweise ohne Erstschreibweise wäre sonst zugelassen und nie erreichbar. Für
+texttolerante Deklarationen entfällt die letzte Prüfung, dort entscheidet ohnehin der Name.
+
+Wer ein Format für eine bereits zugelassene Endung ergänzt (etwa `.txt`), nimmt sie beim Fallback
+heraus; still gewinnen kann keines von beiden.
 
 Die abgeleitete Menge ist **exakt die vorherige**: dieselben vierzehn Endungen, dieselben kanonischen
 Typen, dieselben strikten Erkennungsgrenzen, dieselbe Antwort auf jede Kombination aus Dateiname und

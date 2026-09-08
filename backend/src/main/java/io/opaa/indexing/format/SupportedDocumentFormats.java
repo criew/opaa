@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -49,9 +50,10 @@ public final class SupportedDocumentFormats {
    * including the fallback, whose own declaration is what keeps an admitted extension without a
    * specialized format ({@code .txt}, {@code .doc}) a named decision rather than a leftover.
    *
-   * @throws IllegalStateException two formats declare the same extension or the same media type, or
-   *     one format names a media type under two of its extensions; bean order would otherwise
-   *     silently decide which of them a document reaches
+   * @throws IllegalStateException two formats declare the same extension or the same media type,
+   *     one format names a media type under two of its extensions, or a strictly detected media
+   *     type is named by none of them; bean order would otherwise silently decide which extension a
+   *     document reaches, or no extension at all would
    */
   public SupportedDocumentFormats(Collection<? extends DocumentFormat> formats) {
     Map<String, String> canonicalByExtension = new HashMap<>();
@@ -61,6 +63,7 @@ public final class SupportedDocumentFormats {
     Map<String, String> declaringFormatByExtension = new HashMap<>();
     Map<String, String> declaringFormatByMediaType = new HashMap<>();
     Map<String, String> namingExtensionByMediaType = new HashMap<>();
+    List<StrictDetection> strictDetections = new ArrayList<>();
     Set<String> textTolerant = new HashSet<>();
     for (DocumentFormat format : formats) {
       for (FormatAdmission admission : format.admittedFormats()) {
@@ -83,6 +86,9 @@ public final class SupportedDocumentFormats {
           textTolerant.add(extension);
         }
         for (String mediaType : mediaTypesOf(admission)) {
+          if (!admission.textTolerant()) {
+            strictDetections.add(new StrictDetection(format.id(), extension, mediaType));
+          }
           // A format may admit one media type under several extensions (".htm" beside ".html");
           // two formats may not, since nothing but iteration order could then decide between them.
           String previousClaim = declaringFormatByMediaType.put(mediaType, format.id());
@@ -121,6 +127,23 @@ public final class SupportedDocumentFormats {
         }
       }
     }
+    // Every media type a strict admission is matched against has to resolve back to an extension -
+    // an alternate spelling whose type no sibling names would be admitted and then never accepted
+    // from content, the very outcome declaring the admission at the format is meant to rule out.
+    // Text-tolerant admissions are exempt: their name decides, never their media type.
+    for (StrictDetection detection : strictDetections) {
+      if (!byDetectedMediaType.containsKey(detection.mediaType())) {
+        throw new IllegalStateException(
+            "Document format "
+                + detection.formatId()
+                + " admits "
+                + detection.extension()
+                + " for the media type "
+                + detection.mediaType()
+                + ", but no extension of it names that type - an alternate spelling needs a"
+                + " primary declaration to resolve to");
+      }
+    }
     this.extensions = Set.copyOf(canonicalByExtension.keySet());
     this.sortedExtensions = List.copyOf(new TreeSet<>(this.extensions));
     this.canonicalMediaTypeByExtension = Map.copyOf(canonicalByExtension);
@@ -129,6 +152,9 @@ public final class SupportedDocumentFormats {
     this.extensionByDeclaredContentType = Map.copyOf(byDeclaredContentType);
     this.textTolerantExtensions = Set.copyOf(textTolerant);
   }
+
+  /** One media type a strict admission demands a detection to report, for the check above. */
+  private record StrictDetection(String formatId, String extension, String mediaType) {}
 
   /** Every media type an admission speaks for - its canonical one and its detections. */
   private static Set<String> mediaTypesOf(FormatAdmission admission) {
