@@ -562,6 +562,13 @@ public class SourceConnectionTestService {
               RateLimitHandling.NONE,
               AutoindexCrawlerService.credentialScope(url));
       try (InputStream body = response.body()) {
+        // Judged before the status: a run never reads such a page, whatever it answers.
+        if (!AutoindexCrawlerService.staysInsideStartSubtree(url, response.uri())) {
+          return unreachable(
+              "Die Adresse leitet auf eine Adresse außerhalb der Start-URL weiter (Ziel: "
+                  + RedirectFollowingFetcher.sanitizedOrigin(response.uri())
+                  + "); ein Lauf würde diese Seite nicht auswerten.");
+        }
         if (response.statusCode() == 401) {
           return unreachable(
               "Die Zugangsdaten wurden vom Server abgelehnt (HTTP 401 Unauthorized).");

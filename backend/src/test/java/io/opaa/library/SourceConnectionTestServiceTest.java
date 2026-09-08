@@ -365,6 +365,43 @@ class SourceConnectionTestServiceTest {
   }
 
   @Test
+  void httpDirectoryDoesNotEvaluateAListingReachedOutsideTheTestedSubtree() throws IOException {
+    // Mirrors the run, which never parses such a page: reported as unreachable with the target's
+    // origin only, never its path or query.
+    server.createContext(
+        "/dokumente/",
+        exchange -> {
+          exchange.getResponseHeaders().set("Location", baseUrl + "/intern/?token=geheim");
+          exchange.sendResponseHeaders(302, -1);
+          exchange.close();
+        });
+    server.createContext(
+        "/intern/",
+        exchange -> {
+          byte[] body =
+              "<html><body><ul><li><a href=\"a.pdf\">a.pdf</a></li></ul></body></html>"
+                  .getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().set("Content-Type", "text/html");
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    SourceConnectionTestResult response =
+        service.test(
+            sourceConnectionTest()
+                .sourceType(DocumentSourceType.HTTP_DIRECTORY)
+                .sourceUrl(URI.create(baseUrl + "/dokumente/"))
+                .build());
+
+    assertThat(response.reachable()).isFalse();
+    assertThat(response.message())
+        .contains("außerhalb der Start-URL")
+        .contains(baseUrl)
+        .doesNotContain("intern", "geheim");
+  }
+
+  @Test
   void httpDirectoryFollowsASameOriginRedirect() throws IOException {
     // #538 follow-up review, finding 4: SourceConnectionTestService had no redirect test at all -
     // buildHttpClient no longer auto-follows at the JDK level (Redirect.NEVER), so a legitimate
@@ -376,18 +413,18 @@ class SourceConnectionTestServiceTest {
         <tr><td><img alt="[TXT]"></td><td><a href="a.txt">a.txt</a></td><td>2025-01-01</td><td>10</td></tr>
         </table>
         """;
-    // testHttpDirectory itself appends a trailing slash before ever sending a request (mirrors
-    // UrlIndexingExecutor) - the redirect context is therefore registered at "/dir-old/" (what the
-    // service actually requests), not at the un-normalized "/dir-old" the test passes in.
+    // testHttpDirectory appends a trailing slash itself unless the last segment looks like a file
+    // name (mirrors UrlIndexingExecutor) - "/dir.v2" is therefore requested as-is, and the server's
+    // own trailing-slash redirect stays inside the tested URL's subtree.
     server.createContext(
-        "/dir-old/",
+        "/dir.v2",
         exchange -> {
-          exchange.getResponseHeaders().set("Location", baseUrl + "/dir/");
+          exchange.getResponseHeaders().set("Location", baseUrl + "/dir.v2/");
           exchange.sendResponseHeaders(301, -1);
           exchange.close();
         });
     server.createContext(
-        "/dir/",
+        "/dir.v2/",
         exchange -> {
           byte[] body = html.getBytes(StandardCharsets.UTF_8);
           exchange.sendResponseHeaders(200, body.length);
@@ -399,7 +436,7 @@ class SourceConnectionTestServiceTest {
         service.test(
             sourceConnectionTest()
                 .sourceType(DocumentSourceType.HTTP_DIRECTORY)
-                .sourceUrl(URI.create(baseUrl + "/dir-old"))
+                .sourceUrl(URI.create(baseUrl + "/dir.v2"))
                 .build());
 
     assertThat(response.reachable()).isTrue();

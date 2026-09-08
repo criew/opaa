@@ -28,6 +28,7 @@ import io.opaa.sourceaccess.SourceHttpClientFactory;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
+import java.net.URI;
 import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -165,6 +167,18 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                   + " außerhalb der Start-URL) und wurde nicht verfolgt",
               rejectedLink);
     }
+    // The event names the crawl's own request; of the redirect target only its origin, never its
+    // path or query.
+    for (AutoindexCrawlerService.RedirectedOutside redirected : crawlResult.redirectedOutside()) {
+      run.events()
+          .record(
+              IndexingEventCategory.REJECTED,
+              "Verzeichnisseite wurde auf eine Adresse außerhalb der Start-URL weitergeleitet"
+                  + " (Ziel: "
+                  + redirected.targetOrigin()
+                  + ") und nicht ausgewertet; der Bestand dieses Laufs ist unvollständig",
+              redirected.url());
+    }
 
     run.progress().setTotal(allFiles.size());
     run.progress().report();
@@ -230,6 +244,9 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
       return;
     }
 
+    // The same scope the crawl applied to its directory pages: a file redirected out of the start
+    // URL's subtree is fetched without the source configuration's credentials.
+    Predicate<URI> credentialScope = AutoindexCrawlerService.credentialScope(normalizedUrl);
     Path tempFile = null;
     try {
       log.info("Processing URL document: {} ({})", entry.name(), entry.url());
@@ -239,7 +256,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
               authHeader,
               entry.url(),
               SupportedDocumentFormats.DETECTION_PREFIX_BYTES,
-              budget);
+              budget,
+              credentialScope);
       // Holds whatever the decision below had to download in full to reach a verdict, so the
       // finally block deletes it even when detection on it fails - and so an accepted entry is
       // not transferred a second time.
@@ -258,7 +276,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                             entry.url(),
                             entry.name(),
                             crawlProperties.maxFileSizeBytes(),
-                            budget));
+                            budget,
+                            credentialScope));
       } finally {
         tempFile = downloadedForDecision[0];
       }
@@ -294,7 +313,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
                 entry.url(),
                 entry.name(),
                 crawlProperties.maxFileSizeBytes(),
-                budget);
+                budget,
+                credentialScope);
       }
       long fileSize = Files.size(tempFile);
       FileProcessingResult result =

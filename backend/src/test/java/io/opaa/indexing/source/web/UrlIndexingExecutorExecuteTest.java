@@ -161,7 +161,7 @@ class UrlIndexingExecutorExecuteTest {
                 return downloaded;
               })
           .when(downloader)
-          .download(any(), any(), anyString(), anyString(), anyLong(), any());
+          .download(any(), any(), anyString(), anyString(), anyLong(), any(), any());
     } catch (IOException | InterruptedException e) {
       throw new IllegalStateException(e);
     }
@@ -200,7 +200,11 @@ class UrlIndexingExecutorExecuteTest {
   }
 
   private void execute() {
-    library.updateSourceConfiguration(null, baseUrl + "/files/", null, null, false);
+    execute(null);
+  }
+
+  private void execute(String credentials) {
+    library.updateSourceConfiguration(null, baseUrl + "/files/", null, credentials, false);
     UUID jobId = UUID.randomUUID();
     executor.execute(jobId, library, IndexingRunMode.FULL);
     verify(indexingJobService, timeout(5000))
@@ -267,6 +271,50 @@ class UrlIndexingExecutorExecuteTest {
 
     // the listing page, the detection prefix and the full download
     assertThat(userAgents).hasSize(3).containsOnly("OPAA-Indexer/web-test");
+  }
+
+  @Test
+  void aFileRedirectedOutOfTheStartSubtreeIsFetchedWithoutTheCredentials() throws IOException {
+    // regression guard for #1301: the source configuration's credentials belong to the start
+    // URL's subtree - a file entry's same-origin redirect to a sibling path must not carry them.
+    Map<String, String> authorizationByPath = new ConcurrentHashMap<>();
+    server.createContext(
+        "/files/",
+        exchange -> {
+          authorizationByPath.put(
+              "/files/", String.valueOf(exchange.getRequestHeaders().getFirst("Authorization")));
+          exchange.getResponseHeaders().set("Content-Type", "text/html");
+          exchange.sendResponseHeaders(200, LISTING_WITH_ONE_PDF.length);
+          exchange.getResponseBody().write(LISTING_WITH_ONE_PDF);
+          exchange.close();
+        });
+    server.createContext(
+        "/files/bericht.pdf",
+        exchange -> {
+          exchange.getResponseHeaders().set("Location", baseUrl + "/intern/gehalt.pdf");
+          exchange.sendResponseHeaders(302, -1);
+          exchange.close();
+        });
+    server.createContext(
+        "/intern/gehalt.pdf",
+        exchange -> {
+          authorizationByPath.put(
+              "/intern/gehalt.pdf",
+              String.valueOf(exchange.getRequestHeaders().getFirst("Authorization")));
+          exchange.getResponseHeaders().set("Content-Type", "application/pdf");
+          exchange.sendResponseHeaders(200, PDF_BODY.length);
+          exchange.getResponseBody().write(PDF_BODY);
+          exchange.close();
+        });
+    when(fileProcessingService.ingest(DocumentIngests.anyFile(), any()))
+        .thenReturn(FileProcessingResult.PROCESSED);
+
+    execute("admin:secret");
+
+    assertThat(authorizationByPath.get("/files/")).isEqualTo("Basic YWRtaW46c2VjcmV0");
+    assertThat(authorizationByPath.get("/intern/gehalt.pdf"))
+        .as("the detection prefix and the full download were both redirected")
+        .isEqualTo("null");
   }
 
   @Test
@@ -834,7 +882,7 @@ class UrlIndexingExecutorExecuteTest {
     serve("/files/b.pdf", "application/pdf", PDF_BODY);
     doThrow(new InterruptedException())
         .when(downloader)
-        .downloadPrefix(any(), any(), eq(baseUrl + "/files/a.pdf"), anyInt(), any());
+        .downloadPrefix(any(), any(), eq(baseUrl + "/files/a.pdf"), anyInt(), any(), any());
 
     UUID jobId;
     try {

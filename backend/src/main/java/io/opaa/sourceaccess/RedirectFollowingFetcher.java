@@ -111,8 +111,8 @@ public final class RedirectFollowingFetcher {
         httpClient, url, timeout, headers, targetAddressValidator, policy, rateLimit, ANY_TARGET);
   }
 
-  /** The {@code authorizationScope} that keeps credentials on every same-origin hop. */
-  private static final Predicate<URI> ANY_TARGET = target -> true;
+  /** The {@code authorizationScope} that keeps credentials on every trusted-origin hop. */
+  public static final Predicate<URI> ANY_TARGET = target -> true;
 
   /**
    * {@link #sendFollowingRedirects(HttpClient, String, Duration, Map, TargetAddressValidator,
@@ -316,7 +316,7 @@ public final class RedirectFollowingFetcher {
    * rejected redirect in the German, user-facing message. Not a general-purpose redaction: a
    * caller's own log statements still log the unsanitized target via the exception message.
    */
-  static String sanitizedOrigin(URI uri) {
+  public static String sanitizedOrigin(URI uri) {
     String scheme = uri.getScheme() == null ? "?" : uri.getScheme();
     String host = uri.getHost() == null ? "?" : uri.getHost();
     String portSuffix = uri.getPort() == -1 ? "" : ":" + uri.getPort();

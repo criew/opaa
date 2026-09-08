@@ -124,6 +124,37 @@ class RedirectFollowingFetcherTest {
   }
 
   @Test
+  void dropAuthorizationOffOrigin_keepsAuthorizationDroppedOnceAChainReturnsIntoTheScope()
+      throws IOException, InterruptedException {
+    // Dropped is dropped: a hop back into the scope after one outside must not restore the header.
+    AtomicReference<String> receivedAuthorization = new AtomicReference<>("(never contacted)");
+    origin.createContext("/dokumente/a/", exchange -> redirectTo(exchange, originUrl + "/intern/"));
+    origin.createContext("/intern/", exchange -> redirectTo(exchange, originUrl + "/dokumente/b/"));
+    origin.createContext(
+        "/dokumente/b/",
+        exchange -> {
+          receivedAuthorization.set(exchange.getRequestHeaders().getFirst("Authorization"));
+          respond(exchange, 200, "content");
+        });
+
+    Map<String, String> headers = new LinkedHashMap<>();
+    headers.put("Authorization", "Basic dGVzdDp0ZXN0");
+    HttpResponse<InputStream> response =
+        RedirectFollowingFetcher.sendFollowingRedirects(
+            productionClient(),
+            originUrl + "/dokumente/a/",
+            Duration.ofSeconds(5),
+            headers,
+            TargetAddressValidator.disabled(),
+            RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
+            RateLimitHandling.NONE,
+            target -> target.getPath().startsWith("/dokumente/"));
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(receivedAuthorization.get()).isNull();
+  }
+
+  @Test
   void dropAuthorizationOffOrigin_keepsAuthorizationOnARedirectInsideTheAuthorizationScope()
       throws IOException, InterruptedException {
     AtomicReference<String> receivedAuthorization = new AtomicReference<>("(never contacted)");

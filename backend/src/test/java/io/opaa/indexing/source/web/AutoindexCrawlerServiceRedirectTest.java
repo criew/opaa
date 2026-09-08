@@ -7,6 +7,7 @@ import io.opaa.sourceaccess.TargetAddressValidator;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,6 +31,9 @@ class AutoindexCrawlerServiceRedirectTest {
 
   /** Request path to the {@code Authorization} header it arrived with ({@code "-"} for none). */
   private final Map<String, String> authorizationByPath = new ConcurrentHashMap<>();
+
+  /** Request path to how often it was requested. */
+  private final Map<String, Integer> requestsByPath = new ConcurrentHashMap<>();
 
   @BeforeEach
   void setUp() throws IOException {
@@ -92,6 +96,7 @@ class AutoindexCrawlerServiceRedirectTest {
   private void record(com.sun.net.httpserver.HttpExchange exchange) {
     String auth = exchange.getRequestHeaders().getFirst("Authorization");
     authorizationByPath.put(exchange.getRequestURI().getRawPath(), auth == null ? "-" : auth);
+    requestsByPath.merge(exchange.getRequestURI().getRawPath(), 1, Integer::sum);
   }
 
   private AutoindexCrawlerService.CrawlResult crawl(String startUrl)
@@ -109,11 +114,33 @@ class AutoindexCrawlerServiceRedirectTest {
     redirect("/dokumente/unterordner/", origin + "/intern/");
     serveListing("/intern/", "geheim.txt");
 
-    crawl(origin + "/dokumente/");
+    AutoindexCrawlerService.CrawlResult result = crawl(origin + "/dokumente/");
 
     assertThat(authorizationByPath.get("/dokumente/")).isEqualTo(AUTH);
     assertThat(authorizationByPath.get("/dokumente/unterordner/")).isEqualTo(AUTH);
     assertThat(authorizationByPath.get("/intern/")).isEqualTo("-");
+    // the page outside is never parsed, and its subtree is content the crawl did not see
+    assertThat(result.entries()).isEmpty();
+    assertThat(result.incomplete()).isTrue();
+    assertThat(result.redirectedOutside())
+        .containsExactly(
+            new AutoindexCrawlerService.RedirectedOutside(
+                origin + "/dokumente/unterordner/", origin));
+  }
+
+  @Test
+  void aPageRedirectedOutsideIsReportedByItsTargetOriginOnly()
+      throws IOException, InterruptedException {
+    serveListing("/dokumente/", "unterordner/");
+    redirect("/dokumente/unterordner/", origin + "/login?SAMLRequest=geheim");
+
+    AutoindexCrawlerService.CrawlResult result = crawl(origin + "/dokumente/");
+
+    assertThat(result.redirectedOutside()).hasSize(1);
+    assertThat(result.redirectedOutside().get(0).targetOrigin())
+        .isEqualTo(origin)
+        .doesNotContain("login", "geheim");
+    assertThat(result.rejectedLinks()).isEmpty();
   }
 
   @Test
@@ -122,11 +149,12 @@ class AutoindexCrawlerServiceRedirectTest {
     serveListing("/dokumente/", "unterordner/");
     redirect("/dokumente/unterordner/", origin + "/dokumente/%2E%2E/intern/");
 
-    crawl(origin + "/dokumente/");
+    AutoindexCrawlerService.CrawlResult result = crawl(origin + "/dokumente/");
 
     assertThat(authorizationByPath)
         .as("the encoded traversal target was requested, but without credentials")
         .containsEntry("/dokumente/%2E%2E/intern/", "-");
+    assertThat(result.incomplete()).isTrue();
   }
 
   @Test
@@ -142,5 +170,30 @@ class AutoindexCrawlerServiceRedirectTest {
     assertThat(result.entries())
         .extracting(AutoindexCrawlerService.CrawledFileEntry::url)
         .containsExactly(origin + "/dokumente/neu/datei.txt");
+    assertThat(result.incomplete()).isFalse();
+  }
+
+  @Test
+  void aRedirectTargetInsideTheSubtreeCountsAsVisited() throws IOException, InterruptedException {
+    serveListing("/dokumente/", "alt/", "neu/");
+    redirect("/dokumente/alt/", origin + "/dokumente/neu/");
+    serveListing("/dokumente/neu/", "datei.txt");
+
+    AutoindexCrawlerService.CrawlResult result = crawl(origin + "/dokumente/");
+
+    assertThat(requestsByPath.get("/dokumente/neu/")).isEqualTo(1);
+    assertThat(result.entries())
+        .extracting(AutoindexCrawlerService.CrawledFileEntry::url)
+        .containsExactly(origin + "/dokumente/neu/datei.txt");
+  }
+
+  @Test
+  void theCredentialScopeCoversTheStartUrlItselfAndItsSubtreeOnly() {
+    var scope = AutoindexCrawlerService.credentialScope("http://host.example/liste.php");
+
+    assertThat(scope.test(URI.create("http://host.example/liste.php?dir=a"))).isTrue();
+    assertThat(scope.test(URI.create("http://host.example/liste.php/unten/"))).isTrue();
+    assertThat(scope.test(URI.create("http://host.example/liste.phpx"))).isFalse();
+    assertThat(scope.test(URI.create("http://host.example/"))).isFalse();
   }
 }

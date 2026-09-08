@@ -101,17 +101,18 @@ class UrlIndexingExecutorQuotaTest {
     when(crawlerService.crawl(anyString(), any(), anyInt(), any(), any(), anyBoolean(), any()))
         .thenReturn(
             new AutoindexCrawlerService.CrawlResult(
-                List.of(entry), false, false, false, List.of()));
+                List.of(entry), false, false, false, List.of(), List.of()));
 
     Path downloaded = tempDir.resolve("over-quota.txt");
     Files.writeString(downloaded, "content");
     when(downloader.download(
-            any(HttpClient.class), any(), anyString(), anyString(), anyLong(), any()))
+            any(HttpClient.class), any(), anyString(), anyString(), anyLong(), any(), any()))
         .thenReturn(downloaded);
     // The executor reads a bounded prefix to decide before ever calling #download - this mock
     // must answer it too, or the format decision sees a null sample and the entry never reaches
     // processing.
-    when(downloader.downloadPrefix(any(HttpClient.class), any(), anyString(), anyInt(), any()))
+    when(downloader.downloadPrefix(
+            any(HttpClient.class), any(), anyString(), anyInt(), any(), any()))
         .thenReturn("content".getBytes(StandardCharsets.UTF_8));
 
     executor =
