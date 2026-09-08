@@ -186,3 +186,19 @@ bleibt unverändert, damit erkennbar bleibt, was wann galt.
   `pnpm install` / `pnpm test` / `pnpm exec playwright …`. Die tragende Aussage von Punkt 1 —
   eigenständiges Node-Projekt mit eigenem Lockfile, nicht Teil von `frontend/` — bleibt unverändert.
 - **Verweis:** PR #752 · `e2e/README.md`
+
+### 08.09.2026 — Die Suite läuft nicht mehr bei Pull Requests
+
+- **Punkt:** Der ADR beschreibt die Suite implizit als Teil jeder PR-Prüfung (`e2e.yml` lief bei
+  jedem Pull Request, ohne Required Check zu sein).
+- **Entscheidung:** Mit #1226 entfällt der `pull_request`-Trigger. Die Suite läuft bei jedem Push auf
+  `main`, nächtlich und per `workflow_dispatch`. Ein Fehlschlag auf `main` legt ein Alarm-Issue
+  (Label `e2e`, Marker `<!-- e2e-alert -->`) mit den fehlgeschlagenen Szenarien an oder kommentiert
+  das offene; ein wieder grüner Lauf auf `main` schließt es. Fehlschläge werden also wie jeder andere
+  Bug über ein Issue repariert, nicht über einen roten PR-Check.
+- **Begründung:** Die Suite war nie Required Check und hielt keinen Merge auf, belegte aber bei jedem
+  PR-Push für 8–12 Minuten einen Runner und lief bei jeder Nachbesserungsrunde erneut. Das
+  Sicherheitsnetz nach dem Merge (Push auf `main` plus nächtlicher Lauf) fängt dieselben
+  Regressionen, nur später und ohne PR-Latenz. Wer eine UI-Änderung vor dem Merge gegen die Suite
+  prüfen will, führt sie lokal aus.
+- **Verweis:** #1226 · `.github/workflows/e2e.yml` · `e2e/README.md`, Abschnitt „CI"

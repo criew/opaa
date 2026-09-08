@@ -277,9 +277,33 @@ tasks.named("check") {
 // OPAA_OPENAI_API_KEY set, and in the CI `backend-integration` job — recompiled and re-ran the
 // whole suite around them (issue #644). They get their own task instead: `test` (and thus
 // `build`) never touches them, and CI's backend-integration job invokes only this task.
+// CI splits the suite into parallel jobs by package (`./gradlew test -PtestShard=<name>`, see
+// .github/workflows/ci.yml). The named shards list their packages explicitly; "core" is the
+// complement, so a test in a new package always lands in a shard instead of silently running
+// nowhere. Rebalance the lists when one job runs noticeably longer than the others.
+val testShards = mapOf(
+    "api" to listOf(
+        "io.opaa.api.*", "io.opaa.library.*", "io.opaa.auth.*", "io.opaa.audit.*",
+        "io.opaa.chat.*", "io.opaa.space.*", "io.opaa.group.*", "io.opaa.branding.*",
+        "io.opaa.security.*", "io.opaa.diagnosticaccess.*", "io.opaa.sourceaccess.*",
+    ),
+    "indexing" to listOf("io.opaa.indexing.*", "io.opaa.llm.*"),
+)
+
 tasks.named<Test>("test") {
     filter {
         excludeTestsMatching("io.opaa.integration.*")
+    }
+    providers.gradleProperty("testShard").orNull?.let { shard ->
+        filter {
+            when (shard) {
+                "core" -> testShards.values.flatten().forEach { excludeTestsMatching(it) }
+                in testShards -> testShards.getValue(shard).forEach { includeTestsMatching(it) }
+                else -> throw GradleException(
+                    "Unknown testShard '$shard'; expected one of ${testShards.keys + "core"}",
+                )
+            }
+        }
     }
     // Gradle does not forward -D command-line system properties into a forked Test JVM on its own
     // (see the eval task's identical comment above) — RetrievalNoteTemplateExport's regeneration

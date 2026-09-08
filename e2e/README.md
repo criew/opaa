@@ -488,9 +488,17 @@ im Required-Pfad jedes PRs zu hängen.
 
 `.github/workflows/e2e.yml` führt die Suite aus bei:
 
-- jedem Pull Request (außer reinen Doku-Änderungen, `paths-ignore`),
 - jedem Push auf `main`,
-- täglich per `schedule` (Post-Merge-QA-Schleife, siehe `docs/AGENT-ORGANIZATION.md`).
+- täglich per `schedule` (Post-Merge-QA-Schleife, siehe `docs/AGENT-ORGANIZATION.md`),
+- manuell per `workflow_dispatch`.
+
+**Nicht bei Pull Requests** (seit #1226): Die Suite ist ein Sicherheitsnetz nach dem Merge, kein
+PR-Gate — sie war nie Required Check, hat aber bei jedem PR einen Runner für 8–12 Minuten belegt.
+Schlägt ein Lauf fehl, legt der Workflow ein Alarm-Issue mit den fehlgeschlagenen Szenarien an
+(Label `e2e`, Marker `<!-- e2e-alert -->`) bzw. kommentiert das bereits offene; ein wieder grüner
+Lauf schließt es. Wer eine Änderung an der Oberfläche vor dem Merge gegen die Suite prüfen will,
+führt sie lokal aus (`pnpm test`, siehe oben) oder startet den Workflow per `workflow_dispatch` auf
+`main` nach dem Merge. Ein Lauf auf einem Feature-Branch legt kein Alarm-Issue an und schließt keines.
 
 Der Job baut Backend- und Frontend-Image zunächst separat mit einem GitHub-Actions-Layer-Cache
 (`docker/build-push-action`, `cache-from/to: type=gha`) und lädt sie lokal, bevor
@@ -502,8 +510,9 @@ wenige Sekunden), nicht auf den Image-Build davor — der Job hat dafür ein eig
 Bei Fehlschlägen (inkl. Timeout/Cancel) werden Playwright-HTML-Report, Traces/Screenshots sowie die
 Container-Logs (`docker-compose.log`) als Workflow-Artefakte hochgeladen.
 
-> **Hinweis für später:** Sollte der `e2e`-Job jemals als Required Check für PRs konfiguriert
-> werden, blockiert `paths-ignore` reine Doku-PRs dauerhaft im Status "pending" (GitHub wartet auf
-> einen Check, der für diese PRs nie ausgelöst wird). In dem Fall muss stattdessen ein separater,
-> immer laufender Skip-Job mit demselben Job-Namen ergänzt werden, der für Doku-only-Änderungen
-> sofort grün durchläuft (Standardmuster für `paths-ignore` + Required Checks).
+> **Hinweis für später:** Sollte der `e2e`-Job jemals wieder bei Pull Requests laufen und als
+> Required Check konfiguriert werden, blockiert ein `paths-ignore` reine Doku-PRs dauerhaft im
+> Status "pending" (GitHub wartet auf einen Check, der für diese PRs nie ausgelöst wird). In dem
+> Fall muss stattdessen ein separater, immer laufender Skip-Job mit demselben Job-Namen ergänzt
+> werden, der für Doku-only-Änderungen sofort grün durchläuft (Standardmuster für `paths-ignore` +
+> Required Checks).

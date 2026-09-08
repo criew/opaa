@@ -43,6 +43,8 @@ Die Projektsprache ist **Deutsch**. Englisch bleibt ausschließlich dem Quellcod
 # Backend (aus backend/)
 ./gradlew build
 ./gradlew test
+./gradlew test -PtestShard=api    # nur ein CI-Shard (api | indexing | core); Paketlisten in
+                                  # build.gradle.kts (`testShards`), CI führt die drei parallel aus
 ./gradlew openAiIntegrationTest   # OpenAI-E2E-Tests (io.opaa.integration.*); braucht
                                   # OPAA_OPENAI_API_KEY und Docker, nicht Teil von build/test
 OPAA_CONFLUENCE_IT=true ./gradlew confluenceIntegrationTest

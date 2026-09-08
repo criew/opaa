@@ -136,8 +136,9 @@ normale PRs zur menschlichen Entscheidung offen (Hintergrund: das auto-gemergte
 `eclipse-temurin`-v25-Major brach den Backend-Image-Build, siehe #1002 und „Typische
 Fehlerbilder"). Ein unerwünschtes Update lehnt man durch Schließen des PRs ab (Renovate legt
 es dann nicht erneut vor). Zu beachten: `e2e` ist kein Required Check und hält den Auto-Merge
-nicht auf — die nächtliche E2E-Suite auf `main` bleibt das Sicherheitsnetz (bewusste
-Repo-Entscheidung, vgl. #792).
+nicht auf — die E2E-Suite läuft seit #1226 gar nicht mehr bei PRs; der Lauf bei jedem Push auf
+`main` und der nächtliche Lauf bleiben das Sicherheitsnetz und legen bei Fehlschlag ein
+Alarm-Issue an (bewusste Repo-Entscheidung, vgl. #792).
 
 ## Konfiguration validieren
 
