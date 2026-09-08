@@ -1,13 +1,12 @@
 package io.opaa.indexing.source.attachment;
 
 import io.opaa.api.types.DocumentSourceType;
-import io.opaa.indexing.AttachmentOutcome;
-import io.opaa.indexing.DocumentIngest;
-import io.opaa.indexing.DocumentIngestOutcomes;
-import io.opaa.indexing.DocumentIngestResult;
-import io.opaa.indexing.DocumentIngestService;
-import io.opaa.indexing.IndexingEventCategory;
 import io.opaa.indexing.SupportedDocumentFormats;
+import io.opaa.indexing.document.DocumentIngest;
+import io.opaa.indexing.document.DocumentIngestOutcomes;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.library.LibraryStorageQuotaService;
 import io.opaa.sourceaccess.BoundedDownloader;
@@ -26,9 +25,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Indexes the attachments of a parent document into their own {@link io.opaa.indexing.Document}
- * rows (ADR-0022) - the shared path RSS, Mail and Confluence all use. It depends on no connector
- * package: a caller supplies an {@link AttachmentAccess} and a list of {@link AttachmentSource}.
+ * Indexes the attachments of a parent document into their own {@link
+ * io.opaa.indexing.document.Document} rows (ADR-0022) - the shared path RSS, Mail and Confluence
+ * all use. It depends on no connector package: a caller supplies an {@link AttachmentAccess} and a
+ * list of {@link AttachmentSource}.
  *
  * <p>An attachment failure never propagates: a lost attachment is logged and skipped with no effect
  * on the parent's outcome, but marks {@link AttachmentAccess#markDeferred()} so a later conditional

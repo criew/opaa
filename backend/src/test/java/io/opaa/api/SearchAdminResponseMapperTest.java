@@ -20,7 +20,7 @@ import io.opaa.api.dto.SearchPath;
 import io.opaa.api.dto.SearchPathState;
 import io.opaa.api.dto.SearchStatusResponse;
 import io.opaa.api.dto.TrackedDocumentOutcome;
-import io.opaa.indexing.ContextPrefixRerunProgress;
+import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
 import io.opaa.indexing.metadata.CoreMetadataExtractor;
 import io.opaa.indexing.metadata.CoreMetadataField;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;

@@ -1,10 +1,10 @@
 package io.opaa.indexing.source.s3;
 
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.DocumentIngestService;
-import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.StaleDocumentCleanupService;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;

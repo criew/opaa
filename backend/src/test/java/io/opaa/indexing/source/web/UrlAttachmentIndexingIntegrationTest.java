@@ -7,12 +7,12 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.DocumentIngestService;
-import io.opaa.indexing.IndexingJob;
-import io.opaa.indexing.IndexingJobService;
-import io.opaa.indexing.JobTriggerSource;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.job.IndexingJob;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.JobTriggerSource;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryRepository;
@@ -56,7 +56,7 @@ class UrlAttachmentIndexingIntegrationTest {
   @Autowired private IndexingRunTemplate indexingRunTemplate;
   @Autowired private io.opaa.library.LibraryFolderService folderService;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
-  @Autowired private io.opaa.indexing.VectorChunkStore vectorChunkStore;
+  @Autowired private io.opaa.indexing.chunk.VectorChunkStore vectorChunkStore;
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private HttpServer server;

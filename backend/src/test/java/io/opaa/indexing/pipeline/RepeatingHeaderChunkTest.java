@@ -2,7 +2,7 @@ package io.opaa.indexing.pipeline;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.ChunkingService;
+import io.opaa.indexing.chunk.ChunkingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 

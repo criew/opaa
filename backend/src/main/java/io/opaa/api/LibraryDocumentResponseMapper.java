@@ -4,7 +4,7 @@ import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
 import io.opaa.api.dto.LibraryFolderBreadcrumbItem;
 import io.opaa.api.dto.LibraryFolderListItem;
-import io.opaa.indexing.Document;
+import io.opaa.indexing.document.Document;
 import io.opaa.library.LibraryDocumentEntry;
 import io.opaa.library.LibraryDocumentPage;
 import io.opaa.library.LibraryFolder;

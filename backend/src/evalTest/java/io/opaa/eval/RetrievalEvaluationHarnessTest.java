@@ -13,14 +13,14 @@ import io.opaa.eval.EvaluationReport.ChunkCountInvariantResult;
 import io.opaa.eval.EvaluationReport.DatasetNotes;
 import io.opaa.eval.EvaluationReport.RunConfiguration;
 import io.opaa.eval.EvaluationReport.WorstQuery;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentIndexingService;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.FullTextIndexFillStateService;
-import io.opaa.indexing.IndexingJob;
-import io.opaa.indexing.IndexingJobRepository;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.JobStatus;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.job.DocumentIndexingService;
+import io.opaa.indexing.job.IndexingJob;
+import io.opaa.indexing.job.IndexingJobRepository;
+import io.opaa.indexing.job.JobStatus;
+import io.opaa.indexing.maintenance.FullTextIndexFillStateService;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyEntry;
 import io.opaa.indexing.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.indexing.pipeline.DocumentPipelineRegistry;
@@ -75,7 +75,7 @@ import org.testcontainers.utility.DockerImageName;
 /**
  * Retrieval-quality evaluation harness (issue #227). Indexes the frozen `eval/corpus/`
  * comic-characters corpus through the production pipeline ({@link
- * io.opaa.indexing.DocumentIngestService} routed to {@link
+ * io.opaa.indexing.document.DocumentIngestService} routed to {@link
  * io.opaa.indexing.pipeline.markdown.MarkdownDocumentPipeline} for this all-Markdown corpus since
  * #1103), then runs every case from {@code eval/golden/comic-characters.json} directly against
  * {@link VectorStore#similaritySearch}. No LLM — retrieval-only, per ADR-0011 decision 3.

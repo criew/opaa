@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.query.CandidateOutcome;
 import io.opaa.query.RetrievalPipeline;
 import io.opaa.query.RetrievalStageName;

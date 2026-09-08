@@ -1,6 +1,6 @@
 package io.opaa.indexing.pipeline;
 
-import io.opaa.indexing.ChunkingService;
+import io.opaa.indexing.chunk.ChunkingService;
 import java.util.Set;
 
 /**

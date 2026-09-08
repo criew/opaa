@@ -1,6 +1,6 @@
 package io.opaa.library;
 
-import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.document.DocumentRepository;
 import java.time.Duration;
 import java.time.Instant;
 import org.slf4j.Logger;

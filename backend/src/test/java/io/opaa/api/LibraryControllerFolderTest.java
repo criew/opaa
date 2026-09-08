@@ -19,7 +19,7 @@ import io.opaa.auth.UserService;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
-import io.opaa.indexing.DocumentIndexingService;
+import io.opaa.indexing.job.DocumentIndexingService;
 import io.opaa.library.AssetGrantService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;

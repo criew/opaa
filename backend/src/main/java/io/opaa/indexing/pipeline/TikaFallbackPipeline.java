@@ -1,7 +1,7 @@
 package io.opaa.indexing.pipeline;
 
-import io.opaa.indexing.ChunkingService;
-import io.opaa.indexing.DocumentService;
+import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.indexing.document.DocumentService;
 import java.util.List;
 import java.util.Set;
 import org.slf4j.Logger;

@@ -16,7 +16,7 @@ import java.util.UUID;
  * <p><b>Ordner sind reine Navigation, keine Rechtegrenze</b> (ADR-0020, Entscheidung 3): this
  * entity carries no permission of its own. Every access check for a folder resolves through {@link
  * LibraryAccessService} against the owning {@link #libraryId}, exactly like a {@link
- * io.opaa.indexing.Document} does.
+ * io.opaa.indexing.document.Document} does.
  */
 @Entity
 @Table(name = "library_folders")

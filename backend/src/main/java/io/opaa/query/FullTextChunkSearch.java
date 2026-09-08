@@ -1,7 +1,7 @@
 package io.opaa.query;
 
-import io.opaa.indexing.FullTextChunkStore;
-import io.opaa.indexing.FullTextIdentifiers;
+import io.opaa.indexing.chunk.FullTextChunkStore;
+import io.opaa.indexing.chunk.FullTextIdentifiers;
 import io.opaa.indexing.metadata.MetadataFilter;
 import java.util.ArrayList;
 import java.util.Collection;

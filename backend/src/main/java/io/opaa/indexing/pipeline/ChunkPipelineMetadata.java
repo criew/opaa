@@ -4,7 +4,7 @@ package io.opaa.indexing.pipeline;
  * The two chunk metadata keys carrying the version of the verfahren that produced a chunk
  * (ingestion-pipelines.md, Querschnittsregel (d)). Written by {@code
  * DocumentIngestService#storeChunks} onto every chunk and read back by {@code
- * io.opaa.indexing.PipelineReindexService} to select "every chunk below version N".
+ * io.opaa.indexing.maintenance.PipelineReindexService} to select "every chunk below version N".
  *
  * <p>Deliberately chunk metadata rather than a column: {@code vector_store} is created by Spring AI
  * at startup and is not Liquibase-owned, and a value that is definitionally a property of the chunk
@@ -31,8 +31,8 @@ public final class ChunkPipelineMetadata {
   /**
    * The extension {@link DocumentPipelineRegistry#routedPipelineFor} actually resolved when this
    * chunk was written, never the chunk's file name. Absent where routing could not be attempted or
-   * completed, in which case {@code io.opaa.indexing.PipelineReindexService} falls back to its
-   * file-name approximation instead of an exact comparison.
+   * completed, in which case {@code io.opaa.indexing.maintenance.PipelineReindexService} falls back
+   * to its file-name approximation instead of an exact comparison.
    */
   public static final String ROUTING_EXTENSION_METADATA_KEY = "routing_extension";
 

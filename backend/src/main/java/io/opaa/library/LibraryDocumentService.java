@@ -8,17 +8,17 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.PayloadTooLargeException;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.AttachmentExtractor;
-import io.opaa.indexing.AttachmentFilePath;
-import io.opaa.indexing.ChecksumService;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentIngest;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.DocumentIngestService;
-import io.opaa.indexing.StandaloneAttachmentAccess;
 import io.opaa.indexing.SupportedDocumentFormats;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.document.AttachmentExtractor;
+import io.opaa.indexing.document.AttachmentFilePath;
+import io.opaa.indexing.document.ChecksumService;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentIngest;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.indexing.source.attachment.AttachmentProperties;
+import io.opaa.indexing.source.attachment.StandaloneAttachmentAccess;
 import io.opaa.indexing.source.filesystem.FilesystemPathAllowlist;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.ProxyAndCredentials;
@@ -83,12 +83,12 @@ import org.springframework.web.multipart.MultipartFile;
  * (#614).</b> Asynchronous processing (previous paragraph) means a document can still be mid-flight
  * on {@code uploadTaskExecutor} while a delete request for the same document arrives on another
  * thread. Deleting the row first closes that race: {@link
- * io.opaa.indexing.DocumentRepository#markIndexed}/{@code #markFailed} are conditional updates that
- * only ever affect a row that still exists, so once this method's transaction commits, a racing
- * task's status update is guaranteed to see the row gone and clean up any chunks it just wrote
- * itself (see {@code DocumentIngestService#processUploadedFileAsync}). The vector store delete here
- * only has to handle documents that already had chunks before this call, deferred to after commit
- * (next paragraph) alongside the file, for the same reason.
+ * io.opaa.indexing.document.DocumentRepository#markIndexed}/{@code #markFailed} are conditional
+ * updates that only ever affect a row that still exists, so once this method's transaction commits,
+ * a racing task's status update is guaranteed to see the row gone and clean up any chunks it just
+ * wrote itself (see {@code DocumentIngestService#processUploadedFileAsync}). The vector store
+ * delete here only has to handle documents that already had chunks before this call, deferred to
+ * after commit (next paragraph) alongside the file, for the same reason.
  *
  * <p><b>Path traversal (#420 acceptance criteria):</b> the caller-supplied original file name is
  * never used to build a filesystem path. The stored file always lives at {@code

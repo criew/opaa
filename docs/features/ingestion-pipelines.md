@@ -1172,7 +1172,7 @@ bereits den synthetischen `file_path` dieser weitergeleiteten Mail selbst.
 Original eines Anhangsdokuments an, lädt OPAA das Original des Wurzel-Elterndokuments über den ganz
 normalen Weg seines Quelltyps (UPLOAD/FILESYSTEM von der Platte, HTTP_DIRECTORY/RSS_FEED über den
 Proxy-Abruf), lässt dieselbe Pipeline es erneut parsen und streamt den Anhang an dem im `file_path`
-kodierten Positionsindex; die gemeinsame Extraktion dafür ist `io.opaa.indexing.AttachmentExtractor`,
+kodierten Positionsindex; die gemeinsame Extraktion dafür ist `io.opaa.indexing.document.AttachmentExtractor`,
 die auch der selektive Re-Index nutzt — nur so ist die Extraktionsreihenfolge (und damit die Bedeutung
 des Index) dieselbe wie beim Indizieren, und es gelten dieselben Parse-Grenzen aus `MailProperties`.
 Verschachtelung ist kein Sonderfall: Jede Kettenstufe ist ein weiterer Extraktionsschritt. Der

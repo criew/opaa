@@ -1,6 +1,6 @@
 package io.opaa.indexing.source.rss;
 
-import io.opaa.indexing.Document;
+import io.opaa.indexing.document.Document;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;

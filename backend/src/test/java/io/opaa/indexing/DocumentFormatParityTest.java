@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.indexing.document.DocumentService;
 import io.opaa.indexing.source.attachment.AttachmentCandidate;
 import io.opaa.indexing.source.attachment.AttachmentProfile;
 import io.opaa.indexing.source.web.UrlIndexingExecutor;

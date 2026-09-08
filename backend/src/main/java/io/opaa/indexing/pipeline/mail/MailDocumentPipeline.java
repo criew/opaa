@@ -1,6 +1,6 @@
 package io.opaa.indexing.pipeline.mail;
 
-import io.opaa.indexing.ChunkingService;
+import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.metadata.FormatMetadataField;
 import io.opaa.indexing.pipeline.DiscoveredAttachment;
 import io.opaa.indexing.pipeline.DocumentPipeline;

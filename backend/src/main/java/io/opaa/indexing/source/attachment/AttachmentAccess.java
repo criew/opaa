@@ -1,8 +1,8 @@
 package io.opaa.indexing.source.attachment;
 
-import io.opaa.indexing.AttachmentProgressSink;
-import io.opaa.indexing.IndexingEventSink;
-import io.opaa.indexing.SourceDocumentContext;
+import io.opaa.indexing.document.SourceDocumentContext;
+import io.opaa.indexing.job.AttachmentProgressSink;
+import io.opaa.indexing.job.IndexingEventSink;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.sourceaccess.RateLimitListener;
 

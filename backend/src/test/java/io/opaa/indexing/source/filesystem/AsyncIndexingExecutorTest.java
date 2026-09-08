@@ -18,28 +18,28 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
-import io.opaa.indexing.AttachmentOutcome;
-import io.opaa.indexing.ChecksumService;
-import io.opaa.indexing.ChunkingService;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentIngests;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.DocumentService;
-import io.opaa.indexing.EmbeddingRateEstimator;
-import io.opaa.indexing.DocumentIngestResult;
-import io.opaa.indexing.DocumentIngestService;
-import io.opaa.indexing.FullTextChunkStore;
-import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.IndexingRunCost;
-import io.opaa.indexing.IndexingRunEventRepository;
-import io.opaa.indexing.StaleDocumentCleanupService;
-import io.opaa.indexing.TestPipelineRegistries;
-import io.opaa.indexing.VectorChunkStore;
-import io.opaa.indexing.VectorStoreWriter;
+import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.indexing.chunk.EmbeddingRateEstimator;
+import io.opaa.indexing.chunk.FullTextChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.chunk.VectorStoreWriter;
+import io.opaa.indexing.document.ChecksumService;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentIngests;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.document.DocumentService;
+import io.opaa.indexing.document.TestPipelineRegistries;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunCost;
+import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
+import io.opaa.indexing.source.attachment.AttachmentOutcome;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryFolderService;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -254,8 +254,8 @@ class AsyncIndexingExecutorTest {
             Runnable::run,
             org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
             new io.opaa.indexing.source.attachment.AttachmentLimits(0, 0),
-            io.opaa.indexing.TestDocumentMetadataServices.returningEmpty(),
-            io.opaa.indexing.TestDocumentMetadataServices.notExtracting());
+            io.opaa.indexing.document.TestDocumentMetadataServices.returningEmpty(),
+            io.opaa.indexing.document.TestDocumentMetadataServices.notExtracting());
 
     FilesystemPathAllowlist realFlowAllowlist = mock(FilesystemPathAllowlist.class);
     when(realFlowAllowlist.isAllowed(any())).thenReturn(true);

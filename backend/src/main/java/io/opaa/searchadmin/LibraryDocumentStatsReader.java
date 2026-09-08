@@ -17,8 +17,8 @@ import org.springframework.stereotype.Component;
  * producing a status row that never existed.
  *
  * <p>Deliberately read-only and its own component rather than a method on {@code
- * io.opaa.indexing.DocumentRepository}: this package observes the indexing bestand, it does not
- * extend the indexing domain.
+ * io.opaa.indexing.document.DocumentRepository}: this package observes the indexing bestand, it
+ * does not extend the indexing domain.
  */
 @Component
 public class LibraryDocumentStatsReader {

@@ -17,18 +17,18 @@ import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.DocumentStatus;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentIngest;
-import io.opaa.indexing.DocumentIngests;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.DocumentService;
-import io.opaa.indexing.DocumentIngestResult;
-import io.opaa.indexing.DocumentIngestService;
-import io.opaa.indexing.IndexingEventCategory;
-import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.IndexingRunEventRepository;
-import io.opaa.indexing.StaleDocumentCleanupService;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentIngest;
+import io.opaa.indexing.document.DocumentIngestResult;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentIngests;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.document.DocumentService;
+import io.opaa.indexing.job.IndexingEventCategory;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;
 import io.opaa.indexing.pipeline.DocumentPipelineSource;
 import io.opaa.indexing.pipeline.html.HtmlDocumentPipeline;
@@ -1246,7 +1246,7 @@ class RssFeedIndexingExecutorTest {
     // requests the run sent (feed, detail page, attachment) from the run's own meter
     verify(indexingJobService)
         .recordRunMetrics(
-            any(), eq(new io.opaa.indexing.IndexingRunCost(3, 0, 0L, 1, 0, 0, false, 0L)));
+            any(), eq(new io.opaa.indexing.job.IndexingRunCost(3, 0, 0L, 1, 0, 0, false, 0L)));
   }
 
   @Test
@@ -2200,7 +2200,7 @@ class RssFeedIndexingExecutorTest {
 
   private static final String DETAIL_HTML = "<html><body><main>Text</main></body></html>";
 
-  private static org.mockito.ArgumentMatcher<io.opaa.indexing.IndexingRunEvent> runNote(
+  private static org.mockito.ArgumentMatcher<io.opaa.indexing.job.IndexingRunEvent> runNote(
       IndexingEventCategory category, String messagePart) {
     return event ->
         event != null
@@ -2257,8 +2257,8 @@ class RssFeedIndexingExecutorTest {
         .save(argThat(event -> event.getCategory() == IndexingEventCategory.ERROR));
     verify(indexingJobService).completeJob(eq(jobId), eq(1), eq(0), eq(0), eq(1));
     verify(indexingJobService, never()).failJob(any(), any());
-    ArgumentCaptor<io.opaa.indexing.IndexingRunCost> cost =
-        ArgumentCaptor.forClass(io.opaa.indexing.IndexingRunCost.class);
+    ArgumentCaptor<io.opaa.indexing.job.IndexingRunCost> cost =
+        ArgumentCaptor.forClass(io.opaa.indexing.job.IndexingRunCost.class);
     verify(indexingJobService).recordRunMetrics(eq(jobId), cost.capture());
     assertThat(cost.getValue().incomplete()).isTrue();
     assertThat(cost.getValue().requestsSent()).isEqualTo(2);
@@ -2362,8 +2362,8 @@ class RssFeedIndexingExecutorTest {
                 event ->
                     event.getCategory() == IndexingEventCategory.ERROR
                         || event.getCategory() == IndexingEventCategory.UNREACHABLE));
-    ArgumentCaptor<io.opaa.indexing.IndexingRunCost> cost =
-        ArgumentCaptor.forClass(io.opaa.indexing.IndexingRunCost.class);
+    ArgumentCaptor<io.opaa.indexing.job.IndexingRunCost> cost =
+        ArgumentCaptor.forClass(io.opaa.indexing.job.IndexingRunCost.class);
     verify(indexingJobService).recordRunMetrics(eq(jobId), cost.capture());
     assertThat(cost.getValue().attachmentsFailed()).isZero();
     assertThat(cost.getValue().incomplete()).isTrue();
@@ -2412,8 +2412,8 @@ class RssFeedIndexingExecutorTest {
                 event ->
                     event.getCategory() == IndexingEventCategory.ERROR
                         || event.getCategory() == IndexingEventCategory.UNREACHABLE));
-    ArgumentCaptor<io.opaa.indexing.IndexingRunCost> cost =
-        ArgumentCaptor.forClass(io.opaa.indexing.IndexingRunCost.class);
+    ArgumentCaptor<io.opaa.indexing.job.IndexingRunCost> cost =
+        ArgumentCaptor.forClass(io.opaa.indexing.job.IndexingRunCost.class);
     verify(indexingJobService).recordRunMetrics(eq(jobId), cost.capture());
     assertThat(cost.getValue().attachmentsFailed()).isZero();
     verify(indexingJobService).completeJob(eq(jobId), eq(1), eq(0), eq(0), eq(1));

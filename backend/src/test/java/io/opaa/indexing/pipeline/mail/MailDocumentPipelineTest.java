@@ -4,8 +4,8 @@ import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.indexing.ChunkingService;
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.chunk.ChunkingService;
 import io.opaa.indexing.metadata.FormatMetadataField;
 import io.opaa.indexing.pipeline.DiscoveredAttachment;
 import io.opaa.indexing.pipeline.DocumentPipelineResult;

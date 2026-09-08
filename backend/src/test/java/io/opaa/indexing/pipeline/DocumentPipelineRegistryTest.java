@@ -3,9 +3,9 @@ package io.opaa.indexing.pipeline;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.indexing.ChunkingService;
-import io.opaa.indexing.DocumentService;
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.indexing.document.DocumentService;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;

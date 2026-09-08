@@ -1,9 +1,9 @@
 package io.opaa.searchadmin;
 
 import io.opaa.common.NotFoundException;
-import io.opaa.indexing.Document;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.document.Document;
+import io.opaa.indexing.document.DocumentRepository;
 import io.opaa.library.KnowledgeLibraryRepository;
 import java.util.List;
 import java.util.Map;

@@ -10,9 +10,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.ContextPrefixRerunService;
-import io.opaa.indexing.FullTextIndexFillStateService;
-import io.opaa.indexing.metadata.MetadataBackfillService;
+import io.opaa.indexing.maintenance.ContextPrefixRerunService;
+import io.opaa.indexing.maintenance.FullTextIndexFillStateService;
+import io.opaa.indexing.maintenance.MetadataBackfillService;
 import io.opaa.indexing.metadata.ModelExtractionCounters;
 import io.opaa.library.KnowledgeLibraryRepository;
 import io.opaa.llm.EmbeddingInfo;

@@ -1,8 +1,7 @@
 package io.opaa.indexing.source.attachment;
 
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.DocumentIngestService;
 import io.opaa.indexing.SupportedDocumentFormats;
+import io.opaa.indexing.document.DocumentRepository;
 
 /**
  * A single attachment link an {@link AttachmentProfile} found on an RSS entry's detail page.

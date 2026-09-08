@@ -1,6 +1,22 @@
 package io.opaa.indexing;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opaa.indexing.chunk.ChunkingService;
+import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.indexing.document.AttachmentExtractor;
+import io.opaa.indexing.document.ChecksumService;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.document.DocumentService;
+import io.opaa.indexing.document.StoredDocumentSourceAccess;
+import io.opaa.indexing.job.DocumentIndexingService;
+import io.opaa.indexing.job.IndexingJobRepository;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunEventRepository;
+import io.opaa.indexing.job.LibraryIndexingScheduler;
+import io.opaa.indexing.maintenance.LowChunkDocumentAuditService;
+import io.opaa.indexing.maintenance.PipelineReindexService;
+import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.metadata.DocumentMetadataService;
 import io.opaa.indexing.metadata.ModelMetadataExtractor;
 import io.opaa.indexing.pipeline.DocumentPipeline;

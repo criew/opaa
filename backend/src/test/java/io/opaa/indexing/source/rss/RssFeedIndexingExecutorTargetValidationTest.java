@@ -12,11 +12,11 @@ import com.sun.net.httpserver.HttpServer;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.DocumentIngestService;
-import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.IndexingRunEventRepository;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.library.KnowledgeLibrary;
 import io.opaa.library.LibraryStorageQuotaService;
@@ -119,7 +119,7 @@ class RssFeedIndexingExecutorTargetValidationTest {
             new IndexingRunTemplate(
                 indexingJobService,
                 indexingRunEventRepository,
-                mock(io.opaa.indexing.StaleDocumentCleanupService.class),
+                mock(io.opaa.indexing.maintenance.StaleDocumentCleanupService.class),
                 documentRepository,
                 mock(LibraryStorageQuotaService.class)));
   }

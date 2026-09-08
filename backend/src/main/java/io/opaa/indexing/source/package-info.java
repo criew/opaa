@@ -5,9 +5,9 @@
  * io.opaa.indexing.source.IndexingSourceType} and is registered as a Spring bean, resolved at
  * trigger time by {@link io.opaa.indexing.source.IndexingSourceExecutorRegistry} - a new source
  * type is added by implementing the interface and wiring one more bean, never by editing the
- * registry or an existing executor. Each concrete source type lives in its own subpackage; job
- * orchestration and the services shared across all of them stay in the core {@code
- * io.opaa.indexing} package.
+ * registry or an existing executor. Each concrete source type lives in its own subpackage; the run
+ * itself stays in {@code io.opaa.indexing.job} and the ingestion of a single document in {@code
+ * io.opaa.indexing.document}.
  *
  * <p>Every executor runs its body inside {@link io.opaa.indexing.source.IndexingRunTemplate}: the
  * frame owns progress, protocol, result mapping, failure translation, reconciliation by absence and

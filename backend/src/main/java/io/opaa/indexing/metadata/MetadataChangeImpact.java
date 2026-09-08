@@ -1,6 +1,6 @@
 package io.opaa.indexing.metadata;
 
-import io.opaa.indexing.EmbeddingRateEstimator;
+import io.opaa.indexing.chunk.EmbeddingRateEstimator;
 
 /**
  * The Folgekosten of one planned schema change (metadata-schema.md, Kostentabelle): what it touches

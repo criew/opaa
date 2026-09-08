@@ -7,7 +7,7 @@ import io.opaa.api.dto.EmbeddingRateSource;
 import io.opaa.api.dto.LibraryMetadataFieldResponse;
 import io.opaa.api.dto.LibraryMetadataFieldValueRequest;
 import io.opaa.api.types.LibraryMetadataFieldType;
-import io.opaa.indexing.EmbeddingRateEstimator;
+import io.opaa.indexing.chunk.EmbeddingRateEstimator;
 import io.opaa.indexing.metadata.CoreContextPrefixSettings;
 import io.opaa.indexing.metadata.LibraryFieldValueRemapResult;
 import io.opaa.indexing.metadata.LibraryMetadataFieldDefinition;

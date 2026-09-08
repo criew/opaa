@@ -16,12 +16,12 @@ import com.sun.net.httpserver.HttpsServer;
 import io.opaa.api.types.DocumentSourceType;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.api.types.LibraryVisibility;
-import io.opaa.indexing.DocumentIngests;
-import io.opaa.indexing.DocumentRepository;
-import io.opaa.indexing.DocumentIngestService;
-import io.opaa.indexing.IndexingJobService;
 import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.IndexingRunEventRepository;
+import io.opaa.indexing.document.DocumentIngestService;
+import io.opaa.indexing.document.DocumentIngests;
+import io.opaa.indexing.document.DocumentRepository;
+import io.opaa.indexing.job.IndexingJobService;
+import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.web.UrlIndexingExecutor;
 import io.opaa.library.KnowledgeLibrary;
@@ -255,7 +255,7 @@ class RssFeedIndexingExecutorInsecureSslTest {
             new IndexingRunTemplate(
                 indexingJobService,
                 indexingRunEventRepository,
-                mock(io.opaa.indexing.StaleDocumentCleanupService.class),
+                mock(io.opaa.indexing.maintenance.StaleDocumentCleanupService.class),
                 documentRepository,
                 mock(LibraryStorageQuotaService.class)));
   }

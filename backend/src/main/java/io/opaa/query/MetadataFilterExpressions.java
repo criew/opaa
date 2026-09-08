@@ -1,7 +1,7 @@
 package io.opaa.query;
 
 import io.opaa.api.types.DatePrecision;
-import io.opaa.indexing.VectorChunkStore;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.metadata.CoreMetadataChunkKeys;
 import io.opaa.indexing.metadata.FormatFieldCondition;
 import io.opaa.indexing.metadata.FormatMetadataField;

@@ -5,7 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.document.DocumentRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 

@@ -2,7 +2,7 @@ package io.opaa.searchadmin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.ContextPrefixRerunProgress;
+import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
 import io.opaa.indexing.metadata.MetadataBackfillProgress;
 import io.opaa.indexing.metadata.ModelExtractionStats;
 import io.opaa.searchadmin.LibrarySearchStatus.IndexCondition;

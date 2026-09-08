@@ -397,7 +397,7 @@ Ideen und bekannte Schwächen, keine Zusagen. Konsolidiert aus den verstreuten V
   Kostenfrage schwächer als der Einleitungs-Chunk desselben Dokuments, und ein einzelner
   Satzungs-Chunk mit sechs Paragraphen rankte in #938s Live-Diagnose so schwach, dass er selbst im
   echten Leserechte-Scope weit außerhalb jedes plausiblen Top-k-Fensters lag (Rang 50/97 bzw.
-  96/147). Umsetzung: `io.opaa.indexing.DocumentIngestService#storeChunks` stellt jedem Chunk eines
+  96/147). Umsetzung: `io.opaa.indexing.document.DocumentIngestService#storeChunks` stellt jedem Chunk eines
   Dokuments, das beim Chunking in **2 oder mehr Chunks zerfiel**, vor dem Einbetten einen aus dem
   Dateinamen abgeleiteten, bereinigten Titel voran (`ChunkContextTitle#deriveTitle`, z. B. `"[prag]"`
   statt des rohen `"city-0022_prag.md"`) - ausschließlich für die `EMBED`-Formatierung der

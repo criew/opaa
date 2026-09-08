@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.rss;
 
-import io.opaa.indexing.IndexingRunEventRecorder;
-import io.opaa.indexing.IndexingRunProgress;
+import io.opaa.indexing.job.IndexingRunEventRecorder;
+import io.opaa.indexing.job.IndexingRunProgress;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.attachment.AttachmentAccess;
 import io.opaa.library.KnowledgeLibrary;

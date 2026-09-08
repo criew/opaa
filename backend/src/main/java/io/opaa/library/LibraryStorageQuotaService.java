@@ -1,7 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.common.ByteSizes;
-import io.opaa.indexing.DocumentRepository;
+import io.opaa.indexing.document.DocumentRepository;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
@@ -10,8 +10,8 @@ import org.springframework.stereotype.Service;
  * Bibliothek, {@link LibraryProperties#quotaBytes}). Shared by every ingestion path that stores
  * document content - the upload endpoint ({@link LibraryDocumentService}) and the
  * FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connector paths ({@code
- * io.opaa.indexing.DocumentIngestService}) - so a library cannot grow past its quota through either
- * route.
+ * io.opaa.indexing.document.DocumentIngestService}) - so a library cannot grow past its quota
+ * through either route.
  *
  * <p><b>Datenschutz (#216, "kein personenbezogener Auswertungspfad"):</b> every method here is
  * scoped to a library, never to an individual user - {@link
