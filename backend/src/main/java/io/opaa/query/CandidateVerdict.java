@@ -8,9 +8,8 @@ import org.springframework.ai.document.Document;
  *
  * @param chunkId the candidate's chunk id ({@link Document#getId()}), the key every stage's
  *     verdicts can be joined on to follow one candidate through the whole run.
- * @param documentKey the candidate's document grouping key (see {@code
- *     QueryService#chunkGroupingKey}) - the level the diagnosis question "why is document Z not in
- *     the answer?" is actually asked at.
+ * @param documentKey the candidate's document grouping key (see {@link ChunkGroupingKey}) - the
+ *     level the diagnosis question "why is document Z not in the answer?" is actually asked at.
  * @param outcome what became of the candidate in this stage.
  * @param reason why, as a fixed vocabulary rather than prose, so a consumer can group by it.
  * @param listLabel which candidate list the verdict refers to ({@link CandidateList#label()}), or
@@ -44,12 +43,6 @@ public record CandidateVerdict(
       Integer rank,
       Double value) {
     return new CandidateVerdict(
-        document.getId(),
-        QueryService.chunkGroupingKey(document),
-        outcome,
-        reason,
-        listLabel,
-        rank,
-        value);
+        document.getId(), ChunkGroupingKey.of(document), outcome, reason, listLabel, rank, value);
   }
 }

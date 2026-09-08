@@ -85,7 +85,7 @@ final class DocumentCompletion {
     for (int i = 0; i < selection.size(); i++) {
       Document chunk = selection.get(i);
       originalRankByChunkId.put(chunk.getId(), i);
-      bestOriginalRankByDocument.putIfAbsent(QueryService.chunkGroupingKey(chunk), i);
+      bestOriginalRankByDocument.putIfAbsent(ChunkGroupingKey.of(chunk), i);
     }
 
     List<Document> result = new ArrayList<>(selection);
@@ -161,16 +161,11 @@ final class DocumentCompletion {
    * preferred over a later-ranked one's when the budget runs out.
    */
   private static List<String> distinctDocumentOrder(List<Document> selection) {
-    return selection.stream()
-        .map(QueryService::chunkGroupingKey)
-        .distinct()
-        .collect(Collectors.toList());
+    return selection.stream().map(ChunkGroupingKey::of).distinct().collect(Collectors.toList());
   }
 
   private static long countForDocument(List<Document> selection, String documentKey) {
-    return selection.stream()
-        .filter(d -> QueryService.chunkGroupingKey(d).equals(documentKey))
-        .count();
+    return selection.stream().filter(d -> ChunkGroupingKey.of(d).equals(documentKey)).count();
   }
 
   /**
@@ -199,7 +194,7 @@ final class DocumentCompletion {
         byChunkId.values().stream()
             .collect(
                 Collectors.groupingBy(
-                    QueryService::chunkGroupingKey, LinkedHashMap::new, Collectors.toList()));
+                    ChunkGroupingKey::of, LinkedHashMap::new, Collectors.toList()));
     byDocument.replaceAll(
         (documentKey, chunks) ->
             chunks.stream()
@@ -225,7 +220,7 @@ final class DocumentCompletion {
         result.stream()
             .collect(
                 Collectors.groupingBy(
-                    QueryService::chunkGroupingKey, LinkedHashMap::new, Collectors.toList()));
+                    ChunkGroupingKey::of, LinkedHashMap::new, Collectors.toList()));
     Document weakest = null;
     int weakestRank = -1;
     for (Map.Entry<String, List<Document>> entry : byDocument.entrySet()) {
@@ -269,7 +264,7 @@ final class DocumentCompletion {
     int weakestRank = -1;
     for (Document candidate : result) {
       Integer rank = originalRankByChunkId.get(candidate.getId());
-      if (rank == null || QueryService.chunkGroupingKey(candidate).equals(documentKey)) {
+      if (rank == null || ChunkGroupingKey.of(candidate).equals(documentKey)) {
         continue;
       }
       if (rank > weakestRank) {

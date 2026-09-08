@@ -279,7 +279,7 @@ class DocumentCompletionTest {
     assertThat(result).hasSize(8);
     assertThat(result).extracting(Document::getId).doesNotContain("doc7-0");
     assertThat(result)
-        .filteredOn(d -> QueryService.chunkGroupingKey(d).equals("doc-3"))
+        .filteredOn(d -> ChunkGroupingKey.of(d).equals("doc-3"))
         .extracting(Document::getId)
         .containsExactlyInAnyOrder("doc3-0", "doc3-1");
   }

@@ -560,24 +560,7 @@ public class QueryService {
    */
   private Map<String, Integer> countMatchesPerDocument(List<Document> chunks) {
     return chunks.stream()
-        .collect(
-            Collectors.groupingBy(QueryService::chunkGroupingKey, Collectors.summingInt(e -> 1)));
-  }
-
-  /**
-   * Groups a chunk by its {@code document_id} metadata, falling back to {@code file_name} when that
-   * metadata is missing or empty - a chunk without {@code document_id} can only occur for pre-#739
-   * index entries, since {@code DocumentIngestService#storeChunks} now writes it on every chunk.
-   * Using the same {@code file_name} fallback consistently across {@link #countMatchesPerDocument}
-   * and {@link #mapSources} keeps two such chunks from <em>different</em> documents from collapsing
-   * into one merged entry via a shared empty-string key.
-   */
-  static String chunkGroupingKey(Document chunk) {
-    String documentId = chunk.getMetadata().getOrDefault("document_id", "").toString();
-    if (!documentId.isEmpty()) {
-      return documentId;
-    }
-    return "file:" + chunk.getMetadata().getOrDefault("file_name", "unknown").toString();
+        .collect(Collectors.groupingBy(ChunkGroupingKey::of, Collectors.summingInt(e -> 1)));
   }
 
   /**
@@ -716,7 +699,7 @@ public class QueryService {
             .map(CitationValidator.ValidatedCitation::documentId)
             .collect(Collectors.toSet());
 
-    // Keyed on #chunkGroupingKey, not the parsed ChatSource#getDocumentId() (null for a
+    // Keyed on ChunkGroupingKey#of, not the parsed ChatSource#getDocumentId() (null for a
     // malformed/missing value) - two chunks with the same unparseable id must still merge into one
     // entry rather than colliding on a shared null key.
     Map<String, ChatSource> fromChunksByDocumentId =
@@ -728,7 +711,7 @@ public class QueryService {
                       chunk.getMetadata().getOrDefault("file_name", "unknown").toString();
                   String documentId =
                       chunk.getMetadata().getOrDefault("document_id", "").toString();
-                  String groupKey = chunkGroupingKey(chunk);
+                  String groupKey = ChunkGroupingKey.of(chunk);
                   double score = relevanceScoreForRank(position + 1);
                   boolean cited = validCitedDocumentIds.contains(documentId);
                   boolean citationValid = !documentIdsWithInvalidCitation.contains(documentId);
