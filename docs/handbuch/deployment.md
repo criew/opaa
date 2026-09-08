@@ -1178,8 +1178,9 @@ Transaktion wie den Vektor; auf diesem Weg entsteht kein Abschnitt, der vektoris
 volltextindiziert ist.
 
 **Ändert ein Update die Art, wie der Volltextindex gebildet wird**, gelten die betroffenen Zeilen als
-fehlend: Der lexikalische Pfad findet sie nicht mehr, und die Seite „Suche & Indexierung" zeigt die
-betroffenen Bibliotheken als **unvollständig** an. Einen Hintergrundlauf, der das von selbst
+fehlend, und die Seite „Suche & Indexierung" zeigt die betroffenen Bibliotheken als **unvollständig**
+an. Der lexikalische Pfad findet diese Zeilen weiterhin — ihnen fehlen nur die Lexeme, die die neue
+Fassung hinzufügt, bis der Nachzug sie neu schreibt (ADR-0028). Einen Hintergrundlauf, der das von selbst
 nachzieht, gibt es nicht — **nötig ist dann der Nachzug auf der Administrationsseite**
 („Suche & Indexierung", Pipeline-Nachzug). Er erfasst solche Abschnitte ausdrücklich, auch wenn sich
 an der Aufbereitung des Dokuments sonst nichts geändert hat.
@@ -1189,7 +1190,8 @@ Abschnitte und **bettet diese neu ein** — er verursacht also Aufrufe beim Einb
 in derselben Größenordnung teuer wie eine Neuindizierung dieser Dokumente. Er ist damit teurer als
 das reine Neuschreiben der Volltextspalte wäre, aber der einzige Weg, der dieselben Abschnitte
 lückenlos wiederherstellt. Der Lauf ist stapelweise, unterbrechbar und wiederaufnehmbar; bis er
-durch ist, arbeitet die Suche für die betroffenen Bestände rein vektoriell weiter. Ein Update, das
+durch ist, sucht der lexikalische Pfad in den betroffenen Beständen mit den Lexemen der alten
+Fassung weiter. Ein Update, das
 diesen Nachzug nötig macht, wird in den Release-Hinweisen ausdrücklich genannt.
 
 ### Bekannte Grenze: `ts_rank` ist kein BM25

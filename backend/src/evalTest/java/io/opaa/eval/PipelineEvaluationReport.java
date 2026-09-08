@@ -114,9 +114,10 @@ public record PipelineEvaluationReport(
    *     selection — a {@code vector-only} run would otherwise be indistinguishable from a hybrid
    *     one here and its numbers would be judged against the committed baseline as a code change.
    * @param fullTextIndexComplete whether every chunk of the measured library carried its full-text
-   *     row, i.e. whether the lexical path could contribute its full share - a chunk missing from
-   *     that index is invisible to it. {@code true} with {@code fullTextSearchEnabled = false} is
-   *     not a contradiction: the index was ready, the path was switched off.
+   *     row at the current {@code content_tsv_version}, i.e. whether the lexical path could
+   *     contribute its full share - a chunk without a row is invisible to it, a row of an older
+   *     version lacks the current lexemes. {@code true} with {@code fullTextSearchEnabled = false}
+   *     is not a contradiction: the index was ready, the path was switched off.
    * @param searchScopeNote records that the harness measures a fixed, complete search scope and
    *     that permission filtering is not a measurement subject.
    * @param chatModel the chat model used for decomposition, or {@code null} when decomposition is

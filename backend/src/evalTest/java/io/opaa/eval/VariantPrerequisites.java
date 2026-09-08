@@ -51,7 +51,8 @@ final class VariantPrerequisites {
   /**
    * The full set of prerequisites, including the one only an existing index can answer (issue
    * #1049): a variant that runs the lexical path needs the measured library's full-text index to be
-   * complete, because chunks missing from it are invisible to that path. Such a variant would
+   * complete: a chunk without a full-text row is invisible to that path, and a row of an older
+   * {@code content_tsv_version} lacks the lexemes the current one adds. Such a variant would
    * measure a diminished lexical contribution under a name that promises the full hybrid one — and
    * a Δ near zero against the vector-only reference would read as "the lexical path changes
    * nothing", the strongest possible wrong conclusion this comparison could produce.
@@ -84,9 +85,10 @@ final class VariantPrerequisites {
     if (effective.fullTextSearchEnabled() && !fullTextIndexComplete) {
       return Optional.of(
           "Diese Variante lässt den lexikalischen Pfad laufen, aber der Volltextindex der "
-              + "gemessenen Bibliothek ist unvollständig — die fehlenden Abschnitte sind für "
-              + "diesen Pfad unsichtbar. Die Variante würde einen geschmälerten lexikalischen "
-              + "Beitrag unter dem Namen der vollen hybriden Konfiguration messen.");
+              + "gemessenen Bibliothek ist unvollständig — Abschnitte ohne Volltextzeile sind "
+              + "für diesen Pfad unsichtbar, Zeilen alter Fassung tragen nicht die aktuellen "
+              + "Lexeme. Die Variante würde einen geschmälerten lexikalischen Beitrag unter dem "
+              + "Namen der vollen hybriden Konfiguration messen.");
     }
     return Optional.empty();
   }
