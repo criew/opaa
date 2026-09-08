@@ -45,12 +45,14 @@ class FullTextChunkSearchIntegrationTest {
   }
 
   /**
-   * A row built under an older {@link io.opaa.indexing.FullTextChunkStore#CURRENT_TSV_VERSION}
-   * carries lexemes of a different analysis chain and must not answer a query built with the
-   * current one - it is invisible to this path until a re-index rewrites it (#1270).
+   * ADR-0028: a row built under an older {@link
+   * io.opaa.indexing.FullTextChunkStore#CURRENT_TSV_VERSION} stays searchable - every raise of that
+   * constant so far only added lexemes, so the old row merely lacks the newest ones. The version
+   * therefore drives the fill state and the re-index selection, never this query; a raised version
+   * must not empty the lexical path until the re-index has rewritten the whole corpus (#1346).
    */
   @Test
-  void aRowBelowTheCurrentTsvVersionIsNotFound() {
+  void aRowBelowTheCurrentTsvVersionIsStillFound() {
     UUID current = seed(readableLibrary, "Die Gebührenbefreiung ist auf Antrag zu gewähren.");
     UUID stale = seed(readableLibrary, "Gebührenbefreiung im Einzelfall nach Aktenlage.");
     jdbcTemplate.update(
@@ -61,7 +63,9 @@ class FullTextChunkSearchIntegrationTest {
     List<Document> hits =
         fullTextChunkSearch.search("Gebührenbefreiung", Set.of(readableLibrary), 25);
 
-    assertThat(hits).extracting(Document::getId).containsExactly(current.toString());
+    assertThat(hits)
+        .extracting(Document::getId)
+        .containsExactlyInAnyOrder(current.toString(), stale.toString());
   }
 
   /**
