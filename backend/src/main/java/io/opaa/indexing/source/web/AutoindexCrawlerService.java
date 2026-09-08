@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -133,6 +134,7 @@ public class AutoindexCrawlerService {
         httpClient,
         authHeader,
         baseUrl,
+        baseUrl,
         0,
         results,
         new HashSet<>(),
@@ -197,6 +199,7 @@ public class AutoindexCrawlerService {
   private void crawlRecursive(
       HttpClient httpClient,
       String authHeader,
+      String startUrl,
       String url,
       int depth,
       List<CrawledFileEntry> results,
@@ -220,8 +223,15 @@ public class AutoindexCrawlerService {
     }
 
     log.debug("Crawling directory: {}", url);
-    String html = fetchPage(httpClient, authHeader, url, rateLimitListener);
-    List<CrawledFileEntry> entries = parseDirectory(html, url, depth, rejectedLinks);
+    DirectoryPage page = fetchPage(httpClient, authHeader, startUrl, url, rateLimitListener);
+    if (!servedInsideStartSubtree(startUrl, page.url())) {
+      // Fetched without credentials, but its links would be followed with them: a page a redirect
+      // moved outside the start URL's subtree is left out like a rejected link.
+      log.info("Directory {} redirected outside the crawled subtree, not exploring it", url);
+      rejectedLinks.add(page.url());
+      return;
+    }
+    List<CrawledFileEntry> entries = parseDirectory(page.html(), page.url(), depth, rejectedLinks);
 
     for (CrawledFileEntry entry : entries) {
       if (results.size() >= crawlProperties.maxEntries()) {
@@ -233,6 +243,7 @@ public class AutoindexCrawlerService {
           crawlRecursive(
               httpClient,
               authHeader,
+              startUrl,
               entry.url(),
               depth + 1,
               results,
@@ -293,6 +304,33 @@ public class AutoindexCrawlerService {
   }
 
   /**
+   * The redirect targets a request below {@code startUrl} may still carry the source
+   * configuration's {@code Authorization} to: {@link #staysUnderBase}'s rule, the one every link of
+   * a listing page is judged by, applied to the target's path. Path-only on purpose - {@link
+   * RedirectFollowingFetcher} consults the scope only for a target whose origin it already trusts,
+   * which includes a same-host http-to-https upgrade.
+   */
+  public static Predicate<URI> credentialScope(String startUrl) {
+    String startPath = URI.create(startUrl).getRawPath();
+    return target -> target.getRawPath() != null && staysUnderBase(startPath, target.getRawPath());
+  }
+
+  /**
+   * Whether a page served from {@code servedUrl}, after any redirect, may be parsed as a listing of
+   * the crawl started at {@code startUrl}: a trusted origin (the same one, or an http-to-https
+   * upgrade) and inside {@link #credentialScope}.
+   */
+  private static boolean servedInsideStartSubtree(String startUrl, String servedUrl) {
+    try {
+      URI served = URI.create(servedUrl);
+      return RedirectFollowingFetcher.isRedirectOriginTrusted(URI.create(startUrl), served)
+          && credentialScope(startUrl).test(served);
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
+  }
+
+  /**
    * Whether {@code fullUrl} stays inside {@code baseUrl}'s own subtree, comparing both sides after
    * {@link #normalizeUrl}: a {@code "../"} href resolves to a string that still starts with {@code
    * baseUrl} until the segment is collapsed. Since {@link URI#normalize()} only collapses literal
@@ -342,21 +380,24 @@ public class AutoindexCrawlerService {
    */
   static final int MAX_LISTING_BYTES = 8 * 1024 * 1024;
 
-  /** {@link #fetchPage(HttpClient, String, String, RateLimitListener)} without a listener. */
-  String fetchPage(HttpClient httpClient, String authHeader, String url)
-      throws IOException, InterruptedException {
-    return fetchPage(httpClient, authHeader, url, RateLimitListener.NONE);
-  }
+  /** A directory page and the URL it was actually served from, after any redirect. */
+  record DirectoryPage(String url, String html) {}
 
   /**
    * Fetches one directory page with the shared {@code User-Agent}, waiting out a {@code 429} under
-   * the shared {@link SourceRequestPolicy} and telling {@code rateLimitListener}. A directory page
-   * is read under a fixed cap, never unbounded: an oversized page is an {@link IOException} like
-   * any other fetch failure, so a subdirectory is marked incomplete and the root fails the run with
-   * a message.
+   * the shared {@link SourceRequestPolicy} and telling {@code rateLimitListener}. A redirect keeps
+   * {@code authHeader} only while its target stays inside {@link #credentialScope} of {@code
+   * startUrl}; the returned {@link DirectoryPage#url} is the hop the page actually came from. A
+   * directory page is read under a fixed cap, never unbounded: an oversized page is an {@link
+   * IOException} like any other fetch failure, so a subdirectory is marked incomplete and the root
+   * fails the run with a message.
    */
-  String fetchPage(
-      HttpClient httpClient, String authHeader, String url, RateLimitListener rateLimitListener)
+  DirectoryPage fetchPage(
+      HttpClient httpClient,
+      String authHeader,
+      String startUrl,
+      String url,
+      RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
     HttpResponse<InputStream> response =
         RedirectFollowingFetcher.sendFollowingRedirects(
@@ -366,7 +407,8 @@ public class AutoindexCrawlerService {
             requestPolicy.headers(authHeader),
             targetAddressValidator,
             RedirectFollowingFetcher.RedirectPolicy.DROP_AUTHORIZATION_OFF_ORIGIN,
-            requestPolicy.rateLimitHandling(rateLimitListener));
+            requestPolicy.rateLimitHandling(rateLimitListener),
+            credentialScope(startUrl));
 
     try (InputStream body = response.body()) {
       if (response.statusCode() == 401) {
@@ -385,7 +427,7 @@ public class AutoindexCrawlerService {
                 + " MiB: "
                 + url);
       }
-      return new String(page, StandardCharsets.UTF_8);
+      return new DirectoryPage(response.uri().toString(), new String(page, StandardCharsets.UTF_8));
     }
   }
 
