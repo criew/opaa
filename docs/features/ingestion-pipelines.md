@@ -1584,7 +1584,14 @@ Charge erneut ausgewählt — kein langsamer Lauf, sondern ein unbegrenzter.
 
 Der auslösende Aufruf wird protokolliert (`INDEXING_PIPELINE_REINDEX_TRIGGERED`, mit Pipeline,
 `belowVersion` und den Chargenzählern) — ein Eintrag je Aufruf, nicht je Dokument: Der Aufruf ist die
-administrative Entscheidung, die Dokumente sind seine Wirkung.
+administrative Entscheidung, die Dokumente sind seine Wirkung. Das gilt auch für den abgewiesenen
+Aufruf (unbekannte Pipeline, ungültige `belowVersion` oder Chargengröße) wie für den mitten in der
+Charge abgebrochenen: Er hinterlässt denselben einen Eintrag mit `outcome = FAILURE` und der
+Abweisung bzw. dem Abbruchgrund als Begründung, ohne Zähler — gerade der abgewiesene Aufruf ist der,
+den eine Prüfung sehen will. Die vor einem Abbruch bereits verarbeiteten Dokumente sind in diesem
+Eintrag nicht sichtbar. Dieselbe Regel gilt für die beiden Schwester-Endpunkte
+`metadata-backfill` und `context-prefix-rerun` (siehe
+[Metadatenschema](./metadata-schema.md)).
 
 **Ausgelöst wird nichts von selbst.** Ob und wann ein Bestand nachgezogen wird, bleibt die oben unter
 [Offene Punkte](#offene-punkte) genannte, bewusst offene Frage; deshalb gibt es hier keinen

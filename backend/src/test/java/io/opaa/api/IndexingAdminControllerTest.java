@@ -13,8 +13,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.AuditEventType;
+import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
+import io.opaa.audit.AuditQueryService;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
@@ -385,7 +387,124 @@ class IndexingAdminControllerTest {
                 .with(asAdmin()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.error").value("Bibliothek nicht gefunden"));
-    verify(auditEventRecorder, org.mockito.Mockito.never()).recordUserAction(any());
+
+    // The rejected call is the one a Prüferin wants to see (#1345): exactly one event, FAILURE,
+    // with the rejection as its reason.
+    AuditEvent event = singleRecordedEvent();
+    assertThat(event.eventType()).isEqualTo(AuditEventType.INDEXING_METADATA_BACKFILL_TRIGGERED);
+    assertThat(event.organizationId()).isEqualTo(actingAdminOrganizationId);
+    assertThat(event.actorUserId()).isEqualTo(actingAdminId);
+    assertThat(event.objectId()).isEqualTo(libraryId);
+    assertThat(event.outcome()).isEqualTo(AuditOutcome.FAILURE);
+    assertThat(event.reason()).isEqualTo("Bibliothek nicht gefunden");
+    assertThat(event.after()).containsEntry("batchSize", 10);
+  }
+
+  @Test
+  void metadataBackfillRejectionIsStillReportedWhenTheAuditWriteItselfFails() throws Exception {
+    // The audit entry is best-effort on top of the rejection, never a precondition for reporting
+    // it: a recorder failure must not turn the 404 into a 500.
+    UUID libraryId = UUID.randomUUID();
+    when(metadataBackfillService.backfillBatch(actingAdminOrganizationId, libraryId, 10))
+        .thenThrow(new NotFoundException("Bibliothek nicht gefunden"));
+    org.mockito.Mockito.doThrow(new IllegalStateException("audit_log nicht erreichbar"))
+        .when(auditEventRecorder)
+        .recordUserAction(any());
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/metadata-backfill")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + libraryId + "\"}")
+                .with(asAdmin()))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.error").value("Bibliothek nicht gefunden"));
+  }
+
+  @Test
+  void metadataBackfillCapsAnOverlongFailureReasonToTheColumnWidth() throws Exception {
+    // audit_log.reason is varchar(1000); a technical abort from the service (SQL in the message,
+    // routinely longer) must not lose the one entry the call is owed to a rejected insert.
+    UUID libraryId = UUID.randomUUID();
+    String overlong = "x".repeat(AuditQueryService.MAX_REASON_LENGTH + 500);
+    when(metadataBackfillService.backfillBatch(actingAdminOrganizationId, libraryId, 10))
+        .thenThrow(new IllegalStateException(overlong));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/metadata-backfill")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + libraryId + "\"}")
+                .with(asAdmin()))
+        .andExpect(status().is5xxServerError());
+
+    AuditEvent event = singleRecordedEvent();
+    assertThat(event.outcome()).isEqualTo(AuditOutcome.FAILURE);
+    assertThat(event.reason()).hasSize(AuditQueryService.MAX_REASON_LENGTH);
+    assertThat(event.reason())
+        .isEqualTo(overlong.substring(0, AuditQueryService.MAX_REASON_LENGTH));
+  }
+
+  @Test
+  void pipelineReindexRecordsAFailureEventForAnUnknownPipeline() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/pipeline-reindex")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"pipelineId\":\"docling-pdf\",\"belowVersion\":2,\"batchSize\":5}")
+                .with(asAdmin()))
+        .andExpect(status().isBadRequest());
+
+    AuditEvent event = singleRecordedEvent();
+    assertThat(event.eventType()).isEqualTo(AuditEventType.INDEXING_PIPELINE_REINDEX_TRIGGERED);
+    assertThat(event.organizationId()).isEqualTo(actingAdminOrganizationId);
+    assertThat(event.actorUserId()).isEqualTo(actingAdminId);
+    assertThat(event.objectLabel()).isEqualTo("Ingestion-Pipeline docling-pdf");
+    assertThat(event.outcome()).isEqualTo(AuditOutcome.FAILURE);
+    assertThat(event.reason()).isEqualTo("Unbekannte Pipeline: docling-pdf");
+    assertThat(event.after())
+        .containsEntry("pipelineId", "docling-pdf")
+        .containsEntry("belowVersion", 2)
+        .containsEntry("batchSize", 5)
+        .doesNotContainKey("reindexedDocuments");
+    verify(pipelineReindexService, org.mockito.Mockito.never())
+        .reindexBatch(any(), any(), anyInt(), anyInt());
+  }
+
+  @Test
+  void contextPrefixRerunRecordsAFailureEventForAnOversizedBatch() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/indexing/context-prefix-rerun")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"libraryId\":\"" + libraryId + "\",\"batchSize\":101}")
+                .with(asAdmin()))
+        .andExpect(status().isBadRequest());
+
+    AuditEvent event = singleRecordedEvent();
+    assertThat(event.eventType()).isEqualTo(AuditEventType.INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED);
+    assertThat(event.organizationId()).isEqualTo(actingAdminOrganizationId);
+    assertThat(event.actorUserId()).isEqualTo(actingAdminId);
+    assertThat(event.objectId()).isEqualTo(libraryId);
+    assertThat(event.outcome()).isEqualTo(AuditOutcome.FAILURE);
+    assertThat(event.reason()).isEqualTo("batchSize muss zwischen 1 und 100 liegen, war 101");
+    assertThat(event.after())
+        .containsEntry("batchSize", 101)
+        .doesNotContainKey("processedDocuments");
+    verifyNoInteractions(contextPrefixRerunService);
+  }
+
+  /**
+   * Exactly one event per call - the invariant every specification sentence "ein Eintrag je Aufruf"
+   * rests on.
+   */
+  private AuditEvent singleRecordedEvent() {
+    ArgumentCaptor<AuditEvent> auditCaptor = ArgumentCaptor.forClass(AuditEvent.class);
+    verify(auditEventRecorder, org.mockito.Mockito.times(1))
+        .recordUserAction(auditCaptor.capture());
+    return auditCaptor.getValue();
   }
 
   @Test
